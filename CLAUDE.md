@@ -6,7 +6,7 @@
 
 ### Business Model
 - **Product**: Next.js theme sold once per restaurant
-- **Multi-store**: 1 restaurant owner = 1-4 locations
+- **Multi-store**: 1 restaurant owner = 1-∞ locations (illimité)
 - **Pricing**: Per store
 - **Maintenance**: 1 year included, then annual renewal
 
@@ -297,6 +297,7 @@ When working on tasks:
 7. **i18n**: Use cookies (primary) or localStorage (fallback)
 8. **State**: Zustand for client, Convex for server
 9. **Run tests** before commit: `pnpm test && pnpm test:e2e`
+10. **Ne JAMAIS mentionner "Claude Code"** dans les messages de commit (pas de `Co-Authored-By: Claude`, ni aucune référence à Claude)
 
 ---
 

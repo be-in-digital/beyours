@@ -1,0 +1,24 @@
+{
+  "name": "@beindigital-engine/convex-functions",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src/",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "copy-to": "bash scripts/copy-to-app.sh",
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "convex": "^1.18.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
