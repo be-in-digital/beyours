@@ -1,0 +1,147 @@
+/**
+ * BeInDigital Engine - Restaurant Package Types
+ *
+ * Business logic types for the restaurant application
+ * Re-exports types from convex-schema and defines additional business types
+ */
+
+// Re-export relevant types from convex-schema
+export type {
+  // Store types
+  StoreDoc,
+  StoreStatus,
+  StoreSettings,
+  StoreBranding,
+  StoreIntegrations,
+  Address,
+  BusinessHours,
+
+  // Product types
+  ProductDoc,
+  ProductOption,
+  ProductChoice,
+  ProductStock,
+  ProductScheduling,
+  ProductNutritionalInfo,
+
+  // Category types
+  CategoryDoc,
+
+  // Menu types
+  MenuDoc,
+  MenuSection,
+
+  // Order types
+  OrderDoc,
+  OrderItem,
+  OrderType,
+  OrderStatus,
+  CustomerInfo,
+  DeliveryAddress,
+  OrderSource,
+  PaymentStatus,
+  SelectedOption,
+
+  // Kitchen types
+  KitchenTicketDoc,
+  KitchenTicketStatus,
+  KitchenTicketPriority,
+  KitchenTicketItem,
+
+  // Base types
+  BaseEntity,
+} from '@beindigital-engine/convex-schema'
+
+// ============================================================================
+// CART TYPES
+// ============================================================================
+
+/**
+ * Cart item with product information and selected options
+ */
+export interface CartItem {
+  productId: string
+  name: string
+  price: number // in cents
+  quantity: number
+  options: CartSelectedOption[]
+  imageUrl?: string
+}
+
+/**
+ * Selected option in cart (simplified from OrderItem options)
+ */
+export interface CartSelectedOption {
+  name: string
+  choice: string
+  priceModifier: number // in cents
+}
+
+/**
+ * Cart summary with calculated totals
+ */
+export interface CartSummary {
+  subtotal: number // in cents
+  tax: number // in cents
+  deliveryFee: number // in cents
+  total: number // in cents
+  itemCount: number
+}
+
+// ============================================================================
+// STORE HOURS STATUS
+// ============================================================================
+
+/**
+ * Store hours status for UI display
+ */
+export interface StoreHoursStatus {
+  isOpen: boolean
+  nextChange: Date | null
+  currentPeriod?: { open: string; close: string }
+}
+
+// ============================================================================
+// PRODUCT FILTERS
+// ============================================================================
+
+/**
+ * Product filter parameters for searching and filtering
+ */
+export interface ProductFilters {
+  categoryId?: string
+  search?: string
+  allergens?: string[] // exclude products with these allergens
+  minPrice?: number // in cents
+  maxPrice?: number // in cents
+  availableOnly?: boolean
+}
+
+/**
+ * Product sort options
+ */
+export type ProductSortBy = 'name' | 'price' | 'popular'
+
+// ============================================================================
+// KITCHEN TICKET INPUT
+// ============================================================================
+
+/**
+ * Kitchen ticket creation input (from OrderDoc)
+ */
+export interface KitchenTicketInput {
+  storeId: string
+  orderId: string
+  station?: string
+  priority: 'normal' | 'urgent' | 'vip'
+  items: Array<{
+    productName: string
+    quantity: number
+    options: string[]
+    notes?: string
+  }>
+  orderNumber: string
+  orderType: 'delivery' | 'pickup' | 'dine_in'
+  source: 'website' | 'uber_eats' | 'deliveroo' | 'pos'
+  estimatedPrepTime?: number
+}

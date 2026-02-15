@@ -7,10 +7,13 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+      "require": "./dist/index.js"
+    },
+    "./components": "./src/components/index.ts",
+    "./restaurant": "./src/components/restaurant/index.ts",
+    "./admin": "./src/components/admin/index.ts"
   },
   "scripts": {
     "build": "tsup",
@@ -24,14 +27,18 @@
   "dependencies": {
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.6.0",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "tailwind-merge": "^2.6.0"
   },
   "peerDependencies": {
+    "@hookform/resolvers": "^3.0.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
