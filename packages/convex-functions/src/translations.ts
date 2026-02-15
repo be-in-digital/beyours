@@ -1,89 +1,79 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Translation management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * Get translations for a specific entity
  */
-export const getForEntity = query({
+export const getForEntity = {
   args: {
     storeId: v.id("stores"),
-    entityType: v.union(
-      v.literal("product"),
-      v.literal("category"),
-      v.literal("page"),
-      v.literal("menu"),
-      v.literal("option")
-    ),
+    entityType: v.string(),
     entityId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("translations")
-      .withIndex("by_entity", (q) =>
+      .withIndex("by_storeId_entity", (q: any) =>
         q.eq("storeId", args.storeId)
           .eq("entityType", args.entityType)
           .eq("entityId", args.entityId)
       )
       .collect()
   },
-})
+}
 
 /**
  * Get all translations for a specific language
  */
-export const getByLanguage = query({
+export const getByLanguage = {
   args: {
     storeId: v.id("stores"),
     languageCode: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("translations")
-      .withIndex("by_language", (q) =>
+      .withIndex("by_storeId_language", (q: any) =>
         q.eq("storeId", args.storeId).eq("languageCode", args.languageCode)
       )
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Upsert a translation (create or update)
  */
-export const upsert = mutation({
+export const upsert = {
   args: {
     storeId: v.id("stores"),
-    entityType: v.union(
-      v.literal("product"),
-      v.literal("category"),
-      v.literal("page"),
-      v.literal("menu"),
-      v.literal("option")
-    ),
+    entityType: v.string(),
     entityId: v.string(),
     field: v.string(),
     languageCode: v.string(),
     value: v.string(),
     isAutoTranslated: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
 
     // Check if translation already exists
     const existing = await ctx.db
       .query("translations")
-      .withIndex("by_entity", (q) =>
+      .withIndex("by_storeId_entity", (q: any) =>
         q.eq("storeId", args.storeId)
           .eq("entityType", args.entityType)
           .eq("entityId", args.entityId)
       )
-      .filter((q) =>
+      .filter((q: any) =>
         q.and(
           q.eq(q.field("field"), args.field),
           q.eq(q.field("languageCode"), args.languageCode)
@@ -108,22 +98,16 @@ export const upsert = mutation({
       })
     }
   },
-})
+}
 
 /**
  * Bulk upsert translations
  */
-export const bulkUpsert = mutation({
+export const bulkUpsert = {
   args: {
     translations: v.array(v.object({
       storeId: v.id("stores"),
-      entityType: v.union(
-        v.literal("product"),
-        v.literal("category"),
-        v.literal("page"),
-        v.literal("menu"),
-        v.literal("option")
-      ),
+      entityType: v.string(),
       entityId: v.string(),
       field: v.string(),
       languageCode: v.string(),
@@ -131,7 +115,7 @@ export const bulkUpsert = mutation({
       isAutoTranslated: v.boolean(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     const results = []
 
@@ -139,12 +123,12 @@ export const bulkUpsert = mutation({
       // Check if translation already exists
       const existing = await ctx.db
         .query("translations")
-        .withIndex("by_entity", (q) =>
+        .withIndex("by_storeId_entity", (q: any) =>
           q.eq("storeId", translation.storeId)
             .eq("entityType", translation.entityType)
             .eq("entityId", translation.entityId)
         )
-        .filter((q) =>
+        .filter((q: any) =>
           q.and(
             q.eq(q.field("field"), translation.field),
             q.eq(q.field("languageCode"), translation.languageCode)
@@ -173,14 +157,14 @@ export const bulkUpsert = mutation({
 
     return results
   },
-})
+}
 
 /**
  * Delete a translation
  */
-export const remove = mutation({
+export const remove = {
   args: { id: v.id("translations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
   },
-})
+}

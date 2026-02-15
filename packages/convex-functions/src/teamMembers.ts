@@ -1,80 +1,81 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Team Member management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * List all team members for a store
  */
-export const list = query({
+export const list = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("teamMembers")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
   },
-})
+}
 
 /**
  * Get team member by user ID
  */
-export const getByUser = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+export const getByUser = {
+  args: { userId: v.string() },
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("teamMembers")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
       .collect()
   },
-})
+}
 
 /**
  * Get team members by role
  */
-export const getByRole = query({
+export const getByRole = {
   args: {
     storeId: v.id("stores"),
     role: v.union(
-      v.literal("owner"),
       v.literal("manager"),
-      v.literal("staff"),
       v.literal("kitchen"),
+      v.literal("waiter"),
       v.literal("delivery")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("teamMembers")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("role"), args.role))
+      .withIndex("by_storeId_role", (q: any) =>
+        q.eq("storeId", args.storeId).eq("role", args.role)
+      )
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new team member
  */
-export const create = mutation({
+export const create = {
   args: {
     storeId: v.id("stores"),
-    userId: v.id("users"),
+    userId: v.string(),
     role: v.union(
-      v.literal("owner"),
       v.literal("manager"),
-      v.literal("staff"),
       v.literal("kitchen"),
+      v.literal("waiter"),
       v.literal("delivery")
     ),
     permissions: v.array(v.string()),
     isActive: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("teamMembers", {
       ...args,
@@ -82,38 +83,37 @@ export const create = mutation({
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update team member
  */
-export const update = mutation({
+export const update = {
   args: {
     id: v.id("teamMembers"),
     role: v.optional(v.union(
-      v.literal("owner"),
       v.literal("manager"),
-      v.literal("staff"),
       v.literal("kitchen"),
+      v.literal("waiter"),
       v.literal("delivery")
     )),
     permissions: v.optional(v.array(v.string())),
     isActive: v.optional(v.boolean()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Team member not found")
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Toggle team member active status
  */
-export const toggleActive = mutation({
+export const toggleActive = {
   args: { id: v.id("teamMembers") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const member = await ctx.db.get(args.id)
     if (!member) throw new Error("Team member not found")
 
@@ -122,14 +122,14 @@ export const toggleActive = mutation({
       updatedAt: Date.now(),
     })
   },
-})
+}
 
 /**
  * Delete a team member
  */
-export const remove = mutation({
+export const remove = {
   args: { id: v.id("teamMembers") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
   },
-})
+}

@@ -1,90 +1,94 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Product management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * List all products for a store
  */
-export const list = query({
+export const list = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("products")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
   },
-})
+}
 
 /**
  * Get product by ID
  */
-export const getById = query({
+export const getById = {
   args: { id: v.id("products") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db.get(args.id)
   },
-})
+}
 
 /**
  * Get products by category
  */
-export const getByCategory = query({
+export const getByCategory = {
   args: {
     storeId: v.id("stores"),
     categoryId: v.id("categories")
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("products")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("categoryId"), args.categoryId))
+      .withIndex("by_storeId_categoryId", (q: any) =>
+        q.eq("storeId", args.storeId).eq("categoryId", args.categoryId)
+      )
       .collect()
   },
-})
+}
 
 /**
  * Get product by slug
  */
-export const getBySlug = query({
+export const getBySlug = {
   args: {
     storeId: v.id("stores"),
     slug: v.string()
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("products")
-      .withIndex("by_store_slug", (q) =>
+      .withIndex("by_storeId_slug", (q: any) =>
         q.eq("storeId", args.storeId).eq("slug", args.slug)
       )
       .unique()
   },
-})
+}
 
 /**
  * Get featured products
  */
-export const getFeatured = query({
+export const getFeatured = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("products")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("isFeatured"), true))
-      .filter((q) => q.eq(q.field("isActive"), true))
+      .withIndex("by_storeId_isFeatured", (q: any) =>
+        q.eq("storeId", args.storeId).eq("isFeatured", true)
+      )
+      .filter((q: any) => q.eq(q.field("isActive"), true))
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new product
  */
-export const create = mutation({
+export const create = {
   args: {
     storeId: v.id("stores"),
     categoryId: v.id("categories"),
@@ -93,21 +97,27 @@ export const create = mutation({
     description: v.optional(v.string()),
     price: v.number(),
     compareAtPrice: v.optional(v.number()),
+    taxRate: v.number(),
+    preparationTime: v.optional(v.number()),
+    sku: v.optional(v.string()),
     images: v.array(v.string()),
-    stock: v.object({
-      quantity: v.number(),
-      trackInventory: v.boolean(),
-      lowStockThreshold: v.optional(v.number()),
-    }),
     options: v.optional(v.array(v.object({
       id: v.string(),
       name: v.string(),
-      type: v.union(v.literal("radio"), v.literal("checkbox")),
       required: v.boolean(),
+      maxSelections: v.optional(v.number()),
+      externalIds: v.optional(v.object({
+        uberEatsId: v.optional(v.string()),
+        deliverooId: v.optional(v.string()),
+      })),
       choices: v.array(v.object({
         id: v.string(),
         name: v.string(),
-        price: v.number(),
+        priceModifier: v.number(),
+        externalIds: v.optional(v.object({
+          uberEatsId: v.optional(v.string()),
+          deliverooId: v.optional(v.string()),
+        })),
       })),
     }))),
     allergens: v.optional(v.array(v.string())),
@@ -116,27 +126,43 @@ export const create = mutation({
       protein: v.optional(v.number()),
       carbs: v.optional(v.number()),
       fat: v.optional(v.number()),
+      fiber: v.optional(v.number()),
     })),
     tags: v.optional(v.array(v.string())),
+    stock: v.optional(v.object({
+      tracked: v.boolean(),
+      quantity: v.number(),
+      lowStockThreshold: v.number(),
+    })),
+    scheduling: v.optional(v.object({
+      availableFrom: v.optional(v.string()),
+      availableUntil: v.optional(v.string()),
+      availableDays: v.optional(v.array(v.number())),
+    })),
+    spiceLevel: v.optional(v.number()),
     isActive: v.boolean(),
     isFeatured: v.boolean(),
     sortOrder: v.number(),
+    source: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("products", {
       ...args,
-      externalIds: {},
+      source: args.source ?? "manual",
+      options: args.options ?? [],
+      allergens: args.allergens ?? [],
+      tags: args.tags ?? [],
       createdAt: now,
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update product
  */
-export const update = mutation({
+export const update = {
   args: {
     id: v.id("products"),
     name: v.optional(v.string()),
@@ -144,21 +170,27 @@ export const update = mutation({
     description: v.optional(v.string()),
     price: v.optional(v.number()),
     compareAtPrice: v.optional(v.number()),
+    taxRate: v.optional(v.number()),
+    preparationTime: v.optional(v.number()),
+    sku: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
-    stock: v.optional(v.object({
-      quantity: v.number(),
-      trackInventory: v.boolean(),
-      lowStockThreshold: v.optional(v.number()),
-    })),
     options: v.optional(v.array(v.object({
       id: v.string(),
       name: v.string(),
-      type: v.union(v.literal("radio"), v.literal("checkbox")),
       required: v.boolean(),
+      maxSelections: v.optional(v.number()),
+      externalIds: v.optional(v.object({
+        uberEatsId: v.optional(v.string()),
+        deliverooId: v.optional(v.string()),
+      })),
       choices: v.array(v.object({
         id: v.string(),
         name: v.string(),
-        price: v.number(),
+        priceModifier: v.number(),
+        externalIds: v.optional(v.object({
+          uberEatsId: v.optional(v.string()),
+          deliverooId: v.optional(v.string()),
+        })),
       })),
     }))),
     allergens: v.optional(v.array(v.string())),
@@ -167,31 +199,44 @@ export const update = mutation({
       protein: v.optional(v.number()),
       carbs: v.optional(v.number()),
       fat: v.optional(v.number()),
+      fiber: v.optional(v.number()),
     })),
     tags: v.optional(v.array(v.string())),
+    stock: v.optional(v.object({
+      tracked: v.boolean(),
+      quantity: v.number(),
+      lowStockThreshold: v.number(),
+    })),
+    scheduling: v.optional(v.object({
+      availableFrom: v.optional(v.string()),
+      availableUntil: v.optional(v.string()),
+      availableDays: v.optional(v.array(v.number())),
+    })),
+    spiceLevel: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
     isFeatured: v.optional(v.boolean()),
     sortOrder: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Product not found")
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Update product stock quantity
  */
-export const updateStock = mutation({
+export const updateStock = {
   args: {
     id: v.id("products"),
     quantity: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const product = await ctx.db.get(args.id)
     if (!product) throw new Error("Product not found")
+    if (!product.stock) throw new Error("Product does not track stock")
 
     await ctx.db.patch(args.id, {
       stock: {
@@ -201,14 +246,14 @@ export const updateStock = mutation({
       updatedAt: Date.now(),
     })
   },
-})
+}
 
 /**
  * Toggle product active status
  */
-export const toggleStatus = mutation({
+export const toggleStatus = {
   args: { id: v.id("products") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const product = await ctx.db.get(args.id)
     if (!product) throw new Error("Product not found")
 
@@ -217,14 +262,14 @@ export const toggleStatus = mutation({
       updatedAt: Date.now(),
     })
   },
-})
+}
 
 /**
  * Delete a product
  */
-export const remove = mutation({
+export const remove = {
   args: { id: v.id("products") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
   },
-})
+}

@@ -1,176 +1,164 @@
 # @beindigital-engine/convex-functions
 
-Package partagé contenant toutes les fonctions backend Convex pour BeInDigital Engine.
+Reusable Convex function definitions for BeInDigital Engine.
 
-## Structure
+## Overview
+
+This package exports plain `{ args, handler }` objects that can be wrapped by Convex's `query()` and `mutation()` in consuming applications. This approach allows:
+
+- **No dependency on generated code**: Package doesn't import from `_generated/server`
+- **Type safety at runtime**: Convex validators provide runtime validation
+- **Reusability**: Functions can be shared across multiple apps
+- **Single source of truth**: All business logic lives in one place
+
+## Architecture
 
 ```
-src/
-├── helpers.ts          # Fonctions utilitaires
-├── stores.ts           # Fonctions Stores
-├── products.ts         # Fonctions Products
-├── categories.ts       # Fonctions Categories
-├── orders.ts           # Fonctions Orders
-├── kitchenTickets.ts   # Fonctions Kitchen Tickets
-├── payments.ts         # Fonctions Payments
-├── teamMembers.ts      # Fonctions Team Members
-├── languages.ts        # Fonctions Languages
-├── translations.ts     # Fonctions Translations
-└── index.ts            # Barrel file (exports)
+packages/convex-functions/src/
+├── categories.ts      # Category CRUD operations
+├── stores.ts          # Store management
+├── products.ts        # Product catalog
+├── orders.ts          # Order processing
+├── kitchenTickets.ts  # Kitchen display system
+├── payments.ts        # Payment processing
+├── teamMembers.ts     # Team member management
+├── languages.ts       # Multi-language support
+├── translations.ts    # Translation management
+├── helpers.ts         # Pure utility functions
+└── index.ts           # Package exports
 ```
 
-## Utilisation
+## Usage
 
-### Dans une app Convex
-
-Ces fichiers doivent être copiés dans le dossier `convex/` de chaque app Next.js.
+### In Convex Functions (App)
 
 ```typescript
-// convex/stores.ts (copié depuis ce package)
-import { v } from "convex/values"
+// apps/restaurant-theme/convex/categories.ts
 import { query, mutation } from "./_generated/server"
-// ... fonctions stores
+import * as categoriesFns from "@beindigital-engine/convex-functions/categories"
+
+// Wrap the exported definitions with Convex query/mutation
+export const list = query(categoriesFns.list)
+export const getById = query(categoriesFns.getById)
+export const create = mutation(categoriesFns.create)
+export const update = mutation(categoriesFns.update)
+export const remove = mutation(categoriesFns.remove)
 ```
 
-### Imports dans l'app
+### Using Helpers
 
 ```typescript
-import { api } from "@/convex/_generated/api"
-import { useQuery, useMutation } from "convex/react"
+import { generateOrderNumber, generateSlug } from "@beindigital-engine/convex-functions"
 
-// Query
-const stores = useQuery(api.stores.list)
-
-// Mutation
-const createStore = useMutation(api.stores.create)
+const orderNumber = generateOrderNumber() // "ORD-2026-ABC123"
+const slug = generateSlug("Product Name") // "product-name"
 ```
 
-## Modules disponibles
-
-### Stores
-- `list()` - Liste tous les stores
-- `getById(id)` - Récupère un store par ID
-- `getBySlug(slug)` - Récupère un store par slug
-- `create(...)` - Crée un nouveau store
-- `update(id, ...)` - Met à jour un store
-- `updateHours(id, hours)` - Met à jour les horaires
-- `updateBranding(id, branding)` - Met à jour le branding
-- `updateSettings(id, settings)` - Met à jour les paramètres
-- `remove(id)` - Supprime un store
-
-### Products
-- `list(storeId)` - Liste tous les produits d'un store
-- `getById(id)` - Récupère un produit par ID
-- `getByCategory(storeId, categoryId)` - Produits par catégorie
-- `getBySlug(storeId, slug)` - Produit par slug
-- `getFeatured(storeId)` - Produits en vedette
-- `create(...)` - Crée un nouveau produit
-- `update(id, ...)` - Met à jour un produit
-- `updateStock(id, quantity)` - Met à jour le stock
-- `toggleStatus(id)` - Active/désactive un produit
-- `remove(id)` - Supprime un produit
+## Function Modules
 
 ### Categories
-- `list(storeId)` - Liste toutes les catégories
-- `getById(id)` - Récupère une catégorie par ID
-- `create(...)` - Crée une nouvelle catégorie
-- `update(id, ...)` - Met à jour une catégorie
-- `reorder(ids)` - Réorganise les catégories
-- `remove(id)` - Supprime une catégorie
+- `list` - List all categories for a store
+- `getById` - Get category by ID
+- `create` - Create new category
+- `update` - Update category
+- `reorder` - Reorder categories
+- `remove` - Delete category
+
+### Stores
+- `list` - List all stores
+- `getById` - Get store by ID
+- `getBySlug` - Get store by slug
+- `create` - Create new store
+- `update` - Update store info
+- `updateHours` - Update opening hours
+- `updateBranding` - Update branding
+- `updateSettings` - Update settings
+- `remove` - Delete store
+
+### Products
+- `list` - List all products
+- `getById` - Get product by ID
+- `getByCategory` - Get products by category
+- `getBySlug` - Get product by slug
+- `getFeatured` - Get featured products
+- `create` - Create new product
+- `update` - Update product
+- `updateStock` - Update stock quantity
+- `toggleStatus` - Toggle active status
+- `remove` - Delete product
 
 ### Orders
-- `list(storeId)` - Liste toutes les commandes
-- `getById(id)` - Récupère une commande par ID
-- `getByCustomer(customerId)` - Commandes d'un client
-- `getByStatus(storeId, status)` - Commandes par statut
-- `create(...)` - Crée une nouvelle commande (calcule automatiquement les totaux)
-- `updateStatus(id, status, ...)` - Met à jour le statut
-- `remove(id)` - Supprime une commande
+- `list` - List orders for a store
+- `getById` - Get order by ID
+- `getByCustomer` - Get customer's orders
+- `getByStatus` - Get orders by status
+- `create` - Create new order
+- `updateStatus` - Update order status
+- `remove` - Delete order
 
 ### Kitchen Tickets
-- `getByStore(storeId)` - Tickets d'un store
-- `getByStatus(storeId, status)` - Tickets par statut
-- `getByStation(storeId, station)` - Tickets par station
-- `getByOrder(orderId)` - Tickets d'une commande
-- `create(...)` - Crée un nouveau ticket
-- `updateStatus(id, status)` - Met à jour le statut
-- `assignStation(id, station)` - Assigne à une station
-- `assignTo(id, userId)` - Assigne à un utilisateur
-- `incrementPrintCount(id)` - Incrémente le compteur d'impression
+- `getByStore` - Get all tickets for a store
+- `getByStatus` - Get tickets by status
+- `getByStation` - Get tickets by station
+- `getByOrder` - Get tickets for an order
+- `create` - Create new ticket
+- `updateStatus` - Update ticket status
+- `assignStation` - Assign to station
+- `assignTo` - Assign to user
+- `incrementPrintCount` - Increment print count
 
 ### Payments
-- `getByOrder(orderId)` - Paiements d'une commande
-- `getByStore(storeId)` - Paiements d'un store
-- `create(...)` - Crée un nouveau paiement
-- `updateStatus(id, status, ...)` - Met à jour le statut
-- `refund(id, amount, reason)` - Rembourse un paiement
+- `getByOrder` - Get payments for an order
+- `getByStore` - Get all payments for a store
+- `create` - Create new payment
+- `updateStatus` - Update payment status
+- `refund` - Refund a payment
 
 ### Team Members
-- `list(storeId)` - Liste tous les membres
-- `getByUser(userId)` - Membre par utilisateur
-- `getByRole(storeId, role)` - Membres par rôle
-- `create(...)` - Crée un nouveau membre
-- `update(id, ...)` - Met à jour un membre
-- `toggleActive(id)` - Active/désactive un membre
-- `remove(id)` - Supprime un membre
+- `list` - List team members
+- `getByUser` - Get by user ID
+- `getByRole` - Get by role
+- `create` - Create team member
+- `update` - Update team member
+- `toggleActive` - Toggle active status
+- `remove` - Delete team member
 
 ### Languages
-- `list(storeId)` - Liste toutes les langues
-- `create(...)` - Crée une nouvelle langue
-- `update(id, ...)` - Met à jour une langue
-- `toggleActive(id)` - Active/désactive une langue
-- `setDefault(storeId, languageId)` - Définit comme langue par défaut
-- `remove(id)` - Supprime une langue
+- `list` - List languages for a store
+- `create` - Create new language
+- `update` - Update language
+- `toggleActive` - Toggle active status
+- `setDefault` - Set as default language
+- `remove` - Delete language
 
 ### Translations
-- `getForEntity(storeId, entityType, entityId)` - Traductions d'une entité
-- `getByLanguage(storeId, languageCode)` - Traductions d'une langue
-- `upsert(...)` - Crée ou met à jour une traduction
-- `bulkUpsert(translations)` - Crée/met à jour plusieurs traductions
-- `remove(id)` - Supprime une traduction
+- `getForEntity` - Get translations for entity
+- `getByLanguage` - Get translations by language
+- `upsert` - Create or update translation
+- `bulkUpsert` - Bulk create/update translations
+- `remove` - Delete translation
 
-### Helpers
-- `generateOrderNumber()` - Génère un numéro de commande unique (ORD-YYYY-XXXX)
-- `generateSlug(text)` - Génère un slug depuis un texte
-- `now()` - Retourne le timestamp actuel
+## TypeScript Support
 
-## Notes importantes
+All functions use `any` types for `ctx` and `args` parameters since:
+- Convex validators provide runtime type checking
+- The actual types come from the app's generated schema
+- This keeps the package independent of any specific schema
 
-### Multi-tenant
-Toutes les fonctions filtrent par `storeId` pour garantir l'isolation des données entre restaurants.
+## Development
 
-### Timestamps
-Les fonctions `create` et `update` gèrent automatiquement `createdAt` et `updatedAt`.
-
-### Validation
-Tous les arguments utilisent les types Convex (`v.string()`, `v.number()`, etc.) pour une validation stricte.
-
-### Indexes
-Les fonctions utilisent les indexes définis dans le schema Convex:
-- `by_store` - Pour filtrer par store
-- `by_slug` - Pour rechercher par slug
-- `by_customer` - Pour filtrer par client
-- `by_order` - Pour filtrer par commande
-- `by_entity` - Pour filtrer les traductions
-- `by_language` - Pour filtrer par langue
-
-## Développement
-
-### Tests
 ```bash
-pnpm test          # Run unit tests
-pnpm test:watch    # Watch mode
-```
-
-### Type checking
-```bash
+# Type check
 pnpm type-check
-```
 
-### Linting
-```bash
+# Lint
 pnpm lint
+
+# Run tests
+pnpm test
 ```
 
-## Version
-0.1.0
+## Version History
+
+- **0.2.0** - Refactored to export `{ args, handler }` objects
+- **0.1.0** - Initial version with full query/mutation exports

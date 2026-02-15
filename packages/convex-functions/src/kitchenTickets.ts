@@ -1,29 +1,31 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Kitchen Ticket management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * Get all kitchen tickets for a store
  */
-export const getByStore = query({
+export const getByStore = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("kitchenTickets")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("asc")
       .collect()
   },
-})
+}
 
 /**
  * Get kitchen tickets by status
  */
-export const getByStatus = query({
+export const getByStatus = {
   args: {
     storeId: v.id("stores"),
     status: v.union(
@@ -33,77 +35,86 @@ export const getByStatus = query({
       v.literal("completed")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("kitchenTickets")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("status"), args.status))
+      .withIndex("by_storeId_status", (q: any) =>
+        q.eq("storeId", args.storeId).eq("status", args.status)
+      )
       .order("asc")
       .collect()
   },
-})
+}
 
 /**
  * Get kitchen tickets by station
  */
-export const getByStation = query({
+export const getByStation = {
   args: {
     storeId: v.id("stores"),
     station: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("kitchenTickets")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("station"), args.station))
+      .withIndex("by_storeId_station", (q: any) =>
+        q.eq("storeId", args.storeId).eq("station", args.station)
+      )
       .order("asc")
       .collect()
   },
-})
+}
 
 /**
  * Get kitchen tickets by order
  */
-export const getByOrder = query({
+export const getByOrder = {
   args: { orderId: v.id("orders") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("kitchenTickets")
-      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
+      .withIndex("by_orderId", (q: any) => q.eq("orderId", args.orderId))
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new kitchen ticket
  */
-export const create = mutation({
+export const create = {
   args: {
     storeId: v.id("stores"),
     orderId: v.id("orders"),
+    orderNumber: v.string(),
+    orderType: v.union(
+      v.literal("delivery"),
+      v.literal("pickup"),
+      v.literal("dine_in")
+    ),
     items: v.array(v.object({
-      productId: v.id("products"),
-      name: v.string(),
+      productName: v.string(),
       quantity: v.number(),
-      selectedOptions: v.optional(v.array(v.object({
-        optionName: v.string(),
-        choiceName: v.string(),
-      }))),
+      options: v.array(v.string()),
       notes: v.optional(v.string()),
     })),
     station: v.optional(v.string()),
-    assignedTo: v.optional(v.id("users")),
+    assignedTo: v.optional(v.string()),
     priority: v.union(
-      v.literal("low"),
       v.literal("normal"),
-      v.literal("high"),
-      v.literal("urgent")
+      v.literal("urgent"),
+      v.literal("vip")
     ),
-    notes: v.optional(v.string()),
+    source: v.union(
+      v.literal("website"),
+      v.literal("uber_eats"),
+      v.literal("deliveroo"),
+      v.literal("pos")
+    ),
+    estimatedPrepTime: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("kitchenTickets", {
       ...args,
@@ -113,12 +124,12 @@ export const create = mutation({
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update kitchen ticket status
  */
-export const updateStatus = mutation({
+export const updateStatus = {
   args: {
     id: v.id("kitchenTickets"),
     status: v.union(
@@ -128,7 +139,7 @@ export const updateStatus = mutation({
       v.literal("completed")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const ticket = await ctx.db.get(args.id)
     if (!ticket) throw new Error("Kitchen ticket not found")
 
@@ -147,46 +158,46 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(args.id, updates)
   },
-})
+}
 
 /**
  * Assign kitchen ticket to a station
  */
-export const assignStation = mutation({
+export const assignStation = {
   args: {
     id: v.id("kitchenTickets"),
     station: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.patch(args.id, {
       station: args.station,
       updatedAt: Date.now(),
     })
   },
-})
+}
 
 /**
  * Assign kitchen ticket to a user
  */
-export const assignTo = mutation({
+export const assignTo = {
   args: {
     id: v.id("kitchenTickets"),
-    userId: v.id("users"),
+    userId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.patch(args.id, {
       assignedTo: args.userId,
       updatedAt: Date.now(),
     })
   },
-})
+}
 
 /**
  * Increment print count for a kitchen ticket
  */
-export const incrementPrintCount = mutation({
+export const incrementPrintCount = {
   args: { id: v.id("kitchenTickets") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const ticket = await ctx.db.get(args.id)
     if (!ticket) throw new Error("Kitchen ticket not found")
 
@@ -195,4 +206,4 @@ export const incrementPrintCount = mutation({
       updatedAt: Date.now(),
     })
   },
-})
+}

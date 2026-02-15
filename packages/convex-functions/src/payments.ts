@@ -1,75 +1,80 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Payment management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * Get payments by order
  */
-export const getByOrder = query({
+export const getByOrder = {
   args: { orderId: v.id("orders") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("payments")
-      .withIndex("by_order", (q) => q.eq("orderId", args.orderId))
+      .withIndex("by_orderId", (q: any) => q.eq("orderId", args.orderId))
       .collect()
   },
-})
+}
 
 /**
  * Get payments by store
  */
-export const getByStore = query({
+export const getByStore = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("payments")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new payment
  */
-export const create = mutation({
+export const create = {
   args: {
     storeId: v.id("stores"),
     orderId: v.id("orders"),
     amount: v.number(),
-    method: v.union(
+    currency: v.string(),
+    provider: v.union(
       v.literal("stripe"),
       v.literal("sumup"),
       v.literal("paypal"),
       v.literal("square"),
       v.literal("cash")
     ),
-    currency: v.string(),
     externalId: v.optional(v.string()),
-    metadata: v.optional(v.any()),
+    metadata: v.optional(v.object({
+      last4: v.optional(v.string()),
+      brand: v.optional(v.string()),
+      receiptUrl: v.optional(v.string()),
+    })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("payments", {
       ...args,
       status: "pending",
-      refundedAmount: 0,
       createdAt: now,
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update payment status
  */
-export const updateStatus = mutation({
+export const updateStatus = {
   args: {
     id: v.id("payments"),
     status: v.union(
@@ -82,7 +87,7 @@ export const updateStatus = mutation({
     ),
     externalId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const { id, status, externalId } = args
     const updates: any = {
       status,
@@ -95,22 +100,22 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(id, updates)
   },
-})
+}
 
 /**
  * Refund a payment
  */
-export const refund = mutation({
+export const refund = {
   args: {
     id: v.id("payments"),
     amount: v.number(),
     reason: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const payment = await ctx.db.get(args.id)
     if (!payment) throw new Error("Payment not found")
 
-    const newRefundedAmount = payment.refundedAmount + args.amount
+    const newRefundedAmount = (payment.refundedAmount ?? 0) + args.amount
 
     // Determine new status
     let newStatus: "refunded" | "partially_refunded"
@@ -122,8 +127,9 @@ export const refund = mutation({
 
     await ctx.db.patch(args.id, {
       refundedAmount: newRefundedAmount,
+      refundReason: args.reason,
       status: newStatus,
       updatedAt: Date.now(),
     })
   },
-})
+}

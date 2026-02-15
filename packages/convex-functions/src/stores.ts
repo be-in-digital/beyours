@@ -1,50 +1,52 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Store management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 
 // === QUERIES ===
 
 /**
  * List all stores
  */
-export const list = query({
+export const list = {
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: any) => {
     return await ctx.db.query("stores").collect()
   },
-})
+}
 
 /**
  * Get store by ID
  */
-export const getById = query({
+export const getById = {
   args: { id: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db.get(args.id)
   },
-})
+}
 
 /**
  * Get store by slug
  */
-export const getBySlug = query({
+export const getBySlug = {
   args: { slug: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("stores")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .withIndex("by_slug", (q: any) => q.eq("slug", args.slug))
       .unique()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new store
  */
-export const create = mutation({
+export const create = {
   args: {
     name: v.string(),
     slug: v.string(),
@@ -71,7 +73,7 @@ export const create = mutation({
       taxRate: v.optional(v.number()),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("stores", {
       ...args,
@@ -91,12 +93,12 @@ export const create = mutation({
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update store basic information
  */
-export const update = mutation({
+export const update = {
   args: {
     id: v.id("stores"),
     name: v.optional(v.string()),
@@ -110,18 +112,18 @@ export const update = mutation({
       v.literal("temporarily_unavailable")
     )),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Store not found")
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Update store opening hours
  */
-export const updateHours = mutation({
+export const updateHours = {
   args: {
     id: v.id("stores"),
     hours: v.array(v.object({
@@ -131,15 +133,15 @@ export const updateHours = mutation({
       isClosed: v.boolean(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.patch(args.id, { hours: args.hours, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Update store branding
  */
-export const updateBranding = mutation({
+export const updateBranding = {
   args: {
     id: v.id("stores"),
     branding: v.object({
@@ -152,15 +154,15 @@ export const updateBranding = mutation({
       fontBody: v.optional(v.string()),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.patch(args.id, { branding: args.branding, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Update store settings
  */
-export const updateSettings = mutation({
+export const updateSettings = {
   args: {
     id: v.id("stores"),
     settings: v.object({
@@ -175,17 +177,17 @@ export const updateSettings = mutation({
       taxRate: v.optional(v.number()),
     }),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.patch(args.id, { settings: args.settings, updatedAt: Date.now() })
   },
-})
+}
 
 /**
  * Delete a store
  */
-export const remove = mutation({
+export const remove = {
   args: { id: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
   },
-})
+}

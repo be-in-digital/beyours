@@ -1,8 +1,10 @@
-// NOTE: This file will be copied to the convex/ directory of each app
-// Imports will be resolved by Convex
+/**
+ * Order management functions
+ *
+ * Export plain { args, handler } objects for Convex query/mutation wrappers
+ */
 
 import { v } from "convex/values"
-import { query, mutation } from "./_generated/server"
 import { generateOrderNumber } from "./helpers"
 
 // === QUERIES ===
@@ -10,45 +12,45 @@ import { generateOrderNumber } from "./helpers"
 /**
  * List all orders for a store, ordered by creation date (newest first)
  */
-export const list = query({
+export const list = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("orders")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
       .collect()
   },
-})
+}
 
 /**
  * Get order by ID
  */
-export const getById = query({
+export const getById = {
   args: { id: v.id("orders") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db.get(args.id)
   },
-})
+}
 
 /**
  * Get orders by customer
  */
-export const getByCustomer = query({
+export const getByCustomer = {
   args: { customerId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("orders")
-      .withIndex("by_customer", (q) => q.eq("customerId", args.customerId))
+      .withIndex("by_customerId", (q: any) => q.eq("customerId", args.customerId))
       .order("desc")
       .collect()
   },
-})
+}
 
 /**
  * Get orders by status
  */
-export const getByStatus = query({
+export const getByStatus = {
   args: {
     storeId: v.id("stores"),
     status: v.union(
@@ -57,46 +59,49 @@ export const getByStatus = query({
       v.literal("preparing"),
       v.literal("ready"),
       v.literal("out_for_delivery"),
+      v.literal("delivered"),
       v.literal("completed"),
       v.literal("cancelled")
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("orders")
-      .withIndex("by_store", (q) => q.eq("storeId", args.storeId))
-      .filter((q) => q.eq(q.field("status"), args.status))
+      .withIndex("by_storeId_status", (q: any) =>
+        q.eq("storeId", args.storeId).eq("status", args.status)
+      )
       .order("desc")
       .collect()
   },
-})
+}
 
 // === MUTATIONS ===
 
 /**
  * Create a new order
  */
-export const create = mutation({
+export const create = {
   args: {
     storeId: v.id("stores"),
     customerId: v.optional(v.string()),
-    customer: v.object({
+    customerInfo: v.object({
       name: v.string(),
       email: v.optional(v.string()),
-      phone: v.string(),
+      phone: v.optional(v.string()),
     }),
     items: v.array(v.object({
       productId: v.id("products"),
-      name: v.string(),
+      productName: v.string(),
       quantity: v.number(),
-      price: v.number(),
-      selectedOptions: v.optional(v.array(v.object({
+      unitPrice: v.number(),
+      selectedOptions: v.array(v.object({
         optionId: v.string(),
         optionName: v.string(),
         choiceId: v.string(),
         choiceName: v.string(),
-        price: v.number(),
-      }))),
+        priceModifier: v.number(),
+      })),
+      subtotal: v.number(),
       notes: v.optional(v.string()),
     })),
     type: v.union(
@@ -109,64 +114,58 @@ export const create = mutation({
       city: v.string(),
       postalCode: v.string(),
       country: v.string(),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
       instructions: v.optional(v.string()),
     })),
-    pickupTime: v.optional(v.string()),
-    tableNumber: v.optional(v.string()),
     notes: v.optional(v.string()),
-    paymentMethod: v.union(
-      v.literal("stripe"),
-      v.literal("sumup"),
-      v.literal("paypal"),
-      v.literal("square"),
-      v.literal("cash")
-    ),
+    paymentMethod: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const now = Date.now()
 
     // Calculate subtotal from items
-    const subtotal = args.items.reduce((sum, item) => {
-      const itemPrice = item.price * item.quantity
-      const optionsPrice = (item.selectedOptions ?? []).reduce(
-        (optSum, opt) => optSum + opt.price * item.quantity,
-        0
-      )
-      return sum + itemPrice + optionsPrice
-    }, 0)
+    const subtotal = args.items.reduce((sum: any, item: any) => sum + item.subtotal, 0)
 
     // Get store to retrieve tax rate and delivery fee
     const store = await ctx.db.get(args.storeId)
     if (!store) throw new Error("Store not found")
 
-    const taxRate = store.settings.taxRate ?? 0
+    const taxRate = (store.settings.taxRate ?? 0) / 100
     const deliveryFee = args.type === "delivery" ? (store.settings.deliveryFee ?? 0) : 0
 
-    const taxAmount = subtotal * taxRate
+    const taxAmount = Math.round(subtotal * taxRate)
     const total = subtotal + taxAmount + deliveryFee
 
     const orderNumber = generateOrderNumber()
 
     return await ctx.db.insert("orders", {
-      ...args,
+      storeId: args.storeId,
       orderNumber,
+      customerId: args.customerId,
+      customerInfo: args.customerInfo,
+      type: args.type,
+      status: "pending",
+      items: args.items,
       subtotal,
       taxAmount,
-      deliveryFee,
+      deliveryFee: args.type === "delivery" ? deliveryFee : undefined,
       total,
-      status: "pending",
+      deliveryAddress: args.deliveryAddress,
+      paymentMethod: args.paymentMethod,
       paymentStatus: "pending",
       source: "website",
+      notes: args.notes,
       createdAt: now,
       updatedAt: now,
     })
   },
-})
+}
 
 /**
  * Update order status
  */
-export const updateStatus = mutation({
+export const updateStatus = {
   args: {
     id: v.id("orders"),
     status: v.union(
@@ -175,12 +174,13 @@ export const updateStatus = mutation({
       v.literal("preparing"),
       v.literal("ready"),
       v.literal("out_for_delivery"),
+      v.literal("delivered"),
       v.literal("completed"),
       v.literal("cancelled")
     ),
     cancellationReason: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     const order = await ctx.db.get(args.id)
     if (!order) throw new Error("Order not found")
 
@@ -202,14 +202,14 @@ export const updateStatus = mutation({
 
     await ctx.db.patch(args.id, updates)
   },
-})
+}
 
 /**
  * Delete an order
  */
-export const remove = mutation({
+export const remove = {
   args: { id: v.id("orders") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
   },
-})
+}

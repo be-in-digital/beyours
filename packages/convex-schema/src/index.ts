@@ -1,6 +1,14 @@
 // @beindigital-engine/convex-schema
 // Package exports
 
-export { default as schema } from './schema'
-export * from './validators'
-export * from './types'
+// Table definitions (for composing app schemas)
+export * from "./tables"
+
+// Full composed schema (for reference)
+export { default as schema } from "./schema"
+
+// Zod validators
+export * from "./validators"
+
+// TypeScript types
+export * from "./types"
