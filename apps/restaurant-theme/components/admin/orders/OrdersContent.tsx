@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { OrdersTable } from "./OrdersTable"
+import { KitchenContent } from "../kitchen/KitchenContent"
 
 /**
  * Order status type for filtering
@@ -24,6 +25,7 @@ type OrderStatus =
 /**
  * Main content component for orders list page
  * Displays orders in tabs filtered by status with search functionality
+ * Also includes a Kitchen tab for kitchen display system
  */
 export function OrdersContent() {
   const storeId = useAdminStoreId()
@@ -48,42 +50,56 @@ export function OrdersContent() {
   })
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Orders</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage and track all restaurant orders.
-        </p>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by order number or customer name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Tabs with status filters */}
-      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatus)}>
-        <TabsList variant="line">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
-          <TabsTrigger value="preparing">Preparing</TabsTrigger>
-          <TabsTrigger value="ready">Ready</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+    <Tabs defaultValue="commandes" className="space-y-6">
+      {/* Header with top-level tabs */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Commandes</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage and track all restaurant orders.
+          </p>
+        </div>
+        <TabsList>
+          <TabsTrigger value="commandes">Commandes</TabsTrigger>
+          <TabsTrigger value="cuisine">Cuisine</TabsTrigger>
         </TabsList>
+      </div>
 
-        <TabsContent value={activeStatus} className="mt-6">
-          <OrdersTable orders={filteredOrders || []} isLoading={orders === undefined} />
-        </TabsContent>
-      </Tabs>
-    </div>
+      {/* Orders list tab */}
+      <TabsContent value="commandes" className="space-y-6">
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by order number or customer name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Status filter tabs */}
+        <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatus)}>
+          <TabsList variant="line">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
+            <TabsTrigger value="preparing">Preparing</TabsTrigger>
+            <TabsTrigger value="ready">Ready</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeStatus} className="mt-6">
+            <OrdersTable orders={filteredOrders || []} isLoading={orders === undefined} />
+          </TabsContent>
+        </Tabs>
+      </TabsContent>
+
+      {/* Kitchen tab */}
+      <TabsContent value="cuisine">
+        <KitchenContent />
+      </TabsContent>
+    </Tabs>
   )
 }

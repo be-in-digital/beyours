@@ -42,7 +42,12 @@ interface Language {
   isRtl: boolean
 }
 
-export function LanguagesContent() {
+interface LanguagesContentProps {
+  /** When true, hides the page header for embedded usage within tabs */
+  embedded?: boolean
+}
+
+export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
   const storeId = useAdminStoreId()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [code, setCode] = useState("")
@@ -146,15 +151,17 @@ export function LanguagesContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Languages</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage available languages for your store
-          </p>
-        </div>
+        {!embedded && (
+          <div>
+            <h1 className="text-3xl font-bold">Languages</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage available languages for your store
+            </p>
+          </div>
+        )}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className={embedded ? "ml-auto" : ""}>
               <PlusIcon className="mr-2 h-4 w-4" />
               Add Language
             </Button>

@@ -68,7 +68,12 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   cash: { label: "Cash", color: "bg-green-100 text-green-800" },
 }
 
-export function PaymentsContent() {
+interface PaymentsContentProps {
+  /** When true, hides the page header for embedded usage within tabs */
+  embedded?: boolean
+}
+
+export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
   const storeId = useAdminStoreId()
   const payments = useQuery(
     api.payments.getByStore,
@@ -106,14 +111,16 @@ export function PaymentsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Payments</h1>
-          <p className="text-muted-foreground mt-2">
-            View payment transactions and manage refunds.
-          </p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Payments</h1>
+            <p className="text-muted-foreground mt-2">
+              View payment transactions and manage refunds.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div className="flex items-center gap-4">

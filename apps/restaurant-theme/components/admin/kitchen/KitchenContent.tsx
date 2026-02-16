@@ -68,15 +68,6 @@ export function KitchenContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Kitchen Display System</h1>
-          <p className="text-muted-foreground mt-2">
-            Real-time kitchen order management and ticket display.
-          </p>
-        </div>
-      </div>
-
       {/* Station filter */}
       {stations.length > 0 && (
         <StationFilter

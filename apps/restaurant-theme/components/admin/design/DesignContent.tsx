@@ -24,7 +24,12 @@ const themes = [
   { id: "sushi", name: "Sushi", primary: "#1B5E20", secondary: "#E8F5E9", accent: "#66BB6A" },
 ]
 
-export function DesignContent() {
+interface DesignContentProps {
+  /** When true, hides the page header for embedded usage within tabs */
+  embedded?: boolean
+}
+
+export function DesignContent({ embedded = false }: DesignContentProps) {
   const storeId = useAdminStoreId()
   const store = useQuery(
     api.stores.getById,
@@ -127,12 +132,14 @@ export function DesignContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Design</h1>
-        <p className="text-muted-foreground mt-2">
-          Customize your store's look and feel
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-3xl font-bold">Design</h1>
+          <p className="text-muted-foreground mt-2">
+            Customize your store's look and feel
+          </p>
+        </div>
+      )}
 
       <Tabs defaultValue="theme" className="space-y-4">
         <TabsList>

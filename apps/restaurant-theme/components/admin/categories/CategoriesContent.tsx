@@ -104,14 +104,8 @@ export function CategoriesContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Categories</h1>
-          <p className="text-muted-foreground mt-2">
-            Organize your products into categories.
-          </p>
-        </div>
-
+      {/* Add Category button */}
+      <div className="flex items-center justify-end">
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button>

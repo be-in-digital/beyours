@@ -15,42 +15,45 @@ import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { EmptyState } from "@/components/admin/EmptyState"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { DesignTabContent } from "./DesignTabContent"
+import { LanguagesTabContent } from "./LanguagesTabContent"
+import { PaymentsTabContent } from "./PaymentsTabContent"
 
 const integrations = [
   {
     id: "uber-eats",
     name: "Uber Eats",
-    description: "Sync menu and receive orders from Uber Eats",
+    description: "Synchronisez votre menu et recevez des commandes depuis Uber Eats",
     icon: "🚗",
   },
   {
     id: "deliveroo",
     name: "Deliveroo",
-    description: "Sync menu and receive orders from Deliveroo",
+    description: "Synchronisez votre menu et recevez des commandes depuis Deliveroo",
     icon: "🛵",
   },
   {
     id: "stripe",
     name: "Stripe",
-    description: "Accept card payments with Stripe",
+    description: "Acceptez les paiements par carte avec Stripe",
     icon: "💳",
   },
   {
     id: "sumup",
     name: "SumUp",
-    description: "Accept payments with SumUp",
+    description: "Acceptez les paiements avec SumUp",
     icon: "📱",
   },
   {
     id: "paypal",
     name: "PayPal",
-    description: "Accept PayPal payments",
+    description: "Acceptez les paiements PayPal",
     icon: "🅿️",
   },
   {
     id: "square",
     name: "Square",
-    description: "Accept payments with Square",
+    description: "Acceptez les paiements avec Square",
     icon: "⬛",
   },
 ]
@@ -137,23 +140,26 @@ export function SettingsContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <h1 className="text-3xl font-bold">Paramètres</h1>
         <p className="text-muted-foreground mt-2">
-          Manage store settings and integrations
+          Gérez les paramètres de votre restaurant et vos intégrations
         </p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="design">Design</TabsTrigger>
+          <TabsTrigger value="langues">Langues</TabsTrigger>
+          <TabsTrigger value="paiements">Paiements</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
           <div className="border rounded-lg p-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="storeName">Store Name</Label>
+              <Label htmlFor="storeName">Nom du restaurant</Label>
               <Input
                 id="storeName"
                 value={name}
@@ -162,7 +168,7 @@ export function SettingsContent() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Téléphone</Label>
                 <Input
                   id="phone"
                   value={phone}
@@ -179,17 +185,29 @@ export function SettingsContent() {
                 />
               </div>
             </div>
-            <Button onClick={handleUpdateGeneral}>Save Changes</Button>
+            <Button onClick={handleUpdateGeneral}>Enregistrer les modifications</Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="design" className="space-y-4">
+          <DesignTabContent />
+        </TabsContent>
+
+        <TabsContent value="langues" className="space-y-4">
+          <LanguagesTabContent />
+        </TabsContent>
+
+        <TabsContent value="paiements" className="space-y-4">
+          <PaymentsTabContent />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">
           <div className="border rounded-lg p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="orderReceived">Order Received</Label>
+                <Label htmlFor="orderReceived">Commande reçue</Label>
                 <p className="text-sm text-muted-foreground">
-                  Get notified when a new order is received
+                  Recevoir une notification lors de la réception d'une nouvelle commande
                 </p>
               </div>
               <Switch
@@ -200,9 +218,9 @@ export function SettingsContent() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="orderCompleted">Order Completed</Label>
+                <Label htmlFor="orderCompleted">Commande terminée</Label>
                 <p className="text-sm text-muted-foreground">
-                  Get notified when an order is completed
+                  Recevoir une notification lorsqu'une commande est terminée
                 </p>
               </div>
               <Switch
@@ -213,9 +231,9 @@ export function SettingsContent() {
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="lowStock">Low Stock Alert</Label>
+                <Label htmlFor="lowStock">Alerte stock bas</Label>
                 <p className="text-sm text-muted-foreground">
-                  Get notified when products are running low
+                  Recevoir une notification lorsque les produits sont en rupture de stock
                 </p>
               </div>
               <Switch
@@ -224,7 +242,7 @@ export function SettingsContent() {
                 onCheckedChange={setLowStockNotif}
               />
             </div>
-            <Button onClick={handleSaveNotifications}>Save Preferences</Button>
+            <Button onClick={handleSaveNotifications}>Enregistrer les préférences</Button>
           </div>
         </TabsContent>
 
@@ -247,18 +265,18 @@ export function SettingsContent() {
                 </CardHeader>
                 {integrationsEnabled[integration.id] && (
                   <CardContent className="space-y-2">
-                    <Label htmlFor={`${integration.id}-key`}>API Key</Label>
+                    <Label htmlFor={`${integration.id}-key`}>Clé API</Label>
                     <Input
                       id={`${integration.id}-key`}
                       type="password"
-                      placeholder="Enter API key"
+                      placeholder="Entrez votre clé API"
                       value={integrationKeys[integration.id] || ""}
                       onChange={(e) =>
                         handleUpdateIntegrationKey(integration.id, e.target.value)
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      Note: Integration backend not yet connected
+                      Note: Backend d'intégration non encore connecté
                     </p>
                   </CardContent>
                 )}
