@@ -26,7 +26,7 @@ export default function SignInPage() {
       if (result.error) {
         setError(result.error.message ?? "Sign in failed");
       } else {
-        router.push("/");
+        router.push("/dashboard");
       }
     } catch {
       setError("An unexpected error occurred");

@@ -17,6 +17,7 @@ export * as translations from "./translations"
 export * as games from "./games"
 export * as prizes from "./prizes"
 export * as gameQRCodes from "./gameQRCodes"
+export * as userProfiles from "./userProfiles"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"

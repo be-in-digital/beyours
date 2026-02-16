@@ -3,8 +3,7 @@
  * Centralized exports for all admin UI components
  */
 
-export { AppSidebar } from "./AppSidebar"
-export { AdminHeader } from "./AdminHeader"
+export { AdminAuthSync } from "./AdminAuthSync"
 export { StoreSelector } from "./StoreSelector"
 export { StoreGuard } from "./StoreGuard"
 export { DeleteConfirmDialog } from "./DeleteConfirmDialog"

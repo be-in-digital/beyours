@@ -18,7 +18,8 @@
     "./helpers": "./src/helpers.ts",
     "./games": "./src/games.ts",
     "./gameQRCodes": "./src/gameQRCodes.ts",
-    "./prizes": "./src/prizes.ts"
+    "./prizes": "./src/prizes.ts",
+    "./userProfiles": "./src/userProfiles.ts"
   },
   "scripts": {
     "lint": "eslint src/",
