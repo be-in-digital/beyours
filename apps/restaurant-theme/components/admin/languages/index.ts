@@ -1,0 +1,1 @@
+export { LanguagesContent } from "./LanguagesContent"

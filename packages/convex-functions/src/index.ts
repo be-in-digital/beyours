@@ -14,6 +14,9 @@ export * as payments from "./payments"
 export * as teamMembers from "./teamMembers"
 export * as languages from "./languages"
 export * as translations from "./translations"
+export * as games from "./games"
+export * as prizes from "./prizes"
+export * as gameQRCodes from "./gameQRCodes"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
