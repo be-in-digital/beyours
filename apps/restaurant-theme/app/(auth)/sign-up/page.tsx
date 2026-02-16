@@ -4,6 +4,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -27,11 +28,14 @@ export default function SignUpPage() {
 
       if (result.error) {
         setError(result.error.message ?? "Échec de la création du compte");
+        toast.error("Échec de la création du compte");
       } else {
+        toast.success("Compte créé avec succès");
         router.push("/");
       }
     } catch {
       setError("Une erreur inattendue est survenue");
+      toast.error("Une erreur inattendue est survenue");
     } finally {
       setLoading(false);
     }

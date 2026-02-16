@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 interface ResetPasswordFormProps {
   token: string | null
@@ -78,11 +79,14 @@ export function ResetPasswordForm({
       const result = await onSubmit(password, token)
       if (result.error) {
         setError(result.error)
+        toast.error(result.error)
       } else {
         setSuccess(true)
+        toast.success("Mot de passe réinitialisé avec succès")
       }
     } catch {
       setError("Une erreur inattendue est survenue")
+      toast.error("Une erreur inattendue est survenue")
     } finally {
       setLoading(false)
     }

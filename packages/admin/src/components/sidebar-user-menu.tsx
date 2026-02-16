@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@beindigital-engine/ui"
+import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import {
   SidebarMenu,
@@ -35,6 +36,7 @@ export function SidebarUserMenu() {
 
   const handleSignOut = async () => {
     if (signOut) await signOut()
+    toast.success("Déconnexion réussie")
     router.push("/sign-in")
   }
 

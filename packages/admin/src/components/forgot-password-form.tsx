@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 interface ForgotPasswordFormProps {
   onSubmit: (email: string) => Promise<{ error?: string }>
@@ -30,11 +31,14 @@ export function ForgotPasswordForm({
       const result = await onSubmit(email)
       if (result.error) {
         setError(result.error)
+        toast.error(result.error)
       } else {
         setSubmitted(true)
+        toast.success("Lien de réinitialisation envoyé")
       }
     } catch {
       setError("Une erreur inattendue est survenue")
+      toast.error("Une erreur inattendue est survenue")
     } finally {
       setLoading(false)
     }

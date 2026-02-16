@@ -4,6 +4,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -25,11 +26,14 @@ export default function SignInPage() {
 
       if (result.error) {
         setError(result.error.message ?? "Échec de la connexion");
+        toast.error("Échec de la connexion");
       } else {
+        toast.success("Connexion réussie");
         router.push("/dashboard");
       }
     } catch {
       setError("Une erreur inattendue est survenue");
+      toast.error("Une erreur inattendue est survenue");
     } finally {
       setLoading(false);
     }

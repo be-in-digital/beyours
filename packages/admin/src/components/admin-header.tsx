@@ -15,6 +15,7 @@ import {
   BreadcrumbSeparator,
 } from "../ui/breadcrumb"
 import { getBreadcrumbData } from "../config/route-titles"
+import { toast } from "sonner"
 import { Globe, Moon, Sun } from "lucide-react"
 import {
   DropdownMenu,
@@ -53,8 +54,10 @@ export function AdminHeader({ storeSelector }: AdminHeaderProps) {
   }, [])
 
   const handleLanguageChange = (code: string) => {
+    const lang = languages.find((l) => l.code === code)
     setCurrentLang(code)
     document.cookie = `lang=${code}; path=/; max-age=${60 * 60 * 24 * 365}`
+    toast.success(`Langue changée : ${lang?.label ?? code}`)
   }
 
   const toggleTheme = () => {

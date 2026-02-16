@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react"
 import { useStoreStore } from "@beindigital-engine/restaurant"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@beindigital-engine/ui"
+import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
 
 /**
@@ -22,7 +23,10 @@ export function StoreSelector() {
 
   const handleStoreChange = (storeId: string) => {
     const store = (stores as any[]).find((s) => s._id === storeId)
-    if (store) setCurrentStore(store)
+    if (store) {
+      setCurrentStore(store)
+      toast.success(`Établissement : ${store.name}`)
+    }
   }
 
   return (
