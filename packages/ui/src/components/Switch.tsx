@@ -8,10 +8,16 @@ export interface SwitchProps
   label?: string
   error?: string
   description?: string
+  /** Radix-compatible callback fired on toggle */
+  onCheckedChange?: (checked: boolean) => void
 }
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, label, error, description, id, ...props }, ref) => {
+  ({ className, label, error, description, id, onCheckedChange, onChange, ...props }, ref) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange?.(e)
+      onCheckedChange?.(e.target.checked)
+    }
     const switchId = id || React.useId()
 
     return (
@@ -33,6 +39,7 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
               aria-describedby={
                 error ? `${switchId}-error` : description ? `${switchId}-description` : undefined
               }
+              onChange={handleChange}
               {...props}
             />
             <span className="pointer-events-none absolute h-full w-full rounded-full bg-input transition-colors peer-checked:bg-primary" />

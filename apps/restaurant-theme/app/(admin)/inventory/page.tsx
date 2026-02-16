@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Inventory page
- * Track stock levels and manage suppliers
- */
-export default function InventoryPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Inventaire"

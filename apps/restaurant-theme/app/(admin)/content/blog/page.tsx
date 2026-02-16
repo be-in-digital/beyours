@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Blog management page
- * Publish articles and news
- */
-export default function BlogPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Blog"

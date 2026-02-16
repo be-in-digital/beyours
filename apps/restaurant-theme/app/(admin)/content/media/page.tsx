@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Media library page
- * Manage images, videos and files
- */
-export default function MediaPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Médiathèque"

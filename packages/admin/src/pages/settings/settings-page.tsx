@@ -1,0 +1,281 @@
+"use client"
+
+import { useQuery, useMutation } from "convex/react"
+import { toast } from "sonner"
+import { useState } from "react"
+import { SettingsIcon, BellIcon, PlugIcon } from "lucide-react"
+import { Button } from "@beindigital-engine/ui"
+import { Input } from "@beindigital-engine/ui"
+import { Label } from "@beindigital-engine/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@beindigital-engine/ui"
+import { Switch } from "@beindigital-engine/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
+import { LoadingState } from "../../components/loading-state"
+import { EmptyState } from "../../components/empty-state"
+import { DesignTabContent } from "./design-tab-content"
+import { LanguagesTabContent } from "./languages-tab-content"
+import { PaymentsTabContent } from "./payments-tab-content"
+import { useAdminApiStore } from "../../stores/admin-api-store"
+import { useAdminStoreId } from "../../hooks/admin-hooks"
+
+const integrations = [
+  {
+    id: "uber-eats",
+    name: "Uber Eats",
+    description: "Synchronisez votre menu et recevez des commandes depuis Uber Eats",
+  },
+  {
+    id: "deliveroo",
+    name: "Deliveroo",
+    description: "Synchronisez votre menu et recevez des commandes depuis Deliveroo",
+  },
+  {
+    id: "stripe",
+    name: "Stripe",
+    description: "Acceptez les paiements par carte avec Stripe",
+  },
+  {
+    id: "sumup",
+    name: "SumUp",
+    description: "Acceptez les paiements avec SumUp",
+  },
+  {
+    id: "paypal",
+    name: "PayPal",
+    description: "Acceptez les paiements PayPal",
+  },
+  {
+    id: "square",
+    name: "Square",
+    description: "Acceptez les paiements avec Square",
+  },
+]
+
+export function SettingsPage() {
+  const { api } = useAdminApiStore()
+  const storeId = useAdminStoreId()
+  const store = useQuery(
+    api.stores.getById,
+    storeId ? { id: storeId } : "skip"
+  )
+  const updateStore = useMutation(api.stores.update)
+
+  // General tab state
+  const [name, setName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+
+  // Notifications state
+  const [orderReceivedNotif, setOrderReceivedNotif] = useState(true)
+  const [orderCompletedNotif, setOrderCompletedNotif] = useState(true)
+  const [lowStockNotif, setLowStockNotif] = useState(true)
+
+  // Integrations state (placeholder)
+  const [integrationsEnabled, setIntegrationsEnabled] = useState<Record<string, boolean>>({})
+  const [integrationKeys, setIntegrationKeys] = useState<Record<string, string>>({})
+
+  // Initialize state when store loads
+  if (store && name === "") {
+    setName(store.name)
+    setPhone(store.phone || "")
+    setEmail(store.email || "")
+  }
+
+  const handleUpdateGeneral = async () => {
+    if (!storeId) return
+    try {
+      await updateStore({
+        id: storeId,
+        name,
+        phone: phone || undefined,
+        email: email || undefined,
+      })
+      toast.success("Paramètres mis à jour avec succès")
+    } catch (error) {
+      toast.error("Échec de la mise à jour des paramètres")
+      console.error(error)
+    }
+  }
+
+  const handleSaveNotifications = () => {
+    // Placeholder - no backend connection yet
+    toast.success("Préférences de notification enregistrées")
+  }
+
+  const handleToggleIntegration = (integrationId: string) => {
+    setIntegrationsEnabled((prev) => ({
+      ...prev,
+      [integrationId]: !prev[integrationId],
+    }))
+    toast.success("Paramètres d'intégration mis à jour")
+  }
+
+  const handleUpdateIntegrationKey = (integrationId: string, key: string) => {
+    setIntegrationKeys((prev) => ({
+      ...prev,
+      [integrationId]: key,
+    }))
+  }
+
+  if (!storeId) {
+    return (
+      <EmptyState
+        icon={SettingsIcon}
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer les paramètres"
+      />
+    )
+  }
+
+  if (store === undefined) {
+    return <LoadingState />
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Paramètres</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Gérez les paramètres de votre restaurant et vos intégrations
+        </p>
+      </div>
+
+      <Tabs defaultValue="general" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="design">Design</TabsTrigger>
+          <TabsTrigger value="langues">Langues</TabsTrigger>
+          <TabsTrigger value="paiements">Paiements</TabsTrigger>
+          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-4">
+          <div className="border border-border/50 rounded-lg p-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="storeName">Nom du restaurant</Label>
+              <Input
+                id="storeName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Téléphone</Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={handleUpdateGeneral} size="sm">Enregistrer les modifications</Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="design" className="space-y-4">
+          <DesignTabContent />
+        </TabsContent>
+
+        <TabsContent value="langues" className="space-y-4">
+          <LanguagesTabContent />
+        </TabsContent>
+
+        <TabsContent value="paiements" className="space-y-4">
+          <PaymentsTabContent />
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <div className="border border-border/50 rounded-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="orderReceived">Commande reçue</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recevoir une notification lors de la réception d'une nouvelle commande
+                </p>
+              </div>
+              <Switch
+                id="orderReceived"
+                checked={orderReceivedNotif}
+                onCheckedChange={setOrderReceivedNotif}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="orderCompleted">Commande terminée</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recevoir une notification lorsqu'une commande est terminée
+                </p>
+              </div>
+              <Switch
+                id="orderCompleted"
+                checked={orderCompletedNotif}
+                onCheckedChange={setOrderCompletedNotif}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="lowStock">Alerte stock bas</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recevoir une notification lorsque les produits sont en rupture de stock
+                </p>
+              </div>
+              <Switch
+                id="lowStock"
+                checked={lowStockNotif}
+                onCheckedChange={setLowStockNotif}
+              />
+            </div>
+            <Button onClick={handleSaveNotifications} size="sm">Enregistrer les préférences</Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="integrations" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {integrations.map((integration) => (
+              <Card key={integration.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{integration.name}</CardTitle>
+                    <Switch
+                      checked={integrationsEnabled[integration.id] || false}
+                      onCheckedChange={() => handleToggleIntegration(integration.id)}
+                    />
+                  </div>
+                  <CardDescription className="text-xs">{integration.description}</CardDescription>
+                </CardHeader>
+                {integrationsEnabled[integration.id] && (
+                  <CardContent className="space-y-2">
+                    <Label htmlFor={`${integration.id}-key`} className="text-xs">Clé API</Label>
+                    <Input
+                      id={`${integration.id}-key`}
+                      type="password"
+                      placeholder="Entrez votre clé API"
+                      value={integrationKeys[integration.id] || ""}
+                      onChange={(e) =>
+                        handleUpdateIntegrationKey(integration.id, e.target.value)
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Note: Backend d'intégration non encore connecté
+                    </p>
+                  </CardContent>
+                )}
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}

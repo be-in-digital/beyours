@@ -9,10 +9,16 @@ export interface CheckboxProps
   label?: string
   error?: string
   description?: string
+  /** Radix-compatible callback fired on toggle */
+  onCheckedChange?: (checked: boolean) => void
 }
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-  ({ className, label, error, description, id, ...props }, ref) => {
+  ({ className, label, error, description, id, onCheckedChange, onChange, ...props }, ref) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange?.(e)
+      onCheckedChange?.(e.target.checked)
+    }
     const checkboxId = id || React.useId()
 
     return (
@@ -28,6 +34,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               aria-describedby={
                 error ? `${checkboxId}-error` : description ? `${checkboxId}-description` : undefined
               }
+              onChange={handleChange}
               {...props}
             />
             <Check className="pointer-events-none absolute left-0 top-0 h-4 w-4 hidden text-primary-foreground peer-checked:block" />

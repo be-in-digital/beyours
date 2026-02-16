@@ -1,9 +1,9 @@
-import { EditProductContent } from "@/components/admin/products"
+import { EditProductPage } from "@beindigital-engine/admin"
 
-export default function EditProductPage({
+export default function Page({
   params,
 }: {
   params: Promise<{ productId: string }>
 }) {
-  return <EditProductContent params={params} />
+  return <EditProductPage params={params} />
 }

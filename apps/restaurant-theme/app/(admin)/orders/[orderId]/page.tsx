@@ -1,9 +1,9 @@
-import { OrderDetailContent } from "@/components/admin/orders"
+import { OrderDetailPage } from "@beindigital-engine/admin"
 
-export default function OrderDetailPage({
+export default function Page({
   params,
 }: {
   params: Promise<{ orderId: string }>
 }) {
-  return <OrderDetailContent params={params} />
+  return <OrderDetailPage params={params} />
 }

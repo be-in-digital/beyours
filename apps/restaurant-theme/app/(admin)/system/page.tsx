@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * System and updates page
- * View system status and available updates
- */
-export default function SystemPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Système & Mises à jour"

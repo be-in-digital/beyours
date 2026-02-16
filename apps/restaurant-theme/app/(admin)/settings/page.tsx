@@ -1,5 +1,5 @@
-import { SettingsContent } from "@/components/admin/settings"
+import { SettingsPage } from "@beindigital-engine/admin"
 
-export default function SettingsPage() {
-  return <SettingsContent />
+export default function Page() {
+  return <SettingsPage />
 }

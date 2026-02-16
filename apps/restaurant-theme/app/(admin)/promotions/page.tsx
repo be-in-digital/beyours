@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Promotions page
- * Create special offers and discount codes
- */
-export default function PromotionsPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Promotions"

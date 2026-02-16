@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Customers page
- * Manage customer database and order history
- */
-export default function CustomersPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Clients"

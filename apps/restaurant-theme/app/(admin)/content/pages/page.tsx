@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Content pages management page
- * Create and edit website pages
- */
-export default function ContentPagesPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Pages"

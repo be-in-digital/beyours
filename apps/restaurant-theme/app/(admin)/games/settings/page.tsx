@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Gamification settings page
- * Configure global gamification parameters
- */
-export default function GamificationSettingsPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Paramètres Gamification"

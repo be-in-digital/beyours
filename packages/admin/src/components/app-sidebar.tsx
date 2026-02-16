@@ -35,34 +35,17 @@ import {
   type CollapsibleNavItem,
 } from "../config/nav-config"
 
-// ─── Props ──────────────────────────────────────────────────────────────────────
-
 interface AppSidebarProps {
-  /** Footer content (e.g. StoreSelector) injected by the consuming app */
   footer?: React.ReactNode
-  /** User menu rendered at the very bottom of the sidebar */
   userFooter?: React.ReactNode
 }
 
-// ─── Permission filter ──────────────────────────────────────────────────────────
-
-/**
- * Check if a nav entry should be visible for the given role.
- * Items without requiredPermission are always visible.
- */
 function canSeeEntry(role: Role, entry: NavEntry): boolean {
   const permission = entry.requiredPermission
   if (!permission) return true
   return hasPermission(role, permission as Permission)
 }
 
-// ─── Component ──────────────────────────────────────────────────────────────────
-
-/**
- * Application sidebar with RBAC filtering.
- * Menu items are filtered based on the authenticated user's role.
- * Groups with no visible items are hidden entirely.
- */
 export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
@@ -71,36 +54,28 @@ export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon">
-      {/* Brand header */}
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <UtensilsCrossed className="size-4" />
+                <div className="bg-primary text-primary-foreground flex aspect-square size-7 items-center justify-center rounded-lg">
+                  <UtensilsCrossed className="size-3.5" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">BeInDigital</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Administration
-                  </span>
-                </div>
+                <span className="truncate text-sm font-semibold tracking-tight">
+                  BeInDigital
+                </span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* Navigation groups with RBAC filtering */}
       <SidebarContent>
         {navGroups.map((group) => {
-          // Filter items by permission
           const visibleItems = group.items.filter((entry) =>
             canSeeEntry(role as Role, entry)
           )
-
-          // Hide groups with no visible items
           if (visibleItems.length === 0) return null
 
           return (
@@ -132,7 +107,7 @@ export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
                           tooltip={entry.label}
                         >
                           <Link href={entry.href}>
-                            <Icon />
+                            <Icon className="size-4" />
                             <span>{entry.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -146,13 +121,12 @@ export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
         })}
       </SidebarContent>
 
-      {/* Footer with injected content (StoreSelector + user menu) */}
       <SidebarFooter>
         {isCollapsed ? (
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton tooltip="Établissement">
-                <Store />
+                <Store className="size-4" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -169,8 +143,6 @@ export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
   )
 }
 
-// ─── Collapsible sub-menu component ─────────────────────────────────────────────
-
 function CollapsibleNavMenuItem({
   item,
   pathname,
@@ -186,7 +158,7 @@ function CollapsibleNavMenuItem({
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton tooltip={item.label}>
-            <Icon />
+            <Icon className="size-4" />
             <span>{item.label}</span>
             <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
           </SidebarMenuButton>

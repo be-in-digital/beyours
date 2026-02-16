@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * QR Codes page
- * Generate and manage table QR codes for gamification
- */
-export default function QRCodesPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="QR Codes"

@@ -1,5 +1,5 @@
-import { GamesContent } from "@/components/admin/games"
+import { GamesPage } from "@beindigital-engine/admin"
 
-export default function GamesPage() {
-  return <GamesContent />
+export default function Page() {
+  return <GamesPage />
 }

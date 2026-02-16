@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email segments page
- * Create customer segments based on behavior and preferences
- */
-export default function SegmentsPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Segments"

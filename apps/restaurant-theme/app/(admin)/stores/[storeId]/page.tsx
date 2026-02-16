@@ -1,9 +1,9 @@
-import { StoreDetailContent } from "@/components/admin/stores"
+import { StoreDetailPage } from "@beindigital-engine/admin"
 
-export default function StoreSettingsPage({
+export default function Page({
   params,
 }: {
   params: Promise<{ storeId: string }>
 }) {
-  return <StoreDetailContent params={params} />
+  return <StoreDetailPage params={params} />
 }

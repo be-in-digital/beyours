@@ -21,6 +21,7 @@
     "@beindigital-engine/convex-schema": "workspace:^",
     "@beindigital-engine/core": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
+    "@beindigital-engine/ui": "workspace:^",
     "@convex-dev/better-auth": "^0.10.10",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-slot": "^1.2.4",

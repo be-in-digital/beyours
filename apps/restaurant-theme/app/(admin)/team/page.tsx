@@ -1,5 +1,5 @@
-import { TeamContent } from "@/components/admin/team"
+import { TeamPage } from "@beindigital-engine/admin"
 
-export default function TeamPage() {
-  return <TeamContent />
+export default function Page() {
+  return <TeamPage />
 }

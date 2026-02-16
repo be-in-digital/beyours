@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Required actions page
- * Configure social actions required before playing games
- */
-export default function RequiredActionsPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Actions requises"

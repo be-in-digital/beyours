@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email subscribers page
- * Manage subscriber list and track unsubscribes
- */
-export default function SubscribersPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Abonnés"

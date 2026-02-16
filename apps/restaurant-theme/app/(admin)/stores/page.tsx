@@ -1,5 +1,5 @@
-import { StoresContent } from "@/components/admin/stores"
+import { StoresPage } from "@beindigital-engine/admin"
 
-export default function StoresListPage() {
-  return <StoresContent />
+export default function Page() {
+  return <StoresPage />
 }

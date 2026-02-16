@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email configuration page
- * Configure sender domain and technical settings
- */
-export default function EmailConfigPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Configuration Email"

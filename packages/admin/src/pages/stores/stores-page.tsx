@@ -1,0 +1,251 @@
+"use client"
+
+import { useQuery, useMutation } from "convex/react"
+import { toast } from "sonner"
+import { useState } from "react"
+import { PlusIcon, StoreIcon } from "lucide-react"
+import { Button } from "@beindigital-engine/ui"
+import { ButtonGroup } from "@beindigital-engine/ui"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@beindigital-engine/ui"
+import { Input } from "@beindigital-engine/ui"
+import { Label } from "@beindigital-engine/ui"
+import { Badge } from "@beindigital-engine/ui"
+import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
+import Link from "next/link"
+import { cn } from "../../lib/utils"
+import { LoadingState } from "../../components/loading-state"
+import { EmptyState } from "../../components/empty-state"
+import { slugify } from "../../lib/formatters"
+import { useAdminApiStore } from "../../stores/admin-api-store"
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
+
+const statusConfig = {
+  open: { label: "Ouvert", color: "bg-green-500 text-white" },
+  closed: { label: "Fermé", color: "bg-red-500 text-white" },
+  temporarily_unavailable: { label: "Indisponible", color: "bg-orange-500 text-white" },
+}
+
+export function StoresPage() {
+  const { api } = useAdminApiStore()
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [address, setAddress] = useState<AddressValue>({
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "France",
+  })
+  const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+
+  const stores = useQuery(api.stores.list, {})
+  const createStore = useMutation(api.stores.create)
+
+  const handleCreateStore = async () => {
+    if (!name || !address.street || !address.city || !address.postalCode) {
+      toast.error("Veuillez remplir tous les champs obligatoires")
+      return
+    }
+
+    try {
+      const slug = slugify(name)
+      await createStore({
+        name,
+        slug,
+        description: description || undefined,
+        address: {
+          street: address.street,
+          city: address.city,
+          postalCode: address.postalCode,
+          country: address.country,
+          latitude: address.latitude,
+          longitude: address.longitude,
+        },
+        phone: phone || undefined,
+        email: email || undefined,
+        settings: {
+          currency: "EUR",
+          timezone: "Europe/Paris",
+          deliveryEnabled: true,
+          pickupEnabled: true,
+          dineInEnabled: true,
+          minimumOrderAmount: 1000, // €10.00
+          deliveryFee: 300, // €3.00
+          deliveryRadius: 5000, // 5km
+          taxRate: 10, // 10%
+        },
+      })
+      toast.success("Établissement créé avec succès")
+      setIsCreateDialogOpen(false)
+      // Reset form
+      setName("")
+      setDescription("")
+      setAddress({ street: "", city: "", postalCode: "", country: "France" })
+      setPhone("")
+      setEmail("")
+    } catch (error) {
+      toast.error("Échec de la création de l'établissement")
+      console.error(error)
+    }
+  }
+
+  if (stores === undefined) {
+    return <LoadingState />
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Établissements</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gérez vos établissements
+          </p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm">
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Créer un établissement
+            </Button>
+          </DialogTrigger>
+          <DialogContent
+            className="max-w-2xl"
+            onPointerDownOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest(".pac-container")) {
+                e.preventDefault()
+              }
+            }}
+            onInteractOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest(".pac-container")) {
+                e.preventDefault()
+              }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Créer un nouvel établissement</DialogTitle>
+              <DialogDescription>
+                Ajoutez un nouvel établissement à votre entreprise
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom de l'établissement *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Restaurant principal"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug (généré automatiquement)</Label>
+                  <Input
+                    id="slug"
+                    value={slugify(name)}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  placeholder="Description optionnelle"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <AddressAutocomplete
+                label="Adresse *"
+                value={address}
+                onChange={setAddress}
+                apiKey={GOOGLE_MAPS_API_KEY}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input
+                    id="phone"
+                    placeholder="+33 1 23 45 67 89"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="contact@exemple.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <ButtonGroup>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleCreateStore}>Créer un établissement</Button>
+              </ButtonGroup>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {stores.length === 0 ? (
+        <EmptyState
+          icon={StoreIcon}
+          title="Aucun établissement"
+          description="Créez votre premier établissement pour commencer"
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {stores.map((store: any) => (
+            <Link
+              key={store._id}
+              href={`/stores/${store._id}`}
+              className="border border-border/50 rounded-lg p-4 space-y-3 hover:shadow-sm transition-shadow cursor-pointer"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="font-medium">{store.name}</h3>
+                  <Badge
+                    className={cn(
+                      "mt-2 text-xs",
+                      statusConfig[store.status as keyof typeof statusConfig]?.color || "bg-gray-500 text-white"
+                    )}
+                  >
+                    {statusConfig[store.status as keyof typeof statusConfig]?.label || store.status}
+                  </Badge>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>{store.address.street}</p>
+                <p>{store.address.city}, {store.address.postalCode}</p>
+                {store.phone && <p>{store.phone}</p>}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

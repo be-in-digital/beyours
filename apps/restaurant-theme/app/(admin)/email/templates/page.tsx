@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email templates page
- * Create and manage reusable email templates
- */
-export default function TemplatesPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Modèles"

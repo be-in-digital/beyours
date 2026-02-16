@@ -1,5 +1,5 @@
-import { NewProductContent } from "@/components/admin/products"
+import { NewProductPage } from "@beindigital-engine/admin"
 
-export default function CreateProductPage() {
-  return <NewProductContent />
+export default function Page() {
+  return <NewProductPage />
 }

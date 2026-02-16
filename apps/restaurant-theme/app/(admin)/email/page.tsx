@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email marketing dashboard page
- * View campaign performance metrics
- */
-export default function EmailPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Email Marketing"

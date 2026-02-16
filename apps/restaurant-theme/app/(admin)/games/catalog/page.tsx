@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Games catalog page
- * Browse and configure available games
- */
-export default function GamesCatalogPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Jeux"

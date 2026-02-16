@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Email campaigns page
- * Create and send targeted email campaigns
- */
-export default function CampaignsPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Campagnes"

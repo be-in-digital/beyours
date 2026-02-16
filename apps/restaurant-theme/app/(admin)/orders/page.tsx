@@ -1,5 +1,5 @@
-import { OrdersContent } from "@/components/admin/orders"
+import { OrdersPage } from "@beindigital-engine/admin"
 
-export default function OrdersListPage() {
-  return <OrdersContent />
+export default function Page() {
+  return <OrdersPage />
 }

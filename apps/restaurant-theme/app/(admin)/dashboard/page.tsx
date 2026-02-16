@@ -1,5 +1,5 @@
-import { DashboardContent } from "@/components/admin/dashboard"
+import { DashboardPage } from "@beindigital-engine/admin"
 
-export default function DashboardPage() {
-  return <DashboardContent />
+export default function Page() {
+  return <DashboardPage />
 }

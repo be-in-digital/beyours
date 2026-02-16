@@ -1,10 +1,6 @@
-import { ComingSoon } from "@/components/admin/ComingSoon"
+import { ComingSoon } from "@beindigital-engine/admin"
 
-/**
- * Winners page
- * View game history and prize redemptions
- */
-export default function WinnersPage() {
+export default function Page() {
   return (
     <ComingSoon
       title="Gagnants"
