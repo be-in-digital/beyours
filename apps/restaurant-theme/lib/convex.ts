@@ -1,18 +1,26 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 
-const betterAuth = convexBetterAuthNextJs({
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
-  convexSiteUrl: process.env.CONVEX_SITE_URL!,
-});
+// Lazy singleton to avoid throwing during Next.js build
+// when CONVEX_SITE_URL is not available in the build environment.
+let _auth: any;
+function auth() {
+  if (!_auth) {
+    _auth = convexBetterAuthNextJs({
+      convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
+      convexSiteUrl: process.env.CONVEX_SITE_URL!,
+    });
+  }
+  return _auth;
+}
 
-export const handler = betterAuth.handler;
-export const getToken = betterAuth.getToken;
-export const isAuthenticated = betterAuth.isAuthenticated;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const preloadAuthQuery: any = betterAuth.preloadAuthQuery;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const fetchAuthQuery: any = betterAuth.fetchAuthQuery;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const fetchAuthMutation: any = betterAuth.fetchAuthMutation;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const fetchAuthAction: any = betterAuth.fetchAuthAction;
+export const handler = {
+  GET: (request: Request) => auth().handler.GET(request),
+  POST: (request: Request) => auth().handler.POST(request),
+};
+export const getToken = (...args: any[]) => auth().getToken(...args);
+export const isAuthenticated = (...args: any[]) => auth().isAuthenticated(...args);
+export const preloadAuthQuery = (...args: any[]) => auth().preloadAuthQuery(...args);
+export const fetchAuthQuery = (...args: any[]) => auth().fetchAuthQuery(...args);
+export const fetchAuthMutation = (...args: any[]) => auth().fetchAuthMutation(...args);
+export const fetchAuthAction = (...args: any[]) => auth().fetchAuthAction(...args);
