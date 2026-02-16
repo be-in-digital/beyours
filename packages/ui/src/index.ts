@@ -1,6 +1,9 @@
 // Utilities
 export { cn } from "./lib/utils"
 
+// Types
+export type { AddressValue } from "./types/address"
+
 // Base components
 export * from "./components"
 

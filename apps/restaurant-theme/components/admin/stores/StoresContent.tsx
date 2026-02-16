@@ -22,8 +22,11 @@ import { Badge } from "@/components/ui/badge"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { EmptyState } from "@/components/admin/EmptyState"
 import { slugify } from "@/lib/admin/formatters"
+import { AddressAutocomplete, type AddressValue } from "@/components/ui/address-autocomplete"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
 const statusConfig = {
   open: { label: "Ouvert", color: "bg-green-500 text-white" },
@@ -35,10 +38,12 @@ export function StoresContent() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
-  const [street, setStreet] = useState("")
-  const [city, setCity] = useState("")
-  const [postalCode, setPostalCode] = useState("")
-  const [country, setCountry] = useState("France")
+  const [address, setAddress] = useState<AddressValue>({
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "France",
+  })
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
 
@@ -46,7 +51,7 @@ export function StoresContent() {
   const createStore = useMutation(api.stores.create)
 
   const handleCreateStore = async () => {
-    if (!name || !street || !city || !postalCode) {
+    if (!name || !address.street || !address.city || !address.postalCode) {
       toast.error("Veuillez remplir tous les champs obligatoires")
       return
     }
@@ -58,10 +63,12 @@ export function StoresContent() {
         slug,
         description: description || undefined,
         address: {
-          street,
-          city,
-          postalCode,
-          country,
+          street: address.street,
+          city: address.city,
+          postalCode: address.postalCode,
+          country: address.country,
+          latitude: address.latitude,
+          longitude: address.longitude,
         },
         phone: phone || undefined,
         email: email || undefined,
@@ -82,10 +89,7 @@ export function StoresContent() {
       // Reset form
       setName("")
       setDescription("")
-      setStreet("")
-      setCity("")
-      setPostalCode("")
-      setCountry("France")
+      setAddress({ street: "", city: "", postalCode: "", country: "France" })
       setPhone("")
       setEmail("")
     } catch (error) {
@@ -114,7 +118,21 @@ export function StoresContent() {
               Créer un établissement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent
+            className="max-w-2xl"
+            onPointerDownOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest(".pac-container")) {
+                e.preventDefault()
+              }
+            }}
+            onInteractOutside={(e) => {
+              const target = e.target as HTMLElement
+              if (target.closest(".pac-container")) {
+                e.preventDefault()
+              }
+            }}
+          >
             <DialogHeader>
               <DialogTitle>Créer un nouvel établissement</DialogTitle>
               <DialogDescription>
@@ -151,43 +169,12 @@ export function StoresContent() {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="street">Adresse *</Label>
-                <Input
-                  id="street"
-                  placeholder="123 rue principale"
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Ville *</Label>
-                  <Input
-                    id="city"
-                    placeholder="Paris"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode">Code postal *</Label>
-                  <Input
-                    id="postalCode"
-                    placeholder="75001"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="country">Pays *</Label>
-                  <Input
-                    id="country"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                  />
-                </div>
-              </div>
+              <AddressAutocomplete
+                label="Adresse *"
+                value={address}
+                onChange={setAddress}
+                apiKey={GOOGLE_MAPS_API_KEY}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">Téléphone</Label>

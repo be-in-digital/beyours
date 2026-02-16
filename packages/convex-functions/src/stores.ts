@@ -183,6 +183,28 @@ export const updateSettings = {
 }
 
 /**
+ * Update store address
+ */
+export const updateAddress = {
+  args: {
+    id: v.id("stores"),
+    address: v.object({
+      street: v.string(),
+      city: v.string(),
+      postalCode: v.string(),
+      country: v.string(),
+      latitude: v.optional(v.number()),
+      longitude: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { address: args.address, updatedAt: Date.now() })
+  },
+}
+
+/**
  * Delete a store
  */
 export const remove = {

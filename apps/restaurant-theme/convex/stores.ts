@@ -9,4 +9,5 @@ export const update = mutation(defs.update);
 export const updateHours = mutation(defs.updateHours);
 export const updateBranding = mutation(defs.updateBranding);
 export const updateSettings = mutation(defs.updateSettings);
+export const updateAddress = mutation(defs.updateAddress);
 export const remove = mutation(defs.remove);

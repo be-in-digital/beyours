@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
+import { AddressAutocomplete, type AddressValue } from "@/components/ui/address-autocomplete"
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
 const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 const dayNames: Record<string, string> = {
@@ -34,6 +37,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   const { storeId } = use(params)
   const store = useQuery(api.stores.getById, { id: storeId as Id<"stores"> })
   const updateStore = useMutation(api.stores.update)
+  const updateAddressMutation = useMutation(api.stores.updateAddress)
   const updateHours = useMutation(api.stores.updateHours)
   const updateBranding = useMutation(api.stores.updateBranding)
   const updateSettings = useMutation(api.stores.updateSettings)
@@ -45,6 +49,14 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [status, setStatus] = useState("open")
+
+  // Address tab state
+  const [address, setAddress] = useState<AddressValue>({
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "France",
+  })
 
   // Hours tab state
   const [hours, setHours] = useState<Array<{ day: string; open: string; close: string; isClosed: boolean }>>([])
@@ -77,6 +89,17 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
     setPhone(store.phone || "")
     setEmail(store.email || "")
     setStatus(store.status)
+
+    if (store.address) {
+      setAddress({
+        street: store.address.street || "",
+        city: store.address.city || "",
+        postalCode: store.address.postalCode || "",
+        country: store.address.country || "France",
+        latitude: store.address.latitude,
+        longitude: store.address.longitude,
+      })
+    }
 
     if (store.hours) {
       setHours(store.hours)
@@ -122,6 +145,26 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
       toast.success("Établissement mis à jour avec succès")
     } catch (error) {
       toast.error("Échec de la mise à jour de l'établissement")
+      console.error(error)
+    }
+  }
+
+  const handleUpdateAddress = async () => {
+    try {
+      await updateAddressMutation({
+        id: storeId as Id<"stores">,
+        address: {
+          street: address.street,
+          city: address.city,
+          postalCode: address.postalCode,
+          country: address.country,
+          latitude: address.latitude,
+          longitude: address.longitude,
+        },
+      })
+      toast.success("Adresse mise à jour avec succès")
+    } catch (error) {
+      toast.error("Échec de la mise à jour de l'adresse")
       console.error(error)
     }
   }
@@ -197,6 +240,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="address">Adresse</TabsTrigger>
           <TabsTrigger value="hours">Horaires</TabsTrigger>
           <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
           <TabsTrigger value="settings">Paramètres</TabsTrigger>
@@ -242,6 +286,18 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
               </Select>
             </div>
             <Button onClick={handleUpdateGeneral}>Enregistrer</Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="address" className="space-y-4">
+          <div className="border rounded-lg p-6 space-y-4">
+            <AddressAutocomplete
+              label="Adresse de l'établissement"
+              value={address}
+              onChange={setAddress}
+              apiKey={GOOGLE_MAPS_API_KEY}
+            />
+            <Button onClick={handleUpdateAddress}>Enregistrer l'adresse</Button>
           </div>
         </TabsContent>
 

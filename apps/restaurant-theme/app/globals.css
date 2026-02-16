@@ -206,6 +206,17 @@
   }
 }
 
+/* Google Places autocomplete dropdown - ensure it renders above dialogs and is clickable */
+.pac-container {
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+}
+
+/* When Google Places dropdown is open, prevent the dialog overlay from stealing clicks */
+body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
+  pointer-events: none;
+}
+
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
   .animate-in {
