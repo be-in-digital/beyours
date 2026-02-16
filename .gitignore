@@ -58,7 +58,6 @@ dist/
 
 # Convex
 /convex/
-**/convex/_generated/
 .convex-build/
 
 # Changesets
