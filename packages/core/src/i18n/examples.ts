@@ -329,7 +329,7 @@ export async function example12_FullTranslationWorkflow() {
 
   const apiKey = process.env.OPENAI_API_KEY || 'sk-...'
 
-  const toTranslate = missingKeys.map((key) => ({
+  const toTranslate = missingKeys.map((key: string) => ({
     text: frTranslations[key] || '',
     key,
   }))

@@ -153,14 +153,31 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {order.items.map((item: any, index: number) => (
+                  {order.items.map((item: {
+                    productId: Id<"products">
+                    productName: string
+                    quantity: number
+                    priceAtTime: number
+                    unitPrice: number
+                    subtotal: number
+                    selectedOptions?: Array<{
+                      optionName: string
+                      choiceName: string
+                      priceModifier: number
+                    }>
+                    notes?: string
+                  }, index: number) => (
                     <TableRow key={index}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{item.productName}</div>
                           {item.selectedOptions && item.selectedOptions.length > 0 && (
                             <div className="text-sm text-muted-foreground mt-1">
-                              {item.selectedOptions.map((opt: any, i: number) => (
+                              {item.selectedOptions.map((opt: {
+                                optionName: string
+                                choiceName: string
+                                priceModifier: number
+                              }, i: number) => (
                                 <div key={i}>
                                   {opt.optionName}: {opt.choiceName}
                                   {opt.priceModifier !== 0 &&
@@ -326,7 +343,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
               )}
               {order.cancellationReason && (
                 <div>
-                  <div className="text-muted-foreground">Motif d'annulation</div>
+                  <div className="text-muted-foreground">Motif d&apos;annulation</div>
                   <div className="font-medium">{order.cancellationReason}</div>
                 </div>
               )}

@@ -65,7 +65,7 @@ const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {
   pos: { label: "Caisse", color: "bg-purple-100 text-purple-800" },
 }
 
-const STATUS_ACTIONS: Record<TicketStatus, { label: string; nextStatus: TicketStatus | null; icon: any }> = {
+const STATUS_ACTIONS: Record<TicketStatus, { label: string; nextStatus: TicketStatus | null; icon: React.ComponentType<{ className?: string }> }> = {
   pending: { label: "Démarrer", nextStatus: "in_progress", icon: Play },
   in_progress: { label: "Prêt", nextStatus: "ready", icon: CheckCircle },
   ready: { label: "Terminer", nextStatus: "completed", icon: Package },

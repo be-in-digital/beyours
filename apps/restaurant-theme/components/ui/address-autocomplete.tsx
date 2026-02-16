@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
@@ -30,10 +30,15 @@ export function AddressAutocomplete({
   // Keep a ref to always have the latest value in the callback,
   // avoiding stale closure issues with Google's async event
   const valueRef = useRef(value)
-  valueRef.current = value
-
   const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   const { inputRef } = useGooglePlacesAutocomplete({
     apiKey,

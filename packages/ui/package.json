@@ -20,7 +20,7 @@
     "dev": "tsup --watch",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "clean": "rm -rf dist node_modules"
   },
@@ -38,8 +38,10 @@
     "react-hook-form": "^7.0.0"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jsdom": "^28.1.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

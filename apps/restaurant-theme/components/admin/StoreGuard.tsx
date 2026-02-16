@@ -91,7 +91,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
           </div>
           <h2 className="text-2xl font-semibold">Sélectionner un établissement</h2>
           <p className="text-muted-foreground">
-            Choisissez l'établissement que vous souhaitez gérer.
+            Choisissez l&apos;établissement que vous souhaitez gérer.
           </p>
           <Select onValueChange={handleStoreChange}>
             <SelectTrigger className="w-full">

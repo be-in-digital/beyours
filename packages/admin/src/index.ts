@@ -41,6 +41,7 @@ export {
   eurosToCents,
   centsToEuros,
 } from "./lib/formatters"
+export { ADMIN_PAGE_SIZE } from "./lib/constants"
 
 // Sidebar UI primitives (for layout composition)
 export {
@@ -56,7 +57,7 @@ export {
 export { DashboardPage } from "./pages/dashboard"
 export { OrdersPage, OrderDetailPage } from "./pages/orders"
 export { ProductsPage, NewProductPage, EditProductPage } from "./pages/products"
-export { StoresPage, StoreDetailPage } from "./pages/stores"
+export { StoresPage, StoreDetailPage, StoresTable, StoresPagination } from "./pages/stores"
 export { TeamPage } from "./pages/team"
 export { SettingsPage } from "./pages/settings"
 export { GamesPage } from "./pages/games"

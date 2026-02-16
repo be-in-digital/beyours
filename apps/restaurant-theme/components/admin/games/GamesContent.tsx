@@ -28,12 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { EmptyState } from "@/components/admin/EmptyState"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
 
 interface Game {
   _id: Id<"games">
@@ -473,7 +471,7 @@ export function GamesContent() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="prizeType">Type *</Label>
-                    <Select value={prizeType} onValueChange={(v: any) => setPrizeType(v)}>
+                    <Select value={prizeType} onValueChange={(v) => setPrizeType(v as typeof prizeType)}>
                       <SelectTrigger id="prizeType">
                         <SelectValue />
                       </SelectTrigger>

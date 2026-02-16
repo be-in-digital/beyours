@@ -2,10 +2,10 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { useState } from "react"
+import Image from "next/image"
 import { PaletteIcon, CheckIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -136,7 +136,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
         <div>
           <h1 className="text-3xl font-bold">Design</h1>
           <p className="text-muted-foreground mt-2">
-            Personnalisez l'apparence de votre établissement
+            Personnalisez l&apos;apparence de votre établissement
           </p>
         </div>
       )}
@@ -237,7 +237,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accentColor">Couleur d'accent</Label>
+                <Label htmlFor="accentColor">Couleur d&apos;accent</Label>
                 <div className="flex gap-2">
                   <Input
                     id="accentColor"
@@ -313,7 +313,14 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
                 {logoUrl && (
                   <div className="border rounded p-4 flex items-center justify-center bg-muted">
-                    <img src={logoUrl} alt="Logo" className="max-h-20" />
+                    <div className="relative w-full h-20">
+                      <Image
+                        src={logoUrl}
+                        alt="Logo"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -327,7 +334,14 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
                 {faviconUrl && (
                   <div className="border rounded p-4 flex items-center justify-center bg-muted">
-                    <img src={faviconUrl} alt="Favicon" className="h-8 w-8" />
+                    <div className="relative w-8 h-8">
+                      <Image
+                        src={faviconUrl}
+                        alt="Favicon"
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

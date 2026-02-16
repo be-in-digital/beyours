@@ -102,11 +102,6 @@ function computeDashboardStats(orders: Order[]): DashboardStats {
   yesterdayStart.setDate(yesterdayStart.getDate() - 1)
   const yesterdayTs = yesterdayStart.getTime()
 
-  // 7 days ago
-  const sevenDaysAgo = new Date(todayStart)
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-  const sevenDaysTs = sevenDaysAgo.getTime()
-
   // 30 days ago
   const thirtyDaysAgo = new Date(todayStart)
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)

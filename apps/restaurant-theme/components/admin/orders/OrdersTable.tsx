@@ -86,7 +86,7 @@ function getStatusBadge(status: Order["status"]) {
  * Get badge variant and label for order type
  */
 function getTypeBadge(type: Order["type"]) {
-  const typeConfig: Record<Order["type"], { variant: any; label: string }> = {
+  const typeConfig: Record<Order["type"], { variant: "default" | "secondary" | "outline"; label: string }> = {
     delivery: { variant: "default", label: "Livraison" },
     pickup: { variant: "secondary", label: "À emporter" },
     dine_in: { variant: "outline", label: "Sur place" },

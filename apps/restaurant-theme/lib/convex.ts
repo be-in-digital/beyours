@@ -1,6 +1,5 @@
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 
-// Destructure with explicit type assertion to avoid non-portable inferred type error
 const betterAuth = convexBetterAuthNextJs({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
   convexSiteUrl: process.env.CONVEX_SITE_URL!,
@@ -9,7 +8,11 @@ const betterAuth = convexBetterAuthNextJs({
 export const handler = betterAuth.handler;
 export const getToken = betterAuth.getToken;
 export const isAuthenticated = betterAuth.isAuthenticated;
-export const preloadAuthQuery: (...args: any[]) => any = betterAuth.preloadAuthQuery;
-export const fetchAuthQuery: (...args: any[]) => any = betterAuth.fetchAuthQuery;
-export const fetchAuthMutation: (...args: any[]) => any = betterAuth.fetchAuthMutation;
-export const fetchAuthAction: (...args: any[]) => any = betterAuth.fetchAuthAction;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const preloadAuthQuery: any = betterAuth.preloadAuthQuery;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const fetchAuthQuery: any = betterAuth.fetchAuthQuery;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const fetchAuthMutation: any = betterAuth.fetchAuthMutation;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const fetchAuthAction: any = betterAuth.fetchAuthAction;

@@ -91,11 +91,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
     let filtered = payments
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((p: any) => p.status === statusFilter)
+      filtered = filtered.filter((p: Payment) => p.status === statusFilter)
     }
 
     if (providerFilter !== "all") {
-      filtered = filtered.filter((p: any) => p.provider === providerFilter)
+      filtered = filtered.filter((p: Payment) => p.provider === providerFilter)
     }
 
     return filtered
@@ -188,7 +188,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment: any) => {
+              {filteredPayments.map((payment: Payment) => {
                 const canRefund =
                   payment.status === "succeeded" &&
                   payment.provider !== "cash" &&

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,7 +32,7 @@ export function KitchenContent() {
   const stations = useMemo(() => {
     if (!tickets) return []
     const stationSet = new Set<string>()
-    tickets.forEach((ticket: any) => {
+    tickets.forEach((ticket: Doc<"kitchenTickets">) => {
       if (ticket.station) {
         stationSet.add(ticket.station)
       }
@@ -43,7 +44,7 @@ export function KitchenContent() {
   const filteredTickets = useMemo(() => {
     if (!tickets) return null
     if (!selectedStation) return tickets
-    return tickets.filter((ticket: any) => ticket.station === selectedStation)
+    return tickets.filter((ticket: Doc<"kitchenTickets">) => ticket.station === selectedStation)
   }, [tickets, selectedStation])
 
   // Group tickets by status
@@ -51,10 +52,10 @@ export function KitchenContent() {
     if (!filteredTickets) return null
 
     return {
-      pending: filteredTickets.filter((t: any) => t.status === "pending"),
-      in_progress: filteredTickets.filter((t: any) => t.status === "in_progress"),
-      ready: filteredTickets.filter((t: any) => t.status === "ready"),
-      completed: filteredTickets.filter((t: any) => t.status === "completed"),
+      pending: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "pending"),
+      in_progress: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "in_progress"),
+      ready: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "ready"),
+      completed: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "completed"),
     }
   }, [filteredTickets])
 
@@ -120,7 +121,7 @@ export function KitchenContent() {
                     </div>
                   </Card>
                 ) : (
-                  ticketsByStatus[status].map((ticket: any) => (
+                  ticketsByStatus[status].map((ticket: Doc<"kitchenTickets">) => (
                     <TicketCard key={ticket._id} ticket={ticket} />
                   ))
                 )}

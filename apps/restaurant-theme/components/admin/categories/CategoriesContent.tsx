@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Id, Doc } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,7 @@ export function CategoriesContent() {
   )
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<any | null>(null)
+  const [editingCategory, setEditingCategory] = useState<Doc<"categories"> | null>(null)
   const [deletingId, setDeletingId] = useState<Id<"categories"> | null>(null)
 
   const reorderMutation = useMutation(api.categories.reorder)
@@ -52,7 +52,7 @@ export function CategoriesContent() {
     }
 
     try {
-      await reorderMutation({ ids: newOrder.map((cat: any) => cat._id) })
+      await reorderMutation({ ids: newOrder.map((cat) => cat._id) })
       toast.success("Ordre mis à jour avec succès")
     } catch (error) {
       toast.error("Échec du réordonnancement des catégories")
@@ -73,7 +73,7 @@ export function CategoriesContent() {
     }
 
     try {
-      await reorderMutation({ ids: newOrder.map((cat: any) => cat._id) })
+      await reorderMutation({ ids: newOrder.map((cat) => cat._id) })
       toast.success("Ordre mis à jour avec succès")
     } catch (error) {
       toast.error("Échec du réordonnancement des catégories")
@@ -147,7 +147,7 @@ export function CategoriesContent() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {categories.map((category: any, index: number) => (
+          {categories.map((category: Doc<"categories">, index: number) => (
             <Card key={category._id}>
               <CardHeader>
                 <div className="flex items-start justify-between">

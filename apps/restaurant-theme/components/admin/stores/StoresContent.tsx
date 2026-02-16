@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
 import { useState } from "react"
 import { PlusIcon, StoreIcon } from "lucide-react"
@@ -142,7 +143,7 @@ export function StoresContent() {
             <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nom de l'établissement *</Label>
+                  <Label htmlFor="name">Nom de l&apos;établissement *</Label>
                   <Input
                     id="name"
                     placeholder="Restaurant principal"
@@ -217,7 +218,7 @@ export function StoresContent() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {stores.map((store: any) => (
+          {stores.map((store: Doc<"stores">) => (
             <Link
               key={store._id}
               href={`/stores/${store._id}`}

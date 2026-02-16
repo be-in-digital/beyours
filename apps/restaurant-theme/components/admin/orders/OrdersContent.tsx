@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search } from "lucide-react"
@@ -39,7 +40,7 @@ export function OrdersContent() {
   )
 
   // Filter orders by status and search query
-  const filteredOrders = orders?.filter((order: any) => {
+  const filteredOrders = orders?.filter((order: Doc<"orders">) => {
     const matchesStatus = activeStatus === "all" || order.status === activeStatus
     const matchesSearch =
       searchQuery === "" ||

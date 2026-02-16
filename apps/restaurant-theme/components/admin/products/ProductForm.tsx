@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Loader2, Plus, X } from "lucide-react"
-import { createProductSchema } from "@beindigital-engine/convex-schema"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { slugify, centsToEuros, eurosToCents } from "@/lib/admin/formatters"
+import { slugify } from "@/lib/admin/formatters"
 import { Id } from "@/convex/_generated/dataModel"
 
 // Form schema for product editing with euro prices for display.
@@ -382,7 +381,7 @@ export function ProductForm({
                     <div className="flex-1 space-y-4">
                       {/* Option Name */}
                       <div className="space-y-2">
-                        <Label>Nom de l'option</Label>
+                        <Label>Nom de l&apos;option</Label>
                         <Input
                           {...register(`options.${optionIndex}.name`)}
                           placeholder="ex : Taille, Garnitures"
@@ -545,7 +544,7 @@ export function ProductForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="availableUntil">Disponible jusqu'à</Label>
+              <Label htmlFor="availableUntil">Disponible jusqu&apos;à</Label>
               <Input
                 id="availableUntil"
                 type="time"

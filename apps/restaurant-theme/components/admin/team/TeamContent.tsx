@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -128,7 +128,7 @@ export function TeamContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Gestion de l'équipe</h1>
+          <h1 className="text-3xl font-bold">Gestion de l&apos;équipe</h1>
           <p className="text-muted-foreground mt-2">
             Gérez les comptes du personnel et les permissions
           </p>
@@ -192,7 +192,7 @@ export function TeamContent() {
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {teamMembers.map((member: any) => (
+          {teamMembers.map((member: Doc<"teamMembers">) => (
             <div
               key={member._id}
               className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow"

@@ -209,12 +209,12 @@ export function OrderStatusActions({
           <DialogHeader>
             <DialogTitle>Annuler la commande</DialogTitle>
             <DialogDescription>
-              Veuillez fournir un motif d'annulation.
+              Veuillez fournir un motif d&apos;annulation.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Motif d'annulation</Label>
+            <Label htmlFor="reason">Motif d&apos;annulation</Label>
             <Input
               id="reason"
               placeholder="ex : Rupture de stock, Demande du client..."

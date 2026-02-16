@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, ChevronsUpDown, Settings, User } from "lucide-react"
+import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import {
   SidebarMenu,
   SidebarMenuItem,

@@ -6,7 +6,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { useState } from "react"
-import { PlusIcon, LanguagesIcon, StarIcon, TrashIcon, EditIcon } from "lucide-react"
+import { PlusIcon, LanguagesIcon, StarIcon, TrashIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import {

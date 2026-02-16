@@ -25,7 +25,13 @@ type CategoryFormData = z.infer<typeof categorySchema>
 
 interface CategoryFormProps {
   storeId: Id<"stores">
-  category?: any // Existing category for edit mode
+  category?: {
+    _id: Id<"categories">
+    name: string
+    slug: string
+    description?: string
+    isActive: boolean
+  }
   onSuccess?: () => void
 }
 
@@ -50,9 +56,6 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
       isActive: category?.isActive ?? true,
     },
   })
-
-  // Watch name field to auto-generate slug
-  const nameValue = watch("name")
 
   // Auto-generate slug from name (only if not in edit mode or slug is empty)
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

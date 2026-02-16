@@ -234,7 +234,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">{store.name}</h1>
-        <p className="text-muted-foreground mt-2">Gérez les détails et paramètres de l'établissement</p>
+        <p className="text-muted-foreground mt-2">Gérez les détails et paramètres de l&apos;établissement</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
@@ -250,7 +250,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nom de l'établissement</Label>
+                <Label htmlFor="name">Nom de l&apos;établissement</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
@@ -292,12 +292,12 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
         <TabsContent value="address" className="space-y-4">
           <div className="border rounded-lg p-6 space-y-4">
             <AddressAutocomplete
-              label="Adresse de l'établissement"
+              label="Adresse de l&apos;établissement"
               value={address}
               onChange={setAddress}
               apiKey={GOOGLE_MAPS_API_KEY}
             />
-            <Button onClick={handleUpdateAddress}>Enregistrer l'adresse</Button>
+            <Button onClick={handleUpdateAddress}>Enregistrer l&apos;adresse</Button>
           </div>
         </TabsContent>
 
@@ -375,7 +375,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accentColor">Couleur d'accent</Label>
+                <Label htmlFor="accentColor">Couleur d&apos;accent</Label>
                 <div className="flex gap-2">
                   <Input id="accentColor" type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-20" />
                   <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
@@ -402,7 +402,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
                 <Input id="fontBody" value={fontBody} onChange={(e) => setFontBody(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleUpdateBranding}>Enregistrer l'identité visuelle</Button>
+            <Button onClick={handleUpdateBranding}>Enregistrer l&apos;identité visuelle</Button>
           </div>
         </TabsContent>
 

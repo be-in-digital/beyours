@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { Search, Plus, Grid3x3, List } from "lucide-react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { useAdminStoreId, useDebounce } from "@/lib/admin/hooks"
 import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
@@ -36,7 +37,7 @@ export function ProductsContent() {
   )
 
   // Filter products based on search and filters
-  const filteredProducts = products?.filter((product: any) => {
+  const filteredProducts = products?.filter((product: Doc<"products">) => {
     // Search filter
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase()
@@ -112,7 +113,7 @@ export function ProductsContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les catégories</SelectItem>
-              {categories?.map((category: any) => (
+              {categories?.map((category: Doc<"categories">) => (
                 <SelectItem key={category._id} value={category._id}>
                   {category.name}
                 </SelectItem>
@@ -169,7 +170,7 @@ export function ProductsContent() {
             <p className="text-muted-foreground">Aucun produit trouvé</p>
             {searchQuery || categoryFilter !== "all" || statusFilter !== "all" ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Essayez d'ajuster vos filtres
+                Essayez d&apos;ajuster vos filtres
               </p>
             ) : (
               <Button asChild className="mt-4">

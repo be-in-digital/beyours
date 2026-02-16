@@ -95,9 +95,10 @@ export function useGooglePlacesAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null)
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null)
   const onSelectRef = useRef(onSelect)
-  onSelectRef.current = onSelect
 
-  const isReady = useRef(false)
+  useEffect(() => {
+    onSelectRef.current = onSelect
+  }, [onSelect])
 
   const init = useCallback(async () => {
     if (!inputRef.current || !apiKey) return
@@ -125,7 +126,6 @@ export function useGooglePlacesAutocomplete({
     })
 
     autocompleteRef.current = autocomplete
-    isReady.current = true
   }, [apiKey, countries])
 
   useEffect(() => {
@@ -139,5 +139,5 @@ export function useGooglePlacesAutocomplete({
     }
   }, [init])
 
-  return { inputRef, isReady: isReady.current }
+  return { inputRef }
 }

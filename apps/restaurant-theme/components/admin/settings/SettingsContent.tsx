@@ -2,11 +2,10 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { useState } from "react"
-import { SettingsIcon, BellIcon, PlugIcon } from "lucide-react"
+import { SettingsIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -207,7 +206,7 @@ export function SettingsContent() {
               <div className="space-y-0.5">
                 <Label htmlFor="orderReceived">Commande reçue</Label>
                 <p className="text-sm text-muted-foreground">
-                  Recevoir une notification lors de la réception d'une nouvelle commande
+                  Recevoir une notification lors de la réception d&apos;une nouvelle commande
                 </p>
               </div>
               <Switch
@@ -220,7 +219,7 @@ export function SettingsContent() {
               <div className="space-y-0.5">
                 <Label htmlFor="orderCompleted">Commande terminée</Label>
                 <p className="text-sm text-muted-foreground">
-                  Recevoir une notification lorsqu'une commande est terminée
+                  Recevoir une notification lorsqu&apos;une commande est terminée
                 </p>
               </div>
               <Switch
@@ -276,7 +275,7 @@ export function SettingsContent() {
                       }
                     />
                     <p className="text-xs text-muted-foreground">
-                      Note: Backend d'intégration non encore connecté
+                      Note: Backend d&apos;intégration non encore connecté
                     </p>
                   </CardContent>
                 )}
