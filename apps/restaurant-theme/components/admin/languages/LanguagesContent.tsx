@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { PlusIcon, LanguagesIcon, StarIcon, TrashIcon, EditIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Dialog,
   DialogContent,
@@ -69,7 +70,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
 
   const handleAddLanguage = async () => {
     if (!storeId || !code || !name || !nativeName) {
-      toast.error("Please fill all required fields")
+      toast.error("Veuillez remplir tous les champs requis")
       return
     }
 
@@ -84,7 +85,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
         isActive: true,
         isRtl,
       })
-      toast.success("Language added successfully")
+      toast.success("Langue ajoutée avec succès")
       setIsAddDialogOpen(false)
       // Reset form
       setCode("")
@@ -94,7 +95,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
       setIsDefault(false)
       setIsRtl(false)
     } catch (error) {
-      toast.error("Failed to add language")
+      toast.error("Échec de l'ajout de la langue")
       console.error(error)
     }
   }
@@ -102,9 +103,9 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
   const handleToggleActive = async (id: Id<"languages">) => {
     try {
       await toggleActive({ id })
-      toast.success("Language status updated")
+      toast.success("Statut de la langue mis à jour")
     } catch (error) {
-      toast.error("Failed to update status")
+      toast.error("Échec de la mise à jour du statut")
       console.error(error)
     }
   }
@@ -113,23 +114,23 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
     if (!storeId) return
     try {
       await setDefaultLanguage({ storeId, languageId })
-      toast.success("Default language updated")
+      toast.success("Langue par défaut mise à jour")
     } catch (error) {
-      toast.error("Failed to update default language")
+      toast.error("Échec de la mise à jour de la langue par défaut")
       console.error(error)
     }
   }
 
   const handleRemove = async (id: Id<"languages">, isDefaultLang: boolean) => {
     if (isDefaultLang) {
-      toast.error("Cannot delete default language")
+      toast.error("Impossible de supprimer la langue par défaut")
       return
     }
     try {
       await removeLanguage({ id })
-      toast.success("Language removed successfully")
+      toast.success("Langue supprimée avec succès")
     } catch (error) {
-      toast.error("Failed to remove language")
+      toast.error("Échec de la suppression de la langue")
       console.error(error)
     }
   }
@@ -138,8 +139,8 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
     return (
       <EmptyState
         icon={LanguagesIcon}
-        title="No store selected"
-        description="Please select a store to manage languages"
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer les langues"
       />
     )
   }
@@ -153,9 +154,9 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
       <div className="flex items-center justify-between">
         {!embedded && (
           <div>
-            <h1 className="text-3xl font-bold">Languages</h1>
+            <h1 className="text-3xl font-bold">Langues</h1>
             <p className="text-muted-foreground mt-2">
-              Manage available languages for your store
+              Gérez les langues disponibles pour votre établissement
             </p>
           </div>
         )}
@@ -163,20 +164,20 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
           <DialogTrigger asChild>
             <Button className={embedded ? "ml-auto" : ""}>
               <PlusIcon className="mr-2 h-4 w-4" />
-              Add Language
+              Ajouter une langue
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Language</DialogTitle>
+              <DialogTitle>Ajouter une langue</DialogTitle>
               <DialogDescription>
-                Add a new language to your store
+                Ajoutez une nouvelle langue à votre établissement
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="code">Language Code *</Label>
+                  <Label htmlFor="code">Code langue *</Label>
                   <Input
                     id="code"
                     placeholder="en, fr, es..."
@@ -185,7 +186,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="flagEmoji">Flag Emoji</Label>
+                  <Label htmlFor="flagEmoji">Drapeau</Label>
                   <Input
                     id="flagEmoji"
                     placeholder="🇬🇧"
@@ -195,16 +196,16 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">Nom *</Label>
                 <Input
                   id="name"
-                  placeholder="English"
+                  placeholder="Anglais"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nativeName">Native Name *</Label>
+                <Label htmlFor="nativeName">Nom natif *</Label>
                 <Input
                   id="nativeName"
                   placeholder="English"
@@ -213,7 +214,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="isDefault">Set as default</Label>
+                <Label htmlFor="isDefault">Définir par défaut</Label>
                 <Switch
                   id="isDefault"
                   checked={isDefault}
@@ -221,7 +222,7 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="isRtl">Right-to-left (RTL)</Label>
+                <Label htmlFor="isRtl">Droite à gauche (RTL)</Label>
                 <Switch
                   id="isRtl"
                   checked={isRtl}
@@ -230,10 +231,12 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddLanguage}>Add Language</Button>
+              <ButtonGroup>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleAddLanguage}>Ajouter une langue</Button>
+              </ButtonGroup>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -242,20 +245,20 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
       {languages.length === 0 ? (
         <EmptyState
           icon={LanguagesIcon}
-          title="No languages"
-          description="Add your first language to get started"
+          title="Aucune langue"
+          description="Ajoutez votre première langue pour commencer"
         />
       ) : (
         <div className="border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Flag</TableHead>
+                <TableHead>Drapeau</TableHead>
                 <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Native Name</TableHead>
-                <TableHead>Default</TableHead>
-                <TableHead>Active</TableHead>
+                <TableHead>Nom</TableHead>
+                <TableHead>Nom natif</TableHead>
+                <TableHead>Défaut</TableHead>
+                <TableHead>Actif</TableHead>
                 <TableHead>RTL</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>

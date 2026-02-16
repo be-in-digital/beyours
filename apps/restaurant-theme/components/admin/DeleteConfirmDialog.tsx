@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { AlertTriangle } from "lucide-react"
 
 interface DeleteConfirmDialogProps {
@@ -53,20 +54,22 @@ export function DeleteConfirmDialog({
           <DialogDescription className="pt-2">{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isDeleting}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={isDeleting}
-          >
-            {isDeleting ? "Deleting..." : "Delete"}
-          </Button>
+          <ButtonGroup>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Suppression..." : "Supprimer"}
+            </Button>
+          </ButtonGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

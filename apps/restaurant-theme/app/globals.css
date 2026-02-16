@@ -196,3 +196,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Dashboard animation utilities */
+@layer utilities {
+  .stagger-children > * {
+    --stagger-delay: 75ms;
+    animation-delay: calc(var(--child-index, 0) * var(--stagger-delay));
+    animation-fill-mode: backwards;
+  }
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}

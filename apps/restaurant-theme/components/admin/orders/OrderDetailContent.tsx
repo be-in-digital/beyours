@@ -39,14 +39,14 @@ function getStatusBadge(
     | "cancelled"
 ) {
   const statusConfig = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "Pending" },
-    confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmed" },
-    preparing: { className: "bg-orange-100 text-orange-800", label: "Preparing" },
-    ready: { className: "bg-green-100 text-green-800", label: "Ready" },
-    out_for_delivery: { className: "bg-purple-100 text-purple-800", label: "Out for Delivery" },
-    delivered: { className: "bg-green-100 text-green-800", label: "Delivered" },
-    completed: { className: "bg-gray-100 text-gray-800", label: "Completed" },
-    cancelled: { className: "bg-red-100 text-red-800", label: "Cancelled" },
+    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
+    confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
+    preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
+    ready: { className: "bg-green-100 text-green-800", label: "Prête" },
+    out_for_delivery: { className: "bg-purple-100 text-purple-800", label: "En livraison" },
+    delivered: { className: "bg-green-100 text-green-800", label: "Livrée" },
+    completed: { className: "bg-gray-100 text-gray-800", label: "Terminée" },
+    cancelled: { className: "bg-red-100 text-red-800", label: "Annulée" },
   }
 
   const config = statusConfig[status]
@@ -58,9 +58,9 @@ function getStatusBadge(
  */
 function getTypeBadge(type: "delivery" | "pickup" | "dine_in") {
   const typeConfig = {
-    delivery: { variant: "default" as const, label: "Delivery" },
-    pickup: { variant: "secondary" as const, label: "Pickup" },
-    dine_in: { variant: "outline" as const, label: "Dine In" },
+    delivery: { variant: "default" as const, label: "Livraison" },
+    pickup: { variant: "secondary" as const, label: "À emporter" },
+    dine_in: { variant: "outline" as const, label: "Sur place" },
   }
 
   const config = typeConfig[type]
@@ -72,10 +72,10 @@ function getTypeBadge(type: "delivery" | "pickup" | "dine_in") {
  */
 function getPaymentBadge(status: "pending" | "paid" | "failed" | "refunded") {
   const paymentConfig = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "Pending" },
-    paid: { className: "bg-green-100 text-green-800", label: "Paid" },
-    failed: { className: "bg-red-100 text-red-800", label: "Failed" },
-    refunded: { className: "bg-gray-100 text-gray-800", label: "Refunded" },
+    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
+    paid: { className: "bg-green-100 text-green-800", label: "Payé" },
+    failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
+    refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
   }
 
   const config = paymentConfig[status]
@@ -97,7 +97,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
   if (order === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading order details...</p>
+        <p className="text-muted-foreground">Chargement des détails de la commande...</p>
       </div>
     )
   }
@@ -105,7 +105,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
   if (order === null) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Order not found.</p>
+        <p className="text-muted-foreground">Commande introuvable.</p>
       </div>
     )
   }
@@ -121,10 +121,10 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold">
-            Order {formatOrderNumber(order.orderNumber)}
+            Commande {formatOrderNumber(order.orderNumber)}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Placed {formatDate(order.createdAt)}
+            Passée le {formatDate(order.createdAt)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -140,16 +140,16 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
           {/* Order Items */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Items</CardTitle>
+              <CardTitle>Articles de la commande</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="text-center">Qty</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
+                    <TableHead>Produit</TableHead>
+                    <TableHead className="text-center">Qté</TableHead>
+                    <TableHead className="text-right">Prix</TableHead>
+                    <TableHead className="text-right">Sous-total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -171,7 +171,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
                           )}
                           {item.notes && (
                             <div className="text-sm text-muted-foreground italic mt-1">
-                              Note: {item.notes}
+                              Note : {item.notes}
                             </div>
                           )}
                         </div>
@@ -191,18 +191,18 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
               {/* Order Summary */}
               <div className="mt-6 space-y-2 border-t pt-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">Sous-total</span>
                   <span>{formatPrice(order.subtotal)}</span>
                 </div>
                 {order.taxAmount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
+                    <span className="text-muted-foreground">TVA</span>
                     <span>{formatPrice(order.taxAmount)}</span>
                   </div>
                 )}
                 {order.deliveryFee && order.deliveryFee > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Delivery Fee</span>
+                    <span className="text-muted-foreground">Frais de livraison</span>
                     <span>{formatPrice(order.deliveryFee)}</span>
                   </div>
                 )}
@@ -217,11 +217,11 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
           {/* Customer Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Customer Information</CardTitle>
+              <CardTitle>Informations client</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <div className="text-sm text-muted-foreground">Name</div>
+                <div className="text-sm text-muted-foreground">Nom</div>
                 <div className="font-medium">{order.customerInfo.name}</div>
               </div>
               {order.customerInfo.email && (
@@ -232,13 +232,13 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
               )}
               {order.customerInfo.phone && (
                 <div>
-                  <div className="text-sm text-muted-foreground">Phone</div>
+                  <div className="text-sm text-muted-foreground">Téléphone</div>
                   <div className="font-medium">{order.customerInfo.phone}</div>
                 </div>
               )}
               {order.deliveryAddress && (
                 <div>
-                  <div className="text-sm text-muted-foreground">Delivery Address</div>
+                  <div className="text-sm text-muted-foreground">Adresse de livraison</div>
                   <div className="font-medium">
                     {order.deliveryAddress.street}
                     <br />
@@ -248,14 +248,14 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
                   </div>
                   {order.deliveryAddress.instructions && (
                     <div className="text-sm text-muted-foreground italic mt-1">
-                      Instructions: {order.deliveryAddress.instructions}
+                      Instructions : {order.deliveryAddress.instructions}
                     </div>
                   )}
                 </div>
               )}
               {order.notes && (
                 <div>
-                  <div className="text-sm text-muted-foreground">Order Notes</div>
+                  <div className="text-sm text-muted-foreground">Notes de commande</div>
                   <div className="font-medium">{order.notes}</div>
                 </div>
               )}
@@ -268,7 +268,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
           {/* Status Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Order Status</CardTitle>
+              <CardTitle>Statut de la commande</CardTitle>
             </CardHeader>
             <CardContent>
               <OrderStatusActions orderId={order._id} currentStatus={order.status} />
@@ -278,21 +278,21 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
           {/* Payment Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Payment Information</CardTitle>
+              <CardTitle>Informations de paiement</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <div className="text-sm text-muted-foreground">Payment Status</div>
+                <div className="text-sm text-muted-foreground">Statut du paiement</div>
                 <div className="mt-1">{getPaymentBadge(order.paymentStatus)}</div>
               </div>
               {order.paymentMethod && (
                 <div>
-                  <div className="text-sm text-muted-foreground">Payment Method</div>
+                  <div className="text-sm text-muted-foreground">Moyen de paiement</div>
                   <div className="font-medium capitalize">{order.paymentMethod}</div>
                 </div>
               )}
               <div>
-                <div className="text-sm text-muted-foreground">Order Source</div>
+                <div className="text-sm text-muted-foreground">Source de la commande</div>
                 <div className="font-medium capitalize">{order.source}</div>
               </div>
             </CardContent>
@@ -301,32 +301,32 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
           {/* Timestamps */}
           <Card>
             <CardHeader>
-              <CardTitle>Timeline</CardTitle>
+              <CardTitle>Historique</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <div className="text-muted-foreground">Created</div>
+                <div className="text-muted-foreground">Créée</div>
                 <div className="font-medium">{formatDate(order.createdAt)}</div>
               </div>
               <div>
-                <div className="text-muted-foreground">Last Updated</div>
+                <div className="text-muted-foreground">Dernière mise à jour</div>
                 <div className="font-medium">{formatDate(order.updatedAt)}</div>
               </div>
               {order.completedAt && (
                 <div>
-                  <div className="text-muted-foreground">Completed</div>
+                  <div className="text-muted-foreground">Terminée</div>
                   <div className="font-medium">{formatDate(order.completedAt)}</div>
                 </div>
               )}
               {order.cancelledAt && (
                 <div>
-                  <div className="text-muted-foreground">Cancelled</div>
+                  <div className="text-muted-foreground">Annulée</div>
                   <div className="font-medium">{formatDate(order.cancelledAt)}</div>
                 </div>
               )}
               {order.cancellationReason && (
                 <div>
-                  <div className="text-muted-foreground">Cancellation Reason</div>
+                  <div className="text-muted-foreground">Motif d'annulation</div>
                   <div className="font-medium">{order.cancellationReason}</div>
                 </div>
               )}

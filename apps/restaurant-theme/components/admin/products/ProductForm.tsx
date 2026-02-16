@@ -87,7 +87,7 @@ export function ProductForm({
   defaultValues,
   onSubmit,
   isLoading = false,
-  submitLabel = "Save Product",
+  submitLabel = "Enregistrer le produit",
 }: ProductFormProps) {
   const {
     register,
@@ -190,10 +190,10 @@ export function ProductForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="options">Options</TabsTrigger>
           <TabsTrigger value="stock">Stock</TabsTrigger>
-          <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
+          <TabsTrigger value="scheduling">Planification</TabsTrigger>
         </TabsList>
 
         {/* General Tab */}
@@ -201,12 +201,12 @@ export function ProductForm({
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="name">
-              Product Name <span className="text-destructive">*</span>
+              Nom du produit <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
               {...register("name")}
-              placeholder="e.g., Margherita Pizza"
+              placeholder="ex : Pizza Margherita"
             />
             {errors.name && (
               <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -234,7 +234,7 @@ export function ProductForm({
             <Textarea
               id="description"
               {...register("description")}
-              placeholder="Product description..."
+              placeholder="Description du produit..."
               rows={4}
             />
             {errors.description && (
@@ -247,14 +247,14 @@ export function ProductForm({
           {/* Category */}
           <div className="space-y-2">
             <Label htmlFor="categoryId">
-              Category <span className="text-destructive">*</span>
+              Catégorie <span className="text-destructive">*</span>
             </Label>
             <Select
               value={watch("categoryId")}
               onValueChange={(value) => setValue("categoryId", value)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder="Sélectionner une catégorie" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (
@@ -275,7 +275,7 @@ export function ProductForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="priceEuros">
-                Price (€) <span className="text-destructive">*</span>
+                Prix (€) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="priceEuros"
@@ -292,7 +292,7 @@ export function ProductForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="compareAtPriceEuros">Compare at Price (€)</Label>
+              <Label htmlFor="compareAtPriceEuros">Prix barré (€)</Label>
               <Input
                 id="compareAtPriceEuros"
                 type="number"
@@ -306,7 +306,7 @@ export function ProductForm({
           {/* Tax Rate & Prep Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="taxRate">Tax Rate (%)</Label>
+              <Label htmlFor="taxRate">Taux de TVA (%)</Label>
               <Input
                 id="taxRate"
                 type="number"
@@ -317,7 +317,7 @@ export function ProductForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="preparationTime">Preparation Time (min)</Label>
+              <Label htmlFor="preparationTime">Temps de préparation (min)</Label>
               <Input
                 id="preparationTime"
                 type="number"
@@ -345,7 +345,7 @@ export function ProductForm({
                 checked={watch("isActive")}
                 onCheckedChange={(checked) => setValue("isActive", checked)}
               />
-              <Label htmlFor="isActive">Active</Label>
+              <Label htmlFor="isActive">Actif</Label>
             </div>
 
             <div className="flex items-center space-x-2">
@@ -354,7 +354,7 @@ export function ProductForm({
                 checked={watch("isFeatured")}
                 onCheckedChange={(checked) => setValue("isFeatured", checked)}
               />
-              <Label htmlFor="isFeatured">Featured</Label>
+              <Label htmlFor="isFeatured">En vedette</Label>
             </div>
           </div>
         </TabsContent>
@@ -363,11 +363,11 @@ export function ProductForm({
         <TabsContent value="options" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Add customization options for this product
+              Ajoutez des options de personnalisation pour ce produit
             </p>
             <Button type="button" variant="outline" size="sm" onClick={addOption}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Option
+              Ajouter une option
             </Button>
           </div>
 
@@ -382,10 +382,10 @@ export function ProductForm({
                     <div className="flex-1 space-y-4">
                       {/* Option Name */}
                       <div className="space-y-2">
-                        <Label>Option Name</Label>
+                        <Label>Nom de l'option</Label>
                         <Input
                           {...register(`options.${optionIndex}.name`)}
-                          placeholder="e.g., Size, Toppings"
+                          placeholder="ex : Taille, Garnitures"
                         />
                       </div>
 
@@ -403,18 +403,18 @@ export function ProductForm({
                             }
                           />
                           <Label htmlFor={`option-${optionIndex}-required`}>
-                            Required
+                            Obligatoire
                           </Label>
                         </div>
 
                         <div className="space-y-2">
-                          <Label>Max Selections</Label>
+                          <Label>Sélections max</Label>
                           <Input
                             type="number"
                             {...register(`options.${optionIndex}.maxSelections`, {
                               valueAsNumber: true,
                             })}
-                            placeholder="Unlimited"
+                            placeholder="Illimité"
                             className="w-32"
                           />
                         </div>
@@ -423,7 +423,7 @@ export function ProductForm({
                       {/* Choices */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label>Choices</Label>
+                          <Label>Choix</Label>
                           <Button
                             type="button"
                             variant="ghost"
@@ -431,7 +431,7 @@ export function ProductForm({
                             onClick={() => addChoice(optionIndex)}
                           >
                             <Plus className="mr-2 h-3 w-3" />
-                            Add Choice
+                            Ajouter un choix
                           </Button>
                         </div>
 
@@ -444,7 +444,7 @@ export function ProductForm({
                               {...register(
                                 `options.${optionIndex}.choices.${choiceIndex}.name`
                               )}
-                              placeholder="Choice name"
+                              placeholder="Nom du choix"
                             />
                             <Input
                               type="number"
@@ -453,7 +453,7 @@ export function ProductForm({
                                 `options.${optionIndex}.choices.${choiceIndex}.priceModifier`,
                                 { valueAsNumber: true }
                               )}
-                              placeholder="Price +/-"
+                              placeholder="Prix +/-"
                               className="w-32"
                             />
                             <Button
@@ -484,7 +484,7 @@ export function ProductForm({
           ) : (
             <div className="text-center py-8 border rounded-lg">
               <p className="text-muted-foreground text-sm">
-                No options added yet
+                Aucune option ajoutée
               </p>
             </div>
           )}
@@ -498,13 +498,13 @@ export function ProductForm({
               checked={stockTracked}
               onCheckedChange={(checked) => setValue("stock.tracked", checked)}
             />
-            <Label htmlFor="stock-tracked">Track stock for this product</Label>
+            <Label htmlFor="stock-tracked">Suivre le stock de ce produit</Label>
           </div>
 
           {stockTracked && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="stock-quantity">Quantity</Label>
+                <Label htmlFor="stock-quantity">Quantité</Label>
                 <Input
                   id="stock-quantity"
                   type="number"
@@ -514,7 +514,7 @@ export function ProductForm({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="stock-threshold">Low Stock Threshold</Label>
+                <Label htmlFor="stock-threshold">Seuil de stock faible</Label>
                 <Input
                   id="stock-threshold"
                   type="number"
@@ -531,12 +531,12 @@ export function ProductForm({
         {/* Scheduling Tab */}
         <TabsContent value="scheduling" className="space-y-4 mt-4">
           <p className="text-sm text-muted-foreground">
-            Set when this product is available
+            Définissez la disponibilité de ce produit
           </p>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="availableFrom">Available From</Label>
+              <Label htmlFor="availableFrom">Disponible à partir de</Label>
               <Input
                 id="availableFrom"
                 type="time"
@@ -545,7 +545,7 @@ export function ProductForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="availableUntil">Available Until</Label>
+              <Label htmlFor="availableUntil">Disponible jusqu'à</Label>
               <Input
                 id="availableUntil"
                 type="time"
@@ -555,9 +555,9 @@ export function ProductForm({
           </div>
 
           <div className="space-y-2">
-            <Label>Available Days (0=Sunday, 6=Saturday)</Label>
+            <Label>Jours disponibles (0=Dimanche, 6=Samedi)</Label>
             <p className="text-xs text-muted-foreground">
-              Leave empty for all days
+              Laisser vide pour tous les jours
             </p>
           </div>
         </TabsContent>

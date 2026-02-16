@@ -49,7 +49,7 @@ export function StoreSelector() {
       onValueChange={handleStoreChange}
     >
       <SelectTrigger className="w-48">
-        <SelectValue placeholder="Select a store" />
+        <SelectValue placeholder="Choisir un établissement" />
       </SelectTrigger>
       <SelectContent>
         {stores.map((store: any) => (

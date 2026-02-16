@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils"
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
   { id: "pizzeria", name: "Pizzeria", primary: "#D32F2F", secondary: "#FFEBEE", accent: "#FF5722" },
-  { id: "chinese", name: "Chinese", primary: "#C62828", secondary: "#FFF8E1", accent: "#FFD600" },
-  { id: "fine-dining", name: "Fine Dining", primary: "#1A237E", secondary: "#E8EAF6", accent: "#9FA8DA" },
-  { id: "cafe", name: "Cafe", primary: "#4E342E", secondary: "#EFEBE9", accent: "#8D6E63" },
+  { id: "chinese", name: "Chinois", primary: "#C62828", secondary: "#FFF8E1", accent: "#FFD600" },
+  { id: "fine-dining", name: "Gastronomie", primary: "#1A237E", secondary: "#E8EAF6", accent: "#9FA8DA" },
+  { id: "cafe", name: "Café", primary: "#4E342E", secondary: "#EFEBE9", accent: "#8D6E63" },
   { id: "sushi", name: "Sushi", primary: "#1B5E20", secondary: "#E8F5E9", accent: "#66BB6A" },
 ]
 
@@ -75,9 +75,9 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           accentColor,
         },
       })
-      toast.success("Colors updated successfully")
+      toast.success("Couleurs mises à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update colors")
+      toast.error("Échec de la mise à jour des couleurs")
       console.error(error)
     }
   }
@@ -92,9 +92,9 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           fontBody,
         },
       })
-      toast.success("Typography updated successfully")
+      toast.success("Typographie mise à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update typography")
+      toast.error("Échec de la mise à jour de la typographie")
       console.error(error)
     }
   }
@@ -109,9 +109,9 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           faviconUrl: faviconUrl || undefined,
         },
       })
-      toast.success("Logo updated successfully")
+      toast.success("Logo mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update logo")
+      toast.error("Échec de la mise à jour du logo")
       console.error(error)
     }
   }
@@ -120,8 +120,8 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
     return (
       <EmptyState
         icon={PaletteIcon}
-        title="No store selected"
-        description="Please select a store to manage design"
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer le design"
       />
     )
   }
@@ -136,16 +136,16 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
         <div>
           <h1 className="text-3xl font-bold">Design</h1>
           <p className="text-muted-foreground mt-2">
-            Customize your store's look and feel
+            Personnalisez l'apparence de votre établissement
           </p>
         </div>
       )}
 
       <Tabs defaultValue="theme" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="theme">Theme</TabsTrigger>
-          <TabsTrigger value="colors">Colors</TabsTrigger>
-          <TabsTrigger value="typography">Typography</TabsTrigger>
+          <TabsTrigger value="theme">Thème</TabsTrigger>
+          <TabsTrigger value="colors">Couleurs</TabsTrigger>
+          <TabsTrigger value="typography">Typographie</TabsTrigger>
           <TabsTrigger value="logo">Logo</TabsTrigger>
         </TabsList>
 
@@ -181,15 +181,15 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                   />
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-                  <p>Primary: {theme.primary}</p>
-                  <p>Secondary: {theme.secondary}</p>
-                  <p>Accent: {theme.accent}</p>
+                  <p>Primaire : {theme.primary}</p>
+                  <p>Secondaire : {theme.secondary}</p>
+                  <p>Accent : {theme.accent}</p>
                 </div>
               </div>
             ))}
           </div>
           {selectedTheme && (
-            <Button onClick={handleSaveColors}>Apply Selected Theme</Button>
+            <Button onClick={handleSaveColors}>Appliquer le thème sélectionné</Button>
           )}
         </TabsContent>
 
@@ -197,7 +197,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Color</Label>
+                <Label htmlFor="primaryColor">Couleur primaire</Label>
                 <div className="flex gap-2">
                   <Input
                     id="primaryColor"
@@ -217,7 +217,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="secondaryColor">Secondary Color</Label>
+                <Label htmlFor="secondaryColor">Couleur secondaire</Label>
                 <div className="flex gap-2">
                   <Input
                     id="secondaryColor"
@@ -237,7 +237,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accentColor">Accent Color</Label>
+                <Label htmlFor="accentColor">Couleur d'accent</Label>
                 <div className="flex gap-2">
                   <Input
                     id="accentColor"
@@ -257,7 +257,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 />
               </div>
             </div>
-            <Button onClick={handleSaveColors}>Save Colors</Button>
+            <Button onClick={handleSaveColors}>Enregistrer les couleurs</Button>
           </div>
         </TabsContent>
 
@@ -265,7 +265,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="fontHeading">Heading Font</Label>
+                <Label htmlFor="fontHeading">Police des titres</Label>
                 <Input
                   id="fontHeading"
                   value={fontHeading}
@@ -276,11 +276,11 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                   className="p-4 border rounded text-2xl font-bold"
                   style={{ fontFamily: fontHeading }}
                 >
-                  Sample Heading
+                  Exemple de titre
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fontBody">Body Font</Label>
+                <Label htmlFor="fontBody">Police du texte</Label>
                 <Input
                   id="fontBody"
                   value={fontBody}
@@ -291,12 +291,12 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                   className="p-4 border rounded"
                   style={{ fontFamily: fontBody }}
                 >
-                  This is sample body text that shows how your content will look
-                  with the selected font.
+                  Ceci est un exemple de texte qui montre comment votre contenu
+                  apparaîtra avec la police sélectionnée.
                 </div>
               </div>
             </div>
-            <Button onClick={handleSaveTypography}>Save Typography</Button>
+            <Button onClick={handleSaveTypography}>Enregistrer la typographie</Button>
           </div>
         </TabsContent>
 
@@ -304,7 +304,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Label htmlFor="logoUrl">URL du logo</Label>
                 <Input
                   id="logoUrl"
                   value={logoUrl}
@@ -318,7 +318,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="faviconUrl">Favicon URL</Label>
+                <Label htmlFor="faviconUrl">URL du favicon</Label>
                 <Input
                   id="faviconUrl"
                   value={faviconUrl}
@@ -332,7 +332,7 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
                 )}
               </div>
             </div>
-            <Button onClick={handleSaveLogo}>Save Logo</Button>
+            <Button onClick={handleSaveLogo}>Enregistrer le logo</Button>
           </div>
         </TabsContent>
       </Tabs>

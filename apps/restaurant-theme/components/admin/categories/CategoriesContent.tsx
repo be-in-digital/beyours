@@ -7,6 +7,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
@@ -52,9 +53,9 @@ export function CategoriesContent() {
 
     try {
       await reorderMutation({ ids: newOrder.map((cat: any) => cat._id) })
-      toast.success("Order updated successfully")
+      toast.success("Ordre mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to reorder categories")
+      toast.error("Échec du réordonnancement des catégories")
       console.error(error)
     }
   }
@@ -73,9 +74,9 @@ export function CategoriesContent() {
 
     try {
       await reorderMutation({ ids: newOrder.map((cat: any) => cat._id) })
-      toast.success("Order updated successfully")
+      toast.success("Ordre mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to reorder categories")
+      toast.error("Échec du réordonnancement des catégories")
       console.error(error)
     }
   }
@@ -86,10 +87,10 @@ export function CategoriesContent() {
 
     try {
       await removeMutation({ id: deletingId })
-      toast.success("Category deleted successfully")
+      toast.success("Catégorie supprimée avec succès")
       setDeletingId(null)
     } catch (error) {
-      toast.error("Failed to delete category")
+      toast.error("Échec de la suppression de la catégorie")
       console.error(error)
     }
   }
@@ -97,7 +98,7 @@ export function CategoriesContent() {
   if (!storeId) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <p className="text-muted-foreground">Please select a store</p>
+        <p className="text-muted-foreground">Veuillez sélectionner un établissement</p>
       </div>
     )
   }
@@ -110,14 +111,14 @@ export function CategoriesContent() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add Category
+              Ajouter une catégorie
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create Category</DialogTitle>
+              <DialogTitle>Créer une catégorie</DialogTitle>
               <DialogDescription>
-                Add a new category to organize your products.
+                Ajoutez une catégorie pour organiser vos produits.
               </DialogDescription>
             </DialogHeader>
             <CategoryForm
@@ -137,10 +138,10 @@ export function CategoriesContent() {
       ) : categories.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">No categories yet</p>
+            <p className="text-muted-foreground mb-4">Aucune catégorie</p>
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Create your first category
+              Créez votre première catégorie
             </Button>
           </CardContent>
         </Card>
@@ -154,20 +155,20 @@ export function CategoriesContent() {
                     <div className="flex items-center gap-2">
                       <CardTitle>{category.name}</CardTitle>
                       <Badge variant={category.isActive ? "default" : "secondary"}>
-                        {category.isActive ? "Active" : "Inactive"}
+                        {category.isActive ? "Actif" : "Inactif"}
                       </Badge>
                     </div>
                     {category.description && (
                       <CardDescription>{category.description}</CardDescription>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Slug: {category.slug}
+                      Slug : {category.slug}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
                     {/* Reorder buttons */}
-                    <div className="flex flex-col gap-1">
+                    <ButtonGroup orientation="vertical">
                       <Button
                         variant="outline"
                         size="sm"
@@ -186,7 +187,7 @@ export function CategoriesContent() {
                       >
                         <ArrowDown className="h-3 w-3" />
                       </Button>
-                    </div>
+                    </ButtonGroup>
 
                     {/* Edit button */}
                     <Dialog
@@ -204,9 +205,9 @@ export function CategoriesContent() {
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Edit Category</DialogTitle>
+                          <DialogTitle>Modifier la catégorie</DialogTitle>
                           <DialogDescription>
-                            Update category information.
+                            Mettez à jour les informations de la catégorie.
                           </DialogDescription>
                         </DialogHeader>
                         <CategoryForm
@@ -237,15 +238,17 @@ export function CategoriesContent() {
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the category.
-              Products in this category will not be deleted, but will lose their category assignment.
+              Cette action est irréversible. La catégorie sera définitivement supprimée.
+              Les produits de cette catégorie ne seront pas supprimés, mais perdront leur assignation de catégorie.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <ButtonGroup>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Supprimer</AlertDialogAction>
+            </ButtonGroup>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

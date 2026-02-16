@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { GamepadIcon, PlusIcon, QrCodeIcon, GiftIcon, TrashIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Dialog,
   DialogContent,
@@ -109,7 +110,7 @@ export function GamesContent() {
 
   const handleAddGame = async () => {
     if (!storeId || !gameName) {
-      toast.error("Please fill all required fields")
+      toast.error("Veuillez remplir tous les champs requis")
       return
     }
 
@@ -122,13 +123,13 @@ export function GamesContent() {
         winRatio,
         isActive: true,
       })
-      toast.success("Game created successfully")
+      toast.success("Jeu créé avec succès")
       setIsAddGameOpen(false)
       setGameName("")
       setGameDescription("")
       setWinRatio(30)
     } catch (error) {
-      toast.error("Failed to create game")
+      toast.error("Échec de la création du jeu")
       console.error(error)
     }
   }
@@ -136,16 +137,16 @@ export function GamesContent() {
   const handleUpdateWinRatio = async (gameId: Id<"games">, newRatio: number) => {
     try {
       await updateWinRatio({ id: gameId, winRatio: newRatio })
-      toast.success("Win ratio updated")
+      toast.success("Ratio de victoire mis à jour")
     } catch (error) {
-      toast.error("Failed to update win ratio")
+      toast.error("Échec de la mise à jour du ratio")
       console.error(error)
     }
   }
 
   const handleAddQRCode = async () => {
     if (!storeId || !qrCode) {
-      toast.error("Please generate a QR code")
+      toast.error("Veuillez générer un code QR")
       return
     }
 
@@ -157,20 +158,20 @@ export function GamesContent() {
         location: location || undefined,
         isActive: true,
       })
-      toast.success("QR Code created successfully")
+      toast.success("Code QR créé avec succès")
       setIsAddQROpen(false)
       setQrCode("")
       setTableNumber("")
       setLocation("")
     } catch (error) {
-      toast.error("Failed to create QR code")
+      toast.error("Échec de la création du code QR")
       console.error(error)
     }
   }
 
   const handleAddPrize = async () => {
     if (!storeId || !prizeName) {
-      toast.error("Please fill all required fields")
+      toast.error("Veuillez remplir tous les champs requis")
       return
     }
 
@@ -185,7 +186,7 @@ export function GamesContent() {
         totalAvailable: totalAvailable ? parseInt(totalAvailable) : undefined,
         isActive: true,
       })
-      toast.success("Prize created successfully")
+      toast.success("Prix créé avec succès")
       setIsAddPrizeOpen(false)
       setPrizeName("")
       setPrizeDescription("")
@@ -193,7 +194,7 @@ export function GamesContent() {
       setValidityDays("7")
       setTotalAvailable("")
     } catch (error) {
-      toast.error("Failed to create prize")
+      toast.error("Échec de la création du prix")
       console.error(error)
     }
   }
@@ -202,8 +203,8 @@ export function GamesContent() {
     return (
       <EmptyState
         icon={GamepadIcon}
-        title="No store selected"
-        description="Please select a store to manage games"
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer les jeux"
       />
     )
   }
@@ -215,18 +216,18 @@ export function GamesContent() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Games & Gamification</h1>
+        <h1 className="text-3xl font-bold">Jeux et Gamification</h1>
         <p className="text-muted-foreground mt-2">
-          Engage customers with interactive games
+          Engagez vos clients avec des jeux interactifs
         </p>
       </div>
 
       <Tabs defaultValue="config" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="config">Games Config</TabsTrigger>
-          <TabsTrigger value="qrcodes">QR Codes</TabsTrigger>
-          <TabsTrigger value="prizes">Prizes</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
+          <TabsTrigger value="qrcodes">Codes QR</TabsTrigger>
+          <TabsTrigger value="prizes">Prix</TabsTrigger>
+          <TabsTrigger value="history">Historique</TabsTrigger>
         </TabsList>
 
         <TabsContent value="config" className="space-y-4">
@@ -235,35 +236,35 @@ export function GamesContent() {
               <DialogTrigger asChild>
                 <Button>
                   <PlusIcon className="mr-2 h-4 w-4" />
-                  Create Game
+                  Créer un jeu
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create New Game</DialogTitle>
+                  <DialogTitle>Nouveau jeu</DialogTitle>
                   <DialogDescription>
-                    Set up a new game for your customers
+                    Configurez un nouveau jeu pour vos clients
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="gameName">Game Name *</Label>
+                    <Label htmlFor="gameName">Nom du jeu *</Label>
                     <Input
                       id="gameName"
-                      placeholder="Spin & Win"
+                      placeholder="Tournez et gagnez"
                       value={gameName}
                       onChange={(e) => setGameName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="gameType">Game Type *</Label>
+                    <Label htmlFor="gameType">Type de jeu *</Label>
                     <Select value={gameType} onValueChange={(v) => setGameType(v as "wheel" | "scratch_card")}>
                       <SelectTrigger id="gameType">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="wheel">Wheel of Fortune</SelectItem>
-                        <SelectItem value="scratch_card">Scratch Card</SelectItem>
+                        <SelectItem value="wheel">Roue de la fortune</SelectItem>
+                        <SelectItem value="scratch_card">Carte à gratter</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -271,13 +272,13 @@ export function GamesContent() {
                     <Label htmlFor="gameDescription">Description</Label>
                     <Input
                       id="gameDescription"
-                      placeholder="Optional description"
+                      placeholder="Description optionnelle"
                       value={gameDescription}
                       onChange={(e) => setGameDescription(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="winRatio">Win Ratio: {winRatio}%</Label>
+                    <Label htmlFor="winRatio">Ratio de victoire : {winRatio}%</Label>
                     <Slider
                       id="winRatio"
                       min={0}
@@ -287,15 +288,17 @@ export function GamesContent() {
                       onValueChange={(v) => setWinRatio(v[0] ?? 30)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Percentage of plays that result in a win
+                      Pourcentage de parties gagnantes
                     </p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddGameOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddGame}>Create Game</Button>
+                  <ButtonGroup>
+                    <Button variant="outline" onClick={() => setIsAddGameOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleAddGame}>Créer un jeu</Button>
+                  </ButtonGroup>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -304,8 +307,8 @@ export function GamesContent() {
           {games.length === 0 ? (
             <EmptyState
               icon={GamepadIcon}
-              title="No games"
-              description="Create your first game to get started"
+              title="Aucun jeu"
+              description="Créez votre premier jeu pour commencer"
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -315,7 +318,7 @@ export function GamesContent() {
                     <div>
                       <h3 className="font-semibold text-lg">{game.name}</h3>
                       <Badge className="mt-2">
-                        {game.type === "wheel" ? "Wheel of Fortune" : "Scratch Card"}
+                        {game.type === "wheel" ? "Roue de la fortune" : "Carte à gratter"}
                       </Badge>
                     </div>
                     <Button
@@ -330,7 +333,7 @@ export function GamesContent() {
                     <p className="text-sm text-muted-foreground">{game.description}</p>
                   )}
                   <div className="space-y-2">
-                    <Label>Win Ratio: {game.winRatio}%</Label>
+                    <Label>Ratio de victoire : {game.winRatio}%</Label>
                     <Slider
                       min={0}
                       max={100}
@@ -351,33 +354,33 @@ export function GamesContent() {
               <DialogTrigger asChild>
                 <Button>
                   <PlusIcon className="mr-2 h-4 w-4" />
-                  Create QR Code
+                  Créer un code QR
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create QR Code</DialogTitle>
+                  <DialogTitle>Créer un code QR</DialogTitle>
                   <DialogDescription>
-                    Generate a QR code for table or location
+                    Générez un code QR pour une table ou un emplacement
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="qrCode">QR Code *</Label>
+                    <Label htmlFor="qrCode">Code QR *</Label>
                     <div className="flex gap-2">
                       <Input
                         id="qrCode"
                         value={qrCode}
                         onChange={(e) => setQrCode(e.target.value)}
-                        placeholder="Auto-generated"
+                        placeholder="Auto-généré"
                       />
                       <Button type="button" onClick={generateQRCode}>
-                        Generate
+                        Générer
                       </Button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tableNumber">Table Number</Label>
+                    <Label htmlFor="tableNumber">Numéro de table</Label>
                     <Input
                       id="tableNumber"
                       placeholder="12"
@@ -386,20 +389,22 @@ export function GamesContent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                    <Label htmlFor="location">Emplacement</Label>
                     <Input
                       id="location"
-                      placeholder="Main dining area"
+                      placeholder="Salle principale"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddQROpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddQRCode}>Create QR Code</Button>
+                  <ButtonGroup>
+                    <Button variant="outline" onClick={() => setIsAddQROpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleAddQRCode}>Créer un code QR</Button>
+                  </ButtonGroup>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -408,8 +413,8 @@ export function GamesContent() {
           {qrCodes.length === 0 ? (
             <EmptyState
               icon={QrCodeIcon}
-              title="No QR codes"
-              description="Create QR codes for your tables"
+              title="Aucun code QR"
+              description="Créez des codes QR pour vos tables"
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -446,22 +451,22 @@ export function GamesContent() {
               <DialogTrigger asChild>
                 <Button>
                   <PlusIcon className="mr-2 h-4 w-4" />
-                  Create Prize
+                  Créer un prix
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create Prize</DialogTitle>
+                  <DialogTitle>Créer un prix</DialogTitle>
                   <DialogDescription>
-                    Add a new prize that customers can win
+                    Ajoutez un nouveau prix que les clients peuvent gagner
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="prizeName">Prize Name *</Label>
+                    <Label htmlFor="prizeName">Nom du prix *</Label>
                     <Input
                       id="prizeName"
-                      placeholder="10% off"
+                      placeholder="10% de réduction"
                       value={prizeName}
                       onChange={(e) => setPrizeName(e.target.value)}
                     />
@@ -473,16 +478,16 @@ export function GamesContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="discount_percentage">% Discount</SelectItem>
-                        <SelectItem value="discount_fixed">Fixed Discount</SelectItem>
-                        <SelectItem value="free_product">Free Product</SelectItem>
-                        <SelectItem value="free_menu">Free Menu</SelectItem>
-                        <SelectItem value="custom">Custom</SelectItem>
+                        <SelectItem value="discount_percentage">Réduction %</SelectItem>
+                        <SelectItem value="discount_fixed">Réduction fixe</SelectItem>
+                        <SelectItem value="free_product">Produit offert</SelectItem>
+                        <SelectItem value="free_menu">Menu offert</SelectItem>
+                        <SelectItem value="custom">Personnalisé</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="prizeValue">Value (optional)</Label>
+                    <Label htmlFor="prizeValue">Valeur (optionnelle)</Label>
                     <Input
                       id="prizeValue"
                       type="number"
@@ -493,7 +498,7 @@ export function GamesContent() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="validityDays">Validity (days) *</Label>
+                      <Label htmlFor="validityDays">Validité (jours) *</Label>
                       <Input
                         id="validityDays"
                         type="number"
@@ -502,11 +507,11 @@ export function GamesContent() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="totalAvailable">Available (optional)</Label>
+                      <Label htmlFor="totalAvailable">Quantité disponible</Label>
                       <Input
                         id="totalAvailable"
                         type="number"
-                        placeholder="Unlimited"
+                        placeholder="Illimité"
                         value={totalAvailable}
                         onChange={(e) => setTotalAvailable(e.target.value)}
                       />
@@ -516,17 +521,19 @@ export function GamesContent() {
                     <Label htmlFor="prizeDescription">Description</Label>
                     <Input
                       id="prizeDescription"
-                      placeholder="Optional description"
+                      placeholder="Description optionnelle"
                       value={prizeDescription}
                       onChange={(e) => setPrizeDescription(e.target.value)}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddPrizeOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddPrize}>Create Prize</Button>
+                  <ButtonGroup>
+                    <Button variant="outline" onClick={() => setIsAddPrizeOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleAddPrize}>Créer un prix</Button>
+                  </ButtonGroup>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -535,8 +542,8 @@ export function GamesContent() {
           {prizes.length === 0 ? (
             <EmptyState
               icon={GiftIcon}
-              title="No prizes"
-              description="Create prizes that customers can win"
+              title="Aucun prix"
+              description="Créez des prix que les clients peuvent gagner"
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -558,7 +565,7 @@ export function GamesContent() {
                     <p className="text-sm text-muted-foreground">{prize.description}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Valid for {prize.validityDays} days
+                    Valide {prize.validityDays} jours
                   </p>
                 </div>
               ))}
@@ -569,8 +576,8 @@ export function GamesContent() {
         <TabsContent value="history" className="space-y-4">
           <EmptyState
             icon={GamepadIcon}
-            title="No game history"
-            description="Game play history will appear here"
+            title="Aucun historique"
+            description="L'historique des parties apparaîtra ici"
           />
         </TabsContent>
       </Tabs>

@@ -5,8 +5,8 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
 import { OrdersTable } from "./OrdersTable"
 import { KitchenContent } from "../kitchen/KitchenContent"
 
@@ -56,7 +56,7 @@ export function OrdersContent() {
         <div>
           <h1 className="text-3xl font-bold">Commandes</h1>
           <p className="text-muted-foreground mt-2">
-            Manage and track all restaurant orders.
+            Gérez et suivez toutes les commandes du restaurant.
           </p>
         </div>
         <TabsList>
@@ -68,26 +68,29 @@ export function OrdersContent() {
       {/* Orders list tab */}
       <TabsContent value="commandes" className="space-y-6">
         {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by order number or customer name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="max-w-md">
+          <InputGroup>
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder="Rechercher par n° de commande ou nom du client..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </InputGroup>
         </div>
 
         {/* Status filter tabs */}
         <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatus)}>
           <TabsList variant="line">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
-            <TabsTrigger value="preparing">Preparing</TabsTrigger>
-            <TabsTrigger value="ready">Ready</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+            <TabsTrigger value="all">Toutes</TabsTrigger>
+            <TabsTrigger value="pending">En attente</TabsTrigger>
+            <TabsTrigger value="confirmed">Confirmées</TabsTrigger>
+            <TabsTrigger value="preparing">En préparation</TabsTrigger>
+            <TabsTrigger value="ready">Prêtes</TabsTrigger>
+            <TabsTrigger value="completed">Terminées</TabsTrigger>
+            <TabsTrigger value="cancelled">Annulées</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeStatus} className="mt-6">

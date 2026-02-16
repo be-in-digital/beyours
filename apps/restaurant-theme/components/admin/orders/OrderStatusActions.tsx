@@ -5,6 +5,7 @@ import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Dialog,
   DialogContent,
@@ -54,13 +55,13 @@ const statusTransitions: Record<
 > = {
   pending: [
     {
-      label: "Accept Order",
+      label: "Accepter la commande",
       nextStatus: "confirmed",
       variant: "default",
       icon: CheckCircle,
     },
     {
-      label: "Reject Order",
+      label: "Refuser la commande",
       nextStatus: "cancelled",
       variant: "destructive",
       icon: XCircle,
@@ -69,7 +70,7 @@ const statusTransitions: Record<
   ],
   confirmed: [
     {
-      label: "Start Preparing",
+      label: "Commencer la préparation",
       nextStatus: "preparing",
       variant: "default",
       icon: ChefHat,
@@ -77,7 +78,7 @@ const statusTransitions: Record<
   ],
   preparing: [
     {
-      label: "Mark as Ready",
+      label: "Marquer comme prête",
       nextStatus: "ready",
       variant: "default",
       icon: PackageCheck,
@@ -85,13 +86,13 @@ const statusTransitions: Record<
   ],
   ready: [
     {
-      label: "Complete Order",
+      label: "Terminer la commande",
       nextStatus: "completed",
       variant: "default",
       icon: CheckCircle,
     },
     {
-      label: "Send for Delivery",
+      label: "Envoyer en livraison",
       nextStatus: "out_for_delivery",
       variant: "secondary",
       icon: Truck,
@@ -99,7 +100,7 @@ const statusTransitions: Record<
   ],
   out_for_delivery: [
     {
-      label: "Mark as Delivered",
+      label: "Marquer comme livrée",
       nextStatus: "delivered",
       variant: "default",
       icon: CheckCircle,
@@ -107,7 +108,7 @@ const statusTransitions: Record<
   ],
   delivered: [
     {
-      label: "Complete Order",
+      label: "Terminer la commande",
       nextStatus: "completed",
       variant: "default",
       icon: CheckCircle,
@@ -148,13 +149,13 @@ export function OrderStatusActions({
         cancellationReason: reason,
       })
 
-      toast.success("Order status updated successfully")
+      toast.success("Statut de la commande mis à jour")
 
       // Reset dialog state
       setShowCancelDialog(false)
       setCancellationReason("")
     } catch (error) {
-      toast.error("Failed to update order status")
+      toast.error("Échec de la mise à jour du statut")
       console.error("Error updating order status:", error)
     } finally {
       setIsLoading(false)
@@ -177,7 +178,7 @@ export function OrderStatusActions({
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">
         <Clock className="size-4 mr-2" />
-        <span>No actions available</span>
+        <span>Aucune action disponible</span>
       </div>
     )
   }
@@ -206,40 +207,42 @@ export function OrderStatusActions({
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogTitle>Annuler la commande</DialogTitle>
             <DialogDescription>
-              Please provide a reason for cancelling this order.
+              Veuillez fournir un motif d'annulation.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Cancellation Reason</Label>
+            <Label htmlFor="reason">Motif d'annulation</Label>
             <Input
               id="reason"
-              placeholder="e.g., Out of stock, Customer request, etc."
+              placeholder="ex : Rupture de stock, Demande du client..."
               value={cancellationReason}
               onChange={(e) => setCancellationReason(e.target.value)}
             />
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCancelDialog(false)
-                setCancellationReason("")
-              }}
-              disabled={isLoading}
-            >
-              Close
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => handleStatusChange("cancelled", cancellationReason)}
-              disabled={isLoading || !cancellationReason.trim()}
-            >
-              Cancel Order
-            </Button>
+            <ButtonGroup>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCancelDialog(false)
+                  setCancellationReason("")
+                }}
+                disabled={isLoading}
+              >
+                Fermer
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleStatusChange("cancelled", cancellationReason)}
+                disabled={isLoading || !cancellationReason.trim()}
+              >
+                Annuler la commande
+              </Button>
+            </ButtonGroup>
           </DialogFooter>
         </DialogContent>
       </Dialog>

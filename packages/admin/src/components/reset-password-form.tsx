@@ -32,23 +32,23 @@ export function ResetPasswordForm({
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
         <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="mb-2 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-            Invalid Reset Link
+            Lien invalide
           </h1>
           <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-            This password reset link is invalid or has expired.
+            Ce lien de réinitialisation est invalide ou a expiré.
           </p>
           <div className="flex flex-col items-center gap-2">
             <Link
               href={forgotPasswordHref}
               className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              Request a New Link
+              Demander un nouveau lien
             </Link>
             <Link
               href={signInHref}
               className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-100"
             >
-              Back to Sign In
+              Retour à la connexion
             </Link>
           </div>
         </div>
@@ -62,13 +62,13 @@ export function ResetPasswordForm({
 
     // Validate password length
     if (password.length < 6) {
-      setError("Password must be at least 6 characters")
+      setError("Le mot de passe doit contenir au moins 6 caractères")
       return
     }
 
     // Validate password match
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
+      setError("Les mots de passe ne correspondent pas")
       return
     }
 
@@ -82,7 +82,7 @@ export function ResetPasswordForm({
         setSuccess(true)
       }
     } catch {
-      setError("An unexpected error occurred")
+      setError("Une erreur inattendue est survenue")
     } finally {
       setLoading(false)
     }
@@ -94,17 +94,17 @@ export function ResetPasswordForm({
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
         <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="mb-2 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-            Password Reset
+            Mot de passe réinitialisé
           </h1>
           <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
-            Your password has been reset successfully.
+            Votre mot de passe a été réinitialisé avec succès.
           </div>
           <p className="text-center">
             <Link
               href={signInHref}
               className="inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
-              Sign In
+              Se connecter
             </Link>
           </p>
         </div>
@@ -116,10 +116,10 @@ export function ResetPasswordForm({
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-2 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          Reset Password
+          Réinitialiser le mot de passe
         </h1>
         <p className="mb-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Enter your new password below.
+          Entrez votre nouveau mot de passe ci-dessous.
         </p>
 
         {error && (
@@ -134,7 +134,7 @@ export function ResetPasswordForm({
               htmlFor="password"
               className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              New Password
+              Nouveau mot de passe
             </label>
             <input
               id="password"
@@ -144,7 +144,7 @@ export function ResetPasswordForm({
               required
               minLength={6}
               className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="At least 6 characters"
+              placeholder="Min. 6 caractères"
             />
           </div>
 
@@ -153,7 +153,7 @@ export function ResetPasswordForm({
               htmlFor="confirmPassword"
               className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              Confirm Password
+              Confirmer le mot de passe
             </label>
             <input
               id="confirmPassword"
@@ -163,7 +163,7 @@ export function ResetPasswordForm({
               required
               minLength={6}
               className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="Confirm your password"
+              placeholder="Confirmez votre mot de passe"
             />
           </div>
 
@@ -172,7 +172,7 @@ export function ResetPasswordForm({
             disabled={loading}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {loading ? "Resetting..." : "Reset Password"}
+            {loading ? "Réinitialisation..." : "Réinitialiser le mot de passe"}
           </button>
         </form>
 
@@ -181,7 +181,7 @@ export function ResetPasswordForm({
             href={signInHref}
             className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
           >
-            Back to Sign In
+            Retour à la connexion
           </Link>
         </p>
       </div>

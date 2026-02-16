@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { PlusIcon, StoreIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Dialog,
   DialogContent,
@@ -25,9 +26,9 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 
 const statusConfig = {
-  open: { label: "Open", color: "bg-green-500 text-white" },
-  closed: { label: "Closed", color: "bg-red-500 text-white" },
-  temporarily_unavailable: { label: "Unavailable", color: "bg-orange-500 text-white" },
+  open: { label: "Ouvert", color: "bg-green-500 text-white" },
+  closed: { label: "Fermé", color: "bg-red-500 text-white" },
+  temporarily_unavailable: { label: "Indisponible", color: "bg-orange-500 text-white" },
 }
 
 export function StoresContent() {
@@ -46,7 +47,7 @@ export function StoresContent() {
 
   const handleCreateStore = async () => {
     if (!name || !street || !city || !postalCode) {
-      toast.error("Please fill all required fields")
+      toast.error("Veuillez remplir tous les champs obligatoires")
       return
     }
 
@@ -76,7 +77,7 @@ export function StoresContent() {
           taxRate: 10, // 10%
         },
       })
-      toast.success("Store created successfully")
+      toast.success("Établissement créé avec succès")
       setIsCreateDialogOpen(false)
       // Reset form
       setName("")
@@ -88,7 +89,7 @@ export function StoresContent() {
       setPhone("")
       setEmail("")
     } catch (error) {
-      toast.error("Failed to create store")
+      toast.error("Échec de la création de l'établissement")
       console.error(error)
     }
   }
@@ -101,38 +102,38 @@ export function StoresContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Stores</h1>
+          <h1 className="text-3xl font-bold">Établissements</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your restaurant locations
+            Gérez vos établissements
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusIcon className="mr-2 h-4 w-4" />
-              Create Store
+              Créer un établissement
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create New Store</DialogTitle>
+              <DialogTitle>Créer un nouvel établissement</DialogTitle>
               <DialogDescription>
-                Add a new restaurant location to your business
+                Ajoutez un nouvel établissement à votre entreprise
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Store Name *</Label>
+                  <Label htmlFor="name">Nom de l'établissement *</Label>
                   <Input
                     id="name"
-                    placeholder="Main Restaurant"
+                    placeholder="Restaurant principal"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Slug (auto-generated)</Label>
+                  <Label htmlFor="slug">Slug (généré automatiquement)</Label>
                   <Input
                     id="slug"
                     value={slugify(name)}
@@ -145,23 +146,23 @@ export function StoresContent() {
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
-                  placeholder="Optional description"
+                  placeholder="Description optionnelle"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="street">Street Address *</Label>
+                <Label htmlFor="street">Adresse *</Label>
                 <Input
                   id="street"
-                  placeholder="123 Main Street"
+                  placeholder="123 rue principale"
                   value={street}
                   onChange={(e) => setStreet(e.target.value)}
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City *</Label>
+                  <Label htmlFor="city">Ville *</Label>
                   <Input
                     id="city"
                     placeholder="Paris"
@@ -170,7 +171,7 @@ export function StoresContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="postalCode">Postal Code *</Label>
+                  <Label htmlFor="postalCode">Code postal *</Label>
                   <Input
                     id="postalCode"
                     placeholder="75001"
@@ -179,7 +180,7 @@ export function StoresContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="country">Country *</Label>
+                  <Label htmlFor="country">Pays *</Label>
                   <Input
                     id="country"
                     value={country}
@@ -189,7 +190,7 @@ export function StoresContent() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="phone">Téléphone</Label>
                   <Input
                     id="phone"
                     placeholder="+33 1 23 45 67 89"
@@ -198,11 +199,11 @@ export function StoresContent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">E-mail</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="store@example.com"
+                    placeholder="contact@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
@@ -210,10 +211,12 @@ export function StoresContent() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateStore}>Create Store</Button>
+              <ButtonGroup>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleCreateStore}>Créer un établissement</Button>
+              </ButtonGroup>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -222,8 +225,8 @@ export function StoresContent() {
       {stores.length === 0 ? (
         <EmptyState
           icon={StoreIcon}
-          title="No stores"
-          description="Create your first store to get started"
+          title="Aucun établissement"
+          description="Créez votre premier établissement pour commencer"
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

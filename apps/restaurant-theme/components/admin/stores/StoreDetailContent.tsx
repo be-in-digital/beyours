@@ -20,6 +20,15 @@ import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
 
 const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+const dayNames: Record<string, string> = {
+  monday: "Lundi",
+  tuesday: "Mardi",
+  wednesday: "Mercredi",
+  thursday: "Jeudi",
+  friday: "Vendredi",
+  saturday: "Samedi",
+  sunday: "Dimanche",
+}
 
 export function StoreDetailContent({ params }: { params: Promise<{ storeId: string }> }) {
   const { storeId } = use(params)
@@ -110,9 +119,9 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
         email: email || undefined,
         status,
       })
-      toast.success("Store updated successfully")
+      toast.success("Établissement mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update store")
+      toast.error("Échec de la mise à jour de l'établissement")
       console.error(error)
     }
   }
@@ -123,9 +132,9 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
         id: storeId as Id<"stores">,
         hours,
       })
-      toast.success("Hours updated successfully")
+      toast.success("Horaires mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update hours")
+      toast.error("Échec de la mise à jour des horaires")
       console.error(error)
     }
   }
@@ -144,9 +153,9 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           fontBody,
         },
       })
-      toast.success("Branding updated successfully")
+      toast.success("Identité visuelle mise à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update branding")
+      toast.error("Échec de la mise à jour de l'identité visuelle")
       console.error(error)
     }
   }
@@ -167,9 +176,9 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           taxRate: parseInt(taxRate),
         },
       })
-      toast.success("Settings updated successfully")
+      toast.success("Paramètres mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update settings")
+      toast.error("Échec de la mise à jour des paramètres")
       console.error(error)
     }
   }
@@ -182,22 +191,22 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">{store.name}</h1>
-        <p className="text-muted-foreground mt-2">Manage store details and settings</p>
+        <p className="text-muted-foreground mt-2">Gérez les détails et paramètres de l'établissement</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="hours">Hours</TabsTrigger>
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="general">Général</TabsTrigger>
+          <TabsTrigger value="hours">Horaires</TabsTrigger>
+          <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
+          <TabsTrigger value="settings">Paramètres</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Store Name</Label>
+                <Label htmlFor="name">Nom de l'établissement</Label>
                 <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
@@ -211,28 +220,28 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Téléphone</Label>
                 <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">E-mail</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">Statut</Label>
               <Select value={status} onValueChange={setStatus}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                  <SelectItem value="temporarily_unavailable">Temporarily Unavailable</SelectItem>
+                  <SelectItem value="open">Ouvert</SelectItem>
+                  <SelectItem value="closed">Fermé</SelectItem>
+                  <SelectItem value="temporarily_unavailable">Temporairement indisponible</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleUpdateGeneral}>Save Changes</Button>
+            <Button onClick={handleUpdateGeneral}>Enregistrer</Button>
           </div>
         </TabsContent>
 
@@ -241,10 +250,10 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
             {hours.map((dayHours, index) => (
               <div key={dayHours.day} className="grid grid-cols-4 gap-4 items-end">
                 <div className="space-y-2">
-                  <Label className="capitalize">{dayHours.day}</Label>
+                  <Label>{dayNames[dayHours.day] || dayHours.day}</Label>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`open-${dayHours.day}`}>Open</Label>
+                  <Label htmlFor={`open-${dayHours.day}`}>Ouverture</Label>
                   <Input
                     id={`open-${dayHours.day}`}
                     type="time"
@@ -259,7 +268,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`close-${dayHours.day}`}>Close</Label>
+                  <Label htmlFor={`close-${dayHours.day}`}>Fermeture</Label>
                   <Input
                     id={`close-${dayHours.day}`}
                     type="time"
@@ -284,11 +293,11 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
                       setHours(newHours)
                     }}
                   />
-                  <Label htmlFor={`closed-${dayHours.day}`}>Closed</Label>
+                  <Label htmlFor={`closed-${dayHours.day}`}>Fermé</Label>
                 </div>
               </div>
             ))}
-            <Button onClick={handleUpdateHours}>Save Hours</Button>
+            <Button onClick={handleUpdateHours}>Enregistrer les horaires</Button>
           </div>
         </TabsContent>
 
@@ -296,21 +305,21 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Color</Label>
+                <Label htmlFor="primaryColor">Couleur primaire</Label>
                 <div className="flex gap-2">
                   <Input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-20" />
                   <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="secondaryColor">Secondary Color</Label>
+                <Label htmlFor="secondaryColor">Couleur secondaire</Label>
                 <div className="flex gap-2">
                   <Input id="secondaryColor" type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-20" />
                   <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accentColor">Accent Color</Label>
+                <Label htmlFor="accentColor">Couleur d'accent</Label>
                 <div className="flex gap-2">
                   <Input id="accentColor" type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-20" />
                   <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
@@ -319,25 +328,25 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="logoUrl">Logo URL</Label>
+                <Label htmlFor="logoUrl">URL du logo</Label>
                 <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="faviconUrl">Favicon URL</Label>
+                <Label htmlFor="faviconUrl">URL du favicon</Label>
                 <Input id="faviconUrl" value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="fontHeading">Heading Font</Label>
+                <Label htmlFor="fontHeading">Police des titres</Label>
                 <Input id="fontHeading" value={fontHeading} onChange={(e) => setFontHeading(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fontBody">Body Font</Label>
+                <Label htmlFor="fontBody">Police du texte</Label>
                 <Input id="fontBody" value={fontBody} onChange={(e) => setFontBody(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleUpdateBranding}>Save Branding</Button>
+            <Button onClick={handleUpdateBranding}>Enregistrer l'identité visuelle</Button>
           </div>
         </TabsContent>
 
@@ -345,49 +354,49 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           <div className="border rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
+                <Label htmlFor="currency">Devise</Label>
                 <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
+                <Label htmlFor="timezone">Fuseau horaire</Label>
                 <Input id="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label htmlFor="deliveryEnabled">Delivery Enabled</Label>
+                <Label htmlFor="deliveryEnabled">Livraison activée</Label>
                 <Switch id="deliveryEnabled" checked={deliveryEnabled} onCheckedChange={setDeliveryEnabled} />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="pickupEnabled">Pickup Enabled</Label>
+                <Label htmlFor="pickupEnabled">Click & Collect activé</Label>
                 <Switch id="pickupEnabled" checked={pickupEnabled} onCheckedChange={setPickupEnabled} />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="dineInEnabled">Dine-in Enabled</Label>
+                <Label htmlFor="dineInEnabled">Sur place activé</Label>
                 <Switch id="dineInEnabled" checked={dineInEnabled} onCheckedChange={setDineInEnabled} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="minimumOrderAmount">Minimum Order (cents)</Label>
+                <Label htmlFor="minimumOrderAmount">Commande minimum (centimes)</Label>
                 <Input id="minimumOrderAmount" type="number" value={minimumOrderAmount} onChange={(e) => setMinimumOrderAmount(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="deliveryFee">Delivery Fee (cents)</Label>
+                <Label htmlFor="deliveryFee">Frais de livraison (centimes)</Label>
                 <Input id="deliveryFee" type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="deliveryRadius">Delivery Radius (meters)</Label>
+                <Label htmlFor="deliveryRadius">Rayon de livraison (mètres)</Label>
                 <Input id="deliveryRadius" type="number" value={deliveryRadius} onChange={(e) => setDeliveryRadius(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="taxRate">Tax Rate (%)</Label>
+                <Label htmlFor="taxRate">Taux de TVA (%)</Label>
                 <Input id="taxRate" type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
               </div>
             </div>
-            <Button onClick={handleUpdateSettings}>Save Settings</Button>
+            <Button onClick={handleUpdateSettings}>Enregistrer les paramètres</Button>
           </div>
         </TabsContent>
       </Tabs>

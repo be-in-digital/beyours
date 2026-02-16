@@ -7,7 +7,8 @@ import { Search, Plus, Grid3x3, List } from "lucide-react"
 import { api } from "@/convex/_generated/api"
 import { useAdminStoreId, useDebounce } from "@/lib/admin/hooks"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ProductsTable } from "./ProductsTable"
@@ -63,7 +64,7 @@ export function ProductsContent() {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <p className="text-muted-foreground">
-          Please select a store to view products
+          Veuillez sélectionner un établissement pour afficher les produits
         </p>
       </div>
     )
@@ -90,24 +91,27 @@ export function ProductsContent() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex-1">
+            <InputGroup>
+              <InputGroupAddon>
+                <Search className="h-4 w-4" />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="text"
+                placeholder="Rechercher des produits..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </InputGroup>
           </div>
 
           {/* Category filter */}
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="All categories" />
+              <SelectValue placeholder="Toutes les catégories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
+              <SelectItem value="all">Toutes les catégories</SelectItem>
               {categories?.map((category: any) => (
                 <SelectItem key={category._id} value={category._id}>
                   {category.name}
@@ -119,17 +123,17 @@ export function ProductsContent() {
           {/* Status filter */}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="All status" />
+              <SelectValue placeholder="Tous les statuts" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="active">Actif</SelectItem>
+              <SelectItem value="inactive">Inactif</SelectItem>
             </SelectContent>
           </Select>
 
           {/* View mode toggle */}
-          <div className="flex gap-2">
+          <ButtonGroup>
             <Button
               variant={viewMode === "table" ? "default" : "outline"}
               size="icon"
@@ -144,13 +148,13 @@ export function ProductsContent() {
             >
               <Grid3x3 className="h-4 w-4" />
             </Button>
-          </div>
+          </ButtonGroup>
 
           {/* Add Product button */}
           <Button asChild>
             <Link href="/products/new">
               <Plus className="mr-2 h-4 w-4" />
-              Add Product
+              Ajouter un produit
             </Link>
           </Button>
         </div>
@@ -158,20 +162,20 @@ export function ProductsContent() {
         {/* Products table */}
         {!products ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading products...</p>
+            <p className="text-muted-foreground">Chargement des produits...</p>
           </div>
         ) : filteredProducts && filteredProducts.length === 0 ? (
           <div className="text-center py-12 border rounded-lg">
-            <p className="text-muted-foreground">No products found</p>
+            <p className="text-muted-foreground">Aucun produit trouvé</p>
             {searchQuery || categoryFilter !== "all" || statusFilter !== "all" ? (
               <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your filters
+                Essayez d'ajuster vos filtres
               </p>
             ) : (
               <Button asChild className="mt-4">
                 <Link href="/products/new">
                   <Plus className="mr-2 h-4 w-4" />
-                  Create your first product
+                  Créez votre premier produit
                 </Link>
               </Button>
             )}

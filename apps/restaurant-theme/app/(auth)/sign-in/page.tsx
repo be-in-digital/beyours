@@ -24,12 +24,12 @@ export default function SignInPage() {
       });
 
       if (result.error) {
-        setError(result.error.message ?? "Sign in failed");
+        setError(result.error.message ?? "Échec de la connexion");
       } else {
         router.push("/dashboard");
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError("Une erreur inattendue est survenue");
     } finally {
       setLoading(false);
     }
@@ -39,7 +39,7 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-6 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          Sign In
+          Connexion
         </h1>
 
         {error && (
@@ -63,7 +63,7 @@ export default function SignInPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="john@example.com"
+              placeholder="jean@exemple.com"
             />
           </div>
 
@@ -72,7 +72,7 @@ export default function SignInPage() {
               htmlFor="password"
               className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
             >
-              Password
+              Mot de passe
             </label>
             <input
               id="password"
@@ -81,7 +81,7 @@ export default function SignInPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="Your password"
+              placeholder="Votre mot de passe"
             />
           </div>
 
@@ -90,7 +90,7 @@ export default function SignInPage() {
               href="/forgot-password"
               className="text-xs text-zinc-600 hover:underline dark:text-zinc-400"
             >
-              Forgot password?
+              Mot de passe oublié ?
             </Link>
           </div>
 
@@ -99,17 +99,17 @@ export default function SignInPage() {
             disabled={loading}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Connexion en cours..." : "Se connecter"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Don&apos;t have an account?{" "}
+          Pas encore de compte ?{" "}
           <Link
             href="/sign-up"
             className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
           >
-            Sign Up
+            Créer un compte
           </Link>
         </p>
       </div>

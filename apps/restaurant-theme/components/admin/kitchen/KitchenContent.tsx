@@ -12,10 +12,10 @@ import { StationFilter } from "./StationFilter"
 type TicketStatus = "pending" | "in_progress" | "ready" | "completed"
 
 const STATUS_CONFIG: Record<TicketStatus, { title: string; color: string }> = {
-  pending: { title: "Pending", color: "bg-yellow-500" },
-  in_progress: { title: "In Progress", color: "bg-blue-500" },
-  ready: { title: "Ready", color: "bg-green-500" },
-  completed: { title: "Completed", color: "bg-gray-500" },
+  pending: { title: "En attente", color: "bg-yellow-500" },
+  in_progress: { title: "En cours", color: "bg-blue-500" },
+  ready: { title: "Prêt", color: "bg-green-500" },
+  completed: { title: "Terminé", color: "bg-gray-500" },
 }
 
 export function KitchenContent() {
@@ -61,7 +61,7 @@ export function KitchenContent() {
   if (!storeId) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <p className="text-muted-foreground">Please select a store</p>
+        <p className="text-muted-foreground">Veuillez sélectionner un établissement</p>
       </div>
     )
   }
@@ -116,7 +116,7 @@ export function KitchenContent() {
                 {ticketsByStatus[status].length === 0 ? (
                   <Card>
                     <div className="p-8 text-center text-sm text-muted-foreground">
-                      No tickets
+                      Aucun ticket
                     </div>
                   </Card>
                 ) : (

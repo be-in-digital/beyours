@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import { ArrowRight } from "lucide-react"
 import { formatPrice, formatDate, formatOrderNumber } from "@/lib/admin"
+import { cn } from "@/lib/utils"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import {
   Table,
@@ -12,6 +14,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 type OrderStatus =
   | "pending"
@@ -50,20 +53,36 @@ interface RecentOrdersTableProps {
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  const variants: Record<OrderStatus, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-    pending: { variant: "outline", label: "En attente" },
-    confirmed: { variant: "default", label: "Confirmée" },
-    preparing: { variant: "secondary", label: "En préparation" },
-    ready: { variant: "default", label: "Prête" },
-    out_for_delivery: { variant: "secondary", label: "En livraison" },
-    delivered: { variant: "default", label: "Livrée" },
-    completed: { variant: "secondary", label: "Terminée" },
-    cancelled: { variant: "destructive", label: "Annulée" },
+  const statusColors: Record<OrderStatus, string> = {
+    pending: "bg-status-pending",
+    confirmed: "bg-status-confirmed",
+    preparing: "bg-status-preparing",
+    ready: "bg-status-ready",
+    out_for_delivery: "bg-status-delivered",
+    delivered: "bg-status-delivered",
+    completed: "bg-success",
+    cancelled: "bg-status-cancelled",
   }
 
-  const config = variants[status] || variants.pending
+  const labels: Record<OrderStatus, string> = {
+    pending: "En attente",
+    confirmed: "Confirmée",
+    preparing: "En préparation",
+    ready: "Prête",
+    out_for_delivery: "En livraison",
+    delivered: "Livrée",
+    completed: "Terminée",
+    cancelled: "Annulée",
+  }
 
-  return <Badge variant={config.variant}>{config.label}</Badge>
+  const label = labels[status] || labels.pending
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm">
+      <span className={cn("h-2 w-2 rounded-full", statusColors[status])} />
+      {label}
+    </span>
+  )
 }
 
 function OrderTypeBadge({ type }: { type: OrderType }) {
@@ -79,7 +98,10 @@ function OrderTypeBadge({ type }: { type: OrderType }) {
 export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
   if (orders.length === 0) {
     return (
-      <Card>
+      <Card
+        className="animate-in fade-in slide-in-from-bottom-2 duration-500"
+        style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+      >
         <CardHeader>
           <CardTitle>Commandes récentes</CardTitle>
         </CardHeader>
@@ -93,26 +115,34 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card
+      className="animate-in fade-in slide-in-from-bottom-2 duration-500"
+      style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+    >
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Commandes récentes</CardTitle>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/orders" className="text-muted-foreground hover:text-foreground">
+            Voir tout <ArrowRight className="ml-1 h-3 w-3" />
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>N° Commande</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead className="hidden md:table-cell">Client</TableHead>
+              <TableHead className="hidden md:table-cell">Type</TableHead>
               <TableHead className="text-right">Articles</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Statut</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead className="hidden md:table-cell">Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {orders.map((order) => (
-              <TableRow key={order._id} className="cursor-pointer">
+              <TableRow key={order._id} className="cursor-pointer transition-colors hover:bg-muted/50">
                 <TableCell>
                   <Link
                     href={`/orders/${order._id}`}
@@ -121,8 +151,8 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                     {formatOrderNumber(order.orderNumber)}
                   </Link>
                 </TableCell>
-                <TableCell>{order.customerInfo.name}</TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">{order.customerInfo.name}</TableCell>
+                <TableCell className="hidden md:table-cell">
                   <OrderTypeBadge type={order.type} />
                 </TableCell>
                 <TableCell className="text-right">
@@ -134,7 +164,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                 <TableCell>
                   <StatusBadge status={order.status} />
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-muted-foreground hidden md:table-cell">
                   {formatDate(order.createdAt)}
                 </TableCell>
               </TableRow>

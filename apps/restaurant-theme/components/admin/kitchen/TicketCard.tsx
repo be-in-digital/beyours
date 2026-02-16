@@ -47,9 +47,9 @@ interface TicketCardProps {
 }
 
 const ORDER_TYPE_LABELS: Record<OrderType, string> = {
-  delivery: "Delivery",
-  pickup: "Pickup",
-  dine_in: "Dine In",
+  delivery: "Livraison",
+  pickup: "À emporter",
+  dine_in: "Sur place",
 }
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; variant: "default" | "destructive" | "secondary" }> = {
@@ -59,17 +59,17 @@ const PRIORITY_CONFIG: Record<Priority, { label: string; variant: "default" | "d
 }
 
 const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {
-  website: { label: "Website", color: "bg-blue-100 text-blue-800" },
+  website: { label: "Site web", color: "bg-blue-100 text-blue-800" },
   uber_eats: { label: "Uber Eats", color: "bg-green-100 text-green-800" },
   deliveroo: { label: "Deliveroo", color: "bg-cyan-100 text-cyan-800" },
-  pos: { label: "POS", color: "bg-purple-100 text-purple-800" },
+  pos: { label: "Caisse", color: "bg-purple-100 text-purple-800" },
 }
 
 const STATUS_ACTIONS: Record<TicketStatus, { label: string; nextStatus: TicketStatus | null; icon: any }> = {
-  pending: { label: "Start", nextStatus: "in_progress", icon: Play },
-  in_progress: { label: "Ready", nextStatus: "ready", icon: CheckCircle },
-  ready: { label: "Complete", nextStatus: "completed", icon: Package },
-  completed: { label: "Completed", nextStatus: null, icon: CheckCircle },
+  pending: { label: "Démarrer", nextStatus: "in_progress", icon: Play },
+  in_progress: { label: "Prêt", nextStatus: "ready", icon: CheckCircle },
+  ready: { label: "Terminer", nextStatus: "completed", icon: Package },
+  completed: { label: "Terminé", nextStatus: null, icon: CheckCircle },
 }
 
 export function TicketCard({ ticket }: TicketCardProps) {
@@ -84,9 +84,9 @@ export function TicketCard({ ticket }: TicketCardProps) {
         id: ticket._id,
         status: action.nextStatus,
       })
-      toast.success(`Ticket moved to ${action.nextStatus.replace("_", " ")}`)
+      toast.success(`Ticket déplacé vers ${action.nextStatus.replace("_", " ")}`)
     } catch (error) {
-      toast.error("Failed to update ticket status")
+      toast.error("Échec de la mise à jour du statut du ticket")
       console.error(error)
     }
   }
@@ -148,7 +148,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
               )}
               {item.notes && (
                 <div className="text-xs text-muted-foreground italic ml-4">
-                  Note: {item.notes}
+                  Note : {item.notes}
                 </div>
               )}
             </div>

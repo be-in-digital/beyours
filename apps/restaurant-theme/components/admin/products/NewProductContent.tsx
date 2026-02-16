@@ -27,7 +27,7 @@ export function NewProductContent() {
 
   const handleSubmit = async (data: any) => {
     if (!storeId) {
-      toast.error("Please select a store")
+      toast.error("Veuillez sélectionner un établissement")
       return
     }
 
@@ -73,10 +73,10 @@ export function NewProductContent() {
         source: "manual",
       })
 
-      toast.success("Product created successfully")
+      toast.success("Produit créé avec succès")
       router.push("/products")
     } catch (error) {
-      toast.error("Failed to create product")
+      toast.error("Échec de la création du produit")
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -87,7 +87,7 @@ export function NewProductContent() {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <p className="text-muted-foreground">
-          Please select a store to create a product
+          Veuillez sélectionner un établissement pour créer un produit
         </p>
       </div>
     )
@@ -96,7 +96,7 @@ export function NewProductContent() {
   if (!categories) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Chargement...</p>
       </div>
     )
   }
@@ -105,18 +105,18 @@ export function NewProductContent() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Create Product</h1>
+          <h1 className="text-3xl font-bold">Créer un produit</h1>
           <p className="text-muted-foreground mt-2">
-            Add a new product to your menu
+            Ajoutez un nouveau produit à votre menu
           </p>
         </div>
 
         <div className="text-center py-12 border rounded-lg">
           <p className="text-muted-foreground">
-            You need to create at least one category before adding products
+            Vous devez créer au moins une catégorie avant d'ajouter des produits
           </p>
           <Button asChild className="mt-4">
-            <Link href="/categories/new">Create Category</Link>
+            <Link href="/categories/new">Créer une catégorie</Link>
           </Button>
         </div>
       </div>
@@ -133,9 +133,9 @@ export function NewProductContent() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Create Product</h1>
+          <h1 className="text-3xl font-bold">Créer un produit</h1>
           <p className="text-muted-foreground mt-2">
-            Add a new product to your menu
+            Ajoutez un nouveau produit à votre menu
           </p>
         </div>
       </div>
@@ -146,7 +146,7 @@ export function NewProductContent() {
           categories={categories}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          submitLabel="Create Product"
+          submitLabel="Créer un produit"
         />
       </div>
     </div>

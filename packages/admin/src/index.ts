@@ -22,5 +22,8 @@ export type { AdminAuthStore } from "./stores/admin-auth-store"
 export {
   SidebarProvider,
   SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
   useSidebar,
 } from "./ui/sidebar"

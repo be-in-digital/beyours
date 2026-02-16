@@ -40,6 +40,8 @@ import {
 interface AppSidebarProps {
   /** Footer content (e.g. StoreSelector) injected by the consuming app */
   footer?: React.ReactNode
+  /** User menu rendered at the very bottom of the sidebar */
+  userFooter?: React.ReactNode
 }
 
 // ─── Permission filter ──────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ function canSeeEntry(role: Role, entry: NavEntry): boolean {
  * Menu items are filtered based on the authenticated user's role.
  * Groups with no visible items are hidden entirely.
  */
-export function AppSidebar({ footer }: AppSidebarProps) {
+export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
@@ -81,7 +83,7 @@ export function AppSidebar({ footer }: AppSidebarProps) {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">BeInDigital</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    Restaurant Admin
+                    Administration
                   </span>
                 </div>
               </Link>
@@ -144,18 +146,21 @@ export function AppSidebar({ footer }: AppSidebarProps) {
         })}
       </SidebarContent>
 
-      {/* Footer with injected content (e.g. StoreSelector) */}
+      {/* Footer with injected content (StoreSelector + user menu) */}
       <SidebarFooter>
         {isCollapsed ? (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton tooltip="\u00c9tablissement">
+              <SidebarMenuButton tooltip="Établissement">
                 <Store />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         ) : (
-          footer
+          <>
+            {footer}
+            {userFooter}
+          </>
         )}
       </SidebarFooter>
 

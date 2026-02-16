@@ -96,16 +96,16 @@ export function SettingsContent() {
         phone: phone || undefined,
         email: email || undefined,
       })
-      toast.success("Settings updated successfully")
+      toast.success("Paramètres mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update settings")
+      toast.error("Échec de la mise à jour des paramètres")
       console.error(error)
     }
   }
 
   const handleSaveNotifications = () => {
     // Placeholder - no backend connection yet
-    toast.success("Notification preferences saved")
+    toast.success("Préférences de notification enregistrées")
   }
 
   const handleToggleIntegration = (integrationId: string) => {
@@ -113,7 +113,7 @@ export function SettingsContent() {
       ...prev,
       [integrationId]: !prev[integrationId],
     }))
-    toast.success("Integration settings updated")
+    toast.success("Paramètres d'intégration mis à jour")
   }
 
   const handleUpdateIntegrationKey = (integrationId: string, key: string) => {
@@ -127,8 +127,8 @@ export function SettingsContent() {
     return (
       <EmptyState
         icon={SettingsIcon}
-        title="No store selected"
-        description="Please select a store to manage settings"
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer les paramètres"
       />
     )
   }

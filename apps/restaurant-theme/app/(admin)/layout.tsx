@@ -9,6 +9,7 @@ import {
   SidebarInset,
 } from "@beindigital-engine/admin"
 import { StoreSelector } from "@/components/admin/StoreSelector"
+import { SidebarUserMenu } from "@/components/admin/SidebarUserMenu"
 import { StoreGuard } from "@/components/admin"
 
 export default function AdminLayout({
@@ -21,7 +22,10 @@ export default function AdminLayout({
       <AdminAuthSync />
       <AuthGuard>
         <SidebarProvider>
-          <AppSidebar footer={<StoreSelector />} />
+          <AppSidebar
+            footer={<StoreSelector />}
+            userFooter={<SidebarUserMenu />}
+          />
           <SidebarInset>
             <AdminHeader />
             <main className="flex-1 p-6">

@@ -39,7 +39,7 @@ export function EditProductContent({ params }: EditProductContentProps) {
 
   const handleSubmit = async (data: any) => {
     if (!storeId) {
-      toast.error("Please select a store")
+      toast.error("Veuillez sélectionner un établissement")
       return
     }
 
@@ -84,10 +84,10 @@ export function EditProductContent({ params }: EditProductContentProps) {
         sortOrder: data.sortOrder,
       })
 
-      toast.success("Product updated successfully")
+      toast.success("Produit mis à jour avec succès")
       router.push("/products")
     } catch (error) {
-      toast.error("Failed to update product")
+      toast.error("Échec de la mise à jour du produit")
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -107,7 +107,7 @@ export function EditProductContent({ params }: EditProductContentProps) {
   if (!product || !categories) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Chargement...</p>
       </div>
     )
   }
@@ -139,7 +139,7 @@ export function EditProductContent({ params }: EditProductContentProps) {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Edit Product</h1>
+          <h1 className="text-3xl font-bold">Modifier le produit</h1>
           <p className="text-muted-foreground mt-2">{product.name}</p>
         </div>
       </div>
@@ -151,7 +151,7 @@ export function EditProductContent({ params }: EditProductContentProps) {
           defaultValues={defaultValues}
           onSubmit={handleSubmit}
           isLoading={isLoading}
-          submitLabel="Update Product"
+          submitLabel="Mettre à jour le produit"
         />
       </div>
     </div>

@@ -15,9 +15,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
 
 interface Payment {
   _id: Id<"payments">
@@ -43,13 +44,13 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
   const handleRefund = async () => {
     // Validate amount
     if (refundAmount <= 0) {
-      toast.error("Refund amount must be greater than 0")
+      toast.error("Le montant du remboursement doit être supérieur à 0")
       return
     }
 
     if (refundAmount > maxRefundAmount) {
       toast.error(
-        `Refund amount cannot exceed ${formatPrice(maxRefundAmount, payment.currency)}`
+        `Le montant du remboursement ne peut pas dépasser ${formatPrice(maxRefundAmount, payment.currency)}`
       )
       return
     }
@@ -64,7 +65,7 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
       })
 
       toast.success(
-        `Refund of ${formatPrice(refundAmount, payment.currency)} processed successfully`
+        `Remboursement de ${formatPrice(refundAmount, payment.currency)} traité avec succès`
       )
       onOpenChange(false)
 
@@ -72,7 +73,7 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
       setRefundAmount(maxRefundAmount)
       setReason("")
     } catch (error) {
-      toast.error("Failed to process refund")
+      toast.error("Échec du traitement du remboursement")
       console.error(error)
     } finally {
       setIsSubmitting(false)
@@ -95,9 +96,9 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Refund Payment</DialogTitle>
+          <DialogTitle>Remboursement</DialogTitle>
           <DialogDescription>
-            Process a full or partial refund for this payment.
+            Effectuez un remboursement total ou partiel.
           </DialogDescription>
         </DialogHeader>
 
@@ -105,21 +106,21 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
           {/* Original amount info */}
           <div className="text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Original amount:</span>
+              <span className="text-muted-foreground">Montant initial :</span>
               <span className="font-medium">
                 {formatPrice(payment.amount, payment.currency)}
               </span>
             </div>
             {payment.refundedAmount && payment.refundedAmount > 0 && (
               <div className="flex justify-between mt-1">
-                <span className="text-muted-foreground">Already refunded:</span>
+                <span className="text-muted-foreground">Déjà remboursé :</span>
                 <span className="font-medium">
                   {formatPrice(payment.refundedAmount, payment.currency)}
                 </span>
               </div>
             )}
             <div className="flex justify-between mt-1 border-t pt-1">
-              <span className="text-muted-foreground">Max refund:</span>
+              <span className="text-muted-foreground">Remboursement max :</span>
               <span className="font-semibold">
                 {formatPrice(maxRefundAmount, payment.currency)}
               </span>
@@ -128,12 +129,14 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
 
           {/* Refund amount input */}
           <div className="space-y-2">
-            <Label htmlFor="refundAmount">Refund Amount</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                {payment.currency === "EUR" ? "€" : "$"}
-              </span>
-              <Input
+            <Label htmlFor="refundAmount">Montant du remboursement</Label>
+            <InputGroup>
+              <InputGroupAddon>
+                <InputGroupText>
+                  {payment.currency === "EUR" ? "€" : "$"}
+                </InputGroupText>
+              </InputGroupAddon>
+              <InputGroupInput
                 id="refundAmount"
                 type="number"
                 step="0.01"
@@ -141,35 +144,34 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
                 max={(maxRefundAmount / 100).toFixed(2)}
                 value={amountInDollars}
                 onChange={handleAmountChange}
-                className="pl-8"
               />
-            </div>
+            </InputGroup>
             <p className="text-xs text-muted-foreground">
-              Enter the amount to refund (max: {formatPrice(maxRefundAmount, payment.currency)})
+              Montant à rembourser (max : {formatPrice(maxRefundAmount, payment.currency)})
             </p>
           </div>
 
           {/* Reason textarea */}
           <div className="space-y-2">
-            <Label htmlFor="reason">Reason (Optional)</Label>
+            <Label htmlFor="reason">Motif (optionnel)</Label>
             <Textarea
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Enter the reason for this refund..."
+              placeholder="Saisissez le motif du remboursement..."
               rows={3}
             />
           </div>
 
           {/* Quick action buttons */}
-          <div className="flex gap-2">
+          <ButtonGroup>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setRefundAmount(maxRefundAmount)}
             >
-              Full Refund
+              Remboursement total
             </Button>
             <Button
               type="button"
@@ -177,27 +179,29 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
               size="sm"
               onClick={() => setRefundAmount(Math.round(maxRefundAmount / 2))}
             >
-              Half Refund
+              Demi remboursement
             </Button>
-          </div>
+          </ButtonGroup>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleRefund}
-            disabled={isSubmitting || refundAmount <= 0 || refundAmount > maxRefundAmount}
-          >
-            {isSubmitting
-              ? "Processing..."
-              : `Refund ${formatPrice(refundAmount, payment.currency)}`}
-          </Button>
+          <ButtonGroup>
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleRefund}
+              disabled={isSubmitting || refundAmount <= 0 || refundAmount > maxRefundAmount}
+            >
+              {isSubmitting
+                ? "Traitement..."
+                : `Rembourser ${formatPrice(refundAmount, payment.currency)}`}
+            </Button>
+          </ButtonGroup>
         </DialogFooter>
       </DialogContent>
     </Dialog>

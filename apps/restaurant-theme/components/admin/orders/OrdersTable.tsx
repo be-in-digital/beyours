@@ -68,14 +68,14 @@ function getStatusBadge(status: Order["status"]) {
     Order["status"],
     { className: string; label: string }
   > = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "Pending" },
-    confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmed" },
-    preparing: { className: "bg-orange-100 text-orange-800", label: "Preparing" },
-    ready: { className: "bg-green-100 text-green-800", label: "Ready" },
-    out_for_delivery: { className: "bg-purple-100 text-purple-800", label: "Out for Delivery" },
-    delivered: { className: "bg-green-100 text-green-800", label: "Delivered" },
-    completed: { className: "bg-gray-100 text-gray-800", label: "Completed" },
-    cancelled: { className: "bg-red-100 text-red-800", label: "Cancelled" },
+    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
+    confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
+    preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
+    ready: { className: "bg-green-100 text-green-800", label: "Prête" },
+    out_for_delivery: { className: "bg-purple-100 text-purple-800", label: "En livraison" },
+    delivered: { className: "bg-green-100 text-green-800", label: "Livrée" },
+    completed: { className: "bg-gray-100 text-gray-800", label: "Terminée" },
+    cancelled: { className: "bg-red-100 text-red-800", label: "Annulée" },
   }
 
   const config = statusConfig[status]
@@ -87,9 +87,9 @@ function getStatusBadge(status: Order["status"]) {
  */
 function getTypeBadge(type: Order["type"]) {
   const typeConfig: Record<Order["type"], { variant: any; label: string }> = {
-    delivery: { variant: "default", label: "Delivery" },
-    pickup: { variant: "secondary", label: "Pickup" },
-    dine_in: { variant: "outline", label: "Dine In" },
+    delivery: { variant: "default", label: "Livraison" },
+    pickup: { variant: "secondary", label: "À emporter" },
+    dine_in: { variant: "outline", label: "Sur place" },
   }
 
   const config = typeConfig[type]
@@ -104,10 +104,10 @@ function getPaymentBadge(status: Order["paymentStatus"]) {
     Order["paymentStatus"],
     { className: string; label: string }
   > = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "Pending" },
-    paid: { className: "bg-green-100 text-green-800", label: "Paid" },
-    failed: { className: "bg-red-100 text-red-800", label: "Failed" },
-    refunded: { className: "bg-gray-100 text-gray-800", label: "Refunded" },
+    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
+    paid: { className: "bg-green-100 text-green-800", label: "Payé" },
+    failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
+    refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
   }
 
   const config = paymentConfig[status]
@@ -129,7 +129,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Loading orders...</p>
+        <p className="text-muted-foreground">Chargement des commandes...</p>
       </div>
     )
   }
@@ -137,7 +137,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
   if (orders.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">No orders found.</p>
+        <p className="text-muted-foreground">Aucune commande trouvée.</p>
       </div>
     )
   }
@@ -147,13 +147,13 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Order #</TableHead>
-            <TableHead>Customer</TableHead>
+            <TableHead>N° Commande</TableHead>
+            <TableHead>Client</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Items</TableHead>
+            <TableHead>Articles</TableHead>
             <TableHead>Total</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Payment</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead>Paiement</TableHead>
             <TableHead>Date</TableHead>
           </TableRow>
         </TableHeader>

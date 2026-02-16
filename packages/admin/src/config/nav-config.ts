@@ -114,7 +114,7 @@ export const navGroups: NavGroup[] = [
         basePath: "/games",
         requiredPermission: "games:read",
         children: [
-          { label: "Dashboard", href: "/games" },
+          { label: "Tableau de bord", href: "/games" },
           { label: "Jeux", href: "/games/catalog" },
           { label: "QR Codes", href: "/games/qr-codes" },
           { label: "Actions", href: "/games/actions" },
@@ -128,7 +128,7 @@ export const navGroups: NavGroup[] = [
         basePath: "/email",
         requiredPermission: "settings:read",
         children: [
-          { label: "Dashboard", href: "/email" },
+          { label: "Tableau de bord", href: "/email" },
           { label: "Campagnes", href: "/email/campaigns" },
           { label: "Mod\u00e8les", href: "/email/templates" },
           { label: "Abonn\u00e9s", href: "/email/subscribers" },

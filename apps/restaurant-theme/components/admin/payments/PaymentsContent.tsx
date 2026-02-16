@@ -52,12 +52,12 @@ interface Payment {
 }
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Pending", variant: "secondary" },
-  processing: { label: "Processing", variant: "outline" },
-  succeeded: { label: "Succeeded", variant: "default" },
-  failed: { label: "Failed", variant: "destructive" },
-  refunded: { label: "Refunded", variant: "secondary" },
-  partially_refunded: { label: "Partially Refunded", variant: "outline" },
+  pending: { label: "En attente", variant: "secondary" },
+  processing: { label: "En cours", variant: "outline" },
+  succeeded: { label: "Réussi", variant: "default" },
+  failed: { label: "Échoué", variant: "destructive" },
+  refunded: { label: "Remboursé", variant: "secondary" },
+  partially_refunded: { label: "Partiellement remboursé", variant: "outline" },
 }
 
 const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }> = {
@@ -65,7 +65,7 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   sumup: { label: "SumUp", color: "bg-blue-100 text-blue-800" },
   paypal: { label: "PayPal", color: "bg-sky-100 text-sky-800" },
   square: { label: "Square", color: "bg-gray-100 text-gray-800" },
-  cash: { label: "Cash", color: "bg-green-100 text-green-800" },
+  cash: { label: "Espèces", color: "bg-green-100 text-green-800" },
 }
 
 interface PaymentsContentProps {
@@ -104,7 +104,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
   if (!storeId) {
     return (
       <div className="flex items-center justify-center h-[400px]">
-        <p className="text-muted-foreground">Please select a store</p>
+        <p className="text-muted-foreground">Veuillez sélectionner un établissement</p>
       </div>
     )
   }
@@ -114,9 +114,9 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
       {!embedded && (
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Payments</h1>
+            <h1 className="text-3xl font-bold">Paiements</h1>
             <p className="text-muted-foreground mt-2">
-              View payment transactions and manage refunds.
+              Consultez les transactions et gérez les remboursements.
             </p>
           </div>
         </div>
@@ -125,36 +125,36 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
       {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Status:</label>
+          <label className="text-sm font-medium">Statut :</label>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="succeeded">Succeeded</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="refunded">Refunded</SelectItem>
-              <SelectItem value="partially_refunded">Partially Refunded</SelectItem>
+              <SelectItem value="all">Tous les statuts</SelectItem>
+              <SelectItem value="pending">En attente</SelectItem>
+              <SelectItem value="processing">En cours</SelectItem>
+              <SelectItem value="succeeded">Réussi</SelectItem>
+              <SelectItem value="failed">Échoué</SelectItem>
+              <SelectItem value="refunded">Remboursé</SelectItem>
+              <SelectItem value="partially_refunded">Partiellement remboursé</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Provider:</label>
+          <label className="text-sm font-medium">Fournisseur :</label>
           <Select value={providerFilter} onValueChange={setProviderFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Providers</SelectItem>
+              <SelectItem value="all">Tous les fournisseurs</SelectItem>
               <SelectItem value="stripe">Stripe</SelectItem>
               <SelectItem value="sumup">SumUp</SelectItem>
               <SelectItem value="paypal">PayPal</SelectItem>
               <SelectItem value="square">Square</SelectItem>
-              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="cash">Espèces</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -170,7 +170,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
       ) : filteredPayments.length === 0 ? (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">No payments found</p>
+            <p className="text-muted-foreground">Aucun paiement trouvé</p>
           </CardContent>
         </Card>
       ) : (
@@ -179,11 +179,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Provider</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Details</TableHead>
+                <TableHead>N° commande</TableHead>
+                <TableHead>Montant</TableHead>
+                <TableHead>Fournisseur</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Détails</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -208,7 +208,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
                       {formatPrice(payment.amount, payment.currency)}
                       {payment.refundedAmount && payment.refundedAmount > 0 && (
                         <div className="text-xs text-muted-foreground">
-                          Refunded: {formatPrice(payment.refundedAmount, payment.currency)}
+                          Remboursé : {formatPrice(payment.refundedAmount, payment.currency)}
                         </div>
                       )}
                     </TableCell>
@@ -236,7 +236,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
                         <div className="font-mono text-xs">{payment.externalId.slice(0, 16)}...</div>
                       )}
                       {payment.refundReason && (
-                        <div className="text-xs italic">Reason: {payment.refundReason}</div>
+                        <div className="text-xs italic">Motif : {payment.refundReason}</div>
                       )}
                     </TableCell>
 
@@ -265,7 +265,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
                             onClick={() => setRefundingPayment(payment)}
                           >
                             <RotateCcw className="mr-2 h-4 w-4" />
-                            Refund
+                            Rembourser
                           </Button>
                         )}
                       </div>

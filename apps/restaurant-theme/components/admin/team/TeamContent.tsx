@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { PlusIcon, UserIcon, MoreVerticalIcon, TrashIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import {
   Dialog,
   DialogContent,
@@ -42,10 +43,10 @@ import { EmptyState } from "@/components/admin/EmptyState"
 type Role = "manager" | "kitchen" | "waiter" | "delivery"
 
 const roleConfig: Record<Role, { label: string; color: string }> = {
-  manager: { label: "Manager", color: "bg-primary text-primary-foreground" },
-  kitchen: { label: "Kitchen", color: "bg-orange-500 text-white" },
-  waiter: { label: "Waiter", color: "bg-blue-500 text-white" },
-  delivery: { label: "Delivery", color: "bg-green-500 text-white" },
+  manager: { label: "Gérant", color: "bg-primary text-primary-foreground" },
+  kitchen: { label: "Cuisine", color: "bg-orange-500 text-white" },
+  waiter: { label: "Serveur", color: "bg-blue-500 text-white" },
+  delivery: { label: "Livreur", color: "bg-green-500 text-white" },
 }
 
 export function TeamContent() {
@@ -66,7 +67,7 @@ export function TeamContent() {
 
   const handleAddMember = async () => {
     if (!storeId || !userId || !role) {
-      toast.error("Please fill all required fields")
+      toast.error("Veuillez remplir tous les champs requis")
       return
     }
 
@@ -78,13 +79,13 @@ export function TeamContent() {
         permissions,
         isActive: true,
       })
-      toast.success("Team member added successfully")
+      toast.success("Membre ajouté avec succès")
       setIsAddDialogOpen(false)
       setUserId("")
       setRole("waiter")
       setPermissions([])
     } catch (error) {
-      toast.error("Failed to add team member")
+      toast.error("Échec de l'ajout du membre")
       console.error(error)
     }
   }
@@ -92,9 +93,9 @@ export function TeamContent() {
   const handleToggleActive = async (id: Id<"teamMembers">) => {
     try {
       await toggleActive({ id })
-      toast.success("Status updated successfully")
+      toast.success("Statut mis à jour avec succès")
     } catch (error) {
-      toast.error("Failed to update status")
+      toast.error("Échec de la mise à jour du statut")
       console.error(error)
     }
   }
@@ -102,9 +103,9 @@ export function TeamContent() {
   const handleRemoveMember = async (id: Id<"teamMembers">) => {
     try {
       await removeMember({ id })
-      toast.success("Team member removed successfully")
+      toast.success("Membre supprimé avec succès")
     } catch (error) {
-      toast.error("Failed to remove team member")
+      toast.error("Échec de la suppression du membre")
       console.error(error)
     }
   }
@@ -113,8 +114,8 @@ export function TeamContent() {
     return (
       <EmptyState
         icon={UserIcon}
-        title="No store selected"
-        description="Please select a store to manage team members"
+        title="Aucun établissement sélectionné"
+        description="Veuillez sélectionner un établissement pour gérer l'équipe"
       />
     )
   }
@@ -127,55 +128,57 @@ export function TeamContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Team Management</h1>
+          <h1 className="text-3xl font-bold">Gestion de l'équipe</h1>
           <p className="text-muted-foreground mt-2">
-            Manage staff accounts and permissions
+            Gérez les comptes du personnel et les permissions
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <PlusIcon className="mr-2 h-4 w-4" />
-              Add Member
+              Ajouter un membre
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Team Member</DialogTitle>
+              <DialogTitle>Ajouter un membre</DialogTitle>
               <DialogDescription>
-                Add a new staff member to your team
+                Ajoutez un nouveau membre à votre équipe
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="userId">User ID</Label>
+                <Label htmlFor="userId">ID utilisateur</Label>
                 <Input
                   id="userId"
-                  placeholder="Enter user ID"
+                  placeholder="Saisir l'ID utilisateur"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role">Rôle</Label>
                 <Select value={role} onValueChange={(v) => setRole(v as Role)}>
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="kitchen">Kitchen</SelectItem>
-                    <SelectItem value="waiter">Waiter</SelectItem>
-                    <SelectItem value="delivery">Delivery</SelectItem>
+                    <SelectItem value="manager">Gérant</SelectItem>
+                    <SelectItem value="kitchen">Cuisine</SelectItem>
+                    <SelectItem value="waiter">Serveur</SelectItem>
+                    <SelectItem value="delivery">Livreur</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddMember}>Add Member</Button>
+              <ButtonGroup>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button onClick={handleAddMember}>Ajouter un membre</Button>
+              </ButtonGroup>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -184,8 +187,8 @@ export function TeamContent() {
       {teamMembers.length === 0 ? (
         <EmptyState
           icon={UserIcon}
-          title="No team members"
-          description="Add your first team member to get started"
+          title="Aucun membre"
+          description="Ajoutez votre premier membre pour commencer"
         />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -225,14 +228,14 @@ export function TeamContent() {
                       onClick={() => handleRemoveMember(member._id)}
                     >
                       <TrashIcon className="mr-2 h-4 w-4" />
-                      Remove
+                      Supprimer
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">
                 <Label htmlFor={`active-${member._id}`} className="text-sm">
-                  Active
+                  Actif
                 </Label>
                 <Switch
                   id={`active-${member._id}`}

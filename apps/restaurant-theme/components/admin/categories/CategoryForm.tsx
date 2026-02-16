@@ -15,9 +15,9 @@ import { Switch } from "@/components/ui/switch"
 
 // Form validation schema
 const categorySchema = z.object({
-  name: z.string().min(1, "Name is required").max(100, "Name is too long"),
-  slug: z.string().min(1, "Slug is required").max(100, "Slug is too long"),
-  description: z.string().max(500, "Description is too long").optional(),
+  name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
+  slug: z.string().min(1, "Le slug est requis").max(100, "Le slug est trop long"),
+  description: z.string().max(500, "La description est trop longue").optional(),
   isActive: z.boolean(),
 })
 
@@ -81,7 +81,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
           description: data.description || undefined,
           isActive: data.isActive,
         })
-        toast.success("Category updated successfully")
+        toast.success("Catégorie mise à jour avec succès")
       } else {
         // Get the next sort order (max + 1)
         const sortOrder = 0 // This will be handled by the backend
@@ -94,12 +94,12 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
           sortOrder,
           isActive: data.isActive,
         })
-        toast.success("Category created successfully")
+        toast.success("Catégorie créée avec succès")
       }
 
       onSuccess?.()
     } catch (error) {
-      toast.error(isEditMode ? "Failed to update category" : "Failed to create category")
+      toast.error(isEditMode ? "Échec de la mise à jour de la catégorie" : "Échec de la création de la catégorie")
       console.error(error)
     }
   }
@@ -108,7 +108,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Name field */}
       <div className="space-y-2">
-        <Label htmlFor="name">Name *</Label>
+        <Label htmlFor="name">Nom *</Label>
         <Input
           id="name"
           {...register("name")}
@@ -116,7 +116,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
             register("name").onChange(e)
             handleNameChange(e)
           }}
-          placeholder="e.g., Burgers, Desserts, Drinks"
+          placeholder="ex : Burgers, Desserts, Boissons"
         />
         {errors.name && (
           <p className="text-sm text-destructive">{errors.name.message}</p>
@@ -129,14 +129,14 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
         <Input
           id="slug"
           {...register("slug")}
-          placeholder="burgers"
+          placeholder="Identifiant URL..."
           readOnly={!isEditMode}
           className={!isEditMode ? "bg-muted" : ""}
         />
         <p className="text-xs text-muted-foreground">
           {isEditMode
-            ? "URL-friendly identifier (can be edited)"
-            : "Auto-generated from name"}
+            ? "Identifiant URL (modifiable)"
+            : "Généré automatiquement à partir du nom"}
         </p>
         {errors.slug && (
           <p className="text-sm text-destructive">{errors.slug.message}</p>
@@ -149,7 +149,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
         <Textarea
           id="description"
           {...register("description")}
-          placeholder="Optional description for this category"
+          placeholder="Description optionnelle pour cette catégorie"
           rows={3}
         />
         {errors.description && (
@@ -160,9 +160,9 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
       {/* Active status switch */}
       <div className="flex items-center justify-between">
         <div className="space-y-0.5">
-          <Label htmlFor="isActive">Active</Label>
+          <Label htmlFor="isActive">Actif</Label>
           <p className="text-sm text-muted-foreground">
-            Inactive categories won't be shown on the storefront
+            Les catégories inactives ne seront pas affichées en ligne
           </p>
         </div>
         <Switch
@@ -176,10 +176,10 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
       <div className="flex justify-end gap-2">
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting
-            ? "Saving..."
+            ? "Enregistrement..."
             : isEditMode
-            ? "Update Category"
-            : "Create Category"}
+            ? "Mettre à jour"
+            : "Créer la catégorie"}
         </Button>
       </div>
     </form>

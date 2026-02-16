@@ -63,15 +63,15 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
   const removeProduct = useMutation(api.products.remove)
 
   const getCategoryName = (categoryId: Id<"categories">) => {
-    return categories.find((cat) => cat._id === categoryId)?.name || "Unknown"
+    return categories.find((cat) => cat._id === categoryId)?.name || "Inconnu"
   }
 
   const handleToggleStatus = async (productId: Id<"products">) => {
     try {
       await toggleStatus({ id: productId })
-      toast.success("Product status updated")
+      toast.success("Statut du produit mis à jour")
     } catch (error) {
-      toast.error("Failed to update product status")
+      toast.error("Échec de la mise à jour du statut")
       console.error(error)
     }
   }
@@ -81,11 +81,11 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 
     try {
       await removeProduct({ id: productToDelete })
-      toast.success("Product deleted successfully")
+      toast.success("Produit supprimé avec succès")
       setDeleteDialogOpen(false)
       setProductToDelete(null)
     } catch (error) {
-      toast.error("Failed to delete product")
+      toast.error("Échec de la suppression du produit")
       console.error(error)
     }
   }
@@ -102,11 +102,11 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[100px]">Image</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Price</TableHead>
+              <TableHead>Nom</TableHead>
+              <TableHead>Catégorie</TableHead>
+              <TableHead>Prix</TableHead>
               <TableHead>Stock</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -114,7 +114,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
             {products.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8">
-                  <p className="text-muted-foreground">No products to display</p>
+                  <p className="text-muted-foreground">Aucun produit à afficher</p>
                 </TableCell>
               </TableRow>
             ) : (
@@ -132,7 +132,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-                          No image
+                          Sans image
                         </div>
                       )}
                     </div>
@@ -149,7 +149,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                       )}
                       {product.isFeatured && (
                         <Badge variant="secondary" className="text-xs">
-                          Featured
+                          En vedette
                         </Badge>
                       )}
                     </div>
@@ -171,16 +171,16 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                   <TableCell>
                     {product.stock?.tracked ? (
                       <div className="text-sm">
-                        <div>{product.stock.quantity} units</div>
+                        <div>{product.stock.quantity} unités</div>
                         {product.stock.quantity <= product.stock.lowStockThreshold && (
                           <Badge variant="destructive" className="text-xs mt-1">
-                            Low stock
+                            Stock faible
                           </Badge>
                         )}
                       </div>
                     ) : (
                       <span className="text-muted-foreground text-sm">
-                        Not tracked
+                        Non suivi
                       </span>
                     )}
                   </TableCell>
@@ -188,7 +188,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                   {/* Status */}
                   <TableCell>
                     <Badge variant={product.isActive ? "default" : "secondary"}>
-                      {product.isActive ? "Active" : "Inactive"}
+                      {product.isActive ? "Actif" : "Inactif"}
                     </Badge>
                   </TableCell>
 
@@ -207,7 +207,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                         <DropdownMenuItem asChild>
                           <Link href={`/products/${product._id}`}>
                             <Edit className="mr-2 h-4 w-4" />
-                            Edit
+                            Modifier
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
@@ -216,12 +216,12 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                           {product.isActive ? (
                             <>
                               <EyeOff className="mr-2 h-4 w-4" />
-                              Deactivate
+                              Désactiver
                             </>
                           ) : (
                             <>
                               <Eye className="mr-2 h-4 w-4" />
-                              Activate
+                              Activer
                             </>
                           )}
                         </DropdownMenuItem>
@@ -231,7 +231,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                           className="text-destructive"
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
+                          Supprimer
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -248,8 +248,8 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDelete}
-        title="Delete Product"
-        description="Are you sure you want to delete this product? This action cannot be undone."
+        title="Supprimer le produit"
+        description="Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible."
       />
     </>
   )
