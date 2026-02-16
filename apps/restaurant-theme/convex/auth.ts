@@ -16,7 +16,31 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      minPasswordLength: 6,
+      sendResetPassword: async ({ user, url }) => {
+        const siteUrl = process.env.SITE_URL;
+        const secret = process.env.BETTER_AUTH_SECRET;
+        if (!siteUrl || !secret) return;
+
+        await fetch(`${siteUrl}/api/email/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${secret}`,
+          },
+          body: JSON.stringify({
+            type: "passwordReset",
+            to: user.email,
+            data: {
+              resetLink: url,
+              expirationTime: "1 hour",
+              userName: user.name ?? user.email,
+            },
+          }),
+        });
+      },
     },
+    trustedOrigins: ["http://localhost:3000"],
     plugins: [convex({ authConfig })],
   });
 };

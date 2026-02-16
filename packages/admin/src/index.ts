@@ -6,7 +6,13 @@
  */
 
 // Components
-export { AuthGuard, AppSidebar, AdminHeader } from "./components"
+export {
+  AuthGuard,
+  AppSidebar,
+  AdminHeader,
+  ForgotPasswordForm,
+  ResetPasswordForm
+} from "./components"
 
 // Store
 export { useAdminAuthStore } from "./stores/admin-auth-store"
