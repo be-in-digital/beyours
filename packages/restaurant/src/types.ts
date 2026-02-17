@@ -10,9 +10,7 @@ export type {
   // Store types
   StoreDoc,
   StoreStatus,
-  StoreSettings,
-  StoreBranding,
-  StoreIntegrations,
+  StoreOverrides,
   Address,
   BusinessHours,
 

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { toast } from "sonner"
-import { useState, use } from "react"
+import { useState, use, useEffect } from "react"
 import { Button } from "@beindigital-engine/ui"
 import { Input } from "@beindigital-engine/ui"
 import { Label } from "@beindigital-engine/ui"
@@ -15,32 +15,65 @@ import {
   SelectValue,
 } from "@beindigital-engine/ui"
 import { Switch } from "@beindigital-engine/ui"
+import { Checkbox } from "@beindigital-engine/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
+import { Badge } from "@beindigital-engine/ui"
 import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { centsToEuros, eurosToCents } from "../../lib/formatters"
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
-const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-const dayNames: Record<string, string> = {
-  monday: "Lundi",
-  tuesday: "Mardi",
-  wednesday: "Mercredi",
-  thursday: "Jeudi",
-  friday: "Vendredi",
-  saturday: "Samedi",
-  sunday: "Dimanche",
+// Day mapping: 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
+
+// Display order: Monday to Sunday
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
+
+type DayHours = {
+  day: number
+  open: string
+  close: string
+  isClosed: boolean
+}
+
+type StoreOverrides = {
+  services?: {
+    dineIn?: boolean
+    takeaway?: boolean
+    delivery?: boolean
+    clickAndCollect?: boolean
+  }
+  minimumOrderAmount?: number
+  deliveryRadius?: number
+  deliveryFee?: number
+  deliveryFreeAbove?: number
+}
+
+type StoreIntegration = {
+  _id: string
+  storeId: string
+  platform: "uberEats" | "deliveroo"
+  platformStoreId: string
+  syncMenu: boolean
+  autoAccept: boolean
+  enabled: boolean
 }
 
 export function StoreDetailPage({ params }: { params: Promise<{ storeId: string }> }) {
   const { storeId } = use(params)
   const { api } = useAdminApiStore()
   const store = useQuery(api.stores.getById, { id: storeId as string })
+  const globalSettings = useQuery(api.globalSettings.get)
+  const storeIntegrations = useQuery(api.storeIntegrations.listByStore, { storeId: storeId as string })
+
   const updateStore = useMutation(api.stores.update)
   const updateAddressMutation = useMutation(api.stores.updateAddress)
   const updateHours = useMutation(api.stores.updateHours)
-  const updateBranding = useMutation(api.stores.updateBranding)
-  const updateSettings = useMutation(api.stores.updateSettings)
+  const updateOverrides = useMutation(api.stores.updateOverrides)
+  const upsertIntegration = useMutation(api.storeIntegrations.upsert)
+  const removeIntegration = useMutation(api.storeIntegrations.remove)
 
   // General tab state
   const [name, setName] = useState("")
@@ -48,9 +81,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const [description, setDescription] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
-  const [status, setStatus] = useState("open")
-
-  // Address tab state
+  const [status, setStatus] = useState<"draft" | "open" | "closed" | "temporarily_unavailable">("draft")
   const [address, setAddress] = useState<AddressValue>({
     street: "",
     city: "",
@@ -59,36 +90,47 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   })
 
   // Hours tab state
-  const [hours, setHours] = useState<Array<{ day: string; open: string; close: string; isClosed: boolean }>>([])
+  const [useGlobalHours, setUseGlobalHours] = useState(true)
+  const [hours, setHours] = useState<DayHours[]>([])
 
-  // Branding tab state
-  const [primaryColor, setPrimaryColor] = useState("#000000")
-  const [secondaryColor, setSecondaryColor] = useState("#ffffff")
-  const [accentColor, setAccentColor] = useState("#0066cc")
-  const [logoUrl, setLogoUrl] = useState("")
-  const [faviconUrl, setFaviconUrl] = useState("")
-  const [fontHeading, setFontHeading] = useState("Inter")
-  const [fontBody, setFontBody] = useState("Inter")
+  // Settings tab state - override toggles
+  const [customizeServices, setCustomizeServices] = useState(false)
+  const [customizeMinOrder, setCustomizeMinOrder] = useState(false)
+  const [customizeDeliveryRadius, setCustomizeDeliveryRadius] = useState(false)
+  const [customizeDeliveryFee, setCustomizeDeliveryFee] = useState(false)
+  const [customizeDeliveryFree, setCustomizeDeliveryFree] = useState(false)
 
-  // Settings tab state
-  const [currency, setCurrency] = useState("EUR")
-  const [timezone, setTimezone] = useState("Europe/Paris")
-  const [deliveryEnabled, setDeliveryEnabled] = useState(true)
-  const [pickupEnabled, setPickupEnabled] = useState(true)
-  const [dineInEnabled, setDineInEnabled] = useState(true)
+  // Settings tab state - values
+  const [dineIn, setDineIn] = useState(true)
+  const [takeaway, setTakeaway] = useState(true)
+  const [delivery, setDelivery] = useState(true)
+  const [clickAndCollect, setClickAndCollect] = useState(true)
   const [minimumOrderAmount, setMinimumOrderAmount] = useState("")
-  const [deliveryFee, setDeliveryFee] = useState("")
   const [deliveryRadius, setDeliveryRadius] = useState("")
-  const [taxRate, setTaxRate] = useState("")
+  const [deliveryFee, setDeliveryFee] = useState("")
+  const [deliveryFreeAbove, setDeliveryFreeAbove] = useState("")
+
+  // Integrations tab state
+  const [uberEatsStoreId, setUberEatsStoreId] = useState("")
+  const [uberEatsSyncMenu, setUberEatsSyncMenu] = useState(false)
+  const [uberEatsAutoAccept, setUberEatsAutoAccept] = useState(false)
+  const [uberEatsEnabled, setUberEatsEnabled] = useState(false)
+
+  const [deliverooStoreId, setDeliverooStoreId] = useState("")
+  const [deliverooSyncMenu, setDeliverooSyncMenu] = useState(false)
+  const [deliverooAutoAccept, setDeliverooAutoAccept] = useState(false)
+  const [deliverooEnabled, setDeliverooEnabled] = useState(false)
 
   // Initialize state when store loads
-  if (store && name === "") {
+  useEffect(() => {
+    if (!store) return
+
     setName(store.name)
     setSlug(store.slug)
     setDescription(store.description || "")
     setPhone(store.phone || "")
     setEmail(store.email || "")
-    setStatus(store.status)
+    setStatus(store.status as "draft" | "open" | "closed" | "temporarily_unavailable")
 
     if (store.address) {
       setAddress({
@@ -101,35 +143,72 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       })
     }
 
-    if (store.hours) {
-      setHours(store.hours)
+    setUseGlobalHours(store.useGlobalHours ?? true)
+
+    // Initialize hours
+    if (store.hours && Array.isArray(store.hours)) {
+      setHours(store.hours as DayHours[])
     } else {
-      // Initialize default hours
-      setHours(daysOfWeek.map(day => ({ day, open: "09:00", close: "22:00", isClosed: false })))
+      // Default hours: 9:00-22:00 for all days
+      setHours(
+        [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+          day,
+          open: "09:00",
+          close: "22:00",
+          isClosed: false,
+        }))
+      )
     }
 
-    if (store.branding) {
-      setPrimaryColor(store.branding.primaryColor || "#000000")
-      setSecondaryColor(store.branding.secondaryColor || "#ffffff")
-      setAccentColor(store.branding.accentColor || "#0066cc")
-      setLogoUrl(store.branding.logoUrl || "")
-      setFaviconUrl(store.branding.faviconUrl || "")
-      setFontHeading(store.branding.fontHeading || "Inter")
-      setFontBody(store.branding.fontBody || "Inter")
+    // Initialize overrides
+    const overrides = store.overrides as StoreOverrides | undefined
+    if (overrides) {
+      if (overrides.services) {
+        setCustomizeServices(true)
+        setDineIn(overrides.services.dineIn ?? true)
+        setTakeaway(overrides.services.takeaway ?? true)
+        setDelivery(overrides.services.delivery ?? true)
+        setClickAndCollect(overrides.services.clickAndCollect ?? true)
+      }
+      if (overrides.minimumOrderAmount !== undefined) {
+        setCustomizeMinOrder(true)
+        setMinimumOrderAmount(centsToEuros(overrides.minimumOrderAmount).toString())
+      }
+      if (overrides.deliveryRadius !== undefined) {
+        setCustomizeDeliveryRadius(true)
+        setDeliveryRadius((overrides.deliveryRadius / 1000).toString())
+      }
+      if (overrides.deliveryFee !== undefined) {
+        setCustomizeDeliveryFee(true)
+        setDeliveryFee(centsToEuros(overrides.deliveryFee).toString())
+      }
+      if (overrides.deliveryFreeAbove !== undefined) {
+        setCustomizeDeliveryFree(true)
+        setDeliveryFreeAbove(centsToEuros(overrides.deliveryFreeAbove).toString())
+      }
+    }
+  }, [store])
+
+  // Initialize integrations when loaded
+  useEffect(() => {
+    if (!storeIntegrations) return
+
+    const uberEats = storeIntegrations.find((i: StoreIntegration) => i.platform === "uberEats")
+    if (uberEats) {
+      setUberEatsStoreId(uberEats.platformStoreId)
+      setUberEatsSyncMenu(uberEats.syncMenu)
+      setUberEatsAutoAccept(uberEats.autoAccept)
+      setUberEatsEnabled(uberEats.enabled)
     }
 
-    if (store.settings) {
-      setCurrency(store.settings.currency)
-      setTimezone(store.settings.timezone)
-      setDeliveryEnabled(store.settings.deliveryEnabled)
-      setPickupEnabled(store.settings.pickupEnabled)
-      setDineInEnabled(store.settings.dineInEnabled)
-      setMinimumOrderAmount(String(store.settings.minimumOrderAmount || 1000))
-      setDeliveryFee(String(store.settings.deliveryFee || 300))
-      setDeliveryRadius(String(store.settings.deliveryRadius || 5000))
-      setTaxRate(String(store.settings.taxRate || 10))
+    const deliveroo = storeIntegrations.find((i: StoreIntegration) => i.platform === "deliveroo")
+    if (deliveroo) {
+      setDeliverooStoreId(deliveroo.platformStoreId)
+      setDeliverooSyncMenu(deliveroo.syncMenu)
+      setDeliverooAutoAccept(deliveroo.autoAccept)
+      setDeliverooEnabled(deliveroo.enabled)
     }
-  }
+  }, [storeIntegrations])
 
   const handleUpdateGeneral = async () => {
     try {
@@ -141,16 +220,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         phone: phone || undefined,
         email: email || undefined,
         status,
+        useGlobalHours,
       })
-      toast.success("Établissement mis à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour de l'établissement")
-      console.error(error)
-    }
-  }
 
-  const handleUpdateAddress = async () => {
-    try {
       await updateAddressMutation({
         id: storeId as string,
         address: {
@@ -162,19 +234,28 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           longitude: address.longitude,
         },
       })
-      toast.success("Adresse mise à jour avec succès")
+
+      toast.success("Informations générales mises à jour avec succès")
     } catch (error) {
-      toast.error("Échec de la mise à jour de l'adresse")
+      toast.error("Échec de la mise à jour")
       console.error(error)
     }
   }
 
   const handleUpdateHours = async () => {
     try {
-      await updateHours({
+      await updateStore({
         id: storeId as string,
-        hours,
+        useGlobalHours,
       })
+
+      if (!useGlobalHours) {
+        await updateHours({
+          id: storeId as string,
+          hours,
+        })
+      }
+
       toast.success("Horaires mis à jour avec succès")
     } catch (error) {
       toast.error("Échec de la mise à jour des horaires")
@@ -182,43 +263,66 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     }
   }
 
-  const handleUpdateBranding = async () => {
-    try {
-      await updateBranding({
-        id: storeId as string,
-        branding: {
-          primaryColor,
-          secondaryColor,
-          accentColor,
-          logoUrl: logoUrl || undefined,
-          faviconUrl: faviconUrl || undefined,
-          fontHeading,
-          fontBody,
-        },
-      })
-      toast.success("Identité visuelle mise à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour de l'identité visuelle")
-      console.error(error)
-    }
+  const handleSetAllWeekdays = () => {
+    const mondayHours = hours.find((h) => h.day === 1)
+    if (!mondayHours) return
+
+    const newHours = hours.map((h) => {
+      if (h.day >= 1 && h.day <= 5) {
+        return { ...h, open: mondayHours.open, close: mondayHours.close, isClosed: mondayHours.isClosed }
+      }
+      return h
+    })
+    setHours(newHours)
+  }
+
+  const handleSetAllDays = () => {
+    const mondayHours = hours.find((h) => h.day === 1)
+    if (!mondayHours) return
+
+    const newHours = hours.map((h) => ({
+      ...h,
+      open: mondayHours.open,
+      close: mondayHours.close,
+      isClosed: mondayHours.isClosed,
+    }))
+    setHours(newHours)
   }
 
   const handleUpdateSettings = async () => {
     try {
-      await updateSettings({
+      const overrides: StoreOverrides = {}
+
+      if (customizeServices) {
+        overrides.services = {
+          dineIn,
+          takeaway,
+          delivery,
+          clickAndCollect,
+        }
+      }
+
+      if (customizeMinOrder && minimumOrderAmount) {
+        overrides.minimumOrderAmount = eurosToCents(parseFloat(minimumOrderAmount))
+      }
+
+      if (customizeDeliveryRadius && deliveryRadius) {
+        overrides.deliveryRadius = Math.round(parseFloat(deliveryRadius) * 1000)
+      }
+
+      if (customizeDeliveryFee && deliveryFee) {
+        overrides.deliveryFee = eurosToCents(parseFloat(deliveryFee))
+      }
+
+      if (customizeDeliveryFree && deliveryFreeAbove) {
+        overrides.deliveryFreeAbove = eurosToCents(parseFloat(deliveryFreeAbove))
+      }
+
+      await updateOverrides({
         id: storeId as string,
-        settings: {
-          currency,
-          timezone,
-          deliveryEnabled,
-          pickupEnabled,
-          dineInEnabled,
-          minimumOrderAmount: parseInt(minimumOrderAmount),
-          deliveryFee: parseInt(deliveryFee),
-          deliveryRadius: parseInt(deliveryRadius),
-          taxRate: parseInt(taxRate),
-        },
+        overrides,
       })
+
       toast.success("Paramètres mis à jour avec succès")
     } catch (error) {
       toast.error("Échec de la mise à jour des paramètres")
@@ -226,9 +330,114 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     }
   }
 
+  const handleSaveUberEats = async () => {
+    try {
+      if (!uberEatsStoreId.trim()) {
+        toast.error("Veuillez saisir l'ID du restaurant Uber Eats")
+        return
+      }
+
+      await upsertIntegration({
+        storeId: storeId as string,
+        platform: "uberEats",
+        platformStoreId: uberEatsStoreId,
+        syncMenu: uberEatsSyncMenu,
+        autoAccept: uberEatsAutoAccept,
+        enabled: uberEatsEnabled,
+      })
+
+      toast.success("Intégration Uber Eats enregistrée")
+    } catch (error) {
+      toast.error("Échec de l'enregistrement Uber Eats")
+      console.error(error)
+    }
+  }
+
+  const handleSaveDeliveroo = async () => {
+    try {
+      if (!deliverooStoreId.trim()) {
+        toast.error("Veuillez saisir l'ID du restaurant Deliveroo")
+        return
+      }
+
+      await upsertIntegration({
+        storeId: storeId as string,
+        platform: "deliveroo",
+        platformStoreId: deliverooStoreId,
+        syncMenu: deliverooSyncMenu,
+        autoAccept: deliverooAutoAccept,
+        enabled: deliverooEnabled,
+      })
+
+      toast.success("Intégration Deliveroo enregistrée")
+    } catch (error) {
+      toast.error("Échec de l'enregistrement Deliveroo")
+      console.error(error)
+    }
+  }
+
+  const handleRemoveUberEats = async () => {
+    try {
+      const integration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "uberEats")
+      if (!integration) return
+
+      await removeIntegration({ id: integration._id })
+      setUberEatsStoreId("")
+      setUberEatsSyncMenu(false)
+      setUberEatsAutoAccept(false)
+      setUberEatsEnabled(false)
+      toast.success("Intégration Uber Eats supprimée")
+    } catch (error) {
+      toast.error("Échec de la suppression")
+      console.error(error)
+    }
+  }
+
+  const handleRemoveDeliveroo = async () => {
+    try {
+      const integration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
+      if (!integration) return
+
+      await removeIntegration({ id: integration._id })
+      setDeliverooStoreId("")
+      setDeliverooSyncMenu(false)
+      setDeliverooAutoAccept(false)
+      setDeliverooEnabled(false)
+      toast.success("Intégration Deliveroo supprimée")
+    } catch (error) {
+      toast.error("Échec de la suppression")
+      console.error(error)
+    }
+  }
+
   if (!store) {
     return <LoadingState />
   }
+
+  // Check if global integrations are configured
+  const hasUberEatsGlobal = globalSettings?.integrations?.uberEats?.apiKey
+  const hasDeliverooGlobal = globalSettings?.integrations?.deliveroo?.apiKey
+
+  // Get global settings values for hints
+  const globalServices = globalSettings?.services || {
+    dineIn: true,
+    takeaway: true,
+    delivery: true,
+    clickAndCollect: true,
+  }
+  const globalMinOrder = globalSettings?.minimumOrderAmount
+    ? centsToEuros(globalSettings.minimumOrderAmount)
+    : 10
+  const globalDeliveryRadius = globalSettings?.delivery?.radius
+    ? globalSettings.delivery.radius / 1000
+    : 5
+  const globalDeliveryFee = globalSettings?.delivery?.fee ? centsToEuros(globalSettings.delivery.fee) : 3
+  const globalDeliveryFree = globalSettings?.delivery?.freeAbove
+    ? centsToEuros(globalSettings.delivery.freeAbove)
+    : 30
+
+  // Get global hours for display
+  const globalHours = globalSettings?.hours || []
 
   return (
     <div className="space-y-6">
@@ -240,12 +449,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>
           <TabsTrigger value="general">Général</TabsTrigger>
-          <TabsTrigger value="address">Adresse</TabsTrigger>
           <TabsTrigger value="hours">Horaires</TabsTrigger>
-          <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
           <TabsTrigger value="settings">Paramètres</TabsTrigger>
+          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
         </TabsList>
 
+        {/* GENERAL TAB */}
         <TabsContent value="general" className="space-y-4">
           <div className="border border-border/50 rounded-lg p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -258,10 +467,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                 <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
               </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="phone">Téléphone</Label>
@@ -272,188 +483,450 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="status">Statut</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="draft">Brouillon</SelectItem>
                   <SelectItem value="open">Ouvert</SelectItem>
                   <SelectItem value="closed">Fermé</SelectItem>
                   <SelectItem value="temporarily_unavailable">Temporairement indisponible</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleUpdateGeneral} size="sm">Enregistrer</Button>
+
+            <div className="pt-4 border-t">
+              <h3 className="text-sm font-medium mb-4">Adresse</h3>
+              <AddressAutocomplete
+                label="Adresse de l'établissement"
+                value={address}
+                onChange={setAddress}
+                apiKey={GOOGLE_MAPS_API_KEY}
+              />
+            </div>
+
+            <Button onClick={handleUpdateGeneral} size="sm">
+              Enregistrer
+            </Button>
           </div>
         </TabsContent>
 
-        <TabsContent value="address" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <AddressAutocomplete
-              label="Adresse de l'établissement"
-              value={address}
-              onChange={setAddress}
-              apiKey={GOOGLE_MAPS_API_KEY}
-            />
-            <Button onClick={handleUpdateAddress} size="sm">Enregistrer l'adresse</Button>
-          </div>
-        </TabsContent>
-
+        {/* HOURS TAB */}
         <TabsContent value="hours" className="space-y-4">
           <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            {hours.map((dayHours, index) => (
-              <div key={dayHours.day} className="grid grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label>{dayNames[dayHours.day] || dayHours.day}</Label>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`open-${dayHours.day}`}>Ouverture</Label>
-                  <Input
-                    id={`open-${dayHours.day}`}
-                    type="time"
-                    value={dayHours.open}
-                    onChange={(e) => {
-                      const newHours = [...hours]
-                      const h = newHours[index]
-                      if (h) h.open = e.target.value
-                      setHours(newHours)
-                    }}
-                    disabled={dayHours.isClosed}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`close-${dayHours.day}`}>Fermeture</Label>
-                  <Input
-                    id={`close-${dayHours.day}`}
-                    type="time"
-                    value={dayHours.close}
-                    onChange={(e) => {
-                      const newHours = [...hours]
-                      const h = newHours[index]
-                      if (h) h.close = e.target.value
-                      setHours(newHours)
-                    }}
-                    disabled={dayHours.isClosed}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id={`closed-${dayHours.day}`}
-                    checked={dayHours.isClosed}
-                    onCheckedChange={(checked) => {
-                      const newHours = [...hours]
-                      const h = newHours[index]
-                      if (h) h.isClosed = checked
-                      setHours(newHours)
-                    }}
-                  />
-                  <Label htmlFor={`closed-${dayHours.day}`}>Fermé</Label>
-                </div>
+            <div className="flex items-center space-x-2 pb-4 border-b">
+              <Checkbox
+                id="useGlobalHours"
+                checked={useGlobalHours}
+                onCheckedChange={(checked) => setUseGlobalHours(checked === true)}
+              />
+              <Label htmlFor="useGlobalHours" className="cursor-pointer">
+                Utiliser les horaires globaux
+              </Label>
+            </div>
+
+            {useGlobalHours && globalHours.length > 0 && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-medium text-muted-foreground mb-3">Horaires globaux (lecture seule)</p>
+                {DISPLAY_ORDER.map((dayNum) => {
+                  const dayHours = globalHours.find((h: DayHours) => h.day === dayNum)
+                  if (!dayHours) return null
+                  return (
+                    <div key={dayNum} className="grid grid-cols-4 gap-4 text-sm">
+                      <div className="font-medium">{DAY_NAMES[dayNum]}</div>
+                      <div className="text-muted-foreground">
+                        {dayHours.isClosed ? "Fermé" : dayHours.open}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {dayHours.isClosed ? "" : dayHours.close}
+                      </div>
+                      <div></div>
+                    </div>
+                  )
+                })}
               </div>
-            ))}
-            <Button onClick={handleUpdateHours} size="sm">Enregistrer les horaires</Button>
+            )}
+
+            {!useGlobalHours && (
+              <>
+                <div className="flex gap-2 pb-4">
+                  <Button variant="outline" size="sm" onClick={handleSetAllWeekdays}>
+                    Lun-Ven même horaire
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleSetAllDays}>
+                    Tous les jours
+                  </Button>
+                </div>
+
+                <div className="space-y-3">
+                  {DISPLAY_ORDER.map((dayNum) => {
+                    const dayHours = hours.find((h) => h.day === dayNum)
+                    if (!dayHours) return null
+                    const index = hours.indexOf(dayHours)
+
+                    return (
+                      <div key={dayNum} className="grid grid-cols-4 gap-4 items-end">
+                        <div className="space-y-2">
+                          <Label className="font-medium">{DAY_NAMES[dayNum]}</Label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`open-${dayNum}`}>Ouverture</Label>
+                          <Input
+                            id={`open-${dayNum}`}
+                            type="time"
+                            value={dayHours.open}
+                            onChange={(e) => {
+                              const newHours = [...hours]
+                              newHours[index] = { ...dayHours, open: e.target.value }
+                              setHours(newHours)
+                            }}
+                            disabled={dayHours.isClosed}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`close-${dayNum}`}>Fermeture</Label>
+                          <Input
+                            id={`close-${dayNum}`}
+                            type="time"
+                            value={dayHours.close}
+                            onChange={(e) => {
+                              const newHours = [...hours]
+                              newHours[index] = { ...dayHours, close: e.target.value }
+                              setHours(newHours)
+                            }}
+                            disabled={dayHours.isClosed}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id={`closed-${dayNum}`}
+                            checked={dayHours.isClosed}
+                            onCheckedChange={(checked) => {
+                              const newHours = [...hours]
+                              newHours[index] = { ...dayHours, isClosed: checked }
+                              setHours(newHours)
+                            }}
+                          />
+                          <Label htmlFor={`closed-${dayNum}`}>Fermé</Label>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            <Button onClick={handleUpdateHours} size="sm">
+              Enregistrer les horaires
+            </Button>
           </div>
         </TabsContent>
 
-        <TabsContent value="branding" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="primaryColor">Couleur primaire</Label>
-                <div className="flex gap-2">
-                  <Input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-20" />
-                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="secondaryColor">Couleur secondaire</Label>
-                <div className="flex gap-2">
-                  <Input id="secondaryColor" type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-20" />
-                  <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="accentColor">Couleur d'accent</Label>
-                <div className="flex gap-2">
-                  <Input id="accentColor" type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-20" />
-                  <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="logoUrl">URL du logo</Label>
-                <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="faviconUrl">URL du favicon</Label>
-                <Input id="faviconUrl" value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fontHeading">Police des titres</Label>
-                <Input id="fontHeading" value={fontHeading} onChange={(e) => setFontHeading(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fontBody">Police du texte</Label>
-                <Input id="fontBody" value={fontBody} onChange={(e) => setFontBody(e.target.value)} />
-              </div>
-            </div>
-            <Button onClick={handleUpdateBranding} size="sm">Enregistrer l'identité visuelle</Button>
-          </div>
-        </TabsContent>
-
+        {/* SETTINGS TAB */}
         <TabsContent value="settings" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Devise</Label>
-                <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+          <div className="border border-border/50 rounded-lg p-6 space-y-6">
+            {/* Services */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customizeServices"
+                  checked={customizeServices}
+                  onCheckedChange={(checked) => setCustomizeServices(checked === true)}
+                />
+                <Label htmlFor="customizeServices" className="cursor-pointer font-medium">
+                  Personnaliser les services
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Fuseau horaire</Label>
-                <Input id="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-              </div>
+              {!customizeServices && (
+                <p className="text-sm text-muted-foreground">
+                  Global: Sur place ({globalServices.dineIn ? "Oui" : "Non"}), À emporter (
+                  {globalServices.takeaway ? "Oui" : "Non"}), Livraison ({globalServices.delivery ? "Oui" : "Non"}),
+                  Click & Collect ({globalServices.clickAndCollect ? "Oui" : "Non"})
+                </p>
+              )}
+              {customizeServices && (
+                <div className="pl-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="dineIn">Sur place</Label>
+                    <Switch id="dineIn" checked={dineIn} onCheckedChange={setDineIn} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="takeaway">À emporter</Label>
+                    <Switch id="takeaway" checked={takeaway} onCheckedChange={setTakeaway} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="delivery">Livraison</Label>
+                    <Switch id="delivery" checked={delivery} onCheckedChange={setDelivery} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="clickAndCollect">Click & Collect</Label>
+                    <Switch id="clickAndCollect" checked={clickAndCollect} onCheckedChange={setClickAndCollect} />
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="deliveryEnabled">Livraison activée</Label>
-                <Switch id="deliveryEnabled" checked={deliveryEnabled} onCheckedChange={setDeliveryEnabled} />
+
+            {/* Minimum Order */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customizeMinOrder"
+                  checked={customizeMinOrder}
+                  onCheckedChange={(checked) => setCustomizeMinOrder(checked === true)}
+                />
+                <Label htmlFor="customizeMinOrder" className="cursor-pointer font-medium">
+                  Personnaliser la commande minimum
+                </Label>
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="pickupEnabled">Click & Collect activé</Label>
-                <Switch id="pickupEnabled" checked={pickupEnabled} onCheckedChange={setPickupEnabled} />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="dineInEnabled">Sur place activé</Label>
-                <Switch id="dineInEnabled" checked={dineInEnabled} onCheckedChange={setDineInEnabled} />
-              </div>
+              {!customizeMinOrder && (
+                <p className="text-sm text-muted-foreground">Global: {globalMinOrder} €</p>
+              )}
+              {customizeMinOrder && (
+                <div className="pl-6 space-y-2">
+                  <Label htmlFor="minimumOrderAmount">Commande minimum (€)</Label>
+                  <Input
+                    id="minimumOrderAmount"
+                    type="number"
+                    step="0.01"
+                    value={minimumOrderAmount}
+                    onChange={(e) => setMinimumOrderAmount(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minimumOrderAmount">Commande minimum (centimes)</Label>
-                <Input id="minimumOrderAmount" type="number" value={minimumOrderAmount} onChange={(e) => setMinimumOrderAmount(e.target.value)} />
+
+            {/* Delivery Radius */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customizeDeliveryRadius"
+                  checked={customizeDeliveryRadius}
+                  onCheckedChange={(checked) => setCustomizeDeliveryRadius(checked === true)}
+                />
+                <Label htmlFor="customizeDeliveryRadius" className="cursor-pointer font-medium">
+                  Personnaliser le rayon de livraison
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="deliveryFee">Frais de livraison (centimes)</Label>
-                <Input id="deliveryFee" type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
-              </div>
+              {!customizeDeliveryRadius && (
+                <p className="text-sm text-muted-foreground">Global: {globalDeliveryRadius} km</p>
+              )}
+              {customizeDeliveryRadius && (
+                <div className="pl-6 space-y-2">
+                  <Label htmlFor="deliveryRadius">Rayon de livraison (km)</Label>
+                  <Input
+                    id="deliveryRadius"
+                    type="number"
+                    step="0.1"
+                    value={deliveryRadius}
+                    onChange={(e) => setDeliveryRadius(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="deliveryRadius">Rayon de livraison (mètres)</Label>
-                <Input id="deliveryRadius" type="number" value={deliveryRadius} onChange={(e) => setDeliveryRadius(e.target.value)} />
+
+            {/* Delivery Fee */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customizeDeliveryFee"
+                  checked={customizeDeliveryFee}
+                  onCheckedChange={(checked) => setCustomizeDeliveryFee(checked === true)}
+                />
+                <Label htmlFor="customizeDeliveryFee" className="cursor-pointer font-medium">
+                  Personnaliser les frais de livraison
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="taxRate">Taux de TVA (%)</Label>
-                <Input id="taxRate" type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
-              </div>
+              {!customizeDeliveryFee && (
+                <p className="text-sm text-muted-foreground">Global: {globalDeliveryFee} €</p>
+              )}
+              {customizeDeliveryFee && (
+                <div className="pl-6 space-y-2">
+                  <Label htmlFor="deliveryFee">Frais de livraison (€)</Label>
+                  <Input
+                    id="deliveryFee"
+                    type="number"
+                    step="0.01"
+                    value={deliveryFee}
+                    onChange={(e) => setDeliveryFee(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-            <Button onClick={handleUpdateSettings} size="sm">Enregistrer les paramètres</Button>
+
+            {/* Delivery Free Above */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="customizeDeliveryFree"
+                  checked={customizeDeliveryFree}
+                  onCheckedChange={(checked) => setCustomizeDeliveryFree(checked === true)}
+                />
+                <Label htmlFor="customizeDeliveryFree" className="cursor-pointer font-medium">
+                  Personnaliser la livraison gratuite à partir de
+                </Label>
+              </div>
+              {!customizeDeliveryFree && (
+                <p className="text-sm text-muted-foreground">Global: {globalDeliveryFree} €</p>
+              )}
+              {customizeDeliveryFree && (
+                <div className="pl-6 space-y-2">
+                  <Label htmlFor="deliveryFreeAbove">Livraison gratuite à partir de (€)</Label>
+                  <Input
+                    id="deliveryFreeAbove"
+                    type="number"
+                    step="0.01"
+                    value={deliveryFreeAbove}
+                    onChange={(e) => setDeliveryFreeAbove(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button onClick={handleUpdateSettings} size="sm">
+              Enregistrer les paramètres
+            </Button>
           </div>
+        </TabsContent>
+
+        {/* INTEGRATIONS TAB */}
+        <TabsContent value="integrations" className="space-y-4">
+          {/* Uber Eats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Uber Eats</CardTitle>
+              <CardDescription>Configuration de l'intégration Uber Eats pour cet établissement</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!hasUberEatsGlobal ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    Configurez d'abord Uber Eats dans les Paramètres Globaux
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="uberEatsStoreId">ID du restaurant Uber Eats</Label>
+                    <Input
+                      id="uberEatsStoreId"
+                      value={uberEatsStoreId}
+                      onChange={(e) => setUberEatsStoreId(e.target.value)}
+                      placeholder="12345678-abcd-efgh-ijkl-mnopqrstuvwx"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="uberEatsSyncMenu">Synchroniser le menu</Label>
+                    <Switch
+                      id="uberEatsSyncMenu"
+                      checked={uberEatsSyncMenu}
+                      onCheckedChange={setUberEatsSyncMenu}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="uberEatsAutoAccept">Acceptation automatique des commandes</Label>
+                    <Switch
+                      id="uberEatsAutoAccept"
+                      checked={uberEatsAutoAccept}
+                      onCheckedChange={setUberEatsAutoAccept}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="uberEatsEnabled">Intégration activée</Label>
+                    <Switch
+                      id="uberEatsEnabled"
+                      checked={uberEatsEnabled}
+                      onCheckedChange={setUberEatsEnabled}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveUberEats} size="sm">
+                      Enregistrer
+                    </Button>
+                    {storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
+                      <Button onClick={handleRemoveUberEats} size="sm" variant="destructive">
+                        Supprimer
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Deliveroo */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Deliveroo</CardTitle>
+              <CardDescription>Configuration de l'intégration Deliveroo pour cet établissement</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!hasDeliverooGlobal ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    Configurez d'abord Deliveroo dans les Paramètres Globaux
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="deliverooStoreId">ID du restaurant Deliveroo</Label>
+                    <Input
+                      id="deliverooStoreId"
+                      value={deliverooStoreId}
+                      onChange={(e) => setDeliverooStoreId(e.target.value)}
+                      placeholder="87654321-zyxw-vutr-sqpo-nmlkjihgfed"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="deliverooSyncMenu">Synchroniser le menu</Label>
+                    <Switch
+                      id="deliverooSyncMenu"
+                      checked={deliverooSyncMenu}
+                      onCheckedChange={setDeliverooSyncMenu}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="deliverooAutoAccept">Acceptation automatique des commandes</Label>
+                    <Switch
+                      id="deliverooAutoAccept"
+                      checked={deliverooAutoAccept}
+                      onCheckedChange={setDeliverooAutoAccept}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="deliverooEnabled">Intégration activée</Label>
+                    <Switch
+                      id="deliverooEnabled"
+                      checked={deliverooEnabled}
+                      onCheckedChange={setDeliverooEnabled}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveDeliveroo} size="sm">
+                      Enregistrer
+                    </Button>
+                    {storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
+                      <Button onClick={handleRemoveDeliveroo} size="sm" variant="destructive">
+                        Supprimer
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

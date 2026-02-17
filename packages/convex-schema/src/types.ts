@@ -1,7 +1,11 @@
 import { z } from 'zod'
 import {
+  createGlobalSettingsSchema,
+  updateGlobalSettingsSchema,
   createStoreSchema,
   updateStoreSchema,
+  createStoreIntegrationSchema,
+  updateStoreIntegrationSchema,
   createCategorySchema,
   updateCategorySchema,
   createProductSchema,
@@ -40,48 +44,73 @@ import {
  */
 
 // ============================================================================
+// GLOBAL SETTINGS TYPES
+// ============================================================================
+
+export type CreateGlobalSettingsInput = z.infer<typeof createGlobalSettingsSchema>
+export type UpdateGlobalSettingsInput = z.infer<typeof updateGlobalSettingsSchema>
+
+export type GlobalServices = {
+  dineIn: boolean
+  takeaway: boolean
+  delivery: boolean
+  clickAndCollect: boolean
+}
+
+export type GlobalDeliverySettings = {
+  radius?: number
+  fee?: number
+  freeAbove?: number
+}
+
+export type GlobalIntegrations = {
+  uberDirect?: {
+    customerId?: string
+    apiKey?: string
+    enabled: boolean
+  }
+  uberEats?: {
+    merchantId?: string
+    apiKey?: string
+    enabled: boolean
+  }
+  deliveroo?: {
+    merchantId?: string
+    apiKey?: string
+    enabled: boolean
+  }
+}
+
+// ============================================================================
 // STORE TYPES
 // ============================================================================
 
 export type CreateStoreInput = z.infer<typeof createStoreSchema>
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>
 
-export type StoreStatus = 'open' | 'closed' | 'temporarily_unavailable'
+export type StoreStatus = 'draft' | 'open' | 'closed' | 'temporarily_unavailable'
 
-export type StoreBranding = {
-  primaryColor?: string
-  secondaryColor?: string
-  accentColor?: string
-  logoUrl?: string
-  faviconUrl?: string
-  fontHeading?: string
-  fontBody?: string
-}
-
-export type StoreSettings = {
-  currency: string
-  timezone: string
-  deliveryEnabled: boolean
-  pickupEnabled: boolean
-  dineInEnabled: boolean
+export type StoreOverrides = {
+  services?: {
+    dineIn: boolean
+    takeaway: boolean
+    delivery: boolean
+    clickAndCollect: boolean
+  }
   minimumOrderAmount?: number
-  deliveryFee?: number
   deliveryRadius?: number
-  taxRate?: number
+  deliveryFee?: number
+  deliveryFreeAbove?: number
 }
 
-export type StoreIntegrations = {
-  uberEats?: {
-    enabled: boolean
-    storeId?: string
-    autoAccept: boolean
-  }
-  deliveroo?: {
-    enabled: boolean
-    storeId?: string
-    autoAccept: boolean
-  }
-}
+// ============================================================================
+// STORE INTEGRATION TYPES
+// ============================================================================
+
+export type CreateStoreIntegrationInput = z.infer<typeof createStoreIntegrationSchema>
+export type UpdateStoreIntegrationInput = z.infer<typeof updateStoreIntegrationSchema>
+
+export type IntegrationPlatform = 'uberEats' | 'deliveroo'
 
 // ============================================================================
 // CATEGORY TYPES
@@ -420,9 +449,15 @@ export type FilterParams<T> = {
  * These include the Convex-generated fields: _id, _creationTime
  */
 
+export type GlobalSettingsDoc = BaseEntity & CreateGlobalSettingsInput
+
 export type StoreDoc = BaseEntity & CreateStoreInput & {
   status: StoreStatus
   themeId?: string
+}
+
+export type StoreIntegrationDoc = BaseEntity & CreateStoreIntegrationInput & {
+  lastSyncAt?: number
 }
 
 export type CategoryDoc = BaseEntity & CreateCategoryInput & {

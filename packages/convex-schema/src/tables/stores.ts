@@ -3,7 +3,8 @@ import { v } from "convex/values"
 
 /**
  * Stores table
- * Each restaurant owner can have unlimited stores
+ * Each restaurant owner can have unlimited stores.
+ * Settings inherit from globalSettings unless overridden.
  */
 export const storesTable = defineTable({
   name: v.string(),
@@ -19,49 +20,38 @@ export const storesTable = defineTable({
   }),
   phone: v.optional(v.string()),
   email: v.optional(v.string()),
+
+  // Hours: store-specific or inherited from globalSettings
+  useGlobalHours: v.boolean(),
   hours: v.array(v.object({
-    day: v.number(), // 0=Sunday, 6=Saturday
+    day: v.number(), // 0=Sunday, 1=Monday, ..., 6=Saturday
     open: v.string(), // "09:00"
     close: v.string(), // "22:00"
     isClosed: v.boolean(),
   })),
+
   status: v.union(
+    v.literal("draft"),
     v.literal("open"),
     v.literal("closed"),
     v.literal("temporarily_unavailable")
   ),
-  branding: v.object({
-    primaryColor: v.optional(v.string()),
-    secondaryColor: v.optional(v.string()),
-    accentColor: v.optional(v.string()),
-    logoUrl: v.optional(v.string()),
-    faviconUrl: v.optional(v.string()),
-    fontHeading: v.optional(v.string()),
-    fontBody: v.optional(v.string()),
-  }),
-  settings: v.object({
-    currency: v.string(),
-    timezone: v.string(),
-    deliveryEnabled: v.boolean(),
-    pickupEnabled: v.boolean(),
-    dineInEnabled: v.boolean(),
+
+  // Optional overrides for globalSettings values
+  // If a field is present here, it overrides the global default
+  overrides: v.optional(v.object({
+    services: v.optional(v.object({
+      dineIn: v.boolean(),
+      takeaway: v.boolean(),
+      delivery: v.boolean(),
+      clickAndCollect: v.boolean(),
+    })),
     minimumOrderAmount: v.optional(v.number()),
-    deliveryFee: v.optional(v.number()),
     deliveryRadius: v.optional(v.number()),
-    taxRate: v.optional(v.number()),
-  }),
-  integrations: v.object({
-    uberEats: v.optional(v.object({
-      enabled: v.boolean(),
-      storeId: v.optional(v.string()),
-      autoAccept: v.boolean(),
-    })),
-    deliveroo: v.optional(v.object({
-      enabled: v.boolean(),
-      storeId: v.optional(v.string()),
-      autoAccept: v.boolean(),
-    })),
-  }),
+    deliveryFee: v.optional(v.number()),
+    deliveryFreeAbove: v.optional(v.number()),
+  })),
+
   themeId: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),

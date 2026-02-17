@@ -39,8 +39,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   const updateStore = useMutation(api.stores.update)
   const updateAddressMutation = useMutation(api.stores.updateAddress)
   const updateHours = useMutation(api.stores.updateHours)
-  const updateBranding = useMutation(api.stores.updateBranding)
-  const updateSettings = useMutation(api.stores.updateSettings)
+  const updateOverrides = useMutation(api.stores.updateOverrides)
 
   // General tab state
   const [name, setName] = useState("")
@@ -61,25 +60,10 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   // Hours tab state
   const [hours, setHours] = useState<Array<{ day: string; open: string; close: string; isClosed: boolean }>>([])
 
-  // Branding tab state
-  const [primaryColor, setPrimaryColor] = useState("#000000")
-  const [secondaryColor, setSecondaryColor] = useState("#ffffff")
-  const [accentColor, setAccentColor] = useState("#0066cc")
-  const [logoUrl, setLogoUrl] = useState("")
-  const [faviconUrl, setFaviconUrl] = useState("")
-  const [fontHeading, setFontHeading] = useState("Inter")
-  const [fontBody, setFontBody] = useState("Inter")
-
-  // Settings tab state
-  const [currency, setCurrency] = useState("EUR")
-  const [timezone, setTimezone] = useState("Europe/Paris")
+  // Settings override state (simplified - full version in admin package)
   const [deliveryEnabled, setDeliveryEnabled] = useState(true)
   const [pickupEnabled, setPickupEnabled] = useState(true)
   const [dineInEnabled, setDineInEnabled] = useState(true)
-  const [minimumOrderAmount, setMinimumOrderAmount] = useState("")
-  const [deliveryFee, setDeliveryFee] = useState("")
-  const [deliveryRadius, setDeliveryRadius] = useState("")
-  const [taxRate, setTaxRate] = useState("")
 
   // Initialize state when store loads
   if (store && name === "") {
@@ -108,26 +92,12 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
       setHours(daysOfWeek.map(day => ({ day, open: "09:00", close: "22:00", isClosed: false })))
     }
 
-    if (store.branding) {
-      setPrimaryColor(store.branding.primaryColor || "#000000")
-      setSecondaryColor(store.branding.secondaryColor || "#ffffff")
-      setAccentColor(store.branding.accentColor || "#0066cc")
-      setLogoUrl(store.branding.logoUrl || "")
-      setFaviconUrl(store.branding.faviconUrl || "")
-      setFontHeading(store.branding.fontHeading || "Inter")
-      setFontBody(store.branding.fontBody || "Inter")
-    }
-
-    if (store.settings) {
-      setCurrency(store.settings.currency)
-      setTimezone(store.settings.timezone)
-      setDeliveryEnabled(store.settings.deliveryEnabled)
-      setPickupEnabled(store.settings.pickupEnabled)
-      setDineInEnabled(store.settings.dineInEnabled)
-      setMinimumOrderAmount(String(store.settings.minimumOrderAmount || 1000))
-      setDeliveryFee(String(store.settings.deliveryFee || 300))
-      setDeliveryRadius(String(store.settings.deliveryRadius || 5000))
-      setTaxRate(String(store.settings.taxRate || 10))
+    // Overrides are now managed via the admin package StoreDetailPage
+    const overrides = store.overrides as { services?: { dineIn?: boolean; takeaway?: boolean; delivery?: boolean } } | undefined
+    if (overrides?.services) {
+      setDeliveryEnabled(overrides.services.delivery ?? true)
+      setPickupEnabled(overrides.services.takeaway ?? true)
+      setDineInEnabled(overrides.services.dineIn ?? true)
     }
   }
 
@@ -182,41 +152,17 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
     }
   }
 
-  const handleUpdateBranding = async () => {
-    try {
-      await updateBranding({
-        id: storeId as Id<"stores">,
-        branding: {
-          primaryColor,
-          secondaryColor,
-          accentColor,
-          logoUrl: logoUrl || undefined,
-          faviconUrl: faviconUrl || undefined,
-          fontHeading,
-          fontBody,
-        },
-      })
-      toast.success("Identité visuelle mise à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour de l'identité visuelle")
-      console.error(error)
-    }
-  }
-
   const handleUpdateSettings = async () => {
     try {
-      await updateSettings({
+      await updateOverrides({
         id: storeId as Id<"stores">,
-        settings: {
-          currency,
-          timezone,
-          deliveryEnabled,
-          pickupEnabled,
-          dineInEnabled,
-          minimumOrderAmount: parseInt(minimumOrderAmount),
-          deliveryFee: parseInt(deliveryFee),
-          deliveryRadius: parseInt(deliveryRadius),
-          taxRate: parseInt(taxRate),
+        overrides: {
+          services: {
+            dineIn: dineInEnabled,
+            takeaway: pickupEnabled,
+            delivery: deliveryEnabled,
+            clickAndCollect: true,
+          },
         },
       })
       toast.success("Paramètres mis à jour avec succès")
@@ -242,7 +188,6 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="address">Adresse</TabsTrigger>
           <TabsTrigger value="hours">Horaires</TabsTrigger>
-          <TabsTrigger value="branding">Identité visuelle</TabsTrigger>
           <TabsTrigger value="settings">Paramètres</TabsTrigger>
         </TabsList>
 
@@ -357,67 +302,8 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
           </div>
         </TabsContent>
 
-        <TabsContent value="branding" className="space-y-4">
-          <div className="border rounded-lg p-6 space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="primaryColor">Couleur primaire</Label>
-                <div className="flex gap-2">
-                  <Input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-20" />
-                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="secondaryColor">Couleur secondaire</Label>
-                <div className="flex gap-2">
-                  <Input id="secondaryColor" type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-20" />
-                  <Input value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="accentColor">Couleur d&apos;accent</Label>
-                <div className="flex gap-2">
-                  <Input id="accentColor" type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} className="w-20" />
-                  <Input value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="logoUrl">URL du logo</Label>
-                <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="faviconUrl">URL du favicon</Label>
-                <Input id="faviconUrl" value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fontHeading">Police des titres</Label>
-                <Input id="fontHeading" value={fontHeading} onChange={(e) => setFontHeading(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fontBody">Police du texte</Label>
-                <Input id="fontBody" value={fontBody} onChange={(e) => setFontBody(e.target.value)} />
-              </div>
-            </div>
-            <Button onClick={handleUpdateBranding}>Enregistrer l&apos;identité visuelle</Button>
-          </div>
-        </TabsContent>
-
         <TabsContent value="settings" className="space-y-4">
           <div className="border rounded-lg p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Devise</Label>
-                <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Fuseau horaire</Label>
-                <Input id="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-              </div>
-            </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label htmlFor="deliveryEnabled">Livraison activée</Label>
@@ -430,26 +316,6 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
               <div className="flex items-center justify-between">
                 <Label htmlFor="dineInEnabled">Sur place activé</Label>
                 <Switch id="dineInEnabled" checked={dineInEnabled} onCheckedChange={setDineInEnabled} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minimumOrderAmount">Commande minimum (centimes)</Label>
-                <Input id="minimumOrderAmount" type="number" value={minimumOrderAmount} onChange={(e) => setMinimumOrderAmount(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="deliveryFee">Frais de livraison (centimes)</Label>
-                <Input id="deliveryFee" type="number" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="deliveryRadius">Rayon de livraison (mètres)</Label>
-                <Input id="deliveryRadius" type="number" value={deliveryRadius} onChange={(e) => setDeliveryRadius(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="taxRate">Taux de TVA (%)</Label>
-                <Input id="taxRate" type="number" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} />
               </div>
             </div>
             <Button onClick={handleUpdateSettings}>Enregistrer les paramètres</Button>

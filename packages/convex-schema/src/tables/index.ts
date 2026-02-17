@@ -1,6 +1,8 @@
 // Barrel export for all table definitions
 export { userProfilesTable } from "./userProfiles"
+export { globalSettingsTable } from "./globalSettings"
 export { storesTable } from "./stores"
+export { storeIntegrationsTable } from "./storeIntegrations"
 export { teamMembersTable } from "./teamMembers"
 export { categoriesTable, productsTable, menusTable } from "./catalog"
 export { ordersTable } from "./orders"

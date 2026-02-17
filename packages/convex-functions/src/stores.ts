@@ -61,22 +61,12 @@ export const create = {
     }),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
-    settings: v.object({
-      currency: v.string(),
-      timezone: v.string(),
-      deliveryEnabled: v.boolean(),
-      pickupEnabled: v.boolean(),
-      dineInEnabled: v.boolean(),
-      minimumOrderAmount: v.optional(v.number()),
-      deliveryFee: v.optional(v.number()),
-      deliveryRadius: v.optional(v.number()),
-      taxRate: v.optional(v.number()),
-    }),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
     return await ctx.db.insert("stores", {
       ...args,
+      useGlobalHours: true,
       hours: [
         { day: 0, open: "00:00", close: "00:00", isClosed: true },
         { day: 1, open: "09:00", close: "22:00", isClosed: false },
@@ -86,9 +76,8 @@ export const create = {
         { day: 5, open: "09:00", close: "23:00", isClosed: false },
         { day: 6, open: "09:00", close: "23:00", isClosed: false },
       ],
-      status: "closed",
-      branding: {},
-      integrations: {},
+      overrides: undefined,
+      status: "draft",
       createdAt: now,
       updatedAt: now,
     })
@@ -106,7 +95,9 @@ export const update = {
     description: v.optional(v.string()),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
+    useGlobalHours: v.optional(v.boolean()),
     status: v.optional(v.union(
+      v.literal("draft"),
       v.literal("open"),
       v.literal("closed"),
       v.literal("temporarily_unavailable")
@@ -139,46 +130,28 @@ export const updateHours = {
 }
 
 /**
- * Update store branding
+ * Update store overrides (store-specific settings that override global settings)
  */
-export const updateBranding = {
+export const updateOverrides = {
   args: {
     id: v.id("stores"),
-    branding: v.object({
-      primaryColor: v.optional(v.string()),
-      secondaryColor: v.optional(v.string()),
-      accentColor: v.optional(v.string()),
-      logoUrl: v.optional(v.string()),
-      faviconUrl: v.optional(v.string()),
-      fontHeading: v.optional(v.string()),
-      fontBody: v.optional(v.string()),
-    }),
-  },
-  handler: async (ctx: any, args: any) => {
-    await ctx.db.patch(args.id, { branding: args.branding, updatedAt: Date.now() })
-  },
-}
-
-/**
- * Update store settings
- */
-export const updateSettings = {
-  args: {
-    id: v.id("stores"),
-    settings: v.object({
-      currency: v.string(),
-      timezone: v.string(),
-      deliveryEnabled: v.boolean(),
-      pickupEnabled: v.boolean(),
-      dineInEnabled: v.boolean(),
+    overrides: v.optional(v.object({
+      services: v.optional(v.object({
+        dineIn: v.boolean(),
+        takeaway: v.boolean(),
+        delivery: v.boolean(),
+        clickAndCollect: v.boolean(),
+      })),
       minimumOrderAmount: v.optional(v.number()),
-      deliveryFee: v.optional(v.number()),
       deliveryRadius: v.optional(v.number()),
-      taxRate: v.optional(v.number()),
-    }),
+      deliveryFee: v.optional(v.number()),
+      deliveryFreeAbove: v.optional(v.number()),
+    })),
   },
   handler: async (ctx: any, args: any) => {
-    await ctx.db.patch(args.id, { settings: args.settings, updatedAt: Date.now() })
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { overrides: args.overrides, updatedAt: Date.now() })
   },
 }
 

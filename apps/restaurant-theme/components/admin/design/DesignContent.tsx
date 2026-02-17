@@ -1,9 +1,5 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import { useAdminStoreId } from "@/lib/admin/hooks"
-import { toast } from "sonner"
 import { useState } from "react"
 import Image from "next/image"
 import { PaletteIcon, CheckIcon } from "lucide-react"
@@ -11,9 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
@@ -30,13 +25,6 @@ interface DesignContentProps {
 }
 
 export function DesignContent({ embedded = false }: DesignContentProps) {
-  const storeId = useAdminStoreId()
-  const store = useQuery(
-    api.stores.getById,
-    storeId ? { id: storeId } : "skip"
-  )
-  const updateBranding = useMutation(api.stores.updateBranding)
-
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
   const [primaryColor, setPrimaryColor] = useState("#000000")
   const [secondaryColor, setSecondaryColor] = useState("#ffffff")
@@ -46,17 +34,6 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
   const [logoUrl, setLogoUrl] = useState("")
   const [faviconUrl, setFaviconUrl] = useState("")
 
-  // Initialize state when store loads
-  if (store && primaryColor === "#000000" && store.branding) {
-    setPrimaryColor(store.branding.primaryColor || "#000000")
-    setSecondaryColor(store.branding.secondaryColor || "#ffffff")
-    setAccentColor(store.branding.accentColor || "#0066cc")
-    setFontHeading(store.branding.fontHeading || "Inter")
-    setFontBody(store.branding.fontBody || "Inter")
-    setLogoUrl(store.branding.logoUrl || "")
-    setFaviconUrl(store.branding.faviconUrl || "")
-  }
-
   const handleApplyTheme = (theme: typeof themes[0]) => {
     setSelectedTheme(theme.id)
     setPrimaryColor(theme.primary)
@@ -65,69 +42,16 @@ export function DesignContent({ embedded = false }: DesignContentProps) {
   }
 
   const handleSaveColors = async () => {
-    if (!storeId) return
-    try {
-      await updateBranding({
-        id: storeId,
-        branding: {
-          primaryColor,
-          secondaryColor,
-          accentColor,
-        },
-      })
-      toast.success("Couleurs mises à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour des couleurs")
-      console.error(error)
-    }
+    // Design branding is now managed at the global level
+    toast.info("Le design est désormais géré dans les paramètres globaux")
   }
 
   const handleSaveTypography = async () => {
-    if (!storeId) return
-    try {
-      await updateBranding({
-        id: storeId,
-        branding: {
-          fontHeading,
-          fontBody,
-        },
-      })
-      toast.success("Typographie mise à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour de la typographie")
-      console.error(error)
-    }
+    toast.info("Le design est désormais géré dans les paramètres globaux")
   }
 
   const handleSaveLogo = async () => {
-    if (!storeId) return
-    try {
-      await updateBranding({
-        id: storeId,
-        branding: {
-          logoUrl: logoUrl || undefined,
-          faviconUrl: faviconUrl || undefined,
-        },
-      })
-      toast.success("Logo mis à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour du logo")
-      console.error(error)
-    }
-  }
-
-  if (!storeId) {
-    return (
-      <EmptyState
-        icon={PaletteIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer le design"
-      />
-    )
-  }
-
-  if (store === undefined) {
-    return <LoadingState />
+    toast.info("Le design est désormais géré dans les paramètres globaux")
   }
 
   return (

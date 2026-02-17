@@ -8,12 +8,66 @@ import { z } from "zod"
  */
 
 // ============================================================================
+// GLOBAL SETTINGS VALIDATORS
+// ============================================================================
+
+/**
+ * Create Global Settings Schema
+ * Validates global defaults that all stores inherit
+ */
+export const createGlobalSettingsSchema = z.object({
+  currency: z.string().default("EUR"),
+  timezone: z.string().default("Europe/Paris"),
+  taxRate: z.number().min(0).max(100, "Le taux de taxe doit etre entre 0 et 100").default(20),
+  services: z.object({
+    dineIn: z.boolean().default(false),
+    takeaway: z.boolean().default(true),
+    delivery: z.boolean().default(false),
+    clickAndCollect: z.boolean().default(false),
+  }).default({}),
+  minimumOrderAmount: z.number().min(0, "Le montant minimum doit etre positif").optional(),
+  hours: z.array(z.object({
+    day: z.number().min(0).max(6),
+    open: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format horaire invalide (HH:mm)"),
+    close: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format horaire invalide (HH:mm)"),
+    isClosed: z.boolean(),
+  })).default([]),
+  delivery: z.object({
+    radius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
+    fee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
+    freeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
+  }).default({}),
+  integrations: z.object({
+    uberDirect: z.object({
+      customerId: z.string().optional(),
+      apiKey: z.string().optional(),
+      enabled: z.boolean().default(false),
+    }).optional(),
+    uberEats: z.object({
+      merchantId: z.string().optional(),
+      apiKey: z.string().optional(),
+      enabled: z.boolean().default(false),
+    }).optional(),
+    deliveroo: z.object({
+      merchantId: z.string().optional(),
+      apiKey: z.string().optional(),
+      enabled: z.boolean().default(false),
+    }).optional(),
+  }).default({}),
+})
+
+/**
+ * Update Global Settings Schema
+ */
+export const updateGlobalSettingsSchema = createGlobalSettingsSchema.partial()
+
+// ============================================================================
 // STORE VALIDATORS
 // ============================================================================
 
 /**
  * Create Store Schema
- * Validates new store creation with complete configuration
+ * Validates new store creation with configuration
  */
 export const createStoreSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(200, "Le nom ne peut pas depasser 200 caracteres"),
@@ -35,44 +89,25 @@ export const createStoreSchema = z.object({
   }),
   phone: z.string().optional(),
   email: z.string().email("Email invalide").optional(),
+  useGlobalHours: z.boolean().default(true),
   hours: z.array(z.object({
     day: z.number().min(0).max(6),
     open: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format horaire invalide (HH:mm)"),
     close: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format horaire invalide (HH:mm)"),
     isClosed: z.boolean(),
   })).optional().default([]),
-  settings: z.object({
-    currency: z.string().default("EUR"),
-    timezone: z.string().default("Europe/Paris"),
-    deliveryEnabled: z.boolean().default(false),
-    pickupEnabled: z.boolean().default(true),
-    dineInEnabled: z.boolean().default(false),
+  overrides: z.object({
+    services: z.object({
+      dineIn: z.boolean(),
+      takeaway: z.boolean(),
+      delivery: z.boolean(),
+      clickAndCollect: z.boolean(),
+    }).optional(),
     minimumOrderAmount: z.number().min(0, "Le montant minimum doit etre positif").optional(),
-    deliveryFee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
     deliveryRadius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
-    taxRate: z.number().min(0).max(100, "Le taux de taxe doit etre entre 0 et 100").optional(),
-  }).default({}),
-  branding: z.object({
-    primaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Couleur primaire invalide").optional(),
-    secondaryColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Couleur secondaire invalide").optional(),
-    accentColor: z.string().regex(/^#[0-9A-F]{6}$/i, "Couleur d'accent invalide").optional(),
-    logoUrl: z.string().url("URL de logo invalide").optional(),
-    faviconUrl: z.string().url("URL de favicon invalide").optional(),
-    fontHeading: z.string().optional(),
-    fontBody: z.string().optional(),
-  }).optional().default({}),
-  integrations: z.object({
-    uberEats: z.object({
-      enabled: z.boolean(),
-      storeId: z.string().optional(),
-      autoAccept: z.boolean(),
-    }).optional(),
-    deliveroo: z.object({
-      enabled: z.boolean(),
-      storeId: z.string().optional(),
-      autoAccept: z.boolean(),
-    }).optional(),
-  }).optional().default({}),
+    deliveryFee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
+    deliveryFreeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
+  }).optional(),
   themeId: z.string().optional(),
 })
 
@@ -88,10 +123,33 @@ export const updateStoreSchema = createStoreSchema.partial()
  */
 export const updateStoreStatusSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
-  status: z.enum(["open", "closed", "temporarily_unavailable"], {
+  status: z.enum(["draft", "open", "closed", "temporarily_unavailable"], {
     errorMap: () => ({ message: "Statut invalide" }),
   }),
 })
+
+// ============================================================================
+// STORE INTEGRATION VALIDATORS
+// ============================================================================
+
+/**
+ * Create Store Integration Schema
+ */
+export const createStoreIntegrationSchema = z.object({
+  storeId: z.string().min(1, "L'ID du magasin est requis"),
+  platform: z.enum(["uberEats", "deliveroo"], {
+    errorMap: () => ({ message: "Plateforme invalide" }),
+  }),
+  platformStoreId: z.string().min(1, "L'ID du magasin sur la plateforme est requis"),
+  syncMenu: z.boolean().default(true),
+  autoAccept: z.boolean().default(false),
+  enabled: z.boolean().default(true),
+})
+
+/**
+ * Update Store Integration Schema
+ */
+export const updateStoreIntegrationSchema = createStoreIntegrationSchema.partial().required({ storeId: true, platform: true })
 
 // ============================================================================
 // CATEGORY VALIDATORS
