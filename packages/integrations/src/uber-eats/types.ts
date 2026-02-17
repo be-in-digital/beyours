@@ -22,12 +22,12 @@ export interface UberEatsToken {
 
 export const UBER_EATS_URLS = {
   production: {
-    auth: "https://login.uber.com/oauth/v2/token",
+    auth: "https://auth.uber.com/oauth/v2/token",
     api: "https://api.uber.com",
   },
   sandbox: {
-    auth: "https://login.uber.com/oauth/v2/token",
-    api: "https://api.uber.com",
+    auth: "https://sandbox-login.uber.com/oauth/v2/token",
+    api: "https://test-api.uber.com",
   },
 } as const
 

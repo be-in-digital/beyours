@@ -64,7 +64,7 @@ describe('Uber Eats API Client', () => {
       // Verify fetch was called with correct parameters
       expect(mockFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockFetch.mock.calls[0]
-      expect(url).toBe('https://login.uber.com/oauth/v2/token')
+      expect(url).toBe('https://auth.uber.com/oauth/v2/token')
       expect(options.method).toBe('POST')
       expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded')
       expect(options.body).toContain('client_id=test-client-id')
@@ -164,8 +164,7 @@ describe('Uber Eats API Client', () => {
       await getAccessToken(sandboxCredentials)
 
       const [url] = mockFetch.mock.calls[0]
-      // In current implementation, sandbox uses same auth URL
-      expect(url).toBe('https://login.uber.com/oauth/v2/token')
+      expect(url).toBe('https://sandbox-login.uber.com/oauth/v2/token')
     })
   })
 
