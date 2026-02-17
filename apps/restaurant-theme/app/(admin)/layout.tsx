@@ -34,7 +34,7 @@ export default function AdminLayout({
           />
           <SidebarInset>
             <AdminHeader storeSelector={<StoreSelector />} />
-            <main className="flex-1 px-6 py-5 lg:px-8">
+            <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
               <div className="mx-auto max-w-[1600px]">
                 <StoreGuard>{children}</StoreGuard>
               </div>

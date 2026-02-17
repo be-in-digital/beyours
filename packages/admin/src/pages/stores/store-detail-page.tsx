@@ -454,193 +454,233 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         </TabsList>
 
         {/* GENERAL TAB */}
-        <TabsContent value="general" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nom de l'établissement</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+        <TabsContent value="general" className="space-y-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Informations générales</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom de l'établissement</Label>
+                  <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug</Label>
+                  <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
-                <Input id="slug" value={slug} onChange={(e) => setSlug(e.target.value)} />
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Statut</Label>
+                  <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+                    <SelectTrigger id="status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Brouillon</SelectItem>
+                      <SelectItem value="open">Ouvert</SelectItem>
+                      <SelectItem value="closed">Fermé</SelectItem>
+                      <SelectItem value="temporarily_unavailable">Temporairement indisponible</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Statut</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Brouillon</SelectItem>
-                  <SelectItem value="open">Ouvert</SelectItem>
-                  <SelectItem value="closed">Fermé</SelectItem>
-                  <SelectItem value="temporarily_unavailable">Temporairement indisponible</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="pt-4 border-t">
-              <h3 className="text-sm font-medium mb-4">Adresse</h3>
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Adresse</CardTitle>
+            </CardHeader>
+            <CardContent>
               <AddressAutocomplete
                 label="Adresse de l'établissement"
                 value={address}
                 onChange={setAddress}
                 apiKey={GOOGLE_MAPS_API_KEY}
               />
-            </div>
+            </CardContent>
+          </Card>
 
-            <Button onClick={handleUpdateGeneral} size="sm">
-              Enregistrer
-            </Button>
-          </div>
+          <Button onClick={handleUpdateGeneral} size="sm">
+            Enregistrer
+          </Button>
         </TabsContent>
 
         {/* HOURS TAB */}
-        <TabsContent value="hours" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <div className="flex items-center justify-between pb-4 border-b">
-              <Label htmlFor="useGlobalHours" className="cursor-pointer">
-                Utiliser les horaires globaux
-              </Label>
-              <Switch
-                id="useGlobalHours"
-                checked={useGlobalHours}
-                onCheckedChange={setUseGlobalHours}
-              />
-            </div>
-
-            {useGlobalHours && globalHours.length > 0 && (
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                <p className="text-sm font-medium text-muted-foreground mb-3">Horaires globaux (lecture seule)</p>
-                {DISPLAY_ORDER.map((dayNum) => {
-                  const dayHours = globalHours.find((h: DayHours) => h.day === dayNum)
-                  if (!dayHours) return null
-                  return (
-                    <div key={dayNum} className="grid grid-cols-4 gap-4 text-sm">
-                      <div className="font-medium">{DAY_NAMES[dayNum]}</div>
-                      <div className="text-muted-foreground">
-                        {dayHours.isClosed ? "Fermé" : dayHours.open}
-                      </div>
-                      <div className="text-muted-foreground">
-                        {dayHours.isClosed ? "" : dayHours.close}
-                      </div>
-                      <div></div>
-                    </div>
-                  )
-                })}
+        <TabsContent value="hours" className="space-y-6">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Horaires d'ouverture</CardTitle>
+                  <CardDescription className="mt-1">
+                    {useGlobalHours
+                      ? "Cet établissement utilise les horaires globaux"
+                      : "Horaires personnalisés pour cet établissement"
+                    }
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <Label
+                    htmlFor="useGlobalHours"
+                    className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap"
+                  >
+                    Horaires globaux
+                  </Label>
+                  <Switch
+                    id="useGlobalHours"
+                    checked={useGlobalHours}
+                    onCheckedChange={setUseGlobalHours}
+                  />
+                </div>
               </div>
-            )}
+            </CardHeader>
 
-            {!useGlobalHours && (
-              <>
-                <div className="flex gap-2 pb-4">
-                  <Button variant="outline" size="sm" onClick={handleSetAllWeekdays}>
-                    Lun-Ven même horaire
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleSetAllDays}>
-                    Tous les jours
-                  </Button>
+            <CardContent className="space-y-4">
+              {/* Global hours (read-only) */}
+              {useGlobalHours && globalHours.length > 0 && (
+                <div className="rounded-lg bg-muted/50 p-4">
+                  <div className="space-y-2">
+                    {DISPLAY_ORDER.map((dayNum) => {
+                      const dayH = globalHours.find((h: DayHours) => h.day === dayNum)
+                      if (!dayH) return null
+                      return (
+                        <div key={dayNum} className="flex items-center justify-between py-1.5 text-sm">
+                          <span className="font-medium w-24">{DAY_NAMES[dayNum]}</span>
+                          <span className="text-muted-foreground">
+                            {dayH.isClosed ? "Fermé" : `${dayH.open} – ${dayH.close}`}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
+              )}
 
-                <div className="space-y-3">
-                  {DISPLAY_ORDER.map((dayNum) => {
-                    const dayHours = hours.find((h) => h.day === dayNum)
-                    if (!dayHours) return null
-                    const index = hours.indexOf(dayHours)
+              {/* Custom hours editor */}
+              {!useGlobalHours && (
+                <>
+                  <div className="flex flex-wrap gap-2 pb-2">
+                    <Button variant="outline" size="sm" onClick={handleSetAllWeekdays}>
+                      Appliquer Lundi à Vendredi
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleSetAllDays}>
+                      Appliquer à tous les jours
+                    </Button>
+                  </div>
 
-                    return (
-                      <div key={dayNum} className="grid grid-cols-4 gap-4 items-end">
-                        <div className="space-y-2">
-                          <Label className="font-medium">{DAY_NAMES[dayNum]}</Label>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`open-${dayNum}`}>Ouverture</Label>
-                          <Input
-                            id={`open-${dayNum}`}
-                            type="time"
-                            value={dayHours.open}
-                            onChange={(e) => {
-                              const newHours = [...hours]
-                              newHours[index] = { ...dayHours, open: e.target.value }
-                              setHours(newHours)
-                            }}
-                            disabled={dayHours.isClosed}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`close-${dayNum}`}>Fermeture</Label>
-                          <Input
-                            id={`close-${dayNum}`}
-                            type="time"
-                            value={dayHours.close}
-                            onChange={(e) => {
-                              const newHours = [...hours]
-                              newHours[index] = { ...dayHours, close: e.target.value }
-                              setHours(newHours)
-                            }}
-                            disabled={dayHours.isClosed}
-                          />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id={`closed-${dayNum}`}
-                            checked={dayHours.isClosed}
-                            onCheckedChange={(checked) => {
-                              const newHours = [...hours]
-                              newHours[index] = { ...dayHours, isClosed: checked }
-                              setHours(newHours)
-                            }}
-                          />
-                          <Label htmlFor={`closed-${dayNum}`}>Fermé</Label>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
+                  <div className="divide-y">
+                    {DISPLAY_ORDER.map((dayNum) => {
+                      const dayHours = hours.find((h) => h.day === dayNum)
+                      if (!dayHours) return null
+                      const index = hours.indexOf(dayHours)
 
-            <Button onClick={handleUpdateHours} size="sm">
-              Enregistrer les horaires
-            </Button>
-          </div>
+                      return (
+                        <div
+                          key={dayNum}
+                          className={`flex flex-wrap items-center gap-x-4 gap-y-2 py-3 ${dayHours.isClosed ? "opacity-50" : ""}`}
+                        >
+                          <span className="w-24 text-sm font-medium shrink-0">
+                            {DAY_NAMES[dayNum]}
+                          </span>
+
+                          <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                            <Input
+                              id={`open-${dayNum}`}
+                              type="time"
+                              value={dayHours.open}
+                              onChange={(e) => {
+                                const newHours = [...hours]
+                                newHours[index] = { ...dayHours, open: e.target.value }
+                                setHours(newHours)
+                              }}
+                              disabled={dayHours.isClosed}
+                              className="w-[120px]"
+                            />
+                            <span className="text-muted-foreground text-sm">–</span>
+                            <Input
+                              id={`close-${dayNum}`}
+                              type="time"
+                              value={dayHours.close}
+                              onChange={(e) => {
+                                const newHours = [...hours]
+                                newHours[index] = { ...dayHours, close: e.target.value }
+                                setHours(newHours)
+                              }}
+                              disabled={dayHours.isClosed}
+                              className="w-[120px]"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0 ml-auto">
+                            <Switch
+                              id={`closed-${dayNum}`}
+                              checked={dayHours.isClosed}
+                              onCheckedChange={(checked) => {
+                                const newHours = [...hours]
+                                newHours[index] = { ...dayHours, isClosed: checked }
+                                setHours(newHours)
+                              }}
+                            />
+                            <Label htmlFor={`closed-${dayNum}`} className="text-sm text-muted-foreground cursor-pointer">
+                              Fermé
+                            </Label>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Button onClick={handleUpdateHours} size="sm">
+            Enregistrer les horaires
+          </Button>
         </TabsContent>
 
         {/* SETTINGS TAB */}
-        <TabsContent value="settings" className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Par défaut, cet établissement hérite des paramètres globaux. Activez un switch pour personnaliser une valeur.
-          </p>
+        <TabsContent value="settings" className="space-y-6">
+          <div>
+            <h2 className="text-lg font-semibold">Paramètres de l'établissement</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Par défaut, les paramètres globaux s'appliquent. Activez un switch pour personnaliser.
+            </p>
+          </div>
 
-          <div className="space-y-4">
-            {/* Services */}
-            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+          {/* Services */}
+          <Card>
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Services</p>
-                  {!customizeServices && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Global : Sur place ({globalServices.dineIn ? "Oui" : "Non"}), À emporter ({globalServices.takeaway ? "Oui" : "Non"}), Livraison ({globalServices.delivery ? "Oui" : "Non"}), Click & Collect ({globalServices.clickAndCollect ? "Oui" : "Non"})
-                    </p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <CardTitle className="text-base">Services disponibles</CardTitle>
+                  {customizeServices && (
+                    <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">
+                      Personnalisé
+                    </Badge>
                   )}
                 </div>
                 <Switch
@@ -648,144 +688,170 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                   onCheckedChange={setCustomizeServices}
                 />
               </div>
-              {customizeServices && (
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+              {!customizeServices && (
+                <CardDescription>
+                  Global : Sur place ({globalServices.dineIn ? "Oui" : "Non"}), À emporter ({globalServices.takeaway ? "Oui" : "Non"}), Livraison ({globalServices.delivery ? "Oui" : "Non"}), Click & Collect ({globalServices.clickAndCollect ? "Oui" : "Non"})
+                </CardDescription>
+              )}
+            </CardHeader>
+            {customizeServices && (
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                     <Label htmlFor="dineIn" className="text-sm cursor-pointer">Sur place</Label>
                     <Switch id="dineIn" checked={dineIn} onCheckedChange={setDineIn} />
                   </div>
-                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                     <Label htmlFor="takeaway" className="text-sm cursor-pointer">À emporter</Label>
                     <Switch id="takeaway" checked={takeaway} onCheckedChange={setTakeaway} />
                   </div>
-                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                     <Label htmlFor="delivery" className="text-sm cursor-pointer">Livraison</Label>
                     <Switch id="delivery" checked={delivery} onCheckedChange={setDelivery} />
                   </div>
-                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between rounded-lg border px-4 py-3">
                     <Label htmlFor="clickAndCollect" className="text-sm cursor-pointer">Click & Collect</Label>
                     <Switch id="clickAndCollect" checked={clickAndCollect} onCheckedChange={setClickAndCollect} />
                   </div>
                 </div>
-              )}
-            </div>
+              </CardContent>
+            )}
+          </Card>
 
-            {/* Minimum Order */}
-            <div className="border border-border/50 rounded-lg p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Commande minimum</p>
-                  {!customizeMinOrder && (
-                    <p className="text-xs text-muted-foreground mt-1">Global : {globalMinOrder} €</p>
-                  )}
+          {/* Delivery Settings - grouped */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base">Paramètres de livraison</CardTitle>
+              <CardDescription>
+                Montant minimum, rayon, frais et seuil de gratuité
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="divide-y">
+              {/* Minimum Order */}
+              <div className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Commande minimum</p>
+                    {!customizeMinOrder && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Global : {globalMinOrder} €</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {customizeMinOrder && (
+                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                    )}
+                    <Switch checked={customizeMinOrder} onCheckedChange={setCustomizeMinOrder} />
+                  </div>
                 </div>
-                <Switch
-                  checked={customizeMinOrder}
-                  onCheckedChange={setCustomizeMinOrder}
-                />
+                {customizeMinOrder && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="minimumOrderAmount" className="text-xs text-muted-foreground">Montant minimum (€)</Label>
+                    <Input
+                      id="minimumOrderAmount"
+                      type="number"
+                      step="0.01"
+                      value={minimumOrderAmount}
+                      onChange={(e) => setMinimumOrderAmount(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
-              {customizeMinOrder && (
-                <div className="pt-2 border-t">
-                  <Label htmlFor="minimumOrderAmount" className="text-xs text-muted-foreground">Montant minimum (€)</Label>
-                  <Input
-                    id="minimumOrderAmount"
-                    type="number"
-                    step="0.01"
-                    value={minimumOrderAmount}
-                    onChange={(e) => setMinimumOrderAmount(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Delivery Radius */}
-            <div className="border border-border/50 rounded-lg p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Rayon de livraison</p>
-                  {!customizeDeliveryRadius && (
-                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryRadius} km</p>
-                  )}
+              {/* Delivery Radius */}
+              <div className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Rayon de livraison</p>
+                    {!customizeDeliveryRadius && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Global : {globalDeliveryRadius} km</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {customizeDeliveryRadius && (
+                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                    )}
+                    <Switch checked={customizeDeliveryRadius} onCheckedChange={setCustomizeDeliveryRadius} />
+                  </div>
                 </div>
-                <Switch
-                  checked={customizeDeliveryRadius}
-                  onCheckedChange={setCustomizeDeliveryRadius}
-                />
+                {customizeDeliveryRadius && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="deliveryRadius" className="text-xs text-muted-foreground">Rayon (km)</Label>
+                    <Input
+                      id="deliveryRadius"
+                      type="number"
+                      step="0.1"
+                      value={deliveryRadius}
+                      onChange={(e) => setDeliveryRadius(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
-              {customizeDeliveryRadius && (
-                <div className="pt-2 border-t">
-                  <Label htmlFor="deliveryRadius" className="text-xs text-muted-foreground">Rayon (km)</Label>
-                  <Input
-                    id="deliveryRadius"
-                    type="number"
-                    step="0.1"
-                    value={deliveryRadius}
-                    onChange={(e) => setDeliveryRadius(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Delivery Fee */}
-            <div className="border border-border/50 rounded-lg p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Frais de livraison</p>
-                  {!customizeDeliveryFee && (
-                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryFee} €</p>
-                  )}
+              {/* Delivery Fee */}
+              <div className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Frais de livraison</p>
+                    {!customizeDeliveryFee && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Global : {globalDeliveryFee} €</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {customizeDeliveryFee && (
+                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                    )}
+                    <Switch checked={customizeDeliveryFee} onCheckedChange={setCustomizeDeliveryFee} />
+                  </div>
                 </div>
-                <Switch
-                  checked={customizeDeliveryFee}
-                  onCheckedChange={setCustomizeDeliveryFee}
-                />
+                {customizeDeliveryFee && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="deliveryFee" className="text-xs text-muted-foreground">Montant (€)</Label>
+                    <Input
+                      id="deliveryFee"
+                      type="number"
+                      step="0.01"
+                      value={deliveryFee}
+                      onChange={(e) => setDeliveryFee(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
-              {customizeDeliveryFee && (
-                <div className="pt-2 border-t">
-                  <Label htmlFor="deliveryFee" className="text-xs text-muted-foreground">Montant (€)</Label>
-                  <Input
-                    id="deliveryFee"
-                    type="number"
-                    step="0.01"
-                    value={deliveryFee}
-                    onChange={(e) => setDeliveryFee(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Delivery Free Above */}
-            <div className="border border-border/50 rounded-lg p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Livraison gratuite à partir de</p>
-                  {!customizeDeliveryFree && (
-                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryFree} €</p>
-                  )}
+              {/* Free Delivery Threshold */}
+              <div className="py-4 first:pt-0 last:pb-0">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Livraison gratuite à partir de</p>
+                    {!customizeDeliveryFree && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Global : {globalDeliveryFree} €</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {customizeDeliveryFree && (
+                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                    )}
+                    <Switch checked={customizeDeliveryFree} onCheckedChange={setCustomizeDeliveryFree} />
+                  </div>
                 </div>
-                <Switch
-                  checked={customizeDeliveryFree}
-                  onCheckedChange={setCustomizeDeliveryFree}
-                />
+                {customizeDeliveryFree && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="deliveryFreeAbove" className="text-xs text-muted-foreground">Montant (€)</Label>
+                    <Input
+                      id="deliveryFreeAbove"
+                      type="number"
+                      step="0.01"
+                      value={deliveryFreeAbove}
+                      onChange={(e) => setDeliveryFreeAbove(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
-              {customizeDeliveryFree && (
-                <div className="pt-2 border-t">
-                  <Label htmlFor="deliveryFreeAbove" className="text-xs text-muted-foreground">Montant (€)</Label>
-                  <Input
-                    id="deliveryFreeAbove"
-                    type="number"
-                    step="0.01"
-                    value={deliveryFreeAbove}
-                    onChange={(e) => setDeliveryFreeAbove(e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           <Button onClick={handleUpdateSettings} size="sm">
             Enregistrer les paramètres
