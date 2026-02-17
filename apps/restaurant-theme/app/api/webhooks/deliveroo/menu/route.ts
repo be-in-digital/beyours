@@ -70,9 +70,9 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Deliveroo menu webhook error:", error)
 
-    // Return 200 to prevent Deliveroo from retrying
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
+    // Return 500 for transient errors so Deliveroo retries
+    return new Response(JSON.stringify({ error: "Internal processing error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     })
   }

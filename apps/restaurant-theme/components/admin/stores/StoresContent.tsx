@@ -73,17 +73,6 @@ export function StoresContent() {
         },
         phone: phone || undefined,
         email: email || undefined,
-        settings: {
-          currency: "EUR",
-          timezone: "Europe/Paris",
-          deliveryEnabled: true,
-          pickupEnabled: true,
-          dineInEnabled: true,
-          minimumOrderAmount: 1000, // €10.00
-          deliveryFee: 300, // €3.00
-          deliveryRadius: 5000, // 5km
-          taxRate: 10, // 10%
-        },
       })
       toast.success("Établissement créé avec succès")
       setIsCreateDialogOpen(false)

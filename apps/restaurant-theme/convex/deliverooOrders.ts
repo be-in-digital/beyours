@@ -12,6 +12,12 @@ import { api } from "./_generated/api";
 export const acceptOrder = action({
   args: { orderId: v.id("orders") },
   handler: async (ctx, args) => {
+    // Auth check
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     try {
       // 1. Get the order
       const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {
@@ -76,6 +82,12 @@ export const rejectOrder = action({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Auth check
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     try {
       // 1. Get the order
       const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {
@@ -141,6 +153,12 @@ export const updatePrepStage = action({
     stage: v.union(v.literal("in_kitchen"), v.literal("ready")),
   },
   handler: async (ctx, args) => {
+    // Auth check
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Unauthorized" };
+    }
+
     try {
       // 1. Get the order
       const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {

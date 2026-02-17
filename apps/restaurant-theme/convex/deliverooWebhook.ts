@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 // Inline Deliveroo webhook types to avoid importing from integrations package
@@ -135,7 +135,7 @@ export const processOrderWebhook = action({
       const subtotal = order.payment.subtotal.fractional;
       const total = order.payment.total.fractional;
 
-      const internalOrderId: string = await ctx.runMutation(api.orders.createFromWebhook, {
+      const internalOrderId: string = await ctx.runMutation(internal.orders.createFromWebhook, {
         storeId,
         externalOrderId: order.id,
         platform: "deliveroo",
@@ -173,7 +173,7 @@ export const processOrderWebhook = action({
         if (integration.autoAccept) {
           try {
             await deliveroo.acceptOrder(credentials, order.id);
-            await ctx.runMutation(api.orders.updateStatus, {
+            await ctx.runMutation(internal.orders.internalUpdateStatus, {
               id: internalOrderId as Id<"orders">,
               status: "confirmed",
             });
@@ -230,7 +230,7 @@ export const processMenuWebhook = action({
 
       // Handle different event types
       if (args.event === "menu.upload_completed") {
-        await ctx.runMutation(api.storeIntegrations.updateMenuSyncStatus, {
+        await ctx.runMutation(internal.storeIntegrations.internalUpdateMenuSyncStatus, {
           storeId,
           platform: "deliveroo",
           menuSyncStatus: "success",
@@ -239,7 +239,7 @@ export const processMenuWebhook = action({
       } else if (args.event === "menu.upload_failed") {
         const failPayload = JSON.parse(args.payload) as { error?: string };
         const failError = failPayload.error ?? "Menu upload failed";
-        await ctx.runMutation(api.storeIntegrations.updateMenuSyncStatus, {
+        await ctx.runMutation(internal.storeIntegrations.internalUpdateMenuSyncStatus, {
           storeId,
           platform: "deliveroo",
           menuSyncStatus: "error",
@@ -251,7 +251,7 @@ export const processMenuWebhook = action({
         const validationError = validationPayload.errors
           ? JSON.stringify(validationPayload.errors)
           : "Menu validation error";
-        await ctx.runMutation(api.storeIntegrations.updateMenuSyncStatus, {
+        await ctx.runMutation(internal.storeIntegrations.internalUpdateMenuSyncStatus, {
           storeId,
           platform: "deliveroo",
           menuSyncStatus: "error",

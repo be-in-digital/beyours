@@ -22,15 +22,14 @@ import { AddressAutocomplete, type AddressValue } from "@/components/ui/address-
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
-const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-const dayNames: Record<string, string> = {
-  monday: "Lundi",
-  tuesday: "Mardi",
-  wednesday: "Mercredi",
-  thursday: "Jeudi",
-  friday: "Vendredi",
-  saturday: "Samedi",
-  sunday: "Dimanche",
+const dayNames: Record<number, string> = {
+  0: "Dimanche",
+  1: "Lundi",
+  2: "Mardi",
+  3: "Mercredi",
+  4: "Jeudi",
+  5: "Vendredi",
+  6: "Samedi",
 }
 
 export function StoreDetailContent({ params }: { params: Promise<{ storeId: string }> }) {
@@ -47,7 +46,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   const [description, setDescription] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
-  const [status, setStatus] = useState("open")
+  const [status, setStatus] = useState<"open" | "draft" | "closed" | "temporarily_unavailable">("open")
 
   // Address tab state
   const [address, setAddress] = useState<AddressValue>({
@@ -58,7 +57,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
   })
 
   // Hours tab state
-  const [hours, setHours] = useState<Array<{ day: string; open: string; close: string; isClosed: boolean }>>([])
+  const [hours, setHours] = useState<Array<{ day: number; open: string; close: string; isClosed: boolean }>>([])
 
   // Settings override state (simplified - full version in admin package)
   const [deliveryEnabled, setDeliveryEnabled] = useState(true)
@@ -72,7 +71,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
     setDescription(store.description || "")
     setPhone(store.phone || "")
     setEmail(store.email || "")
-    setStatus(store.status)
+    setStatus(store.status as "open" | "draft" | "closed" | "temporarily_unavailable")
 
     if (store.address) {
       setAddress({
@@ -89,7 +88,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
       setHours(store.hours)
     } else {
       // Initialize default hours
-      setHours(daysOfWeek.map(day => ({ day, open: "09:00", close: "22:00", isClosed: false })))
+      setHours([0, 1, 2, 3, 4, 5, 6].map(day => ({ day, open: "09:00", close: "22:00", isClosed: false })))
     }
 
     // Overrides are now managed via the admin package StoreDetailPage
@@ -219,7 +218,7 @@ export function StoreDetailContent({ params }: { params: Promise<{ storeId: stri
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Statut</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(v) => setStatus(v as "open" | "draft" | "closed" | "temporarily_unavailable")}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>

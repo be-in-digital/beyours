@@ -26,17 +26,24 @@ type MappingRecord = {
  * Import products from Uber Eats into the internal catalog.
  *
  * Flow:
- * 1. Get store integration (platformStoreId)
- * 2. Get credentials from process.env
- * 3. Call uberEats.pullMenu()
- * 4. Load existing categories + existing mappings for dedup
- * 5. For each PulledCategory: match by name or create
- * 6. For each PulledItem: skip if already mapped, else create product + mapping
+ * 1. Auth check
+ * 2. Get store integration (platformStoreId)
+ * 3. Get credentials from process.env
+ * 4. Call uberEats.pullMenu()
+ * 5. Load existing categories + existing mappings for dedup
+ * 6. For each PulledCategory: match by name or create
+ * 7. For each PulledItem: skip if already mapped, else create product + mapping
  */
 export const importFromStore = action({
   args: { storeId: v.id("stores") },
   handler: async (ctx, args) => {
-    // 1. Get store integration
+    // 1. Auth check
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { success: false, error: "Unauthorized", imported: 0, skipped: 0, categoriesCreated: 0 };
+    }
+
+    // 2. Get store integration
     const integration = await ctx.runQuery(
       api.storeIntegrations.getByStorePlatform,
       { storeId: args.storeId, platform: "uberEats" }
@@ -50,7 +57,7 @@ export const importFromStore = action({
       return { success: false, error: "Uber Eats integration is disabled", imported: 0, skipped: 0, categoriesCreated: 0 };
     }
 
-    // 2. Get credentials
+    // 3. Get credentials
     const clientId = process.env.UBER_EATS_CLIENT_ID;
     const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
     const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
@@ -62,14 +69,14 @@ export const importFromStore = action({
     const credentials = { clientId, clientSecret, sandboxMode };
 
     try {
-      // 3. Pull menu from Uber Eats
+      // 4. Pull menu from Uber Eats
       const { uberEats } = await import("@beindigital-engine/integrations");
       const { categories: pulledCategories } = await uberEats.pullMenu(
         credentials,
         integration.platformStoreId
       );
 
-      // 4. Load existing categories and mappings
+      // 5. Load existing categories and mappings
       const existingCategories = await ctx.runQuery(api.categories.list, {
         storeId: args.storeId,
       }) as CategoryRecord[];
@@ -79,7 +86,7 @@ export const importFromStore = action({
         { storeId: args.storeId, platform: "uberEats" }
       ) as MappingRecord[];
 
-      // 5. Build set of already-imported external IDs
+      // 6. Build set of already-imported external IDs
       const importedExternalIds = new Set(
         existingMappings.map((m) => m.externalId)
       );
@@ -95,7 +102,7 @@ export const importFromStore = action({
       let categoriesCreated = 0;
       let productSortOrder = 0;
 
-      // 6. Process each category
+      // 7. Process each category
       for (let catIdx = 0; catIdx < pulledCategories.length; catIdx++) {
         const pulledCat = pulledCategories[catIdx]!;
         let categoryId: string;
@@ -121,7 +128,7 @@ export const importFromStore = action({
           categoriesCreated++;
         }
 
-        // 7. Process each item
+        // 8. Process each item
         for (const pulledItem of pulledCat.items) {
           // Skip if already imported (dedup by externalId)
           if (importedExternalIds.has(pulledItem.externalId)) {
