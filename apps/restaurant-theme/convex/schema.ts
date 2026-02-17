@@ -2,6 +2,7 @@ import { defineSchema } from "convex/server";
 import {
   userProfilesTable,
   globalSettingsTable,
+  storeIntegrationsTable,
   storesTable,
   teamMembersTable,
   categoriesTable,
@@ -33,6 +34,7 @@ import {
 export default defineSchema({
   userProfiles: userProfilesTable,
   globalSettings: globalSettingsTable,
+  storeIntegrations: storeIntegrationsTable,
   stores: storesTable,
   teamMembers: teamMembersTable,
   categories: categoriesTable,
