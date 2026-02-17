@@ -22,7 +22,7 @@ export const storesTable = defineTable({
   email: v.optional(v.string()),
 
   // Hours: store-specific or inherited from globalSettings
-  useGlobalHours: v.boolean(),
+  useGlobalHours: v.optional(v.boolean()),
   hours: v.array(v.object({
     day: v.number(), // 0=Sunday, 1=Monday, ..., 6=Saturday
     open: v.string(), // "09:00"
@@ -53,6 +53,12 @@ export const storesTable = defineTable({
   })),
 
   themeId: v.optional(v.string()),
+
+  // Legacy fields (kept for backward compatibility with existing data)
+  // Will be removed after data migration
+  branding: v.optional(v.any()),
+  integrations: v.optional(v.any()),
+  settings: v.optional(v.any()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

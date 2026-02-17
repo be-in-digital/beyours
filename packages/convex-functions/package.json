@@ -7,6 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./categories": "./src/categories.ts",
+    "./globalSettings": "./src/globalSettings.ts",
+    "./storeIntegrations": "./src/storeIntegrations.ts",
     "./stores": "./src/stores.ts",
     "./products": "./src/products.ts",
     "./orders": "./src/orders.ts",
