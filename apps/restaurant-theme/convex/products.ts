@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import * as defs from "@beindigital-engine/convex-functions/products";
 
@@ -16,17 +17,10 @@ export const getFeatured = query(defs.getFeatured);
  * Schedule Uber Eats menu sync after a product mutation.
  * Uses a 5-second delay to debounce rapid consecutive edits.
  * Non-critical: failures are logged but do not affect the product mutation.
- *
- * NOTE: The reference to internal.uberEatsMenuSync.syncAllStores requires
- * running `npx convex dev` to regenerate types after adding the new module.
- * The `as any` cast handles the transition period before types are regenerated.
  */
-async function scheduleMenuSync(ctx: any) {
+async function scheduleMenuSync(ctx: MutationCtx) {
   try {
-    const syncRef = (internal as any).uberEatsMenuSync?.syncAllStores;
-    if (syncRef) {
-      await ctx.scheduler.runAfter(5000, syncRef, {});
-    }
+    await ctx.scheduler.runAfter(5000, internal.uberEatsMenuSync.syncAllStores, {});
   } catch (error) {
     console.error("Failed to schedule Uber Eats menu sync:", error);
   }

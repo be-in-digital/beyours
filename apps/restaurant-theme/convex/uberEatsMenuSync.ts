@@ -1,8 +1,9 @@
 "use node";
 
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { action, internalAction } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import {
   buildUberEatsMenuPayload,
   type StoreIntegrationRecord,
@@ -142,7 +143,7 @@ export const syncAllStores = internalAction({
       await ctx.scheduler.runAfter(
         0,
         api.uberEatsMenuSync.syncStore,
-        { storeId: integration.storeId as any }
+        { storeId: integration.storeId as Id<"stores"> }
       );
     }
 
