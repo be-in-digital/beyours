@@ -5,8 +5,17 @@
 import type { DeliverooCredentials, DeliverooToken, DeliverooApiType } from "./types"
 import { DELIVEROO_URLS } from "./types"
 
-// Token cache (in-memory, per-process)
-let cachedToken: DeliverooToken | null = null
+// M-01: Per-credential token cache (supports multi-tenant)
+const tokenCache = new Map<string, DeliverooToken>()
+// M-02: Dedup concurrent token refresh requests
+let pendingTokenRequest: Promise<DeliverooToken> | null = null
+let pendingTokenKey: string | null = null
+
+const FETCH_TIMEOUT_MS = 15_000
+
+function getCacheKey(credentials: DeliverooCredentials): string {
+  return `${credentials.clientId}:${credentials.sandboxMode ? "sandbox" : "prod"}`
+}
 
 /**
  * Get API URLs based on sandbox mode
@@ -27,9 +36,19 @@ function getBaseUrl(sandbox: boolean, apiType: DeliverooApiType): string {
       return urls.menuApi
     case "site":
       return urls.siteApi
-    default:
-      return urls.menuApi
   }
+}
+
+/**
+ * Create a fetch request with timeout (M-06)
+ */
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId)
+  })
 }
 
 /**
@@ -38,51 +57,77 @@ function getBaseUrl(sandbox: boolean, apiType: DeliverooApiType): string {
 export async function getAccessToken(
   credentials: DeliverooCredentials
 ): Promise<DeliverooToken> {
+  const key = getCacheKey(credentials)
+
   // Return cached token if still valid (with 5 min buffer)
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 5 * 60 * 1000) {
-    return cachedToken
+  const cached = tokenCache.get(key)
+  if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
+    return cached
   }
 
-  const urls = getUrls(credentials.sandboxMode ?? false)
-  const basicAuth = btoa(`${credentials.clientId}:${credentials.clientSecret}`)
+  // M-02: If a token request is already in flight for this key, reuse it
+  if (pendingTokenRequest && pendingTokenKey === key) {
+    return pendingTokenRequest
+  }
 
-  const response = await fetch(`${urls.auth}/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basicAuth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-    }).toString(),
+  const fetchToken = async (): Promise<DeliverooToken> => {
+    const urls = getUrls(credentials.sandboxMode ?? false)
+    // M-07: RFC 6749 Section 2.3.1 — URL-encode before Base64
+    const encodedId = encodeURIComponent(credentials.clientId)
+    const encodedSecret = encodeURIComponent(credentials.clientSecret)
+    const basicAuth = Buffer.from(`${encodedId}:${encodedSecret}`).toString("base64")
+
+    const response = await fetchWithTimeout(`${urls.auth}/oauth2/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+      }).toString(),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Deliveroo OAuth failed (${response.status}): ${errorText}`
+      )
+    }
+
+    const data = (await response.json()) as {
+      access_token: string
+      token_type: string
+      expires_in: number
+    }
+
+    const token: DeliverooToken = {
+      accessToken: data.access_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    }
+
+    tokenCache.set(key, token)
+    return token
+  }
+
+  pendingTokenKey = key
+  pendingTokenRequest = fetchToken().finally(() => {
+    pendingTokenRequest = null
+    pendingTokenKey = null
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(
-      `Deliveroo OAuth failed (${response.status}): ${errorText}`
-    )
-  }
-
-  const data = (await response.json()) as {
-    access_token: string
-    token_type: string
-    expires_in: number
-  }
-
-  cachedToken = {
-    accessToken: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  }
-
-  return cachedToken
+  return pendingTokenRequest
 }
 
 /**
  * Clear the cached token (useful after 401 errors)
  */
-export function clearTokenCache(): void {
-  cachedToken = null
+export function clearTokenCache(credentials?: DeliverooCredentials): void {
+  if (credentials) {
+    tokenCache.delete(getCacheKey(credentials))
+  } else {
+    tokenCache.clear()
+  }
 }
 
 /**
@@ -119,15 +164,17 @@ export async function fetchDeliveroo(
     fetchOptions.body = JSON.stringify(options.body)
   }
 
-  const response = await fetch(url, fetchOptions)
+  const response = await fetchWithTimeout(url, fetchOptions)
 
   // If token expired, retry once with fresh token
   if (response.status === 401) {
-    clearTokenCache()
+    // M-03: Consume the body to release the connection
+    await response.text().catch(() => {})
+    clearTokenCache(credentials)
     const newToken = await getAccessToken(credentials)
     headers.Authorization = `Bearer ${newToken.accessToken}`
 
-    return fetch(url, {
+    return fetchWithTimeout(url, {
       ...fetchOptions,
       headers,
     })

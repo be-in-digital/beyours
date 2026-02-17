@@ -5,8 +5,17 @@
 import type { UberEatsCredentials, UberEatsToken, UberEatsOrder } from "./types"
 import { UBER_EATS_URLS } from "./types"
 
-// Token cache (in-memory, per-process)
-let cachedToken: UberEatsToken | null = null
+// M-01: Per-credential token cache (supports multi-tenant)
+const tokenCache = new Map<string, UberEatsToken>()
+// M-02: Dedup concurrent token refresh requests
+let pendingTokenRequest: Promise<UberEatsToken> | null = null
+let pendingTokenKey: string | null = null
+
+const FETCH_TIMEOUT_MS = 15_000
+
+function getCacheKey(credentials: UberEatsCredentials): string {
+  return `${credentials.clientId}:${credentials.sandboxMode ? "sandbox" : "prod"}`
+}
 
 /**
  * Get API base URL based on sandbox mode
@@ -16,60 +25,95 @@ function getUrls(sandbox: boolean) {
 }
 
 /**
+ * Create a fetch request with timeout (M-06)
+ */
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId)
+  })
+}
+
+/**
  * Obtain an OAuth2 access token using client_credentials grant
  */
 export async function getAccessToken(
   credentials: UberEatsCredentials
 ): Promise<UberEatsToken> {
+  const key = getCacheKey(credentials)
+
   // Return cached token if still valid (with 5 min buffer)
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 5 * 60 * 1000) {
-    return cachedToken
+  const cached = tokenCache.get(key)
+  if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
+    return cached
   }
 
-  const urls = getUrls(credentials.sandboxMode ?? false)
+  // M-02: If a token request is already in flight for this key, reuse it
+  if (pendingTokenRequest && pendingTokenKey === key) {
+    return pendingTokenRequest
+  }
 
-  const response = await fetch(urls.auth, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret,
-      grant_type: "client_credentials",
-      scope: "eats.store eats.order eats.store.orders.read eats.store.orders.cancel eats.store.status.write",
-    }).toString(),
+  const fetchToken = async (): Promise<UberEatsToken> => {
+    const urls = getUrls(credentials.sandboxMode ?? false)
+
+    const response = await fetchWithTimeout(urls.auth, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: credentials.clientId,
+        client_secret: credentials.clientSecret,
+        grant_type: "client_credentials",
+        scope: "eats.store eats.order eats.store.orders.read eats.store.orders.cancel eats.store.status.write",
+      }).toString(),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(
+        `Uber Eats OAuth failed (${response.status}): ${errorText}`
+      )
+    }
+
+    const data = await response.json() as {
+      access_token: string
+      token_type: string
+      expires_in: number
+      scope: string
+    }
+
+    const token: UberEatsToken = {
+      accessToken: data.access_token,
+      tokenType: data.token_type,
+      expiresAt: Date.now() + data.expires_in * 1000,
+      scope: data.scope,
+    }
+
+    tokenCache.set(key, token)
+    return token
+  }
+
+  pendingTokenKey = key
+  pendingTokenRequest = fetchToken().finally(() => {
+    pendingTokenRequest = null
+    pendingTokenKey = null
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(
-      `Uber Eats OAuth failed (${response.status}): ${errorText}`
-    )
-  }
-
-  const data = await response.json() as {
-    access_token: string
-    token_type: string
-    expires_in: number
-    scope: string
-  }
-
-  cachedToken = {
-    accessToken: data.access_token,
-    tokenType: data.token_type,
-    expiresAt: Date.now() + data.expires_in * 1000,
-    scope: data.scope,
-  }
-
-  return cachedToken
+  return pendingTokenRequest
 }
 
 /**
  * Clear the cached token (useful after 401 errors)
  */
-export function clearTokenCache(): void {
-  cachedToken = null
+export function clearTokenCache(credentials?: UberEatsCredentials): void {
+  if (credentials) {
+    tokenCache.delete(getCacheKey(credentials))
+  } else {
+    tokenCache.clear()
+  }
 }
 
 /**
@@ -103,15 +147,17 @@ export async function fetchUberEats(
     fetchOptions.body = JSON.stringify(options.body)
   }
 
-  const response = await fetch(url, fetchOptions)
+  const response = await fetchWithTimeout(url, fetchOptions)
 
   // If token expired, retry once with fresh token
   if (response.status === 401) {
-    clearTokenCache()
+    // M-03: Consume the body to release the connection
+    await response.text().catch(() => {})
+    clearTokenCache(credentials)
     const newToken = await getAccessToken(credentials)
     headers.Authorization = `Bearer ${newToken.accessToken}`
 
-    return fetch(url, {
+    return fetchWithTimeout(url, {
       ...fetchOptions,
       headers,
     })

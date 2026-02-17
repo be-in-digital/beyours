@@ -56,8 +56,10 @@ describe('Deliveroo API Client', () => {
       expect(options.method).toBe('POST')
       expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded')
 
-      // Verify Basic auth header
-      const expectedBasicAuth = btoa('test-client-id:test-client-secret')
+      // Verify Basic auth header (M-07: RFC 6749 — URL-encode before Base64)
+      const encodedId = encodeURIComponent('test-client-id')
+      const encodedSecret = encodeURIComponent('test-client-secret')
+      const expectedBasicAuth = Buffer.from(`${encodedId}:${encodedSecret}`).toString('base64')
       expect(options.headers.Authorization).toBe(`Basic ${expectedBasicAuth}`)
 
       expect(options.body).toContain('grant_type=client_credentials')
@@ -311,7 +313,8 @@ describe('Deliveroo API Client', () => {
 
         apiCallCount++
         if (apiCallCount === 1) {
-          return Promise.resolve({ ok: false, status: 401 })
+          // M-03: Client now consumes body on 401 before retry
+          return Promise.resolve({ ok: false, status: 401, text: async () => '' })
         }
         return Promise.resolve({ ok: true, json: async () => ({ success: true }) })
       })

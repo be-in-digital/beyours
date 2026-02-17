@@ -279,8 +279,8 @@ describe('Uber Eats API Client', () => {
 
         callCount++
         if (callCount === 1) {
-          // First API call fails with 401
-          return Promise.resolve({ ok: false, status: 401 })
+          // First API call fails with 401 — M-03: client consumes body before retry
+          return Promise.resolve({ ok: false, status: 401, text: async () => '' })
         } else {
           // Second API call succeeds
           return Promise.resolve({ ok: true, json: async () => ({ success: true }) })
