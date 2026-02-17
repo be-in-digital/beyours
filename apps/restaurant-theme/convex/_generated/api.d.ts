@@ -35,6 +35,7 @@ import type * as uberEatsMenuSync from "../uberEatsMenuSync.js";
 import type * as uberEatsOrders from "../uberEatsOrders.js";
 import type * as uberEatsWebhook from "../uberEatsWebhook.js";
 import type * as userProfiles from "../userProfiles.js";
+import type * as validateIntegration from "../validateIntegration.js";
 
 import type {
   ApiFromModules,
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   uberEatsOrders: typeof uberEatsOrders;
   uberEatsWebhook: typeof uberEatsWebhook;
   userProfiles: typeof userProfiles;
+  validateIntegration: typeof validateIntegration;
 }>;
 
 /**

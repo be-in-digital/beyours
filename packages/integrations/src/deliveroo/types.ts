@@ -26,7 +26,7 @@ export const DELIVEROO_URLS = {
     siteApi: "https://api.developers.deliveroo.com",
   },
   sandbox: {
-    auth: "https://auth.developers.deliveroo.com",
+    auth: "https://auth-sandbox.developers.deliveroo.com",
     orderApi: "https://api-sandbox.developers.deliveroo.com",
     menuApi: "https://api-sandbox.developers.deliveroo.com",
     siteApi: "https://api-sandbox.developers.deliveroo.com",

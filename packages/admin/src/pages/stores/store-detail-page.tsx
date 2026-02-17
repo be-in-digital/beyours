@@ -144,6 +144,11 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const [deliverooStoreStatus, setDeliverooStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
   const [deliverooPrepTime, setDeliverooPrepTime] = useState("")
 
+  // Validation state (separate per platform)
+  const [isValidatingUberEats, setIsValidatingUberEats] = useState(false)
+  const [isValidatingDeliveroo, setIsValidatingDeliveroo] = useState(false)
+  const validateIntegration = useAction(api.validateIntegration.validate)
+
   // Initialize state when store loads
   useEffect(() => {
     if (!store) return
@@ -359,9 +364,20 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   }
 
   const handleSaveUberEats = async () => {
+    if (!uberEatsStoreId.trim()) {
+      toast.error("Veuillez saisir l'ID du restaurant Uber Eats")
+      return
+    }
+
+    setIsValidatingUberEats(true)
     try {
-      if (!uberEatsStoreId.trim()) {
-        toast.error("Veuillez saisir l'ID du restaurant Uber Eats")
+      const validation = await validateIntegration({
+        platform: "uberEats",
+        platformStoreId: uberEatsStoreId,
+      }) as { valid: boolean; error?: string }
+
+      if (!validation.valid) {
+        toast.error(`Connexion Uber Eats echouee : ${validation.error}`)
         return
       }
 
@@ -376,17 +392,36 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         prepTime: uberEatsPrepTime ? parseInt(uberEatsPrepTime, 10) : undefined,
       })
 
-      toast.success("Intégration Uber Eats enregistrée")
+      toast.success("Integration Uber Eats verifiee et enregistree")
     } catch (error) {
-      toast.error("Échec de l'enregistrement Uber Eats")
+      toast.error("Echec de la validation Uber Eats")
       console.error(error)
+    } finally {
+      setIsValidatingUberEats(false)
     }
   }
 
   const handleSaveDeliveroo = async () => {
+    if (!deliverooStoreId.trim()) {
+      toast.error("Veuillez saisir l'ID du restaurant Deliveroo")
+      return
+    }
+
+    if (!deliverooBrandId.trim()) {
+      toast.error("Veuillez saisir le Brand ID Deliveroo")
+      return
+    }
+
+    setIsValidatingDeliveroo(true)
     try {
-      if (!deliverooStoreId.trim()) {
-        toast.error("Veuillez saisir l'ID du restaurant Deliveroo")
+      const validation = await validateIntegration({
+        platform: "deliveroo",
+        platformStoreId: deliverooStoreId,
+        brandId: deliverooBrandId,
+      }) as { valid: boolean; error?: string }
+
+      if (!validation.valid) {
+        toast.error(`Connexion Deliveroo echouee : ${validation.error}`)
         return
       }
 
@@ -402,10 +437,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         brandId: deliverooBrandId || undefined,
       })
 
-      toast.success("Intégration Deliveroo enregistrée")
+      toast.success("Integration Deliveroo verifiee et enregistree")
     } catch (error) {
-      toast.error("Échec de l'enregistrement Deliveroo")
+      toast.error("Echec de la validation Deliveroo")
       console.error(error)
+    } finally {
+      setIsValidatingDeliveroo(false)
     }
   }
 
@@ -437,6 +474,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const [isImportingDeliveroo, setIsImportingDeliveroo] = useState(false)
 
   const syncUberEatsStore = useAction(api.uberEatsMenuSync.syncStore)
+  const syncDeliverooStore = useAction(api.deliverooMenuSync.syncStore)
   const importFromUberEats = useAction(api.uberEatsImport.importFromStore)
   const importFromDeliveroo = useAction(api.deliverooImport.importFromStore)
 
@@ -456,8 +494,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const handleSyncDeliverooMenu = async () => {
     setIsSyncingDeliveroo(true)
     try {
-      // TODO: Implement when deliverooMenuSync action is available
-      toast.success("Menu Deliveroo synchronisé avec succès")
+      await syncDeliverooStore({ storeId })
+      toast.success("Menu Deliveroo synchronise avec succes")
     } catch (error) {
       toast.error("Erreur lors de la synchronisation du menu Deliveroo")
       console.error(error)
@@ -1189,8 +1227,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <Button onClick={handleSaveUberEats} size="sm">
-                    Enregistrer
+                  <Button onClick={handleSaveUberEats} size="sm" disabled={isValidatingUberEats}>
+                    {isValidatingUberEats ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Verification...
+                      </>
+                    ) : (
+                      "Enregistrer"
+                    )}
                   </Button>
                 </>
               )}
@@ -1418,8 +1463,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <Button onClick={handleSaveDeliveroo} size="sm">
-                    Enregistrer
+                  <Button onClick={handleSaveDeliveroo} size="sm" disabled={isValidatingDeliveroo}>
+                    {isValidatingDeliveroo ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Verification...
+                      </>
+                    ) : (
+                      "Enregistrer"
+                    )}
                   </Button>
                 </>
               )}
