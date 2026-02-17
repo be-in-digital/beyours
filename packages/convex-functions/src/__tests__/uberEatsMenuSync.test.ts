@@ -19,7 +19,7 @@ function createMockProduct(overrides?: Partial<ProductRecord>): ProductRecord {
     name: 'Test Product',
     slug: 'test-product',
     description: 'A test product',
-    price: 12.99,
+    price: 1299,
     taxRate: 0.2,
     images: ['https://example.com/image.jpg'],
     isActive: true,
@@ -55,7 +55,7 @@ describe('buildUberEatsMenuPayload', () => {
       _id: 'prod-1',
       categoryId: 'cat-1',
       name: 'Margherita',
-      price: 12.5,
+      price: 1250,
       taxRate: 0.1,
     })
 
@@ -79,7 +79,7 @@ describe('buildUberEatsMenuPayload', () => {
     expect(payload.items).toHaveLength(1)
     expect(payload.items[0].id).toBe('item-prod-1')
     expect(payload.items[0].title.translations.en).toBe('Margherita')
-    expect(payload.items[0].price_info.price).toBe(1250) // 12.50 * 100
+    expect(payload.items[0].price_info.price).toBe(1250) // DB stores cents, passed through
     expect(payload.items[0].tax_info?.tax_rate).toBe(0.1)
   })
 
@@ -118,12 +118,12 @@ describe('buildUberEatsMenuPayload', () => {
     expect(payload.menus[0].category_ids).toHaveLength(1)
   })
 
-  it('should convert prices from euros to cents correctly', () => {
+  it('should pass through prices in cents correctly', () => {
     const products = [
-      createMockProduct({ price: 10.0 }),
-      createMockProduct({ price: 12.5 }),
-      createMockProduct({ price: 9.99 }),
-      createMockProduct({ price: 0.5 }),
+      createMockProduct({ price: 1000 }),
+      createMockProduct({ price: 1250 }),
+      createMockProduct({ price: 999 }),
+      createMockProduct({ price: 50 }),
     ]
     const category = createMockCategory({ _id: 'cat-1' })
 
@@ -149,7 +149,7 @@ describe('buildUberEatsMenuPayload', () => {
           maxSelections: 1,
           choices: [
             { id: 'choice-1', name: 'Small', priceModifier: 0 },
-            { id: 'choice-2', name: 'Large', priceModifier: 3.0 },
+            { id: 'choice-2', name: 'Large', priceModifier: 300 },
           ],
         },
       ],
@@ -175,7 +175,7 @@ describe('buildUberEatsMenuPayload', () => {
     expect(modItems[0].title.translations.en).toBe('Small')
     expect(modItems[0].price_info.price).toBe(0)
     expect(modItems[1].title.translations.en).toBe('Large')
-    expect(modItems[1].price_info.price).toBe(300) // 3.0 * 100
+    expect(modItems[1].price_info.price).toBe(300) // DB stores cents, passed through
 
     // Main item should reference modifier group
     const mainItem = payload.items.find((item) => item.id === 'item-prod-1')
@@ -228,7 +228,7 @@ describe('buildUberEatsMenuPayload', () => {
             {
               id: 'choice-1',
               name: 'Large',
-              priceModifier: 2.0,
+              priceModifier: 200,
               externalIds: {
                 uberEatsId: 'uber-mod-456',
               },
@@ -287,7 +287,7 @@ describe('buildUberEatsMenuPayload', () => {
             required: true,
             choices: [
               { id: 'choice-1', name: 'Small', priceModifier: 0 },
-              { id: 'choice-2', name: 'Large', priceModifier: 3.0 },
+              { id: 'choice-2', name: 'Large', priceModifier: 300 },
             ],
           },
           {
@@ -296,8 +296,8 @@ describe('buildUberEatsMenuPayload', () => {
             required: false,
             maxSelections: 3,
             choices: [
-              { id: 'choice-3', name: 'Mushrooms', priceModifier: 1.5 },
-              { id: 'choice-4', name: 'Olives', priceModifier: 1.0 },
+              { id: 'choice-3', name: 'Mushrooms', priceModifier: 150 },
+              { id: 'choice-4', name: 'Olives', priceModifier: 100 },
             ],
           },
         ],
@@ -345,7 +345,7 @@ describe('buildUberEatsMenuPayload', () => {
           name: 'Extra Toppings',
           required: false,
           maxSelections: 5,
-          choices: [{ id: 'choice-1', name: 'Extra Cheese', priceModifier: 2.0 }],
+          choices: [{ id: 'choice-1', name: 'Extra Cheese', priceModifier: 200 }],
         },
       ],
     })
@@ -369,9 +369,9 @@ describe('buildUberEatsMenuPayload', () => {
           required: false,
           // maxSelections not specified
           choices: [
-            { id: 'choice-1', name: 'Mushrooms', priceModifier: 1.0 },
-            { id: 'choice-2', name: 'Olives', priceModifier: 1.0 },
-            { id: 'choice-3', name: 'Peppers', priceModifier: 1.0 },
+            { id: 'choice-1', name: 'Mushrooms', priceModifier: 100 },
+            { id: 'choice-2', name: 'Olives', priceModifier: 100 },
+            { id: 'choice-3', name: 'Peppers', priceModifier: 100 },
           ],
         },
       ],
@@ -469,7 +469,7 @@ describe('buildUberEatsMenuPayload', () => {
           id: 'opt-1',
           name: 'Size',
           required: true,
-          choices: [{ id: 'choice-abc', name: 'Large', priceModifier: 2.0 }],
+          choices: [{ id: 'choice-abc', name: 'Large', priceModifier: 200 }],
         },
       ],
     })

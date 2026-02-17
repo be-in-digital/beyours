@@ -6,6 +6,15 @@
 
 import type { UberEatsCredentials } from "./types"
 import { fetchUberEats } from "./client"
+import type {
+  PulledCategory,
+  PulledItem,
+  PulledModifierGroup,
+  PulledModifier,
+} from "../common/menu-types"
+
+// Re-export shared types for backwards compatibility
+export type { PulledCategory, PulledItem, PulledModifierGroup, PulledModifier }
 
 /**
  * Fetch the current menu for a store from Uber Eats
@@ -16,7 +25,7 @@ export async function pullMenu(
 ): Promise<{ categories: PulledCategory[]; rawMenu: unknown }> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/stores/${storeId}/menus`
+    `/v2/eats/stores/${storeId}/menus`
   )
 
   if (!response.ok) {
@@ -55,35 +64,6 @@ export async function pushMenu(
       `Failed to push menu to store ${storeId} (${response.status}): ${errorText}`
     )
   }
-}
-
-// === Internal types ===
-
-export interface PulledCategory {
-  externalId: string
-  name: string
-  items: PulledItem[]
-}
-
-export interface PulledItem {
-  externalId: string
-  name: string
-  description?: string
-  imageUrl?: string
-  price: number
-  modifierGroups: PulledModifierGroup[]
-}
-
-export interface PulledModifierGroup {
-  externalId: string
-  name: string
-  modifiers: PulledModifier[]
-}
-
-export interface PulledModifier {
-  externalId: string
-  name: string
-  price: number
 }
 
 export interface UberEatsMenuPayload {

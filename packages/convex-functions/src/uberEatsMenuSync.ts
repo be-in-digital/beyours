@@ -166,7 +166,7 @@ const ALL_DAYS = [
  * - Only includes active categories and active products
  * - Skips categories with no active products
  * - Maps product options to Uber Eats modifier groups
- * - Prices are converted from euros (decimal) to cents (integer)
+ * - Prices are passed through as-is (DB and Uber Eats API both use cents)
  * - Uses externalIds when available for modifier group/choice IDs
  */
 export function buildUberEatsMenuPayload(
@@ -232,7 +232,7 @@ export function buildUberEatsMenuPayload(
             external_data: choice.id,
             title: { translations: { en: choice.name } },
             price_info: {
-              price: Math.round(choice.priceModifier * 100),
+              price: choice.priceModifier,
             },
             quantity_info: {
               quantity: { max_permitted: 1, min_permitted: 1 },
@@ -260,8 +260,8 @@ export function buildUberEatsMenuPayload(
       external_data: product._id,
       title: { translations: { en: product.name } },
       price_info: {
-        // Convert from euros (decimal) to cents (integer)
-        price: Math.round(product.price * 100),
+        // DB stores prices in cents, Uber Eats API expects cents
+        price: product.price,
       },
     }
 

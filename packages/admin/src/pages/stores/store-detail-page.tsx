@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
-import { RefreshCw, Loader2, HelpCircle, ExternalLink } from "lucide-react"
+import { RefreshCw, Loader2, HelpCircle, ExternalLink, Download, MoreHorizontal, Trash2 } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
 import { Input } from "@beindigital-engine/ui"
 import { Label } from "@beindigital-engine/ui"
@@ -18,6 +18,13 @@ import {
 import { Switch } from "@beindigital-engine/ui"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
 import { Badge } from "@beindigital-engine/ui"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@beindigital-engine/ui"
 import {
   Popover,
   PopoverContent,
@@ -66,6 +73,7 @@ type StoreIntegration = {
   enabled: boolean
   storeStatus?: "ONLINE" | "PAUSED" | "OFFLINE"
   prepTime?: number
+  brandId?: string
   menuSyncStatus?: "idle" | "syncing" | "success" | "error"
   menuSyncError?: string
   lastMenuSyncAt?: number
@@ -129,6 +137,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const [uberEatsPrepTime, setUberEatsPrepTime] = useState("")
 
   const [deliverooStoreId, setDeliverooStoreId] = useState("")
+  const [deliverooBrandId, setDeliverooBrandId] = useState("")
   const [deliverooSyncMenu, setDeliverooSyncMenu] = useState(true)
   const [deliverooAutoAccept, setDeliverooAutoAccept] = useState(true)
   const [deliverooEnabled, setDeliverooEnabled] = useState(true)
@@ -220,6 +229,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     const deliveroo = storeIntegrations.find((i: StoreIntegration) => i.platform === "deliveroo")
     if (deliveroo) {
       setDeliverooStoreId(deliveroo.platformStoreId)
+      setDeliverooBrandId(deliveroo.brandId ?? "")
       setDeliverooSyncMenu(deliveroo.syncMenu)
       setDeliverooAutoAccept(deliveroo.autoAccept)
       setDeliverooEnabled(deliveroo.enabled)
@@ -389,6 +399,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         enabled: deliverooEnabled,
         storeStatus: deliverooStoreStatus,
         prepTime: deliverooPrepTime ? parseInt(deliverooPrepTime, 10) : undefined,
+        brandId: deliverooBrandId || undefined,
       })
 
       toast.success("Intégration Deliveroo enregistrée")
@@ -419,11 +430,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
 
   // Menu sync loading states
   const [isSyncingUberEats, setIsSyncingUberEats] = useState(false)
-  const [isSyncingAllUberEats, setIsSyncingAllUberEats] = useState(false)
   const [isSyncingDeliveroo, setIsSyncingDeliveroo] = useState(false)
 
+  // Import loading states
+  const [isImportingUberEats, setIsImportingUberEats] = useState(false)
+  const [isImportingDeliveroo, setIsImportingDeliveroo] = useState(false)
+
   const syncUberEatsStore = useAction(api.uberEatsMenuSync.syncStore)
-  const syncAllUberEatsStores = useAction(api.uberEatsMenuSync.syncAllStores)
+  const importFromUberEats = useAction(api.uberEatsImport.importFromStore)
+  const importFromDeliveroo = useAction(api.deliverooImport.importFromStore)
 
   const handleSyncUberEatsMenu = async () => {
     setIsSyncingUberEats(true)
@@ -435,19 +450,6 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       console.error(error)
     } finally {
       setIsSyncingUberEats(false)
-    }
-  }
-
-  const handleSyncAllUberEatsMenus = async () => {
-    setIsSyncingAllUberEats(true)
-    try {
-      await syncAllUberEatsStores({})
-      toast.success("Synchronisation de tous les menus Uber Eats lancée")
-    } catch (error) {
-      toast.error("Erreur lors de la synchronisation des menus Uber Eats")
-      console.error(error)
-    } finally {
-      setIsSyncingAllUberEats(false)
     }
   }
 
@@ -464,6 +466,56 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     }
   }
 
+  const handleImportUberEats = async () => {
+    setIsImportingUberEats(true)
+    try {
+      const result = await importFromUberEats({ storeId }) as {
+        success: boolean
+        error?: string
+        imported: number
+        skipped: number
+        categoriesCreated: number
+      }
+      if (result.success) {
+        toast.success(
+          `Import Uber Eats : ${result.imported} produit(s) importé(s), ${result.skipped} ignoré(s), ${result.categoriesCreated} catégorie(s) créée(s)`
+        )
+      } else {
+        toast.error(`Erreur import Uber Eats : ${result.error}`)
+      }
+    } catch (error) {
+      toast.error("Erreur lors de l'import des produits Uber Eats")
+      console.error(error)
+    } finally {
+      setIsImportingUberEats(false)
+    }
+  }
+
+  const handleImportDeliveroo = async () => {
+    setIsImportingDeliveroo(true)
+    try {
+      const result = await importFromDeliveroo({ storeId }) as {
+        success: boolean
+        error?: string
+        imported: number
+        skipped: number
+        categoriesCreated: number
+      }
+      if (result.success) {
+        toast.success(
+          `Import Deliveroo : ${result.imported} produit(s) importé(s), ${result.skipped} ignoré(s), ${result.categoriesCreated} catégorie(s) créée(s)`
+        )
+      } else {
+        toast.error(`Erreur import Deliveroo : ${result.error}`)
+      }
+    } catch (error) {
+      toast.error("Erreur lors de l'import des produits Deliveroo")
+      console.error(error)
+    } finally {
+      setIsImportingDeliveroo(false)
+    }
+  }
+
   const handleRemoveDeliveroo = async () => {
     try {
       const integration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
@@ -471,6 +523,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
 
       await removeIntegration({ id: integration._id })
       setDeliverooStoreId("")
+      setDeliverooBrandId("")
       setDeliverooSyncMenu(false)
       setDeliverooAutoAccept(false)
       setDeliverooEnabled(false)
@@ -940,27 +993,70 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Uber Eats</CardTitle>
-                  <CardDescription>Configuration de l'intégration Uber Eats pour cet établissement</CardDescription>
+                  <CardDescription>Configuration de l&apos;intégration Uber Eats pour cet établissement</CardDescription>
                 </div>
-                {(() => {
-                  const ueIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "uberEats")
-                  if (!ueIntegration?.menuSyncStatus || ueIntegration.menuSyncStatus === "idle") return null
-                  const statusColors: Record<string, string> = {
-                    syncing: "bg-blue-100 text-blue-700",
-                    success: "bg-green-100 text-green-700",
-                    error: "bg-red-100 text-red-700",
-                  }
-                  const statusLabels: Record<string, string> = {
-                    syncing: "Synchronisation...",
-                    success: "Synchronisé",
-                    error: "Erreur de sync",
-                  }
-                  return (
-                    <Badge className={statusColors[ueIntegration.menuSyncStatus] ?? ""}>
-                      {statusLabels[ueIntegration.menuSyncStatus] ?? ueIntegration.menuSyncStatus}
-                    </Badge>
-                  )
-                })()}
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const ueIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "uberEats")
+                    if (!ueIntegration?.menuSyncStatus || ueIntegration.menuSyncStatus === "idle") return null
+                    const statusColors: Record<string, string> = {
+                      syncing: "bg-blue-100 text-blue-700",
+                      success: "bg-green-100 text-green-700",
+                      error: "bg-red-100 text-red-700",
+                    }
+                    const statusLabels: Record<string, string> = {
+                      syncing: "Synchronisation...",
+                      success: "Synchronisé",
+                      error: "Erreur de sync",
+                    }
+                    return (
+                      <Badge className={statusColors[ueIntegration.menuSyncStatus] ?? ""}>
+                        {statusLabels[ueIntegration.menuSyncStatus] ?? ueIntegration.menuSyncStatus}
+                      </Badge>
+                    )
+                  })()}
+                  {storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          {(isSyncingUberEats || isImportingUberEats) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {uberEatsEnabled && uberEatsSyncMenu && (
+                          <DropdownMenuItem
+                            onClick={handleSyncUberEatsMenu}
+                            disabled={isSyncingUberEats}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Synchroniser le menu
+                          </DropdownMenuItem>
+                        )}
+                        {uberEatsEnabled && (
+                          <DropdownMenuItem
+                            onClick={handleImportUberEats}
+                            disabled={isImportingUberEats}
+                          >
+                            <Download className="h-4 w-4" />
+                            Importer les produits
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={handleRemoveUberEats}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer l&apos;intégration
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1093,46 +1189,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={handleSaveUberEats} size="sm">
-                      Enregistrer
-                    </Button>
-                    {uberEatsEnabled && uberEatsSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
-                      <Button
-                        onClick={handleSyncUberEatsMenu}
-                        size="sm"
-                        variant="outline"
-                        disabled={isSyncingUberEats}
-                      >
-                        {isSyncingUberEats ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                        )}
-                        Synchroniser le menu
-                      </Button>
-                    )}
-                    {uberEatsEnabled && uberEatsSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
-                      <Button
-                        onClick={handleSyncAllUberEatsMenus}
-                        size="sm"
-                        variant="outline"
-                        disabled={isSyncingAllUberEats}
-                      >
-                        {isSyncingAllUberEats ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                        )}
-                        Synchroniser tous les menus
-                      </Button>
-                    )}
-                    {storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
-                      <Button onClick={handleRemoveUberEats} size="sm" variant="destructive">
-                        Supprimer
-                      </Button>
-                    )}
-                  </div>
+                  <Button onClick={handleSaveUberEats} size="sm">
+                    Enregistrer
+                  </Button>
                 </>
               )}
             </CardContent>
@@ -1144,27 +1203,70 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Deliveroo</CardTitle>
-                  <CardDescription>Configuration de l'intégration Deliveroo pour cet établissement</CardDescription>
+                  <CardDescription>Configuration de l&apos;intégration Deliveroo pour cet établissement</CardDescription>
                 </div>
-                {(() => {
-                  const dlIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
-                  if (!dlIntegration?.menuSyncStatus || dlIntegration.menuSyncStatus === "idle") return null
-                  const statusColors: Record<string, string> = {
-                    syncing: "bg-blue-100 text-blue-700",
-                    success: "bg-green-100 text-green-700",
-                    error: "bg-red-100 text-red-700",
-                  }
-                  const statusLabels: Record<string, string> = {
-                    syncing: "Synchronisation...",
-                    success: "Synchronisé",
-                    error: "Erreur de sync",
-                  }
-                  return (
-                    <Badge className={statusColors[dlIntegration.menuSyncStatus] ?? ""}>
-                      {statusLabels[dlIntegration.menuSyncStatus] ?? dlIntegration.menuSyncStatus}
-                    </Badge>
-                  )
-                })()}
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const dlIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
+                    if (!dlIntegration?.menuSyncStatus || dlIntegration.menuSyncStatus === "idle") return null
+                    const statusColors: Record<string, string> = {
+                      syncing: "bg-blue-100 text-blue-700",
+                      success: "bg-green-100 text-green-700",
+                      error: "bg-red-100 text-red-700",
+                    }
+                    const statusLabels: Record<string, string> = {
+                      syncing: "Synchronisation...",
+                      success: "Synchronisé",
+                      error: "Erreur de sync",
+                    }
+                    return (
+                      <Badge className={statusColors[dlIntegration.menuSyncStatus] ?? ""}>
+                        {statusLabels[dlIntegration.menuSyncStatus] ?? dlIntegration.menuSyncStatus}
+                      </Badge>
+                    )
+                  })()}
+                  {storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          {(isSyncingDeliveroo || isImportingDeliveroo) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MoreHorizontal className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {deliverooEnabled && deliverooSyncMenu && (
+                          <DropdownMenuItem
+                            onClick={handleSyncDeliverooMenu}
+                            disabled={isSyncingDeliveroo}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Synchroniser le menu
+                          </DropdownMenuItem>
+                        )}
+                        {deliverooEnabled && (
+                          <DropdownMenuItem
+                            onClick={handleImportDeliveroo}
+                            disabled={isImportingDeliveroo}
+                          >
+                            <Download className="h-4 w-4" />
+                            Importer les produits
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={handleRemoveDeliveroo}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Supprimer l&apos;intégration
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -1248,6 +1350,19 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="deliverooBrandId">Brand ID Deliveroo</Label>
+                    <Input
+                      id="deliverooBrandId"
+                      value={deliverooBrandId}
+                      onChange={(e) => setDeliverooBrandId(e.target.value)}
+                      placeholder="brand-uuid-xxxx"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Identifiant de marque fourni par Deliveroo, requis pour l'import des produits
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="deliverooStoreStatus">Statut sur la plateforme</Label>
@@ -1303,31 +1418,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <Button onClick={handleSaveDeliveroo} size="sm">
-                      Enregistrer
-                    </Button>
-                    {deliverooEnabled && deliverooSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
-                      <Button
-                        onClick={handleSyncDeliverooMenu}
-                        size="sm"
-                        variant="outline"
-                        disabled={isSyncingDeliveroo}
-                      >
-                        {isSyncingDeliveroo ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                        )}
-                        Synchroniser le menu
-                      </Button>
-                    )}
-                    {storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
-                      <Button onClick={handleRemoveDeliveroo} size="sm" variant="destructive">
-                        Supprimer
-                      </Button>
-                    )}
-                  </div>
+                  <Button onClick={handleSaveDeliveroo} size="sm">
+                    Enregistrer
+                  </Button>
                 </>
               )}
             </CardContent>

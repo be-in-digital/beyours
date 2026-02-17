@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
+import type * as deliverooImport from "../deliverooImport.js";
 import type * as externalProductMappings from "../externalProductMappings.js";
 import type * as gameQRCodes from "../gameQRCodes.js";
 import type * as games from "../games.js";
@@ -26,6 +27,7 @@ import type * as storeIntegrations from "../storeIntegrations.js";
 import type * as stores from "../stores.js";
 import type * as teamMembers from "../teamMembers.js";
 import type * as translations from "../translations.js";
+import type * as uberEatsImport from "../uberEatsImport.js";
 import type * as uberEatsMenuSync from "../uberEatsMenuSync.js";
 import type * as uberEatsOrders from "../uberEatsOrders.js";
 import type * as uberEatsWebhook from "../uberEatsWebhook.js";
@@ -40,6 +42,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   categories: typeof categories;
+  deliverooImport: typeof deliverooImport;
   externalProductMappings: typeof externalProductMappings;
   gameQRCodes: typeof gameQRCodes;
   games: typeof games;
@@ -56,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   stores: typeof stores;
   teamMembers: typeof teamMembers;
   translations: typeof translations;
+  uberEatsImport: typeof uberEatsImport;
   uberEatsMenuSync: typeof uberEatsMenuSync;
   uberEatsOrders: typeof uberEatsOrders;
   uberEatsWebhook: typeof uberEatsWebhook;

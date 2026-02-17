@@ -13,6 +13,8 @@ export const storeIntegrationsTable = defineTable({
   syncMenu: v.boolean(),
   autoAccept: v.boolean(),
   enabled: v.boolean(),
+  // Deliveroo specific
+  brandId: v.optional(v.string()),
   // Uber Eats specific
   storeStatus: v.optional(v.union(
     v.literal("ONLINE"),

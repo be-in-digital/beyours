@@ -76,6 +76,7 @@ export const upsert = {
       v.literal("OFFLINE")
     )),
     prepTime: v.optional(v.number()),
+    brandId: v.optional(v.string()),
   },
   handler: async (ctx: any, args: {
     storeId: string
@@ -86,6 +87,7 @@ export const upsert = {
     enabled: boolean
     storeStatus?: "ONLINE" | "PAUSED" | "OFFLINE"
     prepTime?: number
+    brandId?: string
   }) => {
     const existing = await ctx.db
       .query("storeIntegrations")
@@ -103,6 +105,7 @@ export const upsert = {
         enabled: args.enabled,
         storeStatus: args.storeStatus,
         prepTime: args.prepTime,
+        brandId: args.brandId,
         updatedAt: now,
       })
       return existing._id

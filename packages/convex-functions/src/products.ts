@@ -144,6 +144,10 @@ export const create = {
     isFeatured: v.boolean(),
     sortOrder: v.number(),
     source: v.optional(v.string()),
+    externalIds: v.optional(v.object({
+      uberEatsId: v.optional(v.string()),
+      deliverooId: v.optional(v.string()),
+    })),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
