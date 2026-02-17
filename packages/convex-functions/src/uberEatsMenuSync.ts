@@ -56,6 +56,7 @@ export interface StoreIntegrationRecord {
   storeId: string
   platform: "uberEats" | "deliveroo"
   platformStoreId: string
+  brandId?: string
   syncMenu: boolean
   autoAccept: boolean
   enabled: boolean
@@ -107,6 +108,10 @@ export interface ProductRecord {
   isFeatured: boolean
   sortOrder: number
   source?: string
+  externalIds?: {
+    uberEatsId?: string
+    deliverooId?: string
+  }
   createdAt: number
   updatedAt: number
 }

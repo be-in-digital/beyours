@@ -24,6 +24,7 @@ export * as externalProductMappings from "./externalProductMappings"
 export * as orphanProducts from "./orphanProducts"
 export * as uberEatsOrders from "./uberEatsOrders"
 export * as uberEatsMenuSync from "./uberEatsMenuSync"
+export * as deliverooMenuSync from "./deliverooMenuSync"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"

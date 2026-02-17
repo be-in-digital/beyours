@@ -296,7 +296,7 @@ describe('Uber Eats Menu Sync', () => {
       await pullMenu(mockCredentials, STORE_ID)
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/v1/eats/stores/${STORE_ID}/menus`)
+        call[0].includes(`/v2/eats/stores/${STORE_ID}/menus`)
       )
 
       expect(apiCall).toBeDefined()

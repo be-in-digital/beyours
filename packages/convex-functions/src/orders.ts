@@ -90,19 +90,20 @@ export const create = {
       phone: v.optional(v.string()),
     }),
     items: v.array(v.object({
-      productId: v.id("products"),
+      productId: v.optional(v.id("products")),
       productName: v.string(),
       quantity: v.number(),
       unitPrice: v.number(),
       selectedOptions: v.array(v.object({
-        optionId: v.string(),
+        optionId: v.optional(v.string()),
         optionName: v.string(),
-        choiceId: v.string(),
-        choiceName: v.string(),
+        choiceId: v.optional(v.string()),
+        choiceName: v.optional(v.string()),
         priceModifier: v.number(),
       })),
       subtotal: v.number(),
       notes: v.optional(v.string()),
+      externalId: v.optional(v.string()),
     })),
     type: v.union(
       v.literal("delivery"),
@@ -211,5 +212,158 @@ export const remove = {
   args: { id: v.id("orders") },
   handler: async (ctx: any, args: any) => {
     await ctx.db.delete(args.id)
+  },
+}
+
+/**
+ * Create order from webhook (Uber Eats, Deliveroo, etc.)
+ */
+export const createFromWebhook = {
+  args: {
+    storeId: v.id("stores"),
+    externalOrderId: v.string(),
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("preparing"),
+      v.literal("ready"),
+      v.literal("out_for_delivery"),
+      v.literal("delivered"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    type: v.union(
+      v.literal("delivery"),
+      v.literal("pickup"),
+      v.literal("dine_in")
+    ),
+    customerName: v.string(),
+    customerPhone: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    deliveryAddress: v.optional(v.object({
+      street: v.string(),
+      city: v.string(),
+      postalCode: v.string(),
+      country: v.string(),
+    })),
+    items: v.array(v.object({
+      externalId: v.string(),
+      name: v.string(),
+      quantity: v.number(),
+      price: v.number(),
+      modifiers: v.optional(v.array(v.object({
+        externalId: v.string(),
+        name: v.string(),
+        price: v.number(),
+      }))),
+    })),
+    subtotal: v.number(),
+    total: v.number(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const now = Date.now()
+    const orderNumber = generateOrderNumber()
+
+    const mappedItems = args.items.map((item: { externalId: string; name: string; quantity: number; price: number; modifiers?: Array<{ externalId: string; name: string; price: number }> }) => {
+      const modifierTotal = item.modifiers?.reduce((sum: number, mod: { price: number }) => sum + mod.price, 0) ?? 0
+      return {
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        selectedOptions: item.modifiers?.map((mod: { externalId: string; name: string; price: number }) => ({
+          optionName: mod.name,
+          choiceName: mod.name,
+          priceModifier: mod.price,
+        })) ?? [],
+        subtotal: item.price * item.quantity + modifierTotal,
+        externalId: item.externalId,
+      }
+    })
+
+    // Source mapping: platform "deliveroo" → source "deliveroo", "uberEats" → "uber_eats"
+    const sourceMap: Record<string, "website" | "uber_eats" | "deliveroo" | "pos"> = {
+      uberEats: "uber_eats",
+      deliveroo: "deliveroo",
+    }
+
+    return await ctx.db.insert("orders", {
+      storeId: args.storeId,
+      orderNumber,
+      externalOrderId: args.externalOrderId,
+      type: args.type,
+      status: args.status,
+      customerInfo: {
+        name: args.customerName,
+        phone: args.customerPhone,
+        email: args.customerEmail,
+      },
+      deliveryAddress: args.deliveryAddress,
+      items: mappedItems,
+      subtotal: args.subtotal,
+      taxAmount: 0, // External platforms handle tax separately
+      total: args.total,
+      source: sourceMap[args.platform] ?? "website",
+      notes: args.notes,
+      paymentStatus: "paid" as const,
+      createdAt: args.createdAt,
+      updatedAt: now,
+    })
+  },
+}
+
+/**
+ * Update order from webhook
+ */
+export const updateFromWebhook = {
+  args: {
+    externalOrderId: v.string(),
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("preparing"),
+      v.literal("ready"),
+      v.literal("out_for_delivery"),
+      v.literal("delivered"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    cancellationReason: v.optional(v.string()),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const order = await ctx.db
+      .query("orders")
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("externalOrderId"), args.externalOrderId),
+          q.eq(q.field("platform"), args.platform)
+        )
+      )
+      .first()
+
+    if (!order) {
+      throw new Error(`Order not found: ${args.externalOrderId}`)
+    }
+
+    const updates: any = {
+      status: args.status,
+      updatedAt: args.updatedAt,
+    }
+
+    if (args.status === "completed") {
+      updates.completedAt = args.updatedAt
+    } else if (args.status === "cancelled") {
+      updates.cancelledAt = args.updatedAt
+      if (args.cancellationReason) {
+        updates.cancellationReason = args.cancellationReason
+      }
+    }
+
+    await ctx.db.patch(order._id, updates)
+    return order._id
   },
 }

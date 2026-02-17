@@ -30,19 +30,20 @@ export const ordersTable = defineTable({
     v.literal("cancelled")
   ),
   items: v.array(v.object({
-    productId: v.id("products"),
+    productId: v.optional(v.id("products")), // Optional for external platform orders
     productName: v.string(),
     quantity: v.number(),
     unitPrice: v.number(),
     selectedOptions: v.array(v.object({
-      optionId: v.string(),
+      optionId: v.optional(v.string()),
       optionName: v.string(),
-      choiceId: v.string(),
-      choiceName: v.string(),
+      choiceId: v.optional(v.string()),
+      choiceName: v.optional(v.string()),
       priceModifier: v.number(),
     })),
     subtotal: v.number(),
     notes: v.optional(v.string()),
+    externalId: v.optional(v.string()), // External platform item ID
   })),
   subtotal: v.number(),
   taxAmount: v.number(),
@@ -72,6 +73,21 @@ export const ordersTable = defineTable({
     v.literal("deliveroo"),
     v.literal("pos")
   ),
+  externalOrderId: v.optional(v.string()), // External platform order ID (Uber Eats, Deliveroo, etc.)
+  externalDisplayId: v.optional(v.string()), // Human-readable display ID from platform
+  externalPlatformData: v.optional(v.any()), // Raw webhook payload for debugging
+  deliveryType: v.optional(v.union(
+    v.literal("delivery"),
+    v.literal("collection"),
+    v.literal("dine_in")
+  )),
+  isRemake: v.optional(v.boolean()), // Flag for remake orders from delivery platforms
+  scheduledAt: v.optional(v.number()), // Alternative field for platform scheduled orders
+  platformSyncStatus: v.optional(v.union(
+    v.literal("pending"),
+    v.literal("synced"),
+    v.literal("failed")
+  )),
   notes: v.optional(v.string()),
   estimatedPrepTime: v.optional(v.number()), // in minutes
   estimatedDeliveryTime: v.optional(v.number()),
@@ -88,3 +104,4 @@ export const ordersTable = defineTable({
   .index("by_customerId", ["customerId"])
   .index("by_orderNumber", ["orderNumber"])
   .index("by_source", ["source"])
+  .index("by_external_order", ["externalOrderId"])

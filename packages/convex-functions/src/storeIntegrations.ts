@@ -57,6 +57,48 @@ export const getByStorePlatform = {
   },
 }
 
+/**
+ * Get integration by platformStoreId (site_id for Deliveroo)
+ */
+export const getBySiteId = {
+  args: {
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    platformStoreId: v.string(),
+  },
+  handler: async (ctx: any, args: { platform: "uberEats" | "deliveroo"; platformStoreId: string }) => {
+    return await ctx.db
+      .query("storeIntegrations")
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("platform"), args.platform),
+          q.eq(q.field("platformStoreId"), args.platformStoreId)
+        )
+      )
+      .first()
+  },
+}
+
+/**
+ * Get integration by brandId (for Deliveroo)
+ */
+export const getByBrandId = {
+  args: {
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    brandId: v.string(),
+  },
+  handler: async (ctx: any, args: { platform: "uberEats" | "deliveroo"; brandId: string }) => {
+    return await ctx.db
+      .query("storeIntegrations")
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("platform"), args.platform),
+          q.eq(q.field("brandId"), args.brandId)
+        )
+      )
+      .first()
+  },
+}
+
 // === MUTATIONS ===
 
 /**

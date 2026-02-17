@@ -25,7 +25,8 @@
     "./externalProductMappings": "./src/externalProductMappings.ts",
     "./orphanProducts": "./src/orphanProducts.ts",
     "./uberEatsOrders": "./src/uberEatsOrders.ts",
-    "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts"
+    "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts",
+    "./deliverooMenuSync": "./src/deliverooMenuSync.ts"
   },
   "scripts": {
     "lint": "eslint src/",

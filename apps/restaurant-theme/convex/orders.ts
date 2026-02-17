@@ -8,3 +8,5 @@ export const getByStatus = query(defs.getByStatus);
 export const create = mutation(defs.create);
 export const updateStatus = mutation(defs.updateStatus);
 export const remove = mutation(defs.remove);
+export const createFromWebhook = mutation(defs.createFromWebhook);
+export const updateFromWebhook = mutation(defs.updateFromWebhook);

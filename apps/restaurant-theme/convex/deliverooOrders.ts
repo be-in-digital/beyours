@@ -1,0 +1,196 @@
+"use node";
+
+import { v } from "convex/values";
+import { action } from "./_generated/server";
+import { api } from "./_generated/api";
+
+/**
+ * Accept a Deliveroo order.
+ *
+ * Calls the Deliveroo API to accept the order and updates the internal order status.
+ */
+export const acceptOrder = action({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    try {
+      // 1. Get the order
+      const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {
+        _id: string
+        source?: string
+        externalOrderId?: string
+        status: string
+      } | null;
+
+      if (!order) {
+        return { success: false, error: "Order not found" };
+      }
+
+      // 2. Verify source is deliveroo
+      if (order.source !== "deliveroo") {
+        return { success: false, error: `Order source is ${order.source}, not deliveroo` };
+      }
+
+      if (!order.externalOrderId) {
+        return { success: false, error: "Order has no externalOrderId" };
+      }
+
+      // 3. Get credentials from env
+      const clientId = process.env.DELIVEROO_CLIENT_ID;
+      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+
+      if (!clientId || !clientSecret) {
+        return { success: false, error: "Deliveroo API credentials not configured" };
+      }
+
+      const credentials = { clientId, clientSecret, sandboxMode };
+
+      // 4. Call Deliveroo API to accept order
+      const { deliveroo } = await import("@beindigital-engine/integrations");
+      await deliveroo.acceptOrder(credentials, order.externalOrderId);
+
+      // 5. Update order status to confirmed
+      await ctx.runMutation(api.orders.updateStatus, {
+        id: args.orderId,
+        status: "confirmed",
+      });
+
+      console.log(`Accepted Deliveroo order ${order.externalOrderId}`);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to accept Deliveroo order:`, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
+});
+
+/**
+ * Reject a Deliveroo order.
+ *
+ * Calls the Deliveroo API to reject the order and updates the internal order status.
+ */
+export const rejectOrder = action({
+  args: {
+    orderId: v.id("orders"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // 1. Get the order
+      const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {
+        _id: string
+        source?: string
+        externalOrderId?: string
+        status: string
+      } | null;
+
+      if (!order) {
+        return { success: false, error: "Order not found" };
+      }
+
+      // 2. Verify source is deliveroo
+      if (order.source !== "deliveroo") {
+        return { success: false, error: `Order source is ${order.source}, not deliveroo` };
+      }
+
+      if (!order.externalOrderId) {
+        return { success: false, error: "Order has no externalOrderId" };
+      }
+
+      // 3. Get credentials from env
+      const clientId = process.env.DELIVEROO_CLIENT_ID;
+      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+
+      if (!clientId || !clientSecret) {
+        return { success: false, error: "Deliveroo API credentials not configured" };
+      }
+
+      const credentials = { clientId, clientSecret, sandboxMode };
+
+      // 4. Call Deliveroo API to reject order
+      const { deliveroo } = await import("@beindigital-engine/integrations");
+      await deliveroo.rejectOrder(credentials, order.externalOrderId, args.reason ?? "store_busy");
+
+      // 5. Update order status to cancelled
+      await ctx.runMutation(api.orders.updateStatus, {
+        id: args.orderId,
+        status: "cancelled",
+        cancellationReason: args.reason,
+      });
+
+      console.log(`Rejected Deliveroo order ${order.externalOrderId}`);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to reject Deliveroo order:`, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
+});
+
+/**
+ * Update preparation stage for a Deliveroo order.
+ *
+ * Calls the Deliveroo API to update the prep stage and updates the internal order status.
+ */
+export const updatePrepStage = action({
+  args: {
+    orderId: v.id("orders"),
+    stage: v.union(v.literal("in_kitchen"), v.literal("ready")),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // 1. Get the order
+      const order = await ctx.runQuery(api.orders.getById, { id: args.orderId }) as {
+        _id: string
+        source?: string
+        externalOrderId?: string
+        status: string
+      } | null;
+
+      if (!order) {
+        return { success: false, error: "Order not found" };
+      }
+
+      // 2. Verify source is deliveroo
+      if (order.source !== "deliveroo") {
+        return { success: false, error: `Order source is ${order.source}, not deliveroo` };
+      }
+
+      if (!order.externalOrderId) {
+        return { success: false, error: "Order has no externalOrderId" };
+      }
+
+      // 3. Get credentials from env
+      const clientId = process.env.DELIVEROO_CLIENT_ID;
+      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+
+      if (!clientId || !clientSecret) {
+        return { success: false, error: "Deliveroo API credentials not configured" };
+      }
+
+      const credentials = { clientId, clientSecret, sandboxMode };
+
+      // 4. Call Deliveroo API to update prep stage
+      const { deliveroo } = await import("@beindigital-engine/integrations");
+      await deliveroo.updatePrepStage(credentials, order.externalOrderId, args.stage);
+
+      // 5. Update internal order status based on stage
+      const newStatus = args.stage === "in_kitchen" ? "preparing" : "ready";
+      await ctx.runMutation(api.orders.updateStatus, {
+        id: args.orderId,
+        status: newStatus,
+      });
+
+      console.log(`Updated Deliveroo order ${order.externalOrderId} prep stage to ${args.stage}`);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to update Deliveroo order prep stage:`, errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  },
+});
