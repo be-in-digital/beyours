@@ -107,7 +107,7 @@ describe('Integration Validation Flow', () => {
 
       await expect(
         uberEats.getStoreStatus(credentials, 'invalid-store-id')
-      ).rejects.toThrow('Failed to get store status (404): Store not found')
+      ).rejects.toThrow('Failed to get Uber Eats store status')
     })
 
     it('should throw when credentials are invalid (401)', async () => {
@@ -119,7 +119,7 @@ describe('Integration Validation Flow', () => {
 
       await expect(
         uberEats.getStoreStatus(credentials, UBER_EATS_STORE_ID)
-      ).rejects.toThrow('Uber Eats OAuth failed (401): Invalid client credentials')
+      ).rejects.toThrow('Uber Eats OAuth failed')
     })
 
     it('should throw when API returns 403 (forbidden)', async () => {
@@ -131,7 +131,7 @@ describe('Integration Validation Flow', () => {
 
       await expect(
         uberEats.getStoreStatus(credentials, UBER_EATS_STORE_ID)
-      ).rejects.toThrow('Failed to get store status (403): Access denied to this store')
+      ).rejects.toThrow('Failed to get Uber Eats store status')
     })
 
     it('should simulate full validation flow: valid credentials + valid store', async () => {
@@ -170,8 +170,7 @@ describe('Integration Validation Flow', () => {
       }
 
       expect(valid).toBe(false)
-      expect(error).toContain('Failed to get store status')
-      expect(error).toContain('404')
+      expect(error).toContain('Failed to get Uber Eats store status')
     })
 
     it('should validate sandbox mode: use fetchUberEats /v1/eats/stores/{id} instead of /status', async () => {
@@ -359,7 +358,7 @@ describe('Integration Validation Flow', () => {
       })
 
       await expect(deliveroo.getAccessToken(credentials)).rejects.toThrow(
-        'Deliveroo OAuth failed (400): {"error":"invalid_client"}'
+        'Deliveroo OAuth failed'
       )
     })
 

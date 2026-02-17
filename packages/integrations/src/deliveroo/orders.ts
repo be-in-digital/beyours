@@ -3,7 +3,8 @@
  */
 
 import type { DeliverooCredentials, DeliverooWebhookOrder } from "./types"
-import { fetchDeliveroo } from "./client"
+import { fetchDeliveroo, validatePathParam } from "./client"
+import { IntegrationError } from "../common/errors"
 
 // === Types ===
 
@@ -41,13 +42,18 @@ export async function acceptOrder(
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${orderId}/accept`,
+    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/accept`,
     { method: "POST", body: {} },
     "order"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to accept order ${orderId} (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      `Failed to accept Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -61,13 +67,18 @@ export async function rejectOrder(
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${orderId}/reject`,
+    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/reject`,
     { method: "POST", body: { reason } },
     "order"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to reject order ${orderId} (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      `Failed to reject Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -86,13 +97,18 @@ export async function sendSyncStatus(
   }
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${orderId}/sync_status`,
+    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/sync_status`,
     { method: "POST", body },
     "order"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to send sync status for order ${orderId} (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      `Failed to send sync status for Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -106,13 +122,18 @@ export async function updatePrepStage(
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${orderId}/prep_stage`,
+    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/prep_stage`,
     { method: "POST", body: { stage } },
     "order"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to update prep stage for order ${orderId} (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      `Failed to update prep stage for Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -125,13 +146,18 @@ export async function getOrder(
 ): Promise<DeliverooWebhookOrder> {
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${orderId}`,
+    `/order/v2/orders/${validatePathParam(orderId, "orderId")}`,
     { method: "GET" },
     "order"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to get order ${orderId} (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      `Failed to get Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
   return response.json() as Promise<DeliverooWebhookOrder>
 }

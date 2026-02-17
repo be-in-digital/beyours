@@ -20,6 +20,12 @@ export async function verifyWebhookSignature(
 ): Promise<boolean> {
   if (!signature || !secret) return false
 
+  // Normalize incoming signature: lowercase, trim, and validate hex format
+  const normalizedSignature = signature.toLowerCase().trim()
+  if (!/^[0-9a-f]+$/.test(normalizedSignature)) {
+    return false
+  }
+
   try {
     const encoder = new TextEncoder()
     const keyData = encoder.encode(secret)
@@ -36,13 +42,13 @@ export async function verifyWebhookSignature(
     const data1 = encoder.encode(requestId + " " + rawBody)
     const sig1 = await crypto.subtle.sign("HMAC", key, data1)
     const hex1 = arrayToHex(new Uint8Array(sig1))
-    if (safeCompare(hex1, signature)) return true
+    if (safeCompare(hex1, normalizedSignature)) return true
 
     // Strategy 2 (fallback): HMAC(secret, rawBody)
     const data2 = encoder.encode(rawBody)
     const sig2 = await crypto.subtle.sign("HMAC", key, data2)
     const hex2 = arrayToHex(new Uint8Array(sig2))
-    return safeCompare(hex2, signature)
+    return safeCompare(hex2, normalizedSignature)
   } catch {
     return false
   }

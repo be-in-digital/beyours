@@ -119,7 +119,7 @@ describe('Deliveroo API Client', () => {
       })
 
       await expect(getAccessToken(mockCredentials)).rejects.toThrow(
-        'Deliveroo OAuth failed (400): {"error":"invalid_client"}'
+        'Deliveroo OAuth failed'
       )
     })
 

@@ -18,6 +18,12 @@ export async function verifyUberEatsSignature(
     return false
   }
 
+  // Normalize incoming signature: lowercase, trim, and validate hex format
+  const normalizedSignature = signature.toLowerCase().trim()
+  if (!/^[0-9a-f]+$/.test(normalizedSignature)) {
+    return false
+  }
+
   try {
     const encoder = new TextEncoder()
     const keyData = encoder.encode(clientSecret)
@@ -40,13 +46,13 @@ export async function verifyUberEatsSignature(
       .join("")
 
     // Constant-time comparison
-    if (computedSignature.length !== signature.length) {
+    if (computedSignature.length !== normalizedSignature.length) {
       return false
     }
 
     let result = 0
     for (let i = 0; i < computedSignature.length; i++) {
-      result |= computedSignature.charCodeAt(i) ^ signature.charCodeAt(i)
+      result |= computedSignature.charCodeAt(i) ^ normalizedSignature.charCodeAt(i)
     }
     return result === 0
   } catch {

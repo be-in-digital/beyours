@@ -4,12 +4,25 @@
 
 import type { DeliverooCredentials, DeliverooToken, DeliverooApiType } from "./types"
 import { DELIVEROO_URLS } from "./types"
+import { IntegrationError } from "../common/errors"
+
+/**
+ * Validate a path parameter to prevent path traversal and SSRF
+ */
+export function validatePathParam(value: string, paramName: string): string {
+  if (!value || typeof value !== "string") {
+    throw new Error(`${paramName} must be a non-empty string`)
+  }
+  if (!/^[a-zA-Z0-9_\-:.]+$/.test(value)) {
+    throw new Error(`${paramName} contains invalid characters`)
+  }
+  return encodeURIComponent(value)
+}
 
 // M-01: Per-credential token cache (supports multi-tenant)
 const tokenCache = new Map<string, DeliverooToken>()
-// M-02: Dedup concurrent token refresh requests
-let pendingTokenRequest: Promise<DeliverooToken> | null = null
-let pendingTokenKey: string | null = null
+// M-02: Dedup concurrent token refresh requests (per-credential)
+const pendingTokenRequests = new Map<string, Promise<DeliverooToken>>()
 
 const FETCH_TIMEOUT_MS = 15_000
 
@@ -66,8 +79,9 @@ export async function getAccessToken(
   }
 
   // M-02: If a token request is already in flight for this key, reuse it
-  if (pendingTokenRequest && pendingTokenKey === key) {
-    return pendingTokenRequest
+  const pending = pendingTokenRequests.get(key)
+  if (pending) {
+    return pending
   }
 
   const fetchToken = async (): Promise<DeliverooToken> => {
@@ -90,8 +104,11 @@ export async function getAccessToken(
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(
-        `Deliveroo OAuth failed (${response.status}): ${errorText}`
+      throw new IntegrationError(
+        "Deliveroo OAuth failed",
+        response.status,
+        "deliveroo",
+        errorText
       )
     }
 
@@ -110,13 +127,11 @@ export async function getAccessToken(
     return token
   }
 
-  pendingTokenKey = key
-  pendingTokenRequest = fetchToken().finally(() => {
-    pendingTokenRequest = null
-    pendingTokenKey = null
+  const promise = fetchToken().finally(() => {
+    pendingTokenRequests.delete(key)
   })
-
-  return pendingTokenRequest
+  pendingTokenRequests.set(key, promise)
+  return promise
 }
 
 /**

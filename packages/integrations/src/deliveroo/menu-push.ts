@@ -3,7 +3,8 @@
  */
 
 import type { DeliverooCredentials } from "./types"
-import { fetchDeliveroo } from "./client"
+import { fetchDeliveroo, validatePathParam } from "./client"
+import { IntegrationError } from "../common/errors"
 
 // === Types ===
 
@@ -167,13 +168,18 @@ export async function pushMenu(
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/v2/brands/${brandId}/sites/${siteId}/menu`,
+    `/v2/brands/${validatePathParam(brandId, "brandId")}/sites/${validatePathParam(siteId, "siteId")}/menu`,
     { method: "PUT", body: payload },
     "menu"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to push menu to Deliveroo (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      "Failed to push menu to Deliveroo",
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -191,12 +197,17 @@ export async function setPLUMappings(
 
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/sites/${siteId}/plu_mapping`,
+    `/v1/brands/${validatePathParam(brandId, "brandId")}/sites/${validatePathParam(siteId, "siteId")}/plu_mapping`,
     { method: "PUT", body: { mappings } },
     "menu"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to set PLU mappings (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      "Failed to set Deliveroo PLU mappings",
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }

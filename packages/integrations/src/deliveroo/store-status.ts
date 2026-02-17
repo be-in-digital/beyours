@@ -3,7 +3,8 @@
  */
 
 import type { DeliverooCredentials } from "./types"
-import { fetchDeliveroo } from "./client"
+import { fetchDeliveroo, validatePathParam } from "./client"
+import { IntegrationError } from "../common/errors"
 
 export type DeliverooStoreStatus = "ONLINE" | "PAUSED" | "OFFLINE"
 
@@ -22,13 +23,18 @@ export async function updateStoreStatus(
 
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/sites/${siteId}/status`,
+    `/v1/brands/${validatePathParam(brandId, "brandId")}/sites/${validatePathParam(siteId, "siteId")}/status`,
     { method: "PUT", body: { status: deliverooStatus } },
     "site"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to update store status (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      "Failed to update Deliveroo store status",
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -45,7 +51,7 @@ export async function setItemsUnavailable(
 
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/sites/${siteId}/unavailabilities`,
+    `/v1/brands/${validatePathParam(brandId, "brandId")}/sites/${validatePathParam(siteId, "siteId")}/unavailabilities`,
     {
       method: "PUT",
       body: {
@@ -56,7 +62,12 @@ export async function setItemsUnavailable(
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to set items unavailable (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      "Failed to set Deliveroo items unavailable",
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }
 
@@ -70,12 +81,17 @@ export async function clearUnavailabilities(
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/sites/${siteId}/unavailabilities`,
+    `/v1/brands/${validatePathParam(brandId, "brandId")}/sites/${validatePathParam(siteId, "siteId")}/unavailabilities`,
     { method: "PUT", body: { unavailable_items: [] } },
     "site"
   )
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to clear unavailabilities (${response.status}): ${errorText}`)
+    throw new IntegrationError(
+      "Failed to clear Deliveroo unavailabilities",
+      response.status,
+      "deliveroo",
+      errorText
+    )
   }
 }

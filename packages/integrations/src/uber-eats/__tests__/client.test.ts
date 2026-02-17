@@ -141,7 +141,7 @@ describe('Uber Eats API Client', () => {
       })
 
       await expect(getAccessToken(mockCredentials)).rejects.toThrow(
-        'Uber Eats OAuth failed (401): Invalid credentials'
+        'Uber Eats OAuth failed'
       )
     })
 
@@ -381,7 +381,7 @@ describe('Uber Eats API Client', () => {
       })
 
       await expect(fetchOrder(mockCredentials, 'order-123')).rejects.toThrow(
-        'Failed to fetch order order-123 (404): Order not found'
+        'Failed to fetch Uber Eats order order-123'
       )
     })
   })
@@ -436,7 +436,7 @@ describe('Uber Eats API Client', () => {
       })
 
       await expect(acceptOrder(mockCredentials, 'order-123')).rejects.toThrow(
-        'Failed to accept order order-123 (400): Order already accepted'
+        'Failed to accept Uber Eats order order-123'
       )
     })
   })
@@ -497,7 +497,7 @@ describe('Uber Eats API Client', () => {
 
       await expect(
         denyOrder(mockCredentials, 'order-123', { explanation: 'Test', code: 'OTHER' })
-      ).rejects.toThrow('Failed to deny order order-123 (400): Cannot deny order')
+      ).rejects.toThrow('Failed to deny Uber Eats order order-123')
     })
   })
 

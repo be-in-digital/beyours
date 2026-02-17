@@ -4,12 +4,25 @@
 
 import type { UberEatsCredentials, UberEatsToken, UberEatsOrder } from "./types"
 import { UBER_EATS_URLS } from "./types"
+import { IntegrationError } from "../common/errors"
+
+/**
+ * Validate a path parameter to prevent path traversal and SSRF
+ */
+function validatePathParam(value: string, paramName: string): string {
+  if (!value || typeof value !== "string") {
+    throw new Error(`${paramName} must be a non-empty string`)
+  }
+  if (!/^[a-zA-Z0-9_\-:.]+$/.test(value)) {
+    throw new Error(`${paramName} contains invalid characters`)
+  }
+  return encodeURIComponent(value)
+}
 
 // M-01: Per-credential token cache (supports multi-tenant)
 const tokenCache = new Map<string, UberEatsToken>()
-// M-02: Dedup concurrent token refresh requests
-let pendingTokenRequest: Promise<UberEatsToken> | null = null
-let pendingTokenKey: string | null = null
+// M-02: Dedup concurrent token refresh requests (per-credential)
+const pendingTokenRequests = new Map<string, Promise<UberEatsToken>>()
 
 const FETCH_TIMEOUT_MS = 15_000
 
@@ -51,8 +64,9 @@ export async function getAccessToken(
   }
 
   // M-02: If a token request is already in flight for this key, reuse it
-  if (pendingTokenRequest && pendingTokenKey === key) {
-    return pendingTokenRequest
+  const pending = pendingTokenRequests.get(key)
+  if (pending) {
+    return pending
   }
 
   const fetchToken = async (): Promise<UberEatsToken> => {
@@ -73,8 +87,11 @@ export async function getAccessToken(
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(
-        `Uber Eats OAuth failed (${response.status}): ${errorText}`
+      throw new IntegrationError(
+        "Uber Eats OAuth failed",
+        response.status,
+        "uberEats",
+        errorText
       )
     }
 
@@ -96,13 +113,11 @@ export async function getAccessToken(
     return token
   }
 
-  pendingTokenKey = key
-  pendingTokenRequest = fetchToken().finally(() => {
-    pendingTokenRequest = null
-    pendingTokenKey = null
+  const promise = fetchToken().finally(() => {
+    pendingTokenRequests.delete(key)
   })
-
-  return pendingTokenRequest
+  pendingTokenRequests.set(key, promise)
+  return promise
 }
 
 /**
@@ -175,13 +190,16 @@ export async function fetchOrder(
 ): Promise<UberEatsOrder> {
   const response = await fetchUberEats(
     credentials,
-    `/v2/eats/order/${orderId}`
+    `/v2/eats/order/${validatePathParam(orderId, "orderId")}`
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to fetch order ${orderId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to fetch Uber Eats order ${orderId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 
@@ -197,14 +215,17 @@ export async function acceptOrder(
 ): Promise<void> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/orders/${orderId}/accept`,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/accept`,
     { method: "POST", body: {} }
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to accept order ${orderId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to accept Uber Eats order ${orderId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 }
@@ -219,14 +240,17 @@ export async function denyOrder(
 ): Promise<void> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/orders/${orderId}/deny`,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/deny`,
     { method: "POST", body: { reason } }
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to deny order ${orderId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to deny Uber Eats order ${orderId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 }
@@ -241,14 +265,17 @@ export async function cancelOrder(
 ): Promise<void> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/orders/${orderId}/cancel`,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/cancel`,
     { method: "POST", body: { reason } }
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to cancel order ${orderId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to cancel Uber Eats order ${orderId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 }
@@ -267,14 +294,17 @@ export async function updateStoreStatus(
 
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/stores/${storeId}/status`,
+    `/v1/eats/stores/${validatePathParam(storeId, "storeId")}/status`,
     { method: "POST", body }
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to update store status (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      "Failed to update Uber Eats store status",
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 }
@@ -288,13 +318,16 @@ export async function getStoreStatus(
 ): Promise<{ status: string }> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/stores/${storeId}/status`
+    `/v1/eats/stores/${validatePathParam(storeId, "storeId")}/status`
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to get store status (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      "Failed to get Uber Eats store status",
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 
