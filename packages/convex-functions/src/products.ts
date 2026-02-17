@@ -165,6 +165,7 @@ export const create = {
 export const update = {
   args: {
     id: v.id("products"),
+    categoryId: v.optional(v.id("categories")),
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     description: v.optional(v.string()),

@@ -44,13 +44,14 @@ export const createGlobalSettingsSchema = z.object({
       enabled: z.boolean().default(false),
     }).optional(),
     uberEats: z.object({
-      merchantId: z.string().optional(),
-      apiKey: z.string().optional(),
       enabled: z.boolean().default(false),
     }).optional(),
     deliveroo: z.object({
+      clientId: z.string().optional(),
+      clientSecret: z.string().optional(),
+      webhookSecret: z.string().optional(),
       merchantId: z.string().optional(),
-      apiKey: z.string().optional(),
+      sandboxMode: z.boolean().optional(),
       enabled: z.boolean().default(false),
     }).optional(),
   }).default({}),

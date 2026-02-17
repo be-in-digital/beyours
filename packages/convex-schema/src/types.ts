@@ -70,13 +70,14 @@ export type GlobalIntegrations = {
     enabled: boolean
   }
   uberEats?: {
-    merchantId?: string
-    apiKey?: string
     enabled: boolean
   }
   deliveroo?: {
+    clientId?: string
+    clientSecret?: string
+    webhookSecret?: string
     merchantId?: string
-    apiKey?: string
+    sandboxMode?: boolean
     enabled: boolean
   }
 }
@@ -111,6 +112,9 @@ export type CreateStoreIntegrationInput = z.infer<typeof createStoreIntegrationS
 export type UpdateStoreIntegrationInput = z.infer<typeof updateStoreIntegrationSchema>
 
 export type IntegrationPlatform = 'uberEats' | 'deliveroo'
+
+export type StoreIntegrationStatus = 'ONLINE' | 'PAUSED' | 'OFFLINE'
+export type MenuSyncStatus = 'idle' | 'syncing' | 'success' | 'error'
 
 // ============================================================================
 // CATEGORY TYPES
@@ -574,4 +578,27 @@ export type PrizeRedemptionDoc = BaseEntity & {
   redeemedAt?: number
   redeemedBy?: string
   expiresAt: number
+}
+
+export type ExternalProductMappingDoc = BaseEntity & {
+  storeId: string
+  platform: IntegrationPlatform
+  internalProductId: string
+  externalId: string
+  externalName?: string
+  externalPrice?: number
+  lastSyncAt: number
+}
+
+export type OrphanProductDoc = BaseEntity & {
+  storeId: string
+  platform: IntegrationPlatform
+  externalId: string
+  name: string
+  description?: string
+  price: number
+  imageUrl?: string
+  rawData: string
+  status: 'pending' | 'matched' | 'ignored'
+  matchedProductId?: string
 }

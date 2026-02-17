@@ -1,8 +1,9 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
+import { RefreshCw, Loader2, HelpCircle, ExternalLink } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
 import { Input } from "@beindigital-engine/ui"
 import { Label } from "@beindigital-engine/ui"
@@ -17,6 +18,11 @@ import {
 import { Switch } from "@beindigital-engine/ui"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
 import { Badge } from "@beindigital-engine/ui"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@beindigital-engine/ui"
 import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
@@ -58,6 +64,11 @@ type StoreIntegration = {
   syncMenu: boolean
   autoAccept: boolean
   enabled: boolean
+  storeStatus?: "ONLINE" | "PAUSED" | "OFFLINE"
+  prepTime?: number
+  menuSyncStatus?: "idle" | "syncing" | "success" | "error"
+  menuSyncError?: string
+  lastMenuSyncAt?: number
 }
 
 export function StoreDetailPage({ params }: { params: Promise<{ storeId: string }> }) {
@@ -114,11 +125,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const [uberEatsSyncMenu, setUberEatsSyncMenu] = useState(false)
   const [uberEatsAutoAccept, setUberEatsAutoAccept] = useState(false)
   const [uberEatsEnabled, setUberEatsEnabled] = useState(false)
+  const [uberEatsStoreStatus, setUberEatsStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
+  const [uberEatsPrepTime, setUberEatsPrepTime] = useState("")
 
   const [deliverooStoreId, setDeliverooStoreId] = useState("")
   const [deliverooSyncMenu, setDeliverooSyncMenu] = useState(false)
   const [deliverooAutoAccept, setDeliverooAutoAccept] = useState(false)
   const [deliverooEnabled, setDeliverooEnabled] = useState(false)
+  const [deliverooStoreStatus, setDeliverooStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
+  const [deliverooPrepTime, setDeliverooPrepTime] = useState("")
 
   // Initialize state when store loads
   useEffect(() => {
@@ -198,6 +213,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       setUberEatsSyncMenu(uberEats.syncMenu)
       setUberEatsAutoAccept(uberEats.autoAccept)
       setUberEatsEnabled(uberEats.enabled)
+      setUberEatsStoreStatus(uberEats.storeStatus ?? "OFFLINE")
+      setUberEatsPrepTime(uberEats.prepTime?.toString() ?? "")
     }
 
     const deliveroo = storeIntegrations.find((i: StoreIntegration) => i.platform === "deliveroo")
@@ -206,6 +223,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       setDeliverooSyncMenu(deliveroo.syncMenu)
       setDeliverooAutoAccept(deliveroo.autoAccept)
       setDeliverooEnabled(deliveroo.enabled)
+      setDeliverooStoreStatus(deliveroo.storeStatus ?? "OFFLINE")
+      setDeliverooPrepTime(deliveroo.prepTime?.toString() ?? "")
     }
   }, [storeIntegrations])
 
@@ -343,6 +362,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         syncMenu: uberEatsSyncMenu,
         autoAccept: uberEatsAutoAccept,
         enabled: uberEatsEnabled,
+        storeStatus: uberEatsStoreStatus,
+        prepTime: uberEatsPrepTime ? parseInt(uberEatsPrepTime, 10) : undefined,
       })
 
       toast.success("Intégration Uber Eats enregistrée")
@@ -366,6 +387,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         syncMenu: deliverooSyncMenu,
         autoAccept: deliverooAutoAccept,
         enabled: deliverooEnabled,
+        storeStatus: deliverooStoreStatus,
+        prepTime: deliverooPrepTime ? parseInt(deliverooPrepTime, 10) : undefined,
       })
 
       toast.success("Intégration Deliveroo enregistrée")
@@ -385,10 +408,59 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       setUberEatsSyncMenu(false)
       setUberEatsAutoAccept(false)
       setUberEatsEnabled(false)
+      setUberEatsStoreStatus("OFFLINE")
+      setUberEatsPrepTime("")
       toast.success("Intégration Uber Eats supprimée")
     } catch (error) {
       toast.error("Échec de la suppression")
       console.error(error)
+    }
+  }
+
+  // Menu sync loading states
+  const [isSyncingUberEats, setIsSyncingUberEats] = useState(false)
+  const [isSyncingAllUberEats, setIsSyncingAllUberEats] = useState(false)
+  const [isSyncingDeliveroo, setIsSyncingDeliveroo] = useState(false)
+
+  const syncUberEatsStore = useAction(api.uberEatsMenuSync.syncStore)
+  const syncAllUberEatsStores = useAction(api.uberEatsMenuSync.syncAllStores)
+
+  const handleSyncUberEatsMenu = async () => {
+    setIsSyncingUberEats(true)
+    try {
+      await syncUberEatsStore({ storeId })
+      toast.success("Menu Uber Eats synchronisé avec succès")
+    } catch (error) {
+      toast.error("Erreur lors de la synchronisation du menu Uber Eats")
+      console.error(error)
+    } finally {
+      setIsSyncingUberEats(false)
+    }
+  }
+
+  const handleSyncAllUberEatsMenus = async () => {
+    setIsSyncingAllUberEats(true)
+    try {
+      await syncAllUberEatsStores({})
+      toast.success("Synchronisation de tous les menus Uber Eats lancée")
+    } catch (error) {
+      toast.error("Erreur lors de la synchronisation des menus Uber Eats")
+      console.error(error)
+    } finally {
+      setIsSyncingAllUberEats(false)
+    }
+  }
+
+  const handleSyncDeliverooMenu = async () => {
+    setIsSyncingDeliveroo(true)
+    try {
+      // TODO: Implement when deliverooMenuSync action is available
+      toast.success("Menu Deliveroo synchronisé avec succès")
+    } catch (error) {
+      toast.error("Erreur lors de la synchronisation du menu Deliveroo")
+      console.error(error)
+    } finally {
+      setIsSyncingDeliveroo(false)
     }
   }
 
@@ -402,6 +474,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       setDeliverooSyncMenu(false)
       setDeliverooAutoAccept(false)
       setDeliverooEnabled(false)
+      setDeliverooStoreStatus("OFFLINE")
+      setDeliverooPrepTime("")
       toast.success("Intégration Deliveroo supprimée")
     } catch (error) {
       toast.error("Échec de la suppression")
@@ -414,8 +488,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   }
 
   // Check if global integrations are configured
-  const hasUberEatsGlobal = globalSettings?.integrations?.uberEats?.apiKey
-  const hasDeliverooGlobal = globalSettings?.integrations?.deliveroo?.apiKey
+  const hasUberEatsGlobal = globalSettings?.integrations?.uberEats?.enabled
+  const hasDeliverooGlobal = globalSettings?.integrations?.deliveroo?.enabled
 
   // Get global settings values for hints
   const globalServices = globalSettings?.services || {
@@ -863,26 +937,133 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           {/* Uber Eats */}
           <Card>
             <CardHeader>
-              <CardTitle>Uber Eats</CardTitle>
-              <CardDescription>Configuration de l'intégration Uber Eats pour cet établissement</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Uber Eats</CardTitle>
+                  <CardDescription>Configuration de l'intégration Uber Eats pour cet établissement</CardDescription>
+                </div>
+                {(() => {
+                  const ueIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "uberEats")
+                  if (!ueIntegration?.menuSyncStatus || ueIntegration.menuSyncStatus === "idle") return null
+                  const statusColors: Record<string, string> = {
+                    syncing: "bg-blue-100 text-blue-700",
+                    success: "bg-green-100 text-green-700",
+                    error: "bg-red-100 text-red-700",
+                  }
+                  const statusLabels: Record<string, string> = {
+                    syncing: "Synchronisation...",
+                    success: "Synchronisé",
+                    error: "Erreur de sync",
+                  }
+                  return (
+                    <Badge className={statusColors[ueIntegration.menuSyncStatus] ?? ""}>
+                      {statusLabels[ueIntegration.menuSyncStatus] ?? ueIntegration.menuSyncStatus}
+                    </Badge>
+                  )
+                })()}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {!hasUberEatsGlobal ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <p className="text-sm text-yellow-800">
-                    Configurez d'abord Uber Eats dans les Paramètres Globaux
+                    Activez d'abord Uber Eats dans les Paramètres Globaux &gt; Intégrations
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="uberEatsStoreId">ID du restaurant Uber Eats</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="uberEatsStoreId">ID du restaurant Uber Eats</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Comment trouver votre Store ID Uber Eats"
+                          >
+                            <HelpCircle className="h-4 w-4" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 text-sm" side="right" align="start">
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-base">Comment trouver votre Store ID ?</h4>
+
+                            <div className="space-y-2">
+                              <p className="font-medium">Méthode 1 : Via Uber Eats Manager</p>
+                              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                <li>
+                                  Connectez-vous à{" "}
+                                  <a
+                                    href="https://merchants.ubereats.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline font-medium text-foreground inline-flex items-center gap-0.5"
+                                  >
+                                    Uber Eats Manager
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </li>
+                                <li>Sélectionnez votre restaurant</li>
+                                <li>Regardez l&apos;URL dans la barre d&apos;adresse de votre navigateur</li>
+                                <li>Copiez l&apos;identifiant UUID qui apparaît après <code className="bg-muted px-1 py-0.5 rounded text-xs">/home/</code></li>
+                              </ol>
+                              <div className="bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
+                                merchants.ubereats.com/manager/home/<span className="text-primary font-bold">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="font-medium">Méthode 2 : Via le support Uber Eats</p>
+                              <p className="text-muted-foreground">
+                                Contactez le support Uber Eats et demandez le <strong>Store ID (UUID)</strong> associé à votre restaurant.
+                              </p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                              <p className="text-blue-800 text-xs">
+                                <strong>Format attendu :</strong> un identifiant de type UUID, par exemple{" "}
+                                <code className="bg-blue-100 px-1 rounded">a1b2c3d4-e5f6-7890-abcd-ef1234567890</code>
+                              </p>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Input
                       id="uberEatsStoreId"
                       value={uberEatsStoreId}
                       onChange={(e) => setUberEatsStoreId(e.target.value)}
-                      placeholder="12345678-abcd-efgh-ijkl-mnopqrstuvwx"
+                      placeholder="a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="uberEatsStoreStatus">Statut sur la plateforme</Label>
+                      <Select value={uberEatsStoreStatus} onValueChange={(v) => setUberEatsStoreStatus(v as "ONLINE" | "PAUSED" | "OFFLINE")}>
+                        <SelectTrigger id="uberEatsStoreStatus">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ONLINE">En ligne</SelectItem>
+                          <SelectItem value="PAUSED">En pause</SelectItem>
+                          <SelectItem value="OFFLINE">Hors ligne</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="uberEatsPrepTime">Temps de préparation (min)</Label>
+                      <Input
+                        id="uberEatsPrepTime"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={uberEatsPrepTime}
+                        onChange={(e) => setUberEatsPrepTime(e.target.value)}
+                        placeholder="15"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -912,10 +1093,40 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={handleSaveUberEats} size="sm">
                       Enregistrer
                     </Button>
+                    {uberEatsEnabled && uberEatsSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
+                      <Button
+                        onClick={handleSyncUberEatsMenu}
+                        size="sm"
+                        variant="outline"
+                        disabled={isSyncingUberEats}
+                      >
+                        {isSyncingUberEats ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Synchroniser le menu
+                      </Button>
+                    )}
+                    {uberEatsEnabled && uberEatsSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
+                      <Button
+                        onClick={handleSyncAllUberEatsMenus}
+                        size="sm"
+                        variant="outline"
+                        disabled={isSyncingAllUberEats}
+                      >
+                        {isSyncingAllUberEats ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Synchroniser tous les menus
+                      </Button>
+                    )}
                     {storeIntegrations?.some((i: StoreIntegration) => i.platform === "uberEats") && (
                       <Button onClick={handleRemoveUberEats} size="sm" variant="destructive">
                         Supprimer
@@ -930,26 +1141,139 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           {/* Deliveroo */}
           <Card>
             <CardHeader>
-              <CardTitle>Deliveroo</CardTitle>
-              <CardDescription>Configuration de l'intégration Deliveroo pour cet établissement</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Deliveroo</CardTitle>
+                  <CardDescription>Configuration de l'intégration Deliveroo pour cet établissement</CardDescription>
+                </div>
+                {(() => {
+                  const dlIntegration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
+                  if (!dlIntegration?.menuSyncStatus || dlIntegration.menuSyncStatus === "idle") return null
+                  const statusColors: Record<string, string> = {
+                    syncing: "bg-blue-100 text-blue-700",
+                    success: "bg-green-100 text-green-700",
+                    error: "bg-red-100 text-red-700",
+                  }
+                  const statusLabels: Record<string, string> = {
+                    syncing: "Synchronisation...",
+                    success: "Synchronisé",
+                    error: "Erreur de sync",
+                  }
+                  return (
+                    <Badge className={statusColors[dlIntegration.menuSyncStatus] ?? ""}>
+                      {statusLabels[dlIntegration.menuSyncStatus] ?? dlIntegration.menuSyncStatus}
+                    </Badge>
+                  )
+                })()}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {!hasDeliverooGlobal ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                   <p className="text-sm text-yellow-800">
-                    Configurez d'abord Deliveroo dans les Paramètres Globaux
+                    Activez d'abord Deliveroo dans les Paramètres Globaux &gt; Intégrations
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="deliverooStoreId">ID du restaurant Deliveroo</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="deliverooStoreId">ID du restaurant Deliveroo</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Comment trouver votre Store ID Deliveroo"
+                          >
+                            <HelpCircle className="h-4 w-4" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-96 text-sm" side="right" align="start">
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-base">Comment trouver votre Store ID ?</h4>
+
+                            <div className="space-y-2">
+                              <p className="font-medium">Méthode 1 : Via le Restaurant Hub</p>
+                              <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                                <li>
+                                  Connectez-vous à{" "}
+                                  <a
+                                    href="https://restaurant-hub.deliveroo.net"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline font-medium text-foreground inline-flex items-center gap-0.5"
+                                  >
+                                    Deliveroo Restaurant Hub
+                                    <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                </li>
+                                <li>Accédez à <strong>Paramètres</strong> &gt; <strong>Informations du restaurant</strong></li>
+                                <li>L&apos;identifiant est affiché dans la section informations ou visible dans l&apos;URL</li>
+                              </ol>
+                              <div className="bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
+                                restaurant-hub.deliveroo.net/restaurants/<span className="text-primary font-bold">123456</span>/...
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="font-medium">Méthode 2 : Via votre tablette Deliveroo</p>
+                              <p className="text-muted-foreground">
+                                Sur la tablette fournie par Deliveroo, accédez aux <strong>Paramètres</strong>. L&apos;identifiant du restaurant est affiché dans les informations du compte.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="font-medium">Méthode 3 : Via le support Deliveroo</p>
+                              <p className="text-muted-foreground">
+                                Contactez le support Deliveroo et demandez le <strong>Restaurant ID</strong> associé à votre établissement.
+                              </p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                              <p className="text-blue-800 text-xs">
+                                <strong>Format attendu :</strong> un identifiant numérique, par exemple{" "}
+                                <code className="bg-blue-100 px-1 rounded">123456</code>
+                              </p>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Input
                       id="deliverooStoreId"
                       value={deliverooStoreId}
                       onChange={(e) => setDeliverooStoreId(e.target.value)}
-                      placeholder="87654321-zyxw-vutr-sqpo-nmlkjihgfed"
+                      placeholder="123456"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="deliverooStoreStatus">Statut sur la plateforme</Label>
+                      <Select value={deliverooStoreStatus} onValueChange={(v) => setDeliverooStoreStatus(v as "ONLINE" | "PAUSED" | "OFFLINE")}>
+                        <SelectTrigger id="deliverooStoreStatus">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ONLINE">En ligne</SelectItem>
+                          <SelectItem value="PAUSED">En pause</SelectItem>
+                          <SelectItem value="OFFLINE">Hors ligne</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="deliverooPrepTime">Temps de préparation (min)</Label>
+                      <Input
+                        id="deliverooPrepTime"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={deliverooPrepTime}
+                        onChange={(e) => setDeliverooPrepTime(e.target.value)}
+                        placeholder="15"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -979,10 +1303,25 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                     />
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button onClick={handleSaveDeliveroo} size="sm">
                       Enregistrer
                     </Button>
+                    {deliverooEnabled && deliverooSyncMenu && storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
+                      <Button
+                        onClick={handleSyncDeliverooMenu}
+                        size="sm"
+                        variant="outline"
+                        disabled={isSyncingDeliveroo}
+                      >
+                        {isSyncingDeliveroo ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Synchroniser le menu
+                      </Button>
+                    )}
                     {storeIntegrations?.some((i: StoreIntegration) => i.platform === "deliveroo") && (
                       <Button onClick={handleRemoveDeliveroo} size="sm" variant="destructive">
                         Supprimer

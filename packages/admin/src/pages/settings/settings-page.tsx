@@ -81,11 +81,7 @@ export function SettingsPage() {
   const [uberDirectCustomerId, setUberDirectCustomerId] = useState("")
   const [uberDirectApiKey, setUberDirectApiKey] = useState("")
   const [uberDirectEnabled, setUberDirectEnabled] = useState(false)
-  const [uberEatsMerchantId, setUberEatsMerchantId] = useState("")
-  const [uberEatsApiKey, setUberEatsApiKey] = useState("")
   const [uberEatsEnabled, setUberEatsEnabled] = useState(false)
-  const [deliverooMerchantId, setDeliverooMerchantId] = useState("")
-  const [deliverooApiKey, setDeliverooApiKey] = useState("")
   const [deliverooEnabled, setDeliverooEnabled] = useState(false)
 
   // Initialize state when settings load
@@ -111,13 +107,9 @@ export function SettingsPage() {
         setUberDirectEnabled(settings.integrations.uberDirect.enabled)
       }
       if (settings.integrations?.uberEats) {
-        setUberEatsMerchantId(settings.integrations.uberEats.merchantId || "")
-        setUberEatsApiKey(settings.integrations.uberEats.apiKey || "")
         setUberEatsEnabled(settings.integrations.uberEats.enabled)
       }
       if (settings.integrations?.deliveroo) {
-        setDeliverooMerchantId(settings.integrations.deliveroo.merchantId || "")
-        setDeliverooApiKey(settings.integrations.deliveroo.apiKey || "")
         setDeliverooEnabled(settings.integrations.deliveroo.enabled)
       }
     } else {
@@ -191,13 +183,9 @@ export function SettingsPage() {
             enabled: uberDirectEnabled,
           },
           uberEats: {
-            merchantId: uberEatsMerchantId || undefined,
-            apiKey: uberEatsApiKey || undefined,
             enabled: uberEatsEnabled,
           },
           deliveroo: {
-            merchantId: deliverooMerchantId || undefined,
-            apiKey: deliverooApiKey || undefined,
             enabled: deliverooEnabled,
           },
         },
@@ -586,32 +574,9 @@ export function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="uberEatsMerchantId" className="text-xs">
-                    Merchant ID
-                  </Label>
-                  <Input
-                    id="uberEatsMerchantId"
-                    type="text"
-                    value={uberEatsMerchantId}
-                    onChange={(e) => setUberEatsMerchantId(e.target.value)}
-                    placeholder="Entrez votre Merchant ID"
-                    disabled={!uberEatsEnabled}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="uberEatsApiKey" className="text-xs">
-                    API Key
-                  </Label>
-                  <Input
-                    id="uberEatsApiKey"
-                    type="password"
-                    value={uberEatsApiKey}
-                    onChange={(e) => setUberEatsApiKey(e.target.value)}
-                    placeholder="Entrez votre clé API"
-                    disabled={!uberEatsEnabled}
-                  />
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Les identifiants Uber Eats (Client ID, Client Secret) sont gérés au niveau de la plateforme BeInDigital via les variables d'environnement.
+                </p>
               </CardContent>
             </Card>
 
@@ -635,32 +600,9 @@ export function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="deliverooMerchantId" className="text-xs">
-                    Merchant ID
-                  </Label>
-                  <Input
-                    id="deliverooMerchantId"
-                    type="text"
-                    value={deliverooMerchantId}
-                    onChange={(e) => setDeliverooMerchantId(e.target.value)}
-                    placeholder="Entrez votre Merchant ID"
-                    disabled={!deliverooEnabled}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deliverooApiKey" className="text-xs">
-                    API Key
-                  </Label>
-                  <Input
-                    id="deliverooApiKey"
-                    type="password"
-                    value={deliverooApiKey}
-                    onChange={(e) => setDeliverooApiKey(e.target.value)}
-                    placeholder="Entrez votre clé API"
-                    disabled={!deliverooEnabled}
-                  />
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Les identifiants Deliveroo (Client ID, Client Secret, Webhook Secret) sont gérés au niveau de la plateforme BeInDigital via les variables d'environnement.
+                </p>
               </CardContent>
             </Card>
 

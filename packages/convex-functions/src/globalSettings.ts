@@ -55,13 +55,9 @@ export const upsert = {
         enabled: v.boolean(),
       })),
       uberEats: v.optional(v.object({
-        merchantId: v.optional(v.string()),
-        apiKey: v.optional(v.string()),
         enabled: v.boolean(),
       })),
       deliveroo: v.optional(v.object({
-        merchantId: v.optional(v.string()),
-        apiKey: v.optional(v.string()),
         enabled: v.boolean(),
       })),
     })),

@@ -13,9 +13,26 @@ export const storeIntegrationsTable = defineTable({
   syncMenu: v.boolean(),
   autoAccept: v.boolean(),
   enabled: v.boolean(),
+  // Uber Eats specific
+  storeStatus: v.optional(v.union(
+    v.literal("ONLINE"),
+    v.literal("PAUSED"),
+    v.literal("OFFLINE")
+  )),
+  prepTime: v.optional(v.number()), // in minutes
+  // Menu sync status
+  lastMenuSyncAt: v.optional(v.number()),
+  menuSyncStatus: v.optional(v.union(
+    v.literal("idle"),
+    v.literal("syncing"),
+    v.literal("success"),
+    v.literal("error")
+  )),
+  menuSyncError: v.optional(v.string()),
   lastSyncAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_store", ["storeId"])
   .index("by_store_platform", ["storeId", "platform"])
+  .index("by_platform_enabled", ["platform", "enabled"])

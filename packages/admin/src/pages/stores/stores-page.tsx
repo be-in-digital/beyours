@@ -47,6 +47,20 @@ import { StoresPagination } from "./stores-pagination"
 
 type StoreStatus = "open" | "closed" | "temporarily_unavailable"
 
+interface StoreRecord {
+  _id: string
+  name: string
+  address: {
+    street: string
+    city: string
+    postalCode: string
+    country: string
+  }
+  phone?: string
+  status: StoreStatus
+  createdAt: number
+}
+
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
 const statusOptions: { value: StoreStatus; label: string }[] = [
@@ -93,13 +107,14 @@ export function StoresPage() {
   // Filtered stores
   const filteredStores = useMemo(() => {
     if (!stores) return []
-    let result = [...stores]
+    const allStores = stores as StoreRecord[]
+    let result = [...allStores]
 
     // Search filter
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
-        (s: any) =>
+        (s) =>
           s.name?.toLowerCase().includes(q) ||
           s.address?.city?.toLowerCase().includes(q) ||
           s.address?.street?.toLowerCase().includes(q) ||
@@ -109,7 +124,7 @@ export function StoresPage() {
 
     // Status filter
     if (statusFilter !== "all") {
-      result = result.filter((s: any) => s.status === statusFilter)
+      result = result.filter((s) => s.status === statusFilter)
     }
 
     return result
@@ -141,7 +156,7 @@ export function StoresPage() {
   // Actions
   const handleChangeStatus = async (storeId: string, status: StoreStatus) => {
     try {
-      await updateStore({ id: storeId as any, status })
+      await updateStore({ id: storeId, status })
       toast.success("Statut mis à jour")
     } catch (error) {
       toast.error("Échec de la mise à jour du statut")
@@ -153,7 +168,7 @@ export function StoresPage() {
     try {
       await Promise.all(
         Array.from(selectedIds).map((id) =>
-          updateStore({ id: id as any, status })
+          updateStore({ id: id, status })
         )
       )
       toast.success(`${selectedIds.size} établissement(s) mis à jour`)
@@ -172,13 +187,13 @@ export function StoresPage() {
   const handleDeleteConfirm = async () => {
     try {
       if (storeToDelete) {
-        await removeStore({ id: storeToDelete as any })
+        await removeStore({ id: storeToDelete })
         toast.success("Établissement supprimé")
         setStoreToDelete(null)
       } else {
         await Promise.all(
           Array.from(selectedIds).map((id) =>
-            removeStore({ id: id as any })
+            removeStore({ id: id })
           )
         )
         toast.success(`${selectedIds.size} établissement(s) supprimé(s)`)

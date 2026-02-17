@@ -21,7 +21,11 @@
     "./games": "./src/games.ts",
     "./gameQRCodes": "./src/gameQRCodes.ts",
     "./prizes": "./src/prizes.ts",
-    "./userProfiles": "./src/userProfiles.ts"
+    "./userProfiles": "./src/userProfiles.ts",
+    "./externalProductMappings": "./src/externalProductMappings.ts",
+    "./orphanProducts": "./src/orphanProducts.ts",
+    "./uberEatsOrders": "./src/uberEatsOrders.ts",
+    "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts"
   },
   "scripts": {
     "lint": "eslint src/",

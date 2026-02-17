@@ -18,6 +18,7 @@
   "dependencies": {
     "@beindigital-engine/admin": "workspace:^",
     "@beindigital-engine/convex-functions": "workspace:^",
+    "@beindigital-engine/integrations": "workspace:^",
     "@beindigital-engine/convex-schema": "workspace:^",
     "@beindigital-engine/core": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
