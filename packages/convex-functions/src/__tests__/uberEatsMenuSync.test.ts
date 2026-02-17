@@ -194,7 +194,7 @@ describe('buildUberEatsMenuPayload', () => {
 
     const mainItem = payload.items.find((item) => item.id === 'item-prod-1')
     expect(mainItem?.modifier_group_ids).toBeUndefined()
-    expect(payload.modifier_groups).toBeUndefined()
+    expect(payload.modifier_groups).toEqual([])
   })
 
   it('should handle empty options array', () => {
@@ -209,7 +209,7 @@ describe('buildUberEatsMenuPayload', () => {
 
     const mainItem = payload.items.find((item) => item.id === 'item-prod-1')
     expect(mainItem?.modifier_group_ids).toBeUndefined()
-    expect(payload.modifier_groups).toBeUndefined()
+    expect(payload.modifier_groups).toEqual([])
   })
 
   it('should use external IDs when available for modifier IDs', () => {

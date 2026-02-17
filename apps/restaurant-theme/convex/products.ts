@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api } from "./_generated/api";
 import * as defs from "@beindigital-engine/convex-functions/products";
 
 // === Queries (unchanged) ===
@@ -20,7 +20,7 @@ export const getFeatured = query(defs.getFeatured);
  */
 async function scheduleMenuSync(ctx: MutationCtx) {
   try {
-    await ctx.scheduler.runAfter(5000, internal.uberEatsMenuSync.syncAllStores, {});
+    await ctx.scheduler.runAfter(5000, api.uberEatsMenuSync.syncAllStores, {});
   } catch (error) {
     console.error("Failed to schedule Uber Eats menu sync:", error);
   }

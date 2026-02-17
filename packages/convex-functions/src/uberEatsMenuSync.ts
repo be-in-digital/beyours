@@ -38,7 +38,7 @@ export interface UberEatsMenuPayload {
     modifier_group_ids?: { ids: string[] }
     quantity_info?: { quantity: { max_permitted: number; min_permitted: number } }
   }>
-  modifier_groups?: Array<{
+  modifier_groups: Array<{
     id: string
     title: { translations: Record<string, string> }
     quantity_info: { quantity: { max_permitted: number; min_permitted: number } }
@@ -301,6 +301,6 @@ export function buildUberEatsMenuPayload(
     ],
     categories: uberCategories,
     items: uberItems,
-    modifier_groups: uberModifierGroups.length > 0 ? uberModifierGroups : undefined,
+    modifier_groups: uberModifierGroups,
   }
 }

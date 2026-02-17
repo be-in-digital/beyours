@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { action, internalAction } from "./_generated/server";
+import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import {
   buildUberEatsMenuPayload,
@@ -119,7 +119,7 @@ export const syncStore = action({
  * It queries all enabled Uber Eats integrations with syncMenu=true and
  * schedules individual syncStore actions for each.
  */
-export const syncAllStores = internalAction({
+export const syncAllStores = action({
   args: {},
   handler: async (ctx) => {
     // Query all enabled Uber Eats integrations
