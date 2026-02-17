@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@beindigital-engine/ui"
 import { Switch } from "@beindigital-engine/ui"
-import { Checkbox } from "@beindigital-engine/ui"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
 import { Badge } from "@beindigital-engine/ui"
 import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
@@ -518,15 +517,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         {/* HOURS TAB */}
         <TabsContent value="hours" className="space-y-4">
           <div className="border border-border/50 rounded-lg p-6 space-y-4">
-            <div className="flex items-center space-x-2 pb-4 border-b">
-              <Checkbox
-                id="useGlobalHours"
-                checked={useGlobalHours}
-                onCheckedChange={(checked) => setUseGlobalHours(checked === true)}
-              />
+            <div className="flex items-center justify-between pb-4 border-b">
               <Label htmlFor="useGlobalHours" className="cursor-pointer">
                 Utiliser les horaires globaux
               </Label>
+              <Switch
+                id="useGlobalHours"
+                checked={useGlobalHours}
+                onCheckedChange={setUseGlobalHours}
+              />
             </div>
 
             {useGlobalHours && globalHours.length > 0 && (
@@ -628,42 +627,43 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
 
         {/* SETTINGS TAB */}
         <TabsContent value="settings" className="space-y-4">
-          <div className="border border-border/50 rounded-lg p-6 space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Par défaut, cet établissement hérite des paramètres globaux. Activez un switch pour personnaliser une valeur.
+          </p>
+
+          <div className="space-y-4">
             {/* Services */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="customizeServices"
+            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Services</p>
+                  {!customizeServices && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Global : Sur place ({globalServices.dineIn ? "Oui" : "Non"}), À emporter ({globalServices.takeaway ? "Oui" : "Non"}), Livraison ({globalServices.delivery ? "Oui" : "Non"}), Click & Collect ({globalServices.clickAndCollect ? "Oui" : "Non"})
+                    </p>
+                  )}
+                </div>
+                <Switch
                   checked={customizeServices}
-                  onCheckedChange={(checked) => setCustomizeServices(checked === true)}
+                  onCheckedChange={setCustomizeServices}
                 />
-                <Label htmlFor="customizeServices" className="cursor-pointer font-medium">
-                  Personnaliser les services
-                </Label>
               </div>
-              {!customizeServices && (
-                <p className="text-sm text-muted-foreground">
-                  Global: Sur place ({globalServices.dineIn ? "Oui" : "Non"}), À emporter (
-                  {globalServices.takeaway ? "Oui" : "Non"}), Livraison ({globalServices.delivery ? "Oui" : "Non"}),
-                  Click & Collect ({globalServices.clickAndCollect ? "Oui" : "Non"})
-                </p>
-              )}
               {customizeServices && (
-                <div className="pl-6 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="dineIn">Sur place</Label>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                    <Label htmlFor="dineIn" className="text-sm cursor-pointer">Sur place</Label>
                     <Switch id="dineIn" checked={dineIn} onCheckedChange={setDineIn} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="takeaway">À emporter</Label>
+                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                    <Label htmlFor="takeaway" className="text-sm cursor-pointer">À emporter</Label>
                     <Switch id="takeaway" checked={takeaway} onCheckedChange={setTakeaway} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="delivery">Livraison</Label>
+                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                    <Label htmlFor="delivery" className="text-sm cursor-pointer">Livraison</Label>
                     <Switch id="delivery" checked={delivery} onCheckedChange={setDelivery} />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="clickAndCollect">Click & Collect</Label>
+                  <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                    <Label htmlFor="clickAndCollect" className="text-sm cursor-pointer">Click & Collect</Label>
                     <Switch id="clickAndCollect" checked={clickAndCollect} onCheckedChange={setClickAndCollect} />
                   </div>
                 </div>
@@ -671,125 +671,125 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             </div>
 
             {/* Minimum Order */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="customizeMinOrder"
+            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Commande minimum</p>
+                  {!customizeMinOrder && (
+                    <p className="text-xs text-muted-foreground mt-1">Global : {globalMinOrder} €</p>
+                  )}
+                </div>
+                <Switch
                   checked={customizeMinOrder}
-                  onCheckedChange={(checked) => setCustomizeMinOrder(checked === true)}
+                  onCheckedChange={setCustomizeMinOrder}
                 />
-                <Label htmlFor="customizeMinOrder" className="cursor-pointer font-medium">
-                  Personnaliser la commande minimum
-                </Label>
               </div>
-              {!customizeMinOrder && (
-                <p className="text-sm text-muted-foreground">Global: {globalMinOrder} €</p>
-              )}
               {customizeMinOrder && (
-                <div className="pl-6 space-y-2">
-                  <Label htmlFor="minimumOrderAmount">Commande minimum (€)</Label>
+                <div className="pt-2 border-t">
+                  <Label htmlFor="minimumOrderAmount" className="text-xs text-muted-foreground">Montant minimum (€)</Label>
                   <Input
                     id="minimumOrderAmount"
                     type="number"
                     step="0.01"
                     value={minimumOrderAmount}
                     onChange={(e) => setMinimumOrderAmount(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
               )}
             </div>
 
             {/* Delivery Radius */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="customizeDeliveryRadius"
+            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Rayon de livraison</p>
+                  {!customizeDeliveryRadius && (
+                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryRadius} km</p>
+                  )}
+                </div>
+                <Switch
                   checked={customizeDeliveryRadius}
-                  onCheckedChange={(checked) => setCustomizeDeliveryRadius(checked === true)}
+                  onCheckedChange={setCustomizeDeliveryRadius}
                 />
-                <Label htmlFor="customizeDeliveryRadius" className="cursor-pointer font-medium">
-                  Personnaliser le rayon de livraison
-                </Label>
               </div>
-              {!customizeDeliveryRadius && (
-                <p className="text-sm text-muted-foreground">Global: {globalDeliveryRadius} km</p>
-              )}
               {customizeDeliveryRadius && (
-                <div className="pl-6 space-y-2">
-                  <Label htmlFor="deliveryRadius">Rayon de livraison (km)</Label>
+                <div className="pt-2 border-t">
+                  <Label htmlFor="deliveryRadius" className="text-xs text-muted-foreground">Rayon (km)</Label>
                   <Input
                     id="deliveryRadius"
                     type="number"
                     step="0.1"
                     value={deliveryRadius}
                     onChange={(e) => setDeliveryRadius(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
               )}
             </div>
 
             {/* Delivery Fee */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="customizeDeliveryFee"
+            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Frais de livraison</p>
+                  {!customizeDeliveryFee && (
+                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryFee} €</p>
+                  )}
+                </div>
+                <Switch
                   checked={customizeDeliveryFee}
-                  onCheckedChange={(checked) => setCustomizeDeliveryFee(checked === true)}
+                  onCheckedChange={setCustomizeDeliveryFee}
                 />
-                <Label htmlFor="customizeDeliveryFee" className="cursor-pointer font-medium">
-                  Personnaliser les frais de livraison
-                </Label>
               </div>
-              {!customizeDeliveryFee && (
-                <p className="text-sm text-muted-foreground">Global: {globalDeliveryFee} €</p>
-              )}
               {customizeDeliveryFee && (
-                <div className="pl-6 space-y-2">
-                  <Label htmlFor="deliveryFee">Frais de livraison (€)</Label>
+                <div className="pt-2 border-t">
+                  <Label htmlFor="deliveryFee" className="text-xs text-muted-foreground">Montant (€)</Label>
                   <Input
                     id="deliveryFee"
                     type="number"
                     step="0.01"
                     value={deliveryFee}
                     onChange={(e) => setDeliveryFee(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
               )}
             </div>
 
             {/* Delivery Free Above */}
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="customizeDeliveryFree"
+            <div className="border border-border/50 rounded-lg p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Livraison gratuite à partir de</p>
+                  {!customizeDeliveryFree && (
+                    <p className="text-xs text-muted-foreground mt-1">Global : {globalDeliveryFree} €</p>
+                  )}
+                </div>
+                <Switch
                   checked={customizeDeliveryFree}
-                  onCheckedChange={(checked) => setCustomizeDeliveryFree(checked === true)}
+                  onCheckedChange={setCustomizeDeliveryFree}
                 />
-                <Label htmlFor="customizeDeliveryFree" className="cursor-pointer font-medium">
-                  Personnaliser la livraison gratuite à partir de
-                </Label>
               </div>
-              {!customizeDeliveryFree && (
-                <p className="text-sm text-muted-foreground">Global: {globalDeliveryFree} €</p>
-              )}
               {customizeDeliveryFree && (
-                <div className="pl-6 space-y-2">
-                  <Label htmlFor="deliveryFreeAbove">Livraison gratuite à partir de (€)</Label>
+                <div className="pt-2 border-t">
+                  <Label htmlFor="deliveryFreeAbove" className="text-xs text-muted-foreground">Montant (€)</Label>
                   <Input
                     id="deliveryFreeAbove"
                     type="number"
                     step="0.01"
                     value={deliveryFreeAbove}
                     onChange={(e) => setDeliveryFreeAbove(e.target.value)}
+                    className="mt-1"
                   />
                 </div>
               )}
             </div>
-
-            <Button onClick={handleUpdateSettings} size="sm">
-              Enregistrer les paramètres
-            </Button>
           </div>
+
+          <Button onClick={handleUpdateSettings} size="sm">
+            Enregistrer les paramètres
+          </Button>
         </TabsContent>
 
         {/* INTEGRATIONS TAB */}
