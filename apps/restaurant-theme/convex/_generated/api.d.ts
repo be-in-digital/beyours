@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
+import type * as externalProductMappings from "../externalProductMappings.js";
 import type * as gameQRCodes from "../gameQRCodes.js";
 import type * as games from "../games.js";
 import type * as globalSettings from "../globalSettings.js";
@@ -17,6 +18,7 @@ import type * as http from "../http.js";
 import type * as kitchenTickets from "../kitchenTickets.js";
 import type * as languages from "../languages.js";
 import type * as orders from "../orders.js";
+import type * as orphanProducts from "../orphanProducts.js";
 import type * as payments from "../payments.js";
 import type * as prizes from "../prizes.js";
 import type * as products from "../products.js";
@@ -24,6 +26,9 @@ import type * as storeIntegrations from "../storeIntegrations.js";
 import type * as stores from "../stores.js";
 import type * as teamMembers from "../teamMembers.js";
 import type * as translations from "../translations.js";
+import type * as uberEatsMenuSync from "../uberEatsMenuSync.js";
+import type * as uberEatsOrders from "../uberEatsOrders.js";
+import type * as uberEatsWebhook from "../uberEatsWebhook.js";
 import type * as userProfiles from "../userProfiles.js";
 
 import type {
@@ -35,6 +40,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   categories: typeof categories;
+  externalProductMappings: typeof externalProductMappings;
   gameQRCodes: typeof gameQRCodes;
   games: typeof games;
   globalSettings: typeof globalSettings;
@@ -42,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   kitchenTickets: typeof kitchenTickets;
   languages: typeof languages;
   orders: typeof orders;
+  orphanProducts: typeof orphanProducts;
   payments: typeof payments;
   prizes: typeof prizes;
   products: typeof products;
@@ -49,6 +56,9 @@ declare const fullApi: ApiFromModules<{
   stores: typeof stores;
   teamMembers: typeof teamMembers;
   translations: typeof translations;
+  uberEatsMenuSync: typeof uberEatsMenuSync;
+  uberEatsOrders: typeof uberEatsOrders;
+  uberEatsWebhook: typeof uberEatsWebhook;
   userProfiles: typeof userProfiles;
 }>;
 
