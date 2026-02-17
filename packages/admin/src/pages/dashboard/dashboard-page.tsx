@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
+import { useMemo } from "react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { DashboardHeader } from "./dashboard-header"
@@ -155,7 +156,7 @@ export function DashboardPage() {
     )
   }
 
-  const stats = computeDashboardStats(orders as Order[])
+  const stats = useMemo(() => computeDashboardStats(orders as Order[]), [orders])
 
   return (
     <div className="space-y-6">

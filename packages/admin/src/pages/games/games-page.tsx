@@ -31,8 +31,11 @@ import { Badge } from "@beindigital-engine/ui"
 import { cn } from "../../lib/utils"
 import { LoadingState } from "../../components/loading-state"
 import { EmptyState } from "../../components/empty-state"
+import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+
+type PrizeType = "discount_percentage" | "discount_fixed" | "free_product" | "free_menu" | "custom"
 
 interface Game {
   _id: string
@@ -83,10 +86,16 @@ export function GamesPage() {
   // Prize form state
   const [prizeName, setPrizeName] = useState("")
   const [prizeDescription, setPrizeDescription] = useState("")
-  const [prizeType, setPrizeType] = useState<"discount_percentage" | "discount_fixed" | "free_product" | "free_menu" | "custom">("discount_percentage")
+  const [prizeType, setPrizeType] = useState<PrizeType>("discount_percentage")
   const [prizeValue, setPrizeValue] = useState("")
   const [validityDays, setValidityDays] = useState("7")
   const [totalAvailable, setTotalAvailable] = useState("")
+
+  // Delete confirmation state
+  const [deletingGameId, setDeletingGameId] = useState<string | null>(null)
+  const [deletingQRId, setDeletingQRId] = useState<string | null>(null)
+  const [deletingPrizeId, setDeletingPrizeId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const games = useQuery(api.games.list, storeId ? { storeId } : "skip") as Game[] | undefined
   const qrCodes = useQuery(api.gameQRCodes.list, storeId ? { storeId } : "skip") as QRCode[] | undefined
@@ -103,8 +112,7 @@ export function GamesPage() {
   const removePrize = useMutation(api.prizes.remove)
 
   const generateQRCode = () => {
-    // Generate random code
-    const code = Math.random().toString(36).substring(2, 10).toUpperCase()
+    const code = crypto.randomUUID().slice(0, 12).toUpperCase()
     setQrCode(code)
   }
 
@@ -144,6 +152,48 @@ export function GamesPage() {
     }
   }
 
+  const handleDeleteGame = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      await removeGame({ id })
+      toast.success("Jeu supprimé")
+    } catch (error) {
+      toast.error("Échec de la suppression du jeu")
+      console.error(error)
+    } finally {
+      setIsDeleting(false)
+      setDeletingGameId(null)
+    }
+  }
+
+  const handleDeleteQRCode = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      await removeQRCode({ id })
+      toast.success("Code QR supprimé")
+    } catch (error) {
+      toast.error("Échec de la suppression du code QR")
+      console.error(error)
+    } finally {
+      setIsDeleting(false)
+      setDeletingQRId(null)
+    }
+  }
+
+  const handleDeletePrize = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      await removePrize({ id })
+      toast.success("Prix supprimé")
+    } catch (error) {
+      toast.error("Échec de la suppression du prix")
+      console.error(error)
+    } finally {
+      setIsDeleting(false)
+      setDeletingPrizeId(null)
+    }
+  }
+
   const handleAddQRCode = async () => {
     if (!storeId || !qrCode) {
       toast.error("Veuillez générer un code QR")
@@ -175,15 +225,33 @@ export function GamesPage() {
       return
     }
 
+    const parsedValidityDays = parseInt(validityDays, 10)
+    if (isNaN(parsedValidityDays) || parsedValidityDays <= 0) {
+      toast.error("Veuillez saisir un nombre de jours de validité valide")
+      return
+    }
+
+    const parsedValue = prizeValue ? parseInt(prizeValue, 10) : undefined
+    if (prizeValue && (parsedValue === undefined || isNaN(parsedValue))) {
+      toast.error("Veuillez saisir une valeur valide")
+      return
+    }
+
+    const parsedTotal = totalAvailable ? parseInt(totalAvailable, 10) : undefined
+    if (totalAvailable && (parsedTotal === undefined || isNaN(parsedTotal))) {
+      toast.error("Veuillez saisir une quantité valide")
+      return
+    }
+
     try {
       await createPrize({
         storeId,
         name: prizeName,
         description: prizeDescription || undefined,
         type: prizeType,
-        value: prizeValue ? parseInt(prizeValue) : undefined,
-        validityDays: parseInt(validityDays),
-        totalAvailable: totalAvailable ? parseInt(totalAvailable) : undefined,
+        value: parsedValue,
+        validityDays: parsedValidityDays,
+        totalAvailable: parsedTotal,
         isActive: true,
       })
       toast.success("Prix créé avec succès")
@@ -324,7 +392,8 @@ export function GamesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeGame({ id: game._id })}
+                      aria-label="Supprimer le jeu"
+                      onClick={() => setDeletingGameId(game._id)}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -339,7 +408,7 @@ export function GamesPage() {
                       max={100}
                       step={5}
                       value={[game.winRatio]}
-                      onValueChange={(v) => handleUpdateWinRatio(game._id, v[0] ?? 0)}
+                      onValueCommit={(v) => handleUpdateWinRatio(game._id, v[0] ?? 0)}
                     />
                   </div>
                 </div>
@@ -425,7 +494,8 @@ export function GamesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeQRCode({ id: qr._id })}
+                      aria-label="Supprimer le code QR"
+                      onClick={() => setDeletingQRId(qr._id)}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -473,7 +543,7 @@ export function GamesPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="prizeType">Type *</Label>
-                    <Select value={prizeType} onValueChange={(v: any) => setPrizeType(v)}>
+                    <Select value={prizeType} onValueChange={(v) => setPrizeType(v as PrizeType)}>
                       <SelectTrigger id="prizeType">
                         <SelectValue />
                       </SelectTrigger>
@@ -554,7 +624,8 @@ export function GamesPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removePrize({ id: prize._id })}
+                      aria-label="Supprimer le prix"
+                      onClick={() => setDeletingPrizeId(prize._id)}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </Button>
@@ -581,6 +652,33 @@ export function GamesPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        open={!!deletingGameId}
+        onOpenChange={(open) => !open && setDeletingGameId(null)}
+        onConfirm={() => deletingGameId && handleDeleteGame(deletingGameId)}
+        title="Supprimer ce jeu ?"
+        description="Cette action est irréversible. Le jeu et toutes ses données seront définitivement supprimés."
+        isDeleting={isDeleting}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deletingQRId}
+        onOpenChange={(open) => !open && setDeletingQRId(null)}
+        onConfirm={() => deletingQRId && handleDeleteQRCode(deletingQRId)}
+        title="Supprimer ce code QR ?"
+        description="Cette action est irréversible. Le code QR ne sera plus fonctionnel."
+        isDeleting={isDeleting}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deletingPrizeId}
+        onOpenChange={(open) => !open && setDeletingPrizeId(null)}
+        onConfirm={() => deletingPrizeId && handleDeletePrize(deletingPrizeId)}
+        title="Supprimer ce prix ?"
+        description="Cette action est irréversible. Le prix ne pourra plus être gagné par les clients."
+        isDeleting={isDeleting}
+      />
     </div>
   )
 }

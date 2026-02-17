@@ -336,19 +336,27 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       }
 
       if (customizeMinOrder && minimumOrderAmount) {
-        overrides.minimumOrderAmount = eurosToCents(parseFloat(minimumOrderAmount))
+        const parsed = parseFloat(minimumOrderAmount)
+        if (isNaN(parsed) || parsed < 0) { toast.error("Montant minimum invalide"); return }
+        overrides.minimumOrderAmount = eurosToCents(parsed)
       }
 
       if (customizeDeliveryRadius && deliveryRadius) {
-        overrides.deliveryRadius = Math.round(parseFloat(deliveryRadius) * 1000)
+        const parsed = parseFloat(deliveryRadius)
+        if (isNaN(parsed) || parsed < 0) { toast.error("Rayon de livraison invalide"); return }
+        overrides.deliveryRadius = Math.round(parsed * 1000)
       }
 
       if (customizeDeliveryFee && deliveryFee) {
-        overrides.deliveryFee = eurosToCents(parseFloat(deliveryFee))
+        const parsed = parseFloat(deliveryFee)
+        if (isNaN(parsed) || parsed < 0) { toast.error("Frais de livraison invalides"); return }
+        overrides.deliveryFee = eurosToCents(parsed)
       }
 
       if (customizeDeliveryFree && deliveryFreeAbove) {
-        overrides.deliveryFreeAbove = eurosToCents(parseFloat(deliveryFreeAbove))
+        const parsed = parseFloat(deliveryFreeAbove)
+        if (isNaN(parsed) || parsed < 0) { toast.error("Seuil de livraison gratuite invalide"); return }
+        overrides.deliveryFreeAbove = eurosToCents(parsed)
       }
 
       await updateOverrides({
@@ -381,6 +389,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         return
       }
 
+      const parsedPrepTime = uberEatsPrepTime ? parseInt(uberEatsPrepTime, 10) : undefined
+      if (uberEatsPrepTime && (parsedPrepTime === undefined || isNaN(parsedPrepTime) || parsedPrepTime <= 0)) {
+        toast.error("Temps de préparation invalide")
+        return
+      }
+
       await upsertIntegration({
         storeId: storeId as string,
         platform: "uberEats",
@@ -389,7 +403,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         autoAccept: uberEatsAutoAccept,
         enabled: uberEatsEnabled,
         storeStatus: uberEatsStoreStatus,
-        prepTime: uberEatsPrepTime ? parseInt(uberEatsPrepTime, 10) : undefined,
+        prepTime: parsedPrepTime,
       })
 
       toast.success("Integration Uber Eats verifiee et enregistree")
@@ -425,6 +439,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         return
       }
 
+      const parsedDlPrepTime = deliverooPrepTime ? parseInt(deliverooPrepTime, 10) : undefined
+      if (deliverooPrepTime && (parsedDlPrepTime === undefined || isNaN(parsedDlPrepTime) || parsedDlPrepTime <= 0)) {
+        toast.error("Temps de préparation invalide")
+        return
+      }
+
       await upsertIntegration({
         storeId: storeId as string,
         platform: "deliveroo",
@@ -433,7 +453,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         autoAccept: deliverooAutoAccept,
         enabled: deliverooEnabled,
         storeStatus: deliverooStoreStatus,
-        prepTime: deliverooPrepTime ? parseInt(deliverooPrepTime, 10) : undefined,
+        prepTime: parsedDlPrepTime,
         brandId: deliverooBrandId || undefined,
       })
 

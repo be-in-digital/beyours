@@ -127,18 +127,30 @@ export function SettingsPage() {
   }, [settings])
 
   const handleSaveGeneral = async () => {
+    const parsedTaxRate = parseFloat(taxRate)
+    if (isNaN(parsedTaxRate) || parsedTaxRate < 0 || parsedTaxRate > 100) {
+      toast.error("Taux de TVA invalide (0-100)")
+      return
+    }
+
+    const parsedMinOrder = minimumOrder ? parseFloat(minimumOrder) : undefined
+    if (minimumOrder && (parsedMinOrder === undefined || isNaN(parsedMinOrder) || parsedMinOrder < 0)) {
+      toast.error("Montant minimum invalide")
+      return
+    }
+
     try {
       await updateSettings({
         currency,
         timezone,
-        taxRate: parseFloat(taxRate),
+        taxRate: parsedTaxRate,
         services: {
           dineIn,
           takeaway,
           delivery,
           clickAndCollect,
         },
-        minimumOrderAmount: minimumOrder ? eurosToCents(parseFloat(minimumOrder)) : undefined,
+        minimumOrderAmount: parsedMinOrder !== undefined ? eurosToCents(parsedMinOrder) : undefined,
       })
       toast.success("Paramètres généraux enregistrés")
     } catch (error) {
@@ -158,12 +170,30 @@ export function SettingsPage() {
   }
 
   const handleSaveDelivery = async () => {
+    const parsedRadius = deliveryRadius ? parseFloat(deliveryRadius) : undefined
+    if (deliveryRadius && (parsedRadius === undefined || isNaN(parsedRadius) || parsedRadius < 0)) {
+      toast.error("Rayon de livraison invalide")
+      return
+    }
+
+    const parsedFee = deliveryFee ? parseFloat(deliveryFee) : undefined
+    if (deliveryFee && (parsedFee === undefined || isNaN(parsedFee) || parsedFee < 0)) {
+      toast.error("Frais de livraison invalides")
+      return
+    }
+
+    const parsedFreeAbove = freeAbove ? parseFloat(freeAbove) : undefined
+    if (freeAbove && (parsedFreeAbove === undefined || isNaN(parsedFreeAbove) || parsedFreeAbove < 0)) {
+      toast.error("Seuil de livraison gratuite invalide")
+      return
+    }
+
     try {
       await updateSettings({
         delivery: {
-          radius: deliveryRadius ? parseFloat(deliveryRadius) : undefined,
-          fee: deliveryFee ? eurosToCents(parseFloat(deliveryFee)) : undefined,
-          freeAbove: freeAbove ? eurosToCents(parseFloat(freeAbove)) : undefined,
+          radius: parsedRadius,
+          fee: parsedFee !== undefined ? eurosToCents(parsedFee) : undefined,
+          freeAbove: parsedFreeAbove !== undefined ? eurosToCents(parsedFreeAbove) : undefined,
         },
       })
       toast.success("Paramètres de livraison enregistrés")

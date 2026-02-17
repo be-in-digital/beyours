@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { toast } from "sonner"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { PaletteIcon, CheckIcon } from "lucide-react"
 import {
   Button,
@@ -49,16 +49,19 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
   const [logoUrl, setLogoUrl] = useState("")
   const [faviconUrl, setFaviconUrl] = useState("")
 
-  // Initialize state when store loads
-  if (store && primaryColor === "#000000" && store.branding) {
-    setPrimaryColor(store.branding.primaryColor || "#000000")
-    setSecondaryColor(store.branding.secondaryColor || "#ffffff")
-    setAccentColor(store.branding.accentColor || "#0066cc")
-    setFontHeading(store.branding.fontHeading || "Inter")
-    setFontBody(store.branding.fontBody || "Inter")
-    setLogoUrl(store.branding.logoUrl || "")
-    setFaviconUrl(store.branding.faviconUrl || "")
-  }
+  const initialized = useRef(false)
+  useEffect(() => {
+    if (store?.branding && !initialized.current) {
+      setPrimaryColor(store.branding.primaryColor || "#000000")
+      setSecondaryColor(store.branding.secondaryColor || "#ffffff")
+      setAccentColor(store.branding.accentColor || "#0066cc")
+      setFontHeading(store.branding.fontHeading || "Inter")
+      setFontBody(store.branding.fontBody || "Inter")
+      setLogoUrl(store.branding.logoUrl || "")
+      setFaviconUrl(store.branding.faviconUrl || "")
+      initialized.current = true
+    }
+  }, [store])
 
   const handleApplyTheme = (theme: typeof themes[0]) => {
     setSelectedTheme(theme.id)
