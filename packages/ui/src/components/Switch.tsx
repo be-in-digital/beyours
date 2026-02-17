@@ -13,14 +13,22 @@ export interface SwitchProps
 }
 
 const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
-  ({ className, label, error, description, id, onCheckedChange, onChange, ...props }, ref) => {
+  ({ className, label, error, description, id, onCheckedChange, onChange, checked, defaultChecked, ...props }, ref) => {
+    const isControlled = checked !== undefined
+    const [internalChecked, setInternalChecked] = React.useState(defaultChecked ?? false)
+    const isChecked = isControlled ? checked : internalChecked
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!isControlled) {
+        setInternalChecked(e.target.checked)
+      }
       onChange?.(e)
       onCheckedChange?.(e.target.checked)
     }
     const switchId = id || React.useId()
 
-    // The core toggle element
+    // The core toggle element using inline styles for checked state
+    // (Tailwind peer-checked: variants are not generated for package dependencies)
     const switchElement = (
       <label
         htmlFor={switchId}
@@ -35,7 +43,9 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           id={switchId}
           type="checkbox"
           ref={ref}
-          className="peer sr-only"
+          className="sr-only"
+          checked={isControlled ? checked : undefined}
+          defaultChecked={!isControlled ? defaultChecked : undefined}
           aria-invalid={error ? "true" : "false"}
           aria-describedby={
             error ? `${switchId}-error` : description ? `${switchId}-description` : undefined
@@ -43,8 +53,19 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           onChange={handleChange}
           {...props}
         />
-        <span className="pointer-events-none absolute h-full w-full rounded-full bg-input transition-colors peer-checked:bg-primary" />
-        <span className="pointer-events-none absolute left-0.5 inline-block h-5 w-5 transform rounded-full bg-background shadow-lg ring-0 transition-transform peer-checked:translate-x-5" />
+        {/* Track */}
+        <span
+          className="pointer-events-none absolute h-full w-full rounded-full transition-colors"
+          style={{ backgroundColor: isChecked ? "hsl(var(--primary))" : "hsl(var(--input))" }}
+        />
+        {/* Thumb */}
+        <span
+          className="pointer-events-none absolute inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform"
+          style={{
+            left: "2px",
+            transform: isChecked ? "translateX(1.25rem)" : "translateX(0)",
+          }}
+        />
       </label>
     )
 
