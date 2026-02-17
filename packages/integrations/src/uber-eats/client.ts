@@ -37,7 +37,7 @@ export async function getAccessToken(
       client_id: credentials.clientId,
       client_secret: credentials.clientSecret,
       grant_type: "client_credentials",
-      scope: "eats.store eats.store.orders.read eats.store.orders.write eats.store.status.write eats.store.status.read",
+      scope: "eats.store eats.order eats.store.orders.read eats.store.orders.cancel eats.store.status.write",
     }).toString(),
   })
 
