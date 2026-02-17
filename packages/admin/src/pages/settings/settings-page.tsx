@@ -80,9 +80,9 @@ export function SettingsPage() {
   // Integrations tab state
   const [uberDirectCustomerId, setUberDirectCustomerId] = useState("")
   const [uberDirectApiKey, setUberDirectApiKey] = useState("")
-  const [uberDirectEnabled, setUberDirectEnabled] = useState(false)
-  const [uberEatsEnabled, setUberEatsEnabled] = useState(false)
-  const [deliverooEnabled, setDeliverooEnabled] = useState(false)
+  const [uberDirectEnabled, setUberDirectEnabled] = useState(true)
+  const [uberEatsEnabled, setUberEatsEnabled] = useState(true)
+  const [deliverooEnabled, setDeliverooEnabled] = useState(true)
 
   // Initialize state when settings load
   useEffect(() => {

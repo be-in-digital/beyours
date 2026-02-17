@@ -41,10 +41,10 @@ export const createGlobalSettingsSchema = z.object({
     uberDirect: z.object({
       customerId: z.string().optional(),
       apiKey: z.string().optional(),
-      enabled: z.boolean().default(false),
+      enabled: z.boolean().default(true),
     }).optional(),
     uberEats: z.object({
-      enabled: z.boolean().default(false),
+      enabled: z.boolean().default(true),
     }).optional(),
     deliveroo: z.object({
       clientId: z.string().optional(),
@@ -52,7 +52,7 @@ export const createGlobalSettingsSchema = z.object({
       webhookSecret: z.string().optional(),
       merchantId: z.string().optional(),
       sandboxMode: z.boolean().optional(),
-      enabled: z.boolean().default(false),
+      enabled: z.boolean().default(true),
     }).optional(),
   }).default({}),
 })
@@ -143,7 +143,7 @@ export const createStoreIntegrationSchema = z.object({
   }),
   platformStoreId: z.string().min(1, "L'ID du magasin sur la plateforme est requis"),
   syncMenu: z.boolean().default(true),
-  autoAccept: z.boolean().default(false),
+  autoAccept: z.boolean().default(true),
   enabled: z.boolean().default(true),
 })
 

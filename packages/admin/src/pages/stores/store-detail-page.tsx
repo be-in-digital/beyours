@@ -122,16 +122,16 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
 
   // Integrations tab state
   const [uberEatsStoreId, setUberEatsStoreId] = useState("")
-  const [uberEatsSyncMenu, setUberEatsSyncMenu] = useState(false)
-  const [uberEatsAutoAccept, setUberEatsAutoAccept] = useState(false)
-  const [uberEatsEnabled, setUberEatsEnabled] = useState(false)
+  const [uberEatsSyncMenu, setUberEatsSyncMenu] = useState(true)
+  const [uberEatsAutoAccept, setUberEatsAutoAccept] = useState(true)
+  const [uberEatsEnabled, setUberEatsEnabled] = useState(true)
   const [uberEatsStoreStatus, setUberEatsStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
   const [uberEatsPrepTime, setUberEatsPrepTime] = useState("")
 
   const [deliverooStoreId, setDeliverooStoreId] = useState("")
-  const [deliverooSyncMenu, setDeliverooSyncMenu] = useState(false)
-  const [deliverooAutoAccept, setDeliverooAutoAccept] = useState(false)
-  const [deliverooEnabled, setDeliverooEnabled] = useState(false)
+  const [deliverooSyncMenu, setDeliverooSyncMenu] = useState(true)
+  const [deliverooAutoAccept, setDeliverooAutoAccept] = useState(true)
+  const [deliverooEnabled, setDeliverooEnabled] = useState(true)
   const [deliverooStoreStatus, setDeliverooStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
   const [deliverooPrepTime, setDeliverooPrepTime] = useState("")
 
