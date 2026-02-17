@@ -61,6 +61,7 @@ export const create = {
     })),
   },
   handler: async (ctx: any, args: any) => {
+    if (args.amount <= 0) throw new Error("Payment amount must be positive")
     const now = Date.now()
     return await ctx.db.insert("payments", {
       ...args,
@@ -114,8 +115,12 @@ export const refund = {
   handler: async (ctx: any, args: any) => {
     const payment = await ctx.db.get(args.id)
     if (!payment) throw new Error("Payment not found")
+    if (args.amount <= 0) throw new Error("Refund amount must be positive")
 
     const newRefundedAmount = (payment.refundedAmount ?? 0) + args.amount
+    if (newRefundedAmount > payment.amount) {
+      throw new Error("Refund amount exceeds remaining payment balance")
+    }
 
     // Determine new status
     let newStatus: "refunded" | "partially_refunded"

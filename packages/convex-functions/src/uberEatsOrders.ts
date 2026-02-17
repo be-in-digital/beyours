@@ -107,15 +107,12 @@ export const saveFromPlatform = {
     scheduledFor?: number
     estimatedPrepTime?: number
   }) => {
-    // Check for existing order (deduplication)
-    const existingOrders = await ctx.db
+    // Check for existing order by externalOrderId (deduplication)
+    const existingOrder = await ctx.db
       .query("orders")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-      .collect()
-
-    const existingOrder = existingOrders.find(
-      (o: any) => o.notes?.includes(`[EXT:${args.externalOrderId}]`)
-    )
+      .filter((q: any) => q.eq(q.field("externalOrderId"), args.externalOrderId))
+      .first()
 
     const now = Date.now()
 
@@ -146,7 +143,8 @@ export const saveFromPlatform = {
       paymentMethod: "platform" as const,
       paymentStatus: "paid" as const,
       source: args.source,
-      notes: args.notes ? `${args.notes} [EXT:${args.externalOrderId}]` : `[EXT:${args.externalOrderId}]`,
+      externalOrderId: args.externalOrderId,
+      notes: args.notes,
       estimatedPrepTime: args.estimatedPrepTime,
       scheduledFor: args.scheduledFor,
       createdAt: now,

@@ -66,7 +66,7 @@ export const acceptOrder = action({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Failed to accept Deliveroo order:`, errorMessage);
-      return { success: false, error: errorMessage };
+      return { success: false, error: "Failed to accept Deliveroo order" };
     }
   },
 });
@@ -137,7 +137,7 @@ export const rejectOrder = action({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Failed to reject Deliveroo order:`, errorMessage);
-      return { success: false, error: errorMessage };
+      return { success: false, error: "Failed to reject Deliveroo order" };
     }
   },
 });
@@ -208,7 +208,7 @@ export const updatePrepStage = action({
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Failed to update Deliveroo order prep stage:`, errorMessage);
-      return { success: false, error: errorMessage };
+      return { success: false, error: "Failed to update Deliveroo order preparation stage" };
     }
   },
 });

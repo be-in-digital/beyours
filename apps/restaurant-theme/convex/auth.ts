@@ -16,7 +16,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
-      minPasswordLength: 6,
+      minPasswordLength: 8,
       sendResetPassword: async ({ user, url }) => {
         const siteUrl = process.env.SITE_URL;
         const secret = process.env.BETTER_AUTH_SECRET;
@@ -40,7 +40,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         });
       },
     },
-    trustedOrigins: ["http://localhost:3000"],
+    trustedOrigins: process.env.SITE_URL
+      ? [process.env.SITE_URL, "http://localhost:3000"]
+      : ["http://localhost:3000"],
     plugins: [convex({ authConfig })],
   });
 };

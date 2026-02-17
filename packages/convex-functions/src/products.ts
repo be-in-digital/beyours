@@ -150,6 +150,7 @@ export const create = {
     })),
   },
   handler: async (ctx: any, args: any) => {
+    if (args.price < 0) throw new Error("Price cannot be negative")
     const now = Date.now()
     return await ctx.db.insert("products", {
       ...args,
@@ -223,6 +224,7 @@ export const update = {
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx: any, args: any) => {
+    if (args.price !== undefined && args.price < 0) throw new Error("Price cannot be negative")
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Product not found")
