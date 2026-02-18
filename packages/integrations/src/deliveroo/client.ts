@@ -176,15 +176,24 @@ export async function fetchDeliveroo(
   const baseUrl = getBaseUrl(sandbox, apiType)
   const url = `${baseUrl}${path}`
 
+  // Strip any whitespace from token (defensive, matches base-theme pattern)
+  const normalizedToken = token.accessToken.replace(/\s+/g, "")
+  const method = options.method ?? "GET"
+
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${token.accessToken}`,
-    "Content-Type": "application/json",
+    Authorization: `Bearer ${normalizedToken}`,
     Accept: "application/json",
+    Connection: "close",
     ...options.headers,
   }
 
+  // Only set Content-Type for requests with a body
+  if (method !== "GET" && method !== "HEAD") {
+    headers["Content-Type"] = "application/json"
+  }
+
   const fetchOptions: RequestInit = {
-    method: options.method ?? "GET",
+    method,
     headers,
   }
 
@@ -201,7 +210,7 @@ export async function fetchDeliveroo(
     await response.text().catch(() => {})
     clearTokenCache(credentials)
     const newToken = await getAccessToken(credentials)
-    headers.Authorization = `Bearer ${newToken.accessToken}`
+    headers.Authorization = `Bearer ${newToken.accessToken.replace(/\s+/g, "")}`
 
     return fetchWithTimeout(url, {
       ...fetchOptions,

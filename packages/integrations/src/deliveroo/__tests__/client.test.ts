@@ -228,7 +228,7 @@ describe('Deliveroo API Client', () => {
       expect(apiCall).toBeDefined()
       const [url, options] = apiCall!
       expect(url).toBe(
-        `https://api.developers.deliveroo.com/v1/brands/${BRAND_ID}/menus`
+        `https://api.developers.deliveroo.com/menu/v1/brands/${BRAND_ID}/menus`
       )
       expect(options.method).toBe('GET')
     })
@@ -269,7 +269,7 @@ describe('Deliveroo API Client', () => {
       expect(apiCall).toBeDefined()
       const [url] = apiCall!
       expect(url).toBe(
-        `https://api-sandbox.developers.deliveroo.com/v1/brands/${BRAND_ID}/menus`
+        `https://api-sandbox.developers.deliveroo.com/menu/v1/brands/${BRAND_ID}/menus`
       )
     })
 
@@ -340,7 +340,7 @@ describe('Deliveroo API Client', () => {
 
       expect(apiCall).toBeDefined()
       const [url] = apiCall!
-      expect(url).toBe('https://api.developers.deliveroo.com/v1/orders/123')
+      expect(url).toBe('https://api.developers.deliveroo.com/order/v1/orders/123')
     })
 
     it('should include custom headers', async () => {

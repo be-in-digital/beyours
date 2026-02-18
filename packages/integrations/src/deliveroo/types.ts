@@ -21,15 +21,15 @@ export interface DeliverooToken {
 export const DELIVEROO_URLS = {
   production: {
     auth: "https://auth.developers.deliveroo.com",
-    orderApi: "https://api.developers.deliveroo.com",
-    menuApi: "https://api.developers.deliveroo.com",
-    siteApi: "https://api.developers.deliveroo.com",
+    orderApi: "https://api.developers.deliveroo.com/order",
+    menuApi: "https://api.developers.deliveroo.com/menu",
+    siteApi: "https://api.developers.deliveroo.com/site",
   },
   sandbox: {
     auth: "https://auth-sandbox.developers.deliveroo.com",
-    orderApi: "https://api-sandbox.developers.deliveroo.com",
-    menuApi: "https://api-sandbox.developers.deliveroo.com",
-    siteApi: "https://api-sandbox.developers.deliveroo.com",
+    orderApi: "https://api-sandbox.developers.deliveroo.com/order",
+    menuApi: "https://api-sandbox.developers.deliveroo.com/menu",
+    siteApi: "https://api-sandbox.developers.deliveroo.com/site",
   },
 } as const
 
