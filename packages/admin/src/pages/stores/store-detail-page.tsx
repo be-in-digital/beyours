@@ -510,8 +510,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const handleSyncUberEatsMenu = async () => {
     setIsSyncingUberEats(true)
     try {
-      await syncUberEatsStore({ storeId })
-      toast.success("Menu Uber Eats synchronisé avec succès")
+      const result = await syncUberEatsStore({ storeId }) as { success: boolean; error?: string } | undefined
+      if (result?.success) {
+        toast.success("Menu Uber Eats synchronisé avec succès")
+      } else {
+        toast.error(result?.error || "Erreur lors de la synchronisation du menu Uber Eats")
+      }
     } catch (error) {
       toast.error("Erreur lors de la synchronisation du menu Uber Eats")
       console.error(error)
@@ -523,8 +527,12 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   const handleSyncDeliverooMenu = async () => {
     setIsSyncingDeliveroo(true)
     try {
-      await syncDeliverooStore({ storeId })
-      toast.success("Menu Deliveroo synchronise avec succes")
+      const result = await syncDeliverooStore({ storeId }) as { success: boolean; error?: string } | undefined
+      if (result?.success) {
+        toast.success("Menu Deliveroo synchronisé avec succès")
+      } else {
+        toast.error(result?.error || "Erreur lors de la synchronisation du menu Deliveroo")
+      }
     } catch (error) {
       toast.error("Erreur lors de la synchronisation du menu Deliveroo")
       console.error(error)

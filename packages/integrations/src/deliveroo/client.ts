@@ -86,10 +86,8 @@ export async function getAccessToken(
 
   const fetchToken = async (): Promise<DeliverooToken> => {
     const urls = getUrls(credentials.sandboxMode ?? false)
-    // M-07: RFC 6749 Section 2.3.1 — URL-encode before Base64
-    const encodedId = encodeURIComponent(credentials.clientId)
-    const encodedSecret = encodeURIComponent(credentials.clientSecret)
-    const basicAuth = Buffer.from(`${encodedId}:${encodedSecret}`).toString("base64")
+    // Standard Basic auth: Base64(clientId:clientSecret)
+    const basicAuth = Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString("base64")
 
     const response = await fetchWithTimeout(`${urls.auth}/oauth2/token`, {
       method: "POST",

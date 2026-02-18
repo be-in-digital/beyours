@@ -56,10 +56,8 @@ describe('Deliveroo API Client', () => {
       expect(options.method).toBe('POST')
       expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded')
 
-      // Verify Basic auth header (M-07: RFC 6749 — URL-encode before Base64)
-      const encodedId = encodeURIComponent('test-client-id')
-      const encodedSecret = encodeURIComponent('test-client-secret')
-      const expectedBasicAuth = Buffer.from(`${encodedId}:${encodedSecret}`).toString('base64')
+      // Verify Basic auth header: Base64(clientId:clientSecret)
+      const expectedBasicAuth = Buffer.from('test-client-id:test-client-secret').toString('base64')
       expect(options.headers.Authorization).toBe(`Basic ${expectedBasicAuth}`)
 
       expect(options.body).toContain('grant_type=client_credentials')
