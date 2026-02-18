@@ -19,7 +19,7 @@ export const upsert = mutation({
       // Check if current user is a super_admin
       const currentProfile = await ctx.db
         .query("userProfiles")
-        .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
+        .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
         .first();
 
       if (!currentProfile || currentProfile.role !== "super_admin") {

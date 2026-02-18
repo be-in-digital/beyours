@@ -3,11 +3,11 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { generateSlug } from "@beindigital-engine/convex-functions";
-import type { PulledCategory, PulledItem } from "@beindigital-engine/integrations";
+import type { Id } from "./_generated/dataModel";
+import { generateSlug } from "@beindigital-engine/convex-functions"
 
 type CategoryRecord = {
-  _id: string
+  _id: Id<"categories">
   storeId: string
   name: string
   slug: string
@@ -92,7 +92,7 @@ export const importFromStore = action({
       );
 
       // Build category name -> id map (case-insensitive)
-      const categoryNameMap = new Map<string, string>();
+      const categoryNameMap = new Map<string, Id<"categories">>();
       for (const cat of existingCategories) {
         categoryNameMap.set(cat.name.toLowerCase().trim(), cat._id);
       }
@@ -105,7 +105,7 @@ export const importFromStore = action({
       // 7. Process each category
       for (let catIdx = 0; catIdx < pulledCategories.length; catIdx++) {
         const pulledCat = pulledCategories[catIdx]!;
-        let categoryId: string;
+        let categoryId: Id<"categories">;
 
         // Match existing category by name (case-insensitive)
         const existingCatId = categoryNameMap.get(
@@ -157,7 +157,7 @@ export const importFromStore = action({
           // Create product (price stays in cents, same as DB format)
           const productId = await ctx.runMutation(api.products.create, {
             storeId: args.storeId,
-            categoryId: categoryId as any,
+            categoryId,
             name: pulledItem.name,
             slug,
             description: pulledItem.description,
