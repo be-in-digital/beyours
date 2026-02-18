@@ -9,6 +9,7 @@ import {
   type StoreIntegrationRecord,
   type ProductRecord,
   type CategoryRecord,
+  type DeliverooMenuV1Payload,
 } from "@beindigital-engine/convex-functions/deliverooMenuSync";
 
 /**
@@ -79,8 +80,12 @@ export const syncStore = action({
         storeId: args.storeId,
       }) as CategoryRecord[];
 
-      // 7. Build menu payload
-      const menuPayload = buildDeliverooMenuPayload(products, categories);
+      // 7. Build menu payload (V1 format with site_ids, mealtimes, flat arrays)
+      const menuPayload = buildDeliverooMenuPayload(
+        products,
+        categories,
+        integration.platformStoreId
+      );
 
       // 8. Read credentials from environment
       const clientId = process.env.DELIVEROO_CLIENT_ID;
@@ -93,13 +98,12 @@ export const syncStore = action({
 
       const credentials = { clientId, clientSecret, sandboxMode };
 
-      // 9. Push menu to Deliveroo
+      // 9. Push menu to Deliveroo (V1 API: POST /v1/brands/{brandId}/menus)
       const { deliveroo } = await import("@beindigital-engine/integrations");
       await deliveroo.pushMenu(
         credentials,
         integration.brandId,
-        integration.platformStoreId,
-        menuPayload as unknown as Parameters<typeof deliveroo.pushMenu>[3]
+        menuPayload as unknown as Parameters<typeof deliveroo.pushMenu>[2]
       );
 
       // 10. Update status to "success"

@@ -14,6 +14,7 @@ import type * as deliverooImport from "../deliverooImport.js";
 import type * as deliverooMenuSync from "../deliverooMenuSync.js";
 import type * as deliverooOrders from "../deliverooOrders.js";
 import type * as deliverooWebhook from "../deliverooWebhook.js";
+import type * as deliverooWebhookHandler from "../deliverooWebhookHandler.js";
 import type * as externalProductMappings from "../externalProductMappings.js";
 import type * as gameQRCodes from "../gameQRCodes.js";
 import type * as games from "../games.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   deliverooMenuSync: typeof deliverooMenuSync;
   deliverooOrders: typeof deliverooOrders;
   deliverooWebhook: typeof deliverooWebhook;
+  deliverooWebhookHandler: typeof deliverooWebhookHandler;
   externalProductMappings: typeof externalProductMappings;
   gameQRCodes: typeof gameQRCodes;
   games: typeof games;

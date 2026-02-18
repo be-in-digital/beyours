@@ -2,7 +2,7 @@
  * Deliveroo menu sync utilities
  *
  * Contains the menu payload builder that converts internal products/categories
- * to the Deliveroo API format. The actual Convex action handlers live in the
+ * to the Deliveroo V1 API format. The actual Convex action handlers live in the
  * app-level wrapper (apps/restaurant-theme/convex/deliverooMenuSync.ts) because
  * they need access to the generated `api` object for ctx.runQuery/runMutation.
  */
@@ -16,55 +16,129 @@ export type {
   ProductChoiceRecord,
 } from "./uberEatsMenuSync";
 
-// === Deliveroo Menu Payload type (mirrored from @beindigital-engine/integrations) ===
+import type { ProductRecord, CategoryRecord } from "./uberEatsMenuSync";
 
-export interface DeliverooMenuPayload {
-  categories: Array<{
-    id: string
-    name: string
-    items: Array<{
-      id: string
-      name: string
-      description?: string
-      price: number
-      image_url?: string
-      modifier_groups?: Array<{
-        id: string
-        name: string
-        min_selection?: number
-        max_selection?: number
-        modifiers: Array<{
-          id: string
-          name: string
-          price: number
-        }>
-      }>
-    }>
+// === V1 Menu Payload Types (matches Deliveroo Partner API V1) ===
+
+interface LocalizedString {
+  en: string
+  fr?: string
+}
+
+interface V1Mealtime {
+  id: string
+  name: LocalizedString
+  category_ids: string[]
+  schedule: Array<{
+    day_of_week: number
+    time_periods: Array<{ start: string; end: string }>
   }>
+}
+
+interface V1Category {
+  id: string
+  name: LocalizedString
+  description?: LocalizedString
+  item_ids: string[]
+}
+
+interface V1Item {
+  id: string
+  name: LocalizedString
+  description?: LocalizedString
+  operational_name: string
+  plu: string
+  price_info: { price: number }
+  type: "ITEM"
+  tax_rate: string
+  image?: { url: string }
+  modifier_group_ids?: string[]
+}
+
+interface V1Modifier {
+  id: string
+  name: LocalizedString
+  description?: LocalizedString
+  operational_name: string
+  plu: string
+  price_info: { price: number }
+  tax_rate: string
+  type: "ITEM"
+}
+
+interface V1ModifierGroup {
+  id: string
+  name: LocalizedString
+  operational_name: string
+  min_selection: number
+  max_selection: number
+  modifier_ids: string[]
+}
+
+export interface DeliverooMenuV1Payload {
+  name: string
+  description?: string
+  site_ids: string[]
+  menu: {
+    mealtimes: V1Mealtime[]
+    categories: V1Category[]
+    items: V1Item[]
+    modifiers: V1Modifier[]
+    modifier_groups: V1ModifierGroup[]
+  }
 }
 
 // === Helpers ===
 
-import type { ProductRecord, CategoryRecord } from "./uberEatsMenuSync";
+/**
+ * Create a localized string object from a plain string.
+ * Uses the same value for en and fr since product names are already
+ * in the restaurant's language.
+ */
+function localized(text: string): LocalizedString {
+  return { en: text, fr: text }
+}
 
 /**
- * Convert internal products + categories to Deliveroo menu payload format.
+ * Truncate string to max length for operational_name field.
+ */
+function operationalName(text: string, maxLen = 50): string {
+  return text.substring(0, maxLen)
+}
+
+/**
+ * Build a 7-day, all-day schedule (00:00–23:59 every day).
+ */
+function allDaySchedule() {
+  return Array.from({ length: 7 }, (_, i) => ({
+    day_of_week: i,
+    time_periods: [{ start: "00:00", end: "23:59" }],
+  }))
+}
+
+// === Build Payload ===
+
+/**
+ * Convert internal products + categories to Deliveroo V1 menu payload.
  *
- * - Only includes active categories and active products
- * - Skips categories with no active products
- * - Maps product options to Deliveroo modifier groups
- * - Prices are passed through as-is (DB and Deliveroo API both use cents)
- * - Uses externalIds when available for modifier group/choice IDs
+ * Produces the flat-array format expected by POST /v1/brands/{brandId}/menus:
+ * - mealtimes with schedule (all-day by default)
+ * - categories with item_ids references
+ * - items with price_info, tax_rate, modifier_group_ids
+ * - modifiers (individual modifier items)
+ * - modifier_groups with modifier_ids references
+ *
+ * Matches the working format from base-theme.
  */
 export function buildDeliverooMenuPayload(
   products: ProductRecord[],
-  categories: CategoryRecord[]
-): DeliverooMenuPayload {
-  // Filter only active categories and products
+  categories: CategoryRecord[],
+  siteId: string
+): DeliverooMenuV1Payload {
   const activeCategories = categories.filter((c) => c.isActive);
   const activeProducts = products.filter((p) => p.isActive);
 
-  // Build category ID to products map
+  // Group products by category
   const categoryProductsMap = new Map<string, ProductRecord[]>();
   for (const product of activeProducts) {
     const existing = categoryProductsMap.get(product.categoryId) ?? [];
@@ -72,57 +146,108 @@ export function buildDeliverooMenuPayload(
     categoryProductsMap.set(product.categoryId, existing);
   }
 
-  // Build Deliveroo categories (only those with active products)
-  const deliverooCategories: DeliverooMenuPayload["categories"] = [];
+  // Collect all items, modifiers, and modifier groups in flat arrays
+  const v1Categories: V1Category[] = [];
+  const v1Items: V1Item[] = [];
+  const v1Modifiers: V1Modifier[] = [];
+  const v1ModifierGroups: V1ModifierGroup[] = [];
 
   for (const category of activeCategories) {
     const catProducts = categoryProductsMap.get(category._id) ?? [];
     if (catProducts.length === 0) continue;
 
-    const categoryItems = catProducts.map((product) => {
-      const item: DeliverooMenuPayload["categories"][number]["items"][number] = {
-        id: product.externalIds?.deliverooId ?? `item-${product._id}`,
-        name: product.name,
-        price: product.price, // Already in cents
+    const itemIds: string[] = [];
+
+    for (const product of catProducts) {
+      const itemId = product.externalIds?.deliverooId ?? product._id;
+      itemIds.push(itemId);
+
+      const item: V1Item = {
+        id: itemId,
+        name: localized(product.name),
+        operational_name: operationalName(product.name),
+        plu: product.externalIds?.deliverooId ?? product._id,
+        price_info: { price: Math.round(product.price) },
+        type: "ITEM",
+        tax_rate: (product.taxRate ?? 10).toString(),
       };
 
       if (product.description) {
-        item.description = product.description;
+        item.description = localized(product.description);
       }
 
       if (product.images.length > 0) {
-        item.image_url = product.images[0];
+        item.image = { url: product.images[0] };
       }
 
-      // Build modifier groups from product options
+      // Build modifier groups and modifiers from product options
       if (product.options && product.options.length > 0) {
-        item.modifier_groups = product.options.map((option) => {
-          const modifierGroup = {
-            id: option.externalIds?.deliverooId ?? `mg-${product._id}-${option.id}`,
-            name: option.name,
+        const modGroupIds: string[] = [];
+
+        for (const option of product.options) {
+          const mgId = option.externalIds?.deliverooId ?? `mg-${product._id}-${option.id}`;
+          modGroupIds.push(mgId);
+
+          const modIds: string[] = [];
+
+          for (const choice of option.choices) {
+            const modId = choice.externalIds?.deliverooId ?? `mod-${product._id}-${option.id}-${choice.id}`;
+            modIds.push(modId);
+
+            v1Modifiers.push({
+              id: modId,
+              name: localized(choice.name),
+              description: localized(""),
+              operational_name: operationalName(choice.name),
+              plu: modId,
+              price_info: { price: Math.round(choice.priceModifier) },
+              tax_rate: (product.taxRate ?? 10).toString(),
+              type: "ITEM",
+            });
+          }
+
+          v1ModifierGroups.push({
+            id: mgId,
+            name: localized(option.name),
+            operational_name: operationalName(option.name),
             min_selection: option.required ? 1 : 0,
             max_selection: option.maxSelections ?? option.choices.length,
-            modifiers: option.choices.map((choice) => ({
-              id: choice.externalIds?.deliverooId ?? `mod-${product._id}-${option.id}-${choice.id}`,
-              name: choice.name,
-              price: choice.priceModifier,
-            })),
-          };
-          return modifierGroup;
-        });
+            modifier_ids: modIds,
+          });
+        }
+
+        item.modifier_group_ids = modGroupIds;
       }
 
-      return item;
-    });
+      v1Items.push(item);
+    }
 
-    deliverooCategories.push({
-      id: `cat-${category._id}`,
-      name: category.name,
-      items: categoryItems,
+    v1Categories.push({
+      id: category._id,
+      name: localized(category.name),
+      description: category.description ? localized(category.description) : localized(""),
+      item_ids: itemIds,
     });
   }
 
+  // Single mealtime covering all categories and all days
+  const mealtime: V1Mealtime = {
+    id: "MT_ALL_DAY",
+    name: localized("Menu"),
+    category_ids: v1Categories.map((c) => c.id),
+    schedule: allDaySchedule(),
+  };
+
   return {
-    categories: deliverooCategories,
+    name: "Menu Sync",
+    description: `Synced on ${new Date().toISOString()}`,
+    site_ids: [siteId],
+    menu: {
+      mealtimes: [mealtime],
+      categories: v1Categories,
+      items: v1Items,
+      modifiers: v1Modifiers,
+      modifier_groups: v1ModifierGroups,
+    },
   };
 }
