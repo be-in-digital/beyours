@@ -9,7 +9,6 @@ import {
   type StoreIntegrationRecord,
   type ProductRecord,
   type CategoryRecord,
-  type DeliverooMenuV1Payload,
 } from "@beindigital-engine/convex-functions/deliverooMenuSync";
 
 /**

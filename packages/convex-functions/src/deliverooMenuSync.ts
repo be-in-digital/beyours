@@ -175,7 +175,7 @@ export function buildDeliverooMenuPayload(
         item.description = localized(product.description);
       }
 
-      if (product.images.length > 0) {
+      if (product.images.length > 0 && product.images[0]) {
         item.image = { url: product.images[0] };
       }
 
