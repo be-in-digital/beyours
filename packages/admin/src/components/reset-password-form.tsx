@@ -78,8 +78,9 @@ export function ResetPasswordForm({
     try {
       const result = await onSubmit(password, token)
       if (result.error) {
-        setError(result.error)
-        toast.error(result.error)
+        console.error("Reset password error:", result.error)
+        setError("La réinitialisation a échoué. Le lien a peut-être expiré.")
+        toast.error("La réinitialisation a échoué. Veuillez demander un nouveau lien.")
       } else {
         setSuccess(true)
         toast.success("Mot de passe réinitialisé avec succès")

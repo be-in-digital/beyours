@@ -386,7 +386,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       }) as { valid: boolean; error?: string }
 
       if (!validation.valid) {
-        toast.error(`Connexion Uber Eats echouee : ${validation.error}`)
+        console.error("Uber Eats validation failed:", validation.error)
+        toast.error("La connexion à Uber Eats a échoué. Veuillez vérifier vos identifiants et réessayer.")
         return
       }
 
@@ -436,7 +437,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       }) as { valid: boolean; error?: string }
 
       if (!validation.valid) {
-        toast.error(`Connexion Deliveroo echouee : ${validation.error}`)
+        console.error("Deliveroo validation failed:", validation.error)
+        toast.error("La connexion à Deliveroo a échoué. Veuillez vérifier vos identifiants et réessayer.")
         return
       }
 
@@ -514,7 +516,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       if (result?.success) {
         toast.success("Menu Uber Eats synchronisé avec succès")
       } else {
-        toast.error(result?.error || "Erreur lors de la synchronisation du menu Uber Eats")
+        console.error("Uber Eats menu sync failed:", result?.error)
+        toast.error("La synchronisation du menu Uber Eats a échoué. Veuillez réessayer dans quelques instants.")
       }
     } catch (error) {
       toast.error("Erreur lors de la synchronisation du menu Uber Eats")
@@ -531,7 +534,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       if (result?.success) {
         toast.success("Menu Deliveroo synchronisé avec succès")
       } else {
-        toast.error(result?.error || "Erreur lors de la synchronisation du menu Deliveroo")
+        console.error("Deliveroo menu sync failed:", result?.error)
+        toast.error("La synchronisation du menu Deliveroo a échoué. Veuillez réessayer dans quelques instants.")
       }
     } catch (error) {
       toast.error("Erreur lors de la synchronisation du menu Deliveroo")
@@ -556,7 +560,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           `Import Uber Eats : ${result.imported} produit(s) importé(s), ${result.skipped} ignoré(s), ${result.categoriesCreated} catégorie(s) créée(s)`
         )
       } else {
-        toast.error(`Erreur import Uber Eats : ${result.error}`)
+        console.error("Uber Eats import failed:", result.error)
+        toast.error("L'import des produits Uber Eats a échoué. Veuillez vérifier votre configuration et réessayer.")
       }
     } catch (error) {
       toast.error("Erreur lors de l'import des produits Uber Eats")
@@ -581,7 +586,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           `Import Deliveroo : ${result.imported} produit(s) importé(s), ${result.skipped} ignoré(s), ${result.categoriesCreated} catégorie(s) créée(s)`
         )
       } else {
-        toast.error(`Erreur import Deliveroo : ${result.error}`)
+        console.error("Deliveroo import failed:", result.error)
+        toast.error("L'import des produits Deliveroo a échoué. Veuillez vérifier votre configuration et réessayer.")
       }
     } catch (error) {
       toast.error("Erreur lors de l'import des produits Deliveroo")

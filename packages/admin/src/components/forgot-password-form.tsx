@@ -30,8 +30,9 @@ export function ForgotPasswordForm({
     try {
       const result = await onSubmit(email)
       if (result.error) {
-        setError(result.error)
-        toast.error(result.error)
+        console.error("Forgot password error:", result.error)
+        setError("Impossible d'envoyer le lien de réinitialisation. Veuillez vérifier votre adresse email.")
+        toast.error("Impossible d'envoyer le lien. Veuillez vérifier votre adresse email.")
       } else {
         setSubmitted(true)
         toast.success("Lien de réinitialisation envoyé")
