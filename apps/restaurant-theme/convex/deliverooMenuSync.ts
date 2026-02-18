@@ -98,12 +98,14 @@ export const syncStore = action({
 
       const credentials = { clientId, clientSecret, sandboxMode };
 
-      // 9. Push menu to Deliveroo (V1 API: POST /v1/brands/{brandId}/menus)
+      // 9. Push menu to Deliveroo (V1 API: PUT /v1/brands/{brandId}/menus/{menuId})
       const { deliveroo } = await import("@beindigital-engine/integrations");
+      const menuId = `menu-${integration.platformStoreId}`;
       await deliveroo.pushMenu(
         credentials,
         integration.brandId,
-        menuPayload as unknown as Parameters<typeof deliveroo.pushMenu>[2]
+        menuId,
+        menuPayload as unknown as Parameters<typeof deliveroo.pushMenu>[3]
       );
 
       // 10. Update status to "success"
@@ -115,7 +117,7 @@ export const syncStore = action({
 
       console.log(`Menu synced successfully for store ${args.storeId}`);
       return { success: true };
-    } catch (error) {
+    } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`Menu sync failed for store ${args.storeId}:`, errorMessage);
 
@@ -129,6 +131,70 @@ export const syncStore = action({
 
       return { success: false, error: errorMessage };
     }
+  },
+});
+
+/**
+ * Fetch the current menu from Deliveroo to verify sync results.
+ * Temporary diagnostic action — can be removed after verification.
+ */
+export const checkMenu = action({
+  args: { storeId: v.id("stores") },
+  handler: async (ctx, args) => {
+    const integration = await ctx.runQuery(
+      api.storeIntegrations.getByStorePlatform,
+      { storeId: args.storeId, platform: "deliveroo" }
+    ) as StoreIntegrationRecord | null;
+
+    if (!integration?.brandId) {
+      return { error: "No Deliveroo integration or brandId" };
+    }
+
+    const clientId = process.env.DELIVEROO_CLIENT_ID;
+    const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
+    const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+
+    if (!clientId || !clientSecret) {
+      return { error: "Missing Deliveroo credentials" };
+    }
+
+    const { deliveroo } = await import("@beindigital-engine/integrations");
+    const credentials = { clientId, clientSecret, sandboxMode };
+    const menuId = `menu-${integration.platformStoreId}`;
+
+    const response = await deliveroo.fetchDeliveroo(
+      credentials,
+      `/v1/brands/${integration.brandId}/menus/${menuId}`,
+      {},
+      "menu"
+    );
+
+    if (!response.ok) {
+      const body = await response.text();
+      return { error: `HTTP ${response.status}`, body };
+    }
+
+    const menu = await response.json();
+    const data = menu as {
+      name?: string;
+      menu?: {
+        categories?: Array<{ id: string; name: { en: string }; item_ids: string[] }>;
+        items?: Array<{ id: string; name: { en: string }; price_info: { price: number } }>;
+        modifiers?: Array<{ id: string; name: { en: string } }>;
+        modifier_groups?: Array<{ id: string; name: { en: string } }>;
+        mealtimes?: Array<{ id: string; name: { en: string }; category_ids: string[] }>;
+      };
+    };
+
+    return {
+      menuName: data.name,
+      categories: (data.menu?.categories ?? []).map(c => ({ id: c.id, name: c.name?.en, itemCount: c.item_ids?.length })),
+      itemCount: data.menu?.items?.length ?? 0,
+      items: (data.menu?.items ?? []).map(i => ({ id: i.id, name: i.name?.en, price: i.price_info?.price })),
+      modifierCount: data.menu?.modifiers?.length ?? 0,
+      modifierGroupCount: data.menu?.modifier_groups?.length ?? 0,
+      mealtimeCount: data.menu?.mealtimes?.length ?? 0,
+    };
   },
 });
 

@@ -1,8 +1,9 @@
 /**
  * Build and push Deliveroo menu payload using V1 API
  *
- * Uses POST /v1/brands/{brandId}/menus which requires standard Bearer auth.
- * V2 endpoint requires content-hash signing which causes 403 errors.
+ * Uses PUT /v1/brands/{brandId}/menus/{menuId} (documented endpoint).
+ * The POST /v1/brands/{brandId}/menus route is behind a different gateway
+ * authorizer that rejects Bearer tokens, so we use PUT with a stable menu ID.
  */
 
 import type { DeliverooCredentials } from "./types"
@@ -19,6 +20,7 @@ export interface DeliverooLocalizedString {
 export interface DeliverooV1Mealtime {
   id: string
   name: DeliverooLocalizedString
+  image: { url: string }
   category_ids: string[]
   schedule: Array<{
     day_of_week: number
@@ -83,19 +85,21 @@ export interface DeliverooV1MenuPayload {
 
 /**
  * Push menu to Deliveroo for a specific brand.
- * Uses POST /v1/brands/{brandId}/menus (V1 API with standard Bearer auth).
+ * Uses PUT /v1/brands/{brandId}/menus/{menuId} (documented V1 endpoint).
  *
  * The payload must include site_ids to specify which sites the menu applies to.
+ * A stable menuId is required — typically "main-menu" for single-menu restaurants.
  */
 export async function pushMenu(
   credentials: DeliverooCredentials,
   brandId: string,
+  menuId: string,
   payload: DeliverooV1MenuPayload
 ): Promise<void> {
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${validatePathParam(brandId, "brandId")}/menus`,
-    { method: "POST", body: payload },
+    `/v1/brands/${validatePathParam(brandId, "brandId")}/menus/${validatePathParam(menuId, "menuId")}`,
+    { method: "PUT", body: payload },
     "menu"
   )
   if (!response.ok) {

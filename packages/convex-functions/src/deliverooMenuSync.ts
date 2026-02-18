@@ -28,6 +28,7 @@ interface LocalizedString {
 interface V1Mealtime {
   id: string
   name: LocalizedString
+  image: { url: string }
   category_ids: string[]
   schedule: Array<{
     day_of_week: number
@@ -121,14 +122,12 @@ function allDaySchedule() {
 /**
  * Convert internal products + categories to Deliveroo V1 menu payload.
  *
- * Produces the flat-array format expected by POST /v1/brands/{brandId}/menus:
- * - mealtimes with schedule (all-day by default)
+ * Produces the flat-array format expected by PUT /v1/brands/{brandId}/menus/{menuId}:
+ * - mealtimes with schedule, image cover photo (all-day by default)
  * - categories with item_ids references
  * - items with price_info, tax_rate, modifier_group_ids
  * - modifiers (individual modifier items)
  * - modifier_groups with modifier_ids references
- *
- * Matches the working format from base-theme.
  */
 export function buildDeliverooMenuPayload(
   products: ProductRecord[],
@@ -230,10 +229,15 @@ export function buildDeliverooMenuPayload(
     });
   }
 
+  // Pick a cover image from the first product that has one
+  const coverImage = activeProducts.find((p) => p.images.length > 0)?.images[0]
+    ?? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"
+
   // Single mealtime covering all categories and all days
   const mealtime: V1Mealtime = {
     id: "MT_ALL_DAY",
     name: localized("Menu"),
+    image: { url: coverImage },
     category_ids: v1Categories.map((c) => c.id),
     schedule: allDaySchedule(),
   };
