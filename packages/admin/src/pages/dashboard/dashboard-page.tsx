@@ -138,13 +138,15 @@ function computeDashboardStats(orders: Order[]): DashboardStats {
 
 export function DashboardPage() {
   const storeId = useAdminStoreId()
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
-  const orders = useQuery(
-    api?.orders?.list ?? ("skip" as any),
-    storeId ? { storeId } : "skip"
-  )
+  const { api } = useAdminApiStore()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const queryRef = storeId && api?.orders?.list ? api.orders.list : ("skip" as any)
+  const orders = useQuery(queryRef, storeId ? { storeId } : "skip")
 
-  if (orders === undefined) return <DashboardSkeleton />
+  const stats = useMemo(
+    () => (orders ? computeDashboardStats(orders as Order[]) : null),
+    [orders]
+  )
 
   if (!storeId) {
     return (
@@ -156,7 +158,7 @@ export function DashboardPage() {
     )
   }
 
-  const stats = useMemo(() => computeDashboardStats(orders as Order[]), [orders])
+  if (!stats) return <DashboardSkeleton />
 
   return (
     <div className="space-y-6">

@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
@@ -79,7 +79,7 @@ type StoreIntegrationRecord = {
  * 4. Send sync status to Deliveroo
  * 5. Auto-accept if enabled
  */
-export const processOrderWebhook = action({
+export const processOrderWebhook = internalAction({
   args: { payload: v.string() },
   handler: async (ctx, args) => {
     try {
@@ -202,7 +202,7 @@ export const processOrderWebhook = action({
  * - menu.upload_failed → error
  * - menu.validation_error → error with details
  */
-export const processMenuWebhook = action({
+export const processMenuWebhook = internalAction({
   args: {
     event: v.string(),
     brandId: v.string(),

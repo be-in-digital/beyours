@@ -5,7 +5,8 @@
  */
 
 import type { UberEatsCredentials } from "./types"
-import { fetchUberEats } from "./client"
+import { fetchUberEats, validatePathParam } from "./client"
+import { IntegrationError } from "../common/errors"
 import type {
   PulledCategory,
   PulledItem,
@@ -23,15 +24,19 @@ export async function pullMenu(
   credentials: UberEatsCredentials,
   storeId: string
 ): Promise<{ categories: PulledCategory[]; rawMenu: unknown }> {
+  const safeStoreId = validatePathParam(storeId, "storeId")
   const response = await fetchUberEats(
     credentials,
-    `/v2/eats/stores/${storeId}/menus`
+    `/v2/eats/stores/${safeStoreId}/menus`
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to fetch menu for store ${storeId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to fetch menu for store ${storeId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 
@@ -49,9 +54,10 @@ export async function pushMenu(
   storeId: string,
   menuPayload: UberEatsMenuPayload
 ): Promise<void> {
+  const safeStoreId = validatePathParam(storeId, "storeId")
   const response = await fetchUberEats(
     credentials,
-    `/v2/eats/stores/${storeId}/menus`,
+    `/v2/eats/stores/${safeStoreId}/menus`,
     {
       method: "PUT",
       body: menuPayload,
@@ -60,8 +66,11 @@ export async function pushMenu(
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to push menu to store ${storeId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to push menu to store ${storeId}`,
+      response.status,
+      "uberEats",
+      errorText
     )
   }
 }

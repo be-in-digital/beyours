@@ -32,6 +32,7 @@ import {
 } from "@beindigital-engine/ui"
 import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
+import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
 
@@ -467,6 +468,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   }
 
   const handleRemoveUberEats = async () => {
+    setIsRemovingIntegration(true)
     try {
       const integration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "uberEats")
       if (!integration) return
@@ -482,6 +484,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     } catch (error) {
       toast.error("Échec de la suppression")
       console.error(error)
+    } finally {
+      setIsRemovingIntegration(false)
+      setRemovingPlatform(null)
     }
   }
 
@@ -492,6 +497,10 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   // Import loading states
   const [isImportingUberEats, setIsImportingUberEats] = useState(false)
   const [isImportingDeliveroo, setIsImportingDeliveroo] = useState(false)
+
+  // Integration removal confirmation
+  const [removingPlatform, setRemovingPlatform] = useState<"uberEats" | "deliveroo" | null>(null)
+  const [isRemovingIntegration, setIsRemovingIntegration] = useState(false)
 
   const syncUberEatsStore = useAction(api.uberEatsMenuSync.syncStore)
   const syncDeliverooStore = useAction(api.deliverooMenuSync.syncStore)
@@ -575,6 +584,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
   }
 
   const handleRemoveDeliveroo = async () => {
+    setIsRemovingIntegration(true)
     try {
       const integration = storeIntegrations?.find((i: StoreIntegration) => i.platform === "deliveroo")
       if (!integration) return
@@ -591,6 +601,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     } catch (error) {
       toast.error("Échec de la suppression")
       console.error(error)
+    } finally {
+      setIsRemovingIntegration(false)
+      setRemovingPlatform(null)
     }
   }
 
@@ -1106,7 +1119,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={handleRemoveUberEats}
+                          onClick={() => setRemovingPlatform("uberEats")}
                         >
                           <Trash2 className="h-4 w-4" />
                           Supprimer l&apos;intégration
@@ -1323,7 +1336,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           variant="destructive"
-                          onClick={handleRemoveDeliveroo}
+                          onClick={() => setRemovingPlatform("deliveroo")}
                         >
                           <Trash2 className="h-4 w-4" />
                           Supprimer l&apos;intégration
@@ -1499,6 +1512,26 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           </Card>
         </TabsContent>
       </Tabs>
+
+      <DeleteConfirmDialog
+        open={removingPlatform !== null}
+        onOpenChange={(open) => { if (!open) setRemovingPlatform(null) }}
+        onConfirm={() => {
+          if (removingPlatform === "uberEats") handleRemoveUberEats()
+          else if (removingPlatform === "deliveroo") handleRemoveDeliveroo()
+        }}
+        title={
+          removingPlatform === "uberEats"
+            ? "Supprimer l'intégration Uber Eats"
+            : "Supprimer l'intégration Deliveroo"
+        }
+        description={
+          removingPlatform === "uberEats"
+            ? "Cette action supprimera la connexion Uber Eats de cet établissement. Les commandes en cours ne seront pas affectées."
+            : "Cette action supprimera la connexion Deliveroo de cet établissement. Les commandes en cours ne seront pas affectées."
+        }
+        isDeleting={isRemovingIntegration}
+      />
     </div>
   )
 }

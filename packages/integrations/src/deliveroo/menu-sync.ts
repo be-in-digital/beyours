@@ -11,7 +11,8 @@ import type {
   DeliverooMenuItem,
   DeliverooModifierGroup,
 } from "./types"
-import { fetchDeliveroo } from "./client"
+import { fetchDeliveroo, validatePathParam } from "./client"
+import { IntegrationError } from "../common/errors"
 import type {
   PulledCategory,
   PulledItem,
@@ -61,18 +62,23 @@ async function fetchMenuV1(
   credentials: DeliverooCredentials,
   brandId: string
 ): Promise<DeliverooMenuResponse | null> {
+  const safeBrandId = validatePathParam(brandId, "brandId")
+
   // List available menus
   const listResponse = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/menus`,
+    `/v1/brands/${safeBrandId}/menus`,
     {},
     "menu"
   )
 
   if (!listResponse.ok) {
     const errorText = await listResponse.text()
-    throw new Error(
-      `Failed to list Deliveroo menus for brand ${brandId} (${listResponse.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to list Deliveroo menus for brand ${brandId}`,
+      listResponse.status,
+      "deliveroo",
+      errorText
     )
   }
 
@@ -83,17 +89,21 @@ async function fetchMenuV1(
 
   // Fetch the first menu
   const menuId = listData.menus[0]!.id
+  const safeMenuId = validatePathParam(menuId, "menuId")
   const menuResponse = await fetchDeliveroo(
     credentials,
-    `/v1/brands/${brandId}/menus/${menuId}`,
+    `/v1/brands/${safeBrandId}/menus/${safeMenuId}`,
     {},
     "menu"
   )
 
   if (!menuResponse.ok) {
     const errorText = await menuResponse.text()
-    throw new Error(
-      `Failed to fetch Deliveroo menu ${menuId} (${menuResponse.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to fetch Deliveroo menu ${menuId}`,
+      menuResponse.status,
+      "deliveroo",
+      errorText
     )
   }
 
@@ -108,17 +118,23 @@ async function fetchMenuV2(
   brandId: string,
   siteId: string
 ): Promise<DeliverooMenuResponse> {
+  const safeBrandId = validatePathParam(brandId, "brandId")
+  const safeSiteId = validatePathParam(siteId, "siteId")
+
   const response = await fetchDeliveroo(
     credentials,
-    `/v2/brands/${brandId}/sites/${siteId}/menu`,
+    `/v2/brands/${safeBrandId}/sites/${safeSiteId}/menu`,
     {},
     "menu"
   )
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(
-      `Failed to fetch Deliveroo V2 menu for brand ${brandId}, site ${siteId} (${response.status}): ${errorText}`
+    throw new IntegrationError(
+      `Failed to fetch Deliveroo V2 menu for brand ${brandId}, site ${siteId}`,
+      response.status,
+      "deliveroo",
+      errorText
     )
   }
 

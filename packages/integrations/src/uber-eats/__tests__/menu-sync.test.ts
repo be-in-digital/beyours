@@ -270,7 +270,7 @@ describe('Uber Eats Menu Sync', () => {
       })
 
       await expect(pullMenu(mockCredentials, STORE_ID)).rejects.toThrow(
-        `Failed to fetch menu for store ${STORE_ID} (404): Store not found`
+        `Failed to fetch menu for store ${STORE_ID}`
       )
     })
 
@@ -389,7 +389,7 @@ describe('Uber Eats Menu Sync', () => {
       })
 
       await expect(pushMenu(mockCredentials, STORE_ID, menuPayload)).rejects.toThrow(
-        `Failed to push menu to store ${STORE_ID} (400): Invalid menu payload`
+        `Failed to push menu to store ${STORE_ID}`
       )
     })
 

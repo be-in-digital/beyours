@@ -9,7 +9,7 @@ import { IntegrationError } from "../common/errors"
 /**
  * Validate a path parameter to prevent path traversal and SSRF
  */
-function validatePathParam(value: string, paramName: string): string {
+export function validatePathParam(value: string, paramName: string): string {
   if (!value || typeof value !== "string") {
     throw new Error(`${paramName} must be a non-empty string`)
   }
