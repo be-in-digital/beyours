@@ -603,11 +603,6 @@ export function SettingsPage() {
                   Synchronisez votre menu et recevez des commandes depuis Uber Eats
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Les identifiants Uber Eats (Client ID, Client Secret) sont gérés au niveau de la plateforme BeInDigital via les variables d'environnement.
-                </p>
-              </CardContent>
             </Card>
 
             {/* Deliveroo */}
@@ -629,11 +624,6 @@ export function SettingsPage() {
                   Synchronisez votre menu et recevez des commandes depuis Deliveroo
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  Les identifiants Deliveroo (Client ID, Client Secret, Webhook Secret) sont gérés au niveau de la plateforme BeInDigital via les variables d'environnement.
-                </p>
-              </CardContent>
             </Card>
 
             <Button onClick={handleSaveIntegrations} size="sm">
