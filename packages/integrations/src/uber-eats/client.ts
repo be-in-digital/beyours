@@ -71,6 +71,9 @@ export async function getAccessToken(
 
   const fetchToken = async (): Promise<UberEatsToken> => {
     const urls = getUrls(credentials.sandboxMode ?? false)
+    // Trim credentials to prevent env var whitespace issues
+    const clientId = credentials.clientId.trim()
+    const clientSecret = credentials.clientSecret.trim()
 
     const response = await fetchWithTimeout(urls.auth, {
       method: "POST",
@@ -78,8 +81,8 @@ export async function getAccessToken(
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        client_id: credentials.clientId,
-        client_secret: credentials.clientSecret,
+        client_id: clientId,
+        client_secret: clientSecret,
         grant_type: "client_credentials",
         scope: "eats.store eats.order eats.store.orders.read eats.store.orders.cancel eats.store.status.write",
       }).toString(),
@@ -102,8 +105,18 @@ export async function getAccessToken(
       scope: string
     }
 
+    // Validate the token is a non-empty string
+    if (!data.access_token || typeof data.access_token !== "string") {
+      throw new IntegrationError(
+        "Uber Eats OAuth returned an invalid token",
+        0,
+        "uberEats",
+        `access_token was ${JSON.stringify(data.access_token)}`
+      )
+    }
+
     const token: UberEatsToken = {
-      accessToken: data.access_token,
+      accessToken: data.access_token.trim(),
       tokenType: data.token_type,
       expiresAt: Date.now() + data.expires_in * 1000,
       scope: data.scope,

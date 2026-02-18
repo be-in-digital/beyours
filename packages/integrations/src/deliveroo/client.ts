@@ -86,8 +86,11 @@ export async function getAccessToken(
 
   const fetchToken = async (): Promise<DeliverooToken> => {
     const urls = getUrls(credentials.sandboxMode ?? false)
+    // Trim credentials to prevent env var whitespace issues
+    const clientId = credentials.clientId.trim()
+    const clientSecret = credentials.clientSecret.trim()
     // Standard Basic auth: Base64(clientId:clientSecret)
-    const basicAuth = Buffer.from(`${credentials.clientId}:${credentials.clientSecret}`).toString("base64")
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
 
     const response = await fetchWithTimeout(`${urls.auth}/oauth2/token`, {
       method: "POST",
@@ -116,8 +119,20 @@ export async function getAccessToken(
       expires_in: number
     }
 
+    // Validate the token is a non-empty string
+    if (!data.access_token || typeof data.access_token !== "string") {
+      throw new IntegrationError(
+        "Deliveroo OAuth returned an invalid token",
+        0,
+        "deliveroo",
+        `access_token was ${JSON.stringify(data.access_token)}`
+      )
+    }
+
+    const accessToken = data.access_token.trim()
+
     const token: DeliverooToken = {
-      accessToken: data.access_token,
+      accessToken,
       expiresAt: Date.now() + data.expires_in * 1000,
     }
 
@@ -179,8 +194,9 @@ export async function fetchDeliveroo(
 
   const response = await fetchWithTimeout(url, fetchOptions)
 
-  // If token expired, retry once with fresh token
-  if (response.status === 401) {
+  // If token expired/rejected, retry once with fresh token.
+  // Deliveroo gateway returns 403 (not 401) for invalid/expired tokens.
+  if (response.status === 401 || response.status === 403) {
     // M-03: Consume the body to release the connection
     await response.text().catch(() => {})
     clearTokenCache(credentials)
