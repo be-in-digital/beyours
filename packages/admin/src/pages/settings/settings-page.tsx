@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, useEffect } from "react"
-import { SettingsIcon, Clock, Truck, Plug2, CreditCard, Loader2 } from "lucide-react"
+import { SettingsIcon, Clock, Truck, Plug2, CreditCard, Loader2, Info, ExternalLink } from "lucide-react"
 import {
   Button,
   Input,
@@ -23,10 +23,210 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
+
+// ---------------------------------------------------------------------------
+// Info dialog helper — renders an (i) icon that opens a guide dialog
+// ---------------------------------------------------------------------------
+
+type HelpStep = { text: string }
+type HelpLink = { label: string; url: string }
+
+interface FieldInfoProps {
+  title: string
+  description: string
+  steps: HelpStep[]
+  links?: HelpLink[]
+  note?: string
+}
+
+function FieldInfo({ title, description, steps, links, note }: FieldInfoProps) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center h-4 w-4 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+          aria-label={`Aide : ${title}`}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base">{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <ol className="list-decimal list-inside space-y-2 text-sm text-foreground">
+            {steps.map((step, i) => (
+              <li key={i}>{step.text}</li>
+            ))}
+          </ol>
+          {links && links.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Liens utiles</p>
+              {links.map((link, i) => (
+                <a
+                  key={i}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+          {note && (
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+              <p className="text-xs text-amber-700 dark:text-amber-300">{note}</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Help content for each integration field
+// ---------------------------------------------------------------------------
+
+const HELP = {
+  uberDirect: {
+    customerId: {
+      title: "Customer ID (Uber Store ID)",
+      description: "Identifiant unique de votre restaurant sur Uber Direct.",
+      steps: [
+        { text: "Connectez-vous au tableau de bord Uber Direct." },
+        { text: "Allez dans Paramètres > API." },
+        { text: "Copiez le Customer ID (aussi appelé Store ID) affiché dans la section identifiants." },
+      ],
+      links: [
+        { label: "Uber Direct Dashboard", url: "https://dashboard.uber.com/" },
+      ],
+    } satisfies FieldInfoProps,
+    clientId: {
+      title: "Client ID (OAuth)",
+      description: "Clé d'identification de votre application Uber pour l'authentification API.",
+      steps: [
+        { text: "Rendez-vous sur le portail développeur Uber." },
+        { text: "Créez une application ou sélectionnez une application existante." },
+        { text: "Dans l'onglet « Credentials », copiez le Client ID." },
+      ],
+      links: [
+        { label: "Uber Developer Portal", url: "https://developer.uber.com/" },
+        { label: "Documentation API Uber Direct", url: "https://developer.uber.com/docs/deliveries/overview" },
+      ],
+    } satisfies FieldInfoProps,
+    clientSecret: {
+      title: "Client Secret (OAuth)",
+      description: "Clé secrète liée à votre application Uber. Ne la partagez jamais.",
+      steps: [
+        { text: "Rendez-vous sur le portail développeur Uber." },
+        { text: "Sélectionnez votre application." },
+        { text: "Dans l'onglet « Credentials », copiez le Client Secret." },
+      ],
+      links: [
+        { label: "Uber Developer Portal", url: "https://developer.uber.com/" },
+      ],
+      note: "Le Client Secret n'est visible qu'une seule fois lors de sa création. Si vous l'avez perdu, vous devez en générer un nouveau.",
+    } satisfies FieldInfoProps,
+  },
+  uberEats: {
+    general: {
+      title: "Uber Eats",
+      description: "Intégration pour synchroniser votre menu et recevoir des commandes Uber Eats.",
+      steps: [
+        { text: "Créez un compte restaurant sur Uber Eats si ce n'est pas déjà fait." },
+        { text: "Contactez votre account manager Uber Eats pour activer l'accès API." },
+        { text: "Une fois l'API activée par Uber, activez l'intégration ici." },
+      ],
+      links: [
+        { label: "Uber Eats for Merchants", url: "https://merchants.ubereats.com/" },
+        { label: "Uber Eats API Documentation", url: "https://developer.uber.com/docs/eats/introduction" },
+      ],
+      note: "L'activation de l'API Uber Eats nécessite un accord préalable avec Uber. Contactez votre représentant commercial.",
+    } satisfies FieldInfoProps,
+  },
+  deliveroo: {
+    general: {
+      title: "Deliveroo",
+      description: "Intégration pour synchroniser votre menu et recevoir des commandes Deliveroo.",
+      steps: [
+        { text: "Créez un compte restaurant partenaire sur Deliveroo si ce n'est pas déjà fait." },
+        { text: "Contactez votre account manager Deliveroo pour demander l'accès API." },
+        { text: "Deliveroo vous fournira vos identifiants d'intégration." },
+        { text: "Une fois les identifiants reçus, activez l'intégration ici." },
+      ],
+      links: [
+        { label: "Deliveroo for Restaurants", url: "https://restaurants.deliveroo.com/" },
+        { label: "Deliveroo API Documentation", url: "https://developers.deliveroo.com/" },
+      ],
+      note: "L'accès API Deliveroo est réservé aux restaurants partenaires. Contactez votre représentant pour démarrer l'intégration.",
+    } satisfies FieldInfoProps,
+  },
+  payments: {
+    stripe: {
+      title: "Stripe",
+      description: "Plateforme de paiement en ligne et terminal de paiement.",
+      steps: [
+        { text: "Cliquez sur le bouton « Connecter » ci-dessous." },
+        { text: "Vous serez redirigé vers Stripe pour créer ou connecter votre compte." },
+        { text: "Complétez les informations demandées par Stripe (identité, coordonnées bancaires)." },
+        { text: "Une fois terminé, vous serez automatiquement redirigé ici." },
+      ],
+      links: [
+        { label: "Stripe Dashboard", url: "https://dashboard.stripe.com/" },
+        { label: "Tarifs Stripe", url: "https://stripe.com/fr/pricing" },
+      ],
+    } satisfies FieldInfoProps,
+    sumup: {
+      title: "SumUp",
+      description: "Terminal de paiement mobile pour les paiements en personne.",
+      steps: [
+        { text: "Cliquez sur le bouton « Connecter » ci-dessous." },
+        { text: "Connectez-vous à votre compte SumUp ou créez-en un." },
+        { text: "Autorisez l'accès à votre compte SumUp." },
+        { text: "Vous serez automatiquement redirigé ici une fois connecté." },
+      ],
+      links: [
+        { label: "SumUp Dashboard", url: "https://me.sumup.com/" },
+        { label: "Boutique SumUp (terminaux)", url: "https://store.sumup.com/" },
+      ],
+    } satisfies FieldInfoProps,
+    paypal: {
+      title: "PayPal",
+      description: "Paiement en ligne via PayPal.",
+      steps: [
+        { text: "Cliquez sur le bouton « Connecter » ci-dessous." },
+        { text: "Connectez-vous à votre compte PayPal Business ou créez-en un." },
+        { text: "Autorisez l'accès depuis PayPal." },
+        { text: "Vous serez automatiquement redirigé ici une fois connecté." },
+      ],
+      links: [
+        { label: "PayPal Business", url: "https://www.paypal.com/business" },
+        { label: "Tarifs PayPal", url: "https://www.paypal.com/fr/webapps/mpp/merchant-fees" },
+      ],
+    } satisfies FieldInfoProps,
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const CURRENCIES = [
   { value: "EUR", label: "Euro (€)" },
@@ -890,8 +1090,11 @@ export function SettingsPage() {
                           : "border-muted-foreground/40"
                       }`}
                     />
-                    <div>
-                      <div className="text-sm font-medium">Stripe</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium">Stripe</span>
+                        <FieldInfo {...HELP.payments.stripe} />
+                      </div>
                       <div className="text-xs text-muted-foreground">Paiement en ligne et TPE</div>
                     </div>
                   </div>
@@ -965,8 +1168,11 @@ export function SettingsPage() {
                           : "border-muted-foreground/40"
                       }`}
                     />
-                    <div>
-                      <div className="text-sm font-medium">SumUp</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-medium">SumUp</span>
+                        <FieldInfo {...HELP.payments.sumup} />
+                      </div>
                       <div className="text-xs text-muted-foreground">Terminal de paiement mobile</div>
                     </div>
                   </div>
@@ -1034,7 +1240,10 @@ export function SettingsPage() {
                 <div className="border border-border/50 rounded-lg p-4 space-y-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-medium">PayPal</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium">PayPal</p>
+                        <FieldInfo {...HELP.payments.paypal} />
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Accepter les paiements via PayPal
                       </p>
@@ -1119,7 +1328,23 @@ export function SettingsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Uber Direct</CardTitle>
+                  <div className="flex items-center gap-1.5">
+                    <CardTitle className="text-base">Uber Direct</CardTitle>
+                    <FieldInfo
+                      title="Uber Direct"
+                      description="Service de livraison on-demand qui utilise le réseau de coursiers Uber pour livrer vos commandes."
+                      steps={[
+                        { text: "Créez un compte Uber Direct sur le dashboard Uber." },
+                        { text: "Obtenez votre Customer ID, Client ID et Client Secret (voir l'aide de chaque champ)." },
+                        { text: "Entrez ces identifiants dans les champs ci-dessous." },
+                        { text: "Activez l'intégration pour commencer à utiliser Uber Direct." },
+                      ]}
+                      links={[
+                        { label: "Uber Direct Dashboard", url: "https://dashboard.uber.com/" },
+                        { label: "Guide de démarrage Uber Direct", url: "https://developer.uber.com/docs/deliveries/overview" },
+                      ]}
+                    />
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${uberDirectEnabled ? "text-green-600" : "text-muted-foreground"}`}>
                       {uberDirectEnabled ? "Activé" : "Désactivé"}
@@ -1136,9 +1361,12 @@ export function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="uberDirectCustomerId" className="text-xs">
-                    Customer ID (Uber Store ID)
-                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="uberDirectCustomerId" className="text-xs">
+                      Customer ID (Uber Store ID)
+                    </Label>
+                    <FieldInfo {...HELP.uberDirect.customerId} />
+                  </div>
                   <Input
                     id="uberDirectCustomerId"
                     type="text"
@@ -1149,9 +1377,12 @@ export function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="uberDirectClientId" className="text-xs">
-                    Client ID (OAuth)
-                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="uberDirectClientId" className="text-xs">
+                      Client ID (OAuth)
+                    </Label>
+                    <FieldInfo {...HELP.uberDirect.clientId} />
+                  </div>
                   <Input
                     id="uberDirectClientId"
                     type="text"
@@ -1162,9 +1393,12 @@ export function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="uberDirectClientSecret" className="text-xs">
-                    Client Secret (OAuth)
-                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="uberDirectClientSecret" className="text-xs">
+                      Client Secret (OAuth)
+                    </Label>
+                    <FieldInfo {...HELP.uberDirect.clientSecret} />
+                  </div>
                   <Input
                     id="uberDirectClientSecret"
                     type="password"
@@ -1181,7 +1415,10 @@ export function SettingsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Uber Eats</CardTitle>
+                  <div className="flex items-center gap-1.5">
+                    <CardTitle className="text-base">Uber Eats</CardTitle>
+                    <FieldInfo {...HELP.uberEats.general} />
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${uberEatsEnabled ? "text-green-600" : "text-muted-foreground"}`}>
                       {uberEatsEnabled ? "Activé" : "Désactivé"}
@@ -1202,7 +1439,10 @@ export function SettingsPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Deliveroo</CardTitle>
+                  <div className="flex items-center gap-1.5">
+                    <CardTitle className="text-base">Deliveroo</CardTitle>
+                    <FieldInfo {...HELP.deliveroo.general} />
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs ${deliverooEnabled ? "text-green-600" : "text-muted-foreground"}`}>
                       {deliverooEnabled ? "Activé" : "Désactivé"}
