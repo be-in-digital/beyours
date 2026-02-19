@@ -3,15 +3,12 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useQuery } from "convex/react"
-import { Search, Plus, Grid3x3, List, X } from "lucide-react"
+import { Plus, Grid3x3, List, X, ShoppingBag } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupButton,
+  SearchInput,
   ButtonGroup,
   Select,
   SelectContent,
@@ -25,8 +22,19 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
 } from "@beindigital-engine/ui"
 import { ProductsTable } from "./products-table"
+import { MenusTab } from "./menus-tab"
 
 /** Build page numbers with ellipsis for large page counts */
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -47,6 +55,7 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
 export function ProductsPage() {
   const storeId = useAdminStoreId()
   const api = useAdminApi() as any
+  const [activeTab, setActiveTab] = useState("products")
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -135,195 +144,226 @@ export function ProductsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Menu & Produits</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gérez votre carte, vos produits et vos catégories
+            Gérez votre carte, vos produits et vos formules
           </p>
         </div>
-        <Button asChild>
-          <Link href="/products/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Ajouter un produit
-          </Link>
-        </Button>
+        {activeTab === "products" ? (
+          <Button asChild>
+            <Link href="/products/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter un produit
+            </Link>
+          </Button>
+        ) : (
+          <MenusTabAddButton />
+        )}
       </div>
 
-      {/* Filters card */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        {/* Search bar — full width, prominent */}
-        <InputGroup className="h-10">
-          <InputGroupAddon>
-            <Search className="h-4 w-4" />
-          </InputGroupAddon>
-          <InputGroupInput
-            type="text"
-            placeholder="Rechercher un produit par nom ou description..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value)
-              setCurrentPage(1)
-            }}
-          />
-          {searchQuery && (
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                size="icon-xs"
-                onClick={() => { setSearchQuery(""); setCurrentPage(1) }}
-                aria-label="Effacer la recherche"
-              >
-                <X className="h-3.5 w-3.5" />
-              </InputGroupButton>
-            </InputGroupAddon>
-          )}
-        </InputGroup>
+      {/* Tabs: Produits | Menus */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="products">Produits</TabsTrigger>
+          <TabsTrigger value="menus">Menus / Formules</TabsTrigger>
+        </TabsList>
 
-        {/* Filter row */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex flex-wrap items-center gap-2 flex-1">
-            {/* Category filter */}
-            <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
-              <SelectTrigger className="w-[170px] h-9 text-xs">
-                <SelectValue placeholder="Catégorie" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les catégories</SelectItem>
-                {categories?.map((category: any) => (
-                  <SelectItem key={category._id} value={category._id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Products tab */}
+        <TabsContent value="products">
+          <div className="space-y-6">
+            {/* Filters card */}
+            <div className="rounded-lg border bg-card p-4 space-y-4">
+              {/* Search bar — full width, prominent */}
+              <SearchInput
+                placeholder="Rechercher un produit par nom ou description..."
+                value={searchQuery}
+                onValueChange={(value) => { setSearchQuery(value); setCurrentPage(1) }}
+              />
 
-            {/* Status filter */}
-            <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
-              <SelectTrigger className="w-[130px] h-9 text-xs">
-                <SelectValue placeholder="Statut" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les statuts</SelectItem>
-                <SelectItem value="active">Actif</SelectItem>
-                <SelectItem value="inactive">Inactif</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Filter row */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 flex-1">
+                  {/* Category filter */}
+                  <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
+                    <SelectTrigger className="w-[170px] h-9 text-xs">
+                      <SelectValue placeholder="Catégorie" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les catégories</SelectItem>
+                      {categories?.map((category: any) => (
+                        <SelectItem key={category._id} value={category._id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-            {/* Source filter */}
-            <Select value={sourceFilter} onValueChange={handleFilterChange(setSourceFilter)}>
-              <SelectTrigger className="w-[150px] h-9 text-xs">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les sources</SelectItem>
-                <SelectItem value="manual">Manuel</SelectItem>
-                <SelectItem value="uber_eats">Uber Eats</SelectItem>
-                <SelectItem value="deliveroo">Deliveroo</SelectItem>
-              </SelectContent>
-            </Select>
+                  {/* Status filter */}
+                  <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
+                    <SelectTrigger className="w-[130px] h-9 text-xs">
+                      <SelectValue placeholder="Statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="active">Actif</SelectItem>
+                      <SelectItem value="inactive">Inactif</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-            {/* Clear filters */}
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs">
-                <X className="mr-1 h-3 w-3" />
-                Réinitialiser
-              </Button>
+                  {/* Source filter */}
+                  <Select value={sourceFilter} onValueChange={handleFilterChange(setSourceFilter)}>
+                    <SelectTrigger className="w-[150px] h-9 text-xs">
+                      <SelectValue placeholder="Source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les sources</SelectItem>
+                      <SelectItem value="manual">Manuel</SelectItem>
+                      <SelectItem value="uber_eats">Uber Eats</SelectItem>
+                      <SelectItem value="deliveroo">Deliveroo</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Clear filters */}
+                  {activeFilterCount > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs">
+                      <X className="mr-1 h-3 w-3" />
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
+
+                {/* View mode toggle — right side */}
+                <ButtonGroup className="shrink-0">
+                  <Button
+                    variant={viewMode === "table" ? "default" : "outline"}
+                    size="icon-sm"
+                    onClick={() => setViewMode("table")}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "outline"}
+                    size="icon-sm"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </Button>
+                </ButtonGroup>
+              </div>
+            </div>
+
+            {/* Products table */}
+            {!products ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-muted-foreground">Chargement des produits...</p>
+              </div>
+            ) : totalItems === 0 ? (
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingBag />
+                  </EmptyMedia>
+                  <EmptyTitle>Aucun produit trouvé</EmptyTitle>
+                  <EmptyDescription>
+                    {searchQuery || activeFilterCount > 0
+                      ? "Essayez de modifier vos filtres de recherche"
+                      : "Créez votre premier produit pour commencer"}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  {searchQuery || activeFilterCount > 0 ? (
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      Réinitialiser les filtres
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/products/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créez votre premier produit
+                      </Link>
+                    </Button>
+                  )}
+                </EmptyContent>
+              </Empty>
+            ) : (
+              <>
+                <ProductsTable
+                  products={paginatedProducts}
+                  categories={categories || []}
+                />
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {paginationStart}-{paginationEnd} sur {totalItems} produit{totalItems > 1 ? "s" : ""}
+                    </p>
+
+                    <Pagination className="mx-0 w-auto justify-end">
+                      <PaginationContent className="gap-0">
+                        <ButtonGroup>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                              disabled={safePage <= 1}
+                              aria-disabled={safePage <= 1}
+                            />
+                          </PaginationItem>
+
+                          {getPageNumbers(safePage, totalPages).map((page, idx) =>
+                            page === "ellipsis" ? (
+                              <PaginationItem key={`ellipsis-${idx}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            ) : (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  isActive={page === safePage}
+                                  onClick={() => setCurrentPage(page)}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            )
+                          )}
+
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                              disabled={safePage >= totalPages}
+                              aria-disabled={safePage >= totalPages}
+                            />
+                          </PaginationItem>
+                        </ButtonGroup>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </div>
+        </TabsContent>
 
-          {/* View mode toggle — right side */}
-          <ButtonGroup className="shrink-0">
-            <Button
-              variant={viewMode === "table" ? "default" : "outline"}
-              size="icon-sm"
-              onClick={() => setViewMode("table")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "grid" ? "default" : "outline"}
-              size="icon-sm"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid3x3 className="h-4 w-4" />
-            </Button>
-          </ButtonGroup>
-        </div>
-      </div>
-
-      {/* Products table */}
-      {!products ? (
-        <div className="text-center py-12">
-          <p className="text-sm text-muted-foreground">Chargement des produits...</p>
-        </div>
-      ) : totalItems === 0 ? (
-        <div className="text-center py-12 border border-border/50 rounded-lg">
-          <p className="text-sm text-muted-foreground">Aucun produit trouvé</p>
-          {searchQuery || activeFilterCount > 0 ? (
-            <Button variant="ghost" size="sm" className="mt-3" onClick={clearFilters}>
-              Réinitialiser les filtres
-            </Button>
-          ) : (
-            <Button asChild size="sm" className="mt-4">
-              <Link href="/products/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Créez votre premier produit
-              </Link>
-            </Button>
-          )}
-        </div>
-      ) : (
-        <>
-          <ProductsTable
-            products={paginatedProducts}
-            categories={categories || []}
-          />
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {paginationStart}-{paginationEnd} sur {totalItems} produit{totalItems > 1 ? "s" : ""}
-              </p>
-
-              <Pagination className="mx-0 w-auto justify-end">
-                <PaginationContent className="gap-0">
-                  <ButtonGroup>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={safePage <= 1}
-                        aria-disabled={safePage <= 1}
-                      />
-                    </PaginationItem>
-
-                    {getPageNumbers(safePage, totalPages).map((page, idx) =>
-                      page === "ellipsis" ? (
-                        <PaginationItem key={`ellipsis-${idx}`}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      ) : (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            isActive={page === safePage}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    )}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={safePage >= totalPages}
-                        aria-disabled={safePage >= totalPages}
-                      />
-                    </PaginationItem>
-                  </ButtonGroup>
-                </PaginationContent>
-              </Pagination>
-            </div>
-          )}
-        </>
-      )}
+        {/* Menus tab */}
+        <TabsContent value="menus">
+          <MenusTab />
+        </TabsContent>
+      </Tabs>
     </div>
+  )
+}
+
+/**
+ * Add button for menus tab — uses event to open the MenusTab dialog
+ */
+function MenusTabAddButton() {
+  return (
+    <Button
+      onClick={() => {
+        // Dispatch custom event to open the menu form dialog from MenusTab
+        window.dispatchEvent(new CustomEvent("open-menu-form"))
+      }}
+    >
+      <Plus className="mr-2 h-4 w-4" />
+      Ajouter un menu
+    </Button>
   )
 }
