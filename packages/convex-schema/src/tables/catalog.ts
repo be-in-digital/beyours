@@ -117,16 +117,52 @@ export const productsTable = defineTable({
   .index("by_linkedProductId", ["linkedProductId"])
 
 /**
+ * Menu section validator (combo line items)
+ *
+ * Each section represents a line in the combo/formule:
+ * - "fixed": a single mandatory product (e.g. "Big Wrap")
+ * - "pick_products": customer picks from a list of products (e.g. "Choose a drink")
+ * - "pick_category": customer picks from all active products in a category (e.g. "Any burger")
+ */
+export const menuSectionValidator = v.object({
+  sectionId: v.string(), // nanoid, unique per menu
+  label: v.string(),
+  type: v.union(
+    v.literal("fixed"),
+    v.literal("pick_products"),
+    v.literal("pick_category")
+  ),
+  required: v.boolean(),
+  minChoices: v.number(),
+  maxChoices: v.number(),
+  allowDuplicates: v.boolean(),
+  sortOrder: v.number(),
+  // "fixed" → single product
+  productId: v.optional(v.id("products")),
+  // "pick_products" → list of products to choose from
+  productIds: v.optional(v.array(v.id("products"))),
+  // "pick_category" → all active products in this category
+  categoryId: v.optional(v.id("categories")),
+  // Future: per-product price adjustments (hidden at MVP)
+  priceAdjustments: v.optional(
+    v.array(v.object({
+      productId: v.id("products"),
+      adjustment: v.number(), // in cents
+    }))
+  ),
+})
+
+/**
  * Menus table (combos/formules)
- * Meal deals and combo offers with a fixed list of included products
+ * Meal deals and combo offers with configurable sections
  */
 export const menusTable = defineTable({
   storeId: v.id("stores"),
   name: v.string(),
   description: v.optional(v.string()),
-  price: v.number(), // in cents, fixed price
+  price: v.number(), // in cents, fixed price for the whole menu
   imageUrl: v.optional(v.string()),
-  productIds: v.array(v.id("products")), // flat list of included products
+  sections: v.array(menuSectionValidator),
   platformVisibility: v.optional(v.object({
     uberEats: v.optional(v.boolean()),
     deliveroo: v.optional(v.boolean()),

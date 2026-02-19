@@ -22,6 +22,7 @@ import type * as globalSettings from "../globalSettings.js";
 import type * as http from "../http.js";
 import type * as kitchenTickets from "../kitchenTickets.js";
 import type * as languages from "../languages.js";
+import type * as menus from "../menus.js";
 import type * as oauthCallbackHandlers from "../oauthCallbackHandlers.js";
 import type * as oauthConnect from "../oauthConnect.js";
 import type * as orders from "../orders.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   kitchenTickets: typeof kitchenTickets;
   languages: typeof languages;
+  menus: typeof menus;
   oauthCallbackHandlers: typeof oauthCallbackHandlers;
   oauthConnect: typeof oauthConnect;
   orders: typeof orders;

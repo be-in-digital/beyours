@@ -11,6 +11,7 @@
     "./storeIntegrations": "./src/storeIntegrations.ts",
     "./stores": "./src/stores.ts",
     "./products": "./src/products.ts",
+    "./menus": "./src/menus.ts",
     "./orders": "./src/orders.ts",
     "./kitchenTickets": "./src/kitchenTickets.ts",
     "./payments": "./src/payments.ts",
