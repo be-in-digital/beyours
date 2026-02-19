@@ -30,6 +30,7 @@ export function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"table" | "grid">("table")
 
   const debouncedSearch = useDebounce(searchQuery, 300)
@@ -66,6 +67,12 @@ export function ProductsPage() {
     if (statusFilter !== "all") {
       const isActive = statusFilter === "active"
       if (product.isActive !== isActive) return false
+    }
+
+    // Source filter — matches the product source field (manual/uber_eats/deliveroo)
+    if (sourceFilter !== "all") {
+      const productSource = product.source ?? "manual"
+      if (productSource !== sourceFilter) return false
     }
 
     return true
@@ -135,6 +142,19 @@ export function ProductsPage() {
           </SelectContent>
         </Select>
 
+        {/* Source filter — filters by product origin (manual, Uber Eats, Deliveroo) */}
+        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder="Toutes les sources" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les sources</SelectItem>
+            <SelectItem value="manual">Manuel</SelectItem>
+            <SelectItem value="uber_eats">Uber Eats</SelectItem>
+            <SelectItem value="deliveroo">Deliveroo</SelectItem>
+          </SelectContent>
+        </Select>
+
         {/* View mode toggle */}
         <ButtonGroup>
           <Button
@@ -170,7 +190,7 @@ export function ProductsPage() {
       ) : filteredProducts && filteredProducts.length === 0 ? (
         <div className="text-center py-12 border border-border/50 rounded-lg">
           <p className="text-sm text-muted-foreground">Aucun produit trouvé</p>
-          {searchQuery || categoryFilter !== "all" || statusFilter !== "all" ? (
+          {searchQuery || categoryFilter !== "all" || statusFilter !== "all" || sourceFilter !== "all" ? (
             <p className="text-xs text-muted-foreground mt-2">
               Essayez d'ajuster vos filtres
             </p>

@@ -22,10 +22,11 @@ import {
  * 3. Check syncMenu=true and enabled=true
  * 4. Update menuSyncStatus to "syncing"
  * 5. Fetch all products and categories from DB
- * 6. Format as Uber Eats menu payload
- * 7. Read credentials from process.env
- * 8. Call pushMenu() from integrations package
- * 9. Update menuSyncStatus to "success" or "error"
+ * 6. Read global settings to resolve priceMarkup
+ * 7. Format as Uber Eats menu payload (with markup / platformOverrides)
+ * 8. Read credentials from process.env
+ * 9. Call pushMenu() from integrations package
+ * 10. Update menuSyncStatus to "success" or "error"
  */
 export const syncStore = action({
   args: { storeId: v.id("stores") },
@@ -72,10 +73,16 @@ export const syncStore = action({
         storeId: args.storeId,
       }) as CategoryRecord[];
 
-      // 6. Build menu payload
-      const menuPayload = buildUberEatsMenuPayload(products, categories);
+      // 6. Read global settings to extract the Uber Eats price markup
+      const settings = await ctx.runQuery(api.globalSettings.get, {}) as {
+        integrations?: { uberEats?: { priceMarkup?: number } }
+      } | null;
+      const priceMarkup = settings?.integrations?.uberEats?.priceMarkup ?? 0;
 
-      // 7. Read credentials from environment
+      // 7. Build menu payload, applying markup or individual product overrides
+      const menuPayload = buildUberEatsMenuPayload(products, categories, priceMarkup);
+
+      // 8. Read credentials from environment
       const clientId = process.env.UBER_EATS_CLIENT_ID;
       const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
       const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
@@ -86,11 +93,11 @@ export const syncStore = action({
 
       const credentials = { clientId, clientSecret, sandboxMode };
 
-      // 8. Push menu to Uber Eats
+      // 9. Push menu to Uber Eats
       const { uberEats } = await import("@beindigital-engine/integrations");
       await uberEats.pushMenu(credentials, integration.platformStoreId, menuPayload);
 
-      // 9. Update status to "success"
+      // 10. Update status to "success"
       await ctx.runMutation(internal.storeIntegrations.internalUpdateMenuSyncStatus, {
         storeId: args.storeId,
         platform: "uberEats",

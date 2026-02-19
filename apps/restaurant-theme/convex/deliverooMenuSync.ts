@@ -23,10 +23,11 @@ import {
  * 4. Validate brandId is present
  * 5. Update menuSyncStatus to "syncing"
  * 6. Fetch all products and categories from DB
- * 7. Format as Deliveroo menu payload
- * 8. Read credentials from process.env
- * 9. Call deliveroo.pushMenu() from integrations package
- * 10. Update menuSyncStatus to "success" or "error"
+ * 7. Read global settings to resolve priceMarkup
+ * 8. Format as Deliveroo menu payload (with markup / platformOverrides)
+ * 9. Read credentials from process.env
+ * 10. Call deliveroo.pushMenu() from integrations package
+ * 11. Update menuSyncStatus to "success" or "error"
  */
 export const syncStore = action({
   args: { storeId: v.id("stores") },
@@ -79,14 +80,21 @@ export const syncStore = action({
         storeId: args.storeId,
       }) as CategoryRecord[];
 
-      // 7. Build menu payload (V1 format with site_ids, mealtimes, flat arrays)
+      // 7. Read global settings to extract the Deliveroo price markup
+      const settings = await ctx.runQuery(api.globalSettings.get, {}) as {
+        integrations?: { deliveroo?: { priceMarkup?: number } }
+      } | null;
+      const priceMarkup = settings?.integrations?.deliveroo?.priceMarkup ?? 0;
+
+      // 8. Build menu payload (V1 format), applying markup or individual product overrides
       const menuPayload = buildDeliverooMenuPayload(
         products,
         categories,
-        integration.platformStoreId
+        integration.platformStoreId,
+        priceMarkup
       );
 
-      // 8. Read credentials from environment
+      // 9. Read credentials from environment
       const clientId = process.env.DELIVEROO_CLIENT_ID;
       const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
       const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
@@ -97,7 +105,7 @@ export const syncStore = action({
 
       const credentials = { clientId, clientSecret, sandboxMode };
 
-      // 9. Push menu to Deliveroo (V1 API: PUT /v1/brands/{brandId}/menus/{menuId})
+      // 10. Push menu to Deliveroo (V1 API: PUT /v1/brands/{brandId}/menus/{menuId})
       const { deliveroo } = await import("@beindigital-engine/integrations");
       const menuId = `menu-${integration.platformStoreId}`;
       await deliveroo.pushMenu(
@@ -107,7 +115,7 @@ export const syncStore = action({
         menuPayload as unknown as Parameters<typeof deliveroo.pushMenu>[3]
       );
 
-      // 10. Update status to "success"
+      // 11. Update status to "success"
       await ctx.runMutation(internal.storeIntegrations.internalUpdateMenuSyncStatus, {
         storeId: args.storeId,
         platform: "deliveroo",

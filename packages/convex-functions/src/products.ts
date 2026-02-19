@@ -280,3 +280,186 @@ export const remove = {
     await ctx.db.delete(args.id)
   },
 }
+
+/**
+ * Duplicate all categories and products from one store to another.
+ *
+ * Categories are recreated in the target store and a mapping from old IDs to
+ * new IDs is maintained so that products can be inserted with the correct
+ * target category reference.
+ *
+ * Each duplicated product receives a `linkedProductId` pointing to the
+ * original source product, enabling future propagation across stores.
+ *
+ * External platform IDs (uberEatsId, deliverooId) and platformOverrides are
+ * intentionally excluded — the target store manages its own platform config.
+ */
+export const duplicateCatalog = {
+  args: {
+    sourceStoreId: v.id("stores"),
+    targetStoreId: v.id("stores"),
+  },
+  handler: async (ctx: any, args: any) => {
+    if (args.sourceStoreId === args.targetStoreId) {
+      throw new Error("Source and target stores must be different");
+    }
+
+    // 1. Get all categories from source store
+    const sourceCategories = await ctx.db
+      .query("categories")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.sourceStoreId))
+      .collect();
+
+    // 2. Create categories in target store, building an old→new ID mapping
+    const categoryIdMap = new Map<string, string>();
+    for (const cat of sourceCategories) {
+      const newCatId = await ctx.db.insert("categories", {
+        storeId: args.targetStoreId,
+        name: cat.name,
+        slug: cat.slug,
+        description: cat.description,
+        image: cat.image,
+        sortOrder: cat.sortOrder,
+        isActive: cat.isActive,
+      });
+      categoryIdMap.set(cat._id, newCatId);
+    }
+
+    // 3. Get all products from source store
+    const sourceProducts = await ctx.db
+      .query("products")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.sourceStoreId))
+      .collect();
+
+    // 4. Duplicate each product into the target store with a linked reference
+    let productsCreated = 0;
+    for (const product of sourceProducts) {
+      const newCategoryId = categoryIdMap.get(product.categoryId);
+      // Skip products whose category was not mapped (should not happen in normal flow)
+      if (!newCategoryId) continue;
+
+      const now = Date.now();
+      await ctx.db.insert("products", {
+        storeId: args.targetStoreId,
+        categoryId: newCategoryId,
+        linkedProductId: product._id, // link back to the source product
+        name: product.name,
+        slug: product.slug,
+        description: product.description,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice,
+        taxRate: product.taxRate,
+        preparationTime: product.preparationTime,
+        sku: product.sku,
+        images: product.images,
+        options: product.options,
+        allergens: product.allergens,
+        nutritionalInfo: product.nutritionalInfo,
+        tags: product.tags,
+        spiceLevel: product.spiceLevel,
+        stock: product.stock,
+        scheduling: product.scheduling,
+        isActive: product.isActive,
+        isFeatured: product.isFeatured,
+        sortOrder: product.sortOrder,
+        source: "manual", // duplicated products are treated as manual entries
+        // externalIds intentionally omitted — target store has its own platform IDs
+        // platformOverrides intentionally omitted — target store has its own config
+        createdAt: now,
+        updatedAt: now,
+      });
+      productsCreated++;
+    }
+
+    return {
+      categoriesCreated: sourceCategories.length,
+      productsCreated,
+    };
+  },
+}
+
+/**
+ * Update a product and optionally propagate the changes to linked products
+ * in other stores (same restaurant owner).
+ *
+ * Propagation scopes:
+ *   - "self"     : only update the current product (no propagation)
+ *   - "selected" : propagate to products in the specified target stores
+ *   - "all"      : propagate to all linked products across every store
+ *
+ * Store-specific fields (platformOverrides) are intentionally excluded
+ * from propagation because each store may have different platform configs.
+ */
+export const updateWithPropagation = {
+  args: {
+    productId: v.id("products"),
+    updates: v.object({
+      name: v.optional(v.string()),
+      description: v.optional(v.string()),
+      price: v.optional(v.number()),
+      compareAtPrice: v.optional(v.number()),
+      taxRate: v.optional(v.number()),
+      images: v.optional(v.array(v.string())),
+      isActive: v.optional(v.boolean()),
+      isFeatured: v.optional(v.boolean()),
+      preparationTime: v.optional(v.number()),
+      allergens: v.optional(v.array(v.string())),
+      tags: v.optional(v.array(v.string())),
+      platformOverrides: v.optional(v.object({
+        uberEats: v.optional(v.object({ price: v.optional(v.number()) })),
+        deliveroo: v.optional(v.object({ price: v.optional(v.number()) })),
+      })),
+    }),
+    scope: v.union(v.literal("self"), v.literal("selected"), v.literal("all")),
+    targetStoreIds: v.optional(v.array(v.id("stores"))),
+  },
+  handler: async (ctx: any, args: any) => {
+    // 1. Fetch and validate the target product
+    const product = await ctx.db.get(args.productId);
+    if (!product) throw new Error("Product not found");
+
+    const updates = { ...args.updates, updatedAt: Date.now() };
+
+    // Apply updates to the current product
+    await ctx.db.patch(args.productId, updates);
+
+    if (args.scope === "self") return { updated: 1 };
+
+    // 2. Resolve the root product ID used to find all sibling products.
+    // If this product itself is a linked copy, follow to the original root.
+    const rootId = product.linkedProductId ?? args.productId;
+
+    // Find all products that share the same root (siblings across stores)
+    const linkedProducts = await ctx.db
+      .query("products")
+      .withIndex("by_linkedProductId", (q: any) => q.eq("linkedProductId", rootId))
+      .collect();
+
+    // Also include the root product itself when the current product is a copy
+    let allRelated = [...linkedProducts];
+    if (rootId !== args.productId) {
+      const rootProduct = await ctx.db.get(rootId);
+      if (rootProduct) allRelated.push(rootProduct);
+    }
+
+    // Exclude the product that was already updated above
+    allRelated = allRelated.filter((p: any) => p._id !== args.productId);
+
+    // 3. Narrow down targets when scope is "selected"
+    if (args.scope === "selected" && args.targetStoreIds) {
+      const targetSet = new Set(args.targetStoreIds);
+      allRelated = allRelated.filter((p: any) => targetSet.has(p.storeId));
+    }
+
+    // 4. Build the propagated patch — strip store-specific overrides so that
+    // each store keeps its own platform pricing configuration intact.
+    const propagatedUpdates = { ...updates };
+    delete propagatedUpdates.platformOverrides;
+
+    for (const linked of allRelated) {
+      await ctx.db.patch(linked._id, propagatedUpdates);
+    }
+
+    return { updated: 1 + allRelated.length };
+  },
+}

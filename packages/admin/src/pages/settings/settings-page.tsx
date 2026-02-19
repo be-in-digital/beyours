@@ -324,7 +324,9 @@ export function SettingsPage() {
   const [uberDirectClientSecret, setUberDirectClientSecret] = useState("")
   const [uberDirectEnabled, setUberDirectEnabled] = useState(true)
   const [uberEatsEnabled, setUberEatsEnabled] = useState(true)
+  const [uberEatsPriceMarkup, setUberEatsPriceMarkup] = useState("")
   const [deliverooEnabled, setDeliverooEnabled] = useState(true)
+  const [deliverooPriceMarkup, setDeliverooPriceMarkup] = useState("")
 
   // Initialize state when settings load
   useEffect(() => {
@@ -362,9 +364,11 @@ export function SettingsPage() {
       }
       if (settings.integrations?.uberEats) {
         setUberEatsEnabled(settings.integrations.uberEats.enabled)
+        setUberEatsPriceMarkup((settings.integrations.uberEats as any).priceMarkup?.toString() ?? "")
       }
       if (settings.integrations?.deliveroo) {
         setDeliverooEnabled(settings.integrations.deliveroo.enabled)
+        setDeliverooPriceMarkup((settings.integrations.deliveroo as any).priceMarkup?.toString() ?? "")
       }
     } else {
       // Initialize with default hours if no settings exist
@@ -612,9 +616,11 @@ export function SettingsPage() {
           },
           uberEats: {
             enabled: uberEatsEnabled,
+            priceMarkup: uberEatsPriceMarkup ? parseFloat(uberEatsPriceMarkup) : undefined,
           },
           deliveroo: {
             enabled: deliverooEnabled,
+            priceMarkup: deliverooPriceMarkup ? parseFloat(deliverooPriceMarkup) : undefined,
           },
         },
       })
@@ -1452,6 +1458,27 @@ export function SettingsPage() {
                   Synchronisez votre menu et recevez des commandes depuis Uber Eats
                 </CardDescription>
               </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="uberEatsPriceMarkup" className="text-xs">
+                    Majoration prix (%)
+                  </Label>
+                  <Input
+                    id="uberEatsPriceMarkup"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={uberEatsPriceMarkup}
+                    onChange={(e) => setUberEatsPriceMarkup(e.target.value)}
+                    placeholder="0"
+                    disabled={!uberEatsEnabled}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Les prix envoyés à Uber Eats seront majorés de ce pourcentage (ex: 30 = +30%)
+                  </p>
+                </div>
+              </CardContent>
             </Card>
 
             {/* Deliveroo */}
@@ -1476,6 +1503,27 @@ export function SettingsPage() {
                   Synchronisez votre menu et recevez des commandes depuis Deliveroo
                 </CardDescription>
               </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="deliverooPriceMarkup" className="text-xs">
+                    Majoration prix (%)
+                  </Label>
+                  <Input
+                    id="deliverooPriceMarkup"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={deliverooPriceMarkup}
+                    onChange={(e) => setDeliverooPriceMarkup(e.target.value)}
+                    placeholder="0"
+                    disabled={!deliverooEnabled}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Les prix envoyés à Deliveroo seront majorés de ce pourcentage (ex: 30 = +30%)
+                  </p>
+                </div>
+              </CardContent>
             </Card>
 
             <Button onClick={handleSaveIntegrations} size="sm" disabled={isValidatingIntegrations}>

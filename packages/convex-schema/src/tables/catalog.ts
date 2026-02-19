@@ -29,6 +29,8 @@ export const categoriesTable = defineTable({
 export const productsTable = defineTable({
   storeId: v.id("stores"),
   categoryId: v.id("categories"),
+  // Reference to another product (e.g. platform-imported variant linked to the canonical product)
+  linkedProductId: v.optional(v.id("products")),
   name: v.string(),
   slug: v.string(),
   description: v.optional(v.string()),
@@ -111,6 +113,7 @@ export const productsTable = defineTable({
   .index("by_storeId_isFeatured", ["storeId", "isFeatured"])
   .index("by_storeId_slug", ["storeId", "slug"])
   .index("by_storeId_source", ["storeId", "source"])
+  .index("by_linkedProductId", ["linkedProductId"])
 
 /**
  * Menus table (combos/formules)

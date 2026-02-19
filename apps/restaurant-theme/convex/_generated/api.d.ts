@@ -33,6 +33,7 @@ import type * as products from "../products.js";
 import type * as storeIntegrations from "../storeIntegrations.js";
 import type * as stores from "../stores.js";
 import type * as teamMembers from "../teamMembers.js";
+import type * as teamMembersEmail from "../teamMembersEmail.js";
 import type * as translations from "../translations.js";
 import type * as uberDirect from "../uberDirect.js";
 import type * as uberEatsImport from "../uberEatsImport.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   storeIntegrations: typeof storeIntegrations;
   stores: typeof stores;
   teamMembers: typeof teamMembers;
+  teamMembersEmail: typeof teamMembersEmail;
   translations: typeof translations;
   uberDirect: typeof uberDirect;
   uberEatsImport: typeof uberEatsImport;

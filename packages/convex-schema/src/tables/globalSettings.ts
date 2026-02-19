@@ -59,9 +59,11 @@ export const globalSettingsTable = defineTable({
     })),
     uberEats: v.optional(v.object({
       enabled: v.boolean(),
+      priceMarkup: v.optional(v.number()), // platform price markup percentage
     })),
     deliveroo: v.optional(v.object({
       enabled: v.boolean(),
+      priceMarkup: v.optional(v.number()), // platform price markup percentage
     })),
   }),
 

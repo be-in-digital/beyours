@@ -81,3 +81,23 @@ export const remove = mutation({
     return result;
   },
 });
+
+export const updateWithPropagation = mutation({
+  args: defs.updateWithPropagation.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const result = await defs.updateWithPropagation.handler(ctx, args);
+    await scheduleMenuSync(ctx);
+    return result;
+  },
+});
+
+export const duplicateCatalog = mutation({
+  args: defs.duplicateCatalog.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.duplicateCatalog.handler(ctx, args);
+  },
+});

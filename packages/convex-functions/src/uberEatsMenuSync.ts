@@ -112,6 +112,11 @@ export interface ProductRecord {
     uberEatsId?: string
     deliverooId?: string
   }
+  /** Per-platform price/availability overrides set by the restaurant admin */
+  platformOverrides?: {
+    uberEats?: { price?: number }
+    deliveroo?: { price?: number }
+  }
   createdAt: number
   updatedAt: number
 }
@@ -166,17 +171,41 @@ const ALL_DAYS = [
 // === Helpers ===
 
 /**
+ * Compute the platform price for a product, applying individual override or global markup.
+ *
+ * Priority:
+ * 1. product.platformOverrides.uberEats.price — individual product override (exact price in cents)
+ * 2. priceMarkup > 0 — apply global percentage markup, rounded up to nearest cent
+ * 3. product.price — no markup, pass through as-is
+ *
+ * Math.ceil ensures the restaurateur never loses money on rounding.
+ */
+function getPlatformPrice(
+  product: { price: number; platformOverrides?: { uberEats?: { price?: number } } },
+  priceMarkup: number
+): number {
+  if (product.platformOverrides?.uberEats?.price != null) {
+    return product.platformOverrides.uberEats.price;
+  }
+  if (priceMarkup > 0) {
+    return Math.ceil(product.price * (1 + priceMarkup / 100));
+  }
+  return product.price;
+}
+
+/**
  * Convert internal products + categories to Uber Eats menu payload format.
  *
  * - Only includes active categories and active products
  * - Skips categories with no active products
  * - Maps product options to Uber Eats modifier groups
- * - Prices are passed through as-is (DB and Uber Eats API both use cents)
+ * - Prices are in cents; markup is applied via getPlatformPrice()
  * - Uses externalIds when available for modifier group/choice IDs
  */
 export function buildUberEatsMenuPayload(
   products: ProductRecord[],
-  categories: CategoryRecord[]
+  categories: CategoryRecord[],
+  priceMarkup: number = 0
 ): UberEatsMenuPayload {
   // Filter only active categories and products
   const activeCategories = categories.filter((c) => c.isActive)
@@ -265,8 +294,8 @@ export function buildUberEatsMenuPayload(
       external_data: product._id,
       title: { translations: { en: product.name } },
       price_info: {
-        // DB stores prices in cents, Uber Eats API expects cents
-        price: product.price,
+        // DB stores prices in cents; getPlatformPrice applies override or markup
+        price: getPlatformPrice(product, priceMarkup),
       },
     }
 

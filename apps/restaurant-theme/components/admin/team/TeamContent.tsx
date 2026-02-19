@@ -201,7 +201,7 @@ export function TeamContent() {
                 <div className="flex items-center gap-3">
                   <Avatar>
                     <AvatarFallback>
-                      {member.userId.slice(0, 2).toUpperCase()}
+                      {member.userId?.slice(0, 2).toUpperCase() ?? "?"}
                     </AvatarFallback>
                   </Avatar>
                   <div>

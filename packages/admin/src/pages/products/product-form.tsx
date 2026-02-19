@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -83,12 +83,29 @@ interface Category {
   name: string
 }
 
+/** Platform price overrides stored in the DB (values in cents) */
+interface PlatformOverrides {
+  uberEats?: { price?: number }
+  deliveroo?: { price?: number }
+}
+
+/** Extended form data that includes platform override information */
+export interface ProductFormDataWithPlatform extends ProductFormData {
+  platformOverrides?: PlatformOverrides
+}
+
 interface ProductFormProps {
   categories: Category[]
   defaultValues?: Partial<ProductFormData>
-  onSubmit: (data: ProductFormData) => Promise<void>
+  onSubmit: (data: ProductFormDataWithPlatform) => Promise<void>
   isLoading?: boolean
   submitLabel?: string
+  /** Uber Eats price markup percentage from globalSettings (e.g. 15 = 15%). Required to show the Uber Eats platform row. */
+  uberEatsPriceMarkup?: number
+  /** Deliveroo price markup percentage from globalSettings (e.g. 20 = 20%). Required to show the Deliveroo platform row. */
+  deliverooPriceMarkup?: number
+  /** Existing platform price overrides loaded from the product (prices in cents) */
+  platformOverrides?: PlatformOverrides
 }
 
 export function ProductForm({
@@ -97,6 +114,9 @@ export function ProductForm({
   onSubmit,
   isLoading = false,
   submitLabel = "Enregistrer le produit",
+  uberEatsPriceMarkup,
+  deliverooPriceMarkup,
+  platformOverrides,
 }: ProductFormProps) {
   const {
     register,
@@ -141,6 +161,64 @@ export function ProductForm({
   const name = watch("name")
   const stockTracked = watch("stock.tracked")
   const options = watch("options")
+  const priceEuros = watch("priceEuros")
+
+  // ---------------------------------------------------------------------------
+  // Platform price override state
+  // ---------------------------------------------------------------------------
+
+  // Uber Eats override — initialise from existing platformOverrides prop
+  const [uberOverrideEnabled, setUberOverrideEnabled] = useState(
+    Boolean(platformOverrides?.uberEats?.price)
+  )
+  const [uberOverridePrice, setUberOverridePrice] = useState(
+    platformOverrides?.uberEats?.price !== undefined
+      ? centsToEuros(platformOverrides.uberEats.price).toString()
+      : ""
+  )
+
+  // Deliveroo override — initialise from existing platformOverrides prop
+  const [deliverooOverrideEnabled, setDeliverooOverrideEnabled] = useState(
+    Boolean(platformOverrides?.deliveroo?.price)
+  )
+  const [deliverooOverridePrice, setDeliverooOverridePrice] = useState(
+    platformOverrides?.deliveroo?.price !== undefined
+      ? centsToEuros(platformOverrides.deliveroo.price).toString()
+      : ""
+  )
+
+  // Calculated platform prices based on the current base price and markup
+  const safePrice = isNaN(priceEuros) ? 0 : priceEuros
+  const calculatedUberPrice =
+    uberEatsPriceMarkup !== undefined && uberEatsPriceMarkup > 0
+      ? (safePrice * (1 + uberEatsPriceMarkup / 100)).toFixed(2)
+      : safePrice.toFixed(2)
+  const calculatedDeliverooPrice =
+    deliverooPriceMarkup !== undefined && deliverooPriceMarkup > 0
+      ? (safePrice * (1 + deliverooPriceMarkup / 100)).toFixed(2)
+      : safePrice.toFixed(2)
+
+  // Whether to render the platform prices section at all
+  const hasPlatformIntegrations =
+    uberEatsPriceMarkup !== undefined || deliverooPriceMarkup !== undefined
+
+  // Wrap onSubmit to inject platform override data before delegating upward
+  const handleFormSubmit = async (data: ProductFormData) => {
+    const enrichedData: ProductFormDataWithPlatform = {
+      ...data,
+      platformOverrides: {
+        uberEats:
+          uberOverrideEnabled && uberOverridePrice !== ""
+            ? { price: eurosToCents(parseFloat(uberOverridePrice)) }
+            : undefined,
+        deliveroo:
+          deliverooOverrideEnabled && deliverooOverridePrice !== ""
+            ? { price: eurosToCents(parseFloat(deliverooOverridePrice)) }
+            : undefined,
+      },
+    }
+    await onSubmit(enrichedData)
+  }
 
   // Auto-generate slug from name
   useEffect(() => {
@@ -196,7 +274,7 @@ export function ProductForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="general" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">Général</TabsTrigger>
@@ -316,6 +394,112 @@ export function ProductForm({
               />
             </div>
           </div>
+
+          {/* Platform price overrides section — only rendered when at least one integration is configured */}
+          {hasPlatformIntegrations && (
+            <div className="space-y-4 pt-4 border-t border-border/50">
+              <div>
+                <h4 className="text-sm font-medium">Prix plateformes</h4>
+                <p className="text-xs text-muted-foreground">
+                  Les prix sont calculés automatiquement selon la majoration configurée dans les paramètres
+                </p>
+              </div>
+
+              {/* Uber Eats row */}
+              {uberEatsPriceMarkup !== undefined && (
+                <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Uber Eats</p>
+                    <p className="text-xs text-muted-foreground">
+                      Prix calculé : {calculatedUberPrice} €
+                      {uberEatsPriceMarkup > 0 && (
+                        <span className="ml-1">(+{uberEatsPriceMarkup}%)</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {uberOverrideEnabled && (
+                      <div className="space-y-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-28 h-8 text-sm"
+                          value={uberOverridePrice}
+                          onChange={(e) => setUberOverridePrice(e.target.value)}
+                          placeholder={calculatedUberPrice}
+                          aria-label="Prix Uber Eats personnalisé (€)"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {uberOverrideEnabled ? "Personnalisé" : "Automatique"}
+                      </span>
+                      <Switch
+                        checked={uberOverrideEnabled}
+                        onCheckedChange={(checked) => {
+                          setUberOverrideEnabled(checked)
+                          // Pre-fill the override input with the calculated price when activating
+                          if (checked && uberOverridePrice === "") {
+                            setUberOverridePrice(calculatedUberPrice)
+                          }
+                        }}
+                        aria-label="Activer le prix Uber Eats personnalisé"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Deliveroo row */}
+              {deliverooPriceMarkup !== undefined && (
+                <div className="flex items-center justify-between border border-border/50 rounded-lg px-4 py-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Deliveroo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Prix calculé : {calculatedDeliverooPrice} €
+                      {deliverooPriceMarkup > 0 && (
+                        <span className="ml-1">(+{deliverooPriceMarkup}%)</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {deliverooOverrideEnabled && (
+                      <div className="space-y-1">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="w-28 h-8 text-sm"
+                          value={deliverooOverridePrice}
+                          onChange={(e) => setDeliverooOverridePrice(e.target.value)}
+                          placeholder={calculatedDeliverooPrice}
+                          aria-label="Prix Deliveroo personnalisé (€)"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {deliverooOverrideEnabled ? "Personnalisé" : "Automatique"}
+                      </span>
+                      <Switch
+                        checked={deliverooOverrideEnabled}
+                        onCheckedChange={(checked) => {
+                          setDeliverooOverrideEnabled(checked)
+                          // Pre-fill the override input with the calculated price when activating
+                          if (checked && deliverooOverridePrice === "") {
+                            setDeliverooOverridePrice(calculatedDeliverooPrice)
+                          }
+                        }}
+                        aria-label="Activer le prix Deliveroo personnalisé"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Tax Rate & Prep Time */}
           <div className="grid grid-cols-2 gap-3">

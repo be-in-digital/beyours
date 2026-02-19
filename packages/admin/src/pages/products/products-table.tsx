@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useMutation } from "convex/react"
-import { MoreVertical, Edit, Trash2, Eye, EyeOff } from "lucide-react"
+import { MoreVertical, Edit, Trash2, Eye, EyeOff, Link2 } from "lucide-react"
 import { toast } from "sonner"
 import { useState } from "react"
 import { useAdminApi } from "../../hooks/admin-hooks"
@@ -26,6 +26,9 @@ import {
 } from "@beindigital-engine/ui"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 
+/** Product source values matching the database schema */
+type ProductSource = "manual" | "uber_eats" | "deliveroo"
+
 interface Product {
   _id: string
   name: string
@@ -40,6 +43,8 @@ interface Product {
   }
   isActive: boolean
   isFeatured: boolean
+  source?: ProductSource
+  linkedProductId?: string
 }
 
 interface Category {
@@ -62,6 +67,30 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
 
   const getCategoryName = (categoryId: string) => {
     return categories.find((cat) => cat._id === categoryId)?.name || "Inconnu"
+  }
+
+  /** Returns the badge element matching the given product source */
+  const getSourceBadge = (source: ProductSource | undefined) => {
+    switch (source) {
+      case "uber_eats":
+        return (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+            Uber Eats
+          </span>
+        )
+      case "deliveroo":
+        return (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700">
+            Deliveroo
+          </span>
+        )
+      default:
+        return (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700">
+            Manuel
+          </span>
+        )
+    }
   }
 
   const handleToggleStatus = async (productId: string) => {
@@ -105,13 +134,14 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
               <TableHead>Prix</TableHead>
               <TableHead>Stock</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead className="text-right w-[60px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <p className="text-sm text-muted-foreground">Aucun produit à afficher</p>
                 </TableCell>
               </TableRow>
@@ -191,6 +221,19 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                     >
                       {product.isActive ? "Actif" : "Inactif"}
                     </Badge>
+                  </TableCell>
+
+                  {/* Source — shows colored badge and a link icon when duplicated */}
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      {getSourceBadge(product.source)}
+                      {product.linkedProductId && (
+                        <Link2
+                          className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0"
+                          aria-label="Produit lié"
+                        />
+                      )}
+                    </div>
                   </TableCell>
 
                   {/* Actions */}

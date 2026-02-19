@@ -92,6 +92,29 @@ export interface DeliverooMenuV1Payload {
 // === Helpers ===
 
 /**
+ * Compute the platform price for a product, applying individual override or global markup.
+ *
+ * Priority:
+ * 1. product.platformOverrides.deliveroo.price — individual product override (exact price in cents)
+ * 2. priceMarkup > 0 — apply global percentage markup, rounded up to nearest cent
+ * 3. product.price — no markup, pass through as-is
+ *
+ * Math.ceil ensures the restaurateur never loses money on rounding.
+ */
+function getPlatformPrice(
+  product: { price: number; platformOverrides?: { deliveroo?: { price?: number } } },
+  priceMarkup: number
+): number {
+  if (product.platformOverrides?.deliveroo?.price != null) {
+    return product.platformOverrides.deliveroo.price;
+  }
+  if (priceMarkup > 0) {
+    return Math.ceil(product.price * (1 + priceMarkup / 100));
+  }
+  return product.price;
+}
+
+/**
  * Create a localized string object from a plain string.
  * Uses the same value for en and fr since product names are already
  * in the restaurant's language.
@@ -128,11 +151,14 @@ function allDaySchedule() {
  * - items with price_info, tax_rate, modifier_group_ids
  * - modifiers (individual modifier items)
  * - modifier_groups with modifier_ids references
+ *
+ * Prices are in cents; markup is applied via getPlatformPrice().
  */
 export function buildDeliverooMenuPayload(
   products: ProductRecord[],
   categories: CategoryRecord[],
-  siteId: string
+  siteId: string,
+  priceMarkup: number = 0
 ): DeliverooMenuV1Payload {
   const activeCategories = categories.filter((c) => c.isActive);
   const activeProducts = products.filter((p) => p.isActive);
@@ -166,7 +192,8 @@ export function buildDeliverooMenuPayload(
         name: localized(product.name),
         operational_name: operationalName(product.name),
         plu: product.externalIds?.deliverooId ?? product._id,
-        price_info: { price: Math.round(product.price) },
+        // getPlatformPrice applies individual override or global markup (always rounds up)
+        price_info: { price: getPlatformPrice(product, priceMarkup) },
         type: "ITEM",
         tax_rate: (product.taxRate ?? 10).toString(),
       };
