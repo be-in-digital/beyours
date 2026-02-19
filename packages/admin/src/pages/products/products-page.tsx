@@ -3,14 +3,16 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useQuery } from "convex/react"
-import { Search, Plus, Grid3x3, List, SlidersHorizontal, X } from "lucide-react"
+import { Search, Plus, Grid3x3, List, X } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupButton,
   ButtonGroup,
-  Badge,
   Select,
   SelectContent,
   SelectItem,
@@ -147,9 +149,11 @@ export function ProductsPage() {
       {/* Filters card */}
       <div className="rounded-lg border bg-card p-4 space-y-4">
         {/* Search bar — full width, prominent */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
+        <InputGroup className="h-10">
+          <InputGroupAddon>
+            <Search className="h-4 w-4" />
+          </InputGroupAddon>
+          <InputGroupInput
             type="text"
             placeholder="Rechercher un produit par nom ou description..."
             value={searchQuery}
@@ -157,31 +161,22 @@ export function ProductsPage() {
               setSearchQuery(e.target.value)
               setCurrentPage(1)
             }}
-            className="pl-9 h-10"
           />
           {searchQuery && (
-            <button
-              type="button"
-              onClick={() => { setSearchQuery(""); setCurrentPage(1) }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                size="icon-xs"
+                onClick={() => { setSearchQuery(""); setCurrentPage(1) }}
+                aria-label="Effacer la recherche"
+              >
+                <X className="h-3.5 w-3.5" />
+              </InputGroupButton>
+            </InputGroupAddon>
           )}
-        </div>
+        </InputGroup>
 
         {/* Filter row */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
-            <SlidersHorizontal className="h-4 w-4" />
-            <span>Filtres</span>
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
-                {activeFilterCount}
-              </Badge>
-            )}
-          </div>
-
           <div className="flex flex-wrap items-center gap-2 flex-1">
             {/* Category filter */}
             <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
