@@ -27,7 +27,7 @@ export type {
 
   // Menu types
   MenuDoc,
-  MenuSection,
+  MenuPlatformVisibility,
 
   // Order types
   OrderDoc,
