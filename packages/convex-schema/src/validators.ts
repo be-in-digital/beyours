@@ -254,6 +254,7 @@ export const createProductSchema = z.object({
     tracked: z.boolean().default(false),
     quantity: z.number().int().min(0).default(0),
     lowStockThreshold: z.number().int().min(0).default(0),
+    autoDisableWhenEmpty: z.boolean().optional(),
   }).optional(),
   scheduling: z.object({
     availableFrom: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
@@ -297,13 +298,13 @@ export const createMenuSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   name: z.string().min(1, "Le nom est requis").max(200),
   description: z.string().max(1000).optional(),
-  price: z.number().int().min(0),
+  price: z.number().int().min(0, "Le prix doit etre positif"),
   imageUrl: z.string().url().optional(),
-  sections: z.array(z.object({
-    name: z.string().min(1),
-    productIds: z.array(z.string().min(1)).min(1),
-    maxSelections: z.number().int().min(1),
-  })).min(1, "Au moins une section est requise"),
+  productIds: z.array(z.string().min(1)).min(1, "Au moins un produit est requis"),
+  platformVisibility: z.object({
+    uberEats: z.boolean().optional(),
+    deliveroo: z.boolean().optional(),
+  }).optional(),
   isActive: z.boolean().default(true),
   sortOrder: z.number().int().min(0).default(0),
 })

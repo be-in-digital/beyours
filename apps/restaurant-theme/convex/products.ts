@@ -71,6 +71,33 @@ export const toggleStatus = mutation({
   },
 });
 
+export const toggleStockTracking = mutation({
+  args: defs.toggleStockTracking.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.toggleStockTracking.handler(ctx, args);
+  },
+});
+
+export const updateAutoDisable = mutation({
+  args: defs.updateAutoDisable.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateAutoDisable.handler(ctx, args);
+  },
+});
+
+export const updateLowStockThreshold = mutation({
+  args: defs.updateLowStockThreshold.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateLowStockThreshold.handler(ctx, args);
+  },
+});
+
 export const remove = mutation({
   args: defs.remove.args,
   handler: async (ctx, args) => {

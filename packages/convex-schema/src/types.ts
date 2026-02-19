@@ -162,6 +162,7 @@ export type ProductStock = {
   tracked: boolean
   quantity: number
   lowStockThreshold: number
+  autoDisableWhenEmpty?: boolean
 }
 
 export type ProductScheduling = {
@@ -199,10 +200,9 @@ export type ProductPlatformOverrides = {
 export type CreateMenuInput = z.infer<typeof createMenuSchema>
 export type UpdateMenuInput = z.infer<typeof updateMenuSchema>
 
-export type MenuSection = {
-  name: string
-  productIds: string[]
-  maxSelections: number
+export type MenuPlatformVisibility = {
+  uberEats?: boolean
+  deliveroo?: boolean
 }
 
 // ============================================================================

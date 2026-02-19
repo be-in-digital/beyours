@@ -133,6 +133,7 @@ export const create = {
       tracked: v.boolean(),
       quantity: v.number(),
       lowStockThreshold: v.number(),
+      autoDisableWhenEmpty: v.optional(v.boolean()),
     })),
     scheduling: v.optional(v.object({
       availableFrom: v.optional(v.string()),
@@ -212,6 +213,7 @@ export const update = {
       tracked: v.boolean(),
       quantity: v.number(),
       lowStockThreshold: v.number(),
+      autoDisableWhenEmpty: v.optional(v.boolean()),
     })),
     scheduling: v.optional(v.object({
       availableFrom: v.optional(v.string()),
@@ -233,7 +235,10 @@ export const update = {
 }
 
 /**
- * Update product stock quantity
+ * Update product stock quantity.
+ * When autoDisableWhenEmpty is enabled:
+ *   - quantity reaches 0 → set isActive = false
+ *   - quantity goes above 0 → set isActive = true
  */
 export const updateStock = {
   args: {
@@ -245,10 +250,94 @@ export const updateStock = {
     if (!product) throw new Error("Product not found")
     if (!product.stock) throw new Error("Product does not track stock")
 
-    await ctx.db.patch(args.id, {
+    const patch: Record<string, any> = {
       stock: {
         ...product.stock,
         quantity: args.quantity,
+      },
+      updatedAt: Date.now(),
+    }
+
+    if (product.stock.autoDisableWhenEmpty) {
+      if (args.quantity <= 0 && product.isActive) {
+        patch.isActive = false
+      } else if (args.quantity > 0 && !product.isActive) {
+        patch.isActive = true
+      }
+    }
+
+    await ctx.db.patch(args.id, patch)
+  },
+}
+
+/**
+ * Toggle stock tracking on/off for a product
+ */
+export const toggleStockTracking = {
+  args: {
+    id: v.id("products"),
+    tracked: v.boolean(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const product = await ctx.db.get(args.id)
+    if (!product) throw new Error("Product not found")
+
+    const currentStock = product.stock ?? {
+      tracked: false,
+      quantity: 0,
+      lowStockThreshold: 5,
+    }
+
+    await ctx.db.patch(args.id, {
+      stock: {
+        ...currentStock,
+        tracked: args.tracked,
+      },
+      updatedAt: Date.now(),
+    })
+  },
+}
+
+/**
+ * Toggle autoDisableWhenEmpty for a product
+ */
+export const updateAutoDisable = {
+  args: {
+    id: v.id("products"),
+    autoDisableWhenEmpty: v.boolean(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const product = await ctx.db.get(args.id)
+    if (!product) throw new Error("Product not found")
+    if (!product.stock) throw new Error("Product does not track stock")
+
+    await ctx.db.patch(args.id, {
+      stock: {
+        ...product.stock,
+        autoDisableWhenEmpty: args.autoDisableWhenEmpty,
+      },
+      updatedAt: Date.now(),
+    })
+  },
+}
+
+/**
+ * Update low stock threshold for a product
+ */
+export const updateLowStockThreshold = {
+  args: {
+    id: v.id("products"),
+    lowStockThreshold: v.number(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const product = await ctx.db.get(args.id)
+    if (!product) throw new Error("Product not found")
+    if (!product.stock) throw new Error("Product does not track stock")
+
+    await ctx.db.patch(args.id, {
+      stock: {
+        ...product.stock,
+        lowStockThreshold: args.lowStockThreshold,
       },
       updatedAt: Date.now(),
     })
@@ -357,7 +446,10 @@ export const duplicateCatalog = {
         nutritionalInfo: product.nutritionalInfo,
         tags: product.tags,
         spiceLevel: product.spiceLevel,
-        stock: product.stock,
+        // Copy stock config but reset quantity — each store manages its own inventory
+        stock: product.stock
+          ? { ...product.stock, quantity: 0 }
+          : undefined,
         scheduling: product.scheduling,
         isActive: product.isActive,
         isFeatured: product.isFeatured,

@@ -72,6 +72,7 @@ export const productsTable = defineTable({
     tracked: v.boolean(),
     quantity: v.number(),
     lowStockThreshold: v.number(),
+    autoDisableWhenEmpty: v.optional(v.boolean()),
   })),
   scheduling: v.optional(v.object({
     availableFrom: v.optional(v.string()), // "11:00"
@@ -117,18 +118,18 @@ export const productsTable = defineTable({
 
 /**
  * Menus table (combos/formules)
- * Meal deals and combo offers
+ * Meal deals and combo offers with a fixed list of included products
  */
 export const menusTable = defineTable({
   storeId: v.id("stores"),
   name: v.string(),
   description: v.optional(v.string()),
-  price: v.number(),
+  price: v.number(), // in cents, fixed price
   imageUrl: v.optional(v.string()),
-  sections: v.array(v.object({
-    name: v.string(),
-    productIds: v.array(v.id("products")),
-    maxSelections: v.number(),
+  productIds: v.array(v.id("products")), // flat list of included products
+  platformVisibility: v.optional(v.object({
+    uberEats: v.optional(v.boolean()),
+    deliveroo: v.optional(v.boolean()),
   })),
   isActive: v.boolean(),
   sortOrder: v.number(),
