@@ -233,8 +233,9 @@ export const sendInvitationEmail = action({
         textBody,
       });
       emailSent = true;
-    } catch (err: any) {
-      console.error("Failed to send invitation email:", err?.message ?? err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Failed to send invitation email:", message);
     }
 
     return { success: true, token, emailSent };
@@ -302,8 +303,9 @@ export const resendInvitationEmail = action({
         textBody,
       });
       emailSent = true;
-    } catch (err: any) {
-      console.error("Failed to resend invitation email:", err?.message ?? err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("Failed to resend invitation email:", message);
     }
 
     return { success: true, emailSent };
