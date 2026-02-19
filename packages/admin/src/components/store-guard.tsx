@@ -9,7 +9,7 @@ import { Store } from "lucide-react"
 import Link from "next/link"
 import { useAdminApiStore } from "../stores/admin-api-store"
 
-const BYPASS_ROUTES = ["/stores", "/settings", "/team"]
+const BYPASS_ROUTES = ["/stores", "/settings"]
 
 interface StoreGuardProps {
   children: React.ReactNode
@@ -22,6 +22,7 @@ interface StoreGuardProps {
 export function StoreGuard({ children }: StoreGuardProps) {
   const pathname = usePathname()
   const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
+  const setStoreId = useAdminApiStore((s) => s.setStoreId)
   const stores = useQuery(api?.stores?.list ?? "skip" as any)
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
@@ -38,6 +39,12 @@ export function StoreGuard({ children }: StoreGuardProps) {
       setCurrentStore(storeList[0])
     }
   }, [stores, currentStore, setCurrentStore])
+
+  // Sync currentStore._id to adminApiStore.storeId for all admin pages
+  useEffect(() => {
+    const id = (currentStore as any)?._id ?? null
+    setStoreId(id)
+  }, [currentStore, setStoreId])
 
   const shouldBypass = BYPASS_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")

@@ -542,22 +542,73 @@ export const batchTranslateSchema = z.object({
 // ============================================================================
 
 /**
- * Create Team Member Schema
+ * Available permission modules for team members
  */
-export const createTeamMemberSchema = z.object({
-  storeId: z.string().min(1, "L'ID du magasin est requis"),
-  userId: z.string().min(1, "L'ID de l'utilisateur est requis"),
+export const TEAM_PERMISSION_MODULES = [
+  "dashboard",
+  "orders",
+  "products",
+  "kitchen",
+  "team",
+  "settings",
+  "integrations",
+  "marketing",
+] as const
+
+export type TeamPermissionModule = typeof TEAM_PERMISSION_MODULES[number]
+
+/**
+ * Default permissions per role
+ */
+export const DEFAULT_ROLE_PERMISSIONS: Record<string, readonly TeamPermissionModule[]> = {
+  manager: TEAM_PERMISSION_MODULES,
+  kitchen: ["orders", "kitchen"],
+  waiter: ["dashboard", "orders"],
+  delivery: ["orders"],
+} as const
+
+/**
+ * Invite Team Member Schema (used for invitation flow)
+ */
+export const inviteTeamMemberSchema = z.object({
+  storeId: z.string().optional(),
+  allStores: z.boolean().default(false),
+  name: z.string().min(1, "Le nom est requis"),
+  email: z.string().email("Email invalide"),
   role: z.enum(["manager", "kitchen", "waiter", "delivery"], {
     errorMap: () => ({ message: "Role invalide" }),
   }),
   permissions: z.array(z.string()).default([]),
+})
+
+/**
+ * Create Team Member Schema (legacy, kept for backward compat)
+ */
+export const createTeamMemberSchema = z.object({
+  storeId: z.string().optional(),
+  allStores: z.boolean().default(false),
+  userId: z.string().optional(),
+  name: z.string().min(1, "Le nom est requis"),
+  email: z.string().email("Email invalide"),
+  role: z.enum(["manager", "kitchen", "waiter", "delivery"], {
+    errorMap: () => ({ message: "Role invalide" }),
+  }),
+  permissions: z.array(z.string()).default([]),
+  invitationStatus: z.enum(["pending", "accepted", "expired"]).default("pending"),
   isActive: z.boolean().default(true),
 })
 
 /**
  * Update Team Member Schema
  */
-export const updateTeamMemberSchema = createTeamMemberSchema.partial().required({ storeId: true, userId: true })
+export const updateTeamMemberSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1).optional(),
+  role: z.enum(["manager", "kitchen", "waiter", "delivery"]).optional(),
+  permissions: z.array(z.string()).optional(),
+  storeId: z.string().optional(),
+  allStores: z.boolean().optional(),
+})
 
 // ============================================================================
 // GAMIFICATION VALIDATORS

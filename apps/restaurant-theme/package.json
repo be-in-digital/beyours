@@ -16,11 +16,12 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.990.0",
     "@beindigital-engine/admin": "workspace:^",
     "@beindigital-engine/convex-functions": "workspace:^",
-    "@beindigital-engine/integrations": "workspace:^",
     "@beindigital-engine/convex-schema": "workspace:^",
     "@beindigital-engine/core": "workspace:^",
+    "@beindigital-engine/integrations": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
     "@beindigital-engine/ui": "workspace:^",
     "@convex-dev/better-auth": "^0.10.10",

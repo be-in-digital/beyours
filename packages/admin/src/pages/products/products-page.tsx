@@ -1,28 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useQuery } from "convex/react"
-import { Search, Plus, Grid3x3, List } from "lucide-react"
+import { Search, Plus, Grid3x3, List, SlidersHorizontal, X } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
+import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
   ButtonGroup,
+  Badge,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
 } from "@beindigital-engine/ui"
 import { ProductsTable } from "./products-table"
+
+/** Build page numbers with ellipsis for large page counts */
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
+
+  const pages: (number | "ellipsis")[] = [1]
+  if (current > 3) pages.push("ellipsis")
+
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+  for (let i = start; i <= end; i++) pages.push(i)
+
+  if (current < total - 2) pages.push("ellipsis")
+  pages.push(total)
+  return pages
+}
 
 export function ProductsPage() {
   const storeId = useAdminStoreId()
@@ -32,51 +50,68 @@ export function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"table" | "grid">("table")
+  const [currentPage, setCurrentPage] = useState(1)
 
   const debouncedSearch = useDebounce(searchQuery, 300)
 
-  // Fetch products
   const products = useQuery(
     api?.products?.list,
     storeId ? { storeId } : "skip"
   )
 
-  // Fetch categories for filter
   const categories = useQuery(
     api?.categories?.list,
     storeId ? { storeId } : "skip"
   )
 
-  // Filter products based on search and filters
-  const filteredProducts = products?.filter((product: any) => {
-    // Search filter
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase()
-      const matchesSearch =
-        product.name.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower)
-      if (!matchesSearch) return false
-    }
+  // Filter products
+  const filteredProducts = useMemo(() => {
+    return products?.filter((product: any) => {
+      if (debouncedSearch) {
+        const searchLower = debouncedSearch.toLowerCase()
+        const matchesSearch =
+          product.name.toLowerCase().includes(searchLower) ||
+          product.description?.toLowerCase().includes(searchLower)
+        if (!matchesSearch) return false
+      }
+      if (categoryFilter !== "all" && product.categoryId !== categoryFilter) return false
+      if (statusFilter !== "all") {
+        if (product.isActive !== (statusFilter === "active")) return false
+      }
+      if (sourceFilter !== "all") {
+        if ((product.source ?? "manual") !== sourceFilter) return false
+      }
+      return true
+    })
+  }, [products, debouncedSearch, categoryFilter, statusFilter, sourceFilter])
 
-    // Category filter
-    if (categoryFilter !== "all" && product.categoryId !== categoryFilter) {
-      return false
-    }
+  // Pagination
+  const totalItems = filteredProducts?.length ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginatedProducts = useMemo(() => {
+    if (!filteredProducts) return []
+    const start = (safePage - 1) * ADMIN_PAGE_SIZE
+    return filteredProducts.slice(start, start + ADMIN_PAGE_SIZE)
+  }, [filteredProducts, safePage])
 
-    // Status filter
-    if (statusFilter !== "all") {
-      const isActive = statusFilter === "active"
-      if (product.isActive !== isActive) return false
-    }
+  // Reset page when filters change
+  const handleFilterChange = <T,>(setter: (v: T) => void) => (value: T) => {
+    setter(value)
+    setCurrentPage(1)
+  }
 
-    // Source filter — matches the product source field (manual/uber_eats/deliveroo)
-    if (sourceFilter !== "all") {
-      const productSource = product.source ?? "manual"
-      if (productSource !== sourceFilter) return false
-    }
+  const activeFilterCount = [categoryFilter, statusFilter, sourceFilter].filter(
+    (f) => f !== "all"
+  ).length
 
-    return true
-  })
+  const clearFilters = () => {
+    setCategoryFilter("all")
+    setStatusFilter("all")
+    setSourceFilter("all")
+    setSearchQuery("")
+    setCurrentPage(1)
+  }
 
   if (!storeId) {
     return (
@@ -88,98 +123,133 @@ export function ProductsPage() {
     )
   }
 
+  const paginationStart = totalItems > 0 ? (safePage - 1) * ADMIN_PAGE_SIZE + 1 : 0
+  const paginationEnd = Math.min(safePage * ADMIN_PAGE_SIZE, totalItems)
+
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Menu & Produits</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage your menu items, product catalog, and categories
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
-        <div className="flex-1">
-          <InputGroup>
-            <InputGroupAddon>
-              <Search className="h-4 w-4" />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="text"
-              placeholder="Rechercher des produits..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </InputGroup>
+    <div className="space-y-6">
+      {/* Header — title + add button on the same row */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Menu & Produits</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gérez votre carte, vos produits et vos catégories
+          </p>
         </div>
-
-        {/* Category filter */}
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Toutes les catégories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes les catégories</SelectItem>
-            {categories?.map((category: any) => (
-              <SelectItem key={category._id} value={category._id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Status filter */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="Tous les statuts" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="active">Actif</SelectItem>
-            <SelectItem value="inactive">Inactif</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Source filter — filters by product origin (manual, Uber Eats, Deliveroo) */}
-        <Select value={sourceFilter} onValueChange={setSourceFilter}>
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="Toutes les sources" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Toutes les sources</SelectItem>
-            <SelectItem value="manual">Manuel</SelectItem>
-            <SelectItem value="uber_eats">Uber Eats</SelectItem>
-            <SelectItem value="deliveroo">Deliveroo</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* View mode toggle */}
-        <ButtonGroup>
-          <Button
-            variant={viewMode === "table" ? "default" : "outline"}
-            size="icon"
-            onClick={() => setViewMode("table")}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="icon"
-            onClick={() => setViewMode("grid")}
-          >
-            <Grid3x3 className="h-4 w-4" />
-          </Button>
-        </ButtonGroup>
-
-        {/* Add Product button */}
-        <Button asChild size="sm">
+        <Button asChild>
           <Link href="/products/new">
             <Plus className="mr-2 h-4 w-4" />
-            Ajouter
+            Ajouter un produit
           </Link>
         </Button>
+      </div>
+
+      {/* Filters card */}
+      <div className="rounded-lg border bg-card p-4 space-y-4">
+        {/* Search bar — full width, prominent */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Rechercher un produit par nom ou description..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="pl-9 h-10"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => { setSearchQuery(""); setCurrentPage(1) }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter row */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Filtres</span>
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 flex-1">
+            {/* Category filter */}
+            <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
+              <SelectTrigger className="w-[170px] h-9 text-xs">
+                <SelectValue placeholder="Catégorie" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les catégories</SelectItem>
+                {categories?.map((category: any) => (
+                  <SelectItem key={category._id} value={category._id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Status filter */}
+            <Select value={statusFilter} onValueChange={handleFilterChange(setStatusFilter)}>
+              <SelectTrigger className="w-[130px] h-9 text-xs">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="active">Actif</SelectItem>
+                <SelectItem value="inactive">Inactif</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Source filter */}
+            <Select value={sourceFilter} onValueChange={handleFilterChange(setSourceFilter)}>
+              <SelectTrigger className="w-[150px] h-9 text-xs">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toutes les sources</SelectItem>
+                <SelectItem value="manual">Manuel</SelectItem>
+                <SelectItem value="uber_eats">Uber Eats</SelectItem>
+                <SelectItem value="deliveroo">Deliveroo</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear filters */}
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs">
+                <X className="mr-1 h-3 w-3" />
+                Réinitialiser
+              </Button>
+            )}
+          </div>
+
+          {/* View mode toggle — right side */}
+          <ButtonGroup className="shrink-0">
+            <Button
+              variant={viewMode === "table" ? "default" : "outline"}
+              size="icon-sm"
+              onClick={() => setViewMode("table")}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon-sm"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid3x3 className="h-4 w-4" />
+            </Button>
+          </ButtonGroup>
+        </div>
       </div>
 
       {/* Products table */}
@@ -187,13 +257,13 @@ export function ProductsPage() {
         <div className="text-center py-12">
           <p className="text-sm text-muted-foreground">Chargement des produits...</p>
         </div>
-      ) : filteredProducts && filteredProducts.length === 0 ? (
+      ) : totalItems === 0 ? (
         <div className="text-center py-12 border border-border/50 rounded-lg">
           <p className="text-sm text-muted-foreground">Aucun produit trouvé</p>
-          {searchQuery || categoryFilter !== "all" || statusFilter !== "all" || sourceFilter !== "all" ? (
-            <p className="text-xs text-muted-foreground mt-2">
-              Essayez d'ajuster vos filtres
-            </p>
+          {searchQuery || activeFilterCount > 0 ? (
+            <Button variant="ghost" size="sm" className="mt-3" onClick={clearFilters}>
+              Réinitialiser les filtres
+            </Button>
           ) : (
             <Button asChild size="sm" className="mt-4">
               <Link href="/products/new">
@@ -204,10 +274,60 @@ export function ProductsPage() {
           )}
         </div>
       ) : (
-        <ProductsTable
-          products={filteredProducts || []}
-          categories={categories || []}
-        />
+        <>
+          <ProductsTable
+            products={paginatedProducts}
+            categories={categories || []}
+          />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {paginationStart}-{paginationEnd} sur {totalItems} produit{totalItems > 1 ? "s" : ""}
+              </p>
+
+              <Pagination className="mx-0 w-auto justify-end">
+                <PaginationContent className="gap-0">
+                  <ButtonGroup>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={safePage <= 1}
+                        aria-disabled={safePage <= 1}
+                      />
+                    </PaginationItem>
+
+                    {getPageNumbers(safePage, totalPages).map((page, idx) =>
+                      page === "ellipsis" ? (
+                        <PaginationItem key={`ellipsis-${idx}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            isActive={page === safePage}
+                            onClick={() => setCurrentPage(page)}
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    )}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={safePage >= totalPages}
+                        aria-disabled={safePage >= totalPages}
+                      />
+                    </PaginationItem>
+                  </ButtonGroup>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

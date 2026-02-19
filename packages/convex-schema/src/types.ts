@@ -26,6 +26,7 @@ import {
   batchTranslateSchema,
   createTeamMemberSchema,
   updateTeamMemberSchema,
+  inviteTeamMemberSchema,
   createGameQRCodeSchema,
   createRequiredActionSchema,
   createGameSchema,
@@ -343,8 +344,11 @@ export type TranslationJobStatus = 'pending' | 'in_progress' | 'completed' | 'fa
 
 export type CreateTeamMemberInput = z.infer<typeof createTeamMemberSchema>
 export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>
+export type InviteTeamMemberInput = z.infer<typeof inviteTeamMemberSchema>
 
 export type TeamMemberRole = 'manager' | 'kitchen' | 'waiter' | 'delivery'
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired'
 
 // ============================================================================
 // USER PROFILE TYPES
@@ -535,7 +539,8 @@ export type TranslationJobDoc = BaseEntity & BatchTranslateInput & {
 }
 
 export type TeamMemberDoc = BaseEntity & CreateTeamMemberInput & {
-  isActive: boolean
+  invitationToken?: string
+  invitedAt?: number
 }
 
 export type UserProfileDoc = BaseEntity & CreateUserProfileInput & {
