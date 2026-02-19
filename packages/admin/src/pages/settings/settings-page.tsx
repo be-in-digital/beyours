@@ -301,7 +301,9 @@ export function SettingsPage() {
   const connections = useQuery(api.paymentConnections.getAll)
   const disconnectProvider = useMutation(api.paymentConnections.disconnect)
   const generateOAuthUrl = useAction(api.oauthConnect.generateOAuthUrl)
+  const validateIntegration = useAction(api.validateIntegration.validate)
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null)
+  const [isValidatingIntegrations, setIsValidatingIntegrations] = useState(false)
 
   type PaymentConnection = {
     _id: string
@@ -565,6 +567,40 @@ export function SettingsPage() {
   }
 
   const handleSaveIntegrations = async () => {
+    // Validate Uber Direct credentials before saving (only if enabled with credentials)
+    const hasUberDirectCreds = uberDirectEnabled &&
+      uberDirectClientId.trim() &&
+      uberDirectClientSecret.trim() &&
+      uberDirectCustomerId.trim()
+
+    if (hasUberDirectCreds) {
+      setIsValidatingIntegrations(true)
+      try {
+        const validation = await validateIntegration({
+          platform: "uberDirect",
+          clientId: uberDirectClientId.trim(),
+          clientSecret: uberDirectClientSecret.trim(),
+          customerId: uberDirectCustomerId.trim(),
+        })
+
+        if (!validation.valid) {
+          toast.error(`Uber Direct : ${validation.error}`)
+          setIsValidatingIntegrations(false)
+          return
+        }
+      } catch (error) {
+        toast.error("Impossible de valider les credentials Uber Direct")
+        setIsValidatingIntegrations(false)
+        return
+      }
+    }
+
+    // If Uber Direct is enabled but some credentials are missing, warn the user
+    if (uberDirectEnabled && !hasUberDirectCreds && (uberDirectClientId.trim() || uberDirectClientSecret.trim() || uberDirectCustomerId.trim())) {
+      toast.error("Uber Direct : les 3 champs (Customer ID, Client ID, Client Secret) sont requis")
+      return
+    }
+
     try {
       await updateSettings({
         integrations: {
@@ -582,10 +618,12 @@ export function SettingsPage() {
           },
         },
       })
-      toast.success("Intégrations enregistrées")
+      toast.success(hasUberDirectCreds ? "Intégrations vérifiées et enregistrées" : "Intégrations enregistrées")
     } catch (error) {
       toast.error("Échec de l'enregistrement")
       console.error(error)
+    } finally {
+      setIsValidatingIntegrations(false)
     }
   }
 
@@ -1440,8 +1478,15 @@ export function SettingsPage() {
               </CardHeader>
             </Card>
 
-            <Button onClick={handleSaveIntegrations} size="sm">
-              Enregistrer les intégrations
+            <Button onClick={handleSaveIntegrations} size="sm" disabled={isValidatingIntegrations}>
+              {isValidatingIntegrations ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
+                  Vérification Uber Direct...
+                </>
+              ) : (
+                "Enregistrer les intégrations"
+              )}
             </Button>
           </div>
         </TabsContent>

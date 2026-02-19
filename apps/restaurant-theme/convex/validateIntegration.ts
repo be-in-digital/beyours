@@ -37,9 +37,13 @@ function sanitizeApiError(status: number, context: string): string {
  */
 export const validate = action({
   args: {
-    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
-    platformStoreId: v.string(),
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo"), v.literal("uberDirect")),
+    platformStoreId: v.optional(v.string()),
     brandId: v.optional(v.string()),
+    // Uber Direct credentials (stored in globalSettings, not env vars)
+    clientId: v.optional(v.string()),
+    clientSecret: v.optional(v.string()),
+    customerId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ valid: boolean; error?: string }> => {
     // C-01: Authentication check
@@ -48,7 +52,70 @@ export const validate = action({
       return { valid: false, error: "Non authentifie" };
     }
 
+    // -----------------------------------------------------------------------
+    // Uber Direct: validate OAuth credentials by requesting a token
+    // -----------------------------------------------------------------------
+    if (args.platform === "uberDirect") {
+      if (!args.clientId || !args.clientSecret) {
+        return {
+          valid: false,
+          error: "Le Client ID et le Client Secret sont requis pour Uber Direct.",
+        };
+      }
+
+      if (!args.customerId) {
+        return {
+          valid: false,
+          error: "Le Customer ID (Uber Store ID) est requis pour Uber Direct.",
+        };
+      }
+
+      try {
+        // Step 1: Validate credentials by requesting an OAuth token
+        const tokenResponse = await fetch("https://login.uber.com/oauth/v2/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "client_credentials",
+            client_id: args.clientId,
+            client_secret: args.clientSecret,
+            scope: "eats.deliveries",
+          }),
+        });
+
+        if (!tokenResponse.ok) {
+          const status = tokenResponse.status;
+          console.error(`[validateIntegration] Uber Direct OAuth failed (${status})`);
+          if (status === 401 || status === 403) {
+            return {
+              valid: false,
+              error: "Credentials Uber Direct invalides. Verifiez votre Client ID et Client Secret.",
+            };
+          }
+          return {
+            valid: false,
+            error: sanitizeApiError(status, "Uber Direct OAuth"),
+          };
+        }
+
+        return { valid: true };
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : String(error);
+        console.error(`[validateIntegration] Uber Direct error:`, raw);
+        return {
+          valid: false,
+          error: "Echec de la validation Uber Direct. Veuillez reessayer.",
+        };
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Uber Eats
+    // -----------------------------------------------------------------------
     if (args.platform === "uberEats") {
+      if (!args.platformStoreId) {
+        return { valid: false, error: "Le Store ID Uber Eats est requis." };
+      }
       // C-02: Input validation - Uber Eats store IDs are UUIDs
       if (!UUID_REGEX.test(args.platformStoreId)) {
         return {
@@ -115,7 +182,7 @@ export const validate = action({
           error: "Format de Brand ID Deliveroo invalide. Un UUID est attendu (ex: 13eaa505-f059-479f-8ada-c24a1f9c56ec).",
         };
       }
-      if (!NUMERIC_ID_REGEX.test(args.platformStoreId)) {
+      if (!args.platformStoreId || !NUMERIC_ID_REGEX.test(args.platformStoreId)) {
         return {
           valid: false,
           error: "Format d'ID restaurant Deliveroo invalide. Un identifiant numerique est attendu (ex: 101).",
