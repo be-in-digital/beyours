@@ -9,7 +9,6 @@ import {
   UserIcon,
   MoreVerticalIcon,
   TrashIcon,
-  SearchIcon,
   SendIcon,
   PencilIcon,
   MailIcon,
@@ -36,6 +35,7 @@ import {
   DialogTitle,
   Input,
   Label,
+  SearchInput,
   Select,
   SelectContent,
   SelectItem,
@@ -48,9 +48,13 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
 } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
-import { EmptyState } from "../../components/empty-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
@@ -191,11 +195,15 @@ export function TeamPage() {
   // No store selected
   if (!storeId) {
     return (
-      <EmptyState
-        icon={UserIcon}
-        title="Aucun etablissement selectionne"
-        description="Veuillez selectionner un etablissement pour gerer l'equipe"
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UserIcon />
+          </EmptyMedia>
+          <EmptyTitle>Aucun etablissement selectionne</EmptyTitle>
+          <EmptyDescription>Veuillez selectionner un etablissement pour gerer l'equipe</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -221,15 +229,12 @@ export function TeamPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Rechercher par nom ou email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
+        <SearchInput
+          placeholder="Rechercher par nom ou email..."
+          value={search}
+          onValueChange={setSearch}
+          className="flex-1 min-w-[200px] max-w-sm"
+        />
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
           <SelectTrigger className="w-[150px] h-9">
             <SelectValue />
@@ -258,15 +263,19 @@ export function TeamPage() {
 
       {/* Table or Empty State */}
       {filteredMembers.length === 0 ? (
-        <EmptyState
-          icon={UserIcon}
-          title={teamMembers.length === 0 ? "Aucun membre" : "Aucun resultat"}
-          description={
-            teamMembers.length === 0
-              ? "Invitez votre premier membre pour commencer"
-              : "Essayez de modifier vos filtres"
-          }
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <UserIcon />
+            </EmptyMedia>
+            <EmptyTitle>{teamMembers.length === 0 ? "Aucun membre" : "Aucun resultat"}</EmptyTitle>
+            <EmptyDescription>
+              {teamMembers.length === 0
+                ? "Invitez votre premier membre pour commencer"
+                : "Essayez de modifier vos filtres"}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="border rounded-lg">
           <Table>

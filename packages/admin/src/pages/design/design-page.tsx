@@ -12,8 +12,13 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
 } from "@beindigital-engine/ui"
-import { LoadingState, EmptyState } from "../../components"
+import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { cn } from "../../lib/utils"
@@ -117,11 +122,15 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={PaletteIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer le design"
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <PaletteIcon />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer le design</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

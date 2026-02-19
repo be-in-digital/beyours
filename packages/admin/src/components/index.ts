@@ -13,7 +13,6 @@ export { ResetPasswordForm } from "./reset-password-form"
 
 // Shared
 export { ComingSoon } from "./coming-soon"
-export { EmptyState } from "./empty-state"
 export { LoadingState } from "./loading-state"
 export { StatusBadge } from "./status-badge"
 export { DateDisplay } from "./date-display"

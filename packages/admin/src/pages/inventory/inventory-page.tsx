@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback } from "react"
 import Image from "next/image"
 import { useMutation, useQuery } from "convex/react"
 import {
-  Search,
   X,
   SlidersHorizontal,
   Minus,
@@ -19,10 +18,7 @@ import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hoo
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupButton,
+  SearchInput,
   Badge,
   Select,
   SelectContent,
@@ -336,31 +332,11 @@ export function InventoryPage() {
 
         {/* Search */}
         <div className="rounded-lg border bg-card p-4">
-          <InputGroup className="h-10">
-            <InputGroupAddon>
-              <Search className="h-4 w-4" />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="text"
-              placeholder="Rechercher un produit par nom..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value)
-                setCurrentPage(1)
-              }}
-            />
-            {searchQuery && (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-xs"
-                  onClick={() => { setSearchQuery(""); setCurrentPage(1) }}
-                  aria-label="Effacer la recherche"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </InputGroupButton>
-              </InputGroupAddon>
-            )}
-          </InputGroup>
+          <SearchInput
+            placeholder="Rechercher un produit par nom..."
+            value={searchQuery}
+            onValueChange={(value) => { setSearchQuery(value); setCurrentPage(1) }}
+          />
 
           {/* Active filter indicator */}
           {(statusFilter !== "all" || searchQuery) && (

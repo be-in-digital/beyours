@@ -6,7 +6,6 @@ import { useState, useMemo } from "react"
 import {
   PlusIcon,
   StoreIcon,
-  Search,
   Trash2,
   ArrowUpDown,
 } from "lucide-react"
@@ -21,9 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
+  SearchInput,
   Label,
   Select,
   SelectContent,
@@ -34,10 +31,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
 } from "@beindigital-engine/ui"
 import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components/loading-state"
-import { EmptyState } from "../../components/empty-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { slugify } from "../../lib/formatters"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
@@ -370,27 +371,27 @@ export function StoresPage() {
       </div>
 
       {stores.length === 0 ? (
-        <EmptyState
-          icon={StoreIcon}
-          title="Aucun établissement"
-          description="Créez votre premier établissement pour commencer"
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <StoreIcon />
+            </EmptyMedia>
+            <EmptyTitle>Aucun établissement</EmptyTitle>
+            <EmptyDescription>Créez votre premier établissement pour commencer</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <>
           {/* Toolbar */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Search + filter on the same row */}
             <div className="flex flex-1 items-center gap-3">
-              <InputGroup className="flex-1 sm:max-w-sm">
-                <InputGroupAddon>
-                  <Search />
-                </InputGroupAddon>
-                <InputGroupInput
-                  placeholder="Rechercher par nom, ville..."
-                  value={search}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                />
-              </InputGroup>
+              <SearchInput
+                placeholder="Rechercher par nom, ville..."
+                value={search}
+                onValueChange={handleSearchChange}
+                className="flex-1 sm:max-w-sm"
+              />
 
               <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                 <SelectTrigger className="w-[160px] shrink-0">

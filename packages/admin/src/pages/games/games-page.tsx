@@ -4,9 +4,9 @@ import { useQuery, useMutation } from "convex/react"
 import { toast } from "sonner"
 import { useState } from "react"
 import { GamepadIcon, PlusIcon, QrCodeIcon, GiftIcon, TrashIcon } from "lucide-react"
-import { Button } from "@beindigital-engine/ui"
-import { ButtonGroup } from "@beindigital-engine/ui"
 import {
+  Button,
+  ButtonGroup,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,23 +14,28 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@beindigital-engine/ui"
-import { Input } from "@beindigital-engine/ui"
-import { Label } from "@beindigital-engine/ui"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@beindigital-engine/ui"
-import {
+  Input,
+  Label,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
+  Slider,
+  Badge,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
 } from "@beindigital-engine/ui"
-import { Switch } from "@beindigital-engine/ui"
-import { Slider } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
 import { cn } from "../../lib/utils"
 import { LoadingState } from "../../components/loading-state"
-import { EmptyState } from "../../components/empty-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
@@ -269,11 +274,15 @@ export function GamesPage() {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={GamepadIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les jeux"
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <GamepadIcon />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les jeux</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -373,11 +382,15 @@ export function GamesPage() {
           </div>
 
           {games.length === 0 ? (
-            <EmptyState
-              icon={GamepadIcon}
-              title="Aucun jeu"
-              description="Créez votre premier jeu pour commencer"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <GamepadIcon />
+                </EmptyMedia>
+                <EmptyTitle>Aucun jeu</EmptyTitle>
+                <EmptyDescription>Créez votre premier jeu pour commencer</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {games.map((game) => (
@@ -480,11 +493,15 @@ export function GamesPage() {
           </div>
 
           {qrCodes.length === 0 ? (
-            <EmptyState
-              icon={QrCodeIcon}
-              title="Aucun code QR"
-              description="Créez des codes QR pour vos tables"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <QrCodeIcon />
+                </EmptyMedia>
+                <EmptyTitle>Aucun code QR</EmptyTitle>
+                <EmptyDescription>Créez des codes QR pour vos tables</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
               {qrCodes.map((qr) => (
@@ -610,11 +627,15 @@ export function GamesPage() {
           </div>
 
           {prizes.length === 0 ? (
-            <EmptyState
-              icon={GiftIcon}
-              title="Aucun prix"
-              description="Créez des prix que les clients peuvent gagner"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <GiftIcon />
+                </EmptyMedia>
+                <EmptyTitle>Aucun prix</EmptyTitle>
+                <EmptyDescription>Créez des prix que les clients peuvent gagner</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {prizes.map((prize) => (
@@ -645,11 +666,15 @@ export function GamesPage() {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <EmptyState
-            icon={GamepadIcon}
-            title="Aucun historique"
-            description="L'historique des parties apparaîtra ici"
-          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <GamepadIcon />
+              </EmptyMedia>
+              <EmptyTitle>Aucun historique</EmptyTitle>
+              <EmptyDescription>L'historique des parties apparaîtra ici</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </TabsContent>
       </Tabs>
 

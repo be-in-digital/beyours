@@ -4,9 +4,7 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@beindigital-engine/ui"
-import { Search } from "lucide-react"
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@beindigital-engine/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@beindigital-engine/ui"
 import { OrdersTable } from "./orders-table"
 
 /**
@@ -60,16 +58,11 @@ export function OrdersPage() {
 
       {/* Search */}
       <div className="max-w-md">
-        <InputGroup>
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          <InputGroupInput
-            placeholder="Rechercher par n° de commande ou nom du client..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </InputGroup>
+        <SearchInput
+          placeholder="Rechercher par n° de commande ou nom du client..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+        />
       </div>
 
       {/* Status filter tabs */}

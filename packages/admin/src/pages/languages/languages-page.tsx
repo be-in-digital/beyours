@@ -22,8 +22,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
 } from "@beindigital-engine/ui"
-import { LoadingState, EmptyState } from "../../components"
+import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 
@@ -131,11 +136,15 @@ export function LanguagesPage({ embedded = false }: LanguagesPageProps) {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={LanguagesIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les langues"
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <LanguagesIcon />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les langues</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -235,11 +244,15 @@ export function LanguagesPage({ embedded = false }: LanguagesPageProps) {
       </div>
 
       {languages.length === 0 ? (
-        <EmptyState
-          icon={LanguagesIcon}
-          title="Aucune langue"
-          description="Ajoutez votre première langue pour commencer"
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <LanguagesIcon />
+            </EmptyMedia>
+            <EmptyTitle>Aucune langue</EmptyTitle>
+            <EmptyDescription>Ajoutez votre première langue pour commencer</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="border border-border/50 rounded-xl overflow-hidden">
           <Table>
