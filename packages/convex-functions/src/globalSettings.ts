@@ -54,6 +54,7 @@ export const upsert = {
     payments: v.optional(v.object({
       cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
       paypal: v.boolean(),
+      paypalEmail: v.optional(v.string()),
       cash: v.boolean(),
     })),
     integrations: v.optional(v.object({

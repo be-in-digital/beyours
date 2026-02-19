@@ -5,7 +5,7 @@ import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
-// OAuth provider configurations (SumUp + PayPal only — Stripe uses Account Links)
+// OAuth provider configurations (SumUp only — Stripe uses Account Links, PayPal uses email)
 // ---------------------------------------------------------------------------
 
 const OAUTH_PROVIDERS = {
@@ -16,16 +16,7 @@ const OAUTH_PROVIDERS = {
     envClientSecret: "SUMUP_CLIENT_SECRET",
     scope: "payments user.app-settings",
   },
-  paypal: {
-    authorizeUrl: "https://www.sandbox.paypal.com/signin/authorize",
-    tokenUrl: "https://api-m.sandbox.paypal.com/v1/oauth2/token",
-    envClientId: "PAYPAL_CLIENT_ID",
-    envClientSecret: "PAYPAL_CLIENT_SECRET",
-    scope: "openid email",
-  },
 } as const;
-
-type OAuthProvider = keyof typeof OAUTH_PROVIDERS;
 
 // ---------------------------------------------------------------------------
 // Token response shapes
@@ -36,13 +27,6 @@ interface SumUpTokenResponse {
   refresh_token?: string;
   expires_in?: number;
   merchant_code?: string;
-}
-
-interface PayPalTokenResponse {
-  access_token: string;
-  refresh_token?: string;
-  expires_in?: number;
-  merchant_id?: string;
 }
 
 interface StripeAccountResponse {
@@ -91,7 +75,8 @@ async function encrypt(plaintext: string): Promise<string> {
  * Generate the connection URL for a given payment provider.
  *
  * - Stripe: Creates a connected account via Account Links (no OAuth).
- * - SumUp/PayPal: Standard OAuth authorization URL.
+ * - SumUp: Standard OAuth authorization URL.
+ * - PayPal: uses email-based payee, no OAuth needed.
  *
  * The client redirects the browser to the returned URL.
  */
@@ -99,8 +84,7 @@ export const generateOAuthUrl = action({
   args: {
     provider: v.union(
       v.literal("stripe"),
-      v.literal("sumup"),
-      v.literal("paypal")
+      v.literal("sumup")
     ),
   },
   handler: async (ctx, args) => {
@@ -154,9 +138,9 @@ export const generateOAuthUrl = action({
     }
 
     // -----------------------------------------------------------------------
-    // SumUp / PayPal: Standard OAuth flow
+    // SumUp: Standard OAuth flow
     // -----------------------------------------------------------------------
-    const config = OAUTH_PROVIDERS[args.provider as OAuthProvider];
+    const config = OAUTH_PROVIDERS.sumup;
     const clientId = process.env[config.envClientId];
     if (!clientId) {
       throw new Error(`${config.envClientId} environment variable is not configured`);
@@ -194,75 +178,43 @@ export const generateOAuthUrl = action({
  */
 export const exchangeOAuthToken = internalAction({
   args: {
-    provider: v.union(v.literal("sumup"), v.literal("paypal")),
+    provider: v.literal("sumup"),
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const config = OAUTH_PROVIDERS[args.provider];
+    const config = OAUTH_PROVIDERS.sumup;
     const clientId = process.env[config.envClientId];
     const clientSecret = process.env[config.envClientSecret];
 
     if (!clientId || !clientSecret) {
-      throw new Error("Missing provider credentials");
+      throw new Error("Missing SumUp credentials");
     }
 
     const siteUrl = process.env.CONVEX_SITE_URL ?? "";
-    const redirectUri = `${siteUrl}/connect/${args.provider}/callback`;
+    const redirectUri = `${siteUrl}/connect/sumup/callback`;
 
-    let merchantId = "";
-    let accessToken = "";
-    let refreshToken: string | undefined;
-    let expiresIn: number | undefined;
-
-    if (args.provider === "sumup") {
-      const res = await fetch(config.tokenUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: args.code,
-          client_id: clientId,
-          client_secret: clientSecret,
-          redirect_uri: redirectUri,
-        }),
-      });
-      const json = (await res.json()) as SumUpTokenResponse;
-      if (!res.ok) throw new Error("SumUp token exchange failed");
-      merchantId = json.merchant_code ?? "";
-      accessToken = json.access_token;
-      refreshToken = json.refresh_token;
-      expiresIn = json.expires_in;
-    } else {
-      // PayPal uses HTTP Basic auth
-      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-      const res = await fetch(config.tokenUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Basic ${basicAuth}`,
-        },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code: args.code,
-          redirect_uri: redirectUri,
-        }),
-      });
-      const json = (await res.json()) as PayPalTokenResponse;
-      if (!res.ok) throw new Error("PayPal token exchange failed");
-      merchantId = json.merchant_id ?? "";
-      accessToken = json.access_token;
-      refreshToken = json.refresh_token;
-      expiresIn = json.expires_in;
-    }
+    const res = await fetch(config.tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code: args.code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+      }),
+    });
+    const json = (await res.json()) as SumUpTokenResponse;
+    if (!res.ok) throw new Error("SumUp token exchange failed");
 
     // Encrypt tokens before persisting
-    const encryptedAccessToken = await encrypt(accessToken);
-    const encryptedRefreshToken = refreshToken ? await encrypt(refreshToken) : undefined;
-    const tokenExpiresAt = expiresIn !== undefined ? Date.now() + expiresIn * 1000 : undefined;
+    const encryptedAccessToken = await encrypt(json.access_token);
+    const encryptedRefreshToken = json.refresh_token ? await encrypt(json.refresh_token) : undefined;
+    const tokenExpiresAt = json.expires_in !== undefined ? Date.now() + json.expires_in * 1000 : undefined;
 
     await ctx.runMutation(internal.paymentConnections.upsert, {
-      provider: args.provider,
-      merchantId,
+      provider: "sumup" as const,
+      merchantId: json.merchant_code ?? "",
       encryptedAccessToken,
       encryptedRefreshToken,
       tokenExpiresAt,

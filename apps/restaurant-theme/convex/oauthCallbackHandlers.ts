@@ -144,61 +144,52 @@ export const stripeRefresh = httpAction(async (ctx, request) => {
 });
 
 // ---------------------------------------------------------------------------
-// SumUp / PayPal: OAuth callback handlers
+// SumUp: OAuth callback handler
 // ---------------------------------------------------------------------------
 
-type OAuthProvider = "sumup" | "paypal";
-
 /**
- * Build an httpAction that handles the OAuth redirect callback for SumUp or PayPal.
+ * Handle the SumUp OAuth redirect callback.
  * Delegates token exchange and encryption to the Node.js internalAction.
  */
-function createOAuthCallbackHandler(provider: OAuthProvider) {
-  return httpAction(async (ctx, request) => {
-    const url = new URL(request.url);
-    const code = url.searchParams.get("code");
-    const error = url.searchParams.get("error");
+export const sumupCallback = httpAction(async (ctx, request) => {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const error = url.searchParams.get("error");
 
-    const adminUrl = process.env.ADMIN_URL ?? "http://localhost:3000";
-    const successRedirect = `${adminUrl}/settings?tab=payments&connected=${provider}`;
+  const adminUrl = process.env.ADMIN_URL ?? "http://localhost:3000";
 
-    if (error || !code) {
-      const errorMsg =
-        error ??
-        url.searchParams.get("error_description") ??
-        "Authorization denied";
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `${adminUrl}/settings?tab=payments&error=${encodeURIComponent(errorMsg)}`,
-        },
-      });
-    }
+  if (error || !code) {
+    const errorMsg =
+      error ??
+      url.searchParams.get("error_description") ??
+      "Authorization denied";
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${adminUrl}/settings?tab=payments&error=${encodeURIComponent(errorMsg)}`,
+      },
+    });
+  }
 
-    try {
-      // Delegate token exchange + encryption to Node.js action
-      await ctx.runAction(internal.oauthConnect.exchangeOAuthToken, {
-        provider,
-        code,
-      });
+  try {
+    // Delegate token exchange + encryption to Node.js action
+    await ctx.runAction(internal.oauthConnect.exchangeOAuthToken, {
+      provider: "sumup" as const,
+      code,
+    });
 
-      return new Response(null, {
-        status: 302,
-        headers: { Location: successRedirect },
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      console.error(`OAuth callback error for ${provider}:`, message);
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: `${adminUrl}/settings?tab=payments&error=${encodeURIComponent(message)}`,
-        },
-      });
-    }
-  });
-}
-
-// Per-provider HTTP action exports consumed by the HTTP router
-export const sumupCallback = createOAuthCallbackHandler("sumup");
-export const paypalCallback = createOAuthCallbackHandler("paypal");
+    return new Response(null, {
+      status: 302,
+      headers: { Location: `${adminUrl}/settings?tab=payments&connected=sumup` },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("SumUp OAuth callback error:", message);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${adminUrl}/settings?tab=payments&error=${encodeURIComponent(message)}`,
+      },
+    });
+  }
+});

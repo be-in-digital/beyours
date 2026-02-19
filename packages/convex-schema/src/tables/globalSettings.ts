@@ -44,7 +44,8 @@ export const globalSettingsTable = defineTable({
   payments: v.optional(v.object({
     cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
     paypal: v.boolean(),
-    cash: v.boolean(), // Only available for click & collect orders
+    paypalEmail: v.optional(v.string()), // PayPal Business email used as payee
+    cash: v.boolean(), // Only available for click & collect and dine-in orders
   })),
 
   // Integration credentials (global level)

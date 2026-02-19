@@ -209,12 +209,11 @@ const HELP = {
     } satisfies FieldInfoProps,
     paypal: {
       title: "PayPal",
-      description: "Paiement en ligne via PayPal.",
+      description: "Accepter les paiements via PayPal en renseignant votre adresse email PayPal Business.",
       steps: [
-        { text: "Cliquez sur le bouton « Connecter » ci-dessous." },
-        { text: "Connectez-vous à votre compte PayPal Business ou créez-en un." },
-        { text: "Autorisez l'accès depuis PayPal." },
-        { text: "Vous serez automatiquement redirigé ici une fois connecté." },
+        { text: "Créez ou connectez-vous à votre compte PayPal Business." },
+        { text: "Copiez l'adresse email associée à votre compte PayPal Business." },
+        { text: "Collez-la dans le champ ci-dessous et enregistrez." },
       ],
       links: [
         { label: "PayPal Business", url: "https://www.paypal.com/business" },
@@ -295,6 +294,7 @@ export function SettingsPage() {
   // Payments tab state
   const [cardProvider, setCardProvider] = useState<"stripe" | "sumup">("stripe")
   const [paypalEnabled, setPaypalEnabled] = useState(false)
+  const [paypalEmail, setPaypalEmail] = useState("")
   const [cashEnabled, setCashEnabled] = useState(false)
 
   // OAuth payment connections
@@ -347,6 +347,7 @@ export function SettingsPage() {
       if (settings.payments) {
         setCardProvider(settings.payments.cardProvider ?? "stripe")
         setPaypalEnabled(settings.payments.paypal ?? false)
+        setPaypalEmail((settings.payments as any).paypalEmail ?? "")
         setCashEnabled(settings.payments.cash ?? false)
       }
 
@@ -394,7 +395,7 @@ export function SettingsPage() {
   }, [])
 
   // Redirect to provider OAuth page to initiate connection
-  const handleConnect = async (provider: "stripe" | "sumup" | "paypal") => {
+  const handleConnect = async (provider: "stripe" | "sumup") => {
     setConnectingProvider(provider)
     try {
       const { url } = await generateOAuthUrl({ provider })
@@ -406,7 +407,7 @@ export function SettingsPage() {
   }
 
   // Disconnect a payment provider OAuth connection
-  const handleDisconnect = async (provider: "stripe" | "sumup" | "paypal") => {
+  const handleDisconnect = async (provider: "stripe" | "sumup") => {
     try {
       await disconnectProvider({ provider })
       toast.success(`${provider} déconnecté`)
@@ -542,13 +543,17 @@ export function SettingsPage() {
   }
 
   const handleSavePayments = async () => {
-    // PayPal is considered enabled only when the OAuth connection exists and is active
-    const paypalConnected = paypalConnection?.status === "connected"
+    // Validate PayPal email if PayPal is enabled
+    if (paypalEnabled && paypalEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paypalEmail.trim())) {
+      toast.error("Adresse email PayPal invalide")
+      return
+    }
     try {
       await updateSettings({
         payments: {
           cardProvider,
-          paypal: paypalConnected || paypalEnabled,
+          paypal: paypalEnabled && !!paypalEmail.trim(),
+          paypalEmail: paypalEmail.trim() || undefined,
           cash: cashEnabled,
         },
       })
@@ -1236,7 +1241,7 @@ export function SettingsPage() {
               <Label>Autres moyens de paiement</Label>
               <div className="space-y-3">
 
-                {/* PayPal — OAuth connect/disconnect pattern */}
+                {/* PayPal — email-based connection */}
                 <div className="border border-border/50 rounded-lg p-4 space-y-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -1248,53 +1253,29 @@ export function SettingsPage() {
                         Accepter les paiements via PayPal
                       </p>
                     </div>
-
-                    {/* Connection status badge */}
-                    <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          paypalConnection?.status === "connected" ? "bg-green-500" : "bg-muted-foreground/40"
-                        }`}
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        {paypalConnection?.status === "connected" ? "Connecté" : "Non connecté"}
-                      </span>
-                    </div>
+                    <Switch
+                      checked={paypalEnabled}
+                      onCheckedChange={setPaypalEnabled}
+                    />
                   </div>
 
-                  {/* Merchant ID when connected */}
-                  {paypalConnection?.status === "connected" && paypalConnection.merchantId && (
-                    <p className="text-xs text-muted-foreground font-mono">
-                      ID : {paypalConnection.merchantId}
-                    </p>
-                  )}
-
-                  {/* Connect / Disconnect button */}
-                  {paypalConnection?.status === "connected" ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
-                      onClick={() => handleDisconnect("paypal")}
-                    >
-                      Déconnecter
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="h-7"
-                      disabled={connectingProvider === "paypal"}
-                      onClick={() => handleConnect("paypal")}
-                    >
-                      {connectingProvider === "paypal" ? (
-                        <>
-                          <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                          Connexion...
-                        </>
-                      ) : (
-                        "Connecter"
-                      )}
-                    </Button>
+                  {paypalEnabled && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="paypalEmail" className="text-xs">
+                        Email PayPal Business
+                      </Label>
+                      <Input
+                        id="paypalEmail"
+                        type="email"
+                        placeholder="votre-email@business.paypal.com"
+                        value={paypalEmail}
+                        onChange={(e) => setPaypalEmail(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        L'adresse email associée à votre compte PayPal Business.
+                        Les paiements seront envoyés directement sur ce compte.
+                      </p>
+                    </div>
                   )}
                 </div>
 
