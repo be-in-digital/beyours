@@ -121,6 +121,8 @@ export const create = {
     })),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    uberDirectEstimateId: v.optional(v.string()),
+    uberDirectFee: v.optional(v.number()),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
@@ -128,12 +130,41 @@ export const create = {
     // Calculate subtotal from items
     const subtotal = args.items.reduce((sum: any, item: any) => sum + item.subtotal, 0)
 
-    // Get store to retrieve tax rate and delivery fee
+    // Get store and global settings for tax rate and delivery config
     const store = await ctx.db.get(args.storeId)
     if (!store) throw new Error("Store not found")
 
-    const taxRate = (store.settings.taxRate ?? 0) / 100
-    const deliveryFee = args.type === "delivery" ? (store.settings.deliveryFee ?? 0) : 0
+    const globalSettings = await ctx.db.query("globalSettings").first()
+    const deliveryConfig = globalSettings?.delivery
+
+    const taxRate = (store.settings?.taxRate ?? globalSettings?.taxRate ?? 0) / 100
+
+    // Calculate delivery fee based on fee mode
+    let deliveryFee = 0
+    let deliveryFeeMode: "fixed" | "percentage" | undefined = undefined
+
+    if (args.type === "delivery" && deliveryConfig) {
+      const feeMode = deliveryConfig.feeMode ?? "fixed"
+      deliveryFeeMode = feeMode
+
+      // Check free delivery threshold
+      const freeAbove = deliveryConfig.freeAbove
+      if (freeAbove && subtotal >= freeAbove) {
+        deliveryFee = 0
+      } else if (feeMode === "fixed") {
+        deliveryFee = deliveryConfig.fee ?? 0
+      } else if (feeMode === "percentage") {
+        if (!args.uberDirectFee) {
+          throw new Error("uberDirectFee is required when delivery fee mode is percentage")
+        }
+        const percentage = deliveryConfig.percentage ?? 100
+        deliveryFee = Math.round(args.uberDirectFee * percentage / 100)
+        // Apply max fee cap
+        if (deliveryConfig.maxFee !== undefined && deliveryFee > deliveryConfig.maxFee) {
+          deliveryFee = deliveryConfig.maxFee
+        }
+      }
+    }
 
     const taxAmount = Math.round(subtotal * taxRate)
     const total = subtotal + taxAmount + deliveryFee
@@ -150,7 +181,10 @@ export const create = {
       items: args.items,
       subtotal,
       taxAmount,
-      deliveryFee: args.type === "delivery" ? deliveryFee : undefined,
+      deliveryFee: args.type === "delivery" && deliveryFee > 0 ? deliveryFee : undefined,
+      deliveryFeeMode: args.type === "delivery" ? deliveryFeeMode : undefined,
+      uberDirectEstimateId: args.uberDirectEstimateId,
+      uberDirectFee: args.uberDirectFee,
       total,
       deliveryAddress: args.deliveryAddress,
       paymentMethod: args.paymentMethod,

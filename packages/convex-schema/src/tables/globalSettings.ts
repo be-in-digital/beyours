@@ -32,16 +32,28 @@ export const globalSettingsTable = defineTable({
 
   // Delivery settings
   delivery: v.object({
-    radius: v.optional(v.number()), // in km
-    fee: v.optional(v.number()), // in cents
+    feeMode: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
+    fee: v.optional(v.number()), // fixed fee in cents (used when feeMode = "fixed")
+    percentage: v.optional(v.number()), // 1-100, % of Uber Direct cost charged to client
+    maxFee: v.optional(v.number()), // max fee cap in cents (percentage mode only)
     freeAbove: v.optional(v.number()), // free delivery above this amount (cents)
+    radius: v.optional(v.number()), // in km
   }),
+
+  // Payment configuration
+  payments: v.optional(v.object({
+    cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
+    paypal: v.boolean(),
+    cash: v.boolean(), // Only available for click & collect orders
+  })),
 
   // Integration credentials (global level)
   integrations: v.object({
     uberDirect: v.optional(v.object({
       customerId: v.optional(v.string()),
-      apiKey: v.optional(v.string()),
+      clientId: v.optional(v.string()),
+      clientSecret: v.optional(v.string()),
+      apiKey: v.optional(v.string()), // deprecated, kept for backward compat
       enabled: v.boolean(),
     })),
     uberEats: v.optional(v.object({

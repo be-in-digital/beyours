@@ -10,6 +10,7 @@ export { categoriesTable, productsTable, menusTable } from "./catalog"
 export { ordersTable } from "./orders"
 export { kitchenTicketsTable, printerSettingsTable } from "./kitchen"
 export { paymentsTable } from "./payments"
+export { paymentConnectionsTable } from "./paymentConnections"
 export { languagesTable, translationsTable, translationJobsTable } from "./i18n"
 export {
   gameQRCodesTable,

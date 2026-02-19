@@ -48,6 +48,10 @@ export const ordersTable = defineTable({
   subtotal: v.number(),
   taxAmount: v.number(),
   deliveryFee: v.optional(v.number()),
+  // Uber Direct delivery tracking
+  uberDirectEstimateId: v.optional(v.string()),
+  uberDirectFee: v.optional(v.number()), // actual Uber Direct cost in cents
+  deliveryFeeMode: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
   discountAmount: v.optional(v.number()),
   total: v.number(),
   deliveryAddress: v.optional(v.object({

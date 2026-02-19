@@ -33,14 +33,18 @@ export const createGlobalSettingsSchema = z.object({
     isClosed: z.boolean(),
   })).default([]),
   delivery: z.object({
-    radius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
+    feeMode: z.enum(["fixed", "percentage"]).optional().default("fixed"),
     fee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
+    percentage: z.number().min(1).max(100).optional(),
+    maxFee: z.number().min(0, "Le plafond doit etre positif").optional(),
     freeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
+    radius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
   }).default({}),
   integrations: z.object({
     uberDirect: z.object({
       customerId: z.string().optional(),
-      apiKey: z.string().optional(),
+      clientId: z.string().optional(),
+      clientSecret: z.string().optional(),
       enabled: z.boolean().default(true),
     }).optional(),
     uberEats: z.object({

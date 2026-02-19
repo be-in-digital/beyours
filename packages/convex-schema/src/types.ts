@@ -58,15 +58,19 @@ export type GlobalServices = {
 }
 
 export type GlobalDeliverySettings = {
-  radius?: number
+  feeMode?: "fixed" | "percentage"
   fee?: number
+  percentage?: number
+  maxFee?: number
   freeAbove?: number
+  radius?: number
 }
 
 export type GlobalIntegrations = {
   uberDirect?: {
     customerId?: string
-    apiKey?: string
+    clientId?: string
+    clientSecret?: string
     enabled: boolean
   }
   uberEats?: {
@@ -484,6 +488,9 @@ export type OrderDoc = BaseEntity & CreateOrderInput & {
   subtotal: number
   taxAmount: number
   deliveryFee?: number
+  deliveryFeeMode?: "fixed" | "percentage"
+  uberDirectEstimateId?: string
+  uberDirectFee?: number
   discountAmount?: number
   total: number
   estimatedPrepTime?: number

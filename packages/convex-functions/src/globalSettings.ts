@@ -44,14 +44,23 @@ export const upsert = {
       isClosed: v.boolean(),
     }))),
     delivery: v.optional(v.object({
-      radius: v.optional(v.number()),
+      feeMode: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
       fee: v.optional(v.number()),
+      percentage: v.optional(v.number()),
+      maxFee: v.optional(v.number()),
       freeAbove: v.optional(v.number()),
+      radius: v.optional(v.number()),
+    })),
+    payments: v.optional(v.object({
+      cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
+      paypal: v.boolean(),
+      cash: v.boolean(),
     })),
     integrations: v.optional(v.object({
       uberDirect: v.optional(v.object({
         customerId: v.optional(v.string()),
-        apiKey: v.optional(v.string()),
+        clientId: v.optional(v.string()),
+        clientSecret: v.optional(v.string()),
         enabled: v.boolean(),
       })),
       uberEats: v.optional(v.object({
@@ -95,7 +104,8 @@ export const upsert = {
         { day: 5, open: "09:00", close: "23:00", isClosed: false },
         { day: 6, open: "09:00", close: "23:00", isClosed: false },
       ],
-      delivery: args.delivery ?? { radius: 10, fee: 350, freeAbove: 3000 },
+      delivery: args.delivery ?? { feeMode: "fixed", radius: 10, fee: 350, freeAbove: 3000 },
+      payments: args.payments ?? { cardProvider: "stripe", paypal: false, cash: false },
       integrations: args.integrations ?? {},
       updatedAt: Date.now(),
     })

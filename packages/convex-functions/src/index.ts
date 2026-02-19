@@ -25,6 +25,14 @@ export * as orphanProducts from "./orphanProducts"
 export * as uberEatsOrders from "./uberEatsOrders"
 export * as uberEatsMenuSync from "./uberEatsMenuSync"
 export * as deliverooMenuSync from "./deliverooMenuSync"
+export * as paymentConnectionsDefs from "./paymentConnections"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
+
+// Delivery fee calculation utility (pure math, no Convex dependencies)
+export { calculateDeliveryFee, type DeliveryFeeParams, type DeliveryFeeResult } from "./deliveryFee"
+
+// Note: encryption utilities are NOT re-exported from the barrel to avoid
+// pulling Node.js crypto into non-"use node" bundles. Import directly:
+// import { encrypt, decrypt } from "@beindigital-engine/convex-functions/encryption"
