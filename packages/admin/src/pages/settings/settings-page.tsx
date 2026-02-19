@@ -61,7 +61,7 @@ function FieldInfo({ title, description, steps, links, note }: FieldInfoProps) {
           <Info className="h-3.5 w-3.5" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="!max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-base">{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
