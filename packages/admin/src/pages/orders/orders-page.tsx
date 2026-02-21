@@ -6,18 +6,12 @@ import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@beindigital-engine/ui"
 import { OrdersTable } from "./orders-table"
+import type { Order, OrderStatus } from "../../lib/types"
 
 /**
- * Order status type for filtering
+ * Order status filter type (includes "all" for no-filter)
  */
-type OrderStatus =
-  | "all"
-  | "pending"
-  | "confirmed"
-  | "preparing"
-  | "ready"
-  | "completed"
-  | "cancelled"
+type OrderStatusFilter = "all" | OrderStatus
 
 /**
  * Main content component for orders list page
@@ -25,18 +19,19 @@ type OrderStatus =
  */
 export function OrdersPage() {
   const storeId = useAdminStoreId()
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeStatus, setActiveStatus] = useState<OrderStatus>("all")
+  const [activeStatus, setActiveStatus] = useState<OrderStatusFilter>("all")
 
   // Fetch orders for the current store
   const orders = useQuery(
-    api?.orders?.list ?? ("skip" as any),
+    api?.orders?.list ?? ("skip" as never),
     storeId ? { storeId } : "skip"
-  )
+  ) as Order[] | undefined
 
   // Filter orders by status and search query
-  const filteredOrders = orders?.filter((order: any) => {
+  const filteredOrders = orders?.filter((order: Order) => {
     const matchesStatus = activeStatus === "all" || order.status === activeStatus
     const matchesSearch =
       searchQuery === "" ||
@@ -66,13 +61,15 @@ export function OrdersPage() {
       </div>
 
       {/* Status filter tabs */}
-      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatus)}>
+      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatusFilter)}>
         <TabsList variant="line">
           <TabsTrigger value="all">Toutes</TabsTrigger>
           <TabsTrigger value="pending">En attente</TabsTrigger>
           <TabsTrigger value="confirmed">Confirmées</TabsTrigger>
           <TabsTrigger value="preparing">En préparation</TabsTrigger>
           <TabsTrigger value="ready">Prêtes</TabsTrigger>
+          <TabsTrigger value="out_for_delivery">En livraison</TabsTrigger>
+          <TabsTrigger value="delivered">Livrées</TabsTrigger>
           <TabsTrigger value="completed">Terminées</TabsTrigger>
           <TabsTrigger value="cancelled">Annulées</TabsTrigger>
         </TabsList>

@@ -37,10 +37,10 @@ export function OrdersContent() {
   const orders = useQuery(
     api.orders.list,
     storeId ? { storeId } : "skip"
-  )
+  ) as Doc<"orders">[] | undefined
 
   // Filter orders by status and search query
-  const filteredOrders = orders?.filter((order: Doc<"orders">) => {
+  const filteredOrders = orders?.filter((order) => {
     const matchesStatus = activeStatus === "all" || order.status === activeStatus
     const matchesSearch =
       searchQuery === "" ||

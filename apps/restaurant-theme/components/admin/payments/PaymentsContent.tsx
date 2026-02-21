@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { formatPrice, formatDate } from "@/lib/admin/formatters"
 import { Card, CardContent } from "@/components/ui/card"
@@ -78,11 +78,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
   const payments = useQuery(
     api.payments.getByStore,
     storeId ? { storeId } : "skip"
-  )
+  ) as Doc<"payments">[] | undefined
 
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [providerFilter, setProviderFilter] = useState<string>("all")
-  const [refundingPayment, setRefundingPayment] = useState<Payment | null>(null)
+  const [refundingPayment, setRefundingPayment] = useState<Doc<"payments"> | null>(null)
 
   // Filter payments
   const filteredPayments = useMemo(() => {
@@ -91,11 +91,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
     let filtered = payments
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((p: Payment) => p.status === statusFilter)
+      filtered = filtered.filter((p) => p.status === statusFilter)
     }
 
     if (providerFilter !== "all") {
-      filtered = filtered.filter((p: Payment) => p.provider === providerFilter)
+      filtered = filtered.filter((p) => p.provider === providerFilter)
     }
 
     return filtered
@@ -188,7 +188,7 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment: Payment) => {
+              {filteredPayments.map((payment) => {
                 const canRefund =
                   payment.status === "succeeded" &&
                   payment.provider !== "cash" &&

@@ -22,34 +22,28 @@ import {
   Truck,
   XCircle,
 } from "lucide-react"
+import type { OrderStatus } from "../../lib/types"
 
 type OrderStatusActionsProps = {
   orderId: string
-  currentStatus:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out_for_delivery"
-    | "delivered"
-    | "completed"
-    | "cancelled"
+  currentStatus: OrderStatus
+}
+
+type ButtonVariant = "default" | "destructive" | "outline" | "secondary"
+
+interface StatusAction {
+  label: string
+  nextStatus: OrderStatus
+  variant: ButtonVariant
+  icon: React.ComponentType<{ className?: string }>
+  requiresReason?: boolean
 }
 
 /**
  * Status transition configuration
  * Defines available actions based on current status
  */
-const statusTransitions: Record<
-  OrderStatusActionsProps["currentStatus"],
-  Array<{
-    label: string
-    nextStatus: OrderStatusActionsProps["currentStatus"]
-    variant: "default" | "destructive" | "outline" | "secondary"
-    icon: React.ComponentType<{ className?: string }>
-    requiresReason?: boolean
-  }>
-> = {
+const statusTransitions: Record<OrderStatus, StatusAction[]> = {
   pending: [
     {
       label: "Accepter la commande",
@@ -127,8 +121,9 @@ export function OrderStatusActions({
   const [cancellationReason, setCancellationReason] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
-  const updateStatus = useMutation(api?.orders?.updateStatus ?? ("skip" as any))
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
+  const updateStatus = useMutation(api?.orders?.updateStatus ?? ("skip" as never))
 
   const availableActions = statusTransitions[currentStatus]
 
@@ -136,7 +131,7 @@ export function OrderStatusActions({
    * Handle status transition
    */
   const handleStatusChange = async (
-    nextStatus: OrderStatusActionsProps["currentStatus"],
+    nextStatus: OrderStatus,
     reason?: string
   ) => {
     setIsLoading(true)
@@ -152,8 +147,9 @@ export function OrderStatusActions({
       // Reset dialog state
       setShowCancelDialog(false)
       setCancellationReason("")
-    } catch (error) {
-      toast.error("Échec de la mise à jour du statut")
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      toast.error(`Échec de la mise à jour du statut: ${message}`)
       console.error("Error updating order status:", error)
     } finally {
       setIsLoading(false)
@@ -163,7 +159,7 @@ export function OrderStatusActions({
   /**
    * Handle button click
    */
-  const handleActionClick = (action: typeof availableActions[number]) => {
+  const handleActionClick = (action: StatusAction) => {
     if (action.requiresReason) {
       setShowCancelDialog(true)
     } else {
@@ -207,12 +203,12 @@ export function OrderStatusActions({
           <DialogHeader>
             <DialogTitle>Annuler la commande</DialogTitle>
             <DialogDescription>
-              Veuillez fournir un motif d'annulation.
+              Veuillez fournir un motif d&apos;annulation.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="reason">Motif d'annulation</Label>
+            <Label htmlFor="reason">Motif d&apos;annulation</Label>
             <Input
               id="reason"
               placeholder="ex : Rupture de stock, Demande du client..."

@@ -20,3 +20,4 @@ export {
   gamePlaysTable,
   prizeRedemptionsTable,
 } from "./gamification"
+export { promotionsTable, promotionUsagesTable } from "./promotions"

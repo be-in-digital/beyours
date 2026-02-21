@@ -11,48 +11,13 @@ import {
   TableRow,
 } from "@beindigital-engine/ui"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
-
-/**
- * Order type definition
- */
-type Order = {
-  _id: string
-  orderNumber: string
-  customerInfo: {
-    name: string
-    email?: string
-    phone?: string
-  }
-  type: "delivery" | "pickup" | "dine_in"
-  status:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out_for_delivery"
-    | "delivered"
-    | "completed"
-    | "cancelled"
-  items: Array<{
-    productId: string
-    productName: string
-    quantity: number
-    unitPrice: number
-    selectedOptions?: Array<{
-      optionId: string
-      optionName: string
-      choiceId: string
-      choiceName: string
-      priceModifier: number
-    }>
-    subtotal: number
-    notes?: string
-  }>
-  total: number
-  paymentMethod?: string
-  paymentStatus: "pending" | "paid" | "failed" | "refunded"
-  createdAt: number
-}
+import type {
+  Order,
+  OrderStatus,
+  OrderType,
+  OrderPaymentStatus,
+  BadgeVariant,
+} from "../../lib/types"
 
 type OrdersTableProps = {
   orders: Order[]
@@ -62,11 +27,8 @@ type OrdersTableProps = {
 /**
  * Get badge variant and label for order status
  */
-function getStatusBadge(status: Order["status"]) {
-  const statusConfig: Record<
-    Order["status"],
-    { className: string; label: string }
-  > = {
+function getStatusBadge(status: OrderStatus) {
+  const statusConfig: Record<OrderStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
     preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
@@ -84,8 +46,8 @@ function getStatusBadge(status: Order["status"]) {
 /**
  * Get badge variant and label for order type
  */
-function getTypeBadge(type: Order["type"]) {
-  const typeConfig: Record<Order["type"], { variant: any; label: string }> = {
+function getTypeBadge(type: OrderType) {
+  const typeConfig: Record<OrderType, { variant: BadgeVariant; label: string }> = {
     delivery: { variant: "default", label: "Livraison" },
     pickup: { variant: "secondary", label: "À emporter" },
     dine_in: { variant: "outline", label: "Sur place" },
@@ -98,15 +60,13 @@ function getTypeBadge(type: Order["type"]) {
 /**
  * Get badge variant and label for payment status
  */
-function getPaymentBadge(status: Order["paymentStatus"]) {
-  const paymentConfig: Record<
-    Order["paymentStatus"],
-    { className: string; label: string }
-  > = {
+function getPaymentBadge(status: OrderPaymentStatus) {
+  const paymentConfig: Record<OrderPaymentStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     paid: { className: "bg-green-100 text-green-800", label: "Payé" },
     failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
     refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
+    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Partiellement remboursé" },
   }
 
   const config = paymentConfig[status]

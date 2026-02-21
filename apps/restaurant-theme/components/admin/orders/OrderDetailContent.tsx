@@ -3,7 +3,7 @@
 import { use } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { formatPrice, formatOrderNumber, formatDate } from "@/lib/admin/formatters"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -70,12 +70,13 @@ function getTypeBadge(type: "delivery" | "pickup" | "dine_in") {
 /**
  * Get badge for payment status
  */
-function getPaymentBadge(status: "pending" | "paid" | "failed" | "refunded") {
+function getPaymentBadge(status: "pending" | "paid" | "failed" | "refunded" | "partially_refunded") {
   const paymentConfig = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     paid: { className: "bg-green-100 text-green-800", label: "Payé" },
     failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
     refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
+    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Remboursé partiellement" },
   }
 
   const config = paymentConfig[status]
@@ -92,7 +93,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
   // Fetch order details
   const order = useQuery(api.orders.getById, {
     id: orderId as Id<"orders">,
-  })
+  }) as Doc<"orders"> | null | undefined
 
   if (order === undefined) {
     return (
@@ -153,31 +154,14 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {order.items.map((item: {
-                    productId: Id<"products">
-                    productName: string
-                    quantity: number
-                    priceAtTime: number
-                    unitPrice: number
-                    subtotal: number
-                    selectedOptions?: Array<{
-                      optionName: string
-                      choiceName: string
-                      priceModifier: number
-                    }>
-                    notes?: string
-                  }, index: number) => (
+                  {order.items.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{item.productName}</div>
                           {item.selectedOptions && item.selectedOptions.length > 0 && (
                             <div className="text-sm text-muted-foreground mt-1">
-                              {item.selectedOptions.map((opt: {
-                                optionName: string
-                                choiceName: string
-                                priceModifier: number
-                              }, i: number) => (
+                              {item.selectedOptions.map((opt, i) => (
                                 <div key={i}>
                                   {opt.optionName}: {opt.choiceName}
                                   {opt.priceModifier !== 0 &&

@@ -11,63 +11,22 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { formatPrice, formatOrderNumber, formatDate } from "@/lib/admin/formatters"
-import type { Id } from "@/convex/_generated/dataModel"
-
-/**
- * Order type definition
- */
-type Order = {
-  _id: Id<"orders">
-  orderNumber: string
-  customerInfo: {
-    name: string
-    email?: string
-    phone?: string
-  }
-  type: "delivery" | "pickup" | "dine_in"
-  status:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out_for_delivery"
-    | "delivered"
-    | "completed"
-    | "cancelled"
-  items: Array<{
-    productId: Id<"products">
-    productName: string
-    quantity: number
-    unitPrice: number
-    selectedOptions?: Array<{
-      optionId: string
-      optionName: string
-      choiceId: string
-      choiceName: string
-      priceModifier: number
-    }>
-    subtotal: number
-    notes?: string
-  }>
-  total: number
-  paymentMethod?: string
-  paymentStatus: "pending" | "paid" | "failed" | "refunded"
-  createdAt: number
-}
+import type { Doc } from "@/convex/_generated/dataModel"
 
 type OrdersTableProps = {
-  orders: Order[]
+  orders: Doc<"orders">[]
   isLoading: boolean
 }
+
+type OrderStatus = Doc<"orders">["status"]
+type OrderType = Doc<"orders">["type"]
+type PaymentStatus = Doc<"orders">["paymentStatus"]
 
 /**
  * Get badge variant and label for order status
  */
-function getStatusBadge(status: Order["status"]) {
-  const statusConfig: Record<
-    Order["status"],
-    { className: string; label: string }
-  > = {
+function getStatusBadge(status: OrderStatus) {
+  const statusConfig: Record<OrderStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
     preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
@@ -85,8 +44,8 @@ function getStatusBadge(status: Order["status"]) {
 /**
  * Get badge variant and label for order type
  */
-function getTypeBadge(type: Order["type"]) {
-  const typeConfig: Record<Order["type"], { variant: "default" | "secondary" | "outline"; label: string }> = {
+function getTypeBadge(type: OrderType) {
+  const typeConfig: Record<OrderType, { variant: "default" | "secondary" | "outline"; label: string }> = {
     delivery: { variant: "default", label: "Livraison" },
     pickup: { variant: "secondary", label: "À emporter" },
     dine_in: { variant: "outline", label: "Sur place" },
@@ -99,15 +58,13 @@ function getTypeBadge(type: Order["type"]) {
 /**
  * Get badge variant and label for payment status
  */
-function getPaymentBadge(status: Order["paymentStatus"]) {
-  const paymentConfig: Record<
-    Order["paymentStatus"],
-    { className: string; label: string }
-  > = {
+function getPaymentBadge(status: PaymentStatus) {
+  const paymentConfig: Record<PaymentStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     paid: { className: "bg-green-100 text-green-800", label: "Payé" },
     failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
     refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
+    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Remboursé partiellement" },
   }
 
   const config = paymentConfig[status]
@@ -117,7 +74,7 @@ function getPaymentBadge(status: Order["paymentStatus"]) {
 /**
  * Calculate total items count from order items
  */
-function getTotalItems(items: Order["items"]): number {
+function getTotalItems(items: Doc<"orders">["items"]): number {
   return items.reduce((sum, item) => sum + item.quantity, 0)
 }
 

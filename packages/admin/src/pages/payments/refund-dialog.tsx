@@ -17,13 +17,7 @@ import {
 } from "@beindigital-engine/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice } from "../../lib/formatters"
-
-interface Payment {
-  _id: string
-  amount: number
-  currency: string
-  refundedAmount?: number
-}
+import type { Payment } from "../../lib/types"
 
 interface RefundDialogProps {
   payment: Payment
@@ -32,8 +26,9 @@ interface RefundDialogProps {
 }
 
 export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps) {
-  const { api } = useAdminApiStore()
-  const refundMutation = useMutation(api?.payments?.refund)
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
+  const refundMutation = useMutation(api?.payments?.refund ?? ("skip" as never))
 
   const maxRefundAmount = payment.amount - (payment.refundedAmount || 0)
   const [refundAmount, setRefundAmount] = useState(maxRefundAmount)
@@ -68,15 +63,16 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
       onOpenChange(false)
       setRefundAmount(maxRefundAmount)
       setReason("")
-    } catch (error) {
-      toast.error("Échec du traitement du remboursement")
-      console.error(error)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      toast.error(`Échec du remboursement: ${message}`)
+      console.error("Refund error:", error)
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const amountInDollars = (refundAmount / 100).toFixed(2)
+  const amountInUnits = (refundAmount / 100).toFixed(2)
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseFloat(e.target.value)
@@ -131,7 +127,7 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
                 step="0.01"
                 min="0.01"
                 max={(maxRefundAmount / 100).toFixed(2)}
-                value={amountInDollars}
+                value={amountInUnits}
                 onChange={handleAmountChange}
               />
             </div>
