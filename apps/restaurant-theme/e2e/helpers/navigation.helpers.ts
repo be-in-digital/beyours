@@ -6,9 +6,10 @@ import { expect } from "@playwright/test"
  * The admin layout includes a sidebar and a store selector.
  */
 export async function waitForAdminPage(page: Page, timeout = 30_000) {
-  // Wait for either the sidebar or the main content to be visible
+  // Wait for the sidebar to be visible (admin layout indicator)
+  // Use .first() to avoid strict mode violation when multiple sidebar elements exist
   await expect(
-    page.locator('[data-slot="sidebar"]').or(page.locator("main"))
+    page.locator('[data-slot="sidebar"]').first()
   ).toBeVisible({ timeout })
 
   // Wait for loading spinners/skeletons to disappear

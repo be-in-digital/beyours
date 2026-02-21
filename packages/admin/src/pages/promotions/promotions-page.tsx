@@ -265,7 +265,7 @@ export function PromotionsPage() {
               Créer une promotion
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh]">
             <DialogHeader>
               <DialogTitle>Nouvelle promotion</DialogTitle>
               <DialogDescription>
@@ -337,7 +337,7 @@ export function PromotionsPage() {
         open={!!editingPromotion}
         onOpenChange={(open) => !open && setEditingPromotion(null)}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle>Modifier la promotion</DialogTitle>
             <DialogDescription>
@@ -457,14 +457,11 @@ function PromotionTable({
                   {formatUsage(promo)}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={status.variant}>{status.label}</Badge>
-                    <Switch
-                      checked={promo.isActive}
-                      onCheckedChange={() => onToggleStatus(promo._id)}
-                      aria-label={`Toggle ${promo.name}`}
-                    />
-                  </div>
+                  <Switch
+                    checked={promo.isActive}
+                    onCheckedChange={() => onToggleStatus(promo._id)}
+                    aria-label={`Toggle ${promo.name}`}
+                  />
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>

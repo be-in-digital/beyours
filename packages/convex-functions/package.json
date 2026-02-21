@@ -29,7 +29,8 @@
     "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts",
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",
-    "./encryption": "./src/encryption.ts"
+    "./encryption": "./src/encryption.ts",
+    "./promotions": "./src/promotions.ts"
   },
   "scripts": {
     "lint": "eslint src/",

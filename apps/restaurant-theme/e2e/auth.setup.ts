@@ -24,6 +24,14 @@ setup("authenticate as admin", async ({ page }) => {
     page.getByRole("heading", { name: "Connexion" })
   ).toBeVisible({ timeout: 30_000 })
 
+  // Wait for Next.js compilation to finish (dev mode indicator)
+  const compilingIndicator = page.getByText("Compiling")
+  try {
+    await compilingIndicator.waitFor({ state: "hidden", timeout: 30_000 })
+  } catch {
+    // Indicator may not appear if already compiled
+  }
+
   // Extra wait for Convex WebSocket connection to stabilize
   await page.waitForLoadState("networkidle")
 
@@ -31,6 +39,9 @@ setup("authenticate as admin", async ({ page }) => {
   await page.getByLabel("Mot de passe").fill("julien")
 
   await page.getByRole("button", { name: "Se connecter" }).click()
+
+  // Wait for auth API response before checking URL
+  await page.waitForLoadState("networkidle", { timeout: 30_000 })
 
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 60_000 })
 

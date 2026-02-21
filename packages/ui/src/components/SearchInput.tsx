@@ -25,7 +25,7 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         <Search
           className={cn(
             "absolute top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none",
-            isSmall ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4"
+            isSmall ? "left-2.5 h-3 w-3" : "left-3 h-4 w-4"
           )}
         />
         <input

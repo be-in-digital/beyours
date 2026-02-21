@@ -31,6 +31,7 @@ import type * as paymentConnections from "../paymentConnections.js";
 import type * as payments from "../payments.js";
 import type * as prizes from "../prizes.js";
 import type * as products from "../products.js";
+import type * as promotions from "../promotions.js";
 import type * as storeIntegrations from "../storeIntegrations.js";
 import type * as stores from "../stores.js";
 import type * as teamMembers from "../teamMembers.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   payments: typeof payments;
   prizes: typeof prizes;
   products: typeof products;
+  promotions: typeof promotions;
   storeIntegrations: typeof storeIntegrations;
   stores: typeof stores;
   teamMembers: typeof teamMembers;
