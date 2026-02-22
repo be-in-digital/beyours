@@ -55,6 +55,9 @@ export type {
 
 export {
   createS3Service,
+  createS3Operations,
+  getS3Config,
+  getS3Service,
   validateMimeType,
   validateFileSize,
   getExtensionFromMimeType,

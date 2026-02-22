@@ -11,6 +11,10 @@ export { AdminHeader } from "./admin-header"
 export { ForgotPasswordForm } from "./forgot-password-form"
 export { ResetPasswordForm } from "./reset-password-form"
 
+// Upload
+export { ImageUploader } from "./image-uploader"
+export type { ImageUploaderProps } from "./image-uploader"
+
 // Shared
 export { ComingSoon } from "./coming-soon"
 export { LoadingState } from "./loading-state"

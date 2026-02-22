@@ -16,12 +16,15 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.995.0",
     "@aws-sdk/client-sesv2": "^3.990.0",
+    "@aws-sdk/s3-request-presigner": "^3.995.0",
     "@beindigital-engine/admin": "workspace:^",
     "@beindigital-engine/convex-functions": "workspace:^",
     "@beindigital-engine/convex-schema": "workspace:^",
     "@beindigital-engine/core": "workspace:^",
     "@beindigital-engine/integrations": "workspace:^",
+    "@beindigital-engine/marketing": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
     "@beindigital-engine/ui": "workspace:^",
     "@convex-dev/better-auth": "^0.10.10",
