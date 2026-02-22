@@ -72,18 +72,19 @@ test.describe("Settings Page", () => {
     })
 
     test("should display service toggles", async ({ page }) => {
-      // Check for service type toggles
+      // Check for service type toggles within the General tab panel
+      const generalPanel = page.getByRole("tabpanel")
       await expect(
-        page.getByText("Sur place", { exact: false })
+        generalPanel.getByText("Sur place", { exact: false })
       ).toBeVisible({ timeout: 15_000 })
       await expect(
-        page.getByText("À emporter", { exact: false })
+        generalPanel.getByText("À emporter", { exact: false })
       ).toBeVisible()
       await expect(
-        page.getByText("Livraison", { exact: false })
+        generalPanel.getByText("Livraison", { exact: true }).first()
       ).toBeVisible()
       await expect(
-        page.getByText("Click & Collect", { exact: false })
+        generalPanel.getByText("Click & Collect", { exact: false })
       ).toBeVisible()
     })
 
@@ -169,8 +170,7 @@ test.describe("Settings Page", () => {
       await page.getByRole("tab", { name: "Livraison" }).click()
 
       await expect(
-        page.getByText("Prix fixe", { exact: false })
-          .or(page.getByText("Pourcentage", { exact: false }))
+        page.getByText("Prix fixe", { exact: true }).first()
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -232,7 +232,7 @@ test.describe("Settings Page", () => {
       await page.getByRole("tab", { name: "Paiements" }).click()
 
       await expect(
-        page.getByText("PayPal", { exact: false })
+        page.getByText("PayPal", { exact: true }).first()
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -267,12 +267,11 @@ test.describe("Settings Page", () => {
       await page.getByRole("tab", { name: "Intégrations" }).click()
 
       await expect(
-        page.getByText("Uber Direct", { exact: false })
+        page.getByRole("heading", { name: "Uber Direct" })
       ).toBeVisible({ timeout: 15_000 })
 
       await expect(
-        page.getByLabel("Customer ID")
-          .or(page.getByText("Customer ID", { exact: false }))
+        page.getByRole("textbox", { name: /Customer ID/ })
       ).toBeVisible()
     })
 
@@ -280,7 +279,7 @@ test.describe("Settings Page", () => {
       await page.getByRole("tab", { name: "Intégrations" }).click()
 
       await expect(
-        page.getByText("Uber Eats", { exact: false })
+        page.getByRole("heading", { name: "Uber Eats" })
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -288,7 +287,7 @@ test.describe("Settings Page", () => {
       await page.getByRole("tab", { name: "Intégrations" }).click()
 
       await expect(
-        page.getByText("Deliveroo", { exact: false })
+        page.getByRole("heading", { name: "Deliveroo" })
       ).toBeVisible({ timeout: 15_000 })
     })
 

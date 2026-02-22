@@ -15,6 +15,18 @@ const SEARCH_PLACEHOLDER = "Rechercher une promotion..."
 // may recompile pages on first visit
 test.setTimeout(90_000)
 
+/**
+ * Open the create promotion dialog and wait for the form to fully render.
+ * The form can be slow on first load due to Next.js dev compilation.
+ */
+async function openCreateDialogAndWaitForForm(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Créer une promotion" }).click()
+  const dialog = await waitForDialog(page)
+  // Wait for the form's first input to be visible (proves form is mounted)
+  await expect(dialog.locator("#name")).toBeVisible({ timeout: 30_000 })
+  return dialog
+}
+
 test.describe("Promotions Page", () => {
   // ──────────────────────────────────────────────────
   // 1. Page Structure & Tabs
@@ -136,7 +148,7 @@ test.describe("Promotions Page", () => {
         .getByRole("combobox")
         .filter({ hasText: /statuts|Active|Inactive|Expirée|Planifiée/ })
       await statusFilter.click()
-      await page.getByRole("option", { name: status }).click()
+      await page.getByRole("option", { name: status, exact: true }).click()
       await page.waitForTimeout(500)
       await expect(
         page.getByRole("heading", { name: "Promotions", level: 1 })
@@ -156,20 +168,17 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     // Dialog title
     await expect(dialog.getByText("Nouvelle promotion")).toBeVisible()
 
-    // 5 form sections
-    await expect(dialog.getByText("Informations générales")).toBeVisible()
-    await expect(dialog.getByText("Déclenchement")).toBeVisible()
-    await expect(dialog.getByText("Réduction")).toBeVisible()
-    await expect(dialog.getByText("Période & horaires")).toBeVisible()
-    await expect(dialog.getByText("Limites & statut")).toBeVisible()
+    // 5 form sections (use exact to avoid substring matches like "Type de réduction")
+    await expect(dialog.getByText("Informations générales", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Déclenchement", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Réduction", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Période & horaires", { exact: true })).toBeVisible()
+    await expect(dialog.getByText("Limites & statut", { exact: true })).toBeVisible()
 
     // Essential fields
     await expect(dialog.getByLabel("Nom de la promotion")).toBeVisible()
@@ -231,25 +240,22 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
-    // Default: coupon mode with code field
-    await expect(dialog.getByLabel("Code promo")).toBeVisible()
+    // Default: coupon mode with code field (use #couponCode to avoid matching the radio label)
+    const couponInput = dialog.locator("#couponCode")
+    await expect(couponInput).toBeVisible()
 
     // Generate random code
-    const couponInput = dialog.getByPlaceholder("SUMMER2026")
     await expect(couponInput).toHaveValue("")
     await dialog.locator("button:has(svg.lucide-refresh-cw)").click()
     const value = await couponInput.inputValue()
     expect(value.length).toBe(8)
     expect(value).toMatch(/^[A-Z0-9]+$/)
 
-    // Switch to auto mode
-    await dialog.getByText("Offre automatique").click()
-    await expect(dialog.getByLabel("Code promo")).toBeHidden()
+    // Switch to auto mode (exact to avoid matching DialogDescription)
+    await dialog.getByText("Offre automatique", { exact: true }).click()
+    await expect(couponInput).toBeHidden()
   })
 
   // ──────────────────────────────────────────────────
@@ -262,10 +268,7 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     // Default: percentage
     await expect(dialog.getByLabel(/Valeur.*%/)).toBeVisible()
@@ -306,10 +309,7 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     // Default: Commande scope with no picker
     const orderRadio = dialog.locator('input[type="radio"][value="order"]')
@@ -346,10 +346,7 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     await dialog.getByText("Produit", { exact: true }).click()
 
@@ -388,10 +385,7 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     await dialog.getByText("Catégorie", { exact: true }).click()
 
@@ -435,10 +429,7 @@ test.describe("Promotions Page", () => {
     })
     await waitForAdminPage(page)
 
-    await page
-      .getByRole("button", { name: "Créer une promotion" })
-      .click()
-    const dialog = await waitForDialog(page)
+    const dialog = await openCreateDialogAndWaitForForm(page)
 
     // Default: scheduling off
     const sw = dialog.getByRole("switch", { name: "Planification horaire" })
