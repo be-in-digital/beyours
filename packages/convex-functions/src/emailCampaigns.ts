@@ -245,6 +245,22 @@ export const incrementStats = {
 }
 
 /**
+ * Reset stats and put campaign back to draft (for resend).
+ */
+export const resetStats = {
+  args: { id: v.id("emailCampaigns") },
+  handler: async (ctx: any, args: any) => {
+    await ctx.db.patch(args.id, {
+      stats: emptyStats,
+      status: "draft",
+      sentAt: undefined,
+      completedAt: undefined,
+      updatedAt: Date.now(),
+    })
+  },
+}
+
+/**
  * Increment revenue stat atomically.
  */
 export const incrementRevenue = {

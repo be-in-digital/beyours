@@ -55,10 +55,17 @@ export const send = action({
       id: args.campaignId,
     });
     if (!campaign) throw new Error("Campagne introuvable");
-    if (!["draft", "scheduled"].includes(campaign.status)) {
+    if (!["draft", "scheduled", "sent", "paused"].includes(campaign.status)) {
       throw new Error(
         "La campagne ne peut pas être envoyée dans son état actuel"
       );
+    }
+
+    // If resending a "sent" campaign, reset stats first
+    if (campaign.status === "sent") {
+      await ctx.runMutation(internal.emailCampaigns.resetStats, {
+        id: args.campaignId,
+      });
     }
 
     const template: any = await ctx.runQuery(api.emailTemplates.getById, {

@@ -68,5 +68,6 @@ export const pause = mutation({
 
 export const markSending = internalMutation(defs.markSending);
 export const markSent = internalMutation(defs.markSent);
+export const resetStats = internalMutation(defs.resetStats);
 export const incrementStats = internalMutation(defs.incrementStats);
 export const incrementRevenue = internalMutation(defs.incrementRevenue);

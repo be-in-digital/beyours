@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
 import {
@@ -92,13 +92,16 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
     storeId && step >= 2 ? { storeId } : "skip"
   ) as Segment[] | undefined
 
-  const subscriberCount = useQuery(
+  const subscriberCounts = useQuery(
     api?.emailSubscribers?.countByStatus,
-    storeId && step >= 2 ? { storeId, status: "active" } : "skip"
-  ) as number | undefined
+    storeId && step >= 2 ? { storeId } : "skip"
+  ) as { active: number; total: number } | undefined
+
+  const subscriberCount = subscriberCounts?.active
 
   const createMutation = useMutation(api?.emailCampaigns?.create)
   const scheduleMutation = useMutation(api?.emailCampaigns?.schedule)
+  const sendAction = useAction(api?.emailCampaignActions?.send)
 
   const selectedTemplate = templates?.find((t: Template) => t._id === form.templateId)
   const selectedSegment = segments?.find((s: Segment) => s._id === form.segmentId)
@@ -170,7 +173,11 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
         variants: form.abTestEnabled ? form.variants : undefined,
       })
 
-      if (scheduledAt && campaignId) {
+      if (form.sendNow && campaignId) {
+        toast.info("Envoi en cours...")
+        const result = await sendAction({ campaignId })
+        toast.success(`Campagne envoyée (${result?.sent ?? 0}/${result?.total ?? 0} emails)`)
+      } else if (scheduledAt && campaignId) {
         await scheduleMutation({ id: campaignId, scheduledAt })
         toast.success("Campagne planifiée")
       } else {
@@ -219,7 +226,7 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
         </div>
 
         {/* Step content */}
-        <div className="min-h-[300px] space-y-4 py-2">
+        <div className="min-h-[200px] max-h-[60vh] overflow-y-auto space-y-4 py-2">
           {/* Step 0: Informations */}
           {step === 0 && (
             <>

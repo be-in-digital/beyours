@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, useMemo } from "react"
 import {
@@ -11,10 +11,17 @@ import {
   Trash2,
   PauseCircle,
   XCircle,
+  AlertTriangle,
+  Copy,
+  Pencil,
+  Play,
+  RotateCcw,
 } from "lucide-react"
 import {
   Button,
   Badge,
+  Input,
+  Label,
   SearchInput,
   Select,
   SelectContent,
@@ -27,6 +34,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -85,9 +97,24 @@ export function EmailCampaignsPage() {
     storeId ? { storeId } : "skip"
   ) as Campaign[] | undefined
 
+  const emailConfig = useQuery(
+    api?.emailConfig?.get,
+    storeId ? { storeId } : "skip"
+  ) as { fromEmail?: string } | null | undefined
+
+  const isConfigMissing = emailConfig === null || (emailConfig && !emailConfig.fromEmail)
+
   const removeMutation = useMutation(api?.emailCampaigns?.remove)
+  const createMutation = useMutation(api?.emailCampaigns?.create)
+  const updateMutation = useMutation(api?.emailCampaigns?.update)
   const pauseMutation = useMutation(api?.emailCampaigns?.pause)
   const cancelMutation = useMutation(api?.emailCampaigns?.cancel)
+  const sendAction = useAction(api?.emailCampaignActions?.send)
+
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
+  const [editForm, setEditForm] = useState({ name: "", subject: "" })
+  const [isSaving, setIsSaving] = useState(false)
+  const [sendingId, setSendingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     if (!campaigns) return []
@@ -138,6 +165,61 @@ export function EmailCampaignsPage() {
     }
   }
 
+  const handleSend = async (campaign: Campaign) => {
+    setSendingId(campaign._id)
+    try {
+      toast.info("Envoi en cours...")
+      const result = await sendAction({ campaignId: campaign._id })
+      toast.success(`Campagne envoyée (${result?.sent ?? 0}/${result?.total ?? 0} emails)`)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      toast.error(`Échec de l'envoi : ${message}`)
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+  const openEdit = (campaign: Campaign) => {
+    setEditForm({ name: campaign.name, subject: campaign.subject })
+    setEditingCampaign(campaign)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingCampaign) return
+    setIsSaving(true)
+    try {
+      await updateMutation({
+        id: editingCampaign._id,
+        name: editForm.name.trim(),
+        subject: editForm.subject.trim(),
+      })
+      toast.success("Campagne mise à jour")
+      setEditingCampaign(null)
+    } catch (error: unknown) {
+      toast.error("Échec de la mise à jour")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDuplicate = async (campaign: Campaign) => {
+    if (!storeId) return
+    try {
+      await createMutation({
+        storeId,
+        name: `${campaign.name} (copie)`,
+        subject: campaign.subject,
+        templateId: campaign.templateId,
+        segmentId: campaign.segmentId || undefined,
+        abTestEnabled: campaign.abTestEnabled ?? false,
+        variants: campaign.variants,
+      })
+      toast.success("Campagne dupliquée")
+    } catch (error: unknown) {
+      toast.error("Échec de la duplication")
+    }
+  }
+
   if (!storeId) {
     return (
       <Empty>
@@ -156,6 +238,23 @@ export function EmailCampaignsPage() {
 
   return (
     <div className="space-y-4">
+      {/* Missing config alert */}
+      {isConfigMissing && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              Configuration email requise
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
+              Configurez votre adresse d&apos;expéditeur dans{" "}
+              <a href="/email/config" className="underline font-medium">Email &gt; Configuration</a>
+              {" "}avant de créer une campagne.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -165,7 +264,7 @@ export function EmailCampaignsPage() {
             {sentCount > 0 && ` · ${sentCount} envoyée${sentCount > 1 ? "s" : ""}`}
           </p>
         </div>
-        <Button size="sm" onClick={() => setIsWizardOpen(true)}>
+        <Button size="sm" onClick={() => setIsWizardOpen(true)} disabled={!!isConfigMissing}>
           <PlusIcon className="mr-2 h-4 w-4" />
           Nouvelle campagne
         </Button>
@@ -261,24 +360,70 @@ export function EmailCampaignsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {/* Envoyer — brouillon ou planifiée */}
+                          {["draft", "scheduled"].includes(campaign.status) && (
+                            <DropdownMenuItem
+                              onClick={() => handleSend(campaign)}
+                              disabled={sendingId === campaign._id}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              {sendingId === campaign._id ? "Envoi..." : "Envoyer"}
+                            </DropdownMenuItem>
+                          )}
+                          {/* Modifier — brouillon ou planifiée */}
+                          {["draft", "scheduled"].includes(campaign.status) && (
+                            <DropdownMenuItem onClick={() => openEdit(campaign)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Modifier
+                            </DropdownMenuItem>
+                          )}
+                          {/* Dupliquer — toujours disponible */}
+                          <DropdownMenuItem onClick={() => handleDuplicate(campaign)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            Dupliquer
+                          </DropdownMenuItem>
+                          {/* Renvoyer — envoyée (surtout si échec) */}
+                          {campaign.status === "sent" && (
+                            <DropdownMenuItem
+                              onClick={() => handleSend(campaign)}
+                              disabled={sendingId === campaign._id}
+                            >
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              {sendingId === campaign._id ? "Envoi..." : "Renvoyer"}
+                            </DropdownMenuItem>
+                          )}
+                          {/* Stats — envoyée */}
                           {campaign.status === "sent" && (
                             <DropdownMenuItem onClick={() => setStatsCampaign(campaign)}>
                               <BarChart2 className="mr-2 h-4 w-4" />
                               Voir les stats
                             </DropdownMenuItem>
                           )}
+                          {/* Pause — en cours d'envoi */}
                           {campaign.status === "sending" && (
                             <DropdownMenuItem onClick={() => handlePause(campaign._id)}>
                               <PauseCircle className="mr-2 h-4 w-4" />
                               Mettre en pause
                             </DropdownMenuItem>
                           )}
+                          {/* Relancer — en pause */}
+                          {campaign.status === "paused" && (
+                            <DropdownMenuItem
+                              onClick={() => handleSend(campaign)}
+                              disabled={sendingId === campaign._id}
+                            >
+                              <Play className="mr-2 h-4 w-4" />
+                              Relancer
+                            </DropdownMenuItem>
+                          )}
+                          {/* Annuler */}
                           {["draft", "scheduled", "paused"].includes(campaign.status) && (
                             <DropdownMenuItem onClick={() => handleCancel(campaign._id)}>
                               <XCircle className="mr-2 h-4 w-4" />
                               Annuler
                             </DropdownMenuItem>
                           )}
+                          {/* Supprimer */}
                           {["draft", "cancelled"].includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => setDeletingId(campaign._id)}
@@ -308,6 +453,47 @@ export function EmailCampaignsPage() {
         open={!!statsCampaign}
         onOpenChange={(open) => !open && setStatsCampaign(null)}
       />
+
+      {/* Edit dialog */}
+      <Dialog open={!!editingCampaign} onOpenChange={(open) => !open && setEditingCampaign(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier la campagne</DialogTitle>
+            <DialogDescription>Modifiez le nom et l&apos;objet de la campagne.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nom</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-subject">Objet</Label>
+              <Input
+                id="edit-subject"
+                value={editForm.subject}
+                onChange={(e) => setEditForm((f) => ({ ...f, subject: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditingCampaign(null)}>
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveEdit}
+              disabled={isSaving || !editForm.name.trim() || !editForm.subject.trim()}
+            >
+              {isSaving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <DeleteConfirmDialog
