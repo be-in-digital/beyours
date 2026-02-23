@@ -8,13 +8,27 @@ const internal = _internal as any;
 
 // ─── Helper: minimal HTML response page ─────────────────────────────────────
 
+const ESC_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
+function esc(str: string): string {
+  return str.replace(/[&<>"']/g, (ch) => ESC_MAP[ch] ?? ch);
+}
+
 function htmlPage(title: string, message: string): string {
+  const safeTitle = esc(title);
+  const safeMessage = esc(message);
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${title}</title>
+  <title>${safeTitle}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; color: #1a1a1a; }
     .card { background: #fff; border-radius: 12px; padding: 48px; max-width: 440px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -24,8 +38,8 @@ function htmlPage(title: string, message: string): string {
 </head>
 <body>
   <div class="card">
-    <h1>${title}</h1>
-    <p>${message}</p>
+    <h1>${safeTitle}</h1>
+    <p>${safeMessage}</p>
   </div>
 </body>
 </html>`;
@@ -154,12 +168,22 @@ function getMailHeader(
   return headers?.find((h) => h.name === name)?.value;
 }
 
+/**
+ * Validate SNS SigningCertURL following AWS best practices:
+ * - Must be HTTPS
+ * - Must be from sns.<region>.amazonaws.com
+ * - Path must end with .pem
+ * - No port override allowed
+ */
 function isValidSNSOrigin(certUrl: string | undefined): boolean {
   if (!certUrl) return false;
   try {
     const url = new URL(certUrl);
     return (
-      url.protocol === "https:" && url.hostname.endsWith(".amazonaws.com")
+      url.protocol === "https:" &&
+      /^sns\.[a-z0-9-]+\.amazonaws\.com$/.test(url.hostname) &&
+      url.pathname.endsWith(".pem") &&
+      !url.port
     );
   } catch {
     return false;

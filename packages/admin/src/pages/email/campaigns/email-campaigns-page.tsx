@@ -15,7 +15,6 @@ import {
   Copy,
   Pencil,
   Play,
-  RotateCcw,
   Eye,
   TestTube,
   Mail,
@@ -450,16 +449,8 @@ export function EmailCampaignsPage() {
                             <Copy className="mr-2 h-4 w-4" />
                             Dupliquer
                           </DropdownMenuItem>
-                          {/* Renvoyer — envoyée (surtout si échec) */}
-                          {campaign.status === "sent" && (
-                            <DropdownMenuItem
-                              onClick={() => handleSend(campaign)}
-                              disabled={sendingId === campaign._id}
-                            >
-                              <RotateCcw className="mr-2 h-4 w-4" />
-                              {sendingId === campaign._id ? "Envoi..." : "Renvoyer"}
-                            </DropdownMenuItem>
-                          )}
+                          {/* Renvoyer supprimé : une campagne envoyée ne doit pas être re-envoyée.
+                             Pour renvoyer, dupliquer la campagne et envoyer la copie. */}
                           {/* Stats — envoyée */}
                           {campaign.status === "sent" && (
                             <DropdownMenuItem onClick={() => setStatsCampaign(campaign)}>

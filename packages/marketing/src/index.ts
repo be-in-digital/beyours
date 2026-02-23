@@ -2,6 +2,8 @@
 // Package exports
 
 export {
+  escapeHtml,
+  sanitizeUrl,
   renderBlockToEmailHtml,
   renderTemplateToEmailHtml,
   renderTextBlock,

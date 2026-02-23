@@ -43,25 +43,39 @@ export const list = {
     source: v.optional(sourceValidator),
   },
   handler: async (ctx: any, args: any) => {
-    let q = ctx.db
-      .query("emailSubscribers")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-    const results = await q.collect()
-    let filtered = results
+    // Use the compound index when filtering by status
+    let results
     if (args.status) {
-      filtered = filtered.filter((s: any) => s.status === args.status)
+      results = await ctx.db
+        .query("emailSubscribers")
+        .withIndex("by_storeId_status", (q: any) =>
+          q.eq("storeId", args.storeId).eq("status", args.status)
+        )
+        .collect()
+    } else {
+      results = await ctx.db
+        .query("emailSubscribers")
+        .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+        .collect()
     }
     if (args.source) {
-      filtered = filtered.filter((s: any) => s.source === args.source)
+      results = results.filter((s: any) => s.source === args.source)
     }
-    return filtered
+    return results
   },
 }
 
 export const getById = {
-  args: { id: v.id("emailSubscribers") },
+  args: {
+    id: v.id("emailSubscribers"),
+    storeId: v.optional(v.id("stores")),
+  },
   handler: async (ctx: any, args: any) => {
-    return await ctx.db.get(args.id)
+    const subscriber = await ctx.db.get(args.id)
+    if (!subscriber) return null
+    // If storeId is provided, enforce store scoping
+    if (args.storeId && subscriber.storeId !== args.storeId) return null
+    return subscriber
   },
 }
 
@@ -182,13 +196,13 @@ export const remove = {
 export const confirmDoubleOptIn = {
   args: { token: v.string() },
   handler: async (ctx: any, args: any) => {
-    // Find subscriber with this token
-    const subscribers = await ctx.db
+    // Use dedicated index instead of full table scan
+    const subscriber = await ctx.db
       .query("emailSubscribers")
-      .collect()
-    const subscriber = subscribers.find(
-      (s: any) => s.doubleOptInToken === args.token
-    )
+      .withIndex("by_doubleOptInToken", (q: any) =>
+        q.eq("doubleOptInToken", args.token)
+      )
+      .first()
     if (!subscriber) throw new Error("Token invalide")
     if (subscriber.status !== "pending") throw new Error("Abonné déjà confirmé")
     if (subscriber.doubleOptInExpiresAt && Date.now() > subscriber.doubleOptInExpiresAt) {

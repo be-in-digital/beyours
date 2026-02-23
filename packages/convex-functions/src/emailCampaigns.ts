@@ -160,6 +160,11 @@ export const schedule = {
     scheduledAt: v.number(),
   },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+    if (campaign.status !== "draft") {
+      throw new Error("Seule une campagne en brouillon peut être planifiée")
+    }
     await ctx.db.patch(args.id, {
       status: "scheduled",
       scheduledAt: args.scheduledAt,
@@ -171,6 +176,11 @@ export const schedule = {
 export const cancel = {
   args: { id: v.id("emailCampaigns") },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+    if (!["draft", "scheduled", "paused"].includes(campaign.status)) {
+      throw new Error("Cette campagne ne peut pas être annulée")
+    }
     await ctx.db.patch(args.id, {
       status: "cancelled",
       updatedAt: Date.now(),
@@ -181,6 +191,11 @@ export const cancel = {
 export const pause = {
   args: { id: v.id("emailCampaigns") },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+    if (campaign.status !== "sending") {
+      throw new Error("Seule une campagne en cours d'envoi peut être mise en pause")
+    }
     await ctx.db.patch(args.id, {
       status: "paused",
       updatedAt: Date.now(),
@@ -191,6 +206,11 @@ export const pause = {
 export const markSending = {
   args: { id: v.id("emailCampaigns") },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+    if (!["draft", "scheduled", "paused"].includes(campaign.status)) {
+      throw new Error("Cette campagne ne peut pas être envoyée dans son état actuel")
+    }
     await ctx.db.patch(args.id, {
       status: "sending",
       sentAt: Date.now(),
@@ -202,6 +222,11 @@ export const markSending = {
 export const markSent = {
   args: { id: v.id("emailCampaigns") },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+    if (campaign.status !== "sending") {
+      throw new Error("Seule une campagne en cours d'envoi peut être marquée comme envoyée")
+    }
     await ctx.db.patch(args.id, {
       status: "sent",
       completedAt: Date.now(),

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
+  escapeHtml,
+  sanitizeUrl,
   renderTextBlock,
   renderImageBlock,
   renderButtonBlock,
@@ -869,5 +871,100 @@ describe("renderDecorativeDividerBlock", () => {
     const html = renderDecorativeDividerBlock(block)
     expect(html).toContain('align="left"')
     expect(html).toContain("#FF5722")
+  })
+})
+
+// ─── XSS Protection Tests ────────────────────────────────────────────────────
+
+describe("escapeHtml", () => {
+  it("devrait échapper les entités HTML", () => {
+    expect(escapeHtml('<script>alert("xss")</script>')).toBe(
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+    )
+  })
+
+  it("devrait échapper les apostrophes", () => {
+    expect(escapeHtml("O'Brien & Co")).toBe("O&#39;Brien &amp; Co")
+  })
+
+  it("devrait laisser le texte normal intact", () => {
+    expect(escapeHtml("Bonjour le monde")).toBe("Bonjour le monde")
+  })
+})
+
+describe("sanitizeUrl", () => {
+  it("devrait accepter les URLs https", () => {
+    expect(sanitizeUrl("https://example.com")).toBe("https://example.com")
+  })
+
+  it("devrait accepter les URLs http", () => {
+    expect(sanitizeUrl("http://example.com")).toBe("http://example.com")
+  })
+
+  it("devrait accepter les URLs mailto", () => {
+    expect(sanitizeUrl("mailto:test@example.com")).toBe("mailto:test@example.com")
+  })
+
+  it("devrait bloquer les URLs javascript:", () => {
+    expect(sanitizeUrl("javascript:alert(1)")).toBe("")
+  })
+
+  it("devrait bloquer les URLs data:", () => {
+    expect(sanitizeUrl("data:text/html,<script>alert(1)</script>")).toBe("")
+  })
+
+  it("devrait échapper les entités HTML dans les URLs", () => {
+    expect(sanitizeUrl('https://example.com/q?a=1&b="2"')).toBe(
+      'https://example.com/q?a=1&amp;b=&quot;2&quot;'
+    )
+  })
+})
+
+describe("XSS protection in blocks", () => {
+  it("devrait échapper le contenu XSS dans un bloc texte", () => {
+    const block: TextBlock = {
+      type: "text",
+      id: "xss1",
+      content: '<img src=x onerror=alert(1)>',
+    }
+    const html = renderTextBlock(block)
+    expect(html).not.toContain("<img src=x")
+    expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;")
+  })
+
+  it("devrait bloquer javascript: dans les URLs d'image", () => {
+    const block: ImageBlock = {
+      type: "image",
+      id: "xss2",
+      url: "javascript:alert(1)",
+    }
+    const html = renderImageBlock(block)
+    expect(html).not.toContain("javascript:")
+    expect(html).toContain('src=""')
+  })
+
+  it("devrait échapper le contenu XSS dans un bloc bouton", () => {
+    const block: ButtonBlock = {
+      type: "button",
+      id: "xss3",
+      text: '<script>alert("xss")</script>',
+      url: "https://example.com",
+    }
+    const html = renderButtonBlock(block)
+    expect(html).not.toContain("<script>")
+    expect(html).toContain("&lt;script&gt;")
+  })
+
+  it("devrait échapper le contenu XSS dans le branding du template", () => {
+    const xssBranding: EmailBranding = {
+      primaryColor: "#FF0000",
+      secondaryColor: "#000000",
+      senderName: '<img src=x onerror=alert(1)>',
+      unsubscribeUrl: "https://example.com/unsub",
+      unsubscribeText: "Se désabonner",
+    }
+    const html = renderTemplateToEmailHtml([], xssBranding)
+    expect(html).not.toContain("<img src=x")
+    expect(html).toContain("&lt;img src=x")
   })
 })

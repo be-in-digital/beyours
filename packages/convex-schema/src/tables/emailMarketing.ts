@@ -341,6 +341,7 @@ export const emailSubscribersTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_storeId_email", ["storeId", "email"])
+  .index("by_doubleOptInToken", ["doubleOptInToken"])
 
 /**
  * Email templates table

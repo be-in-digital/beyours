@@ -9,6 +9,36 @@
  * No tracking pixel or link wrapping needed here.
  */
 
+// ─── XSS protection utilities ─────────────────────────────────────────────────
+
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+}
+
+/** Escape HTML entities in user-provided text content */
+export function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch] ?? ch)
+}
+
+/** Sanitize a URL: only allow http(s) and mailto protocols, escape HTML entities in the result */
+export function sanitizeUrl(url: string): string {
+  const trimmed = url.trim()
+  if (
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("mailto:")
+  ) {
+    return escapeHtml(trimmed)
+  }
+  return ""
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 export interface EmailBranding {
   logoUrl?: string
   primaryColor: string
@@ -252,7 +282,7 @@ export function renderTextBlock(block: TextBlock): string {
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
     <td align="${align}" style="padding:12px 24px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#333333;">
-      ${block.content}
+      ${escapeHtml(block.content)}
     </td>
   </tr>
 </table>`
@@ -261,9 +291,11 @@ export function renderTextBlock(block: TextBlock): string {
 export function renderImageBlock(block: ImageBlock): string {
   const align = alignToTableAlign(block.alignment)
   const width = block.width ?? 600
-  const img = `<img src="${block.url}" alt="${block.alt ?? ""}" width="${width}" style="display:block;max-width:100%;height:auto;border:0;" />`
+  const src = sanitizeUrl(block.url)
+  const alt = escapeHtml(block.alt ?? "")
+  const img = `<img src="${src}" alt="${alt}" width="${width}" style="display:block;max-width:100%;height:auto;border:0;" />`
   const wrapped = block.linkUrl
-    ? `<a href="${block.linkUrl}" style="display:block;text-decoration:none;">${img}</a>`
+    ? `<a href="${sanitizeUrl(block.linkUrl)}" style="display:block;text-decoration:none;">${img}</a>`
     : img
 
   return `
@@ -280,19 +312,21 @@ export function renderButtonBlock(block: ButtonBlock): string {
   const align = alignToTableAlign(block.alignment)
   const bg = block.backgroundColor ?? "#000000"
   const color = block.textColor ?? "#ffffff"
+  const url = sanitizeUrl(block.url)
+  const text = escapeHtml(block.text)
 
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
     <td align="${align}" style="padding:16px 24px;">
       <!--[if mso]>
-      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${block.url}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="10%" stroke="f" fillcolor="${bg}">
+      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${url}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="10%" stroke="f" fillcolor="${bg}">
         <w:anchorlock/>
         <center>
       <![endif]-->
-      <a href="${block.url}"
+      <a href="${url}"
          style="background-color:${bg};border-radius:4px;color:${color};display:inline-block;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;line-height:44px;text-align:center;text-decoration:none;width:200px;-webkit-text-size-adjust:none;mso-hide:all;">
-        ${block.text}
+        ${text}
       </a>
       <!--[if mso]>
         </center>
@@ -346,10 +380,10 @@ export function renderProductBlock(
   <td style="padding:12px;border-bottom:1px solid #eeeeee;vertical-align:top;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
       <tr>
-        ${p.imageUrl ? `<td width="80" style="vertical-align:top;padding-right:12px;"><img src="${p.imageUrl}" alt="${p.name}" width="80" height="80" style="display:block;border:0;object-fit:cover;" /></td>` : ""}
+        ${p.imageUrl ? `<td width="80" style="vertical-align:top;padding-right:12px;"><img src="${sanitizeUrl(p.imageUrl)}" alt="${escapeHtml(p.name)}" width="80" height="80" style="display:block;border:0;object-fit:cover;" /></td>` : ""}
         <td style="vertical-align:top;">
-          <p style="margin:0 0 4px 0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#333333;">${p.name}</p>
-          ${p.description ? `<p style="margin:0 0 8px 0;font-family:Arial,sans-serif;font-size:13px;color:#666666;">${p.description}</p>` : ""}
+          <p style="margin:0 0 4px 0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#333333;">${escapeHtml(p.name)}</p>
+          ${p.description ? `<p style="margin:0 0 8px 0;font-family:Arial,sans-serif;font-size:13px;color:#666666;">${escapeHtml(p.description)}</p>` : ""}
           <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#333333;">${formatPrice(p.price)}</p>
         </td>
       </tr>
@@ -376,9 +410,9 @@ function renderSingleProduct(
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
-    ${p.imageUrl ? `<td><img src="${p.imageUrl}" alt="${p.name}" width="100%" style="display:block;border:0;max-width:100%;" /></td></tr><tr>` : ""}
+    ${p.imageUrl ? `<td><img src="${sanitizeUrl(p.imageUrl)}" alt="${escapeHtml(p.name)}" width="100%" style="display:block;border:0;max-width:100%;" /></td></tr><tr>` : ""}
     <td style="padding:8px 0;">
-      <p style="margin:0 0 4px 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;">${p.name}</p>
+      <p style="margin:0 0 4px 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;">${escapeHtml(p.name)}</p>
       <p style="margin:0;font-family:Arial,sans-serif;font-size:13px;color:#333333;">${formatPrice(p.price)}</p>
     </td>
   </tr>
@@ -430,7 +464,7 @@ export function renderHeadingBlock(block: HeadingBlock): string {
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
     <td align="${align}" style="padding:12px 24px;font-family:Arial,sans-serif;font-size:${fontSize};font-weight:bold;line-height:${lineHeight};color:${color};">
-      ${block.content}
+      ${escapeHtml(block.content)}
     </td>
   </tr>
 </table>`
@@ -450,8 +484,8 @@ export function renderSocialBlock(block: SocialBlock): string {
   const links = block.links
     .map((link) => {
       const color = PLATFORM_COLORS[link.platform] ?? "#555555"
-      const label = link.platform.charAt(0).toUpperCase() + link.platform.slice(1)
-      return `<a href="${link.url}" style="color:${color};text-decoration:none;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;margin:0 8px;">${label}</a>`
+      const label = escapeHtml(link.platform.charAt(0).toUpperCase() + link.platform.slice(1))
+      return `<a href="${sanitizeUrl(link.url)}" style="color:${color};text-decoration:none;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;margin:0 8px;">${label}</a>`
     })
     .join(" ")
 
@@ -477,8 +511,8 @@ export function renderCouponBlock(block: CouponBlock): string {
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:${bg};border:2px dashed ${border};border-radius:8px;">
         <tr>
           <td align="center" style="padding:20px;font-family:Arial,sans-serif;color:${color};">
-            ${block.description ? `<p style="margin:0 0 8px 0;font-size:14px;">${block.description}</p>` : ""}
-            <p style="margin:0;font-size:24px;font-weight:bold;letter-spacing:3px;font-family:'Courier New',monospace;">${block.code}</p>
+            ${block.description ? `<p style="margin:0 0 8px 0;font-size:14px;">${escapeHtml(block.description)}</p>` : ""}
+            <p style="margin:0;font-size:24px;font-weight:bold;letter-spacing:3px;font-family:'Courier New',monospace;">${escapeHtml(block.code)}</p>
           </td>
         </tr>
       </table>
@@ -540,14 +574,14 @@ export function renderColumnsBlock(block: ColumnsBlock): string {
 
 export function renderVideoBlock(block: VideoBlock): string {
   const align = alignToTableAlign(block.alignment)
-  const alt = block.alt ?? "Voir la vidéo"
+  const alt = escapeHtml(block.alt ?? "Voir la vidéo")
 
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
     <td align="${align}" style="padding:12px 24px;">
-      <a href="${block.videoUrl}" style="display:inline-block;text-decoration:none;position:relative;">
-        <img src="${block.thumbnailUrl}" alt="${alt}" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:4px;" />
+      <a href="${sanitizeUrl(block.videoUrl)}" style="display:inline-block;text-decoration:none;position:relative;">
+        <img src="${sanitizeUrl(block.thumbnailUrl)}" alt="${alt}" width="560" style="display:block;max-width:100%;height:auto;border:0;border-radius:4px;" />
       </a>
     </td>
   </tr>
@@ -559,23 +593,24 @@ export function renderHeroBlock(block: HeroBlock): string {
   const color = block.textColor ?? "#ffffff"
   const overlay = block.overlayColor ?? "rgba(0,0,0,0.4)"
 
+  const heroImageUrl = sanitizeUrl(block.imageUrl)
   const buttonHtml =
     block.buttonText && block.buttonUrl
-      ? `<a href="${block.buttonUrl}" style="display:inline-block;background-color:#ffffff;color:#333333;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:4px;margin-top:16px;">${block.buttonText}</a>`
+      ? `<a href="${sanitizeUrl(block.buttonUrl)}" style="display:inline-block;background-color:#ffffff;color:#333333;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;text-decoration:none;padding:12px 28px;border-radius:4px;margin-top:16px;">${escapeHtml(block.buttonText)}</a>`
       : ""
 
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
   <tr>
-    <td align="${align}" background="${block.imageUrl}" width="600" height="300" valign="middle" style="background-image:url('${block.imageUrl}');background-size:cover;background-position:center;background-color:#333333;height:300px;">
+    <td align="${align}" background="${heroImageUrl}" width="600" height="300" valign="middle" style="background-image:url('${heroImageUrl}');background-size:cover;background-position:center;background-color:#333333;height:300px;">
       <!--[if gte mso 9]>
       <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;height:300px;">
-        <v:fill type="frame" src="${block.imageUrl}" color="#333333" />
+        <v:fill type="frame" src="${heroImageUrl}" color="#333333" />
         <v:textbox inset="0,0,0,0">
       <![endif]-->
       <div style="background-color:${overlay};padding:40px 24px;text-align:${align};">
-        <p style="margin:0;font-family:Arial,sans-serif;font-size:28px;font-weight:bold;color:${color};line-height:1.3;">${block.title}</p>
-        ${block.subtitle ? `<p style="margin:8px 0 0 0;font-family:Arial,sans-serif;font-size:16px;color:${color};line-height:1.5;">${block.subtitle}</p>` : ""}
+        <p style="margin:0;font-family:Arial,sans-serif;font-size:28px;font-weight:bold;color:${color};line-height:1.3;">${escapeHtml(block.title)}</p>
+        ${block.subtitle ? `<p style="margin:8px 0 0 0;font-family:Arial,sans-serif;font-size:16px;color:${color};line-height:1.5;">${escapeHtml(block.subtitle)}</p>` : ""}
         ${buttonHtml}
       </div>
       <!--[if gte mso 9]>
@@ -592,7 +627,7 @@ export function renderMenuHighlightBlock(block: MenuHighlightBlock): string {
 
   const accent = block.accentColor ?? "#FF5722"
   const titleHtml = block.title
-    ? `<tr><td style="padding:12px 24px 8px;font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#333333;">${block.title}</td></tr>`
+    ? `<tr><td style="padding:12px 24px 8px;font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#333333;">${escapeHtml(block.title)}</td></tr>`
     : ""
 
   if (block.layout === "grid" && block.items.length >= 2) {
@@ -628,11 +663,11 @@ export function renderMenuHighlightBlock(block: MenuHighlightBlock): string {
   <td style="padding:8px 0;border-bottom:1px solid #eeeeee;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
       <tr>
-        ${item.imageUrl ? `<td width="80" style="vertical-align:top;padding-right:12px;"><img src="${item.imageUrl}" alt="${item.name}" width="80" height="80" style="display:block;border:0;border-radius:4px;object-fit:cover;" /></td>` : ""}
+        ${item.imageUrl ? `<td width="80" style="vertical-align:top;padding-right:12px;"><img src="${sanitizeUrl(item.imageUrl)}" alt="${escapeHtml(item.name)}" width="80" height="80" style="display:block;border:0;border-radius:4px;object-fit:cover;" /></td>` : ""}
         <td style="vertical-align:top;">
-          <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#333333;">${item.name}</p>
-          ${item.description ? `<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:13px;color:#666666;">${item.description}</p>` : ""}
-          <p style="margin:6px 0 0 0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:${accent};">${item.price}</p>
+          <p style="margin:0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:#333333;">${escapeHtml(item.name)}</p>
+          ${item.description ? `<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:13px;color:#666666;">${escapeHtml(item.description)}</p>` : ""}
+          <p style="margin:6px 0 0 0;font-family:Arial,sans-serif;font-size:15px;font-weight:bold;color:${accent};">${escapeHtml(item.price)}</p>
         </td>
       </tr>
     </table>
@@ -658,12 +693,12 @@ function renderSingleMenuItem(
 ): string {
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-  ${item.imageUrl ? `<tr><td><img src="${item.imageUrl}" alt="${item.name}" width="100%" style="display:block;border:0;border-radius:4px;max-width:100%;" /></td></tr>` : ""}
+  ${item.imageUrl ? `<tr><td><img src="${sanitizeUrl(item.imageUrl)}" alt="${escapeHtml(item.name)}" width="100%" style="display:block;border:0;border-radius:4px;max-width:100%;" /></td></tr>` : ""}
   <tr>
     <td style="padding:8px 0;">
-      <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;">${item.name}</p>
-      ${item.description ? `<p style="margin:2px 0 0 0;font-family:Arial,sans-serif;font-size:12px;color:#666666;">${item.description}</p>` : ""}
-      <p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:${accent};">${item.price}</p>
+      <p style="margin:0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;">${escapeHtml(item.name)}</p>
+      ${item.description ? `<p style="margin:2px 0 0 0;font-family:Arial,sans-serif;font-size:12px;color:#666666;">${escapeHtml(item.description)}</p>` : ""}
+      <p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:${accent};">${escapeHtml(item.price)}</p>
     </td>
   </tr>
 </table>`
@@ -695,8 +730,8 @@ export function renderCountdownBlock(block: CountdownBlock): string {
       <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:${bg};border-radius:8px;">
         <tr>
           <td align="center" style="padding:24px;font-family:Arial,sans-serif;color:${color};">
-            <p style="margin:0 0 8px 0;font-size:14px;text-transform:uppercase;letter-spacing:2px;">${title}</p>
-            <p style="margin:0;font-size:22px;font-weight:bold;">Valable jusqu'au ${formattedDate}</p>
+            <p style="margin:0 0 8px 0;font-size:14px;text-transform:uppercase;letter-spacing:2px;">${escapeHtml(title)}</p>
+            <p style="margin:0;font-size:22px;font-weight:bold;">Valable jusqu'au ${escapeHtml(formattedDate)}</p>
           </td>
         </tr>
       </table>
@@ -714,9 +749,9 @@ export function renderGalleryBlock(block: GalleryBlock): string {
   const rows: string[] = []
   for (let i = 0; i < block.images.length; i += cols) {
     const cells = block.images.slice(i, i + cols).map((img) => {
-      const imgTag = `<img src="${img.url}" alt="${img.alt ?? ""}" width="100%" style="display:block;border:0;border-radius:4px;max-width:100%;" />`
+      const imgTag = `<img src="${sanitizeUrl(img.url)}" alt="${escapeHtml(img.alt ?? "")}" width="100%" style="display:block;border:0;border-radius:4px;max-width:100%;" />`
       const wrapped = img.linkUrl
-        ? `<a href="${img.linkUrl}" style="display:block;text-decoration:none;">${imgTag}</a>`
+        ? `<a href="${sanitizeUrl(img.linkUrl)}" style="display:block;text-decoration:none;">${imgTag}</a>`
         : imgTag
       return `<td width="${width}%" valign="top" style="padding:${gap / 2}px;">${wrapped}</td>`
     }).join("")
@@ -738,12 +773,12 @@ export function renderGalleryBlock(block: GalleryBlock): string {
 export function renderLocationBlock(block: LocationBlock): string {
   const align = alignToTableAlign(block.alignment)
   const mapLink = block.mapUrl
-    ? `<a href="${block.mapUrl}" style="color:#1a73e8;text-decoration:underline;font-family:Arial,sans-serif;font-size:13px;">Voir sur la carte</a>`
+    ? `<a href="${sanitizeUrl(block.mapUrl)}" style="color:#1a73e8;text-decoration:underline;font-family:Arial,sans-serif;font-size:13px;">Voir sur la carte</a>`
     : ""
 
   const details: string[] = []
-  if (block.phone) details.push(`<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;">&#9742; ${block.phone}</p>`)
-  if (block.email) details.push(`<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;">&#9993; ${block.email}</p>`)
+  if (block.phone) details.push(`<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;">&#9742; ${escapeHtml(block.phone)}</p>`)
+  if (block.email) details.push(`<p style="margin:4px 0 0 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;">&#9993; ${escapeHtml(block.email)}</p>`)
 
   return `
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
@@ -752,8 +787,8 @@ export function renderLocationBlock(block: LocationBlock): string {
       <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
         <tr>
           <td style="font-family:Arial,sans-serif;">
-            <p style="margin:0;font-size:16px;font-weight:bold;color:#333333;">${block.address}</p>
-            ${block.city ? `<p style="margin:4px 0 0 0;font-size:14px;color:#555555;">${block.city}</p>` : ""}
+            <p style="margin:0;font-size:16px;font-weight:bold;color:#333333;">${escapeHtml(block.address)}</p>
+            ${block.city ? `<p style="margin:4px 0 0 0;font-size:14px;color:#555555;">${escapeHtml(block.city)}</p>` : ""}
             ${details.join("")}
             ${mapLink ? `<p style="margin:8px 0 0 0;">${mapLink}</p>` : ""}
           </td>
@@ -768,15 +803,15 @@ export function renderHoursBlock(block: HoursBlock): string {
   if (block.rows.length === 0) return ""
   const accent = block.accentColor ?? "#333333"
   const titleHtml = block.title
-    ? `<tr><td colspan="2" style="padding:0 0 8px 0;font-family:Arial,sans-serif;font-size:18px;font-weight:bold;color:${accent};">${block.title}</td></tr>`
+    ? `<tr><td colspan="2" style="padding:0 0 8px 0;font-family:Arial,sans-serif;font-size:18px;font-weight:bold;color:${accent};">${escapeHtml(block.title)}</td></tr>`
     : ""
 
   const rowsHtml = block.rows
     .map(
       (row) => `
 <tr>
-  <td style="padding:4px 12px 4px 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;border-bottom:1px solid #eeeeee;">${row.day}</td>
-  <td style="padding:4px 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;border-bottom:1px solid #eeeeee;text-align:right;">${row.hours}</td>
+  <td style="padding:4px 12px 4px 0;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;color:#333333;border-bottom:1px solid #eeeeee;">${escapeHtml(row.day)}</td>
+  <td style="padding:4px 0;font-family:Arial,sans-serif;font-size:14px;color:#555555;border-bottom:1px solid #eeeeee;text-align:right;">${escapeHtml(row.hours)}</td>
 </tr>`
     )
     .join("")
@@ -802,7 +837,7 @@ export function renderTestimonialBlock(block: TestimonialBlock): string {
     : ""
 
   const avatar = block.avatarUrl
-    ? `<td width="48" style="vertical-align:top;padding-right:12px;"><img src="${block.avatarUrl}" alt="${block.author}" width="48" height="48" style="display:block;border:0;border-radius:50%;" /></td>`
+    ? `<td width="48" style="vertical-align:top;padding-right:12px;"><img src="${sanitizeUrl(block.avatarUrl)}" alt="${escapeHtml(block.author)}" width="48" height="48" style="display:block;border:0;border-radius:50%;" /></td>`
     : ""
 
   return `
@@ -813,12 +848,12 @@ export function renderTestimonialBlock(block: TestimonialBlock): string {
         <tr>
           <td style="padding:20px;font-family:Arial,sans-serif;color:${color};">
             ${stars}
-            <p style="margin:0 0 12px 0;font-size:15px;font-style:italic;line-height:1.6;">&ldquo;${block.quote}&rdquo;</p>
+            <p style="margin:0 0 12px 0;font-size:15px;font-style:italic;line-height:1.6;">&ldquo;${escapeHtml(block.quote)}&rdquo;</p>
             <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
               <tr>
                 ${avatar}
                 <td style="vertical-align:middle;">
-                  <p style="margin:0;font-size:14px;font-weight:bold;color:${color};">${block.author}</p>
+                  <p style="margin:0;font-size:14px;font-weight:bold;color:${color};">${escapeHtml(block.author)}</p>
                 </td>
               </tr>
             </table>
@@ -924,7 +959,7 @@ export function renderTemplateToEmailHtml(
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:${branding.primaryColor};">
   <tr>
     <td align="center" style="padding:24px;">
-      <img src="${branding.logoUrl}" alt="${branding.senderName}" height="50" style="display:block;border:0;" />
+      <img src="${sanitizeUrl(branding.logoUrl)}" alt="${escapeHtml(branding.senderName)}" height="50" style="display:block;border:0;" />
     </td>
   </tr>
 </table>`
@@ -932,7 +967,7 @@ export function renderTemplateToEmailHtml(
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:${branding.primaryColor};">
   <tr>
     <td align="center" style="padding:24px;font-family:Arial,sans-serif;font-size:20px;font-weight:bold;color:#ffffff;">
-      ${branding.senderName}
+      ${escapeHtml(branding.senderName)}
     </td>
   </tr>
 </table>`
@@ -942,7 +977,7 @@ export function renderTemplateToEmailHtml(
         .filter(([, url]) => url)
         .map(
           ([network, url]) =>
-            `<a href="${url}" style="color:${branding.primaryColor};text-decoration:none;margin:0 8px;font-family:Arial,sans-serif;font-size:13px;">${network}</a>`
+            `<a href="${sanitizeUrl(url!)}" style="color:${branding.primaryColor};text-decoration:none;margin:0 8px;font-family:Arial,sans-serif;font-size:13px;">${escapeHtml(network)}</a>`
         )
         .join(" · ")
     : ""
@@ -951,11 +986,11 @@ export function renderTemplateToEmailHtml(
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background-color:#f8f8f8;">
   <tr>
     <td align="center" style="padding:24px;font-family:Arial,sans-serif;font-size:12px;color:#999999;line-height:1.6;">
-      ${branding.footerText ? `<p style="margin:0 0 8px 0;">${branding.footerText}</p>` : ""}
+      ${branding.footerText ? `<p style="margin:0 0 8px 0;">${escapeHtml(branding.footerText)}</p>` : ""}
       ${socialLinks ? `<p style="margin:0 0 8px 0;">${socialLinks}</p>` : ""}
       <p style="margin:0;">
-        <a href="${branding.unsubscribeUrl}" style="color:#999999;text-decoration:underline;font-family:Arial,sans-serif;font-size:12px;">
-          ${branding.unsubscribeText}
+        <a href="${sanitizeUrl(branding.unsubscribeUrl)}" style="color:#999999;text-decoration:underline;font-family:Arial,sans-serif;font-size:12px;">
+          ${escapeHtml(branding.unsubscribeText)}
         </a>
       </p>
     </td>
