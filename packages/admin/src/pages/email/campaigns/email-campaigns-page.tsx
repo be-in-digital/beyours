@@ -16,6 +16,11 @@ import {
   Pencil,
   Play,
   RotateCcw,
+  Eye,
+  TestTube,
+  Mail,
+  Monitor,
+  Smartphone,
 } from "lucide-react"
 import {
   Button,
@@ -49,6 +54,8 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@beindigital-engine/ui"
+import { renderTemplateToEmailHtml } from "@beindigital-engine/marketing"
+import type { EmailBranding, EmailBlock } from "@beindigital-engine/marketing"
 import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
@@ -100,7 +107,14 @@ export function EmailCampaignsPage() {
   const emailConfig = useQuery(
     api?.emailConfig?.get,
     storeId ? { storeId } : "skip"
-  ) as { fromEmail?: string } | null | undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) as any | null | undefined
+
+  const templates = useQuery(
+    api?.emailTemplates?.list,
+    storeId ? { storeId } : "skip"
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) as any[] | undefined
 
   const isConfigMissing = emailConfig === null || (emailConfig && !emailConfig.fromEmail)
 
@@ -110,11 +124,21 @@ export function EmailCampaignsPage() {
   const pauseMutation = useMutation(api?.emailCampaigns?.pause)
   const cancelMutation = useMutation(api?.emailCampaigns?.cancel)
   const sendAction = useAction(api?.emailCampaignActions?.send)
+  const sendTestAction = useAction(api?.emailCampaignActions?.sendTest)
 
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
   const [editForm, setEditForm] = useState({ name: "", subject: "" })
   const [isSaving, setIsSaving] = useState(false)
   const [sendingId, setSendingId] = useState<string | null>(null)
+
+  // Send test state
+  const [testCampaign, setTestCampaign] = useState<Campaign | null>(null)
+  const [testEmail, setTestEmail] = useState("")
+  const [isSendingTest, setIsSendingTest] = useState(false)
+
+  // Preview state
+  const [previewCampaign, setPreviewCampaign] = useState<Campaign | null>(null)
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop")
 
   const filtered = useMemo(() => {
     if (!campaigns) return []
@@ -218,6 +242,40 @@ export function EmailCampaignsPage() {
     } catch (error: unknown) {
       toast.error("Échec de la duplication")
     }
+  }
+
+  const handleSendTest = async () => {
+    if (!testCampaign || !testEmail.trim()) return
+    setIsSendingTest(true)
+    try {
+      await sendTestAction({ campaignId: testCampaign._id, testEmail: testEmail.trim() })
+      toast.success(`Email test envoyé à ${testEmail.trim()}`)
+      setTestCampaign(null)
+      setTestEmail("")
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      toast.error(`Échec de l'envoi test : ${message}`)
+    } finally {
+      setIsSendingTest(false)
+    }
+  }
+
+  const getPreviewHtml = (campaign: Campaign): string | null => {
+    const template = templates?.find((t: { _id: string }) => t._id === campaign.templateId)
+    if (!template?.blocks) return null
+
+    const branding: EmailBranding = {
+      primaryColor: emailConfig?.branding?.primaryColor ?? "#1a1a1a",
+      secondaryColor: emailConfig?.branding?.secondaryColor ?? "#f5f5f5",
+      logoUrl: emailConfig?.branding?.logoUrl,
+      footerText: emailConfig?.branding?.footerText ?? "Aperçu de la campagne",
+      socialLinks: emailConfig?.branding?.socialLinks,
+      senderName: emailConfig?.senderName ?? "Mon Restaurant",
+      unsubscribeUrl: "#",
+      unsubscribeText: emailConfig?.unsubscribeText ?? "Se désabonner",
+    }
+
+    return renderTemplateToEmailHtml(template.blocks as EmailBlock[], branding)
   }
 
   if (!storeId) {
@@ -377,6 +435,16 @@ export function EmailCampaignsPage() {
                               Modifier
                             </DropdownMenuItem>
                           )}
+                          {/* Aperçu */}
+                          <DropdownMenuItem onClick={() => setPreviewCampaign(campaign)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            Aperçu
+                          </DropdownMenuItem>
+                          {/* Envoyer un test */}
+                          <DropdownMenuItem onClick={() => { setTestCampaign(campaign); setTestEmail("") }}>
+                            <TestTube className="mr-2 h-4 w-4" />
+                            Envoyer un test
+                          </DropdownMenuItem>
                           {/* Dupliquer — toujours disponible */}
                           <DropdownMenuItem onClick={() => handleDuplicate(campaign)}>
                             <Copy className="mr-2 h-4 w-4" />
@@ -504,6 +572,114 @@ export function EmailCampaignsPage() {
         description="Cette action est irréversible."
         isDeleting={isDeleting}
       />
+
+      {/* Send test dialog */}
+      <Dialog open={!!testCampaign} onOpenChange={(open) => !open && setTestCampaign(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Envoyer un email test
+            </DialogTitle>
+            <DialogDescription>
+              Un email test avec le préfixe [TEST] sera envoyé à l&apos;adresse ci-dessous.
+            </DialogDescription>
+          </DialogHeader>
+          {testCampaign && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg bg-muted px-4 py-3 text-sm space-y-1">
+                <p><span className="text-muted-foreground">Campagne :</span> {testCampaign.name}</p>
+                <p><span className="text-muted-foreground">Objet :</span> [TEST] {testCampaign.subject}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="test-email">Adresse email de test</Label>
+                <Input
+                  id="test-email"
+                  type="email"
+                  value={testEmail}
+                  onChange={(e) => setTestEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && testEmail.trim()) handleSendTest()
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setTestCampaign(null)}>
+              Annuler
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSendTest}
+              disabled={isSendingTest || !testEmail.trim() || !testEmail.includes("@")}
+            >
+              {isSendingTest ? "Envoi..." : "Envoyer le test"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview dialog */}
+      <Dialog open={!!previewCampaign} onOpenChange={(open) => !open && setPreviewCampaign(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Aperçu — {previewCampaign?.name}
+              </DialogTitle>
+              <div className="flex items-center gap-1 border rounded-lg p-0.5">
+                <Button
+                  variant={previewDevice === "desktop" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPreviewDevice("desktop")}
+                >
+                  <Monitor className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant={previewDevice === "mobile" ? "secondary" : "ghost"}
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setPreviewDevice("mobile")}
+                >
+                  <Smartphone className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+            <DialogDescription>
+              Objet : {previewCampaign?.subject}
+            </DialogDescription>
+          </DialogHeader>
+          {previewCampaign && (() => {
+            const html = getPreviewHtml(previewCampaign)
+            if (!html) {
+              return (
+                <div className="flex items-center justify-center h-48 text-sm text-muted-foreground">
+                  Modèle introuvable ou sans contenu
+                </div>
+              )
+            }
+            return (
+              <div className="flex justify-center overflow-auto py-4 bg-muted/30 rounded-lg">
+                <iframe
+                  title="Aperçu campagne"
+                  srcDoc={html}
+                  className="rounded-lg border shadow-sm bg-white transition-all"
+                  style={{
+                    width: previewDevice === "mobile" ? "375px" : "600px",
+                    height: "calc(80vh - 10rem)",
+                    border: "none",
+                  }}
+                />
+              </div>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

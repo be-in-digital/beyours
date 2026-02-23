@@ -15,7 +15,7 @@ const BATCH_DELAY_MS = 100; // ~10 emails/sec, well below SES sandbox limit
 
 function createSESClient() {
   return new SESv2Client({
-    region: process.env.AWS_REGION ?? "eu-west-1",
+    region: process.env.AWS_REGION ?? "eu-west-3",
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
@@ -138,6 +138,7 @@ export const send = action({
           ReplyToAddresses: config.replyToEmail
             ? [config.replyToEmail]
             : undefined,
+          ConfigurationSetName: "beindigital-email-tracking",
           Content: {
             Simple: {
               Subject: { Data: campaign.subject, Charset: "UTF-8" },
@@ -240,6 +241,7 @@ export const sendTest = action({
       new SendEmailCommand({
         FromEmailAddress: fromAddress,
         Destination: { ToAddresses: [args.testEmail] },
+        ConfigurationSetName: "beindigital-email-tracking",
         Content: {
           Simple: {
             Subject: {
