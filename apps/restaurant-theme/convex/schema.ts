@@ -26,6 +26,13 @@ import {
   prizeRedemptionsTable,
   promotionsTable,
   promotionUsagesTable,
+  emailSubscribersTable,
+  emailTemplatesTable,
+  emailCampaignsTable,
+  emailSegmentsTable,
+  emailAutomationsTable,
+  emailEventsTable,
+  emailConfigTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -63,4 +70,11 @@ export default defineSchema({
   prizeRedemptions: prizeRedemptionsTable,
   promotions: promotionsTable,
   promotionUsages: promotionUsagesTable,
+  emailSubscribers: emailSubscribersTable,
+  emailTemplates: emailTemplatesTable,
+  emailCampaigns: emailCampaignsTable,
+  emailSegments: emailSegmentsTable,
+  emailAutomations: emailAutomationsTable,
+  emailEvents: emailEventsTable,
+  emailConfig: emailConfigTable,
 });

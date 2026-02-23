@@ -30,7 +30,14 @@
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",
     "./encryption": "./src/encryption.ts",
-    "./promotions": "./src/promotions.ts"
+    "./promotions": "./src/promotions.ts",
+    "./emailSubscribers": "./src/emailSubscribers.ts",
+    "./emailTemplates": "./src/emailTemplates.ts",
+    "./emailCampaigns": "./src/emailCampaigns.ts",
+    "./emailSegments": "./src/emailSegments.ts",
+    "./emailAutomations": "./src/emailAutomations.ts",
+    "./emailEvents": "./src/emailEvents.ts",
+    "./emailConfig": "./src/emailConfig.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -41,7 +48,8 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "^1.18.0"
+    "convex": "^1.18.0",
+    "@beindigital-engine/convex-schema": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

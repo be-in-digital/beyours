@@ -28,6 +28,13 @@ export * as uberEatsMenuSync from "./uberEatsMenuSync"
 export * as deliverooMenuSync from "./deliverooMenuSync"
 export * as paymentConnectionsDefs from "./paymentConnections"
 export * as promotions from "./promotions"
+export * as emailSubscribers from "./emailSubscribers"
+export * as emailTemplates from "./emailTemplates"
+export * as emailCampaigns from "./emailCampaigns"
+export * as emailSegments from "./emailSegments"
+export * as emailAutomations from "./emailAutomations"
+export * as emailEvents from "./emailEvents"
+export * as emailConfig from "./emailConfig"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
