@@ -7,10 +7,7 @@ const SEARCH_PLACEHOLDER =
 
 const STATUS_TABS = [
   "Toutes",
-  "En attente",
-  "Confirmées",
-  "En préparation",
-  "Prêtes",
+  "En cours",
   "Terminées",
   "Annulées",
 ] as const
@@ -52,7 +49,7 @@ test.describe("Orders Page", () => {
       ).toBeVisible()
     })
 
-    test("should display 7 status tabs", async ({ page }) => {
+    test("should display status group tabs", async ({ page }) => {
       await page.goto(ORDERS_URL, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
@@ -63,6 +60,32 @@ test.describe("Orders Page", () => {
           page.getByRole("tab", { name: tab })
         ).toBeVisible()
       }
+    })
+
+    test("should display source filter dropdown", async ({ page }) => {
+      await page.goto(ORDERS_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      })
+
+      await expect(
+        page.getByRole("combobox").filter({ hasText: /source/i }).or(
+          page.locator('[data-slot="select-trigger"]').filter({ hasText: /source/i })
+        )
+      ).toBeVisible({ timeout: 15_000 })
+    })
+
+    test("should display payment filter dropdown", async ({ page }) => {
+      await page.goto(ORDERS_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      })
+
+      await expect(
+        page.getByRole("combobox").filter({ hasText: /paiement/i }).or(
+          page.locator('[data-slot="select-trigger"]').filter({ hasText: /paiement/i })
+        )
+      ).toBeVisible({ timeout: 15_000 })
     })
   })
 
@@ -78,46 +101,13 @@ test.describe("Orders Page", () => {
       await expect(toutesTab).toHaveAttribute("data-state", "active")
     })
 
-    test('should switch to "En attente" tab', async ({ page }) => {
+    test('should switch to "En cours" tab', async ({ page }) => {
       await page.goto(ORDERS_URL, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
 
-      const tab = page.getByRole("tab", { name: "En attente" })
-      await tab.click()
-      await expect(tab).toHaveAttribute("data-state", "active")
-    })
-
-    test('should switch to "Confirmées" tab', async ({ page }) => {
-      await page.goto(ORDERS_URL, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      })
-
-      const tab = page.getByRole("tab", { name: "Confirmées" })
-      await tab.click()
-      await expect(tab).toHaveAttribute("data-state", "active")
-    })
-
-    test('should switch to "En préparation" tab', async ({ page }) => {
-      await page.goto(ORDERS_URL, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      })
-
-      const tab = page.getByRole("tab", { name: "En préparation" })
-      await tab.click()
-      await expect(tab).toHaveAttribute("data-state", "active")
-    })
-
-    test('should switch to "Prêtes" tab', async ({ page }) => {
-      await page.goto(ORDERS_URL, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      })
-
-      const tab = page.getByRole("tab", { name: "Prêtes" })
+      const tab = page.getByRole("tab", { name: "En cours" })
       await tab.click()
       await expect(tab).toHaveAttribute("data-state", "active")
     })
@@ -222,6 +212,22 @@ test.describe("Orders Page", () => {
           // First row should contain content
           await expect(rows.first()).toBeVisible()
         }
+      }
+    })
+
+    test("should display Source column header", async ({ page }) => {
+      await page.goto(ORDERS_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      })
+
+      const table = page.locator("table")
+      const tableExists = await table.isVisible().catch(() => false)
+
+      if (tableExists) {
+        await expect(
+          page.locator("thead th").filter({ hasText: "Source" })
+        ).toBeVisible()
       }
     })
   })
