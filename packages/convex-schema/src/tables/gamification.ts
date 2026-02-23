@@ -116,6 +116,8 @@ export const gamePlaysTable = defineTable({
   qrCodeId: v.optional(v.id("gameQRCodes")),
   playerEmail: v.optional(v.string()),
   playerName: v.optional(v.string()),
+  playerFirstName: v.optional(v.string()),
+  playerLastName: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
   didWin: v.boolean(),
@@ -141,13 +143,16 @@ export const prizeRedemptionsTable = defineTable({
   gamePlayId: v.id("gamePlays"),
   prizeId: v.id("prizes"),
   playerEmail: v.string(),
-  playerName: v.string(),
+  playerName: v.optional(v.string()),
+  playerFirstName: v.optional(v.string()),
+  playerLastName: v.optional(v.string()),
   redemptionCode: v.string(), // QR code sent to customer
   status: v.union(
     v.literal("pending"),
     v.literal("redeemed"),
     v.literal("expired"),
-    v.literal("cancelled")
+    v.literal("cancelled"),
+    v.literal("claimed")
   ),
   redeemedAt: v.optional(v.number()),
   redeemedBy: v.optional(v.string()), // Staff member who redeemed (Better Auth user)
