@@ -142,7 +142,7 @@ export const prizeRedemptionsTable = defineTable({
   storeId: v.id("stores"),
   gamePlayId: v.id("gamePlays"),
   prizeId: v.id("prizes"),
-  playerEmail: v.string(),
+  playerEmail: v.optional(v.string()),
   playerName: v.optional(v.string()),
   playerFirstName: v.optional(v.string()),
   playerLastName: v.optional(v.string()),

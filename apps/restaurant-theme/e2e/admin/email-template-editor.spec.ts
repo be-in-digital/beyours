@@ -29,8 +29,13 @@ async function createTemplateAndOpenEditor(page: import("@playwright/test").Page
   // Submit
   await dialog.getByRole("button", { name: "Créer et éditer" }).click()
 
+  // Wait for dialog to close before checking editor
+  await expect(page.getByRole("dialog")).toBeHidden({ timeout: 10_000 })
+
   // Wait for the editor to appear (3-panel layout)
-  await expect(page.getByText("Blocs")).toBeVisible({ timeout: 15_000 })
+  await expect(
+    page.locator("aside").first().getByText("Blocs", { exact: true })
+  ).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText("Aucun bloc", { exact: true })).toBeVisible({ timeout: 10_000 })
 }
 
@@ -42,7 +47,9 @@ test.describe("Email Template Editor", () => {
       await createTemplateAndOpenEditor(page)
 
       // Left panel: block palette with "Blocs" label
-      await expect(page.getByText("Blocs")).toBeVisible()
+      await expect(
+        page.locator("aside").first().getByText("Blocs", { exact: true })
+      ).toBeVisible()
 
       // Center panel: empty state
       await expect(page.getByText("Aucun bloc", { exact: true })).toBeVisible()

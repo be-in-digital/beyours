@@ -141,6 +141,145 @@ test.describe("Email Campaigns Page", () => {
     })
   })
 
+  test.describe("Campaign Actions (Dropdown Menu)", () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto(CAMPAIGNS_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      })
+      await waitForAdminPage(page)
+    })
+
+    test("should display dropdown menu on campaign row", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      // Dropdown should contain common actions
+      await expect(page.getByRole("menuitem", { name: "Aperçu" })).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByRole("menuitem", { name: "Envoyer un test" })).toBeVisible()
+      await expect(page.getByRole("menuitem", { name: "Dupliquer" })).toBeVisible()
+    })
+
+    test("should open send test dialog from dropdown", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Envoyer un test" }).click()
+
+      const dialog = await waitForDialog(page)
+      await expect(dialog.getByText("Envoyer un email test")).toBeVisible()
+      await expect(dialog.getByLabel("Adresse email de test")).toBeVisible()
+      await expect(dialog.getByRole("button", { name: "Envoyer le test" })).toBeVisible()
+    })
+
+    test("should validate email in send test dialog", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Envoyer un test" }).click()
+
+      const dialog = await waitForDialog(page)
+      const sendButton = dialog.getByRole("button", { name: "Envoyer le test" })
+
+      // Button should be disabled with empty email
+      await expect(sendButton).toBeDisabled()
+
+      // Fill invalid email (no @)
+      await dialog.getByLabel("Adresse email de test").fill("invalid")
+      await expect(sendButton).toBeDisabled()
+
+      // Fill valid email
+      await dialog.getByLabel("Adresse email de test").fill("test@example.com")
+      await expect(sendButton).toBeEnabled()
+    })
+
+    test("should close send test dialog on cancel", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Envoyer un test" }).click()
+      await waitForDialog(page)
+
+      await page.getByRole("button", { name: "Annuler" }).click()
+      await expect(getDialog(page)).toBeHidden({ timeout: 5_000 })
+    })
+
+    test("should open preview dialog from dropdown", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Aperçu" }).click()
+
+      const dialog = await waitForDialog(page)
+      await expect(dialog.getByText(/Aperçu/)).toBeVisible()
+      await expect(dialog.getByText(/Objet :/)).toBeVisible()
+    })
+
+    test("should toggle desktop/mobile preview", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Aperçu" }).click()
+
+      const dialog = await waitForDialog(page)
+
+      // Should have desktop and mobile toggle buttons
+      const buttons = dialog.locator("button[class*='h-7']")
+      await expect(buttons).toHaveCount(2)
+
+      // Check iframe exists (may show content or error depending on template)
+      const iframe = dialog.locator("iframe")
+      const errorMsg = dialog.getByText("Modèle introuvable")
+      await expect(iframe.or(errorMsg)).toBeVisible({ timeout: 5_000 })
+    })
+
+    test("should close preview dialog on escape", async ({ page }) => {
+      const table = page.locator("table")
+      const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+      test.skip(!hasTable, "No campaigns in table to test")
+
+      const firstRow = table.locator("tbody tr").first()
+      const menuButton = firstRow.getByRole("button").last()
+      await menuButton.click()
+
+      await page.getByRole("menuitem", { name: "Aperçu" }).click()
+      await waitForDialog(page)
+
+      await closeDialogByEscape(page)
+      await expect(getDialog(page)).toBeHidden()
+    })
+  })
+
   test.describe("Console Errors", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
