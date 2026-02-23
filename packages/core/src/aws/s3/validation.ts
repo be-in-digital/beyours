@@ -79,7 +79,6 @@ export function getExtensionFromMimeType(contentType: string): string {
     'image/jpg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
-    'image/svg+xml': 'svg',
     'image/gif': 'gif',
     'application/pdf': 'pdf',
   }

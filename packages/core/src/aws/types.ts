@@ -51,28 +51,24 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   branding: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   stores: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   cms: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
     'application/pdf',
   ],
   email: [
@@ -80,7 +76,6 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
     'image/gif',
   ],
 } as const

@@ -9,11 +9,11 @@ const ALLOWED_FOLDERS = ["products", "branding", "stores", "cms", "email"] as co
 type S3Folder = (typeof ALLOWED_FOLDERS)[number];
 
 const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
-  products: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
-  branding: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
-  stores: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
-  cms: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml", "application/pdf"],
-  email: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml", "image/gif"],
+  products: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  branding: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  stores: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  cms: ["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"],
+  email: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
 };
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -21,7 +21,6 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/jpg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
-  "image/svg+xml": "svg",
   "image/gif": "gif",
   "application/pdf": "pdf",
 };
@@ -69,10 +68,13 @@ export const getPresignedUploadUrl = action({
       );
     }
 
-    // Generate unique key
+    // Generate unique key with sanitized filename
     const ext = MIME_TO_EXT[args.contentType] ?? "bin";
     const uuid = crypto.randomUUID();
-    const name = args.filename ? `${args.filename}-${uuid}` : uuid;
+    const sanitizedFilename = (args.filename ?? "")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 100);
+    const name = sanitizedFilename ? `${sanitizedFilename}-${uuid}` : uuid;
     const key = `${folder}/${name}.${ext}`;
 
     // Create presigned URL

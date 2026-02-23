@@ -209,8 +209,21 @@ export const handleSesWebhook = httpAction(async (ctx, request) => {
   // Handle subscription confirmation (first-time setup)
   if (snsMessage.Type === "SubscriptionConfirmation") {
     if (snsMessage.SubscribeURL) {
-      await fetch(snsMessage.SubscribeURL);
-      console.log("SNS subscription confirmed for:", snsMessage.TopicArn);
+      // Validate SubscribeURL to prevent SSRF
+      try {
+        const subUrl = new URL(snsMessage.SubscribeURL);
+        if (
+          subUrl.protocol === "https:" &&
+          /^sns\.[a-z0-9-]+\.amazonaws\.com$/.test(subUrl.hostname)
+        ) {
+          await fetch(snsMessage.SubscribeURL);
+          console.log("SNS subscription confirmed for:", snsMessage.TopicArn);
+        } else {
+          console.error("Invalid SubscribeURL origin:", snsMessage.SubscribeURL);
+        }
+      } catch {
+        console.error("Invalid SubscribeURL:", snsMessage.SubscribeURL);
+      }
     }
     return new Response("OK", { status: 200 });
   }

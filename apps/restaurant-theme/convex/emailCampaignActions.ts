@@ -172,7 +172,7 @@ export const send = action({
         // Rate limiting between sends
         await delay(BATCH_DELAY_MS);
       } catch (error) {
-        console.error(`Erreur envoi à ${subscriber.email}:`, error);
+        console.error(`Erreur envoi subscriber ${subscriber._id}:`, error);
       }
     }
 
@@ -197,6 +197,12 @@ export const sendTest = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(args.testEmail)) {
+      throw new Error("Adresse email invalide");
+    }
 
     const campaign: any = await ctx.runQuery(api.emailCampaigns.getById, {
       id: args.campaignId,
