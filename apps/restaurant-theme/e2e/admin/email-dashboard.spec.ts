@@ -29,8 +29,6 @@ test.describe("Email Dashboard Page", () => {
       await page.waitForTimeout(3_000)
 
       // Should show KPI cards or the empty state message
-      const kpiSection = page.locator("text=Abonnés actifs")
-      const emptyState = page.getByText("Aucune campagne créée")
       const heading = page.getByRole("heading", { name: "Email Marketing" })
 
       // Page should at least have the heading

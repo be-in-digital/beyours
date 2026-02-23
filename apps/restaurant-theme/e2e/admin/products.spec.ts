@@ -186,11 +186,6 @@ test.describe("Products Page", () => {
       })
       await waitForAdminPage(page)
 
-      // Look for the view mode toggle buttons (table and grid icons)
-      const viewToggleButtons = page
-        .locator("button")
-        .filter({ has: page.locator("svg") })
-
       // Wait for page content to load
       await expect(
         page.getByRole("heading", { name: "Menu & Produits" })
