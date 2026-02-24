@@ -41,8 +41,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       },
     },
     trustedOrigins: process.env.SITE_URL
-      ? [process.env.SITE_URL, "http://localhost:3000"]
-      : ["http://localhost:3000"],
+      ? [process.env.SITE_URL, "http://localhost:3000", "http://localhost:3001"]
+      : ["http://localhost:3000", "http://localhost:3001"],
     plugins: [convex({ authConfig })],
   });
 };

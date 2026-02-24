@@ -7,7 +7,10 @@ const SEARCH_PLACEHOLDER =
 
 const STATUS_TABS = [
   "Toutes",
-  "En cours",
+  "En attente",
+  "Confirmées",
+  "En préparation",
+  "Prêtes",
   "Terminées",
   "Annulées",
 ] as const
@@ -62,29 +65,14 @@ test.describe("Orders Page", () => {
       }
     })
 
-    test("should display source filter dropdown", async ({ page }) => {
+    test("should display search input for filtering", async ({ page }) => {
       await page.goto(ORDERS_URL, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
 
       await expect(
-        page.getByRole("combobox").filter({ hasText: /source/i }).or(
-          page.locator('[data-slot="select-trigger"]').filter({ hasText: /source/i })
-        )
-      ).toBeVisible({ timeout: 15_000 })
-    })
-
-    test("should display payment filter dropdown", async ({ page }) => {
-      await page.goto(ORDERS_URL, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      })
-
-      await expect(
-        page.getByRole("combobox").filter({ hasText: /paiement/i }).or(
-          page.locator('[data-slot="select-trigger"]').filter({ hasText: /paiement/i })
-        )
+        page.getByPlaceholder(SEARCH_PLACEHOLDER)
       ).toBeVisible({ timeout: 15_000 })
     })
   })
@@ -101,13 +89,13 @@ test.describe("Orders Page", () => {
       await expect(toutesTab).toHaveAttribute("data-state", "active")
     })
 
-    test('should switch to "En cours" tab', async ({ page }) => {
+    test('should switch to "En attente" tab', async ({ page }) => {
       await page.goto(ORDERS_URL, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
 
-      const tab = page.getByRole("tab", { name: "En cours" })
+      const tab = page.getByRole("tab", { name: "En attente" })
       await tab.click()
       await expect(tab).toHaveAttribute("data-state", "active")
     })

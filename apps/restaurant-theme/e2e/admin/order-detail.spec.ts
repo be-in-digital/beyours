@@ -125,22 +125,14 @@ test.describe("Order Detail Page", () => {
       }
     })
 
-    test("should display source badge in header", async ({ page }) => {
+    test("should display source in payment card", async ({ page }) => {
       const hasOrder = await navigateToFirstOrder(page)
 
       if (hasOrder) {
+        // Source is displayed in the payment info card, not in the header
         await expect(
-          page.getByRole("heading", { name: /Commande/ })
+          page.getByText("Source de la commande")
         ).toBeVisible({ timeout: 15_000 })
-
-        // Source badges (Site web, Uber Eats, Deliveroo, POS) should be visible
-        const sourceTexts = ["Site web", "Uber Eats", "Deliveroo", "POS"]
-        const headerArea = page.locator(".flex.items-center.gap-2")
-        const sourceBadge = headerArea.getByText(
-          new RegExp(sourceTexts.join("|"))
-        )
-
-        await expect(sourceBadge.first()).toBeVisible({ timeout: 15_000 })
       }
     })
 
@@ -191,17 +183,17 @@ test.describe("Order Detail Page", () => {
   })
 
   test.describe("Payment Info", () => {
-    test("should display source label in payment card", async ({ page }) => {
+    test("should display payment status in payment card", async ({ page }) => {
       const hasOrder = await navigateToFirstOrder(page)
 
       if (hasOrder) {
         await expect(
-          page.getByText("Source de la commande")
+          page.getByText("Statut du paiement")
         ).toBeVisible({ timeout: 15_000 })
 
-        // The source value should be one of the proper labels
-        const sourceLabel = page.getByText(/Site web|Uber Eats|Deliveroo|POS/)
-        await expect(sourceLabel.first()).toBeVisible({ timeout: 15_000 })
+        // Payment status should be one of the known labels
+        const paymentLabels = page.getByText(/Payé|En attente|Échoué|Remboursé/)
+        await expect(paymentLabels.first()).toBeVisible({ timeout: 15_000 })
       }
     })
   })

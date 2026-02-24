@@ -146,10 +146,10 @@ const statusTransitions: Record<OrderStatus, StatusAction[]> = {
   ],
   ready: [
     {
-      label: "Terminer la commande",
+      label: "Commande récupérée",
       nextStatus: "completed",
       variant: "default",
-      icon: CheckCircle,
+      icon: PackageCheck,
     },
     {
       label: "Envoyer en livraison",

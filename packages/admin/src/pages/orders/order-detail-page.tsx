@@ -109,7 +109,7 @@ const SOURCE_LABELS: Record<OrderSource, string> = {
 function parseCancellationReason(raw: string): string {
   const parts = raw.split("::")
   if (parts.length >= 2) {
-    const label = parts[1]
+    const label = parts[1] ?? ""
     const details = parts[2]
     return details ? `${label} — ${details}` : label
   }
