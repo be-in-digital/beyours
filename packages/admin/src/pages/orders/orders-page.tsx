@@ -32,7 +32,7 @@ type StatusGroup = "all" | "active" | "completed" | "cancelled"
 const STATUS_GROUP_MAP: Record<StatusGroup, string[]> = {
   all: [],
   active: ["pending", "confirmed", "preparing", "ready", "out_for_delivery"],
-  completed: ["completed"],
+  completed: ["completed", "delivered"],
   cancelled: ["cancelled"],
 }
 
@@ -136,6 +136,7 @@ export function OrdersPage() {
               <SelectItem value="website">Site web</SelectItem>
               <SelectItem value="uber_eats">Uber Eats</SelectItem>
               <SelectItem value="deliveroo">Deliveroo</SelectItem>
+              <SelectItem value="pos">POS</SelectItem>
             </SelectContent>
           </Select>
           <Select value={paymentFilter} onValueChange={handlePaymentChange}>
