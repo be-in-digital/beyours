@@ -22,7 +22,7 @@ async function sendViaSES(params: {
   htmlBody: string;
   textBody: string;
 }) {
-  const region = process.env.AWS_REGION ?? "eu-west-1";
+  const region = process.env.AWS_REGION ?? "eu-west-3";
   const fromEmail =
     process.env.AWS_SES_FROM_EMAIL ?? "noreply@beindigital.fr";
 

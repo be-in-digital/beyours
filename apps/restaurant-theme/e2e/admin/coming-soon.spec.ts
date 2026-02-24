@@ -10,8 +10,6 @@ test.describe("Coming Soon Pages", () => {
     "/games/actions",
     "/games/winners",
     "/games/settings",
-    "/email",
-    "/email/campaigns",
     "/content/pages",
     "/content/blog",
   ]

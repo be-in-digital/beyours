@@ -10,9 +10,7 @@ import {
 import { applySearch, selectFilter } from "../helpers/filter.helpers"
 import {
   getTableHeaders,
-  clickRowActionMenu,
   clickDropdownItem,
-  findRowByText,
 } from "../helpers/table.helpers"
 
 test.describe("Team Page", () => {

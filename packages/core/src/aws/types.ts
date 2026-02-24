@@ -40,7 +40,7 @@ export interface SESConfig extends AWSConfig {
 /**
  * Dossiers autorisés pour le stockage S3
  */
-export type S3Folder = 'products' | 'branding' | 'stores' | 'cms'
+export type S3Folder = 'products' | 'branding' | 'stores' | 'cms' | 'email'
 
 /**
  * Types MIME autorisés
@@ -51,29 +51,32 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   branding: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   stores: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   cms: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
     'application/pdf',
+  ],
+  email: [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/gif',
   ],
 } as const
 
@@ -85,4 +88,5 @@ export const MAX_FILE_SIZES: Record<S3Folder, number> = {
   branding: 10 * 1024 * 1024, // 10MB
   stores: 10 * 1024 * 1024, // 10MB
   cms: 25 * 1024 * 1024, // 25MB
+  email: 10 * 1024 * 1024, // 10MB
 } as const

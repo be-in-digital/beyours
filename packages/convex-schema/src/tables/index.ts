@@ -21,3 +21,13 @@ export {
   prizeRedemptionsTable,
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
+export {
+  emailBlockValidator,
+  emailSubscribersTable,
+  emailTemplatesTable,
+  emailCampaignsTable,
+  emailSegmentsTable,
+  emailAutomationsTable,
+  emailEventsTable,
+  emailConfigTable,
+} from "./emailMarketing"

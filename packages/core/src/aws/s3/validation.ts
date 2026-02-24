@@ -10,7 +10,7 @@ import type { S3Folder } from '../types'
 /**
  * Schéma pour les dossiers S3
  */
-export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms'])
+export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms', 'email'])
 
 /**
  * Schéma pour les options d'upload
@@ -79,7 +79,7 @@ export function getExtensionFromMimeType(contentType: string): string {
     'image/jpg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
-    'image/svg+xml': 'svg',
+    'image/gif': 'gif',
     'application/pdf': 'pdf',
   }
 

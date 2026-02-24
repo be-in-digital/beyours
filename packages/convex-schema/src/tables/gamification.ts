@@ -37,6 +37,7 @@ export const requiredActionsTable = defineTable({
   description: v.optional(v.string()),
   url: v.optional(v.string()),
   icon: v.optional(v.string()),
+  timerSeconds: v.optional(v.number()),
   isRequired: v.boolean(),
   sortOrder: v.number(),
   isActive: v.boolean(),
@@ -64,6 +65,8 @@ export const gamesTable = defineTable({
     wheelSections: v.optional(v.array(v.object({
       label: v.string(),
       color: v.string(),
+      isWinning: v.optional(v.boolean()),
+      probability: v.optional(v.number()),
       prizeId: v.optional(v.id("prizes")),
     }))),
     scratchCardDesign: v.optional(v.string()),
@@ -110,13 +113,16 @@ export const prizesTable = defineTable({
 export const gamePlaysTable = defineTable({
   storeId: v.id("stores"),
   gameId: v.id("games"),
-  qrCodeId: v.id("gameQRCodes"),
-  playerEmail: v.string(),
-  playerName: v.string(),
+  qrCodeId: v.optional(v.id("gameQRCodes")),
+  playerEmail: v.optional(v.string()),
+  playerName: v.optional(v.string()),
+  playerFirstName: v.optional(v.string()),
+  playerLastName: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
+  fingerprint: v.optional(v.string()),
   ipAddress: v.optional(v.string()),
   userAgent: v.optional(v.string()),
   playedAt: v.number(),
@@ -136,14 +142,17 @@ export const prizeRedemptionsTable = defineTable({
   storeId: v.id("stores"),
   gamePlayId: v.id("gamePlays"),
   prizeId: v.id("prizes"),
-  playerEmail: v.string(),
-  playerName: v.string(),
+  playerEmail: v.optional(v.string()),
+  playerName: v.optional(v.string()),
+  playerFirstName: v.optional(v.string()),
+  playerLastName: v.optional(v.string()),
   redemptionCode: v.string(), // QR code sent to customer
   status: v.union(
     v.literal("pending"),
     v.literal("redeemed"),
     v.literal("expired"),
-    v.literal("cancelled")
+    v.literal("cancelled"),
+    v.literal("claimed")
   ),
   redeemedAt: v.optional(v.number()),
   redeemedBy: v.optional(v.string()), // Staff member who redeemed (Better Auth user)
