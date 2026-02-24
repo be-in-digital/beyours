@@ -276,13 +276,17 @@ export const updateStatus = {
     if (!order) throw new Error("Order not found")
 
     const now = Date.now()
+
+    // Auto-complete delivered orders: delivery implies order is done
+    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
+
     const updates: Record<string, unknown> = {
-      status: args.status,
+      status: effectiveStatus,
       updatedAt: now,
     }
 
     // Set timestamps based on status
-    if (args.status === "completed") {
+    if (effectiveStatus === "completed") {
       updates.completedAt = now
     } else if (args.status === "cancelled") {
       updates.cancelledAt = now
@@ -502,12 +506,15 @@ export const updateFromWebhook = {
       throw new Error(`Order not found: ${args.externalOrderId}`)
     }
 
+    // Auto-complete delivered orders: delivery implies order is done
+    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
+
     const updates: Record<string, unknown> = {
-      status: args.status,
+      status: effectiveStatus,
       updatedAt: args.updatedAt,
     }
 
-    if (args.status === "completed") {
+    if (effectiveStatus === "completed") {
       updates.completedAt = args.updatedAt
     } else if (args.status === "cancelled") {
       updates.cancelledAt = args.updatedAt

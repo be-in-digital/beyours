@@ -9,7 +9,7 @@ function auth() {
     _auth = convexBetterAuthNextJs({
       convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
       convexSiteUrl: process.env.CONVEX_SITE_URL!,
-    } as any);
+    });
   }
   return _auth;
 }

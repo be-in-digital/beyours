@@ -16,6 +16,7 @@ import type {
   OrderStatus,
   OrderType,
   OrderPaymentStatus,
+  OrderSource,
   BadgeVariant,
 } from "../../lib/types"
 
@@ -74,6 +75,21 @@ function getPaymentBadge(status: OrderPaymentStatus) {
 }
 
 /**
+ * Get badge for order source
+ */
+function getSourceBadge(source: OrderSource) {
+  const sourceConfig: Record<OrderSource, { className: string; label: string }> = {
+    website: { className: "bg-blue-50 text-blue-700", label: "Site web" },
+    uber_eats: { className: "bg-green-50 text-green-700", label: "Uber Eats" },
+    deliveroo: { className: "bg-cyan-50 text-cyan-700", label: "Deliveroo" },
+    pos: { className: "bg-slate-50 text-slate-700", label: "POS" },
+  }
+
+  const config = sourceConfig[source]
+  return <Badge className={config.className}>{config.label}</Badge>
+}
+
+/**
  * Calculate total items count from order items
  */
 function getTotalItems(items: Order["items"]): number {
@@ -108,6 +124,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
           <TableRow>
             <TableHead className="text-xs">N° Commande</TableHead>
             <TableHead className="text-xs">Client</TableHead>
+            <TableHead className="text-xs">Source</TableHead>
             <TableHead className="text-xs">Type</TableHead>
             <TableHead className="text-xs">Articles</TableHead>
             <TableHead className="text-xs">Total</TableHead>
@@ -130,6 +147,11 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
               <TableCell className="text-sm">
                 <Link href={`/orders/${order._id}`} className="hover:underline">
                   {order.customerInfo.name}
+                </Link>
+              </TableCell>
+              <TableCell className="text-sm">
+                <Link href={`/orders/${order._id}`}>
+                  {getSourceBadge(order.source)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
