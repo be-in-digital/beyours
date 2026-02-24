@@ -82,7 +82,7 @@ function getSourceBadge(source: OrderSource) {
     website: { className: "bg-blue-50 text-blue-700", label: "Site web" },
     uber_eats: { className: "bg-green-50 text-green-700", label: "Uber Eats" },
     deliveroo: { className: "bg-cyan-50 text-cyan-700", label: "Deliveroo" },
-    pos: { className: "bg-slate-50 text-slate-700", label: "Caisse" },
+    pos: { className: "bg-slate-50 text-slate-700", label: "POS" },
   }
 
   const config = sourceConfig[source]

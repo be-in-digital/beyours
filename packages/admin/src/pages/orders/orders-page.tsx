@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Tabs,
   TabsContent,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@beindigital-engine/ui"
 import { OrdersTable } from "./orders-table"
+import { StoresPagination } from "../stores/stores-pagination"
 import type { Order, OrderSource, OrderPaymentStatus } from "../../lib/types"
 
 /**
@@ -29,7 +31,7 @@ type StatusGroup = "all" | "active" | "completed" | "cancelled"
  */
 const STATUS_GROUP_MAP: Record<StatusGroup, string[]> = {
   all: [],
-  active: ["pending", "confirmed", "preparing", "ready", "out_for_delivery", "delivered"],
+  active: ["pending", "confirmed", "preparing", "ready", "out_for_delivery"],
   completed: ["completed"],
   cancelled: ["cancelled"],
 }
@@ -49,6 +51,7 @@ export function OrdersPage() {
   const [statusGroup, setStatusGroup] = useState<StatusGroup>("all")
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all")
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all")
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Fetch orders for the current store
   const orders = useQuery(
@@ -77,6 +80,33 @@ export function OrdersPage() {
     return matchesStatus && matchesSource && matchesPayment && matchesSearch
   })
 
+  // Pagination calculations
+  const totalItems = filteredOrders?.length ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const paginatedOrders = filteredOrders?.slice(
+    (safePage - 1) * ADMIN_PAGE_SIZE,
+    safePage * ADMIN_PAGE_SIZE
+  )
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setCurrentPage(1)
+  }
+  const handleStatusGroupChange = (value: string) => {
+    setStatusGroup(value as StatusGroup)
+    setCurrentPage(1)
+  }
+  const handleSourceChange = (value: string) => {
+    setSourceFilter(value as SourceFilter)
+    setCurrentPage(1)
+  }
+  const handlePaymentChange = (value: string) => {
+    setPaymentFilter(value as PaymentFilter)
+    setCurrentPage(1)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -93,11 +123,11 @@ export function OrdersPage() {
           <SearchInput
             placeholder="Rechercher par n° de commande ou nom du client..."
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onValueChange={handleSearchChange}
           />
         </div>
         <div className="flex gap-3">
-          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
+          <Select value={sourceFilter} onValueChange={handleSourceChange}>
             <SelectTrigger className="w-[150px]">
               <SelectValue placeholder="Source" />
             </SelectTrigger>
@@ -106,10 +136,9 @@ export function OrdersPage() {
               <SelectItem value="website">Site web</SelectItem>
               <SelectItem value="uber_eats">Uber Eats</SelectItem>
               <SelectItem value="deliveroo">Deliveroo</SelectItem>
-              <SelectItem value="pos">Caisse</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v as PaymentFilter)}>
+          <Select value={paymentFilter} onValueChange={handlePaymentChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Paiement" />
             </SelectTrigger>
@@ -126,7 +155,7 @@ export function OrdersPage() {
       </div>
 
       {/* Status group tabs */}
-      <Tabs value={statusGroup} onValueChange={(value) => setStatusGroup(value as StatusGroup)}>
+      <Tabs value={statusGroup} onValueChange={handleStatusGroupChange}>
         <TabsList variant="line">
           <TabsTrigger value="all">Toutes</TabsTrigger>
           <TabsTrigger value="active">En cours</TabsTrigger>
@@ -134,8 +163,16 @@ export function OrdersPage() {
           <TabsTrigger value="cancelled">Annulées</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={statusGroup} className="mt-6">
-          <OrdersTable orders={filteredOrders || []} isLoading={orders === undefined} />
+        <TabsContent value={statusGroup} className="mt-6 space-y-4">
+          <OrdersTable orders={paginatedOrders || []} isLoading={orders === undefined} />
+
+          <StoresPagination
+            currentPage={safePage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            pageSize={ADMIN_PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
         </TabsContent>
       </Tabs>
     </div>

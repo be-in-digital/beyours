@@ -272,7 +272,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
               <CardTitle>Statut de la commande</CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderStatusActions orderId={order._id} currentStatus={order.status} />
+              <OrderStatusActions orderId={order._id} currentStatus={order.status} source={order.source} />
             </CardContent>
           </Card>
 

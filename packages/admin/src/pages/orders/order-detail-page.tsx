@@ -99,7 +99,21 @@ const SOURCE_LABELS: Record<OrderSource, string> = {
   website: "Site web",
   uber_eats: "Uber Eats",
   deliveroo: "Deliveroo",
-  pos: "Caisse",
+  pos: "POS",
+}
+
+/**
+ * Parse structured cancellation reason (code::label or code::label::details)
+ * Falls back to raw string for legacy/webhook reasons
+ */
+function parseCancellationReason(raw: string): string {
+  const parts = raw.split("::")
+  if (parts.length >= 2) {
+    const label = parts[1]
+    const details = parts[2]
+    return details ? `${label} — ${details}` : label
+  }
+  return raw
 }
 
 function getSourceBadge(source: OrderSource) {
@@ -107,7 +121,7 @@ function getSourceBadge(source: OrderSource) {
     website: { className: "bg-blue-50 text-blue-700", label: "Site web" },
     uber_eats: { className: "bg-green-50 text-green-700", label: "Uber Eats" },
     deliveroo: { className: "bg-cyan-50 text-cyan-700", label: "Deliveroo" },
-    pos: { className: "bg-slate-50 text-slate-700", label: "Caisse" },
+    pos: { className: "bg-slate-50 text-slate-700", label: "POS" },
   }
 
   const config = sourceConfig[source]
@@ -504,7 +518,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderStatusActions orderId={order._id} currentStatus={order.status} />
+              <OrderStatusActions orderId={order._id} currentStatus={order.status} source={order.source} />
             </CardContent>
           </Card>
 
@@ -620,7 +634,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               {order.cancellationReason && (
                 <div>
                   <div className="text-xs text-muted-foreground">Motif d&apos;annulation</div>
-                  <div className="text-sm font-medium">{order.cancellationReason}</div>
+                  <div className="text-sm font-medium">{parseCancellationReason(order.cancellationReason)}</div>
                 </div>
               )}
             </CardContent>
