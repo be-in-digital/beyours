@@ -21,6 +21,7 @@
     "@beindigital-engine/core": "workspace:^",
     "@beindigital-engine/ui": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
+    "@beindigital-engine/marketing": "workspace:^",
     "zod": ">=3.0.0",
     "react-hook-form": ">=7.0.0",
     "@hookform/resolvers": ">=5.0.0",
@@ -36,9 +37,14 @@
     "tailwind-merge": "^2.6.0",
     "zustand": "^5.0.0"
   },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
   "devDependencies": {
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.0.0"
   }
 }

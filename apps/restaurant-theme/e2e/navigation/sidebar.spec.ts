@@ -3,7 +3,6 @@ import { collectConsoleErrors } from "../helpers/console.helpers"
 import {
   waitForAdminPage,
   navigateViaSidebar,
-  navigateToCollapsibleItem,
 } from "../helpers/navigation.helpers"
 
 test.describe("Sidebar Navigation", () => {
