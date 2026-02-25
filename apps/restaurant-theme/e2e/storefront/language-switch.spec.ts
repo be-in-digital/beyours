@@ -6,7 +6,7 @@ test.describe("Language Switch", () => {
     test("should display language switcher in the header", async ({ page }) => {
       await page.goto("/menu", { waitUntil: "domcontentloaded" })
 
-      const switcher = page.getByTestId("language-switcher")
+      const _switcher = page.getByTestId("language-switcher")
       // The switcher may not appear if only 1 language is active.
       // If visible, it means multiple languages are configured.
       // We just verify it doesn't throw errors.

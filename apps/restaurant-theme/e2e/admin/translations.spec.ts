@@ -82,7 +82,7 @@ test.describe("Admin Translations", () => {
         .first()
 
       // At least verify the page doesn't crash
-      const hasAny =
+      const _hasAny =
         (await autoBadge.isVisible().catch(() => false)) ||
         (await manualBadge.isVisible().catch(() => false)) ||
         (await pendingBadge.isVisible().catch(() => false))

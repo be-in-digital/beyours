@@ -7,6 +7,15 @@ import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useLanguageStore } from "@beindigital-engine/restaurant"
 import { LanguageSwitcher } from "@/components/storefront/LanguageSwitcher"
 
+interface LanguageDoc {
+  code: string
+  name: string
+  nativeName: string
+  flagEmoji?: string
+  isDefault: boolean
+  isActive: boolean
+}
+
 /**
  * AdminLanguageSwitcher — initializes the language store from Convex
  * and renders the shared LanguageSwitcher component.
@@ -26,10 +35,11 @@ export function AdminLanguageSwitcher() {
   useEffect(() => {
     if (!languages || languages.length === 0) return
 
-    const defaultLang = languages.find((l: any) => l.isDefault)
+    const typedLangs = languages as LanguageDoc[]
+    const defaultLang = typedLangs.find((l) => l.isDefault)
     const defaultCode = defaultLang?.code ?? "fr"
 
-    const storeLanguages = languages.map((l: any) => ({
+    const storeLanguages = typedLangs.map((l) => ({
       code: l.code,
       name: l.name,
       nativeName: l.nativeName,
