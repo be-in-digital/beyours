@@ -41,6 +41,9 @@ jobs:
             ${{ runner.os }}-turbo-e2e-
 
       - name: Build application
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          CONVEX_SITE_URL: https://placeholder.convex.site
         run: pnpm build
 
       - name: Run Playwright tests
