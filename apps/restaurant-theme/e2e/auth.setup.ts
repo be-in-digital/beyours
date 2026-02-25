@@ -14,6 +14,11 @@ import { test as setup, expect } from "@playwright/test"
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
 setup("authenticate as admin", async ({ page }) => {
+  setup.skip(
+    !!process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder"),
+    "Requires a real Convex backend (not placeholder)"
+  )
+
   // Wait for full network idle to ensure Convex backend is connected
   await page.goto("/sign-in", {
     waitUntil: "networkidle",
