@@ -92,6 +92,7 @@ export const getTicketColor = (status: KitchenTicketStatus): string => {
     in_progress: 'bg-blue-100 border-blue-400',
     ready: 'bg-green-100 border-green-400',
     completed: 'bg-gray-100 border-gray-400',
+    cancelled: 'bg-red-100 border-red-400',
   }
 
   return colorMap[status] || 'bg-gray-100 border-gray-400'

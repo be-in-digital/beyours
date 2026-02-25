@@ -1,0 +1,135 @@
+/**
+ * Auto-translation Convex functions
+ *
+ * Internal mutations/actions for automatic GPT translation.
+ * scheduleTranslation() is a helper called from product/category mutations.
+ */
+
+import { action, internalAction, internalMutation, type MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { v } from "convex/values";
+import * as defs from "@beindigital-engine/convex-functions/autoTranslate";
+
+const DEBOUNCE_MS = defs.DEBOUNCE_MS;
+
+// ── Internal mutations ───────────────────────────────────────────────────
+
+export const executeTranslation = internalMutation(defs.executeTranslation);
+
+export const batchChunk = internalMutation({
+  args: defs.batchChunkCore.args,
+  handler: async (ctx, args) => {
+    const nextCursor = await defs.batchChunkCore.handler(ctx, args);
+
+    // Schedule next chunk if more documents remain
+    if (nextCursor !== null) {
+      await ctx.scheduler.runAfter(0, internal.autoTranslate.batchChunk, {
+        storeId: args.storeId,
+        targetLang: args.targetLang,
+        entityType: args.entityType,
+        cursor: nextCursor,
+        jobId: args.jobId,
+      });
+    }
+  },
+});
+
+export const resetDailyQuota = internalMutation(defs.resetDailyQuota);
+
+// ── Helper: schedule translation with debounce ───────────────────────────
+
+/**
+ * Schedule a translation for a document after a 5s debounce.
+ * Cancel any previously scheduled job for this document.
+ *
+ * Call this from product/category/menu mutations:
+ *   await scheduleTranslation(ctx, result, "products", args.storeId)
+ */
+export async function scheduleTranslation(
+  ctx: MutationCtx,
+  documentId: string,
+  tableName: string,
+  storeId: string
+) {
+  const doc = await ctx.db.get(documentId as any);
+  if (!doc) return;
+
+  // Cancel previous scheduled job
+  if ((doc as any).scheduledTranslationJobId) {
+    try {
+      await ctx.scheduler.cancel((doc as any).scheduledTranslationJobId);
+    } catch {
+      // Job already executed or cancelled
+    }
+  }
+
+  // Schedule new translation after debounce
+  const jobId = await ctx.scheduler.runAfter(
+    DEBOUNCE_MS,
+    internal.autoTranslate.executeTranslation,
+    {
+      documentId,
+      tableName,
+      storeId: storeId as any,
+    }
+  );
+
+  // Mark document as pending
+  await ctx.db.patch(documentId as any, {
+    scheduledTranslationJobId: jobId,
+    pendingTranslation: true,
+  });
+}
+
+// ── UI Strings bulk translation ──────────────────────────────────────────
+
+// Internal action: calls GPT (fetch only, no DB)
+export const translateUIBulkAction = internalAction(defs.translateUIBulkAction);
+
+// Internal mutation: writes translated strings to DB
+export const saveUITranslations = internalMutation(defs.saveUITranslations);
+
+/**
+ * Public action: translate all UI strings for a target language.
+ * Orchestrates: GPT fetch (action) → DB write (mutation).
+ * Called from the admin languages page.
+ */
+export const translateUIStrings = action({
+  args: {
+    storeId: v.id("stores"),
+    targetLang: v.string(),
+    sourceLang: v.optional(v.string()),
+    entries: v.record(v.string(), v.string()),
+  },
+  handler: async (ctx, args): Promise<{ translated: number; saved: number }> => {
+    // Auth check — prevent unauthenticated API cost exploitation
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const sourceLang = args.sourceLang ?? "fr";
+
+    // 1. Translate via GPT (action can fetch)
+    const translated = (await ctx.runAction(
+      internal.autoTranslate.translateUIBulkAction,
+      {
+        targetLang: args.targetLang,
+        sourceLang,
+        entries: args.entries,
+      }
+    )) as Record<string, string>;
+
+    // 2. Write to DB (via internal mutation)
+    const result = (await ctx.runMutation(
+      internal.autoTranslate.saveUITranslations,
+      {
+        storeId: args.storeId,
+        targetLang: args.targetLang,
+        translated,
+      }
+    )) as { saved: number };
+
+    return { translated: Object.keys(translated).length, saved: result.saved };
+  },
+});

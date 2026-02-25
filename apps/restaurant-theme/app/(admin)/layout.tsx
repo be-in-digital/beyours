@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { api } from "@/convex/_generated/api"
 import { AdminAuthSync } from "@/components/admin/AdminAuthSync"
+import { AdminLanguageSwitcher } from "@/components/admin/AdminLanguageSwitcher"
 import {
   AuthGuard,
   AppSidebar,
@@ -33,7 +34,10 @@ export default function AdminLayout({
             userFooter={<SidebarUserMenu />}
           />
           <SidebarInset>
-            <AdminHeader storeSelector={<StoreSelector />} />
+            <AdminHeader
+              storeSelector={<StoreSelector />}
+              languageSwitcher={<AdminLanguageSwitcher />}
+            />
             <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
               <div className="mx-auto max-w-[1600px]">
                 <StoreGuard>{children}</StoreGuard>

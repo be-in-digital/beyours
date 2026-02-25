@@ -2,6 +2,7 @@ import {
   ChevronRight,
   FileText,
   Gamepad2,
+  Globe,
   Image,
   LayoutDashboard,
   LayoutGrid,
@@ -181,6 +182,12 @@ export const navGroups: NavGroup[] = [
         href: "/team",
         icon: UserCog,
         requiredPermission: "team:read",
+      },
+      {
+        label: "Langues",
+        href: "/languages",
+        icon: Globe,
+        requiredPermission: "settings:read",
       },
       {
         label: "Param\u00e8tres",
