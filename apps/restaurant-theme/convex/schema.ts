@@ -43,7 +43,8 @@ import {
  *
  * Business tables are imported from @beindigital-engine/convex-schema.
  */
-export default defineSchema({
+export default defineSchema(
+  {
   userProfiles: userProfilesTable,
   globalSettings: globalSettingsTable,
   storeIntegrations: storeIntegrationsTable,
@@ -77,4 +78,6 @@ export default defineSchema({
   emailAutomations: emailAutomationsTable,
   emailEvents: emailEventsTable,
   emailConfig: emailConfigTable,
-});
+  },
+  { schemaValidation: false }
+);

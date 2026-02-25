@@ -9,6 +9,7 @@
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
+    "check:i18n": "npx tsx scripts/check-i18n-keys.ts",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
@@ -36,7 +37,7 @@
       "prettier --write"
     ]
   },
-  "packageManager": "pnpm@10.4.1",
+  "packageManager": "pnpm@10.30.2",
   "engines": {
     "node": ">=20.0.0"
   },
