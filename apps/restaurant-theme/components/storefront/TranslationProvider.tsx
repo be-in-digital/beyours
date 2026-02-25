@@ -3,9 +3,20 @@
 import { useEffect, useRef, type ReactNode } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreStore } from "@beindigital-engine/restaurant"
 import { useLanguageStore } from "@beindigital-engine/restaurant"
 import { loadAllStaticStrings } from "@/lib/i18n/index"
+
+interface LanguageDoc {
+  code: string
+  name: string
+  nativeName: string
+  flagEmoji?: string
+  isDefault: boolean
+  isActive: boolean
+  sortOrder?: number
+}
 
 interface TranslationProviderProps {
   children: ReactNode
@@ -26,13 +37,13 @@ export function TranslationProvider({ children }: TranslationProviderProps) {
   // 1. Fetch active languages
   const languages = useQuery(
     api.languages.listActive,
-    storeId ? { storeId: storeId as any } : "skip"
+    storeId ? { storeId: storeId as Id<"stores"> } : "skip"
   )
 
   // 2. Fetch UI overrides
   const rawOverrides = useQuery(
     api.translations.getUIOverrides,
-    storeId ? { storeId: storeId as any } : "skip"
+    storeId ? { storeId: storeId as Id<"stores"> } : "skip"
   )
 
   const initialize = useLanguageStore((state) => state.initialize)
@@ -44,10 +55,10 @@ export function TranslationProvider({ children }: TranslationProviderProps) {
   useEffect(() => {
     if (!languages || languages.length === 0) return
 
-    const defaultLang = languages.find((l: any) => l.isDefault)
+    const defaultLang = (languages as LanguageDoc[]).find((l) => l.isDefault)
     const defaultCode = defaultLang?.code ?? "fr"
 
-    const storeLanguages = languages.map((l: any) => ({
+    const storeLanguages = (languages as LanguageDoc[]).map((l) => ({
       code: l.code,
       name: l.name,
       nativeName: l.nativeName,
@@ -59,9 +70,9 @@ export function TranslationProvider({ children }: TranslationProviderProps) {
     // Handle case: current locale became inactive → re-initialize
     if (initializedRef.current) {
       const langStore = useLanguageStore.getState()
-      const activeCodes = languages
-        .filter((l: any) => l.isActive)
-        .map((l: any) => l.code)
+      const activeCodes = (languages as LanguageDoc[])
+        .filter((l) => l.isActive)
+        .map((l) => l.code)
 
       if (!activeCodes.includes(langStore.locale)) {
         initialize(storeLanguages, defaultCode)
@@ -73,7 +84,7 @@ export function TranslationProvider({ children }: TranslationProviderProps) {
     initializedRef.current = true
 
     // Prefetch all active locale files
-    const codes = languages.map((l: any) => l.code)
+    const codes = (languages as LanguageDoc[]).map((l) => l.code)
     loadAllStaticStrings(codes).then(setStaticStrings).catch((err) => {
       console.error("[TranslationProvider] Failed to load static strings:", err)
     })

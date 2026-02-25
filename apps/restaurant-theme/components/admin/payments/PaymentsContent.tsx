@@ -31,7 +31,7 @@ import { RotateCcw, ExternalLink } from "lucide-react"
 type PaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "refunded" | "partially_refunded"
 type PaymentProvider = "stripe" | "sumup" | "paypal" | "square" | "cash"
 
-interface Payment {
+interface _Payment {
   _id: Id<"payments">
   storeId: Id<"stores">
   orderId: Id<"orders">

@@ -13,7 +13,7 @@ import { useLanguageStore } from "@beindigital-engine/restaurant"
  * Never returns empty string — falls through to source value.
  */
 export function useTranslatedField<
-  T extends Record<string, any> & {
+  T extends Record<string, unknown> & {
     translations?: Record<string, Record<string, string | undefined>>
   },
 >(entity: T | null | undefined, field: string): string {
@@ -31,6 +31,6 @@ export function useTranslatedField<
   if (defaultValue) return defaultValue
 
   // 3. Source field value
-  const sourceValue = (entity as Record<string, any>)[field]
+  const sourceValue = (entity as Record<string, unknown>)[field]
   return typeof sourceValue === "string" ? sourceValue : ""
 }

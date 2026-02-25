@@ -20,6 +20,15 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { REFERENCE_KEYS } from "@/lib/i18n/index"
 
+interface LanguageDoc {
+  code: string
+  name: string
+  nativeName: string
+  flagEmoji?: string
+  isDefault: boolean
+  isActive: boolean
+}
+
 /**
  * Admin UI Overrides — allows overriding static JSON translations via Convex.
  * Groups overrides by language in an accordion. Supports search filtering.
@@ -45,7 +54,7 @@ export function UIOverridesContent() {
   const upsertTranslation = useMutation(api.translations.upsert)
 
   const activeLanguages = useMemo(
-    () => (languages ?? []).filter((l: any) => l.isActive && !l.isDefault),
+    () => ((languages ?? []) as LanguageDoc[]).filter((l) => l.isActive && !l.isDefault),
     [languages]
   )
 
@@ -83,7 +92,7 @@ export function UIOverridesContent() {
     setSaving(true)
 
     try {
-      const promises: Promise<any>[] = []
+      const promises: Promise<unknown>[] = []
 
       for (const [langCode, keys] of Object.entries(editedValues)) {
         for (const [key, value] of Object.entries(keys)) {
@@ -172,7 +181,7 @@ export function UIOverridesContent() {
       </div>
 
       <Accordion type="multiple" defaultValue={[activeLanguages[0]?.code ?? ""]}>
-        {activeLanguages.map((lang: any) => (
+        {activeLanguages.map((lang) => (
           <AccordionItem key={lang.code} value={lang.code}>
             <AccordionTrigger className="text-base">
               <div className="flex items-center gap-2">

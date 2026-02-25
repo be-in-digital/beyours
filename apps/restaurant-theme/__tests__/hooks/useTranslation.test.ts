@@ -94,7 +94,7 @@ describe('useTranslation merge logic', () => {
   })
 
   it('should fallback to default locale static when current locale has no value', () => {
-    const staticStrings = new Map([
+    const staticStrings = new Map<string, Record<string, string>>([
       ['fr', { 'nav.home': 'Accueil', 'footer.text': 'Texte pied' }],
       ['en', { 'nav.home': 'Home' }], // en has no footer.text
     ])

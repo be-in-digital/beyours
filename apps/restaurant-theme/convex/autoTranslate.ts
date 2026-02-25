@@ -8,6 +8,7 @@
 import { action, internalAction, internalMutation, type MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import * as defs from "@beindigital-engine/convex-functions/autoTranslate";
 
 const DEBOUNCE_MS = defs.DEBOUNCE_MS;
@@ -51,13 +52,16 @@ export async function scheduleTranslation(
   tableName: string,
   storeId: string
 ) {
-  const doc = await ctx.db.get(documentId as any);
+  type TranslatableId = Id<"products"> | Id<"categories"> | Id<"menus">;
+  const docId = documentId as TranslatableId;
+  const doc = await ctx.db.get(docId);
   if (!doc) return;
 
   // Cancel previous scheduled job
-  if ((doc as any).scheduledTranslationJobId) {
+  const existingJobId = (doc as Record<string, unknown>).scheduledTranslationJobId;
+  if (existingJobId) {
     try {
-      await ctx.scheduler.cancel((doc as any).scheduledTranslationJobId);
+      await ctx.scheduler.cancel(existingJobId as Id<"_scheduled_functions">);
     } catch {
       // Job already executed or cancelled
     }
@@ -70,12 +74,12 @@ export async function scheduleTranslation(
     {
       documentId,
       tableName,
-      storeId: storeId as any,
+      storeId: storeId as Id<"stores">,
     }
   );
 
   // Mark document as pending
-  await ctx.db.patch(documentId as any, {
+  await ctx.db.patch(docId, {
     scheduledTranslationJobId: jobId,
     pendingTranslation: true,
   });
