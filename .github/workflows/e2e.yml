@@ -50,6 +50,8 @@ jobs:
         run: pnpm test:e2e
         env:
           CI: true
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          CONVEX_SITE_URL: https://placeholder.convex.site
 
       - name: Upload Playwright report
         if: failure()
