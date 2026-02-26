@@ -17,7 +17,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.4.1
+          standalone: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,6 +29,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
+        working-directory: apps/restaurant-theme
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Restore Turbo cache
@@ -40,12 +41,17 @@ jobs:
             ${{ runner.os }}-turbo-e2e-
 
       - name: Build application
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          CONVEX_SITE_URL: https://placeholder.convex.site
         run: pnpm build
 
       - name: Run Playwright tests
         run: pnpm test:e2e
         env:
           CI: true
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          CONVEX_SITE_URL: https://placeholder.convex.site
 
       - name: Upload Playwright report
         if: failure()

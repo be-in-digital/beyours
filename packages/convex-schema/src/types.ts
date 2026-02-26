@@ -274,7 +274,7 @@ export type DeliveryAddress = {
 export type CreateKitchenTicketInput = z.infer<typeof createKitchenTicketSchema>
 export type UpdateKitchenTicketStatusInput = z.infer<typeof updateKitchenTicketStatusSchema>
 
-export type KitchenTicketStatus = 'pending' | 'in_progress' | 'ready' | 'completed'
+export type KitchenTicketStatus = 'pending' | 'in_progress' | 'ready' | 'completed' | 'cancelled'
 
 export type KitchenTicketPriority = 'normal' | 'urgent' | 'vip'
 
@@ -510,7 +510,7 @@ export type KitchenTicketDoc = BaseEntity & CreateKitchenTicketInput & {
   assignedTo?: string
   startedAt?: number
   completedAt?: number
-  printCount: number
+  printCount?: number
 }
 
 export type PrinterSettingsDoc = BaseEntity & CreatePrinterSettingsInput & {

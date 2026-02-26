@@ -70,6 +70,21 @@ export {
   groupTranslationResults,
 } from './gpt-translation'
 
+// Hash utilities (source change detection)
+export {
+  normalizeText,
+  computeSourceHash,
+} from './hash'
+
+// Language catalog
+export {
+  LANGUAGES_CATALOG,
+  LANGUAGE_GROUP_LABELS,
+  findCatalogLanguage,
+  getLanguagesByGroup,
+} from './languages-catalog'
+export type { CatalogLanguage } from './languages-catalog'
+
 // Hook types (implementation in app)
 export type {
   UseTranslation,

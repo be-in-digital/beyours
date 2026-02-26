@@ -420,7 +420,7 @@ export const createKitchenTicketSchema = z.object({
  */
 export const updateKitchenTicketStatusSchema = z.object({
   ticketId: z.string().min(1),
-  status: z.enum(["pending", "in_progress", "ready", "completed"]),
+  status: z.enum(["pending", "in_progress", "ready", "completed", "cancelled"]),
   assignedTo: z.string().optional(),
 })
 

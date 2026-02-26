@@ -10,13 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TicketCard } from "./TicketCard"
 import { StationFilter } from "./StationFilter"
 
-type TicketStatus = "pending" | "in_progress" | "ready" | "completed"
+type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
 
 const STATUS_CONFIG: Record<TicketStatus, { title: string; color: string }> = {
   pending: { title: "En attente", color: "bg-yellow-500" },
   in_progress: { title: "En cours", color: "bg-blue-500" },
   ready: { title: "Prêt", color: "bg-green-500" },
   completed: { title: "Terminé", color: "bg-gray-500" },
+  cancelled: { title: "Annulé", color: "bg-red-500" },
 }
 
 export function KitchenContent() {
@@ -56,6 +57,7 @@ export function KitchenContent() {
       in_progress: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "in_progress"),
       ready: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "ready"),
       completed: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "completed"),
+      cancelled: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "cancelled"),
     }
   }, [filteredTickets])
 

@@ -13,7 +13,8 @@ export const kitchenTicketsTable = defineTable({
     v.literal("pending"),
     v.literal("in_progress"),
     v.literal("ready"),
-    v.literal("completed")
+    v.literal("completed"),
+    v.literal("cancelled")
   ),
   priority: v.union(
     v.literal("normal"),
@@ -28,9 +29,18 @@ export const kitchenTicketsTable = defineTable({
   })),
   assignedTo: v.optional(v.string()), // Reference to Better Auth component user
   estimatedPrepTime: v.optional(v.number()),
+  estimatedReadyAt: v.optional(v.number()),
   startedAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
-  printCount: v.number(),
+  cancelledAt: v.optional(v.number()),
+  readyAt: v.optional(v.number()),
+  printCount: v.optional(v.number()),
+  printAttempts: v.optional(v.number()),
+  printStatus: v.optional(v.string()),
+  customerName: v.optional(v.string()),
+  customerPhone: v.optional(v.string()),
+  customerEmail: v.optional(v.string()),
+  trackingToken: v.optional(v.string()),
   source: v.union(
     v.literal("website"),
     v.literal("uber_eats"),

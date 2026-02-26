@@ -37,7 +37,8 @@
     "./emailSegments": "./src/emailSegments.ts",
     "./emailAutomations": "./src/emailAutomations.ts",
     "./emailEvents": "./src/emailEvents.ts",
-    "./emailConfig": "./src/emailConfig.ts"
+    "./emailConfig": "./src/emailConfig.ts",
+    "./autoTranslate": "./src/autoTranslate.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -49,7 +50,8 @@
   },
   "dependencies": {
     "convex": "^1.18.0",
-    "@beindigital-engine/convex-schema": "workspace:*"
+    "@beindigital-engine/convex-schema": "workspace:*",
+    "@beindigital-engine/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",
