@@ -3,8 +3,21 @@
  * @module aws/ses/route-handler
  */
 
-import { timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
+
+/**
+ * Constant-time string comparison to prevent timing attacks.
+ * Replaces Node.js crypto.timingSafeEqual to avoid pulling
+ * the crypto module into non-Node bundles.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  const maxLen = Math.max(a.length, b.length)
+  let result = a.length ^ b.length
+  for (let i = 0; i < maxLen; i++) {
+    result |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+  }
+  return result === 0
+}
 import { passwordResetTemplate, welcomeTemplate } from './templates'
 import type { SESPasswordResetData, WelcomeData } from './templates'
 import { getSESService } from './adapter'
@@ -77,13 +90,7 @@ export function createEmailRouteHandler(config: EmailRouteConfig) {
       const token = authHeader.slice(7)
 
       // Constant-time comparison to prevent timing attacks
-      const tokenBuf = Buffer.from(token)
-      const secretBuf = Buffer.from(config.secret)
-
-      if (
-        tokenBuf.byteLength !== secretBuf.byteLength ||
-        !timingSafeEqual(tokenBuf, secretBuf)
-      ) {
+      if (!constantTimeEqual(token, config.secret)) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 })
       }
 

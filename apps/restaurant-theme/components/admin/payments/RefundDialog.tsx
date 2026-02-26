@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
 import { formatPrice } from "@/lib/admin/formatters"
 import {

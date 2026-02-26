@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { TicketTimer } from "./TicketTimer"
 import { Clock, Play, CheckCircle, Package } from "lucide-react"
 
-type TicketStatus = "pending" | "in_progress" | "ready" | "completed"
+type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
 type OrderType = "delivery" | "pickup" | "dine_in"
 type Priority = "normal" | "urgent" | "vip"
 type Source = "website" | "uber_eats" | "deliveroo" | "pos"
@@ -35,7 +35,7 @@ interface Ticket {
   source: Source
   status: TicketStatus
   estimatedPrepTime?: number
-  printCount: number
+  printCount?: number
   createdAt: number
   updatedAt: number
   startedAt?: number
@@ -70,6 +70,7 @@ const STATUS_ACTIONS: Record<TicketStatus, { label: string; nextStatus: TicketSt
   in_progress: { label: "Prêt", nextStatus: "ready", icon: CheckCircle },
   ready: { label: "Terminer", nextStatus: "completed", icon: Package },
   completed: { label: "Terminé", nextStatus: null, icon: CheckCircle },
+  cancelled: { label: "Annulé", nextStatus: null, icon: CheckCircle },
 }
 
 export function TicketCard({ ticket }: TicketCardProps) {
@@ -79,10 +80,11 @@ export function TicketCard({ ticket }: TicketCardProps) {
     const action = STATUS_ACTIONS[ticket.status]
     if (!action.nextStatus) return
 
+    const nextStatus = action.nextStatus as "pending" | "in_progress" | "ready" | "completed"
     try {
       await updateStatusMutation({
         id: ticket._id,
-        status: action.nextStatus,
+        status: nextStatus,
       })
       toast.success(`Ticket déplacé vers ${action.nextStatus.replace("_", " ")}`)
     } catch (error) {
