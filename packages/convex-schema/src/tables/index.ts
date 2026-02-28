@@ -31,3 +31,4 @@ export {
   emailEventsTable,
   emailConfigTable,
 } from "./emailMarketing"
+export { cmsPagesTable, cmsBlocksTable, cmsMediaTable } from "./cms"

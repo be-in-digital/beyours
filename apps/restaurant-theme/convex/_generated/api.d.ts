@@ -11,6 +11,13 @@
 import type * as auth from "../auth.js";
 import type * as autoTranslate from "../autoTranslate.js";
 import type * as categories from "../categories.js";
+import type * as cms from "../cms.js";
+import type * as cmsAltText from "../cmsAltText.js";
+import type * as cmsAutoTranslate from "../cmsAutoTranslate.js";
+import type * as cmsMedia from "../cmsMedia.js";
+import type * as cmsMediaConfirmUpload from "../cmsMediaConfirmUpload.js";
+import type * as cmsMediaProcess from "../cmsMediaProcess.js";
+import type * as cmsSvgUpload from "../cmsSvgUpload.js";
 import type * as deliverooImport from "../deliverooImport.js";
 import type * as deliverooMenuSync from "../deliverooMenuSync.js";
 import type * as deliverooOrders from "../deliverooOrders.js";
@@ -66,6 +73,13 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   autoTranslate: typeof autoTranslate;
   categories: typeof categories;
+  cms: typeof cms;
+  cmsAltText: typeof cmsAltText;
+  cmsAutoTranslate: typeof cmsAutoTranslate;
+  cmsMedia: typeof cmsMedia;
+  cmsMediaConfirmUpload: typeof cmsMediaConfirmUpload;
+  cmsMediaProcess: typeof cmsMediaProcess;
+  cmsSvgUpload: typeof cmsSvgUpload;
   deliverooImport: typeof deliverooImport;
   deliverooMenuSync: typeof deliverooMenuSync;
   deliverooOrders: typeof deliverooOrders;

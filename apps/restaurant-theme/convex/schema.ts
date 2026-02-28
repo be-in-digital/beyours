@@ -33,6 +33,9 @@ import {
   emailAutomationsTable,
   emailEventsTable,
   emailConfigTable,
+  cmsPagesTable,
+  cmsBlocksTable,
+  cmsMediaTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -78,6 +81,9 @@ export default defineSchema(
   emailAutomations: emailAutomationsTable,
   emailEvents: emailEventsTable,
   emailConfig: emailConfigTable,
+  cmsPages: cmsPagesTable,
+  cmsBlocks: cmsBlocksTable,
+  cmsMedia: cmsMediaTable,
   },
   { schemaValidation: false }
 );
