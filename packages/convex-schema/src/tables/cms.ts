@@ -128,3 +128,141 @@ export const cmsMediaTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_storeId_kind", ["storeId", "kind"])
   .index("by_storeId_folder", ["storeId", "folder"])
+
+// ============================================================================
+// Blog tables
+// ============================================================================
+
+/**
+ * Blog content fields validator
+ * Shared shape for draft/published article payloads
+ */
+const blogContentFieldsValidator = v.object({
+  title: v.string(),
+  slug: v.string(),
+  excerpt: v.string(), // max ~300 chars
+  coverImageId: v.id("cmsMedia"),
+  coverImageAlt: v.optional(v.string()),
+  content: v.string(), // HTML from Tiptap
+  metaTitle: v.optional(v.string()),
+  metaDescription: v.optional(v.string()),
+  ogImageId: v.optional(v.id("cmsMedia")),
+  updatedAt: v.number(),
+})
+
+/**
+ * Blog Categories table
+ * Hierarchical navigation for blog articles (1 category per article)
+ */
+export const blogCategoriesTable = defineTable({
+  storeId: v.id("stores"),
+  name: v.string(),
+  slug: v.string(), // unique per store, slugified
+  description: v.optional(v.string()),
+  imageId: v.optional(v.id("cmsMedia")),
+  sortOrder: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_storeId", ["storeId"])
+  .index("by_storeId_slug", ["storeId", "slug"])
+
+/**
+ * Blog Tags table
+ * Flexible tagging for blog articles (0..N tags per article)
+ */
+export const blogTagsTable = defineTable({
+  storeId: v.id("stores"),
+  name: v.string(),
+  slug: v.string(), // unique per store, slugified
+  createdAt: v.number(),
+})
+  .index("by_storeId", ["storeId"])
+  .index("by_storeId_slug", ["storeId", "slug"])
+
+/**
+ * Blog Articles table
+ * Single-document draft/published model:
+ *   - draftContent + publishedContent in the same record
+ *   - draftSlug/publishedSlug denormalized for index queries
+ *   - draftCategoryId/publishedCategoryId versioned
+ *   - draftAuthorId/publishedAuthorId versioned
+ *
+ * Workflow: draft → scheduled → published → archived
+ */
+export const blogArticlesTable = defineTable({
+  storeId: v.id("stores"),
+
+  // Workflow
+  status: v.union(
+    v.literal("draft"),
+    v.literal("scheduled"),
+    v.literal("published"),
+    v.literal("archived"),
+  ),
+  hasUnpublishedChanges: v.boolean(),
+  scheduledPublishAt: v.optional(v.number()), // non-null ONLY if status=scheduled
+  scheduledPublishJobId: v.optional(v.id("_scheduled_functions")),
+  publishedAt: v.optional(v.number()),
+  archivedAt: v.optional(v.number()),
+
+  // Slugs denormalized (top-level for indexes)
+  draftSlug: v.string(),
+  publishedSlug: v.optional(v.string()), // null if never published
+
+  // Category versioned
+  draftCategoryId: v.id("blogCategories"),
+  publishedCategoryId: v.optional(v.id("blogCategories")),
+
+  // Author versioned (userId string from Better Auth, not v.id("users"))
+  draftAuthorId: v.string(),
+  publishedAuthorId: v.optional(v.string()),
+
+  // Payloads
+  draftContent: blogContentFieldsValidator,
+  publishedContent: v.optional(blogContentFieldsValidator),
+
+  // Translation (draft-only, cleared on publish)
+  scheduledTranslationJobId: v.optional(v.id("_scheduled_functions")),
+
+  createdAt: v.number(),
+  updatedAt: v.number(),
+  updatedBy: v.string(),
+})
+  .index("by_storeId", ["storeId"])
+  .index("by_storeId_status", ["storeId", "status"])
+  .index("by_storeId_publishedSlug", ["storeId", "publishedSlug"])
+  .index("by_storeId_publishedCategoryId_status_publishedAt", [
+    "storeId",
+    "publishedCategoryId",
+    "status",
+    "publishedAt",
+  ])
+  .index("by_storeId_status_publishedAt", [
+    "storeId",
+    "status",
+    "publishedAt",
+  ])
+  .index("by_status_scheduledPublishAt", ["status", "scheduledPublishAt"])
+
+/**
+ * Blog Article-Tag join table
+ * Versioned: isDraft=true for draft tags, isDraft=false for published tags
+ * publishedAt denormalized for efficient pagination on /blog/tag/[slug]
+ */
+export const blogArticleTagsTable = defineTable({
+  storeId: v.id("stores"),
+  articleId: v.id("blogArticles"),
+  tagId: v.id("blogTags"),
+  isDraft: v.boolean(),
+  publishedAt: v.optional(v.number()), // filled only when isDraft=false
+})
+  .index("by_articleId", ["articleId"])
+  .index("by_articleId_isDraft", ["articleId", "isDraft"])
+  .index("by_tagId", ["tagId"])
+  .index("by_storeId_tagId_isDraft_publishedAt", [
+    "storeId",
+    "tagId",
+    "isDraft",
+    "publishedAt",
+  ])

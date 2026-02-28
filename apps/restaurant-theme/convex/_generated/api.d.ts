@@ -10,6 +10,8 @@
 
 import type * as auth from "../auth.js";
 import type * as autoTranslate from "../autoTranslate.js";
+import type * as blog from "../blog.js";
+import type * as blogAutoTranslate from "../blogAutoTranslate.js";
 import type * as categories from "../categories.js";
 import type * as cms from "../cms.js";
 import type * as cmsAltText from "../cmsAltText.js";
@@ -72,6 +74,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   autoTranslate: typeof autoTranslate;
+  blog: typeof blog;
+  blogAutoTranslate: typeof blogAutoTranslate;
   categories: typeof categories;
   cms: typeof cms;
   cmsAltText: typeof cmsAltText;

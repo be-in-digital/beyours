@@ -41,7 +41,9 @@
     "./autoTranslate": "./src/autoTranslate.ts",
     "./cms": "./src/cms.ts",
     "./cmsPublish": "./src/cmsPublish.ts",
-    "./cmsMedia": "./src/cmsMedia.ts"
+    "./cmsMedia": "./src/cmsMedia.ts",
+    "./blog": "./src/blog.ts",
+    "./blogPublish": "./src/blogPublish.ts"
   },
   "scripts": {
     "lint": "eslint src/",
