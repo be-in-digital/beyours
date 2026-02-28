@@ -38,7 +38,10 @@
     "./emailAutomations": "./src/emailAutomations.ts",
     "./emailEvents": "./src/emailEvents.ts",
     "./emailConfig": "./src/emailConfig.ts",
-    "./autoTranslate": "./src/autoTranslate.ts"
+    "./autoTranslate": "./src/autoTranslate.ts",
+    "./cms": "./src/cms.ts",
+    "./cmsPublish": "./src/cmsPublish.ts",
+    "./cmsMedia": "./src/cmsMedia.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -50,6 +53,7 @@
   },
   "dependencies": {
     "convex": "^1.18.0",
+    "@beindigital-engine/cms": "workspace:*",
     "@beindigital-engine/convex-schema": "workspace:*",
     "@beindigital-engine/core": "workspace:*"
   },

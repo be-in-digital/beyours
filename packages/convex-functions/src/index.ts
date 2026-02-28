@@ -35,6 +35,9 @@ export * as emailSegments from "./emailSegments"
 export * as emailAutomations from "./emailAutomations"
 export * as emailEvents from "./emailEvents"
 export * as emailConfig from "./emailConfig"
+export * as cms from "./cms"
+export * as cmsPublish from "./cmsPublish"
+export * as cmsMedia from "./cmsMedia"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
