@@ -36,6 +36,10 @@ import {
   cmsPagesTable,
   cmsBlocksTable,
   cmsMediaTable,
+  blogCategoriesTable,
+  blogTagsTable,
+  blogArticlesTable,
+  blogArticleTagsTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -84,6 +88,10 @@ export default defineSchema(
   cmsPages: cmsPagesTable,
   cmsBlocks: cmsBlocksTable,
   cmsMedia: cmsMediaTable,
+  blogCategories: blogCategoriesTable,
+  blogTags: blogTagsTable,
+  blogArticles: blogArticlesTable,
+  blogArticleTags: blogArticleTagsTable,
   },
   { schemaValidation: false }
 );

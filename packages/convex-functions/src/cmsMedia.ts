@@ -133,6 +133,27 @@ export const deleteMedia = {
       }
     }
 
+    // Check blog article references (coverImageId, ogImageId)
+    const blogArticles = await ctx.db
+      .query("blogArticles")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    for (const article of blogArticles) {
+      const mediaIds = [
+        article.draftContent?.coverImageId,
+        article.draftContent?.ogImageId,
+        article.publishedContent?.coverImageId,
+        article.publishedContent?.ogImageId,
+      ].filter(Boolean)
+
+      if (mediaIds.includes(args.mediaId)) {
+        throw new Error(
+          `Cannot delete: media is referenced in blog article "${article.draftContent?.title ?? "Untitled"}"`,
+        )
+      }
+    }
+
     await ctx.db.delete(args.mediaId)
     return { deleted: true }
   },
