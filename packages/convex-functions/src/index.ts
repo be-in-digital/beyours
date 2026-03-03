@@ -40,6 +40,11 @@ export * as cmsPublish from "./cmsPublish"
 export * as cmsMedia from "./cmsMedia"
 export * as blog from "./blog"
 export * as blogPublish from "./blogPublish"
+export * as ownerEntitlements from "./ownerEntitlements"
+export * as blogAutoConfig from "./blogAutoConfig"
+export * as blogAutoUsage from "./blogAutoUsage"
+export { checkAutoBlogAccess, validateConfigAgainstPlan } from "./blogAutoGuards"
+export * as bidSubscription from "./bidSubscription"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
