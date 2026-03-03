@@ -43,7 +43,12 @@
     "./cmsPublish": "./src/cmsPublish.ts",
     "./cmsMedia": "./src/cmsMedia.ts",
     "./blog": "./src/blog.ts",
-    "./blogPublish": "./src/blogPublish.ts"
+    "./blogPublish": "./src/blogPublish.ts",
+    "./ownerEntitlements": "./src/ownerEntitlements.ts",
+    "./blogAutoConfig": "./src/blogAutoConfig.ts",
+    "./blogAutoUsage": "./src/blogAutoUsage.ts",
+    "./blogAutoGuards": "./src/blogAutoGuards.ts",
+    "./bidSubscription": "./src/bidSubscription.ts"
   },
   "scripts": {
     "lint": "eslint src/",

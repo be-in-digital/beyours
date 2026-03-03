@@ -38,3 +38,9 @@ export {
   blogArticlesTable,
   blogArticleTagsTable,
 } from "./cms"
+export {
+  ownerEntitlementsTable,
+  blogAutoConfigTable,
+  blogAutoQueueTable,
+  blogAutoUsageTable,
+} from "./autoBlog"

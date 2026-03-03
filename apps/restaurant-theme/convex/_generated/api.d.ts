@@ -10,8 +10,13 @@
 
 import type * as auth from "../auth.js";
 import type * as autoTranslate from "../autoTranslate.js";
+import type * as bidStripeWebhook from "../bidStripeWebhook.js";
+import type * as bidSubscription from "../bidSubscription.js";
+import type * as bidSubscriptionInternal from "../bidSubscriptionInternal.js";
 import type * as blog from "../blog.js";
+import type * as blogAutoConfig from "../blogAutoConfig.js";
 import type * as blogAutoTranslate from "../blogAutoTranslate.js";
+import type * as blogAutoUsage from "../blogAutoUsage.js";
 import type * as categories from "../categories.js";
 import type * as cms from "../cms.js";
 import type * as cmsAltText from "../cmsAltText.js";
@@ -46,6 +51,7 @@ import type * as oauthCallbackHandlers from "../oauthCallbackHandlers.js";
 import type * as oauthConnect from "../oauthConnect.js";
 import type * as orders from "../orders.js";
 import type * as orphanProducts from "../orphanProducts.js";
+import type * as ownerEntitlements from "../ownerEntitlements.js";
 import type * as paymentConnections from "../paymentConnections.js";
 import type * as payments from "../payments.js";
 import type * as prizes from "../prizes.js";
@@ -74,8 +80,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   autoTranslate: typeof autoTranslate;
+  bidStripeWebhook: typeof bidStripeWebhook;
+  bidSubscription: typeof bidSubscription;
+  bidSubscriptionInternal: typeof bidSubscriptionInternal;
   blog: typeof blog;
+  blogAutoConfig: typeof blogAutoConfig;
   blogAutoTranslate: typeof blogAutoTranslate;
+  blogAutoUsage: typeof blogAutoUsage;
   categories: typeof categories;
   cms: typeof cms;
   cmsAltText: typeof cmsAltText;
@@ -110,6 +121,7 @@ declare const fullApi: ApiFromModules<{
   oauthConnect: typeof oauthConnect;
   orders: typeof orders;
   orphanProducts: typeof orphanProducts;
+  ownerEntitlements: typeof ownerEntitlements;
   paymentConnections: typeof paymentConnections;
   payments: typeof payments;
   prizes: typeof prizes;

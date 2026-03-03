@@ -40,6 +40,10 @@ import {
   blogTagsTable,
   blogArticlesTable,
   blogArticleTagsTable,
+  ownerEntitlementsTable,
+  blogAutoConfigTable,
+  blogAutoQueueTable,
+  blogAutoUsageTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -92,6 +96,10 @@ export default defineSchema(
   blogTags: blogTagsTable,
   blogArticles: blogArticlesTable,
   blogArticleTags: blogArticleTagsTable,
+  ownerEntitlements: ownerEntitlementsTable,
+  blogAutoConfig: blogAutoConfigTable,
+  blogAutoQueue: blogAutoQueueTable,
+  blogAutoUsage: blogAutoUsageTable,
   },
   { schemaValidation: false }
 );
