@@ -33,6 +33,17 @@ import {
   emailAutomationsTable,
   emailEventsTable,
   emailConfigTable,
+  cmsPagesTable,
+  cmsBlocksTable,
+  cmsMediaTable,
+  blogCategoriesTable,
+  blogTagsTable,
+  blogArticlesTable,
+  blogArticleTagsTable,
+  ownerEntitlementsTable,
+  blogAutoConfigTable,
+  blogAutoQueueTable,
+  blogAutoUsageTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -78,6 +89,17 @@ export default defineSchema(
   emailAutomations: emailAutomationsTable,
   emailEvents: emailEventsTable,
   emailConfig: emailConfigTable,
+  cmsPages: cmsPagesTable,
+  cmsBlocks: cmsBlocksTable,
+  cmsMedia: cmsMediaTable,
+  blogCategories: blogCategoriesTable,
+  blogTags: blogTagsTable,
+  blogArticles: blogArticlesTable,
+  blogArticleTags: blogArticleTagsTable,
+  ownerEntitlements: ownerEntitlementsTable,
+  blogAutoConfig: blogAutoConfigTable,
+  blogAutoQueue: blogAutoQueueTable,
+  blogAutoUsage: blogAutoUsageTable,
   },
   { schemaValidation: false }
 );

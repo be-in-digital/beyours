@@ -80,13 +80,13 @@ else
   log_success "Bucket created"
 fi
 
-# Block public access (security best practice)
+# Block ACL-based public access but allow bucket policy public reads
 log_info "Configuring public access block..."
 aws s3api put-public-access-block \
   --bucket "$BUCKET_NAME" \
   --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-log_success "Public access blocked"
+    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+log_success "Public access configured (ACLs blocked, policy-based reads allowed)"
 
 # Enable versioning
 log_info "Enabling versioning..."
@@ -123,6 +123,28 @@ aws s3api put-bucket-cors \
     }]
   }'
 log_success "CORS configured"
+
+# Bucket policy: allow public reads on asset folders
+log_info "Setting bucket policy for public reads..."
+aws s3api put-bucket-policy \
+  --bucket "$BUCKET_NAME" \
+  --policy "{
+    \"Version\": \"2012-10-17\",
+    \"Statement\": [{
+      \"Sid\": \"PublicReadAssets\",
+      \"Effect\": \"Allow\",
+      \"Principal\": \"*\",
+      \"Action\": \"s3:GetObject\",
+      \"Resource\": [
+        \"arn:aws:s3:::${BUCKET_NAME}/cms/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/products/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/branding/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/stores/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/email/*\"
+      ]
+    }]
+  }"
+log_success "Bucket policy set (public read on asset folders)"
 
 # Lifecycle rules: delete incomplete multipart uploads after 7 days
 log_info "Setting lifecycle rules..."
