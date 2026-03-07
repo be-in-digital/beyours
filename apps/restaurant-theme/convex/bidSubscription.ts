@@ -105,7 +105,7 @@ export const createCheckoutSession = action({
         metadata: { ownerId },
       },
       success_url: `${appUrl}/admin/subscription?status=success`,
-      cancel_url: `${appUrl}/subscription`,
+      cancel_url: `${appUrl}/admin/subscription`,
     });
 
     return { url: session.url };

@@ -1171,7 +1171,10 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
   )
 }
 
-/** Convert timestamp to datetime-local compatible string */
+/** Convert timestamp to datetime-local compatible string (local timezone) */
 function timestampToDatetimeLocal(timestamp: number): string {
-  return new Date(timestamp).toISOString().slice(0, 16)
+  const d = new Date(timestamp)
+  const offset = d.getTimezoneOffset()
+  const local = new Date(d.getTime() - offset * 60000)
+  return local.toISOString().slice(0, 16)
 }
