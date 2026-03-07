@@ -349,6 +349,10 @@ export const generateArticle = action({
     if (!identity) throw new Error("Not authenticated")
     const ownerId = identity.subject
 
+    // 1b. Input validation
+    if (args.topic.length > 500) throw new Error("Topic trop long (max 500 caracteres)")
+    if (args.locale.length > 10) throw new Error("Locale invalide")
+
     // 2. Check entitlements + quota
     const access = await ctx.runQuery(
       internal.blogAutoGenerateInternal._checkAccess,

@@ -22,6 +22,10 @@ const DANGEROUS_ELEMENTS = [
   "textarea",
   "button",
   "select",
+  "foreignObject",
+  "math",
+  "annotation-xml",
+  "base",
 ]
 
 const EVENT_HANDLER_PATTERN = /\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi
