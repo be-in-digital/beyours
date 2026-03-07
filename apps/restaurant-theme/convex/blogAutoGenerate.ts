@@ -531,7 +531,7 @@ Regles STRICTES pour les images du contenu :
 
     // 6. Fetch cover image (dedicated, separate from content images)
     let coverImageId: Id<"cmsMedia"> | undefined
-    let coverImageAlt = generated.coverImageAlt ?? ""
+    const coverImageAlt = generated.coverImageAlt ?? ""
     if (generated.coverImageKeyword) {
       const coverImg = await fetchFromUnsplash(generated.coverImageKeyword)
       if (coverImg) {

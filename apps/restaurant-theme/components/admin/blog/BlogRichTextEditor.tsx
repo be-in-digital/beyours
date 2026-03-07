@@ -32,6 +32,30 @@ import { UnsplashImagePicker } from "@/components/admin/blog/UnsplashImagePicker
 import { GenerateImageDialog } from "@/components/admin/blog/GenerateImageDialog"
 import type { UnsplashPhoto } from "@/components/admin/blog/UnsplashImagePicker"
 
+interface ToolbarButtonProps {
+  active?: boolean
+  onClick: () => void
+  children: React.ReactNode
+  title?: string
+  disabled?: boolean
+}
+
+function ToolbarButton({ active, onClick, children, title, disabled }: ToolbarButtonProps) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={`h-7 w-7 p-0 ${active ? "bg-muted" : ""}`}
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+    >
+      {children}
+    </Button>
+  )
+}
+
 interface BlogRichTextEditorProps {
   value: string
   onChange: (html: string) => void
@@ -135,30 +159,6 @@ export function BlogRichTextEditor({
 
   const charCount = editor.storage.characterCount?.characters?.() ?? 0
 
-  const ToolbarButton = ({
-    active,
-    onClick,
-    children,
-    title,
-  }: {
-    active?: boolean
-    onClick: () => void
-    children: React.ReactNode
-    title?: string
-  }) => (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={`h-7 w-7 p-0 ${active ? "bg-muted" : ""}`}
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-    >
-      {children}
-    </Button>
-  )
-
   return (
     <div className="rounded-md border">
       {/* Toolbar */}
@@ -168,6 +168,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("bold")}
           onClick={() => editor.chain().focus().toggleBold().run()}
           title="Gras"
+          disabled={disabled}
         >
           <Bold className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -175,6 +176,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("italic")}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           title="Italique"
+          disabled={disabled}
         >
           <Italic className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -189,6 +191,7 @@ export function BlogRichTextEditor({
             }
           }}
           title="Lien"
+          disabled={disabled}
         >
           <LinkIcon className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -200,6 +203,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("heading", { level: 2 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           title="Titre H2"
+          disabled={disabled}
         >
           <Heading2 className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -207,6 +211,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("heading", { level: 3 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           title="Titre H3"
+          disabled={disabled}
         >
           <Heading3 className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -214,6 +219,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("heading", { level: 4 })}
           onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
           title="Titre H4"
+          disabled={disabled}
         >
           <Heading4 className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -225,6 +231,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("bulletList")}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           title="Liste a puces"
+          disabled={disabled}
         >
           <List className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -232,6 +239,7 @@ export function BlogRichTextEditor({
           active={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           title="Liste numerotee"
+          disabled={disabled}
         >
           <ListOrdered className="h-3.5 w-3.5" />
         </ToolbarButton>
@@ -243,24 +251,28 @@ export function BlogRichTextEditor({
           active={editor.isActive("blockquote")}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           title="Citation"
+          disabled={disabled}
         >
           <Quote className="h-3.5 w-3.5" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           title="Separateur"
+          disabled={disabled}
         >
           <Minus className="h-3.5 w-3.5" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => setMediaPickerOpen(true)}
           title="Inserer une image"
+          disabled={disabled}
         >
           <ImageIcon className="h-3.5 w-3.5" />
         </ToolbarButton>
         <ToolbarButton
           onClick={() => setGenerateImageDialogOpen(true)}
           title="Generer une image avec l'IA"
+          disabled={disabled}
         >
           <Sparkles className="h-3.5 w-3.5" />
         </ToolbarButton>

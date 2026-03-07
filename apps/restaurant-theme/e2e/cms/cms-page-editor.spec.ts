@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test"
 import {
   waitForAdminPage,
-  navigateToCollapsibleItem,
 } from "../helpers/navigation.helpers"
 
 test.describe("CMS Page Editor", () => {

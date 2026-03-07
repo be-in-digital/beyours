@@ -37,6 +37,7 @@ const PRESETS: Record<
   },
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function upsertEntitlements(ctx: any, ownerId: string, plan: string) {
   const preset = PRESETS[plan]!
   const now = Date.now()
@@ -53,6 +54,7 @@ async function upsertEntitlements(ctx: any, ownerId: string, plan: string) {
 
   const existing = await ctx.db
     .query("ownerEntitlements")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .withIndex("by_ownerId", (q: any) => q.eq("ownerId", ownerId))
     .first()
 

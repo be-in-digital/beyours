@@ -74,6 +74,7 @@ export function PricingView() {
     try {
       const result = await createCheckoutSession({ plan, billing })
       if (result?.url) {
+        // eslint-disable-next-line react-hooks/immutability
         window.location.href = result.url
       }
     } catch (err) {

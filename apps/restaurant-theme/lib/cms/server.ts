@@ -90,6 +90,7 @@ export async function fetchCmsPage(
   if (!data) return EMPTY_PAGE
 
   function block(blockKey: string): ServerCmsBlockAccessor {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const blockData = data.blocks.find((b: any) => b.blockKey === blockKey)
     if (!blockData) return EMPTY_BLOCK
 

@@ -88,6 +88,7 @@ const TONE_OPTIONS = [
 // ─── Component ───────────────────────────────────────────────────────────────────
 
 interface BlogAutoConfigFormProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   config: any | null
   accessStatus: AutoBlogAccess
   storeId: Id<"stores">
@@ -221,6 +222,7 @@ export function BlogAutoConfigForm({
   useEffect(() => {
     if (languages && !languagesLoadedRef.current && !config) {
       languagesLoadedRef.current = true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const defaultLang = languages.find((l: any) => l.isDefault)
       if (defaultLang) {
         setValue("primaryLocale", defaultLang.code)
@@ -310,10 +312,10 @@ export function BlogAutoConfigForm({
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="isEnabled" className="text-sm font-medium">
-                Activer l'Auto Blog
+                Activer l&apos;Auto Blog
               </Label>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Active la génération automatique d'articles.
+                Active la génération automatique d&apos;articles.
               </p>
             </div>
             <Switch
@@ -332,7 +334,7 @@ export function BlogAutoConfigForm({
         <CardHeader>
           <CardTitle className="text-lg">Sujets</CardTitle>
           <CardDescription>
-            Les thématiques pour la génération d'articles.
+            Les thématiques pour la génération d&apos;articles.
             {maxTopics !== undefined && (
               <span className="ml-1">
                 ({themes.length}/{maxTopics} sur votre plan{" "}
@@ -595,6 +597,7 @@ export function BlogAutoConfigForm({
                 </SelectTrigger>
                 <SelectContent>
                   {languages ? (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     languages.map((lang: any) => (
                       <SelectItem key={lang.code} value={lang.code}>
                         {lang.name}
@@ -699,6 +702,7 @@ export function BlogAutoConfigForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">Aucune catégorie</SelectItem>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {categories?.map((cat: any) => (
                   <SelectItem key={cat._id} value={cat._id}>
                     {cat.name}

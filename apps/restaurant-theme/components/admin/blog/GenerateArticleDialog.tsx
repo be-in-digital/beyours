@@ -243,6 +243,7 @@ export function GenerateArticleDialog({
                   <SelectValue placeholder="Choisir une langue" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {languages.map((lang: any) => (
                     <SelectItem key={lang._id} value={lang.code}>
                       {lang.name}
@@ -352,6 +353,7 @@ export function GenerateArticleDialog({
                     <SelectValue placeholder="Choisir une categorie" />
                   </SelectTrigger>
                   <SelectContent>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {categories!.map((cat: any) => (
                       <SelectItem key={cat._id} value={cat._id}>
                         {cat.name}
