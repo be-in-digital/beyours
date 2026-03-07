@@ -24,6 +24,7 @@ export const autoBlogEntitlementValidator = v.object({
   maxTopics: v.optional(v.number()), // undefined = unlimited
   allowMultiLanguage: v.boolean(),
   allowAutoPublish: v.boolean(),
+  monthlyImageQuota: v.optional(v.number()),
 })
 
 // ============================================================================
@@ -88,6 +89,7 @@ export const PLAN_PRESETS = {
     maxTopics: 3,
     allowMultiLanguage: false,
     allowAutoPublish: false,
+    monthlyImageQuota: 5,
   },
   pro: {
     enabled: true,
@@ -96,6 +98,7 @@ export const PLAN_PRESETS = {
     maxTopics: undefined,
     allowMultiLanguage: false,
     allowAutoPublish: true,
+    monthlyImageQuota: 20,
   },
   enterprise: {
     enabled: true,
@@ -104,6 +107,7 @@ export const PLAN_PRESETS = {
     maxTopics: undefined,
     allowMultiLanguage: true,
     allowAutoPublish: true,
+    monthlyImageQuota: 100,
   },
   disabled: {
     enabled: false,
@@ -112,5 +116,6 @@ export const PLAN_PRESETS = {
     maxTopics: undefined,
     allowMultiLanguage: false,
     allowAutoPublish: false,
+    monthlyImageQuota: 0,
   },
 } as const

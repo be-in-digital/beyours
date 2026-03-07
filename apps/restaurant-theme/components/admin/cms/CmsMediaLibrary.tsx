@@ -55,6 +55,18 @@ import { uploadWithProgress } from "@/lib/cms/upload-with-progress"
 import type { Id } from "@/convex/_generated/dataModel"
 
 type KindFilter = "all" | "image" | "video" | "file"
+type FolderFilter = "all" | "products" | "blogs" | "blog-auto" | "storefront" | "cms" | "email" | "avatars"
+
+const FOLDER_LABELS: Record<FolderFilter, string> = {
+  all: "Tous les dossiers",
+  products: "Produits",
+  blogs: "Blog",
+  "blog-auto": "Blog IA",
+  storefront: "Vitrine",
+  cms: "CMS",
+  email: "Email",
+  avatars: "Avatars",
+}
 
 interface MediaItem {
   _id: Id<"cmsMedia">
@@ -117,6 +129,7 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
 export function CmsMediaLibrary() {
   const storeId = useAdminStoreId()
   const [kindFilter, setKindFilter] = useState<KindFilter>("all")
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>("all")
   const [search, setSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
@@ -134,6 +147,7 @@ export function CmsMediaLibrary() {
       ? {
           storeId,
           ...(kindFilter !== "all" && { kind: kindFilter }),
+          ...(folderFilter !== "all" && { folder: folderFilter }),
           ...(search && { search }),
         }
       : "skip",
@@ -338,6 +352,19 @@ export function CmsMediaLibrary() {
             <SelectItem value="image">Images</SelectItem>
             <SelectItem value="video">Vidéos</SelectItem>
             <SelectItem value="file">Fichiers</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={folderFilter}
+          onValueChange={(v: string) => { setFolderFilter(v as FolderFilter); setCurrentPage(1) }}
+        >
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(FOLDER_LABELS) as [FolderFilter, string][]).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

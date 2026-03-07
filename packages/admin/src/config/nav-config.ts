@@ -1,5 +1,6 @@
 import {
   ChevronRight,
+  CreditCard,
   FileText,
   Gamepad2,
   Globe,
@@ -156,9 +157,13 @@ export const navGroups: NavGroup[] = [
       },
       {
         label: "Blog",
-        href: "/content/blog",
         icon: PenSquare,
+        basePath: "/content/blog",
         requiredPermission: "settings:read",
+        children: [
+          { label: "Articles", href: "/content/blog" },
+          { label: "Auto Blog", href: "/content/blog/auto-config" },
+        ],
       },
       {
         label: "M\u00e9diath\u00e8que",
@@ -187,6 +192,12 @@ export const navGroups: NavGroup[] = [
         label: "Langues",
         href: "/languages",
         icon: Globe,
+        requiredPermission: "settings:read",
+      },
+      {
+        label: "Abonnement",
+        href: "/subscription",
+        icon: CreditCard,
         requiredPermission: "settings:read",
       },
       {

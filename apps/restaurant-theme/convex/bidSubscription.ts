@@ -104,7 +104,7 @@ export const createCheckoutSession = action({
         metadata: { ownerId },
       },
       success_url: `${appUrl}/admin/subscription?status=success`,
-      cancel_url: `${appUrl}/admin/subscription?status=cancel`,
+      cancel_url: `${appUrl}/subscription`,
     });
 
     return { url: session.url };
@@ -137,7 +137,7 @@ export const createPortalSession = action({
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${appUrl}/admin/subscription`,
+      return_url: `${appUrl}/dashboard`,
     });
 
     return { url: session.url };

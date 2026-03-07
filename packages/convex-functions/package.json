@@ -48,7 +48,8 @@
     "./blogAutoConfig": "./src/blogAutoConfig.ts",
     "./blogAutoUsage": "./src/blogAutoUsage.ts",
     "./blogAutoGuards": "./src/blogAutoGuards.ts",
-    "./bidSubscription": "./src/bidSubscription.ts"
+    "./bidSubscription": "./src/bidSubscription.ts",
+    "./blogAutoGenerate": "./src/blogAutoGenerate.ts"
   },
   "scripts": {
     "lint": "eslint src/",

@@ -20,6 +20,12 @@ export interface AutoBlogAccessResult {
   remainingQuota: number
 }
 
+export interface ImageGenerationAccessResult {
+  allowed: boolean
+  reason?: string
+  remainingImageQuota: number
+}
+
 // ============================================================================
 // Guards
 // ============================================================================
@@ -105,6 +111,108 @@ export async function checkAutoBlogAccess(
 }
 
 /**
+ * Check image generation access for an owner.
+ * Returns allowed status, reason, and remaining image quota.
+ */
+export async function checkImageGenerationAccess(
+  ctx: any,
+  ownerId: string
+): Promise<ImageGenerationAccessResult> {
+  // 1. Get entitlements
+  const entitlements = await ctx.db
+    .query("ownerEntitlements")
+    .withIndex("by_ownerId", (q: any) => q.eq("ownerId", ownerId))
+    .first()
+
+  if (!entitlements || !entitlements.autoBlog?.enabled) {
+    return {
+      allowed: false,
+      reason: "Aucun abonnement Auto Blog actif",
+      remainingImageQuota: 0,
+    }
+  }
+
+  // Check Stripe subscription status if present
+  if (
+    entitlements.subscriptionStatus &&
+    !["active", "trialing"].includes(entitlements.subscriptionStatus)
+  ) {
+    return {
+      allowed: false,
+      reason: "Abonnement inactif",
+      remainingImageQuota: 0,
+    }
+  }
+
+  const ab = entitlements.autoBlog
+
+  if (!ab.plan) {
+    return {
+      allowed: false,
+      reason: "Aucun plan Auto Blog actif",
+      remainingImageQuota: 0,
+    }
+  }
+
+  const monthlyImageQuota = ab.monthlyImageQuota ?? 0
+  if (monthlyImageQuota <= 0) {
+    return {
+      allowed: false,
+      reason: "Generation d'images non disponible avec votre plan",
+      remainingImageQuota: 0,
+    }
+  }
+
+  // 2. Get current month usage
+  const periodKey = getCurrentPeriodKey()
+  const usage = await ctx.db
+    .query("blogAutoUsage")
+    .withIndex("by_ownerId_periodKey", (q: any) =>
+      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
+    )
+    .first()
+
+  const imageGeneratedCount = usage?.imageGeneratedCount ?? 0
+  const remainingImageQuota = Math.max(0, monthlyImageQuota - imageGeneratedCount)
+
+  if (remainingImageQuota <= 0) {
+    return {
+      allowed: false,
+      reason: "Quota mensuel d'images atteint",
+      remainingImageQuota: 0,
+    }
+  }
+
+  return {
+    allowed: true,
+    remainingImageQuota,
+  }
+}
+
+/**
+ * Normalize schedule days from a config record.
+ * Handles backward compat: old single-number fields → new array fields.
+ * Used by guards, UI, and future cron/planner.
+ */
+export function normalizeScheduleDays(config: {
+  frequency: "weekly" | "monthly"
+  preferredWeekday?: number
+  preferredMonthDay?: number
+  preferredWeekdays?: number[]
+  preferredMonthDays?: number[]
+}): { weekdays: number[]; monthDays: number[] } {
+  const weekdays =
+    config.preferredWeekdays ??
+    (config.preferredWeekday !== undefined ? [config.preferredWeekday] : [])
+
+  const monthDays =
+    config.preferredMonthDays ??
+    (config.preferredMonthDay !== undefined ? [config.preferredMonthDay] : [])
+
+  return { weekdays, monthDays }
+}
+
+/**
  * Validate plan-specific limits for a config upsert.
  * Throws with a descriptive French error message if validation fails.
  */
@@ -114,6 +222,9 @@ export function validateConfigAgainstPlan(
     themes?: string[]
     approvalMode?: string
     autoTranslate?: boolean
+    frequency?: "weekly" | "monthly"
+    preferredWeekdays?: number[]
+    preferredMonthDays?: number[]
   }
 ): void {
   const ab = entitlements?.autoBlog
@@ -144,5 +255,74 @@ export function validateConfigAgainstPlan(
     throw new Error(
       `La traduction automatique n'est pas disponible avec le plan ${ab.plan}. Passez au plan Enterprise.`
     )
+  }
+
+  // Check schedule days
+  if (config.frequency) {
+    const quota: number = ab.monthlyQuota ?? 0
+
+    if (config.frequency === "weekly" && config.preferredWeekdays) {
+      // Exclusivity: monthly days must not be provided
+      if (config.preferredMonthDays && config.preferredMonthDays.length > 0) {
+        throw new Error(
+          "En mode hebdomadaire, les jours du mois ne doivent pas etre renseignes."
+        )
+      }
+
+      // Non-empty
+      if (config.preferredWeekdays.length === 0) {
+        throw new Error("Veuillez selectionner au moins un jour de la semaine.")
+      }
+
+      // Bounds: each day ∈ [0..6]
+      if (config.preferredWeekdays.some((d) => d < 0 || d > 6 || !Number.isInteger(d))) {
+        throw new Error("Jours de la semaine invalides (attendu : 0-6).")
+      }
+
+      // Unique
+      if (new Set(config.preferredWeekdays).size !== config.preferredWeekdays.length) {
+        throw new Error("Les jours de la semaine doivent etre uniques.")
+      }
+
+      // Max count
+      const maxAllowed = Math.min(quota, 7)
+      if (config.preferredWeekdays.length > maxAllowed) {
+        throw new Error(
+          `Votre plan ${ab.plan} permet de choisir au maximum ${maxAllowed} jour(s) par semaine.`
+        )
+      }
+    }
+
+    if (config.frequency === "monthly" && config.preferredMonthDays) {
+      // Exclusivity: weekly days must not be provided
+      if (config.preferredWeekdays && config.preferredWeekdays.length > 0) {
+        throw new Error(
+          "En mode mensuel, les jours de la semaine ne doivent pas etre renseignes."
+        )
+      }
+
+      // Non-empty
+      if (config.preferredMonthDays.length === 0) {
+        throw new Error("Veuillez selectionner au moins un jour du mois.")
+      }
+
+      // Bounds: each day ∈ [1..28]
+      if (config.preferredMonthDays.some((d) => d < 1 || d > 28 || !Number.isInteger(d))) {
+        throw new Error("Jours du mois invalides (attendu : 1-28).")
+      }
+
+      // Unique
+      if (new Set(config.preferredMonthDays).size !== config.preferredMonthDays.length) {
+        throw new Error("Les jours du mois doivent etre uniques.")
+      }
+
+      // Max count
+      const maxAllowed = Math.min(quota, 28)
+      if (config.preferredMonthDays.length > maxAllowed) {
+        throw new Error(
+          `Votre plan ${ab.plan} permet de choisir au maximum ${maxAllowed} jour(s) par mois.`
+        )
+      }
+    }
   }
 }

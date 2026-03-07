@@ -516,24 +516,16 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="space-y-3">
+        {/* Row 1: Back button + actions */}
+        <div className="flex items-center justify-between">
           <Link href="/content/blog">
-            <Button variant="ghost" size="sm" className="shrink-0">
+            <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-semibold truncate">
-              {localDraft.title || "Sans titre"}
-            </h1>
-            <p className="text-sm text-muted-foreground truncate">
-              /{localDraft.slug || "..."}
-            </p>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
           {/* Save status */}
           {saveStatus === "saving" && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -684,6 +676,17 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          </div>
+        </div>
+
+        {/* Row 2: Title + slug */}
+        <div>
+          <h1 className="text-xl sm:text-2xl font-semibold">
+            {localDraft.title || "Sans titre"}
+          </h1>
+          <p className="text-sm text-muted-foreground truncate">
+            /{localDraft.slug || "..."}
+          </p>
         </div>
       </div>
 

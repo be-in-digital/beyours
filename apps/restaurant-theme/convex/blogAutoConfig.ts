@@ -5,10 +5,12 @@
  * The upsert mutation validates plan limits before saving.
  */
 
+import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import * as blogAutoConfigDefs from "@beindigital-engine/convex-functions/blogAutoConfig"
 import {
   checkAutoBlogAccess,
+  checkImageGenerationAccess,
   validateConfigAgainstPlan,
 } from "@beindigital-engine/convex-functions/blogAutoGuards"
 
@@ -36,13 +38,45 @@ export const getAccessStatus = query({
   },
 })
 
+/** Get image generation access status for the authenticated owner */
+export const getImageAccessStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error("Not authenticated")
+    return checkImageGenerationAccess(ctx, identity.subject)
+  },
+})
+
 // ============================================================================
 // Mutations
 // ============================================================================
 
 /** Upsert auto blog config with entitlement checks */
 export const upsert = mutation({
-  args: blogAutoConfigDefs.upsert.args,
+  args: {
+    storeId: v.id("stores"),
+    isEnabled: v.boolean(),
+    themes: v.array(v.string()),
+    frequency: v.union(v.literal("weekly"), v.literal("monthly")),
+    preferredWeekdays: v.optional(v.array(v.number())),
+    preferredMonthDays: v.optional(v.array(v.number())),
+    preferredHour: v.number(),
+    timezone: v.string(),
+    tone: v.union(
+      v.literal("formel"),
+      v.literal("decontracte"),
+      v.literal("storytelling")
+    ),
+    primaryLocale: v.string(),
+    autoTranslate: v.boolean(),
+    approvalMode: v.union(
+      v.literal("draft_review"),
+      v.literal("auto_publish")
+    ),
+    categoryId: v.optional(v.id("blogCategories")),
+    targetStoreIds: v.optional(v.array(v.id("stores"))),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
@@ -58,6 +92,9 @@ export const upsert = mutation({
       themes: args.themes,
       approvalMode: args.approvalMode,
       autoTranslate: args.autoTranslate,
+      frequency: args.frequency,
+      preferredWeekdays: args.preferredWeekdays,
+      preferredMonthDays: args.preferredMonthDays,
     })
 
     return blogAutoConfigDefs.upsert.handler(ctx, {
