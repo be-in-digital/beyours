@@ -80,7 +80,13 @@ export function getExtensionFromMimeType(contentType: string): string {
     'image/png': 'png',
     'image/webp': 'webp',
     'image/gif': 'gif',
+    'image/svg+xml': 'svg',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
     'application/pdf': 'pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
   }
 
   return mimeToExt[contentType] || 'bin'

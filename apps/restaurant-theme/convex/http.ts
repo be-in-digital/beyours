@@ -4,6 +4,7 @@ import { handleWebhook as uberEatsWebhook } from "./uberEatsWebhook";
 import { handleWebhook as deliverooWebhook } from "./deliverooWebhookHandler";
 import { stripeCallback, stripeRefresh, sumupCallback } from "./oauthCallbackHandlers";
 import { handleUnsubscribe, handleConfirmOptIn, handleSesWebhook } from "./emailHttpHandlers";
+import { handleWebhook as bidStripeWebhook } from "./bidStripeWebhook";
 
 const http = httpRouter();
 
@@ -59,6 +60,13 @@ http.route({
   path: "/webhooks/ses",
   method: "POST",
   handler: handleSesWebhook,
+});
+
+// BeInDigital Stripe webhook (subscription lifecycle)
+http.route({
+  path: "/webhooks/stripe-bid",
+  method: "POST",
+  handler: bidStripeWebhook,
 });
 
 // Register Better Auth HTTP routes (sign-in, sign-up, callbacks, etc.)

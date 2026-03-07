@@ -31,3 +31,16 @@ export {
   emailEventsTable,
   emailConfigTable,
 } from "./emailMarketing"
+export { cmsPagesTable, cmsBlocksTable, cmsMediaTable } from "./cms"
+export {
+  blogCategoriesTable,
+  blogTagsTable,
+  blogArticlesTable,
+  blogArticleTagsTable,
+} from "./cms"
+export {
+  ownerEntitlementsTable,
+  blogAutoConfigTable,
+  blogAutoQueueTable,
+  blogAutoUsageTable,
+} from "./autoBlog"

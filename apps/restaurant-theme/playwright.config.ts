@@ -74,6 +74,7 @@ export default defineConfig({
             dependencies: ["setup"],
             testMatch: [
               /admin\/.+\.spec\.ts/,
+              /cms\/.+\.spec\.ts/,
               /navigation\/.+\.spec\.ts/,
               /admin-responsive\.spec\.ts/,
               /admin-a11y\.spec\.ts/,
