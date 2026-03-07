@@ -82,6 +82,16 @@ export const triggerDownload = action({
     const accessKey = process.env.UNSPLASH_ACCESS_KEY
     if (!accessKey) return
 
+    // Validate URL to prevent SSRF — only allow Unsplash API domain
+    try {
+      const url = new URL(args.downloadLocation)
+      if (url.hostname !== "api.unsplash.com") {
+        throw new Error("Invalid download location")
+      }
+    } catch {
+      return
+    }
+
     // Unsplash download tracking
     await fetch(`${args.downloadLocation}?client_id=${accessKey}`).catch(() => {})
   },

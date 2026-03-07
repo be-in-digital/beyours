@@ -59,6 +59,9 @@ export const generateImage = action({
     if (!identity) throw new Error("Not authenticated")
     const ownerId = identity.subject
 
+    // 1b. Input validation
+    if (args.prompt.length > 1000) throw new Error("Prompt trop long (max 1000 caracteres)")
+
     // 2. Check image generation quota
     const access = await ctx.runQuery(
       internal.blogImageGenerateInternal._checkImageAccess,
