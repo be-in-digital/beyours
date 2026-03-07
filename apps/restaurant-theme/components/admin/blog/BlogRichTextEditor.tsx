@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
+import { BubbleMenu } from "@tiptap/react/menus"
 import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -20,9 +21,16 @@ import {
   Quote,
   Minus,
   ImageIcon,
+  Search,
+  Trash2,
+  RefreshCw,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
 import { CmsMediaPicker } from "@/components/admin/cms/CmsMediaPicker"
+import { UnsplashImagePicker } from "@/components/admin/blog/UnsplashImagePicker"
+import { GenerateImageDialog } from "@/components/admin/blog/GenerateImageDialog"
+import type { UnsplashPhoto } from "@/components/admin/blog/UnsplashImagePicker"
 
 interface BlogRichTextEditorProps {
   value: string
@@ -40,6 +48,9 @@ export function BlogRichTextEditor({
   disabled,
 }: BlogRichTextEditorProps) {
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false)
+  const [mediaPickerForReplace, setMediaPickerForReplace] = useState(false)
+  const [unsplashPickerOpen, setUnsplashPickerOpen] = useState(false)
+  const [generateImageDialogOpen, setGenerateImageDialogOpen] = useState(false)
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -74,6 +85,51 @@ export function BlogRichTextEditor({
       editor.commands.setContent(value, { emitUpdate: false })
     }
   }, [value, editor])
+
+  const handleUnsplashSelect = useCallback((photo: UnsplashPhoto) => {
+    if (!editor) return
+    // Replace current image
+    editor.chain().focus().setImage({ src: photo.url, alt: photo.alt }).run()
+
+    // Insert credit paragraph after the image
+    const pos = editor.state.selection.to
+    editor.chain().focus().insertContentAt(pos, {
+      type: "paragraph",
+      content: [
+        { type: "text", marks: [{ type: "italic" }], text: "Photo : " },
+        {
+          type: "text",
+          marks: [
+            { type: "italic" },
+            { type: "link", attrs: { href: `${photo.photographerUrl}?utm_source=beindigital&utm_medium=referral`, target: "_blank", rel: "noopener noreferrer" } },
+          ],
+          text: photo.photographerName,
+        },
+        { type: "text", marks: [{ type: "italic" }], text: " — " },
+        {
+          type: "text",
+          marks: [
+            { type: "italic" },
+            { type: "link", attrs: { href: "https://unsplash.com/?utm_source=beindigital&utm_medium=referral", target: "_blank", rel: "noopener noreferrer" } },
+          ],
+          text: "Unsplash",
+        },
+      ],
+    }).run()
+
+    setUnsplashPickerOpen(false)
+  }, [editor])
+
+  const handleMediaReplaceSelect = useCallback((media: { url: string; filename: string }) => {
+    if (!editor) return
+    editor.chain().focus().setImage({ src: media.url, alt: media.filename }).run()
+    setMediaPickerForReplace(false)
+  }, [editor])
+
+  const handleGeneratedImageInsert = useCallback((image: { url: string; alt: string }) => {
+    if (!editor) return
+    editor.chain().focus().setImage({ src: image.url, alt: image.alt }).run()
+  }, [editor])
 
   if (!editor) return null
 
@@ -202,6 +258,12 @@ export function BlogRichTextEditor({
         >
           <ImageIcon className="h-3.5 w-3.5" />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => setGenerateImageDialogOpen(true)}
+          title="Generer une image avec l'IA"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+        </ToolbarButton>
 
         {maxLength && (
           <span className="ml-auto text-[10px] text-muted-foreground">
@@ -216,7 +278,54 @@ export function BlogRichTextEditor({
         className="prose prose-sm max-w-none px-3 py-2 min-h-[200px] focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none"
       />
 
-      {/* Media Picker for inline images */}
+      {/* BubbleMenu — floating above selected image */}
+      <BubbleMenu
+        editor={editor}
+        shouldShow={({ editor }) => editor.isActive("image")}
+        className="flex items-center gap-1 rounded-lg border bg-background shadow-lg px-2 py-1.5"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs px-2"
+          onClick={() => setGenerateImageDialogOpen(true)}
+        >
+          <Sparkles className="h-3 w-3" />
+          IA
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs px-2"
+          onClick={() => setUnsplashPickerOpen(true)}
+        >
+          <Search className="h-3 w-3" />
+          Unsplash
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs px-2"
+          onClick={() => setMediaPickerForReplace(true)}
+        >
+          <RefreshCw className="h-3 w-3" />
+          Remplacer
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1.5 text-xs px-2 text-destructive hover:text-destructive"
+          onClick={() => editor.chain().focus().deleteSelection().run()}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </BubbleMenu>
+
+      {/* Media Picker for toolbar insert */}
       <CmsMediaPicker
         open={mediaPickerOpen}
         onOpenChange={setMediaPickerOpen}
@@ -225,6 +334,28 @@ export function BlogRichTextEditor({
           editor.chain().focus().setImage({ src: media.url, alt: media.filename }).run()
           setMediaPickerOpen(false)
         }}
+      />
+
+      {/* Media Picker for image replace */}
+      <CmsMediaPicker
+        open={mediaPickerForReplace}
+        onOpenChange={setMediaPickerForReplace}
+        kindFilter="image"
+        onSelect={handleMediaReplaceSelect}
+      />
+
+      {/* Unsplash Picker */}
+      <UnsplashImagePicker
+        open={unsplashPickerOpen}
+        onOpenChange={setUnsplashPickerOpen}
+        onSelect={handleUnsplashSelect}
+      />
+
+      {/* AI Image Generator */}
+      <GenerateImageDialog
+        open={generateImageDialogOpen}
+        onOpenChange={setGenerateImageDialogOpen}
+        onInsert={handleGeneratedImageInsert}
       />
     </div>
   )

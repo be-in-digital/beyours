@@ -34,6 +34,7 @@ export const ownerEntitlementsTable = defineTable({
     maxTopics: v.optional(v.number()), // undefined = unlimited
     allowMultiLanguage: v.boolean(),
     allowAutoPublish: v.boolean(),
+    monthlyImageQuota: v.optional(v.number()), // 5, 20, 100 — optional for migration safety
   }),
   // Stripe BeInDigital subscription fields
   stripeCustomerId: v.optional(v.string()),    // cus_xxx
@@ -61,8 +62,10 @@ export const blogAutoConfigTable = defineTable({
   isEnabled: v.boolean(),
   themes: v.array(v.string()),
   frequency: v.union(v.literal("weekly"), v.literal("monthly")),
-  preferredWeekday: v.optional(v.number()), // 0-6 if weekly
-  preferredMonthDay: v.optional(v.number()), // 1-28 if monthly
+  preferredWeekday: v.optional(v.number()), // DEPRECATED — single day, kept for backward compat
+  preferredMonthDay: v.optional(v.number()), // DEPRECATED — single day, kept for backward compat
+  preferredWeekdays: v.optional(v.array(v.number())), // 0-6, multiple days if weekly
+  preferredMonthDays: v.optional(v.array(v.number())), // 1-28, multiple days if monthly
   preferredHour: v.number(), // local hour 0-23
   timezone: v.string(), // e.g. "Europe/Paris"
   tone: v.union(
@@ -141,5 +144,6 @@ export const blogAutoUsageTable = defineTable({
   periodKey: v.string(), // "2026-02"
   generatedCount: v.number(),
   publishedCount: v.number(),
+  imageGeneratedCount: v.optional(v.number()), // optional for migration safety, fallback ?? 0
   updatedAt: v.number(),
 }).index("by_ownerId_periodKey", ["ownerId", "periodKey"])

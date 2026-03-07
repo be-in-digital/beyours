@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
-import { FileText, Plus, FolderOpen } from "lucide-react"
+import { FileText, Plus, FolderOpen, Sparkles } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LoadingState } from "@/components/admin/LoadingState"
@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/admin/EmptyState"
 import { BlogArticlesTable } from "./BlogArticlesTable"
 import { CreateArticleDialog } from "./CreateArticleDialog"
 import { BlogCategoryManager } from "./BlogCategoryManager"
+import { GenerateArticleDialog } from "./GenerateArticleDialog"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import type { Id } from "@/convex/_generated/dataModel"
 
@@ -23,6 +24,7 @@ export function BlogContent() {
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<{
     id: Id<"blogArticles">
@@ -121,6 +123,14 @@ export function BlogContent() {
             <FolderOpen className="mr-2 h-4 w-4" />
             Categories
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGenerateDialogOpen(true)}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Generer avec l&apos;IA
+          </Button>
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Nouvel article
@@ -178,6 +188,10 @@ export function BlogContent() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onOpenCategoryManager={() => setCategoryManagerOpen(true)}
+      />
+      <GenerateArticleDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
       />
       <BlogCategoryManager
         open={categoryManagerOpen}

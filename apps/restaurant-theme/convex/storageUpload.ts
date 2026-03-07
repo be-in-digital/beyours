@@ -7,7 +7,17 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getExtensionFromMimeType } from "@beindigital-engine/cms";
 
-const ALLOWED_FOLDERS = ["products", "branding", "stores", "cms", "email"] as const;
+const ALLOWED_FOLDERS = [
+  "products",
+  "branding",
+  "stores",
+  "cms",
+  "email",
+  "avatars",
+  "blogs",
+  "blog-auto",
+  "storefront",
+] as const;
 type S3Folder = (typeof ALLOWED_FOLDERS)[number];
 
 const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
@@ -23,6 +33,10 @@ const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   ],
   email: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
+  avatars: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  blogs: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  "blog-auto": ["image/png", "image/webp"],
+  storefront: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
 };
 
 function createS3Client() {

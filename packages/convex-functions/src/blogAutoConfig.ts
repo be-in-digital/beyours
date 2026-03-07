@@ -46,8 +46,8 @@ export const upsert = {
     isEnabled: v.boolean(),
     themes: v.array(v.string()),
     frequency: v.union(v.literal("weekly"), v.literal("monthly")),
-    preferredWeekday: v.optional(v.number()),
-    preferredMonthDay: v.optional(v.number()),
+    preferredWeekdays: v.optional(v.array(v.number())),
+    preferredMonthDays: v.optional(v.array(v.number())),
     preferredHour: v.number(),
     timezone: v.string(),
     tone: v.union(

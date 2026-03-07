@@ -43,8 +43,9 @@ export * as blogPublish from "./blogPublish"
 export * as ownerEntitlements from "./ownerEntitlements"
 export * as blogAutoConfig from "./blogAutoConfig"
 export * as blogAutoUsage from "./blogAutoUsage"
-export { checkAutoBlogAccess, validateConfigAgainstPlan } from "./blogAutoGuards"
+export { checkAutoBlogAccess, checkImageGenerationAccess, validateConfigAgainstPlan, normalizeScheduleDays } from "./blogAutoGuards"
 export * as bidSubscription from "./bidSubscription"
+export * as blogAutoGenerate from "./blogAutoGenerate"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
