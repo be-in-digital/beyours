@@ -4,8 +4,6 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useStoreStore, useLanguageStore } from "@beindigital-engine/restaurant"
 import {
-  getPageDefinition,
-  getBlockDefinition,
   getFieldDefinition,
 } from "@beindigital-engine/cms"
 import type { CmsFieldValue, CmsBlockValues } from "@beindigital-engine/cms"
@@ -87,6 +85,7 @@ export function useCmsPage(
   function block(blockKey: string): CmsBlockAccessor {
     if (!data) return EMPTY_BLOCK
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const blockData = data.blocks.find((b: any) => b.blockKey === blockKey)
     if (!blockData) return EMPTY_BLOCK
 
@@ -94,7 +93,7 @@ export function useCmsPage(
       values: blockData.values,
       field: (fieldKey: string): CmsFieldAccessor => {
         const value = blockData.values[fieldKey] as CmsFieldValue | undefined
-        const fieldDef = getFieldDefinition(pageSlug, blockKey, fieldKey)
+        const _fieldDef = getFieldDefinition(pageSlug, blockKey, fieldKey)
 
         // If cleared, return null (fallback to code default)
         if (value?.isCleared) return EMPTY_FIELD

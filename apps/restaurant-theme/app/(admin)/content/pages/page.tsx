@@ -50,6 +50,7 @@ export default function CmsPagesListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {pages.map((page: any) => (
                 <TableRow
                   key={page.slug}

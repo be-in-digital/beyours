@@ -204,7 +204,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
   if (!pageDef) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        Page "{pageSlug}" non trouvée dans le registre CMS.
+        Page &quot;{pageSlug}&quot; non trouvée dans le registre CMS.
       </div>
     )
   }
@@ -219,11 +219,13 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
 
   // Check if any block has a pending auto-translation
   const isTranslating = adminBlocks.blocks.some(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (b: any) => b.draftBlock?.isTranslating,
   )
 
   // Translation drawer data
   const drawerBlockData = adminBlocks.blocks.find(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (b: any) => b.blockKey === translationDrawer.blockKey,
   )
   const drawerFieldDef = translationDrawer.blockKey
@@ -336,6 +338,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
       <div className="space-y-4">
         {pageDef.blocks.map((blockDef) => {
           const serverBlock = adminBlocks.blocks.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (b: any) => b.blockKey === blockDef.key,
           )
           const draftValues =

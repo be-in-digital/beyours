@@ -90,7 +90,7 @@ function PageHeader() {
         Configuration Auto Blog
       </h1>
       <p className="text-sm text-muted-foreground mt-1">
-        Configurez la génération automatique d'articles pour votre blog.
+        Configurez la génération automatique d&apos;articles pour votre blog.
       </p>
     </div>
   )

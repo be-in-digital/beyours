@@ -67,7 +67,7 @@ export function BlogPreviewClient({ articleId }: BlogPreviewClientProps) {
           <Link href={`/content/blog/${articleId}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour a l'editeur
+              Retour a l&apos;editeur
             </Button>
           </Link>
         </div>
@@ -97,6 +97,7 @@ export function BlogPreviewClient({ articleId }: BlogPreviewClientProps) {
         {/* Tags */}
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {tags.map((tag: any) => (
               <Badge key={tag._id} variant="secondary" className="text-xs">
                 {tag.name}

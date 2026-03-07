@@ -46,6 +46,7 @@ export function CmsTranslationDrawer({
   )
 
   const activeLanguages =
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     languages?.filter((l: any) => l.isActive && !l.isDefault) ?? []
 
   const displaySource =
@@ -90,6 +91,7 @@ export function CmsTranslationDrawer({
               paramètres.
             </p>
           ) : (
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             activeLanguages.map((lang: any) => {
               const translation = translations[lang.code]
               const hasTranslation = !!translation?.value

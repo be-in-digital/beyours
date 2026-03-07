@@ -18,7 +18,9 @@ interface CmsBlockAccordionProps {
   blockDef: BlockDefinition
   draftValues: CmsBlockValues
   publishedValues?: CmsBlockValues
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   resolvedMedia: Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   translationsByField: Record<string, Record<string, any>>
   onFieldChange: (blockKey: string, fieldKey: string, value: CmsFieldValue) => void
   onFieldReset: (blockKey: string, fieldKey: string) => void

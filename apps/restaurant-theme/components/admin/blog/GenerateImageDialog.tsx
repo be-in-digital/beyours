@@ -91,7 +91,7 @@ export function GenerateImageDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Generer une image avec l'IA
+            Generer une image avec l&apos;IA
           </DialogTitle>
         </DialogHeader>
 
@@ -123,7 +123,7 @@ export function GenerateImageDialog({
               disabled={generating}
             />
             <p className="text-xs text-muted-foreground">
-              Decrivez l'image que vous souhaitez generer. Soyez precis pour de meilleurs resultats.
+              Decrivez l&apos;image que vous souhaitez generer. Soyez precis pour de meilleurs resultats.
             </p>
           </div>
 

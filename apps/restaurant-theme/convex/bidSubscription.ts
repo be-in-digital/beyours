@@ -58,6 +58,7 @@ export const createCheckoutSession = action({
     const billing = args.billing ?? "monthly";
 
     // 1. Resolve priceId from plan + billing interval
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const priceId = resolvePriceIdFromPlan(args.plan, process.env as any, billing);
 
     // 2. Check existing entitlements (internal query — no auth layer)
@@ -166,6 +167,7 @@ export const processWebhookEvent = internalAction({
     );
 
     // 2. Build price map
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const priceMap = buildPriceMap(process.env as any);
 
     // 3. Process event

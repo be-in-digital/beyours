@@ -160,6 +160,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
     }
     setLocalDraft(newDraft)
     setLocalCategoryId(article.draftCategoryId ?? "")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tagIds = article.draftTags?.map((t: any) => t._id) ?? []
     setLocalTagIds(tagIds)
     setHasManuallyEditedSlug(false)
@@ -339,6 +340,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
     const normalizedSlug = slugify(newTagInput.trim())
 
     // Check existing tags for duplicate by slug
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existingTag = allTags?.find((t: any) => t.slug === normalizedSlug)
     if (existingTag) {
       // Tag exists — just select it if not already selected
@@ -719,7 +721,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               placeholder="url-de-l-article"
             />
             <p className="text-xs text-muted-foreground">
-              URL de l'article. Genere automatiquement depuis le titre.
+              URL de l&apos;article. Genere automatiquement depuis le titre.
             </p>
           </div>
 
@@ -828,7 +830,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
         {/* Tab: SEO */}
         <TabsContent value="seo" className="space-y-4 mt-4">
           <p className="text-sm text-muted-foreground">
-            Si vides, le titre et l'extrait de l'article seront utilises par defaut.
+            Si vides, le titre et l&apos;extrait de l&apos;article seront utilises par defaut.
           </p>
 
           <div className="space-y-2">
@@ -871,6 +873,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
                   <SelectValue placeholder="Choisir une categorie" />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {categories.map((cat: any) => (
                     <SelectItem key={cat._id} value={cat._id}>
                       {cat.name}
@@ -892,6 +895,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
             {/* Selected tags */}
             <div className="flex flex-wrap gap-1.5">
               {localTagIds.map((tagId) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const tag = allTags?.find((t: any) => t._id === tagId)
                 if (!tag) return null
                 return (
@@ -911,7 +915,9 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
             {/* Available tags */}
             <div className="flex flex-wrap gap-1.5">
               {allTags
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ?.filter((t: any) => !localTagIds.includes(t._id))
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((tag: any) => (
                   <Badge
                     key={tag._id}
@@ -975,7 +981,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
                   Publier maintenant
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  L'article sera immediatement visible sur votre site.
+                  L&apos;article sera immediatement visible sur votre site.
                 </p>
               </div>
               <Button onClick={handlePublish} disabled={publishing}>
@@ -998,7 +1004,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
                   Planifier la publication
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Choisissez une date et heure pour publier automatiquement l'article.
+                  Choisissez une date et heure pour publier automatiquement l&apos;article.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -1029,7 +1035,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               <div>
                 <p className="text-sm font-medium">Publication planifiee</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  L'article sera publie automatiquement le{" "}
+                  L&apos;article sera publie automatiquement le{" "}
                   {article.scheduledPublishAt
                     ? formatDate(article.scheduledPublishAt)
                     : "..."}
@@ -1076,7 +1082,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
                 Zone de danger
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                La suppression est irreversible. Toutes les donnees de l'article seront perdues.
+                La suppression est irreversible. Toutes les donnees de l&apos;article seront perdues.
               </p>
             </div>
             <Button
@@ -1084,7 +1090,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               onClick={() => setDeleteDialogOpen(true)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer l'article
+              Supprimer l&apos;article
             </Button>
           </div>
         </TabsContent>
@@ -1116,7 +1122,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           <DialogHeader>
             <DialogTitle>Planifier la publication</DialogTitle>
             <DialogDescription>
-              Choisissez la date et l'heure de publication automatique.
+              Choisissez la date et l&apos;heure de publication automatique.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">

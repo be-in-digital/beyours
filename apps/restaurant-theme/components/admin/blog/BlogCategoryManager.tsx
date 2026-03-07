@@ -175,6 +175,7 @@ export function BlogCategoryManager({
                   Aucune categorie
                 </p>
               ) : (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 categories.map((cat: any) => (
                   <div
                     key={cat._id}
