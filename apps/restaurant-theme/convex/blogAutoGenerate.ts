@@ -49,6 +49,7 @@ interface ImageResult {
   url: string
   alt: string
   source: "unsplash" | "openai"
+  mediaId?: Id<"cmsMedia">
   photographerName?: string
   photographerUrl?: string
 }
@@ -118,7 +119,8 @@ async function fetchFromUnsplash(keyword: string): Promise<ImageResult | null> {
       photographerName: photo.user.name,
       photographerUrl: photo.user.links.html,
     }
-  } catch {
+  } catch (err) {
+    console.error(`[blogAutoGenerate] Unsplash search failed for "${keyword}":`, err)
     return null
   }
 }
@@ -166,7 +168,8 @@ async function downloadAndUploadImage(
     )
 
     return mediaId
-  } catch {
+  } catch (err) {
+    console.error(`[blogAutoGenerate] Image download/upload failed for "${keyword}":`, err)
     return null
   }
 }
@@ -254,8 +257,10 @@ async function generateWithOpenAI(
       url: sourceUrl,
       alt: caption || keyword,
       source: "openai",
+      mediaId,
     }
-  } catch {
+  } catch (err) {
+    console.error(`[blogAutoGenerate] GPT image generation failed for "${keyword}":`, err)
     return null
   }
 }
@@ -263,6 +268,11 @@ async function generateWithOpenAI(
 // ============================================================================
 // Image Injection
 // ============================================================================
+
+/** Escape a string for safe use in HTML attributes */
+function escapeAttr(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
 
 function injectImages(content: string, images: (ImageResult | null)[]): string {
   for (let i = 0; i < images.length; i++) {
@@ -274,11 +284,15 @@ function injectImages(content: string, images: (ImageResult | null)[]): string {
       continue
     }
 
+    const safeAlt = escapeAttr(img.alt)
+
     if (img.source === "unsplash" && img.photographerName && img.photographerUrl) {
-      const html = `<img src="${img.url}" alt="${img.alt}" />\n<p><em>Photo : <a href="${img.photographerUrl}?utm_source=beindigital&amp;utm_medium=referral" target="_blank" rel="noopener noreferrer">${img.photographerName}</a> — <a href="https://unsplash.com/?utm_source=beindigital&amp;utm_medium=referral" target="_blank" rel="noopener noreferrer">Unsplash</a></em></p>`
+      const safePhotographer = escapeAttr(img.photographerName)
+      const safeUrl = escapeAttr(img.photographerUrl)
+      const html = `<img src="${img.url}" alt="${safeAlt}" />\n<p><em>Photo : <a href="${safeUrl}?utm_source=beindigital&amp;utm_medium=referral" target="_blank" rel="noopener noreferrer">${safePhotographer}</a> — <a href="https://unsplash.com/?utm_source=beindigital&amp;utm_medium=referral" target="_blank" rel="noopener noreferrer">Unsplash</a></em></p>`
       content = content.replace(placeholder, html)
     } else {
-      content = content.replace(placeholder, `<img src="${img.url}" alt="${img.alt}" />`)
+      content = content.replace(placeholder, `<img src="${img.url}" alt="${safeAlt}" />`)
     }
   }
   // Remove any remaining placeholders
@@ -546,13 +560,8 @@ Regles STRICTES pour les images du contenu :
         const gptCover = await generateWithOpenAI(
           generated.coverImageKeyword, coverImageAlt, ctx, args.storeId, ownerId
         )
-        if (gptCover) {
-          // GPT images already have a mediaId from _createBlogImage
-          // We need to extract mediaId from the URL pattern cms/{mediaId}/source.png
-          const mediaIdMatch = gptCover.url.match(/cms\/([^/]+)\/source/)
-          if (mediaIdMatch?.[1]) {
-            coverImageId = mediaIdMatch[1] as Id<"cmsMedia">
-          }
+        if (gptCover?.mediaId) {
+          coverImageId = gptCover.mediaId
         }
       }
     }
