@@ -7,7 +7,12 @@ const nextConfig: NextConfig = {
     "192.168.64.1",
     "Mac-mini-de-admin.local",
   ],
-  transpilePackages: ["@convex-dev/better-auth"],
+  transpilePackages: [
+    "@convex-dev/better-auth",
+    "@beindigital-engine/ui",
+    "@beindigital-engine/restaurant",
+    "@beindigital-engine/admin",
+  ],
   images: {
     remotePatterns: [
       {

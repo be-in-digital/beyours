@@ -1,5 +1,5 @@
-import { GamesPage } from "@beindigital-engine/admin"
+import { GamesDashboardPage } from "@beindigital-engine/admin"
 
 export default function Page() {
-  return <GamesPage />
+  return <GamesDashboardPage />
 }

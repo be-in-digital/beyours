@@ -61,11 +61,14 @@ export const create = {
     }),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
+    settings: v.optional(v.any()),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
+    const { settings, ...rest } = args
     return await ctx.db.insert("stores", {
-      ...args,
+      ...rest,
+      settings: settings ?? undefined,
       useGlobalHours: true,
       hours: [
         { day: 0, open: "00:00", close: "00:00", isClosed: true },
