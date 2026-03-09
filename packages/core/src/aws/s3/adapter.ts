@@ -8,17 +8,20 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import type { S3Operations } from './types'
-import type { S3Config } from '../types'
+import type { S3Operations, ObjectMetadata } from './types'
+import type { AWSConfig, S3Config } from '../types'
 import { createS3Service } from './client'
 import type { S3Service } from './client'
 
 /**
  * Creates S3 operations using AWS SDK v3
+ * @param config - S3 configuration with credentials and bucket
+ * @returns S3 operations implementation
  */
-export function createS3v3Operations(config: S3Config): S3Operations {
+export function createS3Operations(config: S3Config): S3Operations {
   const client = new S3Client({
     region: config.region,
     credentials: {
@@ -27,7 +30,7 @@ export function createS3v3Operations(config: S3Config): S3Operations {
     },
   })
 
-  const bucketName = config.bucketName
+  const { bucketName } = config
 
   return {
     async putObject(params) {
@@ -50,23 +53,14 @@ export function createS3v3Operations(config: S3Config): S3Operations {
     },
 
     async getSignedUrl(params) {
-      if (params.operation === 'putObject') {
-        const command = new PutObjectCommand({
-          Bucket: bucketName,
-          Key: params.key,
-        })
-        return await getSignedUrl(client, command, { expiresIn: params.expiresIn })
-      } else {
-        const { GetObjectCommand } = await import('@aws-sdk/client-s3')
-        const command = new GetObjectCommand({
-          Bucket: bucketName,
-          Key: params.key,
-        })
-        return await getSignedUrl(client, command, { expiresIn: params.expiresIn })
-      }
+      const command =
+        params.operation === 'putObject'
+          ? new PutObjectCommand({ Bucket: bucketName, Key: params.key })
+          : new GetObjectCommand({ Bucket: bucketName, Key: params.key })
+      return await getSignedUrl(client, command, { expiresIn: params.expiresIn })
     },
 
-    async headObject(params) {
+    async headObject(params): Promise<ObjectMetadata> {
       const command = new HeadObjectCommand({
         Bucket: bucketName,
         Key: params.key,
@@ -84,6 +78,8 @@ export function createS3v3Operations(config: S3Config): S3Operations {
 
 /**
  * Reads S3 configuration from environment variables
+ * @returns S3 configuration object
+ * @throws {Error} If required environment variables are missing
  */
 export function getS3Config(): S3Config {
   const region = process.env.AWS_REGION
@@ -108,9 +104,11 @@ export function getS3Config(): S3Config {
 
 /**
  * Creates a fully configured S3 service from environment variables
+ * @returns Initialized S3 service ready to upload/manage files
+ * @throws {Error} If environment variables are not properly configured
  */
 export function getS3Service(): S3Service {
   const config = getS3Config()
-  const operations = createS3v3Operations(config)
+  const operations = createS3Operations(config)
   return createS3Service(config, operations)
 }

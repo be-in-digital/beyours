@@ -23,6 +23,8 @@ import {
   prizesTable,
   gamePlaysTable,
   prizeRedemptionsTable,
+  promotionsTable,
+  promotionUsagesTable,
 } from "./tables"
 
 /**
@@ -57,4 +59,6 @@ export default defineSchema({
   prizes: prizesTable,
   gamePlays: gamePlaysTable,
   prizeRedemptions: prizeRedemptionsTable,
+  promotions: promotionsTable,
+  promotionUsages: promotionUsagesTable,
 })

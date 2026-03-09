@@ -25,31 +25,14 @@ import { RefundDialog } from "./refund-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { formatPrice, formatDate } from "../../lib/formatters"
+import type {
+  Payment,
+  PaymentStatus,
+  PaymentProvider,
+  BadgeVariant,
+} from "../../lib/types"
 
-type PaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "refunded" | "partially_refunded"
-type PaymentProvider = "stripe" | "sumup" | "paypal" | "square" | "cash"
-
-interface Payment {
-  _id: string
-  storeId: string
-  orderId: string
-  amount: number
-  currency: string
-  provider: PaymentProvider
-  status: PaymentStatus
-  externalId?: string
-  refundedAmount?: number
-  refundReason?: string
-  metadata?: {
-    last4?: string
-    brand?: string
-    receiptUrl?: string
-  }
-  createdAt: number
-  updatedAt: number
-}
-
-const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
   pending: { label: "En attente", variant: "secondary" },
   processing: { label: "En cours", variant: "outline" },
   succeeded: { label: "Réussi", variant: "default" },
@@ -71,12 +54,13 @@ interface PaymentsPageProps {
 }
 
 export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
-  const { api } = useAdminApiStore()
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
   const payments = useQuery(
-    api?.payments?.getByStore,
+    api?.payments?.getByStore ?? ("skip" as never),
     storeId ? { storeId } : "skip"
-  )
+  ) as Payment[] | undefined
 
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [providerFilter, setProviderFilter] = useState<string>("all")
@@ -88,11 +72,11 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
     let filtered = payments
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((p: any) => p.status === statusFilter)
+      filtered = filtered.filter((p: Payment) => p.status === statusFilter)
     }
 
     if (providerFilter !== "all") {
-      filtered = filtered.filter((p: any) => p.provider === providerFilter)
+      filtered = filtered.filter((p: Payment) => p.provider === providerFilter)
     }
 
     return filtered
@@ -183,7 +167,7 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment: any) => {
+              {filteredPayments.map((payment: Payment) => {
                 const canRefund =
                   payment.status === "succeeded" &&
                   payment.provider !== "cash" &&
@@ -208,14 +192,14 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className={`text-xs ${PROVIDER_CONFIG[payment.provider as PaymentProvider]?.color || ""}`}
+                        className={`text-xs ${PROVIDER_CONFIG[payment.provider]?.color || ""}`}
                       >
-                        {PROVIDER_CONFIG[payment.provider as PaymentProvider]?.label || payment.provider}
+                        {PROVIDER_CONFIG[payment.provider]?.label || payment.provider}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_CONFIG[payment.status as PaymentStatus]?.variant || "outline"} className="text-xs">
-                        {STATUS_CONFIG[payment.status as PaymentStatus]?.label || payment.status}
+                      <Badge variant={STATUS_CONFIG[payment.status]?.variant || "outline"} className="text-xs">
+                        {STATUS_CONFIG[payment.status]?.label || payment.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">

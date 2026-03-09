@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/categories";
+import { scheduleTranslation } from "./autoTranslate";
 
 // === Queries (public for storefront) ===
 
@@ -13,7 +14,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
-    return defs.create.handler(ctx, args);
+    const result = await defs.create.handler(ctx, args);
+    await scheduleTranslation(ctx, result, "categories", args.storeId);
+    return result;
   },
 });
 
@@ -22,7 +25,12 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
-    return defs.update.handler(ctx, args);
+    const result = await defs.update.handler(ctx, args);
+    const category = await ctx.db.get(args.id);
+    if (category) {
+      await scheduleTranslation(ctx, args.id, "categories", category.storeId);
+    }
+    return result;
   },
 });
 

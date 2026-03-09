@@ -1,10 +1,5 @@
-import { ComingSoon } from "@beindigital-engine/admin"
+import { CmsMediaLibrary } from "@/components/admin/cms/CmsMediaLibrary"
 
 export default function Page() {
-  return (
-    <ComingSoon
-      title="Médiathèque"
-      description="Gérez toutes vos images, vidéos et fichiers utilisés sur votre site et dans vos campagnes."
-    />
-  )
+  return <CmsMediaLibrary />
 }

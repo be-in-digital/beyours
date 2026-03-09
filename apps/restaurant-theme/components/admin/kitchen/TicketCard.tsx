@@ -80,10 +80,11 @@ export function TicketCard({ ticket }: TicketCardProps) {
     const action = STATUS_ACTIONS[ticket.status]
     if (!action.nextStatus) return
 
+    const nextStatus = action.nextStatus as "pending" | "in_progress" | "ready" | "completed"
     try {
       await updateStatusMutation({
         id: ticket._id,
-        status: action.nextStatus as "pending" | "in_progress" | "ready" | "completed",
+        status: nextStatus,
       })
       toast.success(`Ticket déplacé vers ${action.nextStatus.replace("_", " ")}`)
     } catch (error) {

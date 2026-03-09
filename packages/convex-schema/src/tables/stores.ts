@@ -54,6 +54,13 @@ export const storesTable = defineTable({
 
   themeId: v.optional(v.string()),
 
+  // i18n translation quota (GPT-3.5)
+  translationQuota: v.optional(v.object({
+    dailyLimit: v.number(),
+    used: v.number(),
+    resetAt: v.number(),
+  })),
+
   // Legacy fields (kept for backward compatibility with existing data)
   // Will be removed after data migration
   branding: v.optional(v.any()),

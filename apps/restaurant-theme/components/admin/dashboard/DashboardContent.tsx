@@ -212,7 +212,7 @@ export function DashboardContent() {
     )
   }
 
-  const stats = computeDashboardStats(orders as Order[])
+  const stats = computeDashboardStats(orders as unknown as Order[])
 
   return (
     <div className="space-y-6">
@@ -224,7 +224,7 @@ export function DashboardContent() {
 
       <OrderBreakdown byType={stats.byType} bySource={stats.bySource} />
 
-      <RecentOrdersTable orders={(orders as Order[]).slice(0, 10)} />
+      <RecentOrdersTable orders={(orders as unknown as Order[]).slice(0, 10)} />
 
       <QuickActions />
     </div>
