@@ -10,7 +10,7 @@ import authConfig from "./auth.config";
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 // Better Auth server configuration
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
+export const createAuth = (ctx: GenericCtx<DataModel>): ReturnType<typeof betterAuth> => {
   return betterAuth({
     database: authComponent.adapter(ctx),
     emailAndPassword: {

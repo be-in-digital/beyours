@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { api } from "@/convex/_generated/api"
 import { AdminAuthSync } from "@/components/admin/AdminAuthSync"
+import { AuthProvider } from "@/app/auth-provider"
 import { AdminLanguageSwitcher } from "@/components/admin/AdminLanguageSwitcher"
 import {
   AuthGuard,
@@ -26,7 +27,7 @@ export default function AdminLayout({
   }, [])
 
   return (
-    <>
+    <AuthProvider>
       <AdminAuthSync />
       <AuthGuard>
         <SidebarProvider>
@@ -46,6 +47,6 @@ export default function AdminLayout({
           </SidebarInset>
         </SidebarProvider>
       </AuthGuard>
-    </>
+    </AuthProvider>
   )
 }
