@@ -274,7 +274,7 @@ export type DeliveryAddress = {
 export type CreateKitchenTicketInput = z.infer<typeof createKitchenTicketSchema>
 export type UpdateKitchenTicketStatusInput = z.infer<typeof updateKitchenTicketStatusSchema>
 
-export type KitchenTicketStatus = 'pending' | 'in_progress' | 'ready' | 'completed'
+export type KitchenTicketStatus = 'pending' | 'in_progress' | 'ready' | 'completed' | 'cancelled'
 
 export type KitchenTicketPriority = 'normal' | 'urgent' | 'vip'
 
@@ -614,3 +614,40 @@ export type OrphanProductDoc = BaseEntity & {
   status: 'pending' | 'matched' | 'ignored'
   matchedProductId?: string
 }
+
+// ============================================================================
+// AUTO BLOG TYPES
+// ============================================================================
+
+export type AutoBlogPlan = "starter" | "pro" | "enterprise"
+
+export type AutoBlogEntitlement = {
+  enabled: boolean
+  plan?: AutoBlogPlan // undefined = no plan
+  monthlyQuota: number
+  maxTopics?: number // undefined = unlimited
+  allowMultiLanguage: boolean
+  allowAutoPublish: boolean
+}
+
+export type BlogAutoConfigFrequency = "weekly" | "monthly"
+export type BlogAutoConfigTone = "formel" | "decontracte" | "storytelling"
+export type BlogAutoConfigApprovalMode = "draft_review" | "auto_publish"
+
+export type BlogAutoQueueStatus =
+  | "pending"
+  | "generating"
+  | "draft_created"
+  | "published"
+  | "failed"
+  | "cancelled"
+
+export type StripeSubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "unpaid"
+  | "incomplete"
+  | "incomplete_expired"
+  | "paused"

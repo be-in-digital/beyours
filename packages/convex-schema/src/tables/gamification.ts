@@ -121,14 +121,18 @@ export const prizesTable = defineTable({
 export const gamePlaysTable = defineTable({
   storeId: v.id("stores"),
   gameId: v.id("games"),
+  qrCodeId: v.optional(v.id("gameQRCodes")),
+  playerEmail: v.optional(v.string()),
+  playerName: v.optional(v.string()),
   playerFirstName: v.optional(v.string()),
   playerLastName: v.optional(v.string()),
-  playerEmail: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
   fingerprint: v.string(), // Browser fingerprint for cooldown
   completedActions: v.array(v.string()), // Action IDs completed
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
+  ipAddress: v.optional(v.string()),
+  userAgent: v.optional(v.string()),
   playedAt: v.number(),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -147,9 +151,10 @@ export const prizeRedemptionsTable = defineTable({
   storeId: v.id("stores"),
   gamePlayId: v.id("gamePlays"),
   prizeId: v.id("prizes"),
+  playerEmail: v.optional(v.string()),
+  playerName: v.optional(v.string()),
   playerFirstName: v.optional(v.string()),
   playerLastName: v.optional(v.string()),
-  playerEmail: v.optional(v.string()),
   redemptionCode: v.string(), // QR code sent to customer
   status: v.union(
     v.literal("pending"),

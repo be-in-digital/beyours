@@ -14,6 +14,7 @@ export const languagesTable = defineTable({
   isDefault: v.boolean(),
   isActive: v.boolean(),
   isRtl: v.boolean(),
+  sortOrder: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

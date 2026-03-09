@@ -22,12 +22,26 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
 
     return (
       <div className={cn("relative w-full", className)}>
-        <Search
-          className={cn(
-            "absolute top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none",
-            isSmall ? "left-2.5 h-3.5 w-3.5" : "left-3 h-4 w-4"
-          )}
-        />
+        {value ? (
+          <button
+            type="button"
+            onClick={() => onValueChange("")}
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-sm z-10",
+              isSmall ? "left-2.5 p-0.5" : "left-3 p-0.5"
+            )}
+            aria-label="Effacer la recherche"
+          >
+            <X className={isSmall ? "h-3 w-3" : "h-4 w-4"} />
+          </button>
+        ) : (
+          <Search
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none",
+              isSmall ? "left-2.5 h-3 w-3" : "left-3 h-4 w-4"
+            )}
+          />
+        )}
         <input
           ref={ref}
           type="text"
@@ -36,23 +50,10 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           placeholder={placeholder}
           className={cn(
             "flex w-full rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            isSmall ? "h-8 pl-8 pr-7 text-xs" : "h-10 pl-10 pr-9",
+            isSmall ? "h-8 pl-8 pr-2 text-xs" : "h-9 pl-9 pr-3",
           )}
           {...props}
         />
-        {value && (
-          <button
-            type="button"
-            onClick={() => onValueChange("")}
-            className={cn(
-              "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-sm",
-              isSmall ? "right-2 p-0.5" : "right-2.5 p-0.5"
-            )}
-            aria-label="Effacer la recherche"
-          >
-            <X className={isSmall ? "h-3 w-3" : "h-3.5 w-3.5"} />
-          </button>
-        )}
       </div>
     )
   }

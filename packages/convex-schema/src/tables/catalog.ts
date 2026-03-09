@@ -1,6 +1,43 @@
 import { defineTable } from "convex/server"
 import { v } from "convex/values"
 
+// ── Translation validators ──────────────────────────────────────────────
+
+/**
+ * Translation entry for products and categories (name + description)
+ */
+const translationEntryValidator = v.object({
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+  _meta: v.optional(v.object({
+    nameHash: v.optional(v.string()),
+    nameAuto: v.optional(v.boolean()),
+    descHash: v.optional(v.string()),
+    descAuto: v.optional(v.boolean()),
+  })),
+})
+
+/**
+ * Translation entry for menus (name + description + section labels by sectionId)
+ */
+const menuTranslationEntryValidator = v.object({
+  name: v.optional(v.string()),
+  description: v.optional(v.string()),
+  sections: v.optional(v.record(v.string(), v.object({
+    label: v.optional(v.string()),
+    labelHash: v.optional(v.string()),
+    labelAuto: v.optional(v.boolean()),
+  }))),
+  _meta: v.optional(v.object({
+    nameHash: v.optional(v.string()),
+    nameAuto: v.optional(v.boolean()),
+    descHash: v.optional(v.string()),
+    descAuto: v.optional(v.boolean()),
+  })),
+})
+
+// ── Tables ──────────────────────────────────────────────────────────────
+
 /**
  * Categories table
  * Hierarchical product categories
@@ -14,6 +51,10 @@ export const categoriesTable = defineTable({
   sortOrder: v.number(),
   isActive: v.boolean(),
   parentId: v.optional(v.id("categories")),
+  // i18n
+  translations: v.optional(v.record(v.string(), translationEntryValidator)),
+  pendingTranslation: v.optional(v.boolean()),
+  scheduledTranslationJobId: v.optional(v.id("_scheduled_functions")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -105,6 +146,10 @@ export const productsTable = defineTable({
       syncError: v.optional(v.string()),
     })),
   })),
+  // i18n
+  translations: v.optional(v.record(v.string(), translationEntryValidator)),
+  pendingTranslation: v.optional(v.boolean()),
+  scheduledTranslationJobId: v.optional(v.id("_scheduled_functions")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -169,6 +214,10 @@ export const menusTable = defineTable({
   })),
   isActive: v.boolean(),
   sortOrder: v.number(),
+  // i18n
+  translations: v.optional(v.record(v.string(), menuTranslationEntryValidator)),
+  pendingTranslation: v.optional(v.boolean()),
+  scheduledTranslationJobId: v.optional(v.id("_scheduled_functions")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

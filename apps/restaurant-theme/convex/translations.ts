@@ -3,6 +3,7 @@ import * as defs from "@beindigital-engine/convex-functions/translations";
 
 export const getForEntity = query(defs.getForEntity);
 export const getByLanguage = query(defs.getByLanguage);
+export const getUIOverrides = query(defs.getUIOverrides);
 
 export const upsert = mutation({
   args: defs.upsert.args,

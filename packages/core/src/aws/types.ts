@@ -40,7 +40,7 @@ export interface SESConfig extends AWSConfig {
 /**
  * Dossiers autorisés pour le stockage S3
  */
-export type S3Folder = 'products' | 'branding' | 'stores' | 'cms' | 'games'
+export type S3Folder = 'products' | 'branding' | 'stores' | 'cms' | 'games' | 'email'
 
 /**
  * Types MIME autorisés
@@ -51,21 +51,18 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   branding: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   stores: [
     'image/jpeg',
     'image/jpg',
     'image/png',
     'image/webp',
-    'image/svg+xml',
   ],
   cms: [
     'image/jpeg',
@@ -73,7 +70,19 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
     'image/png',
     'image/webp',
     'image/svg+xml',
+    'video/mp4',
+    'video/webm',
     'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ],
+  email: [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/gif',
   ],
   games: [
     'image/jpeg',
@@ -90,6 +99,7 @@ export const MAX_FILE_SIZES: Record<S3Folder, number> = {
   products: 10 * 1024 * 1024, // 10MB
   branding: 10 * 1024 * 1024, // 10MB
   stores: 10 * 1024 * 1024, // 10MB
-  cms: 25 * 1024 * 1024, // 25MB
+  cms: 100 * 1024 * 1024, // 100MB (videos can be large)
   games: 10 * 1024 * 1024, // 10MB
+  email: 10 * 1024 * 1024, // 10MB
 } as const

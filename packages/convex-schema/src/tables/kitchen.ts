@@ -40,6 +40,7 @@ export const kitchenTicketsTable = defineTable({
   printCount: v.optional(v.number()),
   printAttempts: v.optional(v.number()),
   printStatus: v.optional(v.string()),
+  customerEmail: v.optional(v.string()),
   trackingToken: v.optional(v.string()),
   source: v.union(
     v.literal("website"),

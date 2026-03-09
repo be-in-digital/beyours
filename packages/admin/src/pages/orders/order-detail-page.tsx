@@ -1,7 +1,7 @@
 "use client"
 
-import { use } from "react"
-import { useQuery } from "convex/react"
+import { use, useState } from "react"
+import { useQuery, useMutation } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@beindigital-engine/ui"
@@ -13,10 +13,31 @@ import {
   TableHeader,
   TableRow,
 } from "@beindigital-engine/ui"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@beindigital-engine/ui"
+import { Input, Label, Textarea } from "@beindigital-engine/ui"
 import { OrderStatusActions } from "./order-status-actions"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, RotateCcw } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
+import { toast } from "sonner"
 import Link from "next/link"
+import type {
+  Order,
+  OrderStatus,
+  OrderType,
+  OrderPaymentStatus,
+  OrderSource,
+  OrderItem,
+  OrderItemOption,
+  Payment,
+  BadgeVariant,
+} from "../../lib/types"
 
 type OrderDetailPageProps = {
   params: Promise<{ orderId: string }>
@@ -25,18 +46,8 @@ type OrderDetailPageProps = {
 /**
  * Get badge for order status
  */
-function getStatusBadge(
-  status:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "out_for_delivery"
-    | "delivered"
-    | "completed"
-    | "cancelled"
-) {
-  const statusConfig = {
+function getStatusBadge(status: OrderStatus) {
+  const statusConfig: Record<OrderStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
     preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
@@ -54,11 +65,11 @@ function getStatusBadge(
 /**
  * Get badge for order type
  */
-function getTypeBadge(type: "delivery" | "pickup" | "dine_in") {
-  const typeConfig = {
-    delivery: { variant: "default" as const, label: "Livraison" },
-    pickup: { variant: "secondary" as const, label: "À emporter" },
-    dine_in: { variant: "outline" as const, label: "Sur place" },
+function getTypeBadge(type: OrderType) {
+  const typeConfig: Record<OrderType, { variant: BadgeVariant; label: string }> = {
+    delivery: { variant: "default", label: "Livraison" },
+    pickup: { variant: "secondary", label: "À emporter" },
+    dine_in: { variant: "outline", label: "Sur place" },
   }
 
   const config = typeConfig[type]
@@ -68,16 +79,216 @@ function getTypeBadge(type: "delivery" | "pickup" | "dine_in") {
 /**
  * Get badge for payment status
  */
-function getPaymentBadge(status: "pending" | "paid" | "failed" | "refunded") {
-  const paymentConfig = {
+function getPaymentBadge(status: OrderPaymentStatus) {
+  const paymentConfig: Record<OrderPaymentStatus, { className: string; label: string }> = {
     pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
     paid: { className: "bg-green-100 text-green-800", label: "Payé" },
     failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
     refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
+    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Partiellement remboursé" },
   }
 
   const config = paymentConfig[status]
   return <Badge className={config.className}>{config.label}</Badge>
+}
+
+/**
+ * Get source label and badge
+ */
+const SOURCE_LABELS: Record<OrderSource, string> = {
+  website: "Site web",
+  uber_eats: "Uber Eats",
+  deliveroo: "Deliveroo",
+  pos: "POS",
+}
+
+/**
+ * Parse structured cancellation reason (code::label or code::label::details)
+ * Falls back to raw string for legacy/webhook reasons
+ */
+function parseCancellationReason(raw: string): string {
+  const parts = raw.split("::")
+  if (parts.length >= 2) {
+    const label = parts[1] ?? ""
+    const details = parts[2]
+    return details ? `${label} — ${details}` : label
+  }
+  return raw
+}
+
+function getSourceBadge(source: OrderSource) {
+  const sourceConfig: Record<OrderSource, { className: string; label: string }> = {
+    website: { className: "bg-blue-50 text-blue-700", label: "Site web" },
+    uber_eats: { className: "bg-green-50 text-green-700", label: "Uber Eats" },
+    deliveroo: { className: "bg-cyan-50 text-cyan-700", label: "Deliveroo" },
+    pos: { className: "bg-slate-50 text-slate-700", label: "POS" },
+  }
+
+  const config = sourceConfig[source]
+  return <Badge className={config.className}>{config.label}</Badge>
+}
+
+/**
+ * Inline refund dialog for order detail page
+ */
+function OrderRefundDialog({
+  payment,
+  open,
+  onOpenChange,
+}: {
+  payment: Payment
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
+  const refundMutation = useMutation(api?.payments?.refund ?? ("skip" as never))
+
+  const maxRefundAmount = payment.amount - (payment.refundedAmount || 0)
+  const [refundAmount, setRefundAmount] = useState(maxRefundAmount)
+  const [reason, setReason] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleRefund = async () => {
+    if (refundAmount <= 0 || refundAmount > maxRefundAmount) return
+
+    setIsSubmitting(true)
+    try {
+      await refundMutation({
+        id: payment._id,
+        amount: refundAmount,
+        reason: reason.trim() || undefined,
+      })
+
+      toast.success(
+        `Remboursement de ${formatPrice(refundAmount, payment.currency)} traité avec succès`
+      )
+      onOpenChange(false)
+      setRefundAmount(maxRefundAmount)
+      setReason("")
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      toast.error(`Échec du remboursement: ${message}`)
+      console.error("Refund error:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const amountInUnits = (refundAmount / 100).toFixed(2)
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value)
+    if (!isNaN(value)) {
+      setRefundAmount(Math.round(value * 100))
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Remboursement</DialogTitle>
+          <DialogDescription>
+            Effectuez un remboursement total ou partiel.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Montant initial :</span>
+              <span className="font-medium tabular-nums">
+                {formatPrice(payment.amount, payment.currency)}
+              </span>
+            </div>
+            {payment.refundedAmount && payment.refundedAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Déjà remboursé :</span>
+                <span className="font-medium tabular-nums">
+                  {formatPrice(payment.refundedAmount, payment.currency)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-1">
+              <span className="text-muted-foreground">Remboursement max :</span>
+              <span className="font-semibold tabular-nums">
+                {formatPrice(maxRefundAmount, payment.currency)}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="refundAmount">Montant du remboursement</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                {payment.currency === "EUR" ? "€" : "$"}
+              </span>
+              <Input
+                id="refundAmount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={(maxRefundAmount / 100).toFixed(2)}
+                value={amountInUnits}
+                onChange={handleAmountChange}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="refundReason">Motif (optionnel)</Label>
+            <Textarea
+              id="refundReason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Saisissez le motif du remboursement..."
+              rows={3}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRefundAmount(maxRefundAmount)}
+            >
+              Total
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRefundAmount(Math.round(maxRefundAmount / 2))}
+            >
+              50%
+            </Button>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
+          >
+            Annuler
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleRefund}
+            disabled={isSubmitting || refundAmount <= 0 || refundAmount > maxRefundAmount}
+          >
+            {isSubmitting
+              ? "Traitement..."
+              : `Rembourser ${formatPrice(refundAmount, payment.currency)}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }
 
 /**
@@ -86,13 +297,36 @@ function getPaymentBadge(status: "pending" | "paid" | "failed" | "refunded") {
  */
 export function OrderDetailPage({ params }: OrderDetailPageProps) {
   const { orderId } = use(params)
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const api = useAdminApiStore((s) => s.api)
+
+  const [showRefundDialog, setShowRefundDialog] = useState(false)
 
   // Fetch order details
   const order = useQuery(
-    api?.orders?.getById ?? ("skip" as any),
+    api?.orders?.getById ?? ("skip" as never),
     { id: orderId }
-  )
+  ) as Order | null | undefined
+
+  // Fetch associated payments
+  const payments = useQuery(
+    api?.payments?.getByOrder ?? ("skip" as never),
+    order ? { orderId: order._id } : "skip"
+  ) as Payment[] | undefined
+
+  // Find the primary payment (first succeeded or most recent)
+  const primaryPayment = payments?.find(
+    (p: Payment) =>
+      p.status === "succeeded" ||
+      p.status === "partially_refunded"
+  ) ?? payments?.[0]
+
+  // Check if refund is possible
+  const canRefund = primaryPayment
+    ? primaryPayment.status === "succeeded" &&
+      primaryPayment.provider !== "cash" &&
+      (primaryPayment.refundedAmount || 0) < primaryPayment.amount
+    : false
 
   if (order === undefined) {
     return (
@@ -128,6 +362,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {getSourceBadge(order.source)}
           {getStatusBadge(order.status)}
           {getTypeBadge(order.type)}
         </div>
@@ -155,14 +390,14 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {order.items.map((item: any, index: number) => (
+                  {order.items.map((item: OrderItem, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="text-sm">
                         <div>
                           <div className="font-medium">{item.productName}</div>
                           {item.selectedOptions && item.selectedOptions.length > 0 && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              {item.selectedOptions.map((opt: any, i: number) => (
+                              {item.selectedOptions.map((opt: OrderItemOption, i: number) => (
                                 <div key={i}>
                                   {opt.optionName}: {opt.choiceName}
                                   {opt.priceModifier !== 0 &&
@@ -206,6 +441,12 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Frais de livraison</span>
                     <span>{formatPrice(order.deliveryFee)}</span>
+                  </div>
+                )}
+                {order.discountAmount && order.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Remise</span>
+                    <span className="text-green-600">-{formatPrice(order.discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-base font-semibold border-t border-border/50 pt-2">
@@ -277,16 +518,27 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderStatusActions orderId={order._id} currentStatus={order.status} />
+              <OrderStatusActions orderId={order._id} currentStatus={order.status} source={order.source} />
             </CardContent>
           </Card>
 
           {/* Payment Information */}
           <Card className="border-border/50">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Informations de paiement
               </CardTitle>
+              {canRefund && primaryPayment && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setShowRefundDialog(true)}
+                >
+                  <RotateCcw className="mr-1.5 h-3 w-3" />
+                  Rembourser
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
@@ -301,10 +553,55 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
               <div>
                 <div className="text-xs text-muted-foreground">Source de la commande</div>
-                <div className="text-sm font-medium capitalize">{order.source}</div>
+                <div className="text-sm font-medium">{SOURCE_LABELS[order.source]}</div>
               </div>
+              {primaryPayment?.refundedAmount && primaryPayment.refundedAmount > 0 && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Montant remboursé</div>
+                  <div className="text-sm font-medium text-orange-600">
+                    {formatPrice(primaryPayment.refundedAmount, primaryPayment.currency)}
+                  </div>
+                </div>
+              )}
+              {primaryPayment?.refundReason && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Motif du remboursement</div>
+                  <div className="text-sm font-medium italic">{primaryPayment.refundReason}</div>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Preparation & Delivery Info */}
+          {(order.estimatedPrepTime || order.estimatedDeliveryTime || order.scheduledFor) && (
+            <Card className="border-border/50">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Préparation & Livraison
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {order.scheduledFor && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Programmée pour</div>
+                    <div className="text-sm font-medium">{formatDate(order.scheduledFor)}</div>
+                  </div>
+                )}
+                {order.estimatedPrepTime && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Temps de préparation estimé</div>
+                    <div className="text-sm font-medium">{order.estimatedPrepTime} min</div>
+                  </div>
+                )}
+                {order.estimatedDeliveryTime && (
+                  <div>
+                    <div className="text-xs text-muted-foreground">Temps de livraison estimé</div>
+                    <div className="text-sm font-medium">{order.estimatedDeliveryTime} min</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Timestamps */}
           <Card className="border-border/50">
@@ -336,14 +633,23 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
               {order.cancellationReason && (
                 <div>
-                  <div className="text-xs text-muted-foreground">Motif d'annulation</div>
-                  <div className="text-sm font-medium">{order.cancellationReason}</div>
+                  <div className="text-xs text-muted-foreground">Motif d&apos;annulation</div>
+                  <div className="text-sm font-medium">{parseCancellationReason(order.cancellationReason)}</div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Refund Dialog */}
+      {primaryPayment && (
+        <OrderRefundDialog
+          payment={primaryPayment}
+          open={showRefundDialog}
+          onOpenChange={setShowRefundDialog}
+        />
+      )}
     </div>
   )
 }
