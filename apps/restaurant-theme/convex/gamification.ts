@@ -54,7 +54,7 @@ export const getGameByStoreSlug = query({
 
     const prizeMap = new Map(prizes.map((p) => [p._id, p]))
 
-    const sections = (game.config?.wheelSections ?? []).map((section: any) => ({
+    const sections = (game.config?.wheelSections ?? []).map((section: { label: string; color: string; probability: number; prizeId?: Id<"prizes">; isWinning: boolean }) => ({
       ...section,
       prizeName: section.prizeId ? prizeMap.get(section.prizeId)?.name : undefined,
     }))
@@ -186,14 +186,14 @@ export const spin = mutation({
       if (isWin) {
         const prizes = await ctx.db
           .query("prizes")
-          .withIndex("by_isActive", (q: any) =>
+          .withIndex("by_isActive", (q) =>
             q.eq("isActive", true)
           )
           .collect()
 
         // Find a prize with remaining stock
         const availablePrizes = prizes.filter(
-          (p: any) => p.remainingCount === undefined || p.remainingCount === null || p.remainingCount > 0
+          (p) => p.remainingCount === undefined || p.remainingCount === null || p.remainingCount > 0
         )
 
         if (availablePrizes.length > 0) {
@@ -274,7 +274,7 @@ export const spin = mutation({
 
     let redemptionId: string | undefined
     if (didWin && prizeId) {
-      const prize = await ctx.db.get(prizeId) as any
+      const prize = await ctx.db.get(prizeId)
       const validityMs = (prize?.validityDays ?? 1) * 24 * 60 * 60 * 1000
 
       redemptionId = await ctx.db.insert("prizeRedemptions", {
