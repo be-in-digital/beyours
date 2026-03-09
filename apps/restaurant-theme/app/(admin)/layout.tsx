@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { api } from "@/convex/_generated/api"
 import { AdminAuthSync } from "@/components/admin/AdminAuthSync"
+import { AuthProvider } from "@/app/auth-provider"
 import {
   AuthGuard,
   AppSidebar,
@@ -25,7 +26,7 @@ export default function AdminLayout({
   }, [])
 
   return (
-    <>
+    <AuthProvider>
       <AdminAuthSync />
       <AuthGuard>
         <SidebarProvider>
@@ -34,14 +35,14 @@ export default function AdminLayout({
           />
           <SidebarInset>
             <AdminHeader storeSelector={<StoreSelector />} />
-            <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
+            <div className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
               <div className="mx-auto max-w-[1600px]">
                 <StoreGuard>{children}</StoreGuard>
               </div>
-            </main>
+            </div>
           </SidebarInset>
         </SidebarProvider>
       </AuthGuard>
-    </>
+    </AuthProvider>
   )
 }

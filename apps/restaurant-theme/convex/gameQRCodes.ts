@@ -12,6 +12,15 @@ export const create = mutation({
   },
 });
 
+export const update = mutation({
+  args: defs.update.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.update.handler(ctx, args);
+  },
+});
+
 export const remove = mutation({
   args: defs.remove.args,
   handler: async (ctx, args) => {

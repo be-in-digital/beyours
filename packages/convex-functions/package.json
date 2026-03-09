@@ -29,7 +29,11 @@
     "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts",
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",
-    "./encryption": "./src/encryption.ts"
+    "./encryption": "./src/encryption.ts",
+    "./gamification": "./src/gamification/index.ts",
+    "./requiredActions": "./src/requiredActions.ts",
+    "./gamePlays": "./src/gamePlays.ts",
+    "./prizeRedemptions": "./src/prizeRedemptions.ts"
   },
   "scripts": {
     "lint": "eslint src/",

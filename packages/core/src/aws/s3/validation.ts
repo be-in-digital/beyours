@@ -10,7 +10,7 @@ import type { S3Folder } from '../types'
 /**
  * Schéma pour les dossiers S3
  */
-export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms'])
+export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms', 'games'])
 
 /**
  * Schéma pour les options d'upload

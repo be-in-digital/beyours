@@ -9,13 +9,14 @@ import { StationFilter } from "./station-filter"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 
-type TicketStatus = "pending" | "in_progress" | "ready" | "completed"
+type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
 
 const STATUS_CONFIG: Record<TicketStatus, { title: string; color: string }> = {
   pending: { title: "En attente", color: "bg-yellow-500" },
   in_progress: { title: "En cours", color: "bg-blue-500" },
   ready: { title: "Prêt", color: "bg-green-500" },
   completed: { title: "Terminé", color: "bg-gray-500" },
+  cancelled: { title: "Annulé", color: "bg-red-500" },
 }
 
 export function KitchenPage() {
@@ -56,6 +57,7 @@ export function KitchenPage() {
       in_progress: filteredTickets.filter((t: any) => t.status === "in_progress"),
       ready: filteredTickets.filter((t: any) => t.status === "ready"),
       completed: filteredTickets.filter((t: any) => t.status === "completed"),
+      cancelled: filteredTickets.filter((t: any) => t.status === "cancelled"),
     }
   }, [filteredTickets])
 

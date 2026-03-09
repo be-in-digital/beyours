@@ -1,1 +1,6 @@
-export { GamesPage } from "./games-page"
+export { GamesDashboardPage } from "./games-dashboard-page"
+export { GamesCatalogPage } from "./games-catalog-page"
+export { QRCodesPage } from "./qr-codes-page"
+export { ActionsPage } from "./actions-page"
+export { WinnersPage } from "./winners-page"
+export { GamesSettingsPage } from "./games-settings-page"

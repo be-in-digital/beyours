@@ -510,7 +510,7 @@ export type KitchenTicketDoc = BaseEntity & CreateKitchenTicketInput & {
   assignedTo?: string
   startedAt?: number
   completedAt?: number
-  printCount: number
+  printCount?: number
 }
 
 export type PrinterSettingsDoc = BaseEntity & CreatePrinterSettingsInput & {

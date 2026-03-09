@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@convex-dev/better-auth"],
+  transpilePackages: [
+    "@convex-dev/better-auth",
+    "@beindigital-engine/ui",
+    "@beindigital-engine/restaurant",
+    "@beindigital-engine/admin",
+  ],
   images: {
     remotePatterns: [
       {
