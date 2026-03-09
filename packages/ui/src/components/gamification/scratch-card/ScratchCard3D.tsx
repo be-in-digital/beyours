@@ -91,7 +91,7 @@ function CardScene({ prizeText, didWin, onReveal, primaryColor = "#D4AF37", inte
     } else {
       setScratchReady(false)
     }
-  }, [interactive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [interactive])
 
   // Card tilt based on pointer position
   useFrame(() => {

@@ -96,21 +96,18 @@ export function ScratchParticles({ enabled }: ScratchParticlesProps) {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          array={positionsRef.current}
+          args={[positionsRef.current, 3]}
           count={POOL_SIZE}
-          itemSize={3}
         />
         <bufferAttribute
           attach="attributes-color"
-          array={colorsRef.current}
+          args={[colorsRef.current, 3]}
           count={POOL_SIZE}
-          itemSize={3}
         />
         <bufferAttribute
           attach="attributes-size"
-          array={sizesRef.current}
+          args={[sizesRef.current, 1]}
           count={POOL_SIZE}
-          itemSize={1}
         />
       </bufferGeometry>
       <pointsMaterial
