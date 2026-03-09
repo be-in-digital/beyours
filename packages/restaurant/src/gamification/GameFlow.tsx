@@ -86,16 +86,14 @@ export function GameFlow({
   // Initialize fingerprint — use prop if provided, otherwise generate from localStorage
   useEffect(() => {
     store.setFingerprint(fingerprintProp || getOrCreateFingerprint())
-  }, [fingerprintProp]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [fingerprintProp])
   // Initialize game when data arrives
   useEffect(() => {
     if (!gameData) return
     if (store.step === "loading") {
       store.initGame(gameData)
     }
-  }, [gameData]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [gameData])
   // Handle cooldown check — only on initial load, not during active gameplay
   useEffect(() => {
     if (!cooldownResult) return
@@ -106,15 +104,13 @@ export function GameFlow({
     if (!cooldownResult.canPlay && cooldownResult.nextPlayAt) {
       current.setCooldown(cooldownResult.nextPlayAt)
     }
-  }, [cooldownResult]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [cooldownResult])
   // Handle error states
   useEffect(() => {
     if (gameData === null && !isLoading) {
       store.setError("Jeu introuvable ou inactif.")
     }
-  }, [gameData, isLoading]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [gameData, isLoading])
   // Auto-transition: actions → game step when all completed
   useEffect(() => {
     if (store.step === "actions" && store.allActionsCompleted()) {
@@ -122,8 +118,7 @@ export function GameFlow({
       const gameStep = current.game?.type === "scratch_card" ? "scratch" : "wheel"
       current.setStep(gameStep)
     }
-  }, [store.completedActionIds]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [store.completedActionIds])
   // Auto-spin for scratch card: when step becomes "scratch", call spin immediately
   // and transition to "scratching" (no intermediate button needed)
   useEffect(() => {
@@ -153,23 +148,20 @@ export function GameFlow({
     })()
 
     return () => { cancelled = true }
-  }, [store.step, onSpin]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [store.step, onSpin])
   // === Handlers ===
 
   const handleActionClick = useCallback(
     (actionId: string) => {
       store.startActionTimer(actionId)
     },
-    [] // eslint-disable-line react-hooks/exhaustive-deps
-  )
+    []  )
 
   const handleTimerTick = useCallback(
     (actionId: string) => {
       store.tickActionTimer(actionId)
     },
-    [] // eslint-disable-line react-hooks/exhaustive-deps
-  )
+    []  )
 
   const handleSpin = useCallback(async () => {
     // Use getState() to avoid stale closure — critical for fingerprint & completedActions
@@ -192,8 +184,7 @@ export function GameFlow({
       current.setError(message)
       setIsSpinning(false)
     }
-  }, [onSpin, isSpinning]) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [onSpin, isSpinning])
   const handleSpinComplete = useCallback(() => {
     setIsSpinning(false)
     const current = useGamificationStore.getState()
@@ -204,8 +195,7 @@ export function GameFlow({
 
   const handleClaim = useCallback(() => {
     store.setStep("claim")
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [])
   const handleClaimSubmit = useCallback(
     async (data: ClaimFormData) => {
       const current = useGamificationStore.getState()
@@ -233,8 +223,7 @@ export function GameFlow({
 
   const handleStartGame = useCallback(() => {
     store.startGame()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
+  }, [])
   const handleScratchReveal = useCallback(() => {
     const current = useGamificationStore.getState()
     if (current.spinResult) {
