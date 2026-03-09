@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { GameFlow } from "@beindigital-engine/restaurant"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
@@ -60,8 +61,8 @@ export function GameClient({ storeSlug }: { storeSlug: string }) {
     completedActions: string[]
   }) => {
     const result = await spinMutation({
-      gameId: args.gameId as any,
-      storeId: args.storeId as any,
+      gameId: args.gameId as Id<"games">,
+      storeId: args.storeId as Id<"stores">,
       fingerprint: args.fingerprint,
       completedActions: args.completedActions,
     })
@@ -76,7 +77,7 @@ export function GameClient({ storeSlug }: { storeSlug: string }) {
     phone?: string
   }) => {
     const result = await claimMutation({
-      redemptionId: args.redemptionId as any,
+      redemptionId: args.redemptionId as Id<"prizeRedemptions">,
       firstName: args.firstName,
       lastName: args.lastName,
       email: args.email,
