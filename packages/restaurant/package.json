@@ -25,11 +25,6 @@
       "types": "./dist/hooks/index.d.ts",
       "import": "./dist/hooks/index.mjs",
       "require": "./dist/hooks/index.js"
-    },
-    "./gamification": {
-      "types": "./dist/gamification/index.d.ts",
-      "import": "./dist/gamification/index.mjs",
-      "require": "./dist/gamification/index.js"
     }
   },
   "scripts": {
@@ -43,8 +38,6 @@
   },
   "dependencies": {
     "@beindigital-engine/convex-schema": "workspace:^",
-    "@beindigital-engine/ui": "workspace:^",
-    "@beindigital-engine/core": "workspace:^",
     "zod": "^3.24.0",
     "zustand": "^5.0.0"
   },

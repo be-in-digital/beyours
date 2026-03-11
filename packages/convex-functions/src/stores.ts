@@ -61,14 +61,11 @@ export const create = {
     }),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
-    settings: v.optional(v.any()),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
-    const { settings, ...rest } = args
     return await ctx.db.insert("stores", {
-      ...rest,
-      settings: settings ?? undefined,
+      ...args,
       useGlobalHours: true,
       hours: [
         { day: 0, open: "00:00", close: "00:00", isClosed: true },
@@ -177,6 +174,108 @@ export const updateAddress = {
     const existing = await ctx.db.get(args.id)
     if (!existing) throw new Error("Store not found")
     await ctx.db.patch(args.id, { address: args.address, updatedAt: Date.now() })
+  },
+}
+
+/**
+ * Update store print configuration
+ */
+export const updatePrintConfig = {
+  args: {
+    id: v.id("stores"),
+    printConfig: v.optional(v.object({
+      provider: v.union(
+        v.literal("browser"),
+        v.literal("star_cloud"),
+        v.literal("epson_cloud"),
+        v.literal("sunmi_cloud")
+      ),
+      printerId: v.optional(v.string()),
+      apiKey: v.optional(v.string()),
+      triggers: v.array(v.union(
+        v.literal("confirmed"),
+        v.literal("ready"),
+        v.literal("reprint")
+      )),
+      paperSize: v.union(v.literal("80mm"), v.literal("58mm")),
+      enabled: v.boolean(),
+    })),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { printConfig: args.printConfig, updatedAt: Date.now() })
+  },
+}
+
+/**
+ * Update store display configuration
+ */
+export const updateDisplayConfig = {
+  args: {
+    id: v.id("stores"),
+    displayConfig: v.optional(v.object({
+      autoDismissEnabled: v.boolean(),
+      autoDismissMinutes: v.number(),
+    })),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { displayConfig: args.displayConfig, updatedAt: Date.now() })
+  },
+}
+
+/**
+ * Update store sound configuration
+ */
+export const updateSoundConfig = {
+  args: {
+    id: v.id("stores"),
+    soundConfig: v.optional(v.object({
+      newTicket: v.object({ enabled: v.boolean(), volume: v.number() }),
+      overdue: v.object({ enabled: v.boolean(), volume: v.number() }),
+      printerOffline: v.object({ enabled: v.boolean(), volume: v.number() }),
+    })),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { soundConfig: args.soundConfig, updatedAt: Date.now() })
+  },
+}
+
+/**
+ * Update store order confirmation mode
+ */
+export const updateOrderConfirmation = {
+  args: {
+    id: v.id("stores"),
+    orderConfirmation: v.union(v.literal("auto"), v.literal("manual")),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { orderConfirmation: args.orderConfirmation, updatedAt: Date.now() })
+  },
+}
+
+/**
+ * Update store global order mode (applies to all sources unless overridden per-platform)
+ */
+export const updateOrderMode = {
+  args: {
+    id: v.id("stores"),
+    orderMode: v.union(
+      v.literal("auto_accept"),
+      v.literal("auto_reject"),
+      v.literal("manual")
+    ),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { orderMode: args.orderMode, updatedAt: Date.now() })
   },
 }
 

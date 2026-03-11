@@ -4,54 +4,25 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
-import { ADMIN_PAGE_SIZE } from "../../lib/constants"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  SearchInput,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@beindigital-engine/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@beindigital-engine/ui"
 import { OrdersTable } from "./orders-table"
-import { StoresPagination } from "../stores/stores-pagination"
-import type { Order, OrderSource, OrderPaymentStatus } from "../../lib/types"
+import type { Order, OrderStatus } from "../../lib/types"
 
 /**
- * Status group filter: groups multiple statuses together for a recap view
+ * Order status filter type (includes "all" for no-filter)
  */
-type StatusGroup = "all" | "active" | "completed" | "cancelled"
-
-/**
- * Map status groups to their underlying statuses
- */
-const STATUS_GROUP_MAP: Record<StatusGroup, string[]> = {
-  all: [],
-  active: ["pending", "confirmed", "preparing", "ready", "out_for_delivery"],
-  completed: ["completed", "delivered"],
-  cancelled: ["cancelled"],
-}
-
-type SourceFilter = "all" | OrderSource
-type PaymentFilter = "all" | OrderPaymentStatus
+type OrderStatusFilter = "all" | OrderStatus
 
 /**
  * Main content component for orders list page
- * Displays orders with filters optimized for a recap/summary view
+ * Displays orders in tabs filtered by status with search functionality
  */
 export function OrdersPage() {
   const storeId = useAdminStoreId()
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const api = useAdminApiStore((s) => s.api)
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusGroup, setStatusGroup] = useState<StatusGroup>("all")
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all")
-  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("all")
-  const [currentPage, setCurrentPage] = useState(1)
+  const [activeStatus, setActiveStatus] = useState<OrderStatusFilter>("all")
 
   // Fetch orders for the current store
   const orders = useQuery(
@@ -59,53 +30,16 @@ export function OrdersPage() {
     storeId ? { storeId } : "skip"
   ) as Order[] | undefined
 
-  // Filter orders by all criteria
+  // Filter orders by status and search query
   const filteredOrders = orders?.filter((order: Order) => {
-    // Status group filter
-    const statusList = STATUS_GROUP_MAP[statusGroup]
-    const matchesStatus = statusGroup === "all" || statusList.includes(order.status)
-
-    // Source filter
-    const matchesSource = sourceFilter === "all" || order.source === sourceFilter
-
-    // Payment status filter
-    const matchesPayment = paymentFilter === "all" || order.paymentStatus === paymentFilter
-
-    // Search filter
+    const matchesStatus = activeStatus === "all" || order.status === activeStatus
     const matchesSearch =
       searchQuery === "" ||
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerInfo.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-    return matchesStatus && matchesSource && matchesPayment && matchesSearch
+    return matchesStatus && matchesSearch
   })
-
-  // Pagination calculations
-  const totalItems = filteredOrders?.length ?? 0
-  const totalPages = Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE))
-  const safePage = Math.min(currentPage, totalPages)
-  const paginatedOrders = filteredOrders?.slice(
-    (safePage - 1) * ADMIN_PAGE_SIZE,
-    safePage * ADMIN_PAGE_SIZE
-  )
-
-  // Reset to page 1 when filters change
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value)
-    setCurrentPage(1)
-  }
-  const handleStatusGroupChange = (value: string) => {
-    setStatusGroup(value as StatusGroup)
-    setCurrentPage(1)
-  }
-  const handleSourceChange = (value: string) => {
-    setSourceFilter(value as SourceFilter)
-    setCurrentPage(1)
-  }
-  const handlePaymentChange = (value: string) => {
-    setPaymentFilter(value as PaymentFilter)
-    setCurrentPage(1)
-  }
 
   return (
     <div className="space-y-6">
@@ -117,63 +51,31 @@ export function OrdersPage() {
         </p>
       </div>
 
-      {/* Search + Filters row */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 max-w-md">
-          <SearchInput
-            placeholder="Rechercher par n° de commande ou nom du client..."
-            value={searchQuery}
-            onValueChange={handleSearchChange}
-          />
-        </div>
-        <div className="flex gap-3">
-          <Select value={sourceFilter} onValueChange={handleSourceChange}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les sources</SelectItem>
-              <SelectItem value="website">Site web</SelectItem>
-              <SelectItem value="uber_eats">Uber Eats</SelectItem>
-              <SelectItem value="deliveroo">Deliveroo</SelectItem>
-              <SelectItem value="pos">POS</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={paymentFilter} onValueChange={handlePaymentChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Paiement" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les paiements</SelectItem>
-              <SelectItem value="paid">Payé</SelectItem>
-              <SelectItem value="pending">En attente</SelectItem>
-              <SelectItem value="refunded">Remboursé</SelectItem>
-              <SelectItem value="partially_refunded">Part. remboursé</SelectItem>
-              <SelectItem value="failed">Échoué</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Search */}
+      <div className="max-w-md">
+        <SearchInput
+          placeholder="Rechercher par n° de commande ou nom du client..."
+          value={searchQuery}
+          onValueChange={setSearchQuery}
+        />
       </div>
 
-      {/* Status group tabs */}
-      <Tabs value={statusGroup} onValueChange={handleStatusGroupChange}>
+      {/* Status filter tabs */}
+      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatusFilter)}>
         <TabsList variant="line">
           <TabsTrigger value="all">Toutes</TabsTrigger>
-          <TabsTrigger value="active">En cours</TabsTrigger>
+          <TabsTrigger value="pending">En attente</TabsTrigger>
+          <TabsTrigger value="confirmed">Confirmées</TabsTrigger>
+          <TabsTrigger value="preparing">En préparation</TabsTrigger>
+          <TabsTrigger value="ready">Prêtes</TabsTrigger>
+          <TabsTrigger value="out_for_delivery">En livraison</TabsTrigger>
+          <TabsTrigger value="delivered">Livrées</TabsTrigger>
           <TabsTrigger value="completed">Terminées</TabsTrigger>
           <TabsTrigger value="cancelled">Annulées</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={statusGroup} className="mt-6 space-y-4">
-          <OrdersTable orders={paginatedOrders || []} isLoading={orders === undefined} />
-
-          <StoresPagination
-            currentPage={safePage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            pageSize={ADMIN_PAGE_SIZE}
-            onPageChange={setCurrentPage}
-          />
+        <TabsContent value={activeStatus} className="mt-6">
+          <OrdersTable orders={filteredOrders || []} isLoading={orders === undefined} />
         </TabsContent>
       </Tabs>
     </div>

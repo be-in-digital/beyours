@@ -1,5 +1,6 @@
 /**
  * Deliveroo order management API calls
+ * Uses v1 Order API endpoints (matching Deliveroo sandbox)
  */
 
 import type { DeliverooCredentials, DeliverooWebhookOrder } from "./types"
@@ -15,7 +16,7 @@ export type DeliverooOrderStatus =
 
 export type DeliverooPrepStage = "in_kitchen" | "ready"
 
-export type DeliverooSyncStatus = "success" | "failure"
+export type DeliverooSyncStatus = "succeeded" | "failed"
 
 export type DeliverooSyncFailureReason =
   | "pos_item_id_not_found"
@@ -34,16 +35,17 @@ export type DeliverooSyncFailureReason =
 // === API Functions ===
 
 /**
- * Accept an order
+ * Accept an order via PATCH /v1/orders/{id} with { status: "accepted" }
  */
 export async function acceptOrder(
   credentials: DeliverooCredentials,
   orderId: string
 ): Promise<void> {
+  const encodedId = encodeURIComponent(orderId)
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/accept`,
-    { method: "POST", body: {} },
+    `/v1/orders/${encodedId}`,
+    { method: "PATCH", body: { status: "accepted" } },
     "order"
   )
   if (!response.ok) {
@@ -58,17 +60,44 @@ export async function acceptOrder(
 }
 
 /**
- * Reject an order with reason
+ * Confirm a scheduled order via PATCH /v1/orders/{id} with { status: "confirmed" }
+ * Should only be called after confirm_at time has passed.
+ */
+export async function confirmOrder(
+  credentials: DeliverooCredentials,
+  orderId: string
+): Promise<void> {
+  const encodedId = encodeURIComponent(orderId)
+  const response = await fetchDeliveroo(
+    credentials,
+    `/v1/orders/${encodedId}`,
+    { method: "PATCH", body: { status: "confirmed" } },
+    "order"
+  )
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new IntegrationError(
+      `Failed to confirm Deliveroo order ${orderId}`,
+      response.status,
+      "deliveroo",
+      errorText
+    )
+  }
+}
+
+/**
+ * Reject an order via PATCH /v1/orders/{id} with { status: "rejected", reject_reason }
  */
 export async function rejectOrder(
   credentials: DeliverooCredentials,
   orderId: string,
   reason: string = "store_busy"
 ): Promise<void> {
+  const encodedId = encodeURIComponent(orderId)
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/reject`,
-    { method: "POST", body: { reason } },
+    `/v1/orders/${encodedId}`,
+    { method: "PATCH", body: { status: "rejected", reject_reason: reason } },
     "order"
   )
   if (!response.ok) {
@@ -84,46 +113,74 @@ export async function rejectOrder(
 
 /**
  * Send sync status for an order (confirm items are mapped to POS)
+ * POST /v1/orders/{id}/sync_status
  */
 export async function sendSyncStatus(
   credentials: DeliverooCredentials,
   orderId: string,
   status: DeliverooSyncStatus,
-  failureReason?: DeliverooSyncFailureReason
+  failureReason?: DeliverooSyncFailureReason,
+  notes?: string
 ): Promise<void> {
-  const body: Record<string, unknown> = { status }
-  if (status === "failure" && failureReason) {
-    body.reason = failureReason
+  const encodedId = encodeURIComponent(orderId)
+  const body: Record<string, unknown> = {
+    status,
+    reason: failureReason,
+    notes,
+    occurred_at: new Date().toISOString(),
   }
-  const response = await fetchDeliveroo(
-    credentials,
-    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/sync_status`,
-    { method: "POST", body },
-    "order"
-  )
-  if (!response.ok) {
-    const errorText = await response.text()
+
+  try {
+    const response = await fetchDeliveroo(
+      credentials,
+      `/v1/orders/${encodedId}/sync_status`,
+      { method: "POST", body },
+      "order"
+    )
+    // 409 means sync status already finalized — not an error
+    if (response.status === 409) {
+      return
+    }
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new IntegrationError(
+        `Failed to send sync status for Deliveroo order ${orderId}`,
+        response.status,
+        "deliveroo",
+        errorText
+      )
+    }
+  } catch (error) {
+    if (error instanceof IntegrationError) throw error
     throw new IntegrationError(
       `Failed to send sync status for Deliveroo order ${orderId}`,
-      response.status,
+      0,
       "deliveroo",
-      errorText
+      String(error)
     )
   }
 }
 
 /**
  * Update prep stage for an order
+ * POST /v1/orders/{id}/prep_stages
  */
 export async function updatePrepStage(
   credentials: DeliverooCredentials,
   orderId: string,
   stage: DeliverooPrepStage
 ): Promise<void> {
+  const encodedId = encodeURIComponent(orderId)
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${validatePathParam(orderId, "orderId")}/prep_stage`,
-    { method: "POST", body: { stage } },
+    `/v1/orders/${encodedId}/prep_stages`,
+    {
+      method: "POST",
+      body: {
+        stage,
+        occurred_at: new Date().toISOString(),
+      },
+    },
     "order"
   )
   if (!response.ok) {
@@ -139,14 +196,16 @@ export async function updatePrepStage(
 
 /**
  * Get order details
+ * GET /v1/orders/{id}
  */
 export async function getOrder(
   credentials: DeliverooCredentials,
   orderId: string
 ): Promise<DeliverooWebhookOrder> {
+  const encodedId = encodeURIComponent(orderId)
   const response = await fetchDeliveroo(
     credentials,
-    `/order/v2/orders/${validatePathParam(orderId, "orderId")}`,
+    `/v1/orders/${encodedId}`,
     { method: "GET" },
     "order"
   )

@@ -54,11 +54,50 @@ export const storesTable = defineTable({
 
   themeId: v.optional(v.string()),
 
-  // i18n translation quota (GPT-3.5)
-  translationQuota: v.optional(v.object({
-    dailyLimit: v.number(),
-    used: v.number(),
-    resetAt: v.number(),
+  // Order confirmation: auto (straight to kitchen) or manual (staff validates first)
+  orderConfirmation: v.optional(v.union(
+    v.literal("auto"),
+    v.literal("manual")
+  )), // default: "manual"
+
+  // Global order mode for all sources (website, Uber Eats, Deliveroo)
+  // Per-platform override in storeIntegrations.orderMode takes priority
+  orderMode: v.optional(v.union(
+    v.literal("auto_accept"),
+    v.literal("auto_reject"),
+    v.literal("manual")
+  )),
+
+  // Print configuration for thermal printers
+  printConfig: v.optional(v.object({
+    provider: v.union(
+      v.literal("browser"),
+      v.literal("star_cloud"),
+      v.literal("epson_cloud"),
+      v.literal("sunmi_cloud")
+    ),
+    printerId: v.optional(v.string()),
+    apiKey: v.optional(v.string()),
+    triggers: v.array(v.union(
+      v.literal("confirmed"),
+      v.literal("ready"),
+      v.literal("reprint")
+    )),
+    paperSize: v.union(v.literal("80mm"), v.literal("58mm")),
+    enabled: v.boolean(),
+  })),
+
+  // Display screen configuration (customer-facing TV)
+  displayConfig: v.optional(v.object({
+    autoDismissEnabled: v.boolean(),
+    autoDismissMinutes: v.number(),
+  })),
+
+  // Sound alerts configuration for KDS
+  soundConfig: v.optional(v.object({
+    newTicket: v.object({ enabled: v.boolean(), volume: v.number() }),
+    overdue: v.object({ enabled: v.boolean(), volume: v.number() }),
+    printerOffline: v.object({ enabled: v.boolean(), volume: v.number() }),
   })),
 
   // Legacy fields (kept for backward compatibility with existing data)

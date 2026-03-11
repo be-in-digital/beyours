@@ -64,7 +64,7 @@ describe('Uber Eats API Client', () => {
       // Verify fetch was called with correct parameters
       expect(mockFetch).toHaveBeenCalledTimes(1)
       const [url, options] = mockFetch.mock.calls[0]
-      expect(url).toBe('https://auth.uber.com/oauth/v2/token')
+      expect(url).toBe('https://login.uber.com/oauth/v2/token')
       expect(options.method).toBe('POST')
       expect(options.headers['Content-Type']).toBe('application/x-www-form-urlencoded')
       expect(options.body).toContain('client_id=test-client-id')
@@ -406,7 +406,7 @@ describe('Uber Eats API Client', () => {
       await expect(acceptOrder(mockCredentials, 'order-123')).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes('/eats/orders/order-123/accept')
+        call[0].includes('/eats/orders/order-123/accept_pos_order')
       )
 
       expect(apiCall).toBeDefined()
@@ -466,7 +466,7 @@ describe('Uber Eats API Client', () => {
       await expect(denyOrder(mockCredentials, 'order-123', reason)).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes('/eats/orders/order-123/deny')
+        call[0].includes('/eats/orders/order-123/deny_pos_order')
       )
 
       expect(apiCall).toBeDefined()

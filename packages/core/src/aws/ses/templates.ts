@@ -263,10 +263,9 @@ Besoin d'aide ? Contactez notre support.
  */
 export interface PrizeWonData {
   prizeName: string
-  redemptionCode: string
+  qrCode: string
   expirationDate: string
   customerName: string
-  storeName: string
 }
 
 /**
@@ -274,84 +273,73 @@ export interface PrizeWonData {
  */
 export const prizeWonTemplate: EmailTemplate<PrizeWonData> = {
   name: 'prizeWon',
-  subject: (data) => `Félicitations ! Vous avez gagné : ${data.prizeName}`,
+  subject: (data) => `🎉 Félicitations ! Vous avez gagné : ${data.prizeName}`,
   html: (data) => `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { padding: 30px; background: #f9f9f9; }
-          .prize { background: white; padding: 24px; margin: 20px 0; text-align: center; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-          .code-box { margin: 24px 0; padding: 24px; background: white; text-align: center; border-radius: 8px; border: 2px dashed #667eea; }
-          .code { font-family: monospace; font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 4px; }
-          .instructions { background: #e8f5e9; padding: 16px; border-radius: 8px; margin: 20px 0; }
-          .expiration { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 0 4px 4px 0; }
-          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-radius: 0 0 8px 8px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+          .content { padding: 20px; background: #f9f9f9; }
+          .prize { background: white; padding: 20px; margin: 20px 0; text-align: center; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+          .qr-code { margin: 20px 0; padding: 20px; background: white; display: inline-block; border-radius: 8px; }
+          .expiration { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>Félicitations !</h1>
-            <p style="margin: 0; opacity: 0.9;">Vous avez gagné chez ${data.storeName}</p>
+            <h1>🎉 Félicitations !</h1>
           </div>
           <div class="content">
             <p>Bonjour ${data.customerName},</p>
-            <p>Vous avez gagné un prix en jouant à la roue de la fortune !</p>
+            <p>Vous avez gagné un prix à notre jeu !</p>
 
             <div class="prize">
               <h2 style="color: #667eea; margin: 0;">${data.prizeName}</h2>
             </div>
 
-            <p style="text-align: center; font-weight: bold;">Votre code de rédemption :</p>
+            <p style="text-align: center;">Présentez ce QR code en restaurant pour récupérer votre prix :</p>
 
-            <div class="code-box">
-              <div class="code">${data.redemptionCode}</div>
-            </div>
-
-            <div class="instructions">
-              <strong>Comment récupérer votre prix :</strong>
-              <ol style="margin: 8px 0 0 0; padding-left: 20px;">
-                <li>Rendez-vous chez ${data.storeName}</li>
-                <li>Montrez ce code au personnel</li>
-                <li>Profitez de votre prix !</li>
-              </ol>
+            <div style="text-align: center;">
+              <div class="qr-code">
+                <img src="${data.qrCode}" alt="QR Code" style="max-width: 200px;">
+              </div>
             </div>
 
             <div class="expiration">
-              <strong>Validité :</strong> Ce prix est valable jusqu'au ${data.expirationDate}.
+              <strong>⏰ Validité :</strong> Ce prix est valable jusqu'au ${data.expirationDate}.
             </div>
+
+            <p style="text-align: center;">Nous avons hâte de vous voir !</p>
           </div>
           <div class="footer">
-            <p>${data.storeName} - À très bientôt !</p>
+            <p>À très bientôt !</p>
           </div>
         </div>
       </body>
     </html>
   `,
   text: (data) => `
-Félicitations !
+🎉 Félicitations !
 
 Bonjour ${data.customerName},
 
-Vous avez gagné un prix en jouant à la roue de la fortune chez ${data.storeName} !
+Vous avez gagné un prix à notre jeu !
 
-Prix gagné : ${data.prizeName}
+🏆 Prix gagné : ${data.prizeName}
 
-Votre code de rédemption : ${data.redemptionCode}
+Présentez votre QR code en restaurant pour récupérer votre prix.
 
-Comment récupérer votre prix :
-1. Rendez-vous chez ${data.storeName}
-2. Montrez ce code au personnel
-3. Profitez de votre prix !
+⏰ Validité : Ce prix est valable jusqu'au ${data.expirationDate}.
 
-Validité : Ce prix est valable jusqu'au ${data.expirationDate}.
+Nous avons hâte de vous voir !
 
-${data.storeName} - À très bientôt !
+À très bientôt !
   `.trim(),
 }
 

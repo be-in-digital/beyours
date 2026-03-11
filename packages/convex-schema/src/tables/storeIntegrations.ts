@@ -11,7 +11,12 @@ export const storeIntegrationsTable = defineTable({
   platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
   platformStoreId: v.string(), // store ID on the platform
   syncMenu: v.boolean(),
-  autoAccept: v.boolean(),
+  autoAccept: v.boolean(), // deprecated, use orderMode
+  orderMode: v.optional(v.union(
+    v.literal("auto_accept"),
+    v.literal("auto_reject"),
+    v.literal("manual")
+  )),
   enabled: v.boolean(),
   // Deliveroo specific
   brandId: v.optional(v.string()),

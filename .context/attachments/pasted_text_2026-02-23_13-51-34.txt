@@ -1,0 +1,183 @@
+1) Schema kitchenTickets — ajout validé
+
+✅ printRequestedAt, ✅ printTrigger.
+
+Je te recommande juste un mini-champ pour l’UI “failed < 10 min” :
+
+printFailedAt?: number (timestamp)
+Car lastPrintAt peut aussi représenter un “sent”. Et si tu fais markFailed, tu veux une date explicite.
+
+Si tu veux rester minimal, tu peux réutiliser lastPrintAt + printStatus, mais printFailedAt évite les ambiguïtés.
+
+2) Convex — mutations/queries nécessaires (KDS v2)
+A) getPrintQueue(storeId)
+
+But : renvoyer uniquement ce qui doit être imprimé maintenant, dans le bon ordre.
+
+Filtre :
+
+storeId == …
+
+printStatus == "pending"
+
+printRequestedAt != null
+
+tri printRequestedAt ASC
+
+Retour minimal : tout ce dont PrintTicketLayout a besoin (sinon tu fais 2 queries).
+
+ticket header (numéro, source/type, createdAt)
+
+items+options+notes+allergies
+
+paperSize (via store settings, ou injecté côté UI)
+
+trackingToken (pour QR reprint en 80mm)
+
+printTrigger (affichage “pickup ticket” vs “order ticket”, si tu veux)
+
+Option perf : retourner store.printConfig.paperSize via props plutôt que dans la query.
+
+B) markPrintSent(ticketId, meta?)
+
+Appelée quand :
+
+afterprint déclenche, ou
+
+fallback “on a déclenché print() et on considère envoyé” (si tu veux)
+
+Champs :
+
+printStatus = "printed"
+
+lastPrintAt = now
+
+printAttempts += 1 (si tu comptes une tentative “sent” comme attempt)
+
+(optionnel) printFailedAt = undefined
+
+C) markPrintFailed(ticketId, reason?)
+
+Appelée sur timeout 20s sans afterprint.
+
+Champs :
+
+printStatus = "failed"
+
+printAttempts += 1
+
+printFailedAt = now
+
+(optionnel) stocker lastPrintError?: string court
+
+D) requestReprint(ticketId)
+
+printStatus = "pending"
+
+printRequestedAt = now
+
+printTrigger = "reprint"
+
+⚠️ Important : si printConfig.enabled=false → soit tu refuses, soit tu autorises reprint manuel (recommandé : autoriser, car reprint est une action staff).
+
+3) KDS — composants : responsabilités finales
+A) KitchenSoundManager
+
+Inputs :
+
+storeId
+
+soundConfig
+
+Données à écouter :
+
+soit getWithAlerts(storeId) qui te donne hasOverdue, hasPrintStuck
+
+soit 2 queries séparées (plus simple souvent) :
+
+getOverdueCount(storeId)
+
+getPrintStuckCount(storeId)
+
+Règles :
+
+Overlay “click to enable audio” ✅
+
+Overdue: si count > 0 → bip toutes les 30s
+
+PrintStuck: si count > 0 → bip toutes les 30s ou pattern plus agressif (ex toutes les 10s) mais je resterais sur 30s pour ne pas rendre fou.
+
+Important UX : si le bip est actif, afficher une bannière “X tickets en retard / X non imprimés” pour que le son ait une explication visuelle.
+
+B) KitchenPrintTrigger (queue)
+
+Inputs :
+
+storeId, printConfig, soundConfig, onToast
+
+Données :
+
+printQueue = getPrintQueue(storeId)
+
+Règles :
+
+si !printConfig.enabled → n’imprime jamais automatiquement (sauf reprint si tu veux autoriser)
+
+si triggers n’incluent pas le trigger courant → ticket doit être not_required côté backend (idéalement), ou ignoré côté client
+
+Queue — verrouillage
+
+1 seul job à la fois (isPrintingRef)
+
+dédup : currentTicketIdRef pour éviter re-run si query re-rend identique
+
+Flow printing (iframe)
+
+renderTicket(ticket) dans iframe
+
+print() sur iframe.contentWindow
+
+arm afterprint handler → markPrintSent
+
+arm timeout 20s → markPrintFailed
+
+clear handlers + release lock
+
+Toasts
+
+sur start : “Impression #A172…”
+
+sur sent : “Impression lancée”
+
+sur fail : “Impression bloquée — réessayer / vérifier imprimante”
+
+C) PrintTicketLayout
+
+Tu es bon.
+
+Je te propose 2 modes :
+
+variant: "order" | "pickup"
+Pour afficher une ligne en plus :
+
+“TICKET COMMANDE”
+
+“TICKET RETRAIT”
+
+En 58mm : tu avais décidé “sans QR” → OK, mais garde un identifiant de reprint court (ex Reprint: A172) pour que staff puisse reprint depuis UI.
+
+D) PrintStatusBadge
+
+Ton déclencheur “pending > 30s” est OK.
+
+Je formalise :
+
+badgeRed si hasPendingOlderThan(30s) OR hasFailedRecent(10min)
+
+toast si hasPendingOlderThan(1min) (une fois, pas en boucle)
+
+sound si hasPendingOlderThan(2min) (via SoundManager qui reçoit hasPrintStuck)
+
+⚠️ Anti-spam :
+
+garde un lastToastAtRef local et ne repousse pas un toast toutes les 2 secondes.

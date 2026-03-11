@@ -15,6 +15,3 @@ export * from './services'
 
 // React Hooks
 export * from './hooks'
-
-// Gamification
-export * from './gamification'
