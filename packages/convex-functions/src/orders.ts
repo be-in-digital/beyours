@@ -276,17 +276,13 @@ export const updateStatus = {
     if (!order) throw new Error("Order not found")
 
     const now = Date.now()
-
-    // Auto-complete delivered orders: delivery implies order is done
-    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
-
     const updates: Record<string, unknown> = {
-      status: effectiveStatus,
+      status: args.status,
       updatedAt: now,
     }
 
     // Set timestamps based on status
-    if (effectiveStatus === "completed") {
+    if (args.status === "completed") {
       updates.completedAt = now
     } else if (args.status === "cancelled") {
       updates.cancelledAt = now
@@ -492,12 +488,19 @@ export const updateFromWebhook = {
     updatedAt: v.number(),
   },
   handler: async (ctx: any, args: { externalOrderId: string; platform: string; status: string; cancellationReason?: string; updatedAt: number }) => {
+    // Map platform to source field (createFromWebhook stores "source" not "platform")
+    const sourceMap: Record<string, string> = {
+      uberEats: "uber_eats",
+      deliveroo: "deliveroo",
+    }
+    const source = sourceMap[args.platform] ?? args.platform
+
     const order = await ctx.db
       .query("orders")
       .filter((q: any) =>
         q.and(
           q.eq(q.field("externalOrderId"), args.externalOrderId),
-          q.eq(q.field("platform"), args.platform)
+          q.eq(q.field("source"), source)
         )
       )
       .first()
@@ -506,15 +509,12 @@ export const updateFromWebhook = {
       throw new Error(`Order not found: ${args.externalOrderId}`)
     }
 
-    // Auto-complete delivered orders: delivery implies order is done
-    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
-
     const updates: Record<string, unknown> = {
-      status: effectiveStatus,
+      status: args.status,
       updatedAt: args.updatedAt,
     }
 
-    if (effectiveStatus === "completed") {
+    if (args.status === "completed") {
       updates.completedAt = args.updatedAt
     } else if (args.status === "cancelled") {
       updates.cancelledAt = args.updatedAt

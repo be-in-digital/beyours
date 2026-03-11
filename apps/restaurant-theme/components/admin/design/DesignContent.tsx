@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { CheckIcon } from "lucide-react"
+import { PaletteIcon, CheckIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"

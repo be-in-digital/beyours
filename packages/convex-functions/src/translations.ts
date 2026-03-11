@@ -47,34 +47,6 @@ export const getByLanguage = {
   },
 }
 
-/**
- * Get all UI overrides for a store.
- * Returns Record<langCode, Record<key, value>> for all entityType: "ui" translations.
- * The TranslationProvider does `overrides[lang] ?? {}` — this query returns what exists.
- */
-export const getUIOverrides = {
-  args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: any) => {
-    const rows = await ctx.db
-      .query("translations")
-      .withIndex("by_storeId_entity", (q: any) =>
-        q.eq("storeId", args.storeId).eq("entityType", "ui")
-      )
-      .collect()
-
-    const result: Record<string, Record<string, string>> = {}
-    for (const row of rows) {
-      if (!result[row.languageCode]) {
-        result[row.languageCode] = {}
-      }
-      // field = i18n key (e.g. "nav.menu"), value = override text
-      const langOverrides = result[row.languageCode]!
-      langOverrides[row.field] = row.value
-    }
-    return result
-  },
-}
-
 // === MUTATIONS ===
 
 /**

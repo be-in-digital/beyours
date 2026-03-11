@@ -205,15 +205,14 @@ describe('SES Service', () => {
         templateData: {
           customerName: 'Bob',
           prizeName: 'Dessert gratuit',
-          redemptionCode: 'WIN-ABC123',
+          qrCode: 'https://example.com/qr/abc123.png',
           expirationDate: '2026-03-01',
-          storeName: 'Pizza Roma',
         },
       })
 
       expect(mockClient.sendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
-          subject: 'Félicitations ! Vous avez gagné : Dessert gratuit',
+          subject: '🎉 Félicitations ! Vous avez gagné : Dessert gratuit',
           html: expect.stringContaining('Dessert gratuit'),
         })
       )

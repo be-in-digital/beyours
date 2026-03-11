@@ -9,12 +9,17 @@ type StoreIntegrationRecord = {
   platformStoreId: string
   enabled: boolean
   autoAccept: boolean
+  orderMode?: "auto_accept" | "auto_reject" | "manual"
 }
 
 /**
  * Uber Eats webhook handler
  * Receives thin webhooks (metadata only), fetches full order, maps, and saves.
  * Credentials are read from environment variables (platform-level, not per-client).
+ *
+ * NOTE: When the Uber app is in sandbox mode but receives real production webhooks,
+ * fetchOrder will fail (404/401) because sandbox API doesn't have production orders.
+ * In that case we create the order/ticket with partial data from the webhook event.
  */
 export const handleWebhook = httpAction(async (ctx, request) => {
   try {
@@ -57,60 +62,62 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
     // Handle order events
     if (event.event_type === "orders.notification" || event.event_type === "eats.order.status_update") {
-      // Fetch full order from Uber Eats API
       const uberCredentials = {
         clientId,
         clientSecret,
         sandboxMode,
       }
 
-      const fullOrder = await uberEats.fetchOrder(uberCredentials, event.meta.resource_id)
-
-      if (!fullOrder) {
-        console.error(`Failed to fetch order ${event.meta.resource_id}`)
-        return new Response("OK", { status: 200 })
+      // Try to fetch full order from Uber Eats API
+      // May fail if sandbox credentials are used for production orders
+      let fullOrder = null
+      let unifiedOrder = null
+      try {
+        fullOrder = await uberEats.fetchOrder(uberCredentials, event.meta.resource_id)
+        unifiedOrder = uberEats.mapUberEatsOrderToUnified(fullOrder)
+        console.log(`Fetched order ${unifiedOrder.displayId} for store ${unifiedOrder.storeExternalId}`)
+      } catch (fetchError) {
+        console.warn(`Could not fetch full order ${event.meta.resource_id}:`, fetchError)
       }
 
-      // Map to unified format
-      const unifiedOrder = uberEats.mapUberEatsOrderToUnified(fullOrder)
-
-      // Log the received order for debugging
-      console.log(`Received order ${unifiedOrder.displayId} for store ${unifiedOrder.storeExternalId}`)
-
-      // Find the store integration by platformStoreId (storeExternalId)
+      // Find matching store integration
       const allIntegrations = await ctx.runQuery(
         api.storeIntegrations.listByPlatformEnabled,
         { platform: "uberEats" }
       ) as StoreIntegrationRecord[]
 
-      const integration = allIntegrations.find(
-        (i) => i.platformStoreId === unifiedOrder.storeExternalId
-      )
+      // Match by platformStoreId if we have full order, otherwise use first enabled integration
+      const integration = unifiedOrder
+        ? allIntegrations.find((i) => i.platformStoreId === unifiedOrder.storeExternalId)
+        : allIntegrations[0]
 
       if (!integration) {
-        console.error(`No Uber Eats integration found for platformStoreId: ${unifiedOrder.storeExternalId}`)
+        console.error(`No Uber Eats integration found`)
         return new Response("OK", { status: 200 })
       }
 
       // Handle new order creation
       if (event.event_type === "orders.notification") {
+        const externalOrderId = unifiedOrder?.externalOrderId ?? event.meta.resource_id
+        const orderNumber = unifiedOrder?.displayId ?? `UE-${event.meta.resource_id.slice(-6).toUpperCase()}`
+
         // Create order via internal mutation
         const internalOrderId = await ctx.runMutation(internal.orders.createFromWebhook, {
           storeId: integration.storeId,
-          externalOrderId: unifiedOrder.externalOrderId,
+          externalOrderId,
           platform: "uberEats",
           status: "pending",
-          type: unifiedOrder.type,
-          customerName: unifiedOrder.customer.name,
-          customerPhone: unifiedOrder.customer.phone,
-          customerEmail: unifiedOrder.customer.email,
-          deliveryAddress: unifiedOrder.delivery?.address ? {
+          type: unifiedOrder?.type ?? "delivery",
+          customerName: unifiedOrder?.customer.name ?? "Client Uber Eats",
+          customerPhone: unifiedOrder?.customer.phone,
+          customerEmail: unifiedOrder?.customer.email,
+          deliveryAddress: unifiedOrder?.delivery?.address ? {
             street: unifiedOrder.delivery.address.street,
-            city: unifiedOrder.delivery.address.city,
-            postalCode: unifiedOrder.delivery.address.postalCode,
-            country: unifiedOrder.delivery.address.country,
+            city: unifiedOrder.delivery.address.city ?? "",
+            postalCode: unifiedOrder.delivery.address.postalCode ?? "",
+            country: unifiedOrder.delivery.address.country ?? "",
           } : undefined,
-          items: unifiedOrder.items.map(item => ({
+          items: unifiedOrder?.items.map(item => ({
             externalId: item.externalId,
             name: item.name,
             quantity: item.quantity,
@@ -120,27 +127,85 @@ export const handleWebhook = httpAction(async (ctx, request) => {
               name: mod.name,
               price: mod.price,
             })),
-          })),
-          subtotal: unifiedOrder.subtotal,
-          total: unifiedOrder.total,
-          notes: unifiedOrder.notes,
-          createdAt: new Date(unifiedOrder.placedAt).getTime(),
+          })) ?? [{
+            externalId: "unknown",
+            name: "Commande Uber Eats",
+            quantity: 1,
+            price: 0,
+          }],
+          subtotal: unifiedOrder?.subtotal ?? 0,
+          total: unifiedOrder?.total ?? 0,
+          notes: unifiedOrder?.notes,
+          createdAt: unifiedOrder ? new Date(unifiedOrder.placedAt).getTime() : Date.now(),
         })
 
-        console.log(`Created internal order ${internalOrderId} from Uber Eats order ${unifiedOrder.externalOrderId}`)
+        console.log(`Created internal order ${internalOrderId} from Uber Eats order ${externalOrderId}`)
 
-        // Auto-accept if enabled
-        if (integration.autoAccept) {
+        // Create kitchen ticket for KDS
+        try {
+          const trackingToken = `ue-${externalOrderId.slice(-8)}-${Date.now().toString(36)}`
+
+          await ctx.runMutation(internal.kitchenTickets.internalCreate, {
+            storeId: integration.storeId,
+            orderId: internalOrderId as Id<"orders">,
+            orderNumber,
+            orderType: unifiedOrder?.type ?? "delivery",
+            items: unifiedOrder?.items.map(item => ({
+              productName: item.name,
+              quantity: item.quantity,
+              options: item.modifiers.map(mod => mod.name),
+              notes: undefined,
+            })) ?? [{
+              productName: "Commande Uber Eats",
+              quantity: 1,
+              options: [],
+            }],
+            priority: "normal" as const,
+            source: "uber_eats" as const,
+            trackingToken,
+            customerName: unifiedOrder?.customer.name ?? "Client Uber Eats",
+            customerPhone: unifiedOrder?.customer.phone,
+            deliveryNotes: unifiedOrder?.notes,
+          })
+          console.log(`Created kitchen ticket for Uber Eats order ${orderNumber}`)
+        } catch (error) {
+          console.error(`Failed to create kitchen ticket:`, error)
+        }
+
+        // Resolve order mode: platform override > store global > legacy autoAccept > manual
+        const store = await ctx.runQuery(api.stores.getById, { id: integration.storeId })
+        const orderMode = integration.orderMode
+          ?? store?.orderMode
+          ?? (integration.autoAccept ? "auto_accept" : "manual")
+
+        if (orderMode === "auto_accept") {
           try {
-            await uberEats.acceptOrder(uberCredentials, unifiedOrder.externalOrderId)
+            if (unifiedOrder) {
+              await uberEats.acceptOrder(uberCredentials, externalOrderId)
+            }
             await ctx.runMutation(internal.orders.internalUpdateStatus, {
               id: internalOrderId as Id<"orders">,
               status: "confirmed",
             })
-            console.log(`Auto-accepted Uber Eats order ${unifiedOrder.externalOrderId}`)
+            console.log(`[Auto-Accept] Uber Eats order ${externalOrderId}`)
           } catch (error) {
             console.error(`Failed to auto-accept Uber Eats order:`, error)
           }
+        } else if (orderMode === "auto_reject") {
+          try {
+            if (unifiedOrder) {
+              await uberEats.cancelOrder(uberCredentials, externalOrderId, { code: "STORE_CLOSED", explanation: "Store is not accepting orders" })
+            }
+            await ctx.runMutation(internal.orders.internalUpdateStatus, {
+              id: internalOrderId as Id<"orders">,
+              status: "cancelled",
+            })
+            console.log(`[Auto-Reject] Uber Eats order ${externalOrderId}`)
+          } catch (error) {
+            console.error(`Failed to auto-reject Uber Eats order:`, error)
+          }
+        } else {
+          console.log(`[Manual] Uber Eats order ${externalOrderId} - awaiting staff action`)
         }
       }
 
@@ -148,21 +213,32 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       if (event.event_type === "eats.order.status_update") {
         console.log(`Order status update: ${event.meta.resource_id} -> ${event.meta.status}`)
 
-        // Find the internal order by externalOrderId and update its status
+        const statusMap: Record<string, string> = {
+          CREATED: "pending",
+          ACCEPTED: "confirmed",
+          IN_PROGRESS: "preparing",
+          READY_FOR_PICKUP: "ready",
+          PICKED_UP: "out_for_delivery",
+          DELIVERED: "delivered",
+          CANCELLED: "cancelled",
+          FINISHED: "completed",
+        }
+
+        const mappedStatus = unifiedOrder?.status ?? statusMap[event.meta.status] ?? "pending"
+
         try {
           await ctx.runMutation(internal.orders.updateFromWebhook, {
-            externalOrderId: unifiedOrder.externalOrderId,
+            externalOrderId: unifiedOrder?.externalOrderId ?? event.meta.resource_id,
             platform: "uberEats" as const,
-            status: unifiedOrder.status as "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "completed" | "cancelled",
+            status: mappedStatus as "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "completed" | "cancelled",
             updatedAt: Date.now(),
           })
-          console.log(`Updated order ${unifiedOrder.externalOrderId} status to ${unifiedOrder.status}`)
+          console.log(`Updated order status to ${mappedStatus}`)
         } catch (error) {
           console.error(`Failed to update order status:`, error)
         }
       }
 
-      // Return 200 to acknowledge receipt
       return new Response("OK", { status: 200 })
     }
 

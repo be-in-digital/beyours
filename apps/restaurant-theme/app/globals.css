@@ -1,10 +1,6 @@
 @import "tailwindcss";
 @import "../node_modules/tw-animate-css/dist/tw-animate.css";
 
-@source "../../../packages/admin/src";
-@source "../../../packages/ui/src";
-@source "../../../packages/restaurant/src";
-
 @custom-variant dark (&:is(.dark *));
 
 @layer base {

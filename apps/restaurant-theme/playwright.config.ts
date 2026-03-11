@@ -20,10 +20,6 @@ if (existsSync(envLocalPath)) {
 
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
-// Admin/setup projects require a real Convex backend (not placeholder URLs).
-// In CI with placeholder URLs we only run the "public" project.
-const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
-
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -45,15 +41,11 @@ export default defineConfig({
   },
   projects: [
     // Auth setup — runs first, saves browser state for admin tests
-    ...(hasRealBackend
-      ? [
-          {
-            name: "setup",
-            testMatch: /auth\.setup\.ts/,
-            retries: 2,
-          },
-        ]
-      : []),
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+      retries: 2,
+    },
     // Tests that don't need authentication
     {
       name: "public",
@@ -66,26 +58,21 @@ export default defineConfig({
       ],
       use: { ...devices["Desktop Chrome"] },
     },
-    // Admin tests that need authentication (skipped without real backend)
-    ...(hasRealBackend
-      ? [
-          {
-            name: "admin",
-            dependencies: ["setup"],
-            testMatch: [
-              /admin\/.+\.spec\.ts/,
-              /cms\/.+\.spec\.ts/,
-              /navigation\/.+\.spec\.ts/,
-              /admin-responsive\.spec\.ts/,
-              /admin-a11y\.spec\.ts/,
-            ],
-            use: {
-              ...devices["Desktop Chrome"],
-              storageState: ADMIN_STORAGE_STATE,
-            },
-          },
-        ]
-      : []),
+    // Admin tests that need authentication
+    {
+      name: "admin",
+      dependencies: ["setup"],
+      testMatch: [
+        /admin\/.+\.spec\.ts/,
+        /navigation\/.+\.spec\.ts/,
+        /admin-responsive\.spec\.ts/,
+        /admin-a11y\.spec\.ts/,
+      ],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: ADMIN_STORAGE_STATE,
+      },
+    },
   ],
   webServer: {
     command: "pnpm dev",

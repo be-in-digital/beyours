@@ -3,14 +3,17 @@ import { v } from "convex/values"
 
 /**
  * Game QR Codes table
- * QR codes placed on restaurant tables — per store (physical location)
+ * QR codes placed on restaurant tables
  */
 export const gameQRCodesTable = defineTable({
   storeId: v.id("stores"),
   code: v.string(), // Unique QR code value
-  gameType: v.optional(v.union(v.literal("wheel"), v.literal("scratch_card"))), // Which game this QR code links to
   tableNumber: v.optional(v.string()),
   location: v.optional(v.string()), // e.g. "Terrace", "Main hall"
+  gameType: v.optional(v.union(
+    v.literal("wheel"),
+    v.literal("scratch_card")
+  )),
   isActive: v.boolean(),
   scannedCount: v.number(),
   lastScannedAt: v.optional(v.number()),
@@ -23,10 +26,10 @@ export const gameQRCodesTable = defineTable({
 
 /**
  * Required Actions table
- * Social actions customers must complete before playing — global (restaurant-level)
+ * Social actions customers must complete before playing
  */
 export const requiredActionsTable = defineTable({
-  storeId: v.optional(v.id("stores")), // Legacy — no longer used, kept for backward compat
+  storeId: v.id("stores"),
   type: v.union(
     v.literal("google_review"),
     v.literal("instagram_follow"),
@@ -40,21 +43,20 @@ export const requiredActionsTable = defineTable({
   icon: v.optional(v.string()),
   isRequired: v.boolean(),
   sortOrder: v.number(),
-  timerSeconds: v.number(), // Duration of the timer before validation (default: 10)
+  timerSeconds: v.optional(v.number()),
   isActive: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_storeId", ["storeId"])
   .index("by_storeId_isActive", ["storeId", "isActive"])
-  .index("by_isActive", ["isActive"])
 
 /**
  * Games table
- * Game configuration with admin-controlled win ratio — global (restaurant-level)
+ * Game configuration with admin-controlled win ratio
  */
 export const gamesTable = defineTable({
-  storeId: v.optional(v.id("stores")), // Legacy — no longer used, kept for backward compat
+  storeId: v.id("stores"),
   type: v.union(
     v.literal("wheel"),
     v.literal("scratch_card")
@@ -67,29 +69,28 @@ export const gamesTable = defineTable({
     wheelSections: v.optional(v.array(v.object({
       label: v.string(),
       color: v.string(),
-      probability: v.number(), // Relative probability weight for this segment
       prizeId: v.optional(v.id("prizes")),
-      isWinning: v.boolean(), // true = winning segment, false = losing segment
+      isWinning: v.optional(v.boolean()),
+      probability: v.optional(v.number()),
     }))),
     scratchCardDesign: v.optional(v.string()),
+    backgroundImage: v.optional(v.string()),
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
-    backgroundImage: v.optional(v.string()), // URL for game background image
-    cooldownHours: v.optional(v.number()), // Default 24
+    cooldownHours: v.optional(v.number()),
   })),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_storeId", ["storeId"])
   .index("by_storeId_isActive", ["storeId", "isActive"])
-  .index("by_isActive", ["isActive"])
 
 /**
  * Prizes table
- * Rewards that customers can win — global (restaurant-level)
+ * Rewards that customers can win
  */
 export const prizesTable = defineTable({
-  storeId: v.optional(v.id("stores")), // Legacy — no longer used, kept for backward compat
+  storeId: v.id("stores"),
   name: v.string(),
   description: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
@@ -112,11 +113,10 @@ export const prizesTable = defineTable({
 })
   .index("by_storeId", ["storeId"])
   .index("by_storeId_isActive", ["storeId", "isActive"])
-  .index("by_isActive", ["isActive"])
 
 /**
  * Game Plays table
- * Tracks each game play — per store for analytics
+ * Tracks each game play with 24h cooldown
  */
 export const gamePlaysTable = defineTable({
   storeId: v.id("stores"),
@@ -127,7 +127,7 @@ export const gamePlaysTable = defineTable({
   playerFirstName: v.optional(v.string()),
   playerLastName: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
-  fingerprint: v.string(), // Browser fingerprint for cooldown
+  fingerprint: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
@@ -140,12 +140,11 @@ export const gamePlaysTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_playerEmail", ["playerEmail"])
   .index("by_storeId_playedAt", ["storeId", "playedAt"])
-  .index("by_fingerprint", ["fingerprint"])
-  .index("by_storeId_fingerprint", ["storeId", "fingerprint"])
+  .index("by_qrCodeId", ["qrCodeId"])
 
 /**
  * Prize Redemptions table
- * Tracks prize redemption with QR codes — per store
+ * Tracks prize redemption with QR codes
  */
 export const prizeRedemptionsTable = defineTable({
   storeId: v.id("stores"),
@@ -158,8 +157,8 @@ export const prizeRedemptionsTable = defineTable({
   redemptionCode: v.string(), // QR code sent to customer
   status: v.union(
     v.literal("pending"),
-    v.literal("claimed"), // Player filled form, email sent
-    v.literal("redeemed"), // Staff scanned the code
+    v.literal("claimed"),
+    v.literal("redeemed"),
     v.literal("expired"),
     v.literal("cancelled")
   ),

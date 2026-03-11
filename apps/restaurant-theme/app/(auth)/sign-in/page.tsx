@@ -5,7 +5,6 @@ import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useCmsPage } from "@/lib/cms";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -13,10 +12,6 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const { block } = useCmsPage("sign-in");
-  const hero = block("hero");
-  const form = block("form");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +43,7 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-6 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          {hero.field("title").text ?? "Connexion"}
+          Connexion
         </h1>
 
         {error && (
@@ -99,7 +94,7 @@ export default function SignInPage() {
               href="/forgot-password"
               className="text-xs text-zinc-600 hover:underline dark:text-zinc-400"
             >
-              {form.field("forgotLink").text ?? "Mot de passe oublié ?"}
+              Mot de passe oublié ?
             </Link>
           </div>
 
@@ -108,9 +103,7 @@ export default function SignInPage() {
             disabled={loading}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {loading
-              ? "Connexion en cours..."
-              : (form.field("submitLabel").text ?? "Se connecter")}
+            {loading ? "Connexion en cours..." : "Se connecter"}
           </button>
         </form>
 
@@ -120,7 +113,7 @@ export default function SignInPage() {
             href="/sign-up"
             className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
           >
-            {form.field("signupLink").text ?? "Créer un compte"}
+            Créer un compte
           </Link>
         </p>
       </div>

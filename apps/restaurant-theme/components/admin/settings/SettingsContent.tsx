@@ -17,6 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DesignTabContent } from "./DesignTabContent"
 import { LanguagesTabContent } from "./LanguagesTabContent"
 import { PaymentsTabContent } from "./PaymentsTabContent"
+import { KitchenSettingsTabContent } from "./KitchenSettingsTabContent"
+import { DisplaySettingsTabContent } from "./DisplaySettingsTabContent"
 
 const integrations = [
   {
@@ -146,13 +148,15 @@ export function SettingsContent() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="general">Général</TabsTrigger>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="cuisine">Cuisine</TabsTrigger>
+          <TabsTrigger value="affichage">Affichage</TabsTrigger>
           <TabsTrigger value="design">Design</TabsTrigger>
           <TabsTrigger value="langues">Langues</TabsTrigger>
           <TabsTrigger value="paiements">Paiements</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -186,6 +190,14 @@ export function SettingsContent() {
             </div>
             <Button onClick={handleUpdateGeneral}>Enregistrer les modifications</Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="cuisine" className="space-y-4">
+          <KitchenSettingsTabContent />
+        </TabsContent>
+
+        <TabsContent value="affichage" className="space-y-4">
+          <DisplaySettingsTabContent />
         </TabsContent>
 
         <TabsContent value="design" className="space-y-4">

@@ -79,12 +79,6 @@ export {
   groupTranslationResults,
 } from '@beindigital-engine/core'
 
-// Hash utilities (source change detection for auto-translation)
-export {
-  normalizeText,
-  computeSourceHash,
-} from '@beindigital-engine/core'
-
 // Hook types (implementation in app)
 export type {
   UseTranslation,
