@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
@@ -230,8 +231,7 @@ export const processOrderWebhook = internalAction({
 // ============================================================================
 
 async function handleNewOrder(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ctx: any,
+  ctx: ActionCtx,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
   credentials: ReturnType<typeof getDeliverooCredentials>
@@ -412,8 +412,7 @@ async function handleNewOrder(
 // ============================================================================
 
 async function handleStatusUpdate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ctx: any,
+  ctx: ActionCtx,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
   credentials: ReturnType<typeof getDeliverooCredentials>
@@ -425,7 +424,7 @@ async function handleStatusUpdate(
   console.log(`Deliveroo status update: ${orderId} -> ${status} (internal: ${internalStatus})`);
 
   // Update internal order status (with retry for race condition)
-  let updateSuccess = false;
+  let _updateSuccess = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await ctx.runMutation(internal.orders.updateFromWebhook, {
@@ -435,7 +434,7 @@ async function handleStatusUpdate(
         cancellationReason: order.cancellation_reason ?? order.rejection_reason,
         updatedAt: Date.now(),
       });
-      updateSuccess = true;
+      _updateSuccess = true;
       break;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -466,11 +465,9 @@ async function handleStatusUpdate(
       console.log(`[Sync] No items in webhook for ${orderId}, fetching from API...`);
       try {
         const fetched = await deliveroo.getOrder(credentials, orderId);
-        // getOrder returns { order: { ... } } wrapper
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fetchedOrder = (fetched as any)?.order ?? fetched;
-        if (fetchedOrder && fetchedOrder.items) {
-          fullOrder = { ...order, ...fetchedOrder };
+        const fetchedOrder = fetched?.order;
+        if (fetchedOrder?.items) {
+          fullOrder = { ...order, items: fetchedOrder.items as DeliverooOrderItem[] };
           console.log(`[Sync] Fetched order has ${fullOrder.items?.length ?? 0} items`);
         }
       } catch (err) {
@@ -487,8 +484,7 @@ async function handleStatusUpdate(
 
     // Scenario 11: Missing PLU - items without any POS identifier
     const hasMissingPLU = items.some(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (item: any) => !item.pos_item_id && !item.plu && !item.external_reference_id
+      (item: DeliverooOrderItem) => !item.pos_item_id && !item.plu && !item.external_reference_id
     );
 
     // Scenario 12: Mismatched PLU

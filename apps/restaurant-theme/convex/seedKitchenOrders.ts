@@ -216,12 +216,10 @@ export const cleanKitchenSeed = mutation({
     // Find all test kitchen tickets
     const tickets = await ctx.db
       .query("kitchenTickets")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
       .collect()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const testTickets = tickets.filter((t: any) => t.orderNumber.startsWith("TEST-"))
+    const testTickets = tickets.filter((t) => t.orderNumber.startsWith("TEST-"))
 
     // Delete kitchen tickets
     for (const ticket of testTickets) {
@@ -231,12 +229,10 @@ export const cleanKitchenSeed = mutation({
     // Find and delete test orders
     const orders = await ctx.db
       .query("orders")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
       .collect()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const testOrders = orders.filter((o: any) => o.orderNumber.startsWith("TEST-"))
+    const testOrders = orders.filter((o) => o.orderNumber.startsWith("TEST-"))
 
     for (const order of testOrders) {
       await ctx.db.delete(order._id)

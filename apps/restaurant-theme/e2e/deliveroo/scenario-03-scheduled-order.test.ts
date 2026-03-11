@@ -72,7 +72,7 @@ describe("Scenario 3: Scheduled Orders", () => {
 
     // Validate timestamps are in the future
     const startPreparingTime = new Date(order.start_preparing_at).getTime();
-    const confirmAtTime = new Date(order.confirm_at).getTime();
+    const confirmAtTime = new Date(order.confirm_at!).getTime();
     const now = Date.now();
 
     expect(startPreparingTime).toBeGreaterThan(now);
@@ -137,7 +137,7 @@ describe("Scenario 3: Scheduled Orders", () => {
 
     const order = webhook.body.order;
 
-    const confirmAt = new Date(order.confirm_at).getTime();
+    const confirmAt = new Date(order.confirm_at!).getTime();
     const startPreparingAt = new Date(order.start_preparing_at).getTime();
 
     // Validate time ordering
@@ -208,7 +208,7 @@ describe("Scenario 3: Scheduled Orders", () => {
     // The confirm_at field indicates when confirmation should happen
     expect(order.confirm_at).toBeDefined();
 
-    const confirmAtTime = new Date(order.confirm_at).getTime();
+    const confirmAtTime = new Date(order.confirm_at!).getTime();
     const startPreparingTime = new Date(order.start_preparing_at).getTime();
 
     // Confirmation should happen before preparation

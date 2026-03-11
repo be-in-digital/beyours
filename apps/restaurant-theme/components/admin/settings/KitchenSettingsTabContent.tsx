@@ -80,7 +80,6 @@ function KitchenSettingsForm({
   }
 
   const handleGlobalOrderModeChange = async (value: string) => {
-    if (!storeId) return
     try {
       await updateStoreOrderMode({
         id: storeId,
@@ -93,7 +92,6 @@ function KitchenSettingsForm({
   }
 
   const handlePlatformOrderModeChange = async (platform: "uberEats" | "deliveroo", value: string) => {
-    if (!storeId) return
     try {
       await updateIntegrationOrderMode({
         storeId,
@@ -108,7 +106,6 @@ function KitchenSettingsForm({
   }
 
   const handleSaveOrderConf = async () => {
-    if (!storeId) return
     try {
       await updateOrderConfirmation({ id: storeId, orderConfirmation: orderConf })
       toast.success("Mode de confirmation mis a jour")
@@ -118,7 +115,6 @@ function KitchenSettingsForm({
   }
 
   const handleSavePrint = async () => {
-    if (!storeId) return
     try {
       await updatePrintConfig({
         id: storeId,
@@ -136,7 +132,6 @@ function KitchenSettingsForm({
   }
 
   const handleSaveSound = async () => {
-    if (!storeId) return
     try {
       await updateSoundConfig({
         id: storeId,
