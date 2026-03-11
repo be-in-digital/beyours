@@ -13,7 +13,7 @@ function auth() {
         process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
         "http://localhost:3001",
       ],
-    });
+    } as any);
   }
   return _auth;
 }
