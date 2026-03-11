@@ -2,7 +2,6 @@ import { query, mutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/languages";
 
 export const list = query(defs.list);
-export const listActive = query(defs.listActive);
 
 export const create = mutation({
   args: defs.create.args,
@@ -46,14 +45,5 @@ export const remove = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
     return defs.remove.handler(ctx, args);
-  },
-});
-
-export const reorder = mutation({
-  args: defs.reorder.args,
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    return defs.reorder.handler(ctx, args);
   },
 });

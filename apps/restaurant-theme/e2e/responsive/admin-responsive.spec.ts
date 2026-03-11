@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 
 test.describe("Admin Responsive", () => {

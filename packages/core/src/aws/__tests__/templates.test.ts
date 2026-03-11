@@ -134,25 +134,25 @@ describe('Email Templates', () => {
     const mockData: PrizeWonData = {
       customerName: 'Bob Johnson',
       prizeName: 'Dessert gratuit',
-      redemptionCode: 'WIN-ABC123',
+      qrCode: 'https://example.com/qr/abc123.png',
       expirationDate: '2026-03-15',
-      storeName: 'Pizza Roma',
     }
 
-    it('devrait générer un sujet avec nom du prix', () => {
+    it('devrait générer un sujet avec emoji et nom du prix', () => {
       const subject = prizeWonTemplate.subject(mockData)
-      expect(subject).toBe('Félicitations ! Vous avez gagné : Dessert gratuit')
+      expect(subject).toBe('🎉 Félicitations ! Vous avez gagné : Dessert gratuit')
     })
 
-    it('devrait générer du HTML avec code de rédemption', () => {
+    it('devrait générer du HTML avec QR code', () => {
       const html = prizeWonTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
       expect(html).toContain('Bob Johnson')
       expect(html).toContain('Dessert gratuit')
-      expect(html).toContain('WIN-ABC123')
+      expect(html).toContain('src="https://example.com/qr/abc123.png"')
       expect(html).toContain('2026-03-15')
-      expect(html).toContain('Pizza Roma')
+      expect(html).toContain('🎉')
+      expect(html).toContain('⏰')
     })
 
     it('devrait générer du texte avec informations du prix', () => {
@@ -160,9 +160,9 @@ describe('Email Templates', () => {
 
       expect(text).toContain('Bob Johnson')
       expect(text).toContain('Dessert gratuit')
-      expect(text).toContain('WIN-ABC123')
       expect(text).toContain('2026-03-15')
-      expect(text).toContain('Pizza Roma')
+      expect(text).toContain('🎉')
+      expect(text).toContain('🏆')
     })
   })
 
@@ -221,9 +221,8 @@ describe('Email Templates', () => {
         {
           customerName: 'Test',
           prizeName: 'Test',
-          redemptionCode: 'WIN-TEST123',
+          qrCode: 'https://test.com/qr.png',
           expirationDate: '2026-01-01',
-          storeName: 'Test Store',
         },
       ] as const
 

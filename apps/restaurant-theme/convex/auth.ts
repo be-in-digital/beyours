@@ -10,7 +10,7 @@ import authConfig from "./auth.config";
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 // Better Auth server configuration
-export const createAuth = (ctx: GenericCtx<DataModel>): ReturnType<typeof betterAuth> => {
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
     database: authComponent.adapter(ctx),
     emailAndPassword: {
@@ -41,10 +41,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>): ReturnType<typeof better
       },
     },
     trustedOrigins: process.env.SITE_URL
-      ? process.env.NODE_ENV === "development"
-        ? [process.env.SITE_URL, "http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
-        : [process.env.SITE_URL]
-      : ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
+      ? [process.env.SITE_URL, "http://localhost:3000"]
+      : ["http://localhost:3000"],
     plugins: [convex({ authConfig })],
   });
 };

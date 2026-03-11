@@ -80,13 +80,13 @@ else
   log_success "Bucket created"
 fi
 
-# Block ACL-based public access but allow bucket policy public reads
+# Block public access (security best practice)
 log_info "Configuring public access block..."
 aws s3api put-public-access-block \
   --bucket "$BUCKET_NAME" \
   --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=false,RestrictPublicBuckets=false"
-log_success "Public access configured (ACLs blocked, policy-based reads allowed)"
+    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+log_success "Public access blocked"
 
 # Enable versioning
 log_info "Enabling versioning..."
@@ -124,28 +124,6 @@ aws s3api put-bucket-cors \
   }'
 log_success "CORS configured"
 
-# Bucket policy: allow public reads on asset folders
-log_info "Setting bucket policy for public reads..."
-aws s3api put-bucket-policy \
-  --bucket "$BUCKET_NAME" \
-  --policy "{
-    \"Version\": \"2012-10-17\",
-    \"Statement\": [{
-      \"Sid\": \"PublicReadAssets\",
-      \"Effect\": \"Allow\",
-      \"Principal\": \"*\",
-      \"Action\": \"s3:GetObject\",
-      \"Resource\": [
-        \"arn:aws:s3:::${BUCKET_NAME}/cms/*\",
-        \"arn:aws:s3:::${BUCKET_NAME}/products/*\",
-        \"arn:aws:s3:::${BUCKET_NAME}/branding/*\",
-        \"arn:aws:s3:::${BUCKET_NAME}/stores/*\",
-        \"arn:aws:s3:::${BUCKET_NAME}/email/*\"
-      ]
-    }]
-  }"
-log_success "Bucket policy set (public read on asset folders)"
-
 # Lifecycle rules: delete incomplete multipart uploads after 7 days
 log_info "Setting lifecycle rules..."
 aws s3api put-bucket-lifecycle-configuration \
@@ -164,10 +142,10 @@ log_success "Lifecycle rules set"
 
 # Create folder structure
 log_info "Creating folder structure..."
-for folder in products branding stores cms email blog; do
+for folder in products branding stores cms blog; do
   aws s3api put-object --bucket "$BUCKET_NAME" --key "${folder}/" --content-length 0 > /dev/null
 done
-log_success "Folders created: products/, branding/, stores/, cms/, email/, blog/"
+log_success "Folders created: products/, branding/, stores/, cms/, blog/"
 
 # ════════════════════════════════════════════════════════════════════════════
 # STEP 2: SES DOMAIN IDENTITY & DKIM
@@ -426,7 +404,7 @@ log_section "Setup Complete!"
 echo -e "${GREEN}S3 Bucket:${NC}"
 echo "  Name: $BUCKET_NAME"
 echo "  Region: $REGION"
-echo "  Folders: products/, branding/, stores/, cms/, email/, blog/"
+echo "  Folders: products/, branding/, stores/, cms/, blog/"
 echo "  Encryption: AES256"
 echo "  Versioning: Enabled"
 echo ""

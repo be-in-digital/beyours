@@ -1,0 +1,169 @@
+A) kitchen-page.tsx (MODIFIER)
+
+Responsabilités :
+
+Charge storeId + storeSettings
+
+Monte 2 singletons :
+
+<KitchenSoundManager storeId />
+
+<KitchenPrintTrigger storeId />
+
+Affiche PrintStatusBadge
+
+✅ Important : KitchenPrintTrigger doit recevoir :
+
+printConfig
+
+soundConfig (ou un callback)
+
+et idéalement un enqueueToast() (toast provider)
+
+B) ticket-card.tsx (MODIFIER)
+
+OK pour ton UI tactile.
+
+Ajouts essentiels
+
+Badge printStatus :
+
+⏳ pending
+
+✅ printed
+
+⚠️ failed / non imprimée
+
+Bouton principal “action suivante” (OK)
+
+Bouton secondaire petit :
+
+“Reprint” (icône imprimante)
+
+“Marquer récupéré” si status ready (si tu veux le faire depuis KDS aussi)
+
+C) kitchen-sound-manager.tsx (CRÉER)
+
+Ta logique est bonne. Deux ajustements :
+
+Overdue = bip répétitif
+-> déclenche toutes les 30s par store, pas par ticket (sinon cacophonie).
+Règle : si au moins 1 ticket overdue => bip.
+
+PrinterOffline sonore
+-> déclenche si au moins 1 ticket a un print job stuck > 2 min.
+
+✅ Overlay “cliquer pour activer” : parfait.
+
+D) kitchen-print-trigger.tsx (CRÉER) — version correcte
+Données à écouter
+
+Ne fais pas juste “tickets du store”, fais une query dédiée :
+
+getPrintQueue(storeId) => tickets avec printStatus = "pending" triés par createdAt (ou readyAt)
+
+Pourquoi :
+
+tu réduis les re-renders
+
+tu garantis l’ordre
+
+Algorithme queue
+
+Si isPrintingRef.current = true => ignore
+
+Prendre le premier ticket pending
+
+Rendre PrintTicketLayout (dans iframe ou offscreen container)
+
+Déclencher print()
+
+Marquer soft :
+
+markPrintSent(ticketId) dès que print() est appelé (ou onafterprint)
+
+Si timeout (ex 20s) sans afterprint => markPrintFailed(ticketId) + attempts++
+
+On ne saura jamais “papier sorti”, mais on sait “process déclenché”.
+
+Reprint
+
+reprint = crée un nouveau “job” (ou repasse pending avec un printReason), mais surtout : dédup.
+
+E) print-ticket-layout.tsx (CRÉER)
+
+Ta CSS print est bonne, mais fais-le en mode isolé :
+
+✅ Recommandation : iframe
+
+PrintTicketLayout rend une page “ticket-only”
+
+Pas besoin de masquer tout le reste du body
+
+Impression stable
+
+Pas de CSS app qui parasite
+
+Largeurs
+
+80mm : largeur utile ~72mm (OK)
+
+58mm : largeur utile ~48mm (OK)
+
+QR code
+
+80mm : oui
+
+58mm : non (OK)
+
+F) print-status-badge.tsx (CRÉER)
+
+Comme dit : en V1, badge doit refléter “print pipeline health”.
+
+Déclencheurs recommandés
+
+🔴 Badge rouge si :
+
+exists ticket with printStatus="pending" and pendingSince > 30s
+
+ou exists ticket with printStatus="failed" and failedAt < 10min
+
+Toast si pending > 1 min
+
+Son si pending > 2 min
+
+Et sur la carte :
+
+si pending > 2 min => label “⚠️ Non imprimée”
+
+✅ Spec UI tactile (verrouillée)
+
+Ton bouton full-width min-height 64px et font 18+ : parfait.
+
+Je propose juste :
+
+sticky footer dans card pour que le bouton soit toujours au même endroit
+
+et une deuxième action discrète :
+
+Reprint (icône) à droite du badge impression
+
+🔥 Deux micro-ajouts qui t’évitent des galères
+1) Ajouter printRequestedAt côté ticket
+
+Car sinon “pendingSince” est ambigu (createdAt vs readyAt vs reprint).
+
+printRequestedAt?: number
+
+set à chaque trigger (confirmed/ready/reprint)
+
+2) Ajouter printTrigger: "confirmed" | "ready" | "reprint"
+
+Pour l’audit et pour afficher dans UI (“impression pickup”, etc.).
+
+Résultat : Partie 2 validée (avec corrections V1)
+
+✅ Structure fichiers : OK
+✅ UI tactile : OK
+✅ Sound manager : OK (avec règle anti-cacophonie)
+⚠️ Impression : à corriger sur 3 points (pas de success/fail réel, pas de display:none, queue/lock)

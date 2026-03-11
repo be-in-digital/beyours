@@ -1,0 +1,2 @@
+[    1880ms] [ERROR] Access to font at 'https://docs.convex.dev/fonts/GT-America-Standard-Medium.woff2' from origin 'https://dashboard.convex.dev' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ https://dashboard.convex.dev/t/momoseck8/beindigital-engine/reliable-parrot-452/logs:0
+[    1880ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://docs.convex.dev/fonts/GT-America-Standard-Medium.woff2:0

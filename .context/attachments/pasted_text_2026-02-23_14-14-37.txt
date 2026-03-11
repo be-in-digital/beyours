@@ -1,0 +1,162 @@
+Voici toutes les modifications à apporter pour l'écran salle :
+
+---
+
+## 📺 ÉCRAN SALLE — Liste des modifications
+
+---
+
+### 1. Schema Convex
+
+**Fichier : `packages/convex-schema/src/tables/stores.ts`**
+- Ajouter `displayConfig` avec `autoDismissEnabled` (boolean, default true) et `autoDismissMinutes` (number, default 15)
+
+**Fichier : `packages/convex-schema/src/tables/kitchenTickets.ts`**
+- Ajouter champ `startedAt` (timestamp optionnel)
+- Ajouter champ `readyAt` (timestamp optionnel)
+- Ajouter champ `pickedUpAt` (timestamp optionnel)
+- Ajouter index `by_store_status_readyAt` sur (storeId, status, readyAt)
+
+---
+
+### 2. Mutations Convex
+
+**Fichier : `packages/convex-functions/src/kitchenTickets.ts`**
+- Modifier la mutation `updateStatus` pour enforcer les invariants :
+  - Si newStatus = "in_progress" → set `startedAt = now` (si pas déjà set)
+  - Si newStatus = "ready" → set `readyAt = now` (obligatoire, invariant backend)
+- Créer mutation `markPickedUp(ticketId)` → set `pickedUpAt = now`
+
+---
+
+### 3. Query Convex
+
+**Fichier : `packages/convex-functions/src/kitchenTickets.ts`**
+- Créer query `getForDisplay(storeId)` qui retourne :
+  - `preparing` : tickets avec status in ["new", "in_progress"], triés par createdAt ASC
+  - `ready` : tickets avec status = "ready", pickedUpAt = null, dans la fenêtre auto-dismiss, triés par readyAt DESC
+  - `displayConfig` : autoDismissEnabled + autoDismissMinutes
+  - `storeBranding` : logoUrl + name du store
+  - `serverNow` : timestamp serveur pour alignement
+- Ne retourner que les champs minimaux : _id, orderNumber, status, createdAt, readyAt
+
+---
+
+### 4. Constantes
+
+**Fichier : `packages/restaurant/src/constants/display.ts`** (créer)
+- `DISPLAY_LIMITS.maxPreparing` = 10
+- `DISPLAY_LIMITS.maxReady` = 10
+- `DISPLAY_LIMITS.rotationSeconds` = 15
+
+---
+
+### 5. Types
+
+**Fichier : `packages/restaurant/src/types/display.ts`** (créer)
+- Type `DisplayTicket` : _id, orderNumber, status, createdAt, readyAt
+- Type `DisplayPayload` : preparing, ready, displayConfig, storeBranding, serverNow
+
+---
+
+### 6. Composants UI
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/page.tsx`** (créer)
+- Page publique sans auth
+- Full-screen, pas de header/nav
+- Subscription Convex sur `getForDisplay(storeId)`
+- Layout deux colonnes : "En préparation" (gauche) + "Prêts" (droite)
+- Header : logo store + horloge live + jour
+- Footer : URL du restaurant + "Powered by Be In Digital"
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/display-column.tsx`** (créer)
+- Composant colonne réutilisable (titre, liste de numéros, pagination)
+- Numéros en gros (64px minimum)
+- Pagination si > maxPreparing ou > maxReady
+- Affichage "Page 1/2" avec rotation auto toutes les 15s
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/display-ticket-number.tsx`** (créer)
+- Affichage d'un numéro de commande
+- Animation flash 3s quand le ticket apparaît nouvellement dans "ready"
+- Gestion via Set local des tickets déjà vus
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/display-header.tsx`** (créer)
+- Logo du restaurant centré
+- Horloge live (update chaque minute)
+- Jour de la semaine
+- Pastille "Live ●" qui pulse (heartbeat visuel)
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/display-footer.tsx`** (créer)
+- URL du restaurant
+- "Powered by Be In Digital"
+
+---
+
+### 7. Hooks
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/use-pagination.ts`** (créer)
+- Hook pour gérer la pagination par colonne
+- Timer de rotation (15s par défaut)
+- Calcul du nombre de pages selon les limites
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/use-flash-detection.ts`** (créer)
+- Hook pour détecter les nouveaux tickets dans "ready"
+- Maintient un Set des IDs déjà vus
+- Retourne les IDs à flasher (nouveaux depuis le dernier render)
+
+---
+
+### 8. Styles
+
+**Fichier : `apps/restaurant-theme/app/display/[storeId]/display.css`** (créer)
+- Mode sombre par défaut (fond sombre, texte clair)
+- Typo grande (64px pour les numéros)
+- Contraste élevé pour lisibilité TV
+- Curseur caché (mode kiosk)
+- Animation flash (clignotement subtil 3s)
+- Animation pulse pour pastille "Live"
+- Pas de scroll (overflow hidden)
+
+---
+
+### 9. Admin — Bouton pickup dans KDS
+
+**Fichier : `packages/admin/src/pages/kitchen/ticket-card.tsx`**
+- Ajouter bouton "Marquer récupéré" visible uniquement quand status = "ready"
+- Appelle mutation `markPickedUp(ticketId)`
+- Le ticket disparaît de l'écran salle en temps réel
+
+---
+
+### 10. Admin — Settings display (optionnel V1)
+
+**Fichier : `packages/admin/src/pages/settings/display-settings.tsx`** (créer si besoin)
+- Toggle autoDismissEnabled
+- Input autoDismissMinutes
+- Sauvegarde dans store.displayConfig
+
+---
+
+## 📋 Récap des fichiers
+
+| Action | Fichier |
+|--------|---------|
+| Modifier | `packages/convex-schema/src/tables/stores.ts` |
+| Modifier | `packages/convex-schema/src/tables/kitchenTickets.ts` |
+| Modifier | `packages/convex-functions/src/kitchenTickets.ts` |
+| Modifier | `packages/admin/src/pages/kitchen/ticket-card.tsx` |
+| Créer | `packages/restaurant/src/constants/display.ts` |
+| Créer | `packages/restaurant/src/types/display.ts` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/page.tsx` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/display-column.tsx` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/display-ticket-number.tsx` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/display-header.tsx` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/display-footer.tsx` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/display.css` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/use-pagination.ts` |
+| Créer | `apps/restaurant-theme/app/display/[storeId]/use-flash-detection.ts` |
+| Créer (optionnel) | `packages/admin/src/pages/settings/display-settings.tsx` |
+
+---
+
+C'est la liste complète. On passe au tracking mobile client ?

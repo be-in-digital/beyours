@@ -1,46 +1,28 @@
 "use client"
 
-import { useMutation } from "convex/react"
+import { useMutation, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { TicketTimer } from "./TicketTimer"
-import { Clock, Play, CheckCircle, Package } from "lucide-react"
+import { Clock, Play, CheckCircle, Package, Printer, X } from "lucide-react"
 
+type Ticket = Doc<"kitchenTickets">
 type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
 type OrderType = "delivery" | "pickup" | "dine_in"
 type Priority = "normal" | "urgent" | "vip"
 type Source = "website" | "uber_eats" | "deliveroo" | "pos"
-
-interface TicketItem {
-  productName: string
-  quantity: number
-  options: string[]
-  notes?: string
-}
-
-interface Ticket {
-  _id: Id<"kitchenTickets">
-  storeId: Id<"stores">
-  orderId: Id<"orders">
-  orderNumber: string
-  orderType: OrderType
-  items: TicketItem[]
-  station?: string
-  assignedTo?: string
-  priority: Priority
-  source: Source
-  status: TicketStatus
-  estimatedPrepTime?: number
-  printCount?: number
-  createdAt: number
-  updatedAt: number
-  startedAt?: number
-  completedAt?: number
-}
 
 interface TicketCardProps {
   ticket: Ticket
@@ -68,36 +50,108 @@ const SOURCE_CONFIG: Record<Source, { label: string; color: string }> = {
 const STATUS_ACTIONS: Record<TicketStatus, { label: string; nextStatus: TicketStatus | null; icon: React.ComponentType<{ className?: string }> }> = {
   pending: { label: "Démarrer", nextStatus: "in_progress", icon: Play },
   in_progress: { label: "Prêt", nextStatus: "ready", icon: CheckCircle },
-  ready: { label: "Terminer", nextStatus: "completed", icon: Package },
+  ready: { label: "Récupéré", nextStatus: "completed", icon: Package },
   completed: { label: "Terminé", nextStatus: null, icon: CheckCircle },
-  cancelled: { label: "Annulé", nextStatus: null, icon: CheckCircle },
+  cancelled: { label: "Annulé", nextStatus: null, icon: X },
+}
+
+const PRINT_STATUS_ICON: Record<string, string> = {
+  pending: "...",
+  printed: "OK",
+  failed: "!",
+  not_required: "",
+}
+
+const DELIVEROO_REJECT_REASONS = [
+  { value: "store_busy", label: "Restaurant trop occupé" },
+  { value: "closing_soon", label: "Fermeture imminente" },
+  { value: "item_unavailable", label: "Article indisponible" },
+  { value: "pos_item_id_not_found", label: "Produit non trouvé (PLU manquant)" },
+  { value: "pos_item_id_mismatched", label: "Produit non reconnu (PLU incorrect)" },
+  { value: "items_out_of_stock", label: "Rupture de stock" },
+  { value: "other", label: "Autre raison" },
+] as const
+
+function isPrintStuck(ticket: Ticket): boolean {
+  if (ticket.printStatus !== "pending") return false
+  if (!ticket.printRequestedAt) return false
+  return Date.now() - ticket.printRequestedAt > 2 * 60 * 1000
 }
 
 export function TicketCard({ ticket }: TicketCardProps) {
   const updateStatusMutation = useMutation(api.kitchenTickets.updateStatus)
+  const requestReprintMutation = useMutation(api.kitchenTickets.requestReprint)
+  const acceptTicketAction = useAction(api.kitchenTickets.acceptTicket)
+  const readyTicketAction = useAction(api.kitchenTickets.readyTicket)
+  const completeTicketAction = useAction(api.kitchenTickets.completeTicket)
+  const cancelTicketAction = useAction(api.kitchenTickets.cancelTicket)
 
   const handleStatusChange = async () => {
     const action = STATUS_ACTIONS[ticket.status]
     if (!action.nextStatus) return
 
-    const nextStatus = action.nextStatus as "pending" | "in_progress" | "ready" | "completed"
     try {
+      // pending → in_progress: accept (notify Uber Eats / Deliveroo)
+      if (ticket.status === "pending" && (ticket.source === "uber_eats" || ticket.source === "deliveroo")) {
+        await acceptTicketAction({ id: ticket._id })
+        toast.success(ticket.source === "uber_eats" ? "Commande acceptee sur Uber Eats" : "Commande acceptee sur Deliveroo")
+        return
+      }
+
+      // in_progress → ready: mark as ready (update order status)
+      if (ticket.status === "in_progress") {
+        await readyTicketAction({ id: ticket._id })
+        toast.success("Commande prete")
+        return
+      }
+
+      // ready → completed: mark picked up (update order status)
+      if (ticket.status === "ready") {
+        await completeTicketAction({ id: ticket._id })
+        toast.success("Commande recuperee")
+        return
+      }
+
+      // Fallback for non-platform orders
       await updateStatusMutation({
         id: ticket._id,
-        status: nextStatus,
+        status: action.nextStatus,
       })
-      toast.success(`Ticket déplacé vers ${action.nextStatus.replace("_", " ")}`)
+      toast.success(`Ticket deplace vers ${action.nextStatus.replace("_", " ")}`)
     } catch (error) {
-      toast.error("Échec de la mise à jour du statut du ticket")
+      toast.error("Echec de la mise a jour du statut du ticket")
+      console.error(error)
+    }
+  }
+
+  const handleCancel = async (reason?: string) => {
+    try {
+      await cancelTicketAction({ id: ticket._id, reason })
+      toast.success("Commande annulee")
+    } catch (error) {
+      toast.error("Echec de l'annulation")
+      console.error(error)
+    }
+  }
+
+  const handleReprint = async () => {
+    try {
+      await requestReprintMutation({ id: ticket._id })
+      toast.success("Reimpression demandee")
+    } catch (error) {
+      toast.error("Echec de la demande de reimpression")
       console.error(error)
     }
   }
 
   const action = STATUS_ACTIONS[ticket.status]
   const ActionIcon = action.icon
+  const showPrintBadge = ticket.printStatus && ticket.printStatus !== "not_required"
+  const printStuck = isPrintStuck(ticket)
+  const isDeliveroo = ticket.source === "deliveroo"
 
   return (
-    <Card className="relative">
+    <Card className="relative flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
@@ -115,12 +169,29 @@ export function TicketCard({ ticket }: TicketCardProps) {
             </div>
           </div>
 
-          {/* Timer */}
-          <TicketTimer createdAt={ticket.createdAt} />
+          <div className="flex items-center gap-2">
+            {showPrintBadge && (
+              <span className="text-xs font-mono" title={`Impression: ${ticket.printStatus}`}>
+                [{PRINT_STATUS_ICON[ticket.printStatus ?? "not_required"]}]
+              </span>
+            )}
+            {ticket.printStatus !== "not_required" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleReprint}
+                title="Reimprimer"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            )}
+            <TicketTimer createdAt={ticket.createdAt} />
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="flex-1 space-y-4">
         {/* Source badge */}
         <div className="flex items-center gap-2">
           <Badge
@@ -135,6 +206,13 @@ export function TicketCard({ ticket }: TicketCardProps) {
             </Badge>
           )}
         </div>
+
+        {/* Print stuck warning */}
+        {printStuck && (
+          <div className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+            <span>Non imprimee</span>
+          </div>
+        )}
 
         {/* Items */}
         <div className="space-y-2">
@@ -164,19 +242,112 @@ export function TicketCard({ ticket }: TicketCardProps) {
             <span>Est. {ticket.estimatedPrepTime} min</span>
           </div>
         )}
-
-        {/* Action button */}
-        {action.nextStatus && (
-          <Button
-            onClick={handleStatusChange}
-            className="w-full"
-            size="sm"
-          >
-            <ActionIcon className="mr-2 h-4 w-4" />
-            {action.label}
-          </Button>
-        )}
       </CardContent>
+
+      {/* Sticky action footer with big buttons */}
+      {ticket.status !== "completed" && ticket.status !== "cancelled" && (
+        <div className="p-4 pt-0">
+          {ticket.status === "pending" && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleStatusChange}
+                className="flex-1 min-h-16 text-lg bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <ActionIcon className="mr-2 h-5 w-5" />
+                {action.label}
+              </Button>
+              {isDeliveroo ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Raison du refus</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {DELIVEROO_REJECT_REASONS.map((reason) => (
+                      <DropdownMenuItem
+                        key={reason.value}
+                        onClick={() => handleCancel(reason.value)}
+                        className="cursor-pointer"
+                      >
+                        {reason.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  onClick={() => handleCancel()}
+                  variant="outline"
+                  className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {ticket.status === "in_progress" && (
+            <div className="flex gap-2">
+              <Button
+                onClick={handleStatusChange}
+                className="flex-1 min-h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+              >
+                <ActionIcon className="mr-2 h-5 w-5" />
+                {action.label}
+              </Button>
+              {isDeliveroo ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuLabel>Raison du refus</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {DELIVEROO_REJECT_REASONS.map((reason) => (
+                      <DropdownMenuItem
+                        key={reason.value}
+                        onClick={() => handleCancel(reason.value)}
+                        className="cursor-pointer"
+                      >
+                        {reason.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  onClick={() => handleCancel()}
+                  variant="outline"
+                  className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
+
+          {ticket.status === "ready" && (
+            <Button
+              onClick={handleStatusChange}
+              className="w-full min-h-16 text-lg bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              <ActionIcon className="mr-2 h-5 w-5" />
+              {action.label}
+            </Button>
+          )}
+        </div>
+      )}
     </Card>
   )
 }

@@ -206,6 +206,72 @@ export const updateMenuSyncStatus = {
 }
 
 /**
+ * Toggle autoAccept on a store integration
+ */
+export const toggleAutoAccept = {
+  args: {
+    storeId: v.id("stores"),
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    autoAccept: v.boolean(),
+  },
+  handler: async (ctx: any, args: {
+    storeId: string
+    platform: "uberEats" | "deliveroo"
+    autoAccept: boolean
+  }) => {
+    const existing = await ctx.db
+      .query("storeIntegrations")
+      .withIndex("by_store_platform", (q: any) =>
+        q.eq("storeId", args.storeId).eq("platform", args.platform)
+      )
+      .unique()
+
+    if (!existing) return null
+
+    await ctx.db.patch(existing._id, {
+      autoAccept: args.autoAccept,
+      updatedAt: Date.now(),
+    })
+    return existing._id
+  },
+}
+
+/**
+ * Update orderMode on a store integration (per-platform override)
+ */
+export const updateOrderMode = {
+  args: {
+    storeId: v.id("stores"),
+    platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
+    orderMode: v.union(
+      v.literal("auto_accept"),
+      v.literal("auto_reject"),
+      v.literal("manual")
+    ),
+  },
+  handler: async (ctx: any, args: {
+    storeId: string
+    platform: "uberEats" | "deliveroo"
+    orderMode: "auto_accept" | "auto_reject" | "manual"
+  }) => {
+    const existing = await ctx.db
+      .query("storeIntegrations")
+      .withIndex("by_store_platform", (q: any) =>
+        q.eq("storeId", args.storeId).eq("platform", args.platform)
+      )
+      .unique()
+
+    if (!existing) return null
+
+    await ctx.db.patch(existing._id, {
+      orderMode: args.orderMode,
+      updatedAt: Date.now(),
+    })
+    return existing._id
+  },
+}
+
+/**
  * Delete a store integration
  */
 export const remove = {

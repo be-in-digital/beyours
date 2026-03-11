@@ -33,7 +33,7 @@ export const translationsTable = defineTable({
   languageCode: v.string(),
   value: v.string(),
   isAutoTranslated: v.boolean(),
-  createdAt: v.number(),
+  createdAt: v.optional(v.number()),
   updatedAt: v.number(),
 })
   .index("by_storeId_entity", ["storeId", "entityType", "entityId"])

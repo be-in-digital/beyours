@@ -84,7 +84,7 @@ export async function getAccessToken(
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: "client_credentials",
-        scope: "eats.store eats.order eats.store.orders.read eats.store.orders.cancel eats.store.status.write",
+        scope: "eats.store.orders.read eats.store.orders.cancel eats.store eats.store.status.write eats.order",
       }).toString(),
     })
 
@@ -228,7 +228,7 @@ export async function acceptOrder(
 ): Promise<void> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/accept`,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/accept_pos_order`,
     { method: "POST", body: {} }
   )
 
@@ -253,7 +253,7 @@ export async function denyOrder(
 ): Promise<void> {
   const response = await fetchUberEats(
     credentials,
-    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/deny`,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/deny_pos_order`,
     { method: "POST", body: { reason } }
   )
 

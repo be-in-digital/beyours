@@ -98,11 +98,6 @@ test.describe("Sign In Page", () => {
     test("should attempt redirect on successful login", async ({
       page,
     }) => {
-      test.skip(
-        !!process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder"),
-        "Requires a real Convex backend"
-      )
-
       await page.goto("/sign-in", { waitUntil: "networkidle" })
 
       await expect(
