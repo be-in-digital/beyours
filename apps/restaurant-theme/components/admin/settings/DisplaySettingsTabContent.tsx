@@ -1,8 +1,10 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Doc } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -11,25 +13,17 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export function DisplaySettingsTabContent() {
-  const storeId = useAdminStoreId()
-  const store = useQuery(api.stores.getById, storeId ? { id: storeId } : "skip")
+function DisplaySettingsForm({ store, storeId }: { store: Doc<"stores">; storeId: Id<"stores"> }) {
   const updateDisplayConfig = useMutation(api.stores.updateDisplayConfig)
 
-  const [autoDismissEnabled, setAutoDismissEnabled] = useState(true)
-  const [autoDismissMinutes, setAutoDismissMinutes] = useState(15)
-  const initializedRef = useRef(false)
-
-  if (store && !initializedRef.current) {
-    if (store.displayConfig) {
-      setAutoDismissEnabled(store.displayConfig.autoDismissEnabled)
-      setAutoDismissMinutes(store.displayConfig.autoDismissMinutes)
-    }
-    initializedRef.current = true
-  }
+  const [autoDismissEnabled, setAutoDismissEnabled] = useState(
+    store.displayConfig?.autoDismissEnabled ?? true
+  )
+  const [autoDismissMinutes, setAutoDismissMinutes] = useState(
+    store.displayConfig?.autoDismissMinutes ?? 15
+  )
 
   const handleSave = async () => {
-    if (!storeId) return
     try {
       await updateDisplayConfig({
         id: storeId,
@@ -43,8 +37,6 @@ export function DisplaySettingsTabContent() {
       toast.error("Echec de la mise a jour")
     }
   }
-
-  if (!store) return null
 
   const displayUrl = typeof window !== "undefined"
     ? `${window.location.origin}/display/${storeId}`
@@ -111,4 +103,13 @@ export function DisplaySettingsTabContent() {
       </Card>
     </div>
   )
+}
+
+export function DisplaySettingsTabContent() {
+  const storeId = useAdminStoreId()
+  const store = useQuery(api.stores.getById, storeId ? { id: storeId } : "skip")
+
+  if (!store || !storeId) return null
+
+  return <DisplaySettingsForm store={store} storeId={storeId} />
 }

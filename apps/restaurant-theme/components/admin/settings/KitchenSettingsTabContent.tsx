@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useRef, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -30,58 +31,44 @@ interface SoundChannel {
   volume: number
 }
 
-export function KitchenSettingsTabContent() {
-  const storeId = useAdminStoreId()
-  const store = useQuery(api.stores.getById, storeId ? { id: storeId } : "skip")
-  const integrations = useQuery(
-    api.storeIntegrations.listByStore,
-    storeId ? { storeId } : "skip"
-  )
+function KitchenSettingsForm({
+  store,
+  storeId,
+  enabledIntegrations,
+}: {
+  store: Doc<"stores">
+  storeId: Id<"stores">
+  enabledIntegrations: Doc<"storeIntegrations">[]
+}) {
   const updateOrderConfirmation = useMutation(api.stores.updateOrderConfirmation)
   const updateStoreOrderMode = useMutation(api.stores.updateOrderMode)
   const updateIntegrationOrderMode = useMutation(api.storeIntegrations.updateOrderMode)
   const updatePrintConfig = useMutation(api.stores.updatePrintConfig)
   const updateSoundConfig = useMutation(api.stores.updateSoundConfig)
 
-  const enabledIntegrations = useMemo(() => {
-    if (!integrations) return []
-    return integrations.filter((i: Doc<"storeIntegrations">) => i.enabled)
-  }, [integrations])
+  // Order confirmation — initialized from props
+  const [orderConf, setOrderConf] = useState<OrderConfirmation>(
+    store.orderConfirmation ?? "manual"
+  )
 
-  // Order confirmation
-  const [orderConf, setOrderConf] = useState<OrderConfirmation>("manual")
+  // Print config — initialized from props
+  const [printEnabled, setPrintEnabled] = useState(store.printConfig?.enabled ?? false)
+  const [printProvider, setPrintProvider] = useState<PrintProvider>(store.printConfig?.provider ?? "browser")
+  const [paperSize, setPaperSize] = useState<PaperSize>(store.printConfig?.paperSize ?? "80mm")
+  const [triggers, setTriggers] = useState<Set<PrintTrigger>>(
+    new Set(store.printConfig?.triggers ?? ["confirmed", "reprint"])
+  )
 
-  // Print config
-  const [printEnabled, setPrintEnabled] = useState(false)
-  const [printProvider, setPrintProvider] = useState<PrintProvider>("browser")
-  const [paperSize, setPaperSize] = useState<PaperSize>("80mm")
-  const [triggers, setTriggers] = useState<Set<PrintTrigger>>(new Set(["confirmed", "reprint"]))
-
-  // Sound config
-  const [newTicketSound, setNewTicketSound] = useState<SoundChannel>({ enabled: true, volume: 80 })
-  const [overdueSound, setOverdueSound] = useState<SoundChannel>({ enabled: true, volume: 100 })
-  const [printerOfflineSound, setPrinterOfflineSound] = useState<SoundChannel>({ enabled: true, volume: 100 })
-
-  const initializedRef = useRef(false)
-
-  if (store && !initializedRef.current) {
-    setOrderConf(store.orderConfirmation ?? "manual")
-
-    if (store.printConfig) {
-      setPrintEnabled(store.printConfig.enabled)
-      setPrintProvider(store.printConfig.provider)
-      setPaperSize(store.printConfig.paperSize)
-      setTriggers(new Set(store.printConfig.triggers))
-    }
-
-    if (store.soundConfig) {
-      setNewTicketSound(store.soundConfig.newTicket)
-      setOverdueSound(store.soundConfig.overdue)
-      setPrinterOfflineSound(store.soundConfig.printerOffline)
-    }
-
-    initializedRef.current = true
-  }
+  // Sound config — initialized from props
+  const [newTicketSound, setNewTicketSound] = useState<SoundChannel>(
+    store.soundConfig?.newTicket ?? { enabled: true, volume: 80 }
+  )
+  const [overdueSound, setOverdueSound] = useState<SoundChannel>(
+    store.soundConfig?.overdue ?? { enabled: true, volume: 100 }
+  )
+  const [printerOfflineSound, setPrinterOfflineSound] = useState<SoundChannel>(
+    store.soundConfig?.printerOffline ?? { enabled: true, volume: 100 }
+  )
 
   const toggleTrigger = (t: PrintTrigger) => {
     setTriggers((prev) => {
@@ -164,8 +151,6 @@ export function KitchenSettingsTabContent() {
       toast.error("Echec de la mise a jour")
     }
   }
-
-  if (!store) return null
 
   return (
     <div className="space-y-6">
@@ -360,5 +345,29 @@ export function KitchenSettingsTabContent() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export function KitchenSettingsTabContent() {
+  const storeId = useAdminStoreId()
+  const store = useQuery(api.stores.getById, storeId ? { id: storeId } : "skip")
+  const integrations = useQuery(
+    api.storeIntegrations.listByStore,
+    storeId ? { storeId } : "skip"
+  )
+
+  const enabledIntegrations = useMemo(() => {
+    if (!integrations) return []
+    return integrations.filter((i: Doc<"storeIntegrations">) => i.enabled)
+  }, [integrations])
+
+  if (!store || !storeId) return null
+
+  return (
+    <KitchenSettingsForm
+      store={store}
+      storeId={storeId}
+      enabledIntegrations={enabledIntegrations}
+    />
   )
 }
