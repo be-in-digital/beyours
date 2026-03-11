@@ -91,7 +91,7 @@ describe("Scenario 11: Missing PLUs", () => {
     };
 
     const order = webhook.body.order;
-    const missingPluItem = order.items[0];
+    const missingPluItem = order.items[0]!;
 
     // Item should have all required fields
     expect(missingPluItem).toHaveProperty("pos_item_id");
@@ -140,7 +140,7 @@ describe("Scenario 11: Missing PLUs", () => {
       },
     };
 
-    const item = webhook.body.order.items[0];
+    const item = webhook.body.order.items[0]!;
 
     // When PLU not found, use name to identify the product
     expect(item.name).toBeDefined();
@@ -317,7 +317,7 @@ describe("Scenario 11: Missing PLUs", () => {
 
     // Order should be in "placed" status
     expect(order.status).toBe("placed");
-    expect(order.items[0].pos_item_id).toBe("MISSING-PLU");
+    expect(order.items[0]!.pos_item_id).toBe("MISSING-PLU");
 
     log.success("Order acceptance validated");
     log.info("  Order accepted despite missing PLU");
@@ -362,7 +362,7 @@ describe("Scenario 11: Missing PLUs", () => {
       },
     };
 
-    const item = webhook.body.order.items[0];
+    const item = webhook.body.order.items[0]!;
 
     expect(item.pos_item_id).toBe("UNRECOGNIZED-PLU-999");
 
@@ -412,7 +412,7 @@ describe("Scenario 11: Missing PLUs", () => {
       },
     };
 
-    const item = webhook.body.order.items[0];
+    const item = webhook.body.order.items[0]!;
 
     // Price information is complete
     expect(item.unit_price.fractional).toBe(1800);
@@ -447,7 +447,7 @@ describe("Scenario 11: Missing PLUs", () => {
     const order = webhook.body.order;
 
     expect(order).toHaveProperty("id");
-    expect(order.items[0].pos_item_id).toBe("UNKNOWN-SYNC-TEST");
+    expect(order.items[0]!.pos_item_id).toBe("UNKNOWN-SYNC-TEST");
 
     log.success("Sync status requirement validated");
     log.info(
@@ -500,8 +500,8 @@ describe("Scenario 11: Missing PLUs", () => {
       },
     };
 
-    const item = webhook.body.order.items[0];
-    const modifier = item.modifiers[0];
+    const item = webhook.body.order.items[0]!;
+    const modifier = item.modifiers![0]!;
 
     expect(modifier.pos_item_id).toBe("UNKNOWN-MODIFIER");
     expect(modifier.name).toBe("New Sauce");
