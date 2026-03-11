@@ -209,6 +209,7 @@ describe("Scenario 11: Missing PLUs", () => {
 
     // All items have unknown PLUs
     expect(order.items).toHaveLength(3);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     order.items.forEach((item: any) => {
       expect(item.pos_item_id).toMatch(/^UNKNOWN-/);
       expect(item.name).toBeDefined();
@@ -216,6 +217,7 @@ describe("Scenario 11: Missing PLUs", () => {
 
     log.success("Multiple missing PLUs validated");
     log.info(`  ${order.items.length} items with unknown PLUs`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     order.items.forEach((item: any, idx: number) => {
       log.info(
         `    - Item ${idx + 1}: "${item.name}" (PLU: ${item.pos_item_id})`,
@@ -276,8 +278,10 @@ describe("Scenario 11: Missing PLUs", () => {
 
     // Count known vs unknown PLUs
     const unknownItems = order.items.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (item: any) => item.pos_item_id === "UNKNOWN-NEW",
     );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const knownItems = order.items.filter((item: any) =>
       item.pos_item_id.startsWith("ITEM-"),
     );

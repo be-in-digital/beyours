@@ -216,6 +216,7 @@ describe("Scenario 8: Discounted Order", () => {
 
     // Sum of item prices
     const itemsTotal = order.items.reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (sum: number, item: any) => sum + item.total_price.fractional,
       0,
     );

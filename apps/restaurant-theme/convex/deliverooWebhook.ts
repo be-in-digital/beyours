@@ -230,6 +230,7 @@ export const processOrderWebhook = internalAction({
 // ============================================================================
 
 async function handleNewOrder(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
@@ -411,6 +412,7 @@ async function handleNewOrder(
 // ============================================================================
 
 async function handleStatusUpdate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: any,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
@@ -465,6 +467,7 @@ async function handleStatusUpdate(
       try {
         const fetched = await deliveroo.getOrder(credentials, orderId);
         // getOrder returns { order: { ... } } wrapper
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fetchedOrder = (fetched as any)?.order ?? fetched;
         if (fetchedOrder && fetchedOrder.items) {
           fullOrder = { ...order, ...fetchedOrder };
@@ -484,6 +487,7 @@ async function handleStatusUpdate(
 
     // Scenario 11: Missing PLU - items without any POS identifier
     const hasMissingPLU = items.some(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (item: any) => !item.pos_item_id && !item.plu && !item.external_reference_id
     );
 
