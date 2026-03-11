@@ -162,7 +162,7 @@ describe("Scenario 8: Discounted Order", () => {
     const order = webhook.body.order;
 
     // Verify item-specific discount
-    const discountedItem = order.items[1];
+    const discountedItem = order.items[1]!;
     expect(discountedItem.discount_amount.fractional).toBe(200);
     expect(discountedItem.total_price.fractional).toBe(600); // 800 - 200
 
@@ -309,7 +309,7 @@ describe("Scenario 8: Discounted Order", () => {
     const order = webhook.body.order;
 
     // Item discount
-    const itemDiscount = order.items[0].discount_amount.fractional;
+    const itemDiscount = order.items[0]!.discount_amount.fractional;
     expect(itemDiscount).toBe(300);
 
     // Total offer discount includes item discount + any basket promo
