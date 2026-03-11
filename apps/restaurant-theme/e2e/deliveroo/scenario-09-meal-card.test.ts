@@ -359,6 +359,7 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 2499, currency_code: "EUR" },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((tinyMealCard.body.order as any).meal_card_payment.fractional).toBe(1);
 
     // Edge case 2: Large meal card amount
@@ -368,7 +369,9 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 0, currency_code: "EUR" },
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((largeMealCard.body.order as any).meal_card_payment.fractional).toBe(10000);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((largeMealCard.body.order as any).cash_due.fractional).toBe(0);
 
     log.success("Meal card edge cases validated");
