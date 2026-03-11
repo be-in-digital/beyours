@@ -1,33 +1,31 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useReducer } from "react"
 
 interface TrackingCountdownProps {
   estimatedReadyAt?: number
   status: string
 }
 
+function computeRemaining(estimatedReadyAt: number | undefined, status: string): number | null {
+  if (!estimatedReadyAt || status === "ready" || status === "completed") return null
+  return Math.max(0, estimatedReadyAt - Date.now())
+}
+
 export function TrackingCountdown({
   estimatedReadyAt,
   status,
 }: TrackingCountdownProps) {
-  const [remaining, setRemaining] = useState<number | null>(null)
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0)
 
   useEffect(() => {
-    if (!estimatedReadyAt || status === "ready" || status === "completed") {
-      setRemaining(null)
-      return
-    }
+    if (!estimatedReadyAt || status === "ready" || status === "completed") return
 
-    const update = () => {
-      const diff = estimatedReadyAt - Date.now()
-      setRemaining(Math.max(0, diff))
-    }
-
-    update()
-    const id = setInterval(update, 1000)
+    const id = setInterval(forceUpdate, 1000)
     return () => clearInterval(id)
   }, [estimatedReadyAt, status])
+
+  const remaining = computeRemaining(estimatedReadyAt, status)
 
   if (status === "ready") {
     return (

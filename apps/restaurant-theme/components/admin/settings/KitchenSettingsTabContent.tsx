@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useRef, useMemo } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
@@ -62,28 +62,26 @@ export function KitchenSettingsTabContent() {
   const [overdueSound, setOverdueSound] = useState<SoundChannel>({ enabled: true, volume: 100 })
   const [printerOfflineSound, setPrinterOfflineSound] = useState<SoundChannel>({ enabled: true, volume: 100 })
 
-  const [initialized, setInitialized] = useState(false)
+  const initializedRef = useRef(false)
 
-  useEffect(() => {
-    if (store && !initialized) {
-      setOrderConf(store.orderConfirmation ?? "manual")
+  if (store && !initializedRef.current) {
+    setOrderConf(store.orderConfirmation ?? "manual")
 
-      if (store.printConfig) {
-        setPrintEnabled(store.printConfig.enabled)
-        setPrintProvider(store.printConfig.provider)
-        setPaperSize(store.printConfig.paperSize)
-        setTriggers(new Set(store.printConfig.triggers))
-      }
-
-      if (store.soundConfig) {
-        setNewTicketSound(store.soundConfig.newTicket)
-        setOverdueSound(store.soundConfig.overdue)
-        setPrinterOfflineSound(store.soundConfig.printerOffline)
-      }
-
-      setInitialized(true)
+    if (store.printConfig) {
+      setPrintEnabled(store.printConfig.enabled)
+      setPrintProvider(store.printConfig.provider)
+      setPaperSize(store.printConfig.paperSize)
+      setTriggers(new Set(store.printConfig.triggers))
     }
-  }, [store, initialized])
+
+    if (store.soundConfig) {
+      setNewTicketSound(store.soundConfig.newTicket)
+      setOverdueSound(store.soundConfig.overdue)
+      setPrinterOfflineSound(store.soundConfig.printerOffline)
+    }
+
+    initializedRef.current = true
+  }
 
   const toggleTrigger = (t: PrintTrigger) => {
     setTriggers((prev) => {

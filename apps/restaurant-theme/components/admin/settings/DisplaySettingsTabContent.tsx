@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useRef } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
@@ -18,17 +18,15 @@ export function DisplaySettingsTabContent() {
 
   const [autoDismissEnabled, setAutoDismissEnabled] = useState(true)
   const [autoDismissMinutes, setAutoDismissMinutes] = useState(15)
-  const [initialized, setInitialized] = useState(false)
+  const initializedRef = useRef(false)
 
-  useEffect(() => {
-    if (store && !initialized) {
-      if (store.displayConfig) {
-        setAutoDismissEnabled(store.displayConfig.autoDismissEnabled)
-        setAutoDismissMinutes(store.displayConfig.autoDismissMinutes)
-      }
-      setInitialized(true)
+  if (store && !initializedRef.current) {
+    if (store.displayConfig) {
+      setAutoDismissEnabled(store.displayConfig.autoDismissEnabled)
+      setAutoDismissMinutes(store.displayConfig.autoDismissMinutes)
     }
-  }, [store, initialized])
+    initializedRef.current = true
+  }
 
   const handleSave = async () => {
     if (!storeId) return
