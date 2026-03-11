@@ -170,8 +170,8 @@ describe("Scenario 6: Rejected Order", () => {
 
     expect(webhook.body.order.status).toBe("rejected");
     expect(webhook.body.order.status_log).toHaveLength(1);
-    expect(webhook.body.order.status_log[0].status).toBe("rejected");
-    expect(webhook.body.order.status_log[0].at).toBe(rejectionTime);
+    expect(webhook.body.order.status_log[0]!.status).toBe("rejected");
+    expect(webhook.body.order.status_log[0]!.at).toBe(rejectionTime);
 
     log.success("Rejection timestamp validated");
     log.info(`  - Rejected at: ${rejectionTime}`);

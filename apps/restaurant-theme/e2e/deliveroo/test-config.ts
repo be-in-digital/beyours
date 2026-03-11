@@ -84,7 +84,8 @@ export function generateOrderNumber(): string {
 /**
  * Create order.new webhook (Deliveroo order.created format)
  */
-export function createNewOrderWebhook(overrides: Partial<Record<string, unknown>> = {}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createNewOrderWebhook(overrides: Partial<Record<string, unknown>> = {}): any {
   const orderId = (overrides.id as string) || generateOrderId("new");
   const orderNumber = (overrides.order_number as string) || generateOrderNumber();
 
