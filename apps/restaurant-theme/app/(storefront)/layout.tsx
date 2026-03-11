@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { authClient } from "@/lib/auth-client"
-import { AuthProvider } from "@/app/auth-provider"
 
 export default function StorefrontLayout({
   children,
@@ -13,7 +12,6 @@ export default function StorefrontLayout({
   const isAuthenticated = !!session?.user
 
   return (
-    <AuthProvider>
     <div className="min-h-screen flex flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -48,6 +46,5 @@ export default function StorefrontLayout({
         </div>
       </footer>
     </div>
-    </AuthProvider>
   )
 }

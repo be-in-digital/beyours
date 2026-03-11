@@ -21,26 +21,3 @@ export {
   prizeRedemptionsTable,
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
-export {
-  emailBlockValidator,
-  emailSubscribersTable,
-  emailTemplatesTable,
-  emailCampaignsTable,
-  emailSegmentsTable,
-  emailAutomationsTable,
-  emailEventsTable,
-  emailConfigTable,
-} from "./emailMarketing"
-export { cmsPagesTable, cmsBlocksTable, cmsMediaTable } from "./cms"
-export {
-  blogCategoriesTable,
-  blogTagsTable,
-  blogArticlesTable,
-  blogArticleTagsTable,
-} from "./cms"
-export {
-  ownerEntitlementsTable,
-  blogAutoConfigTable,
-  blogAutoQueueTable,
-  blogAutoUsageTable,
-} from "./autoBlog"

@@ -14,8 +14,7 @@ packages/core/src/aws/
 ├── index.ts                     # Barrel file principal
 │
 ├── s3/
-│   ├── adapter.ts               # Adapter AWS SDK v3 (S3Client, presigned URLs)
-│   ├── client.ts                # Service S3 principal (injectable)
+│   ├── client.ts                # Service S3 principal
 │   ├── types.ts                 # Types S3 (S3Operations, UploadOptions, etc.)
 │   ├── validation.ts            # Schémas Zod et fonctions de validation
 │   └── index.ts                 # Barrel file S3
@@ -66,11 +65,9 @@ packages/core/src/aws/
 - `branding` : Logos, bannières (10MB max)
 - `stores` : Photos de restaurants (10MB max)
 - `cms` : Contenu CMS, PDFs (25MB max)
-- `email` : Images pour templates email (10MB max)
 
 **Types MIME autorisés par dossier :**
 - Images : jpg, png, webp, svg (tous les dossiers)
-- GIF : gif (email uniquement)
 - Documents : pdf (cms uniquement)
 
 ### Architecture injectable
@@ -88,29 +85,8 @@ interface S3Operations {
 
 Avantages :
 - Tests faciles avec mocks
-- Pas de dépendance SDK dans le service client
+- Pas de dépendance SDK dans le package
 - Flexibilité pour différentes versions SDK
-
-### Adapter AWS SDK v3 (`adapter.ts`)
-
-L'adapter implémente `S3Operations` avec le SDK AWS v3 :
-
-```typescript
-import { createS3Operations, getS3Config, getS3Service } from '@beindigital-engine/core'
-
-// Option 1: Service complet depuis les variables d'environnement
-const s3 = getS3Service()
-
-// Option 2: Adapter seul (pour injection custom)
-const config = getS3Config()
-const operations = createS3Operations(config)
-const s3 = createS3Service(config, operations)
-```
-
-Fonctions exportées :
-- `createS3Operations(config)` : crée l'implémentation S3Operations via AWS SDK v3
-- `getS3Config()` : lit la config depuis les variables d'environnement
-- `getS3Service()` : crée un service S3 prêt à l'emploi
 
 ### Tests (18 tests - 100% coverage)
 
@@ -335,7 +311,7 @@ pnpm --filter @beindigital-engine/core build
 
 ## Notes importantes
 
-- ✅ Architecture injectable (service client découplé du SDK, adapter SDK v3 inclus)
+- ✅ Architecture 100% injectable (pas de dépendance AWS SDK)
 - ✅ Validation Zod complète
 - ✅ Tests exhaustifs (53 tests, 100% coverage)
 - ✅ TypeScript strict

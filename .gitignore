@@ -63,8 +63,3 @@ dist/
 # Changesets
 .changeset/*.md
 !.changeset/config.json
-
-# Playwright
-test-results/
-**/test-results/
-**/e2e/.auth/

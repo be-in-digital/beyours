@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@beindigital-engine/ui"
-import { Button, ButtonGroup } from "@beindigital-engine/ui"
+import { Button } from "@beindigital-engine/ui"
 import { AlertTriangle } from "lucide-react"
 
 interface DeleteConfirmDialogProps {
@@ -38,35 +38,33 @@ export function DeleteConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent style={{ maxWidth: "24rem" }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
             </div>
             <DialogTitle className="text-base">{title}</DialogTitle>
           </div>
           <DialogDescription className="pt-1 text-sm">{description}</DialogDescription>
         </DialogHeader>
-        <DialogFooter>
-          <ButtonGroup className="w-full">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => onOpenChange(false)}
-              disabled={isDeleting}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={handleConfirm}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Suppression..." : "Supprimer"}
-            </Button>
-          </ButtonGroup>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Suppression..." : "Supprimer"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -31,7 +31,6 @@ export const subTitles: Record<string, string> = {
   "content/components": "Composants",
   "content/blog": "Blog",
   "content/media": "M\u00e9diath\u00e8que",
-  "content/blog/auto-config": "Auto Blog",
 }
 
 /** Parent route href mapping for breadcrumb links */
@@ -63,25 +62,6 @@ export function getBreadcrumbData(pathname: string): BreadcrumbData {
 
   const firstSegment = segments[0] as string
   const secondSegment = segments[1] as string | undefined
-  const thirdSegment = segments[2] as string | undefined
-
-  // Check for a three-segment sub-page match (e.g. "content/blog/auto-config")
-  if (secondSegment && thirdSegment) {
-    const tripleKey = `${firstSegment}/${secondSegment}/${thirdSegment}`
-    const tripleTitle = subTitles[tripleKey]
-
-    if (tripleTitle) {
-      const parentKey = `${firstSegment}/${secondSegment}`
-      const parentLabel = subTitles[parentKey] ?? secondSegment
-      const parentHref = `/${firstSegment}/${secondSegment}`
-
-      return {
-        parentLabel,
-        parentHref,
-        currentLabel: tripleTitle,
-      }
-    }
-  }
 
   // Check for a two-segment sub-page match (e.g. "games/catalog")
   if (secondSegment) {

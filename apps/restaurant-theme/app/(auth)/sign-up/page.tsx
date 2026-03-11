@@ -5,7 +5,6 @@ import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useCmsPage } from "@/lib/cms";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -14,10 +13,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const { block } = useCmsPage("sign-up");
-  const hero = block("hero");
-  const form = block("form");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +45,7 @@ export default function SignUpPage() {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="mb-6 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          {hero.field("title").text ?? "Créer un compte"}
+          Créer un compte
         </h1>
 
         {error && (
@@ -120,9 +115,7 @@ export default function SignUpPage() {
             disabled={loading}
             className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
-            {loading
-              ? "Création en cours..."
-              : (form.field("submitLabel").text ?? "Créer un compte")}
+            {loading ? "Création en cours..." : "Créer un compte"}
           </button>
         </form>
 
@@ -132,7 +125,7 @@ export default function SignUpPage() {
             href="/sign-in"
             className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
           >
-            {form.field("signinLink").text ?? "Se connecter"}
+            Se connecter
           </Link>
         </p>
       </div>

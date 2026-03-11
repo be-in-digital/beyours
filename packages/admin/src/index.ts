@@ -20,9 +20,7 @@ export {
   StoreSelector,
   SidebarUserMenu,
   StoreGuard,
-  ImageUpload,
 } from "./components"
-export type { ImageUploadProps } from "./components"
 
 // Stores
 export { useAdminAuthStore } from "./stores/admin-auth-store"
@@ -62,18 +60,10 @@ export { InventoryPage } from "./pages/inventory"
 export { StoresPage, StoreDetailPage, StoresTable, StoresPagination } from "./pages/stores"
 export { TeamPage } from "./pages/team"
 export { SettingsPage } from "./pages/settings"
-export { GamesDashboardPage, GamesCatalogPage, QRCodesPage, ActionsPage, WinnersPage, GamesSettingsPage } from "./pages/games"
+export { GamesPage } from "./pages/games"
 export { KitchenPage } from "./pages/kitchen"
 export { CategoriesPage } from "./pages/categories"
 export { LanguagesPage } from "./pages/languages"
 export { DesignPage } from "./pages/design"
 export { PaymentsPage } from "./pages/payments"
 export { PromotionsPage } from "./pages/promotions"
-export {
-  EmailDashboardPage,
-  EmailCampaignsPage,
-  EmailTemplatesPage,
-  EmailSubscribersPage,
-  EmailSegmentsPage,
-  EmailConfigPage,
-} from "./pages/email"

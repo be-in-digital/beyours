@@ -12,13 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@beindigital-engine/ui"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@beindigital-engine/ui"
 import { Input, Label } from "@beindigital-engine/ui"
 import { toast } from "sonner"
 import {
@@ -29,12 +22,11 @@ import {
   Truck,
   XCircle,
 } from "lucide-react"
-import type { OrderSource, OrderStatus } from "../../lib/types"
+import type { OrderStatus } from "../../lib/types"
 
 type OrderStatusActionsProps = {
   orderId: string
   currentStatus: OrderStatus
-  source: OrderSource
 }
 
 type ButtonVariant = "default" | "destructive" | "outline" | "secondary"
@@ -45,67 +37,6 @@ interface StatusAction {
   variant: ButtonVariant
   icon: React.ComponentType<{ className?: string }>
   requiresReason?: boolean
-}
-
-// === Cancellation reasons per platform ===
-
-type CancellationReasonOption = {
-  code: string
-  label: string
-}
-
-const UBER_EATS_REASONS: CancellationReasonOption[] = [
-  { code: "OUT_OF_ITEMS", label: "Rupture de stock" },
-  { code: "KITCHEN_CLOSED", label: "Cuisine fermée" },
-  { code: "CUSTOMER_CALLED_TO_CANCEL", label: "Demande du client" },
-  { code: "RESTAURANT_TOO_BUSY", label: "Restaurant surchargé" },
-  { code: "CANNOT_COMPLETE_CUSTOMER_NOTE", label: "Instructions client impossibles" },
-  { code: "OTHER", label: "Autre" },
-]
-
-const DELIVEROO_REASONS: CancellationReasonOption[] = [
-  { code: "items_out_of_stock", label: "Rupture de stock" },
-  { code: "store_busy", label: "Restaurant surchargé" },
-  { code: "store_closing", label: "Restaurant en fermeture" },
-  { code: "customer_request", label: "Demande du client" },
-  { code: "technical_issue", label: "Problème technique" },
-  { code: "other", label: "Autre" },
-]
-
-const WEBSITE_REASONS: CancellationReasonOption[] = [
-  { code: "out_of_stock", label: "Rupture de stock" },
-  { code: "store_busy", label: "Restaurant surchargé" },
-  { code: "store_closing", label: "Restaurant en fermeture" },
-  { code: "customer_request", label: "Demande du client" },
-  { code: "duplicate_order", label: "Commande en double" },
-  { code: "payment_issue", label: "Problème de paiement" },
-  { code: "other", label: "Autre" },
-]
-
-function getCancellationReasons(source: OrderSource): CancellationReasonOption[] {
-  switch (source) {
-    case "uber_eats":
-      return UBER_EATS_REASONS
-    case "deliveroo":
-      return DELIVEROO_REASONS
-    default:
-      return WEBSITE_REASONS
-  }
-}
-
-function isOtherReason(code: string): boolean {
-  return code.toLowerCase() === "other"
-}
-
-function formatCancellationReason(
-  code: string,
-  label: string,
-  details?: string
-): string {
-  if (details) {
-    return `${code}::${label}::${details}`
-  }
-  return `${code}::${label}`
 }
 
 /**
@@ -146,10 +77,10 @@ const statusTransitions: Record<OrderStatus, StatusAction[]> = {
   ],
   ready: [
     {
-      label: "Commande récupérée",
+      label: "Terminer la commande",
       nextStatus: "completed",
       variant: "default",
-      icon: PackageCheck,
+      icon: CheckCircle,
     },
     {
       label: "Envoyer en livraison",
@@ -166,8 +97,6 @@ const statusTransitions: Record<OrderStatus, StatusAction[]> = {
       icon: CheckCircle,
     },
   ],
-  // "delivered" auto-completes on the backend, but keep manual action
-  // for any legacy orders still in "delivered" status
   delivered: [
     {
       label: "Terminer la commande",
@@ -187,11 +116,9 @@ const statusTransitions: Record<OrderStatus, StatusAction[]> = {
 export function OrderStatusActions({
   orderId,
   currentStatus,
-  source,
 }: OrderStatusActionsProps) {
   const [showCancelDialog, setShowCancelDialog] = useState(false)
-  const [selectedReasonCode, setSelectedReasonCode] = useState("")
-  const [customReason, setCustomReason] = useState("")
+  const [cancellationReason, setCancellationReason] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -199,14 +126,6 @@ export function OrderStatusActions({
   const updateStatus = useMutation(api?.orders?.updateStatus ?? ("skip" as never))
 
   const availableActions = statusTransitions[currentStatus]
-  const reasons = getCancellationReasons(source)
-  const selectedReason = reasons.find((r) => r.code === selectedReasonCode)
-  const showCustomInput = selectedReason && isOtherReason(selectedReason.code)
-
-  const isCancelDisabled =
-    isLoading ||
-    !selectedReasonCode ||
-    (showCustomInput && !customReason.trim())
 
   /**
    * Handle status transition
@@ -227,8 +146,7 @@ export function OrderStatusActions({
 
       // Reset dialog state
       setShowCancelDialog(false)
-      setSelectedReasonCode("")
-      setCustomReason("")
+      setCancellationReason("")
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erreur inconnue"
       toast.error(`Échec de la mise à jour du statut: ${message}`)
@@ -236,21 +154,6 @@ export function OrderStatusActions({
     } finally {
       setIsLoading(false)
     }
-  }
-
-  /**
-   * Handle cancellation confirmation
-   */
-  const handleCancelConfirm = () => {
-    if (!selectedReason) return
-
-    const formattedReason = formatCancellationReason(
-      selectedReason.code,
-      selectedReason.label,
-      showCustomInput ? customReason.trim() : undefined
-    )
-
-    handleStatusChange("cancelled", formattedReason)
   }
 
   /**
@@ -262,17 +165,6 @@ export function OrderStatusActions({
     } else {
       handleStatusChange(action.nextStatus)
     }
-  }
-
-  /**
-   * Reset dialog state on close
-   */
-  const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      setSelectedReasonCode("")
-      setCustomReason("")
-    }
-    setShowCancelDialog(open)
   }
 
   // No actions available for completed or cancelled orders
@@ -306,64 +198,41 @@ export function OrderStatusActions({
       </div>
 
       {/* Cancellation Dialog */}
-      <Dialog open={showCancelDialog} onOpenChange={handleDialogClose}>
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Annuler la commande</DialogTitle>
             <DialogDescription>
-              Sélectionnez un motif d&apos;annulation.
+              Veuillez fournir un motif d&apos;annulation.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Motif d&apos;annulation</Label>
-              <Select
-                value={selectedReasonCode}
-                onValueChange={(value) => {
-                  setSelectedReasonCode(value)
-                  setCustomReason("")
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir un motif..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {reasons.map((reason) => (
-                    <SelectItem key={reason.code} value={reason.code}>
-                      {reason.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {showCustomInput && (
-              <div className="space-y-2">
-                <Label htmlFor="custom-reason">Précisez le motif</Label>
-                <Input
-                  id="custom-reason"
-                  placeholder="Décrivez le motif d'annulation..."
-                  value={customReason}
-                  onChange={(e) => setCustomReason(e.target.value)}
-                />
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="reason">Motif d&apos;annulation</Label>
+            <Input
+              id="reason"
+              placeholder="ex : Rupture de stock, Demande du client..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+            />
           </div>
 
           <DialogFooter>
             <ButtonGroup>
               <Button
                 variant="outline"
-                onClick={() => handleDialogClose(false)}
+                onClick={() => {
+                  setShowCancelDialog(false)
+                  setCancellationReason("")
+                }}
                 disabled={isLoading}
               >
                 Fermer
               </Button>
               <Button
                 variant="destructive"
-                onClick={handleCancelConfirm}
-                disabled={isCancelDisabled}
+                onClick={() => handleStatusChange("cancelled", cancellationReason)}
+                disabled={isLoading || !cancellationReason.trim()}
               >
                 Annuler la commande
               </Button>
