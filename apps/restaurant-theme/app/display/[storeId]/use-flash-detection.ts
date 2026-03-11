@@ -1,13 +1,10 @@
 "use client"
 
-import { useRef, useState, useEffect, useMemo } from "react"
+import { useRef, useState, useEffect } from "react"
 
 export function useFlashDetection(readyIds: string[]): Set<string> {
   const prevIdsRef = useRef<Set<string>>(new Set())
   const [flashingIds, setFlashingIds] = useState<Set<string>>(new Set())
-
-  // Stabilize readyIds to avoid unnecessary effect runs
-  const readyIdsKey = useMemo(() => readyIds.slice().sort().join(","), [readyIds])
 
   // Detect new IDs via effect (not during render) to comply with React 19 rules
   useEffect(() => {
@@ -20,10 +17,13 @@ export function useFlashDetection(readyIds: string[]): Set<string> {
     prevIdsRef.current = new Set(readyIds)
 
     if (newIds.size > 0) {
-      setFlashingIds(newIds)
+      setFlashingIds(prev => {
+        const merged = new Set(prev)
+        for (const id of newIds) merged.add(id)
+        return merged
+      })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readyIdsKey])
+  }, [readyIds])
 
   // Auto-clear flashing after 3 seconds
   useEffect(() => {

@@ -62,17 +62,16 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" }, // 15 EUR cash
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     // Validate meal_card_payment is present
     expect(order).toHaveProperty("meal_card_payment");
-    expect(order.meal_card_payment.fractional).toBe(1000);
-    expect(order.meal_card_payment.currency_code).toBe("EUR");
+    expect(order.meal_card_payment!.fractional).toBe(1000);
+    expect(order.meal_card_payment!.currency_code).toBe("EUR");
 
     log.success("meal_card_payment field validated");
     log.info(
-      `  - Meal card payment: EUR ${order.meal_card_payment.fractional / 100}`,
+      `  - Meal card payment: EUR ${order.meal_card_payment!.fractional / 100}`,
     );
   });
 
@@ -94,12 +93,11 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: cashDue, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     // Verify calculation: meal_card + cash_due = total_price
     const calculatedTotal =
-      order.meal_card_payment.fractional + order.cash_due.fractional;
+      order.meal_card_payment!.fractional + order.cash_due!.fractional;
     expect(calculatedTotal).toBe(order.total_price.fractional);
 
     log.success("cash_due calculation validated");
@@ -125,11 +123,10 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 0, currency_code: "EUR" }, // No cash needed
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
-    expect(order.meal_card_payment.fractional).toBe(totalPrice);
-    expect(order.cash_due.fractional).toBe(0);
+    expect(order.meal_card_payment!.fractional).toBe(totalPrice);
+    expect(order.cash_due!.fractional).toBe(0);
 
     log.success("100% meal card payment validated");
     log.info("  Full payment on meal card");
@@ -152,11 +149,10 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: totalPrice, currency_code: "EUR" }, // 100% cash
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
-    expect(order.meal_card_payment.fractional).toBe(0);
-    expect(order.cash_due.fractional).toBe(totalPrice);
+    expect(order.meal_card_payment!.fractional).toBe(0);
+    expect(order.cash_due!.fractional).toBe(totalPrice);
 
     log.success("100% cash payment validated");
     log.info("  No meal card used");
@@ -207,12 +203,11 @@ describe("Scenario 9: Meal Card Payment", () => {
         cash_due: { fractional: scenario.cash, currency_code: "EUR" },
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+      const order = webhook.body.order;
 
       // Verify sum
       const sum =
-        order.meal_card_payment.fractional + order.cash_due.fractional;
+        order.meal_card_payment!.fractional + order.cash_due!.fractional;
       expect(sum).toBe(scenario.total);
 
       log.info(
@@ -244,14 +239,13 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: cashDue, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     // Payment split should apply to discounted price
     const paymentSum =
-      order.meal_card_payment.fractional + order.cash_due.fractional;
+      order.meal_card_payment!.fractional + order.cash_due!.fractional;
     expect(paymentSum).toBe(order.total_price.fractional);
-    expect(order.offer_discount.fractional).toBe(discount);
+    expect(order.offer_discount!.fractional).toBe(discount);
 
     log.success("Meal card with discounts validated");
     log.info(`  - Original: EUR ${originalPrice / 100}`);
@@ -275,13 +269,12 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     // All monetary values should have the same currency
     expect(order.total_price.currency_code).toBe("EUR");
-    expect(order.meal_card_payment.currency_code).toBe("EUR");
-    expect(order.cash_due.currency_code).toBe("EUR");
+    expect(order.meal_card_payment!.currency_code).toBe("EUR");
+    expect(order.cash_due!.currency_code).toBe("EUR");
 
     log.success("Currency consistency validated");
     log.info("  All amounts in EUR");
@@ -300,14 +293,13 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     // Check field structure
     expect(order.meal_card_payment).toHaveProperty("fractional");
     expect(order.meal_card_payment).toHaveProperty("currency_code");
-    expect(typeof order.meal_card_payment.fractional).toBe("number");
-    expect(typeof order.meal_card_payment.currency_code).toBe("string");
+    expect(typeof order.meal_card_payment!.fractional).toBe("number");
+    expect(typeof order.meal_card_payment!.currency_code).toBe("string");
 
     // Same for cash_due
     expect(order.cash_due).toHaveProperty("fractional");
@@ -332,11 +324,10 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = webhook.body.order as any;
+    const order = webhook.body.order;
 
     expect(order).toHaveProperty("id");
-    expect(order.meal_card_payment.fractional).toBeGreaterThan(0);
+    expect(order.meal_card_payment!.fractional).toBeGreaterThan(0);
 
     log.success("Sync status requirement validated");
     log.info(
@@ -359,8 +350,7 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 2499, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((tinyMealCard.body.order as any).meal_card_payment.fractional).toBe(1);
+    expect(tinyMealCard.body.order.meal_card_payment!.fractional).toBe(1);
 
     // Edge case 2: Large meal card amount
     const largeMealCard = createNewOrderWebhook({
@@ -369,10 +359,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 0, currency_code: "EUR" },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((largeMealCard.body.order as any).meal_card_payment.fractional).toBe(10000);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((largeMealCard.body.order as any).cash_due.fractional).toBe(0);
+    expect(largeMealCard.body.order.meal_card_payment!.fractional).toBe(10000);
+    expect(largeMealCard.body.order.cash_due!.fractional).toBe(0);
 
     log.success("Meal card edge cases validated");
     log.info("  Minimal meal card amount (EUR 0.01)");

@@ -38,9 +38,7 @@ function DisplaySettingsForm({ store, storeId }: { store: Doc<"stores">; storeId
     }
   }
 
-  const displayUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/display/${storeId}`
-    : ""
+  const displayUrl = `${window.location.origin}/display/${storeId}`
 
   return (
     <div className="space-y-6">

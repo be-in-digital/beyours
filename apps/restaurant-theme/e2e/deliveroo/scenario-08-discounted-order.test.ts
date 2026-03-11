@@ -69,11 +69,11 @@ describe("Scenario 8: Discounted Order", () => {
 
     // Validate offer_discount is present
     expect(order).toHaveProperty("offer_discount");
-    expect(order.offer_discount.fractional).toBe(500);
-    expect(order.offer_discount.currency_code).toBe("EUR");
+    expect(order.offer_discount!.fractional).toBe(500);
+    expect(order.offer_discount!.currency_code).toBe("EUR");
 
     log.success("offer_discount field validated");
-    log.info(`  - Discount amount: EUR ${order.offer_discount.fractional / 100}`);
+    log.info(`  - Discount amount: EUR ${order.offer_discount!.fractional / 100}`);
   });
 
   // ========================================================================
@@ -98,7 +98,7 @@ describe("Scenario 8: Discounted Order", () => {
     // Verify price calculation
     // total_price should be the final price after discount
     expect(order.total_price.fractional).toBe(finalPrice);
-    expect(order.offer_discount.fractional).toBe(discountAmount);
+    expect(order.offer_discount!.fractional).toBe(discountAmount);
 
     // Original price = final price + discount
     const calculatedOriginal = finalPrice + discountAmount;
@@ -212,7 +212,7 @@ describe("Scenario 8: Discounted Order", () => {
 
     // Total basket promotion applies to the whole order
     // Individual items don't have discount, but offer_discount is at order level
-    expect(order.offer_discount.fractional).toBe(250);
+    expect(order.offer_discount!.fractional).toBe(250);
 
     // Sum of item prices
     const itemsTotal = order.items.reduce(
@@ -222,11 +222,11 @@ describe("Scenario 8: Discounted Order", () => {
     );
 
     // Total price should be items total minus order discount
-    const _expectedTotal = itemsTotal - order.offer_discount.fractional;
+    const _expectedTotal = itemsTotal - order.offer_discount!.fractional;
 
     log.success("Total basket promotion validated");
     log.info(`  - Items subtotal: EUR ${itemsTotal / 100}`);
-    log.info(`  - Basket discount: -EUR ${order.offer_discount.fractional / 100}`);
+    log.info(`  - Basket discount: -EUR ${order.offer_discount!.fractional / 100}`);
     log.info(`  - Final total: EUR ${order.total_price.fractional / 100}`);
   });
 
@@ -246,7 +246,7 @@ describe("Scenario 8: Discounted Order", () => {
     const order = webhook.body.order;
 
     // When no discount, offer_discount should be 0
-    expect(order.offer_discount.fractional).toBe(0);
+    expect(order.offer_discount!.fractional).toBe(0);
 
     // total_price and partner_order_total should be equal
     expect(order.total_price.fractional).toBe(
@@ -314,7 +314,7 @@ describe("Scenario 8: Discounted Order", () => {
     expect(itemDiscount).toBe(300);
 
     // Total offer discount includes item discount + any basket promo
-    const totalDiscount = order.offer_discount.fractional;
+    const totalDiscount = order.offer_discount!.fractional;
     expect(totalDiscount).toBeGreaterThanOrEqual(itemDiscount);
 
     log.success("Discount types differentiated");
@@ -341,7 +341,7 @@ describe("Scenario 8: Discounted Order", () => {
     // All monetary values should have the same currency
     expect(order.total_price.currency_code).toBe("EUR");
     expect(order.partner_order_total.currency_code).toBe("EUR");
-    expect(order.offer_discount.currency_code).toBe("EUR");
+    expect(order.offer_discount!.currency_code).toBe("EUR");
 
     log.success("Currency consistency validated");
     log.info("  All prices in same currency (EUR)");
@@ -365,7 +365,7 @@ describe("Scenario 8: Discounted Order", () => {
     const order = webhook.body.order;
 
     expect(order).toHaveProperty("id");
-    expect(order.offer_discount.fractional).toBeGreaterThan(0);
+    expect(order.offer_discount!.fractional).toBeGreaterThan(0);
 
     // Send actual webhook
     const response = await sendWebhook(webhook);
@@ -393,7 +393,7 @@ describe("Scenario 8: Discounted Order", () => {
     });
 
     expect(freeOrder.body.order.total_price.fractional).toBe(0);
-    expect(freeOrder.body.order.offer_discount.fractional).toBe(2500);
+    expect(freeOrder.body.order.offer_discount!.fractional).toBe(2500);
 
     // Edge case 2: Very small discount (EUR 0.01)
     const tinyDiscount = createNewOrderWebhook({
@@ -402,7 +402,7 @@ describe("Scenario 8: Discounted Order", () => {
       offer_discount: { fractional: 1, currency_code: "EUR" },
     });
 
-    expect(tinyDiscount.body.order.offer_discount.fractional).toBe(1);
+    expect(tinyDiscount.body.order.offer_discount!.fractional).toBe(1);
 
     log.success("Discount edge cases validated");
     log.info("  100% discount (free order)");

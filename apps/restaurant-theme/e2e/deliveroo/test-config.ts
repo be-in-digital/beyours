@@ -12,9 +12,9 @@ import crypto from "node:crypto";
 export const config = {
   CONVEX_SITE_URL: process.env.CONVEX_SITE_URL || "https://reliable-parrot-452.convex.site",
   WEBHOOK_SECRET: process.env.DELIVEROO_WEBHOOK_SECRET || process.env.DELIVEROO_CLIENT_SECRET || "",
-  CLIENT_ID: process.env.DELIVEROO_CLIENT_ID || "2vstbij3e5nvmfft92asns21t7",
-  CLIENT_SECRET: process.env.DELIVEROO_CLIENT_SECRET || "10kal3tfeuobmmqokgnfbh6ijadlejq76v8b8ukqtt97739q0ng0",
-  BRAND_ID: process.env.DELIVEROO_BRAND_ID || "9cc73c05-a450-4c58-b897-680408d89fdf",
+  CLIENT_ID: process.env.DELIVEROO_CLIENT_ID || "",
+  CLIENT_SECRET: process.env.DELIVEROO_CLIENT_SECRET || "",
+  BRAND_ID: process.env.DELIVEROO_BRAND_ID || "",
   SITE_ID: process.env.DELIVEROO_SITE_ID || "SFM-MRS-PRA-01",
   IS_SANDBOX: true,
   // Convex HTTP route for Deliveroo webhooks
@@ -81,11 +81,44 @@ export function generateOrderNumber(): string {
 // Common Webhook Builders
 // ============================================================================
 
+interface DeliverooPrice {
+  fractional: number;
+  currency_code: string;
+}
+
+interface DeliverooWebhookOrder {
+  id: string;
+  order_number: string;
+  location_id: string;
+  display_id: string;
+  status: string;
+  status_log: Array<{ at: string; status: string }>;
+  fulfillment_type: string;
+  asap: boolean;
+  total_price: DeliverooPrice;
+  partner_order_total: DeliverooPrice;
+  items: Array<Record<string, unknown>>;
+  start_preparing_at: string;
+  confirm_at?: string;
+  offer_discount?: DeliverooPrice;
+  meal_card_payment?: DeliverooPrice;
+  cash_due?: DeliverooPrice;
+  customer?: Record<string, unknown>;
+  delivery_address?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface DeliverooWebhookPayload {
+  event: string;
+  body: {
+    order: DeliverooWebhookOrder;
+  };
+}
+
 /**
  * Create order.new webhook (Deliveroo order.created format)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createNewOrderWebhook(overrides: Partial<Record<string, unknown>> = {}): any {
+export function createNewOrderWebhook(overrides: Partial<Record<string, unknown>> = {}): DeliverooWebhookPayload {
   const orderId = (overrides.id as string) || generateOrderId("new");
   const orderNumber = (overrides.order_number as string) || generateOrderNumber();
 

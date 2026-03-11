@@ -21,7 +21,12 @@ export function TrackingCountdown({
   useEffect(() => {
     if (!estimatedReadyAt || status === "ready" || status === "completed") return
 
-    const id = setInterval(forceUpdate, 1000)
+    const id = setInterval(() => {
+      if (estimatedReadyAt - Date.now() <= 0) {
+        clearInterval(id)
+      }
+      forceUpdate()
+    }, 1000)
     return () => clearInterval(id)
   }, [estimatedReadyAt, status])
 
