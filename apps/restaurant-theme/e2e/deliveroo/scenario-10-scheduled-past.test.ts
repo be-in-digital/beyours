@@ -257,7 +257,8 @@ describe("Scenario 10: Scheduled in Past Order", () => {
       confirm_at: pastConfirm,
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // Both timestamps are in the past
     if (order.confirm_at) {

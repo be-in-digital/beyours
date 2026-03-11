@@ -62,7 +62,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" }, // 15 EUR cash
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // Validate meal_card_payment is present
     expect(order).toHaveProperty("meal_card_payment");
@@ -93,7 +94,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: cashDue, currency_code: "EUR" },
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // Verify calculation: meal_card + cash_due = total_price
     const calculatedTotal =
@@ -123,7 +125,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 0, currency_code: "EUR" }, // No cash needed
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     expect(order.meal_card_payment.fractional).toBe(totalPrice);
     expect(order.cash_due.fractional).toBe(0);
@@ -149,7 +152,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: totalPrice, currency_code: "EUR" }, // 100% cash
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     expect(order.meal_card_payment.fractional).toBe(0);
     expect(order.cash_due.fractional).toBe(totalPrice);
@@ -203,7 +207,8 @@ describe("Scenario 9: Meal Card Payment", () => {
         cash_due: { fractional: scenario.cash, currency_code: "EUR" },
       });
 
-      const order = webhook.body.order;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
       // Verify sum
       const sum =
@@ -239,7 +244,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: cashDue, currency_code: "EUR" },
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // Payment split should apply to discounted price
     const paymentSum =
@@ -269,7 +275,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // All monetary values should have the same currency
     expect(order.total_price.currency_code).toBe("EUR");
@@ -293,7 +300,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     // Check field structure
     expect(order.meal_card_payment).toHaveProperty("fractional");
@@ -324,7 +332,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 1500, currency_code: "EUR" },
     });
 
-    const order = webhook.body.order;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = webhook.body.order as any;
 
     expect(order).toHaveProperty("id");
     expect(order.meal_card_payment.fractional).toBeGreaterThan(0);
@@ -350,7 +359,7 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 2499, currency_code: "EUR" },
     });
 
-    expect(tinyMealCard.body.order.meal_card_payment.fractional).toBe(1);
+    expect((tinyMealCard.body.order as any).meal_card_payment.fractional).toBe(1);
 
     // Edge case 2: Large meal card amount
     const largeMealCard = createNewOrderWebhook({
@@ -359,8 +368,8 @@ describe("Scenario 9: Meal Card Payment", () => {
       cash_due: { fractional: 0, currency_code: "EUR" },
     });
 
-    expect(largeMealCard.body.order.meal_card_payment.fractional).toBe(10000);
-    expect(largeMealCard.body.order.cash_due.fractional).toBe(0);
+    expect((largeMealCard.body.order as any).meal_card_payment.fractional).toBe(10000);
+    expect((largeMealCard.body.order as any).cash_due.fractional).toBe(0);
 
     log.success("Meal card edge cases validated");
     log.info("  Minimal meal card amount (EUR 0.01)");
