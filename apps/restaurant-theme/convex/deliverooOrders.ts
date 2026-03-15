@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 /**
  * Accept a Deliveroo order.
@@ -41,9 +42,11 @@ export const acceptOrder = action({
       }
 
       // 3. Get credentials from env
-      const clientId = process.env.DELIVEROO_CLIENT_ID;
-      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+      const pkg = getPackageEnv();
+      const site = getSiteEnv();
+      const clientId = pkg.DELIVEROO_CLIENT_ID;
+      const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
       if (!clientId || !clientSecret) {
         return { success: false, error: "Deliveroo API credentials not configured" };
@@ -111,9 +114,11 @@ export const rejectOrder = action({
       }
 
       // 3. Get credentials from env
-      const clientId = process.env.DELIVEROO_CLIENT_ID;
-      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+      const pkg = getPackageEnv();
+      const site = getSiteEnv();
+      const clientId = pkg.DELIVEROO_CLIENT_ID;
+      const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
       if (!clientId || !clientSecret) {
         return { success: false, error: "Deliveroo API credentials not configured" };
@@ -182,9 +187,11 @@ export const updatePrepStage = action({
       }
 
       // 3. Get credentials from env
-      const clientId = process.env.DELIVEROO_CLIENT_ID;
-      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+      const pkg = getPackageEnv();
+      const site = getSiteEnv();
+      const clientId = pkg.DELIVEROO_CLIENT_ID;
+      const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
       if (!clientId || !clientSecret) {
         return { success: false, error: "Deliveroo API credentials not configured" };
