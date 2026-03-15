@@ -16,13 +16,16 @@ export function useFlashDetection(readyIds: string[]): Set<string> {
     }
     prevIdsRef.current = new Set(readyIds)
 
-    if (newIds.size > 0) {
+    if (newIds.size === 0) return
+
+    const timer = setTimeout(() => {
       setFlashingIds(prev => {
         const merged = new Set(prev)
         for (const id of newIds) merged.add(id)
         return merged
       })
-    }
+    }, 0)
+    return () => clearTimeout(timer)
   }, [readyIds])
 
   // Auto-clear flashing after 3 seconds
