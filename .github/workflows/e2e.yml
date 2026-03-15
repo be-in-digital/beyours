@@ -11,8 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
-      CONVEX_SITE_URL: https://placeholder.convex.site
+      # Site-level (dedicated Convex test deployment)
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL || 'https://placeholder.convex.cloud' }}
+      CONVEX_SITE_URL: ${{ secrets.E2E_CONVEX_SITE_URL || 'https://placeholder.convex.site' }}
+      CONVEX_DEPLOYMENT: ${{ secrets.E2E_CONVEX_DEPLOYMENT }}
+      BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
+      BETTER_AUTH_URL: http://localhost:3000
+      ENCRYPTION_KEY: ${{ secrets.E2E_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
+      # Package-level (BeInDigital infrastructure)
+      AWS_REGION: ${{ secrets.E2E_AWS_REGION || 'eu-west-3' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.E2E_AWS_ACCESS_KEY_ID || 'placeholder' }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.E2E_AWS_SECRET_ACCESS_KEY || 'placeholder' }}
+      OPENAI_API_KEY: ${{ secrets.E2E_OPENAI_API_KEY || 'sk-placeholder' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,13 +55,53 @@ jobs:
       - name: Build application
         run: pnpm build
 
+      - name: Check E2E secrets configured
+        id: check-secrets
+        run: |
+          if [ "${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL }}" = "" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::E2E secrets not configured. Skipping Playwright tests. See _project/ENVIRONMENT_VARIABLES.md for setup instructions."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Seed test users
+        if: steps.check-secrets.outputs.configured == 'true'
+        working-directory: apps/restaurant-theme
+        run: |
+          # Start dev server in background for seeding
+          pnpm dev &
+          DEV_PID=$!
+
+          # Wait for server to be ready
+          echo "Waiting for dev server..."
+          for i in $(seq 1 60); do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+              echo "Dev server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          # Run seed (idempotent - skips existing users)
+          npx tsx scripts/seed-users.mts || true
+
+          # Stop dev server
+          kill $DEV_PID 2>/dev/null || true
+          wait $DEV_PID 2>/dev/null || true
+
       - name: Run Playwright tests
+        if: steps.check-secrets.outputs.configured == 'true'
         run: pnpm test:e2e
         env:
           CI: true
 
+      - name: Skip notice
+        if: steps.check-secrets.outputs.configured != 'true'
+        run: echo "::notice::E2E tests skipped - configure GitHub secrets to enable. See _project/ENVIRONMENT_VARIABLES.md"
+
       - name: Upload Playwright report
-        if: failure()
+        if: always() && steps.check-secrets.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -59,7 +109,7 @@ jobs:
           retention-days: 7
 
       - name: Upload test results
-        if: failure()
+        if: failure() && steps.check-secrets.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: test-results
