@@ -21,9 +21,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
     console.log(`[Deliveroo Webhook] Received - sig: ${signature ? "present" : "missing"}, guid: ${sequenceGuid || "none"}, bodyLen: ${rawBody.length}`);
 
-    // Read signing secret from environment
-    const webhookSecret = process.env.DELIVEROO_WEBHOOK_SECRET;
-    const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
+    // Read signing secret from environment (BeInDigital platform credentials)
+    const { getPackageEnv } = await import("@beindigital-engine/core/env");
+    const pkg = getPackageEnv();
+    const webhookSecret = pkg.DELIVEROO_WEBHOOK_SECRET;
+    const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
     const signingSecret = webhookSecret || clientSecret;
 
     if (!signingSecret) {
@@ -40,8 +42,13 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     console.log(`[Deliveroo Webhook] Signature verification: ${isValid ? "VALID" : "INVALID"}`);
 
     if (!isValid) {
-      // TODO: Re-enable strict check once we have the correct Deliveroo webhook signing secret
-      console.warn(`[Deliveroo Webhook] Signature mismatch - proceeding anyway (sandbox mode)`);
+      const { getSiteEnv } = await import("@beindigital-engine/core/env");
+      const site = getSiteEnv();
+      if (site.DELIVEROO_IS_SANDBOX !== "true") {
+        console.error("[Deliveroo Webhook] Invalid signature - rejecting");
+        return new Response("Invalid signature", { status: 401 });
+      }
+      console.warn("[Deliveroo Webhook] Invalid signature - proceeding (sandbox mode)");
     }
 
     // Parse the payload to determine event type
@@ -116,13 +123,7 @@ async function verifySignature(
     const isValid = await crypto.subtle.verify("HMAC", cryptoKey, sigBuffer, message);
 
     if (!isValid) {
-      // Debug: compute expected signature
-      const computed = await crypto.subtle.sign("HMAC", cryptoKey, message);
-      const computedHex = Array.from(new Uint8Array(computed))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      console.log(`[Sig Debug] Expected: ${cleanSig}, Computed: ${computedHex}`);
-      console.log(`[Sig Debug] Secret len=${secret.length}, prefix=${secret.substring(0, 5)}...`);
+      console.warn(`[Sig Debug] Signature mismatch - received: ${cleanSig.substring(0, 8)}..., secret configured: yes`);
     }
 
     return isValid;

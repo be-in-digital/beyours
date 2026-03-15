@@ -48,7 +48,8 @@ interface StripeAccountLinkResponse {
 async function encrypt(plaintext: string): Promise<string> {
   const { randomBytes, createCipheriv } = await import("crypto");
 
-  const hex = process.env.ENCRYPTION_KEY;
+  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const hex = getSiteEnv().ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
     throw new Error("ENCRYPTION_KEY must be a 64-character hex string");
   }
@@ -91,14 +92,16 @@ export const generateOAuthUrl = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const siteUrl = process.env.CONVEX_SITE_URL;
+    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const site = getSiteEnv();
+    const siteUrl = site.CONVEX_SITE_URL;
     if (!siteUrl) throw new Error("CONVEX_SITE_URL environment variable is not configured");
 
     // -----------------------------------------------------------------------
     // Stripe: Account Links flow (no OAuth, no Client ID needed)
     // -----------------------------------------------------------------------
     if (args.provider === "stripe") {
-      const stripeKey = process.env.STRIPE_SECRET_KEY;
+      const stripeKey = site.STRIPE_SECRET_KEY;
       if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
 
       // 1. Create a Standard connected account
@@ -141,7 +144,7 @@ export const generateOAuthUrl = action({
     // SumUp: Standard OAuth flow
     // -----------------------------------------------------------------------
     const config = OAUTH_PROVIDERS.sumup;
-    const clientId = process.env[config.envClientId];
+    const clientId = site.SUMUP_CLIENT_ID;
     if (!clientId) {
       throw new Error(`${config.envClientId} environment variable is not configured`);
     }
@@ -182,18 +185,19 @@ export const exchangeOAuthToken = internalAction({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const config = OAUTH_PROVIDERS.sumup;
-    const clientId = process.env[config.envClientId];
-    const clientSecret = process.env[config.envClientSecret];
+    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const siteEnv = getSiteEnv();
+    const clientId = siteEnv.SUMUP_CLIENT_ID;
+    const clientSecret = siteEnv.SUMUP_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
       throw new Error("Missing SumUp credentials");
     }
 
-    const siteUrl = process.env.CONVEX_SITE_URL ?? "";
+    const siteUrl = siteEnv.CONVEX_SITE_URL ?? "";
     const redirectUri = `${siteUrl}/connect/sumup/callback`;
 
-    const res = await fetch(config.tokenUrl, {
+    const res = await fetch(OAUTH_PROVIDERS.sumup.tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
