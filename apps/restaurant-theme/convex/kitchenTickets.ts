@@ -147,10 +147,13 @@ export const incrementPrintCount = mutation({
 /**
  * Helper: get Uber Eats credentials from env vars.
  */
-function getUberEatsCredentials() {
-  const clientId = process.env.UBER_EATS_CLIENT_ID;
-  const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
-  const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
+async function getUberEatsCredentials() {
+  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
+  const pkg = getPackageEnv();
+  const site = getSiteEnv();
+  const clientId = pkg.UBER_EATS_CLIENT_ID;
+  const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
+  const sandboxMode = site.UBER_EATS_SANDBOX_MODE === "true";
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret, sandboxMode };
 }
@@ -158,10 +161,13 @@ function getUberEatsCredentials() {
 /**
  * Helper: get Deliveroo credentials from env vars.
  */
-function getDeliverooCredentials() {
-  const clientId = process.env.DELIVEROO_CLIENT_ID;
-  const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-  const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+async function getDeliverooCredentials() {
+  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
+  const pkg = getPackageEnv();
+  const site = getSiteEnv();
+  const clientId = pkg.DELIVEROO_CLIENT_ID;
+  const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+  const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret, sandboxMode };
 }
@@ -201,7 +207,7 @@ export const acceptTicket = action({
 
     if (ticket.source === "uber_eats") {
       try {
-        const creds = getUberEatsCredentials();
+        const creds = await getUberEatsCredentials();
         if (creds) {
           const { uberEats } = await import("@beindigital-engine/integrations");
           await uberEats.acceptOrder(creds, externalId);
@@ -214,7 +220,7 @@ export const acceptTicket = action({
 
     if (ticket.source === "deliveroo") {
       try {
-        const creds = getDeliverooCredentials();
+        const creds = await getDeliverooCredentials();
         if (creds) {
           const { deliveroo } = await import("@beindigital-engine/integrations");
           await deliveroo.acceptOrder(creds, externalId);
@@ -263,7 +269,7 @@ export const readyTicket = action({
 
     if (ticket.source === "deliveroo" && externalId) {
       try {
-        const creds = getDeliverooCredentials();
+        const creds = await getDeliverooCredentials();
         if (creds) {
           const { deliveroo } = await import("@beindigital-engine/integrations");
           await deliveroo.updatePrepStage(creds, externalId, "ready");
@@ -364,7 +370,7 @@ export const cancelTicket = action({
 
     if (ticket.source === "uber_eats") {
       try {
-        const creds = getUberEatsCredentials();
+        const creds = await getUberEatsCredentials();
         if (creds) {
           const { uberEats } = await import("@beindigital-engine/integrations");
           if (wasAccepted) {
@@ -390,7 +396,7 @@ export const cancelTicket = action({
 
     if (ticket.source === "deliveroo") {
       try {
-        const creds = getDeliverooCredentials();
+        const creds = await getDeliverooCredentials();
         if (creds) {
           const { deliveroo } = await import("@beindigital-engine/integrations");
           if (!wasAccepted) {
