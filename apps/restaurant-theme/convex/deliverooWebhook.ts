@@ -117,8 +117,8 @@ type StoreIntegrationRecord = {
 // Helpers
 // ============================================================================
 
-function getDeliverooCredentials() {
-  const { getPackageEnv, getSiteEnv } = require("@beindigital-engine/core/env") as typeof import("@beindigital-engine/core/env");
+async function getDeliverooCredentials() {
+  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
   const pkg = getPackageEnv();
   const site = getSiteEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
@@ -202,7 +202,7 @@ export const processOrderWebhook = internalAction({
         };
       }
 
-      const credentials = getDeliverooCredentials();
+      const credentials = await getDeliverooCredentials();
 
       // ================================================================
       // EVENT: order.new — New order placed
@@ -237,7 +237,7 @@ async function handleNewOrder(
   ctx: ActionCtx,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
-  credentials: ReturnType<typeof getDeliverooCredentials>
+  credentials: Awaited<ReturnType<typeof getDeliverooCredentials>>
 ) {
   const storeId = integration.storeId;
 
@@ -418,7 +418,7 @@ async function handleStatusUpdate(
   ctx: ActionCtx,
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
-  credentials: ReturnType<typeof getDeliverooCredentials>
+  credentials: Awaited<ReturnType<typeof getDeliverooCredentials>>
 ) {
   const status = order.status;
   const orderId = order.id;
@@ -562,7 +562,7 @@ export const confirmScheduledOrder = internalAction({
     internalOrderId: v.id("orders"),
   },
   handler: async (ctx, args) => {
-    const credentials = getDeliverooCredentials();
+    const credentials = await getDeliverooCredentials();
     if (!credentials) {
       console.error("No Deliveroo credentials for confirmScheduledOrder");
       return;

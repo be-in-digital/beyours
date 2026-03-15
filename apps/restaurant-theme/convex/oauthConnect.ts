@@ -48,7 +48,7 @@ interface StripeAccountLinkResponse {
 async function encrypt(plaintext: string): Promise<string> {
   const { randomBytes, createCipheriv } = await import("crypto");
 
-  const { getSiteEnv } = require("@beindigital-engine/core/env") as typeof import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@beindigital-engine/core/env");
   const hex = getSiteEnv().ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
     throw new Error("ENCRYPTION_KEY must be a 64-character hex string");
@@ -197,7 +197,7 @@ export const exchangeOAuthToken = internalAction({
     const siteUrl = siteEnv.CONVEX_SITE_URL ?? "";
     const redirectUri = `${siteUrl}/connect/sumup/callback`;
 
-    const res = await fetch(config.tokenUrl, {
+    const res = await fetch(OAUTH_PROVIDERS.sumup.tokenUrl, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
