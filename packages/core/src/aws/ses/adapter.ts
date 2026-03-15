@@ -8,6 +8,7 @@ import type { SESOperations } from './types'
 import type { AWSConfig, SESConfig } from '../types'
 import { createSESService } from './client'
 import type { SESService } from './client'
+import { getPackageEnv, getSiteEnv } from '../../env'
 
 /**
  * Creates SES operations using AWS SDK v3
@@ -82,24 +83,21 @@ export function createSESv2Operations(config: AWSConfig): SESOperations {
  * @throws {Error} If required environment variables are missing
  */
 export function getSESConfig(): SESConfig {
-  const region = process.env.AWS_REGION
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
-  const fromEmail = process.env.AWS_SES_FROM_EMAIL
+  const pkg = getPackageEnv()
+  const site = getSiteEnv()
 
-  if (!region || !accessKeyId || !secretAccessKey || !fromEmail) {
-    throw new Error(
-      'Missing required AWS SES environment variables: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SES_FROM_EMAIL'
-    )
+  const fromEmail = site.AWS_SES_FROM_EMAIL
+  if (!fromEmail) {
+    throw new Error('AWS_SES_FROM_EMAIL is required for SES')
   }
 
   return {
-    region,
-    accessKeyId,
-    secretAccessKey,
+    region: pkg.AWS_REGION,
+    accessKeyId: pkg.AWS_ACCESS_KEY_ID,
+    secretAccessKey: pkg.AWS_SECRET_ACCESS_KEY,
     fromEmail,
-    fromName: process.env.AWS_SES_FROM_NAME,
-    replyToEmail: process.env.AWS_SES_REPLY_TO_EMAIL,
+    fromName: site.AWS_SES_FROM_NAME,
+    replyToEmail: site.AWS_SES_REPLY_TO_EMAIL,
   }
 }
 

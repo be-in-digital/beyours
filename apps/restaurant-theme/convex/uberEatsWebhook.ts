@@ -27,10 +27,13 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     const signature = request.headers.get("x-uber-signature") ?? ""
 
     // Read credentials from environment variables (BeInDigital platform credentials)
-    const clientId = process.env.UBER_EATS_CLIENT_ID
-    const clientSecret = process.env.UBER_EATS_CLIENT_SECRET
-    const webhookSecret = process.env.UBER_EATS_WEBHOOK_SECRET
-    const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true"
+    const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env")
+    const pkg = getPackageEnv()
+    const site = getSiteEnv()
+    const clientId = pkg.UBER_EATS_CLIENT_ID
+    const clientSecret = pkg.UBER_EATS_CLIENT_SECRET
+    const webhookSecret = pkg.UBER_EATS_WEBHOOK_SECRET
+    const sandboxMode = site.UBER_EATS_SANDBOX_MODE === "true"
 
     if (!clientId || !clientSecret) {
       return new Response("Uber Eats credentials not configured in environment", { status: 503 })

@@ -118,9 +118,12 @@ type StoreIntegrationRecord = {
 // ============================================================================
 
 function getDeliverooCredentials() {
-  const clientId = process.env.DELIVEROO_CLIENT_ID;
-  const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-  const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+  const { getPackageEnv, getSiteEnv } = require("@beindigital-engine/core/env") as typeof import("@beindigital-engine/core/env");
+  const pkg = getPackageEnv();
+  const site = getSiteEnv();
+  const clientId = pkg.DELIVEROO_CLIENT_ID;
+  const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+  const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret, sandboxMode };
 }

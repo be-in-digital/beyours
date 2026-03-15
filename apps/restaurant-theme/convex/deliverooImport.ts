@@ -5,6 +5,7 @@ import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { generateSlug } from "@beindigital-engine/convex-functions";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 type CategoryRecord = {
   _id: Id<"categories">
@@ -68,9 +69,11 @@ export const importFromStore = action({
     }
 
     // 3. Get credentials
-    const clientId = process.env.DELIVEROO_CLIENT_ID;
-    const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-    const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+    const pkg = getPackageEnv();
+    const site = getSiteEnv();
+    const clientId = pkg.DELIVEROO_CLIENT_ID;
+    const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+    const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
     if (!clientId || !clientSecret) {
       return { success: false, error: "Deliveroo API credentials not configured", imported: 0, skipped: 0, categoriesCreated: 0 };

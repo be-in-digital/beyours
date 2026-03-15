@@ -5,6 +5,7 @@ import { action } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { generateSlug } from "@beindigital-engine/convex-functions"
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 type CategoryRecord = {
   _id: Id<"categories">
@@ -58,9 +59,11 @@ export const importFromStore = action({
     }
 
     // 3. Get credentials
-    const clientId = process.env.UBER_EATS_CLIENT_ID;
-    const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
-    const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
+    const pkg = getPackageEnv();
+    const site = getSiteEnv();
+    const clientId = pkg.UBER_EATS_CLIENT_ID;
+    const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
+    const sandboxMode = site.UBER_EATS_SANDBOX_MODE === "true";
 
     if (!clientId || !clientSecret) {
       return { success: false, error: "Uber Eats API credentials not configured", imported: 0, skipped: 0, categoriesCreated: 0 };

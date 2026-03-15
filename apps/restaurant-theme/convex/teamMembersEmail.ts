@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { randomUUID } from "crypto";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 const ROLE_LABELS: Record<string, string> = {
   manager: "Manager",
@@ -22,15 +23,16 @@ async function sendViaSES(params: {
   htmlBody: string;
   textBody: string;
 }) {
-  const region = process.env.AWS_REGION ?? "eu-west-1";
-  const fromEmail =
-    process.env.AWS_SES_FROM_EMAIL ?? "noreply@beindigital.fr";
+  const pkg = getPackageEnv();
+  const site = getSiteEnv();
+  const region = pkg.AWS_REGION;
+  const fromEmail = site.AWS_SES_FROM_EMAIL ?? "noreply@beindigital.fr";
 
   const client = new SESv2Client({
     region,
     credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      accessKeyId: pkg.AWS_ACCESS_KEY_ID,
+      secretAccessKey: pkg.AWS_SECRET_ACCESS_KEY,
     },
   });
 
@@ -197,9 +199,10 @@ export const sendInvitationEmail = action({
     });
 
     // Build invitation URL
+    const siteEnv = getSiteEnv();
     const appUrl =
-      process.env.SITE_URL ??
-      process.env.NEXT_PUBLIC_APP_URL ??
+      siteEnv.SITE_URL ??
+      siteEnv.NEXT_PUBLIC_APP_URL ??
       "https://app.beindigital.fr";
     const inviteUrl = `${appUrl}/invite/${token}`;
 
@@ -269,9 +272,10 @@ export const resendInvitationEmail = action({
 
     if (!member) throw new Error("Team member not found");
 
+    const siteEnv = getSiteEnv();
     const appUrl =
-      process.env.SITE_URL ??
-      process.env.NEXT_PUBLIC_APP_URL ??
+      siteEnv.SITE_URL ??
+      siteEnv.NEXT_PUBLIC_APP_URL ??
       "https://app.beindigital.fr";
     const inviteUrl = `${appUrl}/invite/${newToken}`;
 

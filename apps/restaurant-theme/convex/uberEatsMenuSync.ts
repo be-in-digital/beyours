@@ -10,6 +10,7 @@ import {
   type ProductRecord,
   type CategoryRecord,
 } from "@beindigital-engine/convex-functions/uberEatsMenuSync";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 /**
  * Sync menu to a single Uber Eats store.
@@ -83,9 +84,11 @@ export const syncStore = action({
       const menuPayload = buildUberEatsMenuPayload(products, categories, priceMarkup);
 
       // 8. Read credentials from environment
-      const clientId = process.env.UBER_EATS_CLIENT_ID;
-      const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
-      const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
+      const pkg = getPackageEnv();
+      const site = getSiteEnv();
+      const clientId = pkg.UBER_EATS_CLIENT_ID;
+      const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
+      const sandboxMode = site.UBER_EATS_SANDBOX_MODE === "true";
 
       if (!clientId || !clientSecret) {
         throw new Error("Uber Eats API credentials not configured in environment");
