@@ -1,5 +1,6 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/orders";
+import * as kitchenTicketDefs from "@beindigital-engine/convex-functions/kitchenTickets";
 import { v } from "convex/values";
 
 // === Queries (public for storefront) ===
@@ -53,8 +54,51 @@ export const getMyOrders = query({
 
 // === Mutations ===
 
-// Public: Guest checkout needs this
-export const create = mutation(defs.create);
+/**
+ * Create order + kitchen ticket in a single transaction.
+ * The kitchen ticket enables real-time tracking and KDS display.
+ */
+export const create = mutation({
+  args: defs.create.args,
+  handler: async (ctx, args) => {
+    // 1. Create the order
+    const orderId = await defs.create.handler(ctx, args);
+
+    // 2. Fetch the created order to get orderNumber and verified items
+    const order = await ctx.db.get(orderId) as any;
+    if (!order) throw new Error("Order creation failed");
+
+    // 3. Generate opaque tracking token
+    const trackingToken = crypto.randomUUID();
+
+    // 4. Map order items to kitchen ticket format
+    const ticketItems = order.items.map((item: any) => ({
+      productName: item.productName,
+      quantity: item.quantity,
+      options: item.selectedOptions?.map(
+        (o: any) => `${o.optionName}: ${o.choiceName ?? ""}`
+      ) ?? [],
+      notes: item.notes,
+    }));
+
+    // 5. Create kitchen ticket
+    await kitchenTicketDefs.create.handler(ctx, {
+      storeId: order.storeId,
+      orderId,
+      orderNumber: order.orderNumber,
+      orderType: order.type,
+      items: ticketItems,
+      priority: "normal",
+      source: "website",
+      trackingToken,
+      customerName: order.customerInfo?.name,
+      customerPhone: order.customerInfo?.phone,
+      deliveryNotes: order.notes,
+    });
+
+    return orderId;
+  },
+});
 
 // Protected: Admin only
 export const updateStatus = mutation({
