@@ -28,6 +28,7 @@ export * as uberEatsMenuSync from "./uberEatsMenuSync"
 export * as deliverooMenuSync from "./deliverooMenuSync"
 export * as paymentConnectionsDefs from "./paymentConnections"
 export * as promotions from "./promotions"
+export * as favorites from "./favorites"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"
