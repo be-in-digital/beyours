@@ -36,22 +36,25 @@ export function UserMenu({ variant = "solid" }: UserMenuProps) {
     setHasMounted(true)
   }, [])
 
-  // SSR et premier rendu client : toujours le même HTML (bouton connexion)
+  // SSR et premier rendu client : toujours le même HTML
+  // Utilise un <button> (pas un Link) pour éviter le mismatch d'hydration
+  // quand DropdownMenuTrigger injecte un <button> côté client
   if (!hasMounted || isPending || !session?.user) {
     return (
-      <Link href="/sign-in">
-        <Button
-          variant="ghost"
-          className={`h-10 rounded-full border px-4 font-black uppercase tracking-widest text-[10px] transition-all ${
-            variant === "transparent"
-              ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
-              : "bg-white border-zinc-100 shadow-sm text-[#0D5C3F] hover:bg-zinc-50"
-          }`}
-        >
+      <Button
+        variant="ghost"
+        asChild
+        className={`h-10 rounded-full border px-4 font-black uppercase tracking-widest text-[10px] transition-all ${
+          variant === "transparent"
+            ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
+            : "bg-white border-zinc-100 shadow-sm text-[#0D5C3F] hover:bg-zinc-50"
+        }`}
+      >
+        <Link href="/sign-in">
           <User className="mr-2 h-4 w-4" />
           Connexion
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     )
   }
 

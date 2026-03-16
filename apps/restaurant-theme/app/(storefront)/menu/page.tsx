@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect, Suspense } from "react"
+import Link from "next/link"
+import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Search, SlidersHorizontal, ChevronDown, X } from "lucide-react"
+import { Search, SlidersHorizontal, ChevronDown, ChevronRight, X, ArrowRight } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import {
@@ -318,6 +320,149 @@ function MenuContent() {
           totalPages={totalPages}
           onPageChange={setCurrentPage}
         />
+      </section>
+
+      {/* ─── DELIVERY APPS SECTION ─── */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto mb-24">
+        <div className="text-center mb-16">
+          <Badge className="bg-orange-500/10 text-orange-600 border-orange-200 px-4 py-1.5 rounded-full mb-6 font-black tracking-widest uppercase text-[10px]">
+            Livraison
+          </Badge>
+          <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-800 leading-tight">
+            Commandez aussi sur{" "}
+            <span className="text-orange-500 italic">vos apps</span>
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <a
+            href="https://www.ubereats.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-emerald-900/10 bg-[#06C167] hover:-translate-y-2 duration-300"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
+            <div className="h-24 w-full relative mb-8 flex items-center justify-center">
+              <div className="text-white text-4xl font-black tracking-tighter uppercase italic">Uber Eats</div>
+            </div>
+            <h3 className="text-2xl font-black text-white mb-4">Livraison rapide</h3>
+            <p className="text-white/80 font-medium mb-8 max-w-xs">
+              Recevez vos plats préférés directement chez vous
+            </p>
+            <Button className="h-14 px-8 rounded-2xl bg-white border-none font-black uppercase tracking-widest text-xs shadow-xl group-hover:px-10 transition-all text-[#06C167]">
+              Commander <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </a>
+
+          <a
+            href="https://www.deliveroo.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-emerald-900/10 bg-[#00CCBC] hover:-translate-y-2 duration-300"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
+            <div className="h-24 w-full relative mb-8 flex items-center justify-center">
+              <div className="text-white text-4xl font-black tracking-tighter uppercase italic">Deliveroo</div>
+            </div>
+            <h3 className="text-2xl font-black text-white mb-4">À votre porte</h3>
+            <p className="text-white/80 font-medium mb-8 max-w-xs">
+              Commandez et faites-vous livrer en quelques minutes
+            </p>
+            <Button className="h-14 px-8 rounded-2xl bg-white border-none font-black uppercase tracking-widest text-xs shadow-xl group-hover:px-10 transition-all text-[#00CCBC]">
+              Commander <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </a>
+        </div>
+      </section>
+
+      {/* ─── CTA SECTION ─── */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto mb-24">
+        <div className="relative rounded-[4rem] bg-orange-500 p-12 md:p-24 overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48" />
+          <div className="relative z-10 max-w-2xl">
+            <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-6 font-black tracking-widest uppercase text-[10px]">
+              Une question ?
+            </Badge>
+            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none mb-6 italic">
+              Besoin d&apos;aide pour{" "}
+              <span className="text-[#0D5C3F] not-italic">votre commande ?</span>
+            </h2>
+            <p className="text-lg text-white/90 font-medium">
+              Notre équipe est disponible pour répondre à toutes vos questions
+            </p>
+          </div>
+          <Link href="/contact">
+            <Button className="relative z-10 h-20 px-12 rounded-[2rem] bg-[#0D5C3F] hover:bg-[#0A412D] text-white font-black uppercase tracking-widest text-sm shadow-2xl transition-all hover:scale-105 group">
+              Contactez-nous
+              <ArrowRight className="ml-3 h-5 w-5 group-hover:translate-x-2 transition-transform" />
+            </Button>
+          </Link>
+        </div>
+      </section>
+
+      {/* ─── BLOG SECTION ─── */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto bg-white rounded-[5rem] shadow-sm mb-24 border border-zinc-100">
+        <div className="flex items-end justify-between mb-16 px-8">
+          <div>
+            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-zinc-800 leading-[0.9] mb-6 whitespace-pre-line">
+              Consultez notre{"\n"}
+              <span className="text-orange-500 italic">Blog</span>
+            </h2>
+            <div className="h-2 w-24 bg-emerald-800 rounded-full" />
+          </div>
+          <Link href="/blog">
+            <Button variant="ghost" className="text-emerald-700 font-black uppercase tracking-widest text-[10px] items-center gap-2 hover:bg-emerald-50">
+              Tout voir <ChevronRight className="h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 px-8">
+          {[
+            {
+              date: "12 Mars",
+              title: "Les secrets d\u2019une bonne livraison",
+              image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800&auto=format&fit=crop",
+              href: "/blog",
+            },
+            {
+              date: "8 Mars",
+              title: "Manger équilibré sans effort",
+              image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=800&auto=format&fit=crop",
+              href: "/blog",
+            },
+            {
+              date: "2 Mars",
+              title: "Nos producteurs locaux partenaires",
+              image: "https://images.unsplash.com/photo-1606787366850-de6330128bfc?q=80&w=800&auto=format&fit=crop",
+              href: "/blog",
+            },
+          ].map((post, index) => (
+            <Link key={index} href={post.href} className="group">
+              <div className="bg-zinc-50 rounded-[2.5rem] overflow-hidden shadow-lg shadow-black/[0.03] border border-zinc-100 hover:shadow-xl transition-all h-full flex flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <Image
+                    src={post.image}
+                    alt={post.title}
+                    fill
+                    className="object-cover group-hover:scale-110 transition-all duration-700"
+                  />
+                  <div className="absolute top-4 left-4 bg-white px-4 py-2 rounded-2xl shadow-lg border border-zinc-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#0D5C3F]">{post.date}</p>
+                  </div>
+                </div>
+                <div className="p-8 flex-1 flex flex-col">
+                  <h3 className="text-xl font-black tracking-tighter text-zinc-800 leading-tight group-hover:text-[#0D5C3F] transition-colors">
+                    {post.title}
+                  </h3>
+                  <div className="mt-auto pt-6 flex items-center text-[10px] font-black uppercase tracking-widest text-orange-500 group-hover:gap-3 gap-2 transition-all">
+                    Lire la suite <ArrowRight className="h-3 w-3" />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {/* ─── PRODUCT DETAIL DIALOG ─── */}
