@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { authComponent, createAuth } from "./auth";
 import { handleWebhook as uberEatsWebhook } from "./uberEatsWebhook";
 import { handleWebhook as deliverooWebhook } from "./deliverooWebhookHandler";
+import { handleWebhook as stripePaymentWebhook } from "./stripeWebhook";
 import { stripeCallback, stripeRefresh, sumupCallback } from "./oauthCallbackHandlers";
 
 const http = httpRouter();
@@ -30,6 +31,13 @@ http.route({
   path: "/webhooks/deliveroo/menu",
   method: "POST",
   handler: deliverooWebhook,
+});
+
+// Stripe payment webhook
+http.route({
+  path: "/webhooks/stripe",
+  method: "POST",
+  handler: stripePaymentWebhook,
 });
 
 // OAuth payment provider callbacks

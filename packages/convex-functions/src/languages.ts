@@ -21,6 +21,23 @@ export const list = {
   },
 }
 
+/**
+ * List all active languages across the entire instance (global)
+ */
+export const listAll = {
+  args: {},
+  handler: async (ctx: any) => {
+    const all = await ctx.db.query("languages").collect()
+    // Deduplicate by code, keep first occurrence (active preferred)
+    const seen = new Set<string>()
+    return all.filter((lang: any) => {
+      if (!lang.isActive || seen.has(lang.code)) return false
+      seen.add(lang.code)
+      return true
+    })
+  },
+}
+
 // === MUTATIONS ===
 
 /**

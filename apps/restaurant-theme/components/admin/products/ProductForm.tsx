@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { slugify } from "@/lib/admin/formatters"
 import { Id } from "@/convex/_generated/dataModel"
 
@@ -481,11 +482,11 @@ export function ProductForm({
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 border rounded-lg">
-              <p className="text-muted-foreground text-sm">
-                Aucune option ajoutée
-              </p>
-            </div>
+            <Empty className="py-8">
+              <EmptyHeader>
+                <EmptyTitle>Aucune option ajoutée</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
           )}
         </TabsContent>
 

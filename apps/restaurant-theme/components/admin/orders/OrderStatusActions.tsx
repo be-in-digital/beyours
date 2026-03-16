@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { toast } from "sonner"
 import {
   CheckCircle,
@@ -176,10 +177,14 @@ export function OrderStatusActions({
   // No actions available for completed or cancelled orders
   if (availableActions.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-muted-foreground">
-        <Clock className="size-4 mr-2" />
-        <span>Aucune action disponible</span>
-      </div>
+      <Empty className="py-8">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Clock className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucune action disponible</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

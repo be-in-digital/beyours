@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Search } from "lucide-react"
 import { TicketCard } from "./TicketCard"
 
@@ -120,11 +121,15 @@ export function CompletedTickets({ storeId }: CompletedTicketsProps) {
           ))}
         </div>
       ) : filteredTickets.length === 0 ? (
-        <div className="py-12 text-center text-muted-foreground">
-          {search || sourceFilter !== "all" || typeFilter !== "all"
-            ? "Aucun ticket ne correspond aux filtres"
-            : "Aucune commande terminee"}
-        </div>
+        <Empty className="py-12">
+          <EmptyHeader>
+            <EmptyTitle>
+              {search || sourceFilter !== "all" || typeFilter !== "all"
+                ? "Aucun ticket ne correspond aux filtres"
+                : "Aucune commande terminée"}
+            </EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTickets.map((ticket: Ticket) => (

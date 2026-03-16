@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import {
   Table,
   TableBody,
@@ -137,11 +137,15 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={LanguagesIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les langues"
-      />
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <LanguagesIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les langues</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -243,11 +247,15 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
       </div>
 
       {languages.length === 0 ? (
-        <EmptyState
-          icon={LanguagesIcon}
-          title="Aucune langue"
-          description="Ajoutez votre première langue pour commencer"
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <LanguagesIcon className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>Aucune langue</EmptyTitle>
+            <EmptyDescription>Ajoutez votre première langue pour commencer</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="border rounded-lg">
           <Table>

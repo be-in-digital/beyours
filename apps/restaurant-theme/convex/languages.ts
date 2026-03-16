@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/languages";
 
 export const list = query(defs.list);
+export const listAll = query(defs.listAll);
 
 export const create = mutation({
   args: defs.create.args,

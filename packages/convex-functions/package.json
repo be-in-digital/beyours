@@ -30,7 +30,8 @@
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",
     "./encryption": "./src/encryption.ts",
-    "./promotions": "./src/promotions.ts"
+    "./promotions": "./src/promotions.ts",
+    "./deliveryFee": "./src/deliveryFee.ts"
   },
   "scripts": {
     "lint": "eslint src/",

@@ -1,10 +1,24 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/paymentConnections";
+import { v } from "convex/values";
 
 // === Queries ===
 
 /** Get a single connection by provider (tokens stripped). */
 export const getByProvider = query(defs.getByProvider);
+
+/** Internal: get full record WITH encrypted tokens — for payment actions only */
+export const internalGetByProvider = internalQuery({
+  args: {
+    provider: v.union(v.literal("stripe"), v.literal("sumup"), v.literal("paypal")),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("paymentConnections")
+      .withIndex("by_provider", (q: any) => q.eq("provider", args.provider))
+      .first();
+  },
+});
 
 /** Get all connections (tokens stripped). */
 export const getAll = query(defs.getAll);

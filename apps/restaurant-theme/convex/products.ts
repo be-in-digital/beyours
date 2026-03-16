@@ -10,6 +10,7 @@ export const getById = query(defs.getById);
 export const getByCategory = query(defs.getByCategory);
 export const getBySlug = query(defs.getBySlug);
 export const getFeatured = query(defs.getFeatured);
+export const getManyByIds = query(defs.getManyByIds);
 
 // === Mutations (with menu sync trigger) ===
 
