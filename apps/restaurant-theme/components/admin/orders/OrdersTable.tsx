@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { formatPrice, formatOrderNumber, formatDate } from "@/lib/admin/formatters"
 import type { Doc } from "@/convex/_generated/dataModel"
 
@@ -93,9 +94,11 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
 
   if (orders.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <p className="text-muted-foreground">Aucune commande trouvée.</p>
-      </div>
+      <Empty className="py-12">
+        <EmptyHeader>
+          <EmptyTitle>Aucune commande trouvée</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

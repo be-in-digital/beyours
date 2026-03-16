@@ -1,5 +1,7 @@
 "use client"
 
+import { Empty, EmptyHeader, EmptyTitle } from "@beindigital-engine/ui/components"
+
 interface DisplayTicket {
   _id: string
   orderNumber: string
@@ -42,9 +44,11 @@ export function DisplayColumn({
 
       <div className="space-y-3">
         {tickets.length === 0 ? (
-          <div className="text-center text-slate-500 py-12 text-lg">
-            Aucune commande
-          </div>
+          <Empty className="py-12">
+            <EmptyHeader>
+              <EmptyTitle>Aucune commande</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           tickets.map((ticket) => (
             <div
