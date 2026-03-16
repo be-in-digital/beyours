@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
 import {
@@ -28,9 +29,15 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ variant = "solid" }: UserMenuProps) {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending } = authClient.useSession()
+  const [hasMounted, setHasMounted] = useState(false)
 
-  if (!session?.user) {
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  // SSR et premier rendu client : toujours le même HTML (bouton connexion)
+  if (!hasMounted || isPending || !session?.user) {
     return (
       <Link href="/sign-in">
         <Button
