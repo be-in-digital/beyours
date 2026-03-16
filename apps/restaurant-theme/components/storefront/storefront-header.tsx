@@ -20,8 +20,9 @@ import { UserMenu } from "./user-menu"
 const navLinks = [
   { href: "/", label: "Accueil" },
   { href: "/menu", label: "Menu" },
-  { href: "/cart", label: "Box" },
-  { href: "/account", label: "Compte" },
+  { href: "/about", label: "À propos" },
+  { href: "/blog", label: "Blog" },
+  { href: "/contact", label: "Contact" },
 ]
 
 export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean }) {
