@@ -26,6 +26,7 @@ import {
   prizeRedemptionsTable,
   promotionsTable,
   promotionUsagesTable,
+  favoritesTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -63,4 +64,5 @@ export default defineSchema({
   prizeRedemptions: prizeRedemptionsTable,
   promotions: promotionsTable,
   promotionUsages: promotionUsagesTable,
+  favorites: favoritesTable,
 });

@@ -18,7 +18,7 @@ import {
   isProductAvailable,
 } from "@beindigital-engine/restaurant"
 import type { ProductDoc, CartSelectedOption } from "@beindigital-engine/restaurant"
-import { useFavoritesStore } from "@/lib/stores/favorites-store"
+import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { toast } from "sonner"
 
@@ -30,8 +30,7 @@ interface ProductDetailClientProps {
 export function ProductDetailClient({ product, storeId }: ProductDetailClientProps) {
   const addItem = useCartStore((s: { addItem: (item: import("@beindigital-engine/restaurant").CartItem) => void }) => s.addItem)
   const cartStoreId = useCartStore((s: { storeId: string | null }) => s.storeId)
-  const isFavorite = useFavoritesStore((s: { isFavorite: (productId: string, storeId: string) => boolean }) => s.isFavorite)
-  const toggleFavorite = useFavoritesStore((s: { toggleFavorite: (productId: string, storeId: string) => void }) => s.toggleFavorite)
+  const { isFavorite, toggleFavorite } = useFavorites()
   const { isOpen } = useStoreStatus(storeId)
 
   const [quantity, setQuantity] = useState(1)

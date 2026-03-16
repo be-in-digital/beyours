@@ -2,20 +2,20 @@
 
 import { useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Heart } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { Skeleton, Badge, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@beindigital-engine/ui/components"
-import { ProductCard } from "@beindigital-engine/ui/restaurant"
+import { Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@beindigital-engine/ui/components"
 import {
-  formatPrice,
   isProductAvailable,
   useCartStore,
 } from "@beindigital-engine/restaurant"
 import type { ProductDoc, CartItem } from "@beindigital-engine/restaurant"
-import { useFavoritesStore, type FavoriteItem } from "@/lib/stores/favorites-store"
+import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
+import { StorefrontProductCard } from "./storefront-product-card"
 import { toast } from "sonner"
 
 interface FavoritesGridProps {
@@ -23,14 +23,14 @@ interface FavoritesGridProps {
 }
 
 export function FavoritesGrid({ storeId }: FavoritesGridProps) {
-  const favorites = useFavoritesStore((s: { favorites: FavoriteItem[] }) => s.favorites)
-  const toggleFavorite = useFavoritesStore((s: { toggleFavorite: (productId: string, storeId: string) => void }) => s.toggleFavorite)
+  const router = useRouter()
+  const { favorites, isFavorite, toggleFavorite } = useFavorites()
   const addItem = useCartStore((s: { addItem: (item: CartItem) => void }) => s.addItem)
   const { isOpen } = useStoreStatus(storeId)
 
   // All favorite product IDs (all stores)
   const allProductIds = useMemo(
-    () => favorites.map((f) => f.productId as Id<"products">),
+    () => favorites.map((f: { productId: string }) => f.productId as Id<"products">),
     [favorites]
   )
 
@@ -76,9 +76,22 @@ export function FavoritesGrid({ storeId }: FavoritesGridProps) {
   // Loading
   if (allProductIds.length > 0 && products === undefined) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-64 rounded-2xl" />
+          <div key={i} className="overflow-hidden rounded-[2.5rem] border border-zinc-100 bg-white">
+            <Skeleton className="aspect-[4/3] w-full" />
+            <div className="p-8 space-y-3">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3 w-1/3" />
+              <div className="flex items-center justify-between pt-4">
+                <div className="space-y-1">
+                  <Skeleton className="h-2 w-8" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                <Skeleton className="h-12 w-12 rounded-2xl" />
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     )
@@ -103,68 +116,42 @@ export function FavoritesGrid({ storeId }: FavoritesGridProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       {/* Current store favorites */}
       {currentStoreFavorites.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {currentStoreFavorites.map((product) => {
-            const available = isProductAvailable(product)
-            const canAdd = available && isOpen
-
-            return (
-              <div key={product._id} className="group relative">
-                <button
-                  onClick={() => toggleFavorite(product._id, storeId)}
-                  className="absolute right-3 top-3 z-10 rounded-full bg-background/80 p-2 shadow-sm backdrop-blur"
-                >
-                  <Heart className="h-4 w-4 fill-red-500 text-red-500" />
-                </button>
-                <ProductCard
-                  name={product.name}
-                  description={product.description}
-                  price={formatPrice(product.price)}
-                  image={product.images?.[0]}
-                  onAddToCart={canAdd ? () => handleAddToCart(product) : undefined}
-                  disabled={!canAdd}
-                  className="rounded-2xl"
-                />
-              </div>
-            )
-          })}
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {currentStoreFavorites.map((product) => (
+            <StorefrontProductCard
+              key={product._id}
+              product={product}
+              storeId={storeId}
+              isStoreOpen={isOpen}
+              isFavorite={isFavorite(product._id, storeId)}
+              onToggleFavorite={() => toggleFavorite(product._id, storeId)}
+              onClick={() => router.push(`/product/${product._id}`)}
+              onAddToCart={() => handleAddToCart(product)}
+            />
+          ))}
         </div>
       )}
 
       {/* Other store favorites */}
       {otherStoreFavorites.length > 0 && (
         <div>
-          <h3 className="mb-4 font-bold text-xs uppercase tracking-widest text-muted-foreground">
+          <h3 className="mb-8 font-black text-xs uppercase tracking-widest text-zinc-400">
             Autres restaurants
           </h3>
-          <div className="grid gap-4 opacity-60 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {otherStoreFavorites.map((product) => (
-              <div key={product._id} className="group relative">
-                <div className="absolute left-3 top-3 z-10">
-                  <Badge variant="secondary" className="text-[10px]">
-                    Autre restaurant
-                  </Badge>
-                </div>
-                <button
-                  onClick={() => toggleFavorite(product._id, product.storeId)}
-                  className="absolute right-3 top-3 z-10 rounded-full bg-background/80 p-2 shadow-sm backdrop-blur"
-                >
-                  <Heart className="h-4 w-4 fill-red-500 text-red-500" />
-                </button>
-                <div title="Ce produit appartient à un autre restaurant">
-                  <ProductCard
-                    name={product.name}
-                    description={product.description}
-                    price={formatPrice(product.price)}
-                    image={product.images?.[0]}
-                    disabled
-                    className="rounded-2xl"
-                  />
-                </div>
-              </div>
+              <StorefrontProductCard
+                key={product._id}
+                product={product}
+                storeId={product.storeId}
+                isStoreOpen={false}
+                isFavorite={isFavorite(product._id, product.storeId)}
+                onToggleFavorite={() => toggleFavorite(product._id, product.storeId)}
+                otherStore
+              />
             ))}
           </div>
         </div>
