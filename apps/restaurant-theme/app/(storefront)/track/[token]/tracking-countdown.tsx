@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useReducer } from "react"
+import { CheckCircle, Clock, PartyPopper } from "lucide-react"
 
 interface TrackingCountdownProps {
   estimatedReadyAt?: number
@@ -34,12 +35,17 @@ export function TrackingCountdown({
 
   if (status === "ready") {
     return (
-      <div className="bg-green-50 rounded-2xl p-6 text-center">
-        <p className="text-2xl font-bold text-green-700">
-          Votre commande est prete !
+      <div className="rounded-[2rem] bg-[#0D5C3F] p-8 text-center shadow-xl shadow-emerald-900/10">
+        <div className="flex justify-center mb-4">
+          <div className="rounded-full bg-white/20 backdrop-blur-md p-3">
+            <CheckCircle className="h-8 w-8 text-white" />
+          </div>
+        </div>
+        <p className="text-2xl font-black text-white tracking-tight">
+          Votre commande est prête !
         </p>
-        <p className="text-sm text-green-600 mt-1">
-          Presentez-vous au comptoir pour la recuperer
+        <p className="text-sm text-white/60 mt-2 font-medium">
+          Présentez-vous au comptoir pour la récupérer
         </p>
       </div>
     )
@@ -47,11 +53,16 @@ export function TrackingCountdown({
 
   if (status === "completed") {
     return (
-      <div className="bg-gray-50 rounded-2xl p-6 text-center">
-        <p className="text-xl font-bold text-gray-700">
-          Commande terminee
+      <div className="rounded-[2rem] bg-white border border-zinc-100 p-8 text-center shadow-2xl shadow-black/[0.04]">
+        <div className="flex justify-center mb-4">
+          <div className="rounded-full bg-zinc-100 p-3">
+            <PartyPopper className="h-8 w-8 text-[#0D5C3F]" />
+          </div>
+        </div>
+        <p className="text-2xl font-black text-zinc-900 tracking-tight">
+          Commande terminée
         </p>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-zinc-400 mt-2 font-medium">
           Merci pour votre visite !
         </p>
       </div>
@@ -66,11 +77,16 @@ export function TrackingCountdown({
   const seconds = Math.floor((remaining % 60_000) / 1000)
 
   return (
-    <div className="bg-amber-50 rounded-2xl p-6 text-center">
-      <p className="text-sm text-amber-600 font-medium mb-2">
-        Temps estime restant
+    <div className="rounded-[2rem] bg-white border border-zinc-100 p-8 text-center shadow-2xl shadow-black/[0.04]">
+      <div className="flex justify-center mb-4">
+        <div className="rounded-full bg-orange-100 p-3">
+          <Clock className="h-8 w-8 text-[#F97316]" />
+        </div>
+      </div>
+      <p className="text-zinc-400 font-bold uppercase tracking-widest text-[10px] mb-3">
+        Temps estimé restant
       </p>
-      <p className="text-4xl font-bold text-amber-700 tabular-nums font-mono">
+      <p className="text-5xl font-black text-[#0D5C3F] tabular-nums font-mono tracking-tight">
         {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
       </p>
     </div>

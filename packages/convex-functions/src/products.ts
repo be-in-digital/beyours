@@ -68,6 +68,19 @@ export const getBySlug = {
 }
 
 /**
+ * Get multiple products by IDs (batch query to avoid N+1)
+ */
+export const getManyByIds = {
+  args: { ids: v.array(v.id("products")) },
+  handler: async (ctx: any, args: { ids: string[] }) => {
+    const products = await Promise.all(
+      args.ids.map((id: string) => ctx.db.get(id))
+    )
+    return products.filter((p: unknown) => p !== null)
+  },
+}
+
+/**
  * Get featured products
  */
 export const getFeatured = {

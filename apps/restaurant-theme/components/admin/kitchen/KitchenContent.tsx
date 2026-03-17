@@ -7,6 +7,7 @@ import type { Doc } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
@@ -204,11 +205,11 @@ export function KitchenContent() {
                   {/* Tickets */}
                   <div className="space-y-3">
                     {ticketsByStatus[status].length === 0 ? (
-                      <Card>
-                        <div className="p-8 text-center text-sm text-muted-foreground">
-                          Aucun ticket
-                        </div>
-                      </Card>
+                      <Empty className="py-8">
+                        <EmptyHeader>
+                          <EmptyTitle>Aucun ticket</EmptyTitle>
+                        </EmptyHeader>
+                      </Empty>
                     ) : (
                       ticketsByStatus[status].map((ticket: Doc<"kitchenTickets">) => (
                         <TicketCard key={ticket._id} ticket={ticket} />

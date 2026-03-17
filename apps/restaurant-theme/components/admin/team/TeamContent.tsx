@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 
 type Role = "manager" | "kitchen" | "waiter" | "delivery"
 
@@ -112,11 +112,15 @@ export function TeamContent() {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={UserIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer l'équipe"
-      />
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UserIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer l&apos;équipe</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -185,11 +189,15 @@ export function TeamContent() {
       </div>
 
       {teamMembers.length === 0 ? (
-        <EmptyState
-          icon={UserIcon}
-          title="Aucun membre"
-          description="Ajoutez votre premier membre pour commencer"
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <UserIcon className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>Aucun membre</EmptyTitle>
+            <EmptyDescription>Ajoutez votre premier membre pour commencer</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {teamMembers.map((member: Doc<"teamMembers">) => (

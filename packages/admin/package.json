@@ -21,6 +21,7 @@
     "@beindigital-engine/core": "workspace:^",
     "@beindigital-engine/ui": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
+    "@beindigital-engine/convex-functions": "workspace:^",
     "zod": ">=3.0.0",
     "react-hook-form": ">=7.0.0",
     "@hookform/resolvers": ">=5.0.0",

@@ -54,8 +54,8 @@ describe('siteEnvSchema', () => {
     BETTER_AUTH_SECRET: 'my-secret-key',
   }
 
-  it('accepts minimal required fields', () => {
-    const result = siteEnvSchema.safeParse(validSiteEnv)
+  it('accepts empty object (all fields optional)', () => {
+    const result = siteEnvSchema.safeParse({})
     expect(result.success).toBe(true)
   })
 
@@ -75,16 +75,16 @@ describe('siteEnvSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects missing NEXT_PUBLIC_CONVEX_URL', () => {
-    const { NEXT_PUBLIC_CONVEX_URL: _, ...rest } = validSiteEnv
-    const result = siteEnvSchema.safeParse(rest)
+  it('rejects invalid NEXT_PUBLIC_CONVEX_URL (not a url)', () => {
+    const result = siteEnvSchema.safeParse({
+      NEXT_PUBLIC_CONVEX_URL: 'not-a-url',
+    })
     expect(result.success).toBe(false)
   })
 
-  it('rejects missing BETTER_AUTH_SECRET', () => {
-    const { BETTER_AUTH_SECRET: _, ...rest } = validSiteEnv
-    const result = siteEnvSchema.safeParse(rest)
-    expect(result.success).toBe(false)
+  it('accepts missing BETTER_AUTH_SECRET', () => {
+    const result = siteEnvSchema.safeParse({})
+    expect(result.success).toBe(true)
   })
 
   it('rejects invalid ENCRYPTION_KEY (not 64 hex chars)', () => {
