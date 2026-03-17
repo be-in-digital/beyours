@@ -48,9 +48,7 @@ export const getByLanguage = {
 }
 
 /**
- * Get all UI overrides for a store.
- * Returns Record<langCode, Record<key, value>> for all entityType: "ui" translations.
- * The TranslationProvider does `overrides[lang] ?? {}` — this query returns what exists.
+ * Get UI string overrides for a store, grouped by language code
  */
 export const getUIOverrides = {
   args: { storeId: v.id("stores") },
@@ -67,7 +65,6 @@ export const getUIOverrides = {
       if (!result[row.languageCode]) {
         result[row.languageCode] = {}
       }
-      // field = i18n key (e.g. "nav.menu"), value = override text
       const langOverrides = result[row.languageCode]!
       langOverrides[row.field] = row.value
     }

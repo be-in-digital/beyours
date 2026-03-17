@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react"
 import { formatPrice, formatDate, formatOrderNumber } from "@/lib/admin"
 import { cn } from "@/lib/utils"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
   Table,
   TableHeader,
@@ -106,9 +107,11 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
           <CardTitle>Commandes récentes</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            Aucune commande pour le moment.
-          </p>
+          <Empty className="py-8">
+            <EmptyHeader>
+              <EmptyTitle>Aucune commande pour le moment</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         </CardContent>
       </Card>
     )

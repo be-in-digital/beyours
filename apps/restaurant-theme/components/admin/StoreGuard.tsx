@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { useStoreStore } from "@beindigital-engine/restaurant"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@/components/ui/button"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { Store } from "lucide-react"
 import Link from "next/link"
 import {
@@ -57,20 +58,20 @@ export function StoreGuard({ children }: StoreGuardProps) {
   // No stores exist - prompt to create first store
   if (stores.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center max-w-md space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-            <Store className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h2 className="text-2xl font-semibold">Aucun établissement</h2>
-          <p className="text-muted-foreground">
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Store className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement</EmptyTitle>
+          <EmptyDescription>
             Créez votre premier établissement pour commencer à gérer votre restaurant.
-          </p>
-          <Button asChild>
-            <Link href="/stores">Créer mon premier établissement</Link>
-          </Button>
-        </div>
-      </div>
+          </EmptyDescription>
+        </EmptyHeader>
+        <Button asChild>
+          <Link href="/stores">Créer mon premier établissement</Link>
+        </Button>
+      </Empty>
     )
   }
 

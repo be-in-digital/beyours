@@ -201,7 +201,11 @@ export async function fetchDeliveroo(
     fetchOptions.body = JSON.stringify(options.body)
   }
 
+  console.log(`[DeliverooAPI] ${method} ${url} body=${fetchOptions.body ?? "none"} token_prefix=${normalizedToken.substring(0, 10)}...`)
+
   const response = await fetchWithTimeout(url, fetchOptions)
+
+  console.log(`[DeliverooAPI] Response: ${response.status} ${response.statusText}`)
 
   // If token expired/rejected, retry once with fresh token.
   // Deliveroo gateway returns 403 (not 401) for invalid/expired tokens.

@@ -5,6 +5,22 @@ import * as defs from "@beindigital-engine/convex-functions/userProfiles";
 
 export const getByUserId = query(defs.getByUserId);
 
+/**
+ * Get the authenticated user's own profile
+ */
+export const getMyProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    return await ctx.db
+      .query("userProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
+  },
+});
+
 // === Mutations ===
 
 export const upsert = mutation({
@@ -28,5 +44,25 @@ export const upsert = mutation({
     }
 
     return defs.upsert.handler(ctx, args);
+  },
+});
+
+/**
+ * Update own profile (customer-facing: phones, language, avatar)
+ */
+export const updateMyProfile = mutation({
+  args: {
+    phones: defs.updateProfile.args.phones,
+    language: defs.updateProfile.args.language,
+    avatarUrl: defs.updateProfile.args.avatarUrl,
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    return defs.updateProfile.handler(ctx, {
+      userId: identity.subject,
+      ...args,
+    });
   },
 });

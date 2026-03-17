@@ -52,6 +52,7 @@ export const ordersTable = defineTable({
   uberDirectEstimateId: v.optional(v.string()),
   uberDirectFee: v.optional(v.number()), // actual Uber Direct cost in cents
   deliveryFeeMode: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
+  promotionId: v.optional(v.id("promotions")),
   discountAmount: v.optional(v.number()),
   total: v.number(),
   deliveryAddress: v.optional(v.object({
@@ -99,6 +100,7 @@ export const ordersTable = defineTable({
   completedAt: v.optional(v.number()),
   cancelledAt: v.optional(v.number()),
   cancellationReason: v.optional(v.string()),
+  viewToken: v.optional(v.string()), // Token for public order confirmation access
   createdAt: v.number(),
   updatedAt: v.number(),
 })

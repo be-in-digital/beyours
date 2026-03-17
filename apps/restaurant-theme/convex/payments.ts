@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/payments";
 
 export const getByOrder = query(defs.getByOrder);
@@ -30,3 +30,11 @@ export const refund = mutation({
     return defs.refund.handler(ctx, args);
   },
 });
+
+// === Internal Mutations (for payment actions and webhooks) ===
+
+/** Create payment record without auth — used by payment verification actions */
+export const internalCreate = internalMutation(defs.create);
+
+/** Update payment status without auth — used by webhooks */
+export const internalUpdateStatus = internalMutation(defs.updateStatus);

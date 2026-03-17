@@ -54,6 +54,51 @@ export const updateAddress = mutation({
   },
 });
 
+export const updatePrintConfig = mutation({
+  args: defs.updatePrintConfig.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updatePrintConfig.handler(ctx, args);
+  },
+});
+
+export const updateDisplayConfig = mutation({
+  args: defs.updateDisplayConfig.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateDisplayConfig.handler(ctx, args);
+  },
+});
+
+export const updateSoundConfig = mutation({
+  args: defs.updateSoundConfig.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateSoundConfig.handler(ctx, args);
+  },
+});
+
+export const updateOrderConfirmation = mutation({
+  args: defs.updateOrderConfirmation.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateOrderConfirmation.handler(ctx, args);
+  },
+});
+
+export const updateOrderMode = mutation({
+  args: defs.updateOrderMode.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateOrderMode.handler(ctx, args);
+  },
+});
+
 export const remove = mutation({
   args: defs.remove.args,
   handler: async (ctx, args) => {

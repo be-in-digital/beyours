@@ -1,129 +1,174 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { useCmsPage } from "@/lib/cms";
+import { useState } from "react"
+import { authClient } from "@/lib/auth-client"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { motion } from "framer-motion"
+import { Mail, Lock, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Button, Input, Label } from "@beindigital-engine/ui/components"
 
 export default function SignInPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const { block } = useCmsPage("sign-in");
-  const hero = block("hero");
-  const form = block("form");
+  const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault()
+    setLoading(true)
 
     try {
       const result = await authClient.signIn.email({
         email,
         password,
-      });
+      })
 
       if (result.error) {
-        setError(result.error.message ?? "Échec de la connexion");
-        toast.error("Échec de la connexion");
+        toast.error(result.error.message ?? "Échec de la connexion")
       } else {
-        toast.success("Connexion réussie");
-        router.push("/dashboard");
+        toast.success("Connexion réussie !")
+        router.push("/menu")
       }
     } catch {
-      setError("Une erreur inattendue est survenue");
-      toast.error("Une erreur inattendue est survenue");
+      toast.error("Une erreur inattendue est survenue")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="mb-6 text-center text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
-          {hero.field("title").text ?? "Connexion"}
-        </h1>
+    <div className="min-h-screen bg-[#FDFCF6] text-zinc-900 font-sans overflow-hidden relative flex flex-col items-center justify-center px-6">
+      {/* Background blobs */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-emerald-400/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-orange-400/10 rounded-full blur-[100px]" />
+      </div>
 
-        {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
-            {error}
+      {/* Back link */}
+      <Link
+        href="/"
+        className="absolute top-8 left-8 flex items-center gap-2 text-[#0D5C3F] font-black uppercase tracking-widest text-[10px] hover:translate-x-[-4px] transition-transform z-20"
+      >
+        <ArrowLeft className="h-4 w-4" /> Retour
+      </Link>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-xl"
+      >
+        {/* Header */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl md:text-6xl font-black text-zinc-800 tracking-tighter leading-[0.9] italic">
+            Bon retour <br />
+            <span className="text-orange-500 not-italic">parmi nous</span>
+          </h1>
+        </div>
+
+        {/* Form card */}
+        <div className="bg-white rounded-[3rem] shadow-2xl shadow-emerald-950/5 border border-zinc-100 overflow-hidden">
+          <div className="p-8 md:p-12">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Email */}
+              <div className="space-y-3">
+                <Label
+                  htmlFor="email"
+                  className="text-zinc-800 font-black uppercase tracking-widest text-[10px] ml-1"
+                >
+                  Adresse email
+                </Label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-emerald-600 transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    className="h-16 pl-12 pr-4 rounded-2xl border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-zinc-900 font-bold placeholder:text-zinc-400 focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/20"
+                    placeholder="jean@exemple.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center px-1">
+                  <Label
+                    htmlFor="password"
+                    className="text-zinc-800 font-black uppercase tracking-widest text-[10px]"
+                  >
+                    Mot de passe
+                  </Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-[10px] text-orange-600 font-black uppercase tracking-widest hover:underline"
+                  >
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-emerald-600 transition-colors" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    className="h-16 pl-12 pr-12 rounded-2xl border-zinc-100 bg-zinc-50 focus:bg-white transition-all text-zinc-900 font-bold placeholder:text-zinc-400 focus:ring-4 focus:ring-emerald-500/5 focus:border-emerald-500/20"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <div className="space-y-4 pt-2">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-16 rounded-2xl bg-[#0D5C3F] hover:bg-[#0A412D] text-white font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-950/20 transition-all hover:scale-[1.02] active:scale-[0.98] group disabled:opacity-60"
+                >
+                  {loading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Se connecter
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
           </div>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="jean@exemple.com"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-            >
-              Mot de passe
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="Votre mot de passe"
-            />
-          </div>
-
-          <div className="flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="text-xs text-zinc-600 hover:underline dark:text-zinc-400"
-            >
-              {form.field("forgotLink").text ?? "Mot de passe oublié ?"}
-            </Link>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            {loading
-              ? "Connexion en cours..."
-              : (form.field("submitLabel").text ?? "Se connecter")}
-          </button>
-        </form>
-
-        <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
+        {/* Footer link */}
+        <p className="text-center mt-12 text-zinc-500 font-medium">
           Pas encore de compte ?{" "}
           <Link
             href="/sign-up"
-            className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+            className="text-[#0D5C3F] font-black hover:underline underline-offset-4"
           >
-            {form.field("signupLink").text ?? "Créer un compte"}
+            Créer un compte
           </Link>
         </p>
-      </div>
+      </motion.div>
     </div>
-  );
+  )
 }

@@ -4,5 +4,6 @@
 
 export * from './useCart'
 export * from './useCurrentStore'
+export * from './useNearestStore'
 export * from './useOrderStatus'
 export * from './useProductFilters'

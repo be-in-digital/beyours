@@ -24,9 +24,6 @@
       "dependsOn": ["build"],
       "cache": false
     },
-    "check:i18n": {
-      "cache": false
-    },
     "clean": {
       "cache": false
     }

@@ -32,7 +32,6 @@ import type {
   OrderStatus,
   OrderType,
   OrderPaymentStatus,
-  OrderSource,
   OrderItem,
   OrderItemOption,
   Payment,
@@ -89,42 +88,6 @@ function getPaymentBadge(status: OrderPaymentStatus) {
   }
 
   const config = paymentConfig[status]
-  return <Badge className={config.className}>{config.label}</Badge>
-}
-
-/**
- * Get source label and badge
- */
-const SOURCE_LABELS: Record<OrderSource, string> = {
-  website: "Site web",
-  uber_eats: "Uber Eats",
-  deliveroo: "Deliveroo",
-  pos: "POS",
-}
-
-/**
- * Parse structured cancellation reason (code::label or code::label::details)
- * Falls back to raw string for legacy/webhook reasons
- */
-function parseCancellationReason(raw: string): string {
-  const parts = raw.split("::")
-  if (parts.length >= 2) {
-    const label = parts[1] ?? ""
-    const details = parts[2]
-    return details ? `${label} — ${details}` : label
-  }
-  return raw
-}
-
-function getSourceBadge(source: OrderSource) {
-  const sourceConfig: Record<OrderSource, { className: string; label: string }> = {
-    website: { className: "bg-blue-50 text-blue-700", label: "Site web" },
-    uber_eats: { className: "bg-green-50 text-green-700", label: "Uber Eats" },
-    deliveroo: { className: "bg-cyan-50 text-cyan-700", label: "Deliveroo" },
-    pos: { className: "bg-slate-50 text-slate-700", label: "POS" },
-  }
-
-  const config = sourceConfig[source]
   return <Badge className={config.className}>{config.label}</Badge>
 }
 
@@ -186,7 +149,7 @@ function OrderRefundDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Remboursement</DialogTitle>
           <DialogDescription>
@@ -302,10 +265,14 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
 
   const [showRefundDialog, setShowRefundDialog] = useState(false)
 
+  // Convex IDs are long alphanumeric strings — skip query for known sub-routes
+  // or values that clearly aren't valid document IDs
+  const isValidOrderId = orderId.length > 10 && /^[a-z0-9]+$/i.test(orderId)
+
   // Fetch order details
   const order = useQuery(
     api?.orders?.getById ?? ("skip" as never),
-    { id: orderId }
+    isValidOrderId ? { id: orderId } : "skip"
   ) as Order | null | undefined
 
   // Fetch associated payments
@@ -328,18 +295,18 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
       (primaryPayment.refundedAmount || 0) < primaryPayment.amount
     : false
 
-  if (order === undefined) {
+  if (!isValidOrderId || order === null) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-muted-foreground">Chargement des détails de la commande...</p>
+        <p className="text-sm text-muted-foreground">Commande introuvable.</p>
       </div>
     )
   }
 
-  if (order === null) {
+  if (order === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-muted-foreground">Commande introuvable.</p>
+        <p className="text-sm text-muted-foreground">Chargement des détails de la commande...</p>
       </div>
     )
   }
@@ -362,7 +329,6 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {getSourceBadge(order.source)}
           {getStatusBadge(order.status)}
           {getTypeBadge(order.type)}
         </div>
@@ -443,12 +409,6 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                     <span>{formatPrice(order.deliveryFee)}</span>
                   </div>
                 )}
-                {order.discountAmount && order.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Remise</span>
-                    <span className="text-green-600">-{formatPrice(order.discountAmount)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-base font-semibold border-t border-border/50 pt-2">
                   <span>Total</span>
                   <span>{formatPrice(order.total)}</span>
@@ -518,7 +478,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OrderStatusActions orderId={order._id} currentStatus={order.status} source={order.source} />
+              <OrderStatusActions orderId={order._id} currentStatus={order.status} />
             </CardContent>
           </Card>
 
@@ -553,7 +513,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
               <div>
                 <div className="text-xs text-muted-foreground">Source de la commande</div>
-                <div className="text-sm font-medium">{SOURCE_LABELS[order.source]}</div>
+                <div className="text-sm font-medium capitalize">{order.source}</div>
               </div>
               {primaryPayment?.refundedAmount && primaryPayment.refundedAmount > 0 && (
                 <div>
@@ -571,37 +531,6 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
             </CardContent>
           </Card>
-
-          {/* Preparation & Delivery Info */}
-          {(order.estimatedPrepTime || order.estimatedDeliveryTime || order.scheduledFor) && (
-            <Card className="border-border/50">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Préparation & Livraison
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {order.scheduledFor && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">Programmée pour</div>
-                    <div className="text-sm font-medium">{formatDate(order.scheduledFor)}</div>
-                  </div>
-                )}
-                {order.estimatedPrepTime && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">Temps de préparation estimé</div>
-                    <div className="text-sm font-medium">{order.estimatedPrepTime} min</div>
-                  </div>
-                )}
-                {order.estimatedDeliveryTime && (
-                  <div>
-                    <div className="text-xs text-muted-foreground">Temps de livraison estimé</div>
-                    <div className="text-sm font-medium">{order.estimatedDeliveryTime} min</div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Timestamps */}
           <Card className="border-border/50">
@@ -634,7 +563,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               {order.cancellationReason && (
                 <div>
                   <div className="text-xs text-muted-foreground">Motif d&apos;annulation</div>
-                  <div className="text-sm font-medium">{parseCancellationReason(order.cancellationReason)}</div>
+                  <div className="text-sm font-medium">{order.cancellationReason}</div>
                 </div>
               )}
             </CardContent>

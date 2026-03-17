@@ -7,6 +7,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts"
 import { BarChart3 } from "lucide-react"
 import { formatPrice } from "@/lib/admin"
@@ -41,12 +42,14 @@ export function OrdersChart({ data }: OrdersChartProps) {
       </CardHeader>
       <CardContent>
         {!hasData ? (
-          <div className="flex h-[250px] flex-col items-center justify-center gap-2 sm:h-[300px]">
-            <BarChart3 className="text-muted-foreground/50 h-12 w-12" />
-            <p className="text-muted-foreground text-sm">
-              Aucune donnée sur les 7 derniers jours
-            </p>
-          </div>
+          <Empty className="h-[250px] sm:h-[300px]">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <BarChart3 className="h-5 w-5" />
+              </EmptyMedia>
+              <EmptyTitle>Aucune donnée sur les 7 derniers jours</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <ChartContainer config={chartConfig} className="h-[250px] w-full sm:h-[300px]">
             <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -10 }}>

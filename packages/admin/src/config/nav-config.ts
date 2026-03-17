@@ -1,4 +1,5 @@
 import {
+  ChefHat,
   ChevronRight,
   CreditCard,
   FileText,
@@ -79,6 +80,12 @@ export const navGroups: NavGroup[] = [
         label: "Commandes",
         href: "/orders",
         icon: ShoppingCart,
+        requiredPermission: "orders:read",
+      },
+      {
+        label: "Cuisine (KDS)",
+        href: "/orders/kitchen",
+        icon: ChefHat,
         requiredPermission: "orders:read",
       },
       {

@@ -133,7 +133,13 @@ export const useCartStore = create<CartStore>()(
       },
 
       setStoreId: (storeId) => {
-        set({ storeId })
+        const currentStoreId = get().storeId
+        if (currentStoreId && currentStoreId !== storeId) {
+          // Store changed — clear cart to prevent cross-store items
+          set({ items: [], orderType: 'pickup', storeId })
+        } else {
+          set({ storeId })
+        }
       },
 
       // Computed getters

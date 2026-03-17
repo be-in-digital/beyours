@@ -1,0 +1,31 @@
+[   39034ms] [WARNING] Select is changing from uncontrolled to controlled. Components should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled value for the lifetime of the component. @ http://localhost:3000/_next/static/chunks/7d626_next_dist_e768cca1._.js:2297
+[   45050ms] Error: [CONVEX Q(kitchenTickets:getOverdueCount)] [Request ID: 2c4003bc48af774d] Server Error
+Could not find public function for 'kitchenTickets:getOverdueCount'. Did you forget to run `npx convex dev` or `npx convex deploy`?
+
+  Called by client
+    at OptimisticQueryResults.queryResult (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:2795:19)
+    at BaseConvexClient.localQueryResult (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:4644:44)
+    at Object.localQueryResult (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6399:44)
+    at QueriesObserver.getLocalResults (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6776:31)
+    at useQueriesHelper.useMemo[subscription] (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6908:41)
+    at useSubscription.useState (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6123:24)
+    at mountStateImpl (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:5048:28)
+    at mountState (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:5069:24)
+    at Object.useState (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:15030:24)
+    at exports.useState (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_d65fe0fa._.js:1754:36)
+    at useSubscription (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6119:405)
+    at useQueriesHelper (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6922:275)
+    at useQueries (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6888:12)
+    at useQuery (http://localhost:3000/_next/static/chunks/node_modules__pnpm_f96f5f6f._.js:6636:274)
+    at KitchenSoundManager (http://localhost:3000/_next/static/chunks/apps_restaurant-theme_41ae8962._.js:1166:272)
+    at Object.react_stack_bottom_frame (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:14826:24)
+    at renderWithHooks (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:4651:24)
+    at updateFunctionComponent (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:6112:21)
+    at beginWork (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:6708:24)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:965:74)
+    at performUnitOfWork (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:9562:97)
+    at workLoopSync (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:9456:40)
+    at renderRootSync (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:9440:13)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:9105:47)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_react-dom_a00d0015._.js:10230:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/7d626_next_dist_compiled_d65fe0fa._.js:2647:64)

@@ -3,6 +3,7 @@
  * @module aws/s3/client
  */
 
+import { randomUUID } from 'crypto'
 import type { S3Config } from '../types'
 import type {
   S3Operations,
@@ -106,7 +107,7 @@ export function createS3Service(
     filename?: string
   ): string {
     const extension = getExtensionFromMimeType(contentType)
-    const name = filename ?? crypto.randomUUID()
+    const name = filename ?? randomUUID()
     return `${folder}/${name}.${extension}`
   }
 
