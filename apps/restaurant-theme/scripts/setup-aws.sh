@@ -164,10 +164,10 @@ log_success "Lifecycle rules set"
 
 # Create folder structure
 log_info "Creating folder structure..."
-for folder in products branding stores cms email blog; do
+for folder in products branding stores cms blog; do
   aws s3api put-object --bucket "$BUCKET_NAME" --key "${folder}/" --content-length 0 > /dev/null
 done
-log_success "Folders created: products/, branding/, stores/, cms/, email/, blog/"
+log_success "Folders created: products/, branding/, stores/, cms/, blog/"
 
 # ════════════════════════════════════════════════════════════════════════════
 # STEP 2: SES DOMAIN IDENTITY & DKIM
@@ -426,7 +426,7 @@ log_section "Setup Complete!"
 echo -e "${GREEN}S3 Bucket:${NC}"
 echo "  Name: $BUCKET_NAME"
 echo "  Region: $REGION"
-echo "  Folders: products/, branding/, stores/, cms/, email/, blog/"
+echo "  Folders: products/, branding/, stores/, cms/, blog/"
 echo "  Encryption: AES256"
 echo "  Versioning: Enabled"
 echo ""

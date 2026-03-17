@@ -28,19 +28,7 @@ export const kitchenTicketsTable = defineTable({
     notes: v.optional(v.string()),
   })),
   assignedTo: v.optional(v.string()), // Reference to Better Auth component user
-  estimatedPrepTime: v.optional(v.number()),
-  estimatedReadyAt: v.optional(v.number()),
-  startedAt: v.optional(v.number()),
-  completedAt: v.optional(v.number()),
-  cancelledAt: v.optional(v.number()),
-  readyAt: v.optional(v.number()),
-  printCount: v.optional(v.number()),
-  printAttempts: v.optional(v.number()),
-  printStatus: v.optional(v.string()),
-  customerName: v.optional(v.string()),
-  customerPhone: v.optional(v.string()),
-  customerEmail: v.optional(v.string()),
-  trackingToken: v.optional(v.string()),
+  estimatedPrepTime: v.optional(v.number()), // in minutes (max of item prep times)
   source: v.union(
     v.literal("website"),
     v.literal("uber_eats"),
@@ -53,6 +41,45 @@ export const kitchenTicketsTable = defineTable({
     v.literal("pickup"),
     v.literal("dine_in")
   ),
+
+  // Lifecycle timestamps (enforced by updateStatus invariants)
+  startedAt: v.optional(v.number()),    // set when status -> "in_progress" (if not already set)
+  readyAt: v.optional(v.number()),      // set when status -> "ready"
+  completedAt: v.optional(v.number()),  // set when status -> "completed"
+  pickedUpAt: v.optional(v.number()),   // set by markPickedUp()
+  cancelledAt: v.optional(v.number()),  // set when status -> "cancelled"
+
+  // Tracking (client-facing)
+  trackingToken: v.string(),            // nanoid(21), generated at creation, REQUIRED
+  estimatedReadyAt: v.optional(v.number()), // timestamp = createdAt + max(prepTime of items)
+
+  // Customer info for print ticket (delivery only)
+  customerName: v.optional(v.string()),
+  customerPhone: v.optional(v.string()),
+  deliveryNotes: v.optional(v.string()),
+  allergens: v.optional(v.array(v.string())),
+
+  // Print management
+  printStatus: v.union(
+    v.literal("pending"),
+    v.literal("printed"),
+    v.literal("failed"),
+    v.literal("not_required")
+  ),
+  printAttempts: v.number(),            // default: 0
+  printRequestedAt: v.optional(v.number()), // set at each trigger (confirmed/ready/reprint)
+  printTrigger: v.optional(v.union(
+    v.literal("confirmed"),
+    v.literal("ready"),
+    v.literal("reprint")
+  )),
+  lastPrintAt: v.optional(v.number()),     // timestamp of last markPrintSent
+  printFailedAt: v.optional(v.number()),   // explicit failure timestamp
+  lastPrintError: v.optional(v.string()),  // short error ("timeout", "window_closed", etc.)
+
+  // Legacy field (kept for backward compatibility)
+  printCount: v.optional(v.number()),
+
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -60,6 +87,16 @@ export const kitchenTicketsTable = defineTable({
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_orderId", ["orderId"])
   .index("by_storeId_station", ["storeId", "station"])
+  // KDS print queue
+  .index("by_store_printStatus_printRequestedAt", ["storeId", "printStatus", "printRequestedAt"])
+  // KDS kanban
+  .index("by_store_status_createdAt", ["storeId", "status", "createdAt"])
+  // Client tracking
+  .index("by_trackingToken", ["trackingToken"])
+  // Print alerts (failed recent)
+  .index("by_store_printStatus_printFailedAt", ["storeId", "printStatus", "printFailedAt"])
+  // Display screen (ready tickets)
+  .index("by_store_status_readyAt", ["storeId", "status", "readyAt"])
 
 /**
  * Printer Settings table

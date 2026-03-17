@@ -21,6 +21,7 @@ export {
   prizeRedemptionsTable,
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
+export { favoritesTable } from "./favorites"
 export {
   emailBlockValidator,
   emailSubscribersTable,
@@ -31,16 +32,45 @@ export {
   emailEventsTable,
   emailConfigTable,
 } from "./emailMarketing"
+// CMS block-based system (admin)
 export { cmsPagesTable, cmsBlocksTable, cmsMediaTable } from "./cms"
+// Blog system (admin)
 export {
   blogCategoriesTable,
   blogTagsTable,
   blogArticlesTable,
   blogArticleTagsTable,
 } from "./cms"
+// Auto blog
 export {
   ownerEntitlementsTable,
   blogAutoConfigTable,
   blogAutoQueueTable,
   blogAutoUsageTable,
 } from "./autoBlog"
+// CMS storefront page tables & validators
+export {
+  // CMS validators
+  localizedText,
+  localizedRichText,
+  localizedSeo,
+  media as cmsMedia,
+  pageMetadata,
+  // CMS tables
+  cmsTable,
+  cmsHomeTable,
+  cmsMenuTable,
+  cmsAboutTable,
+  cmsContactTable,
+  cmsBlogPostsTable,
+  cmsCartTable,
+  cmsCheckoutTable,
+  cmsTrackingTable,
+  cmsSigninTable,
+  cmsSignupTable,
+  cmsPrivacyTable,
+  cmsTermsTable,
+  cms404Table,
+  cmsMaintenanceTable,
+  cmsAccountTable,
+} from "./cms"

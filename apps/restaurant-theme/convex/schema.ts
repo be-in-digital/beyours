@@ -44,6 +44,23 @@ import {
   blogAutoConfigTable,
   blogAutoQueueTable,
   blogAutoUsageTable,
+  favoritesTable,
+  cmsTable,
+  cmsHomeTable,
+  cmsMenuTable,
+  cmsAboutTable,
+  cmsContactTable,
+  cmsBlogPostsTable,
+  cmsCartTable,
+  cmsCheckoutTable,
+  cmsTrackingTable,
+  cmsSigninTable,
+  cmsSignupTable,
+  cmsPrivacyTable,
+  cmsTermsTable,
+  cms404Table,
+  cmsMaintenanceTable,
+  cmsAccountTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -54,8 +71,7 @@ import {
  *
  * Business tables are imported from @beindigital-engine/convex-schema.
  */
-export default defineSchema(
-  {
+export default defineSchema({
   userProfiles: userProfilesTable,
   globalSettings: globalSettingsTable,
   storeIntegrations: storeIntegrationsTable,
@@ -100,6 +116,24 @@ export default defineSchema(
   blogAutoConfig: blogAutoConfigTable,
   blogAutoQueue: blogAutoQueueTable,
   blogAutoUsage: blogAutoUsageTable,
+  favorites: favoritesTable,
+  // CMS (storefront page tables)
+  cms: cmsTable,
+  cmsHome: cmsHomeTable,
+  cmsMenu: cmsMenuTable,
+  cmsAbout: cmsAboutTable,
+  cmsContact: cmsContactTable,
+  cmsBlogPosts: cmsBlogPostsTable,
+  cmsCart: cmsCartTable,
+  cmsCheckout: cmsCheckoutTable,
+  cmsTracking: cmsTrackingTable,
+  cmsSignin: cmsSigninTable,
+  cmsSignup: cmsSignupTable,
+  cmsPrivacy: cmsPrivacyTable,
+  cmsTerms: cmsTermsTable,
+  cms404: cms404Table,
+  cmsMaintenance: cmsMaintenanceTable,
+  cmsAccount: cmsAccountTable,
   },
   { schemaValidation: false }
 );

@@ -1,6 +1,0 @@
-export { EmailDashboardPage } from "./dashboard"
-export { EmailCampaignsPage } from "./campaigns"
-export { EmailTemplatesPage } from "./templates"
-export { EmailSubscribersPage } from "./subscribers"
-export { EmailSegmentsPage } from "./segments"
-export { EmailConfigPage } from "./config"

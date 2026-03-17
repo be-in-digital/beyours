@@ -10,6 +10,7 @@ import {
   type ProductRecord,
   type CategoryRecord,
 } from "@beindigital-engine/convex-functions/deliverooMenuSync";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 /**
  * Sync menu to a single Deliveroo store.
@@ -95,9 +96,11 @@ export const syncStore = action({
       );
 
       // 9. Read credentials from environment
-      const clientId = process.env.DELIVEROO_CLIENT_ID;
-      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+      const pkg = getPackageEnv();
+      const site = getSiteEnv();
+      const clientId = pkg.DELIVEROO_CLIENT_ID;
+      const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
       if (!clientId || !clientSecret) {
         throw new Error("Deliveroo API credentials not configured in environment");
@@ -157,9 +160,11 @@ export const checkMenu = action({
       return { error: "No Deliveroo integration or brandId" };
     }
 
-    const clientId = process.env.DELIVEROO_CLIENT_ID;
-    const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-    const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+    const pkg = getPackageEnv();
+    const site = getSiteEnv();
+    const clientId = pkg.DELIVEROO_CLIENT_ID;
+    const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+    const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
 
     if (!clientId || !clientSecret) {
       return { error: "Missing Deliveroo credentials" };

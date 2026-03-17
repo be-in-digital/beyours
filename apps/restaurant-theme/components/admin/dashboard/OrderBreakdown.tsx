@@ -4,6 +4,7 @@ import { PieChart as PieChartIcon } from "lucide-react"
 import { Cell, Pie, PieChart } from "recharts"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import {
   ChartContainer,
   ChartTooltip,
@@ -53,10 +54,14 @@ function DonutChart({
 
   if (isEmpty) {
     return (
-      <div className="flex h-[200px] flex-col items-center justify-center gap-2 text-muted-foreground">
-        <PieChartIcon className="h-10 w-10 text-muted-foreground/50" />
-        <p className="text-sm">Aucune donnée</p>
-      </div>
+      <Empty className="h-[200px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <PieChartIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucune donnée</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

@@ -78,6 +78,22 @@ export const getByStatus = {
   },
 }
 
+/**
+ * Get orders by view token (public access for order confirmation page)
+ */
+export const getByViewToken = {
+  args: {
+    orderId: v.id("orders"),
+    viewToken: v.string(),
+  },
+  handler: async (ctx: any, args: { orderId: string; viewToken: string }) => {
+    const order = await ctx.db.get(args.orderId)
+    if (!order) return null
+    if (order.viewToken !== args.viewToken) return null
+    return order
+  },
+}
+
 // === MUTATIONS ===
 
 interface OrderItemInput {
@@ -114,6 +130,8 @@ interface CreateOrderArgs {
   }
   notes?: string
   paymentMethod?: string
+  promotionId?: string
+  discountAmount?: number
   uberDirectEstimateId?: string
   uberDirectFee?: number
 }
@@ -177,18 +195,64 @@ export const create = {
     })),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    promotionId: v.optional(v.id("promotions")),
+    discountAmount: v.optional(v.number()),
     uberDirectEstimateId: v.optional(v.string()),
     uberDirectFee: v.optional(v.number()),
   },
   handler: async (ctx: any, args: CreateOrderArgs) => {
     const now = Date.now()
 
-    // Calculate subtotal from items
-    const subtotal = args.items.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
-
     // Get store and global settings for tax rate and delivery config
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
     if (!store) throw new Error("Store not found")
+
+    // Re-fetch each product from DB — never trust client prices
+    const verifiedItems: OrderItemInput[] = []
+    for (const item of args.items) {
+      if (!item.productId) {
+        throw new Error("productId is required for each item")
+      }
+
+      const product = await ctx.db.get(item.productId)
+      if (!product) throw new Error(`Product not found: ${item.productId}`)
+      if (product.storeId !== args.storeId) {
+        throw new Error(`Product ${item.productId} does not belong to store ${args.storeId}`)
+      }
+
+      // Resolve selected options from DB product data
+      const resolvedOptions: OrderItemInput["selectedOptions"] = []
+      for (const sel of item.selectedOptions) {
+        const option = product.options?.find((o: any) => o.id === sel.optionId || o.name === sel.optionName)
+        if (!option) continue
+        const choice = option.choices?.find((c: any) => c.id === sel.choiceId || c.name === sel.choiceName)
+        resolvedOptions.push({
+          optionId: option.id,
+          optionName: option.name,
+          choiceId: choice?.id,
+          choiceName: choice?.name ?? sel.choiceName,
+          priceModifier: choice?.priceModifier ?? 0,
+        })
+      }
+
+      const optionsTotal = resolvedOptions.reduce((sum: number, o: any) => sum + o.priceModifier, 0)
+      const serverUnitPrice = product.price
+      const serverSubtotal = (serverUnitPrice + optionsTotal) * item.quantity
+
+      verifiedItems.push({
+        productId: item.productId,
+        productName: product.name,
+        quantity: item.quantity,
+        unitPrice: serverUnitPrice,
+        selectedOptions: resolvedOptions,
+        subtotal: serverSubtotal,
+        notes: item.notes,
+        externalId: item.externalId,
+      })
+    }
+
+    // Calculate subtotal from server-verified items
+    const subtotal = verifiedItems.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
 
     const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
     const deliveryConfig = globalSettings?.delivery
@@ -203,7 +267,6 @@ export const create = {
       const feeMode = deliveryConfig.feeMode ?? "fixed"
       deliveryFeeMode = feeMode
 
-      // Check free delivery threshold
       const freeAbove = deliveryConfig.freeAbove
       if (freeAbove && subtotal >= freeAbove) {
         deliveryFee = 0
@@ -215,7 +278,6 @@ export const create = {
         }
         const percentage = deliveryConfig.percentage ?? 100
         deliveryFee = Math.round(args.uberDirectFee * percentage / 100)
-        // Apply max fee cap
         if (deliveryConfig.maxFee !== undefined && deliveryFee > deliveryConfig.maxFee) {
           deliveryFee = deliveryConfig.maxFee
         }
@@ -223,33 +285,60 @@ export const create = {
     }
 
     const taxAmount = Math.round(subtotal * taxRate)
-    const total = subtotal + taxAmount + deliveryFee
+    const discount = args.discountAmount ?? 0
+    const total = Math.max(0, subtotal + taxAmount + deliveryFee - discount)
 
     const orderNumber = generateOrderNumber()
 
-    return await ctx.db.insert("orders", {
+    // Generate view token for public order confirmation access
+    const viewToken = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
+
+    const orderId = await ctx.db.insert("orders", {
       storeId: args.storeId,
       orderNumber,
       customerId: args.customerId,
       customerInfo: args.customerInfo,
       type: args.type,
       status: "pending",
-      items: args.items,
+      items: verifiedItems,
       subtotal,
       taxAmount,
       deliveryFee: args.type === "delivery" && deliveryFee > 0 ? deliveryFee : undefined,
       deliveryFeeMode: args.type === "delivery" ? deliveryFeeMode : undefined,
       uberDirectEstimateId: args.uberDirectEstimateId,
       uberDirectFee: args.uberDirectFee,
+      promotionId: args.promotionId,
+      discountAmount: discount > 0 ? discount : undefined,
       total,
       deliveryAddress: args.deliveryAddress,
       paymentMethod: args.paymentMethod,
       paymentStatus: "pending",
       source: "website",
       notes: args.notes,
+      viewToken,
       createdAt: now,
       updatedAt: now,
     })
+
+    // Increment promotion usage if a promotion was applied
+    if (args.promotionId && args.customerInfo.email) {
+      const promo = await ctx.db.get(args.promotionId)
+      if (promo) {
+        await ctx.db.patch(args.promotionId, {
+          usageCount: (promo.usageCount ?? 0) + 1,
+          updatedAt: now,
+        })
+        await ctx.db.insert("promotionUsages", {
+          storeId: args.storeId,
+          promotionId: args.promotionId,
+          customerEmail: args.customerInfo.email,
+          orderId,
+          usedAt: now,
+        })
+      }
+    }
+
+    return orderId
   },
 }
 
@@ -276,17 +365,13 @@ export const updateStatus = {
     if (!order) throw new Error("Order not found")
 
     const now = Date.now()
-
-    // Auto-complete delivered orders: delivery implies order is done
-    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
-
     const updates: Record<string, unknown> = {
-      status: effectiveStatus,
+      status: args.status,
       updatedAt: now,
     }
 
     // Set timestamps based on status
-    if (effectiveStatus === "completed") {
+    if (args.status === "completed") {
       updates.completedAt = now
     } else if (args.status === "cancelled") {
       updates.cancelledAt = now
@@ -492,12 +577,19 @@ export const updateFromWebhook = {
     updatedAt: v.number(),
   },
   handler: async (ctx: any, args: { externalOrderId: string; platform: string; status: string; cancellationReason?: string; updatedAt: number }) => {
+    // Map platform to source field (createFromWebhook stores "source" not "platform")
+    const sourceMap: Record<string, string> = {
+      uberEats: "uber_eats",
+      deliveroo: "deliveroo",
+    }
+    const source = sourceMap[args.platform] ?? args.platform
+
     const order = await ctx.db
       .query("orders")
       .filter((q: any) =>
         q.and(
           q.eq(q.field("externalOrderId"), args.externalOrderId),
-          q.eq(q.field("platform"), args.platform)
+          q.eq(q.field("source"), source)
         )
       )
       .first()
@@ -506,15 +598,12 @@ export const updateFromWebhook = {
       throw new Error(`Order not found: ${args.externalOrderId}`)
     }
 
-    // Auto-complete delivered orders: delivery implies order is done
-    const effectiveStatus = args.status === "delivered" ? "completed" : args.status
-
     const updates: Record<string, unknown> = {
-      status: effectiveStatus,
+      status: args.status,
       updatedAt: args.updatedAt,
     }
 
-    if (effectiveStatus === "completed") {
+    if (args.status === "completed") {
       updates.completedAt = args.updatedAt
     } else if (args.status === "cancelled") {
       updates.cancelledAt = args.updatedAt

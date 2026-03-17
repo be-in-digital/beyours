@@ -32,9 +32,9 @@ export interface UnifiedOrderDelivery {
   type: "delivery" | "pickup"
   address?: {
     street: string
-    city: string
-    postalCode: string
-    country: string
+    city?: string
+    postalCode?: string
+    country?: string
     latitude?: number
     longitude?: number
     instructions?: string

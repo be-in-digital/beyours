@@ -26,9 +26,11 @@ interface StripeAccountLinkResponse {
  * Checks that the account has charges_enabled and stores the connection.
  */
 export const stripeCallback = httpAction(async (ctx, request) => {
+  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
-  const adminUrl = process.env.ADMIN_URL ?? "http://localhost:3000";
+  const adminUrl = site.ADMIN_URL ?? "http://localhost:3000";
 
   if (!accountId) {
     return new Response(null, {
@@ -37,7 +39,7 @@ export const stripeCallback = httpAction(async (ctx, request) => {
     });
   }
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = site.STRIPE_SECRET_KEY;
   if (!stripeKey) {
     return new Response(null, {
       status: 302,
@@ -89,9 +91,11 @@ export const stripeCallback = httpAction(async (ctx, request) => {
  * Generates a new Account Link and redirects the user back to Stripe.
  */
 export const stripeRefresh = httpAction(async (ctx, request) => {
+  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
-  const adminUrl = process.env.ADMIN_URL ?? "http://localhost:3000";
+  const adminUrl = site.ADMIN_URL ?? "http://localhost:3000";
 
   if (!accountId) {
     return new Response(null, {
@@ -100,8 +104,8 @@ export const stripeRefresh = httpAction(async (ctx, request) => {
     });
   }
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  const siteUrl = process.env.CONVEX_SITE_URL;
+  const stripeKey = site.STRIPE_SECRET_KEY;
+  const siteUrl = site.CONVEX_SITE_URL;
   if (!stripeKey || !siteUrl) {
     return new Response(null, {
       status: 302,
@@ -152,11 +156,13 @@ export const stripeRefresh = httpAction(async (ctx, request) => {
  * Delegates token exchange and encryption to the Node.js internalAction.
  */
 export const sumupCallback = httpAction(async (ctx, request) => {
+  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const site = getSiteEnv();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
 
-  const adminUrl = process.env.ADMIN_URL ?? "http://localhost:3000";
+  const adminUrl = site.ADMIN_URL ?? "http://localhost:3000";
 
   if (error || !code) {
     const errorMsg =

@@ -10,6 +10,10 @@ export const gameQRCodesTable = defineTable({
   code: v.string(), // Unique QR code value
   tableNumber: v.optional(v.string()),
   location: v.optional(v.string()), // e.g. "Terrace", "Main hall"
+  gameType: v.optional(v.union(
+    v.literal("wheel"),
+    v.literal("scratch_card")
+  )),
   isActive: v.boolean(),
   scannedCount: v.number(),
   lastScannedAt: v.optional(v.number()),
@@ -37,9 +41,9 @@ export const requiredActionsTable = defineTable({
   description: v.optional(v.string()),
   url: v.optional(v.string()),
   icon: v.optional(v.string()),
-  timerSeconds: v.optional(v.number()),
   isRequired: v.boolean(),
   sortOrder: v.number(),
+  timerSeconds: v.optional(v.number()),
   isActive: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -65,11 +69,15 @@ export const gamesTable = defineTable({
     wheelSections: v.optional(v.array(v.object({
       label: v.string(),
       color: v.string(),
+      prizeId: v.optional(v.id("prizes")),
       isWinning: v.optional(v.boolean()),
       probability: v.optional(v.number()),
-      prizeId: v.optional(v.id("prizes")),
     }))),
     scratchCardDesign: v.optional(v.string()),
+    backgroundImage: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    cooldownHours: v.optional(v.number()),
   })),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -119,10 +127,10 @@ export const gamePlaysTable = defineTable({
   playerFirstName: v.optional(v.string()),
   playerLastName: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
+  fingerprint: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
-  fingerprint: v.optional(v.string()),
   ipAddress: v.optional(v.string()),
   userAgent: v.optional(v.string()),
   playedAt: v.number(),
@@ -149,10 +157,10 @@ export const prizeRedemptionsTable = defineTable({
   redemptionCode: v.string(), // QR code sent to customer
   status: v.union(
     v.literal("pending"),
+    v.literal("claimed"),
     v.literal("redeemed"),
     v.literal("expired"),
-    v.literal("cancelled"),
-    v.literal("claimed")
+    v.literal("cancelled")
   ),
   redeemedAt: v.optional(v.number()),
   redeemedBy: v.optional(v.string()), // Staff member who redeemed (Better Auth user)

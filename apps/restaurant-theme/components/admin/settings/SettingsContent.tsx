@@ -12,11 +12,13 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DesignTabContent } from "./DesignTabContent"
 import { LanguagesTabContent } from "./LanguagesTabContent"
 import { PaymentsTabContent } from "./PaymentsTabContent"
+import { KitchenSettingsTabContent } from "./KitchenSettingsTabContent"
+import { DisplaySettingsTabContent } from "./DisplaySettingsTabContent"
 
 const integrations = [
   {
@@ -124,11 +126,15 @@ export function SettingsContent() {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={SettingsIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les paramètres"
-      />
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SettingsIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les paramètres</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -146,13 +152,15 @@ export function SettingsContent() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="general">Général</TabsTrigger>
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="cuisine">Cuisine</TabsTrigger>
+          <TabsTrigger value="affichage">Affichage</TabsTrigger>
           <TabsTrigger value="design">Design</TabsTrigger>
           <TabsTrigger value="langues">Langues</TabsTrigger>
           <TabsTrigger value="paiements">Paiements</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="integrations">Intégrations</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -186,6 +194,14 @@ export function SettingsContent() {
             </div>
             <Button onClick={handleUpdateGeneral}>Enregistrer les modifications</Button>
           </div>
+        </TabsContent>
+
+        <TabsContent value="cuisine" className="space-y-4">
+          <KitchenSettingsTabContent />
+        </TabsContent>
+
+        <TabsContent value="affichage" className="space-y-4">
+          <DisplaySettingsTabContent />
         </TabsContent>
 
         <TabsContent value="design" className="space-y-4">

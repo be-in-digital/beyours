@@ -30,9 +30,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@beindigital-engine/ui"
+import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
+import { calculateDeliveryFee } from "@beindigital-engine/convex-functions/deliveryFee"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
 // ---------------------------------------------------------------------------
 // Info dialog helper — renders an (i) icon that opens a guide dialog
@@ -249,7 +253,7 @@ const DAY_NAMES = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 export function SettingsPage() {
-  const { api } = useAdminApiStore()
+  const { api, storeId: adminStoreId } = useAdminApiStore()
   const settings = useQuery(api.globalSettings.get)
   const updateSettings = useMutation(api.globalSettings.upsert)
 
@@ -282,7 +286,9 @@ export function SettingsPage() {
   const [deliveryMaxFee, setDeliveryMaxFee] = useState("")
 
   // Simulator state
-  const [simulatorAddress, setSimulatorAddress] = useState("")
+  const [simulatorAddress, setSimulatorAddress] = useState<AddressValue>({
+    street: "", city: "", postalCode: "", country: "France",
+  })
   const [isSimulating, setIsSimulating] = useState(false)
   const [simulationResult, setSimulationResult] = useState<{
     uberDirectCost: number
@@ -290,6 +296,7 @@ export function SettingsPage() {
     restaurantLoss: number
     estimatedMinutes: number
   } | null>(null)
+  const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
 
   // Payments tab state
   const [cardProvider, setCardProvider] = useState<"stripe" | "sumup">("stripe")
@@ -532,16 +539,55 @@ export function SettingsPage() {
   }
 
   const handleSimulate = async () => {
-    if (!simulatorAddress.trim()) return
+    if (!simulatorAddress.latitude || !simulatorAddress.longitude) {
+      toast.error("Sélectionnez une adresse depuis les suggestions pour obtenir les coordonnées")
+      return
+    }
+    if (!adminStoreId) {
+      toast.error("Aucun restaurant sélectionné")
+      return
+    }
     setIsSimulating(true)
     setSimulationResult(null)
 
     try {
-      // TODO: Call uberDirect.getDeliveryQuote action when available
-      // For now, show a placeholder message
-      toast.info("Le simulateur sera disponible après la configuration d'Uber Direct")
+      const quote = await getDeliveryQuote({
+        storeId: adminStoreId as any,
+        dropoffLatitude: simulatorAddress.latitude,
+        dropoffLongitude: simulatorAddress.longitude,
+        dropoffAddress: `${simulatorAddress.street}, ${simulatorAddress.postalCode} ${simulatorAddress.city}`,
+      })
+
+      const parsedPercentage = parseFloat(deliveryPercentage) || 100
+      const parsedMaxFee = deliveryMaxFee ? parseFloat(deliveryMaxFee) : undefined
+      const parsedFreeAbove = freeAbove ? parseFloat(freeAbove) : undefined
+
+      const result = calculateDeliveryFee({
+        feeMode: "percentage",
+        percentage: parsedPercentage,
+        maxFee: parsedMaxFee !== undefined ? eurosToCents(parsedMaxFee) : undefined,
+        freeAbove: parsedFreeAbove !== undefined ? eurosToCents(parsedFreeAbove) : undefined,
+        orderSubtotal: 2000, // 20€ simulation baseline
+        uberDirectFee: quote.fee,
+      })
+
+      setSimulationResult({
+        uberDirectCost: quote.fee,
+        clientFee: result.clientFee,
+        restaurantLoss: result.restaurantLoss,
+        estimatedMinutes: quote.estimatedDeliveryMinutes,
+      })
     } catch (error) {
-      toast.error("Impossible d'estimer le coût")
+      const msg = error instanceof Error ? error.message : "Impossible d'estimer le coût"
+      if (msg.includes("UNDELIVERABLE_ZONE")) {
+        toast.error("Uber Direct ne peut pas livrer à cette adresse")
+      } else if (msg.includes("STORE_ADDRESS_INCOMPLETE")) {
+        toast.error("L'adresse du restaurant n'a pas de coordonnées GPS. Mettez à jour l'adresse du restaurant.")
+      } else if (msg.includes("UBER_DIRECT_NOT_CONFIGURED")) {
+        toast.error("Uber Direct n'est pas correctement configuré. Vérifiez les credentials dans l'onglet Intégrations.")
+      } else {
+        toast.error(msg)
+      }
       console.error(error)
     } finally {
       setIsSimulating(false)
@@ -1049,25 +1095,21 @@ export function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="simulatorAddress">Adresse de livraison (test)</Label>
-                  <Input
-                    id="simulatorAddress"
-                    type="text"
-                    value={simulatorAddress}
-                    onChange={(e) => {
-                      setSimulatorAddress(e.target.value)
-                      setSimulationResult(null)
-                    }}
-                    placeholder="ex: 12 rue de la Paix, 75002 Paris"
-                  />
-                </div>
+                <AddressAutocomplete
+                  value={simulatorAddress}
+                  onChange={(addr) => {
+                    setSimulatorAddress(addr)
+                    setSimulationResult(null)
+                  }}
+                  apiKey={GOOGLE_MAPS_API_KEY}
+                  label="Adresse de livraison (test)"
+                />
 
                 <Button
                   onClick={handleSimulate}
                   size="sm"
                   variant="outline"
-                  disabled={!simulatorAddress.trim() || isSimulating || !deliveryPercentage}
+                  disabled={!simulatorAddress.latitude || isSimulating || !deliveryPercentage}
                 >
                   {isSimulating ? "Estimation en cours..." : "Estimer le coût"}
                 </Button>

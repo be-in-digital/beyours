@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { slugify } from "@/lib/admin/formatters"
 import { AddressAutocomplete, type AddressValue } from "@/components/ui/address-autocomplete"
 import Link from "next/link"
@@ -200,11 +200,15 @@ export function StoresContent() {
       </div>
 
       {stores.length === 0 ? (
-        <EmptyState
-          icon={StoreIcon}
-          title="Aucun établissement"
-          description="Créez votre premier établissement pour commencer"
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <StoreIcon className="h-5 w-5" />
+            </EmptyMedia>
+            <EmptyTitle>Aucun établissement</EmptyTitle>
+            <EmptyDescription>Créez votre premier établissement pour commencer</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {stores.map((store: Doc<"stores">) => (

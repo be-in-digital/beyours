@@ -15,24 +15,50 @@ import {
   BreadcrumbSeparator,
 } from "../ui/breadcrumb"
 import { getBreadcrumbData } from "../config/route-titles"
-import { Moon, Sun } from "lucide-react"
+import { toast } from "sonner"
+import { Globe, Moon, Sun } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@beindigital-engine/ui"
+
+const languages = [
+  { code: "fr", label: "Français" },
+  { code: "en", label: "English" },
+  { code: "es", label: "Español" },
+  { code: "de", label: "Deutsch" },
+  { code: "ar", label: "العربية" },
+]
 
 interface AdminHeaderProps {
   /** Slot for the store selector dropdown */
   storeSelector?: React.ReactNode
-  /** Slot for the language switcher — replaces the built-in one when provided */
-  languageSwitcher?: React.ReactNode
 }
 
-export function AdminHeader({ storeSelector, languageSwitcher }: AdminHeaderProps) {
+export function AdminHeader({ storeSelector }: AdminHeaderProps) {
   const pathname = usePathname()
   const { parentLabel, parentHref, currentLabel } = getBreadcrumbData(pathname)
   const { theme, setTheme } = useTheme()
+  const [currentLang, setCurrentLang] = useState("fr")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    const saved = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("lang="))
+      ?.split("=")[1]
+    if (saved) setCurrentLang(saved)
   }, [])
+
+  const handleLanguageChange = (code: string) => {
+    const lang = languages.find((l) => l.code === code)
+    setCurrentLang(code)
+    document.cookie = `lang=${code}; path=/; max-age=${60 * 60 * 24 * 365}`
+    toast.success(`Langue changée : ${lang?.label ?? code}`)
+  }
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark")
@@ -78,7 +104,25 @@ export function AdminHeader({ storeSelector, languageSwitcher }: AdminHeaderProp
         )}
 
         {/* Language switcher */}
-        {languageSwitcher}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+              <Globe className="size-4" />
+              <span className="uppercase text-xs font-medium">{currentLang}</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {languages.map((lang) => (
+              <DropdownMenuItem
+                key={lang.code}
+                onClick={() => handleLanguageChange(lang.code)}
+                className={currentLang === lang.code ? "font-medium bg-accent" : ""}
+              >
+                {lang.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Dark mode toggle */}
         <button

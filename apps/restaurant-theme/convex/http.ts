@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { authComponent, createAuth } from "./auth";
 import { handleWebhook as uberEatsWebhook } from "./uberEatsWebhook";
 import { handleWebhook as deliverooWebhook } from "./deliverooWebhookHandler";
+import { handleWebhook as stripePaymentWebhook } from "./stripeWebhook";
 import { stripeCallback, stripeRefresh, sumupCallback } from "./oauthCallbackHandlers";
 import { handleUnsubscribe, handleConfirmOptIn, handleSesWebhook } from "./emailHttpHandlers";
 import { handleWebhook as bidStripeWebhook } from "./bidStripeWebhook";
@@ -15,11 +16,30 @@ http.route({
   handler: uberEatsWebhook,
 });
 
-// Deliveroo webhooks
+// Deliveroo webhooks (generic + dedicated order/menu paths)
 http.route({
   path: "/webhooks/deliveroo",
   method: "POST",
   handler: deliverooWebhook,
+});
+
+http.route({
+  path: "/webhooks/deliveroo/order",
+  method: "POST",
+  handler: deliverooWebhook,
+});
+
+http.route({
+  path: "/webhooks/deliveroo/menu",
+  method: "POST",
+  handler: deliverooWebhook,
+});
+
+// Stripe payment webhook
+http.route({
+  path: "/webhooks/stripe",
+  method: "POST",
+  handler: stripePaymentWebhook,
 });
 
 // OAuth payment provider callbacks

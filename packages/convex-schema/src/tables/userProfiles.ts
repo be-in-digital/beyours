@@ -19,7 +19,12 @@ export const userProfilesTable = defineTable({
   storeIds: v.array(v.id("stores")),
   permissions: v.array(v.string()),
   language: v.string(),
-  phone: v.optional(v.string()),
+  phones: v.optional(v.array(v.object({
+    label: v.string(),                    // e.g. "Personnel", "Travail", "Autre"
+    countryCode: v.optional(v.string()),  // e.g. "+33" (optional for backward compat)
+    number: v.string(),                   // local number e.g. "6 12 34 56 78"
+  }))),
+  avatarUrl: v.optional(v.string()),
   twoFactorEnabled: v.boolean(),
   createdAt: v.number(),
   updatedAt: v.number(),

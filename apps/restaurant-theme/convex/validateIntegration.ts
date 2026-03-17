@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
+import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
 
 // Input validation patterns
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -124,9 +125,11 @@ export const validate = action({
         };
       }
 
-      const clientId = process.env.UBER_EATS_CLIENT_ID;
-      const clientSecret = process.env.UBER_EATS_CLIENT_SECRET;
-      const sandboxMode = process.env.UBER_EATS_SANDBOX_MODE === "true";
+      const pkg = getPackageEnv();
+      const siteE = getSiteEnv();
+      const clientId = pkg.UBER_EATS_CLIENT_ID;
+      const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
+      const sandboxMode = siteE.UBER_EATS_SANDBOX_MODE === "true";
 
       if (!clientId || !clientSecret) {
         return {
@@ -189,9 +192,11 @@ export const validate = action({
         };
       }
 
-      const clientId = process.env.DELIVEROO_CLIENT_ID;
-      const clientSecret = process.env.DELIVEROO_CLIENT_SECRET;
-      const sandboxMode = process.env.DELIVEROO_IS_SANDBOX === "true";
+      const pkg = getPackageEnv();
+      const siteE = getSiteEnv();
+      const clientId = pkg.DELIVEROO_CLIENT_ID;
+      const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
+      const sandboxMode = siteE.DELIVEROO_IS_SANDBOX === "true";
 
       if (!clientId || !clientSecret) {
         return {

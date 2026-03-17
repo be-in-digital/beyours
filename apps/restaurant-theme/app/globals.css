@@ -212,6 +212,55 @@
   pointer-events: auto !important;
 }
 
+/* Storefront-styled Google Places dropdown */
+.storefront-pac-input ~ .pac-container,
+.pac-container {
+  border: none !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.03) !important;
+  margin-top: 8px !important;
+  padding: 8px !important;
+  font-family: inherit !important;
+  overflow: hidden !important;
+}
+
+.pac-container .pac-item {
+  border: none !important;
+  border-radius: 0.75rem !important;
+  padding: 12px 16px !important;
+  cursor: pointer !important;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  transition: background-color 0.15s ease !important;
+}
+
+.pac-container .pac-item:hover {
+  background-color: #f0fdf4 !important;
+}
+
+.pac-container .pac-item .pac-icon {
+  display: none !important;
+}
+
+.pac-container .pac-item .pac-item-query {
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  color: #27272a !important;
+}
+
+.pac-container .pac-item .pac-item-query + span {
+  font-size: 0.75rem !important;
+  color: #71717a !important;
+}
+
+.pac-container .pac-item.pac-item-selected {
+  background-color: #ecfdf5 !important;
+}
+
+.pac-container::after {
+  display: none !important;
+}
+
 /* When Google Places dropdown is open, prevent the dialog overlay from stealing clicks */
 body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
   pointer-events: none;

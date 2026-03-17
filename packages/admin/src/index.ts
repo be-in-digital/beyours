@@ -67,11 +67,3 @@ export { LanguagesPage } from "./pages/languages"
 export { DesignPage } from "./pages/design"
 export { PaymentsPage } from "./pages/payments"
 export { PromotionsPage } from "./pages/promotions"
-export {
-  EmailDashboardPage,
-  EmailCampaignsPage,
-  EmailTemplatesPage,
-  EmailSubscribersPage,
-  EmailSegmentsPage,
-  EmailConfigPage,
-} from "./pages/email"

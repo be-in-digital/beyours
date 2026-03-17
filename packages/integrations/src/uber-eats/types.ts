@@ -22,7 +22,7 @@ export interface UberEatsToken {
 
 export const UBER_EATS_URLS = {
   production: {
-    auth: "https://auth.uber.com/oauth/v2/token",
+    auth: "https://login.uber.com/oauth/v2/token",
     api: "https://api.uber.com",
   },
   sandbox: {
@@ -57,57 +57,92 @@ export type UberEatsEventType =
 
 export interface UberEatsOrder {
   id: string
-  display_id: string
+  display_id?: string
+  order_num?: string
   external_reference_id?: string
   current_state: string
-  type: "PICK_UP" | "DINE_IN" | "DELIVERY_BY_UBER" | "DELIVERY_BY_RESTAURANT"
-  store: {
+  created_time?: string
+  type: string
+  store?: {
     id: string
     name: string
     external_reference_id?: string
   }
-  eater: {
+  store_id?: string
+  // V1 format: single eater object
+  eater?: {
     first_name: string
     last_name: string
     phone?: string
     phone_code?: string
   }
+  // V2 format: array of eaters
   eaters?: Array<{
     first_name: string
     last_name: string
+    phone?: string
+    phone_code?: string
   }>
-  cart: {
+  // V2 simplified format
+  eater_info?: {
+    first_name?: string
+    last_name?: string
+    phone?: string
+  }
+  // Standard cart format
+  cart?: {
     items: UberEatsCartItem[]
     special_instructions?: string
     fulfillment_issues?: unknown[]
   }
-  payment: {
+  // V2 simplified format: items at order level
+  order_items?: UberEatsCartItem[]
+  payment?: {
     charges: {
       total: UberEatsMoney
-      sub_total: UberEatsMoney
-      tax: UberEatsMoney
-      total_fee: UberEatsMoney
+      sub_total?: UberEatsMoney
+      tax?: UberEatsMoney
+      total_fee?: UberEatsMoney
       delivery_fee?: UberEatsMoney
       bag_fee?: UberEatsMoney
       small_order_fee?: UberEatsMoney
       tip?: UberEatsMoney
       cash_amount_due?: UberEatsMoney
-      promotions?: {
+      promotions?: UberEatsMoney | {
         total: UberEatsMoney
         external_promotions_total?: UberEatsMoney
       }
     }
-    accounting: {
+    accounting?: {
       tax_remittance: {
         tax: UberEatsMoney
         total_tax_rate?: number
       }
     }
   }
-  placed_at: string
+  // V2 simplified format: charges as array
+  charges?: Array<{
+    charge_type: string
+    price: string
+  }>
+  placed_at?: string
   estimated_ready_for_pickup_at?: string
+  scheduled_time?: string
   delivery_info?: {
     estimated_delivery_time?: string
+    notes?: string
+    address?: {
+      address_line_1?: string
+      address_line_2?: string
+      city?: string
+      postal_code?: string
+      country?: string
+    }
+    destination?: {
+      address?: {
+        address_line_1?: string
+      }
+    }
   }
   packaging?: {
     disclaimer?: string
@@ -116,25 +151,44 @@ export interface UberEatsOrder {
     id: string
     name: string
   }
+  specialInstructions?: string
 }
 
 export interface UberEatsCartItem {
-  id: string
-  instance_id: string
-  title: string
+  id?: string
+  item_id?: string
+  instance_id?: string
+  title?: string
+  name?: string
   external_data?: string
   quantity: number
-  price: UberEatsMoney
+  price: UberEatsMoney | string
   selected_modifier_groups?: UberEatsModifierGroup[]
+  // V2 simplified format
+  selected_options?: Array<{
+    option_id?: string
+    name?: string
+    title?: string
+    price?: string
+  }>
   special_instructions?: string
   special_requests?: string[]
+  customer_request?: {
+    special_instructions?: string
+    allergy?: {
+      instructions?: string
+    }
+  }
 }
 
 export interface UberEatsModifierGroup {
   id: string
   title: string
   external_data?: string
-  selected_items: UberEatsModifierItem[]
+  // V1 format
+  selected_items?: UberEatsModifierItem[]
+  // V2 format
+  selected_modifier_options?: UberEatsModifierItem[]
 }
 
 export interface UberEatsModifierItem {

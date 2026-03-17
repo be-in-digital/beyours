@@ -2,7 +2,6 @@ import { query, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import * as defs from "@beindigital-engine/convex-functions/products";
-import { scheduleTranslation } from "./autoTranslate";
 
 // === Queries (public for storefront) ===
 
@@ -11,6 +10,7 @@ export const getById = query(defs.getById);
 export const getByCategory = query(defs.getByCategory);
 export const getBySlug = query(defs.getBySlug);
 export const getFeatured = query(defs.getFeatured);
+export const getManyByIds = query(defs.getManyByIds);
 
 // === Mutations (with menu sync trigger) ===
 
@@ -35,7 +35,6 @@ export const create = mutation({
     if (!identity) throw new Error("Not authenticated");
     const result = await defs.create.handler(ctx, args);
     await scheduleMenuSync(ctx);
-    await scheduleTranslation(ctx, result, "products", args.storeId);
     return result;
   },
 });
@@ -47,10 +46,6 @@ export const update = mutation({
     if (!identity) throw new Error("Not authenticated");
     const result = await defs.update.handler(ctx, args);
     await scheduleMenuSync(ctx);
-    const product = await ctx.db.get(args.id);
-    if (product?.storeId) {
-      await scheduleTranslation(ctx, args.id, "products", product.storeId);
-    }
     return result;
   },
 });

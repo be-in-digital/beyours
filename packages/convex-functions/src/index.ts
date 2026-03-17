@@ -46,6 +46,7 @@ export * as blogAutoUsage from "./blogAutoUsage"
 export { checkAutoBlogAccess, checkImageGenerationAccess, validateConfigAgainstPlan, normalizeScheduleDays } from "./blogAutoGuards"
 export * as bidSubscription from "./bidSubscription"
 export * as blogAutoGenerate from "./blogAutoGenerate"
+export * as favorites from "./favorites"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"

@@ -12,6 +12,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { ButtonGroup } from "@/components/ui/button-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { ProductsTable } from "./ProductsTable"
 import { CategoriesContent } from "@/components/admin/categories/CategoriesContent"
 
@@ -166,21 +167,22 @@ export function ProductsContent() {
             <p className="text-muted-foreground">Chargement des produits...</p>
           </div>
         ) : filteredProducts && filteredProducts.length === 0 ? (
-          <div className="text-center py-12 border rounded-lg">
-            <p className="text-muted-foreground">Aucun produit trouvé</p>
-            {searchQuery || categoryFilter !== "all" || statusFilter !== "all" ? (
-              <p className="text-sm text-muted-foreground mt-2">
-                Essayez d&apos;ajuster vos filtres
-              </p>
-            ) : (
-              <Button asChild className="mt-4">
+          <Empty className="py-12">
+            <EmptyHeader>
+              <EmptyTitle>Aucun produit trouvé</EmptyTitle>
+              {(searchQuery || categoryFilter !== "all" || statusFilter !== "all") && (
+                <EmptyDescription>Essayez d&apos;ajuster vos filtres</EmptyDescription>
+              )}
+            </EmptyHeader>
+            {!(searchQuery || categoryFilter !== "all" || statusFilter !== "all") && (
+              <Button asChild>
                 <Link href="/products/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Créez votre premier produit
                 </Link>
               </Button>
             )}
-          </div>
+          </Empty>
         ) : (
           <ProductsTable
             products={filteredProducts || []}
