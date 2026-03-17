@@ -1,5 +1,7 @@
 "use client"
 
+import { Badge } from "@beindigital-engine/ui/components"
+
 type OrderType = "delivery" | "pickup" | "dine_in"
 
 interface TrackingHeaderProps {
@@ -10,14 +12,8 @@ interface TrackingHeaderProps {
 
 const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   delivery: "Livraison",
-  pickup: "A emporter",
+  pickup: "À emporter",
   dine_in: "Sur place",
-}
-
-const ORDER_TYPE_COLORS: Record<OrderType, string> = {
-  delivery: "bg-blue-100 text-blue-700",
-  pickup: "bg-orange-100 text-orange-700",
-  dine_in: "bg-green-100 text-green-700",
 }
 
 export function TrackingHeader({
@@ -26,18 +22,21 @@ export function TrackingHeader({
   orderType,
 }: TrackingHeaderProps) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm text-center space-y-3">
-      <h1 className="text-2xl font-bold text-gray-900 leading-tight">
-        {storeName}
-      </h1>
-      <p className="text-lg text-gray-600 font-medium">
-        Commande #{orderNumber}
-      </p>
-      <span
-        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${ORDER_TYPE_COLORS[orderType]}`}
-      >
+    <div className="space-y-6">
+      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full font-black tracking-widest uppercase text-[10px] shadow-lg mx-auto block w-fit">
         {ORDER_TYPE_LABELS[orderType]}
-      </span>
+      </Badge>
+
+      <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-none italic">
+        Suivi <span className="text-orange-500 not-italic">commande</span>
+      </h1>
+
+      <div className="space-y-2">
+        <p className="text-xl text-white/80 font-medium">
+          <span className="font-mono font-bold text-white">{orderNumber}</span>
+        </p>
+        <p className="text-sm text-white/50 font-medium">{storeName}</p>
+      </div>
     </div>
   )
 }

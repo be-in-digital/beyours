@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { Badge } from "@/components/ui/badge"
 
 interface Game {
@@ -199,11 +199,15 @@ export function GamesContent() {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={GamepadIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les jeux"
-      />
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <GamepadIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les jeux</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 
@@ -303,11 +307,15 @@ export function GamesContent() {
           </div>
 
           {games.length === 0 ? (
-            <EmptyState
-              icon={GamepadIcon}
-              title="Aucun jeu"
-              description="Créez votre premier jeu pour commencer"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <GamepadIcon className="h-5 w-5" />
+                </EmptyMedia>
+                <EmptyTitle>Aucun jeu</EmptyTitle>
+                <EmptyDescription>Créez votre premier jeu pour commencer</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {games.map((game) => (
@@ -409,11 +417,15 @@ export function GamesContent() {
           </div>
 
           {qrCodes.length === 0 ? (
-            <EmptyState
-              icon={QrCodeIcon}
-              title="Aucun code QR"
-              description="Créez des codes QR pour vos tables"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <QrCodeIcon className="h-5 w-5" />
+                </EmptyMedia>
+                <EmptyTitle>Aucun code QR</EmptyTitle>
+                <EmptyDescription>Créez des codes QR pour vos tables</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
               {qrCodes.map((qr) => (
@@ -538,11 +550,15 @@ export function GamesContent() {
           </div>
 
           {prizes.length === 0 ? (
-            <EmptyState
-              icon={GiftIcon}
-              title="Aucun prix"
-              description="Créez des prix que les clients peuvent gagner"
-            />
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <GiftIcon className="h-5 w-5" />
+                </EmptyMedia>
+                <EmptyTitle>Aucun prix</EmptyTitle>
+                <EmptyDescription>Créez des prix que les clients peuvent gagner</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {prizes.map((prize) => (
@@ -572,11 +588,15 @@ export function GamesContent() {
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4">
-          <EmptyState
-            icon={GamepadIcon}
-            title="Aucun historique"
-            description="L'historique des parties apparaîtra ici"
-          />
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <GamepadIcon className="h-5 w-5" />
+              </EmptyMedia>
+              <EmptyTitle>Aucun historique</EmptyTitle>
+              <EmptyDescription>L&apos;historique des parties apparaîtra ici</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </TabsContent>
       </Tabs>
     </div>

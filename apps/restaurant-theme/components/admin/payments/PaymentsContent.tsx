@@ -7,6 +7,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { formatPrice, formatDate } from "@/lib/admin/formatters"
 import { Card, CardContent } from "@/components/ui/card"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -168,11 +169,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
           ))}
         </div>
       ) : filteredPayments.length === 0 ? (
-        <Card>
-          <CardContent className="flex items-center justify-center py-12">
-            <p className="text-muted-foreground">Aucun paiement trouvé</p>
-          </CardContent>
-        </Card>
+        <Empty className="py-12">
+          <EmptyHeader>
+            <EmptyTitle>Aucun paiement trouvé</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <Card>
           <Table>

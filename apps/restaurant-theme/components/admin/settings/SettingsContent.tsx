@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { LoadingState } from "@/components/admin/LoadingState"
-import { EmptyState } from "@/components/admin/EmptyState"
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DesignTabContent } from "./DesignTabContent"
 import { LanguagesTabContent } from "./LanguagesTabContent"
@@ -126,11 +126,15 @@ export function SettingsContent() {
 
   if (!storeId) {
     return (
-      <EmptyState
-        icon={SettingsIcon}
-        title="Aucun établissement sélectionné"
-        description="Veuillez sélectionner un établissement pour gérer les paramètres"
-      />
+      <Empty className="min-h-[400px]">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <SettingsIcon className="h-5 w-5" />
+          </EmptyMedia>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les paramètres</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     )
   }
 

@@ -21,3 +21,29 @@ export {
   prizeRedemptionsTable,
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
+export { favoritesTable } from "./favorites"
+export {
+  // CMS validators
+  localizedText,
+  localizedRichText,
+  localizedSeo,
+  media as cmsMedia,
+  pageMetadata,
+  // CMS tables
+  cmsTable,
+  cmsHomeTable,
+  cmsMenuTable,
+  cmsAboutTable,
+  cmsContactTable,
+  cmsBlogPostsTable,
+  cmsCartTable,
+  cmsCheckoutTable,
+  cmsTrackingTable,
+  cmsSigninTable,
+  cmsSignupTable,
+  cmsPrivacyTable,
+  cmsTermsTable,
+  cms404Table,
+  cmsMaintenanceTable,
+  cmsAccountTable,
+} from "./cms"

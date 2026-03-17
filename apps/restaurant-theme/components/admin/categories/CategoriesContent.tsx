@@ -11,6 +11,7 @@ import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from "lucide-react"
 import { CategoryForm } from "./CategoryForm"
@@ -136,15 +137,15 @@ export function CategoriesContent() {
           ))}
         </div>
       ) : categories.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <p className="text-muted-foreground mb-4">Aucune catégorie</p>
-            <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Créez votre première catégorie
-            </Button>
-          </CardContent>
-        </Card>
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Aucune catégorie</EmptyTitle>
+          </EmptyHeader>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Créez votre première catégorie
+          </Button>
+        </Empty>
       ) : (
         <div className="space-y-4">
           {categories.map((category: Doc<"categories">, index: number) => (
