@@ -1,8 +1,10 @@
 import {
   ChefHat,
   ChevronRight,
+  CreditCard,
   FileText,
   Gamepad2,
+  Globe,
   Image,
   LayoutDashboard,
   LayoutGrid,
@@ -162,9 +164,13 @@ export const navGroups: NavGroup[] = [
       },
       {
         label: "Blog",
-        href: "/content/blog",
         icon: PenSquare,
+        basePath: "/content/blog",
         requiredPermission: "settings:read",
+        children: [
+          { label: "Articles", href: "/content/blog" },
+          { label: "Auto Blog", href: "/content/blog/auto-config" },
+        ],
       },
       {
         label: "M\u00e9diath\u00e8que",
@@ -188,6 +194,18 @@ export const navGroups: NavGroup[] = [
         href: "/team",
         icon: UserCog,
         requiredPermission: "team:read",
+      },
+      {
+        label: "Langues",
+        href: "/languages",
+        icon: Globe,
+        requiredPermission: "settings:read",
+      },
+      {
+        label: "Abonnement",
+        href: "/subscription",
+        icon: CreditCard,
+        requiredPermission: "settings:read",
       },
       {
         label: "Param\u00e8tres",

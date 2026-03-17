@@ -31,9 +31,27 @@
     "./paymentConnections": "./src/paymentConnections.ts",
     "./encryption": "./src/encryption.ts",
     "./promotions": "./src/promotions.ts",
+    "./emailSubscribers": "./src/emailSubscribers.ts",
+    "./emailTemplates": "./src/emailTemplates.ts",
+    "./emailCampaigns": "./src/emailCampaigns.ts",
+    "./emailSegments": "./src/emailSegments.ts",
+    "./emailAutomations": "./src/emailAutomations.ts",
+    "./emailEvents": "./src/emailEvents.ts",
+    "./emailConfig": "./src/emailConfig.ts",
+    "./autoTranslate": "./src/autoTranslate.ts",
+    "./cms": "./src/cms.ts",
+    "./cmsPublish": "./src/cmsPublish.ts",
+    "./cmsMedia": "./src/cmsMedia.ts",
+    "./blog": "./src/blog.ts",
+    "./blogPublish": "./src/blogPublish.ts",
+    "./ownerEntitlements": "./src/ownerEntitlements.ts",
+    "./blogAutoConfig": "./src/blogAutoConfig.ts",
+    "./blogAutoUsage": "./src/blogAutoUsage.ts",
+    "./blogAutoGuards": "./src/blogAutoGuards.ts",
+    "./bidSubscription": "./src/bidSubscription.ts",
+    "./blogAutoGenerate": "./src/blogAutoGenerate.ts",
     "./favorites": "./src/favorites.ts",
-    "./deliveryFee": "./src/deliveryFee.ts",
-    "./cms": "./src/cms.ts"
+    "./deliveryFee": "./src/deliveryFee.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -44,7 +62,10 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "^1.18.0"
+    "convex": "^1.18.0",
+    "@beindigital-engine/cms": "workspace:*",
+    "@beindigital-engine/convex-schema": "workspace:*",
+    "@beindigital-engine/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

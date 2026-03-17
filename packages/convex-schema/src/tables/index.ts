@@ -23,6 +23,33 @@ export {
 export { promotionsTable, promotionUsagesTable } from "./promotions"
 export { favoritesTable } from "./favorites"
 export {
+  emailBlockValidator,
+  emailSubscribersTable,
+  emailTemplatesTable,
+  emailCampaignsTable,
+  emailSegmentsTable,
+  emailAutomationsTable,
+  emailEventsTable,
+  emailConfigTable,
+} from "./emailMarketing"
+// CMS block-based system (admin)
+export { cmsPagesTable, cmsBlocksTable, cmsMediaTable } from "./cms"
+// Blog system (admin)
+export {
+  blogCategoriesTable,
+  blogTagsTable,
+  blogArticlesTable,
+  blogArticleTagsTable,
+} from "./cms"
+// Auto blog
+export {
+  ownerEntitlementsTable,
+  blogAutoConfigTable,
+  blogAutoQueueTable,
+  blogAutoUsageTable,
+} from "./autoBlog"
+// CMS storefront page tables & validators
+export {
   // CMS validators
   localizedText,
   localizedRichText,

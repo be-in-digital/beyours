@@ -721,3 +721,50 @@ export const createUserProfileSchema = z.object({
  * Update User Profile Schema
  */
 export const updateUserProfileSchema = createUserProfileSchema.partial().required({ userId: true })
+
+// ============================================================================
+// AUTO BLOG VALIDATORS
+// ============================================================================
+
+export const autoBlogPlanEnum = z.enum(["starter", "pro", "enterprise"])
+
+export const stripeSubscriptionStatusEnum = z.enum([
+  "active", "trialing",
+  "past_due", "canceled", "unpaid",
+  "incomplete", "incomplete_expired", "paused",
+])
+
+/**
+ * Upsert Owner Entitlements Schema
+ */
+export const upsertOwnerEntitlementsSchema = z.object({
+  ownerId: z.string().min(1, "L'ID du proprietaire est requis"),
+  autoBlog: z.object({
+    enabled: z.boolean(),
+    plan: autoBlogPlanEnum.optional(),
+    monthlyQuota: z.number().int().min(0),
+    maxTopics: z.number().int().min(1).optional(),
+    allowMultiLanguage: z.boolean(),
+    allowAutoPublish: z.boolean(),
+  }),
+})
+
+/**
+ * Upsert Blog Auto Config Schema
+ */
+export const upsertBlogAutoConfigSchema = z.object({
+  storeId: z.string().min(1, "L'ID du magasin est requis"),
+  isEnabled: z.boolean(),
+  themes: z.array(z.string().min(1)).min(1, "Au moins un theme est requis"),
+  frequency: z.enum(["weekly", "monthly"]),
+  preferredWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
+  preferredMonthDays: z.array(z.number().int().min(1).max(28)).optional(),
+  preferredHour: z.number().int().min(0).max(23),
+  timezone: z.string().min(1, "Le fuseau horaire est requis"),
+  tone: z.enum(["formel", "decontracte", "storytelling"]),
+  primaryLocale: z.string().min(2).max(5),
+  autoTranslate: z.boolean(),
+  approvalMode: z.enum(["draft_review", "auto_publish"]),
+  categoryId: z.string().optional(),
+  targetStoreIds: z.array(z.string()).optional(),
+})

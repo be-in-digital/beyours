@@ -1,3 +1,8 @@
+/**
+ * Storefront components - Barrel Export
+ */
+
+export { StoreProvider } from './StoreProvider'
 export { StorefrontShell } from "./storefront-shell"
 export { StorefrontHeader } from "./storefront-header"
 export { StorefrontFooter } from "./storefront-footer"
