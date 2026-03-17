@@ -22,6 +22,22 @@ export const list = {
 }
 
 /**
+ * List active languages for a store (sorted by sortOrder)
+ */
+export const listActive = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const all = await ctx.db
+      .query("languages")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+    return all
+      .filter((lang: any) => lang.isActive)
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  },
+}
+
+/**
  * List all active languages across the entire instance (global)
  */
 export const listAll = {

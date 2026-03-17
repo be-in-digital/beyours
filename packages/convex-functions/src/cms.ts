@@ -1,542 +1,666 @@
+/**
+ * CMS Functions (Package Layer)
+ *
+ * Queries and mutation helpers for the CMS system.
+ * Pure logic — no auth, no scheduling. Those are handled in app wrappers.
+ */
+
 import { v } from "convex/values"
+import {
+  getPageDefinition,
+  getBlockDefinition,
+  getAllPageSlugs,
+  validateBlockValues,
+} from "@beindigital-engine/cms"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: get main CMS config ID
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
+// Validators
+// ============================================================================
 
-async function getMainCmsId(ctx: any, cmsId?: string) {
-  if (cmsId) return cmsId
-  const config = await ctx.db
-    .query("cms")
-    .withIndex("by_name", (q: any) => q.eq("name", "main"))
-    .first()
-  return config?._id ?? null
-}
+const cmsFieldValueValidator = v.object({
+  type: v.union(
+    v.literal("text"),
+    v.literal("richtext"),
+    v.literal("image"),
+    v.literal("video"),
+    v.literal("file"),
+    v.literal("select"),
+  ),
+  textValue: v.optional(v.string()),
+  mediaId: v.optional(v.string()),
+  altText: v.optional(v.string()),
+  embedUrl: v.optional(v.string()),
+  embedProvider: v.optional(
+    v.union(v.literal("youtube"), v.literal("vimeo")),
+  ),
+  isCleared: v.optional(v.boolean()),
+})
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Global Config
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================================
+// Queries
+// ============================================================================
 
-export const getGlobalConfig = {
-  args: { name: v.optional(v.string()) },
-  handler: async (ctx: any, args: { name?: string }) => {
-    return await ctx.db
-      .query("cms")
-      .withIndex("by_name", (q: any) => q.eq("name", args.name ?? "main"))
-      .first()
-  },
-}
-
-export const updateGlobalConfig = {
-  args: { id: v.id("cms"), data: v.any() },
-  handler: async (ctx: any, args: { id: string; data: any }) => {
-    await ctx.db.patch(args.id, { ...args.data, updatedAt: Date.now() })
-    return args.id
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Generic page getters / updaters
-// ─────────────────────────────────────────────────────────────────────────────
-
-function makePageGetter(tableName: string) {
-  return {
-    args: { cmsId: v.optional(v.id("cms")) },
-    handler: async (ctx: any, args: { cmsId?: string }) => {
-      const id = await getMainCmsId(ctx, args.cmsId)
-      if (!id) return null
-      return await ctx.db
-        .query(tableName)
-        .withIndex("by_cms", (q: any) => q.eq("cmsId", id))
-        .order("desc")
-        .first()
-    },
-  }
-}
-
-function makePageUpdater(tableName: string) {
-  return {
-    args: { id: v.id(tableName), data: v.any() },
-    handler: async (ctx: any, args: { id: string; data: any }) => {
-      await ctx.db.patch(args.id, { ...args.data, updatedAt: Date.now() })
-      return args.id
-    },
-  }
-}
-
-// Page queries
-export const getHomePage = makePageGetter("cmsHome")
-export const getMenuPage = makePageGetter("cmsMenu")
-export const getAboutPage = makePageGetter("cmsAbout")
-export const getContactPage = makePageGetter("cmsContact")
-export const getCartConfig = makePageGetter("cmsCart")
-export const getCheckoutPage = makePageGetter("cmsCheckout")
-export const getTrackingPage = makePageGetter("cmsTracking")
-export const getSigninPage = makePageGetter("cmsSignin")
-export const getSignupPage = makePageGetter("cmsSignup")
-export const getPrivacyPage = makePageGetter("cmsPrivacy")
-export const getTermsPage = makePageGetter("cmsTerms")
-export const get404Page = makePageGetter("cms404")
-export const getMaintenancePage = makePageGetter("cmsMaintenance")
-export const getAccountPage = makePageGetter("cmsAccount")
-
-// Page mutations
-export const updateHomePage = makePageUpdater("cmsHome")
-export const updateMenuPage = makePageUpdater("cmsMenu")
-export const updateAboutPage = makePageUpdater("cmsAbout")
-export const updateContactPage = makePageUpdater("cmsContact")
-export const updateCartConfig = makePageUpdater("cmsCart")
-export const updateCheckoutPage = makePageUpdater("cmsCheckout")
-export const updateTrackingPage = makePageUpdater("cmsTracking")
-export const updateSigninPage = makePageUpdater("cmsSignin")
-export const updateSignupPage = makePageUpdater("cmsSignup")
-export const updatePrivacyPage = makePageUpdater("cmsPrivacy")
-export const updateTermsPage = makePageUpdater("cmsTerms")
-export const update404Page = makePageUpdater("cms404")
-export const updateMaintenancePage = makePageUpdater("cmsMaintenance")
-export const updateAccountPage = makePageUpdater("cmsAccount")
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Blog Posts
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const listBlogPosts = {
-  args: {
-    cmsId: v.optional(v.id("cms")),
-    status: v.optional(v.string()),
-  },
-  handler: async (ctx: any, args: { cmsId?: string; status?: string }) => {
-    const id = await getMainCmsId(ctx, args.cmsId)
-    if (!id) return []
-    let posts = await ctx.db
-      .query("cmsBlogPosts")
-      .withIndex("by_cms", (q: any) => q.eq("cmsId", id))
-      .order("desc")
+/** List all CMS pages for a store (with status from cmsPages table) */
+export const listPages = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const pageDocs = await ctx.db
+      .query("cmsPages")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
-    if (args.status) {
-      posts = posts.filter((p: any) => p.status === args.status)
-    }
-    return posts
+
+    const slugs = getAllPageSlugs()
+    return slugs.map((slug: string) => {
+      const pageDoc = pageDocs.find((p: any) => p.pageSlug === slug)
+      const pageDef = getPageDefinition(slug)
+      return {
+        slug,
+        label: pageDef?.label ?? slug,
+        description: pageDef?.description,
+        hasPublished: pageDoc?.hasPublished ?? false,
+        hasUnpublishedChanges: pageDoc?.hasUnpublishedChanges ?? false,
+        publishedAt: pageDoc?.publishedAt,
+        draftUpdatedAt: pageDoc?.draftUpdatedAt,
+      }
+    })
   },
 }
 
-export const getBlogPost = {
+/** Get a single page status */
+export const getPage = {
   args: {
-    id: v.optional(v.id("cmsBlogPosts")),
-    slug: v.optional(v.string()),
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
   },
-  handler: async (ctx: any, args: { id?: string; slug?: string }) => {
-    if (args.id) return await ctx.db.get(args.id)
-    if (args.slug) {
-      return await ctx.db
-        .query("cmsBlogPosts")
-        .withIndex("by_slug", (q: any) => q.eq("slug", args.slug))
-        .first()
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("cmsPages")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .unique()
+  },
+}
+
+/** Get published blocks for storefront (public, no auth) */
+export const getPageBlocks = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const pageDoc = await ctx.db
+      .query("cmsPages")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .unique()
+
+    const pageMeta = pageDoc
+      ? {
+          hasPublished: pageDoc.hasPublished,
+          hasUnpublishedChanges: pageDoc.hasUnpublishedChanges,
+          publishedAt: pageDoc.publishedAt,
+          draftUpdatedAt: pageDoc.draftUpdatedAt,
+          updatedBy: pageDoc.updatedBy,
+        }
+      : null
+
+    // Only published blocks
+    const publishedBlocks = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .filter((q: any) => q.eq(q.field("isDraft"), false))
+      .collect()
+
+    const blocks = await Promise.all(
+      publishedBlocks.map(async (block: any) => {
+        const translationsByField = await resolveTranslations(ctx, args.storeId, block._id)
+        const resolvedMedia = await resolveMedia(ctx, block.values)
+        return {
+          blockKey: block.blockKey,
+          values: block.values,
+          translationsByField,
+          resolvedMedia,
+        }
+      }),
+    )
+
+    return { pageMeta, blocks }
+  },
+}
+
+/** Get draft + published blocks for admin editor (auth-protected at app layer) */
+export const getAdminPageBlocks = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const pageDoc = await ctx.db
+      .query("cmsPages")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .unique()
+
+    const pageMeta = pageDoc
+      ? {
+          hasPublished: pageDoc.hasPublished,
+          hasUnpublishedChanges: pageDoc.hasUnpublishedChanges,
+          publishedAt: pageDoc.publishedAt,
+          draftUpdatedAt: pageDoc.draftUpdatedAt,
+          updatedBy: pageDoc.updatedBy,
+        }
+      : null
+
+    const allBlocks = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .collect()
+
+    // Group by blockKey
+    const pageDef = getPageDefinition(args.pageSlug)
+    const blockKeys = pageDef?.blocks.map((b: any) => b.key) ?? []
+
+    const blocks = await Promise.all(
+      blockKeys.map(async (blockKey: string) => {
+        const draft = allBlocks.find(
+          (b: any) => b.blockKey === blockKey && b.isDraft,
+        )
+        const published = allBlocks.find(
+          (b: any) => b.blockKey === blockKey && !b.isDraft,
+        )
+
+        const draftBlock = draft
+          ? {
+              values: draft.values,
+              translationsByField: await resolveTranslations(ctx, args.storeId, draft._id),
+              resolvedMedia: await resolveMedia(ctx, draft.values),
+              updatedAt: draft.updatedAt,
+              updatedBy: draft.updatedBy,
+              isTranslating: !!draft.scheduledTranslationJobId,
+            }
+          : null
+
+        const publishedBlock = published
+          ? {
+              values: published.values,
+              translationsByField: await resolveTranslations(ctx, args.storeId, published._id),
+              resolvedMedia: await resolveMedia(ctx, published.values),
+            }
+          : null
+
+        return { blockKey, draftBlock, publishedBlock }
+      }),
+    )
+
+    return { pageMeta, blocks }
+  },
+}
+
+/** Get preview blocks: draft > published resolved (auth-protected at app layer) */
+export const getPreviewPageBlocks = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const pageDoc = await ctx.db
+      .query("cmsPages")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .unique()
+
+    const pageMeta = pageDoc
+      ? {
+          hasPublished: pageDoc.hasPublished,
+          hasUnpublishedChanges: pageDoc.hasUnpublishedChanges,
+          publishedAt: pageDoc.publishedAt,
+          draftUpdatedAt: pageDoc.draftUpdatedAt,
+          updatedBy: pageDoc.updatedBy,
+        }
+      : null
+
+    const allBlocks = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .collect()
+
+    const pageDef = getPageDefinition(args.pageSlug)
+    const blockKeys = pageDef?.blocks.map((b: any) => b.key) ?? []
+
+    const blocks = await Promise.all(
+      blockKeys.map(async (blockKey: string) => {
+        const draft = allBlocks.find(
+          (b: any) => b.blockKey === blockKey && b.isDraft,
+        )
+        const published = allBlocks.find(
+          (b: any) => b.blockKey === blockKey && !b.isDraft,
+        )
+
+        // Draft > Published resolution (fallback code stays on hook/UI side)
+        const resolved = draft ?? published
+        if (!resolved) return null
+
+        const translationsByField = await resolveTranslations(ctx, args.storeId, resolved._id)
+        const resolvedMedia = await resolveMedia(ctx, resolved.values)
+
+        return {
+          blockKey,
+          source: (draft ? "draft" : "published") as "draft" | "published",
+          values: resolved.values,
+          translationsByField,
+          resolvedMedia,
+        }
+      }),
+    )
+
+    return {
+      pageMeta,
+      blocks: blocks.filter((b: any) => b !== null),
     }
-    return null
   },
 }
 
-export const createBlogPost = {
-  args: { cmsId: v.optional(v.id("cms")), data: v.any() },
-  handler: async (ctx: any, args: { cmsId?: string; data: any }) => {
-    const id = await getMainCmsId(ctx, args.cmsId)
-    if (!id) throw new Error("CMS config not found")
-    const now = Date.now()
-    return await ctx.db.insert("cmsBlogPosts", {
-      cmsId: id,
-      ...args.data,
-      version: 1,
-      status: args.data.status ?? "draft",
-      createdAt: now,
+/** Get a single block draft */
+export const getBlockDraft = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    blockKey: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug_blockKey_isDraft", (q: any) =>
+        q
+          .eq("storeId", args.storeId)
+          .eq("pageSlug", args.pageSlug)
+          .eq("blockKey", args.blockKey)
+          .eq("isDraft", true),
+      )
+      .unique()
+  },
+}
+
+// ============================================================================
+// Mutations (plain def objects for app wrappers)
+// ============================================================================
+
+/**
+ * Core save draft block logic.
+ * This is a helper function (not a Convex def), called from app-level wrapper.
+ */
+export async function saveDraftBlockCore(
+  ctx: any,
+  args: {
+    storeId: string
+    pageSlug: string
+    blockKey: string
+    values: Record<string, any>
+    updatedBy: string
+  },
+  options?: {
+    onAfterSave?: (ctx: any, blockId: string, storeId: string) => Promise<void>
+  },
+): Promise<string> {
+  const now = Date.now()
+
+  // Validate against registry
+  const blockDef = getBlockDefinition(args.pageSlug, args.blockKey)
+  if (!blockDef) {
+    throw new Error(`Block "${args.blockKey}" not found in page "${args.pageSlug}"`)
+  }
+
+  const validation = validateBlockValues(args.values, blockDef)
+  if (!validation.valid) {
+    throw new Error(
+      `Validation failed: ${validation.errors.map((e) => e.message).join(", ")}`,
+    )
+  }
+
+  // Upsert draft block
+  const existing = await ctx.db
+    .query("cmsBlocks")
+    .withIndex("by_storeId_pageSlug_blockKey_isDraft", (q: any) =>
+      q
+        .eq("storeId", args.storeId)
+        .eq("pageSlug", args.pageSlug)
+        .eq("blockKey", args.blockKey)
+        .eq("isDraft", true),
+    )
+    .unique()
+
+  let blockId: string
+
+  if (existing) {
+    // Update usageCount for media changes
+    await updateMediaUsageDelta(ctx, existing.values, args.values)
+
+    await ctx.db.patch(existing._id, {
+      values: args.values,
       updatedAt: now,
+      updatedBy: args.updatedBy,
     })
-  },
-}
+    blockId = existing._id
+  } else {
+    // Update usageCount for new media references
+    await updateMediaUsageForNewValues(ctx, args.values)
 
-export const updateBlogPost = {
-  args: { id: v.id("cmsBlogPosts"), data: v.any() },
-  handler: async (ctx: any, args: { id: string; data: any }) => {
-    await ctx.db.patch(args.id, { ...args.data, updatedAt: Date.now() })
-    return args.id
-  },
-}
-
-export const deleteBlogPost = {
-  args: { id: v.id("cmsBlogPosts") },
-  handler: async (ctx: any, args: { id: string }) => {
-    await ctx.db.delete(args.id)
-  },
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Seed: creates default CMS content for all pages
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const seedInitialCMS = {
-  args: {},
-  handler: async (ctx: any) => {
-    // Check if already seeded
-    const existing = await ctx.db
-      .query("cms")
-      .withIndex("by_name", (q: any) => q.eq("name", "main"))
-      .first()
-    if (existing) return existing._id
-
-    const now = Date.now()
-    const meta = { version: 1, status: "published" as const, createdAt: now, updatedAt: now }
-
-    // Create main CMS config
-    const cmsId = await ctx.db.insert("cms", {
-      name: "main",
-      defaultLocale: "fr",
-      supportedLocales: ["fr", "en"],
-      createdAt: now,
+    blockId = await ctx.db.insert("cmsBlocks", {
+      storeId: args.storeId,
+      pageSlug: args.pageSlug,
+      blockKey: args.blockKey,
+      isDraft: true,
+      values: args.values,
       updatedAt: now,
+      updatedBy: args.updatedBy,
     })
+  }
 
-    // Homepage
-    await ctx.db.insert("cmsHome", {
-      cmsId,
-      hero: {
-        badge: { fr: "Bienvenue" },
-        title: { fr: "Savourez chaque bouchée" },
-        subtitle: { fr: "Commandez vos plats préférés en quelques clics" },
-        ctaText: { fr: "Voir le menu" },
-      },
-      features: {
-        sectionTitle: { fr: "Pourquoi nous choisir" },
-        items: [
-          { icon: "Truck", title: { fr: "Livraison rapide" }, description: { fr: "En 30 min ou moins" } },
-          { icon: "ChefHat", title: { fr: "Fait maison" }, description: { fr: "Ingrédients frais et locaux" } },
-          { icon: "Clock", title: { fr: "Click & Collect" }, description: { fr: "Prêt en 15 minutes" } },
-        ],
-      },
-      cta: {
-        title: { fr: "Prêt à commander ?" },
-        subtitle: { fr: "Découvrez notre carte complète" },
-        buttonText: { fr: "Commander maintenant" },
-        buttonHref: "/menu",
-      },
-      ...meta,
-    })
+  // Upsert cmsPages record
+  await upsertPageStatus(ctx, args.storeId, args.pageSlug, args.updatedBy, {
+    hasUnpublishedChanges: true,
+    draftUpdatedAt: now,
+  })
 
-    // Menu page
-    await ctx.db.insert("cmsMenu", {
-      cmsId,
-      header: {
-        title: { fr: "Notre carte" },
-        subtitle: { fr: "Découvrez nos plats préparés avec passion" },
-      },
-      ui: {
-        searchPlaceholder: { fr: "Rechercher un plat..." },
-        addToCartButton: { fr: "Ajouter" },
-        emptyStateText: { fr: "Aucun plat trouvé" },
-        pricePrefix: { fr: "" },
-      },
-      ...meta,
-    })
+  // Call auto-translation hook (no-op if not provided)
+  if (options?.onAfterSave) {
+    await options.onAfterSave(ctx, blockId, args.storeId)
+  }
 
-    // About
-    await ctx.db.insert("cmsAbout", {
-      cmsId,
-      hero: {
-        badge: { fr: "Notre histoire" },
-        title: { fr: "Depuis 2020" },
-        description: { fr: "Une passion pour la cuisine authentique" },
-      },
-      story: {
-        badge: { fr: "Notre parcours" },
-        title: { fr: "De la passion à l'assiette" },
-        description: { fr: "Notre aventure a commencé avec une idée simple : proposer une cuisine de qualité accessible à tous." },
-        features: [
-          { fr: "Ingrédients 100% frais" },
-          { fr: "Recettes traditionnelles" },
-          { fr: "Service rapide et soigné" },
-        ],
-      },
-      values: {
-        badge: { fr: "Nos valeurs" },
-        title: { fr: "Ce qui nous anime" },
-        description: { fr: "Chaque plat est une promesse de qualité" },
-        items: [
-          { icon: "Heart", title: { fr: "Passion" }, description: { fr: "L'amour de la bonne cuisine" } },
-          { icon: "Leaf", title: { fr: "Fraîcheur" }, description: { fr: "Des produits frais chaque jour" } },
-          { icon: "Users", title: { fr: "Convivialité" }, description: { fr: "Un accueil chaleureux" } },
-        ],
-      },
-      cta: {
-        title: { fr: "Venez nous rendre visite" },
-        buttonText: { fr: "Voir le menu" },
-        buttonHref: "/menu",
-      },
-      ...meta,
-    })
+  return blockId
+}
 
-    // Contact
-    await ctx.db.insert("cmsContact", {
-      cmsId,
-      hero: {
-        badge: { fr: "Contact" },
-        title: { fr: "Parlons ensemble" },
-        description: { fr: "Une question ? Nous sommes à votre écoute." },
-      },
-      formHeader: {
-        badge: { fr: "Formulaire" },
-        title: { fr: "Envoyez-nous un message" },
-      },
-      info: [],
-      social: {
-        title: { fr: "Suivez-nous sur les réseaux" },
-        links: [],
-      },
-      chatCta: {
-        title: { fr: "Chat en direct" },
-        description: { fr: "Discutez avec nous pour une réponse instantanée" },
-        buttonText: { fr: "Démarrer le chat" },
-        href: "#",
-      },
-      ...meta,
-    })
-
-    // Cart
-    await ctx.db.insert("cmsCart", {
-      cmsId,
-      labels: {
-        title: { fr: "Votre panier" },
-        itemsSelected: { fr: "articles sélectionnés" },
-        clearAll: { fr: "Tout vider" },
-        emptyStateTitle: { fr: "Votre panier est vide" },
-        emptyStateDescription: { fr: "Ajoutez des plats depuis notre menu" },
-        emptyStateAction: { fr: "Voir le menu" },
-        subtotal: { fr: "Sous-total" },
-        delivery: { fr: "Livraison" },
-        deliveryFree: { fr: "Gratuite" },
-        totalPrice: { fr: "Total" },
-        checkoutBtn: { fr: "Passer commande" },
-      },
-      ...meta,
-    })
-
-    // Checkout
-    await ctx.db.insert("cmsCheckout", {
-      cmsId,
-      header: {
-        backToMenu: { fr: "Retour au menu" },
-        title: { fr: "Finaliser la commande" },
-        guestNotice: { fr: "Connectez-vous pour un suivi complet" },
-      },
-      fulfillment: {
-        delivery: { fr: "Livraison" },
-        pickup: { fr: "À emporter" },
-      },
-      sections: {
-        contact: {
-          title: { fr: "Contact" },
-          description: { fr: "Pour vous contacter en cas de besoin" },
-          emailLabel: { fr: "Email" },
-          phoneLabel: { fr: "Téléphone" },
-        },
-        delivery: {
-          title: { fr: "Adresse de livraison" },
-          description: { fr: "Où souhaitez-vous être livré ?" },
-          firstNameLabel: { fr: "Prénom" },
-          lastNameLabel: { fr: "Nom" },
-          addressLabel: { fr: "Adresse" },
-          cityLabel: { fr: "Ville" },
-          postalCodeLabel: { fr: "Code postal" },
-        },
-        payment: {
-          title: { fr: "Paiement" },
-          description: { fr: "Choisissez votre mode de paiement" },
-          cardLabel: { fr: "Carte bancaire" },
-          cashLabel: { fr: "Espèces" },
-          cashNotice: { fr: "Paiement à la livraison" },
-        },
-      },
-      summary: {
-        title: { fr: "Récapitulatif" },
-        subtotal: { fr: "Sous-total" },
-        delivery: { fr: "Livraison" },
-        discount: { fr: "Réduction" },
-        total: { fr: "Total" },
-        submitBtn: { fr: "Confirmer la commande" },
-        calculating: { fr: "Calcul en cours..." },
-        freeLabel: { fr: "Gratuit" },
-        promoPlaceholder: { fr: "Code promo" },
-        promoBtn: { fr: "Appliquer" },
-      },
-      success: {
-        title: { fr: "Commande confirmée !" },
-        message: { fr: "Votre commande a été prise en compte" },
-        orderLabel: { fr: "Commande n°" },
-        homeBtn: { fr: "Accueil" },
-        menuBtn: { fr: "Retour au menu" },
-      },
-      empty: {
-        title: { fr: "Panier vide" },
-        description: { fr: "Ajoutez des articles avant de commander" },
-        action: { fr: "Voir le menu" },
-      },
-      ...meta,
-    })
-
-    // Tracking
-    await ctx.db.insert("cmsTracking", {
-      cmsId,
-      header: {
-        title: { fr: "Suivi de" },
-        titleHighlight: { fr: "commande" },
-      },
-      steps: {
-        pending: { label: { fr: "En attente" }, description: { fr: "Commande reçue" } },
-        preparing: { label: { fr: "En préparation" }, description: { fr: "Votre commande est en cuisine" } },
-        ready: { label: { fr: "Prête" }, description: { fr: "Votre commande est prête" } },
-        completed: { label: { fr: "Terminée" }, description: { fr: "Bon appétit !" } },
-      },
-      cancelled: {
-        title: { fr: "Commande annulée" },
-        description: { fr: "Cette commande a été annulée" },
-      },
-      estimatedTime: { label: { fr: "Temps estimé" } },
-      summary: {
-        title: { fr: "Récapitulatif" },
-        subtotalLabel: { fr: "Sous-total" },
-        deliveryLabel: { fr: "Livraison" },
-        totalLabel: { fr: "Total" },
-      },
-      contact: {
-        title: { fr: "Besoin d'aide ?" },
-        buttonText: { fr: "Nous contacter" },
-      },
-      footer: {
-        dateLabel: { fr: "Commande passée le" },
-        backLinkText: { fr: "Retour au menu" },
-      },
-      actions: {
-        cancelButton: { fr: "Annuler la commande" },
-        cancelConfirmMessage: { fr: "Êtes-vous sûr de vouloir annuler ?" },
-      },
-      ...meta,
-    })
-
-    // Auth pages
-    await ctx.db.insert("cmsSignin", {
-      cmsId,
-      hero: {
-        title: { fr: "Bon retour" },
-        subtitle: { fr: "parmi nous" },
-      },
-      form: {
-        emailLabel: { fr: "Adresse email" },
-        emailPlaceholder: { fr: "jean@exemple.com" },
-        passwordLabel: { fr: "Mot de passe" },
-        submitButton: { fr: "Se connecter" },
-        forgotPasswordText: { fr: "Mot de passe oublié ?" },
-        forgotPasswordHref: "/forgot-password",
-      },
-      footer: {
-        text: { fr: "Pas encore de compte ?" },
-        linkText: { fr: "Créer un compte" },
-        linkHref: "/sign-up",
-      },
-      ...meta,
-    })
-
-    await ctx.db.insert("cmsSignup", {
-      cmsId,
-      hero: {
-        titleLine1: { fr: "Créer un" },
-        titleLine2: { fr: "compte" },
-      },
-      form: {
-        nameLabel: { fr: "Nom complet" },
-        namePlaceholder: { fr: "Jean Dupont" },
-        emailLabel: { fr: "Adresse email" },
-        emailPlaceholder: { fr: "jean@exemple.com" },
-        passwordLabel: { fr: "Mot de passe" },
-        confirmLabel: { fr: "Confirmer" },
-        submitButton: { fr: "Créer mon compte" },
-      },
-      footer: {
-        text: { fr: "Déjà un compte ?" },
-        linkText: { fr: "Se connecter" },
-        linkHref: "/sign-in",
-      },
-      ...meta,
-    })
-
-    // 404
-    await ctx.db.insert("cms404", {
-      cmsId,
-      errorCode: { fr: "404" },
-      title: { fr: "Page introuvable" },
-      description: { fr: "La page que vous cherchez n'existe pas ou a été déplacée." },
-      actionText: { fr: "Retour à l'accueil" },
-      actionLink: "/",
-      ...meta,
-    })
-
-    // Maintenance
-    await ctx.db.insert("cmsMaintenance", {
-      cmsId,
-      enabled: false,
-      title: { fr: "Maintenance en cours" },
-      description: { fr: "Nous serons de retour très bientôt !" },
-      ...meta,
-    })
-
-    // Account
-    await ctx.db.insert("cmsAccount", {
-      cmsId,
-      menu: {
-        profile: { fr: "Mon profil" },
-        orders: { fr: "Mes commandes" },
-        favorites: { fr: "Mes favoris" },
-        addresses: { fr: "Mes adresses" },
-        logout: { fr: "Se déconnecter" },
-      },
-      profile: {
-        title: { fr: "Mon profil" },
-        description: { fr: "Gérez vos informations personnelles" },
-        labels: {
-          fullName: { fr: "Nom complet" },
-          email: { fr: "Email" },
-          phone: { fr: "Téléphone" },
-          saveBtn: { fr: "Enregistrer" },
-        },
-      },
-      orders: {
-        title: { fr: "Mes commandes" },
-        description: { fr: "Historique de vos commandes" },
-        emptyTitle: { fr: "Aucune commande" },
-        emptyDesc: { fr: "Vous n'avez pas encore passé de commande" },
-        emptyAction: { fr: "Voir le menu" },
-        status: {
-          pending: { fr: "En attente" },
-          preparing: { fr: "En préparation" },
-          ready: { fr: "Prête" },
-          completed: { fr: "Terminée" },
-          cancelled: { fr: "Annulée" },
-        },
-      },
-      addresses: {
-        title: { fr: "Mes adresses" },
-        description: { fr: "Gérez vos adresses de livraison" },
-        addBtn: { fr: "Ajouter une adresse" },
-        emptyTitle: { fr: "Aucune adresse" },
-        emptyDesc: { fr: "Ajoutez une adresse pour faciliter vos commandes" },
-      },
-      favorites: {
-        title: { fr: "Mes favoris" },
-        description: { fr: "Vos plats préférés" },
-        emptyTitle: { fr: "Aucun favori" },
-        emptyDesc: { fr: "Ajoutez des plats en favoris depuis le menu" },
-        emptyAction: { fr: "Voir le menu" },
-      },
-      ...meta,
-    })
-
-    return cmsId
+/** Reset a single field to fallback (set isCleared) */
+export const resetField = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    blockKey: v.string(),
+    fieldKey: v.string(),
+    updatedBy: v.string(),
   },
+  handler: async (ctx: any, args: any) => {
+    const now = Date.now()
+
+    const draft = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug_blockKey_isDraft", (q: any) =>
+        q
+          .eq("storeId", args.storeId)
+          .eq("pageSlug", args.pageSlug)
+          .eq("blockKey", args.blockKey)
+          .eq("isDraft", true),
+      )
+      .unique()
+
+    if (!draft) return null
+
+    const oldValue = draft.values[args.fieldKey]
+    if (oldValue?.mediaId) {
+      await decrementUsageCount(ctx, oldValue.mediaId)
+    }
+
+    const newValues = { ...draft.values }
+    newValues[args.fieldKey] = {
+      type: oldValue?.type ?? "text",
+      isCleared: true,
+    }
+
+    await ctx.db.patch(draft._id, {
+      values: newValues,
+      updatedAt: now,
+      updatedBy: args.updatedBy,
+    })
+
+    await upsertPageStatus(ctx, args.storeId, args.pageSlug, args.updatedBy, {
+      hasUnpublishedChanges: true,
+      draftUpdatedAt: now,
+    })
+
+    return draft._id
+  },
+}
+
+/** Reset an entire block (delete draft) */
+export const resetBlock = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    blockKey: v.string(),
+    updatedBy: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const now = Date.now()
+
+    const draft = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug_blockKey_isDraft", (q: any) =>
+        q
+          .eq("storeId", args.storeId)
+          .eq("pageSlug", args.pageSlug)
+          .eq("blockKey", args.blockKey)
+          .eq("isDraft", true),
+      )
+      .unique()
+
+    if (!draft) return null
+
+    // Decrement usageCount for all media in the draft
+    await decrementAllMediaUsage(ctx, draft.values)
+
+    await ctx.db.delete(draft._id)
+
+    await upsertPageStatus(ctx, args.storeId, args.pageSlug, args.updatedBy, {
+      hasUnpublishedChanges: true,
+      draftUpdatedAt: now,
+    })
+
+    return draft._id
+  },
+}
+
+/** Reset all blocks for a page (delete all drafts) */
+export const resetPage = {
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    updatedBy: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const now = Date.now()
+
+    const drafts = await ctx.db
+      .query("cmsBlocks")
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .filter((q: any) => q.eq(q.field("isDraft"), true))
+      .collect()
+
+    for (const draft of drafts) {
+      await decrementAllMediaUsage(ctx, draft.values)
+      await ctx.db.delete(draft._id)
+    }
+
+    await upsertPageStatus(ctx, args.storeId, args.pageSlug, args.updatedBy, {
+      hasUnpublishedChanges: false,
+      draftUpdatedAt: now,
+    })
+
+    return drafts.length
+  },
+}
+
+// ============================================================================
+// Internal Helpers
+// ============================================================================
+
+async function resolveTranslations(
+  ctx: any,
+  storeId: string,
+  blockId: string,
+): Promise<Record<string, Record<string, { value: string; isAutoTranslated: boolean }>>> {
+  const translations = await ctx.db
+    .query("translations")
+    .withIndex("by_storeId_entity", (q: any) =>
+      q.eq("storeId", storeId).eq("entityType", "cms").eq("entityId", blockId),
+    )
+    .collect()
+
+  const result: Record<string, Record<string, { value: string; isAutoTranslated: boolean }>> = {}
+  for (const t of translations) {
+    if (!result[t.field]) result[t.field] = {}
+    const fieldTranslations = result[t.field]!
+    fieldTranslations[t.languageCode] = {
+      value: t.value,
+      isAutoTranslated: t.isAutoTranslated,
+    }
+  }
+  return result
+}
+
+async function resolveMedia(
+  ctx: any,
+  values: Record<string, any>,
+): Promise<Record<string, any>> {
+  const result: Record<string, any> = {}
+  for (const [fieldKey, fieldValue] of Object.entries(values)) {
+    const fv = fieldValue as any
+    if (fv?.mediaId) {
+      try {
+        const media = await ctx.db.get(fv.mediaId)
+        if (media && media.status === "ready") {
+          const mainUrl = media.sourceUrl ?? media.url ?? ""
+          result[fieldKey] = {
+            url: mainUrl,
+            sourceUrl: mainUrl,
+            thumbnailUrl: media.variants?.thumb?.url ?? media.thumbnailUrl,
+            filename: media.filename,
+            mimeType: media.mimeType,
+            width: media.width,
+            height: media.height,
+            variants: media.variants,
+          }
+        }
+      } catch {
+        // Media deleted or invalid ID
+      }
+    }
+  }
+  return result
+}
+
+async function upsertPageStatus(
+  ctx: any,
+  storeId: string,
+  pageSlug: string,
+  updatedBy: string,
+  patch: Record<string, any>,
+): Promise<void> {
+  const now = Date.now()
+  const existing = await ctx.db
+    .query("cmsPages")
+    .withIndex("by_storeId_pageSlug", (q: any) =>
+      q.eq("storeId", storeId).eq("pageSlug", pageSlug),
+    )
+    .unique()
+
+  if (existing) {
+    await ctx.db.patch(existing._id, { ...patch, updatedAt: now, updatedBy })
+  } else {
+    await ctx.db.insert("cmsPages", {
+      storeId,
+      pageSlug,
+      hasPublished: false,
+      hasUnpublishedChanges: true,
+      updatedAt: now,
+      updatedBy,
+      ...patch,
+    })
+  }
+}
+
+async function updateMediaUsageDelta(
+  ctx: any,
+  oldValues: Record<string, any>,
+  newValues: Record<string, any>,
+): Promise<void> {
+  const oldMediaIds = extractMediaIds(oldValues)
+  const newMediaIds = extractMediaIds(newValues)
+
+  // Decrement removed
+  for (const id of oldMediaIds) {
+    if (!newMediaIds.has(id)) {
+      await decrementUsageCount(ctx, id)
+    }
+  }
+
+  // Increment added
+  for (const id of newMediaIds) {
+    if (!oldMediaIds.has(id)) {
+      await incrementUsageCount(ctx, id)
+    }
+  }
+}
+
+async function updateMediaUsageForNewValues(
+  ctx: any,
+  values: Record<string, any>,
+): Promise<void> {
+  const mediaIds = extractMediaIds(values)
+  for (const id of mediaIds) {
+    await incrementUsageCount(ctx, id)
+  }
+}
+
+async function decrementAllMediaUsage(
+  ctx: any,
+  values: Record<string, any>,
+): Promise<void> {
+  const mediaIds = extractMediaIds(values)
+  for (const id of mediaIds) {
+    await decrementUsageCount(ctx, id)
+  }
+}
+
+function extractMediaIds(values: Record<string, any>): Set<string> {
+  const ids = new Set<string>()
+  for (const fv of Object.values(values)) {
+    if ((fv as any)?.mediaId) ids.add((fv as any).mediaId)
+  }
+  return ids
+}
+
+async function incrementUsageCount(ctx: any, mediaId: string): Promise<void> {
+  try {
+    const media = await ctx.db.get(mediaId)
+    if (media) {
+      await ctx.db.patch(mediaId, { usageCount: (media.usageCount ?? 0) + 1 })
+    }
+  } catch {
+    // Media may not exist
+  }
+}
+
+async function decrementUsageCount(ctx: any, mediaId: string): Promise<void> {
+  try {
+    const media = await ctx.db.get(mediaId)
+    if (media) {
+      await ctx.db.patch(mediaId, {
+        usageCount: Math.max(0, (media.usageCount ?? 0) - 1),
+      })
+    }
+  } catch {
+    // Media may not exist
+  }
 }
