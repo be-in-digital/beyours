@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -21,13 +22,16 @@ export const metadata: Metadata = {
   description: "Restaurant Management Platform",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const lang = cookieStore.get("beid_locale")?.value || "fr";
+
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
+    <html lang={lang} suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
