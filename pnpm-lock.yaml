@@ -280,6 +280,9 @@ importers:
       '@beindigital-engine/core':
         specifier: workspace:^
         version: link:../core
+      '@beindigital-engine/marketing':
+        specifier: workspace:^
+        version: link:../marketing
       '@beindigital-engine/restaurant':
         specifier: workspace:^
         version: link:../restaurant
