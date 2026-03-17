@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useId } from "react"
 import Link from "next/link"
 import { Facebook, Twitter, Instagram, MapPin, Phone, Clock, Mail } from "lucide-react"
 import { Button } from "@beindigital-engine/ui/components"
@@ -24,6 +24,7 @@ const quickLinks = [
 export function StorefrontFooter() {
   const store = useCurrentStore()
   const [email, setEmail] = useState("")
+  const inputId = useId()
 
   function handleNewsletterSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -48,28 +49,22 @@ export function StorefrontFooter() {
             </p>
 
             <div className="flex flex-col gap-4">
-              {store?.address && (
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-emerald-50/80">
-                    {store.address.street}, {store.address.postalCode} {store.address.city}
-                  </span>
-                </div>
-              )}
+              <div className={`flex items-start gap-3 ${store?.address ? "" : "hidden"}`}>
+                <MapPin className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
+                <span className="text-sm text-emerald-50/80">
+                  {store?.address ? `${store.address.street}, ${store.address.postalCode} ${store.address.city}` : ""}
+                </span>
+              </div>
 
-              {store?.phone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-orange-400 flex-shrink-0" />
-                  <span className="text-sm text-emerald-50/80">{store.phone}</span>
-                </div>
-              )}
+              <div className={`flex items-center gap-3 ${store?.phone ? "" : "hidden"}`}>
+                <Phone className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                <span className="text-sm text-emerald-50/80">{store?.phone ?? ""}</span>
+              </div>
 
-              {store?.email && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-orange-400 flex-shrink-0" />
-                  <span className="text-sm text-emerald-50/80">{store.email}</span>
-                </div>
-              )}
+              <div className={`flex items-center gap-3 ${store?.email ? "" : "hidden"}`}>
+                <Mail className="h-4 w-4 text-orange-400 flex-shrink-0" />
+                <span className="text-sm text-emerald-50/80">{store?.email ?? ""}</span>
+              </div>
 
               <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4 text-orange-400 flex-shrink-0" />
@@ -125,6 +120,7 @@ export function StorefrontFooter() {
 
             <form onSubmit={handleNewsletterSubmit} className="relative">
               <Input
+                id={`${inputId}-newsletter-email`}
                 type="email"
                 placeholder="Votre adresse email"
                 value={email}
