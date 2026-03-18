@@ -23,6 +23,9 @@ import { productDetailPage } from "./pages/product-detail"
 import { categoryMenuPage } from "./pages/category-menu"
 import { gamePage } from "./pages/game"
 import { storefrontLayoutPage } from "./pages/storefront-layout"
+import { aboutPage } from "./pages/about"
+import { blogPage } from "./pages/blog"
+import { contactPage } from "./pages/contact"
 
 /** Central registry mapping page slugs to their definitions */
 export const cmsRegistry: Record<string, PageDefinition> = {
@@ -43,6 +46,9 @@ export const cmsRegistry: Record<string, PageDefinition> = {
   "category-menu": categoryMenuPage,
   game: gamePage,
   "storefront-layout": storefrontLayoutPage,
+  about: aboutPage,
+  blog: blogPage,
+  contact: contactPage,
 }
 
 /** Get the definition for a page by its slug */
