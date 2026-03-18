@@ -17,6 +17,7 @@ const ALLOWED_FOLDERS = [
   "blogs",
   "blog-auto",
   "storefront",
+  "categories",
 ] as const;
 type S3Folder = (typeof ALLOWED_FOLDERS)[number];
 
@@ -37,6 +38,7 @@ const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   blogs: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
   "blog-auto": ["image/png", "image/webp"],
   storefront: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
+  categories: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
 };
 
 function createS3Client() {

@@ -82,6 +82,7 @@ export const productsTable = defineTable({
   spiceLevel: v.optional(v.number()), // 0-5
   isActive: v.boolean(),
   isFeatured: v.boolean(),
+  homepageTrendingRank: v.optional(v.number()),
   sortOrder: v.number(),
   // Product source: created manually or imported from a platform
   source: v.string(), // "manual" | "uber_eats" | "deliveroo"
@@ -115,6 +116,7 @@ export const productsTable = defineTable({
   .index("by_storeId_slug", ["storeId", "slug"])
   .index("by_storeId_source", ["storeId", "source"])
   .index("by_linkedProductId", ["linkedProductId"])
+  .index("by_storeId_trendingRank", ["storeId", "homepageTrendingRank"])
 
 /**
  * Menu section validator (combo line items)

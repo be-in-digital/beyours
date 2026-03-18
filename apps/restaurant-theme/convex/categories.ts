@@ -5,6 +5,7 @@ import * as defs from "@beindigital-engine/convex-functions/categories";
 
 export const list = query(defs.list);
 export const getById = query(defs.getById);
+export const listActiveWithCounts = query(defs.listActiveWithCounts);
 
 // === Mutations (protected) ===
 

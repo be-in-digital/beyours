@@ -155,7 +155,15 @@ export function CategoriesPage() {
             <Card key={category._id} className="border-border/50">
               <CardHeader className="py-4">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1">
+                  <div className="flex items-start gap-3">
+                    {category.imageUrl && (
+                      <img
+                        src={category.imageUrl}
+                        alt={category.name}
+                        className="h-10 w-10 rounded-md object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
                       <Badge variant={category.isActive ? "default" : "secondary"} className="text-xs">
@@ -168,6 +176,7 @@ export function CategoriesPage() {
                     <p className="text-xs text-muted-foreground">
                       Slug : {category.slug}
                     </p>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-1">

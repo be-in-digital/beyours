@@ -28,15 +28,19 @@ import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
  * Form schema for product editing with euro prices for display.
  * Avoids .default() to prevent type mismatch with @hookform/resolvers v5.
  */
+/** Optional number that treats NaN (from empty inputs with valueAsNumber) as undefined */
+const optionalNumber = (schema: z.ZodNumber) =>
+  schema.optional().or(z.nan().transform(() => undefined))
+
 const productFormSchema = z.object({
   categoryId: z.string().min(1, "Category is required"),
   name: z.string().min(1, "Name is required").max(200),
   slug: z.string().min(1, "Slug is required").max(100).regex(/^[a-z0-9-]+$/),
   description: z.string().max(2000).optional(),
   priceEuros: z.number().min(0, "Price must be positive"),
-  compareAtPriceEuros: z.number().min(0).optional(),
-  taxRate: z.number().min(0).max(100).optional(),
-  preparationTime: z.number().int().min(1).max(240).optional(),
+  compareAtPriceEuros: optionalNumber(z.number().min(0)),
+  taxRate: optionalNumber(z.number().min(0).max(100)),
+  preparationTime: optionalNumber(z.number().int().min(1).max(240)),
   sku: z.string().max(50).optional(),
   images: z.array(z.string()).optional(),
   options: z.array(z.object({
@@ -70,10 +74,10 @@ const productFormSchema = z.object({
     availableUntil: z.string().optional(),
     availableDays: z.array(z.number().min(0).max(6)).optional(),
   }).optional(),
-  spiceLevel: z.number().int().min(0).max(5).optional(),
+  spiceLevel: optionalNumber(z.number().int().min(0).max(5)),
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
-  sortOrder: z.number().int().min(0).optional(),
+  sortOrder: optionalNumber(z.number().int().min(0)),
 })
 
 type ProductFormData = z.infer<typeof productFormSchema>

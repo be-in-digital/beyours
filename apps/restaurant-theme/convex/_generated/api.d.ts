@@ -35,6 +35,7 @@ import type * as deliverooOrders from "../deliverooOrders.js";
 import type * as deliverooWebhook from "../deliverooWebhook.js";
 import type * as deliverooWebhookHandler from "../deliverooWebhookHandler.js";
 import type * as emailAutomations from "../emailAutomations.js";
+import type * as emailCampaignActions from "../emailCampaignActions.js";
 import type * as emailCampaigns from "../emailCampaigns.js";
 import type * as emailConfig from "../emailConfig.js";
 import type * as emailEvents from "../emailEvents.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   deliverooWebhook: typeof deliverooWebhook;
   deliverooWebhookHandler: typeof deliverooWebhookHandler;
   emailAutomations: typeof emailAutomations;
+  emailCampaignActions: typeof emailCampaignActions;
   emailCampaigns: typeof emailCampaigns;
   emailConfig: typeof emailConfig;
   emailEvents: typeof emailEvents;
