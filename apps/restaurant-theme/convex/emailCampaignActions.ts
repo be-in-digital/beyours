@@ -10,7 +10,8 @@ const api = _api as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const internal = _internal as any;
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-import { buildSegmentFilter, renderTemplateToEmailHtml } from "@beindigital-engine/marketing";
+import { buildSegmentFilter } from "./lib/segmentFilter";
+import { renderTemplateToEmailHtml } from "./lib/emailHtmlRenderer";
 
 const BATCH_DELAY_MS = 100; // ~10 emails/sec, well below SES sandbox limit
 
