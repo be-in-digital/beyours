@@ -100,6 +100,9 @@ export const storesTable = defineTable({
     printerOffline: v.object({ enabled: v.boolean(), volume: v.number() }),
   })),
 
+  // Homepage trending section mode
+  trendingMode: v.optional(v.union(v.literal("manual"), v.literal("automatic"))),
+
   // Legacy fields (kept for backward compatibility with existing data)
   // Will be removed after data migration
   branding: v.optional(v.any()),

@@ -10,6 +10,7 @@ const api = _api as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const internal = _internal as any;
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { buildSegmentFilter, renderTemplateToEmailHtml } from "@beindigital-engine/marketing";
 
 const BATCH_DELAY_MS = 100; // ~10 emails/sec, well below SES sandbox limit
 
@@ -83,9 +84,6 @@ export const send = action({
         id: campaign.segmentId,
       });
       if (segment) {
-        const { buildSegmentFilter } = await import(
-          "@beindigital-engine/marketing"
-        );
         const predicate = buildSegmentFilter(segment.rules, segment.ruleOperator);
         subscribers = subscribers.filter((s: any) => predicate(s));
       }
@@ -106,10 +104,6 @@ export const send = action({
     const fromAddress = config.senderName
       ? `${config.senderName} <${config.fromEmail}>`
       : config.fromEmail;
-
-    const { renderTemplateToEmailHtml } = await import(
-      "@beindigital-engine/marketing"
-    );
 
     let sentCount = 0;
 
@@ -227,9 +221,6 @@ export const sendTest = action({
       unsubscribeText: config.unsubscribeText ?? "Se désabonner",
     };
 
-    const { renderTemplateToEmailHtml } = await import(
-      "@beindigital-engine/marketing"
-    );
     const html = renderTemplateToEmailHtml(template.blocks, branding);
 
     const sesClient = createSESClient();

@@ -33,6 +33,8 @@ export interface FieldDefinition {
   hasCodeFallback: boolean
   /** Options for select field type */
   options?: SelectOption[]
+  /** Group label — fields sharing the same group are rendered together in a visual card */
+  group?: string
 }
 
 /** Definition of a content block (section) within a page */

@@ -35,6 +35,37 @@ export const getById = {
   },
 }
 
+/**
+ * List active categories with product counts for storefront display
+ */
+export const listActiveWithCounts = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    const activeCategories = categories
+      .filter((c: any) => c.isActive)
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+
+    const result = []
+    for (const cat of activeCategories) {
+      const products = await ctx.db
+        .query("products")
+        .withIndex("by_storeId_categoryId", (q: any) =>
+          q.eq("storeId", args.storeId).eq("categoryId", cat._id)
+        )
+        .collect()
+      const productCount = products.filter((p: any) => p.isActive).length
+      result.push({ ...cat, productCount })
+    }
+
+    return result
+  },
+}
+
 // === MUTATIONS ===
 
 /**

@@ -18,6 +18,7 @@ import { Button, Badge } from "@beindigital-engine/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { CmsBlockAccordion } from "./CmsBlockAccordion"
 import { CmsTranslationDrawer } from "./CmsTranslationDrawer"
+import { TrendingProductsPicker } from "./TrendingProductsPicker"
 import {
   getPageDefinition,
   getBlockDefinition,
@@ -358,18 +359,23 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
             {}
 
           return (
-            <CmsBlockAccordion
-              key={blockDef.key}
-              blockDef={blockDef}
-              draftValues={draftValues}
-              publishedValues={publishedValues}
-              resolvedMedia={resolvedMedia}
-              translationsByField={translationsByField}
-              onFieldChange={handleFieldChange}
-              onFieldReset={handleFieldReset}
-              onBlockReset={handleBlockReset}
-              onOpenTranslations={handleOpenTranslations}
-            />
+            <div key={blockDef.key} className="space-y-4">
+              <CmsBlockAccordion
+                blockDef={blockDef}
+                draftValues={draftValues}
+                publishedValues={publishedValues}
+                resolvedMedia={resolvedMedia}
+                translationsByField={translationsByField}
+                onFieldChange={handleFieldChange}
+                onFieldReset={handleFieldReset}
+                onBlockReset={handleBlockReset}
+                onOpenTranslations={handleOpenTranslations}
+              />
+              {/* Trending products picker — injected for homepage trendingMeals block */}
+              {pageSlug === "homepage" && blockDef.key === "trendingMeals" && (
+                <TrendingProductsPicker />
+              )}
+            </div>
           )
         })}
       </div>

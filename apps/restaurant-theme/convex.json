@@ -1,5 +1,5 @@
 {
   "node": {
-    "externalPackages": ["sharp", "@beindigital-engine/marketing"]
+    "externalPackages": ["sharp"]
   }
 }

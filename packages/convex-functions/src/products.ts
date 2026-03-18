@@ -96,6 +96,132 @@ export const getFeatured = {
   },
 }
 
+/**
+ * Get manually selected trending products (homepageTrendingRank defined)
+ */
+export const getManualTrending = {
+  args: {
+    storeId: v.id("stores"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx: any, args: any) => {
+    const max = args.limit ?? 8
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_storeId_trendingRank", (q: any) =>
+        q.eq("storeId", args.storeId)
+      )
+      .collect()
+
+    return products
+      .filter((p: any) => p.homepageTrendingRank != null && p.isActive)
+      .sort((a: any, b: any) => a.homepageTrendingRank - b.homepageTrendingRank)
+      .slice(0, max)
+  },
+}
+
+/**
+ * Get trending products based on 30-day order volume (automatic mode).
+ * Only counts validated orders (confirmed, preparing, ready, out_for_delivery, delivered, completed).
+ * Excludes pending and cancelled orders.
+ */
+export const getTrending = {
+  args: {
+    storeId: v.id("stores"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx: any, args: any) => {
+    const max = args.limit ?? 8
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+
+    const validStatuses = new Set([
+      "confirmed",
+      "preparing",
+      "ready",
+      "out_for_delivery",
+      "delivered",
+      "completed",
+    ])
+
+    // Fetch orders from the last 30 days
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_storeId_createdAt", (q: any) =>
+        q.eq("storeId", args.storeId).gte("createdAt", thirtyDaysAgo)
+      )
+      .collect()
+
+    // Aggregate product quantities from validated orders only
+    const salesMap = new Map<string, number>()
+    for (const order of orders) {
+      if (!validStatuses.has(order.status)) continue
+      for (const item of order.items) {
+        if (!item.productId) continue
+        salesMap.set(
+          item.productId,
+          (salesMap.get(item.productId) ?? 0) + item.quantity
+        )
+      }
+    }
+
+    // Sort by sales volume descending
+    const sorted = [...salesMap.entries()].sort((a, b) => b[1] - a[1])
+
+    // Load products and filter out inactive ones
+    const trending = []
+    for (const [productId] of sorted) {
+      if (trending.length >= max) break
+      const product = await ctx.db.get(productId)
+      if (product && product.isActive) {
+        trending.push(product)
+      }
+    }
+
+    return trending
+  },
+}
+
+/**
+ * Set trending products in batch.
+ * Receives an ordered array of product IDs.
+ * Clears previous trending ranks for the store, then sets new ones.
+ */
+export const setTrendingProducts = {
+  args: {
+    storeId: v.id("stores"),
+    productIds: v.array(v.id("products")),
+  },
+  handler: async (ctx: any, args: any) => {
+    // Clear all existing trending ranks for this store
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_storeId_trendingRank", (q: any) =>
+        q.eq("storeId", args.storeId)
+      )
+      .collect()
+
+    for (const product of existing) {
+      if (product.homepageTrendingRank != null) {
+        await ctx.db.patch(product._id, {
+          homepageTrendingRank: undefined,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    // Set new trending ranks (1-based)
+    for (let i = 0; i < args.productIds.length; i++) {
+      const product = await ctx.db.get(args.productIds[i])
+      if (product && product.storeId === args.storeId) {
+        await ctx.db.patch(args.productIds[i], {
+          homepageTrendingRank: i + 1,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+  },
+}
+
 // === MUTATIONS ===
 
 /**
