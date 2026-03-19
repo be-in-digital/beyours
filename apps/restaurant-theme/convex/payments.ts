@@ -1,8 +1,23 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/payments";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-export const getByOrder = query(defs.getByOrder);
-export const getByStore = query(defs.getByStore);
+export const getByOrder = query({
+  args: defs.getByOrder.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByOrder.handler(ctx, args);
+  },
+});
+
+export const getByStore = query({
+  args: defs.getByStore.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStore.handler(ctx, args);
+  },
+});
 
 export const create = mutation({
   args: defs.create.args,

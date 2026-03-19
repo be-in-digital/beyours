@@ -1,5 +1,6 @@
 import { query, mutation, internalQuery } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/globalSettings";
+import { getAuthUser } from "@beindigital-engine/convex-functions/auth";
 
 // === Queries ===
 
@@ -37,8 +38,10 @@ export const get = query({
 export const getAdmin = query({
   args: defs.get.args,
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const user = await getAuthUser(ctx);
+    if (!["owner", "admin", "super_admin"].includes(user.role)) {
+      throw new Error("Admin access required");
+    }
     return defs.get.handler(ctx);
   },
 });
@@ -56,8 +59,10 @@ export const getInternal = internalQuery({
 export const upsert = mutation({
   args: defs.upsert.args,
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const user = await getAuthUser(ctx);
+    if (!["owner", "admin", "super_admin"].includes(user.role)) {
+      throw new Error("Admin access required");
+    }
     return defs.upsert.handler(ctx, args);
   },
 });

@@ -1,11 +1,33 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/emailAutomations";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-// === Queries (public) ===
+// === Queries (auth-protected) ===
 
-export const list = query(defs.list);
-export const getById = query(defs.getById);
-export const listActive = query(defs.listActive);
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.list.handler(ctx, args);
+  },
+});
+
+export const getById = query({
+  args: defs.getById.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getById.handler(ctx, args);
+  },
+});
+
+export const listActive = query({
+  args: defs.listActive.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listActive.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 

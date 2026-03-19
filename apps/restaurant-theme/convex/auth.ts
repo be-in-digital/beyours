@@ -15,8 +15,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: false,
-      minPasswordLength: 8,
+      requireEmailVerification: true,
+      minPasswordLength: 12,
       sendResetPassword: async ({ user, url }) => {
         const siteUrl = process.env.SITE_URL;
         const secret = process.env.BETTER_AUTH_SECRET;

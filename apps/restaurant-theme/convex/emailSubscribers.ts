@@ -1,12 +1,41 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/emailSubscribers";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-// === Queries (public) ===
+// === Queries (auth-protected) ===
 
-export const list = query(defs.list);
-export const getById = query(defs.getById);
-export const getByEmail = query(defs.getByEmail);
-export const countByStatus = query(defs.countByStatus);
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.list.handler(ctx, args);
+  },
+});
+
+export const getById = query({
+  args: defs.getById.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getById.handler(ctx, args);
+  },
+});
+
+export const getByEmail = query({
+  args: defs.getByEmail.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByEmail.handler(ctx, args);
+  },
+});
+
+export const countByStatus = query({
+  args: defs.countByStatus.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.countByStatus.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 

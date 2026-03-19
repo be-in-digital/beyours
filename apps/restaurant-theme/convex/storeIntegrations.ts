@@ -1,14 +1,51 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@beindigital-engine/convex-functions/storeIntegrations";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-// === Queries (public - used by webhook actions) ===
+// === Queries (auth-protected where applicable) ===
 
-export const listByStore = query(defs.listByStore);
-export const listByPlatformEnabled = query(defs.listByPlatformEnabled);
-export const getByStorePlatform = query(defs.getByStorePlatform);
-export const getBySiteId = query(defs.getBySiteId);
-export const getByBrandId = query(defs.getByBrandId);
+export const listByStore = query({
+  args: defs.listByStore.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listByStore.handler(ctx, args);
+  },
+});
+export const listByPlatformEnabled = query({
+  args: defs.listByPlatformEnabled.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.listByPlatformEnabled.handler(ctx, args);
+  },
+});
+
+export const getByStorePlatform = query({
+  args: defs.getByStorePlatform.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStorePlatform.handler(ctx, args);
+  },
+});
+
+export const getBySiteId = query({
+  args: defs.getBySiteId.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getBySiteId.handler(ctx, args);
+  },
+});
+
+export const getByBrandId = query({
+  args: defs.getByBrandId.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByBrandId.handler(ctx, args);
+  },
+});
 
 // === Mutations (protected) ===
 
