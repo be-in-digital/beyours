@@ -1,41 +1,37 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
+import { seoBlock } from "@beindigital-engine/cms"
 
-export const storeSelectorPage: PageDefinition = {
-  slug: "store-selector",
-  label: "Sélection du magasin",
+export const categoryMenuPage: PageDefinition = {
+  slug: "category-menu",
+  label: "Menu par catégorie",
+  groupId: "catalog",
   blocks: [
+    seoBlock,
     {
       key: "header",
       label: "En-tête",
       fields: {
         title: {
           type: "text",
-          label: "Titre",
-          required: true,
+          label: "Titre générique",
           maxLength: 100,
-          hasCodeFallback: true,
-        },
-        subtitle: {
-          type: "text",
-          label: "Sous-titre",
-          maxLength: 200,
           hasCodeFallback: true,
         },
       },
     },
     {
       key: "emptyState",
-      label: "Aucun magasin",
+      label: "Catégorie vide",
       fields: {
         title: {
           type: "text",
-          label: "Titre aucun magasin",
+          label: "Titre catégorie vide",
           maxLength: 100,
           hasCodeFallback: true,
         },
         subtitle: {
           type: "text",
-          label: "Description aucun magasin",
+          label: "Description catégorie vide",
           maxLength: 200,
           hasCodeFallback: true,
         },

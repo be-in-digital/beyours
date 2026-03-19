@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
-export const orderTrackingPage: PageDefinition = {
-  slug: "order-tracking",
-  label: "Suivi de commande",
+export const accountPage: PageDefinition = {
+  slug: "account",
+  label: "Mon compte",
+  groupId: "account",
   blocks: [
     {
       key: "header",
@@ -24,30 +25,30 @@ export const orderTrackingPage: PageDefinition = {
       },
     },
     {
-      key: "statuses",
-      label: "Labels de statut",
+      key: "navigation",
+      label: "Navigation du compte",
       fields: {
-        pendingLabel: {
+        ordersLabel: {
           type: "text",
-          label: "En attente",
+          label: "Lien historique commandes",
           maxLength: 50,
           hasCodeFallback: true,
         },
-        preparingLabel: {
+        addressesLabel: {
           type: "text",
-          label: "En préparation",
+          label: "Lien adresses",
           maxLength: 50,
           hasCodeFallback: true,
         },
-        readyLabel: {
+        favoritesLabel: {
           type: "text",
-          label: "Prête",
+          label: "Lien favoris",
           maxLength: 50,
           hasCodeFallback: true,
         },
-        deliveredLabel: {
+        logoutLabel: {
           type: "text",
-          label: "Livrée",
+          label: "Texte déconnexion",
           maxLength: 50,
           hasCodeFallback: true,
         },

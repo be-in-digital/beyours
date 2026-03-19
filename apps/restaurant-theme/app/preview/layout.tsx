@@ -1,3 +1,5 @@
+import "@/lib/cms/init"
+
 export default function PreviewLayout({
   children,
 }: {

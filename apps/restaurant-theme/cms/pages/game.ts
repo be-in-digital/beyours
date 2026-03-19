@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
 export const gamePage: PageDefinition = {
   slug: "game",
   label: "Jeu / Gamification",
+  groupId: "games",
   blocks: [
     {
       key: "hero",

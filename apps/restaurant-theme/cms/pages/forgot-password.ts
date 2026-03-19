@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
 export const forgotPasswordPage: PageDefinition = {
   slug: "forgot-password",
   label: "Page mot de passe oublie",
+  groupId: "auth",
   blocks: [
     {
       key: "form",

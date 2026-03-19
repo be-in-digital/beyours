@@ -1,10 +1,11 @@
-import type { PageDefinition } from "../types"
-import { seoBlock } from "../blocks/seoBlock"
+import type { PageDefinition } from "@beindigital-engine/cms"
+import { seoBlock } from "@beindigital-engine/cms"
 
 export const storefrontLayoutPage: PageDefinition = {
   slug: "storefront-layout",
   label: "Layout du storefront",
   description: "En-tête et pied de page communs à toutes les pages du storefront",
+  groupId: "storefront",
   blocks: [
     seoBlock,
     {

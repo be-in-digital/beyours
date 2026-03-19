@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
+import { useSearchParams } from "next/navigation"
 import { api } from "@/convex/_generated/api"
 import { useStoreStore, useLanguageStore } from "@beindigital-engine/restaurant"
 import {
@@ -62,7 +63,9 @@ export function useCmsPage(
   pageSlug: string,
   options?: UseCmsPageOptions,
 ): UseCmsPageResult {
-  const mode = options?.mode ?? "public"
+  const searchParams = useSearchParams()
+  const isPreviewParam = searchParams.get("preview") === "true"
+  const mode = options?.mode ?? (isPreviewParam ? "preview" : "public")
   const storeId = useStoreStore(
     (s) => s.currentStore?._id,
   ) as Id<"stores"> | undefined
