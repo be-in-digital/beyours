@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Globe } from "lucide-react"
 import {
   Popover,
@@ -30,12 +30,12 @@ export function LanguageSelectorDropdown({
 }) {
   const languages = useQuery(api.languages.listAll)
 
-  const [currentLocale, setCurrentLocale] = useState("fr")
-
-  useEffect(() => {
-    const saved = getLocaleFromLocalStorage()
-    if (saved) setCurrentLocale(saved)
-  }, [])
+  const [currentLocale, setCurrentLocale] = useState(() => {
+    if (typeof window !== "undefined") {
+      return getLocaleFromLocalStorage() ?? "fr"
+    }
+    return "fr"
+  })
 
   const activeLanguages: LanguageDoc[] = languages ?? []
 

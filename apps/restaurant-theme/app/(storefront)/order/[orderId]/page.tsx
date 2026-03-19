@@ -49,6 +49,7 @@ function OrderConfirmationContent() {
     api.kitchenTickets.getByOrder,
     orderId ? { orderId: orderId as Id<"orders"> } : "skip"
   )
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result shape
   const trackingToken = (kitchenTickets as any)?.[0]?.trackingToken as string | undefined
 
   // Loading
@@ -201,6 +202,7 @@ function OrderConfirmationContent() {
             <h2 className="text-lg font-black uppercase tracking-tighter mb-6">Articles</h2>
 
             <div className="space-y-4">
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- order items from Convex */}
               {order.items.map((item: any, i: number) => (
                 <div key={i} className="flex justify-between text-sm">
                   <div>
@@ -209,6 +211,7 @@ function OrderConfirmationContent() {
                     {item.selectedOptions?.length > 0 && (
                       <p className="text-xs text-zinc-400 mt-0.5">
                         {item.selectedOptions
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           .map((o: any) => o.choiceName ?? o.optionName)
                           .join(", ")}
                       </p>

@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import {
     Carousel,
@@ -23,19 +24,19 @@ export function TrendingSection({ sectionTitle, viewAllLabel }: TrendingSectionP
 
     const store = useQuery(
         api.stores.getById,
-        storeId ? { id: storeId as any } : "skip"
+        storeId ? { id: storeId as Id<"stores"> } : "skip"
     )
 
     const trendingMode = store?.trendingMode ?? "manual"
 
     const manualProducts = useQuery(
         api.products.getManualTrending,
-        storeId && trendingMode === "manual" ? { storeId: storeId as any } : "skip"
+        storeId && trendingMode === "manual" ? { storeId: storeId as Id<"stores"> } : "skip"
     )
 
     const autoProducts = useQuery(
         api.products.getTrending,
-        storeId && trendingMode === "automatic" ? { storeId: storeId as any } : "skip"
+        storeId && trendingMode === "automatic" ? { storeId: storeId as Id<"stores"> } : "skip"
     )
 
     const products = trendingMode === "manual" ? manualProducts : autoProducts
@@ -74,7 +75,7 @@ export function TrendingSection({ sectionTitle, viewAllLabel }: TrendingSectionP
 
             <Carousel opts={{ align: "start", loop: true }} className="w-full relative">
                 <CarouselContent className="-ml-4 pb-8">
-                    {products.map((product: any) => (
+                    {products.map((product) => (
                         <CarouselItem key={product._id} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                             <MealCard
                                 id={product._id}

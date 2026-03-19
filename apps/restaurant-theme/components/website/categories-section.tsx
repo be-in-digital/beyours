@@ -2,6 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
+import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Heading, CategoryCard } from "@/components/website"
@@ -26,7 +27,7 @@ export function CategoriesSection({ badge, sectionTitle, description }: Categori
 
     const categories = useQuery(
         api.categories.listActiveWithCounts,
-        storeId ? { storeId: storeId as any } : "skip"
+        storeId ? { storeId: storeId as Id<"stores"> } : "skip"
     )
 
     const isLoading = categories === undefined
@@ -64,7 +65,7 @@ export function CategoriesSection({ badge, sectionTitle, description }: Categori
                 description={description}
             />
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-                {categories.map((cat: any, index: number) => {
+                {categories.map((cat, index) => {
                     const colorSet = CATEGORY_COLORS[index % CATEGORY_COLORS.length]!
                     const hasImage = !!cat.imageUrl
                     return (

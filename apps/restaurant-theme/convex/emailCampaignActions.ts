@@ -1,4 +1,5 @@
 "use node";
+/* eslint-disable @typescript-eslint/no-explicit-any -- Convex action ctx.runQuery returns untyped results */
 
 import { action } from "./_generated/server";
 import { api as _api, internal as _internal } from "./_generated/api";
