@@ -69,7 +69,7 @@ const OPERATORS: { value: RuleOperator; label: string; types: string[] }[] = [
 ]
 
 function generateId() {
-  return Math.random().toString(36).slice(2, 9)
+  return crypto.randomUUID().slice(0, 7)
 }
 
 function newRule(): SegmentRule {

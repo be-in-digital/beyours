@@ -14,6 +14,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Heading, MealCard } from "@/components/website"
 
+interface TrendingProduct {
+    _id: string
+    name: string
+    price: number
+    preparationTime?: number
+    images?: string[]
+}
+
 interface TrendingSectionProps {
     sectionTitle: string
     viewAllLabel: string
@@ -75,8 +83,7 @@ export function TrendingSection({ sectionTitle, viewAllLabel }: TrendingSectionP
 
             <Carousel opts={{ align: "start", loop: true }} className="w-full relative">
                 <CarouselContent className="-ml-4 pb-8">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query union result */}
-                    {products.map((product: any) => (
+                    {(products as TrendingProduct[]).map((product) => (
                         <CarouselItem key={product._id} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                             <MealCard
                                 id={product._id}

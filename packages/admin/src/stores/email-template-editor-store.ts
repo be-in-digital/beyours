@@ -360,7 +360,7 @@ export const useEmailTemplateEditorStore = create<EmailTemplateEditorStore>()(
       if (index === -1) return
       const original = blocks[index]
       if (!original) return
-      const newId = Math.random().toString(36).slice(2, 9)
+      const newId = crypto.randomUUID().slice(0, 7)
       const clone = JSON.parse(JSON.stringify(original)) as EditorBlock
       clone.id = newId
       const newBlocks = [
