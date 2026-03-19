@@ -1,27 +1,30 @@
 /**
- * Client auth pour le frontend React
- *
- * NOTE: Après installation de better-auth, importer:
- * - import { createAuthClient } from 'better-auth/react'
- *
- * Ce fichier fournit les hooks et fonctions pour gérer l'auth côté client
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  🔑 Auth Client                                             │
+ * │  React hooks and utilities for client-side authentication   │
+ * │  Permission checks, role gates, and session management      │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { useAuth, usePermission }                 │      │
+ * │  │   from '@repo/core/auth'                          │      │
+ * │  │                                                   │      │
+ * │  │ const { user, signIn } = useAuth()                │      │
+ * │  │ const { allowed } = usePermission('orders:write') │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { type Permission, type Role, hasPermission } from './rbac';
 
 /**
- * Type générique pour les enfants React
- * Utilisé pour éviter la dépendance à React dans ce package
+ * Lightweight React type stand-ins to avoid a hard dependency on React
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ReactNode = any;
+type ReactNode = unknown;
 
-/**
- * Type générique pour un composant React
- * Utilisé pour éviter la dépendance à React dans ce package
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ComponentType<P = any> = any;
+type ComponentType<P = Record<string, unknown>> = (props: P) => ReactNode;
 import type {
   AuthContextValue,
   AuthUser,

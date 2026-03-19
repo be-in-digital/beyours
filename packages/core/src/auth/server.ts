@@ -1,9 +1,22 @@
 /**
- * Utilitaires auth côté serveur (Next.js Server Components, API Routes, Middleware)
- *
- * NOTE: Après installation de better-auth, importer:
- * - import { auth } from './config' // Instance Better Auth
- * - import { headers, cookies } from 'next/headers'
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  🛡️ Auth Server                                             │
+ * │  Server-side auth guards for Next.js Server Components,     │
+ * │  API Routes, and Middleware. Role & permission checks.       │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { requireAuth, requireRole }               │      │
+ * │  │   from '@repo/core/auth'                          │      │
+ * │  │                                                   │      │
+ * │  │ export async function GET() {                     │      │
+ * │  │   const session = await requireAuth()             │      │
+ * │  │   return Response.json({ userId: session.user.id })│     │
+ * │  │ }                                                 │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { type Permission, type Role, hasPermission, PermissionDeniedError } from './rbac';
@@ -133,6 +146,11 @@ export async function requireAuth(): Promise<AuthSessionData> {
 export async function requireRole(role: Role): Promise<AuthSessionData> {
   const session = await requireAuth();
 
+  // Super admin bypasses all role checks
+  if (session.user.role === 'super_admin') {
+    return session;
+  }
+
   if (session.user.role !== role) {
     throw new ForbiddenError(role, session.user.role);
   }
@@ -160,6 +178,11 @@ export async function requireRole(role: Role): Promise<AuthSessionData> {
  */
 export async function requireAnyRole(roles: Role[]): Promise<AuthSessionData> {
   const session = await requireAuth();
+
+  // Super admin bypasses all role checks
+  if (session.user.role === 'super_admin') {
+    return session;
+  }
 
   if (!roles.includes(session.user.role)) {
     const firstRole = roles[0];
@@ -327,7 +350,7 @@ export async function requireRestaurantAccess(
 
   if (!canAccessRestaurant(session, restaurantId)) {
     throw new ForbiddenError(
-      session.user.role,
+      session.user.role === 'customer' ? 'manager' as Role : 'super_admin' as Role,
       session.user.role
     );
   }
@@ -400,7 +423,7 @@ export function handleAuthError(error: unknown): Response {
  * )
  * ```
  */
-export function withAuthRoute<T extends any[]>(
+export function withAuthRoute<T extends unknown[]>(
   handler: (
     request: Request,
     session: AuthSessionData,
@@ -416,8 +439,8 @@ export function withAuthRoute<T extends any[]>(
       // Vérifier authentification
       const session = await requireAuth();
 
-      // Vérifier rôle si requis
-      if (options?.requireRole && session.user.role !== options.requireRole) {
+      // Vérifier rôle si requis (super_admin bypasses)
+      if (options?.requireRole && session.user.role !== 'super_admin' && session.user.role !== options.requireRole) {
         throw new ForbiddenError(options.requireRole, session.user.role);
       }
 

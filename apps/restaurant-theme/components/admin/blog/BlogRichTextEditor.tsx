@@ -183,9 +183,17 @@ export function BlogRichTextEditor({
         <ToolbarButton
           active={editor.isActive("link")}
           onClick={() => {
-            const url = window.prompt("URL du lien :")
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run()
+            const raw = window.prompt("URL du lien :")
+            if (raw) {
+              try {
+                const parsed = new URL(raw)
+                if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+                  return
+                }
+                editor.chain().focus().setLink({ href: raw }).run()
+              } catch {
+                // URL invalide — ignore silently
+              }
             } else {
               editor.chain().focus().unsetLink().run()
             }

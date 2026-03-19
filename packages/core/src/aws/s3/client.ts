@@ -1,6 +1,22 @@
 /**
- * Service S3 pour la gestion des fichiers
- * @module aws/s3/client
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  ☁️ S3 Client                                               │
+ * │  File storage service with upload, presigned URLs,          │
+ * │  download, delete, and metadata operations                  │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { createS3Service } from '@repo/core/aws'  │      │
+ * │  │                                                   │      │
+ * │  │ const s3 = createS3Service(config, client)        │      │
+ * │  │ const { key, url } = await s3.upload(file, {      │      │
+ * │  │   folder: 'products',                             │      │
+ * │  │   contentType: 'image/webp',                      │      │
+ * │  │ })                                                │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { randomUUID } from 'crypto'
@@ -134,7 +150,7 @@ export function createS3Service(
     if (file instanceof Blob) {
       return file.size
     }
-    return 0
+    throw new Error(`Unsupported file type: ${typeof file}`)
   }
 
   return {

@@ -198,7 +198,7 @@ describe('Cart Service', () => {
       ]
 
       const result = canCheckout(items, 'store1')
-      expect(result.canCheckout).toBe(true)
+      expect(result.eligible).toBe(true)
     })
 
     it('should reject checkout without store ID', () => {
@@ -213,13 +213,13 @@ describe('Cart Service', () => {
       ]
 
       const result = canCheckout(items, null)
-      expect(result.canCheckout).toBe(false)
+      expect(result.eligible).toBe(false)
       expect(result.reason).toBe('No store selected')
     })
 
     it('should reject checkout with empty cart', () => {
       const result = canCheckout([], 'store1')
-      expect(result.canCheckout).toBe(false)
+      expect(result.eligible).toBe(false)
       expect(result.reason).toBe('Cart is empty')
     })
 
@@ -235,7 +235,7 @@ describe('Cart Service', () => {
       ]
 
       const result = canCheckout(items, 'store1')
-      expect(result.canCheckout).toBe(false)
+      expect(result.eligible).toBe(false)
       expect(result.reason).toContain('Invalid item')
     })
   })

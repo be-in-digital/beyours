@@ -1,28 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { StoreDoc } from '../types'
-
-/**
- * Haversine distance in km between two lat/lng points
- */
-function haversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371 // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLon = ((lon2 - lon1) * Math.PI) / 180
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
-}
+import { getStoreDistance } from '../services/store'
 
 export interface StoreWithDistance extends StoreDoc {
   distance: number | null // km, null if no coords
@@ -92,27 +72,32 @@ export function useNearestStore(stores: StoreDoc[]): UseNearestStoreResult {
   }, [requestLocation])
 
   // Compute distances and sort
-  const storesWithDistance: StoreWithDistance[] = stores.map((store) => {
-    const lat = store.address?.latitude
-    const lng = store.address?.longitude
+  const storesWithDistance: StoreWithDistance[] = useMemo(() => {
+    const withDistance = stores.map((store) => {
+      const lat = store.address?.latitude
+      const lng = store.address?.longitude
 
-    if (!userPosition || lat == null || lng == null) {
-      return { ...store, distance: null }
-    }
+      if (!userPosition || lat == null || lng == null) {
+        return { ...store, distance: null }
+      }
 
-    return {
-      ...store,
-      distance: haversineDistance(userPosition.lat, userPosition.lng, lat, lng),
-    }
-  })
+      const distance = getStoreDistance(lat, lng, userPosition.lat, userPosition.lng)
+      return {
+        ...store,
+        distance: distance === Infinity ? null : distance,
+      }
+    })
 
-  // Sort: stores with distance first (ascending), then stores without distance
-  storesWithDistance.sort((a, b) => {
-    if (a.distance != null && b.distance != null) return a.distance - b.distance
-    if (a.distance != null) return -1
-    if (b.distance != null) return 1
-    return 0
-  })
+    // Sort: stores with distance first (ascending), then stores without distance
+    withDistance.sort((a, b) => {
+      if (a.distance != null && b.distance != null) return a.distance - b.distance
+      if (a.distance != null) return -1
+      if (b.distance != null) return 1
+      return 0
+    })
+
+    return withDistance
+  }, [stores, userPosition])
 
   const nearestStore = storesWithDistance[0] ?? null
 
