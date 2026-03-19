@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect, Suspense } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -83,8 +83,14 @@ function MenuContent() {
   }, [products, activeCategoryId, search, sortBy, filters])
 
   // Reset page on filter/sort/category/search change
+  const prevFilterKey = useRef(`${categorySlug}-${search}-${sortBy}-${filters.availableOnly}`)
   useEffect(() => {
-    setCurrentPage(1)
+    const key = `${categorySlug}-${search}-${sortBy}-${filters.availableOnly}`
+    if (prevFilterKey.current !== key) {
+      prevFilterKey.current = key
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset pagination on filter change
+      setCurrentPage(1)
+    }
   }, [categorySlug, search, sortBy, filters])
 
   // Pagination

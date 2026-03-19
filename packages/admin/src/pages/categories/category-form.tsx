@@ -1,17 +1,20 @@
 "use client"
 
+import { useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { useMutation } from "convex/react"
+import { useAction, useMutation } from "convex/react"
 import { toast } from "sonner"
 import { Button, Input, Textarea, Label, Switch } from "@beindigital-engine/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { ImageUploader } from "../../components/image-uploader"
 
 const categorySchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   slug: z.string().min(1, "Le slug est requis").max(100, "Le slug est trop long"),
   description: z.string().max(500, "La description est trop longue").optional(),
+  imageUrl: z.string().optional(),
   isActive: z.boolean(),
 })
 
@@ -27,6 +30,8 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
   const { api } = useAdminApiStore()
   const createMutation = useMutation(api?.categories?.create)
   const updateMutation = useMutation(api?.categories?.update)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getPresignedUrl = useAction(api?.storageUpload?.getPresignedUploadUrl ?? (null as any))
 
   const isEditMode = !!category
 
@@ -42,9 +47,18 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
       name: category?.name || "",
       slug: category?.slug || "",
       description: category?.description || "",
+      imageUrl: category?.imageUrl || "",
       isActive: category?.isActive ?? true,
     },
   })
+
+  const handleRequestUploadUrl = useCallback(
+    async (args: { folder: string; contentType: string }) => {
+      if (!getPresignedUrl) throw new Error("API non disponible")
+      return getPresignedUrl(args)
+    },
+    [getPresignedUrl]
+  )
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -69,6 +83,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
           name: data.name,
           slug: data.slug,
           description: data.description || undefined,
+          imageUrl: data.imageUrl || undefined,
           isActive: data.isActive,
         })
         toast.success("Catégorie mise à jour avec succès")
@@ -78,6 +93,7 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
           name: data.name,
           slug: data.slug,
           description: data.description || undefined,
+          imageUrl: data.imageUrl || undefined,
           sortOrder: 0,
           isActive: data.isActive,
         })
@@ -139,6 +155,19 @@ export function CategoryForm({ storeId, category, onSuccess }: CategoryFormProps
         {errors.description && (
           <p className="text-xs text-destructive">{errors.description.message}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <ImageUploader
+          value={watch("imageUrl") || ""}
+          onChange={(url) => setValue("imageUrl", url)}
+          onRequestUploadUrl={handleRequestUploadUrl}
+          folder="categories"
+          accept="image/jpeg,image/png,image/webp"
+          maxSizeMB={5}
+          label="Image de la catégorie"
+          placeholder="Image affichée sur la page d'accueil dans la section catégories"
+        />
       </div>
 
       <div className="flex items-center justify-between">

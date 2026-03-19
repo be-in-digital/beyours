@@ -280,6 +280,21 @@ export const updateOrderMode = {
 }
 
 /**
+ * Update store trending mode (manual or automatic)
+ */
+export const updateTrendingMode = {
+  args: {
+    id: v.id("stores"),
+    trendingMode: v.union(v.literal("manual"), v.literal("automatic")),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await ctx.db.get(args.id)
+    if (!existing) throw new Error("Store not found")
+    await ctx.db.patch(args.id, { trendingMode: args.trendingMode, updatedAt: Date.now() })
+  },
+}
+
+/**
  * Delete a store
  */
 export const remove = {

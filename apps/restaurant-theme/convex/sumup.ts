@@ -37,6 +37,7 @@ async function decrypt(encrypted: string): Promise<string> {
 /**
  * Get decrypted SumUp access token from paymentConnections.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex action context
 async function getSumUpAccessToken(ctx: any): Promise<{ accessToken: string; merchantCode: string }> {
   const connection = await ctx.runQuery(
     internal.paymentConnections.internalGetByProvider,

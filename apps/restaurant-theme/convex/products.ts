@@ -10,6 +10,8 @@ export const getById = query(defs.getById);
 export const getByCategory = query(defs.getByCategory);
 export const getBySlug = query(defs.getBySlug);
 export const getFeatured = query(defs.getFeatured);
+export const getManualTrending = query(defs.getManualTrending);
+export const getTrending = query(defs.getTrending);
 export const getManyByIds = query(defs.getManyByIds);
 
 // === Mutations (with menu sync trigger) ===
@@ -127,5 +129,14 @@ export const duplicateCatalog = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
     return defs.duplicateCatalog.handler(ctx, args);
+  },
+});
+
+export const setTrendingProducts = mutation({
+  args: defs.setTrendingProducts.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.setTrendingProducts.handler(ctx, args);
   },
 });

@@ -8,6 +8,7 @@ import {
   Image,
   LayoutDashboard,
   LayoutGrid,
+  LayoutList,
   Mail,
   PenSquare,
   RefreshCw,
@@ -92,6 +93,12 @@ export const navGroups: NavGroup[] = [
         label: "Menu & Produits",
         href: "/products",
         icon: UtensilsCrossed,
+        requiredPermission: "products:read",
+      },
+      {
+        label: "Catégories",
+        href: "/categories",
+        icon: LayoutList,
         requiredPermission: "products:read",
       },
       {

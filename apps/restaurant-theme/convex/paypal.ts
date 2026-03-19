@@ -16,6 +16,7 @@ interface PayPalEnv {
 }
 
 function getPayPalEnv(): PayPalEnv {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import in Convex "use node" context
   const { getSiteEnv } = require("@beindigital-engine/core/env");
   const site = getSiteEnv();
   const clientId = site.PAYPAL_CLIENT_ID;

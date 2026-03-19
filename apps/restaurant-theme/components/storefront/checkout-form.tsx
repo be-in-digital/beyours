@@ -117,11 +117,8 @@ export function CheckoutForm({
   const showAddressFields = addressMode === "selected" || addressMode === "manual"
 
   // Reset payment method to card if cash becomes unavailable
-  useEffect(() => {
-    if (paymentMethod === "cash" && (isDelivery || !isAuthenticated)) {
-      setPaymentMethod("card")
-    }
-  }, [isDelivery, paymentMethod, isAuthenticated])
+  const effectivePaymentMethod: PaymentMethod =
+    paymentMethod === "cash" && (isDelivery || !isAuthenticated) ? "card" : paymentMethod
 
   const {
     register,
@@ -204,7 +201,7 @@ export function CheckoutForm({
       name: data.name,
       email: data.email || undefined,
       phone: data.phone || undefined,
-      paymentMethod,
+      paymentMethod: effectivePaymentMethod,
       deliveryAddress,
     })
   }
@@ -562,7 +559,7 @@ export function CheckoutForm({
               type="button"
               onClick={() => setPaymentMethod("card")}
               className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
-                paymentMethod === "card"
+                effectivePaymentMethod === "card"
                   ? "border-emerald-500 bg-emerald-50/30"
                   : "border-zinc-100 hover:border-zinc-200"
               }`}
@@ -576,7 +573,7 @@ export function CheckoutForm({
                   {payments?.cardProvider === "sumup" ? "SumUp" : "Visa, Master, Amex"}
                 </p>
               </div>
-              {paymentMethod === "card" && (
+              {effectivePaymentMethod === "card" && (
                 <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
               )}
             </button>
@@ -587,7 +584,7 @@ export function CheckoutForm({
                 type="button"
                 onClick={() => setPaymentMethod("paypal")}
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
-                  paymentMethod === "paypal"
+                  effectivePaymentMethod === "paypal"
                     ? "border-emerald-500 bg-emerald-50/30"
                     : "border-zinc-100 hover:border-zinc-200"
                 }`}
@@ -601,7 +598,7 @@ export function CheckoutForm({
                     Paiement sécurisé
                   </p>
                 </div>
-                {paymentMethod === "paypal" && (
+                {effectivePaymentMethod === "paypal" && (
                   <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
                 )}
               </button>
@@ -616,7 +613,7 @@ export function CheckoutForm({
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
                   !isAuthenticated
                     ? "border-zinc-100 bg-zinc-50 opacity-60 cursor-not-allowed"
-                    : paymentMethod === "cash"
+                    : effectivePaymentMethod === "cash"
                       ? "border-emerald-500 bg-emerald-50/30"
                       : "border-zinc-100 hover:border-zinc-200"
                 }`}
@@ -630,7 +627,7 @@ export function CheckoutForm({
                     {isAuthenticated ? "Paiement au retrait" : "Connectez-vous pour payer en espèces"}
                   </p>
                 </div>
-                {paymentMethod === "cash" && isAuthenticated && (
+                {effectivePaymentMethod === "cash" && isAuthenticated && (
                   <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
                 )}
               </button>
@@ -654,9 +651,9 @@ export function CheckoutForm({
               </span>
             ) : (
               <>
-                {paymentMethod === "card"
+                {effectivePaymentMethod === "card"
                   ? "Payer par carte"
-                  : paymentMethod === "paypal"
+                  : effectivePaymentMethod === "paypal"
                     ? "Payer avec PayPal"
                     : "Confirmer la commande"}
                 <ArrowRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />

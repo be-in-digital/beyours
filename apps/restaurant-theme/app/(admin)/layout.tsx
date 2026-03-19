@@ -1,5 +1,6 @@
 "use client"
 
+import "@/lib/cms/init"
 import { useEffect } from "react"
 import { api } from "@/convex/_generated/api"
 import { AdminAuthSync } from "@/components/admin/AdminAuthSync"

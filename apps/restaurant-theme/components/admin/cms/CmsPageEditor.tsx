@@ -1,5 +1,6 @@
 "use client"
 
+import "@/lib/cms/init"
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
@@ -13,11 +14,13 @@ import {
   Loader2,
   CheckCircle2,
   AlertTriangle,
+  Languages,
 } from "lucide-react"
 import { Button, Badge } from "@beindigital-engine/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { CmsBlockAccordion } from "./CmsBlockAccordion"
 import { CmsTranslationDrawer } from "./CmsTranslationDrawer"
+import { TrendingProductsPicker } from "./TrendingProductsPicker"
 import {
   getPageDefinition,
   getBlockDefinition,
@@ -49,6 +52,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
   const resetBlock = useMutation(api.cms.resetBlock)
   const resetPage = useMutation(api.cms.resetPage)
   const publishPage = useMutation(api.cms.publishPage)
+  const translateAll = useMutation(api.cms.translateAllPageFields)
 
   // Local state for autosave
   const [localValues, setLocalValues] = useState<
@@ -56,6 +60,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
   >({})
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [publishing, setPublishing] = useState(false)
+  const [translatingAll, setTranslatingAll] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Translation drawer state
@@ -201,6 +206,21 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
     [],
   )
 
+  const handleTranslateAll = useCallback(async () => {
+    if (!storeId) return
+    setTranslatingAll(true)
+    try {
+      await translateAll({ storeId, pageSlug })
+      toast.success("Traduction lancée pour tous les champs")
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erreur lors du lancement de la traduction",
+      )
+    } finally {
+      setTranslatingAll(false)
+    }
+  }, [storeId, pageSlug, translateAll])
+
   if (!pageDef) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -304,6 +324,22 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
             </Badge>
           )}
 
+          {/* Translate all */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTranslateAll}
+            disabled={translatingAll || saveStatus === "saving"}
+            title={isTranslating ? "Relancer la traduction" : "Traduire tous les champs de texte"}
+          >
+            {translatingAll || isTranslating ? (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Languages className="mr-2 h-3.5 w-3.5" />
+            )}
+            {isTranslating ? "Retraduire" : "Traduire tout"}
+          </Button>
+
           {/* Preview */}
           <a
             href={`/preview/${pageSlug}`}
@@ -319,17 +355,14 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
           {/* Publish */}
           <Button
             onClick={handlePublish}
-            disabled={publishing || saveStatus === "saving" || isTranslating}
-            title={isTranslating ? "Traduction en cours..." : undefined}
+            disabled={publishing || saveStatus === "saving"}
           >
             {publishing ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : isTranslating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Upload className="mr-2 h-4 w-4" />
             )}
-            {isTranslating ? "Traduction..." : "Publier"}
+            Publier
           </Button>
         </div>
       </div>
@@ -358,18 +391,23 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
             {}
 
           return (
-            <CmsBlockAccordion
-              key={blockDef.key}
-              blockDef={blockDef}
-              draftValues={draftValues}
-              publishedValues={publishedValues}
-              resolvedMedia={resolvedMedia}
-              translationsByField={translationsByField}
-              onFieldChange={handleFieldChange}
-              onFieldReset={handleFieldReset}
-              onBlockReset={handleBlockReset}
-              onOpenTranslations={handleOpenTranslations}
-            />
+            <div key={blockDef.key} className="space-y-4">
+              <CmsBlockAccordion
+                blockDef={blockDef}
+                draftValues={draftValues}
+                publishedValues={publishedValues}
+                resolvedMedia={resolvedMedia}
+                translationsByField={translationsByField}
+                onFieldChange={handleFieldChange}
+                onFieldReset={handleFieldReset}
+                onBlockReset={handleBlockReset}
+                onOpenTranslations={handleOpenTranslations}
+              />
+              {/* Trending products picker — injected for homepage trendingMeals block */}
+              {pageSlug === "homepage" && blockDef.key === "trendingMeals" && (
+                <TrendingProductsPicker />
+              )}
+            </div>
           )
         })}
       </div>
