@@ -13,8 +13,22 @@ export const list = query({
   },
 });
 
-export const getByUser = query(defs.getByUser);
-export const getByRole = query(defs.getByRole);
+export const getByUser = query({
+  args: defs.getByUser.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByUser.handler(ctx, args);
+  },
+});
+
+export const getByRole = query({
+  args: defs.getByRole.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByRole.handler(ctx, args);
+  },
+});
 
 export const getByEmail = query({
   args: defs.getByEmail.args,

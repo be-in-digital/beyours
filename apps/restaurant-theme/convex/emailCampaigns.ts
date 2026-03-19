@@ -21,8 +21,21 @@ export const getById = query({
   },
 });
 
-export const listRecent = query(defs.listRecent);
-export const listByStatus = query(defs.listByStatus);
+export const listRecent = query({
+  args: defs.listRecent.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listRecent.handler(ctx, args);
+  },
+});
+
+export const listByStatus = query({
+  args: defs.listByStatus.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listByStatus.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 

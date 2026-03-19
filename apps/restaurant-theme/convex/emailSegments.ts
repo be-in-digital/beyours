@@ -12,8 +12,22 @@ export const list = query({
   },
 });
 
-export const getById = query(defs.getById);
-export const countMatchingSubscribers = query(defs.countMatchingSubscribers);
+export const getById = query({
+  args: defs.getById.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getById.handler(ctx, args);
+  },
+});
+
+export const countMatchingSubscribers = query({
+  args: defs.countMatchingSubscribers.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.countMatchingSubscribers.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 
