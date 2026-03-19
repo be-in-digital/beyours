@@ -4,7 +4,8 @@ import React from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useMarketingStore } from "@/lib/stores/marketing-store";
+import { useFavoritesStore } from "@/lib/stores/favorites-store";
+import { useStoreId } from "@/lib/hooks/use-store-id";
 import { authClient } from "@/lib/auth-client";
 import {
     Tooltip,
@@ -20,8 +21,11 @@ interface FavoriteButtonProps {
 
 export function FavoriteButton({ itemId, itemTitle, className }: FavoriteButtonProps) {
     const { data: session } = authClient.useSession();
-    const { toggleFavorite, isFavorite } = useMarketingStore();
-    const isFav = isFavorite(itemId);
+    const { storeId } = useStoreId();
+    const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
+    const isFavorite = useFavoritesStore((s) => s.isFavorite);
+    const productId = String(itemId);
+    const isFav = storeId ? isFavorite(productId, storeId) : false;
 
     const handleToggleFavorite = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -37,7 +41,8 @@ export function FavoriteButton({ itemId, itemTitle, className }: FavoriteButtonP
             return;
         }
 
-        toggleFavorite(itemId);
+        if (!storeId) return;
+        toggleFavorite(productId, storeId);
 
         if (!isFav) {
             toast.success(`${itemTitle} ajouté aux favoris !`, {

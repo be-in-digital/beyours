@@ -51,7 +51,9 @@
     "./bidSubscription": "./src/bidSubscription.ts",
     "./blogAutoGenerate": "./src/blogAutoGenerate.ts",
     "./favorites": "./src/favorites.ts",
-    "./deliveryFee": "./src/deliveryFee.ts"
+    "./contactMessages": "./src/contactMessages.ts",
+    "./deliveryFee": "./src/deliveryFee.ts",
+    "./auth": "./src/auth.ts"
   },
   "scripts": {
     "lint": "eslint src/",

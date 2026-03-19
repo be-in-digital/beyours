@@ -291,7 +291,7 @@ export const create = {
     const orderNumber = generateOrderNumber()
 
     // Generate view token for public order confirmation access
-    const viewToken = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
+    const viewToken = crypto.randomUUID()
 
     const orderId = await ctx.db.insert("orders", {
       storeId: args.storeId,

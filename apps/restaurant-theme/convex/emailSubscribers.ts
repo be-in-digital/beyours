@@ -64,6 +64,24 @@ export const importBatch = mutation({
   },
 });
 
+/**
+ * Public mutation — allows storefront visitors to subscribe to the newsletter.
+ * Only accepts source "storefront_form" to prevent abuse.
+ */
+export const subscribe = mutation({
+  args: {
+    storeId: defs.create.args.storeId,
+    email: defs.create.args.email,
+  },
+  handler: async (ctx, args) => {
+    return defs.create.handler(ctx, {
+      ...args,
+      source: "storefront_form",
+      tags: ["newsletter"],
+    });
+  },
+});
+
 // === Internal mutations (called by schedulers / HTTP actions) ===
 
 export const confirmDoubleOptIn = internalMutation(defs.confirmDoubleOptIn);
