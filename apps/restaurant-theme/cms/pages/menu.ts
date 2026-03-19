@@ -1,9 +1,12 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
+import { seoBlock } from "@beindigital-engine/cms"
 
-export const accountFavoritesPage: PageDefinition = {
-  slug: "account-favorites",
-  label: "Produits favoris",
+export const menuPage: PageDefinition = {
+  slug: "menu",
+  label: "Page menu",
+  groupId: "catalog",
   blocks: [
+    seoBlock,
     {
       key: "header",
       label: "En-tête",
@@ -25,17 +28,17 @@ export const accountFavoritesPage: PageDefinition = {
     },
     {
       key: "emptyState",
-      label: "Aucun favori",
+      label: "État vide",
       fields: {
         title: {
           type: "text",
-          label: "Titre aucun favori",
+          label: "Titre quand aucun produit",
           maxLength: 100,
           hasCodeFallback: true,
         },
         subtitle: {
           type: "text",
-          label: "Description aucun favori",
+          label: "Description quand aucun produit",
           maxLength: 200,
           hasCodeFallback: true,
         },

@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
-export const signUpPage: PageDefinition = {
-  slug: "sign-up",
-  label: "Page d'inscription",
+export const signInPage: PageDefinition = {
+  slug: "sign-in",
+  label: "Page de connexion",
+  groupId: "auth",
   blocks: [
     {
       key: "hero",
@@ -32,7 +33,7 @@ export const signUpPage: PageDefinition = {
     },
     {
       key: "form",
-      label: "Formulaire d'inscription",
+      label: "Formulaire de connexion",
       fields: {
         heading: {
           type: "text",
@@ -48,9 +49,15 @@ export const signUpPage: PageDefinition = {
           maxLength: 50,
           hasCodeFallback: true,
         },
-        signinLink: {
+        forgotLink: {
           type: "text",
-          label: "Texte lien connexion",
+          label: "Texte lien mot de passe oublie",
+          maxLength: 100,
+          hasCodeFallback: true,
+        },
+        signupLink: {
+          type: "text",
+          label: "Texte lien inscription",
           maxLength: 100,
           hasCodeFallback: true,
         },

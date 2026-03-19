@@ -1,9 +1,11 @@
-import type { PageDefinition } from "../types"
-import { seoBlock } from "../blocks/seoBlock"
+import type { PageDefinition } from "@beindigital-engine/cms"
+import { seoBlock } from "@beindigital-engine/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",
   label: "Page d'accueil",
+  route: "/",
+  groupId: "storefront",
   blocks: [
     seoBlock,
     {

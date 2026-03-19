@@ -1,3 +1,4 @@
+import "@/lib/cms/init"
 import { StorefrontShell } from "@/components/storefront"
 import { TooltipProvider } from "@/components/ui/tooltip"
 

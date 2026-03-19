@@ -5,13 +5,18 @@
  * No media mutations here — those are in cmsMedia.ts.
  */
 
+// Initialize CMS registry with app-specific pages (must run before any handler)
+import { setCmsRegistry } from "@beindigital-engine/cms"
+import { appCmsConfig } from "../cms"
+setCmsRegistry(appCmsConfig)
+
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import * as cmsDefs from "@beindigital-engine/convex-functions/cms"
 import * as cmsPublishDefs from "@beindigital-engine/convex-functions/cmsPublish"
 import { publishPageCore } from "@beindigital-engine/convex-functions/cmsPublish"
 import { saveDraftBlockCore } from "@beindigital-engine/convex-functions/cms"
-import { scheduleCmsTranslation } from "./cmsAutoTranslate"
+import { scheduleCmsTranslation, schedulePageTranslation } from "./cmsAutoTranslate"
 
 // ============================================================================
 // Queries
@@ -106,6 +111,33 @@ export const resetPage = mutation({
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
     return cmsDefs.resetPage.handler(ctx, args)
+  },
+})
+
+/** Translate all text fields of a page at once */
+export const translateAllPageFields = mutation({
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error("Not authenticated")
+
+    // Check target languages exist
+    const allLanguages = await ctx.db
+      .query("languages")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hasTargetLangs = allLanguages.some((l: any) => l.isActive && !l.isDefault)
+    if (!hasTargetLangs) {
+      throw new Error("Aucune langue cible active. Ajoutez des langues dans Paramètres > Langues.")
+    }
+
+    await schedulePageTranslation(ctx, args.storeId, args.pageSlug)
   },
 })
 

@@ -57,6 +57,8 @@ export const listPages = {
         slug,
         label: pageDef?.label ?? slug,
         description: pageDef?.description,
+        route: pageDef?.route,
+        groupId: pageDef?.groupId,
         hasPublished: pageDoc?.hasPublished ?? false,
         hasUnpublishedChanges: pageDoc?.hasUnpublishedChanges ?? false,
         publishedAt: pageDoc?.publishedAt,

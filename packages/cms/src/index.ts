@@ -16,18 +16,26 @@ export type {
   PageDefinition,
   CmsFieldValue,
   CmsBlockValues,
+  CmsGroupDefinition,
 } from "./registry/types"
 
 // ============================================================================
 // Registry
 // ============================================================================
 export {
-  cmsRegistry,
+  setCmsRegistry,
+  getCmsRegistry,
+  getCmsGroups,
   getPageDefinition,
   getBlockDefinition,
   getFieldDefinition,
   getAllPageSlugs,
 } from "./registry"
+
+// ============================================================================
+// Shared Blocks
+// ============================================================================
+export { seoBlock } from "./registry/blocks/seoBlock"
 
 // ============================================================================
 // Validation

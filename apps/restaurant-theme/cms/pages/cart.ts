@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
-export const checkoutPage: PageDefinition = {
-  slug: "checkout",
-  label: "Commande",
+export const cartPage: PageDefinition = {
+  slug: "cart",
+  label: "Panier",
+  groupId: "order",
   blocks: [
     {
       key: "header",
@@ -24,25 +25,25 @@ export const checkoutPage: PageDefinition = {
       },
     },
     {
-      key: "sections",
-      label: "Sections",
+      key: "emptyState",
+      label: "Panier vide",
       fields: {
-        orderSummaryTitle: {
+        title: {
           type: "text",
-          label: "Titre résumé commande",
+          label: "Titre panier vide",
           maxLength: 100,
           hasCodeFallback: true,
         },
-        paymentTitle: {
+        subtitle: {
           type: "text",
-          label: "Titre section paiement",
-          maxLength: 100,
+          label: "Description panier vide",
+          maxLength: 200,
           hasCodeFallback: true,
         },
-        deliveryTitle: {
+        ctaLabel: {
           type: "text",
-          label: "Titre section livraison",
-          maxLength: 100,
+          label: "Texte bouton retour menu",
+          maxLength: 50,
           hasCodeFallback: true,
         },
       },
@@ -51,15 +52,15 @@ export const checkoutPage: PageDefinition = {
       key: "actions",
       label: "Actions",
       fields: {
-        submitLabel: {
+        checkoutLabel: {
           type: "text",
-          label: "Texte bouton confirmer",
+          label: "Texte bouton valider",
           maxLength: 50,
           hasCodeFallback: true,
         },
-        backLabel: {
+        continueShopping: {
           type: "text",
-          label: "Texte bouton retour",
+          label: "Texte continuer les achats",
           maxLength: 50,
           hasCodeFallback: true,
         },

@@ -1,8 +1,9 @@
-import type { PageDefinition } from "../types"
+import type { PageDefinition } from "@beindigital-engine/cms"
 
-export const accountAddressesPage: PageDefinition = {
-  slug: "account-addresses",
-  label: "Adresses sauvegardées",
+export const storeSelectorPage: PageDefinition = {
+  slug: "store-selector",
+  label: "Sélection du magasin",
+  groupId: "storefront",
   blocks: [
     {
       key: "header",
@@ -25,17 +26,17 @@ export const accountAddressesPage: PageDefinition = {
     },
     {
       key: "emptyState",
-      label: "Aucune adresse",
+      label: "Aucun magasin",
       fields: {
         title: {
           type: "text",
-          label: "Titre aucune adresse",
+          label: "Titre aucun magasin",
           maxLength: 100,
           hasCodeFallback: true,
         },
         subtitle: {
           type: "text",
-          label: "Description aucune adresse",
+          label: "Description aucun magasin",
           maxLength: 200,
           hasCodeFallback: true,
         },

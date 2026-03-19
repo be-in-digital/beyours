@@ -11,6 +11,11 @@
  *   _saveCmsTranslations      → internalMutation (upserts translations, clears job)
  */
 
+// Initialize CMS registry (must run before any handler)
+import { setCmsRegistry } from "@beindigital-engine/cms"
+import { appCmsConfig } from "../cms"
+setCmsRegistry(appCmsConfig)
+
 import {
   internalAction,
   internalMutation,
@@ -20,7 +25,7 @@ import {
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import type { Id } from "./_generated/dataModel"
-import { getBlockDefinition } from "@beindigital-engine/cms"
+import { getBlockDefinition, getPageDefinition } from "@beindigital-engine/cms"
 import {
   DEBOUNCE_MS,
   MAX_TRANSLATION_TEXT_LENGTH,
@@ -345,6 +350,250 @@ export const _saveCmsTranslations = internalMutation({
           isAutoTranslated: true,
           createdAt: now,
           updatedAt: now,
+        })
+      }
+    }
+  },
+})
+
+// ── Page-level bulk translation ───────────────────────────────────────
+
+/**
+ * Schedule translation for ALL blocks of a CMS page.
+ * Called from translateAllPageFields mutation.
+ *
+ * - Cancels any per-block scheduled jobs
+ * - Marks all draft blocks as translating
+ * - Schedules a single executePageTranslation action
+ */
+export async function schedulePageTranslation(
+  ctx: MutationCtx,
+  storeId: string,
+  pageSlug: string,
+): Promise<void> {
+  const typedStoreId = storeId as Id<"stores">
+
+  const draftBlocks = await ctx.db
+    .query("cmsBlocks")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .withIndex("by_storeId_pageSlug", (q: any) =>
+      q.eq("storeId", typedStoreId).eq("pageSlug", pageSlug),
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((q: any) => q.eq(q.field("isDraft"), true))
+    .collect()
+
+  // Schedule page translation immediately (no debounce)
+  const jobId = await ctx.scheduler.runAfter(
+    0,
+    internal.cmsAutoTranslate.executePageTranslation,
+    {
+      storeId: typedStoreId,
+      pageSlug,
+    },
+  )
+
+  // Mark all draft blocks as translating + cancel existing per-block jobs
+  for (const block of draftBlocks) {
+    if (block.scheduledTranslationJobId) {
+      try {
+        await ctx.scheduler.cancel(block.scheduledTranslationJobId)
+      } catch {
+        // Already executed or cancelled
+      }
+    }
+    await ctx.db.patch(block._id, { scheduledTranslationJobId: jobId })
+  }
+}
+
+// ── Internal query: gather ALL translation data for a page ────────────
+
+export const _getPageTranslationData = internalQuery({
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const pageDef = getPageDefinition(args.pageSlug)
+    if (!pageDef) return null
+
+    const allBlocks = await ctx.db
+      .query("cmsBlocks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .collect()
+
+    const allLanguages = await ctx.db
+      .query("languages")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const defaultLang = allLanguages.find((l: any) => l.isDefault)
+    const targetLanguages = allLanguages.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (l: any) => l.isActive && !l.isDefault,
+    )
+
+    if (!defaultLang || targetLanguages.length === 0) return null
+
+    const blocksToTranslate: Array<{
+      blockId: string
+      blockKey: string
+      texts: Array<{ fieldKey: string; text: string }>
+    }> = []
+
+    for (const blockDef of pageDef.blocks) {
+      // Prefer draft, fallback to published
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const draft = allBlocks.find(
+        (b: any) => b.blockKey === blockDef.key && b.isDraft,
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const published = allBlocks.find(
+        (b: any) => b.blockKey === blockDef.key && !b.isDraft,
+      )
+      const block = draft ?? published
+      if (!block) continue
+
+      const texts: Array<{ fieldKey: string; text: string }> = []
+      for (const [fieldKey, fieldDef] of Object.entries(blockDef.fields)) {
+        if (fieldDef.translatable === false) continue
+        if (fieldDef.type !== "text" && fieldDef.type !== "richtext") continue
+        const value = block.values[fieldKey]
+        if (!value || value.isCleared || !value.textValue) continue
+        texts.push({ fieldKey, text: value.textValue })
+      }
+
+      if (texts.length > 0) {
+        blocksToTranslate.push({
+          blockId: block._id,
+          blockKey: blockDef.key,
+          texts,
+        })
+      }
+    }
+
+    if (blocksToTranslate.length === 0) return null
+
+    return {
+      sourceLang: defaultLang.code ?? "fr",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      targetLanguages: targetLanguages.map((l: any) => l.code as string),
+      blocksToTranslate,
+    }
+  },
+})
+
+// ── Internal action: translate ALL text fields for a page ─────────────
+
+export const executePageTranslation = internalAction({
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      const data = await ctx.runQuery(
+        internal.cmsAutoTranslate._getPageTranslationData,
+        {
+          storeId: args.storeId,
+          pageSlug: args.pageSlug,
+        },
+      )
+
+      if (!data) return
+
+      const apiKey = process.env.OPENAI_API_KEY
+      if (!apiKey) {
+        console.error("[cmsAutoTranslate] OPENAI_API_KEY not set")
+        return
+      }
+
+      for (const block of data.blocksToTranslate) {
+        const translations: Array<{
+          fieldKey: string
+          languageCode: string
+          value: string
+        }> = []
+
+        for (const langCode of data.targetLanguages) {
+          for (const { fieldKey, text } of block.texts) {
+            try {
+              const textToSend = stripHtml(text)
+              if (!textToSend) continue
+
+              const translated = await translateViaGPT(
+                textToSend,
+                data.sourceLang,
+                langCode,
+                `${args.pageSlug} page, ${block.blockKey} section`,
+                apiKey,
+              )
+
+              if (translated) {
+                translations.push({
+                  fieldKey,
+                  languageCode: langCode,
+                  value: translated,
+                })
+              }
+            } catch (error) {
+              console.error(
+                `[cmsAutoTranslate] Page translate failed: ${block.blockKey}.${fieldKey} → ${langCode}:`,
+                error,
+              )
+            }
+          }
+        }
+
+        if (translations.length > 0) {
+          await ctx.runMutation(
+            internal.cmsAutoTranslate._saveCmsTranslations,
+            {
+              blockId: block.blockId as Id<"cmsBlocks">,
+              storeId: args.storeId,
+              translations,
+            },
+          )
+        }
+      }
+    } finally {
+      // Always clear remaining translation flags
+      await ctx.runMutation(
+        internal.cmsAutoTranslate._clearPageTranslationFlags,
+        {
+          storeId: args.storeId,
+          pageSlug: args.pageSlug,
+        },
+      )
+    }
+  },
+})
+
+// ── Internal mutation: clear translation flags for a page ─────────────
+
+export const _clearPageTranslationFlags = internalMutation({
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const blocks = await ctx.db
+      .query("cmsBlocks")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_storeId_pageSlug", (q: any) =>
+        q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
+      )
+      .collect()
+
+    for (const block of blocks) {
+      if (block.scheduledTranslationJobId) {
+        await ctx.db.patch(block._id, {
+          scheduledTranslationJobId: undefined,
         })
       }
     }
