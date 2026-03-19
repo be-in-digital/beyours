@@ -29,6 +29,8 @@ import type * as cmsAutoTranslate from "../cmsAutoTranslate.js";
 import type * as cmsMedia from "../cmsMedia.js";
 import type * as cmsMediaConfirmUpload from "../cmsMediaConfirmUpload.js";
 import type * as cmsMediaProcess from "../cmsMediaProcess.js";
+import type * as cmsSeed from "../cmsSeed.js";
+import type * as cmsSeedData from "../cmsSeedData.js";
 import type * as cmsSvgUpload from "../cmsSvgUpload.js";
 import type * as contactMessages from "../contactMessages.js";
 import type * as deliverooImport from "../deliverooImport.js";
@@ -116,6 +118,8 @@ declare const fullApi: ApiFromModules<{
   cmsMedia: typeof cmsMedia;
   cmsMediaConfirmUpload: typeof cmsMediaConfirmUpload;
   cmsMediaProcess: typeof cmsMediaProcess;
+  cmsSeed: typeof cmsSeed;
+  cmsSeedData: typeof cmsSeedData;
   cmsSvgUpload: typeof cmsSvgUpload;
   contactMessages: typeof contactMessages;
   deliverooImport: typeof deliverooImport;
