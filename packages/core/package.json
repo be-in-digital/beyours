@@ -15,7 +15,8 @@
       "types": "./dist/env/index.d.ts",
       "import": "./dist/env/index.mjs",
       "require": "./dist/env/index.js"
-    }
+    },
+    "./auth/rbac": "./src/auth/rbac.ts"
   },
   "scripts": {
     "build": "tsup",

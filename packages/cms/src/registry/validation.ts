@@ -41,6 +41,22 @@ export function validateCmsRegistry(config: CmsRegistryConfig): void {
     if (page.groupId && !groupIdSet.has(page.groupId)) {
       errors.push(`Page "${slug}" references unknown groupId "${page.groupId}"`)
     }
+
+    // 3b. page slug must match the record key
+    if (page.slug && page.slug !== slug) {
+      errors.push(
+        `Page key "${slug}" does not match page.slug "${page.slug}"`
+      )
+    }
+
+    // 3c. blockKeys must be unique within each page
+    const blockKeys = new Set<string>()
+    for (const block of page.blocks) {
+      if (blockKeys.has(block.key)) {
+        errors.push(`Page "${slug}" has duplicate blockKey "${block.key}"`)
+      }
+      blockKeys.add(block.key)
+    }
   }
 
   // 4. pas de groupe orphelin (chaque groupe a au moins une page)

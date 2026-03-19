@@ -61,7 +61,11 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle")
   const [publishing, setPublishing] = useState(false)
   const [translatingAll, setTranslatingAll] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Per-block debounce timers (prevents cross-block cancellation)
+  const debounceMapRef = useRef(new Map<string, ReturnType<typeof setTimeout>>())
+  // Tracks latest unsaved values per block (for flush on publish/unmount)
+  const pendingBlockRef = useRef(new Map<string, CmsBlockValues>())
 
   // Translation drawer state
   const [translationDrawer, setTranslationDrawer] = useState<{
@@ -87,34 +91,81 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
     })
   }, [adminBlocks])
 
-  // Autosave handler
+  // Persist a single block (used by debounce and flush)
+  const persistBlock = useCallback(
+    async (blockKey: string, values: CmsBlockValues) => {
+      if (!storeId) return
+      setSaveStatus("saving")
+      try {
+        await saveDraft({ storeId, pageSlug, blockKey, values })
+        pendingBlockRef.current.delete(blockKey)
+        setSaveStatus("saved")
+        setTimeout(() => setSaveStatus("idle"), 2000)
+      } catch (err) {
+        setSaveStatus("error")
+        toast.error(
+          err instanceof Error ? err.message : "Erreur de sauvegarde",
+        )
+      }
+    },
+    [storeId, pageSlug, saveDraft],
+  )
+
+  // Flush all pending blocks immediately (before publish/unmount)
+  const flushPendingBlocks = useCallback(async () => {
+    const map = debounceMapRef.current
+    const pending = pendingBlockRef.current
+
+    // Cancel all debounce timers
+    for (const timer of map.values()) clearTimeout(timer)
+    map.clear()
+
+    // Persist all pending blocks in parallel
+    const entries = Array.from(pending.entries())
+    if (entries.length === 0) return
+    await Promise.all(
+      entries.map(([blockKey, values]) => persistBlock(blockKey, values)),
+    )
+  }, [persistBlock])
+
+  // Flush on unmount (fire-and-forget)
+  useEffect(() => {
+    return () => {
+      const map = debounceMapRef.current
+      const pending = pendingBlockRef.current
+      for (const timer of map.values()) clearTimeout(timer)
+      map.clear()
+      // Fire-and-forget: can't await in cleanup
+      for (const [blockKey, values] of pending.entries()) {
+        if (storeId) {
+          saveDraft({ storeId, pageSlug, blockKey, values }).catch(() => {})
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Autosave handler (per-block debounce)
   const scheduleAutosave = useCallback(
     (blockKey: string, values: CmsBlockValues) => {
       if (!storeId) return
 
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+      // Track pending values
+      pendingBlockRef.current.set(blockKey, values)
 
-      debounceRef.current = setTimeout(async () => {
-        setSaveStatus("saving")
-        try {
-          await saveDraft({
-            storeId,
-            pageSlug,
-            blockKey,
-            values,
-            updatedBy: "admin",
-          })
-          setSaveStatus("saved")
-          setTimeout(() => setSaveStatus("idle"), 2000)
-        } catch (err) {
-          setSaveStatus("error")
-          toast.error(
-            err instanceof Error ? err.message : "Erreur de sauvegarde",
-          )
-        }
-      }, DEBOUNCE_MS)
+      // Clear only this block's timer
+      const map = debounceMapRef.current
+      if (map.has(blockKey)) clearTimeout(map.get(blockKey)!)
+
+      map.set(
+        blockKey,
+        setTimeout(async () => {
+          map.delete(blockKey)
+          await persistBlock(blockKey, values)
+        }, DEBOUNCE_MS),
+      )
     },
-    [storeId, pageSlug, saveDraft],
+    [storeId, persistBlock],
   )
 
   const handleFieldChange = useCallback(
@@ -137,7 +188,6 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
           pageSlug,
           blockKey,
           fieldKey,
-          updatedBy: "admin",
         })
         // Update local state
         setLocalValues((prev) => {
@@ -161,7 +211,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
     async (blockKey: string) => {
       if (!storeId) return
       try {
-        await resetBlock({ storeId, pageSlug, blockKey, updatedBy: "admin" })
+        await resetBlock({ storeId, pageSlug, blockKey })
         setLocalValues((prev) => {
           const next = { ...prev }
           delete next[blockKey]
@@ -178,15 +228,11 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
   const handlePublish = useCallback(async () => {
     if (!storeId) return
 
-    // Flush pending autosave
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-      debounceRef.current = null
-    }
-
     setPublishing(true)
     try {
-      await publishPage({ storeId, pageSlug, updatedBy: "admin" })
+      // Flush all pending blocks before publishing
+      await flushPendingBlocks()
+      await publishPage({ storeId, pageSlug })
       toast.success("Page publiée avec succès")
       // Clear local state to reload from server
       setLocalValues({})
@@ -197,7 +243,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
     } finally {
       setPublishing(false)
     }
-  }, [storeId, pageSlug, publishPage])
+  }, [storeId, pageSlug, publishPage, flushPendingBlocks])
 
   const handleOpenTranslations = useCallback(
     (blockKey: string, fieldKey: string) => {
