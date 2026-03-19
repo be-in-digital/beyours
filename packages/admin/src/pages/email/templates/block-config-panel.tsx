@@ -532,7 +532,7 @@ export function BlockConfigPanel() {
                     key={ct.type}
                     type="button"
                     onClick={() => {
-                      const newChild = { ...ct.defaults, id: Math.random().toString(36).slice(2, 9) } as ColumnChildBlock
+                      const newChild = { ...ct.defaults, id: crypto.randomUUID().slice(0, 7) } as ColumnChildBlock
                       const newCols = block.columns.map((c, ci) =>
                         ci === colIdx
                           ? { blocks: [...c.blocks, newChild] }
