@@ -1,11 +1,18 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/orders";
 import * as kitchenTicketDefs from "@beindigital-engine/convex-functions/kitchenTickets";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 import { v } from "convex/values";
 
-// === Queries (public for storefront) ===
+// === Queries (auth-protected) ===
 
-export const list = query(defs.list);
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.list.handler(ctx, args);
+  },
+});
 
 /** Get order by ID with access control (owner via auth OR view token) */
 export const getById = query({
@@ -103,12 +110,15 @@ export const create = mutation({
   },
 });
 
-// Protected: Admin only
+// Protected: Admin only — verify store access via order's storeId
 export const updateStatus = mutation({
   args: defs.updateStatus.args,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    await requireStoreAccess(ctx, order.storeId);
     return defs.updateStatus.handler(ctx, args);
   },
 });
@@ -118,6 +128,9 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+    const order = await ctx.db.get(args.id);
+    if (!order) throw new Error("Order not found");
+    await requireStoreAccess(ctx, order.storeId);
     return defs.remove.handler(ctx, args);
   },
 });

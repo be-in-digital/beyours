@@ -2,6 +2,7 @@ import { query, mutation, internalMutation, internalQuery, action } from "./_gen
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import * as defs from "@beindigital-engine/convex-functions/kitchenTickets";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
 // === INTERNAL QUERIES (no auth, called from actions) ===
 
@@ -48,7 +49,13 @@ export const internalUpdateStatus = internalMutation({
 
 // === QUERIES ===
 
-export const getByStore = query(defs.getByStore);
+export const getByStore = query({
+  args: defs.getByStore.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStore.handler(ctx, args);
+  },
+});
 export const getByStatus = query(defs.getByStatus);
 export const getByStation = query(defs.getByStation);
 export const getByOrder = query(defs.getByOrder);

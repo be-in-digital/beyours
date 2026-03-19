@@ -1,10 +1,17 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@beindigital-engine/convex-functions/storeIntegrations";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-// === Queries (public - used by webhook actions) ===
+// === Queries (auth-protected where applicable) ===
 
-export const listByStore = query(defs.listByStore);
+export const listByStore = query({
+  args: defs.listByStore.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listByStore.handler(ctx, args);
+  },
+});
 export const listByPlatformEnabled = query(defs.listByPlatformEnabled);
 export const getByStorePlatform = query(defs.getByStorePlatform);
 export const getBySiteId = query(defs.getBySiteId);

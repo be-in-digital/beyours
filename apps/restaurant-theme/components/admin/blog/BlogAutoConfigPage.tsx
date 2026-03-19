@@ -96,32 +96,6 @@ function PageHeader() {
   )
 }
 
-/** TODO: Remove before production — dev-only seed button */
-function DevSeedButton() {
-  const seed = useMutation(api.seed.seedMyEntitlements)
-  const [loading, setLoading] = useState(false)
-
-  if (process.env.NODE_ENV !== "development") return null
-
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={loading}
-      onClick={async () => {
-        setLoading(true)
-        try {
-          await seed({ plan: "pro" })
-        } catch (e) {
-          console.error(e)
-        }
-        setLoading(false)
-      }}
-    >
-      {loading ? "Seeding..." : "[DEV] Activer plan Pro"}
-    </Button>
-  )
-}
 
 function LockedView({
   reason,
@@ -155,8 +129,6 @@ function LockedView({
             <Link href="/subscription">Voir les abonnements</Link>
           </Button>
         )}
-        {/* TODO: Remove before production */}
-        <DevSeedButton />
       </CardContent>
     </Card>
   )

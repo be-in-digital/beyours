@@ -8,6 +8,7 @@ import {
   MAX_FILE_SIZES,
   type S3Folder,
 } from "@/lib/aws"
+import { isAuthenticated } from "@/lib/convex"
 
 const VALID_FOLDERS = new Set<S3Folder>(["products", "branding", "stores", "cms", "users"])
 
@@ -41,6 +42,15 @@ function getS3Client() {
  */
 export async function POST(request: Request) {
   try {
+    // Authentication check: reject unauthenticated requests
+    const authenticated = await isAuthenticated()
+    if (!authenticated) {
+      return NextResponse.json(
+        { error: "Authentification requise" },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file")
     const folder = formData.get("folder") as string | null
