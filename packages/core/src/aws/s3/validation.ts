@@ -1,6 +1,20 @@
 /**
- * Schémas de validation Zod pour S3
- * @module aws/s3/validation
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  ✅ S3 Validation                                           │
+ * │  Zod schemas and helpers for S3 upload validation           │
+ * │  MIME types, file sizes, folder rules, key format           │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { validateMimeType, validateFileSize }     │      │
+ * │  │   from '@repo/core/aws'                           │      │
+ * │  │                                                   │      │
+ * │  │ validateMimeType('products', 'image/webp')        │      │
+ * │  │ validateFileSize('products', 1024 * 500)          │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { z } from 'zod'
@@ -17,7 +31,9 @@ export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms', '
  */
 export const uploadOptionsSchema = z.object({
   folder: s3FolderSchema,
-  filename: z.string().optional(),
+  filename: z.string()
+    .regex(/^[a-zA-Z0-9._-]+$/, 'Le nom de fichier contient des caractères non autorisés')
+    .optional(),
   contentType: z.string().min(1, 'Le type MIME est requis'),
   maxSize: z.number().positive().optional(),
   metadata: z.record(z.string()).optional(),
@@ -28,7 +44,9 @@ export const uploadOptionsSchema = z.object({
  */
 export const presignedUploadOptionsSchema = z.object({
   folder: s3FolderSchema,
-  filename: z.string().optional(),
+  filename: z.string()
+    .regex(/^[a-zA-Z0-9._-]+$/, 'Le nom de fichier contient des caractères non autorisés')
+    .optional(),
   contentType: z.string().min(1, 'Le type MIME est requis'),
   maxSize: z.number().positive().optional(),
 })
@@ -36,7 +54,12 @@ export const presignedUploadOptionsSchema = z.object({
 /**
  * Schéma pour une clé S3
  */
-export const s3KeySchema = z.string().min(1, 'La clé S3 est requise')
+export const s3KeySchema = z.string()
+  .min(1, 'La clé S3 est requise')
+  .refine(
+    (key) => !key.includes('..') && !key.startsWith('/') && !key.includes('//'),
+    'La clé S3 contient des caractères non autorisés (path traversal)'
+  )
 
 /**
  * Valide le type MIME pour un dossier donné

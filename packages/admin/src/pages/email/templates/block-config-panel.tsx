@@ -36,8 +36,7 @@ export function BlockConfigPanel() {
   ) as any[] | undefined
 
   // S3 upload via Convex action
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getPresignedUrl = useAction(api?.storageUpload?.getPresignedUploadUrl ?? (null as any))
+  const getPresignedUrl = useAction(api?.storageUpload?.getPresignedUploadUrl ?? "skip" as const)
   const handleRequestUploadUrl = useCallback(
     async (args: { folder: string; contentType: string }) => {
       if (!getPresignedUrl) throw new Error("API non disponible")

@@ -8,6 +8,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { CartItem, CartSummary, OrderType } from '../types'
+import { isSameItem, getItemTotal } from '../services/cart'
 
 /**
  * Cart store state
@@ -40,36 +41,6 @@ export interface CartActions {
  * Cart store type
  */
 export type CartStore = CartState & CartActions
-
-/**
- * Helper: Check if two items are the same (product + options)
- */
-const isSameItem = (a: CartItem, b: CartItem): boolean => {
-  if (a.productId !== b.productId) return false
-  if (a.options.length !== b.options.length) return false
-
-  // Sort and compare options
-  const aOptions = [...a.options].sort((x, y) => x.name.localeCompare(y.name))
-  const bOptions = [...b.options].sort((x, y) => x.name.localeCompare(y.name))
-
-  return aOptions.every((opt, i) => {
-    const bOpt = bOptions[i]
-    if (!bOpt) return false
-    return (
-      opt.name === bOpt.name &&
-      opt.choice === bOpt.choice &&
-      opt.priceModifier === bOpt.priceModifier
-    )
-  })
-}
-
-/**
- * Helper: Calculate item total price
- */
-const getItemTotal = (item: CartItem): number => {
-  const optionsTotal = item.options.reduce((sum, opt) => sum + opt.priceModifier, 0)
-  return (item.price + optionsTotal) * item.quantity
-}
 
 /**
  * Cart store with persistence
@@ -171,19 +142,13 @@ export const useCartStore = create<CartStore>()(
       },
 
       getSummary: (taxRate, deliveryFee) => {
-        const subtotal = get().getSubtotal()
-        const tax = get().getTax(taxRate)
-        const delivery = get().getDeliveryFee(deliveryFee)
-        const total = get().getTotal(taxRate, deliveryFee)
-        const itemCount = get().getItemCount()
-
-        return {
-          subtotal,
-          tax,
-          deliveryFee: delivery,
-          total,
-          itemCount,
-        }
+        const { items, orderType } = get()
+        const subtotal = items.reduce((sum, item) => sum + getItemTotal(item), 0)
+        const tax = Math.round(subtotal * (taxRate / 100))
+        const delivery = orderType === 'delivery' ? deliveryFee : 0
+        const total = subtotal + tax + delivery
+        const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
+        return { subtotal, tax, deliveryFee: delivery, total, itemCount }
       },
     }),
     {

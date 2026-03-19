@@ -122,16 +122,15 @@ export function buildProductSchema(
 /**
  * Renders a JSON-LD script tag for embedding in a page.
  *
- * SECURITY NOTE: The data is constructed from controlled server-side sources
- * (Convex DB queries), not user input. JSON.stringify ensures valid JSON output
- * with no raw HTML injection possible (it escapes special chars like <, >, &).
+ * SECURITY NOTE: JSON.stringify does NOT escape the </script> sequence.
+ * We sanitize the output to prevent XSS via script tag breakout.
  */
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
-  const jsonString = JSON.stringify(data)
+  // Escape </script> to prevent script tag breakout XSS
+  const jsonString = JSON.stringify(data).replace(/<\/script>/gi, '<\\/script>')
   return (
     <script
       type="application/ld+json"
-      // Safe: data comes from server-only DB queries, JSON.stringify escapes HTML chars
       dangerouslySetInnerHTML={{ __html: jsonString }}
     />
   )

@@ -71,16 +71,6 @@ export const getNextOpenTime = (hours: BusinessHours[], now: Date = new Date()):
     const dayHours = hours.find((h) => h.day === checkDay)
 
     if (dayHours && !dayHours.isClosed) {
-      // If it's today and before opening time, return today's opening
-      if (i === 0 && currentTime < dayHours.open) {
-        const timeParts = dayHours.open.split(':').map(Number)
-        const openHour = timeParts[0] ?? 0
-        const openMinute = timeParts[1] ?? 0
-        const nextOpen = new Date(now)
-        nextOpen.setHours(openHour, openMinute, 0, 0)
-        return nextOpen
-      }
-
       // Return opening time for this day
       const timeParts = dayHours.open.split(':').map(Number)
       const openHour = timeParts[0] ?? 0

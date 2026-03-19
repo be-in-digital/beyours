@@ -6,6 +6,7 @@
 
 'use client'
 
+import { useShallow } from 'zustand/react/shallow'
 import { useCartStore } from '../stores/cart'
 import type { CartSummary } from '../types'
 
@@ -23,7 +24,9 @@ export const useCartItems = () => useCartStore((state) => state.items)
  * Get cart summary with calculated totals
  */
 export const useCartSummary = (taxRate: number, deliveryFee: number): CartSummary => {
-  return useCartStore((state) => state.getSummary(taxRate, deliveryFee))
+  return useCartStore(
+    useShallow((state) => state.getSummary(taxRate, deliveryFee))
+  )
 }
 
 /**

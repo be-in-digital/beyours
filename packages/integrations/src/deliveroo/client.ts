@@ -90,7 +90,7 @@ export async function getAccessToken(
     const clientId = credentials.clientId.trim()
     const clientSecret = credentials.clientSecret.trim()
     // Standard Basic auth: Base64(clientId:clientSecret)
-    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
+    const basicAuth = btoa(`${clientId}:${clientSecret}`)
 
     const response = await fetchWithTimeout(`${urls.auth}/oauth2/token`, {
       method: "POST",
@@ -201,7 +201,7 @@ export async function fetchDeliveroo(
     fetchOptions.body = JSON.stringify(options.body)
   }
 
-  console.log(`[DeliverooAPI] ${method} ${url} body=${fetchOptions.body ?? "none"} token_prefix=${normalizedToken.substring(0, 10)}...`)
+  console.log(`[DeliverooAPI] ${method} ${url} body=${fetchOptions.body ? "present" : "none"}`)
 
   const response = await fetchWithTimeout(url, fetchOptions)
 

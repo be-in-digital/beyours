@@ -394,7 +394,7 @@ export type PrizeType =
   | 'free_menu'
   | 'custom'
 
-export type PrizeRedemptionStatus = 'pending' | 'redeemed' | 'expired' | 'cancelled'
+export type PrizeRedemptionStatus = 'pending' | 'claimed' | 'redeemed' | 'expired' | 'cancelled'
 
 // ============================================================================
 // UTILITY TYPES
