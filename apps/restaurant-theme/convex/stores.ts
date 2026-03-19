@@ -5,14 +5,13 @@ import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 // === Queries (public for storefront) ===
 // Strip sensitive data (printConfig.apiKey) from public queries
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function stripSensitiveStoreData(store: Record<string, any>) {
-  if (!store) return store;
-  const { printConfig, ...rest } = store;
-  if (!printConfig) return store;
+function stripSensitiveStoreData<T>(store: T): T {
+  if (!store || typeof store !== "object") return store;
+  const s = store as Record<string, unknown>;
+  if (!s.printConfig || typeof s.printConfig !== "object") return store;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { apiKey: _apiKey, ...safePrintConfig } = printConfig;
-  return { ...rest, printConfig: safePrintConfig };
+  const { apiKey: _apiKey, ...safePrintConfig } = s.printConfig as Record<string, unknown>;
+  return { ...s, printConfig: safePrintConfig } as T;
 }
 
 export const list = query({
