@@ -1,4 +1,4 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Auto-translation Convex functions
  *
@@ -80,7 +80,8 @@ export async function scheduleTranslation(
   );
 
   // Mark document as pending
-  await ctx.db.patch(docId, {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fields exist in schema but union type doesn't expose them
+  await (ctx.db as any).patch(docId, {
     scheduledTranslationJobId: jobId,
     pendingTranslation: true,
   });

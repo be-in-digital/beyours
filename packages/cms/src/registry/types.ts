@@ -33,6 +33,8 @@ export interface FieldDefinition {
   hasCodeFallback: boolean
   /** Options for select field type */
   options?: SelectOption[]
+  /** Group label — fields sharing the same group are rendered together in a visual card */
+  group?: string
 }
 
 /** Definition of a content block (section) within a page */
@@ -47,14 +49,28 @@ export interface BlockDefinition {
   fields: Record<string, FieldDefinition>
 }
 
+/** Definition of a CMS page group for dashboard organization */
+export interface CmsGroupDefinition {
+  /** Unique identifier (e.g. "auth", "storefront") */
+  id: string
+  /** Display label in admin UI (e.g. "Authentification") */
+  label: string
+  /** Sort order in dashboard (lower = first) */
+  order: number
+}
+
 /** Definition of a CMS-editable page */
 export interface PageDefinition {
-  /** URL slug (e.g. "sign-in") — must match the route */
+  /** URL slug (e.g. "sign-in") — unique identifier for the CMS registry */
   slug: string
   /** Display label for admin UI */
   label: string
   /** Help text for admin UI */
   description?: string
+  /** Public route path shown in admin UI (e.g. "/" for homepage). Defaults to `/${slug}` if not set. */
+  route?: string
+  /** Group ID for dashboard organization — references CmsGroupDefinition.id */
+  groupId?: string
   /** Content blocks for this page */
   blocks: BlockDefinition[]
 }

@@ -45,6 +45,55 @@ export function CmsBlockAccordion({
 }: CmsBlockAccordionProps) {
   const fieldEntries = Object.entries(blockDef.fields)
 
+  // Group fields by their optional `group` property, preserving order
+  type FieldEntry = [string, typeof blockDef.fields[string]]
+  type GroupItem = { type: "field"; entry: FieldEntry } | { type: "group"; label: string; entries: FieldEntry[] }
+
+  const items: GroupItem[] = []
+  const seenGroups = new Set<string>()
+
+  for (const entry of fieldEntries) {
+    const [, fieldDef] = entry
+    const group = fieldDef.group
+    if (group) {
+      if (!seenGroups.has(group)) {
+        seenGroups.add(group)
+        items.push({
+          type: "group",
+          label: group,
+          entries: fieldEntries.filter(([, fd]) => fd.group === group),
+        })
+      }
+    } else {
+      items.push({ type: "field", entry })
+    }
+  }
+
+  const renderField = ([fieldKey, fieldDef]: FieldEntry) => {
+    const translationsForField = translationsByField[fieldKey]
+    const translationCount = translationsForField
+      ? Object.keys(translationsForField).length
+      : 0
+
+    return (
+      <CmsFieldRenderer
+        key={fieldKey}
+        fieldKey={fieldKey}
+        fieldDef={fieldDef}
+        value={draftValues[fieldKey]}
+        publishedValue={publishedValues?.[fieldKey]}
+        resolvedMedia={resolvedMedia[fieldKey]}
+        onChange={(fk, val) => onFieldChange(blockDef.key, fk, val)}
+        onReset={(fk) => onFieldReset(blockDef.key, fk)}
+        onOpenTranslations={(fk) =>
+          onOpenTranslations(blockDef.key, fk)
+        }
+        translationCount={translationCount}
+        disabled={disabled}
+      />
+    )
+  }
+
   return (
     <Collapsible defaultOpen={defaultOpen}>
       <div className="rounded-lg border">
@@ -78,28 +127,18 @@ export function CmsBlockAccordion({
         {/* Body */}
         <CollapsibleContent>
           <div className="px-3 sm:px-4 pb-4 space-y-5 border-t pt-4">
-            {fieldEntries.map(([fieldKey, fieldDef]) => {
-              const translationsForField = translationsByField[fieldKey]
-              const translationCount = translationsForField
-                ? Object.keys(translationsForField).length
-                : 0
-
+            {items.map((item, idx) => {
+              if (item.type === "field") {
+                return renderField(item.entry)
+              }
               return (
-                <CmsFieldRenderer
-                  key={fieldKey}
-                  fieldKey={fieldKey}
-                  fieldDef={fieldDef}
-                  value={draftValues[fieldKey]}
-                  publishedValue={publishedValues?.[fieldKey]}
-                  resolvedMedia={resolvedMedia[fieldKey]}
-                  onChange={(fk, val) => onFieldChange(blockDef.key, fk, val)}
-                  onReset={(fk) => onFieldReset(blockDef.key, fk)}
-                  onOpenTranslations={(fk) =>
-                    onOpenTranslations(blockDef.key, fk)
-                  }
-                  translationCount={translationCount}
-                  disabled={disabled}
-                />
+                <div
+                  key={item.label}
+                  className="rounded-md border bg-muted/20 p-3 space-y-3"
+                >
+                  <p className="text-xs font-semibold text-muted-foreground">{item.label}</p>
+                  {item.entries.map(renderField)}
+                </div>
               )
             })}
           </div>

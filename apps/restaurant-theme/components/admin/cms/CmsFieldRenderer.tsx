@@ -128,7 +128,9 @@ export function CmsFieldRenderer({
   const currentText = value?.textValue ?? ""
 
   // Use server-resolved media first, fallback to local preview after upload
-  const displayMedia = resolvedMedia ?? (value?.mediaId && localMediaPreview ? localMediaPreview : null)
+  // Filter out entries with empty url to avoid browser re-fetching the page
+  const rawMedia = resolvedMedia ?? (value?.mediaId && localMediaPreview ? localMediaPreview : null)
+  const displayMedia = rawMedia?.url ? rawMedia : null
 
   return (
     <div className="space-y-2">

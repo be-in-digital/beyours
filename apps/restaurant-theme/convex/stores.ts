@@ -99,6 +99,15 @@ export const updateOrderMode = mutation({
   },
 });
 
+export const updateTrendingMode = mutation({
+  args: defs.updateTrendingMode.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.updateTrendingMode.handler(ctx, args);
+  },
+});
+
 export const remove = mutation({
   args: defs.remove.args,
   handler: async (ctx, args) => {

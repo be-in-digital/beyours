@@ -84,7 +84,9 @@ describe('getSiteEnv', () => {
     expect(first).toBe(second)
   })
 
-  it('throws ZodError when required vars are missing', () => {
-    expect(() => getSiteEnv()).toThrow()
+  it('returns empty optional fields when no vars are set', () => {
+    const env = getSiteEnv()
+    expect(env.NEXT_PUBLIC_CONVEX_URL).toBeUndefined()
+    expect(env.BETTER_AUTH_SECRET).toBeUndefined()
   })
 })

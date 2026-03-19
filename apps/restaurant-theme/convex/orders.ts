@@ -65,6 +65,7 @@ export const create = mutation({
     const orderId = await defs.create.handler(ctx, args);
 
     // 2. Fetch the created order to get orderNumber and verified items
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- order doc type inferred from DB
     const order = await ctx.db.get(orderId) as any;
     if (!order) throw new Error("Order creation failed");
 
@@ -72,10 +73,12 @@ export const create = mutation({
     const trackingToken = crypto.randomUUID();
 
     // 4. Map order items to kitchen ticket format
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- order items shape from DB
     const ticketItems = order.items.map((item: any) => ({
       productName: item.productName,
       quantity: item.quantity,
       options: item.selectedOptions?.map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (o: any) => `${o.optionName}: ${o.choiceName ?? ""}`
       ) ?? [],
       notes: item.notes,

@@ -1,58 +1,55 @@
 /**
  * CMS Registry
  *
- * Central registry of all CMS-editable pages and their content zones.
+ * Configurable registry of CMS-editable pages and their content zones.
  * Used by admin UI (form generation), validation (mutations), and storefront (fallback logic).
+ *
+ * Each application calls `setCmsRegistry()` at module load time to register its pages.
  */
 
-import type { PageDefinition, BlockDefinition, FieldDefinition } from "./types"
-import { signInPage } from "./pages/sign-in"
-import { signUpPage } from "./pages/sign-up"
-import { forgotPasswordPage } from "./pages/forgot-password"
-import { homepagePage } from "./pages/homepage"
-import { menuPage } from "./pages/menu"
-import { cartPage } from "./pages/cart"
-import { checkoutPage } from "./pages/checkout"
-import { storeSelectorPage } from "./pages/store-selector"
-import { accountPage } from "./pages/account"
-import { accountOrdersPage } from "./pages/account-orders"
-import { accountAddressesPage } from "./pages/account-addresses"
-import { accountFavoritesPage } from "./pages/account-favorites"
-import { orderTrackingPage } from "./pages/order-tracking"
-import { productDetailPage } from "./pages/product-detail"
-import { categoryMenuPage } from "./pages/category-menu"
-import { gamePage } from "./pages/game"
-import { storefrontLayoutPage } from "./pages/storefront-layout"
+import type {
+  PageDefinition,
+  BlockDefinition,
+  FieldDefinition,
+  CmsGroupDefinition,
+} from "./types"
+import { validateCmsRegistry } from "./validation"
 
-/** Central registry mapping page slugs to their definitions */
-export const cmsRegistry: Record<string, PageDefinition> = {
-  "sign-in": signInPage,
-  "sign-up": signUpPage,
-  "forgot-password": forgotPasswordPage,
-  homepage: homepagePage,
-  menu: menuPage,
-  cart: cartPage,
-  checkout: checkoutPage,
-  "store-selector": storeSelectorPage,
-  account: accountPage,
-  "account-orders": accountOrdersPage,
-  "account-addresses": accountAddressesPage,
-  "account-favorites": accountFavoritesPage,
-  "order-tracking": orderTrackingPage,
-  "product-detail": productDetailPage,
-  "category-menu": categoryMenuPage,
-  game: gamePage,
-  "storefront-layout": storefrontLayoutPage,
+let _pages: Record<string, PageDefinition> = {}
+let _groups: CmsGroupDefinition[] = []
+
+/**
+ * Initialize the CMS registry with app-specific pages and groups.
+ * Must be called before any handler invocation (module-level side effect).
+ * Validates the config and throws on any integrity violation.
+ */
+export function setCmsRegistry(config: {
+  pages: Record<string, PageDefinition>
+  groups: CmsGroupDefinition[]
+}): void {
+  validateCmsRegistry(config)
+  _pages = config.pages
+  _groups = [...config.groups].sort((a, b) => a.order - b.order)
+}
+
+/** Get the full registry (pages + groups) */
+export function getCmsRegistry() {
+  return { pages: _pages, groups: _groups }
+}
+
+/** Get the registered CMS groups, sorted by order */
+export function getCmsGroups(): CmsGroupDefinition[] {
+  return _groups
 }
 
 /** Get the definition for a page by its slug */
 export function getPageDefinition(slug: string): PageDefinition | undefined {
-  return cmsRegistry[slug]
+  return _pages[slug]
 }
 
 /** Get all registered page slugs */
 export function getAllPageSlugs(): string[] {
-  return Object.keys(cmsRegistry)
+  return Object.keys(_pages)
 }
 
 /** Get a block definition within a page */
@@ -60,7 +57,7 @@ export function getBlockDefinition(
   pageSlug: string,
   blockKey: string,
 ): BlockDefinition | undefined {
-  const page = cmsRegistry[pageSlug]
+  const page = _pages[pageSlug]
   if (!page) return undefined
   return page.blocks.find((b) => b.key === blockKey)
 }

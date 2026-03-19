@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useSyncExternalStore, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ShoppingBag, Menu, X } from "lucide-react"
@@ -32,7 +32,11 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [hasMounted, setHasMounted] = useState(false)
+  const hasMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
   const isHomePage = pathname === "/"
 
@@ -40,20 +44,20 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
   const showTransparent = isHomePage && !isScrolled
 
   useEffect(() => {
-    setHasMounted(true)
-  }, [])
-
-  useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50)
-    // Set initial state on mount in case page is already scrolled
-    setIsScrolled(window.scrollY > 50)
+    handleScroll()
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   // Close mobile menu on route change
+  const prevPathname = useRef(pathname)
   useEffect(() => {
-    setIsMobileMenuOpen(false)
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate side effect on route change
+      setIsMobileMenuOpen(false)
+    }
   }, [pathname])
 
   return (

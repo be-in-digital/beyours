@@ -1,33 +1,36 @@
 "use client"
 
-import { useCmsPage } from "@/lib/cms"
+import "@/lib/cms/init"
+import { useStoreId } from "@/lib/hooks/use-store-id"
 import { getPageDefinition } from "@beindigital-engine/cms"
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim()
-}
 
 interface PreviewClientProps {
   pageSlug: string
 }
 
 export function PreviewClient({ pageSlug }: PreviewClientProps) {
-  const { isLoading, block } = useCmsPage(pageSlug, { mode: "preview" })
-  const pageDef = getPageDefinition(pageSlug)
+  // Auto-select store (preview opens in new tab, Zustand is empty)
+  useStoreId()
 
-  if (isLoading) {
+  const pageDef = getPageDefinition(pageSlug)
+  const storefrontRoute = pageDef?.route ?? `/${pageSlug}`
+  const iframeSrc = `${storefrontRoute}${storefrontRoute.includes("?") ? "&" : "?"}preview=true`
+
+  if (!pageDef) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Chargement preview...</p>
+        <p className="text-center text-muted-foreground">
+          Page &quot;{pageSlug}&quot; non trouvee dans le registry.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="flex flex-col h-screen">
       {/* Preview banner */}
-      <div className="sticky top-0 z-50 bg-yellow-400 text-yellow-900 text-center py-2 text-sm font-medium shadow-sm">
-        Mode preview — {pageDef?.label ?? pageSlug}
+      <div className="sticky top-0 z-50 bg-yellow-400 text-yellow-900 text-center py-2 text-sm font-medium shadow-sm shrink-0">
+        Mode preview — {pageDef.label}
         {" "}
         <a
           href={`/content/pages/${pageSlug}`}
@@ -37,60 +40,12 @@ export function PreviewClient({ pageSlug }: PreviewClientProps) {
         </a>
       </div>
 
-      {/* Render blocks as preview */}
-      <div className="max-w-2xl mx-auto p-8 space-y-8">
-        {pageDef ? (
-          Object.entries(pageDef.blocks).map(([blockKey, blockDef]) => {
-            const b = block(blockKey)
-            return (
-              <div key={blockKey} className="space-y-4">
-                <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider border-b pb-1">
-                  {blockDef.label}
-                </h2>
-                <div className="space-y-3">
-                  {Object.entries(blockDef.fields).map(
-                    ([fieldKey, fieldDef]) => {
-                      const f = b.field(fieldKey)
-                      return (
-                        <div key={fieldKey} className="space-y-1">
-                          <p className="text-xs text-muted-foreground">
-                            {fieldDef.label}
-                          </p>
-                          {fieldDef.type === "image" && f.mediaUrl ? (
-                            <img
-                              src={f.mediaUrl}
-                              alt={f.altText ?? fieldDef.label}
-                              className="max-h-48 rounded-md border object-contain"
-                            />
-                          ) : fieldDef.type === "video" && f.embedUrl ? (
-                            <p className="text-sm text-blue-600 underline">
-                              {f.embedUrl}
-                            </p>
-                          ) : f.text ? (
-                            <p className="text-sm whitespace-pre-wrap">
-                              {fieldDef.type === "richtext"
-                                ? stripHtml(f.text)
-                                : f.text}
-                            </p>
-                          ) : (
-                            <p className="text-sm italic text-muted-foreground">
-                              (valeur par defaut du code)
-                            </p>
-                          )}
-                        </div>
-                      )
-                    },
-                  )}
-                </div>
-              </div>
-            )
-          })
-        ) : (
-          <p className="text-center text-muted-foreground">
-            Page &quot;{pageSlug}&quot; non trouvee dans le registry.
-          </p>
-        )}
-      </div>
+      {/* Iframe with the actual storefront page */}
+      <iframe
+        src={iframeSrc}
+        className="flex-1 w-full border-none"
+        title={`Preview: ${pageDef.label}`}
+      />
     </div>
   )
 }

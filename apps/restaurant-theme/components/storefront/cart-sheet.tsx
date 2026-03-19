@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useSyncExternalStore } from "react"
 import Link from "next/link"
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from "lucide-react"
 import {
@@ -42,8 +42,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const subtotal = getSubtotal()
   const itemCount = getItemCount()
 
-  const [hasMounted, setHasMounted] = useState(false)
-  useEffect(() => { setHasMounted(true) }, [])
+  const hasMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
   const displayCount = hasMounted ? itemCount : 0
 
