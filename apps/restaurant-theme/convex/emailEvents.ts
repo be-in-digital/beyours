@@ -1,10 +1,25 @@
 import { query, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/emailEvents";
 
-// === Queries (public — for subscriber timeline and campaign debug) ===
+// === Queries (auth-protected) ===
 
-export const listByCampaign = query(defs.listByCampaign);
-export const listBySubscriber = query(defs.listBySubscriber);
+export const listByCampaign = query({
+  args: defs.listByCampaign.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.listByCampaign.handler(ctx, args);
+  },
+});
+
+export const listBySubscriber = query({
+  args: defs.listBySubscriber.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.listBySubscriber.handler(ctx, args);
+  },
+});
 
 // === Internal mutations (called by SES webhook HTTP action only) ===
 

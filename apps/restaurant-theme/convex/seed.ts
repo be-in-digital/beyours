@@ -4,7 +4,7 @@
  */
 
 import { v } from "convex/values"
-import { mutation } from "./_generated/server"
+import { internalMutation } from "./_generated/server"
 
 const PRESETS: Record<
   string,
@@ -80,7 +80,7 @@ async function upsertEntitlements(ctx: any, ownerId: string, plan: string) {
  * Seed entitlements for the currently authenticated user.
  * Call from the app (e.g. a temp button or browser console).
  */
-export const seedMyEntitlements = mutation({
+export const seedMyEntitlements = internalMutation({
   args: {
     plan: v.union(
       v.literal("starter"),
@@ -98,7 +98,7 @@ export const seedMyEntitlements = mutation({
 /**
  * Seed entitlements with explicit ownerId (for CLI usage).
  */
-export const seedEntitlements = mutation({
+export const seedEntitlements = internalMutation({
   args: {
     ownerId: v.string(),
     plan: v.union(
@@ -113,7 +113,7 @@ export const seedEntitlements = mutation({
 })
 
 /** Backfill monthlyImageQuota for all existing entitlements that are missing it */
-export const backfillImageQuota = mutation({
+export const backfillImageQuota = internalMutation({
   args: {},
   handler: async (ctx) => {
     const IMAGE_QUOTAS: Record<string, number> = {

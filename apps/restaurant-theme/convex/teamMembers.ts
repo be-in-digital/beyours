@@ -1,13 +1,44 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@beindigital-engine/convex-functions/teamMembers";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
 // === QUERIES ===
 
-export const list = query(defs.list);
-export const getByUser = query(defs.getByUser);
-export const getByRole = query(defs.getByRole);
-export const getByEmail = query(defs.getByEmail);
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.list.handler(ctx, args);
+  },
+});
+
+export const getByUser = query({
+  args: defs.getByUser.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByUser.handler(ctx, args);
+  },
+});
+
+export const getByRole = query({
+  args: defs.getByRole.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByRole.handler(ctx, args);
+  },
+});
+
+export const getByEmail = query({
+  args: defs.getByEmail.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByEmail.handler(ctx, args);
+  },
+});
+
 export const getByInvitationToken = query(defs.getByInvitationToken);
 
 // Internal query for actions to read member data
