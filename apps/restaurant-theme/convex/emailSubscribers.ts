@@ -29,7 +29,13 @@ export const getByEmail = query({
   },
 });
 
-export const countByStatus = query(defs.countByStatus);
+export const countByStatus = query({
+  args: defs.countByStatus.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.countByStatus.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 

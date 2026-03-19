@@ -40,8 +40,22 @@ export const getById = query({
   },
 });
 
-export const getByCustomer = query(defs.getByCustomer);
-export const getByStatus = query(defs.getByStatus);
+export const getByCustomer = query({
+  args: defs.getByCustomer.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByCustomer.handler(ctx, args);
+  },
+});
+
+export const getByStatus = query({
+  args: defs.getByStatus.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStatus.handler(ctx, args);
+  },
+});
 export const getByViewToken = query(defs.getByViewToken);
 
 /** Get orders for the currently authenticated user (backend deduces user from auth) */

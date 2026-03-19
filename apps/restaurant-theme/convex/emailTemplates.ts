@@ -21,7 +21,13 @@ export const getById = query({
   },
 });
 
-export const listByCategory = query(defs.listByCategory);
+export const listByCategory = query({
+  args: defs.listByCategory.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.listByCategory.handler(ctx, args);
+  },
+});
 
 // === Mutations (auth-protected) ===
 

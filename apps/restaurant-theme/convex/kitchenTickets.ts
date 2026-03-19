@@ -56,13 +56,64 @@ export const getByStore = query({
     return defs.getByStore.handler(ctx, args);
   },
 });
-export const getByStatus = query(defs.getByStatus);
-export const getByStation = query(defs.getByStation);
-export const getByOrder = query(defs.getByOrder);
-export const getPrintQueue = query(defs.getPrintQueue);
-export const getOverdueCount = query(defs.getOverdueCount);
-export const getPrintStuckCount = query(defs.getPrintStuckCount);
-export const getForDisplay = query(defs.getForDisplay);
+export const getByStatus = query({
+  args: defs.getByStatus.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStatus.handler(ctx, args);
+  },
+});
+
+export const getByStation = query({
+  args: defs.getByStation.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getByStation.handler(ctx, args);
+  },
+});
+
+export const getByOrder = query({
+  args: defs.getByOrder.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.getByOrder.handler(ctx, args);
+  },
+});
+
+export const getPrintQueue = query({
+  args: defs.getPrintQueue.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getPrintQueue.handler(ctx, args);
+  },
+});
+
+export const getOverdueCount = query({
+  args: defs.getOverdueCount.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getOverdueCount.handler(ctx, args);
+  },
+});
+
+export const getPrintStuckCount = query({
+  args: defs.getPrintStuckCount.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getPrintStuckCount.handler(ctx, args);
+  },
+});
+
+export const getForDisplay = query({
+  args: defs.getForDisplay.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.getForDisplay.handler(ctx, args);
+  },
+});
+
+// Public: token-based access for customer order tracking
 export const getByTrackingToken = query(defs.getByTrackingToken);
 
 // === MUTATIONS (authenticated) ===
