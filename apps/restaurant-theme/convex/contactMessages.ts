@@ -1,0 +1,37 @@
+import { query, mutation } from "./_generated/server"
+import * as defs from "@beindigital-engine/convex-functions/contactMessages"
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth"
+
+// === Queries (admin, auth-protected) ===
+
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId)
+    return defs.list.handler(ctx, args)
+  },
+})
+
+// === Mutations ===
+
+/**
+ * Public mutation — allows unauthenticated storefront visitors to submit a contact message.
+ */
+export const create = mutation({
+  args: defs.create.args,
+  handler: async (ctx, args) => {
+    return defs.create.handler(ctx, args)
+  },
+})
+
+/**
+ * Admin mutation — update message status (read, archived).
+ */
+export const updateStatus = mutation({
+  args: defs.updateStatus.args,
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error("Not authenticated")
+    return defs.updateStatus.handler(ctx, args)
+  },
+})

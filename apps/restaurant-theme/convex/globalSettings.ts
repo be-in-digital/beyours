@@ -1,9 +1,55 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/globalSettings";
 
 // === Queries ===
 
-export const get = query(defs.get);
+/**
+ * Public query: returns global settings WITHOUT sensitive integration credentials.
+ * Use getAdmin for full data (requires auth).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripSensitiveGlobalSettings(settings: any) {
+  if (!settings) return settings;
+  const { integrations, ...rest } = settings;
+  if (!integrations) return settings;
+  const { uberDirect, ...otherIntegrations } = integrations;
+  if (!uberDirect) return settings;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { clientSecret: _secret, clientId: _clientId, ...safeUberDirect } = uberDirect;
+  return {
+    ...rest,
+    integrations: {
+      ...otherIntegrations,
+      uberDirect: safeUberDirect,
+    },
+  };
+}
+
+export const get = query({
+  args: defs.get.args,
+  handler: async (ctx) => {
+    const settings = await defs.get.handler(ctx);
+    return stripSensitiveGlobalSettings(settings);
+  },
+});
+
+/** Admin-only query: returns full global settings including integration secrets */
+export const getAdmin = query({
+  args: defs.get.args,
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    return defs.get.handler(ctx);
+  },
+});
+
+/** Internal query: returns full settings for server-side functions (no auth needed) */
+export const getInternal = internalQuery({
+  args: defs.get.args,
+  handler: async (ctx) => {
+    return defs.get.handler(ctx);
+  },
+});
 
 // === Mutations ===
 

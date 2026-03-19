@@ -75,7 +75,7 @@ export const syncStore = action({
       }) as CategoryRecord[];
 
       // 6. Read global settings to extract the Uber Eats price markup
-      const settings = await ctx.runQuery(api.globalSettings.get, {}) as {
+      const settings = await ctx.runQuery(internal.globalSettings.getInternal, {}) as {
         integrations?: { uberEats?: { priceMarkup?: number } }
       } | null;
       const priceMarkup = settings?.integrations?.uberEats?.priceMarkup ?? 0;

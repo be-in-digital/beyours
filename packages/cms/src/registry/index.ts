@@ -44,11 +44,21 @@ export function getCmsGroups(): CmsGroupDefinition[] {
 
 /** Get the definition for a page by its slug */
 export function getPageDefinition(slug: string): PageDefinition | undefined {
+  if (Object.keys(_pages).length === 0) {
+    throw new Error(
+      "CMS registry is empty. Call setCmsRegistry() before accessing page definitions."
+    )
+  }
   return _pages[slug]
 }
 
 /** Get all registered page slugs */
 export function getAllPageSlugs(): string[] {
+  if (Object.keys(_pages).length === 0) {
+    throw new Error(
+      "CMS registry is empty. Call setCmsRegistry() before accessing page slugs."
+    )
+  }
   return Object.keys(_pages)
 }
 

@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Convex action ctx.runQuery returns untyped results */
 
 import { action } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api as _api, internal as _internal } from "./_generated/api";
 import { v } from "convex/values";
 
@@ -58,6 +59,13 @@ export const send = action({
       id: args.campaignId,
     });
     if (!campaign) throw new Error("Campagne introuvable");
+
+    // Verify store-level permission (actions don't have ctx.db)
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: campaign.storeId,
+      permission: "marketing:write",
+    });
+
     if (!["draft", "scheduled", "paused"].includes(campaign.status)) {
       throw new Error(
         "La campagne ne peut pas être envoyée dans son état actuel. Statut actuel : " +
@@ -204,6 +212,12 @@ export const sendTest = action({
       id: args.campaignId,
     });
     if (!campaign) throw new Error("Campagne introuvable");
+
+    // Verify store-level permission (actions don't have ctx.db)
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: campaign.storeId,
+      permission: "marketing:write",
+    });
 
     const template: any = await ctx.runQuery(api.emailTemplates.getById, {
       id: campaign.templateId,

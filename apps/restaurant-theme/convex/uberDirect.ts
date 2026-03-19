@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
 // OAuth token cache (module-level, persists across invocations in same worker)
@@ -147,7 +147,7 @@ export const getDeliveryQuote = action({
     }
 
     // 2. Fetch global settings for Uber Direct credentials
-    const settings = await ctx.runQuery(api.globalSettings.get);
+    const settings = await ctx.runQuery(internal.globalSettings.getInternal, {});
     if (!settings) {
       throw new Error("SETTINGS_NOT_FOUND");
     }

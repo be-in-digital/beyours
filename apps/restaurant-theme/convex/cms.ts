@@ -72,13 +72,13 @@ export const saveDraftBlock = mutation({
     pageSlug: v.string(),
     blockKey: v.string(),
     values: v.any(),
-    updatedBy: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
 
-    return saveDraftBlockCore(ctx, args, {
+    // Derive updatedBy from auth identity (stable subject ID)
+    return saveDraftBlockCore(ctx, { ...args, updatedBy: identity.subject }, {
       onAfterSave: scheduleCmsTranslation,
     })
   },
@@ -86,31 +86,43 @@ export const saveDraftBlock = mutation({
 
 /** Reset a single field to fallback */
 export const resetField = mutation({
-  args: cmsDefs.resetField.args,
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    blockKey: v.string(),
+    fieldKey: v.string(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
-    return cmsDefs.resetField.handler(ctx, args)
+    return cmsDefs.resetField.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
 
 /** Reset an entire block */
 export const resetBlock = mutation({
-  args: cmsDefs.resetBlock.args,
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+    blockKey: v.string(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
-    return cmsDefs.resetBlock.handler(ctx, args)
+    return cmsDefs.resetBlock.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
 
 /** Reset all blocks for a page */
 export const resetPage = mutation({
-  args: cmsDefs.resetPage.args,
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
-    return cmsDefs.resetPage.handler(ctx, args)
+    return cmsDefs.resetPage.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
 
@@ -143,11 +155,16 @@ export const translateAllPageFields = mutation({
 
 /** Publish all draft blocks for a page */
 export const publishPage = mutation({
-  args: cmsPublishDefs.publishPage.args,
+  args: {
+    storeId: v.id("stores"),
+    pageSlug: v.string(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
-    return publishPageCore(ctx, args, {
+
+    // Derive updatedBy from auth identity (stable subject ID)
+    return publishPageCore(ctx, { ...args, updatedBy: identity.subject }, {
       onAfterPublish: scheduleCmsTranslation,
     })
   },
