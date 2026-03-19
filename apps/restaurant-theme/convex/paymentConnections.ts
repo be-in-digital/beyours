@@ -15,7 +15,7 @@ export const internalGetByProvider = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("paymentConnections")
-      .withIndex("by_provider", (q: any) => q.eq("provider", args.provider))
+      .withIndex("by_provider", (q) => q.eq("provider", args.provider))
       .first();
   },
 });

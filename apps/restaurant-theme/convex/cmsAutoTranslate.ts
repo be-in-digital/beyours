@@ -448,12 +448,12 @@ export const _getPageTranslationData = internalQuery({
 
     for (const blockDef of pageDef.blocks) {
       // Prefer draft, fallback to published
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const draft = allBlocks.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result
         (b: any) => b.blockKey === blockDef.key && b.isDraft,
       )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const published = allBlocks.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result
         (b: any) => b.blockKey === blockDef.key && !b.isDraft,
       )
       const block = draft ?? published

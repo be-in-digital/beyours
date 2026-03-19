@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useSyncExternalStore } from "react"
 import { toast } from "sonner"
 import Link from "next/link"
 import {
@@ -30,11 +30,11 @@ interface UserMenuProps {
 
 export function UserMenu({ variant = "solid" }: UserMenuProps) {
   const { data: session, isPending } = authClient.useSession()
-  const [hasMounted, setHasMounted] = useState(false)
-
-  useEffect(() => {
-    setHasMounted(true)
-  }, [])
+  const hasMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  )
 
   // SSR et premier rendu client : toujours le même HTML
   // Utilise un <button> (pas un Link) pour éviter le mismatch d'hydration

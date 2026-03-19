@@ -20,6 +20,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+interface CmsPageSummary {
+  slug: string
+  label: string
+  groupId?: string
+  hasPublished: boolean
+  hasUnpublishedChanges: boolean
+}
+
 type StatusFilter = "all" | "published" | "draft" | "unmodified"
 
 const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
@@ -29,7 +37,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
   { value: "unmodified", label: "Non modifié" },
 ]
 
-function matchesStatus(page: any, filter: StatusFilter): boolean {
+function matchesStatus(page: CmsPageSummary, filter: StatusFilter): boolean {
   switch (filter) {
     case "published":
       return page.hasPublished === true
@@ -141,7 +149,7 @@ export default function CmsPagesListPage() {
     if (!pages) return []
 
     const query = search.toLowerCase().trim()
-    const filtered = pages.filter((p: any) => {
+    const filtered = pages.filter((p: CmsPageSummary) => {
       const matchesSearch =
         !query ||
         p.label.toLowerCase().includes(query) ||
@@ -157,8 +165,8 @@ export default function CmsPagesListPage() {
 
     for (const group of groups) {
       const groupPages = filtered
-        .filter((p: any) => p.groupId === group.id)
-        .sort((a: any, b: any) => a.label.localeCompare(b.label, "fr"))
+        .filter((p: CmsPageSummary) => p.groupId === group.id)
+        .sort((a: CmsPageSummary, b: CmsPageSummary) => a.label.localeCompare(b.label, "fr"))
 
       if (groupPages.length > 0) {
         grouped.push({
@@ -170,8 +178,8 @@ export default function CmsPagesListPage() {
     }
 
     const ungrouped = filtered
-      .filter((p: any) => !p.groupId)
-      .sort((a: any, b: any) => a.label.localeCompare(b.label, "fr"))
+      .filter((p: CmsPageSummary) => !p.groupId)
+      .sort((a: CmsPageSummary, b: CmsPageSummary) => a.label.localeCompare(b.label, "fr"))
 
     if (ungrouped.length > 0) {
       grouped.push({
@@ -189,10 +197,10 @@ export default function CmsPagesListPage() {
     if (!pages) return { all: 0, published: 0, draft: 0, unmodified: 0 }
     return {
       all: pages.length,
-      published: pages.filter((p: any) => p.hasPublished).length,
-      draft: pages.filter((p: any) => p.hasUnpublishedChanges).length,
+      published: pages.filter((p: CmsPageSummary) => p.hasPublished).length,
+      draft: pages.filter((p: CmsPageSummary) => p.hasUnpublishedChanges).length,
       unmodified: pages.filter(
-        (p: any) => !p.hasPublished && !p.hasUnpublishedChanges,
+        (p: CmsPageSummary) => !p.hasPublished && !p.hasUnpublishedChanges,
       ).length,
     }
   }, [pages])
