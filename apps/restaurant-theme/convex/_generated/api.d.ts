@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as authHelpers from "../authHelpers.js";
 import type * as autoTranslate from "../autoTranslate.js";
 import type * as bidStripeWebhook from "../bidStripeWebhook.js";
 import type * as bidSubscription from "../bidSubscription.js";
@@ -29,6 +30,7 @@ import type * as cmsMedia from "../cmsMedia.js";
 import type * as cmsMediaConfirmUpload from "../cmsMediaConfirmUpload.js";
 import type * as cmsMediaProcess from "../cmsMediaProcess.js";
 import type * as cmsSvgUpload from "../cmsSvgUpload.js";
+import type * as contactMessages from "../contactMessages.js";
 import type * as deliverooImport from "../deliverooImport.js";
 import type * as deliverooMenuSync from "../deliverooMenuSync.js";
 import type * as deliverooOrders from "../deliverooOrders.js";
@@ -94,6 +96,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  authHelpers: typeof authHelpers;
   autoTranslate: typeof autoTranslate;
   bidStripeWebhook: typeof bidStripeWebhook;
   bidSubscription: typeof bidSubscription;
@@ -114,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   cmsMediaConfirmUpload: typeof cmsMediaConfirmUpload;
   cmsMediaProcess: typeof cmsMediaProcess;
   cmsSvgUpload: typeof cmsSvgUpload;
+  contactMessages: typeof contactMessages;
   deliverooImport: typeof deliverooImport;
   deliverooMenuSync: typeof deliverooMenuSync;
   deliverooOrders: typeof deliverooOrders;

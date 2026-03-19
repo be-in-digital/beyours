@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useMarketingStore } from "@/lib/stores/marketing-store";
+import { useCartStore, formatPrice } from "@beindigital-engine/restaurant";
 import { FavoriteButton } from "./favorite-button";
 import {
     Tooltip,
@@ -41,16 +41,18 @@ export function MealCard({
     isSpicy,
     className,
 }: MealCardProps) {
-    const { addToCart } = useMarketingStore();
+    const { addItem } = useCartStore();
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
-        addToCart({
-            id: id ?? title,
-            title,
-            price,
-            image,
-        }, 1);
+        addItem({
+            productId: String(id ?? title),
+            name: title,
+            price: Math.round(price * 100),
+            quantity: 1,
+            options: [],
+            imageUrl: image,
+        });
         toast.success(`${title} ajouté au panier !`, {
             description: "1 article ajouté.",
             duration: 2000,
@@ -114,7 +116,7 @@ export function MealCard({
                 <div className="mt-auto flex items-center justify-between gap-4">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none mb-1">Price</span>
-                        <span className="text-xl font-black text-[#0D5C3F] dark:text-emerald-400 leading-none">${price.toFixed(2)} <span className="text-[10px] opacity-60">USD</span></span>
+                        <span className="text-xl font-black text-[#0D5C3F] dark:text-emerald-400 leading-none">{formatPrice(Math.round(price * 100))}</span>
                     </div>
 
                     <Tooltip>

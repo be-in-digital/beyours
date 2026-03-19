@@ -47,6 +47,7 @@ export { checkAutoBlogAccess, checkImageGenerationAccess, validateConfigAgainstP
 export * as bidSubscription from "./bidSubscription"
 export * as blogAutoGenerate from "./blogAutoGenerate"
 export * as favorites from "./favorites"
+export * as contactMessages from "./contactMessages"
 
 // Pure utility functions
 export { generateOrderNumber, generateSlug, now } from "./helpers"

@@ -82,7 +82,7 @@ export const syncStore = action({
       }) as CategoryRecord[];
 
       // 7. Read global settings to extract the Deliveroo price markup
-      const settings = await ctx.runQuery(api.globalSettings.get, {}) as {
+      const settings = await ctx.runQuery(internal.globalSettings.getInternal, {}) as {
         integrations?: { deliveroo?: { priceMarkup?: number } }
       } | null;
       const priceMarkup = settings?.integrations?.deliveroo?.priceMarkup ?? 0;
