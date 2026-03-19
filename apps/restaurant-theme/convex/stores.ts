@@ -5,7 +5,8 @@ import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 // === Queries (public for storefront) ===
 // Strip sensitive data (printConfig.apiKey) from public queries
 
-function stripSensitiveStoreData(store: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripSensitiveStoreData(store: Record<string, any>) {
   if (!store) return store;
   const { printConfig, ...rest } = store;
   if (!printConfig) return store;
