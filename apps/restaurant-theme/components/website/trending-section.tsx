@@ -75,7 +75,8 @@ export function TrendingSection({ sectionTitle, viewAllLabel }: TrendingSectionP
 
             <Carousel opts={{ align: "start", loop: true }} className="w-full relative">
                 <CarouselContent className="-ml-4 pb-8">
-                    {products.map((product) => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query union result */}
+                    {products.map((product: any) => (
                         <CarouselItem key={product._id} className="pl-4 basis-full sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                             <MealCard
                                 id={product._id}
