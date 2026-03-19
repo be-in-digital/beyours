@@ -17,6 +17,7 @@ import * as cmsPublishDefs from "@beindigital-engine/convex-functions/cmsPublish
 import { publishPageCore } from "@beindigital-engine/convex-functions/cmsPublish"
 import { saveDraftBlockCore } from "@beindigital-engine/convex-functions/cms"
 import { scheduleCmsTranslation, schedulePageTranslation } from "./cmsAutoTranslate"
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth"
 
 // ============================================================================
 // Queries
@@ -76,6 +77,7 @@ export const saveDraftBlock = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
 
     // Derive updatedBy from auth identity (stable subject ID)
     return saveDraftBlockCore(ctx, { ...args, updatedBy: identity.subject }, {
@@ -95,6 +97,7 @@ export const resetField = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return cmsDefs.resetField.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
@@ -109,6 +112,7 @@ export const resetBlock = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return cmsDefs.resetBlock.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
@@ -122,6 +126,7 @@ export const resetPage = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return cmsDefs.resetPage.handler(ctx, { ...args, updatedBy: identity.subject })
   },
 })
@@ -135,6 +140,7 @@ export const translateAllPageFields = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
 
     // Check target languages exist
     const allLanguages = await ctx.db
@@ -162,6 +168,7 @@ export const publishPage = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
 
     // Derive updatedBy from auth identity (stable subject ID)
     return publishPageCore(ctx, { ...args, updatedBy: identity.subject }, {

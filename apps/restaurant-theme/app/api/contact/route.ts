@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getSESService } from "@beindigital-engine/core"
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 interface ContactFormData {
   name: string
   email: string
@@ -19,6 +28,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(body.email)) {
+      return NextResponse.json(
+        { error: "Format d'email invalide" },
+        { status: 400 }
+      )
+    }
+
     const sesService = getSESService()
 
     // Send to the restaurant owner
@@ -32,27 +49,27 @@ export async function POST(req: NextRequest) {
 
     await sesService.sendEmail({
       to: toEmail,
-      subject: `[Contact] ${body.topic || "Message"} — ${body.name}`,
+      subject: `[Contact] ${escapeHtml(body.topic || "Message")} — ${escapeHtml(body.name)}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #0D5C3F;">Nouveau message de contact</h2>
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px 0; font-weight: bold; color: #666; width: 120px;">Nom</td>
-              <td style="padding: 8px 0;">${body.name}</td>
+              <td style="padding: 8px 0;">${escapeHtml(body.name)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-weight: bold; color: #666;">Email</td>
-              <td style="padding: 8px 0;"><a href="mailto:${body.email}">${body.email}</a></td>
+              <td style="padding: 8px 0;"><a href="mailto:${escapeHtml(body.email)}">${escapeHtml(body.email)}</a></td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-weight: bold; color: #666;">Sujet</td>
-              <td style="padding: 8px 0;">${body.topic || "Non spécifié"}</td>
+              <td style="padding: 8px 0;">${escapeHtml(body.topic || "Non spécifié")}</td>
             </tr>
           </table>
           <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
           <div style="white-space: pre-wrap; color: #333; line-height: 1.6;">
-            ${body.message}
+            ${escapeHtml(body.message)}
           </div>
         </div>
       `,

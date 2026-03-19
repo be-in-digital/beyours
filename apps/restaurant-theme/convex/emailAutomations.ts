@@ -1,9 +1,17 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/emailAutomations";
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
 
-// === Queries (public) ===
+// === Queries (auth-protected) ===
 
-export const list = query(defs.list);
+export const list = query({
+  args: defs.list.args,
+  handler: async (ctx, args) => {
+    await requireStoreAccess(ctx, args.storeId);
+    return defs.list.handler(ctx, args);
+  },
+});
+
 export const getById = query(defs.getById);
 export const listActive = query(defs.listActive);
 

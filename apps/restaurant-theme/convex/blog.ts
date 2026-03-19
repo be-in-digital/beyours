@@ -23,6 +23,7 @@ import {
   unarchiveArticleCore,
 } from "@beindigital-engine/convex-functions/blogPublish"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
+import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth"
 
 // ============================================================================
 // Public Queries (storefront, no auth)
@@ -71,6 +72,7 @@ export const createArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return createArticleCore(ctx, {
       storeId: args.storeId,
       title: args.title,
@@ -91,6 +93,9 @@ export const saveDraft = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
 
     await saveDraftCore(
       ctx,
@@ -122,6 +127,9 @@ export const publishArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return publishArticleCore(ctx, args.articleId, identity.subject)
   },
 })
@@ -135,6 +143,9 @@ export const scheduleArticle = mutation({
   handler: async (ctx, args): Promise<void> => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
 
     // Schedule the internal publish action
     const jobId = await ctx.scheduler.runAt(
@@ -153,6 +164,9 @@ export const unscheduleArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return unscheduleArticleCore(ctx, args.articleId)
   },
 })
@@ -163,6 +177,9 @@ export const archiveArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return archiveArticleCore(ctx, args.articleId)
   },
 })
@@ -173,6 +190,9 @@ export const unarchiveArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return unarchiveArticleCore(ctx, args.articleId)
   },
 })
@@ -183,6 +203,9 @@ export const deleteArticle = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return deleteArticleCore(ctx, args)
   },
 })
@@ -196,6 +219,7 @@ export const createCategory = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return blogDefs.createCategory.handler(ctx, args)
   },
 })
@@ -205,6 +229,9 @@ export const updateCategory = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const category = await ctx.db.get(args.categoryId)
+    if (!category) throw new Error("Category not found")
+    await requireStoreAccess(ctx, category.storeId)
     return blogDefs.updateCategory.handler(ctx, args)
   },
 })
@@ -214,6 +241,9 @@ export const deleteCategory = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const category = await ctx.db.get(args.categoryId)
+    if (!category) throw new Error("Category not found")
+    await requireStoreAccess(ctx, category.storeId)
     return blogDefs.deleteCategory.handler(ctx, args)
   },
 })
@@ -227,6 +257,7 @@ export const createTag = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    await requireStoreAccess(ctx, args.storeId)
     return blogDefs.createTag.handler(ctx, args)
   },
 })
@@ -236,6 +267,9 @@ export const deleteTag = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const tag = await ctx.db.get(args.tagId)
+    if (!tag) throw new Error("Tag not found")
+    await requireStoreAccess(ctx, tag.storeId)
     return blogDefs.deleteTag.handler(ctx, args)
   },
 })
@@ -245,6 +279,9 @@ export const updateArticleTags = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    const article = await ctx.db.get(args.articleId)
+    if (!article) throw new Error("Article not found")
+    await requireStoreAccess(ctx, article.storeId)
     return blogDefs.updateArticleTags.handler(ctx, args)
   },
 })
