@@ -177,16 +177,14 @@ describe("required video fields", () => {
     expect(result.errors).toHaveLength(0)
   })
 
-  it("required video with embedUrl but no mediaId produces a required error", () => {
-    // hasContent for MEDIA_TYPES only checks mediaId; the embedUrl branch is
-    // shadowed because "video" is already matched in MEDIA_TYPES before the
-    // explicit type === "video" branch
+  it("required video with embedUrl but no mediaId is valid", () => {
+    // Video fields accept either mediaId OR embedUrl as valid content
     const values: CmsBlockValues = {
       mainVideo: { type: "video", embedUrl: "https://youtube.com/watch?v=abc" },
     }
     const result = validateBlockValues(values, videoBlock)
-    expect(result.valid).toBe(false)
-    expect(errorsFor(result, "mainVideo").some((e) => e.code === "required")).toBe(true)
+    expect(result.valid).toBe(true)
+    expect(result.errors).toHaveLength(0)
   })
 
   it("required video with neither mediaId nor embedUrl produces a required error", () => {
