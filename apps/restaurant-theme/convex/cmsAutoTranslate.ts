@@ -115,15 +115,12 @@ export const _getCmsTranslationData = internalQuery({
     // Get active languages
     const allLanguages = await ctx.db
       .query("languages")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
       .collect()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultLang = allLanguages.find((l: any) => l.isDefault)
+    const defaultLang = allLanguages.find((l) => l.isDefault)
     const targetLanguages = allLanguages.filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (l: any) => l.isActive && !l.isDefault,
+      (l) => l.isActive && !l.isDefault,
     )
 
     if (!defaultLang || targetLanguages.length === 0) return null
@@ -151,8 +148,7 @@ export const _getCmsTranslationData = internalQuery({
 
     return {
       sourceLang: defaultLang.code ?? "fr",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      targetLanguages: targetLanguages.map((l: any) => l.code as string),
+      targetLanguages: targetLanguages.map((l) => l.code),
       textsToTranslate,
       context: `${block.pageSlug} page, ${block.blockKey} section`,
     }
@@ -317,15 +313,13 @@ export const _saveCmsTranslations = internalMutation({
     for (const t of args.translations) {
       const existing = await ctx.db
         .query("translations")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .withIndex("by_storeId_entity", (q: any) =>
+        .withIndex("by_storeId_entity", (q) =>
           q
             .eq("storeId", args.storeId)
             .eq("entityType", "cms")
             .eq("entityId", args.blockId),
         )
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .filter((q: any) =>
+        .filter((q) =>
           q.and(
             q.eq(q.field("languageCode"), t.languageCode),
             q.eq(q.field("field"), t.fieldKey),
@@ -375,12 +369,10 @@ export async function schedulePageTranslation(
 
   const draftBlocks = await ctx.db
     .query("cmsBlocks")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .withIndex("by_storeId_pageSlug", (q: any) =>
+    .withIndex("by_storeId_pageSlug", (q) =>
       q.eq("storeId", typedStoreId).eq("pageSlug", pageSlug),
     )
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((q: any) => q.eq(q.field("isDraft"), true))
+    .filter((q) => q.eq(q.field("isDraft"), true))
     .collect()
 
   // Schedule page translation immediately (no debounce)
@@ -419,23 +411,19 @@ export const _getPageTranslationData = internalQuery({
 
     const allBlocks = await ctx.db
       .query("cmsBlocks")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId_pageSlug", (q: any) =>
+      .withIndex("by_storeId_pageSlug", (q) =>
         q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
       )
       .collect()
 
     const allLanguages = await ctx.db
       .query("languages")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
       .collect()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const defaultLang = allLanguages.find((l: any) => l.isDefault)
+    const defaultLang = allLanguages.find((l) => l.isDefault)
     const targetLanguages = allLanguages.filter(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (l: any) => l.isActive && !l.isDefault,
+      (l) => l.isActive && !l.isDefault,
     )
 
     if (!defaultLang || targetLanguages.length === 0) return null
@@ -449,12 +437,10 @@ export const _getPageTranslationData = internalQuery({
     for (const blockDef of pageDef.blocks) {
       // Prefer draft, fallback to published
       const draft = allBlocks.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result
-        (b: any) => b.blockKey === blockDef.key && b.isDraft,
+        (b) => b.blockKey === blockDef.key && b.isDraft,
       )
       const published = allBlocks.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result
-        (b: any) => b.blockKey === blockDef.key && !b.isDraft,
+        (b) => b.blockKey === blockDef.key && !b.isDraft,
       )
       const block = draft ?? published
       if (!block) continue
@@ -481,8 +467,7 @@ export const _getPageTranslationData = internalQuery({
 
     return {
       sourceLang: defaultLang.code ?? "fr",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      targetLanguages: targetLanguages.map((l: any) => l.code as string),
+      targetLanguages: targetLanguages.map((l) => l.code),
       blocksToTranslate,
     }
   },
@@ -584,8 +569,7 @@ export const _clearPageTranslationFlags = internalMutation({
   handler: async (ctx, args) => {
     const blocks = await ctx.db
       .query("cmsBlocks")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .withIndex("by_storeId_pageSlug", (q: any) =>
+      .withIndex("by_storeId_pageSlug", (q) =>
         q.eq("storeId", args.storeId).eq("pageSlug", args.pageSlug),
       )
       .collect()

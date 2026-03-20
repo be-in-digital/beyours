@@ -1,10 +1,26 @@
 /**
- * Service S3 pour la gestion des fichiers
- * @module aws/s3/client
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  ☁️ S3 Client                                               │
+ * │  File storage service with upload, presigned URLs,          │
+ * │  download, delete, and metadata operations                  │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { createS3Service } from '@repo/core/aws'  │      │
+ * │  │                                                   │      │
+ * │  │ const s3 = createS3Service(config, client)        │      │
+ * │  │ const { key, url } = await s3.upload(file, {      │      │
+ * │  │   folder: 'products',                             │      │
+ * │  │   contentType: 'image/webp',                      │      │
+ * │  │ })                                                │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { randomUUID } from 'crypto'
-import type { S3Config } from '../types'
+import { type S3Config, MAX_FILE_SIZES } from '../types'
 import type {
   S3Operations,
   UploadOptions,
@@ -134,7 +150,7 @@ export function createS3Service(
     if (file instanceof Blob) {
       return file.size
     }
-    return 0
+    throw new Error(`Unsupported file type: ${typeof file}`)
   }
 
   return {
@@ -180,10 +196,15 @@ export function createS3Service(
       // Génération de la clé
       const key = generateKey(folder, contentType, filename)
 
+      // Résoudre la limite de taille : custom maxSize ou défaut du dossier
+      const sizeLimit = maxSize ?? MAX_FILE_SIZES[folder]
+
       // Durée de validité : 15 minutes
       const expiresIn = 15 * 60
 
-      // Génération de l'URL presignée
+      // NOTE: Les presigned PUT URLs S3 ne supportent pas Content-Length-Range.
+      // La limite de taille est retournée pour enforcement côté client.
+      // Pour un enforcement serveur, migrer vers presigned POST avec policy conditions.
       const uploadUrl = await client.getSignedUrl({
         key,
         expiresIn,
@@ -193,6 +214,7 @@ export function createS3Service(
       return {
         uploadUrl,
         key,
+        maxSize: sizeLimit,
         expiresAt: new Date(Date.now() + expiresIn * 1000),
       }
     },

@@ -38,12 +38,16 @@ export const getByOwnerId = query({
 // Mutations
 // ============================================================================
 
-/** Upsert owner entitlements (admin-only for now, Stripe webhooks in Phase 1B) */
+/** Upsert owner entitlements — restricted to own entitlements only */
 export const upsert = mutation({
   args: ownerEntitlementsDefs.upsert.args,
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    // Enforce: users can only modify their own entitlements
+    if (args.ownerId !== identity.subject) {
+      throw new Error("Forbidden: cannot modify another user's entitlements")
+    }
     return ownerEntitlementsDefs.upsert.handler(ctx, args)
   },
 })

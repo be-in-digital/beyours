@@ -6,8 +6,18 @@
  */
 
 import "server-only"
+import { cache } from "react"
 import { cookies } from "next/headers"
+import { ConvexHttpClient } from "convex/browser"
+import { api } from "@/convex/_generated/api"
 import { getStoreBySlug } from "@/lib/convex-server"
+
+/** Module-level cached Convex client (deduped across a single render pass) */
+const getClient = cache(() => {
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL
+  if (!url) throw new Error("NEXT_PUBLIC_CONVEX_URL is required")
+  return new ConvexHttpClient(url)
+})
 
 /**
  * Returns the default store slug, or null if no store exists.
@@ -21,17 +31,6 @@ export async function resolveDefaultStoreSlug(): Promise<string | null> {
   }
 
   // 2. Fallback: query first active store
-  // We use ConvexHttpClient to get the first store
-  const { cache } = await import("react")
-  const { ConvexHttpClient } = await import("convex/browser")
-  const { api } = await import("@/convex/_generated/api")
-
-  const getClient = cache(() => {
-    const url = process.env.NEXT_PUBLIC_CONVEX_URL
-    if (!url) throw new Error("NEXT_PUBLIC_CONVEX_URL is required")
-    return new ConvexHttpClient(url)
-  })
-
   const stores = await getClient().query(api.stores.list, {})
   if (!stores || stores.length === 0) return null
 

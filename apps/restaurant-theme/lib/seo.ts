@@ -30,7 +30,8 @@ async function resolveBaseUrl(): Promise<string> {
   try {
     const h = await headers()
     const host = h.get("host")
-    const proto = h.get("x-forwarded-proto") ?? "https"
+    const rawProto = h.get("x-forwarded-proto") ?? "https"
+    const proto = rawProto === "http" || rawProto === "https" ? rawProto : "https"
     if (host) return `${proto}://${host}`
   } catch {
     // headers() may fail outside request context (build time)

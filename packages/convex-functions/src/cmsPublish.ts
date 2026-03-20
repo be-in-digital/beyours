@@ -8,6 +8,22 @@
 import { v } from "convex/values"
 import { getPageDefinition, getBlockDefinition } from "@beindigital-engine/cms"
 
+/** CMS field value shape matching the validator */
+interface CmsFieldValue {
+  type: "text" | "richtext" | "image" | "video" | "file" | "select"
+  textValue?: string
+  mediaId?: string
+  altText?: string
+  isCleared?: boolean
+}
+
+/** Block definition from CMS registry */
+interface BlockFieldDef {
+  type: string
+  required?: boolean
+  hasCodeFallback?: boolean
+}
+
 /** Publish all draft blocks for a page atomically */
 export const publishPage = {
   args: {
@@ -167,8 +183,8 @@ export async function publishPageCore(
 // Internal Helpers
 // ============================================================================
 
-function validateRequiredFields(values: Record<string, any>, blockDef: any): void {
-  for (const [fieldKey, fieldDef] of Object.entries(blockDef.fields) as any[]) {
+function validateRequiredFields(values: Record<string, CmsFieldValue>, blockDef: { key: string; fields: Record<string, BlockFieldDef> }): void {
+  for (const [fieldKey, fieldDef] of Object.entries(blockDef.fields)) {
     if (!fieldDef.required || fieldDef.hasCodeFallback) continue
 
     const value = values[fieldKey]
@@ -249,18 +265,19 @@ async function copyTranslations(
 }
 
 async function updateMediaUsageDelta(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex ctx type is dynamic
   ctx: any,
-  oldValues: Record<string, any>,
-  newValues: Record<string, any>,
+  oldValues: Record<string, CmsFieldValue>,
+  newValues: Record<string, CmsFieldValue>,
 ): Promise<void> {
   const oldIds = new Set<string>()
   const newIds = new Set<string>()
 
   for (const fv of Object.values(oldValues)) {
-    if ((fv as any)?.mediaId) oldIds.add((fv as any).mediaId)
+    if (fv?.mediaId) oldIds.add(fv.mediaId)
   }
   for (const fv of Object.values(newValues)) {
-    if ((fv as any)?.mediaId) newIds.add((fv as any).mediaId)
+    if (fv?.mediaId) newIds.add(fv.mediaId)
   }
 
   // Decrement removed

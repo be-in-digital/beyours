@@ -1,10 +1,21 @@
 /**
- * Types et interfaces pour Better Auth
- *
- * NOTE: Ces types seront complétés une fois better-auth installé
- * Imports à ajouter après installation:
- * - import { type BetterAuthOptions } from 'better-auth'
- * - import { type Session, type User } from 'better-auth/types'
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  📦 Auth Types                                              │
+ * │  Type definitions for Better Auth integration               │
+ * │  Users, sessions, credentials, 2FA, and OAuth               │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import type { AuthUser, AuthSession }             │      │
+ * │  │   from '@repo/core/auth'                          │      │
+ * │  │                                                   │      │
+ * │  │ function greet(user: AuthUser) {                  │      │
+ * │  │   return `Hello ${user.name}`                     │      │
+ * │  │ }                                                 │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { type Role } from './rbac';

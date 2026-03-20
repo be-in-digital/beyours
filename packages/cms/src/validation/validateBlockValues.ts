@@ -129,11 +129,12 @@ function hasContent(value: CmsFieldValue, type: FieldType): boolean {
   if (TEXT_TYPES.includes(type) || type === "select") {
     return !!value.textValue && value.textValue.trim().length > 0
   }
-  if (MEDIA_TYPES.includes(type)) {
-    return !!value.mediaId
-  }
+  // Video has dual content sources: mediaId OR embedUrl
   if (type === "video") {
     return !!value.mediaId || !!value.embedUrl
+  }
+  if (MEDIA_TYPES.includes(type)) {
+    return !!value.mediaId
   }
   return false
 }

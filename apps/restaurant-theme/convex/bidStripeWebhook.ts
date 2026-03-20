@@ -28,6 +28,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     return new Response("OK", { status: 200 });
   } catch (error) {
     console.error("Stripe BID webhook error:", error);
-    return new Response("Webhook processing error", { status: 400 });
+    // Return 500 for transient errors so Stripe retries; 400 would stop retries permanently
+    return new Response("Webhook processing error", { status: 500 });
   }
 });
