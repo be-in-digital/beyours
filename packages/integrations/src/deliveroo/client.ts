@@ -5,6 +5,9 @@
 import type { DeliverooCredentials, DeliverooToken, DeliverooApiType } from "./types"
 import { DELIVEROO_URLS } from "./types"
 import { IntegrationError } from "../common/errors"
+import { createLogger } from "../common/logger"
+
+const log = createLogger("Deliveroo")
 
 /**
  * Validate a path parameter to prevent path traversal and SSRF
@@ -201,11 +204,11 @@ export async function fetchDeliveroo(
     fetchOptions.body = JSON.stringify(options.body)
   }
 
-  console.log(`[DeliverooAPI] ${method} ${url} body=${fetchOptions.body ? "present" : "none"}`)
+  log.request({ method, url, hasBody: !!fetchOptions.body })
 
   const response = await fetchWithTimeout(url, fetchOptions)
 
-  console.log(`[DeliverooAPI] Response: ${response.status} ${response.statusText}`)
+  log.response({ method, url, status: response.status, statusText: response.statusText })
 
   // If token expired/rejected, retry once with fresh token.
   // Deliveroo gateway returns 403 (not 401) for invalid/expired tokens.

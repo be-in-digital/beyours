@@ -124,6 +124,8 @@ export interface PresignedUploadResult {
   uploadUrl: string
   /** Clé S3 du fichier */
   key: string
+  /** Taille max autorisée en bytes (à enforcer côté client — presigned PUT ne supporte pas Content-Length-Range) */
+  maxSize: number
   /** Date d'expiration */
   expiresAt: Date
 }

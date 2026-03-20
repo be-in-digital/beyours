@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { usePathname } from "next/navigation"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore, type StoreDoc } from "@beindigital-engine/restaurant"
 import { Button } from "@beindigital-engine/ui"
 import { Store } from "lucide-react"
 import Link from "next/link"
@@ -21,9 +21,11 @@ interface StoreGuardProps {
  */
 export function StoreGuard({ children }: StoreGuardProps) {
   const pathname = usePathname()
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex API is injected dynamically at runtime
+  const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
   const setStoreId = useAdminApiStore((s) => s.setStoreId)
-  const stores = useQuery(api?.stores?.list ?? "skip" as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query ref is dynamic
+  const stores = useQuery(api?.stores?.list ?? ("skip" as any)) as StoreDoc[] | undefined
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
 
@@ -31,18 +33,17 @@ export function StoreGuard({ children }: StoreGuardProps) {
   useEffect(() => {
     if (!stores || stores.length === 0) return
 
-    const storeList = stores as any[]
     const needsSelection = !currentStore
-      || !storeList.some((s) => s._id === (currentStore as any)._id)
+      || !stores.some((s) => s._id === currentStore._id)
 
-    if (needsSelection) {
-      setCurrentStore(storeList[0])
+    if (needsSelection && stores[0]) {
+      setCurrentStore(stores[0])
     }
   }, [stores, currentStore, setCurrentStore])
 
   // Sync currentStore._id to adminApiStore.storeId for all admin pages
   useEffect(() => {
-    const id = (currentStore as any)?._id ?? null
+    const id = currentStore?._id ?? null
     setStoreId(id)
   }, [currentStore, setStoreId])
 

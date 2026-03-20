@@ -125,7 +125,7 @@ export const deleteMedia = {
 
     for (const block of allBlocks) {
       for (const fv of Object.values(block.values)) {
-        if ((fv as any)?.mediaId === args.mediaId) {
+        if ((fv as { mediaId?: string })?.mediaId === args.mediaId) {
           throw new Error(
             `Cannot delete: media is referenced in block "${block.blockKey}" (page "${block.pageSlug}", ${block.isDraft ? "draft" : "published"})`,
           )
