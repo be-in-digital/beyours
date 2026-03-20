@@ -24,8 +24,9 @@ export function StoreGuard({ children }: StoreGuardProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex API is injected dynamically at runtime
   const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
   const setStoreId = useAdminApiStore((s) => s.setStoreId)
+  // Use adminList (auth-protected) so users only see stores they have access to
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query ref is dynamic
-  const stores = useQuery(api?.stores?.list ?? ("skip" as any)) as StoreDoc[] | undefined
+  const stores = useQuery(api?.stores?.adminList ?? ("skip" as any)) as StoreDoc[] | undefined
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
 

@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import * as defs from "@beindigital-engine/convex-functions/stores";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import { requireStoreAccess, getAuthUser } from "@beindigital-engine/convex-functions/auth";
+import { Role } from "@beindigital-engine/core/auth/rbac";
 
 // === Queries (public for storefront) ===
 // Strip sensitive data (printConfig.apiKey) from public queries
@@ -35,6 +36,17 @@ export const getBySlug = query({
   handler: async (ctx, args) => {
     const store = await defs.getBySlug.handler(ctx, args);
     return stripSensitiveStoreData(store);
+  },
+});
+
+/** Admin-only: list stores the current user has access to */
+export const adminList = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+    const allStores = await defs.list.handler(ctx);
+    if (user.role === Role.SUPER_ADMIN) return allStores;
+    return allStores.filter((s: { _id: string }) => user.storeIds.includes(s._id));
   },
 });
 
