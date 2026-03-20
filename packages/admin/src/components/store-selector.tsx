@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore, type StoreDoc } from "@beindigital-engine/restaurant"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@beindigital-engine/ui"
 import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
@@ -10,8 +10,10 @@ import { useAdminApiStore } from "../stores/admin-api-store"
  * Compact store selector dropdown for sidebar
  */
 export function StoreSelector() {
-  const api = useAdminApiStore((s) => s.api) as Record<string, any> | null
-  const stores = useQuery(api?.stores?.list ?? "skip" as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex API is injected dynamically at runtime
+  const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query ref is dynamic
+  const stores = useQuery(api?.stores?.list ?? ("skip" as any)) as StoreDoc[] | undefined
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
 
@@ -22,7 +24,7 @@ export function StoreSelector() {
   if (!stores || stores.length === 0) return null
 
   const handleStoreChange = (storeId: string) => {
-    const store = (stores as any[]).find((s) => s._id === storeId)
+    const store = stores.find((s) => s._id === storeId)
     if (store) {
       setCurrentStore(store)
       toast.success(`Établissement : ${store.name}`)
@@ -31,14 +33,14 @@ export function StoreSelector() {
 
   return (
     <Select
-      value={(currentStore as any)?._id as string}
+      value={currentStore?._id as string}
       onValueChange={handleStoreChange}
     >
       <SelectTrigger className="h-8 text-xs">
         <SelectValue placeholder="Choisir un établissement" />
       </SelectTrigger>
       <SelectContent>
-        {(stores as any[]).map((store) => (
+        {stores.map((store) => (
           <SelectItem key={store._id} value={store._id} className="text-xs">
             {store.name}
           </SelectItem>
