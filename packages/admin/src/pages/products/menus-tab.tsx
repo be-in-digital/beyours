@@ -183,7 +183,7 @@ export function MenusTab() {
     const handler = () => openCreate()
     window.addEventListener("open-menu-form", handler)
     return () => window.removeEventListener("open-menu-form", handler)
-  })
+  }, [])
 
   const activeFilterCount = [statusFilter].filter((f) => f !== "all").length
 

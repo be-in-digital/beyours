@@ -1,6 +1,20 @@
 /**
- * RBAC (Role-Based Access Control) pour BeInDigital Engine
- * Gère les 7 rôles utilisateur et leurs permissions granulaires
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  🔐 RBAC - Role-Based Access Control                        │
+ * │  7 roles with granular permissions per resource              │
+ * │  Guards, checks, and permission factories                    │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { Role, hasPermission }                    │      │
+ * │  │   from '@repo/core/auth'                          │      │
+ * │  │                                                   │      │
+ * │  │ if (hasPermission(Role.MANAGER, 'orders:write'))  │      │
+ * │  │   processOrder(order)                             │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 /**

@@ -83,7 +83,7 @@ export const mergeCartItems = (existing: CartItem[], newItem: CartItem): CartIte
 /**
  * Helper: Check if two items are the same (product + options)
  */
-const isSameItem = (a: CartItem, b: CartItem): boolean => {
+export const isSameItem = (a: CartItem, b: CartItem): boolean => {
   if (a.productId !== b.productId) return false
   if (a.options.length !== b.options.length) return false
 
@@ -105,7 +105,7 @@ const isSameItem = (a: CartItem, b: CartItem): boolean => {
 /**
  * Helper: Calculate item total price
  */
-const getItemTotal = (item: CartItem): number => {
+export const getItemTotal = (item: CartItem): number => {
   const optionsTotal = item.options.reduce((sum, opt) => sum + opt.priceModifier, 0)
   return (item.price + optionsTotal) * item.quantity
 }
@@ -138,17 +138,17 @@ export const calculateCartTotals = (
 export const canCheckout = (
   items: CartItem[],
   storeId: string | null
-): { canCheckout: boolean; reason?: string } => {
+): { eligible: boolean; reason?: string } => {
   if (!storeId) {
     return {
-      canCheckout: false,
+      eligible: false,
       reason: 'No store selected',
     }
   }
 
   if (items.length === 0) {
     return {
-      canCheckout: false,
+      eligible: false,
       reason: 'Cart is empty',
     }
   }
@@ -158,13 +158,13 @@ export const canCheckout = (
     const validation = validateCartItem(item)
     if (!validation.valid) {
       return {
-        canCheckout: false,
+        eligible: false,
         reason: `Invalid item: ${validation.errors.join(', ')}`,
       }
     }
   }
 
   return {
-    canCheckout: true,
+    eligible: true,
   }
 }

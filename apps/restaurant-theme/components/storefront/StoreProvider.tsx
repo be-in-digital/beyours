@@ -39,7 +39,7 @@ export function StoreProvider({ initialStore, children }: StoreProviderProps) {
     hydratedSlugRef.current = initialStore.slug
 
     // Set cookie for legacy redirects (UX preference, not canonical source)
-    document.cookie = `storeSlug=${initialStore.slug};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`
+    document.cookie = `storeSlug=${encodeURIComponent(initialStore.slug)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax;secure`
   }, [initialStore, setCurrentStore, currentSlug])
 
   return <>{children}</>

@@ -46,7 +46,7 @@ export function MealCard({
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
         addItem({
-            productId: String(id ?? title),
+            productId: String(id ?? `__fallback_${title}_${price}`),
             name: title,
             price: Math.round(price * 100),
             quantity: 1,
@@ -99,7 +99,7 @@ export function MealCard({
                     ) : null}
                 </div>
                 <div className="absolute top-4 right-4 z-10">
-                    <FavoriteButton itemId={id ?? title} itemTitle={title} />
+                    <FavoriteButton itemId={id ?? `__fallback_${title}_${price}`} itemTitle={title} />
                 </div>
             </div>
             <div className="p-8 flex flex-col flex-1">

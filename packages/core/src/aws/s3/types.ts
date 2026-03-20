@@ -1,6 +1,22 @@
 /**
- * Types pour le service S3
- * @module aws/s3/types
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  📦 S3 Types                                                │
+ * │  TypeScript interfaces for S3 operations, upload/download   │
+ * │  results, presigned URLs, and object metadata               │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import type { UploadOptions, UploadResult }       │      │
+ * │  │   from '@repo/core/aws'                           │      │
+ * │  │                                                   │      │
+ * │  │ const opts: UploadOptions = {                     │      │
+ * │  │   folder: 'products',                             │      │
+ * │  │   contentType: 'image/png',                       │      │
+ * │  │ }                                                 │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import type { S3Folder } from '../types'
@@ -108,6 +124,8 @@ export interface PresignedUploadResult {
   uploadUrl: string
   /** Clé S3 du fichier */
   key: string
+  /** Taille max autorisée en bytes (à enforcer côté client — presigned PUT ne supporte pas Content-Length-Range) */
+  maxSize: number
   /** Date d'expiration */
   expiresAt: Date
 }

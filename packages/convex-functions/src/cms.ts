@@ -36,6 +36,17 @@ const cmsFieldValueValidator = v.object({
   isCleared: v.optional(v.boolean()),
 })
 
+/** TypeScript type matching the cmsFieldValueValidator shape */
+interface CmsFieldValue {
+  type: "text" | "richtext" | "image" | "video" | "file" | "select"
+  textValue?: string
+  mediaId?: string
+  altText?: string
+  embedUrl?: string
+  embedProvider?: "youtube" | "vimeo"
+  isCleared?: boolean
+}
+
 // ============================================================================
 // Queries
 // ============================================================================
@@ -532,12 +543,13 @@ async function resolveTranslations(
 }
 
 async function resolveMedia(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex ctx type is dynamic
   ctx: any,
-  values: Record<string, any>,
-): Promise<Record<string, any>> {
-  const result: Record<string, any> = {}
+  values: Record<string, CmsFieldValue>,
+): Promise<Record<string, Record<string, unknown>>> {
+  const result: Record<string, Record<string, unknown>> = {}
   for (const [fieldKey, fieldValue] of Object.entries(values)) {
-    const fv = fieldValue as any
+    const fv = fieldValue
     if (fv?.mediaId) {
       try {
         const media = await ctx.db.get(fv.mediaId)
@@ -635,10 +647,10 @@ async function decrementAllMediaUsage(
   }
 }
 
-function extractMediaIds(values: Record<string, any>): Set<string> {
+function extractMediaIds(values: Record<string, CmsFieldValue>): Set<string> {
   const ids = new Set<string>()
   for (const fv of Object.values(values)) {
-    if ((fv as any)?.mediaId) ids.add((fv as any).mediaId)
+    if (fv?.mediaId) ids.add(fv.mediaId)
   }
   return ids
 }

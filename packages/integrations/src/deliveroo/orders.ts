@@ -41,10 +41,10 @@ export async function acceptOrder(
   credentials: DeliverooCredentials,
   orderId: string
 ): Promise<void> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/orders/${encodedId}`,
+    `/v1/orders/${safeId}`,
     { method: "PATCH", body: { status: "accepted" } },
     "order"
   )
@@ -67,10 +67,10 @@ export async function confirmOrder(
   credentials: DeliverooCredentials,
   orderId: string
 ): Promise<void> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/orders/${encodedId}`,
+    `/v1/orders/${safeId}`,
     { method: "PATCH", body: { status: "confirmed" } },
     "order"
   )
@@ -93,10 +93,10 @@ export async function rejectOrder(
   orderId: string,
   reason: string = "store_busy"
 ): Promise<void> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/orders/${encodedId}`,
+    `/v1/orders/${safeId}`,
     { method: "PATCH", body: { status: "rejected", reject_reason: reason } },
     "order"
   )
@@ -122,7 +122,7 @@ export async function sendSyncStatus(
   failureReason?: DeliverooSyncFailureReason,
   notes?: string
 ): Promise<void> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const body: Record<string, unknown> = {
     status,
     reason: failureReason,
@@ -133,7 +133,7 @@ export async function sendSyncStatus(
   try {
     const response = await fetchDeliveroo(
       credentials,
-      `/v1/orders/${encodedId}/sync_status`,
+      `/v1/orders/${safeId}/sync_status`,
       { method: "POST", body },
       "order"
     )
@@ -170,10 +170,10 @@ export async function updatePrepStage(
   orderId: string,
   stage: DeliverooPrepStage
 ): Promise<void> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/orders/${encodedId}/prep_stages`,
+    `/v1/orders/${safeId}/prep_stages`,
     {
       method: "POST",
       body: {
@@ -202,10 +202,10 @@ export async function getOrder(
   credentials: DeliverooCredentials,
   orderId: string
 ): Promise<DeliverooWebhookOrder> {
-  const encodedId = encodeURIComponent(orderId)
+  const safeId = validatePathParam(orderId, "orderId")
   const response = await fetchDeliveroo(
     credentials,
-    `/v1/orders/${encodedId}`,
+    `/v1/orders/${safeId}`,
     { method: "GET" },
     "order"
   )

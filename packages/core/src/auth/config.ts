@@ -1,12 +1,22 @@
 /**
- * Configuration Better Auth avec adaptateur Convex
- *
- * NOTE: Après installation de better-auth, importer:
- * - import { betterAuth } from 'better-auth'
- * - import { convexAdapter } from '@better-auth/convex'
- * - import { twoFactorPlugin } from '@better-auth/two-factor'
- *
- * Puis remplacer les placeholders par les vrais imports
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │  ⚙️ Auth Config                                             │
+ * │  Better Auth configuration with Convex adapter              │
+ * │  Session, OAuth, 2FA, email templates, routes               │
+ * ├─────────────────────────────────────────────────────────────┤
+ * │                                                             │
+ * │  Usage:                                                     │
+ * │  ┌───────────────────────────────────────────────────┐      │
+ * │  │ import { createAuthConfig } from '@repo/core/auth'│      │
+ * │  │                                                   │      │
+ * │  │ const config = createAuthConfig({                 │      │
+ * │  │   baseUrl: 'https://myrestaurant.com',            │      │
+ * │  │   secret: process.env.AUTH_SECRET!,               │      │
+ * │  │   convexUrl: process.env.CONVEX_URL!,             │      │
+ * │  │ })                                                │      │
+ * │  └───────────────────────────────────────────────────┘      │
+ * │                                                             │
+ * └─────────────────────────────────────────────────────────────┘
  */
 
 import { type BetterAuthConfig } from './types';

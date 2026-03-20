@@ -53,7 +53,7 @@ export const assignStation = (
 
   items.forEach((item) => {
     // Determine station from mapping (based on productId or category)
-    const station = stationMapping[item.productId] || 'general'
+    const station = stationMapping[item.productId] ?? 'general'
 
     if (!stations[station]) {
       stations[station] = []

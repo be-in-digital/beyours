@@ -32,6 +32,10 @@ export const updateStatus = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+    // Verify store ownership before allowing status update
+    const message = await ctx.db.get(args.id)
+    if (!message) throw new Error("Message not found")
+    await requireStoreAccess(ctx, message.storeId)
     return defs.updateStatus.handler(ctx, args)
   },
 })
