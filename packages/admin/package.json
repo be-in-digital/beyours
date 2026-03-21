@@ -14,21 +14,22 @@
     "./hooks": "./src/hooks/admin-hooks.ts"
   },
   "peerDependencies": {
+    "@beindigital-engine/convex-functions": "workspace:^",
+    "@beindigital-engine/core": "workspace:^",
+    "@beindigital-engine/marketing": "workspace:^",
+    "@beindigital-engine/restaurant": "workspace:^",
+    "@beindigital-engine/ui": "workspace:^",
+    "@hookform/resolvers": ">=5.0.0",
+    "convex": ">=1.0.0",
     "next": ">=15",
+    "next-themes": ">=0.4.0",
     "react": ">=19",
     "react-dom": ">=19",
-    "convex": ">=1.0.0",
-    "@beindigital-engine/core": "workspace:^",
-    "@beindigital-engine/ui": "workspace:^",
-    "@beindigital-engine/restaurant": "workspace:^",
-    "@beindigital-engine/convex-functions": "workspace:^",
-    "@beindigital-engine/marketing": "workspace:^",
-    "zod": ">=3.0.0",
     "react-hook-form": ">=7.0.0",
-    "@hookform/resolvers": ">=5.0.0",
-    "next-themes": ">=0.4.0"
+    "zod": ">=3.0.0"
   },
   "dependencies": {
+    "@reactour/tour": "^3.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.0",
     "lucide-react": "^0.468.0",
