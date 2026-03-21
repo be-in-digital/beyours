@@ -14,6 +14,8 @@ import {
   SidebarUserMenu,
   StoreGuard,
   useAdminApiStore,
+  OnboardingTourProvider,
+  ReplayTourButton,
 } from "@beindigital-engine/admin"
 
 export default function AdminLayout({
@@ -30,17 +32,24 @@ export default function AdminLayout({
       <AdminAuthSync />
       <AuthGuard>
         <SidebarProvider>
-          <AppSidebar
-            userFooter={<SidebarUserMenu />}
-          />
-          <SidebarInset>
-            <AdminHeader storeSelector={<StoreSelector />} />
-            <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
-              <div className="mx-auto max-w-[1600px]">
-                <StoreGuard>{children}</StoreGuard>
-              </div>
-            </main>
-          </SidebarInset>
+          <OnboardingTourProvider>
+            <AppSidebar
+              userFooter={
+                <>
+                  <ReplayTourButton />
+                  <SidebarUserMenu />
+                </>
+              }
+            />
+            <SidebarInset>
+              <AdminHeader storeSelector={<StoreSelector />} />
+              <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden" data-tour="main-content">
+                <div className="mx-auto max-w-[1600px]">
+                  <StoreGuard>{children}</StoreGuard>
+                </div>
+              </main>
+            </SidebarInset>
+          </OnboardingTourProvider>
         </SidebarProvider>
       </AuthGuard>
     </>
