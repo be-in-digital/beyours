@@ -39,13 +39,19 @@ export const getBySlug = query({
   },
 });
 
-/** Admin-only: list stores the current user has access to */
+/** Admin-only: list stores the current user has access to.
+ *  In mono-tenant mode (1 Convex instance = 1 restaurant), if the user
+ *  profile has no storeIds assigned yet we return all stores so the
+ *  dashboard remains functional. */
 export const adminList = query({
   args: {},
   handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     const allStores = await defs.list.handler(ctx);
-    if (user.role === Role.SUPER_ADMIN) return allStores;
+    // SUPER_ADMIN or users without storeIds restriction see everything
+    if (user.role === Role.SUPER_ADMIN || user.storeIds.length === 0) {
+      return allStores;
+    }
     return allStores.filter((s: { _id: string }) => user.storeIds.includes(s._id));
   },
 });

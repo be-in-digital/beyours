@@ -60,6 +60,8 @@ export async function getAuthUser(ctx: any): Promise<AuthUser> {
 /**
  * Verify the user is authenticated AND has access to the given store.
  * Super admins bypass the storeIds check.
+ * In mono-tenant mode (1 Convex instance = 1 restaurant), users with
+ * no storeIds assigned yet are granted access to all stores.
  */
 export async function requireStoreAccess(
   ctx: any,
@@ -68,6 +70,9 @@ export async function requireStoreAccess(
   const user = await getAuthUser(ctx)
 
   if (user.role === Role.SUPER_ADMIN) return user
+
+  // No storeIds restriction = mono-tenant, access all stores
+  if (user.storeIds.length === 0) return user
 
   if (!user.storeIds.includes(storeId)) {
     throw new Error("Access denied: you do not have access to this store")
