@@ -80,7 +80,7 @@ export function KitchenPage() {
 
       {/* Kanban board */}
       {!ticketsByStatus ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="kitchen-board">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="space-y-4">
               <Skeleton className="h-10 w-full" />
@@ -90,7 +90,7 @@ export function KitchenPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="kitchen-board">
           {(Object.keys(STATUS_CONFIG) as TicketStatus[]).map((status) => (
             <div key={status} className="space-y-4">
               {/* Column header */}
