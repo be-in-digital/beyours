@@ -52,7 +52,7 @@ export function OrdersPage() {
       </div>
 
       {/* Search */}
-      <div className="max-w-md">
+      <div className="max-w-md" data-tour="orders-search">
         <SearchInput
           placeholder="Rechercher par n° de commande ou nom du client..."
           value={searchQuery}
@@ -61,7 +61,7 @@ export function OrdersPage() {
       </div>
 
       {/* Status filter tabs */}
-      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatusFilter)}>
+      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatusFilter)} data-tour="orders-tabs">
         <TabsList variant="line">
           <TabsTrigger value="all">Toutes</TabsTrigger>
           <TabsTrigger value="pending">En attente</TabsTrigger>
