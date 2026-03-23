@@ -22,11 +22,13 @@
     "@beindigital-engine/ui": "workspace:^",
     "@beindigital-engine/restaurant": "workspace:^",
     "@beindigital-engine/convex-functions": "workspace:^",
+    "@beindigital-engine/convex-schema": "workspace:^",
     "@beindigital-engine/marketing": "workspace:^",
     "zod": ">=3.0.0",
     "react-hook-form": ">=7.0.0",
     "@hookform/resolvers": ">=5.0.0",
-    "next-themes": ">=0.4.0"
+    "next-themes": ">=0.4.0",
+    "framer-motion": ">=12.0.0"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

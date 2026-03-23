@@ -26,6 +26,12 @@ export interface ImageGenerationAccessResult {
   remainingImageQuota: number
 }
 
+export interface ImageToProductAccessResult {
+  allowed: boolean
+  reason?: string
+  remainingAnalysisQuota: number
+}
+
 // ============================================================================
 // Guards
 // ============================================================================
@@ -186,6 +192,84 @@ export async function checkImageGenerationAccess(
   return {
     allowed: true,
     remainingImageQuota,
+  }
+}
+
+/**
+ * Check Image-to-Product access for an owner.
+ * Returns allowed status, reason, and remaining analysis quota.
+ */
+export async function checkImageToProductAccess(
+  ctx: any,
+  ownerId: string
+): Promise<ImageToProductAccessResult> {
+  // 1. Get entitlements
+  const entitlements = await ctx.db
+    .query("ownerEntitlements")
+    .withIndex("by_ownerId", (q: any) => q.eq("ownerId", ownerId))
+    .first()
+
+  if (!entitlements) {
+    return {
+      allowed: false,
+      reason: "Aucun abonnement actif",
+      remainingAnalysisQuota: 0,
+    }
+  }
+
+  // Check Stripe subscription status if present
+  if (
+    entitlements.subscriptionStatus &&
+    !["active", "trialing"].includes(entitlements.subscriptionStatus)
+  ) {
+    return {
+      allowed: false,
+      reason: "Abonnement inactif",
+      remainingAnalysisQuota: 0,
+    }
+  }
+
+  const itp = entitlements.imageToProduct
+  if (!itp || !itp.enabled) {
+    return {
+      allowed: false,
+      reason: "La fonctionnalite Image vers Produit n'est pas incluse dans votre plan",
+      remainingAnalysisQuota: 0,
+    }
+  }
+
+  const monthlyQuota = itp.monthlyAnalysisQuota ?? 0
+  if (monthlyQuota <= 0) {
+    return {
+      allowed: false,
+      reason: "Quota d'analyses non disponible avec votre plan",
+      remainingAnalysisQuota: 0,
+    }
+  }
+
+  // 2. Get current month usage
+  const periodKey = getCurrentPeriodKey()
+  const usage = await ctx.db
+    .query("blogAutoUsage")
+    .withIndex("by_ownerId_periodKey", (q: any) =>
+      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
+    )
+    .first()
+
+  const analysisCount = usage?.imageToProductAnalysisCount ?? 0
+  const remainingAnalysisQuota = Math.max(0, monthlyQuota - analysisCount)
+
+  if (remainingAnalysisQuota <= 0) {
+    return {
+      allowed: false,
+      reason: "Quota mensuel d'analyses Image vers Produit atteint",
+      remainingAnalysisQuota: 0,
+    }
+  }
+
+  return {
+    allowed: true,
+    remainingAnalysisQuota,
   }
 }
 

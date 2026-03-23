@@ -53,6 +53,7 @@ import type * as gameQRCodes from "../gameQRCodes.js";
 import type * as games from "../games.js";
 import type * as globalSettings from "../globalSettings.js";
 import type * as http from "../http.js";
+import type * as imageToProduct from "../imageToProduct.js";
 import type * as kitchenTickets from "../kitchenTickets.js";
 import type * as languages from "../languages.js";
 import type * as lib_emailHtmlRenderer from "../lib/emailHtmlRenderer.js";
@@ -142,6 +143,7 @@ declare const fullApi: ApiFromModules<{
   games: typeof games;
   globalSettings: typeof globalSettings;
   http: typeof http;
+  imageToProduct: typeof imageToProduct;
   kitchenTickets: typeof kitchenTickets;
   languages: typeof languages;
   "lib/emailHtmlRenderer": typeof lib_emailHtmlRenderer;

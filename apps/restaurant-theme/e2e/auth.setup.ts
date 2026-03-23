@@ -21,7 +21,7 @@ setup("authenticate as admin", async ({ page }) => {
   })
 
   await expect(
-    page.getByRole("heading", { name: "Connexion" })
+    page.getByText("Bon retour").or(page.getByRole("heading", { name: "Connexion" }))
   ).toBeVisible({ timeout: 30_000 })
 
   // Wait for Next.js compilation to finish (dev mode indicator)
@@ -35,15 +35,17 @@ setup("authenticate as admin", async ({ page }) => {
   // Extra wait for Convex WebSocket connection to stabilize
   await page.waitForLoadState("networkidle")
 
-  await page.getByLabel("Email").fill("test.owner@beindigital.fr")
-  await page.getByLabel("Mot de passe").fill("julien")
+  // Fill credentials using input IDs (labels are ambiguous due to "Mot de passe oublié" link)
+  await page.locator("#email").fill("test.owner@beindigital.fr")
+  await page.locator("#password").fill("julien")
 
-  await page.getByRole("button", { name: "Se connecter" }).click()
+  await page.getByRole("button", { name: /se connecter/i }).click()
 
   // Wait for auth API response before checking URL
   await page.waitForLoadState("networkidle", { timeout: 30_000 })
 
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 60_000 })
+  // After login, the app redirects to /menu or /dashboard
+  await expect(page).toHaveURL(/\/(dashboard|menu)/, { timeout: 60_000 })
 
   await page.context().storageState({ path: ADMIN_STORAGE_STATE })
 })

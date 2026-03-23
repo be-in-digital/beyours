@@ -55,7 +55,7 @@ export {
 // Pages (lazy loaded by consuming apps)
 export { DashboardPage } from "./pages/dashboard"
 export { OrdersPage, OrderDetailPage } from "./pages/orders"
-export { ProductsPage, NewProductPage, EditProductPage } from "./pages/products"
+export { ProductsPage, NewProductPage, EditProductPage, ImageToProductPage } from "./pages/products"
 export { InventoryPage } from "./pages/inventory"
 export { StoresPage, StoreDetailPage, StoresTable, StoresPagination } from "./pages/stores"
 export { TeamPage } from "./pages/team"

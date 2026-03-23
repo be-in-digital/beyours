@@ -100,7 +100,7 @@ export function AdminHeader({ storeSelector }: AdminHeaderProps) {
 
       <div className="flex items-center gap-2">
         {storeSelector && (
-          <div className="w-48">{storeSelector}</div>
+          <div className="shrink-0">{storeSelector}</div>
         )}
 
         {/* Language switcher */}
