@@ -33,7 +33,7 @@ export function PreviewClient({ pageSlug }: PreviewClientProps) {
         Mode preview — {pageDef.label}
         {" "}
         <a
-          href={`/content/pages/${pageSlug}`}
+          href={`/dashboard/content/pages/${pageSlug}`}
           className="underline hover:no-underline ml-2"
         >
           Retour a l&apos;editeur

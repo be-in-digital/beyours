@@ -12,7 +12,7 @@ test.describe("Games Page", () => {
 
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -47,7 +47,7 @@ test.describe("Games Page", () => {
 
   test.describe("Configuration Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -71,7 +71,7 @@ test.describe("Games Page", () => {
 
   test.describe("Create Game Dialog", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -135,7 +135,7 @@ test.describe("Games Page", () => {
 
   test.describe("QR Codes Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -170,7 +170,7 @@ test.describe("Games Page", () => {
 
   test.describe("Create QR Code Dialog", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -227,7 +227,7 @@ test.describe("Games Page", () => {
 
   test.describe("Prizes Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -262,7 +262,7 @@ test.describe("Games Page", () => {
 
   test.describe("Create Prize Dialog", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -321,7 +321,7 @@ test.describe("Games Page", () => {
 
   test.describe("History Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -349,7 +349,7 @@ test.describe("Games Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/games", {
+      await page.goto("/dashboard/games", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

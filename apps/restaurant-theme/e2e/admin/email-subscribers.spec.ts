@@ -8,7 +8,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 
-const SUBSCRIBERS_URL = "/email/subscribers"
+const SUBSCRIBERS_URL = "/dashboard/email/subscribers"
 
 test.describe("Email Subscribers Page", () => {
   test.describe("Page Structure", () => {

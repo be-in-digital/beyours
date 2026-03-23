@@ -1,10 +1,6 @@
-import { BlogArticleEditor } from "@/components/admin/blog/BlogArticleEditor"
+import { redirect } from "next/navigation"
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ articleId: string }>
-}) {
+export default async function Page({ params }: { params: Promise<{ articleId: string }> }) {
   const { articleId } = await params
-  return <BlogArticleEditor articleId={articleId} />
+  redirect(`/dashboard/content/blog/${articleId}`)
 }

@@ -1,5 +1,5 @@
-import { BlogAutoConfigPage } from "@/components/admin/blog/BlogAutoConfigPage"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <BlogAutoConfigPage />
+  redirect("/dashboard/content/blog/auto-config")
 }

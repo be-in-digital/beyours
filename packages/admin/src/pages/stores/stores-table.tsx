@@ -148,7 +148,7 @@ export function StoresTable({
                 />
               </TableCell>
               <TableCell className="text-sm font-medium">
-                <Link href={`/stores/${store._id}`} className="hover:underline">
+                <Link href={`/dashboard/stores/${store._id}`} className="hover:underline">
                   {store.name}
                 </Link>
               </TableCell>
@@ -178,7 +178,7 @@ export function StoresTable({
                     <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href={`/stores/${store._id}`} className="text-xs">
+                      <Link href={`/dashboard/stores/${store._id}`} className="text-xs">
                         <Eye className="mr-2 h-3.5 w-3.5" />
                         Voir détails
                       </Link>

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 
-const STORES_URL = "/stores"
+const STORES_URL = "/dashboard/stores"
 
 const TABS = ["Général", "Horaires", "Paramètres", "Intégrations"] as const
 
@@ -43,7 +43,7 @@ test.describe("Store Detail Page", () => {
       await page.waitForLoadState("domcontentloaded")
 
       // Wait for the store detail page to load
-      await expect(page).toHaveURL(/\/stores\//, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/stores\//, { timeout: 15_000 })
       return true
     }
 

@@ -1,5 +1,5 @@
-import { PromotionsPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <PromotionsPage />
+  redirect("/dashboard/promotions")
 }

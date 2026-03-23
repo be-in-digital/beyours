@@ -68,4 +68,25 @@ export const globalSettingsTable = defineTable({
   }),
 
   updatedAt: v.number(),
+
+  // ─── System control center ────────────────────────────────────────────────
+  /** Snapshot of the deployed app version (runtime = source of truth) */
+  deployedAppVersion: v.optional(v.string()),
+  /** Backup format version for compatibility checks */
+  backupFormatVersion: v.optional(v.string()),
+  /** Timestamp of the last successful backup */
+  lastBackupAt: v.optional(v.number()),
+  /** List of applied data migrations */
+  appliedMigrations: v.optional(v.array(v.object({
+    id: v.string(),
+    name: v.string(),
+    appliedAt: v.number(),
+  }))),
+  /** System lock to prevent concurrent operations */
+  systemLock: v.optional(v.object({
+    operation: v.string(),
+    lockedBy: v.string(),
+    lockedAt: v.number(),
+    expiresAt: v.number(),
+  })),
 })
