@@ -181,7 +181,7 @@ test.describe("Order Detail Page", () => {
     test('should show "Commande introuvable" for invalid order ID', async ({
       page,
     }) => {
-      await page.goto(`/orders/${INVALID_ORDER_ID}`, {
+      await page.goto(`/dashboard/orders/${INVALID_ORDER_ID}`, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -193,7 +193,7 @@ test.describe("Order Detail Page", () => {
 
     test("should show loading state initially", async ({ page }) => {
       // Navigate to an order detail page and check for loading state
-      await page.goto(`/orders/${INVALID_ORDER_ID}`, {
+      await page.goto(`/dashboard/orders/${INVALID_ORDER_ID}`, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

@@ -12,6 +12,7 @@ import type {
   AnalyzeImageResult,
 } from "@beindigital-engine/convex-schema/types"
 import { Button } from "@beindigital-engine/ui"
+import { adminRoutes } from "../../../config/admin-routes"
 import { useAdminStoreId, useAdminApi } from "../../../hooks/admin-hooks"
 import { slugify } from "../../../lib/formatters"
 import { ImageUploadStep } from "./image-upload-step"
@@ -171,7 +172,7 @@ export function ImageToProductPage() {
 
       if (created > 0) {
         toast.success(`${created} produit(s) cree(s) avec succes`)
-        router.push("/dashboard/products")
+        router.push(adminRoutes.products)
       }
     } catch (error) {
       toast.error("Erreur lors de la creation des produits")
@@ -201,7 +202,7 @@ export function ImageToProductPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href="/dashboard/products">
+          <Link href={adminRoutes.products}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
