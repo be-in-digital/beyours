@@ -1,17 +1,31 @@
-import { query, mutation, action, internalMutation } from "./_generated/server"
+import { query, mutation, action, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { getAuthUser } from "@beindigital-engine/convex-functions/auth"
-import { hasPermission, type Permission } from "@beindigital-engine/core/auth/rbac"
+import { hasPermission, type Permission, type Role } from "@beindigital-engine/core/auth/rbac"
+import { migrations } from "./migrations/index"
+
+// Type returned by systemInternal.getAuthUserInternal
+interface ActionAuthUser {
+  userId: string
+  role: Role
+  storeIds: string[]
+  profileId: string
+}
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
 const LOCK_DURATION_MS = 10 * 60 * 1000 // 10 minutes
 const BACKUP_FORMAT_VERSION = "1.0.0"
 
+const PERM_SYSTEM_READ = "system:read" as Permission
+const PERM_SYSTEM_BACKUP = "system:backup" as Permission
+const PERM_SYSTEM_RESTORE = "system:restore" as Permission
+const PERM_SYSTEM_MIGRATE = "system:migrate" as Permission
+
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-async function requireSystemPermission(ctx: any, permission: Permission) {
+async function requireSystemPermission(ctx: QueryCtx | MutationCtx, permission: Permission) {
   const user = await getAuthUser(ctx)
   if (!hasPermission(user.role, permission)) {
     throw new Error(`Permission "${permission}" requise`)
@@ -19,7 +33,7 @@ async function requireSystemPermission(ctx: any, permission: Permission) {
   return user
 }
 
-async function getSettings(ctx: any) {
+async function getSettings(ctx: QueryCtx | MutationCtx) {
   return ctx.db.query("globalSettings").first()
 }
 
@@ -35,7 +49,7 @@ export const getSystemInfo = query({
   args: {},
   handler: async (ctx) => {
     const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:read" as Permission)) {
+    if (!hasPermission(user.role, PERM_SYSTEM_READ)) {
       throw new Error('Permission "system:read" requise')
     }
 
@@ -63,40 +77,46 @@ export const getAuditLog = query({
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:read" as Permission)) {
+    if (!hasPermission(user.role, PERM_SYSTEM_READ)) {
       throw new Error('Permission "system:read" requise')
     }
 
-    let q = ctx.db
-      .query("systemAuditLog")
-      .withIndex("by_performedAt")
-      .order("desc")
+    const numItems = Math.min(args.paginationOpts.numItems, 100)
+    const { cursor } = args.paginationOpts
 
-    const results = await q.collect()
-
-    // Filter by action if specified
-    let filtered = results
+    // Use the appropriate index depending on whether we filter by action
+    let q: any
     if (args.filterAction) {
-      filtered = results.filter((r: any) => r.action === args.filterAction)
+      q = ctx.db.query("systemAuditLog")
+        .withIndex("by_action", (q: any) => q.eq("action", args.filterAction))
+        .order("desc")
+    } else {
+      q = ctx.db.query("systemAuditLog")
+        .withIndex("by_performedAt")
+        .order("desc")
     }
 
-    // Manual pagination
-    const { cursor, numItems } = args.paginationOpts
+    // Bounded fetch: take one extra to determine if there's a next page
+    const results: any[] = await q.take(numItems + 1)
+
+    // If a cursor was provided, skip entries up to and including the cursor
     let startIndex = 0
     if (cursor) {
-      const cursorIndex = filtered.findIndex((r: any) => r._id === cursor)
+      const cursorIndex = results.findIndex((r: any) => r._id === cursor)
       startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0
     }
 
-    const page = filtered.slice(startIndex, startIndex + numItems)
-    const nextCursor = page.length === numItems
+    const sliced = results.slice(startIndex)
+    const page = sliced.slice(0, numItems)
+    const hasMore = sliced.length > numItems
+    const nextCursor = hasMore
       ? (page[page.length - 1] as any)?._id ?? null
       : null
 
     return {
       page,
       continueCursor: nextCursor,
-      isDone: nextCursor === null,
+      isDone: !hasMore,
     }
   },
 })
@@ -167,7 +187,7 @@ export const _syncAppVersion = internalMutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {
     const settings = await getSettings(ctx)
-    if (!settings) return
+    if (!settings) throw new Error("Parametres globaux introuvables")
     await ctx.db.patch(settings._id, {
       deployedAppVersion: args.version,
       updatedAt: Date.now(),
@@ -179,7 +199,7 @@ export const _setLastBackupAt = internalMutation({
   args: {},
   handler: async (ctx) => {
     const settings = await getSettings(ctx)
-    if (!settings) return
+    if (!settings) throw new Error("Parametres globaux introuvables")
     await ctx.db.patch(settings._id, {
       lastBackupAt: Date.now(),
       updatedAt: Date.now(),
@@ -213,11 +233,14 @@ export const _addAppliedMigration = internalMutation({
 export const forceReleaseLock = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await requireSystemPermission(ctx, "system:restore" as Permission)
+    const user = await requireSystemPermission(ctx, PERM_SYSTEM_RESTORE)
     const settings = await getSettings(ctx)
     if (!settings) throw new Error("Parametres globaux introuvables")
 
     await ctx.db.patch(settings._id, { systemLock: undefined })
+    // Note: writing directly to systemAuditLog here is intentional —
+    // mutations cannot call internalMutations, so we insert directly
+    // instead of going through _recordAuditEntry.
     await ctx.db.insert("systemAuditLog", {
       action: "lock_force_release",
       performedBy: user.userId,
@@ -231,7 +254,7 @@ export const forceReleaseLock = mutation({
 export const syncVersion = mutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireSystemPermission(ctx, "system:read" as Permission)
+    const user = await requireSystemPermission(ctx, PERM_SYSTEM_READ)
     const settings = await getSettings(ctx)
     if (!settings) throw new Error("Parametres globaux introuvables")
 
@@ -248,8 +271,8 @@ export const syncVersion = mutation({
 export const checkForUpdates = action({
   args: { currentVersion: v.string() },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:read" as Permission)) {
+    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
+    if (!hasPermission(user.role, PERM_SYSTEM_READ)) {
       throw new Error('Permission "system:read" requise')
     }
 
@@ -301,12 +324,14 @@ export const checkForUpdates = action({
 export const exportBackup = action({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:backup" as Permission)) {
+    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
+    if (!hasPermission(user.role, PERM_SYSTEM_BACKUP)) {
       throw new Error('Permission "system:backup" requise')
     }
 
     try {
+      const settings: any = await ctx.runQuery(internal.systemInternal.getSettingsInternal, {})
+
       // Deterministic table export order (respects dependencies)
       const tableNames = [
         "globalSettings",
@@ -344,9 +369,9 @@ export const exportBackup = action({
         tableSummary[tableName] = rows.length
       }
 
-      const manifest = {
+      const manifest: Record<string, any> = {
         createdAt: Date.now(),
-        deployedAppVersion: "0.1.0",
+        deployedAppVersion: settings?.deployedAppVersion ?? "unknown",
         backupFormatVersion: BACKUP_FORMAT_VERSION,
         exportedBy: user.userId,
         tables: Object.keys(data),
@@ -383,8 +408,8 @@ export const importBackup = action({
     dryRun: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:restore" as Permission)) {
+    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
+    if (!hasPermission(user.role, PERM_SYSTEM_RESTORE)) {
       throw new Error('Permission "system:restore" requise')
     }
 
@@ -397,6 +422,16 @@ export const importBackup = action({
       throw new Error(
         `Version de backup incompatible : ${manifest.backupFormatVersion} (attendu : ${BACKUP_FORMAT_VERSION})`
       )
+    }
+
+    // Validate data structure
+    if (typeof data !== "object" || data === null) {
+      throw new Error("Donnees de backup invalides")
+    }
+    for (const table of manifest.tables) {
+      if (data[table] !== undefined && !Array.isArray(data[table])) {
+        throw new Error(`Table "${table}" invalide : tableau attendu`)
+      }
     }
 
     // Build summary
@@ -417,7 +452,7 @@ export const importBackup = action({
         dryRun: true,
         summary,
         totalRows: Object.values(summary).reduce((a, b) => a + b, 0),
-        message: "Mode apercu — aucune donnee modifiee",
+        message: "Mode apercu — aucune donnee modifiee. ATTENTION : l'import reel n'est pas atomique — en cas d'echec, certaines tables pourraient etre partiellement modifiees.",
       }
     }
 
@@ -477,13 +512,17 @@ export const importBackup = action({
         message: "Import termine avec succes",
       }
     } catch (error) {
-      await ctx.runMutation(internal.system._releaseSystemLock, {})
-      await ctx.runMutation(internal.system._recordAuditEntry, {
-        action: "backup_import",
-        performedBy: user.userId,
-        result: "failure",
-        errorMessage: error instanceof Error ? error.message : String(error),
-      })
+      try {
+        await ctx.runMutation(internal.system._releaseSystemLock, {})
+        await ctx.runMutation(internal.system._recordAuditEntry, {
+          action: "backup_import",
+          performedBy: user.userId,
+          result: "failure",
+          errorMessage: error instanceof Error ? error.message : String(error),
+        })
+      } catch (cleanupError) {
+        console.error("Failed to clean up after error:", cleanupError)
+      }
       throw error
     }
   },
@@ -493,8 +532,8 @@ export const importBackup = action({
 export const runMigrations = action({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthUser(ctx)
-    if (!hasPermission(user.role, "system:migrate" as Permission)) {
+    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
+    if (!hasPermission(user.role, PERM_SYSTEM_MIGRATE)) {
       throw new Error('Permission "system:migrate" requise')
     }
 
@@ -510,8 +549,7 @@ export const runMigrations = action({
         (settings?.appliedMigrations ?? []).map((m: any) => m.id)
       )
 
-      // Get migration registry
-      const { migrations } = await import("./migrations/index")
+      // Get migration registry (statically imported at top of file)
       const pending = migrations.filter((m) => !applied.has(m.id))
 
       if (pending.length === 0) {
@@ -542,13 +580,17 @@ export const runMigrations = action({
 
       return { applied: count, message: `${count} migration(s) appliquee(s)` }
     } catch (error) {
-      await ctx.runMutation(internal.system._releaseSystemLock, {})
-      await ctx.runMutation(internal.system._recordAuditEntry, {
-        action: "migration_run",
-        performedBy: user.userId,
-        result: "failure",
-        errorMessage: error instanceof Error ? error.message : String(error),
-      })
+      try {
+        await ctx.runMutation(internal.system._releaseSystemLock, {})
+        await ctx.runMutation(internal.system._recordAuditEntry, {
+          action: "migration_run",
+          performedBy: user.userId,
+          result: "failure",
+          errorMessage: error instanceof Error ? error.message : String(error),
+        })
+      } catch (cleanupError) {
+        console.error("Failed to clean up after error:", cleanupError)
+      }
       throw error
     }
   },

@@ -8,8 +8,9 @@ import { Button } from "@beindigital-engine/ui"
 import { Store } from "lucide-react"
 import Link from "next/link"
 import { useAdminApiStore } from "../stores/admin-api-store"
+import { adminRoutes } from "../config/admin-routes"
 
-const BYPASS_ROUTES = ["/dashboard/stores", "/dashboard/settings"]
+const BYPASS_ROUTES = [adminRoutes.stores, adminRoutes.settings, adminRoutes.team]
 
 interface StoreGuardProps {
   children: React.ReactNode
@@ -74,7 +75,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/dashboard/stores">Créer un établissement</Link>
+            <Link href={adminRoutes.stores}>Créer un établissement</Link>
           </Button>
         </div>
       </div>

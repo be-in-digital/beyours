@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import {
   ServerIcon,
   DownloadIcon,
@@ -49,6 +49,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@beindigital-engine/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
@@ -89,7 +97,7 @@ interface UpdateCheckResult {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatTimestamp(ts: number): string {
-  return new Date(ts).toLocaleString("fr-FR", {
+  return new Date(ts).toLocaleString(undefined, {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -188,6 +196,7 @@ function UpdatesSection() {
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null)
 
   const handleCheck = async () => {
+    if (!api?.system || !checkForUpdates) return
     setChecking(true)
     try {
       const result = await checkForUpdates({ currentVersion: APP_VERSION })
@@ -205,6 +214,7 @@ function UpdatesSection() {
   }
 
   const handleSync = async () => {
+    if (!api?.system || !syncVersion) return
     setSyncing(true)
     try {
       await syncVersion({ version: APP_VERSION })
@@ -229,11 +239,11 @@ function UpdatesSection() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={handleCheck} disabled={checking}>
+          <Button onClick={handleCheck} disabled={checking || !api?.system}>
             {checking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Verifier les mises a jour
           </Button>
-          <Button variant="outline" onClick={handleSync} disabled={syncing}>
+          <Button variant="outline" onClick={handleSync} disabled={syncing || !api?.system}>
             {syncing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Synchroniser la version en base
           </Button>
@@ -281,6 +291,7 @@ function BackupSection() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
 
   const handleExport = async () => {
+    if (!api?.system || !exportBackup) return
     setExporting(true)
     try {
       const result = await exportBackup({})
@@ -306,8 +317,19 @@ function BackupSection() {
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (!api?.system || !importBackup) return
       const file = event.target.files?.[0]
       if (!file) return
+
+      const MAX_BACKUP_SIZE = 50 * 1024 * 1024 // 50MB
+      if (file.size > MAX_BACKUP_SIZE) {
+        toast.error(`Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum : 50 MB.`)
+        return
+      }
+      if (file.type && file.type !== "application/json") {
+        toast.error("Type de fichier invalide. Un fichier JSON est attendu.")
+        return
+      }
 
       try {
         const text = await file.text()
@@ -344,13 +366,12 @@ function BackupSection() {
         event.target.value = ""
       }
     },
-    [importBackup]
+    [api?.system, importBackup]
   )
 
   const handleConfirmImport = async () => {
-    if (!pendingImport) return
+    if (!pendingImport || !importBackup) return
     setImporting(true)
-    setConfirmDialogOpen(false)
     try {
       const result = await importBackup({
         manifest: pendingImport.manifest,
@@ -358,10 +379,11 @@ function BackupSection() {
         dryRun: false,
       })
       toast.success(`Import termine : ${result.totalRows} lignes importees`)
-      setDryRunResult(null)
       setPendingImport(null)
-    } catch {
-      toast.error("Echec de l'import")
+      setDryRunResult(null)
+      setConfirmDialogOpen(false)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'import")
     } finally {
       setImporting(false)
     }
@@ -381,7 +403,7 @@ function BackupSection() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={handleExport} disabled={exporting}>
+            <Button onClick={handleExport} disabled={exporting || !api?.system}>
               {exporting ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
@@ -390,7 +412,7 @@ function BackupSection() {
               Exporter un backup
             </Button>
 
-            <Button variant="outline" asChild disabled={importing}>
+            <Button variant="outline" asChild disabled={importing || !api?.system}>
               <label className="cursor-pointer">
                 {importing ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -416,7 +438,7 @@ function BackupSection() {
       </Card>
 
       {/* Import confirmation dialog */}
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      <Dialog open={confirmDialogOpen} onOpenChange={(open) => { if (!importing) setConfirmDialogOpen(open) }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmer l'import</DialogTitle>
@@ -445,11 +467,12 @@ function BackupSection() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)} disabled={importing}>
               Annuler
             </Button>
-            <Button variant="destructive" onClick={handleConfirmImport}>
-              Confirmer l'import
+            <Button variant="destructive" onClick={handleConfirmImport} disabled={importing}>
+              {importing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {importing ? "Import en cours..." : "Confirmer l'import"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -466,6 +489,7 @@ function MigrationsSection({ info }: { info: SystemInfo }) {
   const [running, setRunning] = useState(false)
 
   const handleRun = async () => {
+    if (!api?.system || !runMigrations) return
     setRunning(true)
     try {
       const result = await runMigrations({})
@@ -489,7 +513,7 @@ function MigrationsSection({ info }: { info: SystemInfo }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Button onClick={handleRun} disabled={running}>
+        <Button onClick={handleRun} disabled={running || !api?.system}>
           {running && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
           Executer les migrations en attente
         </Button>
@@ -533,10 +557,13 @@ function AuditLogSection() {
   const [cursor, setCursor] = useState<string | null>(null)
   const PAGE_SIZE = 10
 
-  const auditLog = useQuery(api?.system?.getAuditLog, {
-    paginationOpts: { cursor, numItems: PAGE_SIZE },
-    filterAction: filterAction === "all" ? undefined : filterAction,
-  }) as
+  const auditLog = useQuery(
+    api?.system?.getAuditLog ?? "skip",
+    api?.system ? {
+      paginationOpts: { cursor, numItems: PAGE_SIZE },
+      filterAction: filterAction === "all" ? undefined : filterAction,
+    } : "skip"
+  ) as
     | {
         page: AuditEntry[]
         continueCursor: string | null
@@ -679,14 +706,17 @@ function ForceUnlockButton({ info }: { info: SystemInfo }) {
   const { api } = useAdminApiStore()
   const forceRelease = useMutation(api?.system?.forceReleaseLock)
   const [releasing, setReleasing] = useState(false)
+  const [confirmUnlockOpen, setConfirmUnlockOpen] = useState(false)
 
   if (!info.systemLock) return null
 
   const handleRelease = async () => {
+    if (!api?.system || !forceRelease) return
     setReleasing(true)
     try {
       await forceRelease({})
       toast.success("Verrou systeme libere")
+      setConfirmUnlockOpen(false)
     } catch {
       toast.error("Echec du deverrouillage")
     } finally {
@@ -695,11 +725,42 @@ function ForceUnlockButton({ info }: { info: SystemInfo }) {
   }
 
   return (
-    <Button variant="destructive" size="sm" onClick={handleRelease} disabled={releasing}>
-      {releasing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-      <UnlockIcon className="h-4 w-4 mr-2" />
-      Forcer le deverrouillage
-    </Button>
+    <>
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={() => setConfirmUnlockOpen(true)}
+        disabled={releasing || !api?.system}
+      >
+        <UnlockIcon className="h-4 w-4 mr-2" />
+        Forcer le deverrouillage
+      </Button>
+
+      <AlertDialog open={confirmUnlockOpen} onOpenChange={setConfirmUnlockOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer le deverrouillage</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cette action va forcer la liberation du verrou systeme. Si une operation est en cours, elle pourrait etre corrompue. Etes-vous sur de vouloir continuer ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={releasing}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleRelease()
+              }}
+              disabled={releasing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {releasing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Confirmer le deverrouillage
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -708,7 +769,10 @@ function ForceUnlockButton({ info }: { info: SystemInfo }) {
 export function SystemPage() {
   const { api } = useAdminApiStore()
 
-  const systemInfo = useQuery(api?.system?.getSystemInfo, {}) as
+  const systemInfo = useQuery(
+    api?.system?.getSystemInfo ?? "skip",
+    api?.system ? {} : "skip"
+  ) as
     | SystemInfo
     | undefined
 

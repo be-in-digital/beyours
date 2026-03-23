@@ -27,6 +27,7 @@ import { ArrowLeft, RotateCcw } from "lucide-react"
 import { Button } from "@beindigital-engine/ui"
 import { toast } from "sonner"
 import Link from "next/link"
+import { adminRoutes } from "../../config/admin-routes"
 import type {
   Order,
   OrderStatus,
@@ -316,7 +317,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/orders">
+          <Link href={adminRoutes.orders}>
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
