@@ -146,7 +146,8 @@ export const attachStripeCustomerId = {
     // First time: create minimal record with disabled plan
     return await ctx.db.insert("ownerEntitlements", {
       ownerId: args.ownerId,
-      autoBlog: PLAN_PRESETS.disabled,
+      autoBlog: PLAN_PRESETS.disabled.autoBlog,
+      imageToProduct: PLAN_PRESETS.disabled.imageToProduct,
       stripeCustomerId: args.stripeCustomerId,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -215,7 +216,8 @@ export const upsertFromStripe = {
     // 3. Patch or insert
     if (existing) {
       await ctx.db.patch(existing._id, {
-        autoBlog: preset,
+        autoBlog: preset.autoBlog,
+        imageToProduct: preset.imageToProduct,
         ...stripeFields,
         updatedAt: timestamp,
       })
@@ -229,7 +231,8 @@ export const upsertFromStripe = {
 
     return await ctx.db.insert("ownerEntitlements", {
       ownerId: args.ownerId,
-      autoBlog: preset,
+      autoBlog: preset.autoBlog,
+      imageToProduct: preset.imageToProduct,
       ...stripeFields,
       createdAt: timestamp,
       updatedAt: timestamp,

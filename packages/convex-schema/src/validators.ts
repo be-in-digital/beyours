@@ -207,7 +207,7 @@ const platformOverrideSchema = z.object({
 /**
  * Product source enum
  */
-export const productSourceEnum = z.enum(["manual", "uber_eats", "deliveroo"])
+export const productSourceEnum = z.enum(["manual", "uber_eats", "deliveroo", "ai-image"])
 
 /**
  * Create Product Schema
@@ -721,6 +721,91 @@ export const createUserProfileSchema = z.object({
  * Update User Profile Schema
  */
 export const updateUserProfileSchema = createUserProfileSchema.partial().required({ userId: true })
+
+// ============================================================================
+// IMAGE TO PRODUCT VALIDATORS (OpenAI Structured Outputs)
+// ============================================================================
+
+/** Field source enum for AI-generated values */
+export const aiFieldSourceSchema = z.enum(["detected", "generated", "inferred"])
+
+/** AI field wrapper: string value with source + confidence */
+const aiStringField = z.object({
+  value: z.string(),
+  source: aiFieldSourceSchema,
+  confidence: z.number().min(0).max(1),
+})
+
+/** AI field wrapper: nullable string */
+const aiNullableStringField = z.object({
+  value: z.string().nullable(),
+  source: aiFieldSourceSchema,
+  confidence: z.number().min(0).max(1),
+})
+
+/** AI field wrapper: nullable number (price in cents) */
+const aiNumberField = z.object({
+  value: z.number().int().min(0).nullable(),
+  source: aiFieldSourceSchema,
+  confidence: z.number().min(0).max(1),
+})
+
+/** AI field wrapper: string array */
+const aiStringArrayField = z.object({
+  value: z.array(z.string()),
+  source: aiFieldSourceSchema,
+  confidence: z.number().min(0).max(1),
+})
+
+/** Parsing warning emitted by the AI during analysis */
+const parsingWarningSchema = z.object({
+  field: z.string(),
+  message: z.string(),
+  severity: z.enum(["info", "warning"]),
+})
+
+/**
+ * Raw vision schema: single dish photo analysis
+ * OpenAI returns flat values — we wrap in AiField during post-processing
+ */
+export const singleProductVisionSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  price: z.number().nullable(),
+  ingredients: z.array(z.string()),
+  allergens: z.array(z.string()),
+  detectedCategoryName: z.string().nullable(),
+  suggestedCategoryName: z.string(),
+  warnings: z.array(z.string()).default([]),
+})
+
+/**
+ * Raw vision schema: menu photo analysis (multiple products)
+ * OpenAI returns flat values — we wrap in AiField during post-processing
+ */
+export const menuVisionResultSchema = z.object({
+  products: z.array(z.object({
+    name: z.string(),
+    description: z.string(),
+    price: z.number().nullable(),
+    ingredients: z.array(z.string()),
+    allergens: z.array(z.string()),
+    detectedCategoryName: z.string().nullable(),
+    suggestedCategoryName: z.string(),
+    warnings: z.array(z.string()).default([]),
+  })),
+})
+
+/**
+ * Raw enrichment schema: output for GPT completing missing fields
+ */
+export const enrichmentResultSchema = z.object({
+  products: z.array(z.object({
+    tempId: z.string(),
+    description: z.string(),
+    ingredients: z.array(z.string()),
+  })),
+})
 
 // ============================================================================
 // AUTO BLOG VALIDATORS

@@ -36,6 +36,10 @@ export const ownerEntitlementsTable = defineTable({
     allowAutoPublish: v.boolean(),
     monthlyImageQuota: v.optional(v.number()), // 5, 20, 100 — optional for migration safety
   }),
+  imageToProduct: v.optional(v.object({
+    enabled: v.boolean(),
+    monthlyAnalysisQuota: v.number(), // 3, 15, 50
+  })),
   // Stripe BeInDigital subscription fields
   stripeCustomerId: v.optional(v.string()),    // cus_xxx
   stripeSubscriptionId: v.optional(v.string()), // sub_xxx
@@ -145,5 +149,6 @@ export const blogAutoUsageTable = defineTable({
   generatedCount: v.number(),
   publishedCount: v.number(),
   imageGeneratedCount: v.optional(v.number()), // optional for migration safety, fallback ?? 0
+  imageToProductAnalysisCount: v.optional(v.number()), // optional for migration safety, fallback ?? 0
   updatedAt: v.number(),
 }).index("by_ownerId_periodKey", ["ownerId", "periodKey"])
