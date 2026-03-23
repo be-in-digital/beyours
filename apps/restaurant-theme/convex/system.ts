@@ -85,9 +85,11 @@ export const getAuditLog = query({
     const { cursor } = args.paginationOpts
 
     // Use the appropriate index depending on whether we filter by action
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any
     if (args.filterAction) {
       q = ctx.db.query("systemAuditLog")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .withIndex("by_action", (q: any) => q.eq("action", args.filterAction))
         .order("desc")
     } else {
@@ -97,11 +99,13 @@ export const getAuditLog = query({
     }
 
     // Bounded fetch: take one extra to determine if there's a next page
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const results: any[] = await q.take(numItems + 1)
 
     // If a cursor was provided, skip entries up to and including the cursor
     let startIndex = 0
     if (cursor) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cursorIndex = results.findIndex((r: any) => r._id === cursor)
       startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0
     }
@@ -110,6 +114,7 @@ export const getAuditLog = query({
     const page = sliced.slice(0, numItems)
     const hasMore = sliced.length > numItems
     const nextCursor = hasMore
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? (page[page.length - 1] as any)?._id ?? null
       : null
 
@@ -254,7 +259,7 @@ export const forceReleaseLock = mutation({
 export const syncVersion = mutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireSystemPermission(ctx, PERM_SYSTEM_READ)
+    await requireSystemPermission(ctx, PERM_SYSTEM_READ)
     const settings = await getSettings(ctx)
     if (!settings) throw new Error("Parametres globaux introuvables")
 
@@ -330,6 +335,7 @@ export const exportBackup = action({
     }
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const settings: any = await ctx.runQuery(internal.systemInternal.getSettingsInternal, {})
 
       // Deterministic table export order (respects dependencies)
@@ -358,6 +364,7 @@ export const exportBackup = action({
         "emailSubscribers",
       ] as const
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: Record<string, any[]> = {}
       const tableSummary: Record<string, number> = {}
 
@@ -369,6 +376,7 @@ export const exportBackup = action({
         tableSummary[tableName] = rows.length
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const manifest: Record<string, any> = {
         createdAt: Date.now(),
         deployedAppVersion: settings?.deployedAppVersion ?? "unknown",
@@ -546,6 +554,7 @@ export const runMigrations = action({
       // Get applied migrations
       const settings = await ctx.runQuery(internal.systemInternal.getSettingsInternal, {})
       const applied = new Set(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (settings?.appliedMigrations ?? []).map((m: any) => m.id)
       )
 

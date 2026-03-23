@@ -128,6 +128,7 @@ export default function OrderHistoryPage() {
         {/* Orders list */}
         {orders && orders.length > 0 && (
           <div className="flex flex-col gap-5">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {orders.map((order: any) => {
               const date = new Date(order.createdAt).toLocaleDateString("fr-FR", {
                 day: "numeric",
