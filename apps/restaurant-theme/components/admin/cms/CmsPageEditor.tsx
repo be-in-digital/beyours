@@ -321,7 +321,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/content/pages">
+          <Link href="/dashboard/content/pages">
             <Button variant="ghost" size="sm" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>

@@ -521,7 +521,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
       <div className="space-y-3">
         {/* Row 1: Back button + actions */}
         <div className="flex items-center justify-between">
-          <Link href="/content/blog">
+          <Link href="/dashboard/content/blog">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
             </Button>
