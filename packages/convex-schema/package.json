@@ -1,7 +1,12 @@
 {
   "name": "@beindigital-engine/convex-schema",
   "version": "0.2.0",
-  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "files": [
+    "src"
+  ],
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
