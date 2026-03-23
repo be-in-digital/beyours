@@ -147,7 +147,7 @@ export function UIOverridesContent() {
   }
 
   const overrideCount = Object.values(overrides).reduce(
-    (total, langOverrides) => total + Object.keys(langOverrides).length,
+    (total: number, langOverrides) => total + Object.keys(langOverrides).length,
     0
   )
 

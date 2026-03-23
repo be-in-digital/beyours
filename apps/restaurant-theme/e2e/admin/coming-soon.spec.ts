@@ -3,17 +3,16 @@ import { collectConsoleErrors } from "../helpers/console.helpers"
 
 test.describe("Coming Soon Pages", () => {
   const comingSoonPages = [
-    "/customers",
-    "/system",
-    "/games/catalog",
-    "/games/qr-codes",
-    "/games/actions",
-    "/games/winners",
-    "/games/settings",
-    "/email",
-    "/email/campaigns",
-    "/content/pages",
-    "/content/blog",
+    "/dashboard/customers",
+    "/dashboard/games/catalog",
+    "/dashboard/games/qr-codes",
+    "/dashboard/games/actions",
+    "/dashboard/games/winners",
+    "/dashboard/games/settings",
+    "/dashboard/email",
+    "/dashboard/email/campaigns",
+    "/dashboard/content/pages",
+    "/dashboard/content/blog",
   ]
 
   for (const pagePath of comingSoonPages) {

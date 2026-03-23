@@ -18,6 +18,7 @@ import {
 import { LoadingState } from "../../../components/loading-state"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
 import { computeStatRates } from "@beindigital-engine/marketing"
 import { EmailKpiCards } from "./email-kpi-cards"
@@ -54,11 +55,11 @@ const AUTOMATION_TRIGGER_LABELS: Record<string, string> = {
 }
 
 const QUICK_ACTIONS = [
-  { icon: <PlusCircle className="h-4 w-4" />, label: "Nouvelle campagne", href: "/email/campaigns" },
-  { icon: <Users className="h-4 w-4" />, label: "Voir les abonnés", href: "/email/subscribers" },
-  { icon: <Mail className="h-4 w-4" />, label: "Créer un modèle", href: "/email/templates" },
-  { icon: <Filter className="h-4 w-4" />, label: "Gérer les segments", href: "/email/segments" },
-  { icon: <Settings2 className="h-4 w-4" />, label: "Configuration", href: "/email/config" },
+  { icon: <PlusCircle className="h-4 w-4" />, label: "Nouvelle campagne", href: adminRoutes.emailCampaigns },
+  { icon: <Users className="h-4 w-4" />, label: "Voir les abonnés", href: adminRoutes.emailSubscribers },
+  { icon: <Mail className="h-4 w-4" />, label: "Créer un modèle", href: adminRoutes.emailTemplates },
+  { icon: <Filter className="h-4 w-4" />, label: "Gérer les segments", href: adminRoutes.emailSegments },
+  { icon: <Settings2 className="h-4 w-4" />, label: "Configuration", href: adminRoutes.emailConfig },
 ]
 
 export function EmailDashboardPage() {
@@ -165,7 +166,7 @@ export function EmailDashboardPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold">Campagnes récentes</h2>
               <Button variant="ghost" size="sm" asChild>
-                <a href="/email/campaigns">Toutes les campagnes</a>
+                <a href={adminRoutes.emailCampaigns}>Toutes les campagnes</a>
               </Button>
             </div>
           </CardHeader>
@@ -175,7 +176,7 @@ export function EmailDashboardPage() {
                 <Send className="h-8 w-8 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">Aucune campagne créée</p>
                 <Button size="sm" variant="outline" asChild>
-                  <a href="/email/campaigns">Créer une campagne</a>
+                  <a href={adminRoutes.emailCampaigns}>Créer une campagne</a>
                 </Button>
               </div>
             ) : (

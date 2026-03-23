@@ -4,7 +4,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("Subscription Page", () => {
   test.describe("Page Loading", () => {
     test("should load subscription page", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -20,7 +20,7 @@ test.describe("Subscription Page", () => {
 
   test.describe("Pricing View (no active subscription)", () => {
     test("should display pricing cards", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -43,7 +43,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display monthly article quotas", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -57,7 +57,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display image quotas", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -71,7 +71,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display Image vers Produit quotas", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -87,7 +87,7 @@ test.describe("Subscription Page", () => {
     test("should display billing toggle (monthly/annual)", async ({
       page,
     }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -106,7 +106,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display subscribe buttons", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -128,7 +128,7 @@ test.describe("Subscription Page", () => {
 
   test.describe("Current Plan View (active subscription)", () => {
     test("should display plan features list", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

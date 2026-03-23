@@ -4,7 +4,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("CMS Media Library", () => {
   test.describe("Page Loading", () => {
     test("should load media library page", async ({ page }) => {
-      await page.goto("/content/media", {
+      await page.goto("/dashboard/content/media", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -18,7 +18,7 @@ test.describe("CMS Media Library", () => {
     })
 
     test("should display upload button", async ({ page }) => {
-      await page.goto("/content/media", {
+      await page.goto("/dashboard/content/media", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -32,7 +32,7 @@ test.describe("CMS Media Library", () => {
     })
 
     test("should display kind filter", async ({ page }) => {
-      await page.goto("/content/media", {
+      await page.goto("/dashboard/content/media", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

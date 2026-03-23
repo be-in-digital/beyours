@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { Plus, Grid3x3, List, X, ShoppingBag, ImagePlus } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
+import { adminRoutes } from "../../config/admin-routes"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
@@ -150,13 +151,13 @@ export function ProductsPage() {
         {activeTab === "products" ? (
           <div className="flex items-center gap-2">
             <Button variant="outline" asChild>
-              <Link href="/products/from-image">
+              <Link href={adminRoutes.fromImage}>
                 <ImagePlus className="mr-2 h-4 w-4" />
                 Creer depuis image
               </Link>
             </Button>
             <Button asChild>
-              <Link href="/products/new">
+              <Link href={adminRoutes.newProduct}>
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter un produit
               </Link>
@@ -284,7 +285,7 @@ export function ProductsPage() {
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" asChild>
-                      <Link href="/products/new">
+                      <Link href={adminRoutes.newProduct}>
                         <Plus className="mr-2 h-4 w-4" />
                         Créez votre premier produit
                       </Link>

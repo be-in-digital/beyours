@@ -9,7 +9,7 @@ import { collectConsoleErrors } from "../helpers/console.helpers"
  * based on what orders exist in the test database.
  */
 
-const ORDERS_URL = "/orders"
+const ORDERS_URL = "/dashboard/orders"
 const INVALID_ORDER_ID = "invalid-order-id-999"
 
 test.describe("Order Detail Page", () => {
@@ -65,7 +65,7 @@ test.describe("Order Detail Page", () => {
 
       if (hasOrder) {
         const backLink = page.getByRole("link", { name: /retour|orders/i }).or(
-          page.locator('a[href="/orders"]')
+          page.locator('a[href="/dashboard/orders"]')
         )
         await expect(backLink).toBeVisible({ timeout: 15_000 })
       }
@@ -181,7 +181,7 @@ test.describe("Order Detail Page", () => {
     test('should show "Commande introuvable" for invalid order ID', async ({
       page,
     }) => {
-      await page.goto(`/orders/${INVALID_ORDER_ID}`, {
+      await page.goto(`/dashboard/orders/${INVALID_ORDER_ID}`, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -193,7 +193,7 @@ test.describe("Order Detail Page", () => {
 
     test("should show loading state initially", async ({ page }) => {
       // Navigate to an order detail page and check for loading state
-      await page.goto(`/orders/${INVALID_ORDER_ID}`, {
+      await page.goto(`/dashboard/orders/${INVALID_ORDER_ID}`, {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -220,12 +220,12 @@ test.describe("Order Detail Page", () => {
         // Click the back link/button
         const backLink = page
           .getByRole("link", { name: /retour|orders/i })
-          .or(page.locator('a[href="/orders"]'))
+          .or(page.locator('a[href="/dashboard/orders"]'))
 
         await expect(backLink).toBeVisible({ timeout: 15_000 })
         await backLink.first().click()
 
-        await expect(page).toHaveURL(/\/orders$/, { timeout: 15_000 })
+        await expect(page).toHaveURL(/\/dashboard\/orders$/, { timeout: 15_000 })
       }
     })
   })

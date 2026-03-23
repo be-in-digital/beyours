@@ -1,10 +1,6 @@
-import { CmsPageEditor } from "@/components/admin/cms/CmsPageEditor"
+import { redirect } from "next/navigation"
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ pageSlug: string }>
-}) {
+export default async function Page({ params }: { params: Promise<{ pageSlug: string }> }) {
   const { pageSlug } = await params
-  return <CmsPageEditor pageSlug={pageSlug} />
+  redirect(`/dashboard/content/pages/${pageSlug}`)
 }

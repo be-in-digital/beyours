@@ -4,7 +4,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("Blog Auto Config", () => {
   test.describe("Page Loading", () => {
     test("should load auto-config page", async ({ page }) => {
-      await page.goto("/content/blog/auto-config", {
+      await page.goto("/dashboard/content/blog/auto-config", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -20,7 +20,7 @@ test.describe("Blog Auto Config", () => {
     })
 
     test("should display frequency selector", async ({ page }) => {
-      await page.goto("/content/blog/auto-config", {
+      await page.goto("/dashboard/content/blog/auto-config", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -36,7 +36,7 @@ test.describe("Blog Auto Config", () => {
     })
 
     test("should display themes/topics section", async ({ page }) => {
-      await page.goto("/content/blog/auto-config", {
+      await page.goto("/dashboard/content/blog/auto-config", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -52,7 +52,7 @@ test.describe("Blog Auto Config", () => {
     })
 
     test("should display approval mode selector", async ({ page }) => {
-      await page.goto("/content/blog/auto-config", {
+      await page.goto("/dashboard/content/blog/auto-config", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -68,7 +68,7 @@ test.describe("Blog Auto Config", () => {
     })
 
     test("should display save button", async ({ page }) => {
-      await page.goto("/content/blog/auto-config", {
+      await page.goto("/dashboard/content/blog/auto-config", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

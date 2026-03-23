@@ -8,6 +8,7 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useAdminStoreId, useAdminApi } from "../../hooks/admin-hooks"
 import { eurosToCents } from "../../lib/formatters"
+import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
 import { Button } from "@beindigital-engine/ui"
 
@@ -74,7 +75,7 @@ export function NewProductPage() {
       })
 
       toast.success("Produit créé avec succès")
-      router.push("/products")
+      router.push(adminRoutes.products)
     } catch (error) {
       toast.error("Échec de la création du produit")
       console.error(error)
@@ -116,7 +117,7 @@ export function NewProductPage() {
             Vous devez créer au moins une catégorie avant d'ajouter des produits
           </p>
           <Button asChild size="sm" className="mt-4">
-            <Link href="/categories/new">Créer une catégorie</Link>
+            <Link href={adminRoutes.categories}>Créer une catégorie</Link>
           </Button>
         </div>
       </div>
@@ -128,7 +129,7 @@ export function NewProductPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href="/products">
+          <Link href={adminRoutes.products}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

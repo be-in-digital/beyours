@@ -138,7 +138,7 @@ export function NewProductContent() {
       })
 
       toast.success("Produit créé avec succès")
-      router.push("/products")
+      router.push("/dashboard/products")
     } catch (error) {
       toast.error("Échec de la création du produit")
       console.error(error)
@@ -180,7 +180,7 @@ export function NewProductContent() {
             Vous devez créer au moins une catégorie avant d&apos;ajouter des produits
           </p>
           <Button asChild className="mt-4">
-            <Link href="/categories/new">Créer une catégorie</Link>
+            <Link href="/dashboard/categories">Créer une catégorie</Link>
           </Button>
         </div>
       </div>
@@ -192,7 +192,7 @@ export function NewProductContent() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/products">
+          <Link href="/dashboard/products">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

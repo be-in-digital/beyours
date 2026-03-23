@@ -8,7 +8,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 
-const PROMOTIONS_URL = "/promotions"
+const PROMOTIONS_URL = "/dashboard/promotions"
 const SEARCH_PLACEHOLDER = "Rechercher une promotion..."
 
 // Increase timeout for all tests in this file since the dev server

@@ -116,7 +116,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/orders">
+          <Link href="/dashboard/orders">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>

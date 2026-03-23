@@ -6,7 +6,7 @@ import { applySearch } from "../helpers/filter.helpers"
 test.describe("Inventory Page", () => {
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -65,7 +65,7 @@ test.describe("Inventory Page", () => {
 
   test.describe("Status Card Filters", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -142,7 +142,7 @@ test.describe("Inventory Page", () => {
 
   test.describe("Search", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -194,7 +194,7 @@ test.describe("Inventory Page", () => {
 
   test.describe("Inline Editing", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -272,7 +272,7 @@ test.describe("Inventory Page", () => {
 
   test.describe("Pagination", () => {
     test("should display pagination when enough items", async ({ page }) => {
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -301,7 +301,7 @@ test.describe("Inventory Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/inventory", {
+      await page.goto("/dashboard/inventory", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
