@@ -1,7 +1,12 @@
 {
   "name": "@beindigital-engine/marketing",
   "version": "0.1.0",
-  "private": true,
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
