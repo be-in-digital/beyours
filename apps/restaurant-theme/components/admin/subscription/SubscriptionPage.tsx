@@ -39,11 +39,11 @@ export function SubscriptionPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Abonnement Auto Blog
+          Abonnement BeInDigital
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isActive
-            ? "Gérez votre abonnement et vos droits d'accès."
+            ? "Gérez votre abonnement et vos fonctionnalités premium."
             : "Choisissez le plan adapté à votre restaurant."}
         </p>
       </div>

@@ -46,6 +46,10 @@ interface CurrentPlanViewProps {
       allowMultiLanguage: boolean
       allowAutoPublish: boolean
     }
+    imageToProduct?: {
+      enabled: boolean
+      monthlyAnalysisQuota: number
+    }
     stripeCustomerId?: string
     subscriptionStatus?: string
   }
@@ -74,7 +78,7 @@ export function CurrentPlanView({ entitlements }: CurrentPlanViewProps) {
     }
   }
 
-  const { autoBlog, subscriptionStatus } = entitlements
+  const { autoBlog, imageToProduct, subscriptionStatus } = entitlements
   const planName = autoBlog.plan
     ? (PLAN_LABELS[autoBlog.plan] ?? autoBlog.plan)
     : "Inconnu"
@@ -95,10 +99,22 @@ export function CurrentPlanView({ entitlements }: CurrentPlanViewProps) {
     autoBlog.monthlyImageQuota ??
     (autoBlog.plan ? IMAGE_QUOTA_BY_PLAN[autoBlog.plan] ?? 0 : 0)
 
+  // Image-to-Product quota
+  const ITP_QUOTA_BY_PLAN: Record<string, number> = {
+    starter: 3,
+    pro: 15,
+    enterprise: 50,
+  }
+  const itpQuota =
+    imageToProduct?.monthlyAnalysisQuota ??
+    (autoBlog.plan ? ITP_QUOTA_BY_PLAN[autoBlog.plan] ?? 0 : 0)
+  const itpEnabled = imageToProduct?.enabled ?? itpQuota > 0
+
   const features = [
     {
       label: `${autoBlog.monthlyQuota} articles / mois`,
       included: true,
+      section: "Auto Blog" as const,
     },
     {
       label:
@@ -106,20 +122,31 @@ export function CurrentPlanView({ entitlements }: CurrentPlanViewProps) {
           ? "Sujets illimités"
           : `${autoBlog.maxTopics} sujets maximum`,
       included: true,
+      section: "Auto Blog" as const,
     },
     {
       label: imageQuota > 0
         ? `${imageQuota} images IA / mois`
         : "Images IA",
       included: imageQuota > 0,
+      section: "Auto Blog" as const,
     },
     {
       label: "Multi-langue",
       included: autoBlog.allowMultiLanguage,
+      section: "Auto Blog" as const,
     },
     {
       label: "Publication automatique",
       included: autoBlog.allowAutoPublish,
+      section: "Auto Blog" as const,
+    },
+    {
+      label: itpEnabled
+        ? `${itpQuota} analyses Image vers Produit / mois`
+        : "Image vers Produit",
+      included: itpEnabled,
+      section: "Image vers Produit" as const,
     },
   ]
 
@@ -130,7 +157,7 @@ export function CurrentPlanView({ entitlements }: CurrentPlanViewProps) {
           <div className="flex items-start justify-between">
             <div>
               <CardTitle className="text-lg">Plan actuel</CardTitle>
-              <CardDescription>Votre abonnement Auto Blog</CardDescription>
+              <CardDescription>Votre abonnement BeInDigital</CardDescription>
             </div>
             <Badge className={statusInfo.className}>{statusInfo.label}</Badge>
           </div>
@@ -197,8 +224,8 @@ function UpgradePrompt({
   const nextPlan = currentPlan === "starter" ? "Pro" : "Enterprise"
   const message =
     currentPlan === "starter"
-      ? "Passez au plan Pro pour la publication automatique, 20 images IA et 8 articles par mois."
-      : "Passez au plan Enterprise pour le multi-langue, 100 images IA et 30 articles par mois."
+      ? "Passez au plan Pro pour la publication automatique, 20 images IA, 15 analyses Image vers Produit et 8 articles par mois."
+      : "Passez au plan Enterprise pour le multi-langue, 100 images IA, 50 analyses Image vers Produit et 30 articles par mois."
 
   const handleUpgrade = async () => {
     setIsLoading(true)
