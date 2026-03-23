@@ -180,7 +180,7 @@ export function NewProductContent() {
             Vous devez créer au moins une catégorie avant d&apos;ajouter des produits
           </p>
           <Button asChild className="mt-4">
-            <Link href="/categories/new">Créer une catégorie</Link>
+            <Link href="/dashboard/categories">Créer une catégorie</Link>
           </Button>
         </div>
       </div>
