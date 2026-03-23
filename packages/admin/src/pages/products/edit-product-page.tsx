@@ -84,7 +84,7 @@ export function EditProductPage({ params }: EditProductPageProps) {
       })
 
       toast.success("Produit mis à jour avec succès")
-      router.push("/products")
+      router.push("/dashboard/products")
     } catch (error) {
       toast.error("Échec de la mise à jour du produit")
       console.error(error)
@@ -133,7 +133,7 @@ export function EditProductPage({ params }: EditProductPageProps) {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href="/products">
+          <Link href="/dashboard/products">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

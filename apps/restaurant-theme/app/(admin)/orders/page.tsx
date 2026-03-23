@@ -1,5 +1,5 @@
-import { OrdersPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <OrdersPage />
+  redirect("/dashboard/orders")
 }

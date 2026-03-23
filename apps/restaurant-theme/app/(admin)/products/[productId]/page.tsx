@@ -1,9 +1,6 @@
-import { EditProductPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
-export default function Page({
-  params,
-}: {
-  params: Promise<{ productId: string }>
-}) {
-  return <EditProductPage params={params} />
+export default async function Page({ params }: { params: Promise<{ productId: string }> }) {
+  const { productId } = await params
+  redirect(`/dashboard/products/${productId}`)
 }

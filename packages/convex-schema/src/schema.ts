@@ -62,6 +62,7 @@ import {
   cms404Table,
   cmsMaintenanceTable,
   cmsAccountTable,
+  systemAuditLogTable,
 } from "./tables"
 
 /**
@@ -140,4 +141,6 @@ export default defineSchema({
   cms404: cms404Table,
   cmsMaintenance: cmsMaintenanceTable,
   cmsAccount: cmsAccountTable,
+  // System
+  systemAuditLog: systemAuditLogTable,
 })

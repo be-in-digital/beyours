@@ -482,7 +482,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
     try {
       await deleteArticle({ articleId: articleId as Id<"blogArticles"> })
       toast.success("Article supprime")
-      router.push("/content/blog")
+      router.push("/dashboard/content/blog")
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Erreur lors de la suppression",

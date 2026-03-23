@@ -125,7 +125,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Commandes récentes</CardTitle>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/orders" className="text-muted-foreground hover:text-foreground">
+          <Link href="/dashboard/orders" className="text-muted-foreground hover:text-foreground">
             Voir tout <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
         </Button>
@@ -148,7 +148,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
               <TableRow key={order._id} className="cursor-pointer transition-colors hover:bg-muted/50">
                 <TableCell>
                   <Link
-                    href={`/orders/${order._id}`}
+                    href={`/dashboard/orders/${order._id}`}
                     className="font-medium hover:underline"
                   >
                     {formatOrderNumber(order.orderNumber)}

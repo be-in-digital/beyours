@@ -100,7 +100,7 @@ export function BlogArticlesTable({
             <TableRow
               key={article._id}
               className="cursor-pointer hover:bg-muted/50"
-              onClick={() => router.push(`/content/blog/${article._id}`)}
+              onClick={() => router.push(`/dashboard/content/blog/${article._id}`)}
             >
               <TableCell>
                 <div>
@@ -134,7 +134,7 @@ export function BlogArticlesTable({
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation()
-                        router.push(`/content/blog/${article._id}`)
+                        router.push(`/dashboard/content/blog/${article._id}`)
                       }}
                     >
                       <Pencil className="mr-2 h-4 w-4" />

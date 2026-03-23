@@ -9,7 +9,7 @@ import { Store } from "lucide-react"
 import Link from "next/link"
 import { useAdminApiStore } from "../stores/admin-api-store"
 
-const BYPASS_ROUTES = ["/stores", "/settings"]
+const BYPASS_ROUTES = ["/dashboard/stores", "/dashboard/settings"]
 
 interface StoreGuardProps {
   children: React.ReactNode
@@ -74,7 +74,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
             </p>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/stores">Créer un établissement</Link>
+            <Link href="/dashboard/stores">Créer un établissement</Link>
           </Button>
         </div>
       </div>

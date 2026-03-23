@@ -16,7 +16,7 @@ interface ActionTile {
 
 const actions: ActionTile[] = [
   {
-    href: "/orders",
+    href: "/dashboard/orders",
     icon: <ShoppingCart className="h-5 w-5" />,
     iconBg: "bg-primary/10",
     iconColor: "text-primary",
@@ -24,7 +24,7 @@ const actions: ActionTile[] = [
     description: "Créer une commande manuellement",
   },
   {
-    href: "/products/new",
+    href: "/dashboard/products/new",
     icon: <PlusCircle className="h-5 w-5" />,
     iconBg: "bg-success/10",
     iconColor: "text-success",
@@ -32,7 +32,7 @@ const actions: ActionTile[] = [
     description: "Ajouter au catalogue",
   },
   {
-    href: "/kitchen",
+    href: "/dashboard/orders/kitchen",
     icon: <ChefHat className="h-5 w-5" />,
     iconBg: "bg-info/10",
     iconColor: "text-info",

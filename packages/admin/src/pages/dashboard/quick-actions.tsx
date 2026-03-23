@@ -5,19 +5,19 @@ import { ShoppingCart, PlusCircle, ChefHat } from "lucide-react"
 
 const actions = [
   {
-    href: "/orders",
+    href: "/dashboard/orders",
     icon: ShoppingCart,
     label: "Nouvelle commande",
     description: "Créer une commande manuellement",
   },
   {
-    href: "/products/new",
+    href: "/dashboard/products/new",
     icon: PlusCircle,
     label: "Ajouter un produit",
     description: "Ajouter au catalogue",
   },
   {
-    href: "/kitchen",
+    href: "/dashboard/orders/kitchen",
     icon: ChefHat,
     label: "Voir la cuisine",
     description: "Écran de préparation",

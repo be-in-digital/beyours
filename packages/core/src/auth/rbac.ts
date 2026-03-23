@@ -55,6 +55,7 @@ export enum Resource {
   DELIVERIES = 'deliveries',
   TABLES = 'tables',
   MENUS = 'menus',
+  SYSTEM = 'system',
 }
 
 /**
@@ -69,6 +70,9 @@ export enum Action {
   MANAGE = 'manage',
   VIEW_ALL = 'view_all',
   VIEW_OWN = 'view_own',
+  BACKUP = 'backup',
+  RESTORE = 'restore',
+  MIGRATE = 'migrate',
 }
 
 /**
@@ -118,6 +122,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'tables:write',
     'menus:read',
     'menus:write',
+    'system:read',
+    'system:backup',
+    'system:restore',
+    'system:migrate',
   ],
 
   // Client Admin : tout sur son restaurant
@@ -151,6 +159,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'tables:write',
     'menus:read',
     'menus:write',
+    'system:read',
+    'system:backup',
+    'system:restore',
+    'system:migrate',
   ],
 
   // Manager : gestion opérationnelle

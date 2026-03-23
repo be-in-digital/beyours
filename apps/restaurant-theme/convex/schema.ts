@@ -62,6 +62,7 @@ import {
   cms404Table,
   cmsMaintenanceTable,
   cmsAccountTable,
+  systemAuditLogTable,
 } from "@beindigital-engine/convex-schema";
 
 /**
@@ -136,6 +137,8 @@ export default defineSchema({
   cms404: cms404Table,
   cmsMaintenance: cmsMaintenanceTable,
   cmsAccount: cmsAccountTable,
+  // System
+  systemAuditLog: systemAuditLogTable,
   },
   { schemaValidation: false }
 );

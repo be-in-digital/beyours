@@ -121,44 +121,44 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
             <TableRow key={order._id} className="cursor-pointer">
               <TableCell className="text-sm">
                 <Link
-                  href={`/orders/${order._id}`}
+                  href={`/dashboard/orders/${order._id}`}
                   className="font-medium hover:underline"
                 >
                   {formatOrderNumber(order.orderNumber)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`} className="hover:underline">
+                <Link href={`/dashboard/orders/${order._id}`} className="hover:underline">
                   {order.customerInfo.name}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/dashboard/orders/${order._id}`}>
                   {getTypeBadge(order.type)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/dashboard/orders/${order._id}`}>
                   {getTotalItems(order.items)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`} className="font-medium">
+                <Link href={`/dashboard/orders/${order._id}`} className="font-medium">
                   {formatPrice(order.total)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/dashboard/orders/${order._id}`}>
                   {getStatusBadge(order.status)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm">
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/dashboard/orders/${order._id}`}>
                   {getPaymentBadge(order.paymentStatus)}
                 </Link>
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                <Link href={`/orders/${order._id}`}>
+                <Link href={`/dashboard/orders/${order._id}`}>
                   {formatDate(order.createdAt)}
                 </Link>
               </TableCell>

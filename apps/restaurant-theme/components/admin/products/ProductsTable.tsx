@@ -205,7 +205,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href={`/products/${product._id}`}>
+                          <Link href={`/dashboard/products/${product._id}`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Modifier
                           </Link>

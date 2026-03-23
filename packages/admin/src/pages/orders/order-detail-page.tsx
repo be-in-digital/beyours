@@ -316,7 +316,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/orders">
+          <Link href="/dashboard/orders">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>

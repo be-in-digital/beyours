@@ -1,5 +1,5 @@
-import { SettingsPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <SettingsPage />
+  redirect("/dashboard/settings")
 }

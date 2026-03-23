@@ -64,7 +64,7 @@ export function CreateArticleDialog({
       setTitle("")
       setCategoryId("")
       // Navigate immediately — don't wait for dialog animation
-      router.push(`/content/blog/${articleId}`)
+      router.push(`/dashboard/content/blog/${articleId}`)
       toast.success("Article cree")
     } catch (err) {
       toast.error(
