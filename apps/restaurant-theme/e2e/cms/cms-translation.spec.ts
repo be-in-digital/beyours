@@ -6,7 +6,7 @@ test.describe("CMS Translation", () => {
     test("should display translate button on text fields", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -24,7 +24,7 @@ test.describe("CMS Translation", () => {
     test("should not display translate button on image fields", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -47,7 +47,7 @@ test.describe("CMS Translation", () => {
     test("should open translation drawer on button click", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -71,7 +71,7 @@ test.describe("CMS Translation", () => {
     test("should show language sections in translation drawer", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -109,7 +109,7 @@ test.describe("CMS Translation", () => {
     test("should show translation count when translations exist", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -131,7 +131,7 @@ test.describe("CMS Translation", () => {
     test("should disable publish button while translation is pending", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -186,7 +186,7 @@ test.describe("CMS Translation", () => {
     test("publish button should re-enable after translation completes", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -226,7 +226,7 @@ test.describe("CMS Translation", () => {
     test("should successfully publish page after translations complete", async ({
       page,
     }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

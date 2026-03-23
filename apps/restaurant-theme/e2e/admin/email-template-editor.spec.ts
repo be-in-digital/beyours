@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 
-const TEMPLATES_URL = "/email/templates"
+const TEMPLATES_URL = "/dashboard/email/templates"
 
 /**
  * Helper: open the template editor by creating a new template.

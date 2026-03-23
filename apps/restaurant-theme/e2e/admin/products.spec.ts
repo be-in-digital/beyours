@@ -7,7 +7,7 @@ const SEARCH_PLACEHOLDER = "Rechercher un produit par nom ou description..."
 test.describe("Products Page", () => {
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -53,7 +53,7 @@ test.describe("Products Page", () => {
 
   test.describe("Search & Filters", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -180,7 +180,7 @@ test.describe("Products Page", () => {
 
   test.describe("View Mode", () => {
     test("should toggle between table and grid view", async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -208,7 +208,7 @@ test.describe("Products Page", () => {
 
   test.describe("Pagination", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -259,7 +259,7 @@ test.describe("Products Page", () => {
 
   test.describe("Menus Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -294,7 +294,7 @@ test.describe("Products Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

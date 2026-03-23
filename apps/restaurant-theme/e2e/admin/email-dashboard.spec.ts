@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 
-const EMAIL_URL = "/email"
+const EMAIL_URL = "/dashboard/email"
 
 test.describe("Email Dashboard Page", () => {
   test.describe("Page Structure", () => {

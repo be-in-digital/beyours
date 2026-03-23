@@ -78,7 +78,7 @@ test.describe("Sidebar Navigation", () => {
       page,
     }) => {
       // Navigate away first
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -90,34 +90,34 @@ test.describe("Sidebar Navigation", () => {
 
     test("should navigate to /orders via Commandes", async ({ page }) => {
       await navigateViaSidebar(page, "Commandes")
-      await expect(page).toHaveURL(/\/orders/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/orders/, { timeout: 15_000 })
     })
 
     test("should navigate to /products via Menu & Produits", async ({
       page,
     }) => {
       await navigateViaSidebar(page, "Menu & Produits")
-      await expect(page).toHaveURL(/\/products/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/products/, { timeout: 15_000 })
     })
 
     test("should navigate to /stores via Établissements", async ({ page }) => {
       await navigateViaSidebar(page, "Établissements")
-      await expect(page).toHaveURL(/\/stores/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/stores/, { timeout: 15_000 })
     })
 
     test("should navigate to /team via Équipe & Rôles", async ({ page }) => {
       await navigateViaSidebar(page, "Équipe & Rôles")
-      await expect(page).toHaveURL(/\/team/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/team/, { timeout: 15_000 })
     })
 
     test("should navigate to /settings via Paramètres", async ({ page }) => {
       await navigateViaSidebar(page, "Paramètres")
-      await expect(page).toHaveURL(/\/settings/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/settings/, { timeout: 15_000 })
     })
 
     test("should navigate to /inventory via Inventaire", async ({ page }) => {
       await navigateViaSidebar(page, "Inventaire")
-      await expect(page).toHaveURL(/\/inventory/, { timeout: 15_000 })
+      await expect(page).toHaveURL(/\/dashboard\/inventory/, { timeout: 15_000 })
     })
   })
 

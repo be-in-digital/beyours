@@ -8,7 +8,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 
-const TEMPLATES_URL = "/email/templates"
+const TEMPLATES_URL = "/dashboard/email/templates"
 
 test.describe("Email Templates Page", () => {
   test.describe("Page Structure", () => {
