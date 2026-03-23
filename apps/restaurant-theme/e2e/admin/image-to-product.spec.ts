@@ -25,7 +25,7 @@ test.describe("Image to Product", () => {
 
   test.describe("Navigation & Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -58,18 +58,18 @@ test.describe("Image to Product", () => {
       })
 
       // There should be a link that navigates back to products
-      const links = page.locator('a[href="/products"]')
+      const links = page.locator('a[href="/dashboard/products"]')
       await expect(links.first()).toBeVisible({ timeout: 15_000 })
     })
 
     test("should navigate back to products page when clicking back", async ({
       page,
     }) => {
-      const backLink = page.locator('a[href="/products"]').first()
+      const backLink = page.locator('a[href="/dashboard/products"]').first()
       await expect(backLink).toBeVisible({ timeout: 15_000 })
       await backLink.click()
 
-      await expect(page).toHaveURL(/\/products$/, { timeout: 30_000 })
+      await expect(page).toHaveURL(/\/dashboard\/products$/, { timeout: 30_000 })
     })
   })
 
@@ -81,7 +81,7 @@ test.describe("Image to Product", () => {
     test('should have "Creer depuis image" button on products page', async ({
       page,
     }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -96,7 +96,7 @@ test.describe("Image to Product", () => {
     test("should navigate to /products/from-image when clicking the button", async ({
       page,
     }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -108,7 +108,7 @@ test.describe("Image to Product", () => {
       await expect(imageButton).toBeVisible({ timeout: 15_000 })
       await imageButton.click()
 
-      await expect(page).toHaveURL(/\/products\/from-image/, {
+      await expect(page).toHaveURL(/\/dashboard\/products\/from-image/, {
         timeout: 30_000,
       })
       await expect(
@@ -123,7 +123,7 @@ test.describe("Image to Product", () => {
 
   test.describe("Upload Step", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -254,7 +254,7 @@ test.describe("Image to Product", () => {
     test("should trigger analysis and show loading state when URL is provided", async ({
       page,
     }) => {
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -312,7 +312,7 @@ test.describe("Image to Product", () => {
 
       test.setTimeout(120_000) // AI analysis can take 30-60 seconds
 
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -381,7 +381,7 @@ test.describe("Image to Product", () => {
     }) => {
       test.setTimeout(120_000)
 
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -420,7 +420,7 @@ test.describe("Image to Product", () => {
     }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/products/from-image", {
+      await page.goto("/dashboard/products/from-image", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

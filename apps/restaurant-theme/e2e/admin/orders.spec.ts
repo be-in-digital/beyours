@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 
-const ORDERS_URL = "/orders"
+const ORDERS_URL = "/dashboard/orders"
 const SEARCH_PLACEHOLDER =
   "Rechercher par n° de commande ou nom du client..."
 

@@ -4,7 +4,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("CMS Reset Functionality", () => {
   test.describe("Editor Reset Controls", () => {
     test("should display reset button per field", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -19,7 +19,7 @@ test.describe("CMS Reset Functionality", () => {
     })
 
     test("should display reset block button", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

@@ -6,7 +6,7 @@ import {
 test.describe("CMS Page Editor", () => {
   test.describe("Pages List", () => {
     test("should display CMS pages list", async ({ page }) => {
-      await page.goto("/content/pages", {
+      await page.goto("/dashboard/content/pages", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -22,7 +22,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should navigate to page editor on row click", async ({ page }) => {
-      await page.goto("/content/pages", {
+      await page.goto("/dashboard/content/pages", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -44,7 +44,7 @@ test.describe("CMS Page Editor", () => {
 
   test.describe("Page Editor", () => {
     test("should load sign-in page editor", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -58,7 +58,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should display block accordions", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -71,7 +71,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should have publish button", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -85,7 +85,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should have preview button with correct link", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -98,7 +98,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should display block labels from registry", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -116,7 +116,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should display field labels from registry", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -135,7 +135,7 @@ test.describe("CMS Page Editor", () => {
 
   test.describe("Autosave", () => {
     test("should show save status after editing a field", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -179,7 +179,7 @@ test.describe("CMS Page Editor", () => {
 
   test.describe("SEO Block", () => {
     test("should display SEO block on homepage editor", async ({ page }) => {
-      await page.goto("/content/pages/homepage", {
+      await page.goto("/dashboard/content/pages/homepage", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -191,7 +191,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should display SEO fields on menu page", async ({ page }) => {
-      await page.goto("/content/pages/menu", {
+      await page.goto("/dashboard/content/pages/menu", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -211,7 +211,7 @@ test.describe("CMS Page Editor", () => {
 
   test.describe("Reset", () => {
     test("should have reset buttons on fields", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -227,7 +227,7 @@ test.describe("CMS Page Editor", () => {
     })
 
     test("should have block-level reset button", async ({ page }) => {
-      await page.goto("/content/pages/sign-in", {
+      await page.goto("/dashboard/content/pages/sign-in", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

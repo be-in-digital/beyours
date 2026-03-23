@@ -5,7 +5,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("Kitchen Page", () => {
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/kitchen", {
+      await page.goto("/dashboard/orders/kitchen", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -100,7 +100,7 @@ test.describe("Kitchen Page", () => {
 
   test.describe("Station Filter", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/kitchen", {
+      await page.goto("/dashboard/orders/kitchen", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -163,7 +163,7 @@ test.describe("Kitchen Page", () => {
 
   test.describe("Ticket Cards", () => {
     test("should display ticket cards with order info", async ({ page }) => {
-      await page.goto("/kitchen", {
+      await page.goto("/dashboard/orders/kitchen", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -192,7 +192,7 @@ test.describe("Kitchen Page", () => {
 
   test.describe("Loading", () => {
     test("should show skeleton while loading", async ({ page }) => {
-      await page.goto("/kitchen", {
+      await page.goto("/dashboard/orders/kitchen", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -211,7 +211,7 @@ test.describe("Kitchen Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/kitchen", {
+      await page.goto("/dashboard/orders/kitchen", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

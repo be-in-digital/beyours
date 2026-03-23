@@ -19,7 +19,7 @@ test.describe("Route Protection", () => {
     test("should redirect /products to /sign-in when not authenticated", async ({
       page,
     }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -30,7 +30,7 @@ test.describe("Route Protection", () => {
     test("should redirect /orders to /sign-in when not authenticated", async ({
       page,
     }) => {
-      await page.goto("/orders", {
+      await page.goto("/dashboard/orders", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -41,7 +41,7 @@ test.describe("Route Protection", () => {
     test("should redirect /stores to /sign-in when not authenticated", async ({
       page,
     }) => {
-      await page.goto("/stores", {
+      await page.goto("/dashboard/stores", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

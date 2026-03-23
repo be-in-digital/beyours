@@ -5,7 +5,7 @@ test.describe("Blog Article Editor", () => {
   test.describe("Editor Loading", () => {
     // Navigate to the first available article or create one
     test.beforeEach(async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -40,7 +40,7 @@ test.describe("Blog Article Editor", () => {
       page,
     }) => {
       // Try to navigate to the first article
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -71,7 +71,7 @@ test.describe("Blog Article Editor", () => {
     })
 
     test("should display image button in toolbar", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

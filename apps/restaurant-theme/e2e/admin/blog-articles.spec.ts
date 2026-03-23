@@ -5,7 +5,7 @@ import { waitForDialog, getDialog } from "../helpers/dialog.helpers"
 test.describe("Blog Articles", () => {
   test.describe("Page Loading", () => {
     test("should load blog articles page", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -18,7 +18,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should display create article button", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -31,7 +31,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should display generate article button", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -46,7 +46,7 @@ test.describe("Blog Articles", () => {
 
   test.describe("Create Article Dialog", () => {
     test("should open create article dialog", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -64,7 +64,7 @@ test.describe("Blog Articles", () => {
     test("should close create article dialog with Escape", async ({
       page,
     }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -83,7 +83,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should have required fields in create dialog", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -105,7 +105,7 @@ test.describe("Blog Articles", () => {
 
   test.describe("Generate Article Dialog", () => {
     test("should open generate article dialog", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -121,7 +121,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should have topic input in generate dialog", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -143,7 +143,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should have tone selector in generate dialog", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -165,7 +165,7 @@ test.describe("Blog Articles", () => {
     test("should have category selector in generate dialog", async ({
       page,
     }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -185,7 +185,7 @@ test.describe("Blog Articles", () => {
     })
 
     test("should close generate dialog with Escape", async ({ page }) => {
-      await page.goto("/content/blog", {
+      await page.goto("/dashboard/content/blog", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

@@ -21,7 +21,7 @@ test.describe("Admin Responsive", () => {
     })
 
     test("should render products page without overflow", async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -34,7 +34,7 @@ test.describe("Admin Responsive", () => {
     })
 
     test("should render orders page without overflow", async ({ page }) => {
-      await page.goto("/orders", {
+      await page.goto("/dashboard/orders", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -90,7 +90,7 @@ test.describe("Admin Responsive", () => {
     })
 
     test("should render products page properly", async ({ page }) => {
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -105,7 +105,7 @@ test.describe("Admin Responsive", () => {
     })
 
     test("should render settings page properly", async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -135,7 +135,7 @@ test.describe("Admin Responsive", () => {
     })
 
     test("should render all pages at full width", async ({ page }) => {
-      const pages = ["/dashboard", "/products", "/orders", "/stores"]
+      const pages = ["/dashboard", "/dashboard/products", "/dashboard/orders", "/dashboard/stores"]
 
       for (const url of pages) {
         await page.goto(url, {
@@ -185,7 +185,7 @@ test.describe("Admin Responsive", () => {
     test("should display create store dialog properly at 375px", async ({
       page,
     }) => {
-      await page.goto("/stores", {
+      await page.goto("/dashboard/stores", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -215,7 +215,7 @@ test.describe("Admin Responsive", () => {
     test("should display invite member dialog properly at 375px", async ({
       page,
     }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

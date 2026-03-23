@@ -7,7 +7,7 @@ test.describe("Product Form", () => {
 
   test.describe("New Product Page", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/new", {
+      await page.goto("/dashboard/products/new", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -23,7 +23,7 @@ test.describe("Product Form", () => {
     test("should display back button to /products", async ({ page }) => {
       // The back button/link should navigate to /products
       const backLink = page.getByRole("link", { name: /retour|produits/i }).or(
-        page.locator('a[href="/products"]')
+        page.locator('a[href="/dashboard/products"]')
       )
 
       await expect(backLink).toBeVisible({ timeout: 15_000 })
@@ -114,7 +114,7 @@ test.describe("Product Form", () => {
 
   test.describe("Form Tabs", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/new", {
+      await page.goto("/dashboard/products/new", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -194,7 +194,7 @@ test.describe("Product Form", () => {
 
   test.describe("Options Management", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/new", {
+      await page.goto("/dashboard/products/new", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -287,7 +287,7 @@ test.describe("Product Form", () => {
 
   test.describe("Stock Management", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/products/new", {
+      await page.goto("/dashboard/products/new", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -363,7 +363,7 @@ test.describe("Product Form", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/products/new", {
+      await page.goto("/dashboard/products/new", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

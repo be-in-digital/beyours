@@ -8,7 +8,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 
-const SEGMENTS_URL = "/email/segments"
+const SEGMENTS_URL = "/dashboard/email/segments"
 
 test.describe("Email Segments Page", () => {
   test.describe("Page Structure", () => {

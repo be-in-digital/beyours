@@ -176,7 +176,7 @@ test.describe("Dashboard Page", () => {
       page,
     }) => {
       // Navigate to a different page first
-      await page.goto("/products", {
+      await page.goto("/dashboard/products", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
