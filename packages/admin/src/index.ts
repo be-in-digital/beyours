@@ -30,6 +30,9 @@ export { useAdminApiStore } from "./stores/admin-api-store"
 // Hooks
 export { useAdminStoreId, useAdminApi, useDebounce } from "./hooks/admin-hooks"
 
+// Config
+export { adminRoutes } from "./config/admin-routes"
+
 // Lib
 export {
   formatPrice,
@@ -40,7 +43,7 @@ export {
   eurosToCents,
   centsToEuros,
 } from "./lib/formatters"
-export { ADMIN_PAGE_SIZE } from "./lib/constants"
+export { ADMIN_PAGE_SIZE, APP_VERSION } from "./lib/constants"
 
 // Sidebar UI primitives (for layout composition)
 export {
@@ -75,3 +78,4 @@ export {
   EmailSegmentsPage,
   EmailConfigPage,
 } from "./pages/email"
+export { SystemPage } from "./pages/system"

@@ -1,5 +1,5 @@
-import { EmailSegmentsPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <EmailSegmentsPage />
+  redirect("/dashboard/email/segments")
 }

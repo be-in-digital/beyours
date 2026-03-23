@@ -1,9 +1,6 @@
-import { OrderDetailPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
-export default function Page({
-  params,
-}: {
-  params: Promise<{ orderId: string }>
-}) {
-  return <OrderDetailPage params={params} />
+export default async function Page({ params }: { params: Promise<{ orderId: string }> }) {
+  const { orderId } = await params
+  redirect(`/dashboard/orders/${orderId}`)
 }

@@ -126,7 +126,7 @@ function LockedView({
       <CardContent className="flex flex-col items-center gap-3 pb-6">
         {showUpgradeLink && (
           <Button asChild>
-            <Link href="/subscription">Voir les abonnements</Link>
+            <Link href="/dashboard/subscription">Voir les abonnements</Link>
           </Button>
         )}
       </CardContent>

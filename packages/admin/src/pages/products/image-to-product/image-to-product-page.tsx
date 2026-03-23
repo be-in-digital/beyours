@@ -171,7 +171,7 @@ export function ImageToProductPage() {
 
       if (created > 0) {
         toast.success(`${created} produit(s) cree(s) avec succes`)
-        router.push("/products")
+        router.push("/dashboard/products")
       }
     } catch (error) {
       toast.error("Erreur lors de la creation des produits")
@@ -201,7 +201,7 @@ export function ImageToProductPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href="/products">
+          <Link href="/dashboard/products">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

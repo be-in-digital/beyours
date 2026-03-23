@@ -249,7 +249,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
                         <DropdownMenuLabel className="text-xs">Actions</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href={`/products/${product._id}`} className="text-xs">
+                          <Link href={`/dashboard/products/${product._id}`} className="text-xs">
                             <Edit className="mr-2 h-3.5 w-3.5" />
                             Modifier
                           </Link>

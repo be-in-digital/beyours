@@ -1,5 +1,5 @@
-import { CmsMediaLibrary } from "@/components/admin/cms/CmsMediaLibrary"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <CmsMediaLibrary />
+  redirect("/dashboard/content/media")
 }

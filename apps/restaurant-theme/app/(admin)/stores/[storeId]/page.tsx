@@ -1,9 +1,6 @@
-import { StoreDetailPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
-export default function Page({
-  params,
-}: {
-  params: Promise<{ storeId: string }>
-}) {
-  return <StoreDetailPage params={params} />
+export default async function Page({ params }: { params: Promise<{ storeId: string }> }) {
+  const { storeId } = await params
+  redirect(`/dashboard/stores/${storeId}`)
 }

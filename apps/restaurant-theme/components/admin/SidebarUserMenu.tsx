@@ -83,7 +83,7 @@ export function SidebarUserMenu() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/settings")}>
+            <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
               <Settings className="mr-2 size-4" />
               Paramètres
             </DropdownMenuItem>
