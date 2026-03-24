@@ -1,5 +1,27 @@
 # Changelog - @beindigital-engine/convex-schema
 
+## 1.0.0
+
+### Major Changes
+
+- ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
+
+  ### What changed
+  - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
+  - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
+  - Added `"files"` field to control published contents.
+
+  ### Why
+
+  First official release of all packages on the npm private registry for distribution.
+
+  ### How to install
+
+  ```bash
+  npm login --scope=@beindigital-engine
+  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  ```
+
 Toutes les modifications notables de ce package seront documentées dans ce fichier.
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
@@ -12,33 +34,39 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 #### Schéma de base de données Convex complet
 
 **Tables Better Auth**
+
 - `user` - Utilisateurs avec authentification
 - `session` - Gestion des sessions
 - `account` - Comptes OAuth et mots de passe
 - `verification` - Vérifications email et tokens
 
 **Extensions BeInDigital**
+
 - `userProfiles` - Profils utilisateurs étendus avec rôles et permissions
 - `stores` - Gestion multi-magasins (illimité par propriétaire)
 - `teamMembers` - Membres de l'équipe avec rôles spécifiques
 
 **Catalogue**
+
 - `categories` - Catégories de produits (hiérarchiques)
 - `products` - Produits complets avec options, allergènes, horaires, stock
 - `menus` - Formules et combos
 
 **Commandes**
+
 - `orders` - Commandes complètes (delivery, pickup, dine-in)
 - `kitchenTickets` - Tickets cuisine avec stations
 - `printerSettings` - Configuration imprimantes ESC/POS
 - `payments` - Paiements multi-providers (Stripe, SumUp, PayPal, Square, Cash)
 
 **Internationalisation**
+
 - `languages` - Langues dynamiques (illimitées)
 - `translations` - Traductions par entité et champ
 - `translationJobs` - Jobs de traduction automatique GPT-3.5
 
 **Gamification**
+
 - `gameQRCodes` - QR codes sur tables restaurant
 - `requiredActions` - Actions sociales requises (Google review, Instagram follow, etc.)
 - `games` - Jeux (Roue de la Fortune, Carte à gratter) avec taux de gain contrôlable
@@ -49,6 +77,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 #### Validators Zod complets
 
 **50+ validators** pour toutes les opérations CRUD:
+
 - Stores (create, update, status)
 - Categories (create, update)
 - Products (create, update, stock)
@@ -64,6 +93,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - User Profiles (create, update)
 
 **Features des validators:**
+
 - Messages d'erreur en français
 - Validation stricte des formats (emails, URLs, codes pays, horaires)
 - Transformations automatiques (uppercase, lowercase, normalization)
@@ -73,8 +103,9 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 #### Types TypeScript
 
 **90+ types exportés** incluant:
+
 - Types d'entrée (CreateXInput, UpdateXInput)
-- Types de documents (XDoc avec _id et _creationTime)
+- Types de documents (XDoc avec \_id et \_creationTime)
 - Types énumérés (OrderStatus, PaymentStatus, UserRole, etc.)
 - Types complexes (ProductOption, OrderItem, etc.)
 - Types utilitaires (BaseEntity, PaginationParams, etc.)
@@ -95,6 +126,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 #### Index optimisés
 
 **35+ index** pour des requêtes performantes:
+
 - Index simples (`by_storeId`, `by_email`, etc.)
 - Index composés (`by_storeId_status`, `by_storeId_categoryId`, etc.)
 - Index pour tri (`by_storeId_createdAt`, `by_storeId_sortOrder`, etc.)
