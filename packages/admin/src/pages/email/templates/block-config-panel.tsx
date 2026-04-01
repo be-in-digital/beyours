@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { ImageUploader } from "../../../components/image-uploader"
 import type { EditorBlock, ColumnChildBlock } from "../../../stores/email-template-editor-store"
 import { useEmailTemplateEditorStore } from "../../../stores/email-template-editor-store"

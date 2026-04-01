@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { usePathname } from "next/navigation"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore } from "@be-in-digital/restaurant"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"

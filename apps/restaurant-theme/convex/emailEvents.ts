@@ -1,5 +1,5 @@
 import { query, internalMutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/emailEvents";
+import * as defs from "@be-in-digital/convex-functions/emailEvents";
 
 // === Queries (auth-protected) ===
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { RotateCcw, ChevronDown } from "lucide-react"
-import { Button } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
 import {
   Collapsible,
   CollapsibleContent,
@@ -12,7 +12,7 @@ import type {
   BlockDefinition,
   CmsFieldValue,
   CmsBlockValues,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 
 interface CmsBlockAccordionProps {
   blockDef: BlockDefinition

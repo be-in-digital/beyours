@@ -8,11 +8,11 @@
 
 import { v } from "convex/values"
 import { internalQuery, internalMutation } from "./_generated/server"
-import { checkAutoBlogAccess } from "@beindigital-engine/convex-functions/blogAutoGuards"
+import { checkAutoBlogAccess } from "@be-in-digital/convex-functions/blogAutoGuards"
 import {
   getGenerationContextCore,
   saveGeneratedArticleCore,
-} from "@beindigital-engine/convex-functions/blogAutoGenerate"
+} from "@be-in-digital/convex-functions/blogAutoGenerate"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
 
 // ============================================================================

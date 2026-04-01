@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/orphanProducts";
+import * as defs from "@be-in-digital/convex-functions/orphanProducts";
 
 export const listByStorePlatform = query(defs.listByStorePlatform);
 export const listPending = query(defs.listPending);

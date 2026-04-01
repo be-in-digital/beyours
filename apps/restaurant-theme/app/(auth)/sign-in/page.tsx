@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
 import { Mail, Lock, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react"
-import { Button, Input, Label } from "@beindigital-engine/ui/components"
+import { Button, Input, Label } from "@be-in-digital/ui/components"
 
 export default function SignInPage() {
   const router = useRouter()

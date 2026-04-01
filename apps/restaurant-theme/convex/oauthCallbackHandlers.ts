@@ -26,7 +26,7 @@ interface StripeAccountLinkResponse {
  * Checks that the account has charges_enabled and stores the connection.
  */
 export const stripeCallback = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@be-in-digital/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
@@ -91,7 +91,7 @@ export const stripeCallback = httpAction(async (ctx, request) => {
  * Generates a new Account Link and redirects the user back to Stripe.
  */
 export const stripeRefresh = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@be-in-digital/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
@@ -156,7 +156,7 @@ export const stripeRefresh = httpAction(async (ctx, request) => {
  * Delegates token exchange and encryption to the Node.js internalAction.
  */
 export const sumupCallback = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@be-in-digital/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");

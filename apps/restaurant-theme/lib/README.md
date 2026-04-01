@@ -1,6 +1,6 @@
 # Restaurant Theme - Core Package Integration
 
-This directory contains integration files that re-export utilities from `@beindigital-engine/core` package.
+This directory contains integration files that re-export utilities from `@be-in-digital/core` package.
 
 ## Files
 
@@ -107,7 +107,7 @@ const { data: user } = authClient.useUser()
 ## Package Structure
 
 ```
-@beindigital-engine/core/
+@be-in-digital/core/
 ├── auth/           # RBAC, Better Auth integration
 ├── i18n/           # Multi-language, GPT translation
 ├── aws/

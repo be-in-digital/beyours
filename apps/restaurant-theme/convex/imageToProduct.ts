@@ -9,13 +9,13 @@ import {
   singleProductVisionSchema,
   menuVisionResultSchema,
   enrichmentResultSchema,
-} from "@beindigital-engine/convex-schema/validators"
+} from "@be-in-digital/convex-schema/validators"
 import type {
   ProductSuggestion,
   AnalyzeImageResult,
   AiField,
   ParsingWarning,
-} from "@beindigital-engine/convex-schema/types"
+} from "@be-in-digital/convex-schema/types"
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { StoreDetailPage } from "@beindigital-engine/admin"
+import { StoreDetailPage } from "@be-in-digital/admin"
 
 export default function Page({
   params,

@@ -1,6 +1,6 @@
 "use client"
 
-import type { ParsingWarning } from "@beindigital-engine/convex-schema/types"
+import type { ParsingWarning } from "@be-in-digital/convex-schema/types"
 import { AlertTriangle, Info } from "lucide-react"
 
 interface WarningBannerProps {

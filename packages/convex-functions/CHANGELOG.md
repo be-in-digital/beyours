@@ -19,15 +19,15 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [7c3d4da]
-  - @beindigital-engine/convex-schema@2.0.0
-  - @beindigital-engine/core@2.0.0
-  - @beindigital-engine/cms@2.0.0
+  - @be-in-digital/convex-schema@2.0.0
+  - @be-in-digital/core@2.0.0
+  - @be-in-digital/cms@2.0.0
 
 ## 1.0.0
 
@@ -48,17 +48,17 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [ad4d8d2]
-  - @beindigital-engine/convex-schema@1.0.0
-  - @beindigital-engine/core@1.0.0
-  - @beindigital-engine/cms@1.0.0
+  - @be-in-digital/convex-schema@1.0.0
+  - @be-in-digital/core@1.0.0
+  - @be-in-digital/cms@1.0.0
 
-All notable changes to `@beindigital-engine/convex-functions` will be documented in this file.
+All notable changes to `@be-in-digital/convex-functions` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

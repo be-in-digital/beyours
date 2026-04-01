@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/externalProductMappings";
+import * as defs from "@be-in-digital/convex-functions/externalProductMappings";
 
 export const listByStorePlatform = query(defs.listByStorePlatform);
 export const getByInternal = query(defs.getByInternal);

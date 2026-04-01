@@ -80,7 +80,7 @@ apps/
 ```
 
 Pour chaque package :
-- [ ] `package.json` avec nom `@beindigital-engine/<nom>`
+- [ ] `package.json` avec nom `@be-in-digital/<nom>`
 - [ ] `tsconfig.json` qui extend `tsconfig.base.json`
 - [ ] `tsup.config.ts` pour le build
 - [ ] `src/index.ts` (barrel file)
@@ -122,7 +122,7 @@ Pour chaque package :
 
 #### 2.1 - Setup Convex
 
-- [ ] Installer Convex : `pnpm add convex --filter @beindigital-engine/convex-schema`
+- [ ] Installer Convex : `pnpm add convex --filter @be-in-digital/convex-schema`
 - [ ] Initialiser Convex dans le package
 - [ ] Configurer `convex/` avec les fichiers generes
 
@@ -229,7 +229,7 @@ Fonctions Team :
 
 #### 3.1 - Authentification Better Auth
 
-- [ ] Installer Better Auth : `pnpm add better-auth --filter @beindigital-engine/core`
+- [ ] Installer Better Auth : `pnpm add better-auth --filter @be-in-digital/core`
 - [ ] Configuration Better Auth avec adaptateur Convex
 - [ ] Auth email/password avec verification email
 - [ ] OAuth providers : Google, Facebook, Apple

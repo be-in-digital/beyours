@@ -9,7 +9,7 @@ import {
   PaginationNext,
   PaginationPrevious,
   ButtonGroup,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 
 interface StoresPaginationProps {
   currentPage: number

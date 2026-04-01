@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useAction, useMutation } from "convex/react"
 import { toast } from "sonner"
-import { Button, Input, Textarea, Label, Switch } from "@beindigital-engine/ui"
+import { Button, Input, Textarea, Label, Switch } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { ImageUploader } from "../../components/image-uploader"
 

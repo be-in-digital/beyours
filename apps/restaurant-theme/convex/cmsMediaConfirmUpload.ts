@@ -18,7 +18,7 @@ import { action } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { S3Client, HeadObjectCommand } from "@aws-sdk/client-s3"
-import { getExtensionFromMimeType } from "@beindigital-engine/cms"
+import { getExtensionFromMimeType } from "@be-in-digital/cms"
 
 function createS3Client() {
   return new S3Client({

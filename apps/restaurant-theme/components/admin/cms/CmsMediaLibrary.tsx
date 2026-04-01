@@ -46,11 +46,11 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { EmptyState } from "@/components/admin/EmptyState"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
-import { validateMediaUpload, getMediaKind } from "@beindigital-engine/cms"
+import { validateMediaUpload, getMediaKind } from "@be-in-digital/cms"
 import { uploadWithProgress } from "@/lib/cms/upload-with-progress"
 import type { Id } from "@/convex/_generated/dataModel"
 

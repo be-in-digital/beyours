@@ -12,9 +12,9 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@beindigital-engine/ui"
-import { Button } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Button } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { BlogAutoConfigForm } from "./BlogAutoConfigForm"
 

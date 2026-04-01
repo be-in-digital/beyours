@@ -1,4 +1,4 @@
-# Changelog - @beindigital-engine/convex-schema
+# Changelog - @be-in-digital/convex-schema
 
 ## 2.0.0
 
@@ -19,7 +19,7 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ## 1.0.0
@@ -41,7 +41,7 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 Toutes les modifications notables de ce package seront documentées dans ce fichier.

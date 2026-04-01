@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { Textarea } from "@/components/ui/textarea"
 
 interface GenerateImageDialogProps {

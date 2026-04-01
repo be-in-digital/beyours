@@ -1,5 +1,5 @@
 {
-  "name": "@beindigital-engine/convex-schema",
+  "name": "@be-in-digital/convex-schema",
   "version": "2.0.0",
   "publishConfig": {
     "access": "restricted"

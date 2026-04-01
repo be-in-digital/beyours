@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/admin/formatters"
 import { Clock, MoreHorizontal, Pencil, Upload, Archive, ArchiveRestore, Trash2 } from "lucide-react"
-import { Badge, Button } from "@beindigital-engine/ui"
+import { Badge, Button } from "@be-in-digital/ui"
 import {
   Table,
   TableBody,

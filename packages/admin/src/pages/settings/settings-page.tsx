@@ -29,9 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@beindigital-engine/ui"
-import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
-import { calculateDeliveryFee } from "@beindigital-engine/convex-functions/deliveryFee"
+} from "@be-in-digital/ui"
+import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
+import { calculateDeliveryFee } from "@be-in-digital/convex-functions/deliveryFee"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"

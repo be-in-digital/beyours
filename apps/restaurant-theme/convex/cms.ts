@@ -6,18 +6,18 @@
  */
 
 // Initialize CMS registry with app-specific pages (must run before any handler)
-import { setCmsRegistry } from "@beindigital-engine/cms"
+import { setCmsRegistry } from "@be-in-digital/cms"
 import { appCmsConfig } from "../cms"
 setCmsRegistry(appCmsConfig)
 
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
-import * as cmsDefs from "@beindigital-engine/convex-functions/cms"
-import * as cmsPublishDefs from "@beindigital-engine/convex-functions/cmsPublish"
-import { publishPageCore } from "@beindigital-engine/convex-functions/cmsPublish"
-import { saveDraftBlockCore } from "@beindigital-engine/convex-functions/cms"
+import * as cmsDefs from "@be-in-digital/convex-functions/cms"
+import * as cmsPublishDefs from "@be-in-digital/convex-functions/cmsPublish"
+import { publishPageCore } from "@be-in-digital/convex-functions/cmsPublish"
+import { saveDraftBlockCore } from "@be-in-digital/convex-functions/cms"
 import { scheduleCmsTranslation, schedulePageTranslation } from "./cmsAutoTranslate"
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth"
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth"
 
 // ============================================================================
 // Queries

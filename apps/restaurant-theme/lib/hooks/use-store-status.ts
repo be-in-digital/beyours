@@ -3,9 +3,9 @@
 import { useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { isStoreOpen } from "@beindigital-engine/restaurant"
+import { isStoreOpen } from "@be-in-digital/restaurant"
 import type { Id } from "@/convex/_generated/dataModel"
-import type { StoreHoursStatus } from "@beindigital-engine/restaurant"
+import type { StoreHoursStatus } from "@be-in-digital/restaurant"
 
 /**
  * Hook: useStoreStatus

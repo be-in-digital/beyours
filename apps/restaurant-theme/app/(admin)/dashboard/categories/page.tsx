@@ -1,4 +1,4 @@
-import { CategoriesPage } from "@beindigital-engine/admin"
+import { CategoriesPage } from "@be-in-digital/admin"
 
 export default function Page() {
   return <CategoriesPage />
