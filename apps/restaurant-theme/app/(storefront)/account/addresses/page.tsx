@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, MapPin } from "lucide-react"
 import { authClient } from "@/lib/auth-client"
-import { Badge, Skeleton } from "@beindigital-engine/ui/components"
+import { Badge, Skeleton } from "@be-in-digital/ui/components"
 import { AddressManager } from "@/components/storefront/address-manager"
 
 export default function AddressesPage() {

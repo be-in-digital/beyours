@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values"
-import { getPageDefinition, getBlockDefinition } from "@beindigital-engine/cms"
+import { getPageDefinition, getBlockDefinition } from "@be-in-digital/cms"
 
 /** CMS field value shape matching the validator */
 interface CmsFieldValue {

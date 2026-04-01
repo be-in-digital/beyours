@@ -2,11 +2,11 @@
  * Deliveroo Menu API - Scenario 1: Fetch Brand ID
  *
  * Tests the ability to retrieve brand_id using site_location_id
- * Uses the Deliveroo client from @beindigital-engine/integrations
+ * Uses the Deliveroo client from @be-in-digital/integrations
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { deliveroo } from "@beindigital-engine/integrations";
+import { deliveroo } from "@be-in-digital/integrations";
 
 const { fetchDeliveroo, getAccessToken } = deliveroo;
 type DeliverooCredentials = Parameters<typeof getAccessToken>[0];

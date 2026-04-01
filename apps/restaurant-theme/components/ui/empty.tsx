@@ -5,4 +5,4 @@ export {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"

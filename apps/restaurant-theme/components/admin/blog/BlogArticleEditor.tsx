@@ -23,7 +23,7 @@ import {
   Eye,
   ChevronDown,
 } from "lucide-react"
-import { Button, Badge, Input } from "@beindigital-engine/ui"
+import { Button, Badge, Input } from "@be-in-digital/ui"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {

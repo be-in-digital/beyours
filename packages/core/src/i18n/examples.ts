@@ -363,8 +363,8 @@ export async function example12_FullTranslationWorkflow() {
 export function example13_ReactHookImplementation() {
   // This would be in your app/hooks/useTranslation.ts
   /*
-  import { createTranslator, getLocaleDirection, isRtlLocale } from '@beindigital-engine/core/i18n'
-  import type { UseTranslationReturn } from '@beindigital-engine/core/i18n'
+  import { createTranslator, getLocaleDirection, isRtlLocale } from '@be-in-digital/core/i18n'
+  import type { UseTranslationReturn } from '@be-in-digital/core/i18n'
   import { useContext } from 'react'
   import { I18nContext } from '@/contexts/I18nContext'
 
@@ -403,8 +403,8 @@ export async function example14_NextJSServerComponent() {
   // This would be in your app/[locale]/page.tsx
   /*
   import { cookies, headers } from 'next/headers'
-  import { detectLocale, createTranslator } from '@beindigital-engine/core/i18n'
-  import { DEFAULT_I18N_CONFIG } from '@beindigital-engine/core/i18n'
+  import { detectLocale, createTranslator } from '@be-in-digital/core/i18n'
+  import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core/i18n'
 
   export default async function Page() {
     const cookieStore = cookies()
@@ -440,8 +440,8 @@ export function example15_NextJSClientComponent() {
   /*
   'use client'
 
-  import { setLocale } from '@beindigital-engine/core/i18n'
-  import { COMMON_LANGUAGES, DEFAULT_I18N_CONFIG } from '@beindigital-engine/core/i18n'
+  import { setLocale } from '@be-in-digital/core/i18n'
+  import { COMMON_LANGUAGES, DEFAULT_I18N_CONFIG } from '@be-in-digital/core/i18n'
   import { useRouter } from 'next/navigation'
 
   export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {

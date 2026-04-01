@@ -1,7 +1,7 @@
 "use client"
 
-import type { AiFieldSource } from "@beindigital-engine/convex-schema/types"
-import { Badge } from "@beindigital-engine/ui"
+import type { AiFieldSource } from "@be-in-digital/convex-schema/types"
+import { Badge } from "@be-in-digital/ui"
 import { Eye, Sparkles, Lightbulb } from "lucide-react"
 
 const CONFIG: Record<AiFieldSource, { label: string; icon: typeof Eye; variant: "default" | "secondary" | "outline" }> = {

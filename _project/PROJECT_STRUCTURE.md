@@ -71,7 +71,7 @@ beindigital-engine/
 - ✅ `.gitignore` - Git ignore rules
 - ✅ `README.md` - Project documentation
 
-### @beindigital-engine/ui Package
+### @be-in-digital/ui Package
 - ✅ Package configuration
 - ✅ TypeScript configuration
 - ✅ Build configuration (tsup)
@@ -86,7 +86,7 @@ beindigital-engine/
 - `tailwind-merge` - Tailwind class merging
 - `lucide-react` - Icon library
 
-### @beindigital-engine/core Package
+### @be-in-digital/core Package
 - ✅ Package configuration
 - ✅ Better Auth integration
   - Configuration with Convex adapter
@@ -112,7 +112,7 @@ beindigital-engine/
 - `i18next`, `react-i18next` - Internationalization
 - `zod` - Schema validation
 
-### @beindigital-engine/themes Package
+### @be-in-digital/themes Package
 - ✅ Fast Food theme configuration
   - Colors (red, yellow, green)
   - Typography (Poppins, Inter)
@@ -124,17 +124,17 @@ beindigital-engine/
 
 ### High Priority
 
-1. **@beindigital-engine/convex-schema**
+1. **@be-in-digital/convex-schema**
    - Create base schema for Better Auth
    - Define restaurant tables (stores, products, orders, etc.)
    - Add indexes for performance
 
-2. **@beindigital-engine/convex-functions**
+2. **@be-in-digital/convex-functions**
    - Auth functions (getUser, updateProfile, etc.)
    - Order management functions
    - Product management functions
 
-3. **@beindigital-engine/restaurant**
+3. **@be-in-digital/restaurant**
    - Order calculator
    - Kitchen ticket generator
    - Store selector utilities
@@ -149,7 +149,7 @@ beindigital-engine/
 
 ### Medium Priority
 
-5. **@beindigital-engine/integrations**
+5. **@be-in-digital/integrations**
    - Stripe payment processor
    - SumUp payment processor
    - PayPal payment processor
@@ -165,12 +165,12 @@ beindigital-engine/
    - Café/Bakery theme
    - Sushi Bar theme
 
-7. **@beindigital-engine/cms**
+7. **@be-in-digital/cms**
    - Block-based editor
    - Page management
    - SEO utilities
 
-8. **@beindigital-engine/marketing**
+8. **@be-in-digital/marketing**
    - Email campaign builder
    - Gamification system
    - Loyalty program
@@ -213,7 +213,7 @@ pnpm format
 ### Package Management
 ```bash
 # Add dependency to specific package
-pnpm add <package> --filter @beindigital-engine/ui
+pnpm add <package> --filter @be-in-digital/ui
 
 # Add dev dependency to workspace root
 pnpm add -Dw <package>
@@ -238,26 +238,26 @@ pnpm release
 
 ## 📦 Package Dependencies
 
-### @beindigital-engine/ui
+### @be-in-digital/ui
 - `react`, `react-dom` (peer dependencies)
 - `class-variance-authority` - Component variants
 - `clsx` - Conditional classes
 - `tailwind-merge` - Merge Tailwind classes
 - `lucide-react` - Icons
 
-### @beindigital-engine/core
+### @be-in-digital/core
 - `better-auth` - Authentication
 - `i18next`, `react-i18next` - i18n
 - `zod` - Validation
 
 ### Future Dependencies
 
-**@beindigital-engine/restaurant:**
+**@be-in-digital/restaurant:**
 - Date utilities (date-fns)
 - Currency formatting
 - Timezone handling
 
-**@beindigital-engine/integrations:**
+**@be-in-digital/integrations:**
 - `stripe` - Stripe SDK
 - Uber Eats SDK
 - Deliveroo SDK
@@ -314,8 +314,8 @@ RESEND_API_KEY=
 ## 📊 Progress Tracker
 
 - [x] Monorepo setup (Turborepo + pnpm)
-- [x] Base package: @beindigital-engine/ui
-- [x] Base package: @beindigital-engine/core
+- [x] Base package: @be-in-digital/ui
+- [x] Base package: @be-in-digital/core
 - [x] Theme configuration: Fast Food
 - [ ] Convex schema package
 - [ ] Convex functions package

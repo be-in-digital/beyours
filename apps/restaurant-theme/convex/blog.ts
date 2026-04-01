@@ -9,21 +9,21 @@
 import { v } from "convex/values"
 import { query, mutation, internalMutation } from "./_generated/server"
 import { internal } from "./_generated/api"
-import * as blogDefs from "@beindigital-engine/convex-functions/blog"
+import * as blogDefs from "@be-in-digital/convex-functions/blog"
 import {
   createArticleCore,
   saveDraftCore,
   deleteArticleCore,
-} from "@beindigital-engine/convex-functions/blog"
+} from "@be-in-digital/convex-functions/blog"
 import {
   publishArticleCore,
   scheduleArticleCore,
   unscheduleArticleCore,
   archiveArticleCore,
   unarchiveArticleCore,
-} from "@beindigital-engine/convex-functions/blogPublish"
+} from "@be-in-digital/convex-functions/blogPublish"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth"
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth"
 
 // ============================================================================
 // Public Queries (storefront, no auth)

@@ -9,8 +9,8 @@ import {
   type StoreIntegrationRecord,
   type ProductRecord,
   type CategoryRecord,
-} from "@beindigital-engine/convex-functions/uberEatsMenuSync";
-import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
+} from "@be-in-digital/convex-functions/uberEatsMenuSync";
+import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
 
 /**
  * Sync menu to a single Uber Eats store.
@@ -97,7 +97,7 @@ export const syncStore = action({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 9. Push menu to Uber Eats
-      const { uberEats } = await import("@beindigital-engine/integrations");
+      const { uberEats } = await import("@be-in-digital/integrations");
       await uberEats.pushMenu(credentials, integration.platformStoreId, menuPayload);
 
       // 10. Update status to "success"

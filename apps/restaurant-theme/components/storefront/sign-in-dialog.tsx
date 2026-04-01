@@ -12,7 +12,7 @@ import {
   Button,
   Input,
   Label,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import { authClient } from "@/lib/auth-client"
 import { toast } from "sonner"
 

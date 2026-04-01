@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import type { ProductSuggestion } from "@beindigital-engine/convex-schema/types"
+import type { ProductSuggestion } from "@be-in-digital/convex-schema/types"
 import {
   Button,
   Checkbox,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { Check, Info, RotateCcw } from "lucide-react"
 import { SuggestionCard } from "./suggestion-card"
 import { NEW_CATEGORY_PREFIX } from "./category-mapper"

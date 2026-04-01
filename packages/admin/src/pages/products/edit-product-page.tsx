@@ -10,7 +10,7 @@ import { useAdminStoreId, useAdminApi } from "../../hooks/admin-hooks"
 import { eurosToCents, centsToEuros } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
-import { Button } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
 
 interface EditProductPageProps {
   params: Promise<{ productId: string }>

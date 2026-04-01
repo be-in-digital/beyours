@@ -1,4 +1,4 @@
-import { ComingSoon } from "@beindigital-engine/admin"
+import { ComingSoon } from "@be-in-digital/admin"
 
 export default function Page() {
   return (

@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/favorites";
+import * as defs from "@be-in-digital/convex-functions/favorites";
 
 // === Queries (authenticated) ===
 

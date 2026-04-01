@@ -1,4 +1,4 @@
-import { EmailSegmentsPage } from "@beindigital-engine/admin"
+import { EmailSegmentsPage } from "@be-in-digital/admin"
 
 export default function Page() {
   return <EmailSegmentsPage />

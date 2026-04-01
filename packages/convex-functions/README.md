@@ -1,4 +1,4 @@
-# @beindigital-engine/convex-functions
+# @be-in-digital/convex-functions
 
 Reusable Convex function definitions for BeInDigital Engine.
 
@@ -35,7 +35,7 @@ packages/convex-functions/src/
 ```typescript
 // apps/restaurant-theme/convex/categories.ts
 import { query, mutation } from "./_generated/server"
-import * as categoriesFns from "@beindigital-engine/convex-functions/categories"
+import * as categoriesFns from "@be-in-digital/convex-functions/categories"
 
 // Wrap the exported definitions with Convex query/mutation
 export const list = query(categoriesFns.list)
@@ -48,7 +48,7 @@ export const remove = mutation(categoriesFns.remove)
 ### Using Helpers
 
 ```typescript
-import { generateOrderNumber, generateSlug } from "@beindigital-engine/convex-functions"
+import { generateOrderNumber, generateSlug } from "@be-in-digital/convex-functions"
 
 const orderNumber = generateOrderNumber() // "ORD-2026-ABC123"
 const slug = generateSlug("Product Name") // "product-name"

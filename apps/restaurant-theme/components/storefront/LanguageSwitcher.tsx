@@ -1,7 +1,7 @@
 "use client"
 
 import { Globe } from "lucide-react"
-import { useLanguageStore } from "@beindigital-engine/restaurant"
+import { useLanguageStore } from "@be-in-digital/restaurant"
 import {
   DropdownMenu,
   DropdownMenuContent,

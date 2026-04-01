@@ -28,7 +28,7 @@ const IGNORED_PATTERNS = [
   /Can't resolve/i,
   /Import trace/i,
   /nextjs\.org\/docs\/messages/i,
-  /@beindigital-engine/i,
+  /@be-in-digital/i,
 ]
 
 /**

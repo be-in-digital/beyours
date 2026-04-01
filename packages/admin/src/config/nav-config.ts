@@ -22,7 +22,7 @@ import {
   Warehouse,
   type LucideIcon,
 } from "lucide-react"
-import type { Permission } from "@beindigital-engine/core"
+import type { Permission } from "@be-in-digital/core"
 import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { toast } from "sonner"
-import { Badge } from "@beindigital-engine/ui"
+import { Badge } from "@be-in-digital/ui"
 import { cn } from "@/lib/utils"
 import {
   PricingCard,

@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/prizes";
+import * as defs from "@be-in-digital/convex-functions/prizes";
 
 export const list = query(defs.list);
 

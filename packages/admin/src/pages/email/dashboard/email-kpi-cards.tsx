@@ -1,7 +1,7 @@
 "use client"
 
 import { Users, Send, MousePointerClick, TrendingUp } from "lucide-react"
-import { StatCard } from "@beindigital-engine/ui"
+import { StatCard } from "@be-in-digital/ui"
 
 interface EmailKpiCardsProps {
   activeSubscribers: number

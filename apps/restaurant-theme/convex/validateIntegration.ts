@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
+import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
 
 // Input validation patterns
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -142,7 +142,7 @@ export const validate = action({
 
       try {
         const { uberEats } = await import(
-          "@beindigital-engine/integrations"
+          "@be-in-digital/integrations"
         );
 
         if (sandboxMode) {
@@ -216,7 +216,7 @@ export const validate = action({
 
       try {
         const { deliveroo } = await import(
-          "@beindigital-engine/integrations"
+          "@be-in-digital/integrations"
         );
 
         // Step 1: Validate credentials via OAuth

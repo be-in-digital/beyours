@@ -11,7 +11,7 @@ import type { Id } from "./_generated/dataModel";
 
 async function decrypt(encrypted: string): Promise<string> {
   const { createDecipheriv } = await import("crypto");
-  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@be-in-digital/core/env");
   const hex = getSiteEnv().ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
     throw new Error("ENCRYPTION_KEY must be a 64-character hex string");

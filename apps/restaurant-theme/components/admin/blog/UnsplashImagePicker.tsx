@@ -12,7 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 
 export interface UnsplashPhoto {
   id: string

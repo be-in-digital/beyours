@@ -1,4 +1,4 @@
-import { EmailCampaignsPage } from "@beindigital-engine/admin"
+import { EmailCampaignsPage } from "@be-in-digital/admin"
 
 export default function Page() {
   return <EmailCampaignsPage />

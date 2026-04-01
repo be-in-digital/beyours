@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getExtensionFromMimeType } from "@beindigital-engine/cms";
+import { getExtensionFromMimeType } from "@be-in-digital/cms";
 
 const ALLOWED_FOLDERS = [
   "products",

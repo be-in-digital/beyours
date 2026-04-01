@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Badge } from "@beindigital-engine/ui"
+import { Badge } from "@be-in-digital/ui"
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import type {
   Order,

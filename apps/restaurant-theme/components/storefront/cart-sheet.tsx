@@ -23,8 +23,8 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui/components"
-import { useCartStore, formatPrice } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/ui/components"
+import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 
 interface CartSheetProps {
   open: boolean

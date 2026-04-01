@@ -14,8 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@beindigital-engine/ui"
-import { parseSubscriberCsv } from "@beindigital-engine/marketing"
+} from "@be-in-digital/ui"
+import { parseSubscriberCsv } from "@be-in-digital/marketing"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 

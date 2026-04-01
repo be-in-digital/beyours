@@ -1,5 +1,5 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/paymentConnections";
+import * as defs from "@be-in-digital/convex-functions/paymentConnections";
 import { v } from "convex/values";
 
 // === Queries ===

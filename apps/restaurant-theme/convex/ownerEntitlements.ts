@@ -6,7 +6,7 @@
  */
 
 import { query, mutation } from "./_generated/server"
-import * as ownerEntitlementsDefs from "@beindigital-engine/convex-functions/ownerEntitlements"
+import * as ownerEntitlementsDefs from "@be-in-digital/convex-functions/ownerEntitlements"
 
 // ============================================================================
 // Queries

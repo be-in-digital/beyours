@@ -11,8 +11,8 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react"
-import { Button } from "@beindigital-engine/ui/components"
-import { useCartStore, formatPrice } from "@beindigital-engine/restaurant"
+import { Button } from "@be-in-digital/ui/components"
+import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"

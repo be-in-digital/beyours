@@ -17,7 +17,7 @@ import {
   EyeOff,
   Loader2,
 } from "lucide-react"
-import { Button, Input, Label } from "@beindigital-engine/ui/components"
+import { Button, Input, Label } from "@be-in-digital/ui/components"
 
 export default function SignUpPage() {
   const router = useRouter()

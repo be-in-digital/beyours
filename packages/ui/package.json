@@ -1,5 +1,5 @@
 {
-  "name": "@beindigital-engine/ui",
+  "name": "@be-in-digital/ui",
   "version": "2.0.0",
   "publishConfig": {
     "access": "restricted"

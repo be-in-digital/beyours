@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/admin
+ * @be-in-digital/admin
  *
  * Shared admin dashboard package.
  * Provides auth guard, RBAC sidebar, header, page components, and utilities.

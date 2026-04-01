@@ -1,4 +1,4 @@
-// @beindigital-engine/marketing
+// @be-in-digital/marketing
 // Package exports
 
 export {

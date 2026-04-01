@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery } from "convex/react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
-import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@beindigital-engine/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@be-in-digital/ui"
 import { OrdersTable } from "./orders-table"
 import type { Order, OrderStatus } from "../../lib/types"
 

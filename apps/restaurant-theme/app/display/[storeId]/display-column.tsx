@@ -1,6 +1,6 @@
 "use client"
 
-import { Empty, EmptyHeader, EmptyTitle } from "@beindigital-engine/ui/components"
+import { Empty, EmptyHeader, EmptyTitle } from "@be-in-digital/ui/components"
 
 interface DisplayTicket {
   _id: string
