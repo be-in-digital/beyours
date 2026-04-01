@@ -1,0 +1,307 @@
+# Convex API Reference
+
+> Complete reference for all Convex backend functions.
+
+## Table of Contents
+
+- [Stores](#stores)
+- [Products](#products)
+- [Orders](#orders)
+- [Kitchen](#kitchen)
+- [Games & Gamification](#games--gamification)
+- [Languages & Translations](#languages--translations)
+- [Email Campaigns](#email-campaigns)
+- [CMS](#cms)
+- [AI](#ai)
+
+## Stores
+
+### `api.stores.list`
+
+List all stores for the current owner.
+
+```typescript
+const stores = useQuery(api.stores.list, { ownerId });
+```
+
+### `api.stores.get`
+
+Get a single store by ID.
+
+```typescript
+const store = useQuery(api.stores.get, { storeId });
+```
+
+### `api.stores.create`
+
+Create a new store.
+
+```typescript
+const storeId = await createStore({
+  name: "La Bella - Paris",
+  address: { street: "1 Rue de la Paix", city: "Paris", zip: "75001" },
+  phone: "+33 1 23 45 67 89",
+  location: { lat: 48.8566, lng: 2.3522 },
+  openingHours: { /* ... */ },
+});
+```
+
+### `api.stores.update`
+
+Update store settings.
+
+### `api.stores.delete`
+
+Soft-delete a store (sets status to "closed").
+
+## Products
+
+### `api.products.listByStore`
+
+```typescript
+const products = useQuery(api.products.listByStore, { storeId });
+```
+
+### `api.products.get`
+
+```typescript
+const product = useQuery(api.products.get, { productId });
+```
+
+### `api.products.create`
+
+```typescript
+await createProduct({
+  storeId,
+  name: "Margherita",
+  description: "Classic tomato and mozzarella",
+  price: 1299, // cents
+  categoryId,
+  options: [
+    {
+      name: "Size",
+      choices: [
+        { label: "Medium", priceModifier: 0 },
+        { label: "Large", priceModifier: 300 },
+      ],
+    },
+  ],
+});
+```
+
+### `api.products.update`
+
+### `api.products.delete`
+
+### `api.products.search`
+
+```typescript
+const results = useQuery(api.products.search, {
+  storeId,
+  query: "pizza",
+  categoryId: optional,
+});
+```
+
+## Orders
+
+### `api.orders.create`
+
+```typescript
+const orderId = await createOrder({
+  storeId,
+  items: [
+    { productId, quantity: 2, options: [{ name: "Size", value: "Large" }] },
+  ],
+  type: "delivery", // "delivery" | "pickup" | "dine-in"
+  customerInfo: { name, email, phone, address },
+  paymentMethod: "stripe",
+});
+```
+
+### `api.orders.listByStore`
+
+```typescript
+const orders = useQuery(api.orders.listByStore, {
+  storeId,
+  status: "preparing", // optional filter
+  limit: 50,
+});
+```
+
+### `api.orders.updateStatus`
+
+```typescript
+await updateOrderStatus({
+  orderId,
+  status: "preparing", // pending → confirmed → preparing → ready → delivered → completed
+});
+```
+
+### `api.orders.get`
+
+Real-time order tracking (auto-updates via subscription).
+
+## Kitchen
+
+### `api.kitchenTickets.listActive`
+
+```typescript
+// Real-time subscription - updates instantly
+const tickets = useQuery(api.kitchenTickets.listActive, { storeId });
+```
+
+### `api.kitchenTickets.updateStatus`
+
+```typescript
+await updateTicketStatus({
+  ticketId,
+  status: "preparing", // new → preparing → ready → served
+});
+```
+
+### `api.kitchenTickets.reprint`
+
+```typescript
+await reprintTicket({ ticketId });
+```
+
+## Games & Gamification
+
+### `api.games.create`
+
+```typescript
+await createGame({
+  storeId,
+  type: "WHEEL_OF_FORTUNE",
+  winRatio: 30,
+});
+```
+
+### `api.games.updateWinRatio`
+
+```typescript
+await updateWinRatio({ gameId, winRatio: 40 });
+```
+
+### `api.gameQRCodes.create`
+
+```typescript
+const qrCode = await createQRCode({
+  storeId,
+  tableNumber: 12,
+});
+```
+
+### `api.gamePlays.play`
+
+```typescript
+const result = await playGame({
+  gameId,
+  customerId,
+  qrCodeId,
+});
+// { won: true, prize: { name: "Free Dessert", ... } }
+// or { won: false }
+```
+
+### `api.prizeRedemptions.redeem`
+
+```typescript
+await redeemPrize({ redemptionCode: "PRIZE-ABC123" });
+```
+
+## Languages & Translations
+
+### `api.languages.list`
+
+```typescript
+const languages = useQuery(api.languages.list, { storeId });
+```
+
+### `api.languages.add`
+
+```typescript
+await addLanguage({ storeId, code: "es", name: "Spanish" });
+```
+
+### `api.autoTranslate.translateProduct`
+
+```typescript
+await translateProduct({
+  productId,
+  sourceLocale: "en",
+  targetLocale: "es",
+});
+```
+
+### `api.autoTranslate.batchTranslate`
+
+```typescript
+await batchTranslate({
+  storeId,
+  sourceLocale: "en",
+  targetLocale: "de",
+});
+```
+
+## Email Campaigns
+
+### `api.emailCampaigns.create`
+
+```typescript
+await createCampaign({
+  storeId,
+  subject: "Spring Menu",
+  template: { blocks: [...] },
+  segment: "all",
+});
+```
+
+### `api.emailCampaigns.send`
+
+```typescript
+await sendCampaign({ campaignId });
+```
+
+### `api.emailCampaigns.getStats`
+
+```typescript
+const stats = useQuery(api.emailCampaigns.getStats, { campaignId });
+// { sent: 1000, opened: 350, clicked: 120, ... }
+```
+
+## CMS
+
+### `api.cms.getPage`
+
+```typescript
+const page = useQuery(api.cms.getPage, { storeId, slug: "about" });
+```
+
+### `api.cms.updatePage`
+
+```typescript
+await updatePage({
+  storeId,
+  slug: "about",
+  blocks: [
+    { type: "hero", data: { title: "About Us", image: "..." } },
+    { type: "text", data: { content: "..." } },
+  ],
+});
+```
+
+## AI
+
+### `api.imageToProduct.extract`
+
+Extract products from a menu photo using AI:
+
+```typescript
+const products = await extractFromImage({
+  imageUrl: "https://s3.../menu-photo.jpg",
+  locale: "en",
+});
+// [{ name: "Margherita", description: "...", price: 1299 }, ...]
+```
