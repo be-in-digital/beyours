@@ -42,7 +42,7 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { MenuFormDialog } from "./menu-form-dialog"
 

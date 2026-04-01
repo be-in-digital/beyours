@@ -6,14 +6,14 @@
  */
 
 // Initialize CMS registry
-import { setCmsRegistry } from "@beindigital-engine/cms"
+import { setCmsRegistry } from "@be-in-digital/cms"
 import { appCmsConfig } from "../cms"
 setCmsRegistry(appCmsConfig)
 
 import { internalMutation, internalQuery } from "./_generated/server"
 import { v } from "convex/values"
-import { saveDraftBlockCore } from "@beindigital-engine/convex-functions/cms"
-import { publishPageCore } from "@beindigital-engine/convex-functions/cmsPublish"
+import { saveDraftBlockCore } from "@be-in-digital/convex-functions/cms"
+import { publishPageCore } from "@be-in-digital/convex-functions/cmsPublish"
 import { scheduleCmsTranslation } from "./cmsAutoTranslate"
 
 // ── Query: get first store ───────────────────────────────────────────

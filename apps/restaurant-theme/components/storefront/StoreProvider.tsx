@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, type ReactNode } from "react"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore } from "@be-in-digital/restaurant"
 
 interface StoreData {
   _id: string

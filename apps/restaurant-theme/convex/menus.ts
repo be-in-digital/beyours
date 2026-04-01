@@ -1,8 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@beindigital-engine/convex-functions/menus";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/menus";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 // === Queries (public for storefront) ===
 

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { RotateCcw, ExternalLink } from "lucide-react"
 import { RefundDialog } from "./refund-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"

@@ -33,7 +33,7 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { ProductsTable } from "./products-table"
 import { MenusTab } from "./menus-tab"
 

@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/admin/formatters"
 import DOMPurify from "isomorphic-dompurify"
 import Link from "next/link"
 import { ArrowLeft, Eye } from "lucide-react"
-import { Badge, Button } from "@beindigital-engine/ui"
+import { Badge, Button } from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import type { Id } from "@/convex/_generated/dataModel"
 

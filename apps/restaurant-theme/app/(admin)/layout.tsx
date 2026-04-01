@@ -14,7 +14,7 @@ import {
   SidebarUserMenu,
   StoreGuard,
   useAdminApiStore,
-} from "@beindigital-engine/admin"
+} from "@be-in-digital/admin"
 
 export default function AdminLayout({
   children,

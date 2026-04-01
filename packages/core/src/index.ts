@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/core
+ * @be-in-digital/core
  *
  * Core package for BeInDigital Engine
  * Provides essential features: auth, i18n, AWS services, Sentry

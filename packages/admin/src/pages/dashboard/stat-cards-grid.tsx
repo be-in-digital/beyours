@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent } from "@beindigital-engine/ui"
+import { Card, CardContent } from "@be-in-digital/ui"
 import { formatPrice } from "../../lib/formatters"
 import {
   DollarSign,

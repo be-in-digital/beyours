@@ -1,4 +1,4 @@
-# @beindigital-engine/themes
+# @be-in-digital/themes
 
 ## 2.0.0
 
@@ -19,13 +19,13 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [7c3d4da]
-  - @beindigital-engine/ui@2.0.0
+  - @be-in-digital/ui@2.0.0
 
 ## 1.0.0
 
@@ -46,10 +46,10 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @beindigital-engine/core @beindigital-engine/ui @beindigital-engine/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [ad4d8d2]
-  - @beindigital-engine/ui@1.0.0
+  - @be-in-digital/ui@1.0.0

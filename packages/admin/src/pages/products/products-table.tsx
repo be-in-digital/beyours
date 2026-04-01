@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 
 /** Product source values matching the database schema */

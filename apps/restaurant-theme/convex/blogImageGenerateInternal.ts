@@ -8,8 +8,8 @@
 
 import { v } from "convex/values"
 import { internalQuery, internalMutation } from "./_generated/server"
-import { checkImageGenerationAccess } from "@beindigital-engine/convex-functions/blogAutoGuards"
-import { incrementImageUsageCore } from "@beindigital-engine/convex-functions/blogAutoGenerate"
+import { checkImageGenerationAccess } from "@be-in-digital/convex-functions/blogAutoGuards"
+import { incrementImageUsageCore } from "@be-in-digital/convex-functions/blogAutoGenerate"
 
 // ============================================================================
 // Internal Queries

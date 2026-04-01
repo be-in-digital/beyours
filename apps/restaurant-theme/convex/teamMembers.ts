@@ -1,7 +1,7 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import * as defs from "@beindigital-engine/convex-functions/teamMembers";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/teamMembers";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 // === QUERIES ===
 

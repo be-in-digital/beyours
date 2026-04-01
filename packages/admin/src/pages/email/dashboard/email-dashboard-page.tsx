@@ -14,13 +14,13 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { LoadingState } from "../../../components/loading-state"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
-import { computeStatRates } from "@beindigital-engine/marketing"
+import { computeStatRates } from "@be-in-digital/marketing"
 import { EmailKpiCards } from "./email-kpi-cards"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

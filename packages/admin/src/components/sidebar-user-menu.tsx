@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
-import { Avatar, AvatarFallback, AvatarImage } from "@beindigital-engine/ui"
+import { Avatar, AvatarFallback, AvatarImage } from "@be-in-digital/ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import { adminRoutes } from "../config/admin-routes"

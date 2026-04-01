@@ -3,11 +3,11 @@
 import { useQuery } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import { api } from "@/convex/_generated/api"
-import { useStoreStore, useLanguageStore } from "@beindigital-engine/restaurant"
+import { useStoreStore, useLanguageStore } from "@be-in-digital/restaurant"
 import {
   getFieldDefinition,
-} from "@beindigital-engine/cms"
-import type { CmsFieldValue, CmsBlockValues } from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
+import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 
 export interface CmsFieldAccessor {

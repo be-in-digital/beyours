@@ -26,7 +26,7 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args): Promise<{ sessionUrl: string; sessionId: string }> => {
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const { getSiteEnv } = await import("@be-in-digital/core/env");
     const site = getSiteEnv();
 
     const secretKey = site.STRIPE_SECRET_KEY;
@@ -92,7 +92,7 @@ export const verifyCheckoutSession = action({
     error?: string;
   }> => {
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const { getSiteEnv } = await import("@be-in-digital/core/env");
     const site = getSiteEnv();
 
     const secretKey = site.STRIPE_SECRET_KEY;

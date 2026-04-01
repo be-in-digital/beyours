@@ -1,6 +1,6 @@
 import { internalQuery, internalMutation } from "./_generated/server"
 import { v } from "convex/values"
-import { Role } from "@beindigital-engine/core/auth/rbac"
+import { Role } from "@be-in-digital/core/auth/rbac"
 
 // ─── Allowlist of tables that can be imported/exported ───────────────────────
 

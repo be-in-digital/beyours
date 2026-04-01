@@ -1,4 +1,4 @@
-# Services AWS - @beindigital-engine/core
+# Services AWS - @be-in-digital/core
 
 Services pour S3 (stockage de fichiers) et SES (envoi d'emails) avec architecture injectable.
 
@@ -22,8 +22,8 @@ pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ```typescript
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { createS3Service } from '@beindigital-engine/core/aws'
-import type { S3Operations } from '@beindigital-engine/core/aws'
+import { createS3Service } from '@be-in-digital/core/aws'
+import type { S3Operations } from '@be-in-digital/core/aws'
 
 // Configuration
 const config = {
@@ -205,8 +205,8 @@ pnpm add @aws-sdk/client-ses
 
 ```typescript
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
-import { createSESService } from '@beindigital-engine/core/aws'
-import type { SESOperations } from '@beindigital-engine/core/aws'
+import { createSESService } from '@be-in-digital/core/aws'
+import type { SESOperations } from '@be-in-digital/core/aws'
 
 // Configuration
 const config = {
@@ -379,16 +379,16 @@ Les services incluent des tests complets (100% de couverture) :
 
 ```bash
 # Tous les tests AWS
-pnpm --filter @beindigital-engine/core test -- src/aws
+pnpm --filter @be-in-digital/core test -- src/aws
 
 # Tests S3 uniquement
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/s3.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/s3.test.ts
 
 # Tests SES uniquement
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/ses.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/ses.test.ts
 
 # Tests templates uniquement
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/templates.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
 ```
 
 ---

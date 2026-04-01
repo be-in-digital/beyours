@@ -16,7 +16,7 @@ Système d'internationalisation complet avec support multi-langues illimité, d�
 
 ## 📦 Installation
 
-Le package `@beindigital-engine/core` est déjà installé dans le monorepo.
+Le package `@be-in-digital/core` est déjà installé dans le monorepo.
 
 ```typescript
 import {
@@ -26,7 +26,7 @@ import {
   translateText,
   DEFAULT_I18N_CONFIG,
   COMMON_LANGUAGES,
-} from '@beindigital-engine/core/i18n'
+} from '@be-in-digital/core/i18n'
 ```
 
 ## 🚀 Usage Basique
@@ -34,7 +34,7 @@ import {
 ### 1. Configuration
 
 ```typescript
-import { DEFAULT_I18N_CONFIG } from '@beindigital-engine/core/i18n'
+import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core/i18n'
 
 // Utiliser la config par défaut
 const config = {
@@ -46,7 +46,7 @@ const config = {
 ### 2. Détection de la langue
 
 ```typescript
-import { detectLocale } from '@beindigital-engine/core/i18n'
+import { detectLocale } from '@be-in-digital/core/i18n'
 
 // Côté serveur (Next.js)
 import { cookies, headers } from 'next/headers'
@@ -69,7 +69,7 @@ const locale = detectLocale(config, {
 ### 3. Persistance de la langue
 
 ```typescript
-import { setLocale, clearLocale } from '@beindigital-engine/core/i18n'
+import { setLocale, clearLocale } from '@be-in-digital/core/i18n'
 
 // Définir la langue (cookie + localStorage)
 setLocale('fr', config)
@@ -81,7 +81,7 @@ clearLocale(config)
 ### 4. Traduction
 
 ```typescript
-import { createTranslator } from '@beindigital-engine/core/i18n'
+import { createTranslator } from '@be-in-digital/core/i18n'
 
 const translations = {
   welcome: 'Bienvenue',
@@ -101,7 +101,7 @@ t('items_count', { count: 5 }) // "5 articles"
 ### Setup
 
 ```typescript
-import { translateText, batchTranslate } from '@beindigital-engine/core/i18n'
+import { translateText, batchTranslate } from '@be-in-digital/core/i18n'
 
 // Créer un HTTP client (exemple avec fetch)
 const httpClient = {
@@ -154,7 +154,7 @@ results.forEach((result) => {
 ### Estimation des Coûts
 
 ```typescript
-import { estimateTranslationCost } from '@beindigital-engine/core/i18n'
+import { estimateTranslationCost } from '@be-in-digital/core/i18n'
 
 const cost = estimateTranslationCost(text.length)
 // ~$0.001 par produit
@@ -164,7 +164,7 @@ const cost = estimateTranslationCost(text.length)
 ## 🎨 Langues RTL (Right-to-Left)
 
 ```typescript
-import { isRtlLocale, getLocaleDirection } from '@beindigital-engine/core/i18n'
+import { isRtlLocale, getLocaleDirection } from '@be-in-digital/core/i18n'
 
 const isRtl = isRtlLocale('ar') // true
 const direction = getLocaleDirection('ar') // 'rtl'
@@ -198,15 +198,15 @@ import type {
   UseTranslator,
   UseDirection,
   I18nProviderProps,
-} from '@beindigital-engine/core/i18n'
+} from '@be-in-digital/core/i18n'
 ```
 
 ### Exemple d'implémentation
 
 ```typescript
 // app/hooks/useTranslation.ts
-import { createTranslator } from '@beindigital-engine/core/i18n'
-import type { UseTranslationReturn } from '@beindigital-engine/core/i18n'
+import { createTranslator } from '@be-in-digital/core/i18n'
+import type { UseTranslationReturn } from '@be-in-digital/core/i18n'
 
 export function useTranslation(): UseTranslationReturn {
   const { locale, setLocale } = useLocale()
@@ -254,7 +254,7 @@ Utilisez la notation par points pour organiser :
 Le système i18n est entièrement testé avec 58 tests unitaires.
 
 ```bash
-pnpm --filter @beindigital-engine/core test
+pnpm --filter @be-in-digital/core test
 ```
 
 ### Couverture
@@ -352,7 +352,7 @@ interface I18nConfig {
 ## 🚀 Migration depuis un système existant
 
 ```typescript
-import { mergeTranslations, getMissingKeys } from '@beindigital-engine/core/i18n'
+import { mergeTranslations, getMissingKeys } from '@be-in-digital/core/i18n'
 
 // Fusionner les anciennes et nouvelles traductions
 const merged = mergeTranslations(oldTranslations, newTranslations)
@@ -380,5 +380,5 @@ const translated = await batchTranslate(toTranslate, 'fr', 'en', httpClient, api
 ---
 
 **Version**: 2.0.0
-**Package**: `@beindigital-engine/core`
+**Package**: `@be-in-digital/core`
 **Tests**: 58/58 passés ✅

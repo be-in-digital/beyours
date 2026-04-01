@@ -118,7 +118,7 @@ type StoreIntegrationRecord = {
 // ============================================================================
 
 async function getDeliverooCredentials() {
-  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
   const pkg = getPackageEnv();
   const site = getSiteEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
@@ -324,7 +324,7 @@ async function handleNewOrder(
     return { success: true, internalOrderId };
   }
 
-  const { deliveroo } = await import("@beindigital-engine/integrations");
+  const { deliveroo } = await import("@be-in-digital/integrations");
 
   // ----------------------------------------------------------------
   // Deliveroo flow (per docs):
@@ -459,7 +459,7 @@ async function handleStatusUpdate(
   const isAccepted = status === "accepted" || hasAcceptedInLog;
 
   if (credentials && isAccepted) {
-    const { deliveroo } = await import("@beindigital-engine/integrations");
+    const { deliveroo } = await import("@be-in-digital/integrations");
 
     // Fetch full order from API if webhook doesn't include items
     // (status_update webhooks may only contain id + status)
@@ -567,7 +567,7 @@ export const confirmScheduledOrder = internalAction({
       console.error("No Deliveroo credentials for confirmScheduledOrder");
       return;
     }
-    const { deliveroo } = await import("@beindigital-engine/integrations");
+    const { deliveroo } = await import("@be-in-digital/integrations");
     try {
       await deliveroo.confirmOrder(credentials, args.orderId);
       await ctx.runMutation(internal.orders.internalUpdateStatus, {

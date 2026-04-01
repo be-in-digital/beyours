@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/convex-functions
+ * @be-in-digital/convex-functions
  *
  * Function definition objects (args + handler) for Convex query/mutation wrappers
  */
@@ -57,4 +57,4 @@ export { calculateDeliveryFee, type DeliveryFeeParams, type DeliveryFeeResult } 
 
 // Note: encryption utilities are NOT re-exported from the barrel to avoid
 // pulling Node.js crypto into non-"use node" bundles. Import directly:
-// import { encrypt, decrypt } from "@beindigital-engine/convex-functions/encryption"
+// import { encrypt, decrypt } from "@be-in-digital/convex-functions/encryption"

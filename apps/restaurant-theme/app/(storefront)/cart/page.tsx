@@ -27,9 +27,9 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@beindigital-engine/ui/components"
-import { useCartStore, formatPrice } from "@beindigital-engine/restaurant"
-import type { OrderType } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/ui/components"
+import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
+import type { OrderType } from "@be-in-digital/restaurant"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { OrderTypeSelector } from "@/components/storefront/order-type-selector"

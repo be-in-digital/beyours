@@ -1,7 +1,7 @@
 "use client"
 
-import { useAdminAuthStore } from "@beindigital-engine/admin"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useAdminAuthStore } from "@be-in-digital/admin"
+import { useStoreStore } from "@be-in-digital/restaurant"
 
 function getGreeting(): string {
   const hour = new Date().getHours()

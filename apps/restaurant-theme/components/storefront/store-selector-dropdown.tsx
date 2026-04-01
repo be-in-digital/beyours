@@ -12,13 +12,13 @@ import {
   Empty,
   EmptyHeader,
   EmptyTitle,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import {
   useStoreStore,
   useCartStore,
   useNearestStore,
   type StoreWithDistance,
-} from "@beindigital-engine/restaurant"
+} from "@be-in-digital/restaurant"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 

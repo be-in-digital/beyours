@@ -14,7 +14,7 @@ export const verify = internalAction({
   },
   handler: async (_ctx, args): Promise<Record<string, unknown>> => {
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const { getSiteEnv } = await import("@be-in-digital/core/env");
     const site = getSiteEnv();
 
     const secretKey = site.STRIPE_SECRET_KEY;

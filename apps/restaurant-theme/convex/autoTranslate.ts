@@ -10,7 +10,7 @@ import { action, internalAction, internalMutation, type MutationCtx } from "./_g
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import * as defs from "@beindigital-engine/convex-functions/autoTranslate";
+import * as defs from "@be-in-digital/convex-functions/autoTranslate";
 
 const DEBOUNCE_MS = defs.DEBOUNCE_MS;
 

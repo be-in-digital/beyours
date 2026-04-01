@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useAdminAuthStore } from "@beindigital-engine/admin"
+import { useAdminAuthStore } from "@be-in-digital/admin"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -16,7 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@beindigital-engine/admin"
+} from "@be-in-digital/admin"
 
 function getInitials(name?: string, email?: string): string {
   if (name) {

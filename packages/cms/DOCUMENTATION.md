@@ -1,4 +1,4 @@
-# @beindigital-engine/cms — Documentation Complète
+# @be-in-digital/cms — Documentation Complète
 
 > Package CMS générique pour BeInDigital Engine.
 > Ce package ne contient **aucune page prédéfinie**. Chaque application définit ses propres pages CMS.
@@ -29,7 +29,7 @@
 
 ### Qu'est-ce que ce package ?
 
-`@beindigital-engine/cms` est un **framework de définition de contenu** pour le CMS BeInDigital. Il fournit :
+`@be-in-digital/cms` est un **framework de définition de contenu** pour le CMS BeInDigital. Il fournit :
 
 - Un **registre configurable** de pages et de groupes
 - Des **types TypeScript** stricts pour définir la structure du contenu
@@ -121,7 +121,7 @@ Le package est déjà disponible dans le monorepo. Pour l'utiliser dans une app 
 // package.json de votre app
 {
   "dependencies": {
-    "@beindigital-engine/cms": "workspace:*"
+    "@be-in-digital/cms": "workspace:*"
   }
 }
 ```
@@ -154,7 +154,7 @@ Les groupes organisent vos pages dans le dashboard admin. Chaque groupe a :
 Créez `apps/mon-app/cms/groups.ts` :
 
 ```typescript
-import type { CmsGroupDefinition } from "@beindigital-engine/cms"
+import type { CmsGroupDefinition } from "@be-in-digital/cms"
 
 export const cmsGroups: CmsGroupDefinition[] = [
   { id: "main",    label: "Pages principales", order: 1 },
@@ -175,8 +175,8 @@ Créez un fichier par page dans `apps/mon-app/cms/pages/`. Exemple pour une page
 
 ```typescript
 // apps/mon-app/cms/pages/homepage.ts
-import type { PageDefinition } from "@beindigital-engine/cms"
-import { seoBlock } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
+import { seoBlock } from "@be-in-digital/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",           // Identifiant unique, correspond à la route
@@ -224,7 +224,7 @@ export const homepagePage: PageDefinition = {
 Créez `apps/mon-app/cms/index.ts` pour tout rassembler :
 
 ```typescript
-import type { PageDefinition } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
 import { cmsGroups } from "./groups"
 import { homepagePage } from "./pages/homepage"
 import { signInPage } from "./pages/sign-in"
@@ -249,7 +249,7 @@ export const appCmsConfig = {
 Créez `apps/mon-app/lib/cms/init.ts` :
 
 ```typescript
-import { setCmsRegistry } from "@beindigital-engine/cms"
+import { setCmsRegistry } from "@be-in-digital/cms"
 import { appCmsConfig } from "@/cms"
 
 setCmsRegistry(appCmsConfig)
@@ -290,7 +290,7 @@ Chaque fichier Convex qui utilise le CMS (`getPageDefinition`, `getBlockDefiniti
 
 ```typescript
 // convex/cms.ts
-import { setCmsRegistry } from "@beindigital-engine/cms"
+import { setCmsRegistry } from "@be-in-digital/cms"
 import { appCmsConfig } from "../cms"   // ← Import RELATIF (pas @/cms)
 setCmsRegistry(appCmsConfig)
 
@@ -305,16 +305,16 @@ setCmsRegistry(appCmsConfig)
 
 ```bash
 # Build du package CMS
-pnpm turbo build --filter=@beindigital-engine/cms
+pnpm turbo build --filter=@be-in-digital/cms
 
 # Lancer les tests
-pnpm --filter @beindigital-engine/cms test
+pnpm --filter @be-in-digital/cms test
 
 # Déployer Convex
 cd apps/mon-app && pnpx convex dev --once
 
 # Build Next.js
-pnpm turbo build --filter=@beindigital-engine/mon-app
+pnpm turbo build --filter=@be-in-digital/mon-app
 ```
 
 Si `setCmsRegistry()` détecte une erreur dans votre configuration, il affichera un message explicite :
@@ -455,7 +455,7 @@ interface SelectOption {
 Initialise le registre CMS. **Doit être appelé avant tout accès au registre.**
 
 ```typescript
-import { setCmsRegistry } from "@beindigital-engine/cms"
+import { setCmsRegistry } from "@be-in-digital/cms"
 
 setCmsRegistry({
   pages: { ... },           // Record<string, PageDefinition>
@@ -532,7 +532,7 @@ const field = getFieldDefinition("homepage", "hero", "title")
 Bloc SEO prêt à l'emploi, à ajouter aux pages indexables.
 
 ```typescript
-import { seoBlock } from "@beindigital-engine/cms"
+import { seoBlock } from "@be-in-digital/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",
@@ -581,7 +581,7 @@ Si plusieurs violations existent, **toutes** sont listées dans le même message
 Utilisé côté Convex, avant de persister un brouillon. Valide les données saisies par l'admin contre la définition du bloc.
 
 ```typescript
-import { validateBlockValues, getBlockDefinition } from "@beindigital-engine/cms"
+import { validateBlockValues, getBlockDefinition } from "@be-in-digital/cms"
 
 const blockDef = getBlockDefinition("homepage", "hero")
 const result = validateBlockValues(values, blockDef)
@@ -621,7 +621,7 @@ if (!result.valid) {
 Valide un fichier avant upload.
 
 ```typescript
-import { validateMediaUpload } from "@beindigital-engine/cms"
+import { validateMediaUpload } from "@be-in-digital/cms"
 
 const result = validateMediaUpload("photo.jpg", "image/jpeg", 2_000_000)
 
@@ -644,7 +644,7 @@ if (result.valid) {
 ### Fonctions utilitaires
 
 ```typescript
-import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@beindigital-engine/cms"
+import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@be-in-digital/cms"
 
 getMediaKind("image/jpeg")           // "image"
 getMediaKind("video/mp4")            // "video"
@@ -666,7 +666,7 @@ CMS_MEDIA_LIMITS.image.mimeTypes     // ["image/jpeg", "image/jpg", ...]
 Les SVG uploadés sont nettoyés automatiquement pour supprimer les éléments dangereux.
 
 ```typescript
-import { sanitizeSvg } from "@beindigital-engine/cms"
+import { sanitizeSvg } from "@be-in-digital/cms"
 
 const result = sanitizeSvg(svgContent)
 // result.sanitized    → SVG nettoyé
@@ -708,7 +708,7 @@ Le registre CMS est un **singleton en mémoire**. Il doit être rempli avant que
 
 Vous devez ajouter `setCmsRegistry()` si :
 - Vous créez un **nouveau layout racine** Next.js qui utilise le CMS
-- Vous créez un **nouveau fichier Convex** qui importe depuis `@beindigital-engine/cms`
+- Vous créez un **nouveau fichier Convex** qui importe depuis `@be-in-digital/cms`
 
 ---
 
@@ -718,7 +718,7 @@ Vous devez ajouter `setCmsRegistry()` si :
 
 ```typescript
 // cms/pages/sign-in.ts
-import type { PageDefinition } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
 
 export const signInPage: PageDefinition = {
   slug: "sign-in",
@@ -790,8 +790,8 @@ export const signInPage: PageDefinition = {
 
 ```typescript
 // cms/pages/homepage.ts
-import type { PageDefinition } from "@beindigital-engine/cms"
-import { seoBlock } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
+import { seoBlock } from "@be-in-digital/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",
@@ -866,7 +866,7 @@ export const homepagePage: PageDefinition = {
 1. Créer le fichier `cms/pages/faq.ts` :
 
 ```typescript
-import type { PageDefinition } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
 
 export const faqPage: PageDefinition = {
   slug: "faq",
@@ -910,7 +910,7 @@ const pages: Record<string, PageDefinition> = {
 
 ```bash
 cd apps/mon-app && pnpx convex dev --once
-pnpm turbo build --filter=@beindigital-engine/mon-app
+pnpm turbo build --filter=@be-in-digital/mon-app
 ```
 
 La nouvelle page apparaîtra automatiquement dans le dashboard admin, dans le groupe "Vitrine".
@@ -1122,7 +1122,7 @@ export type {
   CmsFieldValue,
   CmsBlockValues,
   CmsGroupDefinition,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 
 // Registry API
 export {
@@ -1133,18 +1133,18 @@ export {
   getBlockDefinition,
   getFieldDefinition,
   getAllPageSlugs,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 
 // Blocs réutilisables
-export { seoBlock } from "@beindigital-engine/cms"
+export { seoBlock } from "@be-in-digital/cms"
 
 // Validation des valeurs
-export { validateBlockValues } from "@beindigital-engine/cms"
-export type { ValidationError, ValidationResult } from "@beindigital-engine/cms"
+export { validateBlockValues } from "@be-in-digital/cms"
+export type { ValidationError, ValidationResult } from "@be-in-digital/cms"
 
 // Sanitisation SVG
-export { sanitizeSvg } from "@beindigital-engine/cms"
-export type { SanitizeResult } from "@beindigital-engine/cms"
+export { sanitizeSvg } from "@be-in-digital/cms"
+export type { SanitizeResult } from "@be-in-digital/cms"
 
 // Médias
 export {
@@ -1153,11 +1153,11 @@ export {
   getMediaKind,
   getExtensionFromMimeType,
   validateMediaUpload,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 export type {
   MediaKind,
   MediaLimits,
   MediaValidationError,
   MediaValidationResult,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 ```

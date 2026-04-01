@@ -10,8 +10,8 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@beindigital-engine/ui/components"
-import { useCartStore } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/ui/components"
+import { useCartStore } from "@be-in-digital/restaurant"
 import { CartSheet } from "./cart-sheet"
 import { StoreSelectorDropdown } from "./store-selector-dropdown"
 import { LanguageSelectorDropdown } from "./language-selector-dropdown"
