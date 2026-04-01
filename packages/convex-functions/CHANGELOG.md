@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.1
+
+### Patch Changes
+
+- b8aaa34: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- Updated dependencies [b8aaa34]
+  - @be-in-digital/core@2.0.1
+  - @be-in-digital/cms@2.0.1
+  - @be-in-digital/convex-schema@2.0.1
+
 ## 2.0.0
 
 ### Major Changes
