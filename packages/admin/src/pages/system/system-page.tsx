@@ -57,7 +57,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { APP_VERSION } from "../../lib/constants"

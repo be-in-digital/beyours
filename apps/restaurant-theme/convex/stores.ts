@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/stores";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/stores";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 // === Queries (public for storefront) ===
 // Strip sensitive data (printConfig.apiKey) from public queries

@@ -9,7 +9,7 @@
  */
 
 import { v } from "convex/values"
-import { getExtensionFromMimeType } from "@beindigital-engine/cms"
+import { getExtensionFromMimeType } from "@be-in-digital/cms"
 
 // ============================================================================
 // Queries

@@ -1,3 +1,3 @@
-// @beindigital-engine/themes
+// @be-in-digital/themes
 // Package exports
 export {}

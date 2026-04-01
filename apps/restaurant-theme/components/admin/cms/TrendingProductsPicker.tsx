@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import type { Id } from "@/convex/_generated/dataModel"
 
 export function TrendingProductsPicker() {

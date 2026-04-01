@@ -1,4 +1,4 @@
-import { NewProductPage } from "@beindigital-engine/admin"
+import { NewProductPage } from "@be-in-digital/admin"
 
 export default function Page() {
   return <NewProductPage />

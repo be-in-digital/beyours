@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/translations";
+import * as defs from "@be-in-digital/convex-functions/translations";
 
 export const getForEntity = query(defs.getForEntity);
 export const getByLanguage = query(defs.getByLanguage);

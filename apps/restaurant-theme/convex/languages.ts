@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/languages";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/languages";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 export const list = query(defs.list);
 export const listActive = query(defs.listActive);

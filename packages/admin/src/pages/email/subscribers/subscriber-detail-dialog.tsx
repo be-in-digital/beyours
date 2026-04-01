@@ -8,8 +8,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@beindigital-engine/ui"
-import { StatusTimeline, type TimelineItem } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { StatusTimeline, type TimelineItem } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { formatDate } from "../../../lib/formatters"
 

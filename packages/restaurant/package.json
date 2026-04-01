@@ -1,5 +1,5 @@
 {
-  "name": "@beindigital-engine/restaurant",
+  "name": "@be-in-digital/restaurant",
   "version": "2.0.0",
   "publishConfig": {
     "access": "restricted"
@@ -47,8 +47,8 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@beindigital-engine/convex-schema": "workspace:^",
-    "@beindigital-engine/core": "workspace:^",
+    "@be-in-digital/convex-schema": "workspace:^",
+    "@be-in-digital/core": "workspace:^",
     "zod": "^3.24.0",
     "zustand": "^5.0.0"
   },

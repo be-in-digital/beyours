@@ -21,7 +21,7 @@ import {
   Checkbox,
   DialogFooter,
   SearchInput,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { RefreshCw, X, Package, FolderOpen } from "lucide-react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"

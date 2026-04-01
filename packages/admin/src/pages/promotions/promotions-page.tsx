@@ -45,7 +45,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"

@@ -1,5 +1,5 @@
 {
-  "name": "@beindigital-engine/cms",
+  "name": "@be-in-digital/cms",
   "version": "2.0.0",
   "publishConfig": {
     "access": "restricted"

@@ -7,10 +7,10 @@ import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useRouter } from "next/navigation"
 import { FileText, Globe, PenLine, Search } from "lucide-react"
-import { Badge, Button } from "@beindigital-engine/ui"
+import { Badge, Button } from "@be-in-digital/ui"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getCmsGroups } from "@beindigital-engine/cms"
+import { getCmsGroups } from "@be-in-digital/cms"
 import {
   Table,
   TableBody,

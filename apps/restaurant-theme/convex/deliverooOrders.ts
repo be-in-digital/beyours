@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
+import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
 
 /**
  * Accept a Deliveroo order.
@@ -55,7 +55,7 @@ export const acceptOrder = action({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 4. Call Deliveroo API to accept order
-      const { deliveroo } = await import("@beindigital-engine/integrations");
+      const { deliveroo } = await import("@be-in-digital/integrations");
       await deliveroo.acceptOrder(credentials, order.externalOrderId);
 
       // 5. Update order status to confirmed
@@ -127,7 +127,7 @@ export const rejectOrder = action({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 4. Call Deliveroo API to reject order
-      const { deliveroo } = await import("@beindigital-engine/integrations");
+      const { deliveroo } = await import("@be-in-digital/integrations");
       await deliveroo.rejectOrder(credentials, order.externalOrderId, args.reason ?? "store_busy");
 
       // 5. Update order status to cancelled
@@ -200,7 +200,7 @@ export const updatePrepStage = action({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 4. Call Deliveroo API to update prep stage
-      const { deliveroo } = await import("@beindigital-engine/integrations");
+      const { deliveroo } = await import("@be-in-digital/integrations");
       await deliveroo.updatePrepStage(credentials, order.externalOrderId, args.stage);
 
       // 5. Update internal order status based on stage

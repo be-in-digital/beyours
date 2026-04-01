@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId, useDebounce } from "../../../hooks/admin-hooks"
 

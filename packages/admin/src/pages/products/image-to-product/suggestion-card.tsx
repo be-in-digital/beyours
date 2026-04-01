@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { ProductSuggestion } from "@beindigital-engine/convex-schema/types"
+import type { ProductSuggestion } from "@be-in-digital/convex-schema/types"
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
   Textarea,
   Checkbox,
   Badge,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { ImageIcon } from "lucide-react"
 import { AiFieldBadge } from "./ai-field-badge"
 import { ConfidenceIndicator } from "./confidence-indicator"

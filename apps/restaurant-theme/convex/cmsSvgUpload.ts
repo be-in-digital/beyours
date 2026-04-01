@@ -11,7 +11,7 @@ import { action } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
-import { sanitizeSvg } from "@beindigital-engine/cms"
+import { sanitizeSvg } from "@be-in-digital/cms"
 
 const MAX_SVG_SIZE = 1 * 1024 * 1024 // 1MB
 

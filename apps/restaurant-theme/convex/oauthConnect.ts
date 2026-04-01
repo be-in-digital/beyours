@@ -48,7 +48,7 @@ interface StripeAccountLinkResponse {
 async function encrypt(plaintext: string): Promise<string> {
   const { randomBytes, createCipheriv } = await import("crypto");
 
-  const { getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getSiteEnv } = await import("@be-in-digital/core/env");
   const hex = getSiteEnv().ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
     throw new Error("ENCRYPTION_KEY must be a 64-character hex string");
@@ -92,7 +92,7 @@ export const generateOAuthUrl = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
-    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const { getSiteEnv } = await import("@be-in-digital/core/env");
     const site = getSiteEnv();
     const siteUrl = site.CONVEX_SITE_URL;
     if (!siteUrl) throw new Error("CONVEX_SITE_URL environment variable is not configured");
@@ -185,7 +185,7 @@ export const exchangeOAuthToken = internalAction({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const { getSiteEnv } = await import("@beindigital-engine/core/env");
+    const { getSiteEnv } = await import("@be-in-digital/core/env");
     const siteEnv = getSiteEnv();
     const clientId = siteEnv.SUMUP_CLIENT_ID;
     const clientSecret = siteEnv.SUMUP_CLIENT_SECRET;

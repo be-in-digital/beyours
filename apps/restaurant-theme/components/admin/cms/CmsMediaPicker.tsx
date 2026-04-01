@@ -26,9 +26,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@beindigital-engine/ui"
-import { validateMediaUpload } from "@beindigital-engine/cms"
-import type { MediaKind } from "@beindigital-engine/cms"
+} from "@be-in-digital/ui"
+import { validateMediaUpload } from "@be-in-digital/cms"
+import type { MediaKind } from "@be-in-digital/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 
 interface MediaItem {

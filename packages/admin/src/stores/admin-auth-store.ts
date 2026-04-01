@@ -7,7 +7,7 @@
  */
 
 import { create } from "zustand"
-import type { Role } from "@beindigital-engine/core"
+import type { Role } from "@be-in-digital/core"
 
 interface AdminUser {
   id: string

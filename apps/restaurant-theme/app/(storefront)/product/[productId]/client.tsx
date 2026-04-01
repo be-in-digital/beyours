@@ -1,9 +1,9 @@
 "use client"
 
-import type { ProductDoc } from "@beindigital-engine/restaurant"
+import type { ProductDoc } from "@be-in-digital/restaurant"
 import { ProductDetailClient } from "@/components/storefront/product-detail-client"
 import { useStoreId } from "@/lib/hooks/use-store-id"
-import { Skeleton } from "@beindigital-engine/ui/components"
+import { Skeleton } from "@be-in-digital/ui/components"
 
 interface Props {
   product: ProductDoc

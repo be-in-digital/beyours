@@ -51,7 +51,7 @@ export interface EmailRouteConfig {
  * @example
  * ```typescript
  * // app/api/email/send/route.ts
- * import { createEmailRouteHandler } from '@beindigital-engine/core/aws/ses'
+ * import { createEmailRouteHandler } from '@be-in-digital/core/aws/ses'
  *
  * const handler = createEmailRouteHandler({
  *   secret: process.env.EMAIL_API_SECRET!

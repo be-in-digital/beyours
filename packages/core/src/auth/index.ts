@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/core - Authentification et RBAC
+ * @be-in-digital/core - Authentification et RBAC
  *
  * Ce module fournit une solution complète d'authentification avec Better Auth
  * et un système RBAC (Role-Based Access Control) pour BeInDigital Engine.
@@ -9,13 +9,13 @@
  * @example
  * ```ts
  * // Import RBAC
- * import { Role, hasPermission } from '@beindigital-engine/core/auth'
+ * import { Role, hasPermission } from '@be-in-digital/core/auth'
  *
  * // Import hooks React
- * import { useAuth, usePermission } from '@beindigital-engine/core/auth'
+ * import { useAuth, usePermission } from '@be-in-digital/core/auth'
  *
  * // Import utilitaires serveur
- * import { requireAuth, requirePermission } from '@beindigital-engine/core/auth'
+ * import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
  * ```
  */
 

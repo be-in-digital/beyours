@@ -1,4 +1,4 @@
-# Structure du package @beindigital-engine/convex-schema
+# Structure du package @be-in-digital/convex-schema
 
 ## Arborescence
 
@@ -256,7 +256,7 @@ Vue d'ensemble de la structure du package
 
 ```json
 {
-  "name": "@beindigital-engine/convex-schema",
+  "name": "@be-in-digital/convex-schema",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -288,7 +288,7 @@ Configuration Vitest pour tests unitaires
 ### Import du schéma
 
 ```typescript
-import { schema } from '@beindigital-engine/convex-schema'
+import { schema } from '@be-in-digital/convex-schema'
 ```
 
 ### Import des validators
@@ -298,7 +298,7 @@ import {
   createStoreSchema,
   createProductSchema,
   createOrderSchema,
-} from '@beindigital-engine/convex-schema'
+} from '@be-in-digital/convex-schema'
 ```
 
 ### Import des types
@@ -310,7 +310,7 @@ import type {
   OrderDoc,
   CreateProductInput,
   OrderStatus,
-} from '@beindigital-engine/convex-schema'
+} from '@be-in-digital/convex-schema'
 ```
 
 ## Scripts disponibles

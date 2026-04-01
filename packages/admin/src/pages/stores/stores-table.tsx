@@ -23,7 +23,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { formatShortDate } from "../../lib/formatters"
 import { cn } from "../../lib/utils"
 

@@ -1,4 +1,4 @@
-// @beindigital-engine/convex-schema
+// @be-in-digital/convex-schema
 // Package exports
 
 // Table definitions (for composing app schemas)

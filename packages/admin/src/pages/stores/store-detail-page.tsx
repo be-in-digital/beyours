@@ -4,33 +4,33 @@ import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
 import { RefreshCw, Loader2, HelpCircle, ExternalLink, Download, MoreHorizontal, Trash2 } from "lucide-react"
-import { Button } from "@beindigital-engine/ui"
-import { Input } from "@beindigital-engine/ui"
-import { Label } from "@beindigital-engine/ui"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
+import { Input } from "@be-in-digital/ui"
+import { Label } from "@be-in-digital/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@be-in-digital/ui"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@beindigital-engine/ui"
-import { Switch } from "@beindigital-engine/ui"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Switch } from "@be-in-digital/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@beindigital-engine/ui"
-import { AddressAutocomplete, type AddressValue } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"

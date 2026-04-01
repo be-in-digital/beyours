@@ -7,7 +7,7 @@ import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, FolderPlus } from "lucide-react"
-import { Button, Input } from "@beindigital-engine/ui"
+import { Button, Input } from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,

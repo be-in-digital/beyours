@@ -11,7 +11,7 @@ import {
   Button,
   Label,
   Switch,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { Loader2 } from "lucide-react"
 
 // Propagation scope determines which stores will receive the product update

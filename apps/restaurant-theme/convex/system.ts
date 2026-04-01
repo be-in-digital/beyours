@@ -1,8 +1,8 @@
 import { query, mutation, action, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
-import { getAuthUser } from "@beindigital-engine/convex-functions/auth"
-import { hasPermission, type Permission, type Role } from "@beindigital-engine/core/auth/rbac"
+import { getAuthUser } from "@be-in-digital/convex-functions/auth"
+import { hasPermission, type Permission, type Role } from "@be-in-digital/core/auth/rbac"
 import { migrations } from "./migrations/index"
 
 // Type returned by systemInternal.getAuthUserInternal
@@ -283,7 +283,7 @@ export const checkForUpdates = action({
 
     try {
       const res = await fetch(
-        "https://registry.npmjs.org/@beindigital-engine/restaurant-theme/latest",
+        "https://registry.npmjs.org/@be-in-digital/restaurant-theme/latest",
         { headers: { Accept: "application/json" } }
       )
 

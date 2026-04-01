@@ -1,4 +1,4 @@
-import type { PageDefinition } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
 
 export const accountPage: PageDefinition = {
   slug: "account",

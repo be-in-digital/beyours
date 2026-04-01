@@ -1,8 +1,8 @@
 import { query, mutation, internalMutation, internalQuery, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import * as defs from "@beindigital-engine/convex-functions/kitchenTickets";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/kitchenTickets";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 // === INTERNAL QUERIES (no auth, called from actions) ===
 
@@ -206,7 +206,7 @@ export const incrementPrintCount = mutation({
  * Helper: get Uber Eats credentials from env vars.
  */
 async function getUberEatsCredentials() {
-  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
   const pkg = getPackageEnv();
   const site = getSiteEnv();
   const clientId = pkg.UBER_EATS_CLIENT_ID;
@@ -220,7 +220,7 @@ async function getUberEatsCredentials() {
  * Helper: get Deliveroo credentials from env vars.
  */
 async function getDeliverooCredentials() {
-  const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env");
+  const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
   const pkg = getPackageEnv();
   const site = getSiteEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
@@ -267,7 +267,7 @@ export const acceptTicket = action({
       try {
         const creds = await getUberEatsCredentials();
         if (creds) {
-          const { uberEats } = await import("@beindigital-engine/integrations");
+          const { uberEats } = await import("@be-in-digital/integrations");
           await uberEats.acceptOrder(creds, externalId);
           console.log(`Accepted Uber Eats order ${externalId}`);
         }
@@ -280,7 +280,7 @@ export const acceptTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@beindigital-engine/integrations");
+          const { deliveroo } = await import("@be-in-digital/integrations");
           await deliveroo.acceptOrder(creds, externalId);
           console.log(`Accepted Deliveroo order ${externalId}`);
         }
@@ -329,7 +329,7 @@ export const readyTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@beindigital-engine/integrations");
+          const { deliveroo } = await import("@be-in-digital/integrations");
           await deliveroo.updatePrepStage(creds, externalId, "ready");
           console.log(`Deliveroo order ${externalId} marked as ready`);
         }
@@ -430,7 +430,7 @@ export const cancelTicket = action({
       try {
         const creds = await getUberEatsCredentials();
         if (creds) {
-          const { uberEats } = await import("@beindigital-engine/integrations");
+          const { uberEats } = await import("@be-in-digital/integrations");
           if (wasAccepted) {
             // Post-accept: use cancelOrder (refund handled by Uber)
             await uberEats.cancelOrder(creds, externalId, {
@@ -456,7 +456,7 @@ export const cancelTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@beindigital-engine/integrations");
+          const { deliveroo } = await import("@be-in-digital/integrations");
           if (!wasAccepted) {
             // Pre-accept: reject via API with reason from KDS
             const rejectReason = args.reason ?? "store_busy";

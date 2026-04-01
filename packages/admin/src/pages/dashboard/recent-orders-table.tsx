@@ -18,7 +18,7 @@ import {
   TableCell,
   Badge,
   Button,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 
 type OrderStatus =
   | "pending" | "confirmed" | "preparing" | "ready"

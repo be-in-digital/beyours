@@ -11,7 +11,7 @@ import {
   getBlockDefinition,
   getAllPageSlugs,
   validateBlockValues,
-} from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
 
 // ============================================================================
 // Validators

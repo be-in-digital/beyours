@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useMutation } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
-import { Button, ButtonGroup } from "@beindigital-engine/ui"
+import { Button, ButtonGroup } from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@beindigital-engine/ui"
-import { Input, Label } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Input, Label } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import {
   CheckCircle,

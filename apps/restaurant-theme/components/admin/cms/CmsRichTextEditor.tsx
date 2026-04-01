@@ -7,7 +7,7 @@ import Placeholder from "@tiptap/extension-placeholder"
 import CharacterCount from "@tiptap/extension-character-count"
 import { useEffect } from "react"
 import { Bold, Italic, Link as LinkIcon, List, ListOrdered } from "lucide-react"
-import { Button } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
 
 interface CmsRichTextEditorProps {
   value: string

@@ -1,7 +1,7 @@
 /**
  * RBAC (Role-Based Access Control) integration
  *
- * Re-exports RBAC utilities from @beindigital-engine/core
+ * Re-exports RBAC utilities from @be-in-digital/core
  * for easy use throughout the restaurant-theme app.
  *
  * @example
@@ -28,14 +28,14 @@ export {
   parseRole,
   isValidRole,
   PermissionDeniedError,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Auth Types
 export type {
   AuthUser,
   AuthSession,
   AuthSessionData,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Server Utilities
 export {
@@ -53,4 +53,4 @@ export {
   withAuthRoute,
   UnauthorizedError,
   ForbiddenError,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'

@@ -52,9 +52,9 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui"
-import { renderTemplateToEmailHtml } from "@beindigital-engine/marketing"
-import type { EmailBranding, EmailBlock } from "@beindigital-engine/marketing"
+} from "@be-in-digital/ui"
+import { renderTemplateToEmailHtml } from "@be-in-digital/marketing"
+import type { EmailBranding, EmailBlock } from "@be-in-digital/marketing"
 import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"

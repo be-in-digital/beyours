@@ -1,9 +1,9 @@
 "use client"
 
 import { Search, ShoppingBag } from "lucide-react"
-import { Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@beindigital-engine/ui/components"
-import { isProductAvailable } from "@beindigital-engine/restaurant"
-import type { ProductDoc } from "@beindigital-engine/restaurant"
+import { Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui/components"
+import { isProductAvailable } from "@be-in-digital/restaurant"
+import type { ProductDoc } from "@be-in-digital/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { StorefrontProductCard } from "./storefront-product-card"
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { Badge } from "@beindigital-engine/ui"
+import { Badge } from "@be-in-digital/ui"
 import { cn } from "../lib/utils"
 
 type Status =

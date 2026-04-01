@@ -7,12 +7,12 @@ import { Heart } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
-import { Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@beindigital-engine/ui/components"
+import { Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui/components"
 import {
   isProductAvailable,
   useCartStore,
-} from "@beindigital-engine/restaurant"
-import type { ProductDoc, CartItem } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/restaurant"
+import type { ProductDoc, CartItem } from "@be-in-digital/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { StorefrontProductCard } from "./storefront-product-card"

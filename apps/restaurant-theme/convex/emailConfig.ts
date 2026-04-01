@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/emailConfig";
-import { requireStoreAccess } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/emailConfig";
+import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
 // === Queries (auth-protected — contains fromEmail/replyToEmail) ===
 

@@ -8,8 +8,8 @@ import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, Lock, Sparkles, FolderPlus, Plus, Check, Languages } from "lucide-react"
-import { Button, Input, Switch } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
+import { Button, Input, Switch } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,

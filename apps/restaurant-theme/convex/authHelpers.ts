@@ -7,9 +7,9 @@
 
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { requireStorePermission } from "@beindigital-engine/convex-functions/auth";
-import { checkImageToProductAccess } from "@beindigital-engine/convex-functions/blogAutoGuards";
-import { incrementImageToProductUsageCore } from "@beindigital-engine/convex-functions/blogAutoGenerate";
+import { requireStorePermission } from "@be-in-digital/convex-functions/auth";
+import { checkImageToProductAccess } from "@be-in-digital/convex-functions/blogAutoGuards";
+import { incrementImageToProductUsageCore } from "@be-in-digital/convex-functions/blogAutoGenerate";
 
 /**
  * Verify the current user has a specific permission on a store.

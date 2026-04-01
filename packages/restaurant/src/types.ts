@@ -48,7 +48,7 @@ export type {
 
   // Base types
   BaseEntity,
-} from '@beindigital-engine/convex-schema'
+} from '@be-in-digital/convex-schema'
 
 // ============================================================================
 // CART TYPES

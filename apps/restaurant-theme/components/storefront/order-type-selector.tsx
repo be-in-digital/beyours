@@ -1,7 +1,7 @@
 "use client"
 
 import { Truck, ShoppingBag, Utensils } from "lucide-react"
-import type { OrderType } from "@beindigital-engine/restaurant"
+import type { OrderType } from "@be-in-digital/restaurant"
 
 interface OrderTypeSelectorProps {
   value: OrderType
