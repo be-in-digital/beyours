@@ -299,7 +299,7 @@ export function GamesPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="config" className="space-y-4">
+      <Tabs defaultValue="config" className="space-y-4" data-tour="games-tabs">
         <TabsList>
           <TabsTrigger value="config">Configuration</TabsTrigger>
           <TabsTrigger value="qrcodes">Codes QR</TabsTrigger>

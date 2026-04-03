@@ -141,7 +141,7 @@ export function ProductsPage() {
   return (
     <div className="space-y-6">
       {/* Header — title + add button on the same row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="products-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Menu & Produits</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -179,7 +179,7 @@ export function ProductsPage() {
         <TabsContent value="products">
           <div className="space-y-6">
             {/* Filters card */}
-            <div className="rounded-lg border bg-card p-4 space-y-4">
+            <div className="rounded-lg border bg-card p-4 space-y-4" data-tour="products-filters">
               {/* Search bar — full width, prominent */}
               <SearchInput
                 placeholder="Rechercher un produit par nom ou description..."
