@@ -1,6 +1,6 @@
 import { query, mutation, internalQuery } from "./_generated/server";
-import * as defs from "@beindigital-engine/convex-functions/globalSettings";
-import { getAuthUser } from "@beindigital-engine/convex-functions/auth";
+import * as defs from "@be-in-digital/convex-functions/globalSettings";
+import { getAuthUser } from "@be-in-digital/convex-functions/auth";
 
 // === Queries ===
 

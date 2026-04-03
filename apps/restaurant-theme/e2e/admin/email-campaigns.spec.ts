@@ -7,7 +7,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 
-const CAMPAIGNS_URL = "/email/campaigns"
+const CAMPAIGNS_URL = "/dashboard/email/campaigns"
 
 test.describe("Email Campaigns Page", () => {
   test.describe("Page Structure", () => {

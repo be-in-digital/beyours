@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/cms
+ * @be-in-digital/cms
  *
  * CMS package for BeInDigital Engine.
  * Provides registry definitions, types, and validation for the CMS system.

@@ -1,3 +1,5 @@
+import { adminRoutes } from "./admin-routes"
+
 /** Top-level route segment to French title mapping */
 export const titles: Record<string, string> = {
   dashboard: "Vue d'ensemble",
@@ -9,36 +11,44 @@ export const titles: Record<string, string> = {
   games: "Gamification",
   email: "Email Marketing",
   content: "Contenu",
-  stores: "\u00c9tablissements",
-  team: "\u00c9quipe & R\u00f4les",
-  settings: "Param\u00e8tres",
-  system: "Syst\u00e8me & Mises \u00e0 jour",
+  stores: "Établissements",
+  team: "Équipe & Rôles",
+  settings: "Paramètres",
+  system: "Système & Mises à jour",
+  languages: "Langues",
+  subscription: "Abonnement",
+  categories: "Catégories",
 }
 
 /** Two-level sub-page paths to French title mapping */
 export const subTitles: Record<string, string> = {
+  "orders/kitchen": "Cuisine (KDS)",
   "games/catalog": "Jeux",
   "games/qr-codes": "QR Codes",
   "games/actions": "Actions",
   "games/winners": "Gagnants",
-  "games/settings": "Param\u00e8tres",
+  "games/settings": "Paramètres",
   "email/campaigns": "Campagnes",
-  "email/templates": "Mod\u00e8les",
-  "email/subscribers": "Abonn\u00e9s",
+  "email/templates": "Modèles",
+  "email/subscribers": "Abonnés",
   "email/segments": "Segments",
   "email/config": "Configuration",
   "content/pages": "Pages",
   "content/components": "Composants",
   "content/blog": "Blog",
-  "content/media": "M\u00e9diath\u00e8que",
+  "content/media": "Médiathèque",
   "content/blog/auto-config": "Auto Blog",
+  "products/new": "Nouveau produit",
+  "products/from-image": "Depuis une image",
 }
 
 /** Parent route href mapping for breadcrumb links */
 export const parentHrefs: Record<string, string> = {
-  games: "/games",
-  email: "/email",
-  content: "/content/pages",
+  orders: adminRoutes.orders,
+  games: adminRoutes.games,
+  email: adminRoutes.email,
+  content: adminRoutes.contentPages,
+  products: adminRoutes.products,
 }
 
 // ─── Breadcrumb data builder ────────────────────────────────────────────────────
@@ -53,9 +63,15 @@ interface BreadcrumbData {
  * Build breadcrumb data from the current pathname.
  * Returns a parent + current label pair for two-level breadcrumbs,
  * or just a current label for top-level pages.
+ *
+ * Automatically strips the leading `/dashboard` segment so title maps
+ * stay clean and readable.
  */
 export function getBreadcrumbData(pathname: string): BreadcrumbData {
   const segments = pathname.split("/").filter(Boolean)
+
+  // Strip the /dashboard prefix — all admin routes live under it
+  if (segments[0] === "dashboard") segments.shift()
 
   if (segments.length === 0) {
     return { parentLabel: null, parentHref: null, currentLabel: "Vue d'ensemble" }
@@ -73,7 +89,7 @@ export function getBreadcrumbData(pathname: string): BreadcrumbData {
     if (tripleTitle) {
       const parentKey = `${firstSegment}/${secondSegment}`
       const parentLabel = subTitles[parentKey] ?? secondSegment
-      const parentHref = `/${firstSegment}/${secondSegment}`
+      const parentHref = `/dashboard/${firstSegment}/${secondSegment}`
 
       return {
         parentLabel,
@@ -90,7 +106,7 @@ export function getBreadcrumbData(pathname: string): BreadcrumbData {
 
     if (subTitle) {
       const parentLabel = titles[firstSegment] ?? firstSegment
-      const parentHref = parentHrefs[firstSegment] ?? `/${firstSegment}`
+      const parentHref = parentHrefs[firstSegment] ?? `/dashboard/${firstSegment}`
 
       return {
         parentLabel,

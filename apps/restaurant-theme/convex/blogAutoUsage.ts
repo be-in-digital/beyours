@@ -5,8 +5,8 @@
  */
 
 import { query } from "./_generated/server"
-import * as blogAutoUsageDefs from "@beindigital-engine/convex-functions/blogAutoUsage"
-import { getCurrentPeriodKey } from "@beindigital-engine/convex-functions/blogAutoUsage"
+import * as blogAutoUsageDefs from "@be-in-digital/convex-functions/blogAutoUsage"
+import { getCurrentPeriodKey } from "@be-in-digital/convex-functions/blogAutoUsage"
 
 // ============================================================================
 // Queries

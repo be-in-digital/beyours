@@ -1,7 +1,7 @@
 /**
  * i18n (Internationalization) integration
  *
- * Re-exports i18n utilities from @beindigital-engine/core
+ * Re-exports i18n utilities from @be-in-digital/core
  * for multilingual support in the restaurant-theme app.
  *
  * @example
@@ -30,7 +30,7 @@ export type {
   UseTranslationReturn,
   UseLocaleReturn,
   LanguageSwitcherProps,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Configuration
 export {
@@ -40,7 +40,7 @@ export {
   isRtlLocale,
   getLocaleDirection,
   findLanguageConfig,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Locale Detection
 export {
@@ -49,7 +49,7 @@ export {
   detectLocaleFromBrowser,
   detectLocaleFromHeader,
   detectLocale,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Locale Storage
 export {
@@ -59,7 +59,7 @@ export {
   clearLocale,
   getLocaleFromCookie,
   getLocaleFromLocalStorage,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Translation Utilities
 export {
@@ -68,7 +68,7 @@ export {
   validateTranslationMap,
   mergeTranslations,
   getMissingKeys,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // GPT Translation (for admin auto-translation feature)
 export {
@@ -77,7 +77,7 @@ export {
   batchTranslate,
   calculateTotalCost,
   groupTranslationResults,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // Hook types (implementation in app)
 export type {
@@ -88,4 +88,4 @@ export type {
   LanguageSwitcherComponent,
   I18nProviderProps,
   I18nProviderComponent,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'

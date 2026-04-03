@@ -8,8 +8,9 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useAdminStoreId, useAdminApi } from "../../hooks/admin-hooks"
 import { eurosToCents, centsToEuros } from "../../lib/formatters"
+import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
-import { Button } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
 
 interface EditProductPageProps {
   params: Promise<{ productId: string }>
@@ -84,7 +85,7 @@ export function EditProductPage({ params }: EditProductPageProps) {
       })
 
       toast.success("Produit mis à jour avec succès")
-      router.push("/products")
+      router.push(adminRoutes.products)
     } catch (error) {
       toast.error("Échec de la mise à jour du produit")
       console.error(error)
@@ -133,7 +134,7 @@ export function EditProductPage({ params }: EditProductPageProps) {
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon-sm" asChild>
-          <Link href="/products">
+          <Link href={adminRoutes.products}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

@@ -154,7 +154,7 @@ export function ProductsContent() {
 
           {/* Add Product button */}
           <Button asChild>
-            <Link href="/products/new">
+            <Link href="/dashboard/products/new">
               <Plus className="mr-2 h-4 w-4" />
               Ajouter un produit
             </Link>
@@ -176,7 +176,7 @@ export function ProductsContent() {
             </EmptyHeader>
             {!(searchQuery || categoryFilter !== "all" || statusFilter !== "all") && (
               <Button asChild>
-                <Link href="/products/new">
+                <Link href="/dashboard/products/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Créez votre premier produit
                 </Link>

@@ -1,4 +1,4 @@
-# @beindigital-engine/ui - Component Library
+# @be-in-digital/ui - Component Library
 
 Complete shadcn/ui-inspired component library built with TypeScript, Tailwind CSS, and class-variance-authority.
 
@@ -76,13 +76,13 @@ Dashboard and admin panel components
 
 ### Import from main entry
 ```typescript
-import { Button, Input, Card } from "@beindigital-engine/ui"
+import { Button, Input, Card } from "@be-in-digital/ui"
 ```
 
 ### Import from subpaths
 ```typescript
-import { ProductCard, CartItem } from "@beindigital-engine/ui/restaurant"
-import { AdminLayout, StatCard } from "@beindigital-engine/ui/admin"
+import { ProductCard, CartItem } from "@be-in-digital/ui/restaurant"
+import { AdminLayout, StatCard } from "@be-in-digital/ui/admin"
 ```
 
 ## Features

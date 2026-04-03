@@ -15,7 +15,7 @@ import {
   internalQuery,
 } from "./_generated/server"
 import { v } from "convex/values"
-import * as mediaDefs from "@beindigital-engine/convex-functions/cmsMedia"
+import * as mediaDefs from "@be-in-digital/convex-functions/cmsMedia"
 
 // ============================================================================
 // Queries

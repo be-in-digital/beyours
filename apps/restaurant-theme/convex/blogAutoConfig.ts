@@ -7,12 +7,12 @@
 
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
-import * as blogAutoConfigDefs from "@beindigital-engine/convex-functions/blogAutoConfig"
+import * as blogAutoConfigDefs from "@be-in-digital/convex-functions/blogAutoConfig"
 import {
   checkAutoBlogAccess,
   checkImageGenerationAccess,
   validateConfigAgainstPlan,
-} from "@beindigital-engine/convex-functions/blogAutoGuards"
+} from "@be-in-digital/convex-functions/blogAutoGuards"
 
 // ============================================================================
 // Queries

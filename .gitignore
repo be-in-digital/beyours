@@ -61,5 +61,4 @@ dist/
 .convex-build/
 
 # Changesets
-.changeset/*.md
-!.changeset/config.json
+# .changeset/*.md files must be committed for changesets to work

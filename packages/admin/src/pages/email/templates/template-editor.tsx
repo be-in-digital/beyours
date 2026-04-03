@@ -39,15 +39,15 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { useEmailTemplateEditorStore } from "../../../stores/email-template-editor-store"
 import type { EditorBlock } from "../../../stores/email-template-editor-store"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 import { BlockPreview } from "./block-preview"
 import { BlockConfigPanel } from "./block-config-panel"
-import { renderTemplateToEmailHtml } from "@beindigital-engine/marketing"
-import type { EmailBranding, EmailBlock } from "@beindigital-engine/marketing"
+import { renderTemplateToEmailHtml } from "@be-in-digital/marketing"
+import type { EmailBranding, EmailBlock } from "@be-in-digital/marketing"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Template = any

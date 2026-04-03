@@ -2,22 +2,23 @@
 
 import Link from "next/link"
 import { ShoppingCart, PlusCircle, ChefHat } from "lucide-react"
+import { adminRoutes } from "../../config/admin-routes"
 
 const actions = [
   {
-    href: "/orders",
+    href: adminRoutes.orders,
     icon: ShoppingCart,
     label: "Nouvelle commande",
     description: "Créer une commande manuellement",
   },
   {
-    href: "/products/new",
+    href: adminRoutes.newProduct,
     icon: PlusCircle,
     label: "Ajouter un produit",
     description: "Ajouter au catalogue",
   },
   {
-    href: "/kitchen",
+    href: adminRoutes.kitchen,
     icon: ChefHat,
     label: "Voir la cuisine",
     description: "Écran de préparation",

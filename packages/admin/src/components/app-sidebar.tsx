@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { hasPermission, type Role, type Permission } from "@beindigital-engine/core"
+import { hasPermission, type Role, type Permission } from "@be-in-digital/core"
 import { UtensilsCrossed, Store } from "lucide-react"
 import {
   Sidebar,

@@ -49,6 +49,8 @@ export {
   blogAutoQueueTable,
   blogAutoUsageTable,
 } from "./autoBlog"
+// System
+export { systemAuditLogTable } from "./systemAuditLog"
 // CMS storefront page tables & validators
 export {
   // CMS validators

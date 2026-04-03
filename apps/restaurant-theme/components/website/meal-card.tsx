@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useCartStore, formatPrice } from "@beindigital-engine/restaurant";
+import { useCartStore, formatPrice } from "@be-in-digital/restaurant";
 import { FavoriteButton } from "./favorite-button";
 import {
     Tooltip,

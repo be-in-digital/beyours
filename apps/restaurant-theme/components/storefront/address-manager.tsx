@@ -23,7 +23,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import { useAddressesStore, type SavedAddress } from "@/lib/stores/addresses-store"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"

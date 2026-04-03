@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore } from "@be-in-digital/restaurant"
 import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"
 import {

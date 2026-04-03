@@ -1,5 +1,5 @@
 /**
- * Email HTML Renderer (inlined from @beindigital-engine/marketing)
+ * Email HTML Renderer (inlined from @be-in-digital/marketing)
  *
  * Converts block-based email templates to email-safe HTML.
  * Uses HTML tables and inline styles — no flexbox, no grid, no modern CSS.

@@ -7,7 +7,7 @@ import {
   useStoreStore,
   useCartStore,
   useNearestStore,
-} from "@beindigital-engine/restaurant"
+} from "@be-in-digital/restaurant"
 
 /**
  * Hook: useStoreId

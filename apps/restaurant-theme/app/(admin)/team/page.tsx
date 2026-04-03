@@ -1,5 +1,5 @@
-import { TeamPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <TeamPage />
+  redirect("/dashboard/team")
 }

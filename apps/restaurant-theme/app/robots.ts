@@ -23,7 +23,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/s/",
         disallow: [
           "/preview/",
-          "/content/",
           "/dashboard/",
           "/api/",
           "/sign-in",

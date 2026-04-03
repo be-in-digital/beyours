@@ -9,8 +9,8 @@ import {
   X,
   Loader2,
 } from "lucide-react"
-import { Input, Separator } from "@beindigital-engine/ui/components"
-import { useCartStore, formatPrice } from "@beindigital-engine/restaurant"
+import { Input, Separator } from "@be-in-digital/ui/components"
+import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 
 interface AppliedPromo {
   id: string

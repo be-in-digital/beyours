@@ -1,11 +1,11 @@
 /**
  * Convex authorization helpers
  *
- * Bridges Better Auth identity with the RBAC system in @beindigital-engine/core.
+ * Bridges Better Auth identity with the RBAC system in @be-in-digital/core.
  * Call these from app-level mutation/query wrappers to enforce permissions.
  */
 
-import { Role, hasPermission, type Permission } from "@beindigital-engine/core/auth/rbac"
+import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */

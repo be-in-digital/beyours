@@ -5,7 +5,7 @@
  */
 
 import { v } from "convex/values"
-import { emailBlockValidator } from "@beindigital-engine/convex-schema"
+import { emailBlockValidator } from "@be-in-digital/convex-schema"
 
 const categoryValidator = v.union(
   v.literal("marketing"),

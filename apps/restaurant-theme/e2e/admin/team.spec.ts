@@ -20,7 +20,7 @@ test.describe("Team Page", () => {
 
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -91,7 +91,7 @@ test.describe("Team Page", () => {
 
   test.describe("Search & Filters", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -151,7 +151,7 @@ test.describe("Team Page", () => {
 
   test.describe("Invite Member Dialog", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -229,7 +229,7 @@ test.describe("Team Page", () => {
 
   test.describe("Row Actions", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -298,7 +298,7 @@ test.describe("Team Page", () => {
 
   test.describe("Edit Dialog", () => {
     test("should open edit dialog from row action", async ({ page }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -334,7 +334,7 @@ test.describe("Team Page", () => {
     test("should open delete confirmation from row action", async ({
       page,
     }) => {
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -370,7 +370,7 @@ test.describe("Team Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/team", {
+      await page.goto("/dashboard/team", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

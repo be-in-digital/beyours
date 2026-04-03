@@ -1,11 +1,11 @@
-# Exemples d'utilisation - @beindigital-engine/convex-schema
+# Exemples d'utilisation - @be-in-digital/convex-schema
 
 Ce document présente des exemples concrets d'utilisation du schéma et des validators.
 
 ## Installation dans un projet
 
 ```bash
-pnpm add @beindigital-engine/convex-schema
+pnpm add @be-in-digital/convex-schema
 ```
 
 ## Utilisation du schéma Convex
@@ -13,7 +13,7 @@ pnpm add @beindigital-engine/convex-schema
 ### Dans convex/schema.ts
 
 ```typescript
-import { schema } from '@beindigital-engine/convex-schema'
+import { schema } from '@be-in-digital/convex-schema'
 
 export default schema
 ```
@@ -24,7 +24,7 @@ export default schema
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createStoreSchema } from '@beindigital-engine/convex-schema'
+import { createStoreSchema } from '@be-in-digital/convex-schema'
 
 export const createStore = mutation({
   args: {},
@@ -49,7 +49,7 @@ export const createStore = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createProductSchema } from '@beindigital-engine/convex-schema'
+import { createProductSchema } from '@be-in-digital/convex-schema'
 
 export const createProduct = mutation({
   handler: async (ctx, rawArgs) => {
@@ -142,7 +142,7 @@ export const createProduct = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createOrderSchema } from '@beindigital-engine/convex-schema'
+import { createOrderSchema } from '@be-in-digital/convex-schema'
 
 export const createOrder = mutation({
   handler: async (ctx, rawArgs) => {
@@ -230,7 +230,7 @@ import {
   createGameSchema,
   createPrizeSchema,
   playGameSchema
-} from '@beindigital-engine/convex-schema'
+} from '@be-in-digital/convex-schema'
 
 // Créer un jeu
 export const createGame = mutation({
@@ -362,7 +362,7 @@ import { mutation } from './_generated/server'
 import {
   createLanguageSchema,
   batchTranslateSchema
-} from '@beindigital-engine/convex-schema'
+} from '@be-in-digital/convex-schema'
 
 // Ajouter une langue
 export const addLanguage = mutation({
@@ -417,7 +417,7 @@ export const translateProducts = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createKitchenTicketSchema } from '@beindigital-engine/convex-schema'
+import { createKitchenTicketSchema } from '@be-in-digital/convex-schema'
 
 export const createKitchenTicket = mutation({
   handler: async (ctx, rawArgs) => {
@@ -477,7 +477,7 @@ export const createKitchenTicket = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createPaymentSchema } from '@beindigital-engine/convex-schema'
+import { createPaymentSchema } from '@be-in-digital/convex-schema'
 
 export const createPayment = mutation({
   handler: async (ctx, rawArgs) => {
@@ -517,7 +517,7 @@ export const createPayment = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createProductSchema } from '@beindigital-engine/convex-schema'
+import { createProductSchema } from '@be-in-digital/convex-schema'
 import { ZodError } from 'zod'
 
 export const createProduct = mutation({

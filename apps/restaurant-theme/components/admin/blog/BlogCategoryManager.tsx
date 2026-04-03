@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Loader2, Plus, Pencil, Trash2, Check, X } from "lucide-react"
-import { Button, Input } from "@beindigital-engine/ui"
+import { Button, Input } from "@be-in-digital/ui"
 import {
   Sheet,
   SheetContent,

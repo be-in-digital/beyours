@@ -101,6 +101,41 @@ export async function incrementImageUsageCore(
 }
 
 /**
+ * Increment Image-to-Product analysis count for an owner.
+ * Upserts the usage record (creates if first usage this month).
+ */
+export async function incrementImageToProductUsageCore(
+  ctx: any,
+  ownerId: string,
+): Promise<void> {
+  const periodKey = getCurrentPeriodKey()
+  const now = Date.now()
+
+  const existing = await ctx.db
+    .query("blogAutoUsage")
+    .withIndex("by_ownerId_periodKey", (q: any) =>
+      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
+    )
+    .first()
+
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      imageToProductAnalysisCount: (existing.imageToProductAnalysisCount ?? 0) + 1,
+      updatedAt: now,
+    })
+  } else {
+    await ctx.db.insert("blogAutoUsage", {
+      ownerId,
+      periodKey,
+      generatedCount: 0,
+      publishedCount: 0,
+      imageToProductAnalysisCount: 1,
+      updatedAt: now,
+    })
+  }
+}
+
+/**
  * Get store and category context for the AI prompt.
  */
 export async function getGenerationContextCore(

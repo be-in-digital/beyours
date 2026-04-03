@@ -1,7 +1,17 @@
 {
-  "name": "@beindigital-engine/convex-functions",
-  "version": "0.2.0",
-  "private": true,
+  "name": "@be-in-digital/convex-functions",
+  "version": "2.0.0",
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/be-in-digital/beindigital-engine.git",
+    "directory": "packages/convex-functions"
+  },
+  "files": [
+    "src"
+  ],
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
@@ -65,9 +75,9 @@
   },
   "dependencies": {
     "convex": "^1.18.0",
-    "@beindigital-engine/cms": "workspace:*",
-    "@beindigital-engine/convex-schema": "workspace:*",
-    "@beindigital-engine/core": "workspace:*"
+    "@be-in-digital/cms": "workspace:*",
+    "@be-in-digital/convex-schema": "workspace:*",
+    "@be-in-digital/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",

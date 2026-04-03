@@ -2,7 +2,7 @@
 
 import "@/lib/cms/init"
 import { useStoreId } from "@/lib/hooks/use-store-id"
-import { getPageDefinition } from "@beindigital-engine/cms"
+import { getPageDefinition } from "@be-in-digital/cms"
 
 interface PreviewClientProps {
   pageSlug: string
@@ -33,7 +33,7 @@ export function PreviewClient({ pageSlug }: PreviewClientProps) {
         Mode preview — {pageDef.label}
         {" "}
         <a
-          href={`/content/pages/${pageSlug}`}
+          href={`/dashboard/content/pages/${pageSlug}`}
           className="underline hover:no-underline ml-2"
         >
           Retour a l&apos;editeur

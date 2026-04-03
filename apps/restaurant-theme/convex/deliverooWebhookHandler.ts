@@ -22,7 +22,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     console.log(`[Deliveroo Webhook] Received - sig: ${signature ? "present" : "missing"}, guid: ${sequenceGuid || "none"}, bodyLen: ${rawBody.length}`);
 
     // Read signing secret from environment (BeInDigital platform credentials)
-    const { getPackageEnv } = await import("@beindigital-engine/core/env");
+    const { getPackageEnv } = await import("@be-in-digital/core/env");
     const pkg = getPackageEnv();
     const webhookSecret = pkg.DELIVEROO_WEBHOOK_SECRET;
     const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
@@ -42,7 +42,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     console.log(`[Deliveroo Webhook] Signature verification: ${isValid ? "VALID" : "INVALID"}`);
 
     if (!isValid) {
-      const { getSiteEnv } = await import("@beindigital-engine/core/env");
+      const { getSiteEnv } = await import("@be-in-digital/core/env");
       const site = getSiteEnv();
       if (site.DELIVEROO_IS_SANDBOX !== "true") {
         console.error("[Deliveroo Webhook] Invalid signature - rejecting");

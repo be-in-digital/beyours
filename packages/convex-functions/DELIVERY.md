@@ -2,7 +2,7 @@
 
 ## Résumé de la livraison
 
-Package `@beindigital-engine/convex-functions` créé avec succès.
+Package `@be-in-digital/convex-functions` créé avec succès.
 
 ### Date de livraison
 14 février 2026
@@ -196,7 +196,7 @@ Voir `USAGE.md` pour des exemples détaillés.
 3. Tester les fonctions avec des données réelles
 
 ### Moyen terme
-1. Créer le package `@beindigital-engine/convex-schema`
+1. Créer le package `@be-in-digital/convex-schema`
 2. Ajouter plus de tests (coverage > 80%)
 3. Ajouter les modules gamification:
    - `gameQRCodes.ts`
@@ -307,5 +307,5 @@ Privé - BeInDigital Team
 
 **Livré le:** 14 février 2026
 **Version:** 0.1.0
-**Package:** `@beindigital-engine/convex-functions`
+**Package:** `@be-in-digital/convex-functions`
 **Statut:** ✅ Complet et fonctionnel

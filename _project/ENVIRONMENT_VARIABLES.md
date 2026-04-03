@@ -96,8 +96,8 @@ Chaque restaurant deploye fournit ses propres valeurs.
 ### Schema de validation (Zod)
 
 Les schemas sont definis dans `packages/core/src/env/schemas.ts` et exportes via :
-- `@beindigital-engine/core` (export principal)
-- `@beindigital-engine/core/env` (sub-path export, sans dependances Node.js)
+- `@be-in-digital/core` (export principal)
+- `@be-in-digital/core/env` (sub-path export, sans dependances Node.js)
 
 ```
 packages/core/src/env/
@@ -112,7 +112,7 @@ packages/core/src/env/
 ### Getters
 
 ```typescript
-import { getPackageEnv, getSiteEnv } from '@beindigital-engine/core/env'
+import { getPackageEnv, getSiteEnv } from '@be-in-digital/core/env'
 
 // Variables plateforme BeInDigital
 const pkg = getPackageEnv()
@@ -171,8 +171,8 @@ Le bundler Convex distingue deux runtimes :
 
 | Runtime | Fichiers concernes | Pattern d'import |
 |---|---|---|
-| **"use node"** (Node.js) | `oauthConnect.ts`, `teamMembersEmail.ts`, `deliverooWebhook.ts`, `validateIntegration.ts`, imports, menu syncs, orders | `import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env"` |
-| **V8 isolate** (httpAction, queries, mutations) | `uberEatsWebhook.ts`, `deliverooWebhookHandler.ts`, `oauthCallbackHandlers.ts`, `kitchenTickets.ts` | `const { getPackageEnv } = await import("@beindigital-engine/core/env")` |
+| **"use node"** (Node.js) | `oauthConnect.ts`, `teamMembersEmail.ts`, `deliverooWebhook.ts`, `validateIntegration.ts`, imports, menu syncs, orders | `import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env"` |
+| **V8 isolate** (httpAction, queries, mutations) | `uberEatsWebhook.ts`, `deliverooWebhookHandler.ts`, `oauthCallbackHandlers.ts`, `kitchenTickets.ts` | `const { getPackageEnv } = await import("@be-in-digital/core/env")` |
 | **V8 isolate** (config module) | `auth.ts` | `process.env.SITE_URL` (garde le pattern direct, pas de Zod) |
 
 > **Pourquoi `auth.ts` ne migre pas ?**
@@ -209,7 +209,7 @@ Deux fichiers de reference pour le onboarding :
    - Utiliser `.optional()` si la variable n'est pas requise pour tous les deploiements
    - Ajouter des validations Zod (`.url()`, `.email()`, `.startsWith()`, `.regex()`)
 3. **Mettre a jour le `.env.example`** correspondant
-4. **Rebuild le package** : `pnpm --filter @beindigital-engine/core build`
+4. **Rebuild le package** : `pnpm --filter @be-in-digital/core build`
 5. **Utiliser le getter** dans le code consommateur :
    ```typescript
    const pkg = getPackageEnv()  // ou getSiteEnv()

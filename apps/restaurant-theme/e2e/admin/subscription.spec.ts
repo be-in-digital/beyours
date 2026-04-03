@@ -4,7 +4,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("Subscription Page", () => {
   test.describe("Page Loading", () => {
     test("should load subscription page", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -13,14 +13,14 @@ test.describe("Subscription Page", () => {
 
       // Should display subscription heading
       await expect(
-        page.getByRole("heading", { name: /abonnement|subscription/i })
+        page.getByRole("heading", { name: /abonnement/i })
       ).toBeVisible({ timeout: 15_000 })
     })
   })
 
   test.describe("Pricing View (no active subscription)", () => {
     test("should display pricing cards", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -43,7 +43,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display monthly article quotas", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -57,7 +57,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display image quotas", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -70,10 +70,24 @@ test.describe("Subscription Page", () => {
       ).toBeVisible({ timeout: 15_000 })
     })
 
+    test("should display Image vers Produit quotas", async ({ page }) => {
+      await page.goto("/dashboard/subscription", {
+        waitUntil: "domcontentloaded",
+        timeout: 60_000,
+      })
+
+      await waitForAdminPage(page)
+
+      // Should show Image vers Produit feature line
+      await expect(
+        page.getByText(/image\s*vers\s*produit/i).first()
+      ).toBeVisible({ timeout: 15_000 })
+    })
+
     test("should display billing toggle (monthly/annual)", async ({
       page,
     }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -92,7 +106,7 @@ test.describe("Subscription Page", () => {
     })
 
     test("should display subscribe buttons", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -114,7 +128,7 @@ test.describe("Subscription Page", () => {
 
   test.describe("Current Plan View (active subscription)", () => {
     test("should display plan features list", async ({ page }) => {
-      await page.goto("/subscription", {
+      await page.goto("/dashboard/subscription", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -123,7 +137,7 @@ test.describe("Subscription Page", () => {
 
       // Check for feature indicators (check/x icons)
       const featureList = page.locator("ul li").filter({
-        hasText: /articles?|images?|langue|publication/i,
+        hasText: /articles?|images?|langue|publication|produit/i,
       })
 
       const hasFeatures = await featureList

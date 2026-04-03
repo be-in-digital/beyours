@@ -2,7 +2,7 @@
 
 import { PieChart as PieChartIcon } from "lucide-react"
 import { Cell, Pie, PieChart } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@beindigital-engine/ui"
+import { Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
 import {
   ChartContainer,
   ChartTooltip,

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/admin/formatters"
 import { Clock, MoreHorizontal, Pencil, Upload, Archive, ArchiveRestore, Trash2 } from "lucide-react"
-import { Badge, Button } from "@beindigital-engine/ui"
+import { Badge, Button } from "@be-in-digital/ui"
 import {
   Table,
   TableBody,
@@ -100,7 +100,7 @@ export function BlogArticlesTable({
             <TableRow
               key={article._id}
               className="cursor-pointer hover:bg-muted/50"
-              onClick={() => router.push(`/content/blog/${article._id}`)}
+              onClick={() => router.push(`/dashboard/content/blog/${article._id}`)}
             >
               <TableCell>
                 <div>
@@ -134,7 +134,7 @@ export function BlogArticlesTable({
                     <DropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation()
-                        router.push(`/content/blog/${article._id}`)
+                        router.push(`/dashboard/content/blog/${article._id}`)
                       }}
                     >
                       <Pencil className="mr-2 h-4 w-4" />

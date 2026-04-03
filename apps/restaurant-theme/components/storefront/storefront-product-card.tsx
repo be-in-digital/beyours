@@ -1,9 +1,9 @@
 "use client"
 
 import { Heart, Plus, ShoppingBag } from "lucide-react"
-import { formatPrice, isProductAvailable } from "@beindigital-engine/restaurant"
-import type { ProductDoc } from "@beindigital-engine/restaurant"
-import { Badge } from "@beindigital-engine/ui/components"
+import { formatPrice, isProductAvailable } from "@be-in-digital/restaurant"
+import type { ProductDoc } from "@be-in-digital/restaurant"
+import { Badge } from "@be-in-digital/ui/components"
 
 interface StorefrontProductCardProps {
   product: ProductDoc

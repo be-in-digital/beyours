@@ -1,5 +1,5 @@
 /**
- * Segment filter builder (inlined from @beindigital-engine/marketing)
+ * Segment filter builder (inlined from @be-in-digital/marketing)
  *
  * Builds a predicate function from segment rules for client-side filtering.
  * Supports dot-notation field access, all operators, AND/OR combinations.

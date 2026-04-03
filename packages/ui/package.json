@@ -1,7 +1,18 @@
 {
-  "name": "@beindigital-engine/ui",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@be-in-digital/ui",
+  "version": "2.0.0",
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/be-in-digital/beindigital-engine.git",
+    "directory": "packages/ui"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

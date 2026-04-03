@@ -364,4 +364,4 @@ Ces modules peuvent être ajoutés ultérieurement selon les besoins.
 
 **Version:** 0.1.0
 **Créé le:** 14 février 2026
-**Package:** `@beindigital-engine/convex-functions`
+**Package:** `@be-in-digital/convex-functions`

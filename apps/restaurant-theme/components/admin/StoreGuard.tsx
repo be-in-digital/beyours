@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { usePathname } from "next/navigation"
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore } from "@be-in-digital/restaurant"
 import { api } from "@/convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
@@ -20,7 +20,7 @@ import {
  * Routes that bypass the store guard entirely.
  * These pages must be accessible even without any store.
  */
-const BYPASS_ROUTES = ["/stores", "/settings", "/team"]
+const BYPASS_ROUTES = ["/dashboard/stores", "/dashboard/settings", "/dashboard/team"]
 
 interface StoreGuardProps {
   children: React.ReactNode
@@ -69,7 +69,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
           </EmptyDescription>
         </EmptyHeader>
         <Button asChild>
-          <Link href="/stores">Créer mon premier établissement</Link>
+          <Link href="/dashboard/stores">Créer mon premier établissement</Link>
         </Button>
       </Empty>
     )

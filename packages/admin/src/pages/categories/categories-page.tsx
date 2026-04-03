@@ -26,7 +26,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from "lucide-react"
 import { CategoryForm } from "./category-form"
 import { useAdminApiStore } from "../../stores/admin-api-store"

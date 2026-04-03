@@ -1,8 +1,8 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { useStoreStore, type StoreDoc } from "@beindigital-engine/restaurant"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@beindigital-engine/ui"
+import { useStoreStore, type StoreDoc } from "@be-in-digital/restaurant"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
 

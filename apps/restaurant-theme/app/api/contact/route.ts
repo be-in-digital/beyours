@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getSESService } from "@beindigital-engine/core"
+import { getSESService } from "@be-in-digital/core"
 
 function escapeHtml(s: string): string {
   return s

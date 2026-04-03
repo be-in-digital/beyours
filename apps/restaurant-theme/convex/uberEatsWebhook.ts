@@ -27,7 +27,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     const signature = request.headers.get("x-uber-signature") ?? ""
 
     // Read credentials from environment variables (BeInDigital platform credentials)
-    const { getPackageEnv, getSiteEnv } = await import("@beindigital-engine/core/env")
+    const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env")
     const pkg = getPackageEnv()
     const site = getSiteEnv()
     const clientId = pkg.UBER_EATS_CLIENT_ID
@@ -40,7 +40,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     }
 
     // Verify webhook signature using dedicated webhook secret (falls back to client secret)
-    const { uberEats } = await import("@beindigital-engine/integrations")
+    const { uberEats } = await import("@be-in-digital/integrations")
     const signingSecret = webhookSecret || clientSecret
     const isValid = await uberEats.verifyUberEatsSignature(rawBody, signature, signingSecret)
 

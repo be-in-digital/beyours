@@ -1,4 +1,4 @@
-# Module Auth - @beindigital-engine/core
+# Module Auth - @be-in-digital/core
 
 Ce module fournit une solution complète d'authentification avec **Better Auth** et un système **RBAC (Role-Based Access Control)** pour BeInDigital Engine.
 
@@ -28,7 +28,7 @@ Gère les 7 rôles et leurs permissions granulaires.
 
 **Exemple d'utilisation :**
 ```ts
-import { Role, hasPermission } from '@beindigital-engine/core/auth'
+import { Role, hasPermission } from '@be-in-digital/core/auth'
 
 // Vérifier une permission
 hasPermission(Role.MANAGER, 'products:write') // true
@@ -76,7 +76,7 @@ Hooks et utilitaires pour le frontend React.
 **Après installation de better-auth/react :**
 ```tsx
 import { createAuthClient } from 'better-auth/react'
-import { usePermission, Role } from '@beindigital-engine/core/auth'
+import { usePermission, Role } from '@be-in-digital/core/auth'
 
 // Créer le client
 const authClient = createAuthClient({
@@ -105,7 +105,7 @@ Middlewares pour Server Components et API Routes.
 
 **Exemple dans un Server Component :**
 ```ts
-import { requireAuth, requirePermission } from '@beindigital-engine/core/auth'
+import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
 
 export default async function DashboardPage() {
   const session = await requireAuth()
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
 
 **Exemple dans une API Route :**
 ```ts
-import { withAuthRoute } from '@beindigital-engine/core/auth'
+import { withAuthRoute } from '@be-in-digital/core/auth'
 
 export const DELETE = withAuthRoute(
   async (req, session) => {
@@ -132,10 +132,10 @@ Le module RBAC est 100% testé avec 47 tests couvrant tous les scénarios.
 
 ```bash
 # Lancer les tests
-pnpm --filter @beindigital-engine/core test
+pnpm --filter @be-in-digital/core test
 
 # Tests en watch mode
-pnpm --filter @beindigital-engine/core test:watch
+pnpm --filter @be-in-digital/core test:watch
 ```
 
 ## 📝 Variables d'environnement
@@ -171,7 +171,7 @@ Créer `apps/restaurant-theme/lib/auth.ts` :
 ```ts
 import { betterAuth } from 'better-auth'
 import { convexAdapter } from '@better-auth/convex'
-import { createAuthConfig } from '@beindigital-engine/core/auth'
+import { createAuthConfig } from '@be-in-digital/core/auth'
 
 export const auth = betterAuth(
   createAuthConfig({
@@ -192,7 +192,7 @@ export const authClient = createAuthClient({
 })
 
 // Exporter les hooks
-export { useAuth, usePermission, useRole } from '@beindigital-engine/core/auth'
+export { useAuth, usePermission, useRole } from '@be-in-digital/core/auth'
 ```
 
 ### 4. Ajouter le provider
@@ -215,7 +215,7 @@ export default function RootLayout({ children }) {
 
 ### 5. Protéger les pages
 ```tsx
-import { requireAuth, requirePermission } from '@beindigital-engine/core/auth'
+import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
 
 export default async function ProductsPage() {
   await requirePermission('products:read')

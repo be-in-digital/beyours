@@ -12,9 +12,9 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@beindigital-engine/ui"
-import { Button } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Button } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { BlogAutoConfigForm } from "./BlogAutoConfigForm"
 
@@ -126,7 +126,7 @@ function LockedView({
       <CardContent className="flex flex-col items-center gap-3 pb-6">
         {showUpgradeLink && (
           <Button asChild>
-            <Link href="/subscription">Voir les abonnements</Link>
+            <Link href="/dashboard/subscription">Voir les abonnements</Link>
           </Button>
         )}
       </CardContent>

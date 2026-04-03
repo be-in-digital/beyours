@@ -6,8 +6,8 @@
  */
 
 import { internalQuery, internalMutation } from "./_generated/server";
-import * as bidSubscriptionDefs from "@beindigital-engine/convex-functions/bidSubscription";
-import * as ownerEntitlementsDefs from "@beindigital-engine/convex-functions/ownerEntitlements";
+import * as bidSubscriptionDefs from "@be-in-digital/convex-functions/bidSubscription";
+import * as ownerEntitlementsDefs from "@be-in-digital/convex-functions/ownerEntitlements";
 
 // ============================================================================
 // Internal Queries

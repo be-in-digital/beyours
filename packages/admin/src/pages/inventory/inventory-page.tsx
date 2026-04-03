@@ -41,7 +41,7 @@ import {
   PaginationNext,
   PaginationPrevious,
   ButtonGroup,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 
 const PAGE_SIZE = 25
 

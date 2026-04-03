@@ -4,7 +4,7 @@ import { use, useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@beindigital-engine/ui"
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
 import {
   Table,
   TableBody,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,
@@ -20,13 +20,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@beindigital-engine/ui"
-import { Input, Label, Textarea } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Input, Label, Textarea } from "@be-in-digital/ui"
 import { OrderStatusActions } from "./order-status-actions"
 import { ArrowLeft, RotateCcw } from "lucide-react"
-import { Button } from "@beindigital-engine/ui"
+import { Button } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import Link from "next/link"
+import { adminRoutes } from "../../config/admin-routes"
 import type {
   Order,
   OrderStatus,
@@ -316,7 +317,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/orders">
+          <Link href={adminRoutes.orders}>
             <ArrowLeft className="size-4" />
           </Link>
         </Button>

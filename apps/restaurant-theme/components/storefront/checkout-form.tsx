@@ -23,8 +23,8 @@ import {
   Input,
   Label,
   Separator,
-} from "@beindigital-engine/ui/components"
-import { useCartStore } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/ui/components"
+import { useCartStore } from "@be-in-digital/restaurant"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"
 import type { SavedAddress } from "@/lib/stores/addresses-store"

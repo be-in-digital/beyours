@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   Languages,
 } from "lucide-react"
-import { Button, Badge } from "@beindigital-engine/ui"
+import { Button, Badge } from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { CmsBlockAccordion } from "./CmsBlockAccordion"
 import { CmsTranslationDrawer } from "./CmsTranslationDrawer"
@@ -25,8 +25,8 @@ import {
   getPageDefinition,
   getBlockDefinition,
   getFieldDefinition,
-} from "@beindigital-engine/cms"
-import type { CmsFieldValue, CmsBlockValues } from "@beindigital-engine/cms"
+} from "@be-in-digital/cms"
+import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 import Link from "next/link"
 
@@ -321,7 +321,7 @@ export function CmsPageEditor({ pageSlug }: CmsPageEditorProps) {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/content/pages">
+          <Link href="/dashboard/content/pages">
             <Button variant="ghost" size="sm" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>

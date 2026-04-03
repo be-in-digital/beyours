@@ -15,12 +15,12 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@beindigital-engine/ui"
-import { Button } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
-import { Input } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Button } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
+import { Input } from "@be-in-digital/ui"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@beindigital-engine/ui"
+import { Separator } from "@be-in-digital/ui"
 import { Switch } from "@/components/ui/switch"
 import {
   Select,

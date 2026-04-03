@@ -22,7 +22,8 @@ import {
   Warehouse,
   type LucideIcon,
 } from "lucide-react"
-import type { Permission } from "@beindigital-engine/core"
+import type { Permission } from "@be-in-digital/core"
+import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -71,45 +72,45 @@ export const navGroups: NavGroup[] = [
   {
     label: "Principal",
     items: [
-      { label: "Vue d'ensemble", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Vue d'ensemble", href: adminRoutes.dashboard, icon: LayoutDashboard },
     ],
   },
   {
-    label: "Op\u00e9rations",
+    label: "Opérations",
     items: [
       {
         label: "Commandes",
-        href: "/orders",
+        href: adminRoutes.orders,
         icon: ShoppingCart,
         requiredPermission: "orders:read",
       },
       {
         label: "Cuisine (KDS)",
-        href: "/orders/kitchen",
+        href: adminRoutes.kitchen,
         icon: ChefHat,
         requiredPermission: "orders:read",
       },
       {
         label: "Menu & Produits",
-        href: "/products",
+        href: adminRoutes.products,
         icon: UtensilsCrossed,
         requiredPermission: "products:read",
       },
       {
         label: "Catégories",
-        href: "/categories",
+        href: adminRoutes.categories,
         icon: LayoutList,
         requiredPermission: "products:read",
       },
       {
         label: "Clients",
-        href: "/customers",
+        href: adminRoutes.customers,
         icon: Users,
         requiredPermission: "customers:read",
       },
       {
         label: "Inventaire",
-        href: "/inventory",
+        href: adminRoutes.inventory,
         icon: Warehouse,
         requiredPermission: "products:read",
       },
@@ -120,36 +121,36 @@ export const navGroups: NavGroup[] = [
     items: [
       {
         label: "Promotions",
-        href: "/promotions",
+        href: adminRoutes.promotions,
         icon: Tag,
         requiredPermission: "games:read",
       },
       {
         label: "Gamification",
         icon: Gamepad2,
-        basePath: "/games",
+        basePath: adminRoutes.games,
         requiredPermission: "games:read",
         children: [
-          { label: "Tableau de bord", href: "/games" },
-          { label: "Jeux", href: "/games/catalog" },
-          { label: "QR Codes", href: "/games/qr-codes" },
-          { label: "Actions", href: "/games/actions" },
-          { label: "Gagnants", href: "/games/winners" },
-          { label: "Param\u00e8tres", href: "/games/settings" },
+          { label: "Tableau de bord", href: adminRoutes.games },
+          { label: "Jeux", href: adminRoutes.gamesCatalog },
+          { label: "QR Codes", href: adminRoutes.gamesQrCodes },
+          { label: "Actions", href: adminRoutes.gamesActions },
+          { label: "Gagnants", href: adminRoutes.gamesWinners },
+          { label: "Paramètres", href: adminRoutes.gamesSettings },
         ],
       },
       {
         label: "Email Marketing",
         icon: Mail,
-        basePath: "/email",
+        basePath: adminRoutes.email,
         requiredPermission: "settings:read",
         children: [
-          { label: "Tableau de bord", href: "/email" },
-          { label: "Campagnes", href: "/email/campaigns" },
-          { label: "Mod\u00e8les", href: "/email/templates" },
-          { label: "Abonn\u00e9s", href: "/email/subscribers" },
-          { label: "Segments", href: "/email/segments" },
-          { label: "Configuration", href: "/email/config" },
+          { label: "Tableau de bord", href: adminRoutes.email },
+          { label: "Campagnes", href: adminRoutes.emailCampaigns },
+          { label: "Modèles", href: adminRoutes.emailTemplates },
+          { label: "Abonnés", href: adminRoutes.emailSubscribers },
+          { label: "Segments", href: adminRoutes.emailSegments },
+          { label: "Configuration", href: adminRoutes.emailConfig },
         ],
       },
     ],
@@ -159,29 +160,29 @@ export const navGroups: NavGroup[] = [
     items: [
       {
         label: "Pages",
-        href: "/content/pages",
+        href: adminRoutes.contentPages,
         icon: FileText,
         requiredPermission: "settings:read",
       },
       {
         label: "Composants",
-        href: "/content/components",
+        href: adminRoutes.contentComponents,
         icon: LayoutGrid,
         requiredPermission: "settings:read",
       },
       {
         label: "Blog",
         icon: PenSquare,
-        basePath: "/content/blog",
+        basePath: adminRoutes.contentBlog,
         requiredPermission: "settings:read",
         children: [
-          { label: "Articles", href: "/content/blog" },
-          { label: "Auto Blog", href: "/content/blog/auto-config" },
+          { label: "Articles", href: adminRoutes.contentBlog },
+          { label: "Auto Blog", href: adminRoutes.contentBlogAutoConfig },
         ],
       },
       {
-        label: "M\u00e9diath\u00e8que",
-        href: "/content/media",
+        label: "Médiathèque",
+        href: adminRoutes.contentMedia,
         icon: Image,
         requiredPermission: "settings:read",
       },
@@ -191,40 +192,40 @@ export const navGroups: NavGroup[] = [
     label: "Organisation",
     items: [
       {
-        label: "\u00c9tablissements",
-        href: "/stores",
+        label: "Établissements",
+        href: adminRoutes.stores,
         icon: Store,
         requiredPermission: "stores:read",
       },
       {
-        label: "\u00c9quipe & R\u00f4les",
-        href: "/team",
+        label: "Équipe & Rôles",
+        href: adminRoutes.team,
         icon: UserCog,
         requiredPermission: "team:read",
       },
       {
         label: "Langues",
-        href: "/languages",
+        href: adminRoutes.languages,
         icon: Globe,
         requiredPermission: "settings:read",
       },
       {
         label: "Abonnement",
-        href: "/subscription",
+        href: adminRoutes.subscription,
         icon: CreditCard,
         requiredPermission: "settings:read",
       },
       {
-        label: "Param\u00e8tres",
-        href: "/settings",
+        label: "Paramètres",
+        href: adminRoutes.settings,
         icon: Settings,
         requiredPermission: "settings:read",
       },
       {
-        label: "Syst\u00e8me & Mises \u00e0 jour",
-        href: "/system",
+        label: "Système & Mises à jour",
+        href: adminRoutes.system,
         icon: RefreshCw,
-        requiredPermission: "stores:manage",
+        requiredPermission: "system:read",
       },
     ],
   },

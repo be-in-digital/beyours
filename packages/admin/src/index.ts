@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/admin
+ * @be-in-digital/admin
  *
  * Shared admin dashboard package.
  * Provides auth guard, RBAC sidebar, header, page components, and utilities.
@@ -32,6 +32,9 @@ export { useAdminApiStore } from "./stores/admin-api-store"
 // Hooks
 export { useAdminStoreId, useAdminApi, useDebounce } from "./hooks/admin-hooks"
 
+// Config
+export { adminRoutes } from "./config/admin-routes"
+
 // Lib
 export {
   formatPrice,
@@ -42,7 +45,7 @@ export {
   eurosToCents,
   centsToEuros,
 } from "./lib/formatters"
-export { ADMIN_PAGE_SIZE } from "./lib/constants"
+export { ADMIN_PAGE_SIZE, APP_VERSION } from "./lib/constants"
 
 // Sidebar UI primitives (for layout composition)
 export {
@@ -57,7 +60,7 @@ export {
 // Pages (lazy loaded by consuming apps)
 export { DashboardPage } from "./pages/dashboard"
 export { OrdersPage, OrderDetailPage } from "./pages/orders"
-export { ProductsPage, NewProductPage, EditProductPage } from "./pages/products"
+export { ProductsPage, NewProductPage, EditProductPage, ImageToProductPage } from "./pages/products"
 export { InventoryPage } from "./pages/inventory"
 export { StoresPage, StoreDetailPage, StoresTable, StoresPagination } from "./pages/stores"
 export { TeamPage } from "./pages/team"
@@ -77,3 +80,4 @@ export {
   EmailSegmentsPage,
   EmailConfigPage,
 } from "./pages/email"
+export { SystemPage } from "./pages/system"
