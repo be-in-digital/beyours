@@ -295,7 +295,7 @@ export function InventoryPage() {
         </div>
 
         {/* Status summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" data-tour="inventory-status">
           <StatusCard
             label="En stock"
             count={statusCounts.in_stock}

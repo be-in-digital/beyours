@@ -20,6 +20,8 @@ export {
   StoreSelector,
   SidebarUserMenu,
   StoreGuard,
+  OnboardingTourProvider,
+  ReplayTourButton,
 } from "./components"
 
 // Stores
