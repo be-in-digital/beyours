@@ -952,11 +952,11 @@ export default function OrdersPage() {
 
 ### Phase 1 - MVP (3 months)
 - [x] Base architecture
-- [ ] @beindigital-engine/ui packages
-- [ ] @beindigital-engine/restaurant packages
-- [ ] @beindigital-engine/themes (6 themes)
-- [ ] @beindigital-engine/convex-schema packages
-- [ ] @beindigital-engine/convex-functions packages
+- [ ] @be-in-digital/ui packages
+- [ ] @be-in-digital/restaurant packages
+- [ ] @be-in-digital/themes (6 themes)
+- [ ] @be-in-digital/convex-schema packages
+- [ ] @be-in-digital/convex-functions packages
 - [ ] Better Auth integration
 - [ ] Complete admin dashboard
 - [ ] Kitchen Display System

@@ -1,6 +1,6 @@
 "use client"
 
-import { useStoreStore } from "@beindigital-engine/restaurant"
+import { useStoreStore } from "@be-in-digital/restaurant"
 import { useState, useEffect } from "react"
 import type { Id } from "@/convex/_generated/dataModel"
 

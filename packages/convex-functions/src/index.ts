@@ -1,5 +1,5 @@
 /**
- * @beindigital-engine/convex-functions
+ * @be-in-digital/convex-functions
  *
  * Function definition objects (args + handler) for Convex query/mutation wrappers
  */
@@ -43,7 +43,7 @@ export * as blogPublish from "./blogPublish"
 export * as ownerEntitlements from "./ownerEntitlements"
 export * as blogAutoConfig from "./blogAutoConfig"
 export * as blogAutoUsage from "./blogAutoUsage"
-export { checkAutoBlogAccess, checkImageGenerationAccess, validateConfigAgainstPlan, normalizeScheduleDays } from "./blogAutoGuards"
+export { checkAutoBlogAccess, checkImageGenerationAccess, checkImageToProductAccess, validateConfigAgainstPlan, normalizeScheduleDays } from "./blogAutoGuards"
 export * as bidSubscription from "./bidSubscription"
 export * as blogAutoGenerate from "./blogAutoGenerate"
 export * as favorites from "./favorites"
@@ -57,4 +57,4 @@ export { calculateDeliveryFee, type DeliveryFeeParams, type DeliveryFeeResult } 
 
 // Note: encryption utilities are NOT re-exported from the barrel to avoid
 // pulling Node.js crypto into non-"use node" bundles. Import directly:
-// import { encrypt, decrypt } from "@beindigital-engine/convex-functions/encryption"
+// import { encrypt, decrypt } from "@be-in-digital/convex-functions/encryption"

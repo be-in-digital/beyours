@@ -1,5 +1,5 @@
-import { NewProductPage } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <NewProductPage />
+  redirect("/dashboard/products/new")
 }

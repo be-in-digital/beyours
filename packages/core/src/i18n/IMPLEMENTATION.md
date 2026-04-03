@@ -2,7 +2,7 @@
 
 ## ✅ Implémentation Complète
 
-Le système i18n a été entièrement implémenté dans le package `@beindigital-engine/core`.
+Le système i18n a été entièrement implémenté dans le package `@be-in-digital/core`.
 
 ### 📁 Fichiers Créés
 
@@ -129,7 +129,7 @@ packages/core/src/i18n/
 Le package compile correctement :
 
 ```bash
-pnpm --filter @beindigital-engine/core build
+pnpm --filter @be-in-digital/core build
 # ✅ CJS build success (20.37 KB)
 # ✅ ESM build success (17.51 KB)
 # ✅ DTS build success (32.41 KB)
@@ -157,7 +157,7 @@ import {
   DEFAULT_I18N_CONFIG,
   COMMON_LANGUAGES,
   isRtlLocale,
-} from '@beindigital-engine/core/i18n'
+} from '@be-in-digital/core/i18n'
 ```
 
 ### 🎨 Exemples Fournis

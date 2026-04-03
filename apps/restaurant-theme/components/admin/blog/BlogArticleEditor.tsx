@@ -23,7 +23,7 @@ import {
   Eye,
   ChevronDown,
 } from "lucide-react"
-import { Button, Badge, Input } from "@beindigital-engine/ui"
+import { Button, Badge, Input } from "@be-in-digital/ui"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -482,7 +482,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
     try {
       await deleteArticle({ articleId: articleId as Id<"blogArticles"> })
       toast.success("Article supprime")
-      router.push("/content/blog")
+      router.push("/dashboard/content/blog")
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Erreur lors de la suppression",
@@ -521,7 +521,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
       <div className="space-y-3">
         {/* Row 1: Back button + actions */}
         <div className="flex items-center justify-between">
-          <Link href="/content/blog">
+          <Link href="/dashboard/content/blog">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4" />
             </Button>

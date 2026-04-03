@@ -3,9 +3,9 @@
 import { useState, useId } from "react"
 import Link from "next/link"
 import { Facebook, Twitter, Instagram, MapPin, Phone, Clock, Mail } from "lucide-react"
-import { Button } from "@beindigital-engine/ui/components"
-import { Input } from "@beindigital-engine/ui/components"
-import { useCurrentStore } from "@beindigital-engine/restaurant"
+import { Button } from "@be-in-digital/ui/components"
+import { Input } from "@be-in-digital/ui/components"
+import { useCurrentStore } from "@be-in-digital/restaurant"
 import { toast } from "sonner"
 
 const productLinks = [

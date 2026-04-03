@@ -27,6 +27,11 @@ export const autoBlogEntitlementValidator = v.object({
   monthlyImageQuota: v.optional(v.number()),
 })
 
+export const imageToProductEntitlementValidator = v.object({
+  enabled: v.boolean(),
+  monthlyAnalysisQuota: v.number(),
+})
+
 // ============================================================================
 // Queries
 // ============================================================================
@@ -51,6 +56,7 @@ export const upsert = {
   args: {
     ownerId: v.string(),
     autoBlog: autoBlogEntitlementValidator,
+    imageToProduct: v.optional(imageToProductEntitlementValidator),
   },
   handler: async (ctx: any, args: any) => {
     const existing = await ctx.db
@@ -60,19 +66,23 @@ export const upsert = {
 
     const timestamp = now()
 
+    const patch: Record<string, unknown> = {
+      autoBlog: args.autoBlog,
+      updatedAt: timestamp,
+    }
+    if (args.imageToProduct !== undefined) {
+      patch.imageToProduct = args.imageToProduct
+    }
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        autoBlog: args.autoBlog,
-        updatedAt: timestamp,
-      })
+      await ctx.db.patch(existing._id, patch)
       return existing._id
     }
 
     return await ctx.db.insert("ownerEntitlements", {
       ownerId: args.ownerId,
-      autoBlog: args.autoBlog,
+      ...patch,
       createdAt: timestamp,
-      updatedAt: timestamp,
     })
   },
 }
@@ -83,39 +93,63 @@ export const upsert = {
 
 export const PLAN_PRESETS = {
   starter: {
-    enabled: true,
-    plan: "starter" as const,
-    monthlyQuota: 2,
-    maxTopics: 3,
-    allowMultiLanguage: false,
-    allowAutoPublish: false,
-    monthlyImageQuota: 5,
+    autoBlog: {
+      enabled: true,
+      plan: "starter" as const,
+      monthlyQuota: 2,
+      maxTopics: 3,
+      allowMultiLanguage: false,
+      allowAutoPublish: false,
+      monthlyImageQuota: 5,
+    },
+    imageToProduct: {
+      enabled: true,
+      monthlyAnalysisQuota: 3,
+    },
   },
   pro: {
-    enabled: true,
-    plan: "pro" as const,
-    monthlyQuota: 8,
-    maxTopics: undefined,
-    allowMultiLanguage: false,
-    allowAutoPublish: true,
-    monthlyImageQuota: 20,
+    autoBlog: {
+      enabled: true,
+      plan: "pro" as const,
+      monthlyQuota: 8,
+      maxTopics: undefined,
+      allowMultiLanguage: false,
+      allowAutoPublish: true,
+      monthlyImageQuota: 20,
+    },
+    imageToProduct: {
+      enabled: true,
+      monthlyAnalysisQuota: 15,
+    },
   },
   enterprise: {
-    enabled: true,
-    plan: "enterprise" as const,
-    monthlyQuota: 30,
-    maxTopics: undefined,
-    allowMultiLanguage: true,
-    allowAutoPublish: true,
-    monthlyImageQuota: 100,
+    autoBlog: {
+      enabled: true,
+      plan: "enterprise" as const,
+      monthlyQuota: 30,
+      maxTopics: undefined,
+      allowMultiLanguage: true,
+      allowAutoPublish: true,
+      monthlyImageQuota: 100,
+    },
+    imageToProduct: {
+      enabled: true,
+      monthlyAnalysisQuota: 50,
+    },
   },
   disabled: {
-    enabled: false,
-    plan: undefined,
-    monthlyQuota: 0,
-    maxTopics: undefined,
-    allowMultiLanguage: false,
-    allowAutoPublish: false,
-    monthlyImageQuota: 0,
+    autoBlog: {
+      enabled: false,
+      plan: undefined,
+      monthlyQuota: 0,
+      maxTopics: undefined,
+      allowMultiLanguage: false,
+      allowAutoPublish: false,
+      monthlyImageQuota: 0,
+    },
+    imageToProduct: {
+      enabled: false,
+      monthlyAnalysisQuota: 0,
+    },
   },
 } as const

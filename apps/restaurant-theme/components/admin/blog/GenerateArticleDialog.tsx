@@ -8,8 +8,8 @@ import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, Lock, Sparkles, FolderPlus, Plus, Check, Languages } from "lucide-react"
-import { Button, Input, Switch } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
+import { Button, Input, Switch } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,
@@ -81,7 +81,7 @@ export function GenerateArticleDialog({
       })
       onOpenChange(false)
       resetForm()
-      router.push(`/content/blog/${result.articleId}`)
+      router.push(`/dashboard/content/blog/${result.articleId}`)
       toast.success("Article genere avec succes")
     } catch (err) {
       toast.error(
@@ -166,7 +166,7 @@ export function GenerateArticleDialog({
             </p>
             {accessStatus.reason !== "Quota mensuel atteint" && (
               <Button asChild>
-                <Link href="/subscription">Voir les abonnements</Link>
+                <Link href="/dashboard/subscription">Voir les abonnements</Link>
               </Button>
             )}
           </div>
@@ -279,7 +279,7 @@ export function GenerateArticleDialog({
                 <p className="text-xs text-muted-foreground">
                   Disponible avec le plan Enterprise.{" "}
                   <Link
-                    href="/subscription"
+                    href="/dashboard/subscription"
                     className="underline hover:text-foreground"
                   >
                     Mettre a niveau

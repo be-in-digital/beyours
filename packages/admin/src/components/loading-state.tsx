@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardHeader, Skeleton } from "@beindigital-engine/ui"
+import { Card, CardContent, CardHeader, Skeleton } from "@be-in-digital/ui"
 
 type LoadingVariant = "table" | "cards" | "form" | "detail"
 

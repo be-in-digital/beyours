@@ -8,10 +8,10 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "@beindigital-engine/ui"
-import { Button } from "@beindigital-engine/ui"
-import { Badge } from "@beindigital-engine/ui"
-import { Separator } from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
+import { Button } from "@be-in-digital/ui"
+import { Badge } from "@be-in-digital/ui"
+import { Separator } from "@be-in-digital/ui"
 import { cn } from "@/lib/utils"
 
 export type BillingInterval = "monthly" | "annual"

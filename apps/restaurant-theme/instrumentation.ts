@@ -3,7 +3,7 @@ export async function register() {
   if (process.env.NEXT_PHASE === 'phase-production-build') return
 
   const { getPackageEnv, getSiteEnv } = await import(
-    '@beindigital-engine/core/env'
+    '@be-in-digital/core/env'
   )
 
   try {

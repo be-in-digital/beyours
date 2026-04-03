@@ -1,5 +1,5 @@
-import { BlogContent } from "@/components/admin/blog/BlogContent"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return <BlogContent />
+  redirect("/dashboard/content/blog")
 }

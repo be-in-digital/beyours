@@ -52,13 +52,14 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@beindigital-engine/ui"
-import { renderTemplateToEmailHtml } from "@beindigital-engine/marketing"
-import type { EmailBranding, EmailBlock } from "@beindigital-engine/marketing"
+} from "@be-in-digital/ui"
+import { renderTemplateToEmailHtml } from "@be-in-digital/marketing"
+import type { EmailBranding, EmailBlock } from "@be-in-digital/marketing"
 import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
 import { CampaignWizardDialog } from "./campaign-wizard-dialog"
 import { CampaignStatsDialog } from "./campaign-stats-dialog"
@@ -305,7 +306,7 @@ export function EmailCampaignsPage() {
             </p>
             <p className="text-sm text-amber-700 dark:text-amber-300 mt-0.5">
               Configurez votre adresse d&apos;expéditeur dans{" "}
-              <a href="/email/config" className="underline font-medium">Email &gt; Configuration</a>
+              <a href={adminRoutes.emailConfig} className="underline font-medium">Email &gt; Configuration</a>
               {" "}avant de créer une campagne.
             </p>
           </div>

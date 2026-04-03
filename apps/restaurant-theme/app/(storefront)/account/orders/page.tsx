@@ -6,8 +6,8 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { ArrowLeft, Package, ShoppingBag, Loader2 } from "lucide-react"
-import { Badge, Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@beindigital-engine/ui/components"
-import { formatPrice } from "@beindigital-engine/restaurant"
+import { Badge, Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui/components"
+import { formatPrice } from "@be-in-digital/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
@@ -128,7 +128,8 @@ export default function OrderHistoryPage() {
         {/* Orders list */}
         {orders && orders.length > 0 && (
           <div className="flex flex-col gap-5">
-            {orders.map((order) => {
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {orders.map((order: any) => {
               const date = new Date(order.createdAt).toLocaleDateString("fr-FR", {
                 day: "numeric",
                 month: "long",

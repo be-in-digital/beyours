@@ -17,14 +17,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import {
   filterProducts,
   sortProducts,
   useCartStore,
   isProductAvailable,
-} from "@beindigital-engine/restaurant"
-import type { ProductDoc, ProductSortBy } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/restaurant"
+import type { ProductDoc, ProductSortBy } from "@be-in-digital/restaurant"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"

@@ -214,7 +214,7 @@ export function StoresContent() {
           {stores.map((store: Doc<"stores">) => (
             <Link
               key={store._id}
-              href={`/stores/${store._id}`}
+              href={`/dashboard/stores/${store._id}`}
               className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow cursor-pointer"
             >
               <div className="flex items-start justify-between">

@@ -1,4 +1,4 @@
-import type { PageDefinition } from "@beindigital-engine/cms"
+import type { PageDefinition } from "@be-in-digital/cms"
 import { cmsGroups } from "./groups"
 import { signInPage } from "./pages/sign-in"
 import { signUpPage } from "./pages/sign-up"

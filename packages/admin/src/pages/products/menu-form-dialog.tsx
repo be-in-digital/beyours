@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

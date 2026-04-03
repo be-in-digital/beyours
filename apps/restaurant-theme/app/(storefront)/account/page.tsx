@@ -33,7 +33,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import { authClient } from "@/lib/auth-client"
 
 // === Types ===

@@ -5,7 +5,7 @@ import { waitForAdminPage } from "../helpers/navigation.helpers"
 test.describe("Settings Page", () => {
   test.describe("Page Structure", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -45,7 +45,7 @@ test.describe("Settings Page", () => {
 
   test.describe("General Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -99,7 +99,7 @@ test.describe("Settings Page", () => {
 
   test.describe("Hours Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -151,7 +151,7 @@ test.describe("Settings Page", () => {
 
   test.describe("Delivery Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -199,7 +199,7 @@ test.describe("Settings Page", () => {
 
   test.describe("Payments Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -248,7 +248,7 @@ test.describe("Settings Page", () => {
 
   test.describe("Integrations Tab", () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })
@@ -306,7 +306,7 @@ test.describe("Settings Page", () => {
     test("should not produce unexpected console errors", async ({ page }) => {
       const { getErrors, cleanup } = collectConsoleErrors(page)
 
-      await page.goto("/settings", {
+      await page.goto("/dashboard/settings", {
         waitUntil: "domcontentloaded",
         timeout: 60_000,
       })

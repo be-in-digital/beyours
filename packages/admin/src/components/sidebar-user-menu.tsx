@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
-import { Avatar, AvatarFallback, AvatarImage } from "@beindigital-engine/ui"
+import { Avatar, AvatarFallback, AvatarImage } from "@be-in-digital/ui"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,9 +10,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
+import { adminRoutes } from "../config/admin-routes"
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -76,7 +77,7 @@ export function SidebarUserMenu() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/settings")} className="text-xs">
+            <DropdownMenuItem onClick={() => router.push(adminRoutes.settings)} className="text-xs">
               <Settings className="mr-2 size-3.5" />
               Paramètres
             </DropdownMenuItem>

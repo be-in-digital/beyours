@@ -21,8 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@beindigital-engine/ui"
-import { validateCampaign } from "@beindigital-engine/marketing"
+} from "@be-in-digital/ui"
+import { validateCampaign } from "@be-in-digital/marketing"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 

@@ -10,13 +10,13 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@beindigital-engine/ui/components"
+} from "@be-in-digital/ui/components"
 import {
   setLocale as persistLocale,
   getLocaleFromLocalStorage,
   COMMON_LANGUAGES,
   type LanguageConfig,
-} from "@beindigital-engine/core"
+} from "@be-in-digital/core"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Doc } from "@/convex/_generated/dataModel"

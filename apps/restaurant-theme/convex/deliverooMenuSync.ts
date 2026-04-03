@@ -9,8 +9,8 @@ import {
   type StoreIntegrationRecord,
   type ProductRecord,
   type CategoryRecord,
-} from "@beindigital-engine/convex-functions/deliverooMenuSync";
-import { getPackageEnv, getSiteEnv } from "@beindigital-engine/core/env";
+} from "@be-in-digital/convex-functions/deliverooMenuSync";
+import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
 
 /**
  * Sync menu to a single Deliveroo store.
@@ -109,7 +109,7 @@ export const syncStore = action({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 10. Push menu to Deliveroo (V1 API: PUT /v1/brands/{brandId}/menus/{menuId})
-      const { deliveroo } = await import("@beindigital-engine/integrations");
+      const { deliveroo } = await import("@be-in-digital/integrations");
       const menuId = `menu-${integration.platformStoreId}`;
       await deliveroo.pushMenu(
         credentials,
@@ -170,7 +170,7 @@ export const checkMenu = action({
       return { error: "Missing Deliveroo credentials" };
     }
 
-    const { deliveroo } = await import("@beindigital-engine/integrations");
+    const { deliveroo } = await import("@be-in-digital/integrations");
     const credentials = { clientId, clientSecret, sandboxMode };
     const menuId = `menu-${integration.platformStoreId}`;
 

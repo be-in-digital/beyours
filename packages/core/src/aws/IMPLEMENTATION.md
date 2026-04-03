@@ -200,7 +200,7 @@ Pour chaque template :
 ## Résultats des tests
 
 ```bash
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__
 ```
 
 **Résultats :**
@@ -274,22 +274,22 @@ Tous en français comme requis :
 
 ```bash
 # Tests AWS uniquement
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__
 
 # Tests S3
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/s3.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/s3.test.ts
 
 # Tests SES
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/ses.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/ses.test.ts
 
 # Tests templates
-pnpm --filter @beindigital-engine/core test -- src/aws/__tests__/templates.test.ts
+pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
 
 # Type-check AWS
 cd packages/core && npx tsc --noEmit --skipLibCheck src/aws/**/*.ts
 
 # Build
-pnpm --filter @beindigital-engine/core build
+pnpm --filter @be-in-digital/core build
 ```
 
 ## Compatibilité
@@ -324,5 +324,5 @@ pnpm --filter @beindigital-engine/core build
 ## Auteur
 
 Implémenté pour le projet BeInDigital Engine
-Package: @beindigital-engine/core
+Package: @be-in-digital/core
 Date: 2026-02-14

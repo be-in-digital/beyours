@@ -62,7 +62,8 @@ import {
   cms404Table,
   cmsMaintenanceTable,
   cmsAccountTable,
-} from "@beindigital-engine/convex-schema";
+  systemAuditLogTable,
+} from "@be-in-digital/convex-schema";
 
 /**
  * BeInDigital Engine - App Schema
@@ -70,7 +71,7 @@ import {
  * Auth tables (user, session, account, verification, jwks) are managed
  * by the Better Auth component and are NOT defined here.
  *
- * Business tables are imported from @beindigital-engine/convex-schema.
+ * Business tables are imported from @be-in-digital/convex-schema.
  */
 export default defineSchema({
   userProfiles: userProfilesTable,
@@ -136,6 +137,8 @@ export default defineSchema({
   cms404: cms404Table,
   cmsMaintenance: cmsMaintenanceTable,
   cmsAccount: cmsAccountTable,
+  // System
+  systemAuditLog: systemAuditLogTable,
   },
   { schemaValidation: false }
 );

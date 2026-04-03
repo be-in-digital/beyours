@@ -7,7 +7,7 @@ import { useAdminStoreId } from "@/lib/admin/hooks"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Loader2, FolderPlus } from "lucide-react"
-import { Button, Input } from "@beindigital-engine/ui"
+import { Button, Input } from "@be-in-digital/ui"
 import {
   Dialog,
   DialogContent,
@@ -64,7 +64,7 @@ export function CreateArticleDialog({
       setTitle("")
       setCategoryId("")
       // Navigate immediately — don't wait for dialog animation
-      router.push(`/content/blog/${articleId}`)
+      router.push(`/dashboard/content/blog/${articleId}`)
       toast.success("Article cree")
     } catch (err) {
       toast.error(

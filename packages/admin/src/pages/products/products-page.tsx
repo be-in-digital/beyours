@@ -3,8 +3,9 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useQuery } from "convex/react"
-import { Plus, Grid3x3, List, X, ShoppingBag } from "lucide-react"
+import { Plus, Grid3x3, List, X, ShoppingBag, ImagePlus } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
+import { adminRoutes } from "../../config/admin-routes"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
@@ -32,7 +33,7 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { ProductsTable } from "./products-table"
 import { MenusTab } from "./menus-tab"
 
@@ -148,12 +149,20 @@ export function ProductsPage() {
           </p>
         </div>
         {activeTab === "products" ? (
-          <Button asChild>
-            <Link href="/products/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter un produit
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href={adminRoutes.fromImage}>
+                <ImagePlus className="mr-2 h-4 w-4" />
+                Creer depuis image
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={adminRoutes.newProduct}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter un produit
+              </Link>
+            </Button>
+          </div>
         ) : (
           <MenusTabAddButton />
         )}
@@ -216,6 +225,7 @@ export function ProductsPage() {
                     <SelectContent>
                       <SelectItem value="all">Toutes les sources</SelectItem>
                       <SelectItem value="manual">Manuel</SelectItem>
+                      <SelectItem value="ai-image">IA (image)</SelectItem>
                       <SelectItem value="uber_eats">Uber Eats</SelectItem>
                       <SelectItem value="deliveroo">Deliveroo</SelectItem>
                     </SelectContent>
@@ -275,7 +285,7 @@ export function ProductsPage() {
                     </Button>
                   ) : (
                     <Button variant="outline" size="sm" asChild>
-                      <Link href="/products/new">
+                      <Link href={adminRoutes.newProduct}>
                         <Plus className="mr-2 h-4 w-4" />
                         Créez votre premier produit
                       </Link>

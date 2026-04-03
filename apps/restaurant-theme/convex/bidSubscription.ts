@@ -17,7 +17,7 @@ import {
   resolvePlanFromPriceId,
   resolvePriceIdFromPlan,
   buildPriceMap,
-} from "@beindigital-engine/convex-functions/bidSubscription";
+} from "@be-in-digital/convex-functions/bidSubscription";
 
 // ============================================================================
 // Helpers

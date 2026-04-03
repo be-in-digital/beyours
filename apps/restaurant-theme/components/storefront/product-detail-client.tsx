@@ -8,16 +8,16 @@ import {
   Separator,
   Label,
   Checkbox,
-} from "@beindigital-engine/ui/components"
-import { AllergenBadge, SpiceLevelIndicator } from "@beindigital-engine/ui/restaurant"
-import type { Allergen } from "@beindigital-engine/ui/restaurant"
+} from "@be-in-digital/ui/components"
+import { AllergenBadge, SpiceLevelIndicator } from "@be-in-digital/ui/restaurant"
+import type { Allergen } from "@be-in-digital/ui/restaurant"
 import {
   useCartStore,
   formatPrice,
   calculateProductPrice,
   isProductAvailable,
-} from "@beindigital-engine/restaurant"
-import type { ProductDoc, CartSelectedOption } from "@beindigital-engine/restaurant"
+} from "@be-in-digital/restaurant"
+import type { ProductDoc, CartSelectedOption } from "@be-in-digital/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { toast } from "sonner"
@@ -28,7 +28,7 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, storeId }: ProductDetailClientProps) {
-  const addItem = useCartStore((s: { addItem: (item: import("@beindigital-engine/restaurant").CartItem) => void }) => s.addItem)
+  const addItem = useCartStore((s: { addItem: (item: import("@be-in-digital/restaurant").CartItem) => void }) => s.addItem)
   const cartStoreId = useCartStore((s: { storeId: string | null }) => s.storeId)
   const { isFavorite, toggleFavorite } = useFavorites()
   const { isOpen } = useStoreStatus(storeId)

@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useAdminStoreId } from "@/lib/admin/hooks"
-import { useLanguageStore } from "@beindigital-engine/restaurant"
+import { useLanguageStore } from "@be-in-digital/restaurant"
 import { LanguageSwitcher } from "@/components/storefront/LanguageSwitcher"
 
 interface LanguageDoc {

@@ -1,10 +1,5 @@
-import { ComingSoon } from "@beindigital-engine/admin"
+import { redirect } from "next/navigation"
 
 export default function Page() {
-  return (
-    <ComingSoon
-      title="Clients"
-      description="Gérez votre base de clients, consultez l'historique des commandes et fidélisez vos habitués."
-    />
-  )
+  redirect("/dashboard/customers")
 }

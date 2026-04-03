@@ -1,7 +1,7 @@
 /**
  * AWS Services integration (S3 + SES)
  *
- * Re-exports AWS utilities from @beindigital-engine/core
+ * Re-exports AWS utilities from @be-in-digital/core
  * for file storage and email functionality.
  *
  * @example
@@ -28,12 +28,12 @@ export type {
   S3Config,
   SESConfig,
   S3Folder,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 export {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // ============================================================================
 // S3 Service
@@ -51,14 +51,14 @@ export type {
   DeleteObjectParams,
   GetSignedUrlParams,
   HeadObjectParams,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 export {
   createS3Service,
   validateMimeType,
   validateFileSize,
   getExtensionFromMimeType,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // ============================================================================
 // SES Service
@@ -71,11 +71,11 @@ export type {
   SendBulkEmailParams,
   SendBulkEmailResult,
   SESOperations,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 export {
   createSESService,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 // ============================================================================
 // Email Templates
@@ -87,7 +87,7 @@ export type {
   WelcomeData,
   PrizeWonData,
   TemplateName,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 export {
   orderConfirmationTemplate,
@@ -96,4 +96,4 @@ export {
   prizeWonTemplate,
   sesEmailTemplates,
   getTemplate,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'

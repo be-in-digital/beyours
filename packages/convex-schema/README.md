@@ -1,4 +1,4 @@
-# @beindigital-engine/convex-schema
+# @be-in-digital/convex-schema
 
 Shared Convex database schema definitions for BeInDigital Engine.
 
@@ -33,7 +33,7 @@ import {
   storesTable,
   productsTable,
   ordersTable
-} from "@beindigital-engine/convex-schema/tables"
+} from "@be-in-digital/convex-schema/tables"
 
 export default defineSchema({
   stores: storesTable,
@@ -67,7 +67,7 @@ import {
   prizesTable,
   gamePlaysTable,
   prizeRedemptionsTable,
-} from "@beindigital-engine/convex-schema/tables"
+} from "@be-in-digital/convex-schema/tables"
 
 export default defineSchema({
   userProfiles: userProfilesTable,
@@ -95,7 +95,7 @@ export default defineSchema({
 ### Import Reference Schema
 
 ```typescript
-import { schema } from "@beindigital-engine/convex-schema"
+import { schema } from "@be-in-digital/convex-schema"
 
 // Use as reference or extend
 export default schema
@@ -109,7 +109,7 @@ import {
   createProductSchema,
   createOrderSchema,
   // etc.
-} from "@beindigital-engine/convex-schema/validators"
+} from "@be-in-digital/convex-schema/validators"
 
 // Validation
 const result = createStoreSchema.parse(data)
@@ -118,7 +118,7 @@ const result = createStoreSchema.parse(data)
 ### Import Types
 
 ```typescript
-import type { Store, Product, Order } from "@beindigital-engine/convex-schema/types"
+import type { Store, Product, Order } from "@be-in-digital/convex-schema/types"
 
 // Use for type safety
 const store: Store = { ... }
@@ -144,14 +144,14 @@ import {
   type Store,
   type Product,
   // ...
-} from "@beindigital-engine/convex-schema"
+} from "@be-in-digital/convex-schema"
 ```
 
 ### Subpath Exports
 
-- `@beindigital-engine/convex-schema/tables` - All table definitions
-- `@beindigital-engine/convex-schema/validators` - Zod validators
-- `@beindigital-engine/convex-schema/types` - TypeScript types
+- `@be-in-digital/convex-schema/tables` - All table definitions
+- `@be-in-digital/convex-schema/validators` - Zod validators
+- `@be-in-digital/convex-schema/types` - TypeScript types
 
 ## Important Notes
 

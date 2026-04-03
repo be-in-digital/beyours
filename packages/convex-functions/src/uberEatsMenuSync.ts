@@ -7,7 +7,7 @@
  * they need access to the generated `api` object for ctx.runQuery/runMutation.
  */
 
-// === Uber Eats Menu Payload type (mirrored from @beindigital-engine/integrations) ===
+// === Uber Eats Menu Payload type (mirrored from @be-in-digital/integrations) ===
 
 export interface UberEatsMenuPayload {
   menus: Array<{

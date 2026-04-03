@@ -6,7 +6,7 @@ import { formatDate } from "@/lib/admin/formatters"
 import DOMPurify from "isomorphic-dompurify"
 import Link from "next/link"
 import { ArrowLeft, Eye } from "lucide-react"
-import { Badge, Button } from "@beindigital-engine/ui"
+import { Badge, Button } from "@be-in-digital/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import type { Id } from "@/convex/_generated/dataModel"
 
@@ -64,7 +64,7 @@ export function BlogPreviewClient({ articleId }: BlogPreviewClientProps) {
               {STATUS_LABELS[article.status] ?? article.status}
             </Badge>
           </div>
-          <Link href={`/content/blog/${articleId}`}>
+          <Link href={`/dashboard/content/blog/${articleId}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour a l&apos;editeur

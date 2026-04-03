@@ -11,7 +11,7 @@ import {
   setLocale,
   getLocaleFromLocalStorage,
   getLocaleFromCookie,
-} from '@beindigital-engine/core'
+} from '@be-in-digital/core'
 
 /**
  * Language document from Convex (subset of fields needed client-side)

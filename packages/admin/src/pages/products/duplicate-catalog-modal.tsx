@@ -15,7 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { Loader2, Copy } from "lucide-react"
 
 interface Store {

@@ -1,7 +1,17 @@
 {
-  "name": "@beindigital-engine/restaurant",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@be-in-digital/restaurant",
+  "version": "2.0.0",
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/be-in-digital/beindigital-engine.git",
+    "directory": "packages/restaurant"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -37,8 +47,8 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@beindigital-engine/convex-schema": "workspace:^",
-    "@beindigital-engine/core": "workspace:^",
+    "@be-in-digital/convex-schema": "workspace:^",
+    "@be-in-digital/core": "workspace:^",
     "zod": "^3.24.0",
     "zustand": "^5.0.0"
   },

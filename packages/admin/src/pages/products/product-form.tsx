@@ -21,7 +21,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@beindigital-engine/ui"
+} from "@be-in-digital/ui"
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
 
 /**
