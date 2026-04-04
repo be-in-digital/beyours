@@ -282,9 +282,16 @@ export const checkForUpdates = action({
     }
 
     try {
+      // GitHub Packages npm registry requires auth token for private packages
+      const ghToken = process.env.GITHUB_TOKEN
+      const headers: Record<string, string> = { Accept: "application/json" }
+      if (ghToken) {
+        headers["Authorization"] = `Bearer ${ghToken}`
+      }
+
       const res = await fetch(
-        "https://registry.npmjs.org/@be-in-digital/restaurant-theme/latest",
-        { headers: { Accept: "application/json" } }
+        "https://npm.pkg.github.com/@be-in-digital/restaurant-theme/latest",
+        { headers }
       )
 
       let latestVersion = args.currentVersion

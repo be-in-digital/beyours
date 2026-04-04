@@ -234,7 +234,7 @@ function UpdatesSection() {
           Mises a jour
         </CardTitle>
         <CardDescription>
-          Verifiez si une nouvelle version est disponible sur le registre npm
+          Verifiez si une nouvelle version est disponible sur GitHub Packages
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
