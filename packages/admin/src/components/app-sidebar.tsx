@@ -59,7 +59,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeInDigit
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild data-tour="sidebar-brand">
               <Link href="/dashboard">
                 {logoUrl ? (
                   <img
@@ -108,9 +108,10 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeInDigit
                     const isActive =
                       pathname === entry.href ||
                       pathname.startsWith(entry.href + "/")
+                    const tourId = `nav-${entry.href.replace(/^\//, "").replace(/\//g, "-")}`
 
                     return (
-                      <SidebarMenuItem key={entry.href}>
+                      <SidebarMenuItem key={entry.href} data-tour={tourId}>
                         <SidebarMenuButton
                           asChild
                           isActive={isActive}
@@ -163,9 +164,11 @@ function CollapsibleNavMenuItem({
   const Icon = item.icon
   const isInSection = pathname.startsWith(item.basePath)
 
+  const tourId = `nav-${item.basePath.replace(/^\//, "").replace(/\//g, "-")}`
+
   return (
     <Collapsible defaultOpen={isInSection} className="group/collapsible">
-      <SidebarMenuItem>
+      <SidebarMenuItem data-tour={tourId}>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton tooltip={item.label}>
             <Icon className="size-4" />

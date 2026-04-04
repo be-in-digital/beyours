@@ -163,11 +163,19 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader />
-      <StatCardsGrid today={stats.today} yesterday={stats.yesterday} />
-      <OrdersChart data={stats.last7Days} />
-      <OrderBreakdown byType={stats.byType} bySource={stats.bySource} />
-      <RecentOrdersTable orders={(orders as Order[]).slice(0, 10)} />
-      <QuickActions />
+      <div data-tour="dashboard-stats">
+        <StatCardsGrid today={stats.today} yesterday={stats.yesterday} />
+      </div>
+      <div data-tour="dashboard-charts" className="space-y-6">
+        <OrdersChart data={stats.last7Days} />
+        <OrderBreakdown byType={stats.byType} bySource={stats.bySource} />
+      </div>
+      <div data-tour="dashboard-recent">
+        <RecentOrdersTable orders={(orders as Order[]).slice(0, 10)} />
+      </div>
+      <div data-tour="dashboard-actions">
+        <QuickActions />
+      </div>
     </div>
   )
 }
