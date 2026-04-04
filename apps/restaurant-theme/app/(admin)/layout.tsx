@@ -15,6 +15,8 @@ import {
   SidebarUserMenu,
   StoreGuard,
   useAdminApiStore,
+  OnboardingTourProvider,
+  ReplayTourButton,
 } from "@be-in-digital/admin"
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -25,13 +27,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar
-        userFooter={<SidebarUserMenu />}
+        userFooter={
+          <>
+            <ReplayTourButton />
+            <SidebarUserMenu />
+          </>
+        }
         logoUrl={logoUrl}
         brandName={brandName}
       />
       <SidebarInset>
         <AdminHeader storeSelector={<StoreSelector />} />
-        <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden">
+        <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden" data-tour="main-content">
           <div className="mx-auto max-w-[1600px]">
             <StoreGuard>{children}</StoreGuard>
           </div>
@@ -54,7 +61,9 @@ export default function AdminLayout({
     <>
       <AdminAuthSync />
       <AuthGuard>
-        <AdminLayoutInner>{children}</AdminLayoutInner>
+        <OnboardingTourProvider>
+          <AdminLayoutInner>{children}</AdminLayoutInner>
+        </OnboardingTourProvider>
       </AuthGuard>
     </>
   )

@@ -20,3 +20,6 @@ export { DeleteConfirmDialog } from "./delete-confirm-dialog"
 export { StoreSelector } from "./store-selector"
 export { SidebarUserMenu } from "./sidebar-user-menu"
 export { StoreGuard } from "./store-guard"
+
+// Onboarding
+export { OnboardingTourProvider, ReplayTourButton } from "./onboarding"
