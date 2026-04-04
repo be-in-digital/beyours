@@ -38,6 +38,8 @@ import {
 interface AppSidebarProps {
   footer?: React.ReactNode
   userFooter?: React.ReactNode
+  logoUrl?: string | null
+  brandName?: string
 }
 
 function canSeeEntry(role: Role, entry: NavEntry): boolean {
@@ -46,7 +48,7 @@ function canSeeEntry(role: Role, entry: NavEntry): boolean {
   return hasPermission(role, permission as Permission)
 }
 
-export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
+export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeInDigital" }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
@@ -59,11 +61,19 @@ export function AppSidebar({ footer, userFooter }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild data-tour="sidebar-brand">
               <Link href="/dashboard">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-7 items-center justify-center rounded-lg">
-                  <UtensilsCrossed className="size-3.5" />
-                </div>
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt={brandName}
+                    className="size-7 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="bg-primary text-primary-foreground flex aspect-square size-7 items-center justify-center rounded-lg">
+                    <UtensilsCrossed className="size-3.5" />
+                  </div>
+                )}
                 <span className="truncate text-sm font-semibold tracking-tight">
-                  BeInDigital
+                  {brandName}
                 </span>
               </Link>
             </SidebarMenuButton>

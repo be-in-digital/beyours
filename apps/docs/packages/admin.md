@@ -153,3 +153,62 @@ import { slugify } from "@be-in-digital/admin/lib";
 slugify("Margherita Pizza");  // "margherita-pizza"
 slugify("Crème Brûlée");     // "creme-brulee"
 ```
+
+## Layout Components
+
+### AppSidebar
+
+Admin sidebar with navigation, dynamic logo, and user footer.
+
+```tsx
+import { AppSidebar, SidebarUserMenu } from "@be-in-digital/admin";
+
+<AppSidebar
+  userFooter={<SidebarUserMenu />}
+  logoUrl="/logo.png"          // Dynamic logo from CMS (optional)
+  brandName="Mon Restaurant"   // Brand name, defaults to "BeInDigital"
+/>
+```
+
+When `logoUrl` is provided, the sidebar shows the logo image. Otherwise, it shows a default icon with the brand name.
+
+### StoreSelector
+
+Compact store dropdown for the sidebar/header. **Auto-selects when only one store exists** and hides the dropdown.
+
+```tsx
+import { StoreSelector } from "@be-in-digital/admin";
+
+<AdminHeader storeSelector={<StoreSelector />} />
+```
+
+### StoreGuard
+
+Protects dashboard routes by requiring a selected store. Auto-selects when only one store exists.
+
+```tsx
+import { StoreGuard } from "@be-in-digital/admin";
+
+<StoreGuard>{children}</StoreGuard>
+```
+
+Bypass routes (no guard): `/dashboard/stores`, `/dashboard/settings`, `/dashboard/team`.
+
+## Store Management
+
+### Store Creation (Draft to Open)
+
+When a store is created, it starts in **"draft"** status. A toast notification explains:
+
+> *"L'etablissement est en brouillon. Configurez ses parametres puis passez-le en 'Ouvert' pour l'activer."*
+
+The **StoreDetailPage** shows an amber warning banner for draft stores, guiding the user to complete configuration.
+
+### Store Detail Page
+
+Includes a **back arrow** button to return to the stores list, and tabs for:
+
+- **General**: Name, slug, address, status (draft/open/closed)
+- **Hours**: Store-specific or global hours
+- **Settings**: Service overrides (dine-in, delivery, etc.)
+- **Integrations**: Uber Eats, Deliveroo configuration

@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
-import { RefreshCw, Loader2, HelpCircle, ExternalLink, Download, MoreHorizontal, Trash2 } from "lucide-react"
+import { RefreshCw, Loader2, HelpCircle, ExternalLink, Download, MoreHorizontal, Trash2, ArrowLeft, AlertTriangle } from "lucide-react"
 import { Button } from "@be-in-digital/ui"
 import { Input } from "@be-in-digital/ui"
 import { Label } from "@be-in-digital/ui"
@@ -31,6 +31,7 @@ import {
   PopoverTrigger,
 } from "@be-in-digital/ui"
 import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
+import { Alert, AlertDescription, AlertTitle } from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
@@ -652,10 +653,27 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{store.name}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gérez les détails et paramètres de l'établissement</p>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
+          <a href="/dashboard/stores">
+            <ArrowLeft className="h-4 w-4" />
+          </a>
+        </Button>
+        <div>
+          <h1 className="text-2xl font-semibold">{store.name}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Gérez les détails et paramètres de l&apos;établissement</p>
+        </div>
       </div>
+
+      {store.status === "draft" && (
+        <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertTitle className="text-amber-800 dark:text-amber-400">Établissement en brouillon</AlertTitle>
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            Cet établissement n&apos;est pas encore visible. Complétez les informations générales, les horaires et les paramètres, puis changez le statut en &quot;Ouvert&quot; dans l&apos;onglet Général pour l&apos;activer.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue="general" className="space-y-4">
         <TabsList>

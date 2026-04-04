@@ -9,12 +9,36 @@ export const storefrontLayoutPage: PageDefinition = {
   blocks: [
     seoBlock,
     {
+      key: "branding",
+      label: "Identité visuelle",
+      fields: {
+        logo: {
+          type: "image",
+          label: "Logo du restaurant",
+          description: "Utilisé dans l'en-tête du storefront et le tableau de bord admin. Recommandé : PNG/SVG transparent, 200x60px minimum.",
+        },
+        favicon: {
+          type: "image",
+          label: "Favicon",
+          description: "Icône du navigateur. Recommandé : PNG carré 32x32px ou 64x64px.",
+        },
+        brandName: {
+          type: "text",
+          label: "Nom de la marque",
+          description: "Affiché si aucun logo n'est défini. Utilisé aussi comme alt text du logo.",
+          required: true,
+          maxLength: 50,
+          hasCodeFallback: true,
+        },
+      },
+    },
+    {
       key: "header",
       label: "En-tête du site",
       fields: {
         brandName: {
           type: "text",
-          label: "Nom de la marque",
+          label: "Nom de la marque (header)",
           required: true,
           maxLength: 50,
           hasCodeFallback: true,

@@ -7,7 +7,9 @@ import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
 
 /**
- * Compact store selector dropdown for sidebar
+ * Compact store selector dropdown for sidebar.
+ * Auto-selects the store when there is only one.
+ * Hides the dropdown when a single store is selected.
  */
 export function StoreSelector() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex API is injected dynamically at runtime
@@ -17,11 +19,26 @@ export function StoreSelector() {
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
 
+  // Auto-select when only one store exists
+  const singleStore = stores?.length === 1 ? stores[0] : null
+  if (singleStore && currentStore?._id !== singleStore._id) {
+    setCurrentStore(singleStore)
+  }
+
   if (stores === undefined) {
     return <div className="h-8 rounded-md bg-muted/40 animate-pulse" />
   }
 
   if (!stores || stores.length === 0) return null
+
+  // Single store: show name as label, no dropdown needed
+  if (stores.length === 1) {
+    return (
+      <div className="h-8 flex items-center px-3 text-xs font-medium text-muted-foreground truncate">
+        {stores[0].name}
+      </div>
+    )
+  }
 
   const handleStoreChange = (storeId: string) => {
     const store = stores.find((s) => s._id === storeId)
