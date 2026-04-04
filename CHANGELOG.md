@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+#### Environment Variables Validation
+- `.env.example` template with 40+ documented variables organized by tier (package-level vs site-level)
+- `validateAllEnv()` function for non-throwing Zod-based validation of all env vars at startup
+- `formatEnvReport()` for formatted console output grouping missing vars by tier with box-drawing characters
+- `instrumentation.ts` integration: warning in dev, blocking error in production
+- 9 unit tests covering validation and reporting
+
+#### Single Store Auto-Selection
+- `StoreSelector` auto-selects and displays store name as label when only one store exists
+- `StoreGuard` auto-selects the single store without prompting the user
+
+#### Store Creation Workflow (Draft to Open)
+- New stores start in `draft` status automatically
+- Toast notification post-creation with configuration guidance
+- Amber warning banner on store detail page for draft stores
+- New store statuses: `draft`, `open`, `closed`, `temporarily_unavailable`
+
+#### Store Detail Navigation
+- Back arrow button on store detail page to return to stores list
+
+#### Dynamic Branding from CMS
+- `branding` block added to `storefront-layout` CMS page (logo, favicon, brandName)
+- Storefront header: dynamic logo image or brand name text fallback
+- Admin sidebar: `logoUrl` and `brandName` props from CMS data
+- `DynamicFavicon` client component for runtime favicon injection from CMS
+
+#### MCP Server & Documentation
+- 6 new exports registered in MCP server for `@be-in-digital/core` (env schemas, getters, validation)
+- 5 new exports registered for `@be-in-digital/admin` (AppSidebar, StoreSelector, StoreGuard, pages)
+- Updated documentation: `core.md`, `admin.md`, `environment-variables.md`, `multi-store.md`, `cms-content.md`
+
 - **Auto Blog Engine**: AI-powered blog article generation using GPT-4o-mini with SEO optimization
   - Keyword density (1-2%), heading hierarchy (H2/H3), featured snippets, LSI keywords
   - 1200-1800 words per article with proper HTML structure

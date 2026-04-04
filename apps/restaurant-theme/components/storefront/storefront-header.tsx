@@ -12,6 +12,7 @@ import {
   TooltipProvider,
 } from "@be-in-digital/ui/components"
 import { useCartStore } from "@be-in-digital/restaurant"
+import { useCmsPage } from "@/lib/cms/useCmsPage"
 import { CartSheet } from "./cart-sheet"
 import { StoreSelectorDropdown } from "./store-selector-dropdown"
 import { LanguageSelectorDropdown } from "./language-selector-dropdown"
@@ -28,6 +29,9 @@ const navLinks = [
 export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean }) {
   const pathname = usePathname()
   const itemCount = useCartStore((s) => s.getItemCount())
+  const cms = useCmsPage("storefront-layout")
+  const logoMedia = cms.block("branding").field("logo")
+  const brandName = cms.block("branding").field("brandName").text ?? "BeInDigital"
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -79,7 +83,15 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
               showTransparent ? "text-white" : "text-[#0D5C3F]"
             }`}
           >
-            BeInDigital
+            {logoMedia.mediaUrl ? (
+              <img
+                src={logoMedia.mediaUrl}
+                alt={brandName}
+                className="h-8 w-auto object-contain"
+              />
+            ) : (
+              brandName
+            )}
           </Link>
 
           {/* Desktop nav */}
@@ -200,7 +212,15 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
             {/* Close button */}
             <div className="flex items-center justify-between px-6 py-4">
               <span className="font-black text-xl tracking-tighter text-white">
-                BeInDigital
+                {logoMedia.mediaUrl ? (
+                  <img
+                    src={logoMedia.mediaUrl}
+                    alt={brandName}
+                    className="h-8 w-auto object-contain brightness-0 invert"
+                  />
+                ) : (
+                  brandName
+                )}
               </span>
               <button
                 type="button"

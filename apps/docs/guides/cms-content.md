@@ -145,6 +145,75 @@ import { sanitizeSvg } from "@be-in-digital/cms";
 const safeSvg = sanitizeSvg(rawSvgContent);
 ```
 
+## Storefront Layout: Branding Block
+
+The `storefront-layout` CMS page includes a special **branding** block for restaurant identity. This block provides the logo, favicon, and brand name used across the storefront and admin dashboard.
+
+### Block Definition
+
+```typescript
+// cms/pages/storefront-layout.ts
+{
+  key: "branding",
+  label: "Identité visuelle",
+  fields: {
+    logo: {
+      type: "image",
+      label: "Logo du restaurant",
+      description: "PNG ou SVG, 200x60px recommandé",
+    },
+    favicon: {
+      type: "image",
+      label: "Favicon",
+      description: "PNG 32x32 ou 64x64",
+    },
+    brandName: {
+      type: "text",
+      label: "Nom de la marque",
+      required: true,
+      maxLength: 50,
+    },
+  },
+}
+```
+
+### Where Branding Appears
+
+| Location | What is shown |
+|----------|---------------|
+| **Storefront header** | Logo image, or brand name text as fallback |
+| **Admin sidebar** | Logo thumbnail + brand name |
+| **Browser tab** | Dynamic favicon from CMS |
+| **Mobile menu** | Logo with white overlay for dark backgrounds |
+
+### Reading Branding Data
+
+```tsx
+import { useCmsPage } from "@/lib/cms/useCmsPage";
+
+function MyComponent() {
+  const cms = useCmsPage("storefront-layout");
+  const logoUrl = cms.block("branding").field("logo").mediaUrl;
+  const faviconUrl = cms.block("branding").field("favicon").mediaUrl;
+  const brandName = cms.block("branding").field("brandName").text ?? "BeInDigital";
+
+  return logoUrl
+    ? <img src={logoUrl} alt={brandName} className="h-8 w-auto" />
+    : <span>{brandName}</span>;
+}
+```
+
+### Dynamic Favicon
+
+The `DynamicFavicon` client component injects the CMS favicon into the document head at runtime:
+
+```tsx
+import { DynamicFavicon } from "@/components/dynamic-favicon";
+
+// Include in your shell/layout
+<DynamicFavicon />
+```
+
 ## Rendering Content
 
 ```tsx
