@@ -75,6 +75,12 @@ export function StoreGuard({ children }: StoreGuardProps) {
     )
   }
 
+  // Auto-select when only one store exists
+  if (stores.length === 1 && !currentStore) {
+    setCurrentStore(stores[0])
+    return <>{children}</>
+  }
+
   // Stores exist but none selected - show selector
   if (!currentStore) {
     const handleStoreChange = (storeId: string) => {

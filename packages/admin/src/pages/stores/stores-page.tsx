@@ -245,7 +245,10 @@ export function StoresPage() {
           taxRate: 10,
         },
       })
-      toast.success("Établissement créé avec succès")
+      toast.success("Établissement créé avec succès", {
+        description: "L'établissement est en brouillon. Configurez ses paramètres puis passez-le en \"Ouvert\" pour l'activer.",
+        duration: 8000,
+      })
       setIsCreateDialogOpen(false)
       setName("")
       setDescription("")

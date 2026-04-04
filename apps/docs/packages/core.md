@@ -241,3 +241,51 @@ const canViewOrders = checkPermission(user.role, "orders:read");
 | `orders:refund` | Yes | Yes | No | No |
 | `settings:write` | Yes | Yes | No | No |
 | `users:manage` | Yes | No | No | No |
+
+## Environment Validation
+
+Zod-based validation for all environment variables with a two-tier architecture.
+
+### Setup
+
+```bash
+# Copy the template
+cp apps/restaurant-theme/.env.example apps/restaurant-theme/.env.local
+# Fill in the values
+```
+
+### Schemas
+
+```typescript
+import { packageEnvSchema, siteEnvSchema } from "@be-in-digital/core/env";
+import type { PackageEnv, SiteEnv } from "@be-in-digital/core/env";
+```
+
+- **packageEnvSchema**: Platform-level vars (AWS, OpenAI, Uber Eats, Deliveroo)
+- **siteEnvSchema**: Per-restaurant vars (Convex, Auth, Stripe, SES, Maps, etc.)
+
+### Getters (lazy-loaded, memoized)
+
+```typescript
+import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
+
+const { AWS_REGION, OPENAI_API_KEY } = getPackageEnv();
+const { NEXT_PUBLIC_CONVEX_URL, STRIPE_SECRET_KEY } = getSiteEnv();
+```
+
+### Startup Validation
+
+The app validates all env vars at startup via `instrumentation.ts`:
+
+```typescript
+import { validateAllEnv, formatEnvReport } from "@be-in-digital/core/env";
+
+const { ok, missing } = validateAllEnv();
+if (!ok) {
+  console.error(formatEnvReport(missing));
+  // Production: throws error
+  // Development: logs warning, continues
+}
+```
+
+The report groups missing variables by tier (Package-level vs Site-level) and shows a hint to copy `.env.example`.
