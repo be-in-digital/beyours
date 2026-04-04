@@ -128,9 +128,60 @@ Each store has coordinates for:
 - Delivery zone calculation
 - Distance-based store selection
 
+## Single Store Auto-Selection
+
+When a restaurant owner has only **one store**, the UI adapts automatically:
+
+- **StoreSelector**: Displays the store name as a label instead of a dropdown
+- **StoreGuard**: Auto-selects the single store without prompting the user
+- No manual selection needed -- the dashboard loads directly with the store context
+
+## Store Creation Workflow (Draft to Open)
+
+New stores follow a **draft-to-open** workflow:
+
+1. **Create store**: Enters "draft" status automatically
+2. **Toast notification**: Shows guidance after creation:
+   > *"L'etablissement est en brouillon. Configurez ses parametres puis passez-le en 'Ouvert' pour l'activer."*
+3. **Draft banner**: The store detail page shows an **amber warning banner** for draft stores, explaining:
+   - Complete General info, Hours, and Settings
+   - Change the status to "Open" in the General tab to activate
+4. **Activate**: Set status to "Open" to make the store visible to customers
+
+### Store Statuses
+
+| Status | Description |
+|--------|-------------|
+| `draft` | New store, not yet configured. Not visible to customers. |
+| `open` | Active and accepting orders |
+| `closed` | Permanently closed |
+| `temporarily_unavailable` | Temporarily closed (holiday, maintenance) |
+
+## Store Detail Navigation
+
+The store detail page includes a **back arrow** button to navigate back to the stores list. This improves navigation when configuring stores.
+
+## Dynamic Branding from CMS
+
+The CMS `storefront-layout` page has a **branding** block:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `logo` | image | Restaurant logo (PNG/SVG, 200x60px recommended) |
+| `favicon` | image | Browser favicon (32x32 or 64x64 PNG) |
+| `brandName` | text | Fallback name if no logo is set |
+
+### Where branding appears:
+
+- **Storefront header**: Shows logo image or brand name text
+- **Admin sidebar**: Shows logo thumbnail and brand name
+- **Browser tab**: Dynamic favicon from CMS
+- **Mobile menu**: Logo with white overlay for dark background
+
 ## Best Practices
 
-1. **Always scope queries** — Every database query must include `storeId`
-2. **Use store context** — The admin dashboard maintains a store context for all operations
-3. **Independent settings** — Each store can have different payment providers, delivery zones, etc.
-4. **Shared catalog option** — Optionally share products across stores, then override per-store
+1. **Always scope queries** -- Every database query must include `storeId`
+2. **Use store context** -- The admin dashboard maintains a store context for all operations
+3. **Independent settings** -- Each store can have different payment providers, delivery zones, etc.
+4. **Shared catalog option** -- Optionally share products across stores, then override per-store
+5. **Complete setup before opening** -- Use the draft workflow to ensure all settings are configured before going live
