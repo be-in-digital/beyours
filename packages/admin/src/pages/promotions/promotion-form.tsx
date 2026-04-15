@@ -43,25 +43,25 @@ const promotionSchema = z.object({
   triggerMode: z.enum(["coupon", "auto"]),
   couponCode: z.string().max(30).optional(),
   discountType: z.enum(["percentage", "fixed_amount", "free_product", "free_delivery", "bogo"]),
-  discountValue: z.coerce.number().min(0).optional(),
-  maxDiscountAmount: z.coerce.number().min(0).optional(),
+  discountValue: z.number({ coerce: true }).min(0).optional(),
+  maxDiscountAmount: z.number({ coerce: true }).min(0).optional(),
   scope: z.enum(["order", "product", "category"]),
-  minimumOrderAmount: z.coerce.number().min(0).optional(),
+  minimumOrderAmount: z.number({ coerce: true }).min(0).optional(),
   startDate: z.string().min(1, "La date de début est requise"),
   endDate: z.string().min(1, "La date de fin est requise"),
   hasScheduling: z.boolean(),
   activeDays: z.array(z.number()).optional(),
   activeTimeFrom: z.string().optional(),
   activeTimeTo: z.string().optional(),
-  maxTotalUsage: z.coerce.number().min(0).optional(),
-  maxUsagePerCustomer: z.coerce.number().min(0).optional(),
+  maxTotalUsage: z.number({ coerce: true }).min(0).optional(),
+  maxUsagePerCustomer: z.number({ coerce: true }).min(0).optional(),
   isActive: z.boolean(),
   // Target selections
   targetProductIds: z.array(z.string()).optional(),
   targetCategoryIds: z.array(z.string()).optional(),
   // BOGO fields
-  bogoTriggerQuantity: z.coerce.number().min(1).optional(),
-  bogoRewardQuantity: z.coerce.number().min(1).optional(),
+  bogoTriggerQuantity: z.number({ coerce: true }).min(1).optional(),
+  bogoRewardQuantity: z.number({ coerce: true }).min(1).optional(),
 })
 
 type PromotionFormData = z.infer<typeof promotionSchema>
