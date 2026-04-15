@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Order } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search } from "lucide-react"
@@ -37,7 +37,7 @@ export function OrdersContent() {
   const orders = useQuery(
     api.orders.list,
     storeId ? { storeId } : "skip"
-  ) as Doc<"orders">[] | undefined
+  ) as Order[] | undefined
 
   // Filter orders by status and search query
   const filteredOrders = orders?.filter((order) => {

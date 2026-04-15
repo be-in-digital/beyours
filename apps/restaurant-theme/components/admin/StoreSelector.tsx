@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react"
 import { useStoreStore } from "@be-in-digital/restaurant"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Store } from "@/lib/admin/types"
 import {
   Select,
   SelectContent,
@@ -37,7 +37,7 @@ export function StoreSelector() {
    * Handle store selection change
    */
   const handleStoreChange = (storeId: string) => {
-    const store = stores.find((s: Doc<"stores">) => s._id === storeId)
+    const store = stores.find((s: Store) => s._id === storeId)
     if (store) {
       setCurrentStore(store)
     }
@@ -52,7 +52,7 @@ export function StoreSelector() {
         <SelectValue placeholder="Choisir un établissement" />
       </SelectTrigger>
       <SelectContent>
-        {stores.map((store: Doc<"stores">) => (
+        {stores.map((store: Store) => (
           <SelectItem key={store._id} value={store._id}>
             {store.name}
           </SelectItem>

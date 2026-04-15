@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { Search, Plus, Grid3x3, List } from "lucide-react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Product, Category } from "@/lib/admin/types"
 import { useAdminStoreId, useDebounce } from "@/lib/admin/hooks"
 import { Button } from "@/components/ui/button"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
@@ -38,7 +38,7 @@ export function ProductsContent() {
   )
 
   // Filter products based on search and filters
-  const filteredProducts = products?.filter((product: Doc<"products">) => {
+  const filteredProducts = products?.filter((product: Product) => {
     // Search filter
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase()
@@ -114,7 +114,7 @@ export function ProductsContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les catégories</SelectItem>
-              {categories?.map((category: Doc<"categories">) => (
+              {categories?.map((category: Category) => (
                 <SelectItem key={category._id} value={category._id}>
                   {category.name}
                 </SelectItem>

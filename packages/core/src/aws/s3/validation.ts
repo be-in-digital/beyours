@@ -36,7 +36,7 @@ export const uploadOptionsSchema = z.object({
     .optional(),
   contentType: z.string().min(1, 'Le type MIME est requis'),
   maxSize: z.number().positive().optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
 })
 
 /**

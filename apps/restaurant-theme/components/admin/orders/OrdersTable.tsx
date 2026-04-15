@@ -12,16 +12,12 @@ import {
 } from "@/components/ui/table"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { formatPrice, formatOrderNumber, formatDate } from "@/lib/admin/formatters"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Order, OrderStatus, OrderType, OrderPaymentStatus as PaymentStatus, OrderItem } from "@/lib/admin/types"
 
 type OrdersTableProps = {
-  orders: Doc<"orders">[]
+  orders: Order[]
   isLoading: boolean
 }
-
-type OrderStatus = Doc<"orders">["status"]
-type OrderType = Doc<"orders">["type"]
-type PaymentStatus = Doc<"orders">["paymentStatus"]
 
 /**
  * Get badge variant and label for order status
@@ -75,7 +71,7 @@ function getPaymentBadge(status: PaymentStatus) {
 /**
  * Calculate total items count from order items
  */
-function getTotalItems(items: Doc<"orders">["items"]): number {
+function getTotalItems(items: OrderItem[]): number {
   return items.reduce((sum, item) => sum + item.quantity, 0)
 }
 

@@ -24,7 +24,7 @@ export const createGlobalSettingsSchema = z.object({
     takeaway: z.boolean().default(true),
     delivery: z.boolean().default(false),
     clickAndCollect: z.boolean().default(false),
-  }).default({}),
+  }).default({ dineIn: false, takeaway: true, delivery: false, clickAndCollect: false }),
   minimumOrderAmount: z.number().min(0, "Le montant minimum doit etre positif").optional(),
   hours: z.array(z.object({
     day: z.number().min(0).max(6),
@@ -39,7 +39,7 @@ export const createGlobalSettingsSchema = z.object({
     maxFee: z.number().min(0, "Le plafond doit etre positif").optional(),
     freeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
     radius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
-  }).default({}),
+  }).default({ feeMode: "fixed" }),
   integrations: z.object({
     uberDirect: z.object({
       customerId: z.string().optional(),
@@ -129,7 +129,7 @@ export const updateStoreSchema = createStoreSchema.partial()
 export const updateStoreStatusSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   status: z.enum(["draft", "open", "closed", "temporarily_unavailable"], {
-    errorMap: () => ({ message: "Statut invalide" }),
+    error: "Statut invalide",
   }),
 })
 
@@ -143,7 +143,7 @@ export const updateStoreStatusSchema = z.object({
 export const createStoreIntegrationSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   platform: z.enum(["uberEats", "deliveroo"], {
-    errorMap: () => ({ message: "Plateforme invalide" }),
+    error: "Plateforme invalide",
   }),
   platformStoreId: z.string().min(1, "L'ID du magasin sur la plateforme est requis"),
   syncMenu: z.boolean().default(true),
@@ -325,7 +325,7 @@ export const updateMenuSchema = createMenuSchema.partial().required({ storeId: t
 export const createOrderSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   type: z.enum(["delivery", "pickup", "dine_in"], {
-    errorMap: () => ({ message: "Type de commande invalide" }),
+    error: "Type de commande invalide",
   }),
   customerInfo: z.object({
     name: z.string().min(1, "Le nom du client est requis"),
@@ -376,7 +376,7 @@ export const updateOrderStatusSchema = z.object({
     "completed",
     "cancelled",
   ], {
-    errorMap: () => ({ message: "Statut de commande invalide" }),
+    error: "Statut de commande invalide",
   }),
   cancellationReason: z.string().max(500).optional(),
 })
@@ -387,7 +387,7 @@ export const updateOrderStatusSchema = z.object({
 export const updateOrderPaymentStatusSchema = z.object({
   orderId: z.string().min(1),
   paymentStatus: z.enum(["pending", "paid", "failed", "refunded", "partially_refunded"], {
-    errorMap: () => ({ message: "Statut de paiement invalide" }),
+    error: "Statut de paiement invalide",
   }),
 })
 
@@ -436,7 +436,7 @@ export const createPrinterSettingsSchema = z.object({
   name: z.string().min(1, "Le nom de l'imprimante est requis"),
   type: z.enum(["network", "usb", "bluetooth"]),
   connectionInfo: z.object({
-    ipAddress: z.string().ip({ version: "v4" }).optional(),
+    ipAddress: z.string().ipv4().optional(),
     port: z.number().int().min(1).max(65535).optional(),
     usbVendorId: z.string().optional(),
     usbProductId: z.string().optional(),
@@ -465,7 +465,7 @@ export const createPaymentSchema = z.object({
   amount: z.number().int().min(1, "Le montant doit etre positif"),
   currency: z.string().length(3).toUpperCase().default("EUR"),
   provider: z.enum(["stripe", "sumup", "paypal", "square", "cash"], {
-    errorMap: () => ({ message: "Fournisseur de paiement invalide" }),
+    error: "Fournisseur de paiement invalide",
   }),
   externalId: z.string().optional(),
   metadata: z.object({
@@ -577,7 +577,7 @@ export const inviteTeamMemberSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide"),
   role: z.enum(["manager", "kitchen", "waiter", "delivery"], {
-    errorMap: () => ({ message: "Role invalide" }),
+    error: "Role invalide",
   }),
   permissions: z.array(z.string()).default([]),
 })
@@ -592,7 +592,7 @@ export const createTeamMemberSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   email: z.string().email("Email invalide"),
   role: z.enum(["manager", "kitchen", "waiter", "delivery"], {
-    errorMap: () => ({ message: "Role invalide" }),
+    error: "Role invalide",
   }),
   permissions: z.array(z.string()).default([]),
   invitationStatus: z.enum(["pending", "accepted", "expired"]).default("pending"),
