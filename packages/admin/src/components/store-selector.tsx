@@ -35,7 +35,7 @@ export function StoreSelector() {
   if (stores.length === 1) {
     return (
       <div className="h-8 flex items-center px-3 text-xs font-medium text-muted-foreground truncate">
-        {stores[0].name}
+        {stores[0]?.name}
       </div>
     )
   }
