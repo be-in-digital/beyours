@@ -43,25 +43,25 @@ const promotionSchema = z.object({
   triggerMode: z.enum(["coupon", "auto"]),
   couponCode: z.string().max(30).optional(),
   discountType: z.enum(["percentage", "fixed_amount", "free_product", "free_delivery", "bogo"]),
-  discountValue: z.coerce.number().min(0).optional(),
-  maxDiscountAmount: z.coerce.number().min(0).optional(),
+  discountValue: z.number().min(0).optional(),
+  maxDiscountAmount: z.number().min(0).optional(),
   scope: z.enum(["order", "product", "category"]),
-  minimumOrderAmount: z.coerce.number().min(0).optional(),
+  minimumOrderAmount: z.number().min(0).optional(),
   startDate: z.string().min(1, "La date de début est requise"),
   endDate: z.string().min(1, "La date de fin est requise"),
   hasScheduling: z.boolean(),
   activeDays: z.array(z.number()).optional(),
   activeTimeFrom: z.string().optional(),
   activeTimeTo: z.string().optional(),
-  maxTotalUsage: z.coerce.number().min(0).optional(),
-  maxUsagePerCustomer: z.coerce.number().min(0).optional(),
+  maxTotalUsage: z.number().min(0).optional(),
+  maxUsagePerCustomer: z.number().min(0).optional(),
   isActive: z.boolean(),
   // Target selections
   targetProductIds: z.array(z.string()).optional(),
   targetCategoryIds: z.array(z.string()).optional(),
   // BOGO fields
-  bogoTriggerQuantity: z.coerce.number().min(1).optional(),
-  bogoRewardQuantity: z.coerce.number().min(1).optional(),
+  bogoTriggerQuantity: z.number().min(1).optional(),
+  bogoRewardQuantity: z.number().min(1).optional(),
 })
 
 type PromotionFormData = z.infer<typeof promotionSchema>
@@ -413,7 +413,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                   step={discountType === "percentage" ? "1" : "0.01"}
                   min="0"
                   max={discountType === "percentage" ? "100" : undefined}
-                  {...register("discountValue")}
+                  {...register("discountValue", { valueAsNumber: true })}
                   placeholder={discountType === "percentage" ? "20" : "5.00"}
                 />
                 {errors.discountValue && (
@@ -428,7 +428,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                     type="number"
                     step="0.01"
                     min="0"
-                    {...register("maxDiscountAmount")}
+                    {...register("maxDiscountAmount", { valueAsNumber: true })}
                     placeholder="10.00"
                   />
                   <p className="text-xs text-muted-foreground">Montant max de réduction</p>
@@ -445,7 +445,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                   id="bogoTriggerQuantity"
                   type="number"
                   min="1"
-                  {...register("bogoTriggerQuantity")}
+                  {...register("bogoTriggerQuantity", { valueAsNumber: true })}
                   placeholder="2"
                 />
               </div>
@@ -455,7 +455,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                   id="bogoRewardQuantity"
                   type="number"
                   min="1"
-                  {...register("bogoRewardQuantity")}
+                  {...register("bogoRewardQuantity", { valueAsNumber: true })}
                   placeholder="1"
                 />
               </div>
@@ -661,7 +661,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
               type="number"
               step="0.01"
               min="0"
-              {...register("minimumOrderAmount")}
+              {...register("minimumOrderAmount", { valueAsNumber: true })}
               placeholder="15.00"
             />
           </div>
@@ -758,7 +758,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                 id="maxTotalUsage"
                 type="number"
                 min="0"
-                {...register("maxTotalUsage")}
+                {...register("maxTotalUsage", { valueAsNumber: true })}
                 placeholder="Illimité"
               />
             </div>
@@ -768,7 +768,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                 id="maxUsagePerCustomer"
                 type="number"
                 min="0"
-                {...register("maxUsagePerCustomer")}
+                {...register("maxUsagePerCustomer", { valueAsNumber: true })}
                 placeholder="Illimité"
               />
             </div>

@@ -16,11 +16,13 @@ export const storefrontLayoutPage: PageDefinition = {
           type: "image",
           label: "Logo du restaurant",
           description: "Utilisé dans l'en-tête du storefront et le tableau de bord admin. Recommandé : PNG/SVG transparent, 200x60px minimum.",
+          hasCodeFallback: true,
         },
         favicon: {
           type: "image",
           label: "Favicon",
           description: "Icône du navigateur. Recommandé : PNG carré 32x32px ou 64x64px.",
+          hasCodeFallback: true,
         },
         brandName: {
           type: "text",

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Payment } from "@/lib/admin/types"
 import { toast } from "sonner"
 import { formatPrice } from "@/lib/admin/formatters"
 import {
@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label"
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group"
 
 interface RefundDialogProps {
-  payment: Doc<"payments">
+  payment: Payment
   open: boolean
   onOpenChange: (open: boolean) => void
 }

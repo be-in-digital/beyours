@@ -2,7 +2,7 @@
 
 import { useMutation, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { KitchenTicket, TicketStatus, TicketOrderType as OrderType, TicketPriority as Priority, TicketSource as Source } from "@/lib/admin/types"
 import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,8 @@ import {
 import { TicketTimer } from "./TicketTimer"
 import { Clock, Play, CheckCircle, Package, Printer, X } from "lucide-react"
 
-type Ticket = Doc<"kitchenTickets">
-type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
-type OrderType = "delivery" | "pickup" | "dine_in"
-type Priority = "normal" | "urgent" | "vip"
-type Source = "website" | "uber_eats" | "deliveroo" | "pos"
-
 interface TicketCardProps {
-  ticket: Ticket
+  ticket: KitchenTicket
 }
 
 const ORDER_TYPE_LABELS: Record<OrderType, string> = {
@@ -72,7 +66,7 @@ const DELIVEROO_REJECT_REASONS = [
   { value: "other", label: "Autre raison" },
 ] as const
 
-function isPrintStuck(ticket: Ticket): boolean {
+function isPrintStuck(ticket: KitchenTicket): boolean {
   if (ticket.printStatus !== "pending") return false
   if (!ticket.printRequestedAt) return false
   return Date.now() - ticket.printRequestedAt > 2 * 60 * 1000

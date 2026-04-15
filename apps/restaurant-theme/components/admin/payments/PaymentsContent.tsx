@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
+import type { Payment, PaymentStatus, PaymentProvider } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { formatPrice, formatDate } from "@/lib/admin/formatters"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,28 +30,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { RefundDialog } from "./RefundDialog"
 import { RotateCcw, ExternalLink } from "lucide-react"
 
-type PaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "refunded" | "partially_refunded"
-type PaymentProvider = "stripe" | "sumup" | "paypal" | "square" | "cash"
-
-interface Payment {
-  _id: Id<"payments">
-  storeId: Id<"stores">
-  orderId: Id<"orders">
-  amount: number
-  currency: string
-  provider: PaymentProvider
-  status: PaymentStatus
-  externalId?: string
-  refundedAmount?: number
-  refundReason?: string
-  metadata?: {
-    last4?: string
-    brand?: string
-    receiptUrl?: string
-  }
-  createdAt: number
-  updatedAt: number
-}
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
   pending: { label: "En attente", variant: "secondary" },
@@ -79,11 +58,11 @@ export function PaymentsContent({ embedded = false }: PaymentsContentProps) {
   const payments = useQuery(
     api.payments.getByStore,
     storeId ? { storeId } : "skip"
-  ) as Doc<"payments">[] | undefined
+  ) as Payment[] | undefined
 
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [providerFilter, setProviderFilter] = useState<string>("all")
-  const [refundingPayment, setRefundingPayment] = useState<Doc<"payments"> | null>(null)
+  const [refundingPayment, setRefundingPayment] = useState<Payment | null>(null)
 
   // Filter payments
   const filteredPayments = useMemo(() => {

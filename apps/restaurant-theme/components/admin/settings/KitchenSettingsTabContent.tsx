@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
 import type { Id } from "@/convex/_generated/dataModel"
+import type { Store, StoreIntegration } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -36,9 +36,9 @@ function KitchenSettingsForm({
   storeId,
   enabledIntegrations,
 }: {
-  store: Doc<"stores">
+  store: Store
   storeId: Id<"stores">
-  enabledIntegrations: Doc<"storeIntegrations">[]
+  enabledIntegrations: StoreIntegration[]
 }) {
   const updateOrderConfirmation = useMutation(api.stores.updateOrderConfirmation)
   const updateStoreOrderMode = useMutation(api.stores.updateOrderMode)
@@ -181,7 +181,7 @@ function KitchenSettingsForm({
           {enabledIntegrations.length > 0 && (
             <div className="space-y-3 pt-2 border-t">
               <Label className="text-sm font-medium">Overrides par plateforme</Label>
-              {enabledIntegrations.map((integration: Doc<"storeIntegrations">) => (
+              {enabledIntegrations.map((integration: StoreIntegration) => (
                 <div key={integration._id} className="flex items-center justify-between gap-4">
                   <span className="text-sm">
                     {integration.platform === "uberEats" ? "Uber Eats" : "Deliveroo"}
@@ -353,7 +353,7 @@ export function KitchenSettingsTabContent() {
 
   const enabledIntegrations = useMemo(() => {
     if (!integrations) return []
-    return integrations.filter((i: Doc<"storeIntegrations">) => i.enabled)
+    return integrations.filter((i: StoreIntegration) => i.enabled)
   }, [integrations])
 
   if (!store || !storeId) return null
