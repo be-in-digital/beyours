@@ -42,7 +42,7 @@ const emailConfigSchema = z.object({
   socialWebsite: z.string().url("URL invalide").or(z.literal("")).optional(),
   // Settings
   unsubscribeText: z.string().min(1, "Le texte de désabonnement est requis").max(200),
-  maxEmailsPerWeek: z.number({ coerce: true }).min(1).max(100),
+  maxEmailsPerWeek: z.number().min(1).max(100),
   // Automations
   welcomeEnabled: z.boolean(),
   postOrderEnabled: z.boolean(),
@@ -384,7 +384,7 @@ export function EmailConfigPage() {
                 type="number"
                 min="1"
                 max="100"
-                {...register("maxEmailsPerWeek")}
+                {...register("maxEmailsPerWeek", { valueAsNumber: true })}
               />
               <p className="text-xs text-muted-foreground">Protection anti-spam</p>
               {errors.maxEmailsPerWeek && (
