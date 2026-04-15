@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id, Doc } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
+import type { Category } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -31,10 +32,10 @@ export function CategoriesContent() {
   const categories = useQuery(
     api.categories.list,
     storeId ? { storeId } : "skip"
-  )
+  ) as Category[] | undefined
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Doc<"categories"> | null>(null)
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [deletingId, setDeletingId] = useState<Id<"categories"> | null>(null)
 
   const reorderMutation = useMutation(api.categories.reorder)
@@ -148,7 +149,7 @@ export function CategoriesContent() {
         </Empty>
       ) : (
         <div className="space-y-4">
-          {categories.map((category: Doc<"categories">, index: number) => (
+          {categories.map((category, index) => (
             <Card key={category._id}>
               <CardHeader>
                 <div className="flex items-start justify-between">

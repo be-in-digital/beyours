@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { KitchenTicket } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,7 +39,7 @@ export function KitchenContent() {
   const tickets = useQuery(
     api.kitchenTickets.getByStore,
     storeId ? { storeId } : "skip"
-  )
+  ) as KitchenTicket[] | undefined
   const store = useQuery(api.stores.getById, storeId ? { id: storeId } : "skip")
   const updateStoreOrderMode = useMutation(api.stores.updateOrderMode)
 
@@ -71,7 +71,7 @@ export function KitchenContent() {
   const stations = useMemo(() => {
     if (!tickets) return []
     const stationSet = new Set<string>()
-    tickets.forEach((ticket: Doc<"kitchenTickets">) => {
+    tickets.forEach((ticket: KitchenTicket) => {
       if (ticket.station) {
         stationSet.add(ticket.station)
       }
@@ -83,7 +83,7 @@ export function KitchenContent() {
   const filteredTickets = useMemo(() => {
     if (!tickets) return null
     if (!selectedStation) return tickets
-    return tickets.filter((ticket: Doc<"kitchenTickets">) => ticket.station === selectedStation)
+    return tickets.filter((ticket: KitchenTicket) => ticket.station === selectedStation)
   }, [tickets, selectedStation])
 
   // Group tickets by status
@@ -91,9 +91,9 @@ export function KitchenContent() {
     if (!filteredTickets) return null
 
     return {
-      pending: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "pending"),
-      in_progress: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "in_progress"),
-      ready: filteredTickets.filter((t: Doc<"kitchenTickets">) => t.status === "ready"),
+      pending: filteredTickets.filter((t: KitchenTicket) => t.status === "pending"),
+      in_progress: filteredTickets.filter((t: KitchenTicket) => t.status === "in_progress"),
+      ready: filteredTickets.filter((t: KitchenTicket) => t.status === "ready"),
     }
   }, [filteredTickets])
 
@@ -211,7 +211,7 @@ export function KitchenContent() {
                         </EmptyHeader>
                       </Empty>
                     ) : (
-                      ticketsByStatus[status].map((ticket: Doc<"kitchenTickets">) => (
+                      ticketsByStatus[status].map((ticket: KitchenTicket) => (
                         <TicketCard key={ticket._id} ticket={ticket} />
                       ))
                     )}

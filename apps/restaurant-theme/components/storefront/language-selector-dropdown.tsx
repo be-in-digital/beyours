@@ -19,9 +19,7 @@ import {
 } from "@be-in-digital/core"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
-
-type LanguageDoc = Doc<"languages">
+import type { Language } from "@/lib/admin/types"
 
 export function LanguageSelectorDropdown({
   variant = "solid",
@@ -37,7 +35,7 @@ export function LanguageSelectorDropdown({
     return "fr"
   })
 
-  const activeLanguages: LanguageDoc[] = languages ?? []
+  const activeLanguages: Language[] = languages ?? []
 
   // Don't render if 0 or 1 language
   if (activeLanguages.length <= 1) return null

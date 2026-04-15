@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /** Treat empty strings as undefined so optional fields don't fail validation */
-const opt = (schema: z.ZodType) =>
+const opt = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (v === '' ? undefined : v), schema.optional())
 
 /**
