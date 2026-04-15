@@ -32,9 +32,9 @@
     "clean": "rm -rf dist node_modules"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "tsup": "^8.4.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "@types/node": "^20.19.39",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

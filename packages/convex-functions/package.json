@@ -74,14 +74,14 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "^1.18.0",
     "@be-in-digital/cms": "workspace:*",
     "@be-in-digital/convex-schema": "workspace:*",
-    "@be-in-digital/core": "workspace:*"
+    "@be-in-digital/core": "workspace:*",
+    "convex": "1.31.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "@types/node": "^20.19.39",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

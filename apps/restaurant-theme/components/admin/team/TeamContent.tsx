@@ -2,7 +2,8 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
+import type { TeamMember } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -59,7 +60,7 @@ export function TeamContent() {
   const teamMembers = useQuery(
     api.teamMembers.list,
     storeId ? { storeId } : "skip"
-  )
+  ) as TeamMember[] | undefined
 
   const createMember = useMutation(api.teamMembers.create)
   const toggleActive = useMutation(api.teamMembers.toggleActive)
@@ -200,7 +201,7 @@ export function TeamContent() {
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {teamMembers.map((member: Doc<"teamMembers">) => (
+          {teamMembers.map((member: TeamMember) => (
             <div
               key={member._id}
               className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow"

@@ -3,7 +3,8 @@
 import { useState, useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
+import type { KitchenTicket } from "@/lib/admin/types"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -16,7 +17,6 @@ import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Search } from "lucide-react"
 import { TicketCard } from "./TicketCard"
 
-type Ticket = Doc<"kitchenTickets">
 type Source = "all" | "website" | "uber_eats" | "deliveroo" | "pos"
 type OrderType = "all" | "delivery" | "pickup" | "dine_in"
 
@@ -47,12 +47,12 @@ export function CompletedTickets({ storeId }: CompletedTicketsProps) {
   const tickets = useQuery(
     api.kitchenTickets.getByStatus,
     { storeId, status: "completed" }
-  )
+  ) as KitchenTicket[] | undefined
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return null
 
-    return tickets.filter((ticket: Ticket) => {
+    return tickets.filter((ticket: KitchenTicket) => {
       // Source filter
       if (sourceFilter !== "all" && ticket.source !== sourceFilter) return false
 
@@ -132,7 +132,7 @@ export function CompletedTickets({ storeId }: CompletedTicketsProps) {
         </Empty>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTickets.map((ticket: Ticket) => (
+          {filteredTickets.map((ticket: KitchenTicket) => (
             <TicketCard key={ticket._id} ticket={ticket} />
           ))}
         </div>

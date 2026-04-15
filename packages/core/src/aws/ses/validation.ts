@@ -32,7 +32,7 @@ export const sendEmailParamsSchema = z.object({
 export const sendTemplatedEmailParamsSchema = z.object({
   to: emailsSchema,
   templateName: z.string().min(1, 'Le nom du template est requis'),
-  templateData: z.record(z.unknown()),
+  templateData: z.record(z.string(), z.unknown()),
   replyTo: emailSchema.optional(),
 })
 

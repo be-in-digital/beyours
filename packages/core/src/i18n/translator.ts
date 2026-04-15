@@ -7,7 +7,7 @@ import { z } from 'zod'
 import type { TranslationMap, TranslationKey, TranslationParams, TranslatorFunction, Locale } from './types'
 
 const translationKeySchema = z.string().min(1)
-const translationParamsSchema = z.record(z.union([z.string(), z.number()]))
+const translationParamsSchema = z.record(z.string(), z.union([z.string(), z.number()]))
 
 /**
  * Replace placeholders in a string with values from params

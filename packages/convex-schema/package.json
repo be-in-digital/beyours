@@ -28,11 +28,11 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "^1.18.0",
-    "zod": "^3.24.0"
+    "convex": "1.31.7",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

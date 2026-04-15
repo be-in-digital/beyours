@@ -111,12 +111,13 @@ export async function startServer() {
   server.resource(
     "package-detail",
     new ResourceTemplate("beindigital://packages/{name}", {
-      list: async () =>
-        packages.map((p) => ({
+      list: async () => ({
+        resources: packages.map((p) => ({
           uri: `beindigital://packages/${p.name}`,
           name: p.scope,
           description: p.description,
         })),
+      }),
     }),
     async (uri, { name }) => {
       const pkg = getPackageByName(name as string);

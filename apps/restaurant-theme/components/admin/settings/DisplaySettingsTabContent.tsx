@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
 import type { Id } from "@/convex/_generated/dataModel"
+import type { Store } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-function DisplaySettingsForm({ store, storeId }: { store: Doc<"stores">; storeId: Id<"stores"> }) {
+function DisplaySettingsForm({ store, storeId }: { store: Store; storeId: Id<"stores"> }) {
   const updateDisplayConfig = useMutation(api.stores.updateDisplayConfig)
 
   const [autoDismissEnabled, setAutoDismissEnabled] = useState(

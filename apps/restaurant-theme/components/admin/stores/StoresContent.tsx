@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc } from "@/convex/_generated/dataModel"
+import type { Store } from "@/lib/admin/types"
 import { toast } from "sonner"
 import { useState } from "react"
 import { PlusIcon, StoreIcon } from "lucide-react"
@@ -211,7 +211,7 @@ export function StoresContent() {
         </Empty>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {stores.map((store: Doc<"stores">) => (
+          {stores.map((store: Store) => (
             <Link
               key={store._id}
               href={`/dashboard/stores/${store._id}`}

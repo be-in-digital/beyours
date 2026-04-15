@@ -3,7 +3,8 @@
 import { use } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Doc, Id } from "@/convex/_generated/dataModel"
+import type { Id } from "@/convex/_generated/dataModel"
+import type { Order } from "@/lib/admin/types"
 import { formatPrice, formatOrderNumber, formatDate } from "@/lib/admin/formatters"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -93,7 +94,7 @@ export function OrderDetailContent({ params }: OrderDetailContentProps) {
   // Fetch order details
   const order = useQuery(api.orders.getById, {
     id: orderId as Id<"orders">,
-  }) as Doc<"orders"> | null | undefined
+  }) as Order | null | undefined
 
   if (order === undefined) {
     return (
