@@ -331,6 +331,44 @@ export type UberEatsCancelReasonCode =
   | "CANNOT_COMPLETE_CUSTOMER_NOTE"
   | "OTHER"
 
+// === Reporting ===
+
+export interface UberEatsReport {
+  orders?: Array<{
+    order_id: string
+    order_date: string
+    store_id: string
+    store_name?: string
+    subtotal?: number
+    tax?: number
+    total?: number
+    delivery_fee?: number
+    promotions?: number
+    net_payout?: number
+    currency_code?: string
+    status?: string
+  }>
+  summary?: {
+    total_orders?: number
+    total_revenue?: number
+    total_tax?: number
+    total_delivery_fees?: number
+    total_promotions?: number
+    net_payout?: number
+    currency_code?: string
+    start_date?: string
+    end_date?: string
+  }
+  [key: string]: unknown
+}
+
+// === Restaurant Delivery Status ===
+
+export type UberEatsDeliveryStatus =
+  | "arriving"
+  | "picked_up"
+  | "delivered"
+
 // === Status mapping ===
 
 export const UBER_EATS_STATUS_MAP: Record<string, string> = {

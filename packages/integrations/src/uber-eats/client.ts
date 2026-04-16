@@ -2,7 +2,7 @@
  * Uber Eats API client with OAuth2 client_credentials flow
  */
 
-import type { UberEatsCredentials, UberEatsToken, UberEatsOrder } from "./types"
+import type { UberEatsCredentials, UberEatsToken, UberEatsOrder, UberEatsReport, UberEatsDeliveryStatus } from "./types"
 import { UBER_EATS_URLS } from "./types"
 import { IntegrationError } from "../common/errors"
 
@@ -84,7 +84,7 @@ export async function getAccessToken(
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: "client_credentials",
-        scope: "eats.store.orders.read eats.store.orders.cancel eats.store eats.store.status.write eats.order",
+        scope: "eats.order eats.report eats.store eats.store.orders.cancel eats.store.status.write eats.store.orders.restaurantdelivery.status eats.store.orders.read",
       }).toString(),
     })
 
@@ -345,4 +345,92 @@ export async function getStoreStatus(
   }
 
   return response.json() as Promise<{ status: string }>
+}
+
+// === Reporting (eats.report) ===
+
+/**
+ * Get order-level financial report for a store
+ */
+export async function getOrdersReport(
+  credentials: UberEatsCredentials,
+  storeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UberEatsReport> {
+  const safeStoreId = validatePathParam(storeId, "storeId")
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+  const response = await fetchUberEats(
+    credentials,
+    `/v1/eats/stores/${safeStoreId}/payments/order_level_transactions?${params.toString()}`
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new IntegrationError(
+      "Failed to fetch Uber Eats orders report",
+      response.status,
+      "uberEats",
+      errorText
+    )
+  }
+
+  return response.json() as Promise<UberEatsReport>
+}
+
+/**
+ * Get financial summary for a store
+ */
+export async function getFinancialSummary(
+  credentials: UberEatsCredentials,
+  storeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<UberEatsReport> {
+  const safeStoreId = validatePathParam(storeId, "storeId")
+  const params = new URLSearchParams({ start_date: startDate, end_date: endDate })
+  const response = await fetchUberEats(
+    credentials,
+    `/v1/eats/stores/${safeStoreId}/payments/transactions_summary?${params.toString()}`
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new IntegrationError(
+      "Failed to fetch Uber Eats financial summary",
+      response.status,
+      "uberEats",
+      errorText
+    )
+  }
+
+  return response.json() as Promise<UberEatsReport>
+}
+
+// === Restaurant Delivery Status (eats.store.orders.restaurantdelivery.status) ===
+
+/**
+ * Update delivery status for restaurant-managed deliveries.
+ * Used when the restaurant handles its own delivery instead of Uber couriers.
+ */
+export async function updateDeliveryStatus(
+  credentials: UberEatsCredentials,
+  orderId: string,
+  status: UberEatsDeliveryStatus,
+): Promise<void> {
+  const response = await fetchUberEats(
+    credentials,
+    `/v1/eats/orders/${validatePathParam(orderId, "orderId")}/restaurantdelivery/status`,
+    { method: "POST", body: { status } }
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new IntegrationError(
+      `Failed to update delivery status for order ${orderId}`,
+      response.status,
+      "uberEats",
+      errorText
+    )
+  }
 }

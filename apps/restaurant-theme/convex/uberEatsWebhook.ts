@@ -85,7 +85,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
       // Find matching store integration
       const allIntegrations = await ctx.runQuery(
-        api.storeIntegrations.listByPlatformEnabled,
+        internal.storeIntegrations.internalListByPlatformEnabled,
         { platform: "uberEats" }
       ) as StoreIntegrationRecord[]
 

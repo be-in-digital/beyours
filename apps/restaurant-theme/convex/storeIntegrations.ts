@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@be-in-digital/convex-functions/storeIntegrations";
 import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
@@ -93,6 +93,10 @@ export const updateOrderMode = mutation({
     return defs.updateOrderMode.handler(ctx, args);
   },
 });
+
+// === Internal Queries (for webhooks and schedulers — no auth) ===
+
+export const internalListByPlatformEnabled = internalQuery(defs.listByPlatformEnabled);
 
 // === Internal Mutations (for webhooks and schedulers) ===
 
