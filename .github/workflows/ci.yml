@@ -27,10 +27,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm --filter web lint
 
-      - name: Build
-        run: pnpm build
+      - name: Build web
+        run: pnpm --filter web build
         env:
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
           CONVEX_SITE_URL: https://placeholder.convex.site
