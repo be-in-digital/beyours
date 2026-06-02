@@ -503,6 +503,27 @@ export const createFromWebhook = {
     createdAt: v.number(),
   },
   handler: async (ctx: any, args: CreateFromWebhookArgs) => {
+    const sourceMap: Record<string, "website" | "uber_eats" | "deliveroo" | "pos"> = {
+      uberEats: "uber_eats",
+      deliveroo: "deliveroo",
+    }
+    const source = sourceMap[args.platform] ?? "website"
+
+    // Idempotency: if a webhook for this order was already processed (retry by Uber/Deliveroo),
+    // return the existing id instead of creating a duplicate.
+    const existing = await ctx.db
+      .query("orders")
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("externalOrderId"), args.externalOrderId),
+          q.eq(q.field("source"), source)
+        )
+      )
+      .first()
+    if (existing) {
+      return existing._id
+    }
+
     const now = Date.now()
     const orderNumber = generateOrderNumber()
 
@@ -525,12 +546,6 @@ export const createFromWebhook = {
       }
     })
 
-    // Source mapping: platform "deliveroo" -> source "deliveroo", "uberEats" -> "uber_eats"
-    const sourceMap: Record<string, "website" | "uber_eats" | "deliveroo" | "pos"> = {
-      uberEats: "uber_eats",
-      deliveroo: "deliveroo",
-    }
-
     return await ctx.db.insert("orders", {
       storeId: args.storeId,
       orderNumber,
@@ -547,7 +562,7 @@ export const createFromWebhook = {
       subtotal: args.subtotal,
       taxAmount: 0, // External platforms handle tax separately
       total: args.total,
-      source: sourceMap[args.platform] ?? "website",
+      source,
       notes: args.notes,
       paymentStatus: "paid" as const,
       createdAt: args.createdAt,

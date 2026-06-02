@@ -13,6 +13,15 @@ import {
   cancelOrder,
   updateStoreStatus,
   getStoreStatus,
+  markOrderAsReady,
+  activateIntegration,
+  getIntegrationDetails,
+  getStoresForUser,
+  updateMenuItem,
+  updateModifierGroup,
+  createPromotion,
+  requestReport,
+  resolveFulfillmentIssues,
 } from '../client'
 import type { UberEatsCredentials, UberEatsOrder } from '../types'
 
@@ -406,7 +415,7 @@ describe('Uber Eats API Client', () => {
       await expect(acceptOrder(mockCredentials, 'order-123')).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes('/eats/orders/order-123/accept_pos_order')
+        call[0].includes('/v1/delivery/order/order-123/accept')
       )
 
       expect(apiCall).toBeDefined()
@@ -466,7 +475,7 @@ describe('Uber Eats API Client', () => {
       await expect(denyOrder(mockCredentials, 'order-123', reason)).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes('/eats/orders/order-123/deny_pos_order')
+        call[0].includes('/v1/delivery/order/order-123/deny')
       )
 
       expect(apiCall).toBeDefined()
@@ -526,7 +535,7 @@ describe('Uber Eats API Client', () => {
       await expect(cancelOrder(mockCredentials, 'order-123', reason)).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes('/eats/orders/order-123/cancel')
+        call[0].includes('/v1/delivery/order/order-123/cancel')
       )
 
       expect(apiCall).toBeDefined()
@@ -558,7 +567,7 @@ describe('Uber Eats API Client', () => {
       ).resolves.toBeUndefined()
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/eats/stores/${STORE_ID}/status`)
+        call[0].includes(`/eats/store/${STORE_ID}/status`)
       )
 
       expect(apiCall).toBeDefined()
@@ -586,7 +595,7 @@ describe('Uber Eats API Client', () => {
       await updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', 'Too busy')
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/eats/stores/${STORE_ID}/status`)
+        call[0].includes(`/eats/store/${STORE_ID}/status`)
       )
 
       expect(apiCall).toBeDefined()
@@ -620,12 +629,173 @@ describe('Uber Eats API Client', () => {
       expect(status).toEqual({ status: 'ONLINE' })
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/eats/stores/${STORE_ID}/status`)
+        call[0].includes(`/eats/store/${STORE_ID}/status`)
       )
 
       expect(apiCall).toBeDefined()
       const [, options] = apiCall!
       expect(options.method).toBe('GET')
+    })
+  })
+
+  // ============================================================
+  // Endpoints required by Uber's production validation
+  // ============================================================
+
+  function mockAuthOk(impl: (url: string) => unknown) {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes('oauth/v2/token')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            access_token: 'test-token',
+            token_type: 'Bearer',
+            expires_in: 3600,
+            scope: 'eats.store',
+          }),
+        })
+      }
+      return impl(url)
+    })
+  }
+
+  describe('markOrderAsReady', () => {
+    it('hits POST /v1/delivery/order/{orderId}/ready', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true }))
+      await expect(markOrderAsReady(mockCredentials, 'order-123')).resolves.toBeUndefined()
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes('/v1/delivery/order/order-123/ready')
+      )
+      expect(apiCall).toBeDefined()
+      expect(apiCall![1].method).toBe('POST')
+    })
+
+    it('throws on non-2xx', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: false, status: 400, text: async () => 'bad' }))
+      await expect(markOrderAsReady(mockCredentials, 'order-123')).rejects.toThrow(
+        'Failed to mark Uber Eats order order-123 as ready'
+      )
+    })
+  })
+
+  describe('activateIntegration', () => {
+    it('hits POST /v1/eats/stores/{storeId}/pos_data with payload', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true }))
+      await expect(
+        activateIntegration(mockCredentials, STORE_ID, {
+          integration_enabled: true,
+          integrator_store_id: 'merchant-store-1',
+          integrator_brand_id: 'brand-1',
+        })
+      ).resolves.toBeUndefined()
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes(`/v1/eats/stores/${STORE_ID}/pos_data`)
+      )
+      expect(apiCall).toBeDefined()
+      expect(apiCall![1].method).toBe('POST')
+      const body = JSON.parse(apiCall![1].body)
+      expect(body.integration_enabled).toBe(true)
+      expect(body.integrator_store_id).toBe('merchant-store-1')
+    })
+  })
+
+  describe('getIntegrationDetails', () => {
+    it('hits GET /v1/eats/stores/{storeId}/pos_data', async () => {
+      mockAuthOk(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({ integration_enabled: true, integrator_store_id: 's1' }),
+        })
+      )
+      const details = await getIntegrationDetails(mockCredentials, STORE_ID)
+      expect(details.integration_enabled).toBe(true)
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes(`/v1/eats/stores/${STORE_ID}/pos_data`)
+      )
+      expect(apiCall![1].method).toBe('GET')
+    })
+  })
+
+  describe('getStoresForUser', () => {
+    it('hits GET /v1/eats/stores and forwards limit/pageToken', async () => {
+      mockAuthOk(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => ({ stores: [{ store_id: 'a', name: 'A' }] }),
+        })
+      )
+      const res = await getStoresForUser(mockCredentials, { limit: 5, pageToken: 'tok' })
+      expect(res.stores).toHaveLength(1)
+      const apiCall = mockFetch.mock.calls.find((c) => c[0].includes('/v1/eats/stores?'))
+      expect(apiCall).toBeDefined()
+      expect(apiCall![0]).toContain('limit=5')
+      expect(apiCall![0]).toContain('page_token=tok')
+    })
+  })
+
+  describe('updateMenuItem', () => {
+    it('hits POST /v2/eats/stores/{storeId}/menus/items/{itemId}', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true }))
+      await updateMenuItem(mockCredentials, STORE_ID, 'item-1', { price_info: { price: 1299 } })
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes(`/v2/eats/stores/${STORE_ID}/menus/items/item-1`)
+      )
+      expect(apiCall).toBeDefined()
+      expect(apiCall![1].method).toBe('POST')
+    })
+  })
+
+  describe('updateModifierGroup', () => {
+    it('hits POST /v2/eats/stores/{storeId}/menus/modifier_groups/{id}', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true }))
+      await updateModifierGroup(mockCredentials, STORE_ID, 'mg-1', { title: { translations: { en: 'X' } } })
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes(`/v2/eats/stores/${STORE_ID}/menus/modifier_groups/mg-1`)
+      )
+      expect(apiCall).toBeDefined()
+      expect(apiCall![1].method).toBe('POST')
+    })
+  })
+
+  describe('createPromotion', () => {
+    it('hits POST /v1/delivery/stores/{storeId}/promotion and returns parsed JSON', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true, json: async () => ({ promotion_id: 'p1' }) }))
+      const res = await createPromotion(mockCredentials, STORE_ID, { type: 'discount' })
+      expect(res).toEqual({ promotion_id: 'p1' })
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes(`/v1/delivery/stores/${STORE_ID}/promotion`)
+      )
+      expect(apiCall![1].method).toBe('POST')
+    })
+  })
+
+  describe('requestReport', () => {
+    it('hits POST /v1/eats/report with report payload', async () => {
+      mockAuthOk(() =>
+        Promise.resolve({ ok: true, json: async () => ({ workflow_id: 'wf-1' }) })
+      )
+      const res = await requestReport(mockCredentials, {
+        report_type: 'PAYMENT_DETAILS_REPORT',
+        start_date: '2026-05-01',
+        end_date: '2026-05-31',
+      })
+      expect(res.workflow_id).toBe('wf-1')
+      const apiCall = mockFetch.mock.calls.find((c) => c[0].includes('/v1/eats/report'))
+      expect(apiCall![1].method).toBe('POST')
+    })
+  })
+
+  describe('resolveFulfillmentIssues', () => {
+    it('hits POST /v1/delivery/order/{orderId}/resolve-fulfillment-issues', async () => {
+      mockAuthOk(() => Promise.resolve({ ok: true }))
+      await resolveFulfillmentIssues(mockCredentials, 'order-123', {
+        fulfillment_issues: [{ issue_type: 'OUT_OF_ITEM', item_id: 'i1' }],
+      })
+      const apiCall = mockFetch.mock.calls.find((c) =>
+        c[0].includes('/v1/delivery/order/order-123/resolve-fulfillment-issues')
+      )
+      expect(apiCall).toBeDefined()
+      expect(apiCall![1].method).toBe('POST')
     })
   })
 })

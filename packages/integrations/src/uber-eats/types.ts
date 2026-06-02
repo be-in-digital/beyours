@@ -18,15 +18,30 @@ export interface UberEatsToken {
   scope: string
 }
 
+/**
+ * User-scoped token from the Authorization Code flow (eats.pos_provisioning).
+ * Unlike the client_credentials UberEatsToken, this carries a refresh token
+ * and represents a specific merchant user's consent.
+ */
+export interface UberEatsUserToken {
+  accessToken: string
+  refreshToken?: string
+  tokenType: string
+  expiresAt: number
+  scope: string
+}
+
 // === API URLs ===
 
 export const UBER_EATS_URLS = {
   production: {
     auth: "https://login.uber.com/oauth/v2/token",
+    authorize: "https://login.uber.com/oauth/v2/authorize",
     api: "https://api.uber.com",
   },
   sandbox: {
     auth: "https://sandbox-login.uber.com/oauth/v2/token",
+    authorize: "https://sandbox-login.uber.com/oauth/v2/authorize",
     api: "https://test-api.uber.com",
   },
 } as const

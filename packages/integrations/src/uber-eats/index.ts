@@ -1,5 +1,6 @@
 export * from "./types"
 export * from "./client"
+export * from "./oauth"
 export * from "./mappers"
 export * from "./security"
 export * from "./menu-sync"
