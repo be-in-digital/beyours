@@ -11,6 +11,7 @@ export { ordersTable } from "./orders"
 export { kitchenTicketsTable, printerSettingsTable } from "./kitchen"
 export { paymentsTable } from "./payments"
 export { paymentConnectionsTable } from "./paymentConnections"
+export { uberEatsConnectionsTable } from "./uberEatsConnections"
 export { languagesTable, translationsTable, translationJobsTable } from "./i18n"
 export {
   gameQRCodesTable,

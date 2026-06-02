@@ -62,3 +62,4 @@ dist/
 
 # Changesets
 # .changeset/*.md files must be committed for changesets to work
+.gstack/

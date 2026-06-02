@@ -39,6 +39,7 @@
     "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts",
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",
+    "./uberEatsConnections": "./src/uberEatsConnections.ts",
     "./encryption": "./src/encryption.ts",
     "./promotions": "./src/promotions.ts",
     "./emailSubscribers": "./src/emailSubscribers.ts",
