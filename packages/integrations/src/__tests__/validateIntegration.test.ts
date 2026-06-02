@@ -77,7 +77,7 @@ describe('Integration Validation Flow', () => {
       expect(result).toEqual({ status: 'ONLINE' })
 
       const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/eats/stores/${UBER_EATS_STORE_ID}/status`)
+        call[0].includes(`/eats/store/${UBER_EATS_STORE_ID}/status`)
       )
       expect(apiCall).toBeDefined()
     })

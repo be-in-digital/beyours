@@ -294,7 +294,7 @@ export const acceptTicket = action({
 /**
  * Mark a kitchen ticket as ready: update ticket + order status + notify platform.
  * - Deliveroo: POST /order/v2/orders/{id}/prep_stage { stage: "ready" }
- * - Uber Eats: no dedicated endpoint (informational only)
+ * - Uber Eats: POST /v1/eats/orders/{id}/mark_order_as_ready_for_pickup
  */
 export const readyTicket = action({
   args: { id: v.id("kitchenTickets") },
@@ -335,6 +335,26 @@ export const readyTicket = action({
         }
       } catch (error) {
         console.error("Failed to update Deliveroo prep stage:", error);
+      }
+    } else if (ticket.source === "uber_eats" && externalId) {
+      try {
+        const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
+        const pkg = getPackageEnv();
+        const site = getSiteEnv();
+        if (pkg.UBER_EATS_CLIENT_ID && pkg.UBER_EATS_CLIENT_SECRET) {
+          const { uberEats } = await import("@be-in-digital/integrations");
+          await uberEats.markOrderAsReady(
+            {
+              clientId: pkg.UBER_EATS_CLIENT_ID,
+              clientSecret: pkg.UBER_EATS_CLIENT_SECRET,
+              sandboxMode: site.UBER_EATS_SANDBOX_MODE === "true",
+            },
+            externalId
+          );
+          console.log(`Uber Eats order ${externalId} marked as ready`);
+        }
+      } catch (error) {
+        console.error("Failed to mark Uber Eats order as ready:", error);
       }
     }
 

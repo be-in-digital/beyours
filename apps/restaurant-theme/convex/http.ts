@@ -4,6 +4,7 @@ import { handleWebhook as uberEatsWebhook } from "./uberEatsWebhook";
 import { handleWebhook as deliverooWebhook } from "./deliverooWebhookHandler";
 import { handleWebhook as stripePaymentWebhook } from "./stripeWebhook";
 import { stripeCallback, stripeRefresh, sumupCallback } from "./oauthCallbackHandlers";
+import { uberEatsConnectCallback } from "./uberEatsOAuthHttp";
 import { handleUnsubscribe, handleConfirmOptIn, handleSesWebhook } from "./emailHttpHandlers";
 import { handleWebhook as bidStripeWebhook } from "./bidStripeWebhook";
 
@@ -59,6 +60,13 @@ http.route({
   path: "/connect/sumup/callback",
   method: "GET",
   handler: sumupCallback,
+});
+
+// Uber Eats OAuth (eats.pos_provisioning) merchant consent callback
+http.route({
+  path: "/connect/uber-eats/callback",
+  method: "GET",
+  handler: uberEatsConnectCallback,
 });
 
 // Email unsubscribe (public link in every campaign email)

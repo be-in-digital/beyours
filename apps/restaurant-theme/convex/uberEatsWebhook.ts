@@ -238,7 +238,15 @@ export const handleWebhook = httpAction(async (ctx, request) => {
           })
           console.log(`Updated order status to ${mappedStatus}`)
         } catch (error) {
-          console.error(`Failed to update order status:`, error)
+          const msg = error instanceof Error ? error.message : String(error)
+          if (msg.toLowerCase().includes("not found")) {
+            // Order may not exist locally yet (status_update arrived before orders.notification).
+            // Ack so Uber stops retrying; the subsequent create webhook will set the right status.
+            console.warn(`Order ${event.meta.resource_id} not found locally, ack status_update`)
+          } else {
+            // Genuine failure — let Uber retry by returning 500 via the outer catch.
+            throw error
+          }
         }
       }
 
@@ -264,8 +272,97 @@ export const handleWebhook = httpAction(async (ctx, request) => {
         })
         console.log(`Cancelled order ${event.meta.resource_id}`)
       } catch (error) {
-        console.error(`Failed to cancel order:`, error)
+        const msg = error instanceof Error ? error.message : String(error)
+        if (msg.toLowerCase().includes("not found")) {
+          // Cancel for an order we never stored — ack and move on.
+          console.warn(`Cancel for unknown order ${event.meta.resource_id}, ack`)
+        } else {
+          // Genuine failure — let Uber retry.
+          throw error
+        }
       }
+
+      return new Response("OK", { status: 200 })
+    }
+
+    // Handle scheduled order notifications (Uber sends these ahead of fulfillment time).
+    // We persist the order so staff can see it but deliberately do NOT auto-accept/reject;
+    // confirmation should happen closer to the scheduled time.
+    if (event.event_type === "orders.scheduled") {
+      console.log(`Scheduled order notification: ${event.meta.resource_id}`)
+
+      const uberCredentials = {
+        clientId,
+        clientSecret,
+        sandboxMode,
+      }
+
+      let fullOrder: Awaited<ReturnType<typeof uberEats.fetchOrder>> | null = null
+      let unifiedOrder: ReturnType<typeof uberEats.mapUberEatsOrderToUnified> | null = null
+      try {
+        fullOrder = await uberEats.fetchOrder(uberCredentials, event.meta.resource_id)
+        unifiedOrder = uberEats.mapUberEatsOrderToUnified(fullOrder)
+        console.log(`Fetched scheduled order ${unifiedOrder.displayId} (scheduled_time=${fullOrder.scheduled_time ?? "n/a"})`)
+      } catch (fetchError) {
+        console.warn(`Could not fetch scheduled order ${event.meta.resource_id}:`, fetchError)
+      }
+
+      const allIntegrations = await ctx.runQuery(
+        api.storeIntegrations.listByPlatformEnabled,
+        { platform: "uberEats" }
+      ) as StoreIntegrationRecord[]
+
+      const integration = unifiedOrder
+        ? allIntegrations.find((i) => i.platformStoreId === unifiedOrder?.storeExternalId)
+        : allIntegrations[0]
+
+      if (!integration) {
+        console.error(`No Uber Eats integration found for scheduled order ${event.meta.resource_id}`)
+        return new Response("OK", { status: 200 })
+      }
+
+      const externalOrderId = unifiedOrder?.externalOrderId ?? event.meta.resource_id
+      const scheduledTime = fullOrder?.scheduled_time ?? "unknown"
+      const scheduledNotes = `[SCHEDULED for ${scheduledTime}]${unifiedOrder?.notes ? " " + unifiedOrder.notes : ""}`
+
+      await ctx.runMutation(internal.orders.createFromWebhook, {
+        storeId: integration.storeId,
+        externalOrderId,
+        platform: "uberEats",
+        status: "pending",
+        type: unifiedOrder?.type ?? "delivery",
+        customerName: unifiedOrder?.customer.name ?? "Client Uber Eats (scheduled)",
+        customerPhone: unifiedOrder?.customer.phone,
+        customerEmail: unifiedOrder?.customer.email,
+        deliveryAddress: unifiedOrder?.delivery?.address ? {
+          street: unifiedOrder.delivery.address.street,
+          city: unifiedOrder.delivery.address.city ?? "",
+          postalCode: unifiedOrder.delivery.address.postalCode ?? "",
+          country: unifiedOrder.delivery.address.country ?? "",
+        } : undefined,
+        items: unifiedOrder?.items.map(item => ({
+          externalId: item.externalId,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.totalPrice,
+          modifiers: item.modifiers.map(mod => ({
+            externalId: mod.externalId,
+            name: mod.name,
+            price: mod.price,
+          })),
+        })) ?? [{
+          externalId: "unknown",
+          name: "Commande Uber Eats (scheduled)",
+          quantity: 1,
+          price: 0,
+        }],
+        subtotal: unifiedOrder?.subtotal ?? 0,
+        total: unifiedOrder?.total ?? 0,
+        notes: scheduledNotes,
+        createdAt: unifiedOrder ? new Date(unifiedOrder.placedAt).getTime() : Date.now(),
+      })
+
+      console.log(`Persisted scheduled Uber Eats order ${externalOrderId} for ${scheduledTime} — awaiting manual confirmation`)
 
       return new Response("OK", { status: 200 })
     }
