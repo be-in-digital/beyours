@@ -238,7 +238,12 @@ async function handleNewOrder(
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
   credentials: Awaited<ReturnType<typeof getDeliverooCredentials>>
-) {
+): Promise<{
+  success: boolean;
+  internalOrderId: Id<"orders">;
+  scheduled?: boolean;
+  duplicate?: boolean;
+}> {
   const storeId = integration.storeId;
 
   // Extract customer name
@@ -295,10 +300,12 @@ async function handleNewOrder(
   const subtotal = order.payment?.subtotal?.fractional ?? totalPrice?.fractional ?? 0;
   const total = totalPrice?.fractional ?? 0;
 
-  // Create the internal order
-  const internalOrderId: string = await ctx.runMutation(
-    internal.orders.createFromWebhook,
-    {
+  // Create the internal order. Explicit annotation breaks the circular type
+  // inference that arises when this action's return type depends on
+  // internal.orders.createFromWebhook (part of the `internal` graph that
+  // references this file).
+  const { orderId: internalOrderId, created }: { orderId: Id<"orders">; created: boolean } =
+    await ctx.runMutation(internal.orders.createFromWebhook, {
       storeId,
       externalOrderId: order.id,
       platform: "deliveroo",
@@ -319,6 +326,13 @@ async function handleNewOrder(
   console.log(
     `Created order ${internalOrderId} from Deliveroo ${order.id} (${fulfillmentType}, asap=${order.asap})`
   );
+
+  // Duplicate webhook (Deliveroo retry): the order already exists and was
+  // already accepted/rejected on first delivery — do not re-accept.
+  if (!created) {
+    console.log(`Duplicate Deliveroo order.new for ${order.id} — skipping re-accept`);
+    return { success: true, internalOrderId, duplicate: true };
+  }
 
   if (!credentials) {
     return { success: true, internalOrderId };
@@ -419,7 +433,7 @@ async function handleStatusUpdate(
   order: DeliverooOrder,
   integration: StoreIntegrationRecord,
   credentials: Awaited<ReturnType<typeof getDeliverooCredentials>>
-) {
+): Promise<{ success: boolean; status: ReturnType<typeof mapDeliverooStatus> }> {
   const status = order.status;
   const orderId = order.id;
   const internalStatus = mapDeliverooStatus(status);

@@ -62,6 +62,7 @@ import type * as menus from "../menus.js";
 import type * as migrations_index from "../migrations/index.js";
 import type * as oauthCallbackHandlers from "../oauthCallbackHandlers.js";
 import type * as oauthConnect from "../oauthConnect.js";
+import type * as oauthState from "../oauthState.js";
 import type * as orders from "../orders.js";
 import type * as orphanProducts from "../orphanProducts.js";
 import type * as ownerEntitlements from "../ownerEntitlements.js";
@@ -159,6 +160,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/index": typeof migrations_index;
   oauthCallbackHandlers: typeof oauthCallbackHandlers;
   oauthConnect: typeof oauthConnect;
+  oauthState: typeof oauthState;
   orders: typeof orders;
   orphanProducts: typeof orphanProducts;
   ownerEntitlements: typeof ownerEntitlements;

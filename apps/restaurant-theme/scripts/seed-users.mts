@@ -21,8 +21,23 @@ const api = anyApi as Record<string, Record<string, FunctionReference<"mutation"
 // ── Config ──────────────────────────────────────────────────────────────────
 
 const BASE_URL = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
-const CONVEX_URL =
-  process.env.NEXT_PUBLIC_CONVEX_URL ?? "https://reliable-parrot-452.convex.cloud"
+
+// Never hardcode the deployment URL or passwords. Both come from the environment
+// (.env.local for local dev, GitHub Secrets in CI). SEED_PASSWORD is for throwaway
+// test accounts only — never reuse a real password.
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL ?? ""
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? ""
+
+if (!CONVEX_URL) {
+  console.error("NEXT_PUBLIC_CONVEX_URL is required (set it in .env.local). Aborting.")
+  process.exit(1)
+}
+if (!SEED_PASSWORD) {
+  console.error(
+    "SEED_PASSWORD is required (set it in .env.local — test accounts only). Aborting."
+  )
+  process.exit(1)
+}
 
 type UserRole =
   | "client_admin"
@@ -38,44 +53,45 @@ interface SeedUser {
   role: UserRole
 }
 
+// All test accounts share the SEED_PASSWORD supplied via the environment.
 const SEED_USERS: SeedUser[] = [
   // Owner
   {
     name: "Mamadou Seck",
     email: "test.owner@beindigital.fr",
-    password: "julien",
+    password: SEED_PASSWORD,
     role: "client_admin",
   },
   // Team members
   {
     name: "Marie Martin",
     email: "test.manager@beindigital.fr",
-    password: "equipe2024",
+    password: SEED_PASSWORD,
     role: "manager",
   },
   {
     name: "Pierre Dupont",
     email: "test.cuisine@beindigital.fr",
-    password: "equipe2024",
+    password: SEED_PASSWORD,
     role: "kitchen",
   },
   {
     name: "Sophie Laurent",
     email: "test.service@beindigital.fr",
-    password: "equipe2024",
+    password: SEED_PASSWORD,
     role: "waiter",
   },
   // Regular customers
   {
     name: "Jean Durand",
     email: "test.client1@beindigital.fr",
-    password: "client2024",
+    password: SEED_PASSWORD,
     role: "customer",
   },
   {
     name: "Camille Moreau",
     email: "test.client2@beindigital.fr",
-    password: "client2024",
+    password: SEED_PASSWORD,
     role: "customer",
   },
 ]
@@ -187,10 +203,7 @@ async function main() {
     console.log(`  ${user.name.padEnd(20)} ${user.email.padEnd(35)} ${role}`)
   }
   console.log("-".repeat(75))
-  console.log("\nPasswords:")
-  console.log("  Owner:      julien")
-  console.log("  Team:       equipe2024")
-  console.log("  Customers:  client2024")
+  console.log("\nAll accounts use the password from the SEED_PASSWORD env var.")
 }
 
 main().catch(console.error)

@@ -1,10 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Convex backend files have their own tsconfig and are type-checked
-  // separately via `npx convex deploy`. Skip them in Next.js build.
+  // App TypeScript errors fail the build (production safety). Convex backend
+  // files are type-checked separately (`npx convex deploy`) and are already
+  // excluded from this app's tsconfig (`exclude: ["convex"]`), so they are not
+  // part of the Next.js build regardless of this flag.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   transpilePackages: ["@convex-dev/better-auth"],
   async headers() {

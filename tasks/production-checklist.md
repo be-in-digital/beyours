@@ -8,8 +8,8 @@
 
 | Variable | Actuel (test) | A remplacer par |
 |----------|---------------|-----------------|
-| `STRIPE_BID_SECRET_KEY` | `sk_test_51T5vBr...` | `sk_live_...` (cle live Stripe) |
-| `STRIPE_BID_WEBHOOK_SECRET` | `whsec_kMdByh...` | `whsec_...` (nouveau webhook live) |
+| `STRIPE_BID_SECRET_KEY` | `sk_test_•••` (voir secret store) | `sk_live_...` (cle live Stripe) |
+| `STRIPE_BID_WEBHOOK_SECRET` | `whsec_•••` (voir secret store) | `whsec_...` (nouveau webhook live) |
 | `STRIPE_BID_PRICE_STARTER` | `price_1T6zX9K8R9QQdjlQi9OztwRa` | Price ID live Starter mensuel |
 | `STRIPE_BID_PRICE_PRO` | `price_1T6zXAK8R9QQdjlQfUGoJZxD` | Price ID live Pro mensuel |
 | `STRIPE_BID_PRICE_ENTERPRISE` | `price_1T6zXBK8R9QQdjlQqzIRvk9F` | Price ID live Enterprise mensuel |

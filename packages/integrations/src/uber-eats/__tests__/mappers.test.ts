@@ -105,11 +105,11 @@ describe('mapUberEatsOrderToUnified', () => {
         name: 'John Doe',
         phone: '+33612345678',
       },
-      subtotal: 24.0,
-      taxAmount: 2.4,
-      deliveryFee: 2.0,
-      discountAmount: 1.0,
-      total: 30.0,
+      subtotal: 2400,
+      taxAmount: 240,
+      deliveryFee: 200,
+      discountAmount: 100,
+      total: 3000,
       currency: 'USD',
       notes: 'Please ring doorbell',
       placedAt: '2024-02-15T10:30:00Z',
@@ -171,7 +171,7 @@ describe('mapUberEatsOrderToUnified', () => {
     expect(result.status).toBe('pending')
   })
 
-  it('should convert prices from cents to decimal correctly', () => {
+  it('should keep prices in integer cents (no euro conversion)', () => {
     const uberOrder = createMockUberEatsOrder({
       payment: {
         charges: {
@@ -191,10 +191,10 @@ describe('mapUberEatsOrderToUnified', () => {
 
     const result = mapUberEatsOrderToUnified(uberOrder)
 
-    expect(result.total).toBe(50.0)
-    expect(result.subtotal).toBe(45.0)
-    expect(result.taxAmount).toBe(4.5)
-    expect(result.deliveryFee).toBe(3.5)
+    expect(result.total).toBe(5000)
+    expect(result.subtotal).toBe(4500)
+    expect(result.taxAmount).toBe(450)
+    expect(result.deliveryFee).toBe(350)
   })
 
   it('should map modifiers correctly', () => {
@@ -207,7 +207,7 @@ describe('mapUberEatsOrderToUnified', () => {
       externalId: 'mod-1',
       name: 'Large',
       quantity: 1,
-      price: 3.0,
+      price: 300,
     })
   })
 
@@ -216,10 +216,10 @@ describe('mapUberEatsOrderToUnified', () => {
     const result = mapUberEatsOrderToUnified(uberOrder)
 
     const item = result.items[0]
-    // Unit price: 12.00, modifier: 3.00, quantity: 2
-    // Expected: (12.00 + 3.00) * 2 = 30.00
-    expect(item.unitPrice).toBe(12.0)
-    expect(item.totalPrice).toBe(30.0)
+    // Unit price: 1200, modifier: 300, quantity: 2
+    // Expected: (1200 + 300) * 2 = 3000 (integer cents)
+    expect(item.unitPrice).toBe(1200)
+    expect(item.totalPrice).toBe(3000)
   })
 
   it('should handle items with multiple modifier groups', () => {
@@ -273,11 +273,11 @@ describe('mapUberEatsOrderToUnified', () => {
     const item = result.items[0]
 
     expect(item.modifiers).toHaveLength(3)
-    expect(item.modifiers[0]).toMatchObject({ externalId: 'mod-1', name: 'Large', price: 2.0 })
-    expect(item.modifiers[1]).toMatchObject({ externalId: 'mod-2', name: 'Extra Cheese', price: 1.5 })
-    expect(item.modifiers[2]).toMatchObject({ externalId: 'mod-3', name: 'Mushrooms', price: 1.0 })
-    // Total: 10.00 + 2.00 + 1.50 + 1.00 = 14.50
-    expect(item.totalPrice).toBe(14.5)
+    expect(item.modifiers[0]).toMatchObject({ externalId: 'mod-1', name: 'Large', price: 200 })
+    expect(item.modifiers[1]).toMatchObject({ externalId: 'mod-2', name: 'Extra Cheese', price: 150 })
+    expect(item.modifiers[2]).toMatchObject({ externalId: 'mod-3', name: 'Mushrooms', price: 100 })
+    // Total: 1000 + 200 + 150 + 100 = 1450 (integer cents)
+    expect(item.totalPrice).toBe(1450)
   })
 
   it('should handle missing optional fields', () => {
@@ -433,6 +433,6 @@ describe('mapUberEatsOrderToUnified', () => {
     const modifier = result.items[0].modifiers[0]
 
     expect(modifier.quantity).toBe(3)
-    expect(modifier.price).toBe(2.0)
+    expect(modifier.price).toBe(200)
   })
 })

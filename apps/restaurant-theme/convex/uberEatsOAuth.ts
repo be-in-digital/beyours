@@ -54,6 +54,9 @@ export const generateAuthorizeUrl = action({
     const { randomBytes } = await import("crypto");
     const state = randomBytes(16).toString("hex");
 
+    // Persist the state (single-use, TTL) so the callback can verify it (CSRF).
+    await ctx.runMutation(internal.oauthState.create, { provider: "uberEats", state });
+
     const { uberEats } = await import("@be-in-digital/integrations");
     const url = uberEats.buildAuthorizeUrl({
       clientId: credentials.clientId,

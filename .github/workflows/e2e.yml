@@ -20,6 +20,8 @@ jobs:
       BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
       BETTER_AUTH_URL: http://localhost:3000
       ENCRYPTION_KEY: ${{ secrets.E2E_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
+      # Throwaway password for seeded E2E test accounts (never used in production)
+      SEED_PASSWORD: ${{ secrets.E2E_SEED_PASSWORD || 'ci-seed-password-not-for-prod' }}
       # Package-level (BeInDigital infrastructure)
       AWS_REGION: ${{ secrets.E2E_AWS_REGION || 'eu-west-3' }}
       AWS_ACCESS_KEY_ID: ${{ secrets.E2E_AWS_ACCESS_KEY_ID || 'placeholder' }}

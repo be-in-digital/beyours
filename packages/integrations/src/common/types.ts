@@ -1,6 +1,11 @@
 /**
  * Unified order format used internally across all platform integrations.
  * Platform-specific mappers convert to this format.
+ *
+ * MONEY UNITS: every monetary field (unitPrice, totalPrice, price, subtotal,
+ * taxAmount, deliveryFee, discountAmount, total) is expressed in integer
+ * minor units (cents), matching the Convex `orders` table, the native
+ * `orders.create` path, and `formatPrice`. Mappers must NOT convert to euros.
  */
 
 export type PlatformType = "uberEats" | "deliveroo"
