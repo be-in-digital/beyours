@@ -10,11 +10,16 @@ confirms production access.
 
 ---
 
-## 0. PREREQUISITE — resolve the Convex deploy block (data-migration debt)
+## 0. PREREQUISITE — re-enable schema validation (data-migration debt)
 
-`npx convex deploy` / `convex dev` currently FAILS schema validation because of
-pre-existing product/blog documents that predate the catalog schema revamp.
-This is unrelated to Uber but **blocks deploying the Uber fixes to production**.
+**Current state (2026-06-03):** to ship the Uber webhook fix, `schemaValidation`
+was set to **`false`** in `apps/restaurant-theme/convex/schema.ts` on the dev
+deployment. The Uber webhook + actions are deployed and working. Before
+production go-live you MUST backfill the drifted rows and set
+`schemaValidation: true` again.
+
+`convex deploy` with validation ON FAILS on pre-existing documents that predate
+the catalog schema revamp. Unrelated to Uber, but must be resolved for prod.
 
 Observed mismatches (dev deployment):
 - `products.stock.autoDisableOnZero` → schema now expects `autoDisableWhenEmpty`
@@ -34,9 +39,13 @@ Recommended fix (data migration, not schema-loosening):
 3. Run the migration (`npx convex run migrations:backfillProducts`).
 4. Re-tighten the validators and redeploy.
 
-Owner: catalog/CMS team (they own the intended field semantics). Until this is
-done, the Uber code fixes (deny/cancel body, webhook v0.1 hardening) cannot ship
-to production.
+Known drifted rows to backfill before re-enabling validation:
+- `products`: `stock.trackStock`→`tracked`, `stock.autoDisableOnZero`→`autoDisableWhenEmpty`; add `isFeatured`(false), `source`, `tags`([]) where missing.
+- `stores`: `status` legacy value `"active"` → map to `"open"`.
+- `blogArticles`: auto-generated drafts missing `coverImageId` (attach media or make optional).
+
+Owner: catalog/CMS team (they own the intended field semantics). The Uber
+integration itself is fully deployed and working with validation OFF.
 
 ---
 
