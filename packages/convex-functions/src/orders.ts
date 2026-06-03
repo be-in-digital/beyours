@@ -521,7 +521,9 @@ export const createFromWebhook = {
       )
       .first()
     if (existing) {
-      return existing._id
+      // Idempotent: duplicate webhook (Uber/Deliveroo retry). Signal the caller
+      // so it does NOT create a second kitchen ticket or re-run auto-accept.
+      return { orderId: existing._id, created: false }
     }
 
     const now = Date.now()
@@ -546,7 +548,7 @@ export const createFromWebhook = {
       }
     })
 
-    return await ctx.db.insert("orders", {
+    const orderId = await ctx.db.insert("orders", {
       storeId: args.storeId,
       orderNumber,
       externalOrderId: args.externalOrderId,
@@ -568,6 +570,7 @@ export const createFromWebhook = {
       createdAt: args.createdAt,
       updatedAt: now,
     })
+    return { orderId, created: true }
   },
 }
 

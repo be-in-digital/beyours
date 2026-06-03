@@ -16,6 +16,7 @@ import {
   paymentsTable,
   paymentConnectionsTable,
   uberEatsConnectionsTable,
+  oauthStatesTable,
   languagesTable,
   translationsTable,
   translationJobsTable,
@@ -91,6 +92,7 @@ export default defineSchema({
   payments: paymentsTable,
   paymentConnections: paymentConnectionsTable,
   uberEatsConnections: uberEatsConnectionsTable,
+  oauthStates: oauthStatesTable,
   languages: languagesTable,
   translations: translationsTable,
   translationJobs: translationJobsTable,
@@ -141,6 +143,10 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
-  },
-  { schemaValidation: false }
-);
+}, {
+  // DB-layer validation ON (Convex default). Enforces that orders, payments and
+  // encrypted OAuth-token documents conform to the shared
+  // @be-in-digital/convex-schema tables. On first `convex dev`/`deploy` after
+  // enabling this, surface and backfill any pre-existing non-conforming rows.
+  schemaValidation: true,
+});

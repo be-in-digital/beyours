@@ -481,7 +481,8 @@ describe('Uber Eats API Client', () => {
       expect(apiCall).toBeDefined()
       const [, options] = apiCall!
       expect(options.method).toBe('POST')
-      expect(JSON.parse(options.body)).toEqual({ reason })
+      // uAPI deny body: deny_reason { info, type } — verified live 2026-06-02
+      expect(JSON.parse(options.body)).toEqual({ deny_reason: { info: reason.explanation, type: reason.code } })
     })
 
     it('should throw error on failed deny', async () => {
@@ -541,7 +542,8 @@ describe('Uber Eats API Client', () => {
       expect(apiCall).toBeDefined()
       const [, options] = apiCall!
       expect(options.method).toBe('POST')
-      expect(JSON.parse(options.body)).toEqual({ reason })
+      // uAPI cancel body: cancellation_reason { info, type }
+      expect(JSON.parse(options.body)).toEqual({ cancellation_reason: { info: reason.explanation, type: reason.code } })
     })
   })
 

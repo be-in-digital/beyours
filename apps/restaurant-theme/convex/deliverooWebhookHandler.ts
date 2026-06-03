@@ -42,13 +42,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     console.log(`[Deliveroo Webhook] Signature verification: ${isValid ? "VALID" : "INVALID"}`);
 
     if (!isValid) {
-      const { getSiteEnv } = await import("@be-in-digital/core/env");
-      const site = getSiteEnv();
-      if (site.DELIVEROO_IS_SANDBOX !== "true") {
-        console.error("[Deliveroo Webhook] Invalid signature - rejecting");
-        return new Response("Invalid signature", { status: 401 });
-      }
-      console.warn("[Deliveroo Webhook] Invalid signature - proceeding (sandbox mode)");
+      // Fail-closed in ALL environments, including sandbox. Deliveroo signs
+      // sandbox webhooks too, so a correct DELIVEROO_WEBHOOK_SECRET must be
+      // configured. Never process an unverified webhook (forgery risk).
+      console.error("[Deliveroo Webhook] Invalid signature - rejecting");
+      return new Response("Invalid signature", { status: 401 });
     }
 
     // Parse the payload to determine event type

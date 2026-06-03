@@ -49,19 +49,36 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       return new Response("Invalid signature", { status: 401 })
     }
 
-    // Parse webhook event
-    const event = JSON.parse(rawBody) as {
-      event_type: string
-      event_id: string
-      meta: {
-        resource_id: string
-        resource_href: string
-        status: string
-      }
-      resource_href: string
+    // Parse webhook event. Payload shape varies by API version (v0.1 vs v1) and
+    // event type — `meta` is not always present. Derive ids defensively and
+    // never throw on shape: a webhook must be acknowledged with 200.
+    let event: {
+      event_type?: string
+      event_id?: string
+      meta?: { resource_id?: string; resource_href?: string; status?: string }
+      resource_href?: string
+      resource_id?: string
+      order_id?: string
+      id?: string
+      [key: string]: unknown
+    }
+    try {
+      event = JSON.parse(rawBody)
+    } catch {
+      console.error("Uber Eats webhook: unparseable body, acking 200:", rawBody.slice(0, 300))
+      return new Response("OK", { status: 200 })
     }
 
-    console.log(`Uber Eats webhook: ${event.event_type} - ${event.meta.resource_id}`)
+    // Normalized accessors (meta may be absent in some payload shapes).
+    const resourceId =
+      event.meta?.resource_id ?? event.resource_id ?? event.order_id ?? event.id ?? ""
+    const metaStatus = event.meta?.status ?? (event.status as string | undefined) ?? ""
+
+    // Log the raw body when we cannot find an id, to capture the real shape.
+    if (!resourceId) {
+      console.warn(`Uber Eats webhook: no resource id in ${event.event_type ?? "?"}; body=${rawBody.slice(0, 500)}`)
+    }
+    console.log(`Uber Eats webhook: ${event.event_type} - ${resourceId}`)
 
     // Handle order events
     if (event.event_type === "orders.notification" || event.event_type === "eats.order.status_update") {
@@ -76,11 +93,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       let fullOrder = null
       let unifiedOrder = null
       try {
-        fullOrder = await uberEats.fetchOrder(uberCredentials, event.meta.resource_id)
+        fullOrder = await uberEats.fetchOrder(uberCredentials, resourceId)
         unifiedOrder = uberEats.mapUberEatsOrderToUnified(fullOrder)
         console.log(`Fetched order ${unifiedOrder.displayId} for store ${unifiedOrder.storeExternalId}`)
       } catch (fetchError) {
-        console.warn(`Could not fetch full order ${event.meta.resource_id}:`, fetchError)
+        console.warn(`Could not fetch full order ${resourceId}:`, fetchError)
       }
 
       // Find matching store integration
@@ -101,11 +118,12 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
       // Handle new order creation
       if (event.event_type === "orders.notification") {
-        const externalOrderId = unifiedOrder?.externalOrderId ?? event.meta.resource_id
-        const orderNumber = unifiedOrder?.displayId ?? `UE-${event.meta.resource_id.slice(-6).toUpperCase()}`
+        const externalOrderId = unifiedOrder?.externalOrderId ?? resourceId
+        const orderNumber = unifiedOrder?.displayId ?? `UE-${resourceId.slice(-6).toUpperCase()}`
 
-        // Create order via internal mutation
-        const internalOrderId = await ctx.runMutation(internal.orders.createFromWebhook, {
+        // Create order via internal mutation (idempotent: created=false on retry).
+        // Explicit annotation avoids circular type inference through `internal`.
+        const { orderId: internalOrderId, created }: { orderId: Id<"orders">; created: boolean } = await ctx.runMutation(internal.orders.createFromWebhook, {
           storeId: integration.storeId,
           externalOrderId,
           platform: "uberEats",
@@ -143,6 +161,13 @@ export const handleWebhook = httpAction(async (ctx, request) => {
         })
 
         console.log(`Created internal order ${internalOrderId} from Uber Eats order ${externalOrderId}`)
+
+        // On a duplicate webhook (Uber retries), the order already exists — do
+        // NOT create a second kitchen ticket or re-run auto-accept/reject.
+        if (!created) {
+          console.log(`Duplicate Uber Eats webhook for ${externalOrderId} — already processed, skipping ticket + auto-accept`)
+          return new Response("OK", { status: 200 })
+        }
 
         // Create kitchen ticket for KDS
         try {
@@ -214,7 +239,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
       // Handle order status updates
       if (event.event_type === "eats.order.status_update") {
-        console.log(`Order status update: ${event.meta.resource_id} -> ${event.meta.status}`)
+        console.log(`Order status update: ${resourceId} -> ${metaStatus}`)
 
         const statusMap: Record<string, string> = {
           CREATED: "pending",
@@ -227,11 +252,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
           FINISHED: "completed",
         }
 
-        const mappedStatus = unifiedOrder?.status ?? statusMap[event.meta.status] ?? "pending"
+        const mappedStatus = unifiedOrder?.status ?? statusMap[metaStatus] ?? "pending"
 
         try {
           await ctx.runMutation(internal.orders.updateFromWebhook, {
-            externalOrderId: unifiedOrder?.externalOrderId ?? event.meta.resource_id,
+            externalOrderId: unifiedOrder?.externalOrderId ?? resourceId,
             platform: "uberEats" as const,
             status: mappedStatus as "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "completed" | "cancelled",
             updatedAt: Date.now(),
@@ -242,7 +267,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
           if (msg.toLowerCase().includes("not found")) {
             // Order may not exist locally yet (status_update arrived before orders.notification).
             // Ack so Uber stops retrying; the subsequent create webhook will set the right status.
-            console.warn(`Order ${event.meta.resource_id} not found locally, ack status_update`)
+            console.warn(`Order ${resourceId} not found locally, ack status_update`)
           } else {
             // Genuine failure — let Uber retry by returning 500 via the outer catch.
             throw error
@@ -255,27 +280,29 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
     // Handle store status events
     if (event.event_type === "eats.store.status_update") {
-      console.log(`Store status update: ${event.meta.resource_id} -> ${event.meta.status}`)
+      console.log(`Store status update: ${resourceId} -> ${metaStatus}`)
       return new Response("OK", { status: 200 })
     }
 
-    // Handle order cancellation
-    if (event.event_type === "orders.cancel") {
-      console.log(`Order cancelled: ${event.meta.resource_id}`)
+    // Handle order cancellation / failure.
+    // The current uAPI emits "orders.failure" when an order is cancelled/denied;
+    // older integrations used "orders.cancel". Handle both → mark cancelled, ack 200.
+    if (event.event_type === "orders.cancel" || event.event_type === "orders.failure") {
+      console.log(`Order cancelled/failed (${event.event_type}): ${resourceId}`)
 
       try {
         await ctx.runMutation(internal.orders.updateFromWebhook, {
-          externalOrderId: event.meta.resource_id,
+          externalOrderId: resourceId,
           platform: "uberEats" as const,
           status: "cancelled" as const,
           updatedAt: Date.now(),
         })
-        console.log(`Cancelled order ${event.meta.resource_id}`)
+        console.log(`Cancelled order ${resourceId}`)
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error)
         if (msg.toLowerCase().includes("not found")) {
           // Cancel for an order we never stored — ack and move on.
-          console.warn(`Cancel for unknown order ${event.meta.resource_id}, ack`)
+          console.warn(`Cancel for unknown order ${resourceId}, ack`)
         } else {
           // Genuine failure — let Uber retry.
           throw error
@@ -289,7 +316,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     // We persist the order so staff can see it but deliberately do NOT auto-accept/reject;
     // confirmation should happen closer to the scheduled time.
     if (event.event_type === "orders.scheduled") {
-      console.log(`Scheduled order notification: ${event.meta.resource_id}`)
+      console.log(`Scheduled order notification: ${resourceId}`)
 
       const uberCredentials = {
         clientId,
@@ -300,11 +327,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       let fullOrder: Awaited<ReturnType<typeof uberEats.fetchOrder>> | null = null
       let unifiedOrder: ReturnType<typeof uberEats.mapUberEatsOrderToUnified> | null = null
       try {
-        fullOrder = await uberEats.fetchOrder(uberCredentials, event.meta.resource_id)
+        fullOrder = await uberEats.fetchOrder(uberCredentials, resourceId)
         unifiedOrder = uberEats.mapUberEatsOrderToUnified(fullOrder)
         console.log(`Fetched scheduled order ${unifiedOrder.displayId} (scheduled_time=${fullOrder.scheduled_time ?? "n/a"})`)
       } catch (fetchError) {
-        console.warn(`Could not fetch scheduled order ${event.meta.resource_id}:`, fetchError)
+        console.warn(`Could not fetch scheduled order ${resourceId}:`, fetchError)
       }
 
       const allIntegrations = await ctx.runQuery(
@@ -317,11 +344,11 @@ export const handleWebhook = httpAction(async (ctx, request) => {
         : allIntegrations[0]
 
       if (!integration) {
-        console.error(`No Uber Eats integration found for scheduled order ${event.meta.resource_id}`)
+        console.error(`No Uber Eats integration found for scheduled order ${resourceId}`)
         return new Response("OK", { status: 200 })
       }
 
-      const externalOrderId = unifiedOrder?.externalOrderId ?? event.meta.resource_id
+      const externalOrderId = unifiedOrder?.externalOrderId ?? resourceId
       const scheduledTime = fullOrder?.scheduled_time ?? "unknown"
       const scheduledNotes = `[SCHEDULED for ${scheduledTime}]${unifiedOrder?.notes ? " " + unifiedOrder.notes : ""}`
 
