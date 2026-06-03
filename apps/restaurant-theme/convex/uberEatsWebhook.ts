@@ -102,7 +102,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
 
       // Find matching store integration
       const allIntegrations = await ctx.runQuery(
-        api.storeIntegrations.listByPlatformEnabled,
+        internal.storeIntegrations.internalListByPlatformEnabled,
         { platform: "uberEats" }
       ) as StoreIntegrationRecord[]
 
@@ -201,7 +201,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
         }
 
         // Resolve order mode: platform override > store global > legacy autoAccept > manual
-        const store = await ctx.runQuery(api.stores.getById, { id: integration.storeId })
+        const store = await ctx.runQuery(internal.stores.internalGetById, { id: integration.storeId })
         const orderMode = integration.orderMode
           ?? store?.orderMode
           ?? (integration.autoAccept ? "auto_accept" : "manual")
@@ -335,7 +335,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       }
 
       const allIntegrations = await ctx.runQuery(
-        api.storeIntegrations.listByPlatformEnabled,
+        internal.storeIntegrations.internalListByPlatformEnabled,
         { platform: "uberEats" }
       ) as StoreIntegrationRecord[]
 

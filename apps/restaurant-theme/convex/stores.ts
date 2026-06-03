@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import * as defs from "@be-in-digital/convex-functions/stores";
 import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
 
@@ -28,6 +28,12 @@ export const getById = query({
     const store = await defs.getById.handler(ctx, args);
     return stripSensitiveStoreData(store);
   },
+});
+
+// Internal (no-auth) variant for webhook handlers, which run without a user identity.
+export const internalGetById = internalQuery({
+  args: defs.getById.args,
+  handler: async (ctx, args) => defs.getById.handler(ctx, args),
 });
 
 export const getBySlug = query({
