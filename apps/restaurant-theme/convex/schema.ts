@@ -16,6 +16,7 @@ import {
   paymentsTable,
   paymentConnectionsTable,
   uberEatsConnectionsTable,
+  oauthStatesTable,
   languagesTable,
   translationsTable,
   translationJobsTable,
@@ -91,6 +92,7 @@ export default defineSchema({
   payments: paymentsTable,
   paymentConnections: paymentConnectionsTable,
   uberEatsConnections: uberEatsConnectionsTable,
+  oauthStates: oauthStatesTable,
   languages: languagesTable,
   translations: translationsTable,
   translationJobs: translationJobsTable,
@@ -141,6 +143,9 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
-  },
-  { schemaValidation: false }
-);
+}, {
+  // Re-enabled 2026-07-04 after backfilling drifted rows (see convex/migrations.ts
+  // and tasks/uber-eats-go-live-runbook.md §0). Run migrations:backfillSchemaDrift
+  // on any deployment with pre-revamp data BEFORE pushing this schema.
+  schemaValidation: true,
+});

@@ -1,7 +1,13 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@be-in-digital/convex-functions/storeIntegrations";
 import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
+
+// Internal (no-auth) variant for webhook handlers, which run without a user identity.
+export const internalListByPlatformEnabled = internalQuery({
+  args: defs.listByPlatformEnabled.args,
+  handler: async (ctx, args) => defs.listByPlatformEnabled.handler(ctx, args),
+});
 
 // === Queries (auth-protected where applicable) ===
 

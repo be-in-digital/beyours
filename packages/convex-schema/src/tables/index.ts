@@ -12,6 +12,7 @@ export { kitchenTicketsTable, printerSettingsTable } from "./kitchen"
 export { paymentsTable } from "./payments"
 export { paymentConnectionsTable } from "./paymentConnections"
 export { uberEatsConnectionsTable } from "./uberEatsConnections"
+export { oauthStatesTable } from "./oauthStates"
 export { languagesTable, translationsTable, translationJobsTable } from "./i18n"
 export {
   gameQRCodesTable,

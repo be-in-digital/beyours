@@ -300,7 +300,9 @@ export async function acceptOrder(
 /**
  * Deny an order (Order API Suite / uAPI).
  * POST /v1/delivery/order/{orderId}/deny
- * Body shape to be confirmed against a live order during validation.
+ * Body verified against a live order 2026-06-02: requires
+ * `deny_reason: { info, type }` (e.g. type "ITEM_ISSUE"). The legacy
+ * `{ reason: { code, explanation } }` shape is rejected with a 400.
  */
 export async function denyOrder(
   credentials: UberEatsCredentials,
@@ -310,7 +312,7 @@ export async function denyOrder(
   const response = await fetchUberEats(
     credentials,
     `/v1/delivery/order/${validatePathParam(orderId, "orderId")}/deny`,
-    { method: "POST", body: { reason } }
+    { method: "POST", body: { deny_reason: { info: reason.explanation, type: reason.code } } }
   )
 
   if (!response.ok) {
@@ -327,6 +329,7 @@ export async function denyOrder(
 /**
  * Cancel an order (Order API Suite / uAPI).
  * POST /v1/delivery/order/{orderId}/cancel
+ * Body uses `cancellation_reason: { info, type }` (per order_suite docs).
  */
 export async function cancelOrder(
   credentials: UberEatsCredentials,
@@ -336,7 +339,7 @@ export async function cancelOrder(
   const response = await fetchUberEats(
     credentials,
     `/v1/delivery/order/${validatePathParam(orderId, "orderId")}/cancel`,
-    { method: "POST", body: { reason } }
+    { method: "POST", body: { cancellation_reason: { info: reason.explanation, type: reason.code } } }
   )
 
   if (!response.ok) {
@@ -448,6 +451,13 @@ export interface ActivateIntegrationPayload {
   integrator_brand_id?: string
   merchant_store_id?: string
   store_configuration_data?: string
+  // Mirrors the webhooks_config block returned by GET /pos_data; opt-in to
+  // per-store webhook families (e.g. scheduled orders).
+  webhooks_config?: {
+    schedule_order_webhooks?: { is_enabled: boolean }
+    order_release_webhooks?: { is_enabled: boolean }
+    delivery_status_webhooks?: { is_enabled: boolean }
+  }
 }
 
 export interface IntegrationDetails {

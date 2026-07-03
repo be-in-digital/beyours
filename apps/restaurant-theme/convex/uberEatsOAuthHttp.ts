@@ -13,6 +13,7 @@ export const uberEatsConnectCallback = httpAction(async (ctx, request) => {
 
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
 
   const dest = (qs: string) => `${adminUrl}/settings?tab=integrations&${qs}`;
@@ -22,6 +23,25 @@ export const uberEatsConnectCallback = httpAction(async (ctx, request) => {
     return new Response(null, {
       status: 302,
       headers: { Location: dest(`error=${encodeURIComponent(msg)}`) },
+    });
+  }
+
+  // CSRF protection: the state must match one we issued (single-use + TTL).
+  // Reject before any token exchange if it is missing/expired/forged.
+  if (!state) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: dest(`error=${encodeURIComponent("Missing OAuth state")}`) },
+    });
+  }
+  const stateValid = await ctx.runMutation(internal.oauthState.consume, {
+    provider: "uberEats",
+    state,
+  });
+  if (!stateValid) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: dest(`error=${encodeURIComponent("Invalid or expired OAuth state")}`) },
     });
   }
 

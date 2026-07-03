@@ -36,24 +36,29 @@ function mapStatus(uberStatus: string): UnifiedOrderStatus {
 }
 
 /**
- * Convert Uber Eats money (cents) to standard decimal
- * Safely handles undefined/null/string values
+ * Normalize an Uber Eats money amount to integer minor units (cents).
+ *
+ * Uber sends amounts already in cents. We keep CENTS (not euros) so external
+ * orders match the rest of the system: Deliveroo order import, the native
+ * `orders.create` path, and `formatPrice` all use integer cents. Dividing by
+ * 100 here caused Uber order totals to be stored 100x too small.
+ * Safely handles undefined/null/string values.
  */
-function toDecimal(amount: number | string | undefined | null): number {
+function toCents(amount: number | string | undefined | null): number {
   if (amount == null) return 0
-  if (typeof amount === "string") return parseFloat(amount) / 100
-  return amount / 100
+  if (typeof amount === "string") return Math.round(parseFloat(amount) || 0)
+  return Math.round(amount)
 }
 
 /**
- * Extract price from various Uber Eats price formats
- * Handles: UberEatsMoney object, string (cents), undefined
+ * Extract a price (in integer cents) from various Uber Eats price formats.
+ * Handles: UberEatsMoney object, string (cents), undefined.
  */
 function extractPrice(price: UberEatsMoney | string | { amount?: number } | undefined | null): number {
   if (price == null) return 0
-  if (typeof price === "string") return parseFloat(price) / 100
+  if (typeof price === "string") return Math.round(parseFloat(price) || 0)
   if (typeof price === "object" && "amount" in price && price.amount != null) {
-    return toDecimal(price.amount)
+    return toCents(price.amount)
   }
   return 0
 }
@@ -88,7 +93,7 @@ function mapModifiers(item: UberEatsCartItem): UnifiedOrderModifier[] {
         externalId: opt.option_id ?? "",
         name: opt.name ?? opt.title ?? "Option",
         quantity: 1,
-        price: opt.price ? parseFloat(opt.price) / 100 : 0,
+        price: opt.price ? Math.round(parseFloat(opt.price) || 0) : 0,
       })
     }
   }
@@ -183,7 +188,7 @@ function extractCharges(order: UberEatsOrder): {
     let total = 0
 
     for (const charge of order.charges) {
-      const amount = parseFloat(charge.price) / 100
+      const amount = Math.round(parseFloat(charge.price) || 0)
       switch (charge.charge_type) {
         case "subtotal":
           subtotal = amount
