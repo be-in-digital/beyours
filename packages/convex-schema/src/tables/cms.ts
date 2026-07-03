@@ -145,7 +145,9 @@ const blogContentFieldsValidator = v.object({
   title: v.string(),
   slug: v.string(),
   excerpt: v.string(), // max ~300 chars
-  coverImageId: v.id("cmsMedia"),
+  // Optional on drafts (article creation + auto-blog may start without a cover);
+  // publishing enforces its presence (see convex-functions/blogPublish.ts)
+  coverImageId: v.optional(v.id("cmsMedia")),
   coverImageAlt: v.optional(v.string()),
   content: v.string(), // HTML from Tiptap
   metaTitle: v.optional(v.string()),

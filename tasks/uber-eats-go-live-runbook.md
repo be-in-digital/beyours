@@ -12,40 +12,32 @@ confirms production access.
 
 ## 0. PREREQUISITE — re-enable schema validation (data-migration debt)
 
-**Current state (2026-06-03):** to ship the Uber webhook fix, `schemaValidation`
-was set to **`false`** in `apps/restaurant-theme/convex/schema.ts` on the dev
-deployment. The Uber webhook + actions are deployed and working. Before
-production go-live you MUST backfill the drifted rows and set
-`schemaValidation: true` again.
+**✅ RESOLVED on dev (2026-07-04).** `schemaValidation` is back to **`true`** in
+`apps/restaurant-theme/convex/schema.ts` and the push passes validation on the
+dev deployment (`reliable-parrot-452`). What was done:
 
-`convex deploy` with validation ON FAILS on pre-existing documents that predate
-the catalog schema revamp. Unrelated to Uber, but must be resolved for prod.
+1. One-time migration added: `apps/restaurant-theme/convex/migrations.ts`
+   (`auditSchemaDrift` dry-run + `backfillSchemaDrift`).
+   - `products`: `stock.trackStock`→`tracked`,
+     `stock.autoDisableOnZero`→`autoDisableWhenEmpty`; `isFeatured`→`false`,
+     `source`→`"manual"`, `tags`→`[]` where missing (7 docs patched).
+   - `stores`: `status` `"active"`→`"open"`; legacy `isActive` dropped
+     (undeclared in schema, unread by code) (1 doc patched).
+2. `blogArticles.coverImageId` made **optional in the table validator**
+   (`packages/convex-schema/src/tables/cms.ts`) — both creation paths (manual
+   draft + auto-blog) legitimately create cover-less drafts, and publishing
+   already enforces presence (`convex-functions/blogPublish.ts`). The
+   `undefined as any` workaround in `blog.ts` was removed.
+3. Backfill run on dev, re-audit → 0 drifted, schema pushed with validation ON.
 
-Observed mismatches (dev deployment):
-- `products.stock.autoDisableOnZero` → schema now expects `autoDisableWhenEmpty`
-- `products.stock.trackStock` → schema now expects `tracked`
-- `products.isFeatured` (now required) missing on old docs
-- `products.source`, `products.tags` (required) missing on old docs
-- `blogArticles.coverImageId` (required) missing on auto-generated drafts
-
-Recommended fix (data migration, not schema-loosening):
-1. Temporarily relax the changed validators in `packages/convex-schema/src/tables/catalog.ts`
-   and `cms.ts` (accept old+new via `v.optional`) so a deploy succeeds.
-2. Deploy a one-time `internalMutation` that backfills each old product doc:
-   `stock.autoDisableWhenEmpty = stock.autoDisableOnZero`,
-   `stock.tracked = stock.trackStock`, `isFeatured ??= false`,
-   `source ??= "pos"`, `tags ??= []`; and `blogArticles.coverImageId` for drafts
-   (attach a placeholder media id or make the field intentionally optional).
-3. Run the migration (`npx convex run migrations:backfillProducts`).
-4. Re-tighten the validators and redeploy.
-
-Known drifted rows to backfill before re-enabling validation:
-- `products`: `stock.trackStock`→`tracked`, `stock.autoDisableOnZero`→`autoDisableWhenEmpty`; add `isFeatured`(false), `source`, `tags`([]) where missing.
-- `stores`: `status` legacy value `"active"` → map to `"open"`.
-- `blogArticles`: auto-generated drafts missing `coverImageId` (attach media or make optional).
-
-Owner: catalog/CMS team (they own the intended field semantics). The Uber
-integration itself is fully deployed and working with validation OFF.
+**For any OTHER deployment holding pre-revamp data (prod per-client instances):**
+run the same sequence before/while deploying:
+1. If the new schema fails to deploy (old rows), temporarily set
+   `schemaValidation: false`, deploy (this ships `migrations.ts`).
+2. `npx convex run migrations:auditSchemaDrift` (dry-run) then
+   `npx convex run migrations:backfillSchemaDrift` (add `--prod` on prod).
+3. Set `schemaValidation: true` back and deploy again — must pass.
+Fresh/empty deployments need none of this.
 
 ---
 
