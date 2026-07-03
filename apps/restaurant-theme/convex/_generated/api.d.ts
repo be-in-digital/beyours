@@ -59,6 +59,7 @@ import type * as languages from "../languages.js";
 import type * as lib_emailHtmlRenderer from "../lib/emailHtmlRenderer.js";
 import type * as lib_segmentFilter from "../lib/segmentFilter.js";
 import type * as menus from "../menus.js";
+import type * as migrations from "../migrations.js";
 import type * as migrations_index from "../migrations/index.js";
 import type * as oauthCallbackHandlers from "../oauthCallbackHandlers.js";
 import type * as oauthConnect from "../oauthConnect.js";
@@ -157,6 +158,7 @@ declare const fullApi: ApiFromModules<{
   "lib/emailHtmlRenderer": typeof lib_emailHtmlRenderer;
   "lib/segmentFilter": typeof lib_segmentFilter;
   menus: typeof menus;
+  migrations: typeof migrations;
   "migrations/index": typeof migrations_index;
   oauthCallbackHandlers: typeof oauthCallbackHandlers;
   oauthConnect: typeof oauthConnect;

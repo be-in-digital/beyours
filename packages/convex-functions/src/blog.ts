@@ -401,7 +401,7 @@ export async function createArticleCore(
       title: args.title,
       slug,
       excerpt: "",
-      coverImageId: undefined as any, // will be set on first save
+      // coverImageId intentionally absent — set on first save, required at publish
       content: "",
       updatedAt: timestamp,
     },
