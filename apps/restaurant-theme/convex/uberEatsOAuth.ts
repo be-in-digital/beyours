@@ -110,6 +110,9 @@ export const activateAndListStoresCore = internalAction({
     storeId: v.string(),
     integratorStoreId: v.optional(v.string()),
     integratorBrandId: v.optional(v.string()),
+    // Opt-in: also enable scheduled-order webhooks for the store (needed to
+    // receive orders.scheduled notifications when the feature is active).
+    enableScheduledOrderWebhooks: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { credentials } = await readCredentials();
@@ -147,6 +150,9 @@ export const activateAndListStoresCore = internalAction({
         integration_enabled: true,
         integrator_store_id: args.integratorStoreId ?? "beindigital-test-store",
         integrator_brand_id: args.integratorBrandId ?? "beindigital",
+        ...(args.enableScheduledOrderWebhooks
+          ? { webhooks_config: { schedule_order_webhooks: { is_enabled: true } } }
+          : {}),
       },
       accessToken
     );
@@ -170,6 +176,7 @@ export const activateAndListStores = action({
     storeId: v.string(),
     integratorStoreId: v.optional(v.string()),
     integratorBrandId: v.optional(v.string()),
+    enableScheduledOrderWebhooks: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ success: boolean; storesCount: number; stores: Array<Record<string, unknown>>; activatedStoreId: string }> => {
     const identity = await ctx.auth.getUserIdentity();
