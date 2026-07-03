@@ -451,6 +451,13 @@ export interface ActivateIntegrationPayload {
   integrator_brand_id?: string
   merchant_store_id?: string
   store_configuration_data?: string
+  // Mirrors the webhooks_config block returned by GET /pos_data; opt-in to
+  // per-store webhook families (e.g. scheduled orders).
+  webhooks_config?: {
+    schedule_order_webhooks?: { is_enabled: boolean }
+    order_release_webhooks?: { is_enabled: boolean }
+    delivery_status_webhooks?: { is_enabled: boolean }
+  }
 }
 
 export interface IntegrationDetails {
