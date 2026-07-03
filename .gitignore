@@ -13,6 +13,14 @@ node_modules/
 # testing
 /coverage
 
+# Playwright / E2E (reports, results, browser auth state — must never be committed)
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+**/e2e/.auth/
+.playwright-mcp/
+
 # next.js
 .next/
 /out/
@@ -37,8 +45,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Secret-rotation working files (git-filter-repo replace-text — never commit)
+secrets-to-redact.txt
+
 # env files (can opt-in for committing if needed)
 .env*
+# ...but example templates MUST be committed (no secrets, placeholders only)
+!.env.example
+!**/.env.example
 
 # vercel
 .vercel

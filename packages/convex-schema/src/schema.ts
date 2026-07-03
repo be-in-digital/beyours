@@ -15,6 +15,8 @@ import {
   printerSettingsTable,
   paymentsTable,
   paymentConnectionsTable,
+  uberEatsConnectionsTable,
+  oauthStatesTable,
   languagesTable,
   translationsTable,
   translationJobsTable,
@@ -100,6 +102,8 @@ export default defineSchema({
   promotions: promotionsTable,
   promotionUsages: promotionUsagesTable,
   paymentConnections: paymentConnectionsTable,
+  uberEatsConnections: uberEatsConnectionsTable,
+  oauthStates: oauthStatesTable,
   favorites: favoritesTable,
   contactMessages: contactMessagesTable,
   // Email Marketing

@@ -6,8 +6,11 @@
 set -euo pipefail
 
 # --- Configuration ---
-CLIENT_ID="${DELIVEROO_CLIENT_ID:-2vstbij3e5nvmfft92asns21t7}"
-CLIENT_SECRET="${DELIVEROO_CLIENT_SECRET:-10kal3tfeuobmmqokgnfbh6ijadlejq76v8b8ukqtt97739q0ng0}"
+# Credentials MUST come from the environment. NEVER hardcode secrets here.
+# Provide them via your shell or .env.local (see apps/docs/guides/delivery-integrations.md):
+#   export DELIVEROO_CLIENT_ID=...        DELIVEROO_CLIENT_SECRET=...
+CLIENT_ID="${DELIVEROO_CLIENT_ID:-}"
+CLIENT_SECRET="${DELIVEROO_CLIENT_SECRET:-}"
 AUTH_URL="https://auth-sandbox.developers.deliveroo.com/oauth2/token"
 MENU_API="https://api-sandbox.developers.deliveroo.com/menu"
 SITE_API="https://api-sandbox.developers.deliveroo.com/site"
@@ -32,6 +35,12 @@ log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step()  { echo -e "\n${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"; echo -e "${YELLOW}  $1${NC}"; echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"; }
 
 get_token() {
+  if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+    log_error "DELIVEROO_CLIENT_ID and DELIVEROO_CLIENT_SECRET must be set in the environment."
+    log_info "These are the Deliveroo *sandbox* app credentials. Never commit them."
+    log_info "See apps/docs/guides/delivery-integrations.md for how to obtain and provide them."
+    exit 1
+  fi
   local BASIC_AUTH
   BASIC_AUTH=$(echo -n "${CLIENT_ID}:${CLIENT_SECRET}" | base64)
   TOKEN=$(curl -s -X POST "$AUTH_URL" \

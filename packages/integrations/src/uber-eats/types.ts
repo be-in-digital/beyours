@@ -64,6 +64,7 @@ export interface UberEatsWebhookEvent {
 export type UberEatsEventType =
   | "orders.notification"
   | "orders.cancel"
+  | "orders.failure"
   | "orders.scheduled"
   | "eats.order.status_update"
   | "eats.store.status_update"

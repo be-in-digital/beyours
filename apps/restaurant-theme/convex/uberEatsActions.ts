@@ -259,11 +259,21 @@ export const runValidation = action({
     }
 
     await runStep(results, "Promotions: Create promotions", () =>
+      // Payload shape verified live 2026-06-01 (returns 200 + promotion_id).
       uberEats.createPromotion(credentials, args.testStoreUuid, {
-        promotion_type: "FLAT_DISCOUNT",
-        discount_amount: { amount: 200, currency_code: "EUR" },
-        start_time: new Date(Date.now() + 60_000).toISOString(),
-        end_time: new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString(),
+        start_time: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
+        end_time: new Date(Date.now() + 8 * 24 * 60 * 60_000).toISOString(),
+        external_promotion_id: `BID_PROMO_${Date.now()}`,
+        user_group: "ALL_CUSTOMERS",
+        currency_code: "EUR",
+        promo_type: "FLATOFF",
+        budget: { unlimited_budget: true },
+        promotion_discount: {
+          flat_off_discount: {
+            min_basket_constraint: { min_spend: { amount: 1000, currency_code: "EUR" } },
+            discount_value: { amount: 400, currency_code: "EUR" },
+          },
+        },
       })
     );
 
