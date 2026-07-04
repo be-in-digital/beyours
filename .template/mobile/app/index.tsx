@@ -1,23 +1,24 @@
 import { StyleSheet, Text, View } from "react-native"
 
 /**
- * Placeholder home screen.
+ * Écran d'accueil placeholder.
  *
- * The mobile app is a customer-facing companion for the BeInDigital
- * restaurant SaaS — it consumes the same Convex backend as the web
- * storefront via `@repo/backend`. Authentication uses Better Auth in
- * bearer-token mode (`@better-auth/expo` + `expo-secure-store`).
+ * L'app mobile est le compagnon client du storefront web : elle consomme le
+ * MÊME backend Convex (EXPO_PUBLIC_CONVEX_URL, renseignée dans mobile/.env
+ * par `pnpm setup` / `pnpm add:mobile`). L'authentification utilise Better
+ * Auth en mode bearer token (`@better-auth/expo` + `expo-secure-store`) —
+ * la même instance Better Auth que le web (qui, lui, est en cookies).
  *
- * Replace this screen with the real home / catalogue / cart flows
- * when starting a real client mobile project. See `apps/mobile/README.md`.
+ * Remplacer cet écran par les vrais flux (catalogue / panier / fidélité)
+ * au démarrage d'un vrai projet mobile client. Voir mobile/README.md.
  */
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>BeInDigital</Text>
-      <Text style={styles.subtitle}>Mobile placeholder</Text>
+      <Text style={styles.subtitle}>App mobile — placeholder</Text>
       <Text style={styles.body}>
-        Edit `apps/mobile/app/index.tsx` to build your customer app.
+        Éditez mobile/app/index.tsx pour construire l&apos;app cliente.
       </Text>
     </View>
   )
