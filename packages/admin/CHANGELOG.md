@@ -1,5 +1,21 @@
 # @be-in-digital/admin
 
+## 2.0.2
+
+### Patch Changes
+
+- 7f0122b: Republication depuis main. Deux problèmes des tarballs 2.0.1 corrigés côté consommateurs :
+  - `@be-in-digital/core` : le subpath `./auth/rbac` pointait vers `src/auth/rbac.ts` alors que le tarball ne shippe que `dist/` → import cassé chez les consommateurs (`convex-functions/auth` inclus). `files` inclut désormais `src`.
+  - Les correctifs de types présents sur main mais jamais publiés (promotion-form/email-config dans admin, signatures Uber Eats dans integrations/convex-functions) partent avec ce patch — ils avaient été commités sans changeset.
+
+- Updated dependencies [7f0122b]
+  - @be-in-digital/convex-functions@2.0.2
+  - @be-in-digital/convex-schema@2.0.2
+  - @be-in-digital/core@2.0.2
+  - @be-in-digital/marketing@2.0.2
+  - @be-in-digital/restaurant@2.0.2
+  - @be-in-digital/ui@2.0.2
+
 ## 2.0.1
 
 ### Patch Changes
