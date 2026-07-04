@@ -1,5 +1,11 @@
 # @be-in-digital/core
 
+## 2.0.1
+
+### Patch Changes
+
+- 1a5ca27: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+
 ## 2.0.0
 
 ### Major Changes

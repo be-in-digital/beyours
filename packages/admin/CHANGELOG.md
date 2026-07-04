@@ -1,5 +1,19 @@
 # @be-in-digital/admin
 
+## 2.0.1
+
+### Patch Changes
+
+- 1a5ca27: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- Updated dependencies [321adad]
+- Updated dependencies [1a5ca27]
+  - @be-in-digital/convex-schema@2.0.1
+  - @be-in-digital/convex-functions@2.0.1
+  - @be-in-digital/ui@2.0.1
+  - @be-in-digital/core@2.0.1
+  - @be-in-digital/restaurant@2.0.1
+  - @be-in-digital/marketing@2.0.1
+
 ## 2.0.0
 
 ### Major Changes
