@@ -1,0 +1,22 @@
+{
+  "name": "@beindigital/webgl-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./scene-registry": "./src/scene-registry.ts",
+    "./visibility": "./src/visibility.ts",
+    "./capabilities": "./src/capabilities.ts",
+    "./types": "./src/types.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@beindigital/config": "workspace:*",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}

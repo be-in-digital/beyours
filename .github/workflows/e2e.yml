@@ -57,7 +57,9 @@ jobs:
             ${{ runner.os }}-turbo-e2e-
 
       - name: Build application
-        run: pnpm build
+        # Web apps (landing) are excluded: they build on Vercel with their own
+        # env (Sanity/Convex); the product CI must not depend on those secrets.
+        run: pnpm build --filter='!@beindigital/agency' --filter='!@beindigital/restaurant'
 
       - name: Check E2E secrets configured
         id: check-secrets
@@ -96,7 +98,7 @@ jobs:
 
       - name: Run Playwright tests
         if: steps.check-secrets.outputs.configured == 'true'
-        run: pnpm test:e2e
+        run: pnpm test:e2e --filter=@be-in-digital/restaurant-theme
         env:
           CI: true
 

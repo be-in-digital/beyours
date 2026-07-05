@@ -1,0 +1,61 @@
+/* ──────────────────────────────────────────────
+   @beindigital/tokens — shared.css
+   Variables sémantiques partagées agence ↔ resto
+   ──────────────────────────────────────────────
+   Conformément à DESIGN.md : palette mint/dark + variables CSS
+   sémantiques. Les hex sont la SOURCE de référence — le code
+   doit consommer les variables, pas les hex en dur.
+*/
+
+:root {
+  /* ── Brand source colors (référence — ne pas consommer directement) ── */
+  --brand-mint-50: #eefaf7;
+  --brand-mint-100: #dcf5ef;
+  --brand-mint-200: #c2eee3;
+  --brand-mint-300: #a0e5d3;
+  --brand-mint-400: #7ddbc3;
+  --brand-mint-500: #52cfaf;
+  --brand-mint-600: #46b095;
+  --brand-mint-700: #39917a;
+  --brand-mint-800: #2d7260;
+  --brand-mint-900: #215346;
+
+  --brand-neutral-50: #fafafa;
+  --brand-neutral-100: #f5f5f5;
+  --brand-neutral-200: #e8e8e8;
+  --brand-neutral-300: #cfcfcf;
+  --brand-neutral-400: #9a9a9a;
+  --brand-neutral-500: #6b6b6b;
+  --brand-neutral-600: #4a4a4a;
+  --brand-neutral-700: #2a2a2a;
+  --brand-neutral-800: #1a1a1a;
+  --brand-neutral-900: #0a0a0a;
+
+  /* ── Motion ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --ease-anticipate: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --dur-fast: 150ms;
+  --dur-base: 300ms;
+  --dur-slow: 600ms;
+  --dur-cinematic: 1200ms;
+
+  /* ── Radius scale ── */
+  --radius: 0.625rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}

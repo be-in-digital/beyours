@@ -1,0 +1,20 @@
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Convex
+.convex/
+
+# Env
+.env*.local
+.env.local
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# OS
+.DS_Store
+.vercel
