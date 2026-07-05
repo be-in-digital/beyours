@@ -65,6 +65,9 @@ import {
   cmsMaintenanceTable,
   cmsAccountTable,
   systemAuditLogTable,
+  maintenanceContractsTable,
+  platformReleasesTable,
+  migrationRequestsTable,
 } from "./tables"
 
 /**
@@ -147,4 +150,8 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
+  // Maintenance & migration
+  maintenanceContracts: maintenanceContractsTable,
+  platformReleases: platformReleasesTable,
+  migrationRequests: migrationRequestsTable,
 })

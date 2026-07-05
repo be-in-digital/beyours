@@ -53,6 +53,14 @@ export {
 } from "./autoBlog"
 // System
 export { systemAuditLogTable } from "./systemAuditLog"
+// Maintenance & migration
+export {
+  maintenanceContractsTable,
+  platformReleasesTable,
+  migrationRequestsTable,
+  migrationRequestStatusValidator,
+  migrationScopeValidator,
+} from "./maintenance"
 // CMS storefront page tables & validators
 export {
   // CMS validators
