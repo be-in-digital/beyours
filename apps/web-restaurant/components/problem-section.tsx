@@ -14,7 +14,7 @@ const problems = [
     ),
     title: "Dépendance aux plateformes",
     description:
-      "Commissions élevées, aucun contrôle sur vos données clients ni sur votre image de marque.",
+      "Jusqu'à 30 % de commission sur chaque commande livrée — et vos données clients restent chez les plateformes.",
     visual: <DependencyVisual />,
   },
   {
@@ -32,32 +32,6 @@ const problems = [
   {
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-    ),
-    title: "Outils dispersés",
-    description:
-      "Commandes, menus, réservations — chaque service dans un outil différent, sans cohérence.",
-    visual: <ScatteredToolsVisual />,
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-    ),
-    title: "Perte de temps",
-    description:
-      "Des tâches répétitives et manuelles qui freinent votre productivité au quotidien.",
-    visual: <TimeWasteVisual />,
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
         <path d="m12 13-1-1 2-2-3-3 2-2" />
       </svg>
@@ -66,19 +40,6 @@ const problems = [
     description:
       "Aucun moyen de garder le lien avec vos clients entre deux visites.",
     visual: <LoyaltyVisual />,
-  },
-  {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-        <circle cx="12" cy="12" r="3" />
-        <path d="m2 2 20 20" />
-      </svg>
-    ),
-    title: "Manque de visibilité",
-    description:
-      "Pas de données exploitables pour comprendre et piloter votre activité digitale.",
-    visual: <VisibilityVisual />,
   },
 ];
 
@@ -199,55 +160,6 @@ function WeakImageVisual() {
   );
 }
 
-function ScatteredToolsVisual() {
-  return (
-    <div className="relative w-40 h-28">
-      {[
-        { pos: "top-0 left-2", rot: "rotate-[-6deg]", color: "bg-blue-500/25" },
-        { pos: "top-1 right-4", rot: "rotate-[4deg]", color: "bg-purple-500/25" },
-        { pos: "bottom-1 left-8", rot: "rotate-[8deg]", color: "bg-green-500/25" },
-        { pos: "bottom-0 right-6", rot: "rotate-[-3deg]", color: "bg-orange-500/25" },
-        { pos: "top-8 left-1/2 -translate-x-1/2", rot: "rotate-[2deg]", color: "bg-pink-500/25" },
-      ].map((tile, i) => (
-        <div
-          key={i}
-          className={`absolute ${tile.pos} w-10 h-10 rounded-lg bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm ${tile.rot} flex items-center justify-center`}
-        >
-          <div className={`w-4 h-4 rounded ${tile.color}`} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function TimeWasteVisual() {
-  return (
-    <div className="relative w-32 h-28 flex items-center justify-center">
-      <div className="w-20 h-20 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm flex items-center justify-center relative">
-        <div className="absolute w-0.5 h-6 bg-white/20 origin-bottom rounded-full" style={{ transform: "rotate(-30deg)", bottom: "50%", left: "calc(50% - 1px)" }} />
-        <div className="absolute w-0.5 h-4 bg-primary/40 origin-bottom rounded-full" style={{ transform: "rotate(80deg)", bottom: "50%", left: "calc(50% - 1px)" }} />
-        <div className="w-1.5 h-1.5 rounded-full bg-primary/50 relative z-10" />
-        {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
-          <div
-            key={deg}
-            className="absolute w-0.5 h-1 bg-white/10"
-            style={{
-              transform: `rotate(${deg}deg) translateY(-34px)`,
-              transformOrigin: "center center",
-              top: "calc(50% - 2px)",
-              left: "calc(50% - 1px)",
-            }}
-          />
-        ))}
-      </div>
-      <svg className="absolute inset-0 w-full h-full opacity-15" viewBox="0 0 128 112">
-        <path d="M94 30 a30 30 0 0 1 0 52" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="4 3" />
-        <path d="M34 82 a30 30 0 0 1 0 -52" fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeDasharray="4 3" />
-      </svg>
-    </div>
-  );
-}
-
 function LoyaltyVisual() {
   return (
     <div className="relative w-40 h-28 flex items-center justify-center">
@@ -275,33 +187,6 @@ function LoyaltyVisual() {
         <line x1="62" y1="56" x2="76" y2="56" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" strokeDasharray="2 4" />
         <line x1="84" y1="56" x2="98" y2="56" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" strokeDasharray="2 4" />
       </svg>
-    </div>
-  );
-}
-
-function VisibilityVisual() {
-  return (
-    <div className="relative w-40 h-28 flex items-center justify-center">
-      <div className="w-36 h-20 rounded-lg bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm p-2 flex flex-col justify-end">
-        <div className="flex items-end gap-1 h-10">
-          {[15, 10, 12, 8, 10, 6, 8, 5, 7, 4].map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-white/[0.06]"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
-        <div className="mt-1.5 h-px w-full bg-white/[0.06]" />
-        <div className="flex justify-between mt-1">
-          <div className="w-3 h-0.5 rounded bg-white/[0.06]" />
-          <div className="w-3 h-0.5 rounded bg-white/[0.06]" />
-          <div className="w-3 h-0.5 rounded bg-white/[0.06]" />
-        </div>
-      </div>
-      <div className="absolute top-2 right-6 w-6 h-6 rounded-full bg-white/[0.04] border border-white/[0.08] backdrop-blur-sm flex items-center justify-center">
-        <span className="text-[10px] text-muted-foreground font-bold">?</span>
-      </div>
     </div>
   );
 }

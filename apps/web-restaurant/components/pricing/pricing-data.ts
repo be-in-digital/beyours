@@ -206,6 +206,11 @@ export const faqItems = [
       "Oui, vous avez le choix. Le paiement annuel vous fait économiser l'équivalent de 2 mois de maintenance. Les frais de création sont quant à eux payés une seule fois au lancement du projet.",
   },
   {
+    question: "Puis-je payer la création en plusieurs fois ?",
+    answer:
+      "Oui. Au moment du paiement, vous pouvez régler les frais de création en 3 ou 4 fois via Alma ou Klarna, directement intégrés à notre paiement sécurisé Stripe. Aucun dossier à monter : l'option s'affiche au moment de payer.",
+  },
+  {
     question: "Y a-t-il des frais cachés ?",
     answer:
       "Aucun. Le prix affiché est le prix réel. Les frais de création couvrent l'intégralité de la conception et du développement. La maintenance couvre l'hébergement, le support et les mises à jour. Si un besoin dépasse le périmètre de la maintenance, nous vous proposons un devis avant toute intervention.",

@@ -280,7 +280,7 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                 <rect x="2" y="4" width="12" height="9" rx="1.5" />
                 <path d="M2 7h12" strokeLinecap="round" />
               </svg>
-              Paiement en plusieurs fois&nbsp;: parlez-en lors de l&apos;appel
+              Paiement de la création en 3 ou 4 fois disponible (Alma, Klarna)
             </span>
             <span className="flex items-center gap-1.5">
               <svg

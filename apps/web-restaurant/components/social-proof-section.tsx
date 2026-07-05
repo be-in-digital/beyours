@@ -1,10 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCalendlyModal } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { MagicCard } from "@/components/ui/magic-card";
 import { SectionBadge } from "@/components/ui/section-badge";
+
+/* Univers restauration — photos locales (licence Unsplash) */
+const moods = [
+  {
+    src: "/photos/plat-gastronomie.webp",
+    alt: "Dressage d'un plat gastronomique en cuisine",
+    label: "Bistronomie & gastro",
+  },
+  {
+    src: "/photos/burger-premium.webp",
+    alt: "Burger gourmet sur fond sombre",
+    label: "Fast food premium",
+  },
+  {
+    src: "/photos/salle-restaurant2.webp",
+    alt: "Table dressée dans une salle de restaurant à l'ambiance chaleureuse",
+    label: "Bistrot & café",
+  },
+];
 
 /* ═══════════════════════════════════════════════
    Proof section — « jugez sur pièce »
@@ -97,6 +117,44 @@ export function SocialProofSection() {
             </p>
           </div>
         </FadeIn>
+
+        {/* Univers restauration — chaque site est designé pour sa cuisine */}
+        <StaggerContainer
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-5 mb-12 lg:mb-14"
+          stagger={0.1}
+        >
+          {moods.map((mood) => (
+            <StaggerItem key={mood.src}>
+              <Link
+                href="/templates"
+                className="group relative block aspect-[4/3] rounded-2xl overflow-hidden border border-[color:var(--border-subtle)]"
+              >
+                <Image
+                  src={mood.src}
+                  alt={mood.alt}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                />
+                {/* Bottom gradient + label */}
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-white/90">
+                    {mood.label}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    Voir le template
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
+                </div>
+                {/* Subtle mint ring on hover */}
+                <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-primary/0 group-hover:ring-primary/30 transition-all duration-300 pointer-events-none" />
+              </Link>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
 
         {/* Proof cards */}
         <StaggerContainer
