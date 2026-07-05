@@ -3,7 +3,7 @@
 ## 📁 Monorepo Structure
 
 ```
-beindigital-engine/
+beindigital/
 ├── packages/                           # Shared packages
 │   ├── ui/                            # React UI components
 │   │   ├── src/
@@ -269,7 +269,7 @@ pnpm release
 - `better-auth` - Auth
 - `tailwindcss` - Styling
 - `react-hook-form` - Forms
-- All @beindigital-engine packages
+- All `@be-in-digital/*` packages
 
 ## 🔐 Environment Variables Template
 

@@ -92,7 +92,7 @@ function formatSearchResults(
 
 export async function startServer() {
   const server = new McpServer({
-    name: "beindigital-engine",
+    name: "beindigital",
     version: "1.0.0",
   });
 
