@@ -118,22 +118,27 @@ export function SocialProofSection() {
           </div>
         </FadeIn>
 
-        {/* Univers restauration — chaque site est designé pour sa cuisine */}
+        {/* Univers restauration — composition éditoriale asymétrique */}
         <StaggerContainer
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-5 mb-12 lg:mb-14"
+          className="grid grid-cols-1 sm:grid-cols-3 sm:grid-rows-2 gap-4 lg:gap-5 mb-12 lg:mb-14"
           stagger={0.1}
         >
-          {moods.map((mood) => (
-            <StaggerItem key={mood.src}>
+          {moods.map((mood, index) => (
+            <StaggerItem
+              key={mood.src}
+              className={index === 0 ? "sm:col-span-2 sm:row-span-2" : ""}
+            >
               <Link
                 href="/templates"
-                className="group relative block aspect-[4/3] rounded-2xl overflow-hidden border border-[color:var(--border-subtle)]"
+                className={`group relative block h-full rounded-2xl overflow-hidden border border-[color:var(--border-subtle)] ${
+                  index === 0 ? "aspect-[4/3] sm:aspect-auto sm:min-h-full" : "aspect-[4/3] sm:aspect-auto sm:h-full sm:min-h-[180px]"
+                }`}
               >
                 <Image
                   src={mood.src}
                   alt={mood.alt}
                   fill
-                  sizes="(max-width: 640px) 100vw, 33vw"
+                  sizes={index === 0 ? "(max-width: 640px) 100vw, 66vw" : "(max-width: 640px) 100vw, 33vw"}
                   className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                 />
                 {/* Bottom gradient + label */}

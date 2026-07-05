@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useCalendlyModal } from "@/lib/store";
-import { Spotlight } from "@/components/ui/spotlight";
 
-// Scène 3D chargée après hydratation uniquement (chunk séparé, jamais SSR)
+// Scène 3D (braises) chargée après hydratation uniquement — jamais SSR
 const HeroScene = dynamic(
   () => import("@/components/webgl/hero-scene").then((m) => m.HeroScene),
   { ssr: false },
@@ -32,34 +32,48 @@ export function HeroSection() {
 
   return (
     <section
-      className="relative flex flex-col items-center pt-36 sm:pt-40 lg:pt-48 pb-16 overflow-hidden"
+      className="relative flex flex-col overflow-hidden"
       aria-labelledby="hero-title"
     >
-      {/* Background: deep radial + spotlight + grain */}
-      <div className="pointer-events-none absolute inset-0 bg-hero-radial" aria-hidden="true" />
-      <Spotlight size={900} />
+      {/* ── Toile de fond cinématique : le feu de la cuisine, plein écran ── */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.4] [mask-image:radial-gradient(ellipse_at_center_top,black_20%,transparent_70%)]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-        }}
-      />
+        className="pointer-events-none absolute inset-x-0 top-0 h-[100dvh] overflow-hidden"
+      >
+        <motion.div
+          initial={{ scale: 1.08 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 12, ease: "linear" }}
+          className="absolute inset-0"
+        >
+          <Image
+            src="/photos/chef-flammes.webp"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-[72%_center]"
+          />
+        </motion.div>
+        {/* Scrims : zone de lecture à gauche, flamme qui respire à droite,
+            fondu vers le fond du site en bas */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/75 via-transparent to-background" />
+      </div>
       <div className="noise-overlay" aria-hidden="true" />
 
-      {/* Constellation 3D — photos food/salle/chef flottantes + braises */}
+      {/* Braises — voile de particules au-dessus des flammes */}
       <HeroScene />
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 text-center">
+      {/* ── Contenu, aligné à gauche façon éditorial ── */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 min-h-[100dvh] flex flex-col justify-center pt-28 pb-24">
+        <div className="max-w-3xl">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease, delay: 0.05 }}
-          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-white/[0.03] px-3 py-1.5 text-xs backdrop-blur-sm"
+          className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-background/40 px-3 py-1.5 text-xs backdrop-blur-md"
         >
           <span className="relative flex h-1.5 w-1.5">
             <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-60" />
@@ -73,7 +87,7 @@ export function HeroSection() {
         {/* Title */}
         <h1
           id="hero-title"
-          className="mt-8 text-balance text-4xl sm:text-5xl lg:text-7xl xl:text-[5.5rem] font-medium tracking-[-0.035em] leading-[1.02]"
+          className="mt-8 text-balance text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-medium tracking-[-0.035em] leading-[1.04]"
         >
           <RevealText
             as="span"
@@ -108,7 +122,7 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 1.15 }}
-          className="mt-6 text-balance text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+          className="mt-6 text-pretty text-base sm:text-lg lg:text-xl text-muted-foreground max-w-xl leading-relaxed"
         >
           Un site de commande en ligne d&apos;exception, à l&apos;image de
           votre établissement : vos clients commandent chez vous, vous gardez
@@ -120,7 +134,7 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease, delay: 1.3 }}
-          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
+          className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4"
         >
           <MagneticButton
             onClick={openCalendly}
@@ -148,7 +162,7 @@ export function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, ease, delay: 1.55 }}
-          className="mt-8 text-xs text-muted-foreground/80 flex items-center justify-center gap-3"
+          className="mt-8 text-xs text-muted-foreground/80 flex flex-wrap items-center gap-3"
         >
           <span className="inline-flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -171,10 +185,11 @@ export function HeroSection() {
             Support français
           </span>
         </motion.div>
+        </div>
       </div>
 
       {/* Dashboard — ContainerScroll 3D reveal */}
-      <div className="relative z-10 mt-16 sm:mt-20 w-full max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="relative z-10 -mt-10 sm:-mt-6 w-full max-w-6xl mx-auto px-4 sm:px-6 pb-8">
         <ContainerScroll>
           <div className="relative rounded-2xl border border-[color:var(--border-subtle)] bg-surface-1 overflow-hidden shadow-[0_30px_120px_-20px_rgba(0,0,0,0.7),0_0_0_1px_rgba(82,207,175,0.06)]">
             <BorderBeam size={260} duration={12} colorFrom="#52cfaf" colorTo="rgba(82,207,175,0)" />

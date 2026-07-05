@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import {
   detectCapabilities,
@@ -10,110 +9,14 @@ import {
 } from "@beindigital/webgl-utils";
 
 /**
- * HeroScene — constellation 3D de l'univers restauration.
+ * HeroScene — voile de braises au-dessus du hero cinématique.
  *
- * Même doctrine que la scène hero de l'agency (Decision Log #19) :
- * pas de blob générique, pas de post-processing arcade — des cartes 3D
- * texturées avec de la vraie matière (photos food/salle/chef) qui
- * flottent en périphérie du titre, plus un voile de braises mint qui
- * monte lentement. Parallax souris lerpé, fade au scroll, coupé sur
- * les devices faibles et en prefers-reduced-motion.
+ * Le hero est une photo plein écran (chef aux fourneaux) : la scène 3D
+ * n'ajoute que ce que la photo ne peut pas faire — des braises qui
+ * montent lentement, avec un parallax souris amorti. Sobriété héritée
+ * de la doctrine agency : pas de blob, pas de post-processing.
+ * Coupé sur devices faibles et en prefers-reduced-motion.
  */
-
-type MoodCard = {
-  readonly src: string;
-  readonly position: readonly [number, number, number];
-  readonly scale: number;
-  readonly tilt: readonly [number, number]; // [rotX, rotY]
-  readonly bobAmp: number;
-  readonly bobSpeed: number;
-  readonly phase: number;
-};
-
-const CARDS: readonly MoodCard[] = [
-  {
-    // Dressage gastro — haut gauche
-    src: "/photos/plat-gastronomie.webp",
-    position: [-1.75, 0.72, -0.55],
-    scale: 0.66,
-    tilt: [0.05, 0.3],
-    bobAmp: 0.055,
-    bobSpeed: 0.55,
-    phase: 0,
-  },
-  {
-    // Burger — droite
-    src: "/photos/burger-premium.webp",
-    position: [1.8, 0.38, -0.4],
-    scale: 0.58,
-    tilt: [0.03, -0.32],
-    bobAmp: 0.06,
-    bobSpeed: 0.7,
-    phase: 1.4,
-  },
-  {
-    // Salle chaleureuse — bas gauche
-    src: "/photos/salle-restaurant2.webp",
-    position: [-1.62, -0.78, -0.75],
-    scale: 0.48,
-    tilt: [-0.04, 0.24],
-    bobAmp: 0.05,
-    bobSpeed: 0.62,
-    phase: 2.6,
-  },
-  {
-    // Chef aux fourneaux — bas droite
-    src: "/photos/chef-flammes.webp",
-    position: [1.68, -0.88, -0.9],
-    scale: 0.52,
-    tilt: [0.06, -0.22],
-    bobAmp: 0.05,
-    bobSpeed: 0.75,
-    phase: 3.6,
-  },
-];
-
-const CARD_GEOMETRY = { width: 1.5, height: 1.0 } as const;
-
-function PhotoCard({ card }: { card: MoodCard }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const tex = useTexture(card.src);
-
-  // In-place texture tuning — known exception to the React immutability rule
-  // (same pattern as the agency hero scene).
-  useEffect(() => {
-    /* eslint-disable react-hooks/immutability */
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.minFilter = THREE.LinearMipMapLinearFilter;
-    tex.magFilter = THREE.LinearFilter;
-    tex.anisotropy = 8;
-    tex.needsUpdate = true;
-    /* eslint-enable react-hooks/immutability */
-  }, [tex]);
-
-  useFrame((state) => {
-    const m = meshRef.current;
-    if (!m) return;
-    const t = state.clock.elapsedTime;
-    m.position.y =
-      card.position[1] + Math.sin(t * card.bobSpeed + card.phase) * card.bobAmp;
-    m.rotation.y = card.tilt[1] + Math.sin(t * 0.22 + card.phase) * 0.035;
-    m.rotation.x = card.tilt[0] + Math.cos(t * 0.16 + card.phase) * 0.025;
-  });
-
-  return (
-    <mesh
-      ref={meshRef}
-      position={card.position as unknown as [number, number, number]}
-      scale={card.scale}
-    >
-      <planeGeometry args={[CARD_GEOMETRY.width, CARD_GEOMETRY.height]} />
-      <meshBasicMaterial map={tex} toneMapped={false} transparent opacity={0.92} />
-    </mesh>
-  );
-}
-
-useTexture.preload(CARDS.map((c) => c.src));
 
 /** Pseudo-aléatoire déterministe (pur — compatible React Compiler) */
 function seeded(i: number, salt: number): number {
@@ -121,7 +24,7 @@ function seeded(i: number, salt: number): number {
   return x - Math.floor(x);
 }
 
-/** Braises / vapeur mint qui montent lentement derrière le titre */
+/** Braises mint qui montent lentement */
 function Embers({ count = 90 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
 
@@ -131,7 +34,7 @@ function Embers({ count = 90 }: { count?: number }) {
     for (let i = 0; i < count; i++) {
       positions[i * 3] = (seeded(i, 1) - 0.5) * 5.2; // x
       positions[i * 3 + 1] = (seeded(i, 2) - 0.5) * 3.0; // y
-      positions[i * 3 + 2] = -1.4 + seeded(i, 3) * 1.6; // z (derrière les cartes)
+      positions[i * 3 + 2] = -1.4 + seeded(i, 3) * 1.6; // z
       seeds[i * 2] = seeded(i, 4) * Math.PI * 2; // phase
       seeds[i * 2 + 1] = 0.05 + seeded(i, 5) * 0.1; // vitesse ascension
     }
@@ -165,7 +68,7 @@ function Embers({ count = 90 }: { count?: number }) {
         size={0.022}
         sizeAttenuation
         transparent
-        opacity={0.35}
+        opacity={0.3}
         depthWrite={false}
         blending={THREE.AdditiveBlending}
       />
@@ -188,11 +91,7 @@ function SceneContent() {
 
   return (
     <group ref={groupRef}>
-      <ambientLight intensity={0.5} color="#1c3329" />
       <Embers />
-      {CARDS.map((card) => (
-        <PhotoCard key={card.src} card={card} />
-      ))}
     </group>
   );
 }
