@@ -88,7 +88,7 @@ export function SoftwareApplicationJsonLd() {
 const faqItems = [
   {
     q: "En combien de temps notre restaurant peut être en ligne ?",
-    a: "Le set up complet est réalisé en environ 7 jours ouvrés, incluant la mise en place du site, du menu, des intégrations de commande et de la formation à la plateforme.",
+    a: "Comptez en moyenne 4 à 6 semaines entre le premier échange et la mise en ligne, incluant le design, la mise en place du site, du menu, des intégrations de commande et la formation à la plateforme.",
   },
   {
     q: "Be in Digital prélève-t-il une commission sur les commandes ?",

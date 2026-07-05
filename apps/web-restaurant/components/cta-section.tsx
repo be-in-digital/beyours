@@ -1,11 +1,11 @@
 "use client";
 
-import { useWhitelistModal, useCalendlyModal } from "@/lib/store";
+import Link from "next/link";
+import { useCalendlyModal } from "@/lib/store";
 import { FadeIn } from "@/components/ui/motion";
 import { MagneticButton } from "@/components/ui/magnetic-button";
 
 function CtaContent() {
-  const { open } = useWhitelistModal();
   const { open: openCalendly } = useCalendlyModal();
 
   return (
@@ -15,44 +15,45 @@ function CtaContent() {
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/[0.06] mb-8">
           <div className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" />
           <span className="text-xs text-primary/80 font-medium">
-            Places limitées &bull; Sans engagement
+            Appel découverte gratuit &bull; Sans engagement
           </span>
         </div>
       </FadeIn>
 
       <FadeIn delay={0.1}>
         <h2 className="text-balance text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-medium tracking-[-0.03em] leading-[1.08]">
-          Prêt à transformer votre{" "}
-          <span className="font-serif italic text-primary">présence digitale</span>&nbsp;?
+          Prêt à vendre{" "}
+          <span className="font-serif italic text-primary">sans commission</span>&nbsp;?
         </h2>
       </FadeIn>
       <FadeIn delay={0.2}>
         <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-          Inscrivez-vous à la waitlist ou réservez un appel pour découvrir
-          comment Be in Digital peut faire la différence pour votre restaurant.
+          Réservez un appel : on fait le point sur votre présence digitale,
+          on vous montre le produit en direct et on chiffre ce que la vente
+          sans commission changerait pour votre restaurant.
         </p>
       </FadeIn>
 
       <FadeIn delay={0.3} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
         <MagneticButton
-          onClick={() => open()}
+          onClick={openCalendly}
           strength={24}
           className="bg-primary text-primary-foreground px-8 py-4 text-base glow-primary hover:brightness-110"
         >
-          S&apos;inscrire à la waitlist
+          Réserver un appel
           <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M1 13L13 1M13 1H3M13 1V11" />
           </svg>
         </MagneticButton>
-        <button
-          onClick={openCalendly}
-          className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-white/[0.02] px-6 py-3 text-sm text-foreground hover:bg-white/[0.05] hover:border-[color:var(--border-contrast)] transition-colors duration-300 cursor-pointer"
+        <Link
+          href="/templates"
+          className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-white/[0.02] px-6 py-3 text-sm text-foreground hover:bg-white/[0.05] hover:border-[color:var(--border-contrast)] transition-colors duration-300"
         >
-          Réserver un appel
+          Voir des exemples de sites
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
-        </button>
+        </Link>
       </FadeIn>
     </div>
   );

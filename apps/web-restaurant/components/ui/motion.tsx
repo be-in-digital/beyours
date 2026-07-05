@@ -18,8 +18,11 @@ import { motion, type Variants, type HTMLMotionProps } from "framer-motion";
 
 // ── Shared defaults ──
 
-const defaultViewport = { once: true, margin: "-20% 0px -20% 0px" as const };
-const defaultTransition = { duration: 0.6, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
+// Reveal as soon as the element approaches the viewport (small bottom margin
+// only). A symmetric -20% margin left whole sections invisible during fast
+// scrolls — the content only appeared once well inside the screen.
+const defaultViewport = { once: true, margin: "0px 0px -10% 0px" as const };
+const defaultTransition = { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] };
 
 // ── FadeIn ──
 

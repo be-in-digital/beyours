@@ -5,6 +5,7 @@ import { WhitelistModal } from "@/components/whitelist-modal";
 import { CalendlyModal } from "@/components/calendly-modal";
 import { DevModeDetector } from "@/components/dev-mode-detector";
 import { SmoothScroll } from "@/components/ui/smooth-scroll";
+import { MotionProvider } from "@/components/ui/motion-provider";
 
 export default function SiteLayout({
   children,
@@ -12,7 +13,7 @@ export default function SiteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <MotionProvider>
       <SmoothScroll />
       <Suspense>
         <DevModeDetector />
@@ -22,6 +23,6 @@ export default function SiteLayout({
       <Footer />
       <WhitelistModal />
       <CalendlyModal />
-    </>
+    </MotionProvider>
   );
 }

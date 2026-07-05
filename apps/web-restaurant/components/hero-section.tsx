@@ -67,7 +67,7 @@ export function HeroSection() {
         >
           <RevealText
             as="span"
-            text="Votre restaurant,"
+            text="Vendez en direct,"
             splitBy="word"
             stagger={0.06}
             delay={0.15}
@@ -76,7 +76,7 @@ export function HeroSection() {
           <span className="block mt-2">
             <RevealText
               as="span"
-              text="une expérience"
+              text="sans"
               splitBy="word"
               stagger={0.06}
               delay={0.35}
@@ -88,16 +88,8 @@ export function HeroSection() {
               transition={{ duration: 0.9, ease, delay: 0.9 }}
               className="inline-block font-serif italic text-primary"
             >
-              digitale
-            </motion.span>{" "}
-            <RevealText
-              as="span"
-              text="d'exception."
-              splitBy="word"
-              stagger={0.06}
-              delay={1.0}
-              className="inline-block"
-            />
+              commission.
+            </motion.span>
           </span>
         </h1>
 
@@ -108,9 +100,9 @@ export function HeroSection() {
           transition={{ duration: 0.7, ease, delay: 1.15 }}
           className="mt-6 text-balance text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
         >
-          Site premium, commande en ligne, livraison, fidélité, analytics —
-          centralisez tout votre digital dans une plateforme conçue pour les
-          restaurateurs exigeants.
+          Un site de commande en ligne d&apos;exception, à l&apos;image de
+          votre établissement : vos clients commandent chez vous, vous gardez
+          vos marges et vos données clients.
         </motion.p>
 
         {/* CTAs */}
@@ -152,21 +144,21 @@ export function HeroSection() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Sans engagement
+            Prix fixe, sans frais cachés
           </span>
           <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
           <span className="inline-flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Set up en 7 jours
+            En ligne en 4 à 6 semaines
           </span>
           <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
           <span className="inline-flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
               <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Support FR
+            Support français
           </span>
         </motion.div>
       </div>

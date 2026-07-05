@@ -7,13 +7,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { plans, formatPrice, type BillingPeriod } from "./pricing-data";
-import { useWhitelistModal, useDevMode } from "@/lib/store";
+import { useCalendlyModal, useDevMode } from "@/lib/store";
 import { SectionBadge } from "@/components/ui/section-badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
 export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
-  const { open: openWaitlist } = useWhitelistModal();
+  const { open: openCalendly } = useCalendlyModal();
   const devMode = useDevMode((s) => s.enabled);
 
 
@@ -149,6 +149,14 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                         {maintenanceLabel}
                       </span>
                     </div>
+                    <p className="mt-2 text-xs text-muted-foreground/70">
+                      Soit{" "}
+                      <span className="text-foreground/90 font-medium">
+                        {formatPrice(plan.creation + plan.maintenanceYearly)}&nbsp;€
+                      </span>{" "}
+                      la première année, tout compris — puis{" "}
+                      {formatPrice(plan.maintenanceYearly)}&nbsp;€/an.
+                    </p>
                   </div>
 
                   {/* Description */}
@@ -209,14 +217,14 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                       </Link>
                     ) : (
                       <button
-                        onClick={() => openWaitlist(plan.slug)}
+                        onClick={openCalendly}
                         className={`w-full rounded-full py-3.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
                           plan.featured
                             ? "bg-primary text-primary-foreground hover:brightness-110 shadow-[0_0_24px_rgba(82,207,175,0.25)]"
                             : "bg-white/[0.08] text-foreground hover:bg-white/[0.12] border border-white/[0.1]"
                         }`}
                       >
-                        S&apos;inscrire à la waitlist
+                        Réserver un appel
                       </button>
                     )}
                   </div>
@@ -225,6 +233,25 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
             );
           })}
         </StaggerContainer>
+
+        {/* Ancre de comparaison — commissions plateformes */}
+        <FadeIn delay={0.2}>
+          <div className="mt-10 rounded-2xl border border-primary/15 bg-primary/[0.03] px-6 py-5 sm:px-8 text-center">
+            <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+              À titre de comparaison : un restaurant qui encaisse{" "}
+              <span className="text-foreground font-medium">8&nbsp;000&nbsp;€/mois</span>{" "}
+              via les plateformes de livraison peut leur reverser jusqu&apos;à{" "}
+              <span className="text-foreground font-medium">
+                2&nbsp;400&nbsp;€ de commissions chaque mois
+              </span>{" "}
+              (jusqu&apos;à 30&nbsp;%). Votre site en direct&nbsp;:{" "}
+              <span className="text-primary font-medium">
+                4&nbsp;500&nbsp;€ la première année, puis 1&nbsp;000&nbsp;€/an
+              </span>{" "}
+              — et aucune commission sur vos commandes.
+            </p>
+          </div>
+        </FadeIn>
 
         {/* Notes de bas */}
         <FadeIn delay={0.4}>
@@ -241,6 +268,19 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                 <path d="M8 5v3.5l2.5 1.5" strokeLinecap="round" />
               </svg>
               Frais de création payés une seule fois au lancement
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg
+                className="w-3.5 h-3.5"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="2" y="4" width="12" height="9" rx="1.5" />
+                <path d="M2 7h12" strokeLinecap="round" />
+              </svg>
+              Paiement en plusieurs fois&nbsp;: parlez-en lors de l&apos;appel
             </span>
             <span className="flex items-center gap-1.5">
               <svg
