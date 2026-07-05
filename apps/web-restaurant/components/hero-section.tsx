@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { useCalendlyModal } from "@/lib/store";
 import { Spotlight } from "@/components/ui/spotlight";
+
+// Scène 3D chargée après hydratation uniquement (chunk séparé, jamais SSR)
+const HeroScene = dynamic(
+  () => import("@/components/webgl/hero-scene").then((m) => m.HeroScene),
+  { ssr: false },
+);
 import { MagneticButton } from "@/components/ui/magnetic-button";
 import { RevealText } from "@/components/ui/reveal-text";
 import { ContainerScroll } from "@/components/ui/container-scroll";
@@ -41,6 +48,9 @@ export function HeroSection() {
         }}
       />
       <div className="noise-overlay" aria-hidden="true" />
+
+      {/* Constellation 3D — photos food/salle/chef flottantes + braises */}
+      <HeroScene />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-6xl mx-auto px-4 sm:px-6 text-center">

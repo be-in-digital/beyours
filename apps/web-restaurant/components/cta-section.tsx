@@ -65,6 +65,20 @@ export function CtaSection() {
       {/* ── Deep dark base ── */}
       <div className="absolute inset-0 bg-[#060608]" />
 
+      {/* ── Chef aux fourneaux — l'humain derrière le produit ── */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-cover bg-center opacity-[0.22]"
+        style={{
+          backgroundImage: "url(/photos/chef-flammes.webp)",
+          maskImage:
+            "radial-gradient(ellipse 90% 85% at 50% 45%, black 25%, transparent 78%)",
+          WebkitMaskImage:
+            "radial-gradient(ellipse 90% 85% at 50% 45%, black 25%, transparent 78%)",
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#060608]/70 via-transparent to-[#060608]/80" />
+
       {/* ── Perspective grid floor ── */}
       <div
         className="absolute inset-0 pointer-events-none"
