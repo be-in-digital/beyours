@@ -1,9 +1,10 @@
 "use client";
 
 import { useAction } from "convex/react";
+import { ArrowRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useCheckoutStore } from "@/lib/store";
-import { getFirstPaymentBreakdown, type PaymentMethodSlug } from "@/lib/payment-providers";
+import { getCheckoutTotals, type PaymentMethodSlug } from "@/lib/payment-providers";
 import { FadeIn } from "@/components/ui/motion";
 import { BuyerTypeSelector } from "./buyer-type-selector";
 import { BillingPeriodSelector } from "./billing-period-selector";
@@ -16,9 +17,10 @@ export function CheckoutFlow() {
   const store = useCheckoutStore();
   const createCheckout = useAction(api.stripe.createCheckoutSession);
 
-  const { total: totalCents } = getFirstPaymentBreakdown(
+  const { total: totalCents } = getCheckoutTotals(
     store.plan,
     store.billingPeriod,
+    store.appliedReferral?.discountPercent,
   );
 
   const handleBuyerTypeNext = () => {
@@ -116,7 +118,10 @@ export function CheckoutFlow() {
       <div className="mt-6">
         {store.error && (
           <FadeIn>
-            <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-400">
+            <div
+              role="alert"
+              className="mb-6 rounded-xl border border-[color:var(--destructive)]/30 bg-[color:var(--destructive)]/5 px-4 py-3 text-sm text-[color:var(--destructive)]"
+            >
               {store.error}
             </div>
           </FadeIn>
@@ -135,9 +140,10 @@ export function CheckoutFlow() {
               />
               <button
                 onClick={handleBuyerTypeNext}
-                className="w-full rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-all hover:brightness-110 cursor-pointer"
+                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition-all duration-200 hover:brightness-105"
               >
                 Continuer
+                <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
               </button>
             </div>
           </FadeIn>

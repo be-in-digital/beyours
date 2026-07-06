@@ -26,16 +26,17 @@ const milestones = [
 
 export function StorySection() {
   return (
-    <section id="story" className="relative py-16 sm:py-24 lg:py-32 overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/[0.02] rounded-full blur-[80px]" />
-      </div>
+    <section id="story" className="relative overflow-hidden py-16 sm:py-24 lg:py-32">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-section-radial"
+      />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6">
+      <div className="relative z-10 mx-auto max-w-5xl px-4 sm:px-6">
         <FadeIn>
           <SectionBadge text="Notre histoire" />
-          <div className="text-center max-w-3xl mx-auto mt-6 mb-16 lg:mb-20">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.1]">
+          <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
+            <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Né d&apos;un constat.{" "}
               <span className="text-primary">Construit avec conviction.</span>
             </h2>
@@ -63,21 +64,21 @@ export function StorySection() {
                 >
                   {/* Content */}
                   <div className="flex-1 pl-12 sm:pl-0">
-                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] hover:border-primary/10 transition-all duration-300">
-                      <span className="text-xs font-medium text-primary tracking-widest uppercase">
+                    <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1">
+                      <span className="text-xs font-semibold uppercase tracking-widest text-primary">
                         {milestone.year}
                       </span>
-                      <h3 className="text-xl sm:text-2xl font-semibold mt-2 mb-3">
+                      <h3 className="mb-3 mt-2 font-display text-xl font-semibold text-foreground sm:text-2xl">
                         {milestone.title}
                       </h3>
-                      <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                      <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
                         {milestone.description}
                       </p>
                     </div>
                   </div>
 
                   {/* Timeline dot */}
-                  <div className="absolute left-4 sm:left-1/2 top-8 -translate-x-1/2 w-3 h-3 rounded-full bg-primary/40 border-2 border-primary/60 shadow-[0_0_12px_rgba(82,207,175,0.3)]" />
+                  <div className="absolute left-4 top-8 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-primary bg-primary/40 sm:left-1/2" />
 
                   {/* Spacer for opposite side */}
                   <div className="hidden sm:block flex-1" />

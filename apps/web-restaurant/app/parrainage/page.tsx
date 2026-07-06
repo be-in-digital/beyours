@@ -85,7 +85,7 @@ export default function ParrainagePage() {
             "Virement automatique sur votre compte",
             "Dashboard pour suivre vos parrainages",
             "Code personnalisable à votre nom",
-            "Vos filleuls bénéficient de -10% sur la mise en service",
+            "Vos filleuls bénéficient de -10% sur la création",
             "Inscription gratuite, aucun engagement",
           ].map((benefit) => (
             <div

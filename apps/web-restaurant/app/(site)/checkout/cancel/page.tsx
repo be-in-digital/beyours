@@ -6,7 +6,7 @@ export default function CheckoutCancelPage() {
   return (
     <main className="relative min-h-screen pt-28 pb-20 overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-white/[0.02] blur-[120px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-primary/[0.05] blur-[120px]" />
       </div>
 
       <div className="relative z-10 max-w-lg mx-auto px-4 sm:px-6 text-center">
@@ -31,7 +31,7 @@ export default function CheckoutCancelPage() {
             </Link>
             <Link
               href="/"
-              className="rounded-full border border-white/[0.1] bg-white/[0.04] px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-white/[0.08]"
+              className="rounded-full border border-[color:var(--border-contrast)] bg-surface-2 px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-surface-3"
             >
               Retour à l&apos;accueil
             </Link>

@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "convex dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "type-check": "tsc --noEmit",
+    "seed": "convex run saSeed:run",
+    "seed:reset": "convex run saSeed:reset '{\"confirm\":true}'",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },

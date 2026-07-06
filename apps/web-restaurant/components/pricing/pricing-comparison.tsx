@@ -58,9 +58,9 @@ export function PricingComparison() {
 
         {/* Table header — sticky on scroll */}
         <FadeIn>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 overflow-hidden shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
             {/* Header row */}
-            <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-[1fr_120px_120px] items-center px-4 sm:px-6 py-4 border-b border-white/[0.06] bg-white/[0.03]">
+            <div className="grid grid-cols-[1fr_80px_80px] sm:grid-cols-[1fr_120px_120px] items-center px-4 sm:px-6 py-4 border-b border-[color:var(--border)] bg-secondary">
               <div className="text-sm font-medium text-muted-foreground">
                 Fonctionnalité
               </div>
@@ -79,7 +79,7 @@ export function PricingComparison() {
                   <div>
                     {/* Category header */}
                     <div
-                      className={`px-4 sm:px-6 py-3 bg-primary/[0.03] ${catIndex > 0 ? "border-t border-white/[0.06]" : ""}`}
+                      className={`px-4 sm:px-6 py-3 bg-primary/[0.06] ${catIndex > 0 ? "border-t border-[color:var(--border)]" : ""}`}
                     >
                       <span className="text-xs font-semibold text-primary uppercase tracking-wider">
                         {category.name}
@@ -92,7 +92,7 @@ export function PricingComparison() {
                         key={feature.label}
                         className={`grid grid-cols-[1fr_80px_80px] sm:grid-cols-[1fr_120px_120px] items-center px-4 sm:px-6 py-3 ${
                           featureIndex > 0
-                            ? "border-t border-white/[0.04]"
+                            ? "border-t border-[color:var(--border)]/60"
                             : ""
                         }`}
                       >

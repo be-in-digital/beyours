@@ -1,7 +1,10 @@
 "use client";
 
+import { BadgeCheck } from "lucide-react";
 import {
-  getFirstPaymentBreakdown,
+  getCheckoutTotals,
+  TVA_ENABLED,
+  TVA_RATE_PERCENT,
   type BillingPeriod,
 } from "@/lib/payment-providers";
 
@@ -18,20 +21,13 @@ export function OrderSummary({
   billingPeriod: BillingPeriod;
   discountPercent?: number;
 }) {
-  const { creation, maintenance, total } = getFirstPaymentBreakdown(
-    plan,
-    billingPeriod,
-  );
-  const discountAmountCents =
-    discountPercent && discountPercent > 0
-      ? Math.round(creation * discountPercent / 100)
-      : 0;
-  const finalTotal = total - discountAmountCents;
+  const { creation, maintenance, discount, subtotal, tva, total } =
+    getCheckoutTotals(plan, billingPeriod, discountPercent);
   const planLabel = plan === "essentielle" ? "Essentielle" : "Premium";
   const periodLabel = billingPeriod === "monthly" ? "1er mois" : "1ère année";
 
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5">
+    <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-5 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
       <h3 className="text-sm font-medium text-foreground mb-3">
         Récapitulatif
       </h3>
@@ -41,17 +37,15 @@ export function OrderSummary({
           <span className="text-foreground font-medium">{planLabel}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Mise en service</span>
+          <span className="text-muted-foreground">Création</span>
           <span className="text-foreground">{formatEur(creation)} €</span>
         </div>
-        {discountAmountCents > 0 && (
+        {discount > 0 && (
           <div className="flex justify-between">
             <span className="text-primary">
               Réduction parrainage (-{discountPercent}%)
             </span>
-            <span className="text-primary">
-              -{formatEur(discountAmountCents)} €
-            </span>
+            <span className="text-primary">-{formatEur(discount)} €</span>
           </div>
         )}
         <div className="flex justify-between">
@@ -60,16 +54,46 @@ export function OrderSummary({
           </span>
           <span className="text-foreground">{formatEur(maintenance)} €</span>
         </div>
-        <div className="border-t border-white/[0.06] my-2" />
-        <div className="flex justify-between">
-          <span className="text-foreground font-medium">Total</span>
-          <span className="text-foreground font-semibold text-base">
-            {formatEur(finalTotal)} €
-          </span>
-        </div>
-        <p className="text-[11px] text-muted-foreground/60 mt-1">
-          TVA non applicable, art. 293 B du CGI
-        </p>
+        <div className="border-t border-[color:var(--border)] my-2" />
+        {TVA_ENABLED ? (
+          <>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Sous-total HT</span>
+              <span className="text-foreground">{formatEur(subtotal)} €</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">
+                TVA ({TVA_RATE_PERCENT} %)
+              </span>
+              <span className="text-foreground">{formatEur(tva)} €</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-foreground font-medium">Total TTC</span>
+              <span className="text-foreground font-semibold text-base">
+                {formatEur(total)} €
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              TVA récupérable pour votre établissement.
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between">
+              <span className="text-foreground font-medium">Total</span>
+              <span className="text-foreground font-semibold text-base">
+                {formatEur(total)} €
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              TVA non applicable, art. 293 B du CGI
+            </p>
+          </>
+        )}
+      </div>
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-medium text-primary">
+        <BadgeCheck className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+        Votre site en direct, 0 % de commission sur vos commandes.
       </div>
     </div>
   );

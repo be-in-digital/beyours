@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  Monitor,
+  Plus,
+  Search,
+  Smartphone,
+  Star,
+  Tablet,
+} from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
 import { useCalendlyModal } from "@/lib/store";
 import type { Template, Category } from "@/lib/templates-data";
@@ -15,37 +27,78 @@ const viewConfig: Record<View, { width: string; label: string }> = {
   mobile: { width: "375px", label: "Mobile" },
 };
 
-function TemplateRenderer({ template, view }: { template: Template; view: View }) {
+/** Photo hero de la maquette, selon l'univers du template (préfixe du slug). */
+function heroPhotoFor(slug: string): string {
+  if (slug.startsWith("fast-food") || slug.startsWith("food-truck")) {
+    return "/photos/burger-premium.webp";
+  }
+  if (slug.startsWith("healthy")) {
+    return "/photos/salle-restaurant2.webp";
+  }
+  return "/photos/plat-gastronomie.webp";
+}
+
+/**
+ * Aperçu du site RESTAURANT vendu. Chaque template garde SON accent (prop).
+ * Scène sombre et premium, photo appétissante en héros, accent du template
+ * pour guider l'œil — jamais mint.
+ */
+function TemplateRenderer({
+  template,
+  view,
+}: {
+  template: Template;
+  view: View;
+}) {
   const [activeMenuCategory, setActiveMenuCategory] = useState(0);
   const isMobileView = view === "mobile";
   const isTabletView = view === "tablet";
+  const accent = template.accent;
+  const heroPhoto = heroPhotoFor(template.slug);
 
   return (
-    <div className="bg-[#0c0c0c] text-white overflow-y-auto max-h-[700px] scrollbar-thin">
-      {/* Template Navbar */}
-      <nav className="sticky top-0 z-20 border-b border-white/[0.06] bg-[#0c0c0c]/90 backdrop-blur-md">
-        <div className={`flex items-center justify-between ${isMobileView ? "px-4 py-3" : "px-8 py-4"}`}>
+    <div className="scrollbar-thin max-h-[700px] overflow-y-auto bg-[#181410] text-white">
+      {/* Navbar de la maquette */}
+      <nav className="sticky top-0 z-20 border-b border-white/10 bg-[#181410]/90 backdrop-blur-md">
+        <div
+          className={`flex items-center justify-between ${
+            isMobileView ? "px-4 py-3" : "px-8 py-4"
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg" style={{ background: `${template.accent}20`, border: `1px solid ${template.accent}40` }}>
-              <div className="w-full h-full flex items-center justify-center text-xs font-bold" style={{ color: template.accent }}>
-                {template.name[0]}
-              </div>
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold"
+              style={{
+                background: `${accent}22`,
+                border: `1px solid ${accent}44`,
+                color: accent,
+              }}
+            >
+              {template.name[0]}
             </div>
             {!isMobileView && (
               <span className="text-sm font-semibold">{template.name}</span>
             )}
           </div>
-          <div className={`flex items-center ${isMobileView ? "gap-3" : "gap-6"}`}>
+          <div
+            className={`flex items-center ${isMobileView ? "gap-3" : "gap-6"}`}
+          >
             {!isMobileView && (
               <>
-                <span className="text-xs text-white/50 hover:text-white/80 cursor-pointer transition-colors">Menu</span>
-                <span className="text-xs text-white/50 hover:text-white/80 cursor-pointer transition-colors">Commander</span>
-                <span className="text-xs text-white/50 hover:text-white/80 cursor-pointer transition-colors">Contact</span>
+                <span className="cursor-pointer text-xs text-white/60 transition-colors hover:text-white">
+                  Menu
+                </span>
+                <span className="cursor-pointer text-xs text-white/60 transition-colors hover:text-white">
+                  Commander
+                </span>
+                <span className="cursor-pointer text-xs text-white/60 transition-colors hover:text-white">
+                  Contact
+                </span>
               </>
             )}
             <div
-              className="text-xs font-medium px-3 py-1.5 rounded-full cursor-pointer transition-colors"
-              style={{ background: template.accent, color: "#000" }}
+              className="cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold text-black transition-transform hover:scale-105"
+              style={{ background: accent }}
             >
               {isMobileView ? "Reserver" : "Reserver une table"}
             </div>
@@ -53,96 +106,149 @@ function TemplateRenderer({ template, view }: { template: Template; view: View }
         </div>
       </nav>
 
-      {/* Template Hero */}
+      {/* Hero de la maquette — photo appétissante plein cadre */}
       <section className="relative overflow-hidden">
         <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: `radial-gradient(ellipse 80% 60% at 50% 20%, ${template.accent}15, transparent 70%)`,
-          }}
-        />
-        <div className={`relative ${isMobileView ? "px-4 py-12" : isTabletView ? "px-8 py-16" : "px-12 py-20"} text-center`}>
+          className={`relative w-full ${
+            isMobileView ? "h-64" : isTabletView ? "h-72" : "h-80"
+          }`}
+        >
+          <Image
+            src={heroPhoto}
+            alt={`Ambiance du restaurant ${template.name}`}
+            fill
+            sizes="(max-width: 768px) 100vw, 900px"
+            className="object-cover"
+          />
+          {/* Scrim pour lisibilité + teinte accent */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#181410] via-[#181410]/55 to-[#181410]/25" />
           <div
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-medium mb-4 border"
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
             style={{
-              color: template.accent,
-              borderColor: `${template.accent}30`,
-              background: `${template.accent}10`,
+              background: `radial-gradient(ellipse 90% 70% at 50% 0%, ${accent}30, transparent 65%)`,
             }}
+          />
+          <div
+            className={`absolute inset-0 flex flex-col items-center justify-center text-center ${
+              isMobileView
+                ? "px-4"
+                : isTabletView
+                  ? "px-8"
+                  : "px-12"
+            }`}
           >
-            Restaurant {template.name}
-          </div>
-          <h1 className={`font-bold leading-tight ${isMobileView ? "text-2xl" : isTabletView ? "text-3xl" : "text-4xl"}`}>
-            {template.hero.title}
-          </h1>
-          <p className={`mt-3 text-white/60 leading-relaxed ${isMobileView ? "text-xs" : "text-sm"} max-w-lg mx-auto`}>
-            {template.hero.subtitle}
-          </p>
-          <div className={`mt-6 flex ${isMobileView ? "flex-col" : "flex-row"} items-center justify-center gap-3`}>
             <div
-              className="px-5 py-2.5 rounded-full text-xs font-semibold cursor-pointer transition-all hover:brightness-110"
+              className="mb-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-medium backdrop-blur-sm"
               style={{
-                background: template.accent,
-                color: "#000",
-                boxShadow: `0 0 20px ${template.accent}40`,
+                color: accent,
+                borderColor: `${accent}55`,
+                background: `${accent}22`,
               }}
             >
-              Commander en ligne
+              <Star className="h-2.5 w-2.5 fill-current" />
+              Restaurant {template.name}
             </div>
-            <div className="px-5 py-2.5 rounded-full text-xs font-medium text-white/70 border border-white/10 cursor-pointer hover:border-white/20 transition-colors">
-              Voir la carte
+            <h1
+              className={`font-bold leading-tight text-white ${
+                isMobileView
+                  ? "text-2xl"
+                  : isTabletView
+                    ? "text-3xl"
+                    : "text-4xl"
+              }`}
+            >
+              {template.hero.title}
+            </h1>
+            <p
+              className={`mx-auto mt-3 max-w-lg leading-relaxed text-white/80 ${
+                isMobileView ? "text-xs" : "text-sm"
+              }`}
+            >
+              {template.hero.subtitle}
+            </p>
+            <div
+              className={`mt-6 flex items-center justify-center gap-3 ${
+                isMobileView ? "flex-col" : "flex-row"
+              }`}
+            >
+              <div
+                className="cursor-pointer rounded-full px-5 py-2.5 text-xs font-semibold text-black shadow-lg transition-transform hover:scale-105"
+                style={{
+                  background: accent,
+                  boxShadow: `0 10px 30px -8px ${accent}66`,
+                }}
+              >
+                Commander en ligne
+              </div>
+              <div className="cursor-pointer rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/20">
+                Voir la carte
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Menu Section */}
+      {/* Section menu */}
       <section className={`${isMobileView ? "px-4 py-8" : "px-8 py-12"}`}>
-        <div className="text-center mb-6">
-          <h2 className={`font-semibold ${isMobileView ? "text-lg" : "text-xl"}`}>Notre Carte</h2>
-          <p className="text-xs text-white/50 mt-1">Decouvrez nos specialites</p>
+        <div className="mb-6 text-center">
+          <h2
+            className={`font-semibold text-white ${
+              isMobileView ? "text-lg" : "text-xl"
+            }`}
+          >
+            Notre Carte
+          </h2>
+          <p className="mt-1 text-xs text-white/55">Decouvrez nos specialites</p>
         </div>
 
-        {/* Menu category tabs */}
-        <div className="flex justify-center gap-2 mb-6">
+        {/* Onglets de menu */}
+        <div className="mb-6 flex justify-center gap-2">
           {template.menu.categories.map((cat, i) => (
             <button
               key={cat.name}
               onClick={() => setActiveMenuCategory(i)}
-              className={`text-[11px] font-medium px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+              className={`cursor-pointer rounded-full px-3 py-1.5 text-[11px] font-medium transition-all ${
                 activeMenuCategory === i
                   ? "text-black"
-                  : "text-white/50 border border-white/10 hover:text-white/80"
+                  : "border border-white/15 text-white/60 hover:text-white"
               }`}
-              style={activeMenuCategory === i ? { background: template.accent } : undefined}
+              style={
+                activeMenuCategory === i ? { background: accent } : undefined
+              }
             >
               {cat.name}
             </button>
           ))}
         </div>
 
-        {/* Menu items */}
-        <div className="space-y-3 max-w-md mx-auto">
+        {/* Plats du menu */}
+        <div className="mx-auto max-w-md space-y-3">
           {template.menu.categories[activeMenuCategory]?.items.map((item) => (
             <div
               key={item.name}
-              className="group flex items-start justify-between gap-4 p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12] transition-all cursor-pointer"
+              className="group flex items-start justify-between gap-4 rounded-xl border border-[rgba(255,247,239,0.1)] bg-[rgba(255,247,239,0.05)] p-3 transition-all hover:border-[rgba(255,247,239,0.2)] hover:bg-[rgba(255,247,239,0.08)]"
             >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{item.name}</span>
-                </div>
-                <p className="text-[11px] text-white/45 mt-0.5 leading-relaxed">{item.description}</p>
+              <div className="min-w-0 flex-1">
+                <span className="text-sm font-medium text-white">
+                  {item.name}
+                </span>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-white/55">
+                  {item.description}
+                </p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-semibold" style={{ color: template.accent }}>{item.price} &euro;</span>
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ background: `${template.accent}20` }}
+              <div className="flex shrink-0 items-center gap-2">
+                <span
+                  className="text-sm font-semibold tabular-nums"
+                  style={{ color: accent }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={template.accent} strokeWidth="2" strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
+                  {item.price} &euro;
+                </span>
+                <div
+                  className="flex h-6 w-6 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+                  style={{ background: `${accent}26` }}
+                >
+                  <Plus className="h-3 w-3" strokeWidth={2.5} style={{ color: accent }} />
                 </div>
               </div>
             </div>
@@ -150,24 +256,41 @@ function TemplateRenderer({ template, view }: { template: Template; view: View }
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className={`border-t border-white/[0.06] ${isMobileView ? "px-4 py-6" : "px-8 py-8"}`}>
-        <div className={`flex ${isMobileView ? "flex-col gap-4" : "items-center justify-between"}`}>
+      {/* Footer de la maquette */}
+      <footer
+        className={`border-t border-white/10 ${
+          isMobileView ? "px-4 py-6" : "px-8 py-8"
+        }`}
+      >
+        <div
+          className={`flex ${
+            isMobileView ? "flex-col gap-4" : "items-center justify-between"
+          }`}
+        >
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 rounded" style={{ background: `${template.accent}20` }}>
-                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold" style={{ color: template.accent }}>
-                  {template.name[0]}
-                </div>
+            <div className="mb-2 flex items-center gap-2">
+              <div
+                className="flex h-6 w-6 items-center justify-center rounded text-[10px] font-bold"
+                style={{ background: `${accent}22`, color: accent }}
+              >
+                {template.name[0]}
               </div>
-              <span className="text-xs font-medium">{template.name}</span>
+              <span className="text-xs font-medium text-white">
+                {template.name}
+              </span>
             </div>
-            <p className="text-[10px] text-white/30">Powered by Be in Digital</p>
+            <p className="text-[10px] text-white/40">Powered by Be in Digital</p>
           </div>
           <div className="flex gap-4">
-            <span className="text-[10px] text-white/40 hover:text-white/70 cursor-pointer transition-colors">Instagram</span>
-            <span className="text-[10px] text-white/40 hover:text-white/70 cursor-pointer transition-colors">TikTok</span>
-            <span className="text-[10px] text-white/40 hover:text-white/70 cursor-pointer transition-colors">Google</span>
+            <span className="cursor-pointer text-[10px] text-white/50 transition-colors hover:text-white">
+              Instagram
+            </span>
+            <span className="cursor-pointer text-[10px] text-white/50 transition-colors hover:text-white">
+              TikTok
+            </span>
+            <span className="cursor-pointer text-[10px] text-white/50 transition-colors hover:text-white">
+              Google
+            </span>
           </div>
         </div>
       </footer>
@@ -175,137 +298,140 @@ function TemplateRenderer({ template, view }: { template: Template; view: View }
   );
 }
 
-export function TemplatePreview({ template, category }: { template: Template; category: Category }) {
+export function TemplatePreview({
+  template,
+  category,
+}: {
+  template: Template;
+  category: Category;
+}) {
   const [view, setView] = useState<View>("desktop");
   const { open: openCalendly } = useCalendlyModal();
 
+  const viewIcon: Record<View, typeof Monitor> = {
+    desktop: Monitor,
+    tablet: Tablet,
+    mobile: Smartphone,
+  };
+
   return (
     <section className="relative py-24 sm:py-32">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Back + info */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-section-radial"
+      />
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+        {/* Retour + info */}
         <FadeIn>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div className="flex items-center gap-4">
               <Link
                 href="/templates"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5M12 19l-7-7 7-7" />
-                </svg>
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.8} />
                 Templates
               </Link>
-              <div className="w-px h-5 bg-white/10" />
+              <div className="h-5 w-px bg-[color:var(--border)]" />
               <div className="flex items-center gap-2">
                 <span
-                  className="text-xs font-medium px-2.5 py-1 rounded-full border"
+                  className="rounded-full border px-2.5 py-1 text-xs font-medium"
                   style={{
                     color: category.color.replace("0.8", "1"),
-                    borderColor: category.color.replace("0.8", "0.3"),
+                    borderColor: category.color.replace("0.8", "0.28"),
                     background: category.color.replace("0.8", "0.1"),
                   }}
                 >
                   {category.label}
                 </span>
-                <h1 className="text-xl font-semibold">{template.name}</h1>
+                <h1 className="font-display text-xl font-semibold text-foreground">
+                  {template.name}
+                </h1>
               </div>
             </div>
 
             <button
               onClick={openCalendly}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-all duration-200 hover:brightness-110 shadow-[0_0_20px_rgba(82,207,175,0.2)] cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.5)] transition-all duration-200 hover:brightness-105"
             >
               Choisir ce template
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 13L13 1M13 1H3M13 1V11" />
-              </svg>
+              <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
             </button>
           </div>
         </FadeIn>
 
-        {/* Viewport switcher */}
+        {/* Sélecteur de viewport */}
         <FadeIn delay={0.1}>
-          <div className="flex items-center justify-center gap-2 mb-6">
-            {(Object.keys(viewConfig) as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                  view === v
-                    ? "bg-primary/15 text-primary border border-primary/30"
-                    : "bg-white/[0.04] text-muted-foreground border border-white/[0.08] hover:bg-white/[0.07] hover:text-foreground"
-                }`}
-              >
-                {v === "desktop" && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="20" height="14" x="2" y="3" rx="2" />
-                    <path d="M8 21h8M12 17v4" />
-                  </svg>
-                )}
-                {v === "tablet" && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="16" height="20" x="4" y="2" rx="2" />
-                    <path d="M12 18h.01" />
-                  </svg>
-                )}
-                {v === "mobile" && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="14" height="20" x="5" y="2" rx="2" />
-                    <path d="M12 18h.01" />
-                  </svg>
-                )}
-                {viewConfig[v].label}
-              </button>
-            ))}
+          <div className="mb-6 flex items-center justify-center gap-2">
+            {(Object.keys(viewConfig) as View[]).map((v) => {
+              const Icon = viewIcon[v];
+              const isActive = view === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-all ${
+                    isActive
+                      ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary"
+                      : "border border-[color:var(--border)] bg-surface-1 text-muted-foreground hover:border-[color:var(--border-contrast)] hover:bg-surface-2 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  {viewConfig[v].label}
+                </button>
+              );
+            })}
           </div>
         </FadeIn>
 
-        {/* Preview frame */}
+        {/* Cadre d'aperçu */}
         <FadeIn delay={0.2}>
           <div className="flex justify-center">
             <motion.div
-              className="relative rounded-2xl border border-white/[0.1] bg-white/[0.02] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.3)]"
+              className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 shadow-[0_30px_70px_-30px_rgba(112,60,34,0.5)]"
               animate={{ width: viewConfig[view].width }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               style={{ maxWidth: "100%" }}
             >
-              {/* Browser chrome */}
-              <div className="flex items-center gap-2 px-4 py-3 bg-white/[0.03] border-b border-white/[0.06]">
+              {/* Barre navigateur */}
+              <div className="flex items-center gap-2 border-b border-[color:var(--border)] bg-surface-2 px-4 py-3">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-white/10" />
-                  <div className="w-3 h-3 rounded-full bg-white/10" />
-                  <div className="w-3 h-3 rounded-full bg-white/10" />
+                  <div className="h-3 w-3 rounded-full bg-surface-4" />
+                  <div className="h-3 w-3 rounded-full bg-surface-4" />
+                  <div className="h-3 w-3 rounded-full bg-surface-4" />
                 </div>
-                <div className="flex-1 mx-4">
-                  <div className="h-6 rounded-full bg-white/[0.05] border border-white/[0.08] flex items-center px-3">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/30 mr-2" strokeLinecap="round">
-                      <circle cx="11" cy="11" r="8" />
-                      <path d="m21 21-4.3-4.3" />
-                    </svg>
-                    <span className="text-[10px] text-white/30">{template.slug}.beindigital.fr</span>
+                <div className="mx-4 flex-1">
+                  <div className="flex h-6 items-center rounded-full border border-[color:var(--border)] bg-background px-3">
+                    <Search
+                      className="mr-2 h-2.5 w-2.5 text-muted-foreground"
+                      strokeWidth={2}
+                    />
+                    <span className="text-[10px] text-muted-foreground">
+                      {template.slug}.beindigital.fr
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Template content */}
+              {/* Contenu de la maquette */}
               <TemplateRenderer template={template} view={view} />
             </motion.div>
           </div>
         </FadeIn>
 
-        {/* Features tags */}
+        {/* Fonctionnalités incluses */}
         <FadeIn delay={0.3}>
           <div className="mt-10 text-center">
-            <p className="text-sm text-muted-foreground mb-4">Fonctionnalites incluses</p>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Fonctionnalites incluses
+            </p>
             <div className="flex flex-wrap justify-center gap-2">
               {template.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-muted-foreground"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-secondary px-3 py-1.5 text-xs text-secondary-foreground"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
+                  <Check className="h-3 w-3 text-primary" strokeWidth={2.5} />
                   {tag}
                 </span>
               ))}

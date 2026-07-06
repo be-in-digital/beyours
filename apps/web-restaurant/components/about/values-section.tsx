@@ -48,17 +48,17 @@ const values = [
 
 export function ValuesSection() {
   return (
-    <section className="relative py-16 sm:py-24 lg:py-32 overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-primary/[0.02] rounded-full blur-[100px]" />
-      </div>
+    <section className="relative overflow-hidden py-16 sm:py-24 lg:py-32">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-section-radial"
+      />
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
         <FadeIn>
           <SectionBadge text="Nos valeurs" />
-          <div className="text-center max-w-3xl mx-auto mt-6 mb-16 lg:mb-20">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.1]">
+          <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
+            <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Ce qui nous{" "}
               <span className="text-primary">guide au quotidien</span>
             </h2>
@@ -67,20 +67,20 @@ export function ValuesSection() {
 
         <StaggerContainer
           stagger={0.08}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+          className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
         >
           {values.map((value) => (
             <StaggerItem key={value.title}>
-              <div className="group relative h-full p-6 rounded-xl bg-white/[0.015] border border-white/[0.06] hover:bg-white/[0.03] hover:border-primary/15 transition-all duration-300">
+              <div className="group h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1">
                 <div className="flex items-start gap-4">
-                  <span className="text-2xl font-bold text-primary/20 group-hover:text-primary/40 transition-colors duration-300 leading-none mt-0.5">
+                  <span className="mt-0.5 font-display text-2xl font-bold leading-none text-primary/30 transition-colors duration-300 group-hover:text-primary">
                     {value.keyword}
                   </span>
                   <div className="flex-1">
-                    <h3 className="text-base font-semibold mb-2">
+                    <h3 className="mb-2 font-display text-base font-semibold text-foreground">
                       {value.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
                       {value.description}
                     </p>
                   </div>

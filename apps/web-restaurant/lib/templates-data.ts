@@ -120,7 +120,7 @@ export const categories: Category[] = [
               items: [
                 { name: "Regina", description: "Tomate, mozzarella, jambon, champignons, olives", price: "13,90" },
                 { name: "Capricciosa", description: "Artichaut, jambon, champignons, olives, mozzarella", price: "14,90" },
-                { name: "Bambino", description: "Tomate, mozzarella — pour les enfants", price: "8,90" },
+                { name: "Bambino", description: "Tomate, mozzarella, pour les enfants", price: "8,90" },
               ],
             },
           ],
@@ -250,8 +250,8 @@ export const categories: Category[] = [
             {
               name: "Sushi & Sashimi",
               items: [
-                { name: "Assortiment 12 pieces", description: "Saumon, thon, crevette, daurade — nigiri & maki", price: "18,90" },
-                { name: "Sashimi Premium", description: "Thon rouge, saumon sauvage, hamachi — 15 pieces", price: "24,90" },
+                { name: "Assortiment 12 pieces", description: "Saumon, thon, crevette, daurade, nigiri & maki", price: "18,90" },
+                { name: "Sashimi Premium", description: "Thon rouge, saumon sauvage, hamachi, 15 pieces", price: "24,90" },
                 { name: "California Roll", description: "Avocat, surimi, concombre, sesame", price: "12,90" },
               ],
             },
@@ -310,9 +310,9 @@ export const categories: Category[] = [
             {
               name: "Dim Sum",
               items: [
-                { name: "Ha Gow", description: "Raviolis crevette cristal — 4 pieces", price: "9,90" },
-                { name: "Siu Mai", description: "Bouchees porc & crevette — 4 pieces", price: "8,90" },
-                { name: "Char Siu Bao", description: "Brioche vapeur au porc laque — 3 pieces", price: "7,90" },
+                { name: "Ha Gow", description: "Raviolis crevette cristal, 4 pieces", price: "9,90" },
+                { name: "Siu Mai", description: "Bouchees porc & crevette, 4 pieces", price: "8,90" },
+                { name: "Char Siu Bao", description: "Brioche vapeur au porc laque, 3 pieces", price: "7,90" },
               ],
             },
             {

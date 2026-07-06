@@ -1,193 +1,85 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCalendlyModal } from "@/lib/store";
 import { FadeIn } from "@/components/ui/motion";
 import { MagneticButton } from "@/components/ui/magnetic-button";
 
-function CtaContent() {
+export function CtaSection() {
   const { open: openCalendly } = useCalendlyModal();
 
   return (
-    <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
-      {/* Decorative badge */}
-      <FadeIn direction="down">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/[0.06] mb-8">
-          <div className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse" />
-          <span className="text-xs text-primary/80 font-medium">
-            Appel découverte gratuit &bull; Sans engagement
-          </span>
+    <section id="cta" className="relative px-4 py-20 sm:px-6 sm:py-28">
+      <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem]">
+        {/* Photo d'ambiance restaurant — présente, pas noyée */}
+        <Image
+          src="/photos/salle-restaurant2.webp"
+          alt=""
+          fill
+          sizes="(max-width: 1152px) 100vw, 1152px"
+          className="object-cover brightness-[1.15] saturate-[1.05]"
+        />
+        {/* Scrim chaud pour la lisibilité */}
+        <div className="absolute inset-0 bg-[color:var(--olive)]/65" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-[color:var(--olive)]/95 via-[color:var(--olive)]/55 to-primary/30" />
+        {/* Lueur terracotta */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-28 right-[-4rem] h-80 w-80 rounded-full bg-primary/30 blur-[110px]"
+        />
+        <div className="noise-overlay" aria-hidden="true" />
+
+        <div className="relative z-10 mx-auto max-w-2xl px-6 py-20 text-center sm:py-24">
+          <FadeIn direction="down">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-4 py-1.5">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+              <span className="text-xs font-medium text-[color:var(--primary-100)]">
+                Appel découverte gratuit · Sans engagement
+              </span>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+            <h2 className="font-display text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-balance text-white sm:text-5xl lg:text-[3.4rem]">
+              Prêt à vendre <span className="text-primary-300">sans commission</span> ?
+            </h2>
+          </FadeIn>
+
+          <FadeIn delay={0.2}>
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[color:var(--primary-100)]/80 sm:text-lg">
+              On fait le point sur votre présence digitale, on vous montre le
+              produit en direct, et on chiffre ce que la vente sans commission
+              changerait pour votre restaurant.
+            </p>
+          </FadeIn>
+
+          <FadeIn
+            delay={0.3}
+            className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
+          >
+            <MagneticButton
+              onClick={openCalendly}
+              strength={22}
+              className="bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] hover:brightness-105"
+            >
+              Réserver un appel
+              <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M1 13L13 1M13 1H3M13 1V11" />
+              </svg>
+            </MagneticButton>
+            <Link
+              href="/templates"
+              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-6 py-3.5 text-base font-medium text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/[0.12]"
+            >
+              Voir des exemples de sites
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </FadeIn>
         </div>
-      </FadeIn>
-
-      <FadeIn delay={0.1}>
-        <h2 className="text-balance text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-medium tracking-[-0.03em] leading-[1.08]">
-          Prêt à vendre{" "}
-          <span className="font-serif italic text-primary">sans commission</span>&nbsp;?
-        </h2>
-      </FadeIn>
-      <FadeIn delay={0.2}>
-        <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
-          Réservez un appel : on fait le point sur votre présence digitale,
-          on vous montre le produit en direct et on chiffre ce que la vente
-          sans commission changerait pour votre restaurant.
-        </p>
-      </FadeIn>
-
-      <FadeIn delay={0.3} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-        <MagneticButton
-          onClick={openCalendly}
-          strength={24}
-          className="bg-primary text-primary-foreground px-8 py-4 text-base glow-primary hover:brightness-110"
-        >
-          Réserver un appel
-          <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M1 13L13 1M13 1H3M13 1V11" />
-          </svg>
-        </MagneticButton>
-        <Link
-          href="/templates"
-          className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--border-subtle)] bg-white/[0.02] px-6 py-3 text-sm text-foreground hover:bg-white/[0.05] hover:border-[color:var(--border-contrast)] transition-colors duration-300"
-        >
-          Voir des exemples de sites
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </Link>
-      </FadeIn>
-    </div>
-  );
-}
-
-export function CtaSection() {
-  return (
-    <section id="cta" className="relative py-20 sm:py-32 lg:py-44 overflow-hidden">
-      {/* ── Deep dark base ── */}
-      <div className="absolute inset-0 bg-[#060608]" />
-
-      {/* ── Chef aux fourneaux — l'humain derrière le produit ── */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-cover bg-center opacity-[0.22]"
-        style={{
-          backgroundImage: "url(/photos/chef-flammes.webp)",
-          maskImage:
-            "radial-gradient(ellipse 90% 85% at 50% 45%, black 25%, transparent 78%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 90% 85% at 50% 45%, black 25%, transparent 78%)",
-        }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#060608]/70 via-transparent to-[#060608]/80" />
-
-      {/* ── Perspective grid floor ── */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(82,207,175,0.06) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(82,207,175,0.06) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-          backgroundPosition: "center center",
-          transform: "perspective(500px) rotateX(55deg) translateY(100px)",
-          transformOrigin: "center top",
-          maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 80%)",
-        }}
-      />
-
-      {/* ── Vertical light streaks ── */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Center beam */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-0 w-[2px] h-full"
-          style={{
-            background: "linear-gradient(to bottom, transparent 0%, rgba(82,207,175,0.12) 30%, rgba(82,207,175,0.06) 60%, transparent 100%)",
-          }}
-        />
-        {/* Left beam */}
-        <div
-          className="absolute left-[20%] top-0 w-px h-full"
-          style={{
-            background: "linear-gradient(to bottom, transparent 10%, rgba(82,207,175,0.05) 40%, transparent 80%)",
-          }}
-        />
-        {/* Right beam */}
-        <div
-          className="absolute right-[20%] top-0 w-px h-full"
-          style={{
-            background: "linear-gradient(to bottom, transparent 10%, rgba(82,207,175,0.05) 40%, transparent 80%)",
-          }}
-        />
-        {/* Far left beam */}
-        <div
-          className="absolute left-[8%] top-0 w-px h-full opacity-50"
-          style={{
-            background: "linear-gradient(to bottom, transparent 20%, rgba(82,207,175,0.04) 50%, transparent 90%)",
-          }}
-        />
-        {/* Far right beam */}
-        <div
-          className="absolute right-[8%] top-0 w-px h-full opacity-50"
-          style={{
-            background: "linear-gradient(to bottom, transparent 20%, rgba(82,207,175,0.04) 50%, transparent 90%)",
-          }}
-        />
       </div>
-
-      {/* ── Central glow orb ── */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] pointer-events-none">
-        <div className="absolute inset-0 bg-primary/[0.06] rounded-full blur-[80px]" />
-        <div className="absolute inset-[15%] bg-primary/[0.04] rounded-full blur-[80px]" />
-      </div>
-
-      {/* ── Top horizontal light streak ── */}
-      <div
-        className="absolute top-[30%] left-0 right-0 h-px pointer-events-none"
-        style={{
-          background: "linear-gradient(90deg, transparent 10%, rgba(82,207,175,0.08) 30%, rgba(82,207,175,0.15) 50%, rgba(82,207,175,0.08) 70%, transparent 90%)",
-        }}
-      />
-      {/* ── Bottom horizontal light streak ── */}
-      <div
-        className="absolute bottom-[30%] left-0 right-0 h-px pointer-events-none"
-        style={{
-          background: "linear-gradient(90deg, transparent 15%, rgba(82,207,175,0.06) 35%, rgba(82,207,175,0.1) 50%, rgba(82,207,175,0.06) 65%, transparent 85%)",
-        }}
-      />
-
-      {/* ── Corner glow accents ── */}
-      <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-primary/[0.02] rounded-full blur-[60px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-primary/[0.02] rounded-full blur-[60px] pointer-events-none" />
-
-      {/* ── Dot pattern overlay ── */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-30"
-        style={{
-          backgroundImage: "radial-gradient(rgba(82,207,175,0.15) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-          maskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, black 20%, transparent 70%)",
-          WebkitMaskImage: "radial-gradient(ellipse 50% 50% at 50% 50%, black 20%, transparent 70%)",
-        }}
-      />
-
-      {/* ── Content ── */}
-      <CtaContent />
-
-      {/* ── Bottom fade to background ── */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, transparent, var(--background))",
-        }}
-      />
-      {/* ── Top fade from background ── */}
-      <div
-        className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
-        style={{
-          background: "linear-gradient(to top, transparent, var(--background))",
-        }}
-      />
     </section>
   );
 }

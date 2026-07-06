@@ -45,7 +45,7 @@ export const paymentOptions: PaymentOption[] = [
   {
     slug: "klarna",
     label: "Klarna",
-    description: "Payez en 3x (achat personnel uniquement)",
+    description: "Payez en 3x (achat en nom propre uniquement)",
     installments: [3],
   },
 ];
@@ -59,7 +59,18 @@ export function getInstallmentAmount(
   return Math.ceil(totalCents / installments);
 }
 
-/* ── Prix des plans (en centimes) ── */
+/* ── TVA ── */
+/* Tous les prix (planPrices, pricing-data) s'entendent HT.
+   Tant que la structure est en franchise en base (art. 293 B du CGI),
+   le flag reste off : aucune TVA n'est ajoutée et le checkout affiche
+   la mention légale. Le jour de l'assujettissement (société au réel),
+   activer NEXT_PUBLIC_TVA_ENABLED=true côté Next ET STRIPE_TAX_ENABLED=true
+   côté Convex (voir convex/stripe.ts) — les deux vont ensemble. */
+
+export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
+export const TVA_RATE_PERCENT = 20;
+
+/* ── Prix des plans (en centimes, HT) ── */
 
 export const planPrices = {
   essentielle: {
@@ -89,5 +100,46 @@ export function getFirstPaymentBreakdown(
     creation: prices.creation,
     maintenance,
     total: prices.creation + maintenance,
+  };
+}
+
+/* ── Totaux checkout (remise parrainage + TVA éventuelle) ──
+   Source unique pour le récapitulatif et les montants d'échéances,
+   afin que l'aperçu 2x/3x/4x reflète exactement ce que Stripe
+   facturera (remise déduite, TVA incluse si applicable). */
+
+export function getCheckoutTotals(
+  plan: "essentielle" | "premium",
+  billingPeriod: BillingPeriod,
+  discountPercent?: number,
+): {
+  creation: number;
+  maintenance: number;
+  discount: number;
+  /** HT après remise */
+  subtotal: number;
+  tva: number;
+  /** Montant réellement débité (TTC si TVA active, sinon = subtotal) */
+  total: number;
+} {
+  const { creation, maintenance } = getFirstPaymentBreakdown(
+    plan,
+    billingPeriod,
+  );
+  const discount =
+    discountPercent && discountPercent > 0
+      ? Math.round((creation * discountPercent) / 100)
+      : 0;
+  const subtotal = creation + maintenance - discount;
+  const tva = TVA_ENABLED
+    ? Math.round((subtotal * TVA_RATE_PERCENT) / 100)
+    : 0;
+  return {
+    creation,
+    maintenance,
+    discount,
+    subtotal,
+    tva,
+    total: subtotal + tva,
   };
 }

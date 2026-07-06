@@ -11,8 +11,9 @@ const options: { value: BuyerType; label: string; description: string }[] = [
   },
   {
     value: "personal",
-    label: "À titre personnel",
-    description: "Achat en nom propre, pour un usage personnel",
+    label: "Restaurant en cours de création",
+    description:
+      "Pas encore immatriculé ? Achetez en nom propre, en attendant votre SIRET",
   },
 ];
 
@@ -37,10 +38,11 @@ export function BuyerTypeSelector({
               type="button"
               whileTap={{ scale: 0.98 }}
               onClick={() => onChange(option.value)}
-              className={`relative h-full text-left rounded-xl border p-4 transition-all cursor-pointer ${
+              aria-pressed={selected}
+              className={`relative h-full text-left rounded-2xl border p-4 transition-all cursor-pointer ${
                 selected
-                  ? "border-primary/40 bg-primary/[0.06] shadow-[0_0_20px_rgba(82,207,175,0.08)]"
-                  : "border-white/[0.08] bg-white/[0.02] hover:border-white/[0.15]"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                  : "border-[color:var(--border)] bg-surface-1 hover:bg-secondary"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -48,7 +50,7 @@ export function BuyerTypeSelector({
                   className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
                     selected
                       ? "border-primary bg-primary"
-                      : "border-white/[0.2]"
+                      : "border-[color:var(--border-contrast)]"
                   }`}
                 >
                   {selected && (
@@ -57,11 +59,11 @@ export function BuyerTypeSelector({
                 </div>
                 <div>
                   <div
-                    className={`text-sm font-medium ${selected ? "text-foreground" : "text-muted-foreground"}`}
+                    className={`text-sm font-medium ${selected ? "text-foreground" : "text-secondary-foreground"}`}
                   >
                     {option.label}
                   </div>
-                  <div className="text-xs text-muted-foreground/70 mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     {option.description}
                   </div>
                 </div>

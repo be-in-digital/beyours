@@ -73,7 +73,7 @@ export default function PartagePage() {
   }
 
   function getShareText() {
-    return `Découvrez Be in Digital, la plateforme digitale premium pour restaurants ! Utilisez mon code ${code} pour bénéficier d'une réduction sur la mise en service : ${referralLink}`;
+    return `Découvrez Be in Digital, la plateforme digitale premium pour restaurants ! Utilisez mon code ${code} pour bénéficier d'une réduction sur la création : ${referralLink}`;
   }
 
   if (isLoading || !isAuthenticated || referralCode === undefined) {

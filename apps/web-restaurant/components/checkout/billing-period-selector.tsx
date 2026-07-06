@@ -25,11 +25,11 @@ export function BillingPeriodSelector({
           onClick={() =>
             onChange(value === "monthly" ? "yearly" : "monthly")
           }
-          className="relative w-14 h-7 rounded-full bg-white/[0.08] border border-white/[0.1] transition-colors cursor-pointer"
+          className="relative w-14 h-7 rounded-full bg-surface-3 border border-[color:var(--border)] transition-colors cursor-pointer"
           aria-label="Basculer entre mensuel et annuel"
         >
           <div
-            className={`absolute top-0.5 w-6 h-6 rounded-full bg-primary shadow-[0_0_12px_rgba(82,207,175,0.4)] transition-all duration-300 ${
+            className={`absolute top-0.5 w-6 h-6 rounded-full bg-primary shadow-[0_2px_8px_rgba(112,60,34,0.35)] transition-all duration-300 ${
               value === "yearly" ? "left-[calc(100%-1.625rem)]" : "left-0.5"
             }`}
           />

@@ -60,7 +60,7 @@ export function PricingModel() {
         >
           {modelPoints.map((point) => (
             <StaggerItem key={point.title}>
-              <div className="relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 text-center h-full">
+              <div className="relative rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 text-center h-full shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
                   {point.icon}
                 </div>

@@ -2,6 +2,7 @@
 
 import { ConvexReactClient } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { MotionConfig } from "framer-motion";
 import { ReactNode } from "react";
 
 const convexUrl =
@@ -10,5 +11,10 @@ const convexUrl =
 const convex = new ConvexReactClient(convexUrl);
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  return <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>;
+  return (
+    <ConvexAuthProvider client={convex}>
+      {/* Respecte prefers-reduced-motion sur toutes les animations framer-motion */}
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
+    </ConvexAuthProvider>
+  );
 }

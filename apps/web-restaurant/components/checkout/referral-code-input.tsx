@@ -46,7 +46,7 @@ export function ReferralCodeInput() {
 
   if (appliedReferral) {
     return (
-      <div className="rounded-lg border border-primary/20 bg-primary/[0.04] px-4 py-3">
+      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -58,7 +58,7 @@ export function ReferralCodeInput() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              -{appliedReferral.discountPercent}% sur la mise en service
+              -{appliedReferral.discountPercent}% sur la création
             </p>
           </div>
           <button
@@ -74,17 +74,27 @@ export function ReferralCodeInput() {
 
   return (
     <div className="space-y-2">
+      <label
+        htmlFor="referral-code"
+        className="block text-sm font-medium text-foreground"
+      >
+        Code parrainage{" "}
+        <span className="font-normal text-muted-foreground">(optionnel)</span>
+      </label>
       <div className="flex gap-2">
         <input
           type="text"
+          id="referral-code"
           value={referralInput}
           onChange={(e) => {
             setReferralInput(e.target.value);
             if (referralError) setReferralError(null);
           }}
-          placeholder="Code parrainage"
+          placeholder="Votre code"
           disabled={referralStatus === "checking"}
-          className="flex-1 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary/40 focus:bg-white/[0.06] disabled:opacity-50"
+          aria-invalid={referralError ? true : undefined}
+          aria-describedby={referralError ? "referral-error" : undefined}
+          className="flex-1 rounded-xl border border-[color:var(--border)] bg-surface-1 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] disabled:opacity-50"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -95,7 +105,7 @@ export function ReferralCodeInput() {
         <button
           onClick={handleApply}
           disabled={referralStatus === "checking" || !referralInput.trim()}
-          className="rounded-lg border border-white/[0.1] bg-white/[0.04] px-4 py-2 text-sm text-foreground transition-colors hover:bg-white/[0.08] disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          className="rounded-full border border-[color:var(--border-contrast)] bg-surface-2 px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-3 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           {referralStatus === "checking" ? (
             <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
@@ -105,7 +115,12 @@ export function ReferralCodeInput() {
         </button>
       </div>
       {referralError && (
-        <p className="text-xs text-red-400">{referralError}</p>
+        <p
+          id="referral-error"
+          className="text-xs text-[color:var(--destructive)]"
+        >
+          {referralError}
+        </p>
       )}
     </div>
   );

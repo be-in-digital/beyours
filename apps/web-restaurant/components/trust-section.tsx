@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Utensils } from "lucide-react";
 import { SectionBadge } from "@/components/ui/section-badge";
 import { FadeIn, ScaleIn } from "@/components/ui/motion";
 import { MobileCarousel } from "@/components/ui/mobile-carousel";
+import { Tilt3D } from "@/components/ui/tilt-3d";
 
 const proofs = [
   {
@@ -100,7 +102,7 @@ export function TrustSection() {
         <FadeIn>
           <SectionBadge text="Pourquoi Be in Digital" />
           <div className="text-center max-w-3xl mx-auto mt-6 mb-16 lg:mb-20">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.1]">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.9rem] font-semibold tracking-[-0.02em] leading-[1.1]">
               Pensé pour la restauration.{" "}
               <span className="text-primary">Construit pour durer.</span>
             </h2>
@@ -150,8 +152,8 @@ export function TrustSection() {
                       y2="200"
                       stroke={
                         hovered === i
-                          ? "rgba(82,207,175,0.35)"
-                          : "rgba(82,207,175,0.08)"
+                          ? "rgba(197,84,44,0.45)"
+                          : "rgba(197,84,44,0.16)"
                       }
                       strokeWidth="1"
                       style={{ transition: "stroke 0.3s ease" }}
@@ -177,8 +179,8 @@ export function TrustSection() {
                       y2="200"
                       stroke={
                         hovered === i
-                          ? "rgba(82,207,175,0.35)"
-                          : "rgba(82,207,175,0.08)"
+                          ? "rgba(197,84,44,0.45)"
+                          : "rgba(197,84,44,0.16)"
                       }
                       strokeWidth="1"
                       style={{ transition: "stroke 0.3s ease" }}
@@ -253,45 +255,64 @@ export function TrustSection() {
 
 function CentralSeal({ keyword }: { keyword: string | null }) {
   return (
-    <div className="relative w-[240px] h-[240px] sm:w-[280px] sm:h-[280px] flex items-center justify-center shrink-0">
-      {/* Outer glow ring */}
-      <div className="absolute inset-0 rounded-full bg-primary/[0.03] border border-primary/10" />
-      <div className="absolute inset-3 rounded-full border border-primary/[0.06]" />
-
-      {/* Rotating dashed ring */}
-      <svg className="absolute inset-0 w-full h-full animate-[spin_60s_linear_infinite]" viewBox="0 0 280 280">
-        <circle
-          cx="140"
-          cy="140"
-          r="120"
-          fill="none"
-          stroke="rgba(82,207,175,0.08)"
-          strokeWidth="1"
-          strokeDasharray="8 12"
-        />
-      </svg>
-
-      {/* Inner glass panel */}
-      <div className="relative w-[160px] h-[160px] sm:w-[180px] sm:h-[180px] rounded-full bg-white/[0.02] backdrop-blur-sm border border-white/[0.08] flex flex-col items-center justify-center shadow-[0_0_80px_rgba(82,207,175,0.08)]">
-        {/* Icon */}
-        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mb-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-          </svg>
-        </div>
-        <span className="text-sm sm:text-base font-semibold text-foreground">
-          Restaurant-first
-        </span>
-        {/* Keyword that changes on hover */}
-        <span
-          className="mt-1 text-[11px] text-primary/60 font-medium transition-all duration-300 h-4"
+    <div className="flex shrink-0 flex-col items-center">
+      {/* Médaillon en profondeur : perspective + calques étagés (translateZ),
+          incliné vers la souris — même langage 3D que le storefront du hero */}
+      <Tilt3D maxTilt={13} scale={1.02} className="animate-float">
+        <div
+          className="relative grid h-[240px] w-[240px] place-items-center sm:h-[270px] sm:w-[270px]"
+          style={{ transformStyle: "preserve-3d" }}
         >
-          {keyword ?? "by design"}
-        </span>
-      </div>
+          {/* Disque de base */}
+          <div className="absolute inset-0 rounded-full border border-[color:var(--border)] bg-surface-1 shadow-[0_36px_80px_-32px_rgba(112,60,34,0.55)]" />
+          {/* Halo chaud interne */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-8 rounded-full bg-primary/[0.06]"
+            style={{ transform: "translateZ(14px)" }}
+          />
 
-      {/* Glow pulse behind */}
-      <div className="absolute inset-0 rounded-full bg-primary/[0.04] blur-[40px] pointer-events-none" />
+          {/* Anneau tireté rotatif — calque intermédiaire */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-3"
+            style={{ transform: "translateZ(26px)" }}
+          >
+            <svg
+              className="h-full w-full animate-[spin_50s_linear_infinite]"
+              viewBox="0 0 100 100"
+            >
+              <circle
+                cx="50"
+                cy="50"
+                r="47"
+                fill="none"
+                stroke="rgba(197,84,44,0.28)"
+                strokeWidth="0.8"
+                strokeDasharray="3 4"
+              />
+            </svg>
+          </div>
+
+          {/* Cœur du médaillon — calque le plus proche */}
+          <div
+            className="relative flex flex-col items-center"
+            style={{ transform: "translateZ(48px)" }}
+          >
+            <span className="grid h-20 w-20 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_36px_-14px_rgba(197,84,44,0.65)]">
+              <Utensils className="h-8 w-8" strokeWidth={1.7} />
+            </span>
+            {/* Mot-clé du pilier survolé — visible uniquement au survol des cartes */}
+            <span
+              className={`mt-3 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-all duration-300 ${
+                keyword ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
+              }`}
+            >
+              {keyword ?? " "}
+            </span>
+          </div>
+        </div>
+      </Tilt3D>
     </div>
   );
 }
@@ -315,8 +336,8 @@ function ProofCard({ proof, index, hovered, onHover, side }: ProofCardProps) {
     <div
       className={`relative h-full p-5 rounded-xl border transition-all duration-300 cursor-default ${
         isActive
-          ? "bg-white/[0.04] border-primary/20 shadow-[0_0_30px_rgba(82,207,175,0.06)]"
-          : "bg-white/[0.015] border-white/[0.06] hover:bg-white/[0.03]"
+          ? "bg-surface-1 border-primary/30 shadow-[0_14px_36px_-20px_rgba(197,84,44,0.4)]"
+          : "bg-surface-1 border-[color:var(--border)] hover:bg-secondary"
       }`}
       onMouseEnter={() => onHover(index)}
       onMouseLeave={() => onHover(null)}
@@ -326,7 +347,7 @@ function ProofCard({ proof, index, hovered, onHover, side }: ProofCardProps) {
           className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-all duration-300 ${
             isActive
               ? "bg-primary/15 border border-primary/25 text-primary"
-              : "bg-white/[0.04] border border-white/[0.08] text-muted-foreground/60"
+              : "bg-secondary border border-[color:var(--border)] text-muted-foreground"
           }`}
         >
           {proof.icon}
@@ -339,7 +360,7 @@ function ProofCard({ proof, index, hovered, onHover, side }: ProofCardProps) {
           >
             {proof.title}
           </h3>
-          <p className="text-xs text-muted-foreground/60 leading-relaxed mt-1">
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">
             {proof.description}
           </p>
         </div>

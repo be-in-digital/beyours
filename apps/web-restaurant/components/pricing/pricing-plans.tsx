@@ -7,14 +7,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { plans, formatPrice, type BillingPeriod } from "./pricing-data";
+import { TVA_ENABLED } from "@/lib/payment-providers";
 import { useCalendlyModal, useDevMode } from "@/lib/store";
-import { SectionBadge } from "@/components/ui/section-badge";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
-export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
+export function PricingPlans({
+  showHeader = false,
+  ctaMode = "call",
+}: {
+  showHeader?: boolean;
+  /** "call" = ouvre Calendly (home) · "checkout" = mène au paiement (page Tarifs) */
+  ctaMode?: "call" | "checkout";
+}) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const { open: openCalendly } = useCalendlyModal();
   const devMode = useDevMode((s) => s.enabled);
+  const goCheckout = ctaMode === "checkout" || devMode;
 
 
   return (
@@ -26,8 +34,8 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
         {/* Optional section header (used on homepage) */}
         {showHeader && (
           <FadeIn className="text-center mb-10">
-            <SectionBadge text="Tarification" />
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-[-0.03em] leading-[1.1] mt-6">
+            <p className="text-sm font-semibold text-primary">Tarification</p>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.9rem] font-semibold tracking-[-0.02em] leading-[1.1] mt-3">
               Des offres pensées pour{" "}
               <span className="text-primary">votre croissance</span>
             </h2>
@@ -49,11 +57,11 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
             onClick={() =>
               setBilling((b) => (b === "monthly" ? "yearly" : "monthly"))
             }
-            className="relative w-14 h-7 rounded-full bg-white/[0.08] border border-white/[0.1] transition-colors cursor-pointer"
+            className="relative w-14 h-7 rounded-full bg-surface-3 border border-[color:var(--border)] transition-colors cursor-pointer"
             aria-label="Basculer entre mensuel et annuel"
           >
             <div
-              className={`absolute top-0.5 w-6 h-6 rounded-full bg-primary shadow-[0_0_12px_rgba(82,207,175,0.4)] transition-all duration-300 ${
+              className={`absolute top-0.5 w-6 h-6 rounded-full bg-primary shadow-[0_2px_8px_rgba(112,60,34,0.35)] transition-all duration-300 ${
                 billing === "yearly" ? "left-[calc(100%-1.625rem)]" : "left-0.5"
               }`}
             />
@@ -88,15 +96,15 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                 <div
                   className={`relative h-full rounded-2xl border p-6 sm:p-8 flex flex-col ${
                     plan.comingSoon
-                      ? "border-white/[0.06] bg-white/[0.01]"
+                      ? "border-[color:var(--border)] bg-surface-1/60"
                       : plan.featured
-                        ? "border-primary/30 bg-primary/[0.04] shadow-[0_0_60px_rgba(82,207,175,0.08)]"
-                        : "border-white/[0.08] bg-white/[0.02]"
+                        ? "border-primary/40 bg-surface-1 shadow-[0_24px_60px_-28px_rgba(197,84,44,0.45)] ring-1 ring-primary/15"
+                        : "border-[color:var(--border)] bg-surface-1 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
                   }`}
                 >
                   {/* Badge */}
                   {plan.comingSoon ? (
-                    <div className="absolute -top-3 left-6 px-3 py-1 bg-white/[0.1] border border-white/[0.15] text-muted-foreground text-xs font-semibold rounded-full">
+                    <div className="absolute -top-3 left-6 px-3 py-1 bg-surface-3 border border-[color:var(--border)] text-muted-foreground text-xs font-semibold rounded-full">
                       À venir
                     </div>
                   ) : plan.featured ? (
@@ -118,7 +126,7 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                   </div>
 
                   {/* Prix création */}
-                  <div className="mb-4 pb-4 border-b border-white/[0.06]">
+                  <div className="mb-4 pb-4 border-b border-[color:var(--border)]">
                     <div className="text-xs text-muted-foreground/70 uppercase tracking-wider mb-1">
                       Création
                     </div>
@@ -129,9 +137,16 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                         {formatPrice(plan.creation)}&nbsp;€
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        paiement unique
+                        HT · paiement unique
                       </span>
                     </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground/70">
+                      ou 4&nbsp;×&nbsp;
+                      <span className="text-foreground/90 font-medium">
+                        {formatPrice(plan.creation / 4)}&nbsp;€
+                      </span>{" "}
+                      avec Alma, sans frais
+                    </p>
                   </div>
 
                   {/* Prix maintenance */}
@@ -146,16 +161,16 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                         {formatPrice(maintenancePrice)}&nbsp;€
                       </span>
                       <span className="text-sm text-muted-foreground">
-                        {maintenanceLabel}
+                        HT{maintenanceLabel}
                       </span>
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground/70">
                       Soit{" "}
                       <span className="text-foreground/90 font-medium">
-                        {formatPrice(plan.creation + plan.maintenanceYearly)}&nbsp;€
+                        {formatPrice(plan.creation + plan.maintenanceYearly)}&nbsp;€&nbsp;HT
                       </span>{" "}
-                      la première année, tout compris — puis{" "}
-                      {formatPrice(plan.maintenanceYearly)}&nbsp;€/an.
+                      la première année, tout compris, puis{" "}
+                      {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT/an.
                     </p>
                   </div>
 
@@ -191,37 +206,45 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
                   </ul>
 
                   {/* Option design personnalisé */}
-                  <div className="mb-6 px-3 py-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02]">
+                  <div className="mb-6 px-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-secondary">
                     <span className="text-xs text-muted-foreground">
                       + Option design personnalisé à partir de{" "}
-                      <span className="text-foreground font-medium">500 €</span>
+                      <span className="text-foreground font-medium">
+                        500 € HT
+                      </span>
                     </span>
                   </div>
 
                   {/* CTAs */}
                   <div className="space-y-3 mt-auto">
-                    {plan.comingSoon && !devMode ? (
-                      <div className="w-full rounded-full py-3.5 text-sm font-medium text-center bg-white/[0.05] text-muted-foreground/60 border border-white/[0.06] cursor-default">
-                        Bientôt disponible
-                      </div>
-                    ) : devMode ? (
+                    {plan.comingSoon ? (
+                      <Link
+                        href="/contact"
+                        className="flex w-full items-center justify-center rounded-full py-3.5 text-sm font-medium text-center bg-secondary text-secondary-foreground border border-[color:var(--border)] transition-colors hover:bg-surface-3"
+                      >
+                        Être prévenu au lancement
+                      </Link>
+                    ) : goCheckout ? (
                       <Link
                         href={`/checkout?plan=${plan.slug}`}
-                        className={`block w-full rounded-full py-3.5 text-sm font-medium text-center transition-all duration-200 ${
+                        className={`flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-semibold text-center transition-all duration-200 ${
                           plan.featured
-                            ? "bg-primary text-primary-foreground hover:brightness-110 shadow-[0_0_24px_rgba(82,207,175,0.25)]"
-                            : "bg-white/[0.08] text-foreground hover:bg-white/[0.12] border border-white/[0.1]"
+                            ? "bg-primary text-primary-foreground hover:brightness-105 glow-primary"
+                            : "bg-primary text-primary-foreground hover:brightness-105"
                         }`}
                       >
-                        Choisir cette offre
+                        Commander cette offre
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M1 13L13 1M13 1H3M13 1V11" />
+                        </svg>
                       </Link>
                     ) : (
                       <button
                         onClick={openCalendly}
                         className={`w-full rounded-full py-3.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
                           plan.featured
-                            ? "bg-primary text-primary-foreground hover:brightness-110 shadow-[0_0_24px_rgba(82,207,175,0.25)]"
-                            : "bg-white/[0.08] text-foreground hover:bg-white/[0.12] border border-white/[0.1]"
+                            ? "bg-primary text-primary-foreground hover:brightness-105 glow-primary"
+                            : "bg-surface-2 text-foreground hover:bg-surface-3 border border-[color:var(--border-contrast)]"
                         }`}
                       >
                         Réserver un appel
@@ -246,9 +269,10 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
               </span>{" "}
               (jusqu&apos;à 30&nbsp;%). Votre site en direct&nbsp;:{" "}
               <span className="text-primary font-medium">
-                4&nbsp;500&nbsp;€ la première année, puis 1&nbsp;000&nbsp;€/an
-              </span>{" "}
-              — et aucune commission sur vos commandes.
+                4&nbsp;500&nbsp;€&nbsp;HT la première année, puis
+                1&nbsp;000&nbsp;€&nbsp;HT/an
+              </span>
+              , et aucune commission sur vos commandes.
             </p>
           </div>
         </FadeIn>
@@ -299,7 +323,9 @@ export function PricingPlans({ showHeader = false }: { showHeader?: boolean }) {
               Première année de maintenance obligatoire
             </span>
             <span className="flex items-center gap-1.5">
-              TVA non applicable, art. 293 B du CGI
+              {TVA_ENABLED
+                ? "Prix hors taxes, TVA 20 % en sus (récupérable)"
+                : "TVA non applicable, art. 293 B du CGI"}
             </span>
           </div>
         </FadeIn>

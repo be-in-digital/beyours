@@ -261,4 +261,228 @@ export default defineSchema({
     processed: v.boolean(),
     createdAt: v.number(),
   }).index("by_eventId", ["eventId"]),
+
+  /* ══ Superadmin console — flotte / incidents / monitoring ══
+     Tables préfixées « sa » (self-contained, dénormalisées par
+     customerEmail — pas de table clients : les clients sont
+     dérivés des `orders`). */
+
+  saDeployments: defineTable({
+    customerEmail: v.string(),
+    restaurantName: v.string(),
+    city: v.string(),
+    orderId: v.optional(v.id("orders")),
+    name: v.string(),
+    domain: v.string(),
+    convexUrl: v.optional(v.string()),
+    environment: v.union(v.literal("production"), v.literal("staging")),
+    status: v.union(
+      v.literal("provisioning"),
+      v.literal("staging"),
+      v.literal("live"),
+      v.literal("degraded"),
+      v.literal("suspended"),
+      v.literal("offboarded"),
+    ),
+    health: v.union(
+      v.literal("healthy"),
+      v.literal("degraded"),
+      v.literal("down"),
+      v.literal("unknown"),
+    ),
+    region: v.string(),
+    plan: v.union(v.literal("essentielle"), v.literal("premium")),
+    version: v.optional(v.string()),
+    latestVersion: v.optional(v.string()),
+    uptime30d: v.number(),
+    storeCount: v.number(),
+    goLiveAt: v.optional(v.number()),
+    provisionedAt: v.number(),
+    lastCheckAt: v.optional(v.number()),
+    lastDeployAt: v.optional(v.number()),
+    integrations: v.array(
+      v.object({
+        key: v.union(
+          v.literal("stripe"),
+          v.literal("sumup"),
+          v.literal("paypal"),
+          v.literal("square"),
+          v.literal("uber_eats"),
+          v.literal("deliveroo"),
+          v.literal("uber_direct"),
+          v.literal("ses"),
+        ),
+        status: v.union(
+          v.literal("connected"),
+          v.literal("disconnected"),
+          v.literal("error"),
+          v.literal("not_configured"),
+        ),
+        detail: v.optional(v.string()),
+      }),
+    ),
+    maintenance: v.object({
+      status: v.union(
+        v.literal("none"),
+        v.literal("active"),
+        v.literal("expiring_soon"),
+        v.literal("expired"),
+      ),
+      coveredUntil: v.optional(v.number()),
+      autoRenew: v.boolean(),
+    }),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_health", ["health"])
+    .index("by_customerEmail", ["customerEmail"]),
+
+  saStores: defineTable({
+    deploymentId: v.id("saDeployments"),
+    name: v.string(),
+    city: v.string(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("closed"),
+      v.literal("draft"),
+      v.literal("temporarily_unavailable"),
+    ),
+    createdAt: v.number(),
+  }).index("by_deployment", ["deploymentId"]),
+
+  saSalesSnapshots: defineTable({
+    deploymentId: v.id("saDeployments"),
+    customerEmail: v.string(),
+    day: v.string(),
+    dayTs: v.number(),
+    grossCents: v.number(),
+    netCents: v.number(),
+    refundedCents: v.number(),
+    orderCount: v.number(),
+    avgOrderValueCents: v.number(),
+    byType: v.object({
+      delivery: v.number(),
+      pickup: v.number(),
+      dine_in: v.number(),
+    }),
+    bySource: v.object({
+      website: v.number(),
+      uber_eats: v.number(),
+      deliveroo: v.number(),
+      pos: v.number(),
+    }),
+    currency: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_deployment_day", ["deploymentId", "dayTs"])
+    .index("by_day", ["dayTs"]),
+
+  saIncidents: defineTable({
+    number: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    deploymentId: v.optional(v.id("saDeployments")),
+    customerEmail: v.optional(v.string()),
+    restaurantName: v.optional(v.string()),
+    severity: v.union(
+      v.literal("sev1"),
+      v.literal("sev2"),
+      v.literal("sev3"),
+      v.literal("sev4"),
+    ),
+    status: v.union(
+      v.literal("open"),
+      v.literal("investigating"),
+      v.literal("identified"),
+      v.literal("monitoring"),
+      v.literal("resolved"),
+    ),
+    area: v.array(
+      v.union(
+        v.literal("payments"),
+        v.literal("orders"),
+        v.literal("kitchen"),
+        v.literal("integrations"),
+        v.literal("site"),
+        v.literal("delivery"),
+        v.literal("auth"),
+        v.literal("other"),
+      ),
+    ),
+    detectedBy: v.union(
+      v.literal("monitoring"),
+      v.literal("client"),
+      v.literal("team"),
+    ),
+    assigneeName: v.optional(v.string()),
+    impact: v.optional(v.string()),
+    startedAt: v.number(),
+    acknowledgedAt: v.optional(v.number()),
+    resolvedAt: v.optional(v.number()),
+    resolutionSummary: v.optional(v.string()),
+    postmortemUrl: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_severity", ["severity"])
+    .index("by_deployment", ["deploymentId"])
+    .index("by_startedAt", ["startedAt"]),
+
+  saIncidentUpdates: defineTable({
+    incidentId: v.id("saIncidents"),
+    status: v.optional(
+      v.union(
+        v.literal("open"),
+        v.literal("investigating"),
+        v.literal("identified"),
+        v.literal("monitoring"),
+        v.literal("resolved"),
+      ),
+    ),
+    message: v.string(),
+    authorName: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_incident", ["incidentId"]),
+
+  saMonitoringChecks: defineTable({
+    deploymentId: v.id("saDeployments"),
+    kind: v.union(
+      v.literal("http"),
+      v.literal("convex"),
+      v.literal("integration"),
+      v.literal("webhook"),
+    ),
+    target: v.string(),
+    status: v.union(
+      v.literal("up"),
+      v.literal("down"),
+      v.literal("degraded"),
+    ),
+    latencyMs: v.optional(v.number()),
+    statusCode: v.optional(v.number()),
+    message: v.optional(v.string()),
+    checkedAt: v.number(),
+  })
+    .index("by_deployment_time", ["deploymentId", "checkedAt"])
+    .index("by_checkedAt", ["checkedAt"]),
+
+  saActivity: defineTable({
+    kind: v.union(
+      v.literal("commerce"),
+      v.literal("deployment"),
+      v.literal("incident"),
+      v.literal("client"),
+      v.literal("system"),
+    ),
+    action: v.string(),
+    summary: v.string(),
+    deploymentId: v.optional(v.id("saDeployments")),
+    customerEmail: v.optional(v.string()),
+    incidentId: v.optional(v.id("saIncidents")),
+    actorName: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
 });

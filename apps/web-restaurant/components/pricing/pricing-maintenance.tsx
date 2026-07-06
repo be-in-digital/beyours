@@ -53,15 +53,7 @@ export function PricingMaintenance() {
   return (
     <section className="relative py-16 sm:py-24 overflow-hidden">
       {/* Subtle background glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px]"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(82,207,175,0.04) 0%, transparent 70%)",
-          }}
-        />
-      </div>
+      <div aria-hidden="true" className="absolute inset-0 bg-section-radial pointer-events-none" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6">
         <FadeIn className="text-center mb-12">
@@ -82,7 +74,7 @@ export function PricingMaintenance() {
         >
           {maintenanceIncluded.map((item) => (
             <StaggerItem key={item.title}>
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 h-full">
+              <div className="rounded-xl border border-[color:var(--border)] bg-surface-1 p-5 h-full shadow-[0_8px_24px_-18px_rgba(112,60,34,0.3)]">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3">
                   {iconMap[item.icon]}
                 </div>
@@ -99,7 +91,7 @@ export function PricingMaintenance() {
 
         {/* Hors périmètre */}
         <FadeIn delay={0.3} className="mt-10">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-6">
+          <div className="rounded-xl border border-[color:var(--border)] bg-secondary/60 p-6">
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
               <svg
                 className="w-4 h-4 text-muted-foreground/50"

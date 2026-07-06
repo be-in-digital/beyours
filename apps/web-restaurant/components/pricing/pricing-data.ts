@@ -171,7 +171,7 @@ export const processSteps = [
     number: "02",
     title: "Design",
     description:
-      "Vous sélectionnez un thème premium personnalisé à l'image de votre établissement, ou vous optez pour une création sur mesure (à partir de 500 €).",
+      "Vous sélectionnez un thème premium personnalisé à l'image de votre établissement, ou vous optez pour une création sur mesure (à partir de 500 € HT).",
   },
   {
     number: "03",
@@ -211,6 +211,11 @@ export const faqItems = [
       "Oui. Au moment du paiement, vous pouvez régler les frais de création en 3 ou 4 fois via Alma ou Klarna, directement intégrés à notre paiement sécurisé Stripe. Aucun dossier à monter : l'option s'affiche au moment de payer.",
   },
   {
+    question: "Les prix affichés sont-ils HT ou TTC ?",
+    answer:
+      "Tous les prix s'affichent hors taxes (HT), comme il est d'usage entre professionnels. Si la TVA s'applique, elle est détaillée au moment du paiement et figure sur votre facture : votre établissement la récupère. Côté comptabilité, la création s'enregistre généralement comme un investissement amortissable et la maintenance comme une charge déductible ; votre expert-comptable vous confirmera le traitement adapté à votre situation.",
+  },
+  {
     question: "Y a-t-il des frais cachés ?",
     answer:
       "Aucun. Le prix affiché est le prix réel. Les frais de création couvrent l'intégralité de la conception et du développement. La maintenance couvre l'hébergement, le support et les mises à jour. Si un besoin dépasse le périmètre de la maintenance, nous vous proposons un devis avant toute intervention.",
@@ -218,7 +223,7 @@ export const faqItems = [
   {
     question: "Puis-je demander des modifications après la mise en ligne ?",
     answer:
-      "Bien sûr. Les évolutions mineures (textes, images, ajustements de mise en page) sont incluses dans la maintenance. Pour des modifications plus conséquentes — nouvelles fonctionnalités, refonte d'une section — nous établissons un devis personnalisé.",
+      "Bien sûr. Les évolutions mineures (textes, images, ajustements de mise en page) sont incluses dans la maintenance. Pour des modifications plus conséquentes (nouvelles fonctionnalités, refonte d'une section), nous établissons un devis personnalisé.",
   },
   {
     question: "L'application mobile est-elle déjà disponible ?",

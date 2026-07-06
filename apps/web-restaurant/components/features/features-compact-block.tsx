@@ -1,38 +1,39 @@
 "use client";
 
+import { LayoutGrid, BookOpen, Star, Check, type LucideIcon } from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
-import { compactFeatures, pillars, type Pillar } from "./features-data";
+import { compactFeatures, pillars } from "./features-data";
 
 /* ═══════════════════════════════════════════════
    Compact Block — "Et aussi..." for secondary features
    ═══════════════════════════════════════════════ */
 
-const pillarColors: Record<Pillar, string> = {
-  attirer: "text-emerald-400/70 bg-emerald-400/10 border-emerald-400/15",
-  vendre: "text-primary/70 bg-primary/10 border-primary/15",
-  gerer: "text-sky-400/70 bg-sky-400/10 border-sky-400/15",
-  fideliser: "text-amber-400/70 bg-amber-400/10 border-amber-400/15",
+const compactIcons: Record<string, LucideIcon> = {
+  "dashboard-administrateur": LayoutGrid,
+  "gestion-menu": BookOpen,
+  "formation-google-business": Star,
 };
 
 export function FeaturesCompactBlock() {
   return (
-    <section className="relative py-16 sm:py-24 overflow-hidden">
+    <section className="relative overflow-hidden py-16 sm:py-24">
       {/* Top separator */}
       <div
-        className="absolute top-0 left-8 right-8 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(82,207,175,0.1), transparent)",
-        }}
+        aria-hidden="true"
+        className="absolute inset-x-8 top-0 h-px bg-[color:var(--border)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-section-radial"
       />
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn>
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em]">
-              Et aussi...
+          <div className="mb-10 text-center">
+            <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
+              Et aussi…
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground max-w-lg mx-auto">
+            <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">
               Des fonctionnalités essentielles intégrées nativement dans la
               plateforme.
             </p>
@@ -40,105 +41,55 @@ export function FeaturesCompactBlock() {
         </FadeIn>
 
         <StaggerContainer
-          className="grid grid-cols-1 sm:grid-cols-3 gap-5"
+          className="grid grid-cols-1 gap-5 sm:grid-cols-3"
           stagger={0.1}
         >
-          {compactFeatures.map((feature) => (
-            <StaggerItem key={feature.id} className="flex">
-              <div
-                id={feature.id}
-                className="flex-1 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-md p-6 scroll-mt-24"
-              >
-                {/* Pillar badge */}
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-medium uppercase tracking-wider mb-4 ${pillarColors[feature.pillar]}`}
+          {compactFeatures.map((feature) => {
+            const Icon = compactIcons[feature.id] ?? Star;
+            return (
+              <StaggerItem key={feature.id} className="flex">
+                <div
+                  id={feature.id}
+                  className="flex-1 rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 scroll-mt-24 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
                 >
-                  <span className="w-1 h-1 rounded-full bg-current" />
-                  {pillars[feature.pillar].label}
-                </span>
+                  {/* Pillar badge */}
+                  <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <span className="h-1 w-1 rounded-full bg-primary" />
+                    {pillars[feature.pillar].label}
+                  </span>
 
-                {/* Icon */}
-                <div className="w-10 h-10 rounded-xl bg-primary/[0.08] border border-primary/15 flex items-center justify-center mb-4">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-primary/70"
-                  >
-                    {getCompactIcon(feature.id)}
-                  </svg>
+                  {/* Icon */}
+                  <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                  </div>
+
+                  <h3 className="mb-2 font-display text-base font-semibold text-foreground">
+                    {feature.title}
+                  </h3>
+                  <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                    {feature.shortDescription}
+                  </p>
+
+                  {/* Benefits as bullets */}
+                  <ul className="space-y-2">
+                    {feature.benefits.map((b) => (
+                      <li key={b} className="flex items-start gap-2">
+                        <Check
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
+                          strokeWidth={2.4}
+                        />
+                        <span className="text-xs text-secondary-foreground">
+                          {b}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-
-                <h3 className="text-base font-semibold text-foreground mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground/70 leading-relaxed mb-4">
-                  {feature.shortDescription}
-                </p>
-
-                {/* Benefits as bullets */}
-                <ul className="space-y-2">
-                  {feature.benefits.map((b) => (
-                    <li key={b} className="flex items-start gap-2">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-primary/50 shrink-0 mt-0.5"
-                      >
-                        <path d="M5 12l5 5L20 7" />
-                      </svg>
-                      <span className="text-xs text-muted-foreground/60">
-                        {b}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </StaggerItem>
-          ))}
+              </StaggerItem>
+            );
+          })}
         </StaggerContainer>
       </div>
     </section>
   );
-}
-
-function getCompactIcon(id: string): React.ReactNode {
-  switch (id) {
-    case "dashboard-administrateur":
-      return (
-        <>
-          <rect x="3" y="3" width="7" height="7" />
-          <rect x="14" y="3" width="7" height="7" />
-          <rect x="14" y="14" width="7" height="7" />
-          <rect x="3" y="14" width="7" height="7" />
-        </>
-      );
-    case "gestion-menu":
-      return (
-        <>
-          <path d="M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
-          <path d="M10 6h4M10 10h4M10 14h2" />
-        </>
-      );
-    case "formation-google-business":
-      return (
-        <>
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4M12 8h.01" />
-        </>
-      );
-    default:
-      return <circle cx="12" cy="12" r="10" />;
-  }
 }

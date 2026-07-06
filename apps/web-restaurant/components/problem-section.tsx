@@ -1,78 +1,62 @@
 import Image from "next/image";
-import { SectionBadge } from "@/components/ui/section-badge";
+import { Unplug, MonitorX, HeartCrack, ImageOff, TrendingDown } from "lucide-react";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
-import { SectionHeader } from "@/components/ui/section-header";
 import { MobileCarousel } from "@/components/ui/mobile-carousel";
-import { MagicCard } from "@/components/ui/magic-card";
 
 const problems = [
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6A5 5 0 0 1 6 7h3" />
-        <path d="M8 12h8" />
-      </svg>
-    ),
+    Icon: Unplug,
     title: "Dépendance aux plateformes",
     description:
-      "Jusqu'à 30 % de commission sur chaque commande livrée — et vos données clients restent chez les plateformes.",
-    photo: "/photos/burger-premium.webp",
+      "Jusqu'à 30 % de commission sur chaque commande livrée, et vos données clients restent chez les plateformes.",
+    Visual: CommissionVisual,
   },
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2" />
-        <path d="M8 21h8M12 17v4" />
-      </svg>
-    ),
+    Icon: MonitorX,
     title: "Image digitale faible",
     description:
       "Un site vieillissant ou absent qui ne reflète pas la qualité de votre établissement.",
-    photo: "/photos/plat-gastronomie.webp",
+    Visual: OldSiteVisual,
   },
   {
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-        <path d="m12 13-1-1 2-2-3-3 2-2" />
-      </svg>
-    ),
+    Icon: HeartCrack,
     title: "Fidélisation inexistante",
     description:
       "Aucun moyen de garder le lien avec vos clients entre deux visites.",
-    photo: "/photos/salle-restaurant2.webp",
+    Visual: LoyaltyVisual,
   },
 ];
 
 export function ProblemSection() {
   return (
-    <section id="problem" className="relative py-16 sm:py-24 lg:py-32 overflow-hidden">
-      {/* Ambient glow behind the grid */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/[0.03] rounded-full blur-[80px] pointer-events-none" />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+    <section id="problem" className="relative py-20 sm:py-28">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn>
-          <SectionBadge text="Le constat" />
-          <SectionHeader
-            title="Les défis du digital en restauration"
-            description="La plupart des restaurants subissent le digital au lieu de le maîtriser."
-          />
+          <p className="text-sm font-semibold text-primary">Le constat</p>
+          <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance sm:text-4xl lg:text-[2.75rem]">
+            La plupart des restaurants subissent le digital.
+          </h2>
+          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+            Trois pertes silencieuses, mois après mois, sur la marge, l&apos;image
+            et la relation client.
+          </p>
         </FadeIn>
 
-        {/* Desktop: grid with stagger animation */}
-        <StaggerContainer className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-5" stagger={0.08}>
-          {problems.map((problem) => (
-            <StaggerItem key={problem.title}>
-              <ProblemCard problem={problem} />
+        <StaggerContainer
+          className="mt-12 hidden gap-6 md:grid md:grid-cols-3"
+          stagger={0.08}
+        >
+          {problems.map((p) => (
+            <StaggerItem key={p.title}>
+              <ProblemCard problem={p} />
             </StaggerItem>
           ))}
         </StaggerContainer>
 
-        {/* Mobile: carousel */}
-        <div className="md:hidden">
+        <div className="mt-10 md:hidden">
           <MobileCarousel>
-            {problems.map((problem) => (
-              <ProblemCard key={problem.title} problem={problem} />
+            {problems.map((p) => (
+              <ProblemCard key={p.title} problem={p} />
             ))}
           </MobileCarousel>
         </div>
@@ -81,38 +65,146 @@ export function ProblemSection() {
   );
 }
 
-/* ── Problem Card ── */
-
 function ProblemCard({ problem }: { problem: (typeof problems)[number] }) {
+  const { Icon, Visual } = problem;
   return (
-    <MagicCard className="group relative h-full min-h-[280px] overflow-hidden">
-      {/* Texture photo — sombre, revele au hover */}
-      <div className="absolute inset-0" aria-hidden="true">
-        <Image
-          src={problem.photo}
-          alt=""
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover opacity-[0.18] saturate-[0.85] transition-all duration-500 group-hover:opacity-[0.28] group-hover:scale-[1.03]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/55 to-background/30" />
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
+      {/* Visuel qui incarne le problème */}
+      <div className="relative h-44 overflow-hidden border-b border-[color:var(--border)] bg-secondary/50">
+        <Visual />
       </div>
-
-      {/* Top neon line — visible on hover */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-      {/* Content area — ancre en bas de carte */}
-      <div className="relative flex h-full flex-col justify-end p-6 pt-32">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/[0.08] border border-primary/20 text-primary shrink-0 backdrop-blur-sm group-hover:border-primary/40 group-hover:shadow-[0_0_12px_rgba(82,207,175,0.18)] transition-all duration-300">
-            {problem.icon}
-          </div>
-          <h3 className="text-base font-semibold">{problem.title}</h3>
+      <div className="flex flex-1 flex-col p-6">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[color:var(--destructive)]/10 text-[color:var(--destructive)]">
+            <Icon className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+          <h3 className="font-display text-lg font-semibold text-foreground">
+            {problem.title}
+          </h3>
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           {problem.description}
         </p>
       </div>
-    </MagicCard>
+    </article>
+  );
+}
+
+/* ── Visuel 1 : la commission ampute la commande ── */
+function CommissionVisual() {
+  return (
+    <div className="flex h-full flex-col justify-center p-5">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-xs text-muted-foreground">
+          Sur 100 € de commandes livrées
+        </span>
+        <span className="font-display text-lg font-bold tabular-nums text-[color:var(--destructive)]">
+          −30 €
+        </span>
+      </div>
+      {/* Barre 70 / 30 */}
+      <div className="flex h-8 overflow-hidden rounded-lg">
+        <div className="flex items-center justify-center bg-surface-4" style={{ width: "70%" }}>
+          <span className="text-[10px] font-semibold text-secondary-foreground">
+            70 € pour vous
+          </span>
+        </div>
+        <div
+          className="flex items-center justify-center bg-[color:var(--destructive)]"
+          style={{ width: "30%" }}
+        >
+          <span className="text-[10px] font-semibold text-white">30 €</span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <span className="text-[10px] text-muted-foreground">
+          Prélevé par
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Image
+            src="/logos/uber-eats.png"
+            alt="Uber Eats"
+            width={16}
+            height={16}
+            className="h-4 w-4 rounded-sm object-contain opacity-80"
+          />
+          <Image
+            src="/logos/deliveroo.png"
+            alt="Deliveroo"
+            width={16}
+            height={16}
+            className="h-4 w-4 rounded-sm object-contain opacity-80"
+          />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Visuel 2 : un site vieillissant ── */
+function OldSiteVisual() {
+  return (
+    <div className="h-full p-4">
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-[color:var(--border)] bg-background">
+        {/* barre navigateur terne */}
+        <div className="flex shrink-0 items-center gap-1.5 border-b border-[color:var(--border)] bg-surface-2 px-2.5 py-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-surface-4" />
+          <span className="h-1.5 w-1.5 rounded-full bg-surface-4" />
+          <span className="ml-2 truncate font-mono text-[9px] text-muted-foreground">
+            restaurant-le-vieux.fr
+          </span>
+        </div>
+        {/* corps daté — flex-1, se compresse, ne rogne jamais */}
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-3">
+          <ImageOff
+            className="h-6 w-6 shrink-0 text-muted-foreground/50"
+            strokeWidth={1.5}
+          />
+          <span className="text-[10px] font-medium text-muted-foreground/70">
+            Aperçu indisponible
+          </span>
+        </div>
+        {/* pied daté — toujours visible */}
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[color:var(--border)] px-2.5 py-1.5">
+          <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
+            Menu.pdf
+          </span>
+          <span className="text-[9px] text-muted-foreground/60">
+            Mis à jour en 2019
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Visuel 3 : fidélité inexistante ── */
+function LoyaltyVisual() {
+  return (
+    <div className="flex h-full flex-col justify-center gap-4 p-5">
+      <div>
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Carte de fidélité
+        </p>
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span
+              key={i}
+              className="h-6 w-6 rounded-full border border-dashed border-[color:var(--border-contrast)] bg-secondary/40"
+            />
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <TrendingDown
+          className="h-4 w-4 text-[color:var(--destructive)]"
+          strokeWidth={2}
+        />
+        <span className="text-xs text-muted-foreground">
+          Clients qui reviennent :{" "}
+          <span className="font-semibold text-foreground">aucun suivi</span>
+        </span>
+      </div>
+    </div>
   );
 }

@@ -42,7 +42,7 @@ export default function CheckoutSuccessPage() {
             <CalendlyButton />
             <Link
               href="/"
-              className="rounded-full bg-white/[0.06] border border-white/[0.1] px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-white/[0.1]"
+              className="rounded-full bg-surface-2 border border-[color:var(--border-contrast)] px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-surface-3"
             >
               Retour à l&apos;accueil
             </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { ShieldCheck } from "lucide-react";
 import {
   getAllowedPaymentMethods,
   paymentOptions,
@@ -42,20 +43,20 @@ export function PaymentMethodSelector({
             type="button"
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect(option.slug)}
-            className="w-full text-left rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 transition-all hover:border-primary/30 hover:bg-primary/[0.03] cursor-pointer group"
+            className="group w-full cursor-pointer rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4 text-left shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all hover:border-primary hover:bg-primary/5"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
                   {option.label}
                 </div>
-                <div className="text-xs text-muted-foreground/70 mt-0.5">
+                <div className="mt-0.5 text-xs text-muted-foreground">
                   {option.description}
                 </div>
               </div>
               <div className="text-right">
                 {option.slug === "card" ? (
-                  <div className="text-sm font-semibold text-foreground">
+                  <div className="text-base font-semibold text-foreground">
                     {formatEur(amountCents)} €
                   </div>
                 ) : (
@@ -71,6 +72,10 @@ export function PaymentMethodSelector({
             </div>
           </motion.button>
         ))}
+      </div>
+      <div className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
+        <ShieldCheck className="h-3.5 w-3.5 text-primary" strokeWidth={1.8} />
+        Paiement sécurisé, vos données ne sont jamais stockées sur ce site.
       </div>
     </div>
   );

@@ -41,7 +41,7 @@ export function PricingProcess() {
               )}
 
               {/* Number circle */}
-              <div className="relative mx-auto w-12 h-12 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center mb-5 shadow-[0_0_20px_rgba(82,207,175,0.15)] z-10">
+              <div className="relative mx-auto w-12 h-12 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center mb-5 shadow-[0_6px_16px_-8px_rgba(197,84,44,0.4)] z-10">
                 <span className="text-sm font-bold text-primary">
                   {step.number}
                 </span>
@@ -84,7 +84,7 @@ export function PricingProcess() {
               )}
 
               {/* Number dot */}
-              <div className="relative z-10 shrink-0 w-12 h-12 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center shadow-[0_0_16px_rgba(82,207,175,0.12)]">
+              <div className="relative z-10 shrink-0 w-12 h-12 rounded-full bg-primary/10 border border-primary/25 flex items-center justify-center shadow-[0_6px_16px_-8px_rgba(197,84,44,0.4)]">
                 <span className="text-sm font-bold text-primary">
                   {step.number}
                 </span>

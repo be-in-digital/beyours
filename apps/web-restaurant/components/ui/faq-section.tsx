@@ -26,7 +26,7 @@ function FaqAccordionItem({
 }) {
   return (
     <div
-      className={`border-b border-white/[0.06] transition-colors ${isOpen ? "bg-white/[0.01]" : ""}`}
+      className={`border-b border-[color:var(--border)] transition-colors ${isOpen ? "bg-secondary/50" : ""}`}
     >
       <button
         onClick={onToggle}
@@ -37,10 +37,10 @@ function FaqAccordionItem({
           {question}
         </span>
         <div
-          className={`shrink-0 w-6 h-6 rounded-full border border-white/[0.1] flex items-center justify-center transition-all duration-300 ${
+          className={`shrink-0 w-6 h-6 rounded-full border border-[color:var(--border)] flex items-center justify-center transition-all duration-300 ${
             isOpen
               ? "bg-primary/10 border-primary/30 rotate-45"
-              : "bg-white/[0.04]"
+              : "bg-secondary"
           }`}
         >
           <svg
@@ -112,7 +112,7 @@ export function FaqSection({
         </FadeIn>
 
         <FadeIn delay={0.15}>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 overflow-hidden shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
             <StaggerContainer stagger={0.05}>
               {items.map((item, index) => (
                 <StaggerItem key={index}>

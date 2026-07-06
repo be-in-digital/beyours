@@ -25,6 +25,19 @@ function getStripe(): Stripe | null {
   return new Stripe(key);
 }
 
+/* ── Stripe Tax ──
+   Off par défaut : la structure est en franchise en base (art. 293 B du CGI),
+   aucune TVA n'est facturée et le comportement reste identique.
+   Le jour de l'assujettissement (société au réel) :
+   1. activer Stripe Tax dans le dashboard (adresse du siège, immatriculation FR),
+   2. passer tax_behavior=exclusive sur les Prices de maintenance (dashboard),
+   3. poser STRIPE_TAX_ENABLED=true ici (env Convex) et
+      NEXT_PUBLIC_TVA_ENABLED=true côté Next (cf. lib/payment-providers.ts).
+   Les montants envoyés restent HT ; Stripe ajoute la TVA française (20 %). */
+function stripeTaxEnabled(): boolean {
+  return process.env.STRIPE_TAX_ENABLED === "true";
+}
+
 export const createCheckoutSession = action({
   args: {
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
@@ -58,7 +71,7 @@ export const createCheckoutSession = action({
         : prices.maintenanceYearly;
     const totalCents = creationCents + maintenanceCents;
 
-    // ── Referral discount (mise en service uniquement) ──
+    // ── Referral discount (création uniquement) ──
     let discountAmountCents = 0;
     let isReferral = false;
 
@@ -180,19 +193,32 @@ export const createCheckoutSession = action({
     const periodLabel =
       args.billingPeriod === "monthly" ? "premier mois" : "première année";
 
+    const taxOn = stripeTaxEnabled();
+    const taxBehavior = taxOn
+      ? { tax_behavior: "exclusive" as const }
+      : {};
+
     const session: Stripe.Checkout.Session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: paymentMethodTypes,
       customer_email: args.customerEmail,
       customer_creation: "always",
       client_reference_id: orderId,
+      ...(taxOn
+        ? {
+            automatic_tax: { enabled: true },
+            billing_address_collection: "required" as const,
+            tax_id_collection: { enabled: true },
+          }
+        : {}),
       line_items: [
         {
           price_data: {
             currency: "eur",
             unit_amount: creationCents,
+            ...taxBehavior,
             product_data: {
-              name: `Be in Digital — ${planLabel} — Mise en service`,
+              name: `Be in Digital — ${planLabel} — Création`,
               description: "Création de votre solution digitale",
             },
           },
@@ -202,6 +228,7 @@ export const createCheckoutSession = action({
           price_data: {
             currency: "eur",
             unit_amount: maintenanceCents,
+            ...taxBehavior,
             product_data: {
               name: `Be in Digital — ${planLabel} — Maintenance`,
               description: `Maintenance — ${periodLabel}`,
@@ -270,6 +297,7 @@ export const createSubscription = internalAction({
       customer: args.stripeCustomerId,
       items: [{ price: priceId }],
       trial_end: trialEnd,
+      ...(stripeTaxEnabled() ? { automatic_tax: { enabled: true } } : {}),
       metadata: {
         orderId: args.orderId,
         plan: args.plan,

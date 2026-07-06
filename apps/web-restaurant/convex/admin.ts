@@ -10,7 +10,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 /* ── Helper : vérifier que l'utilisateur est admin ── */
 
-async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const userId = await getAuthUserId(ctx);
   if (!userId) throw new Error("Non authentifié");
 

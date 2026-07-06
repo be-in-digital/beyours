@@ -34,29 +34,20 @@ export function CalendlyModal() {
 
   if (!isOpen) return null;
 
-  const embedUrl = `${CALENDLY_URL}?hide_gdpr_banner=1&background_color=13131a&text_color=f5f5f5&primary_color=52cfaf`;
+  const embedUrl = `${CALENDLY_URL}?hide_gdpr_banner=1&background_color=faf5ee&text_color=221c15&primary_color=c5542c`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[color:var(--olive)]/50 backdrop-blur-sm"
         onClick={close}
       />
 
       {/* Modal */}
-      <div className="relative w-full sm:max-w-2xl h-[90vh] sm:h-[85vh] max-h-[750px] rounded-t-2xl sm:rounded-2xl border border-white/[0.08] bg-[#13131a] shadow-[0_0_80px_rgba(82,207,175,0.08)] overflow-hidden flex flex-col">
-        {/* Top neon line */}
-        <div
-          className="absolute top-0 left-8 right-8 h-px z-10"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent, rgba(82,207,175,0.4), transparent)",
-          }}
-        />
-
+      <div className="relative w-full sm:max-w-2xl h-[90vh] sm:h-[85vh] max-h-[750px] rounded-t-2xl sm:rounded-2xl border border-[color:var(--border)] bg-background shadow-[0_30px_80px_-30px_rgba(112,60,34,0.5)] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="relative flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
+        <div className="relative flex items-center justify-between px-6 py-4 border-b border-[color:var(--border)]">
           <div>
             <h3 className="text-lg font-semibold text-foreground">
               Réserver un appel

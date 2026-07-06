@@ -18,87 +18,77 @@ export default function OpengraphImage() {
           justifyContent: "space-between",
           padding: "80px",
           background:
-            "radial-gradient(1200px 630px at 75% 25%, rgba(82,207,175,0.22), transparent 60%), radial-gradient(900px 600px at 15% 85%, rgba(82,207,175,0.12), transparent 65%), #0A0A0A",
-          color: "#FFFFFF",
+            "radial-gradient(1000px 600px at 80% 12%, rgba(197,84,44,0.20), transparent 60%), radial-gradient(900px 620px at 10% 92%, rgba(197,84,44,0.10), transparent 65%), #faf5ee",
+          color: "#221c15",
           fontFamily: "sans-serif",
         }}
       >
+        {/* Wordmark */}
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "14px",
-            padding: "10px 18px",
-            borderRadius: "999px",
-            border: "1px solid rgba(82,207,175,0.35)",
-            background: "rgba(82,207,175,0.08)",
-            fontSize: "22px",
-            color: "#A0E5D3",
+            gap: "12px",
+            fontSize: "40px",
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
           }}
         >
-          <div
-            style={{
-              width: "10px",
-              height: "10px",
-              borderRadius: "999px",
-              background: "#52CFAF",
-            }}
-          />
-          Be in Digital
+          <span>Be</span>
+          <span style={{ color: "#c5542c" }}>in</span>
+          <span>Digital</span>
         </div>
 
+        {/* Message */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             gap: "28px",
-            maxWidth: "980px",
+            maxWidth: "1000px",
           }}
         >
           <div
             style={{
-              fontSize: "78px",
-              lineHeight: 1.05,
+              fontSize: "84px",
+              lineHeight: 1.04,
               letterSpacing: "-0.03em",
-              fontWeight: 500,
+              fontWeight: 600,
               display: "flex",
               flexWrap: "wrap",
             }}
           >
-            La plateforme digitale des
-            <span style={{ color: "#52CFAF", fontStyle: "italic", margin: "0 18px" }}>
-              restaurateurs
+            Vendez en direct,
+            <span style={{ color: "#c5542c", marginLeft: "20px" }}>
+              sans commission.
             </span>
-            indépendants
           </div>
           <div
             style={{
-              fontSize: "28px",
+              fontSize: "30px",
               lineHeight: 1.4,
-              color: "rgba(255,255,255,0.72)",
-              maxWidth: "880px",
+              color: "#4a4136",
+              maxWidth: "900px",
             }}
           >
-            Site premium, commande sans commission, KDS, centralisation Uber Eats &
-            Deliveroo, fidélité.
+            La plateforme digitale des restaurateurs indépendants. Site premium,
+            commande en ligne, fidélité, intégrations Uber Eats &amp; Deliveroo.
           </div>
         </div>
 
+        {/* Footer */}
         <div
           style={{
             width: "100%",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            fontSize: "22px",
-            color: "rgba(255,255,255,0.55)",
+            fontSize: "24px",
+            color: "#6f6456",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            restaurant.beindigital.fr
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px", color: "#52CFAF" }}>
-            Restaurant-first · Premium · Tech
+          <div>restaurant.beindigital.fr</div>
+          <div style={{ color: "#c5542c", fontWeight: 600 }}>
+            0 % de commission
           </div>
         </div>
       </div>

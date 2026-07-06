@@ -43,19 +43,19 @@ export function Navbar() {
         animate={{
           maxWidth: scrolled ? 880 : 1120,
           borderColor: scrolled
-            ? "rgba(255,255,255,0.10)"
-            : "rgba(255,255,255,0.06)",
+            ? "rgba(34,28,21,0.14)"
+            : "rgba(34,28,21,0.08)",
           backgroundColor: scrolled
-            ? "rgba(14,14,14,0.72)"
-            : "rgba(255,255,255,0.03)",
+            ? "rgba(250,245,238,0.82)"
+            : "rgba(255,253,249,0.6)",
           boxShadow: scrolled
-            ? "0 10px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(82,207,175,0.06)"
-            : "0 8px 32px rgba(0,0,0,0.25)",
+            ? "0 14px 40px -18px rgba(112,60,34,0.35), 0 0 0 1px rgba(197,84,44,0.06)"
+            : "0 10px 30px -20px rgba(112,60,34,0.25)",
         }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
           "relative mx-auto rounded-full border backdrop-blur-xl",
-          mobileOpen && "!bg-surface-1 lg:!bg-white/[0.04]"
+          mobileOpen && "!bg-surface-1"
         )}
       >
         <div className="px-4 sm:px-6 flex items-center justify-between gap-4 lg:gap-6 h-14">

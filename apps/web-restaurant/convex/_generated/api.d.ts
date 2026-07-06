@@ -28,6 +28,15 @@ import type * as stripeEvents from "../stripeEvents.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as whitelist from "../whitelist.js";
 import type * as yousign from "../yousign.js";
+import type * as saActivity from "../saActivity.js";
+import type * as saClients from "../saClients.js";
+import type * as saDashboard from "../saDashboard.js";
+import type * as saFleet from "../saFleet.js";
+import type * as saIncidents from "../saIncidents.js";
+import type * as saMonitoring from "../saMonitoring.js";
+import type * as saRevenue from "../saRevenue.js";
+import type * as saSales from "../saSales.js";
+import type * as saSeed from "../saSeed.js";
 
 import type {
   ApiFromModules,
@@ -56,6 +65,15 @@ declare const fullApi: ApiFromModules<{
   subscriptions: typeof subscriptions;
   whitelist: typeof whitelist;
   yousign: typeof yousign;
+  saActivity: typeof saActivity;
+  saClients: typeof saClients;
+  saDashboard: typeof saDashboard;
+  saFleet: typeof saFleet;
+  saIncidents: typeof saIncidents;
+  saMonitoring: typeof saMonitoring;
+  saRevenue: typeof saRevenue;
+  saSales: typeof saSales;
+  saSeed: typeof saSeed;
 }>;
 
 /**

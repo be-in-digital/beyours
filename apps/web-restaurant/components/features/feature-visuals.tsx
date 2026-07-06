@@ -1,348 +1,617 @@
 /* ═══════════════════════════════════════════════
-   Feature Visuals — 3 mockup patterns with variants
+   Feature Visuals — mini-UI claires façon storefront
+   Reconstruit en produit réel : cartes menu photo,
+   flux de commandes, intégrations, graphiques terracotta.
    ═══════════════════════════════════════════════ */
 
+import Image from "next/image";
+import {
+  Globe,
+  Star,
+  TrendingUp,
+  ShoppingBag,
+  Plus,
+  Clock,
+  Bell,
+  Check,
+  Gift,
+  Trophy,
+  Flame,
+  BarChart3,
+  MapPin,
+  UtensilsCrossed,
+} from "lucide-react";
 import type { Feature } from "./features-data";
 
-/** Route to the right mockup based on feature.mockupPattern */
+/** Route to the right mockup based on feature.mockupPattern + id */
 export function FeatureVisual({ feature }: { feature: Feature }) {
-  switch (feature.mockupPattern) {
-    case "dashboard":
-      return <DashboardMockup feature={feature} />;
-    case "mobile":
-      return <MobileMockup feature={feature} />;
-    case "integration":
-      return <IntegrationMockup feature={feature} />;
+  switch (feature.id) {
+    case "site-web-premium":
+      return <SiteWebVisual />;
+    case "commande-en-ligne":
+      return <CommandeVisual />;
+    case "experience-mobile":
+      return <MobileAppVisual />;
+    case "centralisation-commandes":
+      return <CentralisationVisual />;
+    case "integration-plateformes":
+      return <IntegrationVisual />;
+    case "fidelisation-gamification":
+      return <FideliteVisual />;
+    case "analytics":
+      return <AnalyticsVisual />;
+    default:
+      // Fallback aligné sur le pattern déclaré
+      if (feature.mockupPattern === "mobile") return <MobileAppVisual />;
+      if (feature.mockupPattern === "integration") return <IntegrationVisual />;
+      return <AnalyticsVisual />;
   }
 }
 
-/* ── Pattern 1: Dashboard Mockup ── */
+/* ── Cadre commun : carte claire, ombre chaude ── */
 
-function DashboardMockup({ feature }: { feature: Feature }) {
-  const stats = dashboardVariants[feature.id] ?? dashboardVariants.default;
-
+function VisualCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative w-full aspect-[4/3] rounded-2xl border border-white/[0.06] bg-[#0c0c10] overflow-hidden shadow-[0_0_60px_rgba(82,207,175,0.04)]">
-      {/* Top bar */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
-        <div className="flex gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-          <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-          <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
-        </div>
-        <div className="flex-1 mx-8">
-          <div className="h-5 w-48 max-w-full rounded-md bg-white/[0.04] mx-auto" />
-        </div>
-      </div>
-
-      <div className="flex h-[calc(100%-44px)]">
-        {/* Sidebar */}
-        <div className="hidden sm:flex w-[72px] flex-col gap-3 items-center py-4 border-r border-white/[0.06] bg-white/[0.01]">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className={`w-8 h-8 rounded-lg ${i === 0 ? "bg-primary/15 border border-primary/20" : "bg-white/[0.04]"}`}
-            />
-          ))}
-        </div>
-
-        {/* Content area */}
-        <div className="flex-1 p-4 space-y-4">
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
-            {stats.map((stat, i) => (
-              <div
-                key={i}
-                className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3"
-              >
-                <div className="text-[10px] text-muted-foreground/60 mb-1">
-                  {stat.label}
-                </div>
-                <div className="text-sm font-semibold text-foreground">
-                  {stat.value}
-                </div>
-                <div className="mt-2 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary/40"
-                    style={{ width: `${stat.bar}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Table rows */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-white/[0.04]" : ""}`}
-              >
-                <div className="w-6 h-6 rounded-md bg-primary/10" />
-                <div className="flex-1 h-3 rounded bg-white/[0.06]" style={{ width: `${60 + i * 8}%` }} />
-                <div className="h-3 w-12 rounded bg-white/[0.04]" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Ambient glow */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.06] rounded-full blur-[60px] pointer-events-none" />
+    <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 shadow-[0_20px_50px_-28px_rgba(112,60,34,0.4)]">
+      {children}
     </div>
   );
 }
 
-const dashboardVariants: Record<string, { label: string; value: string; bar: number }[]> = {
-  "site-web-premium": [
-    { label: "Visiteurs", value: "2 847", bar: 78 },
-    { label: "Taux conversion", value: "4.2%", bar: 65 },
-    { label: "Pages vues", value: "12.4k", bar: 88 },
-  ],
-  "centralisation-commandes": [
-    { label: "Commandes", value: "156", bar: 82 },
-    { label: "En cours", value: "12", bar: 45 },
-    { label: "CA du jour", value: "3 240 \u20ac", bar: 72 },
-  ],
-  analytics: [
-    { label: "CA mensuel", value: "48.2k \u20ac", bar: 85 },
-    { label: "Panier moyen", value: "32.50 \u20ac", bar: 68 },
-    { label: "Taux retour", value: "34%", bar: 55 },
-  ],
-  default: [
-    { label: "Total", value: "1 234", bar: 70 },
-    { label: "Actifs", value: "567", bar: 55 },
-    { label: "Croissance", value: "+12%", bar: 62 },
-  ],
-};
-
-/* ── Pattern 2: Mobile Mockup ── */
-
-function MobileMockup({ feature }: { feature: Feature }) {
-  const content = mobileVariants[feature.id] ?? mobileVariants.default;
-
+function BrowserBar({ url }: { url: string }) {
   return (
-    <div className="relative flex items-center justify-center w-full aspect-[4/3]">
-      {/* Phone frame */}
-      <div className="relative w-[200px] sm:w-[220px] h-[400px] sm:h-[440px] rounded-[2rem] border-2 border-white/[0.08] bg-[#0c0c10] shadow-[0_0_60px_rgba(82,207,175,0.06)] overflow-hidden">
-        {/* Notch */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-[#0c0c10] rounded-b-2xl z-10" />
+    <div className="flex items-center gap-2 border-b border-[color:var(--border)] bg-secondary/60 px-4 py-2.5">
+      <div className="flex gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
+        <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
+        <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
+      </div>
+      <div className="mx-auto flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[10px] font-medium text-muted-foreground">
+        <MapPin className="h-3 w-3 text-primary" strokeWidth={2.2} />
+        {url}
+      </div>
+    </div>
+  );
+}
 
-        {/* Status bar */}
-        <div className="flex items-center justify-between px-5 pt-8 pb-2">
-          <div className="text-[9px] text-white/40 font-medium">9:41</div>
-          <div className="flex gap-1">
-            <div className="w-3 h-2 rounded-sm bg-white/20" />
-            <div className="w-3 h-2 rounded-sm bg-white/20" />
+/* ── 01 · Site Web Premium — vitrine + hero plat ── */
+
+function SiteWebVisual() {
+  return (
+    <VisualCard>
+      <BrowserBar url="trattoria-nonna.fr" />
+
+      {/* Hero établissement */}
+      <div className="relative h-40 w-full overflow-hidden sm:h-44">
+        <Image
+          src="/photos/plat-gastronomie.webp"
+          alt="Page d'accueil du restaurant Trattoria Nonna"
+          fill
+          sizes="(max-width: 1024px) 100vw, 520px"
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground shadow-sm">
+          <Globe className="h-3 w-3" strokeWidth={2.4} /> Site à votre image
+        </span>
+        <div className="absolute inset-x-4 bottom-3">
+          <p className="font-display text-lg font-semibold leading-none text-white">
+            Trattoria Nonna
+          </p>
+          <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/85">
+            <Star className="h-3 w-3 fill-primary text-primary" />
+            4,9 · Cuisine italienne · Bordeaux
+          </p>
+        </div>
+      </div>
+
+      {/* Bloc perf SEO + vitesse */}
+      <div className="grid grid-cols-2 gap-3 p-4">
+        <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            Vitesse
+          </p>
+          <p className="mt-1 font-display text-lg font-semibold tabular-nums text-foreground">
+            0,8 s
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
+            <div className="h-full w-[92%] rounded-full bg-primary" />
           </div>
         </div>
-
-        {/* App header */}
-        <div className="px-4 py-3">
-          <div className="text-[11px] font-semibold text-foreground">
-            {content.header}
-          </div>
-          <div className="text-[9px] text-muted-foreground/60 mt-0.5">
-            {content.subheader}
+        <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            SEO local
+          </p>
+          <p className="mt-1 flex items-center gap-1.5 font-display text-lg font-semibold tabular-nums text-foreground">
+            Top 3
+            <TrendingUp className="h-4 w-4 text-primary" strokeWidth={2.4} />
+          </p>
+          <div className="mt-2 flex items-end gap-1">
+            {[40, 62, 55, 78, 88].map((h, i) => (
+              <div
+                key={i}
+                className={`flex-1 rounded-t ${i === 4 ? "bg-primary" : "bg-primary/25"}`}
+                style={{ height: `${(h / 88) * 24}px` }}
+              />
+            ))}
           </div>
         </div>
+      </div>
+    </VisualCard>
+  );
+}
 
-        {/* Cards */}
-        <div className="px-3 space-y-2">
-          {content.cards.map((card, i) => (
-            <div
-              key={i}
-              className={`rounded-xl border p-3 ${
-                i === 0
-                  ? "border-primary/20 bg-primary/[0.06]"
-                  : "border-white/[0.06] bg-white/[0.02]"
+/* ── 02 · Commande en ligne — panier fonctionnel ── */
+
+const commandeItems = [
+  {
+    name: "Burger Signature",
+    desc: "Bœuf maturé, cheddar affiné",
+    price: "14,90 €",
+    img: "/photos/burger-premium.webp",
+    added: true,
+  },
+  {
+    name: "Filet, jus corsé",
+    desc: "Pommes grenaille, échalote",
+    price: "24,00 €",
+    img: "/photos/plat-gastronomie.webp",
+    added: false,
+  },
+];
+
+function CommandeVisual() {
+  return (
+    <VisualCard>
+      <BrowserBar url="trattoria-nonna.fr/commander" />
+
+      {/* Onglets livraison / retrait */}
+      <div className="flex items-center gap-2 border-b border-[color:var(--border)] px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-[11px] font-semibold text-primary-foreground">
+          Click & Collect
+        </span>
+        <span className="rounded-full border border-[color:var(--border)] bg-background px-3 py-1.5 text-[11px] font-medium text-secondary-foreground">
+          Livraison
+        </span>
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+          <Clock className="h-3 w-3" strokeWidth={2.4} /> 20 min
+        </span>
+      </div>
+
+      {/* Plats */}
+      <div className="divide-y divide-[color:var(--border)]">
+        {commandeItems.map((it) => (
+          <div key={it.name} className="flex items-center gap-3 px-4 py-3">
+            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+              <Image
+                src={it.img}
+                alt={it.name}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {it.name}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {it.desc}
+              </p>
+              <p className="mt-0.5 text-xs font-semibold tabular-nums text-primary">
+                {it.price}
+              </p>
+            </div>
+            <span
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+                it.added
+                  ? "bg-primary text-primary-foreground"
+                  : "border border-[color:var(--border)] bg-background text-foreground"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-lg ${i === 0 ? "bg-primary/15" : "bg-white/[0.06]"} flex items-center justify-center`}>
-                  <div className={`w-3 h-3 rounded ${i === 0 ? "bg-primary/40" : "bg-white/10"}`} />
-                </div>
-                <div>
-                  <div className="text-[9px] font-medium text-foreground">{card.title}</div>
-                  <div className="text-[8px] text-muted-foreground/50">{card.subtitle}</div>
-                </div>
-              </div>
+              {it.added ? (
+                <Check className="h-4 w-4" strokeWidth={2.6} />
+              ) : (
+                <Plus className="h-4 w-4" strokeWidth={2.4} />
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Barre panier — 0 % commission */}
+      <div className="flex items-center justify-between gap-3 border-t border-[color:var(--border)] bg-secondary/50 px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+          0 % de commission
+        </span>
+        <span className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+          <ShoppingBag className="h-3.5 w-3.5" strokeWidth={2.2} />
+          Commander · 14,90 €
+        </span>
+      </div>
+    </VisualCard>
+  );
+}
+
+/* ── 09 · Expérience mobile — téléphone clair ── */
+
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mx-auto w-[210px] rounded-[2rem] border border-[color:var(--border)] bg-surface-1 p-1.5 shadow-[0_28px_60px_-30px_rgba(112,60,34,0.5)] sm:w-[224px]">
+      <div className="overflow-hidden rounded-[1.6rem] bg-background">
+        {/* Encoche */}
+        <div className="relative flex items-center justify-center pt-2">
+          <span className="h-1.5 w-16 rounded-full bg-surface-3" />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MobileAppVisual() {
+  return (
+    <div className="flex items-center justify-center py-2">
+      <PhoneFrame>
+        {/* En-tête app */}
+        <div className="flex items-center justify-between px-4 pb-1 pt-3">
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground">
+              Bonjour Jean 👋
+            </p>
+            <p className="font-display text-sm font-semibold text-foreground">
+              Le Petit Bistrot
+            </p>
+          </div>
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
+            <Bell className="h-4 w-4" strokeWidth={2} />
+          </span>
+        </div>
+
+        {/* Visuel plat mis en avant */}
+        <div className="relative mx-4 mt-1 h-24 overflow-hidden rounded-xl">
+          <Image
+            src="/photos/burger-premium.webp"
+            alt="Plat du jour dans l'application"
+            fill
+            sizes="200px"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
+          <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-primary-foreground">
+            Plat du jour
+          </span>
+          <p className="absolute bottom-2 left-2 text-[11px] font-semibold text-white">
+            Burger Signature · 14,90 €
+          </p>
+        </div>
+
+        {/* Raccourcis */}
+        <div className="mt-3 grid grid-cols-2 gap-2 px-4">
+          {[
+            { label: "Commander", sub: "Livraison / retrait", primary: true },
+            { label: "320 pts", sub: "Niveau Gold", primary: false },
+          ].map((c) => (
+            <div
+              key={c.label}
+              className={`rounded-xl border p-2.5 ${
+                c.primary
+                  ? "border-[color:var(--border-accent)] bg-primary/10"
+                  : "border-[color:var(--border)] bg-surface-1"
+              }`}
+            >
+              <p
+                className={`text-[11px] font-semibold ${c.primary ? "text-primary" : "text-foreground"}`}
+              >
+                {c.label}
+              </p>
+              <p className="text-[9px] text-muted-foreground">{c.sub}</p>
             </div>
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="absolute bottom-6 left-3 right-3">
-          <div className="h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <div className="text-[9px] font-medium text-primary/80">
-              {content.cta}
-            </div>
+        {/* CTA */}
+        <div className="p-4">
+          <div className="flex h-9 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+            Commander maintenant
           </div>
         </div>
 
-        {/* Home indicator */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-24 h-1 rounded-full bg-white/20" />
-      </div>
-
-      {/* Ambient glow behind phone */}
-      <div className="absolute w-48 h-48 bg-primary/[0.08] rounded-full blur-[80px] pointer-events-none" />
+        {/* Barre de nav */}
+        <div className="flex items-center justify-around border-t border-[color:var(--border)] px-4 py-2.5">
+          <UtensilsCrossed className="h-4 w-4 text-primary" strokeWidth={2} />
+          <ShoppingBag className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+          <Star className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
+        </div>
+      </PhoneFrame>
     </div>
   );
 }
 
-const mobileVariants: Record<string, { header: string; subheader: string; cards: { title: string; subtitle: string }[]; cta: string }> = {
-  "commande-en-ligne": {
-    header: "Votre commande",
-    subheader: "Livraison ou click & collect",
-    cards: [
-      { title: "Burger Signature", subtitle: "14.90 \u20ac \u00b7 Populaire" },
-      { title: "Salade Caesar", subtitle: "11.50 \u20ac" },
-      { title: "Tiramisu Maison", subtitle: "7.90 \u20ac" },
-      { title: "Click & Collect", subtitle: "Retrait dans 20 min" },
-    ],
-    cta: "Commander \u00b7 34.30 \u20ac",
-  },
-  "experience-mobile": {
-    header: "Le Petit Bistrot",
-    subheader: "Bienvenue, Jean",
-    cards: [
-      { title: "Commander", subtitle: "Livraison ou sur place" },
-      { title: "Mon programme", subtitle: "320 pts \u00b7 Niveau Gold" },
-      { title: "Mes commandes", subtitle: "3 commandes ce mois" },
-      { title: "Notifications", subtitle: "2 nouvelles offres" },
-    ],
-    cta: "Commander maintenant",
-  },
-  "fidelisation-gamification": {
-    header: "Votre fid\u00e9lit\u00e9",
-    subheader: "Niveau Gold \u00b7 320 points",
-    cards: [
-      { title: "D\u00e9fi du jour", subtitle: "Commandez un dessert \u00b7 +50 pts" },
-      { title: "Prochain palier", subtitle: "80 pts pour Platinum" },
-      { title: "R\u00e9compense", subtitle: "Dessert offert \u00e0 500 pts" },
-      { title: "Classement", subtitle: "#12 ce mois-ci" },
-    ],
-    cta: "Voir mes r\u00e9compenses",
-  },
-  default: {
-    header: "Be in Digital",
-    subheader: "Votre restaurant connect\u00e9",
-    cards: [
-      { title: "Fonctionnalit\u00e9 1", subtitle: "Description" },
-      { title: "Fonctionnalit\u00e9 2", subtitle: "Description" },
-      { title: "Fonctionnalit\u00e9 3", subtitle: "Description" },
-    ],
-    cta: "D\u00e9couvrir",
-  },
-};
+/* ── 05 · Centralisation des commandes — flux unifié ── */
 
-/* ── Pattern 3: Integration Mockup ── */
+const orderFlow = [
+  {
+    ref: "#1042",
+    label: "2× Burger, 1× Frites",
+    source: "Votre site",
+    logo: null,
+    status: "Nouveau",
+    live: true,
+  },
+  {
+    ref: "#1041",
+    label: "Menu dégustation",
+    source: "Uber Eats",
+    logo: "/logos/uber-eats.png",
+    status: "En cuisine",
+    live: false,
+  },
+  {
+    ref: "#1040",
+    label: "Pizza Margherita ×2",
+    source: "Deliveroo",
+    logo: "/logos/deliveroo.png",
+    status: "Prête",
+    live: false,
+  },
+];
 
-function IntegrationMockup({ feature }: { feature: Feature }) {
-  void feature;
-
+function CentralisationVisual() {
   return (
-    <div className="relative w-full aspect-[4/3] flex items-center justify-center">
-      {/* Central hub */}
-      <div className="relative z-10 w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-[0_0_40px_rgba(82,207,175,0.1)]">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+    <VisualCard>
+      {/* En-tête tableau de bord */}
+      <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
+        <p className="text-xs font-semibold text-foreground">
+          Commandes en direct
+        </p>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />1 flux unifié
+        </span>
       </div>
 
-      {/* Platform nodes */}
-      {integrationNodes.map((node, i) => {
-        const angle = (i / integrationNodes.length) * 2 * Math.PI - Math.PI / 2;
-        const radius = 120;
-        const x = Math.cos(angle) * radius;
-        const y = Math.sin(angle) * radius;
-
-        return (
-          <div
-            key={node.name}
-            className="absolute z-10"
-            style={{
-              left: `calc(50% + ${x}px - 28px)`,
-              top: `calc(50% + ${y}px - 28px)`,
-            }}
-          >
-            {/* Connection line */}
-            <svg
-              className="absolute pointer-events-none"
-              style={{
-                left: "28px",
-                top: "28px",
-                width: "1px",
-                height: "1px",
-                overflow: "visible",
-              }}
-            >
-              <line
-                x1="0"
-                y1="0"
-                x2={-x}
-                y2={-y}
-                stroke="rgba(82,207,175,0.15)"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-            </svg>
-
-            {/* Node */}
-            <div className="w-14 h-14 rounded-xl border border-white/[0.08] bg-[#0c0c10] flex flex-col items-center justify-center gap-1.5 shadow-lg">
-              {node.icon}
-              <span className="text-[7px] text-muted-foreground/60 font-medium">
-                {node.name}
+      {/* Lignes de commande */}
+      <div className="divide-y divide-[color:var(--border)]">
+        {orderFlow.map((o) => (
+          <div key={o.ref} className="flex items-center gap-3 px-4 py-3">
+            <span className="text-[11px] font-semibold tabular-nums text-muted-foreground">
+              {o.ref}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-foreground">
+                {o.label}
+              </p>
+              <span className="mt-1 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                {o.logo ? (
+                  <Image
+                    src={o.logo}
+                    alt=""
+                    width={12}
+                    height={12}
+                    className="h-3 w-3 rounded-sm object-contain"
+                  />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+                {o.source}
               </span>
             </div>
+            <span
+              className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                o.live
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-2 text-secondary-foreground"
+              }`}
+            >
+              {o.status}
+            </span>
           </div>
-        );
-      })}
+        ))}
+      </div>
 
-      {/* Ambient glows */}
-      <div className="absolute w-64 h-64 bg-primary/[0.04] rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute top-1/4 right-1/4 w-24 h-24 bg-primary/[0.06] rounded-full blur-[40px] pointer-events-none" />
+      {/* Pied — compteur */}
+      <div className="flex items-center justify-between border-t border-[color:var(--border)] bg-background px-4 py-3">
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <Bell className="h-3.5 w-3.5 text-primary" strokeWidth={2.2} />
+          Alerte à chaque commande
+        </span>
+        <span className="font-display text-sm font-semibold tabular-nums text-primary">
+          156 aujourd&apos;hui
+        </span>
+      </div>
+    </VisualCard>
+  );
+}
+
+/* ── 06 · Intégrations — vrais logos vers le hub ── */
+
+const integrationRows = [
+  { name: "Uber Eats", logo: "/logos/uber-eats.png", detail: "Commandes synchronisées" },
+  { name: "Deliveroo", logo: "/logos/deliveroo.png", detail: "Menu à jour en direct" },
+  { name: "Uber Direct", logo: "/logos/uber-direct.png", detail: "Livraison sans flotte" },
+];
+
+function IntegrationVisual() {
+  return (
+    <VisualCard>
+      <div className="p-5">
+        <p className="text-xs font-semibold text-foreground">
+          Canaux connectés
+        </p>
+
+        {/* Sources */}
+        <div className="mt-4 space-y-2.5">
+          {integrationRows.map((r) => (
+            <div
+              key={r.name}
+              className="flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-background px-3 py-2.5"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[color:var(--border)] bg-surface-1">
+                <Image
+                  src={r.logo}
+                  alt={r.name}
+                  width={22}
+                  height={22}
+                  className="h-[22px] w-[22px] rounded-md object-contain"
+                />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground">{r.name}</p>
+                <p className="text-[10px] text-muted-foreground">{r.detail}</p>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-semibold text-primary">
+                <Check className="h-3 w-3" strokeWidth={2.6} /> Connecté
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Convergence vers le hub */}
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[color:var(--border-contrast)]" />
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-[0_10px_24px_-14px_rgba(197,84,44,0.6)]">
+            <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={2.2} />
+            Votre dashboard
+          </span>
+          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[color:var(--border-contrast)]" />
+        </div>
+        <p className="mt-2 text-center text-[10px] text-muted-foreground">
+          Tout arrive au même endroit, sans double saisie.
+        </p>
+      </div>
+    </VisualCard>
+  );
+}
+
+/* ── 07 · Fidélité & gamification — carte claire, cohérente avec les autres ── */
+
+function FideliteVisual() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
+      {/* Halo chaud discret */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
+      />
+
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Programme fidélité
+            </span>
+            <p className="mt-1 font-display text-lg font-semibold text-foreground">
+              Niveau Gold
+            </p>
+          </div>
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Trophy className="h-5 w-5" strokeWidth={1.8} />
+          </span>
+        </div>
+
+        {/* Progression vers palier */}
+        <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-background p-3">
+          <div className="flex items-center justify-between text-[11px] font-medium text-secondary-foreground">
+            <span className="tabular-nums">320 pts</span>
+            <span className="tabular-nums">Platinum · 400 pts</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-3">
+            <div className="h-full w-4/5 rounded-full bg-primary" />
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Plus que 80 points pour le prochain palier.
+          </p>
+        </div>
+
+        {/* Défi + récompense */}
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Flame className="h-4 w-4" strokeWidth={2} />
+            </span>
+            <p className="mt-2 text-[11px] font-semibold text-foreground">
+              Défi du jour
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Un dessert · +50 pts
+            </p>
+          </div>
+          <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Gift className="h-4 w-4" strokeWidth={2} />
+            </span>
+            <p className="mt-2 text-[11px] font-semibold text-foreground">
+              Récompense
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Dessert offert · 500 pts
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ── Platform logos & icons ── */
+/* ── 08 · Analytics — KPIs + graphique terracotta ── */
 
-function PlatformLogo({ src, alt }: { src: string; alt: string }) {
+const analyticsBars = [45, 58, 52, 70, 64, 82, 76, 95];
+
+function AnalyticsVisual() {
   return (
-    <img
-      src={src}
-      alt={alt}
-      width={28}
-      height={28}
-      className="w-7 h-7 rounded-lg object-cover"
-    />
+    <VisualCard>
+      {/* En-tête */}
+      <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
+        <p className="text-xs font-semibold text-foreground">Performances</p>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
+          <BarChart3 className="h-3 w-3 text-primary" strokeWidth={2.2} /> 30
+          jours
+        </span>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-3 p-4">
+        {[
+          { label: "CA mensuel", value: "48,2 k€" },
+          { label: "Panier moyen", value: "32,50 €" },
+          { label: "Taux retour", value: "34 %" },
+        ].map((k) => (
+          <div
+            key={k.label}
+            className="rounded-xl border border-[color:var(--border)] bg-background p-3"
+          >
+            <p className="text-[10px] font-medium text-muted-foreground">
+              {k.label}
+            </p>
+            <p className="mt-1 font-display text-sm font-semibold tabular-nums text-foreground">
+              {k.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Graphique à barres terracotta */}
+      <div className="px-4 pb-4">
+        <div className="rounded-xl border border-[color:var(--border)] bg-background p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground">
+              Chiffre d&apos;affaires
+            </p>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+              <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.4} /> +24 %
+            </span>
+          </div>
+          <div className="mt-3 flex h-20 items-end gap-2">
+            {analyticsBars.map((h, i) => (
+              <div
+                key={i}
+                className={`flex-1 rounded-t ${i === analyticsBars.length - 1 ? "bg-primary" : "bg-primary/25"}`}
+                style={{ height: `${h}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </VisualCard>
   );
 }
-
-function SiteIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary/70">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a14.5 14.5 0 000 20 14.5 14.5 0 000-20" />
-      <path d="M2 12h20" />
-    </svg>
-  );
-}
-
-function SurPlaceIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400/70">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
-}
-
-const integrationNodes: { name: string; icon: React.ReactNode }[] = [
-  { name: "Uber Eats", icon: <PlatformLogo src="/logos/uber-eats.png" alt="Uber Eats" /> },
-  { name: "Deliveroo", icon: <PlatformLogo src="/logos/deliveroo.png" alt="Deliveroo" /> },
-  { name: "Uber Direct", icon: <PlatformLogo src="/logos/uber-direct.png" alt="Uber Direct" /> },
-  { name: "Votre site", icon: <SiteIcon /> },
-  { name: "Sur place", icon: <SurPlaceIcon /> },
-];

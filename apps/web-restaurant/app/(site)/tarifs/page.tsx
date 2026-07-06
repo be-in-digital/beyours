@@ -5,6 +5,7 @@
 import type { Metadata } from "next";
 import { PricingHero } from "@/components/pricing/pricing-hero";
 import { PricingPlans } from "@/components/pricing/pricing-plans";
+import { CommissionCalculator } from "@/components/pricing/commission-calculator";
 import { PricingModel } from "@/components/pricing/pricing-model";
 import { PricingComparison } from "@/components/pricing/pricing-comparison";
 import { PricingMaintenance } from "@/components/pricing/pricing-maintenance";
@@ -30,7 +31,8 @@ export default function TarifsPage() {
   return (
     <>
       <PricingHero />
-      <PricingPlans />
+      <PricingPlans ctaMode="checkout" />
+      <CommissionCalculator />
       <PricingModel />
       <PricingComparison />
       <PricingMaintenance />

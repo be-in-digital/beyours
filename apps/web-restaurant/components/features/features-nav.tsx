@@ -9,63 +9,67 @@ import { deepDiveFeatures } from "./features-data";
 
 const navItems = [
   ...deepDiveFeatures.map((f) => ({ id: f.id, label: f.title })),
-  { id: "et-aussi", label: "Et aussi..." },
+  { id: "et-aussi", label: "Et aussi…" },
 ];
 
 export function FeaturesNav() {
   const [activeId, setActiveId] = useState<string>("");
-  const [visible, setVisible] = useState(false);
+  const [pastBento, setPastBento] = useState(false);
+  const [beforeCta, setBeforeCta] = useState(true);
 
   useEffect(() => {
-    const sectionIds = navItems.map((item) => item.id);
-    const elements = sectionIds
-      .map((id) => document.getElementById(id))
+    // Active section tracking
+    const elements = navItems
+      .map((item) => document.getElementById(item.id))
       .filter(Boolean) as HTMLElement[];
 
-    if (elements.length === 0) return;
-
-    const observer = new IntersectionObserver(
+    const sectionObserver = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id);
-          }
+          if (entry.isIntersecting) setActiveId(entry.target.id);
         }
       },
-      { rootMargin: "-30% 0px -50% 0px", threshold: 0 }
+      { rootMargin: "-30% 0px -50% 0px", threshold: 0 },
     );
+    elements.forEach((el) => sectionObserver.observe(el));
 
-    elements.forEach((el) => observer.observe(el));
+    // Visibility: show once the bento overview has scrolled past the top,
+    // hide again as the CTA enters — via IntersectionObserver, no scroll listener.
+    const bento = document.getElementById("features-bento");
+    const cta = document.getElementById("cta");
 
-    // Show/hide based on scroll position
-    const handleScroll = () => {
-      const bentoSection = document.getElementById("features-bento");
-      const ctaSection = document.getElementById("cta");
+    const bentoObserver = bento
+      ? new IntersectionObserver(
+          ([entry]) => setPastBento(entry.boundingClientRect.bottom < 0),
+          { threshold: 0 },
+        )
+      : null;
+    bentoObserver?.observe(bento as Element);
 
-      if (bentoSection && ctaSection) {
-        const bentoBottom = bentoSection.getBoundingClientRect().bottom;
-        const ctaTop = ctaSection.getBoundingClientRect().top;
-        setVisible(bentoBottom < 0 && ctaTop > 200);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+    // Le CTA « intersecte » dès que son haut franchit la ligne des 70 % du
+    // viewport : isIntersecting bascule exactement au bon moment (entrée ET
+    // retour arrière), là où une comparaison de coordonnées au moment du
+    // trigger restait figée tant que le CTA était à l'écran.
+    const ctaObserver = cta
+      ? new IntersectionObserver(
+          ([entry]) => setBeforeCta(!entry.isIntersecting),
+          { threshold: 0, rootMargin: "0px 0px -30% 0px" },
+        )
+      : null;
+    ctaObserver?.observe(cta as Element);
 
     return () => {
-      observer.disconnect();
-      window.removeEventListener("scroll", handleScroll);
+      sectionObserver.disconnect();
+      bentoObserver?.disconnect();
+      ctaObserver?.disconnect();
     };
   }, []);
 
-  if (!visible) return null;
+  if (!pastBento || !beforeCta) return null;
 
   return (
-    <div
-      className="fixed top-1/2 -translate-y-1/2 left-4 xl:left-6 z-50 hidden xl:block pointer-events-none"
-      style={{ animation: "fadeIn 0.3s ease-out" }}
-    >
-      <nav className="flex flex-col gap-1 bg-[#0c0c10]/90 backdrop-blur-md border border-white/[0.06] rounded-xl p-1.5 pointer-events-auto shadow-lg max-w-[180px]">
+    <div className="pointer-events-none fixed left-4 top-1/2 z-50 hidden -translate-y-1/2 animate-in fade-in duration-300 xl:left-6 xl:block">
+      <nav className="pointer-events-auto flex max-w-[180px] flex-col gap-1 rounded-xl border border-[color:var(--border)] bg-surface-1/90 p-1.5 shadow-[0_16px_40px_-24px_rgba(112,60,34,0.5)] backdrop-blur-md">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -73,10 +77,10 @@ export function FeaturesNav() {
               const el = document.getElementById(item.id);
               if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
-            className={`text-left px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 cursor-pointer leading-tight ${
+            className={`rounded-lg px-2.5 py-1.5 text-left text-[11px] font-medium leading-tight transition-all duration-200 ${
               activeId === item.id
-                ? "text-primary bg-primary/[0.08] border border-primary/15"
-                : "text-muted-foreground/50 hover:text-muted-foreground/80 border border-transparent"
+                ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary"
+                : "border border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {item.label}

@@ -1,5 +1,34 @@
 # Design — Site vitrine Be in Digital
 
+> ## ⚠️ DIRECTION ACTUELLE (refonte 2026-07 — prime sur tout ce qui suit)
+>
+> La DA a **pivoté** d'un dark premium mint/teal vers un **warm food-editorial**,
+> validé par le client (plus chaleureux, food-first, montre le vrai produit).
+> Les sections ci-dessous décrivant le « dark futuriste / néon mint » sont
+> **obsolètes** — les garder seulement comme historique.
+>
+> **Palette réelle (tokens dans `app/globals.css`, thème clair) :**
+> - Fond papier `--background: #faf5ee` · texte ink `--foreground: #221c15`
+> - Surfaces claires `--surface-1: #fffdf9` → `--surface-3: #ece0cf`
+> - **Accent unique = terracotta** `--primary: #c5542c` (échelle
+>   `--primary-50…900`), texte sur accent `--primary-foreground: #fdf7ef`
+> - Ancrage sombre chaud (footer, CTA, 1 panneau/page max) = **olive**
+>   `--olive: #23271c`
+> - Bordures chaudes `--border: #e6d8c4` · ombres teintées brun
+>   `rgba(112,60,34,…)` (jamais de glow néon)
+>
+> **Typo :** display = **Bricolage Grotesque** (`font-display`), corps = Geist,
+> mono = Geist Mono. Plus de serif Instrument.
+>
+> **Principes :** vraies photos culinaires + aperçus PRODUIT réels (le composant
+> `storefront-preview.tsx` = mini site de commande fonctionnel), pas de faux
+> mockups en div gris, pas de dashboard abstrait. Mouvement doux (framer-motion,
+> reduced-motion respecté). Un seul accent verrouillé (terracotta) sur tout le
+> site.
+>
+> **Interdits :** mint/teal (`#52cfaf`, `rgba(82,207,175,*)`), `bg-black/*`,
+> `bg-white/[0.0x]`, `#101014/#0a0a0a`, glows néon, em-dash visibles.
+
 ## 1. Objectif
 
 Créer un site vitrine **premium**, **immersif** et **très moderne** pour **Be in Digital**, en s’inspirant du site de référence tout en l’adaptant au branding de la marque.
