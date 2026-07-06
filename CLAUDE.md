@@ -46,7 +46,7 @@
 ## 📁 Repository Structure
 
 ```
-beindigital-engine/
+beindigital/
 ├── packages/
 │   ├── ui/                    # React Components
 │   ├── core/                  # Auth, i18n, Payments, AWS
@@ -71,13 +71,21 @@ beindigital-engine/
 │   │   ├── e2e/               # Playwright tests
 │   │   └── __tests__/         # Vitest tests
 │   │
-│   ├── admin-dashboard/       # BeInDigital Admin
+│   ├── web-agency/            # Site vitrine BeInDigital Agency (beindigital.fr)
+│   ├── web-restaurant/        # Site offre BeInDigital Restauration (landing + Convex propre)
 │   └── docs/                  # Documentation
 │
 ├── .github/workflows/         # CI/CD (tests, lint, deploy)
 ├── turbo.json
 └── package.json
 ```
+
+**Sites web (`apps/web-*`)** : migrés depuis l'ancien repo `beindigital.fr`.
+Scope `@beindigital/*` (sans tirets — distinct des packages produits `@be-in-digital/*`),
+packages partagés `packages/web-{config,tokens,webgl-utils}`, exclus de changesets
+(déploiement continu, pas de versioning). Chaque app a son `CLAUDE.md`/`DESIGN.md`.
+Le repo séparé `beindigital-boilerplate` reste le template git cloné pour chaque
+site client ; il consomme les packages `@be-in-digital/*` publiés.
 
 ---
 

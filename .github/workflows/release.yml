@@ -44,7 +44,8 @@ jobs:
             ${{ runner.os }}-turbo-release-
 
       - name: Build packages
-        run: pnpm build
+        # Web apps (landing) are not published and build on Vercel
+        run: pnpm build --filter='!@beindigital/agency' --filter='!@beindigital/restaurant'
 
       - name: Create Release Pull Request or Publish
         id: changesets

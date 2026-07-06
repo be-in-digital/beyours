@@ -5,7 +5,7 @@ The BeInDigital Engine is organized as a **pnpm monorepo** with Turborepo orches
 ## Repository Layout
 
 ```
-beindigital-engine/
+beindigital/
 ├── packages/                    # Publishable npm packages
 │   ├── ui/                      # React components (Radix + Tailwind)
 │   ├── core/                    # Auth, i18n, payments, AWS
