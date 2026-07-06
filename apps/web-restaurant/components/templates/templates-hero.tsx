@@ -52,9 +52,9 @@ export function TemplatesHero() {
 
         <FadeIn delay={0.35}>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Parcourez nos templates conçus sur mesure pour chaque univers de la
-            restauration. Choisissez votre catégorie, personnalisez et lancez
-            votre présence digitale.
+            50 directions artistiques, dix par univers — pizzeria, fast-food,
+            food truck, poulet, asiatique. De vraies captures des sites livrés,
+            personnalisables à vos couleurs.
           </p>
         </FadeIn>
       </motion.div>

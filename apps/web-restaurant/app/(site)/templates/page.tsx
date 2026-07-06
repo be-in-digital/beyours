@@ -6,12 +6,12 @@ import { CtaSection } from "@/components/cta-section";
 export const metadata: Metadata = {
   title: "Templates — Be in Digital",
   description:
-    "Parcourez nos templates premium conçus pour chaque type de restaurant : pizzeria, fast food, asiatique, healthy, food truck. Trouvez le design idéal pour votre établissement.",
+    "50 templates premium (10 par univers) : pizzeria, fast-food, food truck, poulet, asiatique. Des captures réelles des sites livrés, personnalisables à vos couleurs.",
   alternates: { canonical: "/templates" },
   openGraph: {
     title: "Templates premium — Be in Digital",
     description:
-      "Des templates haut de gamme par typologie de restaurant : pizzeria, asiatique, healthy, fast food, food truck.",
+      "50 directions artistiques par typologie de restaurant : pizzeria, fast-food, food truck, poulet, asiatique.",
     url: "/templates",
     type: "website",
   },
