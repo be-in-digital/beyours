@@ -1,0 +1,12 @@
+/* ──────────────────────────────────────────────
+   @beindigital/tokens — tokens.css (entry agency)
+   ──────────────────────────────────────────────
+   Importe shared (tokens cross-app) puis agency
+   (overrides spécifiques au site agence).
+
+   Le site restaurant aura son propre point d'entrée
+   `restaurant.css` plus tard (Phase 0.5).
+*/
+
+@import "./shared.css";
+@import "./agency.css";

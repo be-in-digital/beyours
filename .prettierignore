@@ -4,3 +4,11 @@ dist
 coverage
 pnpm-lock.yaml
 *.tsbuildinfo
+
+# Sites web migres depuis beindigital.fr — conventions de formatage propres,
+# ne pas reformater avec la config engine (retirer si alignement volontaire)
+apps/web-agency
+apps/web-restaurant
+packages/web-config
+packages/web-tokens
+packages/web-webgl-utils
