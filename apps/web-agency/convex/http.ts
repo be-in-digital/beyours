@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 
+import { auth } from "./auth";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 
@@ -155,5 +156,8 @@ http.route({
   method: "OPTIONS",
   handler: submitContactHandler,
 });
+
+// Routes d'auth Convex Auth (/api/auth/*) — sign-in/out, refresh de token.
+auth.addHttpRoutes(http);
 
 export default http;
