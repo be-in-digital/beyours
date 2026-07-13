@@ -124,12 +124,12 @@ export function Orbit3D() {
     pillarOrder.forEach((_, i) => {
       const base = (i / pillarOrder.length) * Math.PI * 2;
       const appear = easeOutCubic((elapsed - 0.15 - i * 0.07) / 0.9);
-      applyPose(pillarRefs.current[i], base + angles.current.pillars, RING_PILLARS, appear);
+      applyPose(pillarRefs.current[i] ?? null, base + angles.current.pillars, RING_PILLARS, appear);
     });
     features.forEach((_, i) => {
       const base = (i / features.length) * Math.PI * 2;
       const appear = easeOutCubic((elapsed - 0.4 - i * 0.05) / 0.9);
-      applyPose(featureRefs.current[i], base + angles.current.features + 0.5, RING_FEATURES, appear);
+      applyPose(featureRefs.current[i] ?? null, base + angles.current.features + 0.5, RING_FEATURES, appear);
     });
   });
 

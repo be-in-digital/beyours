@@ -71,19 +71,20 @@ export function SolutionSection() {
               Toutes vos commandes, un seul flux
             </h3>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Site, Uber Eats, Deliveroo, sur place : tout arrive au même
-              endroit, en temps réel.
+              Site, click &amp; collect, sur place : tout arrive au même
+              endroit, en temps réel. Uber Eats &amp; Deliveroo rejoindront le
+              même flux dès leur certification.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {[
-                { name: "Votre site", logo: null },
-                { name: "Uber Eats", logo: "/logos/uber-eats.png" },
-                { name: "Deliveroo", logo: "/logos/deliveroo.png" },
-                { name: "Sur place", logo: null },
+                { name: "Votre site", logo: null, soon: false },
+                { name: "Sur place", logo: null, soon: false },
+                { name: "Uber Eats", logo: "/logos/uber-eats.png", soon: true },
+                { name: "Deliveroo", logo: "/logos/deliveroo.png", soon: true },
               ].map((s) => (
                 <span
                   key={s.name}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-3 py-1.5 text-xs font-medium text-secondary-foreground"
+                  className={`inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-3 py-1.5 text-xs font-medium ${s.soon ? "text-muted-foreground" : "text-secondary-foreground"}`}
                 >
                   {s.logo ? (
                     <Image
@@ -91,12 +92,17 @@ export function SolutionSection() {
                       alt=""
                       width={14}
                       height={14}
-                      className="h-3.5 w-3.5 rounded-sm object-contain"
+                      className={`h-3.5 w-3.5 rounded-sm object-contain ${s.soon ? "opacity-60" : ""}`}
                     />
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   )}
                   {s.name}
+                  {s.soon && (
+                    <span className="text-[10px] text-muted-foreground/70">
+                      · bientôt
+                    </span>
+                  )}
                 </span>
               ))}
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">

@@ -180,11 +180,14 @@ export default defineSchema({
       v.union(v.literal("card"), v.literal("alma"), v.literal("klarna")),
     ),
     stripeSessionId: v.optional(v.string()),
+    /* Vente au tarif fondateurs (2 500 € HT, 10 places) — consomme un slot. */
+    isFounders: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_email", ["customerEmail"])
     .index("by_status", ["status"])
-    .index("by_stripeSessionId", ["stripeSessionId"]),
+    .index("by_stripeSessionId", ["stripeSessionId"])
+    .index("by_isFounders_and_status", ["isFounders", "status"]),
 
   payments: defineTable({
     orderId: v.id("orders"),

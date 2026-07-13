@@ -6,8 +6,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { plans, formatPrice, type BillingPeriod } from "./pricing-data";
-import { TVA_ENABLED } from "@/lib/payment-providers";
+import { FOUNDERS_OFFER, TVA_ENABLED } from "@/lib/payment-providers";
 import { useCalendlyModal, useDevMode } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
@@ -23,6 +25,16 @@ export function PricingPlans({
   const { open: openCalendly } = useCalendlyModal();
   const devMode = useDevMode((s) => s.enabled);
   const goCheckout = ctaMode === "checkout" || devMode;
+
+  /* Offre fondateurs : places restantes en temps réel */
+  const foundersSold = useQuery(
+    api.orders.countFoundersSold,
+    FOUNDERS_OFFER.enabled ? {} : "skip",
+  );
+  const foundersLeft = FOUNDERS_OFFER.enabled
+    ? Math.max(0, FOUNDERS_OFFER.totalSlots - (foundersSold ?? 0))
+    : 0;
+  const foundersLive = FOUNDERS_OFFER.enabled && foundersLeft > 0;
 
 
   return (
@@ -90,6 +102,11 @@ export function PricingPlans({
                 : plan.maintenanceYearly;
             const maintenanceLabel =
               billing === "monthly" ? "/mois" : "/an";
+            const isFounders =
+              foundersLive && plan.slug === FOUNDERS_OFFER.plan;
+            const creationPrice = isFounders
+              ? FOUNDERS_OFFER.creationCents / 100
+              : plan.creation;
 
             return (
               <StaggerItem key={plan.slug} className="h-full">
@@ -106,6 +123,11 @@ export function PricingPlans({
                   {plan.comingSoon ? (
                     <div className="absolute -top-3 left-6 px-3 py-1 bg-surface-3 border border-[color:var(--border)] text-muted-foreground text-xs font-semibold rounded-full">
                       À venir
+                    </div>
+                  ) : isFounders ? (
+                    <div className="absolute -top-3 left-6 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
+                      Offre fondateurs · {foundersLeft}{" "}
+                      {foundersLeft > 1 ? "places restantes" : "place restante"}
                     </div>
                   ) : plan.featured ? (
                     <div className="absolute -top-3 left-6 px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
@@ -134,16 +156,26 @@ export function PricingPlans({
                       <span
                         className={`text-3xl sm:text-4xl font-bold tracking-tight ${plan.comingSoon ? "text-muted-foreground/50" : "text-foreground"}`}
                       >
-                        {formatPrice(plan.creation)}&nbsp;€
+                        {formatPrice(creationPrice)}&nbsp;€
                       </span>
                       <span className="text-sm text-muted-foreground">
                         HT · paiement unique
                       </span>
                     </div>
+                    {isFounders && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        Prix catalogue&nbsp;:{" "}
+                        <span className="font-medium">
+                          {formatPrice(plan.creation)}&nbsp;€&nbsp;HT
+                        </span>
+                        , appliqué à l&apos;épuisement des{" "}
+                        {FOUNDERS_OFFER.totalSlots} places
+                      </p>
+                    )}
                     <p className="mt-1.5 text-xs text-muted-foreground/70">
                       ou 4&nbsp;×&nbsp;
                       <span className="text-foreground/90 font-medium">
-                        {formatPrice(plan.creation / 4)}&nbsp;€
+                        {formatPrice(creationPrice / 4)}&nbsp;€
                       </span>{" "}
                       avec Alma, sans frais
                     </p>
@@ -167,11 +199,18 @@ export function PricingPlans({
                     <p className="mt-2 text-xs text-muted-foreground/70">
                       Soit{" "}
                       <span className="text-foreground/90 font-medium">
-                        {formatPrice(plan.creation + plan.maintenanceYearly)}&nbsp;€&nbsp;HT
+                        {formatPrice(creationPrice + plan.maintenanceYearly)}&nbsp;€&nbsp;HT
                       </span>{" "}
                       la première année, tout compris, puis{" "}
                       {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT/an.
                     </p>
+                    {isFounders && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        En échange&nbsp;: une étude de cas chiffrée et un
+                        témoignage publiables. Non cumulable avec un code
+                        parrainage.
+                      </p>
+                    )}
                   </div>
 
                   {/* Description */}
@@ -269,8 +308,14 @@ export function PricingPlans({
               </span>{" "}
               (jusqu&apos;à 30&nbsp;%). Votre site en direct&nbsp;:{" "}
               <span className="text-primary font-medium">
-                4&nbsp;500&nbsp;€&nbsp;HT la première année, puis
-                1&nbsp;000&nbsp;€&nbsp;HT/an
+                {formatPrice(
+                  (foundersLive
+                    ? FOUNDERS_OFFER.creationCents / 100
+                    : plans[0]!.creation) + plans[0]!.maintenanceYearly,
+                )}
+                &nbsp;€&nbsp;HT la première année
+                {foundersLive ? " (offre fondateurs)" : ""}, puis{" "}
+                {formatPrice(plans[0]!.maintenanceYearly)}&nbsp;€&nbsp;HT/an
               </span>
               , et aucune commission sur vos commandes.
             </p>

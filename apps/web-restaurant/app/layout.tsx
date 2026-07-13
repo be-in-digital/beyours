@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     "KDS restaurant",
     "plateforme restaurant",
     "fidélité restaurant",
-    "intégration Uber Eats Deliveroo",
+    "commande en ligne sans commission",
     "POS restaurant",
     "digitaliser restaurant",
     "logiciel caisse restaurant",

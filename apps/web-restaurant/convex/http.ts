@@ -168,7 +168,7 @@ async function handleCheckoutCompleted(
   const paymentMethodTypes = session.payment_method_types as string[] | undefined;
   let pmt = "card";
   if (paymentMethodTypes && paymentMethodTypes.length === 1) {
-    pmt = paymentMethodTypes[0];
+    pmt = paymentMethodTypes[0]!;
   }
   const paymentMethod = pmt === "alma" ? "alma" : pmt === "klarna" ? "klarna" : "card";
 

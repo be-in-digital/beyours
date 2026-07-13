@@ -117,7 +117,8 @@ export const stats = query({
       sev3: 0,
       sev4: 0,
     };
-    for (const i of open) openBySeverity[i.severity] += 1;
+    for (const i of open)
+      openBySeverity[i.severity] = (openBySeverity[i.severity] ?? 0) + 1;
 
     const resolvedRecent = incidents.filter(
       (i) =>
@@ -135,8 +136,13 @@ export const stats = query({
     return {
       total: incidents.length,
       openCount: open.length,
-      openBySeverity,
-      sev1Open: openBySeverity.sev1,
+      openBySeverity: {
+        sev1: openBySeverity.sev1 ?? 0,
+        sev2: openBySeverity.sev2 ?? 0,
+        sev3: openBySeverity.sev3 ?? 0,
+        sev4: openBySeverity.sev4 ?? 0,
+      },
+      sev1Open: openBySeverity.sev1 ?? 0,
       resolvedThisMonth: incidents.filter(
         (i) => i.status === "resolved" && (i.resolvedAt ?? 0) >= monthStart,
       ).length,

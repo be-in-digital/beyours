@@ -81,7 +81,7 @@ export default function ParrainagePage() {
         <h2 className="text-xl font-semibold mb-6">Vos avantages</h2>
         <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
           {[
-            "500 € de commission par achat validé",
+            "500 € de commission par vente encaissée au prix catalogue",
             "Virement automatique sur votre compte",
             "Dashboard pour suivre vos parrainages",
             "Code personnalisable à votre nom",

@@ -54,7 +54,7 @@ export function SoftwareApplicationJsonLd() {
     applicationSubCategory: "RestaurantManagementSoftware",
     operatingSystem: "Web",
     description:
-      "Plateforme tout-en-un pour restaurants : site vitrine, commande en ligne, Click & Collect, livraison, KDS, fidélité, analytics et intégrations Uber Eats / Deliveroo.",
+      "Plateforme tout-en-un pour restaurants : site vitrine, commande en ligne, Click & Collect, KDS, fidélité et analytics. 0 % de commission sur les ventes directes.",
     url: SITE_URL,
     image: `${SITE_URL}/opengraph-image`,
     offers: {
@@ -72,10 +72,9 @@ export function SoftwareApplicationJsonLd() {
       "Site web restaurant premium",
       "Commande en ligne sans commission",
       "Click and Collect",
-      "Livraison via Uber Direct",
       "KDS (Kitchen Display System)",
       "Impression de tickets",
-      "Centralisation Uber Eats & Deliveroo",
+      "Centralisation des commandes",
       "Programme de fidélité & gamification",
       "Analytics et rapports",
       "CMS simple",
@@ -96,11 +95,11 @@ const faqItems = [
   },
   {
     q: "Peut-on intégrer Uber Eats et Deliveroo à la plateforme ?",
-    a: "Oui. Les commandes Uber Eats et Deliveroo sont centralisées dans votre dashboard Be in Digital pour une gestion unifiée avec vos commandes directes.",
+    a: "Les intégrations Uber Eats et Deliveroo sont en cours de certification officielle auprès des plateformes. Dès validation, elles seront offertes à tous les clients sans surcoût : les commandes plateformes rejoindront le même flux que les commandes directes dans le dashboard.",
   },
   {
     q: "Comment fonctionne la livraison ?",
-    a: "Be in Digital s'intègre nativement à Uber Direct pour proposer la livraison depuis votre site, sans contrat séparé avec une plateforme tierce.",
+    a: "Le click & collect est disponible dès le lancement. La livraison depuis votre site via Uber Direct est en cours de certification et sera proposée dès validation, sans surcoût.",
   },
   {
     q: "Y a-t-il un engagement dans la durée ?",

@@ -1,10 +1,14 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useCheckoutStore } from "@/lib/store";
-import { getCheckoutTotals, type PaymentMethodSlug } from "@/lib/payment-providers";
+import {
+  FOUNDERS_OFFER,
+  getCheckoutTotals,
+  type PaymentMethodSlug,
+} from "@/lib/payment-providers";
 import { FadeIn } from "@/components/ui/motion";
 import { BuyerTypeSelector } from "./buyer-type-selector";
 import { BillingPeriodSelector } from "./billing-period-selector";
@@ -17,10 +21,16 @@ export function CheckoutFlow() {
   const store = useCheckoutStore();
   const createCheckout = useAction(api.stripe.createCheckoutSession);
 
+  const foundersSold = useQuery(api.orders.countFoundersSold, {});
+  const foundersActive =
+    FOUNDERS_OFFER.enabled &&
+    (foundersSold ?? 0) < FOUNDERS_OFFER.totalSlots;
+
   const { total: totalCents } = getCheckoutTotals(
     store.plan,
     store.billingPeriod,
     store.appliedReferral?.discountPercent,
+    foundersActive,
   );
 
   const handleBuyerTypeNext = () => {
@@ -108,6 +118,7 @@ export function CheckoutFlow() {
           plan={store.plan}
           billingPeriod={store.billingPeriod}
           discountPercent={store.appliedReferral?.discountPercent}
+          foundersActive={foundersActive}
         />
       </FadeIn>
 

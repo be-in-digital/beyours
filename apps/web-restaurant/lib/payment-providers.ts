@@ -70,6 +70,21 @@ export function getInstallmentAmount(
 export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
 export const TVA_RATE_PERCENT = 20;
 
+/* ── Offre fondateurs ──
+   10 premières créations Essentielle à 2 500 € HT (catalogue 3 500 €),
+   contre contreparties contractuelles (étude de cas, témoignage, référence).
+   S'éteint par épuisement des places (compteur api.orders.countFoundersSold),
+   jamais par date. Non cumulable avec le parrainage : un code appliqué
+   bascule sur le prix catalogue −10 %. Le prix catalogue ne change pas.
+   Dupliqué dans convex/stripe.ts (foundersOffer) — garder en phase. */
+
+export const FOUNDERS_OFFER = {
+  enabled: true,
+  plan: "essentielle" as const,
+  totalSlots: 10,
+  creationCents: 250000,
+} as const;
+
 /* ── Prix des plans (en centimes, HT) ── */
 
 export const planPrices = {
@@ -112,32 +127,49 @@ export function getCheckoutTotals(
   plan: "essentielle" | "premium",
   billingPeriod: BillingPeriod,
   discountPercent?: number,
+  /** Offre fondateurs applicable (places restantes, pas de code parrainage) */
+  foundersActive?: boolean,
 ): {
   creation: number;
+  /** Prix catalogue de la création (affiché en référence si fondateurs) */
+  catalogCreation: number;
   maintenance: number;
   discount: number;
+  foundersApplied: boolean;
   /** HT après remise */
   subtotal: number;
   tva: number;
   /** Montant réellement débité (TTC si TVA active, sinon = subtotal) */
   total: number;
 } {
-  const { creation, maintenance } = getFirstPaymentBreakdown(
+  const { creation: catalogCreation, maintenance } = getFirstPaymentBreakdown(
     plan,
     billingPeriod,
   );
-  const discount =
-    discountPercent && discountPercent > 0
-      ? Math.round((creation * discountPercent) / 100)
-      : 0;
+  const hasReferral = Boolean(discountPercent && discountPercent > 0);
+  // Non-cumul : le code parrainage s'applique au prix catalogue.
+  const foundersApplied = Boolean(
+    foundersActive &&
+      FOUNDERS_OFFER.enabled &&
+      plan === FOUNDERS_OFFER.plan &&
+      !hasReferral,
+  );
+  const creation = foundersApplied
+    ? FOUNDERS_OFFER.creationCents
+    : catalogCreation;
+  const discount = hasReferral
+    ? Math.round((creation * discountPercent!) / 100)
+    : 0;
   const subtotal = creation + maintenance - discount;
   const tva = TVA_ENABLED
     ? Math.round((subtotal * TVA_RATE_PERCENT) / 100)
     : 0;
   return {
     creation,
+    catalogCreation,
     maintenance,
     discount,
+    foundersApplied,
     subtotal,
     tva,
     total: subtotal + tva,

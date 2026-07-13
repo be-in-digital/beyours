@@ -150,7 +150,7 @@ export const seedV1 = internalMutation({
     const existing = await ctx.db
       .query("contractVersions")
       .take(1);
-    if (existing.length > 0) return existing[0]._id;
+    if (existing.length > 0) return existing[0]!._id;
 
     const encoder = new TextEncoder();
     const data = encoder.encode(args.content);
