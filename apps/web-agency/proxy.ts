@@ -3,7 +3,7 @@ import {
   createRouteMatcher,
   nextjsMiddlewareRedirect,
 } from "@convex-dev/auth/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 /**
  * proxy.ts — Next.js 16 a remplacé `middleware.ts` par `proxy.ts`
@@ -36,7 +36,11 @@ const isSignIn = createRouteMatcher(["/back-office/signin"]);
  * CSP + headers sécurité — logique identique à l'ancien proxy, isolée dans une
  * fonction pour être renvoyée depuis le handler Convex Auth.
  */
-function securityResponse(request: NextRequest): NextResponse {
+// Type structurel minimal : `convexAuthNextjsMiddleware` fournit un `NextRequest`
+// résolu depuis la copie de Next de `@convex-dev/auth`, distincte nominalement de
+// celle importée ici via `next/server`. On ne lit que `nextUrl.pathname`, donc on
+// type le strict nécessaire pour rester compatible avec les deux.
+function securityResponse(request: { nextUrl: { pathname: string } }): NextResponse {
   const isDev = process.env.NODE_ENV === "development";
 
   // Sanity Studio est une SPA tierce qui requiert `unsafe-eval` (JIT-compiled
