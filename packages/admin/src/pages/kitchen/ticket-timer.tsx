@@ -27,10 +27,14 @@ export function TicketTimer({ createdAt }: TicketTimerProps) {
     return () => clearInterval(interval)
   }, [createdAt])
 
-  // Format elapsed time
+  // Format elapsed time. Beyond 24h the exact figure is noise ("2237h 47m"):
+  // the ticket is stale data, not a rush to prioritize — cap the display.
   const formatElapsed = (minutes: number): string => {
     if (minutes < 60) {
       return `${minutes}m`
+    }
+    if (minutes >= 24 * 60) {
+      return "+24h"
     }
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60

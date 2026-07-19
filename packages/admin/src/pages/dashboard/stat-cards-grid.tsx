@@ -92,7 +92,7 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
       showTrend: true,
     },
     {
-      title: "Commandes actives",
+      title: "À traiter (24h)",
       value: today.activeOrders.toString(),
       icon: Clock,
       todayValue: today.activeOrders,
