@@ -141,6 +141,7 @@ export const gamePlaysTable = defineTable({
   .index("by_playerEmail", ["playerEmail"])
   .index("by_storeId_playedAt", ["storeId", "playedAt"])
   .index("by_qrCodeId", ["qrCodeId"])
+  .index("by_storeId_fingerprint", ["storeId", "fingerprint"])
 
 /**
  * Prize Redemptions table
