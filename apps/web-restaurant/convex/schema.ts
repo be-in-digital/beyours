@@ -488,4 +488,22 @@ export default defineSchema({
     actorName: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
+
+  /* Leads issus du formulaire de contact du site (distinct de whitelist,
+     qui est la waitlist). Alimenté par contactLeads.submit. */
+  contactLeads: defineTable({
+    name: v.string(),
+    email: v.string(),
+    restaurant: v.optional(v.string()),
+    message: v.string(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("converted"),
+      v.literal("archived"),
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_createdAt", ["createdAt"]),
 });

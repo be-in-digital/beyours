@@ -142,7 +142,7 @@ http.route({
 /* ── 1. checkout.session.completed ── */
 
 async function handleCheckoutCompleted(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; runAction: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; runAction: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const session = event.data.object;
@@ -177,6 +177,20 @@ async function handleCheckoutCompleted(
     orderId: order._id,
     status: "paid" as const,
     paymentMethod: paymentMethod as "card" | "alma" | "klarna",
+  });
+
+  // Email de confirmation au client (best-effort, ne bloque jamais le webhook).
+  // amount_total = montant réellement débité (TTC si la TVA est active, sinon HT),
+  // toujours juste, contrairement au montant HT stocké sur la commande.
+  await ctx.scheduler.runAfter(0, internal.email.send.sendOrderConfirmation, {
+    toEmail: order.customerEmail,
+    firstName: order.customerFirstName,
+    restaurantName: order.restaurantName,
+    plan: order.plan,
+    orderType: order.orderType,
+    amountCents: (session.amount_total as number) ?? order.amountCents,
+    paymentMethod,
+    isFounders: order.isFounders ?? false,
   });
 
   // Créer le paiement
@@ -243,7 +257,7 @@ async function handleCheckoutCompleted(
 /* ── 2. invoice.payment_succeeded ── */
 
 async function handleInvoiceSucceeded(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const invoice = event.data.object;
@@ -256,6 +270,9 @@ async function handleInvoiceSucceeded(
   const hostedUrl = invoice.hosted_invoice_url as string | undefined;
   const periodStart = invoice.period_start as number | undefined;
   const periodEnd = invoice.period_end as number | undefined;
+  // "subscription_create" = 1ʳᵉ facture (déjà couverte par la confirmation de
+  // commande) ; "subscription_cycle" = vrai renouvellement → reçu dédié.
+  const billingReason = invoice.billing_reason as string | undefined;
 
   // Trouver la subscription Convex (si liée)
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
@@ -302,12 +319,25 @@ async function handleInvoiceSucceeded(
       paidAt: Date.now(),
     });
   }
+
+  // Reçu de renouvellement (seulement pour les vrais renouvellements ; la 1ʳᵉ
+  // facture est déjà couverte par l'email de confirmation de commande).
+  if (billingReason === "subscription_cycle" && customerEmail) {
+    await ctx.scheduler.runAfter(0, internal.email.send.sendRenewalReceipt, {
+      toEmail: customerEmail,
+      plan,
+      amountCents: amountPaid ?? 0,
+      invoiceUrl: hostedUrl ?? invoicePdf,
+      periodStartMs: periodStart ? periodStart * 1000 : undefined,
+      periodEndMs: periodEnd ? periodEnd * 1000 : undefined,
+    });
+  }
 }
 
 /* ── 3. invoice.payment_failed ── */
 
 async function handleInvoiceFailed(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const invoice = event.data.object;
@@ -316,6 +346,7 @@ async function handleInvoiceFailed(
   const customerId = invoice.customer as string;
   const customerEmail = invoice.customer_email as string;
   const amountDue = invoice.amount_due as number;
+  const hostedUrl = invoice.hosted_invoice_url as string | undefined;
   const periodStart = invoice.period_start as number | undefined;
   const periodEnd = invoice.period_end as number | undefined;
 
@@ -354,6 +385,15 @@ async function handleInvoiceFailed(
       status: "open" as const,
       periodStart: periodStart ? periodStart * 1000 : undefined,
       periodEnd: periodEnd ? periodEnd * 1000 : undefined,
+    });
+  }
+
+  // Relance de paiement au client (dunning) : Stripe retentera automatiquement.
+  if (customerEmail) {
+    await ctx.scheduler.runAfter(0, internal.email.send.sendPaymentFailed, {
+      toEmail: customerEmail,
+      amountCents: amountDue ?? 0,
+      updateUrl: hostedUrl,
     });
   }
 
@@ -467,14 +507,73 @@ interface YousignWebhookPayload {
   };
 }
 
+/** Comparaison à temps constant (évite les attaques par timing sur le HMAC). */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+/**
+ * Vérifie la signature d'un webhook Yousign v3.
+ * En-tête `X-Yousign-Signature-256` = `sha256=<hex>`, HMAC-SHA256 du corps brut
+ * avec le secret de l'abonnement webhook.
+ */
+async function verifyYousignSignature(
+  body: string,
+  header: string | null,
+  secret: string,
+): Promise<boolean> {
+  if (!header) return false;
+  const provided = (header.includes("=") ? header.slice(header.indexOf("=") + 1) : header)
+    .trim()
+    .toLowerCase();
+  if (!provided) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signatureBytes = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(body),
+  );
+  const expected = Array.from(new Uint8Array(signatureBytes))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return timingSafeEqual(expected, provided);
+}
+
 http.route({
   path: "/webhooks/yousign",
   method: "POST",
   handler: httpAction(async (ctx, req) => {
     const body = await req.text();
 
-    // TODO: Verify Yousign webhook signature when YOUSIGN_WEBHOOK_SECRET is set
-    // const secret = process.env.YOUSIGN_WEBHOOK_SECRET;
+    // Vérification de signature — appliquée dès que le secret est configuré.
+    // Sans secret, on traite quand même (rétro-compatible) mais on l'indique.
+    const webhookSecret = process.env.YOUSIGN_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const sigHeader = req.headers.get("X-Yousign-Signature-256");
+      const valid = await verifyYousignSignature(body, sigHeader, webhookSecret);
+      if (!valid) {
+        console.warn("Yousign webhook: signature invalide — rejeté");
+        return new Response("Invalid signature", { status: 401 });
+      }
+    } else {
+      console.warn(
+        "Yousign webhook: YOUSIGN_WEBHOOK_SECRET absent — traitement sans vérification de signature",
+      );
+    }
 
     let payload: YousignWebhookPayload;
     try {

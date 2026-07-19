@@ -6,6 +6,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 /* ── Public queries ── */
@@ -104,6 +105,15 @@ export const createAfterSignup = mutation({
       stripeConnectStatus: "not_started",
       createdAt: Date.now(),
     });
+
+    // Email de bienvenue (best-effort). L'email vit sur le compte auth.
+    const user = await ctx.db.get(userId);
+    if (user?.email) {
+      await ctx.scheduler.runAfter(0, internal.email.send.sendAffiliateWelcome, {
+        toEmail: user.email,
+        firstName: user.name?.trim().split(/\s+/)[0] ?? "",
+      });
+    }
 
     return affiliateUserId;
   },

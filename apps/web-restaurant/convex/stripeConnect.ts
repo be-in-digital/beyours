@@ -229,6 +229,23 @@ export const processPayouts = internalAction({
           stripeTransferId: transfer.id,
         });
 
+        // Prévenir l'affilié que sa commission est versée (best-effort)
+        const affiliateEmail = await ctx.runQuery(
+          internal.affiliateUsers.getEmailById,
+          { affiliateUserId: referral.referrerId },
+        );
+        if (affiliateEmail) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.email.send.sendAffiliateCommission,
+            {
+              toEmail: affiliateEmail,
+              amountCents: referral.commissionCents,
+              paid: true,
+            },
+          );
+        }
+
         processed++;
         console.log(
           `Payout ${transfer.id} created for referral ${referral._id} (${referral.commissionCents} cents)`,
