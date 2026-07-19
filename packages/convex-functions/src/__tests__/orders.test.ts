@@ -124,3 +124,121 @@ describe("createFromWebhook", () => {
     expect(item.externalId).toBe("i1")
   })
 })
+
+// ---------------------------------------------------------------------------
+// createWithTicket — the order feeds the kitchen (one seam, one test surface)
+// ---------------------------------------------------------------------------
+
+import { createWithTicket, toKitchenTicketItems } from "../orders"
+
+describe("toKitchenTicketItems", () => {
+  it("maps options to 'Option: Choice' labels and keeps notes", () => {
+    const items = toKitchenTicketItems([
+      {
+        productName: "Burger",
+        quantity: 2,
+        unitPrice: 1000,
+        subtotal: 2000,
+        notes: "sans oignon",
+        selectedOptions: [
+          { optionName: "Cuisson", choiceName: "Saignant", priceModifier: 0 },
+          { optionName: "Extra", choiceName: undefined, priceModifier: 100 },
+        ],
+      },
+    ])
+    expect(items).toEqual([
+      {
+        productName: "Burger",
+        quantity: 2,
+        options: ["Cuisson: Saignant", "Extra: "],
+        notes: "sans oignon",
+      },
+    ])
+  })
+
+  it("returns an empty options list when none are selected", () => {
+    const items = toKitchenTicketItems([
+      { productName: "Coca", quantity: 1, unitPrice: 300, subtotal: 300, selectedOptions: [] },
+    ])
+    expect(items[0]?.options).toEqual([])
+  })
+})
+
+describe("createWithTicket", () => {
+  function createOrchestrationCtx() {
+    const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
+    let counter = 0
+    const docs: Record<string, Record<string, unknown>> = {
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny" },
+      "products:1": {
+        _id: "products:1",
+        storeId: "stores:1",
+        name: "Pizza",
+        price: 1200,
+        options: [
+          {
+            id: "opt1",
+            name: "Taille",
+            choices: [{ id: "ch1", name: "L", priceModifier: 200 }],
+          },
+        ],
+      },
+    }
+    const ctx = {
+      db: {
+        insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
+          const id = `${table}:${++counter}`
+          docs[id] = { _id: id, ...doc }
+          inserted.push({ table, doc })
+          return id
+        }),
+        get: vi.fn(async (id: string) => docs[id] ?? null),
+        patch: vi.fn(async (id: string, updates: Record<string, unknown>) => {
+          Object.assign(docs[id] ?? {}, updates)
+        }),
+        query: vi.fn(() => {
+          const chain = {
+            withIndex: () => chain,
+            order: () => chain,
+            first: async () => null,
+            take: async () => [],
+            collect: async () => [],
+          }
+          return chain
+        }),
+      },
+    }
+    return { ctx, inserted }
+  }
+
+  it("creates the order AND its kitchen ticket with mapped items", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    const orderId = await createWithTicket.handler(ctx, {
+      storeId: "stores:1",
+      customerInfo: { name: "Nadia", phone: "0600000000" },
+      items: [
+        {
+          productId: "products:1",
+          productName: "Pizza",
+          quantity: 1,
+          unitPrice: 1200,
+          subtotal: 1200,
+          selectedOptions: [{ optionName: "Taille", choiceName: "L", priceModifier: 200 }],
+        },
+      ],
+      type: "dine_in",
+      subtotal: 1200,
+      total: 1200,
+      paymentMethod: "cash",
+    } as never)
+
+    expect(orderId).toMatch(/^orders:/)
+    const ticket = inserted.find((entry) => entry.table === "kitchenTickets")
+    expect(ticket).toBeDefined()
+    expect(ticket?.doc.orderId).toBe(orderId)
+    expect(ticket?.doc.source).toBe("website")
+    expect((ticket?.doc.items as Array<{ options: string[] }>)[0]?.options).toEqual([
+      "Taille: L",
+    ])
+  })
+})
