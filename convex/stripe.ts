@@ -24,12 +24,21 @@ const foundersOffer = {
   creationCents: 250000,
 };
 
-/* ── Mapping plan + billingPeriod → Stripe Price ID (récurrents) ── */
+/* ── Mapping plan + billingPeriod → Stripe Price ID (récurrents) ──
+   Surchargeable par variables d'env pour basculer test <-> live sans toucher
+   au code : au go-live, poser les 4 STRIPE_PRICE_* (env Convex prod) avec les
+   Price IDs live du compte Be in Digital. Défaut = les Price IDs de test. */
 const maintenancePriceIds: Record<string, string> = {
-  "essentielle:monthly": "price_1TEnXVK8R9QQdjlQTj4Ntwvu",
-  "essentielle:yearly": "price_1TEnXWK8R9QQdjlQcWaCMZSF",
-  "premium:monthly": "price_1TEnXWK8R9QQdjlQH8cIgkOd",
-  "premium:yearly": "price_1TEnXXK8R9QQdjlQgbpX7ne0",
+  "essentielle:monthly":
+    process.env.STRIPE_PRICE_ESSENTIELLE_MONTHLY ??
+    "price_1TEnXVK8R9QQdjlQTj4Ntwvu",
+  "essentielle:yearly":
+    process.env.STRIPE_PRICE_ESSENTIELLE_YEARLY ??
+    "price_1TEnXWK8R9QQdjlQcWaCMZSF",
+  "premium:monthly":
+    process.env.STRIPE_PRICE_PREMIUM_MONTHLY ?? "price_1TEnXWK8R9QQdjlQH8cIgkOd",
+  "premium:yearly":
+    process.env.STRIPE_PRICE_PREMIUM_YEARLY ?? "price_1TEnXXK8R9QQdjlQgbpX7ne0",
 };
 
 /* ── Mentions vendeur portées par la facture Stripe du 1er paiement ──
