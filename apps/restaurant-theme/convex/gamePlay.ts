@@ -14,6 +14,8 @@ export const recordScan = mutation(defs.recordScan);
 
 export const play = mutation(defs.play);
 
+export const ensureReferralCode = mutation(defs.ensureReferralCode);
+
 export const claim = mutation({
   args: defs.claim.args,
   handler: async (ctx, args) => {

@@ -10,7 +10,45 @@ import {
   claim,
   redeemByCode,
   getSession,
+  selectSequentialProgression,
 } from "../gamePlay"
+
+describe("selectSequentialProgression", () => {
+  const ids = ["a1", "a2", "a3"]
+
+  it("returns the first action when nothing is done yet", () => {
+    const p = selectSequentialProgression(ids, [])
+    expect(p.currentActionId).toBe("a1")
+    expect(p.completedActionIds).toEqual([])
+    expect(p.allDone).toBe(false)
+  })
+
+  it("advances to the next uncompleted action across visits", () => {
+    const p = selectSequentialProgression(ids, ["a1"])
+    expect(p.currentActionId).toBe("a2")
+    expect(p.completedActionIds).toEqual(["a1"])
+    expect(p.allDone).toBe(false)
+  })
+
+  it("marks allDone once every active action is completed", () => {
+    const p = selectSequentialProgression(ids, ["a2", "a1", "a3"])
+    expect(p.currentActionId).toBeNull()
+    expect(p.completedActionIds).toEqual(["a1", "a2", "a3"])
+    expect(p.allDone).toBe(true)
+  })
+
+  it("ignores stale ids from reconfigured games", () => {
+    const p = selectSequentialProgression(ids, ["old", "a1", "gone"])
+    expect(p.currentActionId).toBe("a2")
+    expect(p.completedActionIds).toEqual(["a1"])
+  })
+
+  it("keeps the configured order regardless of completion order", () => {
+    const p = selectSequentialProgression(ids, ["a3"])
+    expect(p.currentActionId).toBe("a1")
+    expect(p.completedActionIds).toEqual(["a3"])
+  })
+})
 
 // ---------------------------------------------------------------------------
 // Mock Convex DB with index-aware queries

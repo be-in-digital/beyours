@@ -50,6 +50,12 @@ interface Game {
   description?: string
   winRatio: number
   isActive: boolean
+  config?: {
+    actionMode?: "all" | "sequential"
+    referral?: { enabled?: boolean; friendRewardLabel?: string }
+    cooldownHours?: number
+    [key: string]: unknown
+  }
 }
 
 interface Prize {
@@ -366,6 +372,60 @@ export function GameCatalogPage() {
                       }
                     }}
                   />
+                </div>
+
+                <div className="space-y-3 rounded-md border border-border/40 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Label className="text-sm">Actions progressives</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Une action par visite (recommandé), au lieu de toutes en même temps.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={(game.config?.actionMode ?? "sequential") === "sequential"}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await updateGame({
+                            id: game._id,
+                            config: { ...(game.config ?? {}), actionMode: checked ? "sequential" : "all" },
+                          })
+                          toast.success("Parcours des actions mis à jour")
+                        } catch (error) {
+                          toast.error("Mise à jour impossible — réessayez")
+                          console.error(error)
+                        }
+                      }}
+                      aria-label="Basculer les actions progressives"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Label className="text-sm">Parrainage</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Une fois les actions faites, le client parraine un ami pour rejouer.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={game.config?.referral?.enabled ?? false}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await updateGame({
+                            id: game._id,
+                            config: {
+                              ...(game.config ?? {}),
+                              referral: { ...(game.config?.referral ?? {}), enabled: checked },
+                            },
+                          })
+                          toast.success(checked ? "Parrainage activé" : "Parrainage désactivé")
+                        } catch (error) {
+                          toast.error("Mise à jour impossible — réessayez")
+                          console.error(error)
+                        }
+                      }}
+                      aria-label="Activer le parrainage"
+                    />
+                  </div>
                 </div>
               </div>
             ))}

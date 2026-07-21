@@ -19,6 +19,7 @@ import {
 import { GameShell } from "./GameShell"
 import { WelcomeScreen } from "./WelcomeScreen"
 import { ActionsScreen } from "./ActionsScreen"
+import { ReferralScreen } from "./ReferralScreen"
 import { WheelGame } from "./WheelGame"
 import { ScratchGame } from "./ScratchGame"
 import { ResultScreen } from "./ResultScreen"
@@ -40,10 +41,14 @@ export default function GamePageContent() {
   // until hydration re-renders with the real id — output is the loading screen
   // either way).
   const [fingerprint] = useState<string>(() => getDeviceFingerprint())
+  const [ref] = useState<string | undefined>(() => {
+    if (typeof window === "undefined") return undefined
+    return new URLSearchParams(window.location.search).get("ref") ?? undefined
+  })
 
   const session = useQuery(
     api.gamePlay.getSession,
-    fingerprint !== "server" ? { code, fingerprint } : "skip"
+    fingerprint !== "server" ? { code, fingerprint, ref } : "skip"
   ) as
     | GameSession
     | { status: "not_found" }
@@ -53,6 +58,7 @@ export default function GamePageContent() {
   const recordScan = useMutation(api.gamePlay.recordScan)
   const playMutation = useMutation(api.gamePlay.play)
   const claimMutation = useMutation(api.gamePlay.claim)
+  const ensureReferralCode = useMutation(api.gamePlay.ensureReferralCode)
 
   const [phase, setPhase] = useState<GamePhase>("loading")
   const [playResult, setPlayResult] = useState<PlayResult | null>(null)
@@ -101,6 +107,41 @@ export default function GamePageContent() {
     [gameSession]
   )
 
+  // Progression "une action par visite" : l'action courante à réaliser (mode
+  // sequential), ou null si tout est fait. Le mode "all" garde l'ancien flux.
+  const currentAction = useMemo(() => {
+    if (!gameSession) return null
+    const prog = gameSession.progression
+    if (prog.mode === "sequential") {
+      if (!prog.currentActionId) return null
+      return gameSession.actions.find((a) => a.id === prog.currentActionId) ?? null
+    }
+    return null
+  }, [gameSession])
+
+  const hasActionToDo = useMemo(() => {
+    if (!gameSession) return false
+    const prog = gameSession.progression
+    if (prog.mode === "sequential") return prog.currentActionId !== null
+    return gameSession.actions.length > 0
+  }, [gameSession])
+
+  const isFriendWelcome = gameSession?.referral.isFriendWelcome ?? false
+  const referralEnabled = gameSession?.referral.enabled ?? false
+  const bonusAvailable = (gameSession?.referral.pendingBonuses ?? 0) > 0
+
+  // Après l'accueil : filleul → jeu direct (tour offert) ; tour bonus du parrain
+  // → jeu direct ; action sociale en attente → actions ; social épuisé +
+  // parrainage activé → referral (partager pour rejouer).
+  const afterWelcome: GamePhase = useMemo(() => {
+    if (!gameSession) return "game"
+    if (isFriendWelcome) return "game"
+    if (bonusAvailable) return "game"
+    if (hasActionToDo) return "actions"
+    if (referralEnabled) return "referral"
+    return "game"
+  }, [gameSession, isFriendWelcome, bonusAvailable, hasActionToDo, referralEnabled])
+
   // ------------------------------------------------------------------
   // Play resolution (shared by both games)
   // ------------------------------------------------------------------
@@ -113,6 +154,7 @@ export default function GamePageContent() {
         gameId: gameSession.game.id,
         fingerprint,
         completedActions,
+        ref,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       })) as PlayResult
       setPlayResult(result)
@@ -127,7 +169,7 @@ export default function GamePageContent() {
       }
       return null
     }
-  }, [gameSession, fingerprint, playMutation, code, completedActions])
+  }, [gameSession, fingerprint, playMutation, code, completedActions, ref])
 
   const handleWheelSpin = useCallback(async (): Promise<number | null> => {
     const result = await resolvePlay()
@@ -244,10 +286,14 @@ export default function GamePageContent() {
               }
               gameType={gameSession.game.type}
               prizes={gameSession.prizes}
-              hasActions={gameSession.actions.length > 0}
-              onStart={() =>
-                setPhase(gameSession.actions.length > 0 ? "actions" : "game")
+              hasActions={afterWelcome !== "game"}
+              inviteBanner={
+                isFriendWelcome
+                  ? `Un ami vous offre ${gameSession.referral.friendRewardLabel ?? "un tour"} !`
+                  : undefined
               }
+              bonusCount={gameSession.referral.pendingBonuses}
+              onStart={() => setPhase(afterWelcome)}
             />
           </motion.div>
         )}
@@ -256,8 +302,37 @@ export default function GamePageContent() {
           <motion.div key="actions" className="flex flex-1 flex-col" exit={{ opacity: 0, x: -40 }}>
             <ActionsScreen
               actions={gameSession.actions}
+              mode={gameSession.progression.mode}
+              currentActionId={
+                gameSession.progression.mode === "sequential"
+                  ? gameSession.progression.currentActionId
+                  : null
+              }
+              completedActionIds={
+                gameSession.progression.mode === "sequential"
+                  ? gameSession.progression.completedActionIds
+                  : []
+              }
               onAllDone={(ids) => {
                 setCompletedActions(ids)
+                setPhase("game")
+              }}
+            />
+          </motion.div>
+        )}
+
+        {effectivePhase === "referral" && gameSession && (
+          <motion.div key="referral" className="flex flex-1 flex-col" exit={{ opacity: 0, x: -40 }}>
+            <ReferralScreen
+              qrCode={code}
+              initialShareCode={gameSession.referral.myShareCode}
+              friendRewardLabel={gameSession.referral.friendRewardLabel}
+              mintShareCode={async () => {
+                const res = await ensureReferralCode({ code, fingerprint })
+                return res.code
+              }}
+              onDone={() => {
+                setCompletedActions([])
                 setPhase("game")
               }}
             />

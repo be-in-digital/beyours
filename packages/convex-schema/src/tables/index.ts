@@ -21,6 +21,7 @@ export {
   prizesTable,
   gamePlaysTable,
   prizeRedemptionsTable,
+  gameReferralsTable,
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
 export { favoritesTable } from "./favorites"

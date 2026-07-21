@@ -21,4 +21,6 @@ export {
   type GamePhase,
   type PlayResult,
   type WheelSectionConfig,
+  type ActionProgression,
+  type ReferralState,
 } from "./types"

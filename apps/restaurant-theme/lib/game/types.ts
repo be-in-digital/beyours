@@ -45,6 +45,27 @@ export interface GameConfig {
   primaryColor?: string
   secondaryColor?: string
   cooldownHours?: number
+  actionMode?: "all" | "sequential"
+  referral?: { enabled: boolean; friendRewardLabel?: string }
+}
+
+/** Progression des actions pour ce device (mode "sequential"). */
+export type ActionProgression =
+  | { mode: "all" }
+  | {
+      mode: "sequential"
+      completedActionIds: string[]
+      currentActionId: string | null
+      allDone: boolean
+    }
+
+/** État du parrainage renvoyé par getSession. */
+export interface ReferralState {
+  enabled: boolean
+  isFriendWelcome: boolean
+  friendRewardLabel?: string
+  pendingBonuses: number
+  myShareCode: string | null
 }
 
 export interface GameSession {
@@ -61,6 +82,8 @@ export interface GameSession {
   }
   actions: GameAction[]
   prizes: GamePrize[]
+  progression: ActionProgression
+  referral: ReferralState
   cooldown: { active: boolean; nextPlayAt?: number }
 }
 
@@ -76,6 +99,7 @@ export type GamePhase =
   | "unavailable"
   | "welcome"
   | "actions"
+  | "referral"
   | "game"
   | "result"
   | "claim"

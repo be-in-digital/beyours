@@ -29,7 +29,7 @@
     "@be-in-digital/restaurant": "workspace:^",
     "@be-in-digital/ui": "workspace:^",
     "@convex-dev/better-auth": "^0.10.10",
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-slot": "^1.2.4",

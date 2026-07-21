@@ -14,6 +14,8 @@ interface WelcomeScreenProps {
   gameType: "wheel" | "scratch_card"
   prizes: GamePrize[]
   hasActions: boolean
+  inviteBanner?: string
+  bonusCount?: number
   onStart: () => void
 }
 
@@ -37,6 +39,8 @@ export function WelcomeScreen({
   gameType,
   prizes,
   hasActions,
+  inviteBanner,
+  bonusCount,
   onStart,
 }: WelcomeScreenProps) {
   const handleStart = () => {
@@ -53,6 +57,19 @@ export function WelcomeScreen({
       animate="visible"
       className="flex flex-1 flex-col items-center justify-center text-center"
     >
+      {(inviteBanner || (bonusCount ?? 0) > 0) && (
+        <motion.div
+          variants={itemVariants}
+          className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-2.5 text-sm font-semibold text-amber-200"
+        >
+          🎁{" "}
+          {inviteBanner ??
+            `${bonusCount} tour${(bonusCount ?? 0) > 1 ? "s" : ""} bonus disponible${
+              (bonusCount ?? 0) > 1 ? "s" : ""
+            }`}
+        </motion.div>
+      )}
+
       {/* Marquee emblem */}
       <motion.div variants={itemVariants} className="relative mb-6">
         <motion.div

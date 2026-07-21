@@ -78,6 +78,14 @@ export const gamesTable = defineTable({
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
     cooldownHours: v.optional(v.number()),
+    // "sequential" (défaut) = une action par visite, progressive d'une visite
+    // à l'autre. "all" = toutes les actions requises d'un coup (héritage).
+    actionMode: v.optional(v.union(v.literal("all"), v.literal("sequential"))),
+    // Parrainage : action récurrente une fois les actions sociales épuisées.
+    referral: v.optional(v.object({
+      enabled: v.boolean(),
+      friendRewardLabel: v.optional(v.string()),
+    })),
   })),
   createdAt: v.number(),
   updatedAt: v.number(),
@@ -129,6 +137,7 @@ export const gamePlaysTable = defineTable({
   playerPhone: v.optional(v.string()),
   fingerprint: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
+  referredByCode: v.optional(v.string()), // Parrain (code) si arrivé via parrainage
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
   ipAddress: v.optional(v.string()),
@@ -174,3 +183,21 @@ export const prizeRedemptionsTable = defineTable({
   .index("by_playerEmail", ["playerEmail"])
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_gamePlayId", ["gamePlayId"])
+
+/**
+ * Game Referrals table
+ * One row per referrer (store + device). Tracks conversions and the bonus
+ * plays the referrer earned but hasn't used yet.
+ */
+export const gameReferralsTable = defineTable({
+  storeId: v.id("stores"),
+  code: v.string(), // Shareable referral code
+  referrerFingerprint: v.string(),
+  referrerName: v.optional(v.string()),
+  conversions: v.number(), // Friends who played via this code
+  pendingBonuses: v.number(), // Bonus plays earned, not yet used
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_code", ["code"])
+  .index("by_storeId_referrerFingerprint", ["storeId", "referrerFingerprint"])

@@ -99,6 +99,49 @@ async function findLatestPlay(
   return plays.reduce((latest, p) => (p.playedAt > latest.playedAt ? p : latest))
 }
 
+/**
+ * Actions this fingerprint has already completed across past plays, restricted
+ * to currently-active actions (stale ids from reconfigured games are ignored).
+ * Drives the "one new action per visit" progression without any extra table.
+ */
+async function completedActionIdsFor(
+  ctx: SchemaQueryCtx,
+  storeId: DocId<"stores">,
+  fingerprint: string
+): Promise<string[]> {
+  const plays = await ctx.db
+    .query("gamePlays")
+    .withIndex("by_storeId_fingerprint", (q) =>
+      q.eq("storeId", storeId).eq("fingerprint", fingerprint)
+    )
+    .collect()
+  const done = new Set<string>()
+  for (const p of plays) {
+    for (const id of p.completedActions) done.add(id)
+  }
+  return [...done]
+}
+
+/**
+ * Pure : à partir des actions actives ordonnées et des actions déjà réalisées
+ * par ce device (peut contenir des ids périmés), calcule la progression
+ * séquentielle — l'action courante étant la première non encore faite.
+ */
+export function selectSequentialProgression(
+  orderedActionIds: string[],
+  completedIds: Iterable<string>
+): { completedActionIds: string[]; currentActionId: string | null; allDone: boolean } {
+  const active = new Set(orderedActionIds)
+  const done = new Set<string>()
+  for (const id of completedIds) if (active.has(id)) done.add(id)
+  const currentActionId = orderedActionIds.find((id) => !done.has(id)) ?? null
+  return {
+    completedActionIds: orderedActionIds.filter((id) => done.has(id)),
+    currentActionId,
+    allDone: currentActionId === null,
+  }
+}
+
 async function loadActiveGameForQr(
   ctx: SchemaQueryCtx,
   qr: Doc<"gameQRCodes">
@@ -136,6 +179,29 @@ async function findRedemptionByCode(
     .first()
 }
 
+async function findReferralByCode(
+  ctx: SchemaQueryCtx,
+  code: string
+): Promise<Doc<"gameReferrals"> | null> {
+  return await ctx.db
+    .query("gameReferrals")
+    .withIndex("by_code", (q) => q.eq("code", code))
+    .first()
+}
+
+async function findReferralByFingerprint(
+  ctx: SchemaQueryCtx,
+  storeId: DocId<"stores">,
+  fingerprint: string
+): Promise<Doc<"gameReferrals"> | null> {
+  return await ctx.db
+    .query("gameReferrals")
+    .withIndex("by_storeId_referrerFingerprint", (q) =>
+      q.eq("storeId", storeId).eq("referrerFingerprint", fingerprint)
+    )
+    .first()
+}
+
 function isAwaitingRedemption(redemption: Doc<"prizeRedemptions">): boolean {
   return redemption.status === "pending" || redemption.status === "claimed"
 }
@@ -144,7 +210,11 @@ function isAwaitingRedemption(redemption: Doc<"prizeRedemptions">): boolean {
  * Everything the player UI needs to boot, in one round-trip.
  * `fingerprint` lets the server report the cooldown state up front.
  */
-const getSessionArgs = { code: v.string(), fingerprint: v.optional(v.string()) }
+const getSessionArgs = {
+  code: v.string(),
+  fingerprint: v.optional(v.string()),
+  ref: v.optional(v.string()),
+}
 export const getSession = {
   args: getSessionArgs,
   handler: async (ctx: SchemaQueryCtx, args: ObjectType<typeof getSessionArgs>) => {
@@ -170,6 +240,31 @@ export const getSession = {
 
     const prizes = await loadAvailablePrizes(ctx, qr.storeId)
 
+    // Progression : en mode "sequential" (défaut), on ne présente qu'UNE action
+    // par visite, la suivante non encore réalisée par ce device. Le mode "all"
+    // conserve l'ancien comportement (toutes les actions d'un coup).
+    const actionMode: "all" | "sequential" = game.config?.actionMode ?? "sequential"
+    let progression:
+      | { mode: "all" }
+      | {
+          mode: "sequential"
+          completedActionIds: string[]
+          currentActionId: string | null
+          allDone: boolean
+        } = { mode: "all" }
+    if (actionMode === "sequential") {
+      const rawDone = args.fingerprint
+        ? await completedActionIdsFor(ctx, qr.storeId, args.fingerprint)
+        : []
+      progression = {
+        mode: "sequential",
+        ...selectSequentialProgression(
+          actions.map((a) => a._id as string),
+          rawDone
+        ),
+      }
+    }
+
     let cooldown: { active: boolean; nextPlayAt?: number } = { active: false }
     if (args.fingerprint) {
       const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
@@ -177,6 +272,37 @@ export const getSession = {
         const nextPlayAt = latest.playedAt + cooldownMsForGame(game)
         if (nextPlayAt > Date.now()) cooldown = { active: true, nextPlayAt }
       }
+    }
+
+    // Parrainage : filleul (arrivé via ?ref, jamais joué), bonus du parrain
+    // (tours gagnés non utilisés), et code partageable du joueur.
+    const referralCfg = game.config?.referral
+    let isFriendWelcome = false
+    if (args.ref && args.fingerprint) {
+      const refRow = await findReferralByCode(ctx, args.ref)
+      if (
+        refRow &&
+        refRow.storeId === qr.storeId &&
+        refRow.referrerFingerprint !== args.fingerprint
+      ) {
+        const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
+        if (latest === null) isFriendWelcome = true
+      }
+    }
+    const myReferral = args.fingerprint
+      ? await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
+      : null
+    const pendingBonuses = myReferral?.pendingBonuses ?? 0
+    // Un tour bonus (parrain) ou un tour offert (filleul) débloque le jeu même
+    // si le cooldown court encore.
+    if (pendingBonuses > 0 || isFriendWelcome) cooldown = { active: false }
+
+    const referral = {
+      enabled: referralCfg?.enabled === true,
+      isFriendWelcome,
+      friendRewardLabel: referralCfg?.friendRewardLabel,
+      pendingBonuses,
+      myShareCode: myReferral?.code ?? null,
     }
 
     return {
@@ -202,6 +328,8 @@ export const getSession = {
         timerSeconds: a.timerSeconds,
       })),
       prizes: prizes.map(publicPrize),
+      progression,
+      referral,
       cooldown,
     }
   },
@@ -234,6 +362,7 @@ const playArgs = {
   gameId: v.id("games"),
   fingerprint: v.string(),
   completedActions: v.array(v.string()),
+  ref: v.optional(v.string()),
   userAgent: v.optional(v.string()),
 }
 export const play = {
@@ -251,10 +380,30 @@ export const play = {
     }
 
     const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
+    const isFirstPlay = latest === null
+
+    // Parrainage : bonus du parrain (tour offert malgré le cooldown) et
+    // détection du filleul (arrivé via ?ref, première partie).
+    const myReferral = await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
+    const hasBonus = (myReferral?.pendingBonuses ?? 0) > 0
+    let refRow: Doc<"gameReferrals"> | null = null
+    if (args.ref) {
+      const r = await findReferralByCode(ctx, args.ref)
+      if (r && r.storeId === qr.storeId && r.referrerFingerprint !== args.fingerprint) {
+        refRow = r
+      }
+    }
+    const isFriendWelcome = refRow !== null && isFirstPlay
+
+    let consumedBonus = false
     if (latest) {
       const nextPlayAt = latest.playedAt + cooldownMsForGame(game)
       if (nextPlayAt > Date.now()) {
-        throw new Error(`COOLDOWN_ACTIVE:${nextPlayAt}`)
+        if (hasBonus) {
+          consumedBonus = true
+        } else {
+          throw new Error(`COOLDOWN_ACTIVE:${nextPlayAt}`)
+        }
       }
     }
 
@@ -281,6 +430,7 @@ export const play = {
       qrCodeId: qr._id,
       fingerprint: args.fingerprint,
       completedActions: args.completedActions,
+      referredByCode: isFriendWelcome ? args.ref : undefined,
       didWin: didWin && prize !== null,
       prizeId: prize?._id,
       userAgent: args.userAgent,
@@ -289,12 +439,69 @@ export const play = {
       updatedAt: now,
     })
 
+    // Tour bonus consommé : on décrémente le crédit du parrain.
+    if (consumedBonus && myReferral) {
+      await ctx.db.patch(myReferral._id, {
+        pendingBonuses: Math.max(0, myReferral.pendingBonuses - 1),
+        updatedAt: now,
+      })
+    }
+    // Filleul qui joue pour la première fois : le parrain gagne un tour bonus.
+    if (isFriendWelcome && refRow) {
+      await ctx.db.patch(refRow._id, {
+        conversions: refRow.conversions + 1,
+        pendingBonuses: refRow.pendingBonuses + 1,
+        updatedAt: now,
+      })
+    }
+
     return {
       playId,
       didWin: didWin && prize !== null,
       prize: prize ? publicPrize(prize) : null,
       nextPlayAt: now + cooldownMsForGame(game),
     }
+  },
+}
+
+/**
+ * Mint (or fetch) the player's shareable referral code. Called when the player
+ * reaches the referral stage. Idempotent per store + device.
+ */
+const ensureReferralCodeArgs = { code: v.string(), fingerprint: v.string() }
+export const ensureReferralCode = {
+  args: ensureReferralCodeArgs,
+  handler: async (
+    ctx: SchemaMutationCtx,
+    args: ObjectType<typeof ensureReferralCodeArgs>
+  ) => {
+    const qr = await ctx.db
+      .query("gameQRCodes")
+      .withIndex("by_code", (q) => q.eq("code", args.code))
+      .first()
+    if (!qr || !qr.isActive) throw new Error("GAME_UNAVAILABLE")
+
+    const existing = await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
+    if (existing) return { code: existing.code }
+
+    let code = generateRedemptionCode()
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const clash = await findReferralByCode(ctx, code)
+      if (!clash) break
+      code = generateRedemptionCode()
+    }
+
+    const now = Date.now()
+    await ctx.db.insert("gameReferrals", {
+      storeId: qr.storeId,
+      code,
+      referrerFingerprint: args.fingerprint,
+      conversions: 0,
+      pendingBonuses: 0,
+      createdAt: now,
+      updatedAt: now,
+    })
+    return { code }
   },
 }
 

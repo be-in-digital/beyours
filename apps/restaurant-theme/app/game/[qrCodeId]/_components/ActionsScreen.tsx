@@ -16,14 +16,20 @@ import {
 import { gameSounds, haptics, type GameAction, type GameActionType } from "@/lib/game"
 
 /**
- * Quest checklist before the game unlocks.
- * Tapping a quest opens its link and starts a verification countdown;
- * when every required quest is done, the play button unlocks with a burst.
+ * Écran des actions avant le jeu.
+ *
+ * - mode "sequential" (défaut produit) : UNE action par visite. Le client fait
+ *   l'action (on ouvre le lien, compte à rebours de vérification au retour),
+ *   puis il joue. Un stepper montre la progression d'une visite à l'autre.
+ * - mode "all" (héritage) : toutes les actions requises d'un coup.
  */
 
 interface ActionsScreenProps {
   actions: GameAction[]
   onAllDone: (completedIds: string[]) => void
+  mode?: "all" | "sequential"
+  currentActionId?: string | null
+  completedActionIds?: string[]
 }
 
 type QuestStatus = "todo" | "verifying" | "done"
@@ -38,7 +44,13 @@ const ACTION_META: Record<GameActionType, { icon: React.ReactNode; label: string
 
 const DEFAULT_TIMER_SECONDS = 8
 
-export function ActionsScreen({ actions, onAllDone }: ActionsScreenProps) {
+export function ActionsScreen({
+  actions,
+  onAllDone,
+  mode = "all",
+  currentActionId = null,
+  completedActionIds = [],
+}: ActionsScreenProps) {
   const [statuses, setStatuses] = useState<Record<string, QuestStatus>>({})
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
   const timersRef = useRef<Record<string, number>>({})
@@ -49,18 +61,6 @@ export function ActionsScreen({ actions, onAllDone }: ActionsScreenProps) {
       Object.values(timers).forEach((id) => window.clearInterval(id))
     }
   }, [])
-
-  const doneCount = useMemo(
-    () => actions.filter((a) => statuses[a.id] === "done").length,
-    [actions, statuses]
-  )
-  const requiredActions = useMemo(() => actions.filter((a) => a.isRequired), [actions])
-  const allRequiredDone = useMemo(
-    () =>
-      requiredActions.length === 0 ||
-      requiredActions.every((a) => statuses[a.id] === "done"),
-    [requiredActions, statuses]
-  )
 
   const startQuest = (action: GameAction) => {
     if (statuses[action.id] === "done" || statuses[action.id] === "verifying") return
@@ -91,6 +91,213 @@ export function ActionsScreen({ actions, onAllDone }: ActionsScreenProps) {
     timersRef.current[action.id] = intervalId
   }
 
+  const current = useMemo(
+    () =>
+      mode === "sequential" && currentActionId
+        ? (actions.find((a) => a.id === currentActionId) ?? null)
+        : null,
+    [mode, currentActionId, actions]
+  )
+
+  // ────────────────────────────────────────────────────────────
+  // Mode séquentiel : une seule action, avec stepper de progression.
+  // ────────────────────────────────────────────────────────────
+  if (mode === "sequential" && current) {
+    const currentStatus = statuses[current.id] ?? "todo"
+    const meta = ACTION_META[current.type]
+    const remaining = countdowns[current.id] ?? 0
+    const total = current.timerSeconds ?? DEFAULT_TIMER_SECONDS
+    const canPlay = currentStatus === "done"
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 40 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -40 }}
+        transition={{ type: "spring", stiffness: 200, damping: 24 }}
+        className="flex flex-1 flex-col pt-4"
+      >
+        <div className="mb-5 text-center">
+          <h2 className="font-heading text-2xl font-bold">Une action, une partie</h2>
+          <p className="mt-1.5 text-sm text-white/55">
+            En échange, tentez votre chance tout de suite.
+          </p>
+        </div>
+
+        {/* Stepper de progression (visite après visite) */}
+        <div className="mb-7 flex items-center justify-center gap-2">
+          {actions.map((a, i) => {
+            const done = completedActionIds.includes(a.id) || statuses[a.id] === "done"
+            const isCurrent = a.id === current.id
+            const chipMeta = ACTION_META[a.type]
+            return (
+              <div key={a.id} className="flex items-center gap-2">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                    isCurrent
+                      ? "bg-gradient-to-b from-amber-400 to-orange-500 text-[#3A1D00]"
+                      : done
+                        ? "bg-emerald-400/20 text-emerald-300"
+                        : "bg-white/[0.06] text-white/30"
+                  }`}
+                  aria-label={chipMeta.label}
+                >
+                  {done && !isCurrent ? (
+                    <CheckIcon className="h-4 w-4" />
+                  ) : (
+                    <span className="[&_svg]:h-4 [&_svg]:w-4">{chipMeta.icon}</span>
+                  )}
+                </div>
+                {i < actions.length - 1 && (
+                  <span className="h-px w-3 bg-white/10" aria-hidden />
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Carte de l'action unique */}
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <motion.button
+            type="button"
+            onClick={() => startQuest(current)}
+            disabled={currentStatus !== "todo"}
+            whileTap={currentStatus === "todo" ? { scale: 0.97 } : undefined}
+            className={`relative flex w-full flex-col items-center gap-4 overflow-hidden rounded-3xl border p-8 text-center transition-colors ${
+              currentStatus === "done"
+                ? "border-emerald-400/40 bg-emerald-400/[0.08]"
+                : currentStatus === "verifying"
+                  ? "border-amber-300/40 bg-amber-300/[0.06]"
+                  : "border-white/10 bg-white/[0.05] active:bg-white/[0.09]"
+            }`}
+          >
+            {currentStatus === "verifying" && total > 0 && (
+              <motion.div
+                className="absolute inset-x-0 bottom-0 h-1 bg-amber-300/40"
+                initial={{ width: 0 }}
+                animate={{ width: `${((total - remaining) / total) * 100}%` }}
+                transition={{ ease: "linear", duration: 1 }}
+                aria-hidden
+              />
+            )}
+            <div
+              className={`flex h-16 w-16 items-center justify-center rounded-2xl ${
+                currentStatus === "done"
+                  ? "bg-emerald-400/20 text-emerald-300"
+                  : "bg-white/10 text-amber-300"
+              }`}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {currentStatus === "done" ? (
+                  <motion.span
+                    key="check"
+                    initial={{ scale: 0, rotate: -40 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 16 }}
+                  >
+                    <CheckIcon className="h-7 w-7" />
+                  </motion.span>
+                ) : (
+                  <motion.span key="icon" className="[&_svg]:h-7 [&_svg]:w-7" exit={{ scale: 0 }}>
+                    {meta.icon}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+            <div>
+              <p className="font-heading text-lg font-bold text-white/90">{current.name}</p>
+              <p className="mt-1 text-sm text-white/50">
+                {currentStatus === "verifying"
+                  ? `Validation… ${remaining}s`
+                  : currentStatus === "done"
+                    ? "C'est fait, merci !"
+                    : (current.description ?? meta.label)}
+              </p>
+            </div>
+            {currentStatus === "todo" && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold text-white/80">
+                {current.url && <ExternalLinkIcon className="h-4 w-4" />}
+                Réaliser cette action
+              </span>
+            )}
+          </motion.button>
+
+          {currentStatus === "todo" && (
+            <p className="mt-4 max-w-[15rem] text-center text-[11px] leading-relaxed text-white/35">
+              On valide à votre retour. Vos données ne sont jamais lues.
+            </p>
+          )}
+        </div>
+
+        <div className="mt-auto pt-6">
+          <motion.button
+            type="button"
+            onClick={() => {
+              gameSounds.pop()
+              haptics.medium()
+              onAllDone([current.id as string])
+            }}
+            disabled={!canPlay}
+            whileTap={canPlay ? { scale: 0.95 } : undefined}
+            animate={
+              canPlay
+                ? { scale: [1, 1.04, 1], transition: { duration: 1.4, repeat: Infinity } }
+                : {}
+            }
+            className={`flex w-full items-center justify-center gap-2 rounded-full py-4 font-heading text-base font-bold uppercase tracking-widest transition-all ${
+              canPlay
+                ? "bg-gradient-to-b from-amber-400 to-orange-600 text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
+                : "cursor-not-allowed bg-white/10 text-white/35"
+            }`}
+          >
+            {canPlay ? (
+              <>
+                <UnlockIcon className="h-4 w-4" /> Jouer maintenant
+              </>
+            ) : (
+              <>
+                <LockIcon className="h-4 w-4" /> Réalisez l&apos;action
+              </>
+            )}
+          </motion.button>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // Mode "all" (héritage) : toutes les actions requises d'un coup.
+  // ────────────────────────────────────────────────────────────
+  return <AllActionsView actions={actions} statuses={statuses} countdowns={countdowns} startQuest={startQuest} onAllDone={onAllDone} />
+}
+
+/* ── Vue héritage (toutes les actions) ── */
+
+function AllActionsView({
+  actions,
+  statuses,
+  countdowns,
+  startQuest,
+  onAllDone,
+}: {
+  actions: GameAction[]
+  statuses: Record<string, QuestStatus>
+  countdowns: Record<string, number>
+  startQuest: (action: GameAction) => void
+  onAllDone: (completedIds: string[]) => void
+}) {
+  const doneCount = useMemo(
+    () => actions.filter((a) => statuses[a.id] === "done").length,
+    [actions, statuses]
+  )
+  const requiredActions = useMemo(() => actions.filter((a) => a.isRequired), [actions])
+  const allRequiredDone = useMemo(
+    () =>
+      requiredActions.length === 0 ||
+      requiredActions.every((a) => statuses[a.id] === "done"),
+    [requiredActions, statuses]
+  )
+
   const handleUnlock = () => {
     gameSounds.pop()
     haptics.medium()
@@ -112,7 +319,6 @@ export function ActionsScreen({ actions, onAllDone }: ActionsScreenProps) {
             ? "Un petit coup de pouce et la chance est à vous"
             : "Un dernier geste avant de jouer"}
         </p>
-        {/* Progress track */}
         <div className="mx-auto mt-4 h-2 w-48 overflow-hidden rounded-full bg-white/10">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
@@ -148,7 +354,6 @@ export function ActionsScreen({ actions, onAllDone }: ActionsScreenProps) {
                     : "border-white/10 bg-white/[0.05] active:bg-white/[0.09]"
               }`}
             >
-              {/* Verification progress wash */}
               {status === "verifying" && total > 0 && (
                 <motion.div
                   className="absolute inset-y-0 left-0 bg-amber-300/10"
