@@ -172,7 +172,7 @@ export const updateSettings = mutation({
     await requireAdmin(ctx);
     const existing = await ctx.db.query("affiliateSettings").take(1);
     if (existing.length > 0) {
-      await ctx.db.patch(existing[0]._id, {
+      await ctx.db.patch(existing[0]!._id, {
         ...args,
         updatedAt: Date.now(),
       });

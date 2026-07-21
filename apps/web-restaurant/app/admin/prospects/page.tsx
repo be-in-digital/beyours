@@ -24,8 +24,16 @@ const PLAN_LABEL: Record<string, string> = {
   essentielle: "Essentielle",
 };
 
+const LEAD_STATUS: Record<string, { label: string; variant: "primary" | "muted" }> = {
+  new: { label: "Nouveau", variant: "primary" },
+  contacted: { label: "Contacté", variant: "muted" },
+  converted: { label: "Converti", variant: "muted" },
+  archived: { label: "Archivé", variant: "muted" },
+};
+
 export default function AdminProspectsPage() {
   const prospects = useQuery(api.saClients.prospects, {});
+  const contactLeads = useQuery(api.contactLeads.list, {});
 
   return (
     <div className="space-y-6">
@@ -127,6 +135,76 @@ export default function AdminProspectsPage() {
           </Table>
         )}
       </Card>
+
+      {/* Messages de contact (formulaire du site) */}
+      <div>
+        <h2 className="mb-3 font-display text-lg font-semibold text-foreground">
+          Messages de contact
+        </h2>
+        <Card className="overflow-hidden">
+          {contactLeads === undefined ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-12" />
+              ))}
+            </div>
+          ) : contactLeads.length === 0 ? (
+            <EmptyState
+              className="m-4"
+              icon={<Mail />}
+              title="Aucun message"
+              description="Les messages envoyés depuis le formulaire de contact apparaîtront ici."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Restaurant</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Reçu</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contactLeads.map((lead) => {
+                  const status = LEAD_STATUS[lead.status] ?? LEAD_STATUS.new!;
+                  return (
+                    <TableRow key={lead._id}>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{lead.name}</p>
+                          <a
+                            href={`mailto:${lead.email}`}
+                            className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-primary"
+                          >
+                            <Mail className="size-3" />
+                            {lead.email}
+                          </a>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {lead.restaurant || "—"}
+                      </TableCell>
+                      <TableCell className="max-w-[24rem]">
+                        <p className="truncate text-muted-foreground" title={lead.message}>
+                          {lead.message}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground tnum">
+                        {formatRelative(lead.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

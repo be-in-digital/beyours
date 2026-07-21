@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -75,6 +77,7 @@ const INPUT_CLASS =
 
 export function ContactFormSection() {
   const { open: openCalendly } = useCalendlyModal();
+  const submitLead = useMutation(api.contactLeads.submit);
   const [formState, setFormState] = useState<FormState>("idle");
   const [errors, setErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState({
@@ -109,7 +112,7 @@ export function ContactFormSection() {
     });
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const validation = validate(formData);
     if (Object.keys(validation).length > 0) {
@@ -118,11 +121,18 @@ export function ContactFormSection() {
     }
     setErrors({});
     setFormState("sending");
-    // Simulate sending, replace with real API call
-    setTimeout(() => {
+    try {
+      await submitLead({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        restaurant: formData.restaurant.trim() || undefined,
+        message: formData.message.trim(),
+      });
       setFormState("sent");
       setFormData({ name: "", email: "", restaurant: "", message: "" });
-    }, 1500);
+    } catch {
+      setFormState("error");
+    }
   }
 
   return (
@@ -291,6 +301,13 @@ export function ContactFormSection() {
                       </>
                     )}
                   </button>
+
+                  {formState === "error" && (
+                    <p className="text-center text-sm text-primary" role="alert">
+                      L&apos;envoi a échoué. Réessayez, ou écrivez-nous directement
+                      à contact@beindigital.fr.
+                    </p>
+                  )}
                 </form>
               )}
             </div>

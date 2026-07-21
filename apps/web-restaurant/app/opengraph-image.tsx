@@ -71,7 +71,7 @@ export default function OpengraphImage() {
             }}
           >
             La plateforme digitale des restaurateurs indépendants. Site premium,
-            commande en ligne, fidélité, intégrations Uber Eats &amp; Deliveroo.
+            commande en ligne, fidélité. 0 % de commission sur vos ventes.
           </div>
         </div>
 

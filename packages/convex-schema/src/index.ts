@@ -12,3 +12,6 @@ export * from "./validators"
 
 // TypeScript types
 export * from "./types"
+
+// Typed data model (type-only): SchemaDataModel, Doc<>, SchemaQueryCtx…
+export * from "./dataModel"

@@ -6,6 +6,21 @@ import {
   internalMutation,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  APPORTEUR_CONTRACT_CONTENT,
+  APPORTEUR_CONTRACT_TITLE,
+} from "./contractContent";
+
+/** SHA-256 hex d'un contenu de contrat (piste d'audit / intégrité). */
+async function sha256Hex(content: string): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(content),
+  );
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 /* ── Public queries ── */
 
@@ -150,7 +165,7 @@ export const seedV1 = internalMutation({
     const existing = await ctx.db
       .query("contractVersions")
       .take(1);
-    if (existing.length > 0) return existing[0]._id;
+    if (existing.length > 0) return existing[0]!._id;
 
     const encoder = new TextEncoder();
     const data = encoder.encode(args.content);
@@ -169,5 +184,68 @@ export const seedV1 = internalMutation({
       createdAt: now,
       activatedAt: now,
     });
+  },
+});
+
+/**
+ * Publie et active le VRAI contrat d'apporteur d'affaires (texte canonique de
+ * `contractContent.ts`), en remplacement de tout placeholder « (TEST) ».
+ *
+ * À lancer une fois, en dev comme en prod, via la CLI Convex :
+ *   npx convex run contractVersions:publishApporteurContract
+ *
+ * Effets : archive la version active, insère le contrat réel en « active »,
+ * et repasse en « blocked_new_version » les apporteurs qui n'ont pas encore
+ * signé cette version (ils devront re-signer). Idempotent : ne fait rien si la
+ * version active porte déjà ce contenu.
+ */
+export const publishApporteurContract = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const content = APPORTEUR_CONTRACT_CONTENT;
+    const contentHash = await sha256Hex(content);
+
+    const active = await ctx.db
+      .query("contractVersions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(10);
+
+    if (active.some((cv) => cv.contentHash === contentHash)) {
+      return { status: "unchanged" as const };
+    }
+
+    const now = Date.now();
+    for (const cv of active) {
+      await ctx.db.patch(cv._id, { status: "archived", archivedAt: now });
+    }
+
+    const id = await ctx.db.insert("contractVersions", {
+      version: "1.0",
+      title: APPORTEUR_CONTRACT_TITLE,
+      content,
+      contentHash,
+      status: "active",
+      createdAt: now,
+      activatedAt: now,
+    });
+
+    // Forcer la re-signature des apporteurs actifs sur l'ancienne version.
+    const affiliates = await ctx.db
+      .query("affiliateUsers")
+      .withIndex("by_contractStatus", (q) => q.eq("contractStatus", "active"))
+      .take(500);
+
+    let blocked = 0;
+    for (const a of affiliates) {
+      if (a.acceptedContractVersionId !== id) {
+        await ctx.db.patch(a._id, {
+          contractStatus: "blocked_new_version",
+          requiredContractVersionId: id,
+        });
+        blocked += 1;
+      }
+    }
+
+    return { status: "published" as const, id, blocked };
   },
 });

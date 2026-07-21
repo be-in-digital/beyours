@@ -8,6 +8,7 @@
  */
 
 import { v } from "convex/values"
+import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 
 // === QUERIES ===
@@ -632,5 +633,56 @@ export const updateFromWebhook = {
 
     await ctx.db.patch(order._id as string, updates)
     return order._id as string
+  },
+}
+
+// === ORDER + KITCHEN TICKET ORCHESTRATION ===
+
+/**
+ * Map stored order items to the kitchen ticket item shape.
+ * Pure — the KDS display contract lives here, in one testable place.
+ */
+export function toKitchenTicketItems(
+  items: OrderItemInput[]
+): Array<{ productName: string; quantity: number; options: string[]; notes?: string }> {
+  return items.map((item) => ({
+    productName: item.productName,
+    quantity: item.quantity,
+    options:
+      item.selectedOptions?.map(
+        (o) => `${o.optionName}: ${o.choiceName ?? ""}`
+      ) ?? [],
+    notes: item.notes,
+  }))
+}
+
+/**
+ * "A confirmed order feeds the kitchen" is a business invariant, so it lives
+ * behind this seam — not in the app transport wrapper. Creates the order,
+ * then its kitchen ticket, in the same mutation (one Convex transaction).
+ */
+export const createWithTicket = {
+  args: create.args,
+  handler: async (ctx: any, args: CreateOrderArgs): Promise<string> => {
+    const orderId = await create.handler(ctx, args)
+
+    const order = await ctx.db.get(orderId)
+    if (!order) throw new Error("Order creation failed")
+
+    await kitchenTicketCreate.handler(ctx, {
+      storeId: order.storeId,
+      orderId,
+      orderNumber: order.orderNumber,
+      orderType: order.type,
+      items: toKitchenTicketItems(order.items),
+      priority: "normal",
+      source: "website",
+      trackingToken: crypto.randomUUID(),
+      customerName: order.customerInfo?.name,
+      customerPhone: order.customerInfo?.phone,
+      deliveryNotes: order.notes,
+    })
+
+    return orderId
   },
 }

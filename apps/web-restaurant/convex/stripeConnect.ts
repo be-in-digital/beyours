@@ -229,6 +229,23 @@ export const processPayouts = internalAction({
           stripeTransferId: transfer.id,
         });
 
+        // Prévenir l'affilié que sa commission est versée (best-effort)
+        const affiliateEmail = await ctx.runQuery(
+          internal.affiliateUsers.getEmailById,
+          { affiliateUserId: referral.referrerId },
+        );
+        if (affiliateEmail) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.email.send.sendAffiliateCommission,
+            {
+              toEmail: affiliateEmail,
+              amountCents: referral.commissionCents,
+              paid: true,
+            },
+          );
+        }
+
         processed++;
         console.log(
           `Payout ${transfer.id} created for referral ${referral._id} (${referral.commissionCents} cents)`,
@@ -241,5 +258,60 @@ export const processPayouts = internalAction({
     if (processed > 0) {
       console.log(`Processed ${processed} payouts`);
     }
+  },
+});
+
+/* ── Clawback : reprise / annulation d'une commission ──
+   Appelé par le webhook Stripe (remboursement, chargeback). Si la commission a
+   déjà été versée, on reprend le transfer (transfers.createReversal) ; sinon on
+   annule simplement. Exécute l'art. 4.3 du contrat d'apporteur. */
+
+export const reverseReferralCommission = internalAction({
+  args: {
+    referralId: v.id("referrals"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const referral = await ctx.runQuery(internal.referrals.getByIdInternal, {
+      referralId: args.referralId,
+    });
+    if (!referral || referral.status === "cancelled") return;
+
+    // Déjà versée : tenter de reprendre les fonds sur le compte connecté.
+    if (referral.status === "paid" && referral.stripeTransferId) {
+      const stripe = getStripe();
+      let adminNote = "Commission reprise avant traitement.";
+      if (stripe) {
+        try {
+          const reversal = await stripe.transfers.createReversal(
+            referral.stripeTransferId,
+            {
+              description: args.reason,
+              metadata: { referralId: String(referral._id) },
+            },
+          );
+          adminNote = `Commission reprise (reversal ${reversal.id}).`;
+          console.log(
+            `Reversed transfer ${referral.stripeTransferId} for referral ${referral._id}`,
+          );
+        } catch (err) {
+          adminNote =
+            "Reprise Stripe échouée (solde du compte connecté insuffisant ?) — à récupérer manuellement.";
+          console.error(`Reversal failed for referral ${referral._id}:`, err);
+        }
+      }
+      await ctx.runMutation(internal.referrals.cancelReferral, {
+        referralId: referral._id,
+        reason: args.reason,
+        adminNote,
+      });
+      return;
+    }
+
+    // Pas encore versée : simple annulation, rien à reprendre.
+    await ctx.runMutation(internal.referrals.cancelReferral, {
+      referralId: referral._id,
+      reason: args.reason,
+    });
   },
 });

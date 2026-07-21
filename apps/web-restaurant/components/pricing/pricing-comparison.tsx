@@ -41,6 +41,20 @@ function Cross() {
   );
 }
 
+/* En cours de certification par la plateforme tierce — offert dès validation. */
+function Soon() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-surface-2 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground text-center">
+      Certification en cours
+    </span>
+  );
+}
+
+function StatusCell({ status }: { status: boolean | "soon" }) {
+  if (status === "soon") return <Soon />;
+  return status ? <Check /> : <Cross />;
+}
+
 export function PricingComparison() {
   return (
     <section className="relative py-16 sm:py-24 overflow-hidden">
@@ -100,10 +114,10 @@ export function PricingComparison() {
                           {feature.label}
                         </span>
                         <div className="flex justify-center">
-                          {feature.essentielle ? <Check /> : <Cross />}
+                          <StatusCell status={feature.essentielle} />
                         </div>
                         <div className="flex justify-center">
-                          {feature.premium ? <Check /> : <Cross />}
+                          <StatusCell status={feature.premium} />
                         </div>
                       </div>
                     ))}

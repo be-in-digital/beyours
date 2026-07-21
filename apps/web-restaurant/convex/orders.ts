@@ -42,6 +42,7 @@ export const create = internalMutation({
     orderType: orderTypeValidator,
     billingPeriod: billingPeriodValidator,
     amountCents: v.number(),
+    isFounders: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const orderId = await ctx.db.insert("orders", {
@@ -96,5 +97,25 @@ export const get = query({
   args: { orderId: v.id("orders") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.orderId);
+  },
+});
+
+/* ── Offre fondateurs ──
+   Nombre de ventes fondateurs encaissées. Sert au compteur public
+   (« X places restantes ») et au calcul de prix côté checkout.
+   Seules les commandes payées consomment un slot : deux checkouts
+   simultanés sur la dernière place peuvent théoriquement se croiser,
+   risque accepté à cette échelle. */
+
+export const countFoundersSold = query({
+  args: {},
+  handler: async (ctx) => {
+    const sold = await ctx.db
+      .query("orders")
+      .withIndex("by_isFounders_and_status", (q) =>
+        q.eq("isFounders", true).eq("status", "paid"),
+      )
+      .collect();
+    return sold.length;
   },
 });

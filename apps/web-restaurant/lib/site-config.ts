@@ -14,7 +14,7 @@ export const SITE_URL =
 export const SITE_NAME = "Be in Digital";
 
 export const SITE_DESCRIPTION =
-  "Site web premium, commande en ligne directe, KDS en cuisine, intégrations Uber Eats & Deliveroo, fidélité : la plateforme tout-en-un pensée pour les restaurants. Reprenez la main sur votre marge.";
+  "Site web premium, commande en ligne directe, KDS en cuisine, fidélité : la plateforme tout-en-un pensée pour les restaurants. 0 % de commission sur vos ventes directes. Reprenez la main sur votre marge.";
 
 /** URL apex du studio (pour cross-linking depuis le resto). */
 export const STUDIO_URL = "https://beindigital.fr";

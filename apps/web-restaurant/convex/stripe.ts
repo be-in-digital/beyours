@@ -3,13 +3,26 @@
 import Stripe from "stripe";
 import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 const planPrices = {
   essentielle: { creation: 350000, maintenanceMonthly: 10000, maintenanceYearly: 100000 },
   premium: { creation: 750000, maintenanceMonthly: 20000, maintenanceYearly: 200000 },
 } as const;
+
+/* ── Offre fondateurs ──
+   10 premières créations Essentielle à 2 500 € HT (catalogue 3 500 €),
+   en échange de contreparties contractuelles (étude de cas, témoignage,
+   droit de référence). S'éteint par épuisement des places, jamais par date.
+   Non cumulable avec le parrainage : code appliqué = catalogue −10 %.
+   Dupliqué dans lib/payment-providers.ts (FOUNDERS_OFFER) — garder en phase. */
+const foundersOffer = {
+  enabled: true,
+  plan: "essentielle" as const,
+  totalSlots: 10,
+  creationCents: 250000,
+};
 
 /* ── Mapping plan + billingPeriod → Stripe Price ID (récurrents) ── */
 const maintenancePriceIds: Record<string, string> = {
@@ -18,6 +31,14 @@ const maintenancePriceIds: Record<string, string> = {
   "premium:monthly": "price_1TEnXWK8R9QQdjlQH8cIgkOd",
   "premium:yearly": "price_1TEnXXK8R9QQdjlQgbpX7ne0",
 };
+
+/* ── Mentions vendeur portées par la facture Stripe du 1er paiement ──
+   Le business profile (nom, adresse, TVA) reste réglé dans le dashboard Stripe ;
+   on ajoute ici le pied de facture légal + le SIRET en champ personnalisé.
+   Garder en phase avec apps/web-restaurant/lib/legal/company.ts (COMPANY). */
+const SELLER_INVOICE_FOOTER =
+  "TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
+const SELLER_SIRET = "930 817 697 00012";
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -64,15 +85,12 @@ export const createCheckoutSession = action({
 
     // Calcul montant côté serveur (jamais confiance au client)
     const prices = planPrices[args.plan];
-    const creationCents = prices.creation;
     const maintenanceCents =
       args.billingPeriod === "monthly"
         ? prices.maintenanceMonthly
         : prices.maintenanceYearly;
-    const totalCents = creationCents + maintenanceCents;
 
-    // ── Referral discount (création uniquement) ──
-    let discountAmountCents = 0;
+    // ── Referral (création uniquement, non cumulable avec l'offre fondateurs) ──
     let isReferral = false;
 
     if (args.referralCodeId && args.referrerId && args.discountPercent) {
@@ -86,9 +104,6 @@ export const createCheckoutSession = action({
         !affiliateEmail ||
         affiliateEmail.toLowerCase() !== args.customerEmail.toLowerCase()
       ) {
-        discountAmountCents = Math.round(
-          creationCents * args.discountPercent / 100,
-        );
         isReferral = true;
       } else {
         console.log(
@@ -97,6 +112,23 @@ export const createCheckoutSession = action({
       }
     }
 
+    // ── Offre fondateurs : tant qu'il reste des places, hors parrainage ──
+    let isFounders = false;
+    if (foundersOffer.enabled && args.plan === foundersOffer.plan && !isReferral) {
+      const foundersSold: number = await ctx.runQuery(
+        api.orders.countFoundersSold,
+        {},
+      );
+      isFounders = foundersSold < foundersOffer.totalSlots;
+    }
+
+    const creationCents = isFounders
+      ? foundersOffer.creationCents
+      : prices.creation;
+    const discountAmountCents = isReferral
+      ? Math.round((creationCents * args.discountPercent!) / 100)
+      : 0;
+    const totalCents = creationCents + maintenanceCents;
     const finalTotal = totalCents - discountAmountCents;
 
     // Créer la commande dans Convex
@@ -113,6 +145,7 @@ export const createCheckoutSession = action({
       orderType: args.orderType,
       billingPeriod: args.billingPeriod,
       amountCents: finalTotal,
+      isFounders,
     });
 
     // Metadata referral pour le webhook
@@ -204,6 +237,16 @@ export const createCheckoutSession = action({
       customer_email: args.customerEmail,
       customer_creation: "always",
       client_reference_id: orderId,
+      // Émet une vraie facture PDF pour le paiement initial (Création + 1ʳᵉ
+      // maintenance). Sans ceci, un Checkout mode "payment" ne génère qu'un
+      // reçu, pas de facture téléchargeable.
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          footer: SELLER_INVOICE_FOOTER,
+          custom_fields: [{ name: "SIRET", value: SELLER_SIRET }],
+        },
+      },
       ...(taxOn
         ? {
             automatic_tax: { enabled: true },
@@ -218,8 +261,10 @@ export const createCheckoutSession = action({
             unit_amount: creationCents,
             ...taxBehavior,
             product_data: {
-              name: `Be in Digital — ${planLabel} — Création`,
-              description: "Création de votre solution digitale",
+              name: `Be in Digital — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
+              description: isFounders
+                ? "Création de votre solution digitale — Tarif fondateurs, 10 places"
+                : "Création de votre solution digitale",
             },
           },
           quantity: 1,
@@ -244,6 +289,7 @@ export const createCheckoutSession = action({
         orderType: args.orderType,
         buyerType: args.buyerType,
         billingPeriod: args.billingPeriod,
+        founders: String(isFounders),
         ...referralMetadata,
       },
       success_url: `${args.successUrl}?orderId=${orderId}`,

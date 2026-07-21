@@ -250,7 +250,7 @@ export const invoicesOverview = query({
     for (let i = 5; i >= 0; i--) {
       const key = base - i;
       monthly.push({
-        label: MONTH_LABELS[((key % 12) + 12) % 12],
+        label: MONTH_LABELS[((key % 12) + 12) % 12]!,
         value: buckets.get(key) ?? 0,
       });
     }

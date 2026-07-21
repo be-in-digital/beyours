@@ -46,7 +46,7 @@ export function Tilt3D({
   );
   const glareBg = useTransform(
     [px, py],
-    ([gx, gy]: number[]) =>
+    ([gx = 0, gy = 0]: number[]) =>
       `radial-gradient(circle at ${(gx + 0.5) * 100}% ${(gy + 0.5) * 100}%, rgba(255,255,255,0.5), transparent 45%)`,
   );
 

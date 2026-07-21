@@ -8,9 +8,13 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
+import type * as authz from "../authz.js";
 import type * as contactForms from "../contactForms.js";
+import type * as crm from "../crm.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -19,9 +23,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  authz: typeof authz;
   contactForms: typeof contactForms;
+  crm: typeof crm;
   emails: typeof emails;
   http: typeof http;
+  users: typeof users;
 }>;
 
 /**

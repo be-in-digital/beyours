@@ -4,7 +4,7 @@ import { useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { TourProvider as ReactourProvider, useTour } from "@reactour/tour"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
-import { useSidebar } from "../../ui/sidebar"
+import { useOptionalSidebar } from "../../ui/sidebar"
 import { TOUR_STEPS, setTourNavigate } from "./tour-steps"
 
 const STORAGE_PREFIX = "bid-tour-"
@@ -35,7 +35,8 @@ function TourAutoLauncher() {
   const user = useAdminAuthStore((s) => s.user)
   const isAuthenticated = useAdminAuthStore((s) => s.isAuthenticated)
   const isAuthLoading = useAdminAuthStore((s) => s.isLoading)
-  const sidebar = useSidebar()
+  // Nullable: this component mounts above the SidebarProvider in the layout
+  const sidebar = useOptionalSidebar()
   const router = useRouter()
 
   // Register Next.js router for step navigation
@@ -59,7 +60,7 @@ function TourAutoLauncher() {
 
   // Keep sidebar open during tour
   useEffect(() => {
-    if (isOpen && sidebar.state === "collapsed") {
+    if (isOpen && sidebar && sidebar.state === "collapsed") {
       sidebar.setOpen(true)
     }
   }, [isOpen, currentStep, sidebar])

@@ -64,9 +64,16 @@ export const plans: Plan[] = [
 
 /* ── Comparison table ── */
 
+/** true = inclus · false = non inclus · "soon" = en cours de certification */
+export type ComparisonStatus = boolean | "soon";
+
 export interface ComparisonCategory {
   name: string;
-  features: { label: string; essentielle: boolean; premium: boolean }[];
+  features: {
+    label: string;
+    essentielle: ComparisonStatus;
+    premium: ComparisonStatus;
+  }[];
 }
 
 export const comparisonCategories: ComparisonCategory[] = [
@@ -93,7 +100,7 @@ export const comparisonCategories: ComparisonCategory[] = [
     features: [
       { label: "Dashboard administrateur", essentielle: true, premium: true },
       { label: "Centralisation des commandes", essentielle: true, premium: true },
-      { label: "Intégration Uber Eats & Deliveroo", essentielle: true, premium: true },
+      { label: "Intégration Uber Eats & Deliveroo", essentielle: "soon", premium: "soon" },
       { label: "Analytics & suivi des performances", essentielle: false, premium: true },
     ],
   },
@@ -191,6 +198,11 @@ export const processSteps = [
 
 export const faqItems = [
   {
+    question: "Qu'est-ce que l'offre fondateurs ?",
+    answer:
+      "Les 10 premiers restaurants bénéficient d'une création à 2 500 € HT au lieu de 3 500 € HT, en échange de contreparties simples : une étude de cas chiffrée, un témoignage et la possibilité de vous citer en référence. Le nombre de places est limité par notre capacité de livraison. À l'épuisement des 10 places, le prix catalogue s'applique automatiquement. L'offre n'est pas cumulable avec un code de parrainage, et la maintenance reste au tarif normal.",
+  },
+  {
     question: "La maintenance est-elle obligatoire ?",
     answer:
       "Oui, la première année de maintenance est obligatoire. Elle garantit un lancement réussi, un suivi technique de qualité et un accompagnement dans la prise en main de votre solution. Au-delà de la première année, la maintenance reste fortement recommandée mais n'est plus obligatoire.",
@@ -248,7 +260,7 @@ export const faqItems = [
   {
     question: "Les intégrations Uber Eats & Deliveroo sont-elles incluses ?",
     answer:
-      "Oui, les intégrations avec Uber Eats et Deliveroo sont incluses dans les deux offres. Vos commandes de toutes les plateformes arrivent dans un flux unique sur votre dashboard. La livraison via Uber Direct depuis votre propre site est également disponible.",
+      "Elles sont en cours de certification officielle auprès d'Uber et de Deliveroo. Dès validation, elles seront offertes à tous les clients, sans surcoût, via la maintenance : vos commandes plateformes rejoindront le même flux que vos commandes directes, et les clients existants seront activés en priorité. Nous ne promettons pas de date, elle dépend des plateformes. Votre site, la commande en ligne directe et le click & collect fonctionnent dès le premier jour et n'en dépendent pas.",
   },
 ];
 

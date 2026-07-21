@@ -58,7 +58,8 @@ export function ReferralCodeInput() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              -{appliedReferral.discountPercent}% sur la création
+              -{appliedReferral.discountPercent}% sur la création, au prix
+              catalogue (non cumulable avec l&apos;offre fondateurs)
             </p>
           </div>
           <button

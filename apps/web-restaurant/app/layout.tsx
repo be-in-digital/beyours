@@ -1,5 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Bricolage_Grotesque,
+  Fraunces,
+  Anton,
+  Oswald,
+  Zen_Kaku_Gothic_New,
+} from "next/font/google";
 import { ConvexClientProvider } from "@/components/convex-provider";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site-config";
 import "./globals.css";
@@ -24,6 +32,34 @@ const bricolage = Bricolage_Grotesque({
   display: "swap",
 });
 
+// Polices d'accent des templates interactifs (une identité par univers).
+// Pizzeria — serif éditorial
+const fraunces = Fraunces({
+  variable: "--font-editorial",
+  subsets: ["latin"],
+  display: "swap",
+});
+// Fast-food — grotesque d'impact
+const anton = Anton({
+  variable: "--font-impact",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+// Food truck — condensée
+const oswald = Oswald({
+  variable: "--font-condensed",
+  subsets: ["latin"],
+  display: "swap",
+});
+// Asiatique — sans épurée
+const zenKaku = Zen_Kaku_Gothic_New({
+  variable: "--font-zen",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
 const TITLE =
   "Be in Digital — La plateforme digitale des restaurateurs indépendants";
 const DESCRIPTION = SITE_DESCRIPTION;
@@ -44,7 +80,7 @@ export const metadata: Metadata = {
     "KDS restaurant",
     "plateforme restaurant",
     "fidélité restaurant",
-    "intégration Uber Eats Deliveroo",
+    "commande en ligne sans commission",
     "POS restaurant",
     "digitaliser restaurant",
     "logiciel caisse restaurant",
@@ -104,7 +140,7 @@ export default function RootLayout({
     <html
       lang="fr"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} ${fraunces.variable} ${anton.variable} ${oswald.variable} ${zenKaku.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <ConvexClientProvider>{children}</ConvexClientProvider>

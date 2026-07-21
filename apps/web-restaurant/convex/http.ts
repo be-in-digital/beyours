@@ -123,6 +123,16 @@ http.route({
         case "account.updated":
           await handleAccountUpdated(ctx, event);
           break;
+        case "charge.refunded":
+          await handleChargeReversal(ctx, event, "Remboursement du client");
+          break;
+        case "charge.dispute.created":
+          await handleChargeReversal(
+            ctx,
+            event,
+            "Litige / rétrofacturation (chargeback)",
+          );
+          break;
         default:
           console.log(`Unhandled event type: ${event.type}`);
       }
@@ -142,7 +152,7 @@ http.route({
 /* ── 1. checkout.session.completed ── */
 
 async function handleCheckoutCompleted(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; runAction: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; runAction: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const session = event.data.object;
@@ -168,7 +178,7 @@ async function handleCheckoutCompleted(
   const paymentMethodTypes = session.payment_method_types as string[] | undefined;
   let pmt = "card";
   if (paymentMethodTypes && paymentMethodTypes.length === 1) {
-    pmt = paymentMethodTypes[0];
+    pmt = paymentMethodTypes[0]!;
   }
   const paymentMethod = pmt === "alma" ? "alma" : pmt === "klarna" ? "klarna" : "card";
 
@@ -177,6 +187,20 @@ async function handleCheckoutCompleted(
     orderId: order._id,
     status: "paid" as const,
     paymentMethod: paymentMethod as "card" | "alma" | "klarna",
+  });
+
+  // Email de confirmation au client (best-effort, ne bloque jamais le webhook).
+  // amount_total = montant réellement débité (TTC si la TVA est active, sinon HT),
+  // toujours juste, contrairement au montant HT stocké sur la commande.
+  await ctx.scheduler.runAfter(0, internal.email.send.sendOrderConfirmation, {
+    toEmail: order.customerEmail,
+    firstName: order.customerFirstName,
+    restaurantName: order.restaurantName,
+    plan: order.plan,
+    orderType: order.orderType,
+    amountCents: (session.amount_total as number) ?? order.amountCents,
+    paymentMethod,
+    isFounders: order.isFounders ?? false,
   });
 
   // Créer le paiement
@@ -207,43 +231,56 @@ async function handleCheckoutCompleted(
 
   // Créer le referral si applicable (idempotent sur orderId)
   if (metadata?.referralCodeId && metadata?.referrerId) {
-    const settings = await ctx.runQuery(
-      internal.affiliateSettings.getInternal,
-      {},
+    // Garde anti-auto-parrainage côté serveur (invariant, indépendant du front).
+    const referrerEmail = await ctx.runQuery(
+      internal.affiliateUsers.getEmailById,
+      { affiliateUserId: metadata.referrerId as Id<"affiliateUsers"> },
     );
-    const affiliate = await ctx.runQuery(internal.affiliateUsers.getById, {
-      affiliateUserId: metadata.referrerId as Id<"affiliateUsers">,
-    });
+    const buyerEmail = (customerEmail ?? order.customerEmail).toLowerCase();
 
-    const commissionCents =
-      affiliate?.commissionOverrideCents ?? settings.defaultCommissionCents;
+    if (referrerEmail && referrerEmail.toLowerCase() === buyerEmail) {
+      console.log(
+        `[REFERRAL] Auto-parrainage détecté au webhook (${buyerEmail}) — referral ignoré`,
+      );
+    } else {
+      const settings = await ctx.runQuery(
+        internal.affiliateSettings.getInternal,
+        {},
+      );
+      const affiliate = await ctx.runQuery(internal.affiliateUsers.getById, {
+        affiliateUserId: metadata.referrerId as Id<"affiliateUsers">,
+      });
 
-    const customerName =
-      `${order.customerFirstName} ${order.customerLastName}`.trim() ||
-      undefined;
+      const commissionCents =
+        affiliate?.commissionOverrideCents ?? settings.defaultCommissionCents;
 
-    await ctx.runMutation(internal.referrals.createFromCheckout, {
-      referrerId: metadata.referrerId as Id<"affiliateUsers">,
-      referralCodeId: metadata.referralCodeId as Id<"referralCodes">,
-      orderId: order._id,
-      customerEmail: customerEmail ?? order.customerEmail,
-      customerName,
-      commissionCents,
-      discountPercent: parseInt(metadata.discountPercent ?? "0") || 0,
-      discountAmountCents:
-        parseInt(metadata.discountAmountCents ?? "0") || 0,
-    });
+      const customerName =
+        `${order.customerFirstName} ${order.customerLastName}`.trim() ||
+        undefined;
 
-    console.log(
-      `Referral created for order ${order._id} (referrer: ${metadata.referrerId})`,
-    );
+      await ctx.runMutation(internal.referrals.createFromCheckout, {
+        referrerId: metadata.referrerId as Id<"affiliateUsers">,
+        referralCodeId: metadata.referralCodeId as Id<"referralCodes">,
+        orderId: order._id,
+        customerEmail: customerEmail ?? order.customerEmail,
+        customerName,
+        commissionCents,
+        discountPercent: parseInt(metadata.discountPercent ?? "0") || 0,
+        discountAmountCents:
+          parseInt(metadata.discountAmountCents ?? "0") || 0,
+      });
+
+      console.log(
+        `Referral created for order ${order._id} (referrer: ${metadata.referrerId})`,
+      );
+    }
   }
 }
 
 /* ── 2. invoice.payment_succeeded ── */
 
 async function handleInvoiceSucceeded(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const invoice = event.data.object;
@@ -256,6 +293,9 @@ async function handleInvoiceSucceeded(
   const hostedUrl = invoice.hosted_invoice_url as string | undefined;
   const periodStart = invoice.period_start as number | undefined;
   const periodEnd = invoice.period_end as number | undefined;
+  // "subscription_create" = 1ʳᵉ facture (déjà couverte par la confirmation de
+  // commande) ; "subscription_cycle" = vrai renouvellement → reçu dédié.
+  const billingReason = invoice.billing_reason as string | undefined;
 
   // Trouver la subscription Convex (si liée)
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
@@ -302,12 +342,25 @@ async function handleInvoiceSucceeded(
       paidAt: Date.now(),
     });
   }
+
+  // Reçu de renouvellement (seulement pour les vrais renouvellements ; la 1ʳᵉ
+  // facture est déjà couverte par l'email de confirmation de commande).
+  if (billingReason === "subscription_cycle" && customerEmail) {
+    await ctx.scheduler.runAfter(0, internal.email.send.sendRenewalReceipt, {
+      toEmail: customerEmail,
+      plan,
+      amountCents: amountPaid ?? 0,
+      invoiceUrl: hostedUrl ?? invoicePdf,
+      periodStartMs: periodStart ? periodStart * 1000 : undefined,
+      periodEndMs: periodEnd ? periodEnd * 1000 : undefined,
+    });
+  }
 }
 
 /* ── 3. invoice.payment_failed ── */
 
 async function handleInvoiceFailed(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
   event: StripeEvent,
 ) {
   const invoice = event.data.object;
@@ -316,6 +369,7 @@ async function handleInvoiceFailed(
   const customerId = invoice.customer as string;
   const customerEmail = invoice.customer_email as string;
   const amountDue = invoice.amount_due as number;
+  const hostedUrl = invoice.hosted_invoice_url as string | undefined;
   const periodStart = invoice.period_start as number | undefined;
   const periodEnd = invoice.period_end as number | undefined;
 
@@ -354,6 +408,15 @@ async function handleInvoiceFailed(
       status: "open" as const,
       periodStart: periodStart ? periodStart * 1000 : undefined,
       periodEnd: periodEnd ? periodEnd * 1000 : undefined,
+    });
+  }
+
+  // Relance de paiement au client (dunning) : Stripe retentera automatiquement.
+  if (customerEmail) {
+    await ctx.scheduler.runAfter(0, internal.email.send.sendPaymentFailed, {
+      toEmail: customerEmail,
+      amountCents: amountDue ?? 0,
+      updateUrl: hostedUrl,
     });
   }
 
@@ -444,116 +507,72 @@ async function handleAccountUpdated(
   }
 }
 
-/* ═══════════════════════════════════════════════
-   Webhook Yousign — Signature de contrat
-   ═══════════════════════════════════════════════ */
+/* ── 7. charge.refunded / charge.dispute.created : clawback commission ──
+   Remboursement complet ou rétrofacturation : la vente est défaite, la
+   commission d'apport n'est plus due (art. 4.3 du contrat). On marque le
+   paiement remboursé + la commande annulée, puis on reprend ou annule la
+   commission. Remboursement partiel : ignoré (traitement manuel). Litige
+   gagné après coup : réintégration manuelle. */
 
-interface YousignWebhookPayload {
-  event_name: string;
-  event_time: string;
-  data: {
-    signature_request: {
-      id: string;
-      external_id?: string;
-    };
-    signer?: {
-      id: string;
-      info?: {
-        first_name?: string;
-        last_name?: string;
-        email?: string;
-      };
-    };
-  };
-}
+async function handleChargeReversal(
+  ctx: {
+    runQuery: typeof Function.prototype;
+    runMutation: typeof Function.prototype;
+    runAction: typeof Function.prototype;
+  },
+  event: StripeEvent,
+  reason: string,
+) {
+  const obj = event.data.object;
 
-http.route({
-  path: "/webhooks/yousign",
-  method: "POST",
-  handler: httpAction(async (ctx, req) => {
-    const body = await req.text();
-
-    // TODO: Verify Yousign webhook signature when YOUSIGN_WEBHOOK_SECRET is set
-    // const secret = process.env.YOUSIGN_WEBHOOK_SECRET;
-
-    let payload: YousignWebhookPayload;
-    try {
-      payload = JSON.parse(body);
-    } catch {
-      return new Response("Invalid JSON", { status: 400 });
-    }
-
-    const eventName = payload.event_name;
-    const signatureRequestId = payload.data?.signature_request?.id;
-    const externalId = payload.data?.signature_request?.external_id;
-
-    if (!signatureRequestId) {
-      return new Response("Missing signature_request.id", { status: 400 });
-    }
-
-    console.log(`Yousign webhook: ${eventName} for SR ${signatureRequestId}`);
-
-    // Find the signature by Yousign request ID
-    const signature = await ctx.runQuery(
-      internal.contractSignatures.getByYousignRequestId,
-      { yousignSignatureRequestId: signatureRequestId },
+  // Remboursement partiel : on ne reprend pas la commission automatiquement.
+  if (event.type === "charge.refunded" && obj.refunded !== true) {
+    console.log(
+      `Remboursement partiel sur ${obj.id as string} — clawback ignoré (manuel)`,
     );
+    return;
+  }
 
-    if (!signature) {
-      console.log(`No signature found for Yousign SR ${signatureRequestId}`);
-      return new Response("OK", { status: 200 });
-    }
+  const paymentIntent = obj.payment_intent as string | undefined;
+  if (!paymentIntent) {
+    console.warn(`${event.type}: pas de payment_intent, ignoré`);
+    return;
+  }
 
-    const signerIp = req.headers.get("x-forwarded-for") ?? undefined;
+  const payment = await ctx.runQuery(
+    internal.payments.getByStripePaymentIntentId,
+    { stripePaymentIntentId: paymentIntent },
+  );
+  if (!payment) {
+    console.warn(`${event.type}: aucun paiement pour PI ${paymentIntent}`);
+    return;
+  }
 
-    switch (eventName) {
-      case "signer.done":
-      case "signature_request.done": {
-        // Signature completed — activate the affiliate
-        await ctx.runMutation(
-          internal.contractSignatures.activateAfterSignature,
-          {
-            signatureId: signature._id,
-            signedAt: Date.now(),
-            signerIp,
-          },
-        );
-        console.log(`Contract signed for signature ${signature._id}`);
-        break;
-      }
+  // Paiement remboursé + commande annulée (libère un slot fondateur).
+  await ctx.runMutation(internal.payments.updateStatus, {
+    paymentId: payment._id,
+    status: "refunded" as const,
+  });
+  await ctx.runMutation(internal.orders.updateStatus, {
+    orderId: payment.orderId,
+    status: "cancelled" as const,
+  });
 
-      case "signature_request.declined":
-      case "signer.declined": {
-        await ctx.runMutation(internal.contractSignatures.updateStatus, {
-          signatureId: signature._id,
-          status: "declined",
-        });
-        break;
-      }
+  // Reprise / annulation de la commission d'apport le cas échéant.
+  const referral = await ctx.runQuery(internal.referrals.getByOrderId, {
+    orderId: payment.orderId,
+  });
+  if (referral && referral.status !== "cancelled") {
+    await ctx.runAction(internal.stripeConnect.reverseReferralCommission, {
+      referralId: referral._id,
+      reason,
+    });
+  }
 
-      case "signature_request.expired": {
-        await ctx.runMutation(internal.contractSignatures.updateStatus, {
-          signatureId: signature._id,
-          status: "expired",
-        });
-        break;
-      }
-
-      case "signature_request.canceled": {
-        await ctx.runMutation(internal.contractSignatures.updateStatus, {
-          signatureId: signature._id,
-          status: "canceled",
-        });
-        break;
-      }
-
-      default:
-        console.log(`Unhandled Yousign event: ${eventName}`);
-    }
-
-    return new Response("OK", { status: 200 });
-  }),
-});
+  console.log(
+    `Clawback traité (${event.type}) pour la commande ${payment.orderId}`,
+  );
+}
 
 /* ── Helper ── */
 

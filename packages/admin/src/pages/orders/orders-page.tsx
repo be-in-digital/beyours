@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "convex/react"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { Tabs, TabsContent, TabsList, TabsTrigger, SearchInput } from "@be-in-digital/ui"
 import { OrdersTable } from "./orders-table"
+import { StoresPagination } from "../stores/stores-pagination"
+import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import type { Order, OrderStatus } from "../../lib/types"
 
 /**
@@ -23,6 +25,7 @@ export function OrdersPage() {
   const api = useAdminApiStore((s) => s.api)
   const [searchQuery, setSearchQuery] = useState("")
   const [activeStatus, setActiveStatus] = useState<OrderStatusFilter>("all")
+  const [currentPage, setCurrentPage] = useState(1)
 
   // Fetch orders for the current store
   const orders = useQuery(
@@ -31,15 +34,26 @@ export function OrdersPage() {
   ) as Order[] | undefined
 
   // Filter orders by status and search query
-  const filteredOrders = orders?.filter((order: Order) => {
-    const matchesStatus = activeStatus === "all" || order.status === activeStatus
-    const matchesSearch =
-      searchQuery === "" ||
-      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerInfo.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOrders = useMemo(
+    () =>
+      orders?.filter((order: Order) => {
+        const matchesStatus = activeStatus === "all" || order.status === activeStatus
+        const matchesSearch =
+          searchQuery === "" ||
+          order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.customerInfo.name.toLowerCase().includes(searchQuery.toLowerCase())
 
-    return matchesStatus && matchesSearch
-  })
+        return matchesStatus && matchesSearch
+      }) ?? [],
+    [orders, activeStatus, searchQuery]
+  )
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ADMIN_PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const pagedOrders = filteredOrders.slice(
+    (safePage - 1) * ADMIN_PAGE_SIZE,
+    safePage * ADMIN_PAGE_SIZE
+  )
 
   return (
     <div className="space-y-6">
@@ -56,12 +70,22 @@ export function OrdersPage() {
         <SearchInput
           placeholder="Rechercher par n° de commande ou nom du client..."
           value={searchQuery}
-          onValueChange={setSearchQuery}
+          onValueChange={(value) => {
+            setSearchQuery(value)
+            setCurrentPage(1)
+          }}
         />
       </div>
 
       {/* Status filter tabs */}
-      <Tabs value={activeStatus} onValueChange={(value) => setActiveStatus(value as OrderStatusFilter)} data-tour="orders-tabs">
+      <Tabs
+        value={activeStatus}
+        onValueChange={(value) => {
+          setActiveStatus(value as OrderStatusFilter)
+          setCurrentPage(1)
+        }}
+        data-tour="orders-tabs"
+      >
         <TabsList variant="line">
           <TabsTrigger value="all">Toutes</TabsTrigger>
           <TabsTrigger value="pending">En attente</TabsTrigger>
@@ -74,8 +98,17 @@ export function OrdersPage() {
           <TabsTrigger value="cancelled">Annulées</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeStatus} className="mt-6">
-          <OrdersTable orders={filteredOrders || []} isLoading={orders === undefined} />
+        <TabsContent value={activeStatus} className="mt-6 space-y-4">
+          <OrdersTable orders={pagedOrders} isLoading={orders === undefined} />
+          {filteredOrders.length > ADMIN_PAGE_SIZE && (
+            <StoresPagination
+              currentPage={safePage}
+              totalPages={totalPages}
+              totalItems={filteredOrders.length}
+              pageSize={ADMIN_PAGE_SIZE}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>

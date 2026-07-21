@@ -8,7 +8,7 @@ function validateSiret(raw: string): boolean {
   if (!/^\d{14}$/.test(digits)) return false;
   let sum = 0;
   for (let i = 0; i < 14; i++) {
-    let n = parseInt(digits[i]);
+    let n = parseInt(digits[i]!);
     if (i % 2 === 0) {
       n *= 2;
       if (n > 9) n -= 9;

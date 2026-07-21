@@ -133,7 +133,7 @@ export default function IncidentsListPage() {
               <option value="">Tous les statuts</option>
               {STATUS_VALUES.map((s) => (
                 <option key={s} value={s}>
-                  {INCIDENT_STATUS[s].label}
+                  {INCIDENT_STATUS[s]!.label}
                 </option>
               ))}
             </Select>
@@ -147,7 +147,7 @@ export default function IncidentsListPage() {
               <option value="">Toutes gravités</option>
               {SEVERITY_VALUES.map((s) => (
                 <option key={s} value={s}>
-                  {SEVERITY[s].label}
+                  {SEVERITY[s]!.label}
                 </option>
               ))}
             </Select>

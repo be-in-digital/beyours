@@ -25,7 +25,7 @@ export const updateWinRatio = {
 }
 
 export const update = {
-  args: { id: v.id("games"), name: v.optional(v.string()), description: v.optional(v.string()), isActive: v.optional(v.boolean()), winRatio: v.optional(v.number()) },
+  args: { id: v.id("games"), name: v.optional(v.string()), description: v.optional(v.string()), isActive: v.optional(v.boolean()), winRatio: v.optional(v.number()), config: v.optional(v.any()) },
   handler: async (ctx: any, args: any) => {
     if (args.winRatio !== undefined && (args.winRatio < 0 || args.winRatio > 100)) throw new Error("Win ratio must be between 0 and 100")
     const { id, ...fields } = args

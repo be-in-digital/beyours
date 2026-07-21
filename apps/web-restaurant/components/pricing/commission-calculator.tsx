@@ -5,23 +5,38 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { FadeIn } from "@/components/ui/motion";
+import { FOUNDERS_OFFER } from "@/lib/payment-providers";
 import { formatPrice } from "./pricing-data";
 
 /* Taux marketplace + livraison des plateformes (jusqu'à 30 %). */
 const COMMISSION_RATE = 0.3;
 /* Essentielle : création + 1ère année de maintenance, puis maintenance seule. */
-const YEAR_ONE_COST = 4500;
+const CATALOG_YEAR_ONE_COST = 4500;
+const FOUNDERS_YEAR_ONE_COST = FOUNDERS_OFFER.creationCents / 100 + 1000;
 const NEXT_YEARS_COST = 1000;
 
 export function CommissionCalculator() {
   const [monthlySales, setMonthlySales] = useState(5000);
 
+  const foundersSold = useQuery(
+    api.orders.countFoundersSold,
+    FOUNDERS_OFFER.enabled ? {} : "skip",
+  );
+  const foundersLive =
+    FOUNDERS_OFFER.enabled &&
+    (foundersSold ?? 0) < FOUNDERS_OFFER.totalSlots;
+  const yearOneCost = foundersLive
+    ? FOUNDERS_YEAR_ONE_COST
+    : CATALOG_YEAR_ONE_COST;
+
   const monthlyCommission = Math.round(monthlySales * COMMISSION_RATE);
   const yearlyCommission = monthlyCommission * 12;
   const paybackMonths =
     monthlyCommission > 0
-      ? Math.max(1, Math.ceil(YEAR_ONE_COST / monthlyCommission))
+      ? Math.max(1, Math.ceil(yearOneCost / monthlyCommission))
       : null;
 
   return (
@@ -93,7 +108,8 @@ export function CommissionCalculator() {
                   </span>
                   <span className="text-right">
                     <span className="block text-base font-semibold text-foreground">
-                      {formatPrice(YEAR_ONE_COST)}&nbsp;€&nbsp;HT la 1ère année
+                      {formatPrice(yearOneCost)}&nbsp;€&nbsp;HT la 1ère année
+                      {foundersLive ? " (fondateurs)" : ""}
                     </span>
                     <span className="block text-xs text-muted-foreground">
                       puis {formatPrice(NEXT_YEARS_COST)}&nbsp;€&nbsp;HT/an
@@ -110,11 +126,11 @@ export function CommissionCalculator() {
                         ? "1 mois"
                         : `${paybackMonths} mois`}
                     </span>
-                    {yearlyCommission > YEAR_ONE_COST && (
+                    {yearlyCommission > yearOneCost && (
                       <>
                         , et vous gardez{" "}
                         <span className="font-semibold">
-                          {formatPrice(yearlyCommission - YEAR_ONE_COST)}
+                          {formatPrice(yearlyCommission - yearOneCost)}
                           &nbsp;€
                         </span>{" "}
                         de marge dès la première année

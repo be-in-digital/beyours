@@ -31,7 +31,7 @@ export const list = query({
 
     let rows = [...groups.entries()].map(([email, list]) => {
       const sorted = [...list].sort((a, b) => b.createdAt - a.createdAt);
-      const latest = sorted[0];
+      const latest = sorted[0]!;
       const paid = list.filter((o) => o.status === "paid");
       const sub = subByEmail.get(email);
       const dep = depByEmail.get(email);

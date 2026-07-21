@@ -1,709 +1,261 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
-import { toast } from "sonner"
-import { useState } from "react"
-import { GamepadIcon, PlusIcon, QrCodeIcon, GiftIcon, TrashIcon } from "lucide-react"
+import Link from "next/link"
+import { useQuery } from "convex/react"
 import {
-  Button,
-  ButtonGroup,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  Input,
-  Label,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Switch,
-  Slider,
-  Badge,
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@be-in-digital/ui"
-import { cn } from "../../lib/utils"
+  GamepadIcon,
+  Gamepad2Icon,
+  TrophyIcon,
+  TicketCheckIcon,
+  QrCodeIcon,
+  ListChecksIcon,
+  GiftIcon,
+  ChevronRightIcon,
+  ScanIcon,
+} from "lucide-react"
+import { Badge, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
-import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { adminRoutes } from "../../config/admin-routes"
 
-type PrizeType = "discount_percentage" | "discount_fixed" | "free_product" | "free_menu" | "custom"
+/**
+ * Gamification overview: the pulse (stats), the setup surfaces one click
+ * away, and the latest plays. Configuration lives on the dedicated pages
+ * (Jeux & Lots, Codes QR, Actions, Gagnants) — mirrored in the sidebar.
+ */
+
+interface Stats {
+  totalPlays: number
+  totalWins: number
+  winRate: number
+  totalRedeemed: number
+  pendingRedemptions: number
+}
+
+interface GamePlay {
+  id: string
+  didWin: boolean
+  playerName?: string
+  playerEmail?: string
+  prizeName?: string
+  playedAt: number
+}
 
 interface Game {
   _id: string
   name: string
   type: "wheel" | "scratch_card"
-  description?: string
-  winRatio: number
   isActive: boolean
 }
 
 interface QRCode {
   _id: string
-  code: string
-  tableNumber?: string
-  location?: string
   isActive: boolean
+  scannedCount?: number
 }
 
 interface Prize {
   _id: string
-  name: string
-  description?: string
-  type: string
-  value?: number
-  validityDays: number
-  totalAvailable?: number
   isActive: boolean
+  remainingCount?: number
+  totalAvailable?: number
 }
 
 export function GamesPage() {
   const { api } = useAdminApiStore()
   const storeId = useAdminStoreId()
-  const [isAddGameOpen, setIsAddGameOpen] = useState(false)
-  const [isAddQROpen, setIsAddQROpen] = useState(false)
-  const [isAddPrizeOpen, setIsAddPrizeOpen] = useState(false)
 
-  // Game form state
-  const [gameName, setGameName] = useState("")
-  const [gameType, setGameType] = useState<"wheel" | "scratch_card">("wheel")
-  const [gameDescription, setGameDescription] = useState("")
-  const [winRatio, setWinRatio] = useState(30)
-
-  // QR Code form state
-  const [qrCode, setQrCode] = useState("")
-  const [tableNumber, setTableNumber] = useState("")
-  const [location, setLocation] = useState("")
-
-  // Prize form state
-  const [prizeName, setPrizeName] = useState("")
-  const [prizeDescription, setPrizeDescription] = useState("")
-  const [prizeType, setPrizeType] = useState<PrizeType>("discount_percentage")
-  const [prizeValue, setPrizeValue] = useState("")
-  const [validityDays, setValidityDays] = useState("7")
-  const [totalAvailable, setTotalAvailable] = useState("")
-
-  // Delete confirmation state
-  const [deletingGameId, setDeletingGameId] = useState<string | null>(null)
-  const [deletingQRId, setDeletingQRId] = useState<string | null>(null)
-  const [deletingPrizeId, setDeletingPrizeId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-
+  const stats = useQuery(api.prizeRedemptions.getStats, storeId ? { storeId } : "skip") as
+    | Stats
+    | undefined
+  const plays = useQuery(api.prizeRedemptions.listPlays, storeId ? { storeId, limit: 8 } : "skip") as
+    | GamePlay[]
+    | undefined
   const games = useQuery(api.games.list, storeId ? { storeId } : "skip") as Game[] | undefined
-  const qrCodes = useQuery(api.gameQRCodes.list, storeId ? { storeId } : "skip") as QRCode[] | undefined
+  const qrCodes = useQuery(api.gameQRCodes.list, storeId ? { storeId } : "skip") as
+    | QRCode[]
+    | undefined
   const prizes = useQuery(api.prizes.list, storeId ? { storeId } : "skip") as Prize[] | undefined
-
-  const createGame = useMutation(api.games.create)
-  const updateWinRatio = useMutation(api.games.updateWinRatio)
-  const removeGame = useMutation(api.games.remove)
-
-  const createQRCode = useMutation(api.gameQRCodes.create)
-  const removeQRCode = useMutation(api.gameQRCodes.remove)
-
-  const createPrize = useMutation(api.prizes.create)
-  const removePrize = useMutation(api.prizes.remove)
-
-  const generateQRCode = () => {
-    const code = crypto.randomUUID().slice(0, 12).toUpperCase()
-    setQrCode(code)
-  }
-
-  const handleAddGame = async () => {
-    if (!storeId || !gameName) {
-      toast.error("Veuillez remplir tous les champs requis")
-      return
-    }
-
-    try {
-      await createGame({
-        storeId,
-        type: gameType,
-        name: gameName,
-        description: gameDescription || undefined,
-        winRatio,
-        isActive: true,
-      })
-      toast.success("Jeu créé avec succès")
-      setIsAddGameOpen(false)
-      setGameName("")
-      setGameDescription("")
-      setWinRatio(30)
-    } catch (error) {
-      toast.error("Échec de la création du jeu")
-      console.error(error)
-    }
-  }
-
-  const handleUpdateWinRatio = async (gameId: string, newRatio: number) => {
-    try {
-      await updateWinRatio({ id: gameId, winRatio: newRatio })
-      toast.success("Ratio de victoire mis à jour")
-    } catch (error) {
-      toast.error("Échec de la mise à jour du ratio")
-      console.error(error)
-    }
-  }
-
-  const handleDeleteGame = async (id: string) => {
-    setIsDeleting(true)
-    try {
-      await removeGame({ id })
-      toast.success("Jeu supprimé")
-    } catch (error) {
-      toast.error("Échec de la suppression du jeu")
-      console.error(error)
-    } finally {
-      setIsDeleting(false)
-      setDeletingGameId(null)
-    }
-  }
-
-  const handleDeleteQRCode = async (id: string) => {
-    setIsDeleting(true)
-    try {
-      await removeQRCode({ id })
-      toast.success("Code QR supprimé")
-    } catch (error) {
-      toast.error("Échec de la suppression du code QR")
-      console.error(error)
-    } finally {
-      setIsDeleting(false)
-      setDeletingQRId(null)
-    }
-  }
-
-  const handleDeletePrize = async (id: string) => {
-    setIsDeleting(true)
-    try {
-      await removePrize({ id })
-      toast.success("Prix supprimé")
-    } catch (error) {
-      toast.error("Échec de la suppression du prix")
-      console.error(error)
-    } finally {
-      setIsDeleting(false)
-      setDeletingPrizeId(null)
-    }
-  }
-
-  const handleAddQRCode = async () => {
-    if (!storeId || !qrCode) {
-      toast.error("Veuillez générer un code QR")
-      return
-    }
-
-    try {
-      await createQRCode({
-        storeId,
-        code: qrCode,
-        tableNumber: tableNumber || undefined,
-        location: location || undefined,
-        isActive: true,
-      })
-      toast.success("Code QR créé avec succès")
-      setIsAddQROpen(false)
-      setQrCode("")
-      setTableNumber("")
-      setLocation("")
-    } catch (error) {
-      toast.error("Échec de la création du code QR")
-      console.error(error)
-    }
-  }
-
-  const handleAddPrize = async () => {
-    if (!storeId || !prizeName) {
-      toast.error("Veuillez remplir tous les champs requis")
-      return
-    }
-
-    const parsedValidityDays = parseInt(validityDays, 10)
-    if (isNaN(parsedValidityDays) || parsedValidityDays <= 0) {
-      toast.error("Veuillez saisir un nombre de jours de validité valide")
-      return
-    }
-
-    const parsedValue = prizeValue ? parseInt(prizeValue, 10) : undefined
-    if (prizeValue && (parsedValue === undefined || isNaN(parsedValue))) {
-      toast.error("Veuillez saisir une valeur valide")
-      return
-    }
-
-    const parsedTotal = totalAvailable ? parseInt(totalAvailable, 10) : undefined
-    if (totalAvailable && (parsedTotal === undefined || isNaN(parsedTotal))) {
-      toast.error("Veuillez saisir une quantité valide")
-      return
-    }
-
-    try {
-      await createPrize({
-        storeId,
-        name: prizeName,
-        description: prizeDescription || undefined,
-        type: prizeType,
-        value: parsedValue,
-        validityDays: parsedValidityDays,
-        totalAvailable: parsedTotal,
-        isActive: true,
-      })
-      toast.success("Prix créé avec succès")
-      setIsAddPrizeOpen(false)
-      setPrizeName("")
-      setPrizeDescription("")
-      setPrizeValue("")
-      setValidityDays("7")
-      setTotalAvailable("")
-    } catch (error) {
-      toast.error("Échec de la création du prix")
-      console.error(error)
-    }
-  }
 
   if (!storeId) {
     return (
-      <Empty>
+      <Empty className="min-h-[400px]">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <GamepadIcon />
           </EmptyMedia>
           <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les jeux</EmptyDescription>
+          <EmptyDescription>Sélectionnez un établissement pour voir la gamification</EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
   }
 
-  if (games === undefined || qrCodes === undefined || prizes === undefined) {
+  if (
+    stats === undefined ||
+    plays === undefined ||
+    games === undefined ||
+    qrCodes === undefined ||
+    prizes === undefined
+  ) {
     return <LoadingState />
   }
+
+  const activeGames = games.filter((g) => g.isActive).length
+  const activeQrCodes = qrCodes.filter((q) => q.isActive).length
+  const totalScans = qrCodes.reduce((sum, q) => sum + (q.scannedCount ?? 0), 0)
+  const prizesInStock = prizes.filter(
+    (p) => p.isActive && ((p.remainingCount ?? p.totalAvailable) === undefined || (p.remainingCount ?? p.totalAvailable ?? 0) > 0)
+  ).length
+
+  const statCards = [
+    { label: "Parties jouées", value: stats.totalPlays, icon: Gamepad2Icon },
+    { label: "Victoires", value: stats.totalWins, icon: TrophyIcon },
+    { label: "Scans QR", value: totalScans, icon: ScanIcon },
+    { label: "Lots à valider", value: stats.pendingRedemptions, icon: TicketCheckIcon },
+  ]
+
+  const setupCards = [
+    {
+      label: "Jeux & Lots",
+      description: `${activeGames} jeu${activeGames > 1 ? "x" : ""} actif${activeGames > 1 ? "s" : ""} · ${prizesInStock} lot${prizesInStock > 1 ? "s" : ""} en stock`,
+      href: adminRoutes.gamesCatalog,
+      icon: GiftIcon,
+      warning: activeGames > 0 && prizesInStock === 0 ? "Aucun lot en stock" : undefined,
+    },
+    {
+      label: "Codes QR",
+      description: `${activeQrCodes} code${activeQrCodes > 1 ? "s" : ""} sur vos tables`,
+      href: adminRoutes.gamesQrCodes,
+      icon: QrCodeIcon,
+      warning: activeGames > 0 && activeQrCodes === 0 ? "Aucun QR à scanner" : undefined,
+    },
+    {
+      label: "Actions requises",
+      description: "Avis Google, follow Instagram…",
+      href: adminRoutes.gamesActions,
+      icon: ListChecksIcon,
+    },
+    {
+      label: "Gagnants",
+      description:
+        stats.pendingRedemptions > 0
+          ? `${stats.pendingRedemptions} lot${stats.pendingRedemptions > 1 ? "s" : ""} en attente de validation`
+          : "Historique et validation en caisse",
+      href: adminRoutes.gamesWinners,
+      icon: TrophyIcon,
+    },
+  ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Jeux et Gamification</h1>
+        <h1 className="text-2xl font-semibold">Gamification</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Engagez vos clients avec des jeux interactifs
+          Vos clients scannent, jouent, reviennent
         </p>
       </div>
 
-      <Tabs defaultValue="config" className="space-y-4" data-tour="games-tabs">
-        <TabsList>
-          <TabsTrigger value="config">Configuration</TabsTrigger>
-          <TabsTrigger value="qrcodes">Codes QR</TabsTrigger>
-          <TabsTrigger value="prizes">Prix</TabsTrigger>
-          <TabsTrigger value="history">Historique</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="config" className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddGameOpen} onOpenChange={setIsAddGameOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  Créer un jeu
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Nouveau jeu</DialogTitle>
-                  <DialogDescription>
-                    Configurez un nouveau jeu pour vos clients
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="gameName">Nom du jeu *</Label>
-                    <Input
-                      id="gameName"
-                      placeholder="Tournez et gagnez"
-                      value={gameName}
-                      onChange={(e) => setGameName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gameType">Type de jeu *</Label>
-                    <Select value={gameType} onValueChange={(v) => setGameType(v as "wheel" | "scratch_card")}>
-                      <SelectTrigger id="gameType">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="wheel">Roue de la fortune</SelectItem>
-                        <SelectItem value="scratch_card">Carte à gratter</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gameDescription">Description</Label>
-                    <Input
-                      id="gameDescription"
-                      placeholder="Description optionnelle"
-                      value={gameDescription}
-                      onChange={(e) => setGameDescription(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="winRatio">Ratio de victoire : {winRatio}%</Label>
-                    <Slider
-                      id="winRatio"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={[winRatio]}
-                      onValueChange={(v) => setWinRatio(v[0] ?? 30)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Pourcentage de parties gagnantes
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <ButtonGroup>
-                    <Button variant="outline" onClick={() => setIsAddGameOpen(false)}>
-                      Annuler
-                    </Button>
-                    <Button onClick={handleAddGame}>Créer un jeu</Button>
-                  </ButtonGroup>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {games.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <GamepadIcon />
-                </EmptyMedia>
-                <EmptyTitle>Aucun jeu</EmptyTitle>
-                <EmptyDescription>Créez votre premier jeu pour commencer</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {games.map((game) => (
-                <div key={game._id} className="border border-border/50 rounded-lg p-6 space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium">{game.name}</h3>
-                      <Badge className="mt-2 text-xs">
-                        {game.type === "wheel" ? "Roue de la fortune" : "Carte à gratter"}
-                      </Badge>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Supprimer le jeu"
-                      onClick={() => setDeletingGameId(game._id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {game.description && (
-                    <p className="text-xs text-muted-foreground">{game.description}</p>
-                  )}
-                  <div className="space-y-2">
-                    <Label className="text-xs">Ratio de victoire : {game.winRatio}%</Label>
-                    <Slider
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={[game.winRatio]}
-                      onValueCommit={(v) => handleUpdateWinRatio(game._id, v[0] ?? 0)}
-                    />
-                  </div>
-                </div>
-              ))}
+      {/* Pulse */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statCards.map((card) => (
+          <div key={card.label} className="border border-border/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{card.label}</p>
+              <card.icon className="h-4 w-4 text-muted-foreground" />
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="qrcodes" className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddQROpen} onOpenChange={setIsAddQROpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  Créer un code QR
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un code QR</DialogTitle>
-                  <DialogDescription>
-                    Générez un code QR pour une table ou un emplacement
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="qrCode">Code QR *</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="qrCode"
-                        value={qrCode}
-                        onChange={(e) => setQrCode(e.target.value)}
-                        placeholder="Auto-généré"
-                      />
-                      <Button type="button" onClick={generateQRCode}>
-                        Générer
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tableNumber">Numéro de table</Label>
-                    <Input
-                      id="tableNumber"
-                      placeholder="12"
-                      value={tableNumber}
-                      onChange={(e) => setTableNumber(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Emplacement</Label>
-                    <Input
-                      id="location"
-                      placeholder="Salle principale"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <ButtonGroup>
-                    <Button variant="outline" onClick={() => setIsAddQROpen(false)}>
-                      Annuler
-                    </Button>
-                    <Button onClick={handleAddQRCode}>Créer un code QR</Button>
-                  </ButtonGroup>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <p className="mt-2 text-2xl font-semibold">{card.value}</p>
           </div>
+        ))}
+      </div>
 
-          {qrCodes.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <QrCodeIcon />
-                </EmptyMedia>
-                <EmptyTitle>Aucun code QR</EmptyTitle>
-                <EmptyDescription>Créez des codes QR pour vos tables</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-              {qrCodes.map((qr) => (
-                <div key={qr._id} className="border border-border/50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <QrCodeIcon className="h-8 w-8" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Supprimer le code QR"
-                      onClick={() => setDeletingQRId(qr._id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="font-mono text-xs font-semibold">{qr.code}</p>
-                  {qr.tableNumber && (
-                    <p className="text-xs text-muted-foreground">
-                      Table {qr.tableNumber}
-                    </p>
-                  )}
-                  {qr.location && (
-                    <p className="text-xs text-muted-foreground">{qr.location}</p>
-                  )}
-                </div>
-              ))}
+      {/* Setup surfaces */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {setupCards.map((card) => (
+          <Link
+            key={card.label}
+            href={card.href}
+            className="group flex items-center gap-4 border border-border/50 rounded-lg p-4 transition-colors hover:bg-muted/40"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <card.icon className="h-5 w-5" />
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="prizes" className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={isAddPrizeOpen} onOpenChange={setIsAddPrizeOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <PlusIcon className="mr-2 h-4 w-4" />
-                  Créer un prix
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un prix</DialogTitle>
-                  <DialogDescription>
-                    Ajoutez un nouveau prix que les clients peuvent gagner
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="prizeName">Nom du prix *</Label>
-                    <Input
-                      id="prizeName"
-                      placeholder="10% de réduction"
-                      value={prizeName}
-                      onChange={(e) => setPrizeName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prizeType">Type *</Label>
-                    <Select value={prizeType} onValueChange={(v) => setPrizeType(v as PrizeType)}>
-                      <SelectTrigger id="prizeType">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="discount_percentage">Réduction %</SelectItem>
-                        <SelectItem value="discount_fixed">Réduction fixe</SelectItem>
-                        <SelectItem value="free_product">Produit offert</SelectItem>
-                        <SelectItem value="free_menu">Menu offert</SelectItem>
-                        <SelectItem value="custom">Personnalisé</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prizeValue">Valeur (optionnelle)</Label>
-                    <Input
-                      id="prizeValue"
-                      type="number"
-                      placeholder="10"
-                      value={prizeValue}
-                      onChange={(e) => setPrizeValue(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="validityDays">Validité (jours) *</Label>
-                      <Input
-                        id="validityDays"
-                        type="number"
-                        value={validityDays}
-                        onChange={(e) => setValidityDays(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="totalAvailable">Quantité disponible</Label>
-                      <Input
-                        id="totalAvailable"
-                        type="number"
-                        placeholder="Illimité"
-                        value={totalAvailable}
-                        onChange={(e) => setTotalAvailable(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="prizeDescription">Description</Label>
-                    <Input
-                      id="prizeDescription"
-                      placeholder="Description optionnelle"
-                      value={prizeDescription}
-                      onChange={(e) => setPrizeDescription(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <ButtonGroup>
-                    <Button variant="outline" onClick={() => setIsAddPrizeOpen(false)}>
-                      Annuler
-                    </Button>
-                    <Button onClick={handleAddPrize}>Créer un prix</Button>
-                  </ButtonGroup>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {prizes.length === 0 ? (
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <GiftIcon />
-                </EmptyMedia>
-                <EmptyTitle>Aucun prix</EmptyTitle>
-                <EmptyDescription>Créez des prix que les clients peuvent gagner</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {prizes.map((prize) => (
-                <div key={prize._id} className="border border-border/50 rounded-lg p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <GiftIcon className="h-6 w-6" />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Supprimer le prix"
-                      onClick={() => setDeletingPrizeId(prize._id)}
-                    >
-                      <TrashIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <h3 className="font-medium text-sm">{prize.name}</h3>
-                  <Badge className="text-xs">{prize.type.replace("_", " ")}</Badge>
-                  {prize.description && (
-                    <p className="text-xs text-muted-foreground">{prize.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Valide {prize.validityDays} jours
-                  </p>
-                </div>
-              ))}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-sm">{card.label}</p>
+                {card.warning && (
+                  <Badge
+                    variant="outline"
+                    className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]"
+                  >
+                    {card.warning}
+                  </Badge>
+                )}
+              </div>
+              <p className="truncate text-xs text-muted-foreground mt-0.5">{card.description}</p>
             </div>
-          )}
-        </TabsContent>
+            <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ))}
+      </div>
 
-        <TabsContent value="history" className="space-y-4">
+      {/* Latest plays */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Dernières parties</h2>
+          <Link
+            href={adminRoutes.gamesWinners}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Voir les gagnants →
+          </Link>
+        </div>
+        {plays.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <GamepadIcon />
               </EmptyMedia>
-              <EmptyTitle>Aucun historique</EmptyTitle>
-              <EmptyDescription>L'historique des parties apparaîtra ici</EmptyDescription>
+              <EmptyTitle>Aucune partie pour le moment</EmptyTitle>
+              <EmptyDescription>
+                Dès qu&apos;un client scanne un QR et joue, la partie apparaît ici.
+              </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        </TabsContent>
-      </Tabs>
-
-      <DeleteConfirmDialog
-        open={!!deletingGameId}
-        onOpenChange={(open) => !open && setDeletingGameId(null)}
-        onConfirm={() => deletingGameId && handleDeleteGame(deletingGameId)}
-        title="Supprimer ce jeu ?"
-        description="Cette action est irréversible. Le jeu et toutes ses données seront définitivement supprimés."
-        isDeleting={isDeleting}
-      />
-
-      <DeleteConfirmDialog
-        open={!!deletingQRId}
-        onOpenChange={(open) => !open && setDeletingQRId(null)}
-        onConfirm={() => deletingQRId && handleDeleteQRCode(deletingQRId)}
-        title="Supprimer ce code QR ?"
-        description="Cette action est irréversible. Le code QR ne sera plus fonctionnel."
-        isDeleting={isDeleting}
-      />
-
-      <DeleteConfirmDialog
-        open={!!deletingPrizeId}
-        onOpenChange={(open) => !open && setDeletingPrizeId(null)}
-        onConfirm={() => deletingPrizeId && handleDeletePrize(deletingPrizeId)}
-        title="Supprimer ce prix ?"
-        description="Cette action est irréversible. Le prix ne pourra plus être gagné par les clients."
-        isDeleting={isDeleting}
-      />
+        ) : (
+          <div className="border border-border/50 rounded-lg divide-y divide-border/50">
+            {plays.map((play) => (
+              <div key={play.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3.5">
+                <Badge
+                  variant="outline"
+                  className={
+                    play.didWin
+                      ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border-slate-200"
+                  }
+                >
+                  {play.didWin ? "Gagné" : "Perdu"}
+                </Badge>
+                <p className="min-w-0 flex-1 truncate text-sm">
+                  {play.didWin ? (play.prizeName ?? "Lot") : "Aucun lot"}
+                  {play.playerName && (
+                    <span className="text-muted-foreground"> — {play.playerName}</span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(play.playedAt).toLocaleDateString("fr-FR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
