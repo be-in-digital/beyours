@@ -124,7 +124,8 @@ export const overview = query({
       sev3: 0,
       sev4: 0,
     };
-    for (const i of open) openBySeverity[i.severity] += 1;
+    for (const i of open)
+      openBySeverity[i.severity] = (openBySeverity[i.severity] ?? 0) + 1;
     const recentIncidents = open
       .sort((a, b) => b.startedAt - a.startedAt)
       .slice(0, 5)
@@ -165,14 +166,24 @@ export const overview = query({
       fleet: {
         total: deployments.length,
         live: byStatus["live"] ?? 0,
-        byHealth,
+        byHealth: {
+          healthy: byHealth.healthy ?? 0,
+          degraded: byHealth.degraded ?? 0,
+          down: byHealth.down ?? 0,
+          unknown: byHealth.unknown ?? 0,
+        },
         avgUptime: liveish ? uptimeSum / liveish : 100,
         integrationErrors,
       },
       incidents: {
         open: open.length,
-        openBySeverity,
-        sev1Open: openBySeverity.sev1,
+        openBySeverity: {
+          sev1: openBySeverity.sev1 ?? 0,
+          sev2: openBySeverity.sev2 ?? 0,
+          sev3: openBySeverity.sev3 ?? 0,
+          sev4: openBySeverity.sev4 ?? 0,
+        },
+        sev1Open: openBySeverity.sev1 ?? 0,
         recent: recentIncidents,
       },
       renewals: { due30Count, due30Cents, pastDueSubs },

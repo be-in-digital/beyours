@@ -1,134 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
-import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
+import { ArrowUpRight, X, ChevronLeft, ChevronRight, Eye, MousePointerClick } from "lucide-react";
+import { FadeIn } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
 import { useCalendlyModal } from "@/lib/store";
-import {
-  categories,
-  categoryCircles,
-  type Template,
-} from "@/lib/templates-data";
+import { categories, totalTemplates } from "@/lib/templates-data";
 
-/** Photo d'ambiance par catégorie — l'aperçu doit être appétissant, pas gris. */
-const categoryPhoto: Record<string, string> = {
-  pizzeria: "/photos/plat-gastronomie.webp",
-  "fast-food": "/photos/burger-premium.webp",
-  asiatique: "/photos/plat-gastronomie.webp",
-  healthy: "/photos/salle-restaurant2.webp",
-  "food-truck": "/photos/burger-premium.webp",
+type Shot = {
+  slug: string;
+  name: string;
+  tagline: string;
+  accent: string;
+  shot: string;
+  categoryId: string;
+  categoryLabel: string;
 };
 
-function CategoryIcon({
-  iconPath,
-  categoryId,
-  size = 28,
-}: {
-  iconPath: string;
-  categoryId: string;
-  size?: number;
-}) {
-  const paths = iconPath.split(" M").map((p, i) => (i === 0 ? p : `M${p}`));
-  const circles = categoryCircles[categoryId] ?? [];
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {paths.map((d, i) => (
-        <path key={i} d={d} />
-      ))}
-      {circles.map((c, i) => (
-        <circle key={i} cx={c.cx} cy={c.cy} r={c.r} />
-      ))}
-    </svg>
-  );
-}
+const ALL: Shot[] = categories.flatMap((c) =>
+  c.templates.map((t) => ({
+    slug: t.slug,
+    name: t.name,
+    tagline: t.tagline,
+    accent: t.accent,
+    shot: t.shot,
+    categoryId: c.id,
+    categoryLabel: c.label,
+  })),
+);
 
-/** Mini-aperçu appétissant d'un site restaurant : photo hero + 2 plats du menu. */
-function TemplateCardPreview({
-  template,
-  photo,
-}: {
-  template: Template;
-  photo: string;
-}) {
-  const firstItems =
-    template.menu.categories[0]?.items.slice(0, 2) ?? [];
-
-  return (
-    <div className="absolute inset-0 flex flex-col bg-surface-1">
-      {/* Barre navigateur */}
-      <div className="flex items-center gap-1.5 border-b border-[color:var(--border)] bg-surface-2 px-4 py-2.5">
-        <span className="h-2 w-2 rounded-full bg-surface-4" />
-        <span className="h-2 w-2 rounded-full bg-surface-4" />
-        <span className="h-2 w-2 rounded-full bg-surface-4" />
-        <span className="ml-3 truncate rounded-full bg-background px-2.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-          {template.slug}.beindigital.fr
-        </span>
-      </div>
-
-      {/* Hero photo du restaurant */}
-      <div className="relative flex-1 overflow-hidden">
-        <Image
-          src={photo}
-          alt={`Aperçu du template ${template.name}`}
-          fill
-          sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <span
-          className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm"
-          style={{ background: template.accent }}
-        >
-          Restaurant {template.name}
-        </span>
-        <div className="absolute inset-x-3 bottom-3">
-          <p className="font-display text-sm font-semibold leading-tight text-white">
-            {template.hero.title}
-          </p>
-        </div>
-      </div>
-
-      {/* Extrait de menu (verbatim) */}
-      <div className="space-y-1.5 border-t border-[color:var(--border)] bg-surface-1 px-3 py-2.5">
-        {firstItems.map((item) => (
-          <div
-            key={item.name}
-            className="flex items-center justify-between gap-2"
-          >
-            <span className="truncate text-[11px] font-medium text-foreground">
-              {item.name}
-            </span>
-            <span
-              className="shrink-0 text-[11px] font-semibold tabular-nums"
-              style={{ color: template.accent }}
-            >
-              {item.price} €
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+const TABS = [
+  { id: "all", label: "Tous", count: totalTemplates, accent: "var(--primary)" },
+  ...categories.map((c) => ({
+    id: c.id,
+    label: c.label,
+    count: c.templates.length,
+    accent: c.accent,
+  })),
+];
 
 export function TemplatesCategories() {
-  const [activeCategory, setActiveCategory] = useState(categories[0].id);
   const { open: openCalendly } = useCalendlyModal();
-  const active = categories.find((c) => c.id === activeCategory)!;
-  const photo = categoryPhoto[active.id] ?? "/photos/plat-gastronomie.webp";
+  const [active, setActive] = useState("all");
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
+  const filtered = useMemo(
+    () => (active === "all" ? ALL : ALL.filter((t) => t.categoryId === active)),
+    [active],
+  );
+
+  const close = useCallback(() => setLightbox(null), []);
+  const next = useCallback(
+    () => setLightbox((i) => (i === null ? i : (i + 1) % filtered.length)),
+    [filtered.length],
+  );
+  const prev = useCallback(
+    () =>
+      setLightbox((i) =>
+        i === null ? i : (i - 1 + filtered.length) % filtered.length,
+      ),
+    [filtered.length],
+  );
+
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      else if (e.key === "ArrowRight") next();
+      else if (e.key === "ArrowLeft") prev();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [lightbox, close, next, prev]);
+
+  const current = lightbox !== null ? filtered[lightbox] : null;
 
   return (
     <section className="relative py-24 sm:py-32">
@@ -137,151 +89,124 @@ export function TemplatesCategories() {
         className="pointer-events-none absolute inset-0 bg-section-radial"
       />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-        {/* En-tête de section */}
+        {/* En-tête */}
         <FadeIn>
-          <div className="mb-16 text-center">
-            <SectionBadge text="Catégories" />
+          <div className="mb-14 text-center">
+            <SectionBadge text={`${totalTemplates} templates`} />
             <h2 className="mt-4 font-display text-3xl font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-4xl lg:text-5xl">
-              Trouvez le template idéal
+              50 directions artistiques
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-              Chaque catégorie propose des designs pensés spécifiquement pour
-              votre type de cuisine et votre clientèle.
+              Dix identités complètes par univers — couleurs, typographies,
+              mises en page. De vraies captures des sites livrés, entièrement
+              personnalisables à vos couleurs.
             </p>
           </div>
         </FadeIn>
 
-        {/* Onglets catégories */}
-        <FadeIn delay={0.15}>
-          <div className="mb-16 flex flex-wrap justify-center gap-3">
-            {categories.map((cat) => {
-              const isActive = cat.id === activeCategory;
+        {/* Filtres catégories */}
+        <FadeIn delay={0.1}>
+          <div className="mb-12 flex flex-wrap justify-center gap-2.5">
+            {TABS.map((tab) => {
+              const isActive = tab.id === active;
               return (
                 <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`group relative inline-flex cursor-pointer items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 ${
+                  key={tab.id}
+                  onClick={() => {
+                    setActive(tab.id);
+                    setLightbox(null);
+                  }}
+                  className={`group inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     isActive
                       ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
                       : "border border-[color:var(--border)] bg-surface-1 text-muted-foreground hover:border-[color:var(--border-contrast)] hover:bg-surface-2 hover:text-foreground"
                   }`}
                 >
                   <span
-                    className={`transition-colors duration-300 ${
-                      isActive
-                        ? "text-primary"
-                        : "text-muted-foreground group-hover:text-foreground"
+                    className="h-2.5 w-2.5 rounded-full ring-1 ring-black/5"
+                    style={{ background: tab.accent }}
+                  />
+                  {tab.label}
+                  <span
+                    className={`text-xs tabular-nums ${
+                      isActive ? "text-primary/70" : "text-muted-foreground/60"
                     }`}
                   >
-                    <CategoryIcon iconPath={cat.iconPath} categoryId={cat.id} />
+                    {tab.count}
                   </span>
-                  {cat.label}
                 </button>
               );
             })}
           </div>
         </FadeIn>
 
-        {/* Contenu de la catégorie active */}
+        {/* Galerie de captures */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={active.id}
-            initial={{ opacity: 0, y: 20 }}
+            key={active}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
           >
-            {/* Bandeau catégorie */}
-            <div className="relative mb-10 overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] sm:p-8">
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute right-0 top-0 h-[200px] w-[300px] rounded-full opacity-25 blur-[100px]"
-                style={{ background: active.color }}
-              />
-              <div className="relative z-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-                <div
-                  className="flex h-14 w-14 items-center justify-center rounded-xl border"
-                  style={{
-                    backgroundColor: active.color.replace("0.8", "0.12"),
-                    borderColor: active.color.replace("0.8", "0.28"),
-                    color: active.color.replace("0.8", "1"),
-                  }}
-                >
-                  <CategoryIcon iconPath={active.iconPath} categoryId={active.id} />
+            {filtered.map((t, i) => (
+              <button
+                key={t.slug}
+                onClick={() => setLightbox(i)}
+                className="group block cursor-pointer overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 text-left shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-[color:var(--border-contrast)] hover:shadow-[0_22px_50px_-24px_rgba(112,60,34,0.45)]"
+              >
+                {/* Capture */}
+                <div className="relative aspect-[16/10] overflow-hidden border-b border-[color:var(--border)]">
+                  <Image
+                    src={t.shot}
+                    alt={`Aperçu du template ${t.name} — ${t.categoryLabel}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
+                  {/* Voile + label catégorie */}
+                  <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: t.accent }}
+                    />
+                    {t.categoryLabel}
+                  </span>
+                  {/* Overlay survol */}
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-[color:var(--olive)]/45 opacity-0 backdrop-blur-[2px] transition-opacity duration-300 group-hover:opacity-100">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.6)]">
+                      <Eye className="h-4 w-4" strokeWidth={2} />
+                      Agrandir
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display text-xl font-semibold text-foreground">
-                    {active.label}
-                  </h3>
-                  <p className="mt-1 text-muted-foreground">
-                    {active.description}
-                  </p>
+
+                {/* Pied de carte */}
+                <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-display text-base font-semibold text-foreground">
+                      {t.name}
+                    </h3>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {t.tagline}
+                    </p>
+                  </div>
+                  <ArrowUpRight
+                    className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    strokeWidth={2}
+                  />
                 </div>
-              </div>
-            </div>
-
-            {/* Grille de templates */}
-            <StaggerContainer
-              stagger={0.08}
-              className="grid grid-cols-1 gap-6 md:grid-cols-3"
-            >
-              {active.templates.map((template) => (
-                <StaggerItem key={template.name}>
-                  <Link
-                    href={`/templates/${template.slug}`}
-                    className="block h-full"
-                  >
-                    <div className="group relative h-full overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-[color:var(--border-contrast)] hover:shadow-[0_22px_50px_-24px_rgba(112,60,34,0.45)]">
-                      {/* Aperçu de la maquette */}
-                      <div className="relative aspect-[16/12] overflow-hidden border-b border-[color:var(--border)]">
-                        <TemplateCardPreview
-                          template={template}
-                          photo={photo}
-                        />
-                        {/* Overlay au survol */}
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[color:var(--olive)]/45 opacity-0 backdrop-blur-[2px] transition-opacity duration-300 group-hover:opacity-100">
-                          <span className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.6)]">
-                            Voir le template
-                            <ArrowUpRight
-                              className="h-3.5 w-3.5"
-                              strokeWidth={2}
-                            />
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Contenu de la carte */}
-                      <div className="p-5 sm:p-6">
-                        <h4 className="mb-2 font-display text-lg font-semibold text-foreground">
-                          {template.name}
-                        </h4>
-                        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                          {template.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {template.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="inline-flex rounded-full border border-[color:var(--border)] bg-secondary px-2.5 py-1 text-xs text-secondary-foreground"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
+              </button>
+            ))}
           </motion.div>
         </AnimatePresence>
 
         {/* CTA */}
-        <FadeIn delay={0.3}>
+        <FadeIn delay={0.2}>
           <div className="mt-16 text-center">
             <p className="mb-6 text-muted-foreground">
-              Envie de voir un template en action ?
+              Un univers vous parle ? On l’adapte à votre enseigne.
             </p>
             <button
               onClick={openCalendly}
@@ -293,6 +218,106 @@ export function TemplatesCategories() {
           </div>
         </FadeIn>
       </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {current && (
+          <motion.div
+            className="fixed inset-0 z-[70] flex flex-col bg-[color:var(--olive)]/95 backdrop-blur-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={close}
+          >
+            {/* Barre haute */}
+            <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-8">
+              <div className="min-w-0 text-[color:var(--primary-foreground)]">
+                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-[color:var(--primary-foreground)]/60">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: current.accent }}
+                  />
+                  {current.categoryLabel}
+                </p>
+                <p className="truncate font-display text-lg font-semibold">
+                  {current.name}
+                  <span className="ml-2 text-sm font-normal text-[color:var(--primary-foreground)]/60">
+                    {current.tagline}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={close}
+                aria-label="Fermer"
+                className="grid size-10 shrink-0 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Image + navigation */}
+            <div
+              className="relative flex flex-1 items-center justify-center px-4 pb-6 sm:px-16"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={prev}
+                aria-label="Précédent"
+                className="absolute left-2 top-1/2 z-10 hidden -translate-y-1/2 place-items-center rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/20 sm:grid"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={current.slug}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative w-full max-w-5xl overflow-hidden rounded-xl border border-white/10 shadow-2xl"
+                  style={{ aspectRatio: "840 / 525" }}
+                >
+                  <Image
+                    src={current.shot}
+                    alt={`Template ${current.name}`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 1024px"
+                    className="object-cover"
+                    priority
+                  />
+                </motion.div>
+              </AnimatePresence>
+
+              <button
+                onClick={next}
+                aria-label="Suivant"
+                className="absolute right-2 top-1/2 z-10 hidden -translate-y-1/2 place-items-center rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/20 sm:grid"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Barre basse */}
+            <div
+              className="flex items-center justify-center gap-3 px-4 pb-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span className="text-sm text-[color:var(--primary-foreground)]/50 tabular-nums">
+                {(lightbox ?? 0) + 1} / {filtered.length}
+              </span>
+              <Link
+                href={`/demo/${current.slug}`}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
+              >
+                <MousePointerClick className="h-4 w-4" strokeWidth={2} />
+                Visiter la démo
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

@@ -322,7 +322,7 @@ function AddUpdateForm({ incidentId }: { incidentId: Id<"saIncidents"> }) {
               <option value="">Aucun changement</option>
               {UPDATE_STATUS_VALUES.map((s) => (
                 <option key={s} value={s}>
-                  {INCIDENT_STATUS[s].label}
+                  {INCIDENT_STATUS[s]!.label}
                 </option>
               ))}
             </Select>

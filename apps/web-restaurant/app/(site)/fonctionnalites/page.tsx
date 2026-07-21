@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Fonctionnalités — Be in Digital",
     description:
-      "10 fonctionnalités pensées pour les restaurants : site, commande, fidélité, analytics, Uber Eats & Deliveroo centralisés.",
+      "10 fonctionnalités pensées pour les restaurants : site, commande en ligne sans commission, fidélité, analytics, KDS et plus encore.",
     url: "/fonctionnalites",
     type: "website",
   },

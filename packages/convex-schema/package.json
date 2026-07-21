@@ -18,7 +18,8 @@
     ".": "./src/index.ts",
     "./tables": "./src/tables/index.ts",
     "./validators": "./src/validators.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./dataModel": "./src/dataModel.ts"
   },
   "scripts": {
     "lint": "eslint src/",

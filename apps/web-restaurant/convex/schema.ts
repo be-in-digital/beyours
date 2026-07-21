@@ -15,6 +15,9 @@ export default defineSchema({
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     postalCode: v.optional(v.string()),
+    // Programme réservé aux professionnels : SIRET requis (validé à la
+    // complétion du profil, avant signature ; aucun versement sans SIRET).
+    siret: v.optional(v.string()),
     role: v.union(v.literal("affiliate"), v.literal("admin")),
     status: v.union(
       v.literal("active"),
@@ -79,6 +82,9 @@ export default defineSchema({
     blockedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     stripeTransferId: v.optional(v.string()),
+    // Facture de l'apporteur — obligatoire avant versement (art. 4.2 du contrat).
+    invoiceStorageId: v.optional(v.id("_storage")),
+    invoiceUploadedAt: v.optional(v.number()),
     adminNote: v.optional(v.string()),
     createdAt: v.number(),
   })
@@ -132,6 +138,12 @@ export default defineSchema({
     signedDocumentFileId: v.optional(v.string()),
     signerIp: v.optional(v.string()),
     signedAt: v.optional(v.number()),
+    // Signature électronique simple (SES) in-house — piste d'audit
+    signerName: v.optional(v.string()),
+    signerUserAgent: v.optional(v.string()),
+    signatureMethod: v.optional(
+      v.union(v.literal("yousign"), v.literal("in_app_ses")),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -180,11 +192,14 @@ export default defineSchema({
       v.union(v.literal("card"), v.literal("alma"), v.literal("klarna")),
     ),
     stripeSessionId: v.optional(v.string()),
+    /* Vente au tarif fondateurs (2 500 € HT, 10 places) — consomme un slot. */
+    isFounders: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_email", ["customerEmail"])
     .index("by_status", ["status"])
-    .index("by_stripeSessionId", ["stripeSessionId"]),
+    .index("by_stripeSessionId", ["stripeSessionId"])
+    .index("by_isFounders_and_status", ["isFounders", "status"]),
 
   payments: defineTable({
     orderId: v.id("orders"),
@@ -485,4 +500,22 @@ export default defineSchema({
     actorName: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
+
+  /* Leads issus du formulaire de contact du site (distinct de whitelist,
+     qui est la waitlist). Alimenté par contactLeads.submit. */
+  contactLeads: defineTable({
+    name: v.string(),
+    email: v.string(),
+    restaurant: v.optional(v.string()),
+    message: v.string(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("converted"),
+      v.literal("archived"),
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_createdAt", ["createdAt"]),
 });

@@ -1,8 +1,6 @@
 {
   "extends": "@beindigital/config/tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "noUncheckedIndexedAccess": false,
     "jsx": "preserve",
     "plugins": [{ "name": "next" }],
     "paths": {

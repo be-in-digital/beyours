@@ -52,6 +52,14 @@ function useSidebar() {
   return context
 }
 
+/**
+ * Nullable variant for components that may mount outside the provider
+ * (e.g. the onboarding tour, which wraps the whole admin layout).
+ */
+function useOptionalSidebar() {
+  return React.useContext(SidebarContext)
+}
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -695,4 +703,5 @@ export {
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  useOptionalSidebar,
 }

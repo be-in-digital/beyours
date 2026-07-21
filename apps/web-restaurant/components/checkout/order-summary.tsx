@@ -16,13 +16,23 @@ export function OrderSummary({
   plan,
   billingPeriod,
   discountPercent,
+  foundersActive,
 }: {
   plan: "essentielle" | "premium";
   billingPeriod: BillingPeriod;
   discountPercent?: number;
+  foundersActive?: boolean;
 }) {
-  const { creation, maintenance, discount, subtotal, tva, total } =
-    getCheckoutTotals(plan, billingPeriod, discountPercent);
+  const {
+    creation,
+    catalogCreation,
+    maintenance,
+    discount,
+    foundersApplied,
+    subtotal,
+    tva,
+    total,
+  } = getCheckoutTotals(plan, billingPeriod, discountPercent, foundersActive);
   const planLabel = plan === "essentielle" ? "Essentielle" : "Premium";
   const periodLabel = billingPeriod === "monthly" ? "1er mois" : "1ère année";
 
@@ -37,9 +47,17 @@ export function OrderSummary({
           <span className="text-foreground font-medium">{planLabel}</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Création</span>
+          <span className="text-muted-foreground">
+            {foundersApplied ? "Création · Offre fondateurs" : "Création"}
+          </span>
           <span className="text-foreground">{formatEur(creation)} €</span>
         </div>
+        {foundersApplied && (
+          <p className="text-[11px] text-muted-foreground -mt-1">
+            Prix catalogue : {formatEur(catalogCreation)} € · en échange
+            d&apos;une étude de cas et d&apos;un témoignage
+          </p>
+        )}
         {discount > 0 && (
           <div className="flex justify-between">
             <span className="text-primary">
@@ -86,7 +104,7 @@ export function OrderSummary({
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              TVA non applicable, art. 293 B du CGI
+              Prix indiqués hors taxes.
             </p>
           </>
         )}

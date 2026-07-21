@@ -150,7 +150,7 @@ export default function DeploymentDetailPage() {
     setPending(true);
     try {
       await updateStatus({ deploymentId: id, status });
-      toast.success(`Statut mis à jour : ${DEPLOYMENT_STATUS[status].label}`);
+      toast.success(`Statut mis à jour : ${DEPLOYMENT_STATUS[status]!.label}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -213,7 +213,7 @@ export default function DeploymentDetailPage() {
                   onClick={() => onChangeStatus(s)}
                   destructive={s === "offboarded"}
                 >
-                  <span className="flex-1">{DEPLOYMENT_STATUS[s].label}</span>
+                  <span className="flex-1">{DEPLOYMENT_STATUS[s]!.label}</span>
                   {current && (
                     <span className="text-[10px] text-muted-foreground">
                       actuel

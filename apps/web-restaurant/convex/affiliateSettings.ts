@@ -16,7 +16,7 @@ export const get = query({
         programEnabled: true,
       };
     }
-    return settings[0];
+    return settings[0]!;
   },
 });
 
@@ -34,7 +34,7 @@ export const getInternal = internalQuery({
         programEnabled: true,
       };
     }
-    return settings[0];
+    return settings[0]!;
   },
 });
 
@@ -50,11 +50,11 @@ export const upsert = internalMutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("affiliateSettings").take(1);
     if (existing.length > 0) {
-      await ctx.db.patch(existing[0]._id, {
+      await ctx.db.patch(existing[0]!._id, {
         ...args,
         updatedAt: Date.now(),
       });
-      return existing[0]._id;
+      return existing[0]!._id;
     }
 
     return await ctx.db.insert("affiliateSettings", {

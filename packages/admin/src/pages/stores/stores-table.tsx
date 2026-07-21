@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { STORE_STATUS_CONFIG } from "../../lib/vocabulary"
 import {
   MoreVertical,
   Eye,
@@ -51,11 +52,7 @@ interface StoresTableProps {
   onDelete: (storeId: string) => void
 }
 
-const statusConfig: Record<StoreStatus, { label: string; className: string }> = {
-  open: { label: "Ouvert", className: "bg-green-100 text-green-800" },
-  closed: { label: "Fermé", className: "bg-red-100 text-red-800" },
-  temporarily_unavailable: { label: "Indisponible", className: "bg-orange-100 text-orange-800" },
-}
+const statusConfig = STORE_STATUS_CONFIG
 
 export function StoresTable({
   stores,
@@ -185,8 +182,9 @@ export function StoresTable({
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs">Changer le statut</DropdownMenuLabel>
+                    {/* "draft" is displayed when present but never offered as a target */}
                     {(Object.keys(statusConfig) as StoreStatus[])
-                      .filter((s) => s !== store.status)
+                      .filter((s) => s !== store.status && (s as string) !== "draft")
                       .map((s) => (
                         <DropdownMenuItem
                           key={s}
@@ -194,7 +192,7 @@ export function StoresTable({
                           className="text-xs"
                         >
                           <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
-                          {statusConfig[s].label}
+                          {statusConfig[s]?.label ?? s}
                         </DropdownMenuItem>
                       ))}
                     <DropdownMenuSeparator />

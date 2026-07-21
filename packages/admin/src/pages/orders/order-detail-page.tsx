@@ -38,6 +38,7 @@ import type {
   Payment,
   BadgeVariant,
 } from "../../lib/types"
+import { ORDER_STATUS_CONFIG } from "../../lib/vocabulary"
 
 type OrderDetailPageProps = {
   params: Promise<{ orderId: string }>
@@ -47,18 +48,7 @@ type OrderDetailPageProps = {
  * Get badge for order status
  */
 function getStatusBadge(status: OrderStatus) {
-  const statusConfig: Record<OrderStatus, { className: string; label: string }> = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
-    confirmed: { className: "bg-blue-100 text-blue-800", label: "Confirmée" },
-    preparing: { className: "bg-orange-100 text-orange-800", label: "En préparation" },
-    ready: { className: "bg-green-100 text-green-800", label: "Prête" },
-    out_for_delivery: { className: "bg-purple-100 text-purple-800", label: "En livraison" },
-    delivered: { className: "bg-green-100 text-green-800", label: "Livrée" },
-    completed: { className: "bg-gray-100 text-gray-800", label: "Terminée" },
-    cancelled: { className: "bg-red-100 text-red-800", label: "Annulée" },
-  }
-
-  const config = statusConfig[status]
+  const config = ORDER_STATUS_CONFIG[status]
   return <Badge className={config.className}>{config.label}</Badge>
 }
 

@@ -46,7 +46,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
 
   const add = (i: number) => setCart((c) => [...c, i]);
   const count = cart.length;
-  const total = cart.reduce((sum, i) => sum + DISHES[i].price, 0);
+  const total = cart.reduce((sum, i) => sum + (DISHES[i]?.price ?? 0), 0);
 
   return (
     <div className={`relative ${className}`}>

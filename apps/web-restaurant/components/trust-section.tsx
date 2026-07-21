@@ -190,7 +190,7 @@ export function TrustSection() {
               </svg>
 
               {/* The central seal */}
-              <CentralSeal keyword={hovered !== null ? proofs[hovered].keyword : null} />
+              <CentralSeal keyword={hovered !== null ? (proofs[hovered]?.keyword ?? null) : null} />
             </div>
 
             {/* Right column — 3 proof nodes */}

@@ -60,7 +60,12 @@ export const overview = query({
       ),
       rollup: {
         total: deps.length,
-        byHealth,
+        byHealth: {
+          healthy: byHealth.healthy ?? 0,
+          degraded: byHealth.degraded ?? 0,
+          down: byHealth.down ?? 0,
+          unknown: byHealth.unknown ?? 0,
+        },
         integrationErrors,
         avgUptime: monitored ? uptimeSum / monitored : 100,
       },

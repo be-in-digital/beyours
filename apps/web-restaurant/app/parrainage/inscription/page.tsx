@@ -101,7 +101,7 @@ export default function InscriptionPage() {
   return (
     <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold mb-2">Créer votre compte</h1>
+        <h1 className="font-display text-2xl font-bold mb-2">Créer votre compte</h1>
         <p className="text-sm text-muted-foreground">
           Devenez apporteur d&apos;affaires Be in Digital
         </p>
@@ -122,7 +122,7 @@ export default function InscriptionPage() {
             required
             autoComplete="email"
             placeholder="votre@email.com"
-            className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+            className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
           />
         </div>
 
@@ -142,13 +142,13 @@ export default function InscriptionPage() {
               autoComplete="new-password"
               minLength={8}
               placeholder="8 caractères minimum"
-              className="w-full h-11 px-4 pr-11 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              className="w-full h-11 px-4 pr-11 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              tabIndex={-1}
+              aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {showPassword ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -167,7 +167,7 @@ export default function InscriptionPage() {
         </div>
 
         {error && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div role="alert" className="p-3 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm">
             {error}
           </div>
         )}

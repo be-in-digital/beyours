@@ -31,6 +31,8 @@
     "./helpers": "./src/helpers.ts",
     "./games": "./src/games.ts",
     "./gameQRCodes": "./src/gameQRCodes.ts",
+    "./gamePlay": "./src/gamePlay.ts",
+    "./requiredActions": "./src/requiredActions.ts",
     "./prizes": "./src/prizes.ts",
     "./userProfiles": "./src/userProfiles.ts",
     "./externalProductMappings": "./src/externalProductMappings.ts",

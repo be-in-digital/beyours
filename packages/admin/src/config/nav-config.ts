@@ -7,7 +7,6 @@ import {
   Globe,
   Image,
   LayoutDashboard,
-  LayoutGrid,
   LayoutList,
   Mail,
   PenSquare,
@@ -17,7 +16,6 @@ import {
   Store,
   Tag,
   UserCog,
-  Users,
   UtensilsCrossed,
   Warehouse,
   type LucideIcon,
@@ -102,12 +100,8 @@ export const navGroups: NavGroup[] = [
         icon: LayoutList,
         requiredPermission: "products:read",
       },
-      {
-        label: "Clients",
-        href: adminRoutes.customers,
-        icon: Users,
-        requiredPermission: "customers:read",
-      },
+      // "Clients" volontairement absent de la nav tant que la page n'est pas
+      // construite (la route /dashboard/customers reste accessible).
       {
         label: "Inventaire",
         href: adminRoutes.inventory,
@@ -132,11 +126,10 @@ export const navGroups: NavGroup[] = [
         requiredPermission: "games:read",
         children: [
           { label: "Tableau de bord", href: adminRoutes.games },
-          { label: "Jeux", href: adminRoutes.gamesCatalog },
-          { label: "QR Codes", href: adminRoutes.gamesQrCodes },
+          { label: "Jeux & Lots", href: adminRoutes.gamesCatalog },
+          { label: "Codes QR", href: adminRoutes.gamesQrCodes },
           { label: "Actions", href: adminRoutes.gamesActions },
           { label: "Gagnants", href: adminRoutes.gamesWinners },
-          { label: "Paramètres", href: adminRoutes.gamesSettings },
         ],
       },
       {
@@ -164,12 +157,7 @@ export const navGroups: NavGroup[] = [
         icon: FileText,
         requiredPermission: "settings:read",
       },
-      {
-        label: "Composants",
-        href: adminRoutes.contentComponents,
-        icon: LayoutGrid,
-        requiredPermission: "settings:read",
-      },
+      // "Composants" volontairement absent tant que l'éditeur n'existe pas.
       {
         label: "Blog",
         icon: PenSquare,
