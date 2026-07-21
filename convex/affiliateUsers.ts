@@ -6,7 +6,23 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+
+/** Valide un SIRET : 14 chiffres + clé de Luhn (formule SIREN/SIRET). */
+function isValidSiret(raw: string): boolean {
+  const digits = raw.replace(/\s/g, "");
+  if (!/^\d{14}$/.test(digits)) return false;
+  let sum = 0;
+  for (let i = 0; i < 14; i++) {
+    let n = parseInt(digits[i]!, 10);
+    if (i % 2 === 0) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
+    sum += n;
+  }
+  return sum % 10 === 0;
+}
 
 /* ── Public queries ── */
 
@@ -48,6 +64,7 @@ export const completeProfile = mutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.string(),
+    siret: v.string(),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     postalCode: v.optional(v.string()),
@@ -55,6 +72,12 @@ export const completeProfile = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Non authentifié");
+
+    // Programme réservé aux professionnels : SIRET obligatoire et valide.
+    const siret = args.siret.replace(/\s/g, "");
+    if (!isValidSiret(siret)) {
+      throw new Error("Numéro SIRET invalide (14 chiffres attendus)");
+    }
 
     const affiliate = await ctx.db
       .query("affiliateUsers")
@@ -66,6 +89,7 @@ export const completeProfile = mutation({
       firstName: args.firstName,
       lastName: args.lastName,
       phone: args.phone,
+      siret,
     };
     if (args.address) patch.address = args.address;
     if (args.city) patch.city = args.city;
@@ -104,6 +128,15 @@ export const createAfterSignup = mutation({
       stripeConnectStatus: "not_started",
       createdAt: Date.now(),
     });
+
+    // Email de bienvenue (best-effort). L'email vit sur le compte auth.
+    const user = await ctx.db.get(userId);
+    if (user?.email) {
+      await ctx.scheduler.runAfter(0, internal.email.send.sendAffiliateWelcome, {
+        toEmail: user.email,
+        firstName: user.name?.trim().split(/\s+/)[0] ?? "",
+      });
+    }
 
     return affiliateUserId;
   },

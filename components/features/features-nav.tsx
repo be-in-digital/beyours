@@ -40,7 +40,7 @@ export function FeaturesNav() {
 
     const bentoObserver = bento
       ? new IntersectionObserver(
-          ([entry]) => setPastBento(entry.boundingClientRect.bottom < 0),
+          ([entry]) => setPastBento((entry?.boundingClientRect.bottom ?? 0) < 0),
           { threshold: 0 },
         )
       : null;
@@ -52,7 +52,7 @@ export function FeaturesNav() {
     // trigger restait figée tant que le CTA était à l'écran.
     const ctaObserver = cta
       ? new IntersectionObserver(
-          ([entry]) => setBeforeCta(!entry.isIntersecting),
+          ([entry]) => setBeforeCta(!entry?.isIntersecting),
           { threshold: 0, rootMargin: "0px 0px -30% 0px" },
         )
       : null;

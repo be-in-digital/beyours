@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAnimationFrame, useReducedMotion } from "framer-motion";
 import {
   Globe,
@@ -103,7 +103,9 @@ export function Orbit3D() {
   const featureRefs = useRef<(HTMLElement | null)[]>([]);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const hoverRef = useRef<string | null>(null);
-  hoverRef.current = hoverLabel;
+  useEffect(() => {
+    hoverRef.current = hoverLabel;
+  }, [hoverLabel]);
 
   const angles = useRef({ pillars: 0, features: 0.5 });
   const speedFactor = useRef(1);
@@ -124,25 +126,14 @@ export function Orbit3D() {
     pillarOrder.forEach((_, i) => {
       const base = (i / pillarOrder.length) * Math.PI * 2;
       const appear = easeOutCubic((elapsed - 0.15 - i * 0.07) / 0.9);
-      applyPose(pillarRefs.current[i], base + angles.current.pillars, RING_PILLARS, appear);
+      applyPose(pillarRefs.current[i] ?? null, base + angles.current.pillars, RING_PILLARS, appear);
     });
     features.forEach((_, i) => {
       const base = (i / features.length) * Math.PI * 2;
       const appear = easeOutCubic((elapsed - 0.4 - i * 0.05) / 0.9);
-      applyPose(featureRefs.current[i], base + angles.current.features + 0.5, RING_FEATURES, appear);
+      applyPose(featureRefs.current[i] ?? null, base + angles.current.features + 0.5, RING_FEATURES, appear);
     });
   });
-
-  // pose initiale (et pose définitive en reduced-motion)
-  const initRef =
-    (store: (HTMLElement | null)[], i: number, baseAngle: number, ring: Ring) =>
-    (el: HTMLElement | null) => {
-      store[i] = el;
-      if (el && !el.dataset.posed) {
-        el.dataset.posed = "1";
-        applyPose(el, baseAngle, ring, 1);
-      }
-    };
 
   return (
     <Tilt3D maxTilt={10} scale={1} className="mx-auto w-fit">
@@ -203,7 +194,13 @@ export function Orbit3D() {
             <button
               key={key}
               type="button"
-              ref={initRef(pillarRefs.current, i, base, RING_PILLARS)}
+              ref={(el) => {
+                pillarRefs.current[i] = el;
+                if (el && !el.dataset.posed) {
+                  el.dataset.posed = "1";
+                  applyPose(el, base, RING_PILLARS, 1);
+                }
+              }}
               onClick={() => scrollToId("features-bento")}
               onMouseEnter={() => setHoverLabel(pillarFullLabels[key])}
               onMouseLeave={() => setHoverLabel(null)}
@@ -230,7 +227,13 @@ export function Orbit3D() {
             <button
               key={feature.id}
               type="button"
-              ref={initRef(featureRefs.current, i, base, RING_FEATURES)}
+              ref={(el) => {
+                featureRefs.current[i] = el;
+                if (el && !el.dataset.posed) {
+                  el.dataset.posed = "1";
+                  applyPose(el, base, RING_FEATURES, 1);
+                }
+              }}
               onClick={() => scrollToId(feature.id)}
               onMouseEnter={() => setHoverLabel(feature.title)}
               onMouseLeave={() => setHoverLabel(null)}

@@ -19,7 +19,7 @@ export async function generateMetadata({
 
   return {
     title: `${result.template.name} — Template ${result.category.label} — Be in Digital`,
-    description: result.template.description,
+    description: result.template.tagline,
   };
 }
 

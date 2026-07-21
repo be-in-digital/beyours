@@ -23,6 +23,7 @@ function createTestData() {
           status: "active" as const,
           stripeConnectStatus: opts?.stripeConnectStatus ?? "not_started",
           stripeConnectAccountId: opts?.stripeConnectStatus === "active" ? "acct_test_123" : undefined,
+          siret: "12345678900012",
           createdAt: Date.now(),
         });
       });
@@ -105,7 +106,14 @@ describe("referrals.markValidatedAsPayable", () => {
       stripeConnectStatus: "active",
     });
     const orderId = await data.setupOrder(t);
-    await data.createReferral(t, affiliateUserId, referralCodeId, orderId, "validated");
+    const referralId = await data.createReferral(t, affiliateUserId, referralCodeId, orderId, "validated");
+    // Facture obligatoire avant versement (art. 4.2) : attacher une facture.
+    await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(
+        new Blob(["facture"], { type: "application/pdf" }),
+      );
+      await ctx.db.patch(referralId, { invoiceStorageId: storageId });
+    });
 
     await t.mutation(internal.referrals.markValidatedAsPayable, {});
 

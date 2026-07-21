@@ -260,6 +260,21 @@ type ReferralStatus =
   | "cancelled"
   | "blocked";
 
+function AdminInvoiceLink({ referralId }: { referralId: Id<"referrals"> }) {
+  const url = useQuery(api.referrals.getReferralInvoiceUrl, { referralId });
+  if (!url) return <span className="text-xs text-muted-foreground">—</span>;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-xs font-medium text-primary underline underline-offset-2 hover:opacity-80"
+    >
+      Voir
+    </a>
+  );
+}
+
 function ReferralsTab() {
   const [status, setStatus] = React.useState("");
   const referrals = useQuery(
@@ -345,6 +360,7 @@ function ReferralsTab() {
               <TableHead className="text-right">Réduction</TableHead>
               <TableHead>Statut</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Facture</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -388,6 +404,9 @@ function ReferralsTab() {
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground tnum">
                     {formatDate(r.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <AdminInvoiceLink referralId={r._id as Id<"referrals">} />
                   </TableCell>
                   <TableCell className="text-right">
                     {canBlock ? (

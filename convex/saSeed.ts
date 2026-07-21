@@ -125,8 +125,7 @@ async function wipeOps(ctx: MutationCtx) {
 
 async function seedCommercial(ctx: MutationCtx) {
   const now = Date.now();
-  for (let idx = 0; idx < RESTAURANTS.length; idx++) {
-    const r = RESTAURANTS[idx];
+  for (const [idx, r] of RESTAURANTS.entries()) {
     const rand = mulberry32(idx * 6151 + 7);
     const signedAt = now - Math.floor((60 + rand() * 400) * DAY);
 
@@ -255,8 +254,7 @@ async function seedAffiliates(ctx: MutationCtx) {
   ];
   const affiliateIds: Id<"affiliateUsers">[] = [];
   const codeIds: Id<"referralCodes">[] = [];
-  for (let i = 0; i < TEAM.length; i++) {
-    const m = TEAM[i];
+  for (const [i, m] of TEAM.entries()) {
     const userId = await ctx.db.insert("users", {
       name: `${m.first} ${m.last}`,
       email: m.email,
@@ -287,21 +285,21 @@ async function seedAffiliates(ctx: MutationCtx) {
   const orders = await ctx.db.query("orders").take(200);
   const paidOrders = orders.filter((o) => o.status === "paid").slice(0, 5);
   const statuses = ["paid", "validated", "pending", "payable", "paid"] as const;
-  for (let i = 0; i < paidOrders.length; i++) {
-    const o = paidOrders[i];
+  for (const [i, o] of paidOrders.entries()) {
     const ai = i % affiliateIds.length;
+    const status = statuses[i]!;
     await ctx.db.insert("referrals", {
-      referrerId: affiliateIds[ai],
-      referralCodeId: codeIds[ai],
+      referrerId: affiliateIds[ai]!,
+      referralCodeId: codeIds[ai]!,
       orderId: o._id,
       customerEmail: o.customerEmail,
       customerName: `${o.customerFirstName} ${o.customerLastName}`,
-      status: statuses[i],
+      status,
       commissionCents: 50000,
       discountPercent: 10,
       discountAmountCents: Math.round(o.amountCents * 0.1),
-      validatedAt: statuses[i] !== "pending" ? o.createdAt + 14 * DAY : undefined,
-      paidAt: statuses[i] === "paid" ? o.createdAt + 30 * DAY : undefined,
+      validatedAt: status !== "pending" ? o.createdAt + 14 * DAY : undefined,
+      paidAt: status === "paid" ? o.createdAt + 30 * DAY : undefined,
       createdAt: o.createdAt + DAY,
     });
   }
@@ -389,7 +387,7 @@ async function buildOps(ctx: MutationCtx) {
         const dow = new Date(dayTs).getUTCDay();
         const trend = 0.86 + 0.28 * ((SALES_DAYS - i) / SALES_DAYS);
         const noise = 0.86 + rand() * 0.3;
-        let gross = Math.round(baseDaily * weekday[dow] * trend * noise);
+        let gross = Math.round(baseDaily * weekday[dow]! * trend * noise);
         if (health === "down" && i <= 2) gross = Math.round(gross * 0.24);
         if (gross < 3000) gross = 3000;
         const refunded = Math.round(gross * (0.008 + rand() * 0.028));

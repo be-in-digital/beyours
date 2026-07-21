@@ -176,15 +176,15 @@ export const features: Feature[] = [
     id: "integration-plateformes",
     tag: "06",
     title: "Intégration Uber Eats & Deliveroo",
-    subtitle: "Connecté aux plateformes",
+    subtitle: "Certification en cours",
     shortDescription:
-      "Connexion directe aux plateformes de livraison + livraison via Uber Direct.",
+      "En cours de certification officielle auprès des plateformes. Offerte à tous les clients dès validation.",
     longDescription:
-      "Connectez votre restaurant aux plateformes de livraison les plus populaires. Les commandes Uber Eats et Deliveroo arrivent directement dans votre dashboard, sans double saisie. Et grâce à Uber Direct, proposez la livraison depuis votre propre site sans gérer de flotte de livreurs.",
+      "L'intégration est en cours de certification officielle auprès d'Uber et de Deliveroo. Dès validation, les commandes Uber Eats et Deliveroo arriveront directement dans votre dashboard, sans double saisie, et Uber Direct permettra la livraison depuis votre propre site sans flotte de livreurs. Offerte à tous les clients, sans surcoût, via la maintenance ; les clients existants sont activés en priorité. Nous ne promettons pas de date : elle dépend des plateformes.",
     benefits: [
-      "Synchronisation automatique des commandes Uber Eats & Deliveroo",
-      "Livraison depuis votre site via Uber Direct, sans flotte propre",
-      "Gestion unifiée de tous vos canaux de vente",
+      "Certification officielle Uber & Deliveroo en cours",
+      "Offerte à tous les clients dès validation, sans surcoût",
+      "Vos commandes plateformes rejoindront votre flux unique",
     ],
     pillar: "gerer",
     mockupPattern: "integration",

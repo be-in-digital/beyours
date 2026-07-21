@@ -44,7 +44,7 @@ const features = [
     tag: "06",
     title: "Intégration Uber Eats & Deliveroo",
     description:
-      "Connectez les plateformes de livraison à votre dashboard et proposez la livraison depuis votre site via Uber Direct.",
+      "En cours de certification officielle auprès des plateformes. Offerte à tous les clients dès validation, sans surcoût.",
     visual: <IntegrationVisual />,
   },
   {
@@ -88,7 +88,7 @@ export function FeaturesSection() {
       if (!el) return;
       const obs = new IntersectionObserver(
         ([entry]) => {
-          if (entry.isIntersecting) setActive(i);
+          if (entry?.isIntersecting) setActive(i);
         },
         { rootMargin: "-40% 0px -40% 0px", threshold: 0 }
       );

@@ -1,27 +1,24 @@
+// ⚙️ Catalogue de templates — généré depuis le boilerplate
+// (beindigital-boilerplate · demos/assets/themes.js). Captures : public/templates/shots/.
+
 export interface Template {
-  name: string;
   slug: string;
-  description: string;
-  tags: string[];
-  hero: {
-    title: string;
-    subtitle: string;
-  };
-  menu: {
-    categories: {
-      name: string;
-      items: { name: string; description: string; price: string }[];
-    }[];
-  };
+  name: string;
+  tagline: string;
+  /** couleur d'accent du template (thème clair) */
   accent: string;
+  /** couleur d'accent du template (thème sombre) */
+  accentDark: string;
+  /** capture d'écran du template */
+  shot: string;
 }
 
 export interface Category {
   id: string;
   label: string;
-  iconPath: string;
   description: string;
-  color: string;
+  /** couleur représentative de la catégorie */
+  accent: string;
   templates: Template[];
 }
 
@@ -29,513 +26,96 @@ export const categories: Category[] = [
   {
     id: "pizzeria",
     label: "Pizzeria",
-    iconPath:
-      "M15 11h.01M11 15h.01M16 16h.01 M2 16l20-12-6 18-4-4-10-2Z",
-    description: "Sites chaleureux avec l'ambiance italienne authentique",
-    color: "rgba(239, 108, 77, 0.8)",
+    description: "Four à bois, terracotta et tradition napolitaine — de la trattoria familiale à l’éditorial contemporain.",
+    accent: "#c5542c",
     templates: [
-      {
-        name: "Napoli",
-        slug: "pizzeria-napoli",
-        description: "Design chaleureux, four a bois, tradition italienne",
-        tags: ["Menu interactif", "Reservation", "Livraison"],
-        hero: {
-          title: "La vraie pizza napolitaine",
-          subtitle:
-            "Decouvrez nos pizzas artisanales cuites au feu de bois, preparees avec des ingredients importes d'Italie.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Pizzas Classiques",
-              items: [
-                { name: "Margherita", description: "Tomate San Marzano, mozzarella di bufala, basilic frais", price: "12,90" },
-                { name: "Diavola", description: "Tomate, mozzarella, salami piquant, piment", price: "14,50" },
-                { name: "Quattro Formaggi", description: "Mozzarella, gorgonzola, parmesan, taleggio", price: "15,90" },
-              ],
-            },
-            {
-              name: "Pizzas Gourmandes",
-              items: [
-                { name: "Truffe & Burrata", description: "Creme de truffe, burrata, roquette, parmesan", price: "18,90" },
-                { name: "Calzone Ricotta", description: "Ricotta, jambon cuit, champignons, mozzarella", price: "16,50" },
-              ],
-            },
-          ],
-        },
-        accent: "#EF6C4D",
-      },
-      {
-        name: "Romana",
-        slug: "pizzeria-romana",
-        description: "Style contemporain, pizza gourmet, raffinement",
-        tags: ["Carte en ligne", "Click & Collect", "Fidelite"],
-        hero: {
-          title: "Pizza gourmet, esprit moderne",
-          subtitle:
-            "Une cuisine italienne revisitee avec des produits d'exception, dans un cadre contemporain.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Antipasti",
-              items: [
-                { name: "Bruschetta al Pomodoro", description: "Pain grille, tomates cerises, ail, basilic", price: "8,90" },
-                { name: "Carpaccio di Manzo", description: "Boeuf, roquette, copeaux de parmesan, huile de truffe", price: "14,90" },
-              ],
-            },
-            {
-              name: "Pizzas Signature",
-              items: [
-                { name: "La Romana", description: "Creme d'artichaut, prosciutto di Parma, roquette", price: "17,50" },
-                { name: "Tartufo Nero", description: "Creme de truffe noire, champignons, stracchino", price: "19,90" },
-                { name: "Vegetariana", description: "Courgettes grillees, aubergine, poivrons, mozzarella", price: "15,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#D4845A",
-      },
-      {
-        name: "Margherita",
-        slug: "pizzeria-margherita",
-        description: "Esprit trattoria familiale, convivialite",
-        tags: ["Menu du jour", "Avis clients", "Galerie"],
-        hero: {
-          title: "La trattoria du quartier",
-          subtitle:
-            "Un lieu de partage ou la generosite italienne rencontre la chaleur familiale.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Entrees",
-              items: [
-                { name: "Minestrone", description: "Soupe de legumes a l'italienne, parmesan", price: "7,50" },
-                { name: "Arancini", description: "Boulettes de risotto frites, sauce tomate", price: "9,90" },
-              ],
-            },
-            {
-              name: "Pizzas Famille",
-              items: [
-                { name: "Regina", description: "Tomate, mozzarella, jambon, champignons, olives", price: "13,90" },
-                { name: "Capricciosa", description: "Artichaut, jambon, champignons, olives, mozzarella", price: "14,90" },
-                { name: "Bambino", description: "Tomate, mozzarella, pour les enfants", price: "8,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#E8A15E",
-      },
+      { slug: "pizzeria-trattoria", name: "Trattoria", tagline: "Napolitaine au feu de bois", accent: "hsl(14 68% 44%)", accentDark: "hsl(15 74% 58%)", shot: "/templates/shots/pizzeria-trattoria.jpg" },
+      { slug: "pizzeria-verace", name: "Verace", tagline: "Pizza napolitaine, basta", accent: "hsl(145 45% 26%)", accentDark: "hsl(140 35% 55%)", shot: "/templates/shots/pizzeria-verace.jpg" },
+      { slug: "pizzeria-fornonero", name: "Forno Nero", tagline: "Braise, cendre et farine", accent: "hsl(24 90% 36%)", accentDark: "hsl(28 92% 54%)", shot: "/templates/shots/pizzeria-fornonero.jpg" },
+      { slug: "pizzeria-milano", name: "Milano", tagline: "Éditoriale, comme un magazine", accent: "hsl(352 78% 40%)", accentDark: "hsl(352 75% 61%)", shot: "/templates/shots/pizzeria-milano.jpg" },
+      { slug: "pizzeria-golfo", name: "Golfo", tagline: "La côte amalfitaine à table", accent: "hsl(210 65% 38%)", accentDark: "hsl(205 60% 55%)", shot: "/templates/shots/pizzeria-golfo.jpg" },
+      { slug: "pizzeria-rustica", name: "Rustica", tagline: "Pizzeria de campagne", accent: "hsl(18 55% 38%)", accentDark: "hsl(20 60% 55%)", shot: "/templates/shots/pizzeria-rustica.jpg" },
+      { slug: "pizzeria-doppiozero", name: "Doppio Zero", tagline: "Farine 00, design 0 fioriture", accent: "hsl(240 8% 12%)", accentDark: "hsl(4 78% 58%)", shot: "/templates/shots/pizzeria-doppiozero.jpg" },
+      { slug: "pizzeria-vesuvio", name: "Vesuvio", tagline: "La pizza qui gronde", accent: "hsl(0 78% 44%)", accentDark: "hsl(0 80% 58%)", shot: "/templates/shots/pizzeria-vesuvio.jpg" },
+      { slug: "pizzeria-basilico", name: "Basilico", tagline: "Verte, fraîche, végétale", accent: "hsl(120 40% 30%)", accentDark: "hsl(110 35% 52%)", shot: "/templates/shots/pizzeria-basilico.jpg" },
+      { slug: "pizzeria-notte", name: "Notte", tagline: "La part de nuit", accent: "hsl(262 60% 45%)", accentDark: "hsl(265 70% 68%)", shot: "/templates/shots/pizzeria-notte.jpg" },
     ],
   },
   {
     id: "fast-food",
-    label: "Fast Food",
-    iconPath:
-      "M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z M6 17h12",
-    description: "Templates rapides et punchy pour la restauration rapide",
-    color: "rgba(251, 191, 36, 0.8)",
+    label: "Fast-food",
+    description: "Smash burgers et énergie brute — de la moutarde sur charbon au diner américain.",
+    accent: "#d98324",
     templates: [
-      {
-        name: "Express",
-        slug: "fast-food-express",
-        description: "Commande rapide, interface dynamique et coloree",
-        tags: ["Commande en ligne", "Panier", "Promo"],
-        hero: {
-          title: "Commandez en 30 secondes",
-          subtitle: "Des burgers genereux, des frites croustillantes et un service ultra-rapide.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Burgers",
-              items: [
-                { name: "Classic Burger", description: "Steak hache, cheddar, salade, tomate, sauce maison", price: "9,90" },
-                { name: "Double Smash", description: "Double steak, double cheddar, oignons caramelises", price: "12,90" },
-                { name: "Chicken Crispy", description: "Poulet pane, coleslaw, sauce epicee", price: "10,90" },
-              ],
-            },
-            {
-              name: "Sides",
-              items: [
-                { name: "Frites Maison", description: "Fraiches, croustillantes, sel de Guerande", price: "3,90" },
-                { name: "Nuggets x6", description: "Poulet pane, sauce au choix", price: "5,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#FBBF24",
-      },
-      {
-        name: "Street",
-        slug: "fast-food-street",
-        description: "Vibes urbaines, street food attitude",
-        tags: ["Menu visuel", "Livraison", "Combos"],
-        hero: {
-          title: "Street food sans limites",
-          subtitle: "L'energie de la rue dans votre assiette. Bold, genereux, addictif.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Street Bowls",
-              items: [
-                { name: "Loaded Fries", description: "Frites, cheddar fondu, bacon, jalapenos", price: "11,90" },
-                { name: "Rice Bowl BBQ", description: "Riz, poulet BBQ, mais grille, coriandre", price: "12,90" },
-              ],
-            },
-            {
-              name: "Wraps & Tacos",
-              items: [
-                { name: "Wrap Crispy", description: "Poulet croustillant, avocat, sauce ranch", price: "10,50" },
-                { name: "Tacos x3", description: "Boeuf marine, pico de gallo, creme fraiche", price: "11,90" },
-                { name: "Quesadilla", description: "Fromage, poulet, poivrons grilles", price: "10,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#FB923C",
-      },
-      {
-        name: "Smash",
-        slug: "fast-food-smash",
-        description: "Design bold, smash burgers & sides premium",
-        tags: ["Personnalisation", "Loyalty", "QR code"],
-        hero: {
-          title: "Le smash burger premium",
-          subtitle: "Viande ecrasee sur la plancha, croute caramelisee, gout intense.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Smash Burgers",
-              items: [
-                { name: "Single Smash", description: "Steak smashe, american cheese, pickles, sauce smash", price: "10,90" },
-                { name: "Double Smash", description: "Double steak smashe, double cheese, oignons crispy", price: "13,90" },
-                { name: "Truffle Smash", description: "Steak smashe, comte, mayo truffe, roquette", price: "15,90" },
-              ],
-            },
-            {
-              name: "Desserts",
-              items: [
-                { name: "Cookie Dough Shake", description: "Milkshake vanille, pate a cookie, chantilly", price: "6,90" },
-                { name: "Brownie", description: "Chocolat noir fondant, noix de pecan", price: "4,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#EF4444",
-      },
+      { slug: "fast-food-smash", name: "Smash", tagline: "Smashé minute, jamais avant", accent: "hsl(40 18% 11%)", accentDark: "hsl(42 96% 54%)", shot: "/templates/shots/fast-food-smash.jpg" },
+      { slug: "fast-food-dinerclassic", name: "Diner 56", tagline: "Le diner américain, version 2026", accent: "hsl(350 75% 45%)", accentDark: "hsl(350 80% 60%)", shot: "/templates/shots/fast-food-dinerclassic.jpg" },
+      { slug: "fast-food-grill77", name: "Grill 77", tagline: "Charbon, flamme, point.", accent: "hsl(20 85% 36%)", accentDark: "hsl(22 88% 52%)", shot: "/templates/shots/fast-food-grill77.jpg" },
+      { slug: "fast-food-verte", name: "La Verte", tagline: "Fast-food, bonne conscience", accent: "hsl(150 45% 30%)", accentDark: "hsl(140 40% 52%)", shot: "/templates/shots/fast-food-verte.jpg" },
+      { slug: "fast-food-boxx", name: "BOXX", tagline: "Burgers en boîte, design en briques", accent: "hsl(0 0% 9%)", accentDark: "hsl(52 96% 56%)", shot: "/templates/shots/fast-food-boxx.jpg" },
+      { slug: "fast-food-minuit", name: "Minuit", tagline: "Le burger d'après la fête", accent: "hsl(270 60% 48%)", accentDark: "hsl(275 75% 70%)", shot: "/templates/shots/fast-food-minuit.jpg" },
+      { slug: "fast-food-fermier", name: "Le Fermier", tagline: "Du champ au bun", accent: "hsl(355 55% 40%)", accentDark: "hsl(355 60% 59%)", shot: "/templates/shots/fast-food-fermier.jpg" },
+      { slug: "fast-food-stacked", name: "Stacked", tagline: "Le burger en une", accent: "hsl(220 90% 50%)", accentDark: "hsl(215 90% 62%)", shot: "/templates/shots/fast-food-stacked.jpg" },
+      { slug: "fast-food-drivein", name: "Drive-In", tagline: "Commande roulante depuis 1987", accent: "hsl(205 80% 40%)", accentDark: "hsl(203 75% 55%)", shot: "/templates/shots/fast-food-drivein.jpg" },
+      { slug: "fast-food-prime", name: "Prime", tagline: "Le burger de boucher", accent: "hsl(30 45% 32%)", accentDark: "hsl(38 55% 55%)", shot: "/templates/shots/fast-food-prime.jpg" },
+    ],
+  },
+  {
+    id: "food-truck",
+    label: "Food truck",
+    description: "Street craft nomade — pétrole émaillé, kraft et cartes courtes qui bougent avec vous.",
+    accent: "#2f7d78",
+    templates: [
+      { slug: "food-truck-convoi", name: "Convoi", tagline: "Street craft, carte courte", accent: "hsl(192 62% 27%)", accentDark: "hsl(189 55% 47%)", shot: "/templates/shots/food-truck-convoi.jpg" },
+      { slug: "food-truck-routier", name: "Le Routier", tagline: "Relais moderne, portions d'époque", accent: "hsl(215 60% 30%)", accentDark: "hsl(212 55% 52%)", shot: "/templates/shots/food-truck-routier.jpg" },
+      { slug: "food-truck-tacoloco", name: "Taco Loco", tagline: "Street tacos, vraie salsa", accent: "hsl(325 75% 45%)", accentDark: "hsl(325 80% 60%)", shot: "/templates/shots/food-truck-tacoloco.jpg" },
+      { slug: "food-truck-seoulstreet", name: "Seoul Street", tagline: "Corée de rue, feu doux et gochujang", accent: "hsl(350 85% 46%)", accentDark: "hsl(350 90% 60%)", shot: "/templates/shots/food-truck-seoulstreet.jpg" },
+      { slug: "food-truck-greenwheels", name: "Green Wheels", tagline: "Camion 100 % végétal", accent: "hsl(15 72% 42%)", accentDark: "hsl(18 75% 62%)", shot: "/templates/shots/food-truck-greenwheels.jpg" },
+      { slug: "food-truck-braisenroute", name: "Braise en Route", tagline: "BBQ fumé, remorque noire", accent: "hsl(15 70% 40%)", accentDark: "hsl(18 80% 52%)", shot: "/templates/shots/food-truck-braisenroute.jpg" },
+      { slug: "food-truck-lamarina", name: "La Marina", tagline: "La mer au bord du trottoir", accent: "hsl(210 70% 35%)", accentDark: "hsl(200 65% 55%)", shot: "/templates/shots/food-truck-lamarina.jpg" },
+      { slug: "food-truck-pitstop", name: "Pit Stop", tagline: "Ravitaillement express", accent: "hsl(0 85% 45%)", accentDark: "hsl(0 88% 55%)", shot: "/templates/shots/food-truck-pitstop.jpg" },
+      { slug: "food-truck-boheme", name: "Bohème", tagline: "Le van qui suit le soleil", accent: "hsl(335 55% 44%)", accentDark: "hsl(335 60% 65%)", shot: "/templates/shots/food-truck-boheme.jpg" },
+      { slug: "food-truck-nordique", name: "Nordique", tagline: "Camion scandinave, pain noir", accent: "hsl(170 35% 32%)", accentDark: "hsl(168 32% 52%)", shot: "/templates/shots/food-truck-nordique.jpg" },
+    ],
+  },
+  {
+    id: "poulet",
+    label: "Poulet",
+    description: "Rôtisserie urbaine — braise, piment et crème, du fermier chic au fried coréen.",
+    accent: "#c0392b",
+    templates: [
+      { slug: "poulet-braise", name: "Braise", tagline: "Rôtisserie urbaine", accent: "hsl(355 70% 42%)", accentDark: "hsl(355 70% 50%)", shot: "/templates/shots/poulet-braise.jpg" },
+      { slug: "poulet-coqdor", name: "Coq d'Or", tagline: "Rôtisserie de quartier depuis 1962", accent: "hsl(150 40% 26%)", accentDark: "hsl(45 60% 52%)", shot: "/templates/shots/poulet-coqdor.jpg" },
+      { slug: "poulet-krispy", name: "Krispy Krush", tagline: "Croustillant niveau maximal", accent: "hsl(26 90% 38%)", accentDark: "hsl(35 95% 58%)", shot: "/templates/shots/poulet-krispy.jpg" },
+      { slug: "poulet-seoulfried", name: "Seoul Fried", tagline: "K-chicken, double friture", accent: "hsl(348 80% 47%)", accentDark: "hsl(348 85% 60%)", shot: "/templates/shots/poulet-seoulfried.jpg" },
+      { slug: "poulet-fermierchic", name: "Le Fermier", tagline: "Élevé dehors, rôti dedans", accent: "hsl(95 40% 30%)", accentDark: "hsl(90 35% 50%)", shot: "/templates/shots/poulet-fermierchic.jpg" },
+      { slug: "poulet-piriwest", name: "Piri West", tagline: "Piri-piri braise et citron", accent: "hsl(8 80% 46%)", accentDark: "hsl(8 85% 55%)", shot: "/templates/shots/poulet-piriwest.jpg" },
+      { slug: "poulet-bouillon", name: "Le Bouillon", tagline: "Poule au pot et volailles rôties", accent: "hsl(355 60% 34%)", accentDark: "hsl(355 55% 58%)", shot: "/templates/shots/poulet-bouillon.jpg" },
+      { slug: "poulet-wingsclub", name: "Wings Club", tagline: "Le club des ailes, match compris", accent: "hsl(222 65% 35%)", accentDark: "hsl(38 90% 55%)", shot: "/templates/shots/poulet-wingsclub.jpg" },
+      { slug: "poulet-hotcluck", name: "Hot Cluck", tagline: "Nashville hot, version béton", accent: "hsl(14 90% 38%)", accentDark: "hsl(14 92% 55%)", shot: "/templates/shots/poulet-hotcluck.jpg" },
+      { slug: "poulet-dimanche", name: "Dimanche", tagline: "Le repas qui rassemble", accent: "hsl(340 45% 45%)", accentDark: "hsl(340 50% 62%)", shot: "/templates/shots/poulet-dimanche.jpg" },
     ],
   },
   {
     id: "asiatique",
     label: "Asiatique",
-    iconPath: "M9 2L4 22 M15 2L10 22",
-    description: "Elegance et zen pour la cuisine asiatique",
-    color: "rgba(244, 114, 182, 0.8)",
+    description: "Izakaya contemporain — jade, encre et washi, du ramen au comptoir omakase.",
+    accent: "#3f7d5c",
     templates: [
-      {
-        name: "Sakura",
-        slug: "asiatique-sakura",
-        description: "Esthetique japonaise epuree, sushi bar",
-        tags: ["Menu illustre", "Reservation", "Takeaway"],
-        hero: {
-          title: "L'art du sushi authentique",
-          subtitle: "Des poissons selectionnes chaque matin au marche, prepares devant vous par nos maitres sushi.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Sushi & Sashimi",
-              items: [
-                { name: "Assortiment 12 pieces", description: "Saumon, thon, crevette, daurade, nigiri & maki", price: "18,90" },
-                { name: "Sashimi Premium", description: "Thon rouge, saumon sauvage, hamachi, 15 pieces", price: "24,90" },
-                { name: "California Roll", description: "Avocat, surimi, concombre, sesame", price: "12,90" },
-              ],
-            },
-            {
-              name: "Plats Chauds",
-              items: [
-                { name: "Ramen Tonkotsu", description: "Bouillon porc 12h, chashu, oeuf mollet, nori", price: "15,90" },
-                { name: "Gyoza x6", description: "Raviolis porc et ciboulette, sauce ponzu", price: "8,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#F472B6",
-      },
-      {
-        name: "Wok",
-        slug: "asiatique-wok",
-        description: "Energie du wok, noodles & stir-fry",
-        tags: ["Commande rapide", "Formules", "Livraison"],
-        hero: {
-          title: "Le feu du wok",
-          subtitle: "Des saveurs intenses, sautees a haute temperature, servies en un eclair.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Wok Signature",
-              items: [
-                { name: "Pad Thai", description: "Nouilles de riz, crevettes, cacahuetes, citron vert", price: "14,90" },
-                { name: "Boeuf Saute Basilic Thai", description: "Boeuf, basilic sacre, piment, haricots verts", price: "15,90" },
-                { name: "Nouilles Sautees Legumes", description: "Nouilles egg, brocoli, champignons, sauce soja", price: "12,90" },
-              ],
-            },
-            {
-              name: "Entrees",
-              items: [
-                { name: "Rouleaux de Printemps x4", description: "Crevette, menthe, vermicelles, sauce nuoc-mam", price: "8,90" },
-                { name: "Soupe Tom Yum", description: "Crevettes, citronnelle, galanga, kaffir", price: "9,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#FB7185",
-      },
-      {
-        name: "Dragon",
-        slug: "asiatique-dragon",
-        description: "Design premium, dim sum & gastronomie chinoise",
-        tags: ["Menu degustation", "Banquet", "Carte des thes"],
-        hero: {
-          title: "Gastronomie du Dragon",
-          subtitle: "Dim sum d'exception, canard laque et thes rares dans un cadre imperial.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Dim Sum",
-              items: [
-                { name: "Ha Gow", description: "Raviolis crevette cristal, 4 pieces", price: "9,90" },
-                { name: "Siu Mai", description: "Bouchees porc & crevette, 4 pieces", price: "8,90" },
-                { name: "Char Siu Bao", description: "Brioche vapeur au porc laque, 3 pieces", price: "7,90" },
-              ],
-            },
-            {
-              name: "Plats Imperiaux",
-              items: [
-                { name: "Canard Laque Pekinois", description: "Canard roti 24h, crepes, ciboule, sauce hoisin", price: "32,90" },
-                { name: "Boeuf aux Oignons", description: "Boeuf saute, oignons, sauce aux huitres", price: "16,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#E11D48",
-      },
-    ],
-  },
-  {
-    id: "healthy",
-    label: "Healthy",
-    iconPath:
-      "M7 21h10 M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z M11.38 12a2.4 2.4 0 0 1-.4-4.77 2.4 2.4 0 0 1 3.2-2.77 2.4 2.4 0 0 1 3.47-.63 2.4 2.4 0 0 1 3.13 1.33l-12.4 6.84Z",
-    description: "Frais, vert et naturel pour les concepts healthy",
-    color: "rgba(74, 222, 128, 0.8)",
-    templates: [
-      {
-        name: "Green",
-        slug: "healthy-green",
-        description: "Design frais et naturel, bowls & smoothies",
-        tags: ["Nutri-score", "Allergenes", "Click & Collect"],
-        hero: {
-          title: "Fresh, green, delicious",
-          subtitle: "Des bowls colores, des smoothies vitamines et des ingredients 100% naturels.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Bowls",
-              items: [
-                { name: "Buddha Bowl", description: "Quinoa, avocat, edamame, carotte, sauce tahini", price: "13,90" },
-                { name: "Acai Bowl", description: "Acai, granola, banane, fruits rouges, miel", price: "11,90" },
-                { name: "Poke Saumon", description: "Riz, saumon, mangue, concombre, sesame", price: "14,90" },
-              ],
-            },
-            {
-              name: "Smoothies",
-              items: [
-                { name: "Green Detox", description: "Epinard, pomme, gingembre, citron", price: "6,90" },
-                { name: "Berry Blast", description: "Myrtille, framboise, banane, lait d'amande", price: "7,50" },
-              ],
-            },
-          ],
-        },
-        accent: "#4ADE80",
-      },
-      {
-        name: "Detox",
-        slug: "healthy-detox",
-        description: "Minimaliste et epure, juice bar vibes",
-        tags: ["Abonnements", "Programme detox", "Livraison"],
-        hero: {
-          title: "Purifiez votre quotidien",
-          subtitle: "Jus presses a froid, programmes detox et bien-etre au quotidien.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Jus Presses a Froid",
-              items: [
-                { name: "Pure Green", description: "Concombre, celeri, epinard, pomme, menthe", price: "7,90" },
-                { name: "Sunrise", description: "Carotte, orange, gingembre, curcuma", price: "7,90" },
-                { name: "Beetroot Boost", description: "Betterave, pomme, citron, gingembre", price: "7,90" },
-              ],
-            },
-            {
-              name: "Programmes",
-              items: [
-                { name: "Cure 1 jour — 6 jus", description: "Selection equilibree pour une journee detox", price: "39,90" },
-                { name: "Cure 3 jours — 18 jus", description: "Programme complet reset & energie", price: "109,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#22D3EE",
-      },
-      {
-        name: "Harvest",
-        slug: "healthy-harvest",
-        description: "Farm-to-table, local et de saison",
-        tags: ["Producteurs", "Menu de saison", "Bio"],
-        hero: {
-          title: "Du champ a l'assiette",
-          subtitle: "Des produits locaux, de saison, cultives par nos producteurs partenaires.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Entrees de Saison",
-              items: [
-                { name: "Veloute du Moment", description: "Legumes de saison, huile d'olive, croutons", price: "8,90" },
-                { name: "Salade du Potager", description: "Mesclun, radis, feta, graines, vinaigrette miel", price: "10,90" },
-              ],
-            },
-            {
-              name: "Plats",
-              items: [
-                { name: "Bowl Cereales & Roti", description: "Epeautre, legumes rotis, houmous, graines", price: "14,90" },
-                { name: "Filet de Lieu Jaune", description: "Puree de petits pois, beurre citronne", price: "17,90" },
-                { name: "Risotto Champignons", description: "Champignons de saison, parmesan, truffe", price: "16,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#A3E635",
-      },
-    ],
-  },
-  {
-    id: "food-truck",
-    label: "Food Truck",
-    iconPath:
-      "M10 17h4V5H2v12h3 M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1",
-    description: "Nomade, fun et mobile pour les food trucks",
-    color: "rgba(168, 85, 247, 0.8)",
-    templates: [
-      {
-        name: "Wheels",
-        slug: "food-truck-wheels",
-        description: "Geolocalisation en temps reel, planning mobile",
-        tags: ["Carte live", "Planning", "Pre-commande"],
-        hero: {
-          title: "On roule vers vous",
-          subtitle: "Retrouvez-nous en temps reel, commandez a l'avance et savourez sans attendre.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Burgers du Truck",
-              items: [
-                { name: "Le Classique", description: "Steak, cheddar, salade, tomate, sauce secrete", price: "10,90" },
-                { name: "Le Veggie", description: "Galette de legumes, avocat, sauce yaourt", price: "11,90" },
-              ],
-            },
-            {
-              name: "Sides & Boissons",
-              items: [
-                { name: "Frites Cajun", description: "Epices cajun, mayo chipotle", price: "4,90" },
-                { name: "Limonade Maison", description: "Citron, menthe, sucre de canne", price: "3,90" },
-                { name: "Cookie Geant", description: "Pepites de chocolat, fleur de sel", price: "3,50" },
-              ],
-            },
-          ],
-        },
-        accent: "#A855F7",
-      },
-      {
-        name: "Festival",
-        slug: "food-truck-festival",
-        description: "Ambiance festival, street food & events",
-        tags: ["Evenements", "Menu du jour", "Reseaux sociaux"],
-        hero: {
-          title: "L'esprit festival",
-          subtitle: "Street food festive, ambiance musicale et saveurs du monde entier.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "World Food",
-              items: [
-                { name: "Tacos Mexicain", description: "Boeuf marine, guacamole, pico de gallo", price: "10,90" },
-                { name: "Bao Bun", description: "Brioche vapeur, porc effiloche, pickles", price: "9,90" },
-                { name: "Falafel Wrap", description: "Falafels, houmous, taboule, sauce tahini", price: "10,50" },
-              ],
-            },
-            {
-              name: "Douceurs",
-              items: [
-                { name: "Churros x5", description: "Cannelle, sauce chocolat", price: "5,90" },
-                { name: "Bubble Waffle", description: "Glace vanille, fruits frais, coulis", price: "7,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#C084FC",
-      },
-      {
-        name: "Nomad",
-        slug: "food-truck-nomad",
-        description: "Design aventurier, itinerant et audacieux",
-        tags: ["Geoloc", "Notifications", "Menu compact"],
-        hero: {
-          title: "L'aventure a chaque bouchee",
-          subtitle: "Un food truck nomade qui vous surprend avec des creations audacieuses a chaque etape.",
-        },
-        menu: {
-          categories: [
-            {
-              name: "Creations du Chef",
-              items: [
-                { name: "Sandwich Nomad", description: "Pain focaccia, poulet roti, pesto, tomate sechee", price: "11,90" },
-                { name: "Bowl Voyageur", description: "Riz, saumon fume, avocat, edamame, sriracha", price: "13,90" },
-              ],
-            },
-            {
-              name: "Snacks",
-              items: [
-                { name: "Empanadas x3", description: "Boeuf, oignon, cumin, chimichurri", price: "8,90" },
-                { name: "Chips de Patate Douce", description: "Croustillantes, sel fume", price: "4,50" },
-                { name: "Brownie Nomad", description: "Chocolat, noisette, caramel sale", price: "4,90" },
-              ],
-            },
-          ],
-        },
-        accent: "#8B5CF6",
-      },
+      { slug: "asiatique-izakaya", name: "Izakaya", tagline: "Izakaya contemporain", accent: "hsl(168 46% 27%)", accentDark: "hsl(166 42% 46%)", shot: "/templates/shots/asiatique-izakaya.jpg" },
+      { slug: "asiatique-wokstreet", name: "Wok Street", tagline: "Feu vif, wok qui claque", accent: "hsl(16 85% 41%)", accentDark: "hsl(16 90% 58%)", shot: "/templates/shots/asiatique-wokstreet.jpg" },
+      { slug: "asiatique-bambou", name: "Bambou", tagline: "Vapeur douce, bambou frais", accent: "hsl(140 45% 30%)", accentDark: "hsl(135 40% 50%)", shot: "/templates/shots/asiatique-bambou.jpg" },
+      { slug: "asiatique-tokyonight", name: "Tokyo Night", tagline: "Ramen bar de minuit", accent: "hsl(355 85% 45%)", accentDark: "hsl(355 90% 62%)", shot: "/templates/shots/asiatique-tokyonight.jpg" },
+      { slug: "asiatique-hanoi", name: "Hanoï", tagline: "Bols et baguettes d'Indochine", accent: "hsl(170 45% 28%)", accentDark: "hsl(168 40% 48%)", shot: "/templates/shots/asiatique-hanoi.jpg" },
+      { slug: "asiatique-sichuan", name: "Sichuan", tagline: "Poivre qui engourdit, feu qui réveille", accent: "hsl(0 82% 45%)", accentDark: "hsl(0 85% 57%)", shot: "/templates/shots/asiatique-sichuan.jpg" },
+      { slug: "asiatique-matcha", name: "Matcha", tagline: "Salon de thé et petites assiettes", accent: "hsl(88 30% 34%)", accentDark: "hsl(88 28% 52%)", shot: "/templates/shots/asiatique-matcha.jpg" },
+      { slug: "asiatique-dragon", name: "Dragon", tagline: "Banquet cantonais, laque et or", accent: "hsl(42 70% 40%)", accentDark: "hsl(42 80% 55%)", shot: "/templates/shots/asiatique-dragon.jpg" },
+      { slug: "asiatique-banhmi", name: "Bánh Mì Club", tagline: "Baguette croustillante, cœur vietnamien", accent: "hsl(95 55% 32%)", accentDark: "hsl(90 50% 48%)", shot: "/templates/shots/asiatique-banhmi.jpg" },
+      { slug: "asiatique-omakase", name: "Omakase", tagline: "On vous laisse choisir pour vous", accent: "hsl(220 15% 14%)", accentDark: "hsl(36 45% 62%)", shot: "/templates/shots/asiatique-omakase.jpg" },
     ],
   },
 ];
 
-export const categoryCircles: Record<string, { cx: string; cy: string; r: string }[]> = {
-  "food-truck": [
-    { cx: "7.5", cy: "17.5", r: "2.5" },
-    { cx: "17.5", cy: "17.5", r: "2.5" },
-  ],
-};
+export const totalTemplates = categories.reduce((n, c) => n + c.templates.length, 0);
 
 export function findTemplateBySlug(slug: string): { category: Category; template: Template } | null {
   for (const category of categories) {

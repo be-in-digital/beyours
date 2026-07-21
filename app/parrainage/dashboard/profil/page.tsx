@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { validateSiret } from "@/lib/siret";
 
 export default function ProfilPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -15,11 +16,16 @@ export default function ProfilPage() {
     api.affiliateUsers.me,
     isAuthenticated ? {} : "skip",
   );
+  const signedContract = useQuery(
+    api.contractSignatures.getSignedContractUrl,
+    isAuthenticated ? {} : "skip",
+  );
   const completeProfile = useMutation(api.affiliateUsers.completeProfile);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
+  const [siret, setSiret] = useState("");
   const createAccountLink = useAction(api.stripeConnect.createAccountLink);
   const checkAccountStatus = useAction(api.stripeConnect.checkAccountStatus);
 
@@ -61,6 +67,7 @@ export default function ProfilPage() {
       setFirstName(affiliate.firstName ?? "");
       setLastName(affiliate.lastName ?? "");
       setPhone(affiliate.phone ?? "");
+      setSiret(affiliate.siret ?? "");
     }
   }, [affiliate]);
 
@@ -70,11 +77,19 @@ export default function ProfilPage() {
     setError(null);
     setSuccess(false);
 
+    const siretDigits = siret.replace(/\s/g, "");
+    if (!validateSiret(siretDigits)) {
+      setError("Numéro SIRET invalide (14 chiffres).");
+      setSaving(false);
+      return;
+    }
+
     try {
       await completeProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
+        siret: siretDigits,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -122,10 +137,42 @@ export default function ProfilPage() {
         Retour au dashboard
       </Link>
 
-      <h1 className="text-2xl font-bold mb-8">Mon profil</h1>
+      <h1 className="font-display text-2xl font-bold mb-8">Mon profil</h1>
+
+      {/* Signed contract */}
+      {signedContract?.url && (
+        <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
+          <h2 className="text-base font-semibold mb-1">Mon contrat signé</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {signedContract.signedAt
+              ? `Signé le ${new Date(signedContract.signedAt).toLocaleDateString("fr-FR")} — signature électronique simple, horodatée.`
+              : "Contrat d'apporteur d'affaires signé électroniquement."}
+          </p>
+          <a
+            href={signedContract.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-secondary border border-border text-sm font-medium hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Télécharger le PDF
+          </a>
+        </div>
+      )}
 
       {/* Personal info form */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
         <h2 className="text-base font-semibold mb-4">
           Informations personnelles
         </h2>
@@ -143,7 +190,7 @@ export default function ProfilPage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
             <div>
@@ -158,7 +205,7 @@ export default function ProfilPage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
           </div>
@@ -174,7 +221,7 @@ export default function ProfilPage() {
               id="email"
               value={affiliate?.email ?? ""}
               disabled
-              className="w-full h-11 px-4 rounded-xl bg-white/[0.02] border border-white/[0.05] text-muted-foreground cursor-not-allowed"
+              className="w-full h-11 px-4 rounded-xl bg-secondary border border-border text-muted-foreground cursor-not-allowed"
             />
           </div>
 
@@ -190,18 +237,40 @@ export default function ProfilPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
-              className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
             />
           </div>
 
+          <div>
+            <label
+              htmlFor="siret"
+              className="block text-sm font-medium mb-1.5"
+            >
+              N° SIRET
+            </label>
+            <input
+              id="siret"
+              value={siret}
+              onChange={(e) => setSiret(e.target.value)}
+              required
+              inputMode="numeric"
+              placeholder="123 456 789 00012"
+              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Requis pour percevoir vos commissions (programme réservé aux
+              professionnels).
+            </p>
+          </div>
+
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="p-3 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm">
               {error}
             </div>
           )}
 
           {success && (
-            <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+            <div className="p-3 rounded-xl bg-success-soft border border-success-border text-success-strong text-sm">
               Profil mis à jour avec succès
             </div>
           )}
@@ -217,11 +286,11 @@ export default function ProfilPage() {
       </div>
 
       {/* Stripe Connect section */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
         <h2 className="text-base font-semibold mb-4">Compte de paiement</h2>
 
         {stripeError && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="mb-4 p-3 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm">
             {stripeError}
           </div>
         )}
@@ -269,8 +338,8 @@ export default function ProfilPage() {
 
         {stripeStatus === "pending" && (
           <div>
-            <div className="flex items-center gap-2 text-amber-400 text-sm mb-4">
-              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <div className="flex items-center gap-2 text-warning-strong text-sm mb-4">
+              <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
               Vérification en cours par Stripe
             </div>
             <div className="flex gap-2">
@@ -293,7 +362,7 @@ export default function ProfilPage() {
                   }
                 }}
                 disabled={stripeLoading}
-                className="h-9 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] disabled:opacity-50 transition-colors"
+                className="h-9 px-4 rounded-lg bg-surface-1 border border-border text-sm hover:bg-surface-3 disabled:opacity-50 transition-colors"
               >
                 Reprendre la configuration
               </button>
@@ -310,7 +379,7 @@ export default function ProfilPage() {
                   }
                 }}
                 disabled={stripeLoading}
-                className="h-9 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] disabled:opacity-50 transition-colors"
+                className="h-9 px-4 rounded-lg bg-surface-1 border border-border text-sm hover:bg-surface-3 disabled:opacity-50 transition-colors"
               >
                 Vérifier le statut
               </button>
@@ -319,7 +388,7 @@ export default function ProfilPage() {
         )}
 
         {stripeStatus === "active" && (
-          <div className="flex items-center gap-2 text-green-400 text-sm">
+          <div className="flex items-center gap-2 text-success-strong text-sm">
             <svg
               width="16"
               height="16"
@@ -335,18 +404,18 @@ export default function ProfilPage() {
         )}
 
         {stripeStatus === "disabled" && (
-          <div className="text-red-400 text-sm">
+          <div className="text-danger-strong text-sm">
             Compte de paiement désactivé. Contactez le support.
           </div>
         )}
       </div>
 
       {/* Sign out */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border">
         <h2 className="text-base font-semibold mb-4">Session</h2>
         <button
           onClick={handleSignOut}
-          className="h-10 px-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors"
+          className="h-10 px-6 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm font-medium hover:bg-danger/15 transition-colors"
         >
           Se déconnecter
         </button>
