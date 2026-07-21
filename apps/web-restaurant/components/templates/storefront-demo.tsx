@@ -460,7 +460,7 @@ export function StorefrontDemo({
                 Commande n° BID-{theme.slug.slice(0, 3).toUpperCase()}-4821
               </p>
               <button onClick={() => { setCart([]); goto("home"); }} className={`mt-7 rounded-full px-6 py-3 text-sm font-semibold ${btn}`} style={{ background: accent, color: accentInk }}>
-                Retour à l'accueil
+                Retour à l&apos;accueil
               </button>
             </motion.div>
           )}
