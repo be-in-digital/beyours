@@ -37,7 +37,7 @@ const maintenancePriceIds: Record<string, string> = {
    on ajoute ici le pied de facture légal + le SIRET en champ personnalisé.
    Garder en phase avec apps/web-restaurant/lib/legal/company.ts (COMPANY). */
 const SELLER_INVOICE_FOOTER =
-  "TUUM AGENCY (SAS), 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA non applicable, art. 293 B du CGI.";
+  "TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
 const SELLER_SIRET = "930 817 697 00012";
 
 function getStripe(): Stripe | null {

@@ -43,7 +43,6 @@ import type * as stripeConnect from "../stripeConnect.js";
 import type * as stripeEvents from "../stripeEvents.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as whitelist from "../whitelist.js";
-import type * as yousign from "../yousign.js";
 
 import type {
   ApiFromModules,
@@ -87,7 +86,6 @@ declare const fullApi: ApiFromModules<{
   stripeEvents: typeof stripeEvents;
   subscriptions: typeof subscriptions;
   whitelist: typeof whitelist;
-  yousign: typeof yousign;
 }>;
 
 /**

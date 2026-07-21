@@ -146,21 +146,6 @@ export const createSignatureRequest = mutation({
 
 /* ── Internal queries ── */
 
-export const getByYousignRequestId = internalQuery({
-  args: { yousignSignatureRequestId: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("contractSignatures")
-      .withIndex("by_yousignSignatureRequestId", (q) =>
-        q.eq(
-          "yousignSignatureRequestId",
-          args.yousignSignatureRequestId,
-        ),
-      )
-      .unique();
-  },
-});
-
 export const getById = internalQuery({
   args: { id: v.id("contractSignatures") },
   handler: async (ctx, args) => {
@@ -169,21 +154,6 @@ export const getById = internalQuery({
 });
 
 /* ── Internal mutations ── */
-
-export const updateYousignData = internalMutation({
-  args: {
-    signatureId: v.id("contractSignatures"),
-    yousignSignatureRequestId: v.string(),
-    yousignSignerUrl: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.signatureId, {
-      yousignSignatureRequestId: args.yousignSignatureRequestId,
-      yousignSignerUrl: args.yousignSignerUrl,
-      updatedAt: Date.now(),
-    });
-  },
-});
 
 export const updateStatus = internalMutation({
   args: {

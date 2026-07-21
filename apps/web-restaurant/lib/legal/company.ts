@@ -53,7 +53,7 @@ export const COMPANY: CompanyInfo = {
   legalName: "TUUM AGENCY",
   tradeName: "Be in Digital",
   legalForm: "SAS (société par actions simplifiée)",
-  capitalEuros: null, // [À COMPLÉTER] — montant du capital social
+  capitalEuros: 1000,
   siren: "930 817 697",
   siret: "930 817 697 00012",
   rcs: "R.C.S. Paris 930 817 697",
@@ -66,7 +66,7 @@ export const COMPANY: CompanyInfo = {
     city: "Paris",
     country: "France",
   },
-  legalRepresentative: null, // [À COMPLÉTER] — nom du Président
+  legalRepresentative: "Fatiha ELKARROUTI",
   email: "hello@beindigital.fr",
   phone: null,
   registeredAt: "10 juillet 2024",
@@ -77,8 +77,8 @@ export const COMPANY: CompanyInfo = {
  * la mention légale correspondante figure sur les factures et le checkout.
  */
 export const VAT = {
-  regime: "franchise" as "franchise" | "reel",
-  mention: "TVA non applicable, art. 293 B du CGI",
+  regime: "reel" as "franchise" | "reel",
+  mention: "TVA applicable au taux en vigueur (20 %)",
 } as const;
 
 export interface HostingProvider {
@@ -97,7 +97,11 @@ export const HOSTING: {
   frontend: HostingProvider | null;
   backend: HostingProvider;
 } = {
-  frontend: null, // [À COMPLÉTER] — nom + adresse de l'hébergeur du site
+  frontend: {
+    name: "Vercel Inc.",
+    address: "440 N Barranca Ave #4133, Covina, CA 91723, États-Unis",
+    url: "https://vercel.com",
+  },
   backend: {
     name: "Convex, Inc.",
     address: "San Francisco, Californie, États-Unis",
@@ -119,5 +123,5 @@ export const SUBPROCESSORS: { name: string; role: string; location: string }[] =
   { name: "Convex, Inc.", role: "Hébergement applicatif et base de données", location: "États-Unis" },
   { name: "Stripe Payments Europe, Ltd.", role: "Traitement des paiements", location: "Irlande / États-Unis" },
   { name: "Amazon Web Services (AWS SES)", role: "Envoi des emails transactionnels", location: "Union européenne" },
-  { name: "Yousign SAS", role: "Signature électronique des contrats", location: "France" },
+  { name: "Vercel Inc.", role: "Hébergement du site", location: "États-Unis / Union européenne" },
 ];

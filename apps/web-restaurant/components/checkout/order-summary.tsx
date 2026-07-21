@@ -104,7 +104,7 @@ export function OrderSummary({
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              TVA non applicable, art. 293 B du CGI
+              Prix indiqués hors taxes.
             </p>
           </>
         )}

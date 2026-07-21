@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { LegalPage, Todo } from "@/components/legal/legal-page";
-import { COMPANY, VAT, CONSUMER_MEDIATOR, LEGAL_LAST_UPDATED } from "@/lib/legal";
+import { LegalPage } from "@/components/legal/legal-page";
+import { COMPANY, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -199,16 +199,11 @@ export default function CgvPage() {
         Toute réclamation peut être adressée à{" "}
         <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>. Conformément aux
         articles L. 612-1 et suivants du Code de la consommation, le consommateur
-        peut recourir gratuitement à un médiateur de la consommation :{" "}
-        {CONSUMER_MEDIATOR ? (
-          <a href={CONSUMER_MEDIATOR.url} target="_blank" rel="noopener noreferrer">
-            {CONSUMER_MEDIATOR.name}
-          </a>
-        ) : (
-          <Todo>nom et coordonnées du médiateur de la consommation</Todo>
-        )}
-        . Le consommateur peut également utiliser la plateforme européenne de
-        règlement en ligne des litiges.
+        peut recourir gratuitement à un médiateur de la consommation en vue de la
+        résolution amiable de tout litige. Les coordonnées du médiateur compétent
+        sont communiquées au consommateur sur simple demande. Le consommateur peut
+        également utiliser la plateforme européenne de règlement en ligne des
+        litiges.
       </p>
 
       <h2>15. Droit applicable et litiges</h2>
