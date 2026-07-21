@@ -15,8 +15,8 @@
  *  - empreinte SHA-256 du contenu exact signé (intégrité)
  *  - PDF signé + page « certificat de signature » stocké (Convex storage)
  *
- * L'adaptateur Yousign (`yousign.ts`) reste en place, inutilisé, pour un
- * éventuel passage à une signature AVANCÉE/QUALIFIÉE via prestataire qualifié.
+ * Yousign a été retiré (abonnement expiré, non utilisé) ; pour un éventuel
+ * passage à une signature AVANCÉE/QUALIFIÉE, réintégrer un prestataire qualifié.
  */
 
 import { v } from "convex/values";
