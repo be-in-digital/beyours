@@ -159,6 +159,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-contrast: var(--border-contrast);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
@@ -595,6 +596,14 @@ body {
   --info-soft: rgba(61, 132, 194, 0.12);
   --info-border: rgba(61, 132, 194, 0.3);
   --chart-grid: rgba(34, 28, 21, 0.08);
+
+  /* Status text tuned for the LIGHT theme — darkened so status labels
+     stay ≥4.5:1 on their -soft tints (the base --success/--warning/…
+     tones are calibrated for the dark .admin-scope and fail on paper). */
+  --success-strong: #146c43;
+  --warning-strong: #8a5314;
+  --danger-strong: #b02a1e;
+  --info-strong: #1b5e94;
 }
 
 @theme inline {
@@ -614,6 +623,10 @@ body {
   --color-info-foreground: var(--info-foreground);
   --color-info-soft: var(--info-soft);
   --color-info-border: var(--info-border);
+  --color-success-strong: var(--success-strong);
+  --color-warning-strong: var(--warning-strong);
+  --color-danger-strong: var(--danger-strong);
+  --color-info-strong: var(--info-strong);
   --color-chart-grid: var(--chart-grid);
 }
 

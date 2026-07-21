@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUpRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, MousePointerClick } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
 import { useCalendlyModal } from "@/lib/store";
 import type { Template, Category } from "@/lib/templates-data";
@@ -73,7 +73,7 @@ export function TemplatePreview({
           </div>
         </FadeIn>
 
-        {/* Capture, en cadre navigateur */}
+        {/* Capture du site livré + accès à la démo jouable plein écran */}
         <FadeIn delay={0.2}>
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -103,6 +103,22 @@ export function TemplatePreview({
               />
             </div>
           </motion.div>
+
+          {/* CTA — visiter la vraie démo, plein écran et utilisable */}
+          <div className="mt-7 flex flex-col items-center gap-3 text-center">
+            <Link
+              href={`/demo/${template.slug}`}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_16px_44px_-16px_rgba(197,84,44,0.55)] transition-all duration-200 hover:scale-[1.02] hover:brightness-105"
+            >
+              <MousePointerClick className="h-5 w-5" strokeWidth={2} />
+              Visiter la démo interactive
+              <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+            </Link>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Parcourez la carte, ajoutez au panier, passez commande — exactement
+              comme le feraient vos clients.
+            </p>
+          </div>
         </FadeIn>
 
         {/* Ce qui est inclus + accent */}

@@ -106,10 +106,10 @@ export default function PartagePage() {
         Retour au dashboard
       </Link>
 
-      <h1 className="text-2xl font-bold mb-8">Partager votre code</h1>
+      <h1 className="font-display text-2xl font-bold mb-8">Partager votre code</h1>
 
       {/* Code display */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
         <h2 className="text-base font-semibold mb-4">Votre code de parrainage</h2>
 
         <div className="flex items-center gap-3 mb-4">
@@ -120,7 +120,7 @@ export default function PartagePage() {
           </div>
           <button
             onClick={() => copyToClipboard(code, "code")}
-            className="h-10 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] transition-colors"
+            className="h-10 px-4 rounded-lg bg-surface-1 border border-border text-sm hover:bg-surface-3 transition-colors"
           >
             {copied === "code" ? "Copié !" : "Copier"}
           </button>
@@ -145,11 +145,11 @@ export default function PartagePage() {
                 onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
                 placeholder="MONCODE"
                 maxLength={20}
-                className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
               />
             </div>
             {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <div className="p-3 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm">
                 {error}
               </div>
             )}
@@ -178,15 +178,15 @@ export default function PartagePage() {
       </div>
 
       {/* Link */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
         <h2 className="text-base font-semibold mb-4">Lien de parrainage</h2>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-sm text-muted-foreground bg-white/[0.04] px-4 py-2 rounded-lg truncate">
+          <code className="flex-1 text-sm text-foreground bg-secondary px-4 py-2 rounded-lg truncate">
             {referralLink}
           </code>
           <button
             onClick={() => copyToClipboard(referralLink, "link")}
-            className="h-10 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] transition-colors flex-shrink-0"
+            className="h-10 px-4 rounded-lg bg-surface-1 border border-border text-sm hover:bg-surface-3 transition-colors flex-shrink-0"
           >
             {copied === "link" ? "Copié !" : "Copier"}
           </button>
@@ -194,39 +194,51 @@ export default function PartagePage() {
       </div>
 
       {/* Share buttons */}
-      <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border">
         <h2 className="text-base font-semibold mb-4">Partager</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <a
-            href={`https://wa.me/?text=${encodeURIComponent(getShareText())}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#25D366]/10 border border-[#25D366]/20 text-[#25D366] text-sm font-medium hover:bg-[#25D366]/20 transition-colors"
-          >
-            WhatsApp
-          </a>
-          <a
-            href={`mailto:?subject=${encodeURIComponent("Découvrez Be in Digital")}&body=${encodeURIComponent(getShareText())}`}
-            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground text-sm font-medium hover:bg-white/[0.08] transition-colors"
-          >
-            Email
-          </a>
-          <a
-            href={`https://x.com/intent/tweet?text=${encodeURIComponent(getShareText())}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground text-sm font-medium hover:bg-white/[0.08] transition-colors"
-          >
-            X (Twitter)
-          </a>
-          <a
-            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0077B5]/10 border border-[#0077B5]/20 text-[#0077B5] text-sm font-medium hover:bg-[#0077B5]/20 transition-colors"
-          >
-            LinkedIn
-          </a>
+          {[
+            {
+              label: "WhatsApp",
+              dot: "#25D366",
+              href: `https://wa.me/?text=${encodeURIComponent(getShareText())}`,
+              blank: true,
+            },
+            {
+              label: "Email",
+              dot: "var(--primary)",
+              href: `mailto:?subject=${encodeURIComponent("Découvrez Be in Digital")}&body=${encodeURIComponent(getShareText())}`,
+              blank: false,
+            },
+            {
+              label: "X (Twitter)",
+              dot: "#1c1c1c",
+              href: `https://x.com/intent/tweet?text=${encodeURIComponent(getShareText())}`,
+              blank: true,
+            },
+            {
+              label: "LinkedIn",
+              dot: "#0077B5",
+              href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralLink)}`,
+              blank: true,
+            },
+          ].map((s) => (
+            <a
+              key={s.label}
+              href={s.href}
+              {...(s.blank
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
+              className="flex items-center justify-center gap-2 h-11 rounded-xl bg-surface-1 border border-border text-foreground text-sm font-medium hover:bg-surface-3 hover:border-border-contrast transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <span
+                aria-hidden
+                className="size-2 rounded-full flex-shrink-0"
+                style={{ background: s.dot }}
+              />
+              {s.label}
+            </a>
+          ))}
         </div>
       </div>
     </div>

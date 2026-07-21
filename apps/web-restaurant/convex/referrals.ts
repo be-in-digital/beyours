@@ -1,5 +1,10 @@
 import { v } from "convex/values";
-import { query, internalMutation, internalQuery } from "./_generated/server";
+import {
+  query,
+  mutation,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 /* ── Internal queries ── */
@@ -35,17 +40,46 @@ export const createFromCheckout = internalMutation({
       .unique();
     if (existing) return existing._id;
 
+    // Dédup « Nouveau Client » (art. 3.2) : si l'email est déjà client (commande
+    // payée antérieure) ou déjà un contact connu, on bloque pour revue humaine
+    // au lieu de laisser filer la commission.
+    const priorOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_email", (q) => q.eq("customerEmail", args.customerEmail))
+      .take(10);
+    const hadPriorPaidOrder = priorOrders.some(
+      (o) => o._id !== args.orderId && o.status === "paid",
+    );
+    const knownLead = await ctx.db
+      .query("contactLeads")
+      .withIndex("by_email", (q) => q.eq("email", args.customerEmail))
+      .take(1);
+    const alreadyKnown = hadPriorPaidOrder || knownLead.length > 0;
+
+    const now = Date.now();
+    const flagged = alreadyKnown
+      ? {
+          status: "blocked" as const,
+          blockedAt: now,
+          statusReason:
+            "Client potentiellement déjà connu — vérifier l'éligibilité « Nouveau Client » (art. 3.2)",
+          adminNote: hadPriorPaidOrder
+            ? "Commande antérieure payée avec le même email."
+            : "Email déjà présent dans les contacts (lead).",
+        }
+      : { status: "pending" as const };
+
     return await ctx.db.insert("referrals", {
       referrerId: args.referrerId,
       referralCodeId: args.referralCodeId,
       orderId: args.orderId,
       customerEmail: args.customerEmail,
       customerName: args.customerName,
-      status: "pending",
+      ...flagged,
       commissionCents: args.commissionCents,
       discountPercent: args.discountPercent,
       discountAmountCents: args.discountAmountCents,
-      createdAt: Date.now(),
+      createdAt: now,
     });
   },
 });
@@ -112,7 +146,12 @@ export const markValidatedAsPayable = internalMutation({
     let marked = 0;
     for (const referral of validated) {
       const affiliate = await ctx.db.get(referral.referrerId);
-      if (affiliate?.stripeConnectStatus === "active") {
+      // Aucun versement sans SIRET (pro) ni facture de l'apporteur (art. 4.2).
+      if (
+        affiliate?.stripeConnectStatus === "active" &&
+        affiliate.siret &&
+        referral.invoiceStorageId
+      ) {
         await ctx.db.patch(referral._id, { status: "payable" });
         marked++;
       }
@@ -134,6 +173,34 @@ export const markPaid = internalMutation({
       status: "paid",
       paidAt: Date.now(),
       stripeTransferId: args.stripeTransferId,
+    });
+  },
+});
+
+export const getByIdInternal = internalQuery({
+  args: { referralId: v.id("referrals") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.referralId);
+  },
+});
+
+/**
+ * Annule une commission (remboursement, impayé, litige). La reprise éventuelle
+ * du transfer Stripe est faite en amont par l'action stripeConnect ; ici on
+ * fige seulement le statut et la traçabilité.
+ */
+export const cancelReferral = internalMutation({
+  args: {
+    referralId: v.id("referrals"),
+    reason: v.string(),
+    adminNote: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.referralId, {
+      status: "cancelled" as const,
+      cancelledAt: Date.now(),
+      statusReason: args.reason,
+      ...(args.adminNote ? { adminNote: args.adminNote } : {}),
     });
   },
 });
@@ -208,5 +275,71 @@ export const getMyStats = query({
       totalEarned,
       totalPending,
     };
+  },
+});
+
+/* ── Facturation apporteur (facture obligatoire avant versement, art. 4.2) ── */
+
+/** URL d'upload signée pour joindre une facture (le fichier est POSté dessus). */
+export const generateInvoiceUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Non authentifié");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Rattache la facture uploadée à une commission de l'apporteur connecté. */
+export const attachReferralInvoice = mutation({
+  args: {
+    referralId: v.id("referrals"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Non authentifié");
+
+    const affiliate = await ctx.db
+      .query("affiliateUsers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!affiliate) throw new Error("Profil apporteur introuvable");
+
+    const referral = await ctx.db.get(args.referralId);
+    if (!referral || referral.referrerId !== affiliate._id) {
+      throw new Error("Commission introuvable");
+    }
+    if (referral.status === "paid" || referral.status === "cancelled") {
+      throw new Error("Cette commission n'accepte plus de facture");
+    }
+
+    await ctx.db.patch(args.referralId, {
+      invoiceStorageId: args.storageId,
+      invoiceUploadedAt: Date.now(),
+    });
+  },
+});
+
+/** URL de consultation de la facture — accessible au propriétaire ou à un admin. */
+export const getReferralInvoiceUrl = query({
+  args: { referralId: v.id("referrals") },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const affiliate = await ctx.db
+      .query("affiliateUsers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!affiliate) return null;
+
+    const referral = await ctx.db.get(args.referralId);
+    if (!referral || !referral.invoiceStorageId) return null;
+    if (referral.referrerId !== affiliate._id && affiliate.role !== "admin") {
+      return null;
+    }
+
+    return await ctx.storage.getUrl(referral.invoiceStorageId);
   },
 });

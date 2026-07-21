@@ -32,6 +32,14 @@ const maintenancePriceIds: Record<string, string> = {
   "premium:yearly": "price_1TEnXXK8R9QQdjlQgbpX7ne0",
 };
 
+/* ── Mentions vendeur portées par la facture Stripe du 1er paiement ──
+   Le business profile (nom, adresse, TVA) reste réglé dans le dashboard Stripe ;
+   on ajoute ici le pied de facture légal + le SIRET en champ personnalisé.
+   Garder en phase avec apps/web-restaurant/lib/legal/company.ts (COMPANY). */
+const SELLER_INVOICE_FOOTER =
+  "TUUM AGENCY (SAS), 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA non applicable, art. 293 B du CGI.";
+const SELLER_SIRET = "930 817 697 00012";
+
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
@@ -229,6 +237,16 @@ export const createCheckoutSession = action({
       customer_email: args.customerEmail,
       customer_creation: "always",
       client_reference_id: orderId,
+      // Émet une vraie facture PDF pour le paiement initial (Création + 1ʳᵉ
+      // maintenance). Sans ceci, un Checkout mode "payment" ne génère qu'un
+      // reçu, pas de facture téléchargeable.
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          footer: SELLER_INVOICE_FOOTER,
+          custom_fields: [{ name: "SIRET", value: SELLER_SIRET }],
+        },
+      },
       ...(taxOn
         ? {
             automatic_tax: { enabled: true },

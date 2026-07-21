@@ -27,6 +27,32 @@ const getYousignConfig = () => {
 };
 
 /**
+ * Normalise un numéro de téléphone en E.164 (indicatif France par défaut) pour
+ * que Yousign l'accepte. Renvoie `undefined` si aucune normalisation fiable
+ * n'est possible (on n'invente jamais d'indicatif).
+ *   "06 12 34 56 78"  → "+33612345678"
+ *   "0033 6 12 34…"   → "+336…"
+ *   "+32 470 12 34 56" → "+32470123456"
+ */
+function toE164(
+  raw: string | undefined,
+  defaultCountry = "33",
+): string | undefined {
+  if (!raw) return undefined;
+  let s = raw.replace(/[\s.\-()/]/g, "");
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  if (s.startsWith("+")) {
+    return /^\+\d{8,15}$/.test(s) ? s : undefined;
+  }
+  if (s.startsWith("0")) {
+    const e164 = `+${defaultCountry}${s.slice(1)}`;
+    return /^\+\d{8,15}$/.test(e164) ? e164 : undefined;
+  }
+  // Chiffres bruts sans indicatif clair → on ne devine pas le pays.
+  return undefined;
+}
+
+/**
  * Generate a PDF from contract text content using pdf-lib.
  * Returns the PDF as a Uint8Array.
  */
@@ -342,8 +368,9 @@ export const createSignatureRequest = action({
       email: email || "noreply@beindigital.fr",
       locale: "fr",
     };
-    if (affiliate.phone && /^\+\d{10,15}$/.test(affiliate.phone)) {
-      signerInfo.phone_number = affiliate.phone;
+    const e164Phone = toE164(affiliate.phone);
+    if (e164Phone) {
+      signerInfo.phone_number = e164Phone;
     }
 
     const signerResponse = await fetch(

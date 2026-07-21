@@ -15,6 +15,9 @@ export default defineSchema({
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     postalCode: v.optional(v.string()),
+    // Programme réservé aux professionnels : SIRET requis (validé à la
+    // complétion du profil, avant signature ; aucun versement sans SIRET).
+    siret: v.optional(v.string()),
     role: v.union(v.literal("affiliate"), v.literal("admin")),
     status: v.union(
       v.literal("active"),
@@ -79,6 +82,9 @@ export default defineSchema({
     blockedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     stripeTransferId: v.optional(v.string()),
+    // Facture de l'apporteur — obligatoire avant versement (art. 4.2 du contrat).
+    invoiceStorageId: v.optional(v.id("_storage")),
+    invoiceUploadedAt: v.optional(v.number()),
     adminNote: v.optional(v.string()),
     createdAt: v.number(),
   })
@@ -132,6 +138,12 @@ export default defineSchema({
     signedDocumentFileId: v.optional(v.string()),
     signerIp: v.optional(v.string()),
     signedAt: v.optional(v.number()),
+    // Signature électronique simple (SES) in-house — piste d'audit
+    signerName: v.optional(v.string()),
+    signerUserAgent: v.optional(v.string()),
+    signatureMethod: v.optional(
+      v.union(v.literal("yousign"), v.literal("in_app_ses")),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

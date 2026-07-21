@@ -260,3 +260,58 @@ export const processPayouts = internalAction({
     }
   },
 });
+
+/* ── Clawback : reprise / annulation d'une commission ──
+   Appelé par le webhook Stripe (remboursement, chargeback). Si la commission a
+   déjà été versée, on reprend le transfer (transfers.createReversal) ; sinon on
+   annule simplement. Exécute l'art. 4.3 du contrat d'apporteur. */
+
+export const reverseReferralCommission = internalAction({
+  args: {
+    referralId: v.id("referrals"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const referral = await ctx.runQuery(internal.referrals.getByIdInternal, {
+      referralId: args.referralId,
+    });
+    if (!referral || referral.status === "cancelled") return;
+
+    // Déjà versée : tenter de reprendre les fonds sur le compte connecté.
+    if (referral.status === "paid" && referral.stripeTransferId) {
+      const stripe = getStripe();
+      let adminNote = "Commission reprise avant traitement.";
+      if (stripe) {
+        try {
+          const reversal = await stripe.transfers.createReversal(
+            referral.stripeTransferId,
+            {
+              description: args.reason,
+              metadata: { referralId: String(referral._id) },
+            },
+          );
+          adminNote = `Commission reprise (reversal ${reversal.id}).`;
+          console.log(
+            `Reversed transfer ${referral.stripeTransferId} for referral ${referral._id}`,
+          );
+        } catch (err) {
+          adminNote =
+            "Reprise Stripe échouée (solde du compte connecté insuffisant ?) — à récupérer manuellement.";
+          console.error(`Reversal failed for referral ${referral._id}:`, err);
+        }
+      }
+      await ctx.runMutation(internal.referrals.cancelReferral, {
+        referralId: referral._id,
+        reason: args.reason,
+        adminNote,
+      });
+      return;
+    }
+
+    // Pas encore versée : simple annulation, rien à reprendre.
+    await ctx.runMutation(internal.referrals.cancelReferral, {
+      referralId: referral._id,
+      reason: args.reason,
+    });
+  },
+});

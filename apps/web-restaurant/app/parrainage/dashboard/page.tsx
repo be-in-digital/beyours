@@ -5,6 +5,8 @@ import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
+import { InvoiceUpload } from "@/components/parrainage/invoice-upload";
+import { COMPANY } from "@/lib/legal";
 
 function formatCents(cents: number) {
   return `${(cents / 100).toFixed(0)} €`;
@@ -12,14 +14,14 @@ function formatCents(cents: number) {
 
 function statusBadge(status: string) {
   const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: "En attente", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    validated: { label: "Validé", cls: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+    pending: { label: "En attente", cls: "bg-warning-soft text-warning-strong border-warning-border" },
+    validated: { label: "Validé", cls: "bg-info-soft text-info-strong border-info-border" },
     payable: { label: "À verser", cls: "bg-primary/10 text-primary border-primary/20" },
-    paid: { label: "Payé", cls: "bg-green-500/10 text-green-400 border-green-500/20" },
-    cancelled: { label: "Annulé", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
-    blocked: { label: "Bloqué", cls: "bg-red-500/10 text-red-400 border-red-500/20" },
+    paid: { label: "Payé", cls: "bg-success-soft text-success-strong border-success-border" },
+    cancelled: { label: "Annulé", cls: "bg-danger-soft text-danger-strong border-danger-border" },
+    blocked: { label: "Bloqué", cls: "bg-danger-soft text-danger-strong border-danger-border" },
   };
-  const s = map[status] ?? { label: status, cls: "bg-white/[0.04] text-muted-foreground border-white/[0.08]" };
+  const s = map[status] ?? { label: status, cls: "bg-secondary text-muted-foreground border-border" };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>
       {s.label}
@@ -64,24 +66,13 @@ export default function DashboardPage() {
     }
   }, [affiliate, router]);
 
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <div className="animate-pulse text-muted-foreground text-center">
-          Chargement...
-        </div>
-      </div>
-    );
-  }
-
-  if (affiliate === undefined || referralCode === undefined) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <div className="animate-pulse text-muted-foreground text-center">
-          Chargement de votre profil...
-        </div>
-      </div>
-    );
+  if (
+    isLoading ||
+    !isAuthenticated ||
+    affiliate === undefined ||
+    referralCode === undefined
+  ) {
+    return <DashboardSkeleton />;
   }
 
   const siteUrl =
@@ -105,7 +96,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="font-display text-2xl font-bold">
             {affiliate?.firstName
               ? `Bonjour, ${affiliate.firstName}`
               : "Bienvenue"}
@@ -117,15 +108,15 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           {isAdmin && (
             <Link
-              href="/parrainage/dashboard/admin"
-              className="inline-flex items-center h-9 px-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors"
+              href="/admin/apporteurs"
+              className="inline-flex items-center h-9 px-4 rounded-lg bg-warning-soft border border-warning-border text-warning-strong text-sm font-medium hover:bg-warning/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              Admin
+              Console admin
             </Link>
           )}
           <Link
             href="/parrainage/dashboard/profil"
-            className="inline-flex items-center h-9 px-4 rounded-lg bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] transition-colors"
+            className="inline-flex items-center h-9 px-4 rounded-lg bg-surface-1 border border-border text-sm hover:bg-surface-3 transition-colors"
           >
             Profil
           </Link>
@@ -140,7 +131,7 @@ export default function DashboardPage() {
 
       {/* Alerts */}
       {!profileComplete && (
-        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-start gap-3">
+        <div className="mb-6 p-4 rounded-xl bg-warning-soft border border-warning-border text-warning-strong text-sm flex items-start gap-3">
           <svg
             width="20"
             height="20"
@@ -156,12 +147,12 @@ export default function DashboardPage() {
           </svg>
           <div>
             <p className="font-medium">Complétez votre profil</p>
-            <p className="text-amber-400/80 mt-1">
+            <p className="text-foreground/80 mt-1">
               Ajoutez votre nom et prénom pour pouvoir recevoir vos commissions.
             </p>
             <Link
               href="/parrainage/dashboard/profil"
-              className="inline-flex items-center mt-2 text-amber-400 hover:text-amber-300 font-medium"
+              className="inline-flex items-center mt-2 text-warning-strong hover:text-warning-strong/80 font-medium"
             >
               Compléter mon profil &rarr;
             </Link>
@@ -170,7 +161,7 @@ export default function DashboardPage() {
       )}
 
       {stripeStatus === "not_started" && profileComplete && (
-        <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm flex items-start gap-3">
+        <div className="mb-6 p-4 rounded-xl bg-info-soft border border-info-border text-info-strong text-sm flex items-start gap-3">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
@@ -178,12 +169,12 @@ export default function DashboardPage() {
           </svg>
           <div>
             <p className="font-medium">Configurez votre compte de paiement</p>
-            <p className="text-blue-400/80 mt-1">
+            <p className="text-foreground/80 mt-1">
               Connectez Stripe pour recevoir vos commissions automatiquement.
             </p>
             <Link
               href="/parrainage/dashboard/profil"
-              className="inline-flex items-center mt-2 text-blue-400 hover:text-blue-300 font-medium"
+              className="inline-flex items-center mt-2 text-info-strong hover:text-info-strong/80 font-medium"
             >
               Configurer &rarr;
             </Link>
@@ -217,7 +208,7 @@ export default function DashboardPage() {
         ].map((kpi) => (
           <div
             key={kpi.label}
-            className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"
+            className="p-4 rounded-xl bg-surface-1 border border-border"
           >
             <p className="text-xs text-muted-foreground mb-1">{kpi.label}</p>
             <p className="text-xl font-bold">{kpi.value}</p>
@@ -228,7 +219,7 @@ export default function DashboardPage() {
 
       {/* Referral code card */}
       {referralCode && (
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-8">
+        <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-8">
           <h2 className="text-base font-semibold mb-4">
             Votre code de parrainage
           </h2>
@@ -257,7 +248,7 @@ export default function DashboardPage() {
                     Lien de parrainage :
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="text-xs text-muted-foreground bg-white/[0.04] px-2 py-1 rounded truncate max-w-xs">
+                    <code className="text-xs text-foreground bg-secondary px-2 py-1 rounded truncate max-w-xs">
                       {referralLink}
                     </code>
                     <button
@@ -288,19 +279,26 @@ export default function DashboardPage() {
 
       {/* Referrals list */}
       {referrals && referrals.length > 0 ? (
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-          <h2 className="text-base font-semibold mb-4">Mes filleuls</h2>
+        <div className="p-6 rounded-2xl bg-surface-1 border border-border">
+          <h2 className="text-base font-semibold mb-1">Mes filleuls</h2>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Pour être payé, joignez votre facture (établie à l&apos;ordre de{" "}
+            {COMPANY.legalName}, {COMPANY.address.street},{" "}
+            {COMPANY.address.postalCode} {COMPANY.address.city}, SIRET{" "}
+            {COMPANY.siret}) à chaque commission. Aucun versement sans facture.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-muted-foreground border-b border-white/[0.06]">
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
                   <th className="pb-3 pr-4">Client</th>
                   <th className="pb-3 pr-4">Date</th>
                   <th className="pb-3 pr-4">Commission</th>
+                  <th className="pb-3 pr-4">Facture</th>
                   <th className="pb-3">Statut</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.04]">
+              <tbody className="divide-y divide-border">
                 {referrals.map((r) => (
                   <tr key={r._id}>
                     <td className="py-3 pr-4">
@@ -313,6 +311,16 @@ export default function DashboardPage() {
                     <td className="py-3 pr-4 font-medium">
                       {formatCents(r.commissionCents)}
                     </td>
+                    <td className="py-3 pr-4">
+                      {r.status === "cancelled" ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <InvoiceUpload
+                          referralId={r._id}
+                          uploaded={!!r.invoiceStorageId}
+                        />
+                      )}
+                    </td>
                     <td className="py-3">
                       {statusBadge(r.status)}
                     </td>
@@ -323,8 +331,8 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : (
-        <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center">
-          <div className="w-12 h-12 rounded-full bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+        <div className="p-8 rounded-2xl bg-surface-1 border border-border text-center">
+          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center mx-auto mb-4">
             <svg
               width="24"
               height="24"
@@ -347,6 +355,61 @@ export default function DashboardPage() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function SkeletonBar({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-surface-2 ${className}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-label="Chargement du tableau de bord"
+      className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12"
+    >
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div className="space-y-2">
+          <SkeletonBar className="h-7 w-48" />
+          <SkeletonBar className="h-4 w-56" />
+        </div>
+        <div className="flex items-center gap-2">
+          <SkeletonBar className="h-9 w-20" />
+          <SkeletonBar className="h-9 w-24" />
+        </div>
+      </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="p-4 rounded-xl bg-surface-1 border border-border space-y-3"
+          >
+            <SkeletonBar className="h-3 w-24" />
+            <SkeletonBar className="h-6 w-16" />
+            <SkeletonBar className="h-3 w-20" />
+          </div>
+        ))}
+      </div>
+      {/* Referral code card */}
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-8 space-y-4">
+        <SkeletonBar className="h-4 w-40" />
+        <div className="flex items-center gap-3">
+          <SkeletonBar className="h-11 w-40" />
+          <SkeletonBar className="h-9 w-24" />
+        </div>
+      </div>
+      {/* Referrals table card */}
+      <div className="p-6 rounded-2xl bg-surface-1 border border-border space-y-4">
+        <SkeletonBar className="h-4 w-28" />
+        {Array.from({ length: 3 }).map((_, i) => (
+          <SkeletonBar key={i} className="h-10 w-full" />
+        ))}
+      </div>
+      <span className="sr-only">Chargement…</span>
     </div>
   );
 }

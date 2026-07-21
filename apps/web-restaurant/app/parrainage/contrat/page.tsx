@@ -2,58 +2,40 @@
 
 import { useConvexAuth, useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { validateSiret } from "@/lib/siret";
+
+type ProfileFields = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  siret: string;
+  address: string;
+  city: string;
+  postalCode: string;
+};
 
 export default function ContratPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="max-w-3xl mx-auto px-4 py-16">
-          <div className="animate-pulse text-muted-foreground text-center">
-            Chargement...
-          </div>
-        </div>
-      }
-    >
-      <ContratContent />
-    </Suspense>
-  );
-}
-
-function ContratContent() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isReturn = searchParams.get("signature") === "return";
 
   const affiliate = useQuery(
     api.affiliateUsers.me,
     isAuthenticated ? {} : "skip",
   );
   const activeContract = useQuery(api.contractVersions.getActive);
-  const pendingSignature = useQuery(
-    api.contractSignatures.getMyPendingSignature,
-    isAuthenticated ? {} : "skip",
-  );
   const completeProfile = useMutation(api.affiliateUsers.completeProfile);
-  const createSignatureRequest = useMutation(
-    api.contractSignatures.createSignatureRequest,
-  );
-  const launchYousign = useAction(api.yousign.createSignatureRequest);
+  const signContract = useAction(api.affiliateSignature.signAffiliateContract);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const checkStatus = useAction(api.yousign.checkSignatureStatus);
+  const [edits, setEdits] = useState<Partial<ProfileFields>>({});
+  const [signatureNameOverride, setSignatureNameOverride] = useState<
+    string | null
+  >(null);
+  const [consented, setConsented] = useState(false);
 
   const [saving, setSaving] = useState(false);
-  const [waitingForSignature, setWaitingForSignature] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [currentSignatureId, setCurrentSignatureId] = useState<string | null>(null);
+  const [signed, setSigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Redirect if not authenticated
@@ -63,112 +45,95 @@ function ContratContent() {
     }
   }, [isLoading, isAuthenticated, router]);
 
-  // Redirect if contract already signed
+  // Redirect once the contract is active (reactive — also fires after signing)
   useEffect(() => {
     if (affiliate?.contractStatus === "active") {
       router.push("/parrainage/dashboard");
     }
   }, [affiliate, router]);
 
-  // Pre-fill form from existing affiliate data
-  useEffect(() => {
-    if (affiliate) {
-      setFirstName(affiliate.firstName ?? "");
-      setLastName(affiliate.lastName ?? "");
-      setPhone(affiliate.phone ?? "");
-    }
-  }, [affiliate]);
+  // Champs du formulaire : dérivés du profil chargé + saisies de l'utilisateur
+  // (pas d'effet de synchronisation → pas de re-render en cascade).
+  const firstName = edits.firstName ?? affiliate?.firstName ?? "";
+  const lastName = edits.lastName ?? affiliate?.lastName ?? "";
+  const phone = edits.phone ?? affiliate?.phone ?? "";
+  const siret = edits.siret ?? affiliate?.siret ?? "";
+  const address = edits.address ?? "";
+  const city = edits.city ?? "";
+  const postalCode = edits.postalCode ?? "";
+  const setField =
+    (key: keyof ProfileFields) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setEdits((prev) => ({ ...prev, [key]: e.target.value }));
 
-  // Auto-redirect on signature completion (reactive subscription)
-  useEffect(() => {
-    if (pendingSignature?.status === "signed" && affiliate?.contractStatus === "active") {
-      router.push("/parrainage/dashboard");
-    }
-  }, [pendingSignature, affiliate, router]);
+  // Nom de signature : par défaut le nom du compte, surchargeable.
+  const signatureName =
+    signatureNameOverride ??
+    `${affiliate?.firstName ?? ""} ${affiliate?.lastName ?? ""}`.trim();
 
-  async function handleSignContract(e: React.FormEvent) {
+  async function handleSign(e: React.FormEvent) {
     e.preventDefault();
     if (!activeContract || !affiliate) return;
+    if (!consented) {
+      setError("Vous devez accepter les termes du contrat pour signer.");
+      return;
+    }
+    if (signatureName.trim().length < 3) {
+      setError("Saisissez votre nom complet pour signer.");
+      return;
+    }
+    const siretDigits = siret.replace(/\s/g, "");
+    if (!validateSiret(siretDigits)) {
+      setError(
+        "Numéro SIRET invalide (14 chiffres). Le programme est réservé aux apporteurs professionnels.",
+      );
+      return;
+    }
 
     setSaving(true);
     setError(null);
-
     try {
-      // If there's already a pending signature with a Yousign URL, open in new tab
-      if (pendingSignature?.status === "pending" && pendingSignature.yousignSignerUrl) {
-        window.open(pendingSignature.yousignSignerUrl, "_blank", "noopener,noreferrer");
-        setCurrentSignatureId(pendingSignature._id);
-        setWaitingForSignature(true);
-        setSaving(false);
-        return;
-      }
-
-      // 1. Save profile data first
       await completeProfile({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
+        siret: siretDigits,
         address: address.trim() || undefined,
         city: city.trim() || undefined,
         postalCode: postalCode.trim() || undefined,
       });
 
-      // 2. Compute snapshot hash
-      const encoder = new TextEncoder();
-      const data = encoder.encode(activeContract.content);
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const snapshotHash = Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      // 3. Create signature request in DB
-      const signatureId = await createSignatureRequest({
-        contractVersionId: activeContract._id,
-        contractSnapshotContent: activeContract.content,
-        contractSnapshotHash: snapshotHash,
-      });
-
-      // 4. Call Yousign API action to create signature request + get signer URL
-      const { url } = await launchYousign({ signatureId });
-
-      // 5. Open Yousign signing page in a new tab
-      window.open(url, "_blank", "noopener,noreferrer");
-
-      // 6. Show waiting screen
-      setCurrentSignatureId(signatureId);
-      setWaitingForSignature(true);
-    } catch (err) {
-      console.error("Contract signature error:", err);
-      setError("Erreur lors de la création de la demande de signature.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleCheckStatus() {
-    const sigId = currentSignatureId ?? pendingSignature?._id;
-    if (!sigId) return;
-
-    setChecking(true);
-    setError(null);
-    try {
-      const { status } = await checkStatus({
-        signatureId: sigId as Parameters<typeof checkStatus>[0]["signatureId"],
-      });
-      if (status === "signed") {
-        // Convex reactive queries will auto-update and redirect
-      } else if (status === "declined") {
-        setError("La signature a été refusée.");
-        setWaitingForSignature(false);
-      } else if (status === "expired" || status === "canceled") {
-        setError("La demande de signature a expiré ou a été annulée.");
-        setWaitingForSignature(false);
+      // IP best-effort pour la piste d'audit (lue côté serveur, non bloquante).
+      let signerIp: string | undefined;
+      try {
+        const ipRes = await fetch("/api/signer-ip");
+        if (ipRes.ok) {
+          const ipJson = (await ipRes.json()) as { ip: string | null };
+          signerIp = ipJson.ip ?? undefined;
+        }
+      } catch {
+        // ignore
       }
+
+      await signContract({
+        fullName: signatureName.trim(),
+        consented,
+        userAgent:
+          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        signerIp,
+      });
+
+      // La signature active l'apporteur (contractStatus → "active") :
+      // la query réactive déclenche la redirection ci-dessus.
+      setSigned(true);
     } catch (err) {
-      console.error("Check status error:", err);
-      setError("Impossible de vérifier le statut. Réessayez dans un instant.");
-    } finally {
-      setChecking(false);
+      console.error("Signature error:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de la signature du contrat.",
+      );
+      setSaving(false);
     }
   }
 
@@ -182,58 +147,32 @@ function ContratContent() {
     );
   }
 
-  // Waiting for signature (after opening Yousign in new tab, or return from Yousign)
-  const showWaiting = waitingForSignature || (isReturn && pendingSignature?.status === "pending");
-  if (showWaiting && pendingSignature?.status === "pending") {
+  // Success — signed, waiting for the reactive redirect to the dashboard
+  if (signed) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 sm:py-24 text-center">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+      <div
+        role="status"
+        className="max-w-xl mx-auto px-4 py-16 sm:py-24 text-center"
+      >
+        <div className="w-16 h-16 rounded-full bg-success-soft flex items-center justify-center mx-auto mb-6">
           <svg
-            width="32"
-            height="32"
+            width="30"
+            height="30"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
-            className="text-primary animate-pulse"
+            strokeWidth="2.5"
+            className="text-success-strong"
           >
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-            <path d="M12 6v6l4 2" />
+            <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <h1 className="text-2xl font-bold mb-3">
-          Signez le contrat dans l&apos;onglet Yousign
+        <h1 className="font-display text-2xl font-bold mb-2">
+          Contrat signé
         </h1>
-        <p className="text-muted-foreground mb-6">
-          Un nouvel onglet a été ouvert pour la signature. Une fois terminé,
-          cliquez sur le bouton ci-dessous.
+        <p className="text-muted-foreground">
+          Votre compte est activé. Redirection vers votre espace…
         </p>
-
-        {error && (
-          <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button
-            onClick={handleCheckStatus}
-            disabled={checking}
-            className="h-12 px-8 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {checking ? "Vérification en cours..." : "J'ai signé le contrat"}
-          </button>
-          {pendingSignature.yousignSignerUrl && (
-            <a
-              href={pendingSignature.yousignSignerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="h-12 px-6 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm hover:bg-white/[0.08] transition-colors inline-flex items-center"
-            >
-              Rouvrir l&apos;onglet de signature
-            </a>
-          )}
-        </div>
       </div>
     );
   }
@@ -244,7 +183,7 @@ function ContratContent() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold mb-2">
+        <h1 className="font-display text-2xl font-bold mb-2">
           {isBlocked
             ? "Nouvelle version du contrat"
             : "Contrat d'apporteur d'affaires"}
@@ -252,13 +191,13 @@ function ContratContent() {
         <p className="text-sm text-muted-foreground max-w-lg mx-auto">
           {isBlocked
             ? "Une nouvelle version du contrat est disponible. Veuillez la signer pour réactiver votre compte."
-            : "Pour activer votre compte, veuillez remplir vos informations et signer le contrat ci-dessous."}
+            : "Pour activer votre compte, remplissez vos informations, lisez le contrat et signez ci-dessous."}
         </p>
       </div>
 
       {/* Alert for re-signature */}
       {isBlocked && (
-        <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm flex items-start gap-3">
+        <div className="mb-6 p-4 rounded-xl bg-warning-soft border border-warning-border text-warning-strong text-sm flex items-start gap-3">
           <svg
             width="20"
             height="20"
@@ -274,7 +213,7 @@ function ContratContent() {
           </svg>
           <div>
             <p className="font-medium">Signature requise</p>
-            <p className="text-amber-400/80 mt-1">
+            <p className="text-foreground/80 mt-1">
               Votre accès au programme est suspendu jusqu&apos;à la signature de
               la nouvelle version du contrat.
             </p>
@@ -282,48 +221,10 @@ function ContratContent() {
         </div>
       )}
 
-      {/* Resume pending signature */}
-      {pendingSignature?.status === "pending" &&
-        pendingSignature.yousignSignerUrl && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm flex items-start gap-3">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="flex-shrink-0 mt-0.5"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <div>
-              <p className="font-medium">
-                Vous avez une signature en attente
-              </p>
-              <p className="text-blue-400/80 mt-1">
-                Reprenez la signature là où vous l&apos;avez laissée.
-              </p>
-              <a
-                href={pendingSignature.yousignSignerUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center mt-2 text-blue-400 hover:text-blue-300 font-medium"
-              >
-                Reprendre la signature &rarr;
-              </a>
-            </div>
-          </div>
-        )}
-
-      <form onSubmit={handleSignContract}>
+      <form onSubmit={handleSign}>
         {/* Personal info */}
-        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
-          <h2 className="text-base font-semibold mb-4">
-            Vos informations
-          </h2>
+        <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
+          <h2 className="text-base font-semibold mb-4">Vos informations</h2>
           <div className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
@@ -336,9 +237,9 @@ function ContratContent() {
                 <input
                   id="firstName"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={setField("firstName")}
                   required
-                  className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                 />
               </div>
               <div>
@@ -351,9 +252,9 @@ function ContratContent() {
                 <input
                   id="lastName"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={setField("lastName")}
                   required
-                  className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                 />
               </div>
             </div>
@@ -368,10 +269,10 @@ function ContratContent() {
               <input
                 id="address"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={setField("address")}
                 required
                 placeholder="Numéro et nom de rue"
-                className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
             </div>
 
@@ -386,10 +287,10 @@ function ContratContent() {
                 <input
                   id="postalCode"
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onChange={setField("postalCode")}
                   required
                   placeholder="75001"
-                  className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                 />
               </div>
               <div>
@@ -402,10 +303,10 @@ function ContratContent() {
                 <input
                   id="city"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={setField("city")}
                   required
                   placeholder="Paris"
-                  className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
                 />
               </div>
             </div>
@@ -420,19 +321,41 @@ function ContratContent() {
               <input
                 id="phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={setField("phone")}
                 required
                 type="tel"
                 placeholder="06 12 34 56 78"
-                className="w-full h-11 px-4 rounded-xl bg-white/[0.04] border border-white/[0.08] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="siret"
+                className="block text-sm font-medium mb-1.5"
+              >
+                N° SIRET *
+              </label>
+              <input
+                id="siret"
+                value={siret}
+                onChange={setField("siret")}
+                required
+                inputMode="numeric"
+                placeholder="123 456 789 00012"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Programme réservé aux apporteurs professionnels. Pas encore de
+                statut ? La micro-entreprise se crée gratuitement en ligne.
+              </p>
             </div>
           </div>
         </div>
 
         {/* Contract content */}
         {activeContract ? (
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6">
+          <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
             <h2 className="text-base font-semibold mb-4">
               {activeContract.title}
               <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -448,7 +371,8 @@ function ContratContent() {
               <ul className="text-sm text-muted-foreground space-y-1.5">
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">&#x2022;</span>
-                  Commission de 500 € par client signé, versée sous 14 jours
+                  Commission de 500 € par client signé (barème en vigueur),
+                  versée après une période de validation de 14 jours
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">&#x2022;</span>
@@ -460,25 +384,24 @@ function ContratContent() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">&#x2022;</span>
-                  Attribution des commissions exclusivement via le lien de
-                  parrainage
+                  Attribution via votre lien ou code de parrainage
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">&#x2022;</span>
-                  Signature électronique avancée (Yousign, conforme eIDAS)
+                  Signature électronique simple, horodatée et journalisée
                 </li>
               </ul>
             </div>
 
             {/* Full contract text */}
-            <div className="max-h-96 overflow-y-auto rounded-xl bg-white/[0.02] border border-white/[0.04] p-4">
-              <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-muted-foreground leading-relaxed">
+            <div className="max-h-96 overflow-y-auto rounded-xl bg-background border border-border p-4">
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-foreground/80 leading-relaxed">
                 {activeContract.content}
               </div>
             </div>
           </div>
         ) : (
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] mb-6 text-center">
+          <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6 text-center">
             <p className="text-muted-foreground">
               Aucun contrat actif pour le moment. Veuillez contacter
               l&apos;administrateur.
@@ -486,9 +409,54 @@ function ContratContent() {
           </div>
         )}
 
+        {/* Signature */}
+        {activeContract && (
+          <div className="p-6 rounded-2xl bg-surface-1 border border-border mb-6">
+            <h2 className="text-base font-semibold mb-4">Signature</h2>
+
+            <label className="flex items-start gap-3 cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              />
+              <span className="text-sm text-foreground/85">
+                J&apos;ai lu et j&apos;accepte les termes du contrat
+                d&apos;apporteur d&apos;affaires ci-dessus.
+              </span>
+            </label>
+
+            <div>
+              <label
+                htmlFor="signatureName"
+                className="block text-sm font-medium mb-1.5"
+              >
+                Signez en saisissant votre nom complet
+              </label>
+              <input
+                id="signatureName"
+                value={signatureName}
+                onChange={(e) => setSignatureNameOverride(e.target.value)}
+                placeholder="Prénom Nom"
+                autoComplete="name"
+                className="w-full h-12 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-display text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-3">
+              Signature électronique simple, horodatée et journalisée. Un
+              exemplaire signé (PDF) sera disponible dans votre espace.
+            </p>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
-          <div className="mb-6 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div
+            role="alert"
+            className="mb-6 p-3 rounded-xl bg-danger-soft border border-danger-border text-danger-strong text-sm"
+          >
             {error}
           </div>
         )}
@@ -497,24 +465,30 @@ function ContratContent() {
         {activeContract && (
           <button
             type="submit"
-            disabled={saving || !firstName || !lastName || !phone || !address || !city || !postalCode}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={
+              saving ||
+              !firstName ||
+              !lastName ||
+              !phone ||
+              !siret ||
+              !address ||
+              !city ||
+              !postalCode ||
+              !consented ||
+              signatureName.trim().length < 3
+            }
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
-            {saving
-              ? "Préparation de la signature..."
-              : pendingSignature?.status === "pending" && pendingSignature.yousignSignerUrl
-                ? "Reprendre la signature"
-                : "Signer mon contrat"}
+            {saving ? "Signature en cours…" : "Signer le contrat"}
           </button>
         )}
       </form>
 
       <p className="mt-6 text-center text-xs text-muted-foreground">
-        En signant ce contrat, vous acceptez les conditions du programme
-        d&apos;apporteur d&apos;affaires Be in Digital.
-        <br />
-        La signature électronique est réalisée via Yousign, conforme au
-        règlement européen eIDAS.
+        En signant, vous acceptez les conditions du programme d&apos;apporteur
+        d&apos;affaires Be in Digital. Signature électronique simple (eIDAS
+        art. 25), horodatée et journalisée ; votre identité repose sur votre
+        compte authentifié.
       </p>
     </div>
   );

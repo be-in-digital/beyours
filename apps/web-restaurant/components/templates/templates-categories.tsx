@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ArrowUpRight, X, ChevronLeft, ChevronRight, Eye, MousePointerClick } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
 import { useCalendlyModal } from "@/lib/store";
@@ -308,11 +308,11 @@ export function TemplatesCategories() {
                 {(lightbox ?? 0) + 1} / {filtered.length}
               </span>
               <Link
-                href={`/templates/${current.slug}`}
+                href={`/demo/${current.slug}`}
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.03]"
               >
-                Voir la fiche
-                <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+                <MousePointerClick className="h-4 w-4" strokeWidth={2} />
+                Visiter la démo
               </Link>
             </div>
           </motion.div>

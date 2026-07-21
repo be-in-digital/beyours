@@ -6,6 +6,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { Id } from "./_generated/dataModel";
 
 /* ── Public queries ── */
 
@@ -59,6 +60,39 @@ export const getMySignatures = query({
       )
       .order("desc")
       .take(20);
+  },
+});
+
+/** Download URL for the current user's latest signed contract (in-app SES). */
+export const getSignedContractUrl = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const affiliate = await ctx.db
+      .query("affiliateUsers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!affiliate) return null;
+
+    const signatures = await ctx.db
+      .query("contractSignatures")
+      .withIndex("by_affiliateUserId", (q) =>
+        q.eq("affiliateUserId", affiliate._id),
+      )
+      .order("desc")
+      .take(10);
+
+    const signed = signatures.find(
+      (s) => s.status === "signed" && s.signedDocumentFileId,
+    );
+    if (!signed?.signedDocumentFileId) return null;
+
+    const url = await ctx.storage.getUrl(
+      signed.signedDocumentFileId as Id<"_storage">,
+    );
+    return url ? { url, signedAt: signed.signedAt ?? null } : null;
   },
 });
 
@@ -213,5 +247,40 @@ export const activateAfterSignature = internalMutation({
       });
     }
     // If version mismatch → signature is recorded but user stays blocked
+  },
+});
+
+/**
+ * Record an in-app SES signature (status "signed" + audit trail).
+ * The signed PDF is attached and the affiliate activated afterwards via
+ * `activateAfterSignature`. Called by the `signAffiliateContract` action.
+ */
+export const createInAppSignatureRecord = internalMutation({
+  args: {
+    affiliateUserId: v.id("affiliateUsers"),
+    contractVersionId: v.id("contractVersions"),
+    contractSnapshotContent: v.string(),
+    contractSnapshotHash: v.string(),
+    signerName: v.string(),
+    signerUserAgent: v.optional(v.string()),
+    signerIp: v.optional(v.string()),
+    signedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    return await ctx.db.insert("contractSignatures", {
+      affiliateUserId: args.affiliateUserId,
+      contractVersionId: args.contractVersionId,
+      status: "signed",
+      contractSnapshotContent: args.contractSnapshotContent,
+      contractSnapshotHash: args.contractSnapshotHash,
+      signerName: args.signerName,
+      signerUserAgent: args.signerUserAgent,
+      signerIp: args.signerIp,
+      signatureMethod: "in_app_ses",
+      signedAt: args.signedAt,
+      createdAt: now,
+      updatedAt: now,
+    });
   },
 });
