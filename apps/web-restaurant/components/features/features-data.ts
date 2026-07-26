@@ -160,11 +160,11 @@ export const features: Feature[] = [
     title: "Centralisation des Commandes",
     subtitle: "Un seul flux unifié",
     shortDescription:
-      "Réunissez toutes vos commandes dans un seul flux en temps réel.",
+      "Réunissez toutes vos commandes directes dans un seul flux en temps réel.",
     longDescription:
-      "Site web, plateformes de livraison, sur place — toutes vos commandes convergent dans un flux unique et en temps réel. Plus de jonglage entre les écrans, plus de commandes manquées. Un seul endroit pour tout gérer, avec des alertes sonores et des notifications instantanées.",
+      "Vos commandes directes convergent dans un flux unique et en temps réel : celles de votre site, du click & collect et du sur place. Fini le jonglage entre les écrans et les commandes manquées ; tout se gère au même endroit, avec alertes sonores et notifications instantanées. Les commandes Uber Eats & Deliveroo rejoindront ce flux dès la certification des plateformes.",
     benefits: [
-      "Toutes les sources de commandes dans un seul écran",
+      "Toutes vos commandes directes dans un seul écran",
       "Alertes sonores et notifications push en temps réel",
       "Historique complet et traçabilité de chaque commande",
     ],
