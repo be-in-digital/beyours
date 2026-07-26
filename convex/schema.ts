@@ -194,6 +194,15 @@ export default defineSchema({
     stripeSessionId: v.optional(v.string()),
     /* Vente au tarif fondateurs (2 500 € HT, 10 places) — consomme un slot. */
     isFounders: v.optional(v.boolean()),
+    /* ── Provisioning de l'abonnement maintenance après le 1er paiement ──
+       Optionnel/additif (aucune migration) : absent = commande legacy ou pas
+       encore traitée par le webhook. "active" = abonnement Stripe créé ;
+       "failed" = paiement encaissé mais abonnement NON créé → provisioning
+       manuel requis (tracé aussi dans saActivity kind:"system"). Écrit par le
+       webhook Stripe (internal.http.recordSubscriptionOutcome). */
+    subscriptionStatus: v.optional(
+      v.union(v.literal("active"), v.literal("failed")),
+    ),
     createdAt: v.number(),
   })
     .index("by_email", ["customerEmail"])
