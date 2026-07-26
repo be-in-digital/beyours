@@ -1,8 +1,10 @@
 import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
+import { v } from "convex/values";
+import { httpAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
+import { recordSaActivity } from "./saActivity";
 
 const http = httpRouter();
 
@@ -172,6 +174,14 @@ async function handleCheckoutCompleted(
     return;
   }
 
+  // ── Idempotence de l'encaissement (fix paiement) ──
+  // La transition pending→paid de la commande est notre clé d'idempotence pour
+  // les effets NON idempotents par nature (email de confirmation). Un rejeu du
+  // webhook Stripe (redelivery, ou 2ᵉ tentative après une erreur) retrouve la
+  // commande déjà « paid » et NE réémet donc PAS l'email. Les autres effets
+  // (ligne de paiement, abonnement) ont chacun leur propre garde d'existence.
+  const firstProcessing = order.status !== "paid";
+
   // Méthode de paiement — payment_method_types contient les méthodes autorisées, pas celle utilisée.
   // On utilise payment_method_collection ou on infère : si une seule méthode autorisée, c'est celle-là.
   // Sinon, on regarde si Stripe indique la méthode dans les charges (non disponible dans session seule).
@@ -182,51 +192,97 @@ async function handleCheckoutCompleted(
   }
   const paymentMethod = pmt === "alma" ? "alma" : pmt === "klarna" ? "klarna" : "card";
 
-  // Mettre à jour la commande
-  await ctx.runMutation(internal.orders.updateStatus, {
-    orderId: order._id,
-    status: "paid" as const,
-    paymentMethod: paymentMethod as "card" | "alma" | "klarna",
-  });
-
-  // Email de confirmation au client (best-effort, ne bloque jamais le webhook).
-  // amount_total = montant réellement débité (TTC si la TVA est active, sinon HT),
-  // toujours juste, contrairement au montant HT stocké sur la commande.
-  await ctx.scheduler.runAfter(0, internal.email.send.sendOrderConfirmation, {
-    toEmail: order.customerEmail,
-    firstName: order.customerFirstName,
-    restaurantName: order.restaurantName,
-    plan: order.plan,
-    orderType: order.orderType,
-    amountCents: (session.amount_total as number) ?? order.amountCents,
-    paymentMethod,
-    isFounders: order.isFounders ?? false,
-  });
-
-  // Créer le paiement
-  const paymentIntent = session.payment_intent as string | undefined;
-  if (paymentIntent) {
-    await ctx.runMutation(internal.payments.create, {
+  // Effets à-envoyer-une-seule-fois, gardés par la transition pending→paid.
+  // On flippe le statut EN PREMIER (clé d'idempotence), puis on programme
+  // l'email : un rejeu ne repassera jamais ici (statut déjà « paid »).
+  if (firstProcessing) {
+    // Mettre à jour la commande (pending → paid)
+    await ctx.runMutation(internal.orders.updateStatus, {
       orderId: order._id,
-      stripePaymentIntentId: paymentIntent,
-      stripeSessionId: sessionId,
-      amountCents: (session.amount_total as number) ?? 0,
-      paymentMethod: pmt,
+      status: "paid" as const,
+      paymentMethod: paymentMethod as "card" | "alma" | "klarna",
+    });
+
+    // Email de confirmation au client (best-effort, ne bloque jamais le webhook).
+    // amount_total = montant réellement débité (TTC si la TVA est active, sinon HT),
+    // toujours juste, contrairement au montant HT stocké sur la commande.
+    // Envoyé UNE seule fois (garde firstProcessing) — pas à chaque retry Stripe.
+    await ctx.scheduler.runAfter(0, internal.email.send.sendOrderConfirmation, {
+      toEmail: order.customerEmail,
+      firstName: order.customerFirstName,
+      restaurantName: order.restaurantName,
+      plan: order.plan,
+      orderType: order.orderType,
+      amountCents: (session.amount_total as number) ?? order.amountCents,
+      paymentMethod,
+      isFounders: order.isFounders ?? false,
     });
   }
 
-  // Créer l'abonnement maintenance (si customer ID disponible)
+  // Créer le paiement — idempotent via le payment_intent (garde d'existence
+  // indépendante du statut : referme la ligne de paiement même si un rejeu
+  // survient après une panne partielle du 1er passage).
+  const paymentIntent = session.payment_intent as string | undefined;
+  if (paymentIntent) {
+    const existingPayment = await ctx.runQuery(
+      internal.payments.getByStripePaymentIntentId,
+      { stripePaymentIntentId: paymentIntent },
+    );
+    if (!existingPayment) {
+      await ctx.runMutation(internal.payments.create, {
+        orderId: order._id,
+        stripePaymentIntentId: paymentIntent,
+        stripeSessionId: sessionId,
+        amountCents: (session.amount_total as number) ?? 0,
+        paymentMethod: pmt,
+      });
+    }
+  }
+
+  // ── Abonnement maintenance (facturation récurrente) ──
+  // Idempotent : on ne crée l'abonnement que s'il n'en existe pas déjà pour
+  // cette commande (un rejeu ne double pas l'abonnement). Encapsulé dans un
+  // try/catch : un échec APRÈS l'encaissement (ex. Price ID live absent) ne
+  // doit PAS renvoyer 500 — sinon Stripe rejoue l'event en boucle et empile les
+  // effets. On enregistre l'échec sur la commande + dans le flux d'activité ops,
+  // puis on renvoie 200. Un rejeu ultérieur retentera (garde d'existence).
   if (customerId && metadata?.billingPeriod) {
     const plan = metadata.plan as "essentielle" | "premium";
     const billingPeriod = metadata.billingPeriod as "monthly" | "yearly";
 
-    await ctx.runAction(internal.stripe.createSubscription, {
+    const existingSub = await ctx.runQuery(internal.subscriptions.getByOrderId, {
       orderId: order._id,
-      stripeCustomerId: customerId,
-      customerEmail: customerEmail ?? order.customerEmail,
-      plan,
-      billingPeriod,
     });
+
+    if (!existingSub) {
+      try {
+        await ctx.runAction(internal.stripe.createSubscription, {
+          orderId: order._id,
+          stripeCustomerId: customerId,
+          customerEmail: customerEmail ?? order.customerEmail,
+          plan,
+          billingPeriod,
+        });
+        await ctx.runMutation(internal.http.recordSubscriptionOutcome, {
+          orderId: order._id,
+          status: "active" as const,
+        });
+      } catch (err) {
+        // Le paiement est déjà encaissé : on N'ÉCHOUE PAS le webhook (pas de
+        // 500 → pas de boucle de rejeu Stripe). On trace l'échec pour que
+        // l'ops le VOIE et provisionne l'abonnement manuellement.
+        console.error(
+          `[STRIPE] createSubscription a échoué pour la commande ${order._id} après encaissement — provisioning manuel requis:`,
+          err,
+        );
+        await ctx.runMutation(internal.http.recordSubscriptionOutcome, {
+          orderId: order._id,
+          status: "failed" as const,
+          customerEmail: customerEmail ?? order.customerEmail,
+          detail: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
   }
 
   // Créer le referral si applicable (idempotent sur orderId)
@@ -596,5 +652,35 @@ function mapSubscriptionStatus(
       return "active";
   }
 }
+
+/* ── Traçabilité du provisioning d'abonnement (fix paiement) ──
+   Enregistre l'issue de la création de l'abonnement maintenance SUR la commande
+   (`subscriptionStatus`) et, en cas d'échec, pousse une entrée dans le flux
+   d'activité ops (saActivity kind:"system") : l'équipe VOIT ainsi une vente
+   encaissée mais non provisionnée et la traite manuellement. Appelée par
+   handleCheckoutCompleted (webhook Stripe), jamais 500 après encaissement. */
+export const recordSubscriptionOutcome = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    status: v.union(v.literal("active"), v.literal("failed")),
+    customerEmail: v.optional(v.string()),
+    detail: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.orderId, { subscriptionStatus: args.status });
+
+    if (args.status === "failed") {
+      await recordSaActivity(ctx, {
+        kind: "system",
+        action: "subscription_provisioning_failed",
+        summary:
+          `Vente encaissée mais abonnement maintenance NON créé (commande ${args.orderId})` +
+          (args.detail ? ` — ${args.detail}` : "") +
+          ". Abonnement/provisioning à créer manuellement.",
+        customerEmail: args.customerEmail,
+      });
+    }
+  },
+});
 
 export default http;
