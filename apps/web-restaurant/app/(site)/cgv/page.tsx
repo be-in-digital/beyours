@@ -172,19 +172,54 @@ export default function CgvPage() {
         données imputable au Client).
       </p>
 
+      {/*
+        TEXTE PROPOSÉ — à faire valider par un conseil (CPI / avocat) avant mise
+        en ligne. Correction juridique : l'art. L. 221-3 du Code de la
+        consommation étend la rétractation de 14 jours au professionnel employant
+        au plus 5 salariés lorsque le contrat est conclu hors établissement
+        (démarchage porte-à-porte du GTM) et que son objet n'entre pas dans le
+        champ de son activité principale (un site web n'est pas de la
+        restauration). On ne peut donc pas éteindre ce droit pour tout « client
+        professionnel ». On sécurise plutôt un renoncement exprès à l'exécution
+        immédiate (art. L. 221-28), matérialisé par la case cochée au checkout.
+      */}
       <h2>12. Droit de rétractation</h2>
       <p>
-        <strong>Client professionnel :</strong> la commande étant conclue aux
-        fins de son activité, le droit de rétractation prévu par le Code de la
-        consommation ne s&apos;applique pas.
+        <strong>Consommateurs et petits professionnels démarchés.</strong>{" "}
+        Lorsque la commande est conclue hors établissement (notamment à la suite
+        d&apos;un démarchage) et que le Client est soit un consommateur, soit un
+        professionnel qui emploie au plus cinq (5) salariés et dont l&apos;objet
+        du contrat n&apos;entre pas dans le champ de son activité principale, le
+        Client dispose, conformément aux articles L. 221-3 et L. 221-18 du Code
+        de la consommation, d&apos;un délai de quatorze (14) jours pour se
+        rétracter, sans avoir à motiver sa décision. Pour une prestation de
+        services, ce délai court à compter de la conclusion du contrat.
       </p>
       <p>
-        <strong>Client consommateur :</strong> vous disposez en principe
-        d&apos;un délai de quatorze (14) jours pour vous rétracter. Toutefois, en
-        demandant l&apos;exécution de la prestation de Création avant la fin de ce
-        délai, vous reconnaissez, conformément à l&apos;article L. 221-28 du Code
-        de la consommation, renoncer à votre droit de rétractation une fois la
-        prestation pleinement exécutée.
+        <strong>Autres professionnels.</strong> Lorsque le Client est un
+        professionnel qui n&apos;entre pas dans le cas ci-dessus — objet du
+        contrat relevant du champ de son activité principale, ou effectif
+        supérieur à cinq salariés —, la commande est réputée conclue pour les
+        besoins de son activité et le droit de rétractation prévu par le Code de
+        la consommation ne lui est pas applicable.
+      </p>
+      <p>
+        <strong>Exécution immédiate et renonciation (art. L. 221-28).</strong>{" "}
+        La prestation de Création débute, à la demande expresse du Client, avant
+        l&apos;expiration du délai de rétractation. En cochant la case de
+        consentement prévue à cet effet lors de la commande, le Client demande
+        expressément que l&apos;exécution commence immédiatement et reconnaît
+        qu&apos;il perd son droit de rétractation une fois la prestation
+        pleinement exécutée, conformément à l&apos;article L. 221-28, 1° du Code
+        de la consommation. Le Client qui se rétracte avant la pleine exécution
+        reste redevable, en application de l&apos;article L. 221-25, du montant
+        correspondant au service déjà fourni.
+      </p>
+      <p>
+        Pour exercer son droit de rétractation, le Client notifie sa décision au
+        moyen d&apos;une déclaration dénuée d&apos;ambiguïté adressée à{" "}
+        <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a> avant
+        l&apos;expiration du délai.
       </p>
 
       <h2>13. Force majeure</h2>

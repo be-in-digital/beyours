@@ -10,10 +10,13 @@
  * par le dirigeant : les pages les rendent via le marqueur <Todo/> afin
  * qu'aucune valeur ne soit inventée (règle projet : ne rien fabriquer).
  *
- * Régime TVA : franchise en base (art. 293 B du CGI), cohérent avec l'affichage
- * du checkout (`components/checkout/order-summary.tsx`) et les flags Stripe Tax
- * OFF (`convex/stripe.ts`). Le jour de l'assujettissement : passer
- * `VAT.regime` à "reel" et flipper les flags.
+ * Régime TVA : franchise en base (art. 293 B du CGI). Aucune TVA n'est facturée
+ * (le moteur de paiement débite 0 € de taxe) et la mention rendue partout est
+ * « TVA non applicable, art. 293 B du CGI ». Cohérent avec l'affichage du
+ * checkout (`components/checkout/order-summary.tsx`, `TVA_ENABLED` off) et les
+ * flags Stripe Tax OFF (`convex/stripe.ts`). Le jour de l'assujettissement au
+ * réel : passer `VAT.regime` à "reel", `VAT.mention` au taux applicable et
+ * flipper les flags (`NEXT_PUBLIC_TVA_ENABLED` + `STRIPE_TAX_ENABLED`).
  *
  * Données confirmées par l'extrait INSEE / RNE (INPI) du 19/07/2026.
  */
@@ -73,12 +76,25 @@ export const COMPANY: CompanyInfo = {
 };
 
 /**
- * Régime de TVA appliqué. En franchise en base, aucune TVA n'est facturée et
- * la mention légale correspondante figure sur les factures et le checkout.
+ * Régime de TVA appliqué. En franchise en base (art. 293 B du CGI), aucune TVA
+ * n'est facturée et la mention légale correspondante est lue depuis `VAT.mention`
+ * par les CGV (`app/(site)/cgv/page.tsx`) et les mentions légales
+ * (`app/(site)/mentions-legales/page.tsx`), qui se réalignent donc seules.
+ *
+ * NB — pied de facture : la mention 293 B doit AUSSI figurer sur la facture
+ * Stripe. Le pied de facture `SELLER_INVOICE_FOOTER` vit dans `convex/stripe.ts`
+ * (hors périmètre de ce fichier) et ne la porte pas encore : à compléter là-bas.
+ *
+ * Garde-fou : la franchise en base des prestations de services a un plafond
+ * (~37 500 € de CA / tolérance ~41 250 € en 2026). Surveiller le CA cumulé —
+ * un seul ticket (une Création à plusieurs milliers d'€) peut le franchir →
+ * passage au réel obligatoire, rétroactif au 1er du mois de dépassement.
+ * À valider par un comptable. Ces seuils et mentions sont proposés et doivent
+ * être validés par un conseil (comptable / avocat) avant mise en ligne.
  */
 export const VAT = {
-  regime: "reel" as "franchise" | "reel",
-  mention: "TVA applicable au taux en vigueur (20 %)",
+  regime: "franchise" as "franchise" | "reel",
+  mention: "TVA non applicable, art. 293 B du CGI",
 } as const;
 
 export interface HostingProvider {
