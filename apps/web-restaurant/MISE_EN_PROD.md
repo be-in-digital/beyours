@@ -114,6 +114,28 @@ Le provisioning est **100 % manuel**, et **c'est acceptable au volume visé**
   rdv). Puis **sortir SES du sandbox** (eu-west-3) pour livrer aux vrais clients.
 - [ ] 🟡 **[config] Analytics** : brancher un suivi conversion (déjà PostHog dans
   l'org) sur le funnel tarifs → checkout → paiement, pour piloter.
+- [ ] 🟠 **[config] Email — provider au choix (SES OU Resend)** : `deliver()` est
+  désormais multi-provider (`convex/email/providers.ts`). Défaut = SES (rien ne
+  change). Pour NE PAS gater le lancement sur la sortie de sandbox AWS (déjà
+  refusée), poser sur le Convex prod : `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`,
+  `RESEND_FROM_EMAIL` (domaine vérifié chez Resend, approuvé en jours). Les
+  instances clients restent sur SES.
+
+### Checklist cutover env (anti-récidive bug #6)
+
+Les `NEXT_PUBLIC_*` sont **inlinées au `next build`** ; changer la variable Vercel
+ne suffit pas, il faut re-builder. Valeurs de prod dans `.env.production.example`.
+
+- [ ] 🔴 **[config]** Poser `NEXT_PUBLIC_CONVEX_URL=https://fearless-poodle-133.convex.cloud`
+  (+ `…_CONVEX_SITE_URL`, `…_SITE_URL`) sur l'env **Production** Vercel.
+- [ ] 🔴 **[config] REBUILD SANS CACHE** (Vercel → Redeploy, **décocher** « Use
+  existing Build Cache »). Un redeploy simple réutilise l'ancien bundle et NE
+  ré-inline PAS.
+- [ ] 🔴 **[config]** Vérifier le bundle servi :
+  `node scripts/check-prod-bundle.mjs https://restaurant.beindigital.fr` → doit
+  finir sur **✓** (exit 0).
+- [ ] 🔴 **[config]** Ouvrir `/decouvrir` en **navigation privée** → **200** +
+  données live (un chargement infini = URL Convex morte).
 
 ---
 
