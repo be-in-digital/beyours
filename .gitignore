@@ -53,6 +53,7 @@ secrets-to-redact.txt
 # ...but example templates MUST be committed (no secrets, placeholders only)
 !.env.example
 !**/.env.example
+!**/.env.production.example
 
 # vercel
 .vercel
