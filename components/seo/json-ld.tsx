@@ -74,7 +74,7 @@ export function SoftwareApplicationJsonLd() {
       "Click and Collect",
       "KDS (Kitchen Display System)",
       "Impression de tickets",
-      "Centralisation des commandes",
+      "Centralisation des commandes directes (site, click & collect, sur place)",
       "Programme de fidélité & gamification",
       "Analytics et rapports",
       "CMS simple",

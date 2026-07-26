@@ -26,9 +26,15 @@ export function SourceBreakdown({
   const total =
     bySource.website + bySource.uber_eats + bySource.deliveroo + bySource.pos ||
     1;
+  // On n'affiche que les sources qui ont réellement des commandes. Uber Eats
+  // et Deliveroo restent masqués tant que les intégrations ne sont pas
+  // certifiées (valeur à 0), pour ne pas afficher de canal vide.
+  const visibleSources = SOURCES.filter((s) => bySource[s.key] > 0);
+  const noPlatformOrders =
+    bySource.uber_eats === 0 && bySource.deliveroo === 0;
   return (
     <div className={cn("space-y-3", className)}>
-      {SOURCES.map((s) => {
+      {visibleSources.map((s) => {
         const value = bySource[s.key];
         const pct = (value / total) * 100;
         return (
@@ -57,6 +63,11 @@ export function SourceBreakdown({
           </div>
         );
       })}
+      {noPlatformOrders && (
+        <p className="text-xs text-muted-foreground">
+          Aucune commande plateforme (intégrations à venir)
+        </p>
+      )}
     </div>
   );
 }

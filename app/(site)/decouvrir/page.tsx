@@ -98,7 +98,9 @@ export default function DecouvrirPage() {
             title="Bien plus qu'un jeu : votre restaurant en digital"
           >
             Site de commande, écran cuisine, pilotage, langues, fidélité. Cliquez
-            dans chaque module : tout est réel, tout est inclus.
+            dans chaque module : tout est réel et inclus dès aujourd&apos;hui. Les
+            intégrations Uber Eats &amp; Deliveroo arrivent après certification,
+            offertes à tous.
           </SectionIntro>
           <FeatureShowcase />
         </div>
