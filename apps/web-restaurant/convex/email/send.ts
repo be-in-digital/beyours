@@ -1,17 +1,22 @@
 "use node";
 
 /**
- * Email sending — AWS SES (SESv2).
+ * Email sending — multi-provider transport (SES by default, Resend optional).
  *
- * One internalAction per transactional/notification email. Every send is
- * best-effort: a delivery failure is logged and swallowed so it never breaks
- * the caller (Stripe webhook, contact mutation, cron). Templates and layout
- * are pure and live in ./templates + ./layout.
+ * One internalAction per transactional/notification email. `deliver()` resolves
+ * the active provider + sender (via EMAIL_PROVIDER) in ./providers, then sends
+ * best-effort: a delivery failure is logged (with the provider used + reason)
+ * and swallowed so it never breaks the caller (Stripe webhook, contact mutation,
+ * cron). Templates and layout are pure and live in ./templates + ./layout.
+ *
+ * SES stays the default, so client instances are unaffected; the sales site can
+ * be flipped to Resend (approved in days, DKIM) by setting EMAIL_PROVIDER=resend
+ * + RESEND_API_KEY, without gating the launch on AWS SES production access.
  */
 
-import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
+import { resolveEmailTransport } from "./providers";
 import {
   affiliateCommissionEmail,
   affiliateWelcomeEmail,
@@ -52,43 +57,49 @@ function bookingUrl(): string | undefined {
   return process.env.CALENDLY_URL ?? undefined;
 }
 
+/**
+ * Best-effort send: resolve the provider (SES by default, Resend if
+ * EMAIL_PROVIDER=resend), delegate the raw send, log the provider used and any
+ * error. Signature unchanged so callers stay untouched — this NEVER throws.
+ */
 async function deliver(toEmail: string, email: BuiltEmail): Promise<{ sent: boolean }> {
-  const region = process.env.AWS_REGION ?? "eu-west-3";
-  const fromEmail = process.env.AWS_SES_FROM_EMAIL;
-  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-
-  if (!fromEmail || !accessKeyId || !secretAccessKey) {
+  const transport = resolveEmailTransport();
+  if (!transport.ok) {
     console.warn(
-      `[email] SES non configuré (AWS_SES_FROM_EMAIL / clés manquantes) — email "${email.subject}" non envoyé à ${toEmail}`,
+      `[email] "${email.subject}" non envoyé à ${toEmail} — ${transport.reason}`,
     );
     return { sent: false };
   }
 
-  const client = new SESv2Client({
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-  });
-
+  const { provider, from } = transport;
   try {
-    await client.send(
-      new SendEmailCommand({
-        FromEmailAddress: fromEmail,
-        Destination: { ToAddresses: [toEmail] },
-        Content: {
-          Simple: {
-            Subject: { Data: email.subject, Charset: "UTF-8" },
-            Body: {
-              Html: { Data: email.html, Charset: "UTF-8" },
-              Text: { Data: email.text, Charset: "UTF-8" },
-            },
-          },
-        },
-      }),
+    const result = await provider.send({
+      from,
+      to: toEmail,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+    });
+
+    if (result.sent) {
+      console.log(
+        `[email] "${email.subject}" envoyé à ${toEmail} via ${provider.name}` +
+          (result.id ? ` (id=${result.id})` : ""),
+      );
+      return { sent: true };
+    }
+
+    console.error(
+      `[email] "${email.subject}" ÉCHEC vers ${toEmail} via ${provider.name}` +
+        (result.error ? ` : ${result.error}` : ""),
     );
-    return { sent: true };
+    return { sent: false };
   } catch (error) {
-    console.error(`[email] Échec envoi "${email.subject}" à ${toEmail}:`, error);
+    // Backstop : deliver ne doit JAMAIS throw (webhook Stripe / contact / cron).
+    console.error(
+      `[email] "${email.subject}" exception vers ${toEmail} via ${provider.name}:`,
+      error,
+    );
     return { sent: false };
   }
 }
