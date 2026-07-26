@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { ArrowRight } from "lucide-react";
 import { api } from "@/convex/_generated/api";
@@ -20,6 +21,12 @@ import { ReferralCodeInput } from "./referral-code-input";
 export function CheckoutFlow() {
   const store = useCheckoutStore();
   const createCheckout = useAction(api.stripe.createCheckoutSession);
+
+  // Consentement exprès à l'exécution immédiate (art. L. 221-28 du Code de la
+  // consommation) : non pré-coché, il matérialise la renonciation au droit de
+  // rétractation et bloque le paiement tant qu'il n'est pas donné. TEXTE PROPOSÉ,
+  // à faire valider par un conseil (CPI / avocat) avant mise en ligne.
+  const [consentRetractation, setConsentRetractation] = useState(false);
 
   const foundersSold = useQuery(api.orders.countFoundersSold, {});
   const foundersActive =
@@ -187,11 +194,52 @@ export function CheckoutFlow() {
               >
                 ← Retour
               </button>
-              <PaymentMethodSelector
-                buyerType={store.buyerType}
-                amountCents={totalCents}
-                onSelect={(method) => handlePay(method)}
-              />
+
+              {/* Consentement exprès à l'exécution immédiate (art. L. 221-28) :
+                  non pré-coché, il débloque les moyens de paiement. */}
+              <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4">
+                <input
+                  type="checkbox"
+                  checked={consentRetractation}
+                  onChange={(e) => {
+                    setConsentRetractation(e.target.checked);
+                    if (e.target.checked) store.setError(null);
+                  }}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary"
+                  aria-describedby="consent-retractation-desc"
+                />
+                <span
+                  id="consent-retractation-desc"
+                  className="text-xs leading-relaxed text-muted-foreground"
+                >
+                  Je demande l&apos;exécution immédiate de la prestation et
+                  reconnais perdre mon droit de rétractation une fois le service
+                  pleinement exécuté (art. L. 221-28 du Code de la consommation).
+                </span>
+              </label>
+
+              <div
+                aria-disabled={!consentRetractation}
+                className={
+                  consentRetractation
+                    ? undefined
+                    : "pointer-events-none opacity-50"
+                }
+              >
+                <PaymentMethodSelector
+                  buyerType={store.buyerType}
+                  amountCents={totalCents}
+                  onSelect={(method) => {
+                    if (!consentRetractation) {
+                      store.setError(
+                        "Veuillez confirmer votre demande d'exécution immédiate pour continuer.",
+                      );
+                      return;
+                    }
+                    handlePay(method);
+                  }}
+                />
+              </div>
             </div>
           </FadeIn>
         )}
