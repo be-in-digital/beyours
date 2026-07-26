@@ -342,16 +342,16 @@ const orderFlow = [
   {
     ref: "#1041",
     label: "Menu dégustation",
-    source: "Uber Eats",
-    logo: "/logos/uber-eats.png",
+    source: "Click & collect",
+    logo: null,
     status: "En cuisine",
     live: false,
   },
   {
     ref: "#1040",
     label: "Pizza Margherita ×2",
-    source: "Deliveroo",
-    logo: "/logos/deliveroo.png",
+    source: "Sur place",
+    logo: null,
     status: "Prête",
     live: false,
   },
@@ -409,6 +409,17 @@ function CentralisationVisual() {
         ))}
       </div>
 
+      {/* Canaux plateformes à venir — inactif tant que non certifié */}
+      <div className="flex items-center gap-2 border-t border-[color:var(--border)] bg-background px-4 py-2.5 opacity-60">
+        <span className="h-1.5 w-1.5 rounded-full bg-surface-4" />
+        <span className="text-[10px] font-medium text-muted-foreground">
+          Uber Eats · Deliveroo — bientôt
+        </span>
+        <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+          Certification en cours
+        </span>
+      </div>
+
       {/* Pied — compteur */}
       <div className="flex items-center justify-between border-t border-[color:var(--border)] bg-background px-4 py-3">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
@@ -426,18 +437,24 @@ function CentralisationVisual() {
 /* ── 06 · Intégrations — vrais logos vers le hub ── */
 
 const integrationRows = [
-  { name: "Uber Eats", logo: "/logos/uber-eats.png", detail: "Commandes synchronisées" },
-  { name: "Deliveroo", logo: "/logos/deliveroo.png", detail: "Menu à jour en direct" },
-  { name: "Uber Direct", logo: "/logos/uber-direct.png", detail: "Livraison sans flotte" },
+  { name: "Uber Eats", logo: "/logos/uber-eats.png", detail: "Commandes synchronisées dès la certification" },
+  { name: "Deliveroo", logo: "/logos/deliveroo.png", detail: "Menu à jour dès la certification" },
+  { name: "Uber Direct", logo: "/logos/uber-direct.png", detail: "Livraison sans flotte, après validation" },
 ];
 
 function IntegrationVisual() {
   return (
     <VisualCard>
       <div className="p-5">
-        <p className="text-xs font-semibold text-foreground">
-          Canaux connectés
-        </p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-foreground">
+            Canaux à venir
+          </p>
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+            <Clock className="h-3 w-3" strokeWidth={2.4} />
+            Certification en cours
+          </span>
+        </div>
 
         {/* Sources */}
         <div className="mt-4 space-y-2.5">
@@ -459,8 +476,8 @@ function IntegrationVisual() {
                 <p className="text-xs font-semibold text-foreground">{r.name}</p>
                 <p className="text-[10px] text-muted-foreground">{r.detail}</p>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-semibold text-primary">
-                <Check className="h-3 w-3" strokeWidth={2.6} /> Connecté
+              <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                <Clock className="h-3 w-3" strokeWidth={2.4} /> Bientôt
               </span>
             </div>
           ))}
@@ -476,7 +493,7 @@ function IntegrationVisual() {
           <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[color:var(--border-contrast)]" />
         </div>
         <p className="mt-2 text-center text-[10px] text-muted-foreground">
-          Tout arrive au même endroit, sans double saisie.
+          Une fois certifiées, elles arriveront au même endroit, sans double saisie.
         </p>
       </div>
     </VisualCard>

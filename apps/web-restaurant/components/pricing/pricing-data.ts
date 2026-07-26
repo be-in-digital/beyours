@@ -99,7 +99,7 @@ export const comparisonCategories: ComparisonCategory[] = [
     name: "Gestion & pilotage",
     features: [
       { label: "Dashboard administrateur", essentielle: true, premium: true },
-      { label: "Centralisation des commandes", essentielle: true, premium: true },
+      { label: "Centralisation des commandes directes (site, click & collect, sur place)", essentielle: true, premium: true },
       { label: "Intégration Uber Eats & Deliveroo", essentielle: "soon", premium: "soon" },
       { label: "Analytics & suivi des performances", essentielle: false, premium: true },
     ],
