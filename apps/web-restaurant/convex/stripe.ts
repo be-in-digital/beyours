@@ -24,22 +24,46 @@ const foundersOffer = {
   creationCents: 250000,
 };
 
-/* ── Mapping plan + billingPeriod → Stripe Price ID (récurrents) ──
-   Surchargeable par variables d'env pour basculer test <-> live sans toucher
-   au code : au go-live, poser les 4 STRIPE_PRICE_* (env Convex prod) avec les
-   Price IDs live du compte Be in Digital. Défaut = les Price IDs de test. */
-const maintenancePriceIds: Record<string, string> = {
-  "essentielle:monthly":
-    process.env.STRIPE_PRICE_ESSENTIELLE_MONTHLY ??
-    "price_1TEnXVK8R9QQdjlQTj4Ntwvu",
-  "essentielle:yearly":
-    process.env.STRIPE_PRICE_ESSENTIELLE_YEARLY ??
-    "price_1TEnXWK8R9QQdjlQcWaCMZSF",
-  "premium:monthly":
-    process.env.STRIPE_PRICE_PREMIUM_MONTHLY ?? "price_1TEnXWK8R9QQdjlQH8cIgkOd",
-  "premium:yearly":
-    process.env.STRIPE_PRICE_PREMIUM_YEARLY ?? "price_1TEnXXK8R9QQdjlQgbpX7ne0",
+/* ── Mapping plan + billingPeriod → variable d'env du Stripe Price ID (récurrent) ──
+   AUCUN fallback en dur : un Price ID de TEST encaissé avec une clé Live ferait
+   échouer subscriptions.create (« No such price ») APRÈS le paiement — le client
+   est débité mais jamais provisionné, en silence. On exige donc les 4
+   STRIPE_PRICE_* (env Convex) et on échoue BRUYAMMENT s'il en manque un.
+   Au go-live : poser les 4 STRIPE_PRICE_* (env Convex prod) avec les Price IDs
+   live du compte Be in Digital. */
+const MAINTENANCE_PRICE_ENV: Record<string, string> = {
+  "essentielle:monthly": "STRIPE_PRICE_ESSENTIELLE_MONTHLY",
+  "essentielle:yearly": "STRIPE_PRICE_ESSENTIELLE_YEARLY",
+  "premium:monthly": "STRIPE_PRICE_PREMIUM_MONTHLY",
+  "premium:yearly": "STRIPE_PRICE_PREMIUM_YEARLY",
 };
+
+/**
+ * Résout le Stripe Price ID de maintenance pour un couple plan/période.
+ * Throw une erreur explicite si la variable d'env correspondante est absente.
+ * Appelée AVANT l'encaissement (createCheckoutSession, garde-fou provisioning)
+ * ET dans createSubscription — on ne vend jamais ce qu'on ne pourra pas facturer.
+ */
+function resolveMaintenancePriceId(
+  plan: string,
+  billingPeriod: string,
+): string {
+  const key = `${plan}:${billingPeriod}`;
+  const envName = MAINTENANCE_PRICE_ENV[key];
+  if (!envName) {
+    throw new Error(
+      `Aucun Price ID de maintenance connu pour « ${key} » (plan/période invalide).`,
+    );
+  }
+  const priceId = process.env[envName];
+  if (!priceId) {
+    throw new Error(
+      `${envName} manquant en env : le Price ID de maintenance « ${key} » n'est pas configuré. ` +
+        `Poser les 4 STRIPE_PRICE_* (env Convex) avec les Price IDs live avant toute vente.`,
+    );
+  }
+  return priceId;
+}
 
 /* ── Mentions vendeur portées par la facture Stripe du 1er paiement ──
    Le business profile (nom, adresse, TVA) reste réglé dans le dashboard Stripe ;
@@ -91,6 +115,17 @@ export const createCheckoutSession = action({
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
     const stripe = getStripe();
+
+    // ── Garde-fou provisioning (fix paiement) ──
+    // Ne JAMAIS créer de session de paiement pour un plan dont l'abonnement de
+    // maintenance ne pourra pas être provisionné : si un Price ID de maintenance
+    // (env) manque, on échoue MAINTENANT — avant tout encaissement et avant même
+    // de créer la commande — plutôt qu'après le paiement (au webhook), ce qui
+    // laisserait un client débité sans être provisionné. En mode test (sans clé
+    // Stripe) aucun abonnement réel n'est créé : la validation ne s'applique pas.
+    if (stripe) {
+      resolveMaintenancePriceId(args.plan, args.billingPeriod);
+    }
 
     // Calcul montant côté serveur (jamais confiance au client)
     const prices = planPrices[args.plan];
@@ -334,11 +369,11 @@ export const createSubscription = internalAction({
       return;
     }
 
-    const priceId = maintenancePriceIds[`${args.plan}:${args.billingPeriod}`];
-    if (!priceId) {
-      console.error(`No price ID found for ${args.plan}:${args.billingPeriod}`);
-      return;
-    }
+    // Résolution stricte : throw si l'env du Price ID manque, au lieu du retour
+    // silencieux d'avant (qui laissait la maintenance jamais facturée). Cet appel
+    // est encapsulé dans un try/catch côté webhook : l'échec est enregistré et
+    // notifié SANS renvoyer 500 (cf. http.ts handleCheckoutCompleted).
+    const priceId = resolveMaintenancePriceId(args.plan, args.billingPeriod);
 
     // Calculer le début de la prochaine période
     // (la première période est déjà payée dans le checkout)
