@@ -1261,25 +1261,6 @@ export const packages: PackageInfo[] = [
       },
     ],
   },
-  {
-    name: "themes",
-    scope: "@be-in-digital/themes",
-    description:
-      "Predefined restaurant themes: Fast Food, Pizzeria, Chinese, Fine Dining, Cafe, Sushi. Currently placeholder.",
-    version: "2.0.1",
-    category: "frontend",
-    dependencies: ["@be-in-digital/ui"],
-    installCommand: "pnpm add @be-in-digital/themes",
-    exports: [
-      {
-        name: "themes",
-        type: "constant",
-        description: "Theme definitions object (placeholder)",
-        importPath: "@be-in-digital/themes",
-        tags: ["theme"],
-      },
-    ],
-  },
 ];
 
 export function searchPackages(query: string): PackageExport[] {

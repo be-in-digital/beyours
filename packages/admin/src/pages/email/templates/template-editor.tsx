@@ -231,7 +231,6 @@ export function TemplateEditor({ template, onBack }: TemplateEditorProps) {
       subject: template.subject ?? "",
       previewText: template.previewText ?? "",
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template._id])
 
   const handleAddBlock = (palette: typeof BLOCK_PALETTE[0]) => {

@@ -34,7 +34,6 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
         return (
           <div className={`p-2 ${ALIGNMENT_CLASS[block.alignment ?? "center"]}`}>
             {block.url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={block.url}
                 alt={block.alt ?? ""}
@@ -209,7 +208,6 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
           <div className={`p-3 ${ALIGNMENT_CLASS[block.alignment ?? "center"]}`}>
             {block.thumbnailUrl ? (
               <div className="relative inline-block">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={block.thumbnailUrl}
                   alt={block.alt ?? "Vidéo"}
@@ -274,7 +272,6 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
                 {block.items.map((item, i) => (
                   <div key={i} className="flex items-center gap-2 rounded border border-dashed p-2">
                     {item.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded object-cover shrink-0" />
                     ) : (
                       <div className="h-10 w-10 rounded bg-muted shrink-0" />
@@ -333,7 +330,6 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
                 {block.images.map((img, i) => (
                   <div key={i} className="aspect-square rounded bg-muted overflow-hidden">
                     {img.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={img.url} alt={img.alt ?? ""} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">Image</div>

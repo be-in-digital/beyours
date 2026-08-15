@@ -56,7 +56,8 @@ beindigital/
 │   ├── cms/                   # Custom CMS
 │   ├── convex-schema/         # DB Schemas
 │   ├── convex-functions/      # Backend Functions
-│   └── themes/                # 6 Predefined Themes
+│   ├── admin/                 # Admin Pages, Stores, Hooks
+│   └── mcp-server/            # MCP Package Registry
 │
 ├── apps/
 │   ├── restaurant-theme/      # Main App
@@ -143,7 +144,8 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
 - Bulk translator
 
 ### Design (14)
-6 themes (Fast Food, Pizzeria, Chinese, Fine Dining, Café, Sushi)
+Design system in `packages/ui`, theming per store via CMS branding settings.
+(Note: no predefined-theme package exists — `packages/themes` was an empty stub and has been removed.)
 
 ### Testing
 - Vitest unit tests (80%+ coverage)

@@ -25,7 +25,6 @@ Welcome to the official documentation for the **BeInDigital Engine** — a premi
 | [@be-in-digital/cms](./packages/cms.md) | Custom CMS with block registry | Shared |
 | [@be-in-digital/integrations](./packages/integrations.md) | Uber Eats, Deliveroo API clients | Backend |
 | [@be-in-digital/marketing](./packages/marketing.md) | Email marketing with 28 block types | Shared |
-| [@be-in-digital/themes](./packages/themes.md) | 6 predefined restaurant themes | Frontend |
 | [@be-in-digital/mcp-server](./packages/mcp-server.md) | MCP server for AI assistants | Tooling |
 
 ## Architecture

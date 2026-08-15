@@ -136,7 +136,6 @@ function QRCodeCard({
 
       <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-md border border-border/50 bg-white p-1.5">
         {dataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={dataUrl} alt={`QR code ${qr.code}`} className="h-full w-full" />
         ) : (
           <QrCodeIcon className="h-8 w-8 text-muted-foreground" />
