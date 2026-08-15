@@ -17,7 +17,7 @@ Recette PAT `ENGINE_SYNC_TOKEN` : github.com/settings/personal-access-tokens/new
 → Resource owner `be-in-digital` → Only select repositories
 `beindigital-engine` → Repository permissions : Contents **Read-only** →
 expiration 90 j. Puis :
-`gh secret set ENGINE_SYNC_TOKEN -R be-in-digital/beindigital-boilerplate --body "github_pat_…"`
+`gh secret set ENGINE_SYNC_TOKEN -R be-in-digital/beyours-boilerplate --body "github_pat_…"`
 
 ### Première installation tokénée → committer le lockfile
 

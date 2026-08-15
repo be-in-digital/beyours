@@ -37,7 +37,7 @@ import { applyTemplate, listTemplates } from "./apply-template.mjs"
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
 const SENTINEL = path.join(ROOT, ".beindigital-site.json")
 const TEMPLATE_REPO =
-  "https://github.com/be-in-digital/beindigital-boilerplate.git"
+  "https://github.com/be-in-digital/beyours-boilerplate.git"
 
 const args = process.argv.slice(2)
 const flag = (name) => args.includes(`--${name}`)

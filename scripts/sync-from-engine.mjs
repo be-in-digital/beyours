@@ -44,7 +44,7 @@ const APP = path.join(ENGINE, "apps", "restaurant-theme")
 
 if (!fs.existsSync(path.join(APP, "package.json"))) {
   console.error(`App engine introuvable : ${APP}
-Cloner l'engine (git clone https://github.com/be-in-digital/beindigital-engine)
+Cloner l'engine (git clone https://github.com/be-in-digital/beyours-engine)
 puis relancer avec --engine <chemin> ou BID_ENGINE_PATH.`)
   process.exit(1)
 }

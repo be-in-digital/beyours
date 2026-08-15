@@ -46,7 +46,7 @@ function link() {
   if (!fs.existsSync(path.join(packagesDir, "core", "package.json"))) {
     console.error(`Clone engine introuvable : ${packagesDir}`)
     console.error(
-      "git clone https://github.com/be-in-digital/beindigital-engine puis relancer avec le chemin en argument ou BID_ENGINE_PATH.",
+      "git clone https://github.com/be-in-digital/beyours-engine puis relancer avec le chemin en argument ou BID_ENGINE_PATH.",
     )
     process.exit(1)
   }

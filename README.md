@@ -4,7 +4,7 @@ Template des sites restaurant BeInDigital. Chaque site client est un clone de
 ce repo : il embarque le shell applicatif complet (storefront e-commerce,
 dashboard admin, CMS, jeux QR, KDS cuisine) et consomme la logique métier
 depuis les packages privés `@be-in-digital/*` publiés par
-[beindigital-engine](https://github.com/be-in-digital/beindigital-engine).
+[beindigital-engine](https://github.com/be-in-digital/beyours-engine).
 
 ```
 engine (packages npm @be-in-digital/*)          ← logique métier, versionnée
@@ -36,7 +36,7 @@ Deux configurations : **web** (storefront + admin) ou **web + app**
 Installation (une fois, `gh` authentifié) :
 
 ```bash
-gh api repos/be-in-digital/beindigital-boilerplate/contents/scripts/beindigital \
+gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/beindigital \
   -H "Accept: application/vnd.github.raw" > /opt/homebrew/bin/beindigital \
   && chmod +x /opt/homebrew/bin/beindigital
 beindigital token ghp_xxx           # PAT read:packages, stocké chmod 600
@@ -55,7 +55,7 @@ La CLI va chercher les scripts sur ce repo à chaque appel — elle profite des
 mises à jour du template sans réinstallation. Équivalent sans CLI :
 
 ```bash
-gh api repos/be-in-digital/beindigital-boilerplate/contents/scripts/create-site.mjs \
+gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs \
   -H "Accept: application/vnd.github.raw" | node --input-type=module - \
   client-luigi --name "Chez Luigi" --repo be-in-digital/client-luigi
 ```
@@ -68,7 +68,7 @@ commit initial → push. Depuis un clone existant : `pnpm create:site <dossier> 
 ### À la main (équivalent)
 
 ```bash
-git clone https://github.com/be-in-digital/beindigital-boilerplate.git client-luigi
+git clone https://github.com/be-in-digital/beyours-boilerplate.git client-luigi
 cd client-luigi && git remote rename origin template
 export NODE_AUTH_TOKEN=ghp_xxx
 pnpm install
@@ -164,7 +164,7 @@ codegen + typecheck + tests et pointe vers les CHANGELOGs de l'engine.
 ## Développer contre un engine local (sans registre)
 
 ```bash
-git clone https://github.com/be-in-digital/beindigital-engine ../beindigital-engine
+git clone https://github.com/be-in-digital/beyours-engine ../beindigital-engine
 pnpm engine:link       # overrides pnpm link: vers le clone
 # … dev …
 pnpm engine:unlink     # retour au registre (ne jamais commiter en mode link)
