@@ -57,9 +57,9 @@ jobs:
             ${{ runner.os }}-turbo-e2e-
 
       - name: Build application
-        # Web apps (landing) are excluded: they build on Vercel with their own
-        # env (Sanity/Convex); the product CI must not depend on those secrets.
-        run: pnpm build --filter='!@beindigital/agency' --filter='!@beindigital/restaurant'
+        # Les e2e portent sur l'app de référence : inutile de construire le
+        # site commercial ni le boilerplate ici.
+        run: pnpm build --filter=@beyours/reference...
 
       - name: Check E2E secrets configured
         id: check-secrets

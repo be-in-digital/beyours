@@ -138,5 +138,5 @@ jobs:
         env:
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
           CONVEX_SITE_URL: https://placeholder.convex.site
-        # Web apps (landing) build on Vercel with their own env (Sanity/Convex)
-        run: pnpm build --filter='!@beindigital/agency' --filter='!@beindigital/restaurant'
+        # Les trois apps sont buildées : la fusion a rendu le graphe complet.
+        run: pnpm build
