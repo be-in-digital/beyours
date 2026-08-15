@@ -1,6 +1,11 @@
 # Theming Guide
 
-> Customize the look and feel with 6 predefined restaurant themes.
+> **⚠️ Ce guide décrit une fonctionnalité qui n'a jamais été implémentée.**
+> Le paquet `@be-in-digital/themes` ne contenait que `export {}` et a été supprimé.
+> Aucun des six thèmes ci-dessous n'existe dans le code, et l'exemple d'import
+> plus bas ne fonctionne pas. Le theming réel passe aujourd'hui par le design
+> system de `packages/ui` et les réglages de branding du CMS.
+> Ce guide est à réécrire à partir du comportement réel avant d'être publié.
 
 ## Available Themes
 

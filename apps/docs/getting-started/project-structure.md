@@ -16,7 +16,6 @@ beindigital/
 │   ├── cms/                     # Content management system
 │   ├── integrations/            # Uber Eats, Deliveroo, Uber Direct
 │   ├── marketing/               # Email marketing
-│   ├── themes/                  # Restaurant themes
 │   └── mcp-server/              # MCP server for AI assistants
 │
 ├── apps/
@@ -48,7 +47,6 @@ beindigital/
 | `@be-in-digital/ui` | Reusable React components |
 | `@be-in-digital/restaurant` | Restaurant-specific logic |
 | `@be-in-digital/admin` | Admin dashboard pages |
-| `@be-in-digital/themes` | Predefined visual themes |
 
 ### Backend
 
@@ -75,7 +73,6 @@ beindigital/
 ## Dependency Graph
 
 ```
-themes ──▶ ui
 admin ──▶ ui, core, restaurant
 restaurant ──▶ core, convex-schema
 core ──▶ convex-schema

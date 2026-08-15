@@ -42,7 +42,6 @@ pnpm add @be-in-digital/convex-schema @be-in-digital/convex-functions
 pnpm add @be-in-digital/integrations  # Uber Eats, Deliveroo
 pnpm add @be-in-digital/marketing     # Email campaigns
 pnpm add @be-in-digital/cms           # Content management
-pnpm add @be-in-digital/themes        # Pre-built themes
 ```
 
 ## Prerequisites
