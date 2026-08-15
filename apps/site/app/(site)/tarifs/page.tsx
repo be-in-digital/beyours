@@ -14,12 +14,12 @@ import { PricingFaq } from "@/components/pricing/pricing-faq";
 import { CtaSection } from "@/components/cta-section";
 
 export const metadata: Metadata = {
-  title: "Tarifs — Be in Digital",
+  title: "Tarifs — BeYours",
   description:
     "Tarifs transparents : paiement unique pour la plateforme + maintenance annuelle claire. Aucun engagement long terme, zéro commission sur vos commandes directes.",
   alternates: { canonical: "/tarifs" },
   openGraph: {
-    title: "Tarifs — Be in Digital",
+    title: "Tarifs — BeYours",
     description:
       "Paiement one-shot + maintenance annuelle. Transparence totale, zéro commission sur vos ventes directes.",
     url: "/tarifs",

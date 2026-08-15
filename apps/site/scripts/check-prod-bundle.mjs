@@ -12,9 +12,9 @@
 //
 // Usage :
 //   node scripts/check-prod-bundle.mjs
-//   node scripts/check-prod-bundle.mjs https://restaurant.beindigital.fr
+//   node scripts/check-prod-bundle.mjs https://beyours.fr
 //   node scripts/check-prod-bundle.mjs https://<preview>.vercel.app
-//   LIVE_URL=https://restaurant.beindigital.fr node scripts/check-prod-bundle.mjs
+//   LIVE_URL=https://beyours.fr node scripts/check-prod-bundle.mjs
 //
 // Quand le lancer : APRÈS chaque déploiement de web-restaurant, et idéalement
 // en CI dans un step post-deploy Vercel. Exit ≠ 0 = bloquer / rollback.
@@ -29,7 +29,7 @@ const ALLOWED_CONVEX_SUBDOMAIN = "fearless-poodle-133";
 // La règle d'échec est de toute façon « sous-domaine != ALLOWED ».
 const HARD_BLOCKLIST = ["happy-otter-123"];
 
-const DEFAULT_URL = "https://restaurant.beindigital.fr";
+const DEFAULT_URL = "https://beyours.fr";
 const REQ_TIMEOUT_MS = 15000;
 const CHUNK_CONCURRENCY = 8;
 const MAX_CHUNKS = 300;

@@ -60,7 +60,7 @@ export function TeamSection() {
               <span className="text-primary">Une seule mission.</span>
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              On ne croit pas aux stars solo. Be in Digital, c&apos;est une
+              On ne croit pas aux stars solo. BeYours, c&apos;est une
               équipe soudée qui combine expertise tech, sensibilité design et
               connaissance terrain de la restauration.
             </p>
@@ -81,7 +81,7 @@ export function TeamSection() {
                 ensemble pour nos clients.
               </p>
               <p className="mt-4 text-sm font-medium text-primary">
-                L&apos;équipe Be in Digital
+                L&apos;équipe BeYours
               </p>
             </div>
           </div>

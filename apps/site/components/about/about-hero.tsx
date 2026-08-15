@@ -58,7 +58,7 @@ export function AboutHero() {
         style={{ y: contentY }}
       >
         <FadeIn delay={0.1}>
-          <SectionBadge text="À propos de Be in Digital" />
+          <SectionBadge text="À propos de BeYours" />
         </FadeIn>
 
         <FadeIn delay={0.2}>
@@ -71,7 +71,7 @@ export function AboutHero() {
 
         <FadeIn delay={0.35}>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Derrière Be in Digital, il y a des passionnés du digital et de la
+            Derrière BeYours, il y a des passionnés du digital et de la
             restauration qui croient qu&apos;un restaurant mérite une présence en
             ligne à la hauteur de son assiette.
           </p>

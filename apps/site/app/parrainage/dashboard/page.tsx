@@ -78,7 +78,7 @@ export default function DashboardPage() {
   const siteUrl =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://restaurant.beindigital.fr";
+      : "https://beyours.fr";
   const referralLink = referralCode
     ? `${siteUrl}/checkout?ref=${referralCode.code}`
     : null;

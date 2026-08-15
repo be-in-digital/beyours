@@ -163,7 +163,7 @@ export function WhitelistModal() {
                 Inscription confirmée
               </h3>
               <p className="text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                Vous êtes inscrit à la waitlist Be in Digital.
+                Vous êtes inscrit à la waitlist BeYours.
                 Nous vous recontacterons très prochainement.
               </p>
               <button

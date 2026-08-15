@@ -103,7 +103,7 @@ export default function InscriptionPage() {
       <div className="text-center mb-8">
         <h1 className="font-display text-2xl font-bold mb-2">Créer votre compte</h1>
         <p className="text-sm text-muted-foreground">
-          Devenez apporteur d&apos;affaires Be in Digital
+          Devenez apporteur d&apos;affaires BeYours
         </p>
       </div>
 

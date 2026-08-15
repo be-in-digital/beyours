@@ -44,7 +44,7 @@ export default function PartagePage() {
   const siteUrl =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://restaurant.beindigital.fr";
+      : "https://beyours.fr";
   const code = referralCode?.code ?? "";
   const referralLink = code ? `${siteUrl}/checkout?ref=${code}` : "";
 
@@ -73,7 +73,7 @@ export default function PartagePage() {
   }
 
   function getShareText() {
-    return `Découvrez Be in Digital, la plateforme digitale premium pour restaurants ! Utilisez mon code ${code} pour bénéficier d'une réduction sur la création : ${referralLink}`;
+    return `Découvrez BeYours, la plateforme digitale premium pour restaurants ! Utilisez mon code ${code} pour bénéficier d'une réduction sur la création : ${referralLink}`;
   }
 
   if (isLoading || !isAuthenticated || referralCode === undefined) {
@@ -207,7 +207,7 @@ export default function PartagePage() {
             {
               label: "Email",
               dot: "var(--primary)",
-              href: `mailto:?subject=${encodeURIComponent("Découvrez Be in Digital")}&body=${encodeURIComponent(getShareText())}`,
+              href: `mailto:?subject=${encodeURIComponent("Découvrez BeYours")}&body=${encodeURIComponent(getShareText())}`,
               blank: false,
             },
             {

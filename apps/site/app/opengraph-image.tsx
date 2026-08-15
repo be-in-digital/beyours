@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "Be in Digital — plateforme digitale pour restaurants";
+export const alt = "BeYours — plateforme digitale pour restaurants";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -86,7 +86,7 @@ export default function OpengraphImage() {
             color: "#6f6456",
           }}
         >
-          <div>restaurant.beindigital.fr</div>
+          <div>beyours.fr</div>
           <div style={{ color: "#c5542c", fontWeight: 600 }}>
             0 % de commission
           </div>

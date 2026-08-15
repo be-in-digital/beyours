@@ -1,17 +1,18 @@
 /**
- * Site config — restaurant.beindigital.fr
+ * Site config — beyours.fr
  *
  * Centralisation des métadonnées SEO. Le SITE_URL est branché sur une
  * variable d'env publique (NEXT_PUBLIC_SITE_URL) avec un fallback prod.
  * Permet de switcher facilement entre prod / preview / dev.
  *
- * Phase 0.5 (Decision Log #20) : le restaurant migre vers le sous-domaine
- * restaurant.beindigital.fr ; l'agence prend l'apex beindigital.fr.
+ * Le site tourne sur son domaine propre `beyours.fr` (apex ; le www
+ * redirige en 308). L'agence conserve `beindigital.fr` — d'où STUDIO_URL
+ * et SITE_EMAIL plus bas, qui pointent toujours vers l'apex agence.
  */
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://restaurant.beindigital.fr";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://beyours.fr";
 
-export const SITE_NAME = "Be in Digital";
+export const SITE_NAME = "BeYours";
 
 export const SITE_DESCRIPTION =
   "Site web premium, commande en ligne directe, KDS en cuisine, fidélité : la plateforme tout-en-un pensée pour les restaurants. 0 % de commission sur vos ventes directes. Reprenez la main sur votre marge.";

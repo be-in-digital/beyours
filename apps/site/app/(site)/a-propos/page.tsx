@@ -9,12 +9,12 @@ import { AboutFaqSection } from "@/components/about/about-faq-section";
 import { SocialProofSection } from "@/components/social-proof-section";
 
 export const metadata: Metadata = {
-  title: "À propos — Be in Digital",
+  title: "À propos — BeYours",
   description:
-    "L'équipe derrière Be in Digital : passionnés de restauration et de digital, au service des restaurants indépendants ambitieux.",
+    "L'équipe derrière BeYours : passionnés de restauration et de digital, au service des restaurants indépendants ambitieux.",
   alternates: { canonical: "/a-propos" },
   openGraph: {
-    title: "À propos — Be in Digital",
+    title: "À propos — BeYours",
     description:
       "Notre mission : rendre les restaurants indépendants plus autonomes grâce au digital.",
     url: "/a-propos",

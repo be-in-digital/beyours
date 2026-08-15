@@ -16,7 +16,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const found = findTemplateBySlug(slug);
-  if (!found) return { title: "Démo — Be in Digital" };
+  if (!found) return { title: "Démo — BeYours" };
   return {
     title: `Démo · ${found.template.name} — ${found.category.label}`,
     description: `Visitez la démo interactive du template ${found.template.name} : parcourez la carte, ajoutez au panier, passez commande.`,

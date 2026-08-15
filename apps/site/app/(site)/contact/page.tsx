@@ -4,12 +4,12 @@ import { ContactFormSection } from "@/components/contact/contact-form-section";
 import { ContactInfoSection } from "@/components/contact/contact-info-section";
 
 export const metadata: Metadata = {
-  title: "Contact — Be in Digital",
+  title: "Contact — BeYours",
   description:
-    "Contactez Be in Digital. Réservez un appel, envoyez-nous un message ou retrouvez nos coordonnées.",
+    "Contactez BeYours. Réservez un appel, envoyez-nous un message ou retrouvez nos coordonnées.",
   alternates: { canonical: "/contact" },
   openGraph: {
-    title: "Contact — Be in Digital",
+    title: "Contact — BeYours",
     description:
       "Parlons de votre restaurant. Réservez un appel ou envoyez un message.",
     url: "/contact",

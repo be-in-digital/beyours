@@ -104,7 +104,7 @@ Le provisioning est **100 % manuel**, et **c'est acceptable au volume visé**
 
 - [ ] 🔴 **[config] Convex prod + Vercel** pour `web-restaurant` (l'app de vente),
   avec toutes les env vars Live (Stripe, YouSign, AWS SES, Calendly).
-- [ ] 🔴 **[config] Domaine** de la vitrine (ex. `restaurant.beindigital.fr`) +
+- [ ] 🔴 **[config] Domaine** de la vitrine (ex. `beyours.fr`) +
   `/decouvrir` public (le lien envoyé aux prospects).
 - [ ] 🟠 **[config] Emails transactionnels** : le système est construit et branché
   (§4). Pour l'activer en réel, poser les env vars sur le déploiement Convex de
@@ -132,7 +132,7 @@ ne suffit pas, il faut re-builder. Valeurs de prod dans `.env.production.example
   existing Build Cache »). Un redeploy simple réutilise l'ancien bundle et NE
   ré-inline PAS.
 - [ ] 🔴 **[config]** Vérifier le bundle servi :
-  `node scripts/check-prod-bundle.mjs https://restaurant.beindigital.fr` → doit
+  `node scripts/check-prod-bundle.mjs https://beyours.fr` → doit
   finir sur **✓** (exit 0).
 - [ ] 🔴 **[config]** Ouvrir `/decouvrir` en **navigation privée** → **200** +
   données live (un chargement infini = URL Convex morte).

@@ -17,7 +17,7 @@ const MODELS = [
   { name: "Plateformes de livraison", sub: "Uber Eats, Deliveroo" },
   { name: "Logiciels par abonnement", sub: "Zenchef, Sunday, TheFork…" },
   { name: "Agence sur mesure", sub: "site classique" },
-  { name: "Be in Digital", sub: "achat + maintenance", highlight: true },
+  { name: "BeYours", sub: "achat + maintenance", highlight: true },
 ];
 
 const ROWS: { label: string; cells: [Cell, Cell, Cell, Cell] }[] = [

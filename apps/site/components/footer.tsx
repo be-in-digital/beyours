@@ -141,11 +141,11 @@ export function Footer() {
             WebkitTextStroke: "1px rgba(238,250,247,0.16)",
           }}
         >
-          Be in Digital
+          BeYours
         </div>
 
         <div className="flex flex-col items-start justify-between gap-3 border-t border-white/10 py-6 text-xs text-[color:var(--primary-100)]/55 sm:flex-row sm:items-center">
-          <p>© 2026 Be in Digital. Tous droits réservés.</p>
+          <p>© 2026 BeYours. Tous droits réservés.</p>
           <a
             href="#top"
             className="transition-colors hover:text-[color:var(--primary-50)]"

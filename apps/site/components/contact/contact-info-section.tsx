@@ -21,7 +21,7 @@ const contactFaqItems = [
   {
     question: "Puis-je garder mon site actuel ?",
     answer:
-      "Absolument. Si vous avez déjà un site, nous nous engageons à reproduire ou mettre à jour votre design gratuitement pour y intégrer le système Be in Digital. Vous conservez votre identité visuelle, on y ajoute la puissance de notre plateforme.",
+      "Absolument. Si vous avez déjà un site, nous nous engageons à reproduire ou mettre à jour votre design gratuitement pour y intégrer le système BeYours. Vous conservez votre identité visuelle, on y ajoute la puissance de notre plateforme.",
   },
 ];
 

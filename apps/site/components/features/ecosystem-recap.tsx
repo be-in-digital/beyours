@@ -150,7 +150,7 @@ export function EcosystemRecap() {
                   <UtensilsCrossed className="h-3 w-3" strokeWidth={2} />
                 </span>
                 <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">
-                  Be in Digital
+                  BeYours
                 </span>
                 <span className="h-2 w-2 rounded-full bg-primary" />
               </div>

@@ -35,7 +35,7 @@ function appUrl(): string {
   return (
     process.env.SITE_URL ??
     process.env.NEXT_PUBLIC_SITE_URL ??
-    "https://restaurant.beindigital.fr"
+    "https://beyours.fr"
   ).replace(/\/$/, "");
 }
 

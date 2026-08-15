@@ -1,74 +1,86 @@
 import type { Metadata, Viewport } from "next";
-import {
-  Geist,
-  Geist_Mono,
-  Bricolage_Grotesque,
-  Fraunces,
-  Anton,
-  Oswald,
-  Zen_Kaku_Gothic_New,
-} from "next/font/google";
+import localFont from "next/font/local";
 import { ConvexClientProvider } from "@/components/convex-provider";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site-config";
 import "./globals.css";
 
-const geistSans = Geist({
+/**
+ * Fonts — auto-hébergées via next/font/local, fichiers dans app/fonts/.
+ *
+ * Pourquoi pas next/font/google : ce chargeur télécharge les woff2 depuis
+ * fonts.gstatic.com AU MOMENT DU BUILD. Sept familles, donc sept occasions
+ * qu'une indisponibilité de Google fasse échouer un build sans qu'aucune
+ * ligne n'ait changé. Le site agence en a fait les frais le 15/08/2026 :
+ * trois 404 sur Fraunces ont cascadé en six erreurs « Module not found ».
+ *
+ * Les fichiers sont versionnés (9 woff2, 212 Ko, sous-ensemble latin) : le
+ * build devient déterministe et fonctionne hors ligne. Six de ces polices
+ * sont variables — un fichier couvre toute la plage de graisses, d'où les
+ * `weight` en intervalle. Seule Zen Kaku est statique, d'où ses trois
+ * fichiers.
+ */
+const geistSans = localFont({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
   display: "swap",
+  src: [{ path: "./fonts/geist.woff2", weight: "100 900", style: "normal" }],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
   display: "swap",
+  src: [
+    { path: "./fonts/geist-mono.woff2", weight: "100 900", style: "normal" },
+  ],
 });
 
 // Display font — grotesque à caractère, chaleureux, hospitalité food
-const bricolage = Bricolage_Grotesque({
+const bricolage = localFont({
   variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
+  src: [
+    { path: "./fonts/bricolage.woff2", weight: "400 700", style: "normal" },
+  ],
 });
 
 // Polices d'accent des templates interactifs (une identité par univers).
 // Pizzeria — serif éditorial
-const fraunces = Fraunces({
+const fraunces = localFont({
   variable: "--font-editorial",
-  subsets: ["latin"],
   display: "swap",
+  src: [{ path: "./fonts/fraunces.woff2", weight: "100 900", style: "normal" }],
 });
 // Fast-food — grotesque d'impact
-const anton = Anton({
+const anton = localFont({
   variable: "--font-impact",
-  subsets: ["latin"],
-  weight: "400",
   display: "swap",
+  src: [{ path: "./fonts/anton.woff2", weight: "400", style: "normal" }],
 });
 // Food truck — condensée
-const oswald = Oswald({
+const oswald = localFont({
   variable: "--font-condensed",
-  subsets: ["latin"],
   display: "swap",
+  src: [{ path: "./fonts/oswald.woff2", weight: "200 700", style: "normal" }],
 });
 // Asiatique — sans épurée
-const zenKaku = Zen_Kaku_Gothic_New({
+const zenKaku = localFont({
   variable: "--font-zen",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
   display: "swap",
+  src: [
+    { path: "./fonts/zen-kaku-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/zen-kaku-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/zen-kaku-700.woff2", weight: "700", style: "normal" },
+  ],
 });
 
 const TITLE =
-  "Be in Digital — La plateforme digitale des restaurateurs indépendants";
+  "BeYours — La plateforme digitale des restaurateurs indépendants";
 const DESCRIPTION = SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: TITLE,
-    template: "%s · Be in Digital",
+    template: "%s · BeYours",
   },
   description: DESCRIPTION,
   applicationName: SITE_NAME,
@@ -84,7 +96,7 @@ export const metadata: Metadata = {
     "POS restaurant",
     "digitaliser restaurant",
     "logiciel caisse restaurant",
-    "Be in Digital",
+    "BeYours",
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,

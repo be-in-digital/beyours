@@ -14,7 +14,7 @@ const milestones = [
     year: "L'idée",
     title: "Et si on changeait la donne ?",
     description:
-      "Be in Digital est né d'une conviction simple : chaque restaurant mérite une vitrine digitale premium et des outils pensés pour son métier. Pas un template générique. Une vraie plateforme, construite autour des réalités du terrain.",
+      "BeYours est né d'une conviction simple : chaque restaurant mérite une vitrine digitale premium et des outils pensés pour son métier. Pas un template générique. Une vraie plateforme, construite autour des réalités du terrain.",
   },
   {
     year: "Aujourd'hui",

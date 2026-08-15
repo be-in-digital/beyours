@@ -11,7 +11,7 @@ import {
   type BuiltEmail,
 } from "../convex/email/templates";
 
-const LOGO = "https://restaurant.beindigital.fr/logo.png";
+const LOGO = "https://beyours.fr/logo.png";
 
 /** Every branded email must carry subject, an HTML doc, and a text fallback. */
 function expectWellFormed(email: BuiltEmail) {
@@ -20,7 +20,7 @@ function expectWellFormed(email: BuiltEmail) {
   expect(email.html).toContain("<!DOCTYPE html>");
   expect(email.html).toContain(LOGO); // logo present
   expect(email.html).toContain("#c5542c"); // terracotta accent (brand)
-  expect(email.html).toContain("Be in Digital"); // footer signature
+  expect(email.html).toContain("BeYours"); // footer signature
 }
 
 describe("euros", () => {
@@ -129,7 +129,7 @@ describe("affiliate emails", () => {
       affiliateWelcomeEmail({
         firstName: "Théo",
         logoUrl: LOGO,
-        dashboardUrl: "https://restaurant.beindigital.fr/parrainage/dashboard",
+        dashboardUrl: "https://beyours.fr/parrainage/dashboard",
       }),
     );
   });
