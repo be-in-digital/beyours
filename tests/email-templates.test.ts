@@ -11,7 +11,7 @@ import {
   type BuiltEmail,
 } from "../convex/email/templates";
 
-const LOGO = "https://restaurant.beindigital.fr/logo.png";
+const LOGO = "https://beyours.fr/logo.png";
 
 /** Every branded email must carry subject, an HTML doc, and a text fallback. */
 function expectWellFormed(email: BuiltEmail) {
@@ -129,7 +129,7 @@ describe("affiliate emails", () => {
       affiliateWelcomeEmail({
         firstName: "Théo",
         logoUrl: LOGO,
-        dashboardUrl: "https://restaurant.beindigital.fr/parrainage/dashboard",
+        dashboardUrl: "https://beyours.fr/parrainage/dashboard",
       }),
     );
   });

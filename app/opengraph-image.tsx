@@ -86,7 +86,7 @@ export default function OpengraphImage() {
             color: "#6f6456",
           }}
         >
-          <div>restaurant.beindigital.fr</div>
+          <div>beyours.fr</div>
           <div style={{ color: "#c5542c", fontWeight: 600 }}>
             0 % de commission
           </div>

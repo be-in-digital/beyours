@@ -44,7 +44,7 @@ export default function PartagePage() {
   const siteUrl =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://restaurant.beindigital.fr";
+      : "https://beyours.fr";
   const code = referralCode?.code ?? "";
   const referralLink = code ? `${siteUrl}/checkout?ref=${code}` : "";
 
