@@ -6,7 +6,7 @@ import * as THREE from "three";
 import {
   detectCapabilities,
   useSceneVisibility,
-} from "@beindigital/webgl-utils";
+} from "@/lib/webgl";
 
 /**
  * HeroScene — voile de braises au-dessus du hero cinématique.

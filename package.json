@@ -1,7 +1,11 @@
 {
-  "name": "@beindigital/restaurant",
+  "name": "beyours",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.4.1",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:backend": "convex dev",
@@ -18,8 +22,6 @@
     "@auth/core": "^0.37.4",
     "@aws-sdk/client-sesv2": "^3.1024.0",
     "@base-ui/react": "^1.3.0",
-    "@beindigital/tokens": "workspace:*",
-    "@beindigital/webgl-utils": "workspace:*",
     "@convex-dev/auth": "^0.0.91",
     "@number-flow/react": "^0.6.0",
     "@react-three/drei": "^10.7.7",
@@ -44,7 +46,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@beindigital/config": "workspace:*",
     "@edge-runtime/vm": "^5.0.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
@@ -59,5 +60,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "eslint-plugin-react-hooks": "7.0.1"
+    }
   }
 }
