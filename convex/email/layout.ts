@@ -1,5 +1,5 @@
 /**
- * Branded email layout — Be in Digital Restauration.
+ * Branded email layout — BeYours Restauration.
  *
  * Pure string builders, zero Convex/runtime dependency (importable from the
  * "use node" sending action and from tests). Everything is table-based with
@@ -12,7 +12,7 @@
  */
 
 export const BRAND = {
-  name: "Be in Digital",
+  name: "BeYours",
   tagline: "Restauration",
   paper: "#faf5ee",
   surface: "#fffdf9",

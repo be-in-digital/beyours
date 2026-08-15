@@ -15,10 +15,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const result = findTemplateBySlug(slug);
-  if (!result) return { title: "Template introuvable — Be in Digital" };
+  if (!result) return { title: "Template introuvable — BeYours" };
 
   return {
-    title: `${result.template.name} — Template ${result.category.label} — Be in Digital`,
+    title: `${result.template.name} — Template ${result.category.label} — BeYours`,
     description: result.template.tagline,
   };
 }

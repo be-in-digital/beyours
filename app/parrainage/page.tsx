@@ -19,7 +19,7 @@ export default function ParrainagePage() {
             par client converti
           </h1>
           <p className="text-lg text-foreground/75 max-w-2xl mx-auto mb-8 text-pretty">
-            Recommandez Be in Digital aux restaurateurs de votre réseau.
+            Recommandez BeYours aux restaurateurs de votre réseau.
             Dès qu&apos;un filleul finalise son achat et que la commande est validée,
             vous touchez votre commission. Simple, transparent, automatique.
           </p>

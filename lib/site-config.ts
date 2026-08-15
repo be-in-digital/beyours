@@ -12,7 +12,7 @@
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://beyours.fr";
 
-export const SITE_NAME = "Be in Digital";
+export const SITE_NAME = "BeYours";
 
 export const SITE_DESCRIPTION =
   "Site web premium, commande en ligne directe, KDS en cuisine, fidélité : la plateforme tout-en-un pensée pour les restaurants. 0 % de commission sur vos ventes directes. Reprenez la main sur votre marge.";

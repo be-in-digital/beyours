@@ -90,8 +90,8 @@ const faqItems = [
     a: "Comptez en moyenne 4 à 6 semaines entre le premier échange et la mise en ligne, incluant le design, la mise en place du site, du menu, des intégrations de commande et la formation à la plateforme.",
   },
   {
-    q: "Be in Digital prélève-t-il une commission sur les commandes ?",
-    a: "Non. Les commandes reçues directement depuis votre site Be in Digital sont sans commission. Vous conservez l'intégralité de votre marge.",
+    q: "BeYours prélève-t-il une commission sur les commandes ?",
+    a: "Non. Les commandes reçues directement depuis votre site BeYours sont sans commission. Vous conservez l'intégralité de votre marge.",
   },
   {
     q: "Peut-on intégrer Uber Eats et Deliveroo à la plateforme ?",

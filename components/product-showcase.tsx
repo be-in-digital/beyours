@@ -298,7 +298,7 @@ function CenterHub({ activeModule }: { activeModule: string | null }) {
           <div className="flex-1 mx-2">
             <div className="h-4 max-w-[140px] mx-auto rounded bg-white/[0.04] flex items-center justify-center">
               <span className="text-[8px] text-muted-foreground/40 font-mono">
-                Be in Digital OS
+                BeYours OS
               </span>
             </div>
           </div>

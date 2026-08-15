@@ -13,12 +13,12 @@ import { FoundersBanner } from "@/components/decouvrir/founders-banner";
 import { SITE_URL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Découvrir en jouant — la démo interactive | Be in Digital",
+  title: "Découvrir en jouant — la démo interactive | BeYours",
   description:
-    "Tournez la roue, grattez la carte, parcourez le site de commande. La démo interactive du produit restaurant Be in Digital : jeu de fidélité, KDS, multi-langues, 0 % de commission. Et ce que la concurrence vous coûte vraiment.",
+    "Tournez la roue, grattez la carte, parcourez le site de commande. La démo interactive du produit restaurant BeYours : jeu de fidélité, KDS, multi-langues, 0 % de commission. Et ce que la concurrence vous coûte vraiment.",
   alternates: { canonical: `${SITE_URL}/decouvrir` },
   openGraph: {
-    title: "Découvrir Be in Digital en jouant — démo interactive",
+    title: "Découvrir BeYours en jouant — démo interactive",
     description:
       "Le seul aperçu où vous pouvez vraiment cliquer : jeu de fidélité jouable, KDS, multi-langues, comparatif chiffré face aux plateformes.",
     url: `${SITE_URL}/decouvrir`,
@@ -114,7 +114,7 @@ export default function DecouvrirPage() {
             title="Vous louez votre visibilité, ou vous la possédez"
           >
             Plateformes, logiciels en abonnement, agences : chacun a un prix
-            caché. Voici où se place Be in Digital, sans détour.
+            caché. Voici où se place BeYours, sans détour.
           </SectionIntro>
           <CompetitorComparison />
         </div>

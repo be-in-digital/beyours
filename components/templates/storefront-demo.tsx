@@ -475,7 +475,7 @@ export function StorefrontDemo({
             <span className="font-semibold" style={{ fontFamily: heading }}>{theme.name}</span>
           </div>
           <p className="text-xs text-muted-foreground">{theme.address} · {theme.hours}</p>
-          <p className="text-xs text-muted-foreground">Propulsé par Be in Digital · 0 % commission</p>
+          <p className="text-xs text-muted-foreground">Propulsé par BeYours · 0 % commission</p>
         </div>
       </footer>
 

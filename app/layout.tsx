@@ -61,14 +61,14 @@ const zenKaku = Zen_Kaku_Gothic_New({
 });
 
 const TITLE =
-  "Be in Digital — La plateforme digitale des restaurateurs indépendants";
+  "BeYours — La plateforme digitale des restaurateurs indépendants";
 const DESCRIPTION = SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: TITLE,
-    template: "%s · Be in Digital",
+    template: "%s · BeYours",
   },
   description: DESCRIPTION,
   applicationName: SITE_NAME,
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
     "POS restaurant",
     "digitaliser restaurant",
     "logiciel caisse restaurant",
-    "Be in Digital",
+    "BeYours",
   ],
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,

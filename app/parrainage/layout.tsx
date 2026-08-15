@@ -3,9 +3,9 @@ import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 
 export const metadata: Metadata = {
-  title: "Programme Apporteur d'Affaires — Be in Digital",
+  title: "Programme Apporteur d'Affaires — BeYours",
   description:
-    "Devenez apporteur d'affaires Be in Digital et gagnez 500 € pour chaque client parrainé.",
+    "Devenez apporteur d'affaires BeYours et gagnez 500 € pour chaque client parrainé.",
 };
 
 export default function ParrainageLayout({
@@ -36,7 +36,7 @@ export default function ParrainageLayout({
       {/* Simple footer */}
       <footer className="border-t border-border/50 px-4 sm:px-6 py-6">
         <div className="max-w-5xl mx-auto text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Be in Digital. Tous droits réservés.
+          &copy; {new Date().getFullYear()} BeYours. Tous droits réservés.
         </div>
       </footer>
     </div>

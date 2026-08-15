@@ -8,12 +8,12 @@ import { FeaturesNav } from "@/components/features/features-nav";
 import { EcosystemRecap } from "@/components/features/ecosystem-recap";
 
 export const metadata: Metadata = {
-  title: "Fonctionnalités — Be in Digital",
+  title: "Fonctionnalités — BeYours",
   description:
-    "Découvrez les 10 fonctionnalités de la plateforme Be in Digital : site web premium, commande en ligne, fidélisation, analytics et plus encore.",
+    "Découvrez les 10 fonctionnalités de la plateforme BeYours : site web premium, commande en ligne, fidélisation, analytics et plus encore.",
   alternates: { canonical: "/fonctionnalites" },
   openGraph: {
-    title: "Fonctionnalités — Be in Digital",
+    title: "Fonctionnalités — BeYours",
     description:
       "10 fonctionnalités pensées pour les restaurants : site, commande en ligne sans commission, fidélité, analytics, KDS et plus encore.",
     url: "/fonctionnalites",

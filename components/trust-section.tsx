@@ -100,7 +100,7 @@ export function TrustSection() {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
         {/* ── Header ── */}
         <FadeIn>
-          <SectionBadge text="Pourquoi Be in Digital" />
+          <SectionBadge text="Pourquoi BeYours" />
           <div className="text-center max-w-3xl mx-auto mt-6 mb-16 lg:mb-20">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.9rem] font-semibold tracking-[-0.02em] leading-[1.1]">
               Pensé pour la restauration.{" "}

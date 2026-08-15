@@ -20,7 +20,7 @@ function expectWellFormed(email: BuiltEmail) {
   expect(email.html).toContain("<!DOCTYPE html>");
   expect(email.html).toContain(LOGO); // logo present
   expect(email.html).toContain("#c5542c"); // terracotta accent (brand)
-  expect(email.html).toContain("Be in Digital"); // footer signature
+  expect(email.html).toContain("BeYours"); // footer signature
 }
 
 describe("euros", () => {

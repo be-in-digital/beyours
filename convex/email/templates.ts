@@ -212,7 +212,7 @@ export function contactConfirmationEmail(data: ContactConfirmationData): BuiltEm
   const contentHtml = [
     heading(`Message bien reçu, ${escapeHtml(data.firstName)}`),
     paragraph(
-      "Merci de votre intérêt pour Be in Digital. Un membre de l'équipe revient vers vous très vite, en général sous 24h ouvrées.",
+      "Merci de votre intérêt pour BeYours. Un membre de l'équipe revient vers vous très vite, en général sous 24h ouvrées.",
     ),
     paragraph("En attendant, découvrez ce que vos clients vivraient sur votre futur site :"),
     data.discoverUrl ? button("Voir la démo interactive", data.discoverUrl) : "",
@@ -267,7 +267,7 @@ export function contactTeamNotificationEmail(data: ContactTeamData): BuiltEmail 
       preheader: `Nouveau lead : ${data.name}`,
       logoUrl: data.logoUrl,
       contentHtml,
-      footerLines: ["Notification interne Be in Digital"],
+      footerLines: ["Notification interne BeYours"],
     }),
     text: textDoc([
       "Nouveau message de contact",
@@ -295,7 +295,7 @@ export function affiliateWelcomeEmail(data: AffiliateWelcomeData): BuiltEmail {
   const contentHtml = [
     heading(`Bienvenue dans le programme, ${escapeHtml(data.firstName)}`),
     paragraph(
-      "Votre compte apporteur d'affaires est créé. Recommandez Be in Digital aux restaurateurs autour de vous et touchez une commission sur chaque client apporté.",
+      "Votre compte apporteur d'affaires est créé. Recommandez BeYours aux restaurateurs autour de vous et touchez une commission sur chaque client apporté.",
     ),
     infoBox(
       "Prochaine étape : signez votre contrat d'apporteur (vous recevez un email dédié) et configurez vos coordonnées de virement depuis votre tableau de bord.",
@@ -304,7 +304,7 @@ export function affiliateWelcomeEmail(data: AffiliateWelcomeData): BuiltEmail {
   ].join("")
 
   return {
-    subject: "Bienvenue dans le programme de parrainage Be in Digital",
+    subject: "Bienvenue dans le programme de parrainage BeYours",
     html: emailShell({
       preheader: "Votre compte apporteur d'affaires est créé.",
       logoUrl: data.logoUrl,
