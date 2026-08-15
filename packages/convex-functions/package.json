@@ -6,7 +6,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beindigital.git",
+    "url": "https://github.com/be-in-digital/beyours-engine.git",
     "directory": "packages/convex-functions"
   },
   "files": [
