@@ -195,7 +195,7 @@ function MyComponent() {
   const cms = useCmsPage("storefront-layout");
   const logoUrl = cms.block("branding").field("logo").mediaUrl;
   const faviconUrl = cms.block("branding").field("favicon").mediaUrl;
-  const brandName = cms.block("branding").field("brandName").text ?? "BeInDigital";
+  const brandName = cms.block("branding").field("brandName").text ?? "BeYours";
 
   return logoUrl
     ? <img src={logoUrl} alt={brandName} className="h-8 w-auto" />

@@ -96,7 +96,7 @@ export function createAuthConfig(options: {
     // plugins: [
     //   twoFactorPlugin({
     //     methods: ['totp', 'email'],
-    //     totpIssuer: 'BeInDigital',
+    //     totpIssuer: 'BeYours',
     //   }),
     // ],
     plugins: [],
@@ -201,7 +201,7 @@ export const emailTemplates = {
    * Email de vérification
    */
   verifyEmail: {
-    subject: 'Vérifiez votre email - BeInDigital',
+    subject: 'Vérifiez votre email - BeYours',
     templateName: 'verify-email',
   },
 
@@ -209,7 +209,7 @@ export const emailTemplates = {
    * Email de réinitialisation de mot de passe
    */
   resetPassword: {
-    subject: 'Réinitialisation de mot de passe - BeInDigital',
+    subject: 'Réinitialisation de mot de passe - BeYours',
     templateName: 'reset-password',
   },
 
@@ -217,7 +217,7 @@ export const emailTemplates = {
    * Email de code 2FA
    */
   twoFactorCode: {
-    subject: 'Code de vérification - BeInDigital',
+    subject: 'Code de vérification - BeYours',
     templateName: 'two-factor-code',
   },
 
@@ -225,7 +225,7 @@ export const emailTemplates = {
    * Email de bienvenue
    */
   welcome: {
-    subject: 'Bienvenue sur BeInDigital!',
+    subject: 'Bienvenue sur BeYours!',
     templateName: 'welcome',
   },
 
@@ -233,7 +233,7 @@ export const emailTemplates = {
    * Email de magic link
    */
   magicLink: {
-    subject: 'Votre lien de connexion - BeInDigital',
+    subject: 'Votre lien de connexion - BeYours',
     templateName: 'magic-link',
   },
 };

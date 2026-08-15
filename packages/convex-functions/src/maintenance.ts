@@ -59,7 +59,7 @@ export const OPEN_MIGRATION_STATUSES = [
   "in_progress",
 ] as const
 
-/** Allowed status transitions (fulfilment by BeInDigital, cancel by client) */
+/** Allowed status transitions (fulfilment by BeYours, cancel by client) */
 export const MIGRATION_STATUS_TRANSITIONS: Record<
   MigrationRequestStatus,
   readonly MigrationRequestStatus[]
@@ -386,7 +386,7 @@ export const listMigrationRequests = {
 // Mutations
 // ============================================================================
 
-/** Upsert the singleton maintenance contract (BeInDigital side) */
+/** Upsert the singleton maintenance contract (BeYours side) */
 export const upsertContract = {
   args: {
     startedAt: v.number(),

@@ -6,7 +6,7 @@
  * - The client (CLIENT_ADMIN) sees the state of their maintenance
  *   contract, which updates they are entitled to, and can request the
  *   migration of their whole site to the host/team of their choice.
- * - The BeInDigital team (SUPER_ADMIN or internal mutations) manages the
+ * - The BeYours team (SUPER_ADMIN or internal mutations) manages the
  *   contract and drives migration request fulfilment.
  */
 
@@ -54,7 +54,7 @@ async function requireAccountOwner(ctx: QueryCtx | MutationCtx) {
 async function requireSuperAdmin(ctx: QueryCtx | MutationCtx) {
   const user = await getAuthUser(ctx)
   if (user.role !== Role.SUPER_ADMIN) {
-    throw new Error("Action reservee a l'equipe BeInDigital (super_admin)")
+    throw new Error("Action reservee a l'equipe BeYours (super_admin)")
   }
   return user
 }
@@ -154,7 +154,7 @@ export const requestMigration = mutation({
       }),
     })
 
-    // Notify BeInDigital + confirm to the client (best effort, async)
+    // Notify BeYours + confirm to the client (best effort, async)
     await ctx.scheduler.runAfter(
       0,
       internal.maintenanceEmail.notifyMigrationRequest,
@@ -204,7 +204,7 @@ export const cancelMigrationRequest = mutation({
   },
 })
 
-// ─── Mutations (BeInDigital side) ───────────────────────────────────────────────
+// ─── Mutations (BeYours side) ───────────────────────────────────────────────
 
 /** Move a migration request through its fulfilment workflow */
 export const updateMigrationRequestStatus = mutation({
@@ -235,7 +235,7 @@ export const updateMigrationRequestStatus = mutation({
   },
 })
 
-/** Set / renew the maintenance contract (BeInDigital team) */
+/** Set / renew the maintenance contract (BeYours team) */
 export const setContract = mutation({
   args: {
     startedAt: v.number(),
@@ -358,7 +358,7 @@ export const _applyStripeRenewal = internalMutation({
 })
 
 /**
- * Provision the contract without auth — run by the BeInDigital team from
+ * Provision the contract without auth — run by the BeYours team from
  * the Convex dashboard/CLI (e.g. at go-live: startedAt = now,
  * coveredUntil = now + 1 year).
  */

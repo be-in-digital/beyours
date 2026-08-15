@@ -94,7 +94,7 @@ export function RenewalCta() {
               "Renouvellement du contrat de maintenance"
             )}`}
           >
-            Contacter BeInDigital
+            Contacter BeYours
           </a>
         </Button>
       )}
@@ -187,7 +187,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
         ) : (
           <p className="text-sm text-muted-foreground">
             Aucun contrat de maintenance n'est enregistre pour ce site.
-            Contactez BeInDigital pour activer votre couverture.
+            Contactez BeYours pour activer votre couverture.
           </p>
         )}
 
@@ -295,7 +295,7 @@ function MigrationRequestForm({
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       })
       toast.success(
-        "Demande de migration envoyee. L'equipe BeInDigital vous recontactera."
+        "Demande de migration envoyee. L'equipe BeYours vous recontactera."
       )
       onSubmitted()
     } catch (err) {
@@ -564,7 +564,7 @@ function MigrationCard({ overview }: { overview: MaintenanceOverview }) {
         <CardDescription>
           Votre site vous appartient : vous pouvez a tout moment demander sa
           migration complete vers le serveur et l'equipe de votre choix.
-          L'equipe BeInDigital prepare alors le transfert (code, donnees,
+          L'equipe BeYours prepare alors le transfert (code, donnees,
           medias) avec votre repreneur.
         </CardDescription>
       </CardHeader>
@@ -590,7 +590,7 @@ function MigrationCard({ overview }: { overview: MaintenanceOverview }) {
                   <DialogTitle>Demande de migration</DialogTitle>
                   <DialogDescription>
                     Indiquez ou et vers qui migrer votre site. L'equipe
-                    BeInDigital vous recontactera pour organiser le transfert.
+                    BeYours vous recontactera pour organiser le transfert.
                   </DialogDescription>
                 </DialogHeader>
                 <MigrationRequestForm onSubmitted={() => setFormOpen(false)} />

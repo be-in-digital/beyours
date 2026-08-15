@@ -1,4 +1,4 @@
-# Sidebar Navigation Design - BeInDigital Engine
+# Sidebar Navigation Design - BeYours Engine
 
 > Brainstorming session: 2026-02-16
 > Status: Validated, ready for implementation
@@ -84,7 +84,7 @@ Organisation
 | 3 | Mixed sub-menu approach — Gamification & Email Marketing get collapsible sub-menus, others use internal tabs | All sub-menus in sidebar; All internal tabs | Large modules (6+ sub-pages) deserve direct nav visibility |
 | 4 | Only Gamification + Email Marketing as collapsible — these two have 6 sub-pages each | Gamification only; Add Content too | Content has only 4 simple items, doesn't justify collapsible complexity |
 | 5 | CMS essential V1 — Content section (Pages, Components, Blog, Media) is in V1 scope | V2 Coming Soon; Premium optional module | Restaurateurs must be able to modify their content from launch |
-| 6 | Billing = restaurant → customers | BeInDigital → client billing; Combined | Restaurateur manages customer receipts, not platform subscription |
+| 6 | Billing = restaurant → customers | BeYours → client billing; Combined | Restaurateur manages customer receipts, not platform subscription |
 | 7 | Design, Languages, Payments under Settings — become tabs in Settings page | Design under Content; Separate Configuration group | Simplifies navigation, these are rarely-modified settings |
 | 8 | Icon collapse essential — collapsed mode with popovers for sub-menus | Simplified collapse (groups only); Always expanded | Important for laptop screens and workspace optimization |
 | 9 | Approach A: Classic grouped sidebar — 5 SidebarGroups with labels, items, and integrated sub-menus | Two-level rail + panel; Flat list with separators | Standard shadcn/ui pattern, well-documented, accessible, familiar |

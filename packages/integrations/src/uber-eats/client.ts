@@ -84,7 +84,7 @@ export async function getAccessToken(
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: "client_credentials",
-        // Scopes granted to the BeInDigital test client by Uber (verified against sandbox 2026-06-01).
+        // Scopes granted to the BeYours test client by Uber (verified against sandbox 2026-06-01).
         // NOT yet granted by Uber (the token request 400s if requested):
         //   - eats.pos_provisioning (needed for POST /v1/eats/stores/{id}/pos_data — Activate Integration)
         //   - any menu/promotions write scope

@@ -72,7 +72,7 @@ import {
 } from "./tables"
 
 /**
- * BeInDigital Engine - Convex Database Schema
+ * BeYours Engine - Convex Database Schema
  *
  * Auth tables (user, session, account, verification, jwks) are managed
  * by the Better Auth component and are NOT defined here.

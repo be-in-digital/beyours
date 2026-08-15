@@ -1,6 +1,6 @@
 # Module Auth - @be-in-digital/core
 
-Ce module fournit une solution complète d'authentification avec **Better Auth** et un système **RBAC (Role-Based Access Control)** pour BeInDigital Engine.
+Ce module fournit une solution complète d'authentification avec **Better Auth** et un système **RBAC (Role-Based Access Control)** pour BeYours Engine.
 
 ## 📦 Installation des dépendances
 
@@ -64,7 +64,7 @@ export const auth = betterAuth({
   plugins: [
     twoFactorPlugin({
       methods: ['totp', 'email'],
-      totpIssuer: 'BeInDigital',
+      totpIssuer: 'BeYours',
     }),
   ],
 })

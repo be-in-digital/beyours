@@ -1,6 +1,6 @@
 # Delivery Integrations Guide (Uber Eats & Deliveroo)
 
-> How BeInDigital connects restaurants to Uber Eats and Deliveroo: setup,
+> How BeYours connects restaurants to Uber Eats and Deliveroo: setup,
 > environment variables, sandbox vs production, webhooks, the Uber Eats OAuth
 > provisioning flow, menu sync, order import, secret rotation and a production
 > checklist.
@@ -35,7 +35,7 @@ Delivery integrations are split across the monorepo so the base stays reusable:
 | Reusable handlers | `packages/convex-functions/src/orders.ts` | `createFromWebhook` (idempotent), `updateFromWebhook`. |
 | App wiring | `apps/restaurant-theme/convex/{http,uberEats*,deliveroo*}.ts` | HTTP webhook routes, OAuth callback, auto-accept logic, kitchen tickets. |
 
-**Credentials are platform-level, not per-restaurant.** BeInDigital is the partner
+**Credentials are platform-level, not per-restaurant.** BeYours is the partner
 app registered with Uber and Deliveroo, so `*_CLIENT_ID` / `*_CLIENT_SECRET` /
 `*_WEBHOOK_SECRET` are **the same for every deployment** and live in the platform
 secret store. A restaurant supplies only:
@@ -59,7 +59,7 @@ real values — never commit `.env.local`:
 cp apps/restaurant-theme/.env.example apps/restaurant-theme/.env.local
 ```
 
-### Platform-level (BeInDigital partner apps — `packageEnvSchema`)
+### Platform-level (BeYours partner apps — `packageEnvSchema`)
 
 | Variable | Required | Notes |
 |----------|----------|-------|

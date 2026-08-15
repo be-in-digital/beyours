@@ -1,6 +1,6 @@
 # @be-in-digital/convex-schema
 
-Shared Convex database schema definitions for BeInDigital Engine.
+Shared Convex database schema definitions for BeYours Engine.
 
 ## Structure
 
@@ -298,4 +298,4 @@ Current version: **0.2.0**
 
 ## License
 
-Private package - BeInDigital Team
+Private package - BeYours Team

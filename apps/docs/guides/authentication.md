@@ -13,7 +13,7 @@
 
 ## Overview
 
-BeInDigital uses **Better Auth** for authentication with Convex as the database adapter. This provides:
+BeYours uses **Better Auth** for authentication with Convex as the database adapter. This provides:
 
 - Email/password authentication
 - Social login (Google, Facebook)

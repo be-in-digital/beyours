@@ -13,7 +13,7 @@ describe('SES Service', () => {
     accessKeyId: 'test-key',
     secretAccessKey: 'test-secret',
     fromEmail: 'noreply@example.com',
-    fromName: 'BeInDigital',
+    fromName: 'BeYours',
     replyToEmail: 'support@example.com',
   }
 
@@ -41,7 +41,7 @@ describe('SES Service', () => {
 
       expect(result).toEqual({ messageId: 'test-message-id' })
       expect(mockClient.sendEmail).toHaveBeenCalledWith({
-        from: 'BeInDigital <noreply@example.com>',
+        from: 'BeYours <noreply@example.com>',
         to: 'user@example.com',
         subject: 'Test Email',
         html: '<p>Hello World</p>',

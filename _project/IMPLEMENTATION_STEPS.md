@@ -1,4 +1,4 @@
-# BeInDigital Engine - Plan d'Implementation Step-by-Step
+# BeYours Engine - Plan d'Implementation Step-by-Step
 
 ## Phases couvertes : Phase 1 (MVP) + Phase 2 (Integrations)
 
@@ -31,7 +31,7 @@ Phase 2 - Integrations
 ├── Etape 16 : Email Marketing (Basique)
 ├── Etape 17 : CMS (Pages Statiques)
 ├── Etape 18 : Gestion Clients
-└── Etape 19 : App Admin Dashboard BeInDigital
+└── Etape 19 : App Admin Dashboard BeYours
 ```
 
 ---
@@ -75,7 +75,7 @@ packages/
 
 apps/
 ├── restaurant-theme/      # App principale (Next.js 16)
-├── admin-dashboard/       # Dashboard BeInDigital
+├── admin-dashboard/       # Dashboard BeYours
 └── docs/                  # Documentation
 ```
 
@@ -1066,16 +1066,16 @@ Pages auth :
 
 ---
 
-### Etape 19 : App Admin Dashboard BeInDigital
+### Etape 19 : App Admin Dashboard BeYours
 
 **Prerequis** : Toutes les etapes precedentes
-**Livrable** : Dashboard interne BeInDigital pour gerer les clients
+**Livrable** : Dashboard interne BeYours pour gerer les clients
 
 #### 19.1 - Setup app
 
 - [ ] `apps/admin-dashboard/` avec Next.js 16
 - [ ] Auth super_admin uniquement
-- [ ] Design fixe BeInDigital (pas de theme)
+- [ ] Design fixe BeYours (pas de theme)
 
 #### 19.2 - Gestion clients (restaurants)
 
@@ -1124,7 +1124,7 @@ Etape 1 (Fondation)
 ├── Etape 4 (UI Components)
 │   └── Etape 6 (Theme Fast Food)
 │       └── Etape 12 (5 Themes restants)
-└── Etape 19 (Admin BeInDigital) [Apres tout]
+└── Etape 19 (Admin BeYours) [Apres tout]
 ```
 
 ### Parallelisation possible
@@ -1177,4 +1177,4 @@ Certaines etapes peuvent etre developpees en parallele :
 
 **Version** : 1.0.0
 **Date** : 14 Fevrier 2026
-**Auteur** : BeInDigital Team
+**Auteur** : BeYours Team

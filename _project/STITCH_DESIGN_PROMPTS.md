@@ -1,4 +1,4 @@
-# BeInDigital Engine - Google Stitch Design Prompts
+# BeYours Engine - Google Stitch Design Prompts
 
 > Prompts optimized for [Google Stitch](https://stitch.withgoogle.com/) to generate UI designs for the full restaurant management platform.
 
@@ -14,7 +14,7 @@ Layout:
   - Main: Dashboard, Orders, Products (with Lucide icons)
   - Operations: Categories, Kitchen Display, Team
   - Configuration: Stores, Payments, Languages, Design, Games, Settings
-- Sidebar header: "BeInDigital" brand with crossed utensils icon and "Restaurant Admin" subtitle
+- Sidebar header: "BeYours" brand with crossed utensils icon and "Restaurant Admin" subtitle
 - Sidebar footer: Store selector dropdown showing current restaurant name
 - Top header bar: Hamburger toggle, breadcrumb trail, "Admin" badge right-aligned
 

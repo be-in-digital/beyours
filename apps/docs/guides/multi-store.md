@@ -4,7 +4,7 @@
 
 ## Overview
 
-BeInDigital supports a multi-store architecture where one restaurant owner can manage unlimited locations. Each store has independent:
+BeYours supports a multi-store architecture where one restaurant owner can manage unlimited locations. Each store has independent:
 
 - Products and menus
 - Opening hours

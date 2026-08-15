@@ -214,7 +214,7 @@ const config = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   fromEmail: 'noreply@example.com',
-  fromName: 'BeInDigital',
+  fromName: 'BeYours',
   replyToEmail: 'support@example.com',
 }
 
@@ -435,6 +435,6 @@ AWS_S3_PUBLIC_BASE_URL=https://cdn.example.com # optionnel
 
 # SES
 AWS_SES_FROM_EMAIL=noreply@example.com
-AWS_SES_FROM_NAME=BeInDigital
+AWS_SES_FROM_NAME=BeYours
 AWS_SES_REPLY_TO_EMAIL=support@example.com
 ```

@@ -1,10 +1,10 @@
 # Introduction
 
-**BeInDigital Engine** is a modular, production-ready platform for building restaurant e-commerce applications. It provides everything you need — from UI components and payment processing to kitchen display systems and gamification.
+**BeYours Engine** is a modular, production-ready platform for building restaurant e-commerce applications. It provides everything you need — from UI components and payment processing to kitchen display systems and gamification.
 
-## What is BeInDigital Engine?
+## What is BeYours Engine?
 
-BeInDigital Engine is a collection of 10+ TypeScript packages that work together to power a complete restaurant management platform:
+BeYours Engine is a collection of 10+ TypeScript packages that work together to power a complete restaurant management platform:
 
 - **Storefront** — Menu display, cart, checkout, order tracking
 - **Admin Dashboard** — Product management, orders, kitchen, analytics

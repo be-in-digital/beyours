@@ -21,7 +21,7 @@ import { v } from "convex/values"
 
 /**
  * One row per deployment (1 Convex instance = 1 client).
- * Managed by the BeInDigital team (internal mutation or SUPER_ADMIN);
+ * Managed by the BeYours team (internal mutation or SUPER_ADMIN);
  * read-only for the client.
  */
 export const maintenanceContractsTable = defineTable({
@@ -85,7 +85,7 @@ export const migrationScopeValidator = v.union(
 
 /**
  * Request to hand the site over to another host/team.
- * Created by the client (CLIENT_ADMIN); fulfilled by the BeInDigital team.
+ * Created by the client (CLIENT_ADMIN); fulfilled by the BeYours team.
  */
 export const migrationRequestsTable = defineTable({
   /** Better Auth userId of the requester */

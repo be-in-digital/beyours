@@ -5,25 +5,25 @@ const opt = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (v === '' ? undefined : v), schema.optional())
 
 /**
- * BeInDigital platform-level env vars.
+ * BeYours platform-level env vars.
  * Shared across all restaurant deployments.
- * Owned by BeInDigital's AWS/API accounts.
+ * Owned by BeYours's AWS/API accounts.
  */
 export const packageEnvSchema = z.object({
-  // AWS (BeInDigital account)
+  // AWS (BeYours account)
   AWS_REGION: z.string().min(1),
   AWS_ACCESS_KEY_ID: z.string().min(1),
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
 
-  // OpenAI (BeInDigital pays for translations)
+  // OpenAI (BeYours pays for translations)
   OPENAI_API_KEY: z.string().startsWith('sk-'),
 
-  // Uber Eats (BeInDigital app partner)
+  // Uber Eats (BeYours app partner)
   UBER_EATS_CLIENT_ID: opt(z.string().min(1)),
   UBER_EATS_CLIENT_SECRET: opt(z.string().min(1)),
   UBER_EATS_WEBHOOK_SECRET: opt(z.string().min(1)),
 
-  // Deliveroo (BeInDigital app partner)
+  // Deliveroo (BeYours app partner)
   DELIVEROO_CLIENT_ID: opt(z.string().min(1)),
   DELIVEROO_CLIENT_SECRET: opt(z.string().min(1)),
   DELIVEROO_WEBHOOK_SECRET: opt(z.string().min(1)),

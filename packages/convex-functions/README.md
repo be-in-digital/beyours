@@ -1,6 +1,6 @@
 # @be-in-digital/convex-functions
 
-Reusable Convex function definitions for BeInDigital Engine.
+Reusable Convex function definitions for BeYours Engine.
 
 ## Overview
 

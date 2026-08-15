@@ -17,7 +17,7 @@ import { v } from "convex/values"
 
 /**
  * Lightweight feature gating for owner accounts.
- * Source of truth: Stripe BeInDigital webhooks (Phase 1B).
+ * Source of truth: Stripe BeYours webhooks (Phase 1B).
  * For now: manually settable by admin.
  * Extensible: other premium features can be added alongside autoBlog.
  */
@@ -40,7 +40,7 @@ export const ownerEntitlementsTable = defineTable({
     enabled: v.boolean(),
     monthlyAnalysisQuota: v.number(), // 3, 15, 50
   })),
-  // Stripe BeInDigital subscription fields
+  // Stripe BeYours subscription fields
   stripeCustomerId: v.optional(v.string()),    // cus_xxx
   stripeSubscriptionId: v.optional(v.string()), // sub_xxx
   subscriptionStatus: v.optional(v.string()),   // active, trialing, past_due, canceled, unpaid, incomplete, incomplete_expired, paused

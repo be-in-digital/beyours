@@ -323,6 +323,6 @@ pnpm --filter @be-in-digital/core build
 
 ## Auteur
 
-Implémenté pour le projet BeInDigital Engine
+Implémenté pour le projet BeYours Engine
 Package: @be-in-digital/core
 Date: 2026-02-14

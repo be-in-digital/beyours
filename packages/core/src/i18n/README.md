@@ -1,4 +1,4 @@
-# i18n System - BeInDigital Engine
+# i18n System - BeYours Engine
 
 Système d'internationalisation complet avec support multi-langues illimité, détection automatique, et traduction GPT-3.5.
 

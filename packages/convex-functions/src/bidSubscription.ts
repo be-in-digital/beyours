@@ -1,5 +1,5 @@
 /**
- * BeInDigital Subscription Functions (Package Layer)
+ * BeYours Subscription Functions (Package Layer)
  *
  * Pure logic — no auth, no Stripe SDK.
  * Manages the mapping between Stripe subscriptions and ownerEntitlements.

@@ -32,7 +32,7 @@ Le schéma complet de la base de données Convex avec 17 tables:
 3. `account` - Comptes OAuth
 4. `verification` - Vérifications
 
-**BeInDigital Extensions (3 tables)**
+**BeYours Extensions (3 tables)**
 5. `userProfiles` - Profils étendus
 6. `stores` - Magasins
 7. `teamMembers` - Membres de l'équipe
@@ -412,7 +412,7 @@ Tous les index sont conçus pour:
 
 ## Licence
 
-Private - BeInDigital Team
+Private - BeYours Team
 
 ## Support
 
@@ -420,4 +420,4 @@ Pour toute question ou problème:
 1. Consulter `EXAMPLES.md`
 2. Lire les tests dans `__tests__/`
 3. Vérifier le `CHANGELOG.md`
-4. Contacter l'équipe BeInDigital
+4. Contacter l'équipe BeYours

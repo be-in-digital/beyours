@@ -39,7 +39,7 @@ import {
 } from './validators'
 
 /**
- * BeInDigital Engine - TypeScript Types
+ * BeYours Engine - TypeScript Types
  *
  * Inferred types from Zod schemas for type-safe development
  */

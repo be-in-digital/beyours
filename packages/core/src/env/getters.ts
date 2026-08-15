@@ -6,7 +6,7 @@ let _packageEnv: PackageEnv | null = null
 let _siteEnv: SiteEnv | null = null
 
 /**
- * Get validated BeInDigital platform env vars.
+ * Get validated BeYours platform env vars.
  * Parses on first call, then returns cached result.
  * @throws {ZodError} if required vars are missing or invalid
  */
@@ -90,7 +90,7 @@ export function formatEnvReport(
   const siteVars = missing.filter((m) => m.tier === 'site')
 
   if (packageVars.length > 0) {
-    lines.push('  ── Package-level (BeInDigital Platform) ──')
+    lines.push('  ── Package-level (BeYours Platform) ──')
     for (const v of packageVars) {
       lines.push(`    ✗ ${v.name}: ${v.message}`)
     }

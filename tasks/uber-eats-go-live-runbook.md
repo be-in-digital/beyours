@@ -6,7 +6,7 @@ confirms production access.
 
 - **Test Client ID:** `BN3BbPRSpD7-TNs5DqC6fyq20n3rVLCF` (sandbox)
 - **Production Client ID:** `RhJUZXI31BKM6QKxNJFee1AueQPgtwnn`
-- **Production app (Uber portal):** "Be in Digital POS"
+- **Production app (Uber portal):** "BeYours POS"
 
 ---
 
@@ -57,7 +57,7 @@ prod → `api.uber.com`; auth `sandbox-login` → `login`/`auth.uber.com`).
 
 ## 2. Register the OAuth redirect URI on the PROD app
 
-In the Uber developer portal → app "Be in Digital POS" → Redirect URIs, add the
+In the Uber developer portal → app "BeYours POS" → Redirect URIs, add the
 production callback (same path, prod Convex site URL):
 
 ```

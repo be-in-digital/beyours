@@ -1,6 +1,6 @@
 # @be-in-digital Documentation
 
-Welcome to the official documentation for the **BeInDigital Engine** — a premium Next.js e-commerce platform for restaurants.
+Welcome to the official documentation for the **BeYours Engine** — a premium Next.js e-commerce platform for restaurants.
 
 ## Quick Links
 
@@ -71,4 +71,4 @@ Welcome to the official documentation for the **BeInDigital Engine** — a premi
 
 ## License
 
-Private — All rights reserved. BeInDigital Team.
+Private — All rights reserved. BeYours Team.

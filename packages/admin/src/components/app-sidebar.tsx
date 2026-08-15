@@ -48,7 +48,7 @@ function canSeeEntry(role: Role, entry: NavEntry): boolean {
   return hasPermission(role, permission as Permission)
 }
 
-export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeInDigital" }: AppSidebarProps) {
+export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"

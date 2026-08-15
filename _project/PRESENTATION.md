@@ -1,8 +1,8 @@
-# Be In Digital Engine - Architecture Documentation
+# BeYours Engine - Architecture Documentation
 
 ## 📋 Overview
 
-**BeInDigital Engine** is a premium Next.js e-commerce platform for restaurants with Convex backend. The system offers specialized themes by restaurant type (fast-food, pizzeria, Chinese, etc.) that restaurant owners can purchase and customize. Each installation allows managing multiple stores from a single centralized dashboard.
+**BeYours Engine** is a premium Next.js e-commerce platform for restaurants with Convex backend. The system offers specialized themes by restaurant type (fast-food, pizzeria, Chinese, etc.) that restaurant owners can purchase and customize. Each installation allows managing multiple stores from a single centralized dashboard.
 
 ### Business Model
 
@@ -13,13 +13,13 @@
 - **Customization**:
     - **Simple**: Colors, fonts, logo (most clients)
     - **Advanced**: Complete storefront modification (clients with specific needs)
-    - **Dashboard**: Fixed BeInDigital design (identical for all clients)
+    - **Dashboard**: Fixed BeYours design (identical for all clients)
 
 ### Layered Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│              BeInDigital Engine (Core)                   │
+│              BeYours Engine (Core)                   │
 ├─────────────────────────────────────────────────────────┤
 │ • Admin Dashboard (fixed design)                        │
 │ • Common Packages (ui, restaurant, integrations)        │
@@ -65,7 +65,7 @@ On the website:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│         BeInDigital Engine Master (Your private repo)        │
+│         BeYours Engine Master (Your private repo)        │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │ packages/                                             │  │
 │  │  ├── ui/                  (React Components)          │  │
@@ -168,7 +168,7 @@ Client (Restaurant) purchases the theme
 
 ### 🎨 Theme System
 
-BeInDigital Engine offers predefined themes optimized by restaurant type. Each theme is designed to maximize conversions based on cuisine type.
+BeYours Engine offers predefined themes optimized by restaurant type. Each theme is designed to maximize conversions based on cuisine type.
 
 #### Available Themes
 
@@ -542,7 +542,7 @@ At checkout, the end customer only sees methods enabled by the restaurant owner:
 
 #### Better Auth + Convex
 
-BeInDigital Engine uses [Better Auth](https://www.better-auth.com/) integrated with Convex for modern and secure authentication.
+BeYours Engine uses [Better Auth](https://www.better-auth.com/) integrated with Convex for modern and secure authentication.
 
 **Better Auth Advantages**:
 - Framework-agnostic
@@ -586,7 +586,7 @@ export const auth = betterAuth({
   },
   plugins: [
     twoFactor({
-      issuer: "BeInDigital Engine",
+      issuer: "BeYours Engine",
     }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
@@ -752,7 +752,7 @@ export default defineSchema({
     expiresAt: v.number(),
   }).index("by_identifier", ["identifier"]),
   
-  // Custom BeInDigital tables
+  // Custom BeYours tables
   users: defineTable({
     // Extension of Better Auth user
     userId: v.id("user"),
@@ -1000,4 +1000,4 @@ export default function OrdersPage() {
 
 **Version**: 1.1.0  
 **Last Updated**: February 2026  
-**Maintained by**: BeInDigital Team
+**Maintained by**: BeYours Team

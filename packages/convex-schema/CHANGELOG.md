@@ -88,7 +88,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - `account` - Comptes OAuth et mots de passe
 - `verification` - Vérifications email et tokens
 
-**Extensions BeInDigital**
+**Extensions BeYours**
 
 - `userProfiles` - Profils utilisateurs étendus avec rôles et permissions
 - `stores` - Gestion multi-magasins (illimité par propriétaire)

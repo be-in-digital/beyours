@@ -18,7 +18,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "BeInDigital Engine",
+  title: "BeYours Engine",
   description: "Restaurant Management Platform",
 };
 

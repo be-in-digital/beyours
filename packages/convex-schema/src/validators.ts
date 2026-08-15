@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 /**
- * BeInDigital Engine - Zod Validators
+ * BeYours Engine - Zod Validators
  *
  * Input validation schemas for all Convex mutations and API endpoints
  * All validators enforce strict type checking and business rules

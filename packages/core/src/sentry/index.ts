@@ -1,8 +1,8 @@
 /**
- * Sentry Configuration for BeInDigital Engine
+ * Sentry Configuration for BeYours Engine
  *
  * This module provides Sentry configuration utilities for error tracking
- * and performance monitoring across the BeInDigital Engine platform.
+ * and performance monitoring across the BeYours Engine platform.
  *
  * Each app should initialize Sentry with its own DSN and environment-specific settings.
  *

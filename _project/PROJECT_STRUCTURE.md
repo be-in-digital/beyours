@@ -1,4 +1,4 @@
-# BeInDigital Engine - Project Structure
+# BeYours Engine - Project Structure
 
 ## 📁 Monorepo Structure
 
@@ -50,7 +50,7 @@ beindigital/
 │
 ├── apps/                              # Applications
 │   ├── restaurant-theme/              # 🔲 Main restaurant theme app
-│   ├── admin-dashboard/               # 🔲 BeInDigital admin dashboard
+│   ├── admin-dashboard/               # 🔲 BeYours admin dashboard
 │   └── docs/                          # 🔲 Documentation site
 │
 ├── .gitignore                         # ✅ Git ignore rules

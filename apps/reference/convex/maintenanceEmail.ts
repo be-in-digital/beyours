@@ -4,7 +4,7 @@
  * Maintenance Email Notifications (AWS SES)
  *
  * Best-effort notifications around the migration request flow:
- * - alert the BeInDigital team (BID_NOTIFY_EMAIL) when a client requests
+ * - alert the BeYours team (BID_NOTIFY_EMAIL) when a client requests
  *   the migration of their site;
  * - send the client a confirmation that the request was received.
  *
@@ -126,7 +126,7 @@ function buildSimpleHtml(title: string, intro: string, lines: string[], footer: 
 }
 
 /**
- * Notify BeInDigital + confirm to the client that a migration request
+ * Notify BeYours + confirm to the client that a migration request
  * was created. Both sends are best effort and logged on failure.
  */
 export const notifyMigrationRequest = internalAction({
@@ -147,7 +147,7 @@ export const notifyMigrationRequest = internalAction({
     const siteUrl = process.env.BID_APP_URL ?? process.env.SITE_URL ?? "";
     const results = { bidNotified: false, clientNotified: false };
 
-    // 1. Alert the BeInDigital team
+    // 1. Alert the BeYours team
     const bidEmail = process.env.BID_NOTIFY_EMAIL;
     if (bidEmail) {
       try {
@@ -177,7 +177,7 @@ export const notifyMigrationRequest = internalAction({
       }
     } else {
       console.warn(
-        "BID_NOTIFY_EMAIL non configure — notification BeInDigital ignoree",
+        "BID_NOTIFY_EMAIL non configure — notification BeYours ignoree",
       );
     }
 
@@ -188,7 +188,7 @@ export const notifyMigrationRequest = internalAction({
         subject: "Votre demande de migration a bien été reçue",
         htmlBody: buildSimpleHtml(
           "Demande de migration reçue",
-          "Nous avons bien reçu votre demande de migration. L'équipe BeInDigital vous recontactera pour organiser le transfert avec votre équipe.",
+          "Nous avons bien reçu votre demande de migration. L'équipe BeYours vous recontactera pour organiser le transfert avec votre équipe.",
           lines,
           "Vous pouvez suivre l'avancement depuis votre tableau de bord, rubrique Système → Maintenance.",
         ),

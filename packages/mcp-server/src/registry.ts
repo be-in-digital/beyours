@@ -635,7 +635,7 @@ export const packages: PackageInfo[] = [
       {
         name: "packageEnvSchema",
         type: "validator",
-        description: "Zod schema for BeInDigital platform-level env vars (AWS, OpenAI, Uber Eats, Deliveroo)",
+        description: "Zod schema for BeYours platform-level env vars (AWS, OpenAI, Uber Eats, Deliveroo)",
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation", "zod"],
       },
@@ -915,7 +915,7 @@ export const packages: PackageInfo[] = [
           footer: { type: "React.ReactNode", required: false, description: "Footer content (e.g. StoreSelector)" },
           userFooter: { type: "React.ReactNode", required: false, description: "User section (e.g. SidebarUserMenu)" },
           logoUrl: { type: "string | null", required: false, description: "Dynamic logo URL from CMS branding" },
-          brandName: { type: "string", required: false, description: "Brand name, defaults to 'BeInDigital'" },
+          brandName: { type: "string", required: false, description: "Brand name, defaults to 'BeYours'" },
         },
       },
       {

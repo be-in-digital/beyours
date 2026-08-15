@@ -31,11 +31,11 @@
 
 ### What It Does
 
-The Auto Blog Engine is a premium SaaS feature of BeInDigital Engine that allows restaurant owners to generate SEO-optimized blog articles using AI. It covers the entire blog content lifecycle: AI-powered article generation, image sourcing (Unsplash stock photos and GPT-generated images), rich text editing, multi-language auto-translation, scheduled publishing, and Stripe-based subscription billing.
+The Auto Blog Engine is a premium SaaS feature of BeYours Engine that allows restaurant owners to generate SEO-optimized blog articles using AI. It covers the entire blog content lifecycle: AI-powered article generation, image sourcing (Unsplash stock photos and GPT-generated images), rich text editing, multi-language auto-translation, scheduled publishing, and Stripe-based subscription billing.
 
 ### Who It Is For
 
-Restaurant owners who purchase a BeInDigital theme and want to maintain an active blog to improve their SEO ranking and attract customers. The feature is gated behind a monthly/annual subscription with three plan tiers (Starter, Pro, Enterprise).
+Restaurant owners who purchase a BeYours theme and want to maintain an active blog to improve their SEO ranking and attract customers. The feature is gated behind a monthly/annual subscription with three plan tiers (Starter, Pro, Enterprise).
 
 ### Business Value
 
@@ -1556,7 +1556,7 @@ All routes are under the `(admin)` route group and require authentication.
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | Yes | OpenAI API key for GPT-4o-mini (text) and GPT Image 1 / GPT Image 1 Mini (images) |
 | `UNSPLASH_ACCESS_KEY` | No | Unsplash API access key. If not set, all images fall back to GPT Image generation. |
-| `STRIPE_BID_SECRET_KEY` | Yes | Stripe secret key for the BeInDigital subscription product |
+| `STRIPE_BID_SECRET_KEY` | Yes | Stripe secret key for the BeYours subscription product |
 | `STRIPE_BID_WEBHOOK_SECRET` | Yes | Stripe webhook signing secret for `POST /webhooks/stripe-bid` |
 | `BID_APP_URL` | Yes | Application URL for Stripe redirect URLs (e.g., `https://myrestaurant.com`) |
 | `STRIPE_BID_PRICE_STARTER` | Yes | Stripe Price ID for Starter monthly plan |
@@ -1814,4 +1814,4 @@ apps/restaurant-theme/
 
 **Version**: 2.0.0
 **Last Updated**: 2026-03-07
-**Maintained by**: BeInDigital Team
+**Maintained by**: BeYours Team

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================================================
-# BeInDigital Engine - AWS S3 & SES Setup Script
+# BeYours Engine - AWS S3 & SES Setup Script
 #
 # Configures:
 #   1. S3 bucket with CORS, lifecycle rules, and folder structure
@@ -270,7 +270,7 @@ else
 fi
 
 # Create policy with minimal permissions
-POLICY_NAME="BeInDigitalEnginePolicy"
+POLICY_NAME="BeYoursEnginePolicy"
 POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/${POLICY_NAME}"
 
 POLICY_DOC=$(cat <<EOF

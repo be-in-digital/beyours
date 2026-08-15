@@ -1,6 +1,6 @@
 # Environment Variables Reference
 
-> Complete list of all environment variables used by BeInDigital Engine with Zod-validated startup checks.
+> Complete list of all environment variables used by BeYours Engine with Zod-validated startup checks.
 
 ## Quick Setup
 
@@ -13,11 +13,11 @@ cp apps/restaurant-theme/.env.example apps/restaurant-theme/.env.local
 
 ## Two-Tier Architecture
 
-BeInDigital uses a two-tier environment variable system:
+BeYours uses a two-tier environment variable system:
 
 | Tier | Description | Who Manages |
 |------|-------------|-------------|
-| **Package-level** | Shared across all restaurant deployments | BeInDigital platform team |
+| **Package-level** | Shared across all restaurant deployments | BeYours platform team |
 | **Site-level** | Unique per restaurant deployment | Restaurant owner / deployer |
 
 ## Startup Validation
@@ -38,7 +38,7 @@ The formatted report shows:
 ║         VARIABLES D'ENVIRONNEMENT MANQUANTES               ║
 ╚══════════════════════════════════════════════════════════════╝
 
-  ── Package-level (BeInDigital Platform) ──
+  ── Package-level (BeYours Platform) ──
     ✗ AWS_REGION: Required
     ✗ OPENAI_API_KEY: Invalid input
 
@@ -52,7 +52,7 @@ The formatted report shows:
 - **Production**: Throws an error, preventing startup with missing vars
 - **Development**: Logs warning, continues running
 
-## Package-Level Variables (BeInDigital Platform)
+## Package-Level Variables (BeYours Platform)
 
 | Variable | Required | Validation | Description |
 |----------|----------|------------|-------------|

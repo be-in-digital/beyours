@@ -2,7 +2,7 @@ import { defineTable } from "convex/server"
 import { v } from "convex/values"
 
 /**
- * User Profiles table (BeInDigital extension)
+ * User Profiles table (BeYours extension)
  * Extends Better Auth user with roles and permissions
  */
 export const userProfilesTable = defineTable({

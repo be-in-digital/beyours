@@ -13,8 +13,8 @@ export const APP_VERSION =
   process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0"
 
 /**
- * BeInDigital contact for maintenance renewal / migration questions.
- * Not set → the UI shows a neutral "contact BeInDigital" message
+ * BeYours contact for maintenance renewal / migration questions.
+ * Not set → the UI shows a neutral "contact BeYours" message
  * instead of a mailto link.
  */
 export const BID_SUPPORT_EMAIL =

@@ -301,7 +301,7 @@ Pour toute question ou problème:
 
 ## Licence
 
-Privé - BeInDigital Team
+Privé - BeYours Team
 
 ---
 

@@ -14,7 +14,7 @@
 
 ## Overview
 
-BeInDigital's i18n system is dynamic — restaurant owners can add **any language** from the admin dashboard. Translations are generated automatically using GPT-3.5-turbo, with an option for manual override.
+BeYours's i18n system is dynamic — restaurant owners can add **any language** from the admin dashboard. Translations are generated automatically using GPT-3.5-turbo, with an option for manual override.
 
 ## How It Works
 

@@ -1,10 +1,10 @@
-# BeInDigital Engine - Features Diagram
+# BeYours Engine - Features Diagram
 
 ## Complete Features Overview
 
 ```mermaid
 graph TB
-    subgraph "BeInDigital Engine"
+    subgraph "BeYours Engine"
         Core[Core Platform]
         
         subgraph "1. Multi-Store Management"

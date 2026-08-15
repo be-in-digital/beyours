@@ -25,7 +25,7 @@ import {
 
 export function example1_BasicTranslation() {
   const translations: TranslationMap = {
-    welcome: 'Bienvenue sur BeInDigital',
+    welcome: 'Bienvenue sur BeYours',
     'menu.home': 'Accueil',
     'menu.products': 'Produits',
     'menu.cart': 'Panier',
@@ -33,7 +33,7 @@ export function example1_BasicTranslation() {
 
   const t = createTranslator(translations, 'fr')
 
-  console.log(t('welcome')) // "Bienvenue sur BeInDigital"
+  console.log(t('welcome')) // "Bienvenue sur BeYours"
   console.log(t('menu.home')) // "Accueil"
 }
 

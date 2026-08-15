@@ -81,7 +81,7 @@ pnpm add @be-in-digital/ui
 
 ## Configure Convex
 
-BeInDigital uses [Convex](https://convex.dev) as its backend.
+BeYours uses [Convex](https://convex.dev) as its backend.
 
 ```bash
 # Install Convex

@@ -14,7 +14,7 @@
 
 ## Overview
 
-BeInDigital supports multiple payment providers. Each restaurant can enable the providers they need.
+BeYours supports multiple payment providers. Each restaurant can enable the providers they need.
 
 | Provider | Online | In-Person | Subscriptions |
 |----------|--------|-----------|---------------|

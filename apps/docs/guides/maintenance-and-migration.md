@@ -59,10 +59,10 @@ Manual renewal (invoice) stays available via `_setContract` below — both paths
 
 Creating a migration request schedules `maintenanceEmail.notifyMigrationRequest` (SES, best effort — a delivery failure never blocks the request):
 
-- **BeInDigital** gets an alert at `BID_NOTIFY_EMAIL` with the full request details and deployment URL.
+- **BeYours** gets an alert at `BID_NOTIFY_EMAIL` with the full request details and deployment URL.
 - **The client** gets a confirmation at their contact email.
 
-## BeInDigital Operations
+## BeYours Operations
 
 ### Provision or renew a contract
 
@@ -86,7 +86,7 @@ Use `maintenance.updateMigrationRequestStatus` (super_admin) to move the request
 ## Environment Variables
 
 ```bash
-# Next app (optional) — "Contacter BeInDigital" mailto in the renewal CTA
+# Next app (optional) — "Contacter BeYours" mailto in the renewal CTA
 NEXT_PUBLIC_BID_SUPPORT_EMAIL=support@example.com
 
 # Convex deployment (npx convex env set ...)

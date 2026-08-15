@@ -1,5 +1,5 @@
 /**
- * BeInDigital Engine - Restaurant Package Types
+ * BeYours Engine - Restaurant Package Types
  *
  * Business logic types for the restaurant application
  * Re-exports types from convex-schema and defines additional business types

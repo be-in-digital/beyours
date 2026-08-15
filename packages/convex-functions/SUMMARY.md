@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Package partagé contenant **toutes les fonctions backend Convex** pour BeInDigital Engine.
+Package partagé contenant **toutes les fonctions backend Convex** pour BeYours Engine.
 
 - **1,582 lignes de code TypeScript**
 - **10 modules fonctionnels**

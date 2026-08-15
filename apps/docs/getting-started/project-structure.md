@@ -1,6 +1,6 @@
 # Project Structure
 
-The BeInDigital Engine is organized as a **pnpm monorepo** with Turborepo orchestration.
+The BeYours Engine is organized as a **pnpm monorepo** with Turborepo orchestration.
 
 ## Repository Layout
 
@@ -29,7 +29,7 @@ beindigital/
 │   │   ├── convex/              # Convex schema & functions
 │   │   └── lib/                 # Utilities, stores, configs
 │   │
-│   ├── admin-dashboard/         # BeInDigital admin panel
+│   ├── admin-dashboard/         # BeYours admin panel
 │   └── docs/                    # This documentation
 │
 ├── .github/workflows/           # CI/CD pipelines

@@ -166,7 +166,7 @@ import { AppSidebar, SidebarUserMenu } from "@be-in-digital/admin";
 <AppSidebar
   userFooter={<SidebarUserMenu />}
   logoUrl="/logo.png"          // Dynamic logo from CMS (optional)
-  brandName="Mon Restaurant"   // Brand name, defaults to "BeInDigital"
+  brandName="Mon Restaurant"   // Brand name, defaults to "BeYours"
 />
 ```
 

@@ -1,5 +1,5 @@
 /**
- * i18n system for BeInDigital Engine
+ * i18n system for BeYours Engine
  * @packageDocumentation
  */
 

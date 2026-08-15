@@ -1,6 +1,6 @@
 # @be-in-digital/cms — Documentation Complète
 
-> Package CMS générique pour BeInDigital Engine.
+> Package CMS générique pour BeYours Engine.
 > Ce package ne contient **aucune page prédéfinie**. Chaque application définit ses propres pages CMS.
 
 ---
@@ -29,7 +29,7 @@
 
 ### Qu'est-ce que ce package ?
 
-`@be-in-digital/cms` est un **framework de définition de contenu** pour le CMS BeInDigital. Il fournit :
+`@be-in-digital/cms` est un **framework de définition de contenu** pour le CMS BeYours. Il fournit :
 
 - Un **registre configurable** de pages et de groupes
 - Des **types TypeScript** stricts pour définir la structure du contenu

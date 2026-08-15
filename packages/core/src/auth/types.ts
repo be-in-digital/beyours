@@ -21,7 +21,7 @@
 import { type Role } from './rbac';
 
 /**
- * Utilisateur étendu avec les champs BeInDigital
+ * Utilisateur étendu avec les champs BeYours
  */
 export interface AuthUser {
   /** ID unique de l'utilisateur */

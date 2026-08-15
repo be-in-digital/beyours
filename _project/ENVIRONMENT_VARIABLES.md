@@ -2,11 +2,11 @@
 
 ## Vue d'ensemble
 
-Les variables d'environnement de BeInDigital Engine sont separees en **deux niveaux** distincts, refletant le modele business ou BeInDigital vend un theme Next.js a chaque restaurant.
+Les variables d'environnement de BeYours Engine sont separees en **deux niveaux** distincts, refletant le modele business ou BeYours vend un theme Next.js a chaque restaurant.
 
 ```
 +-------------------------------------------------------------------+
-|                    BeInDigital (Plateforme)                        |
+|                    BeYours (Plateforme)                        |
 |                                                                   |
 |   AWS Account    OpenAI     Uber Eats Partner   Deliveroo Partner  |
 |   (S3, SES)     (GPT-3.5)   (App Credentials)  (App Credentials)  |
@@ -35,15 +35,15 @@ Les variables d'environnement de BeInDigital Engine sont separees en **deux nive
 
 ## Separation Package vs Site
 
-### Variables Package (infra BeInDigital - 10 vars)
+### Variables Package (infra BeYours - 10 vars)
 
-Ce sont les credentials gerees par BeInDigital, partagees entre tous les restaurants deployes.
+Ce sont les credentials gerees par BeYours, partagees entre tous les restaurants deployes.
 
 | Variable | Requis | Description |
 |---|---|---|
-| `AWS_REGION` | oui | Region AWS du compte BeInDigital |
-| `AWS_ACCESS_KEY_ID` | oui | Cle d'acces IAM BeInDigital |
-| `AWS_SECRET_ACCESS_KEY` | oui | Secret IAM BeInDigital |
+| `AWS_REGION` | oui | Region AWS du compte BeYours |
+| `AWS_ACCESS_KEY_ID` | oui | Cle d'acces IAM BeYours |
+| `AWS_SECRET_ACCESS_KEY` | oui | Secret IAM BeYours |
 | `OPENAI_API_KEY` | oui | Cle API OpenAI (prefixe `sk-`) pour traductions GPT |
 | `UBER_EATS_CLIENT_ID` | non | Client ID de l'app partenaire Uber Eats |
 | `UBER_EATS_CLIENT_SECRET` | non | Client secret Uber Eats |
@@ -53,7 +53,7 @@ Ce sont les credentials gerees par BeInDigital, partagees entre tous les restaur
 | `DELIVEROO_WEBHOOK_SECRET` | non | Secret de verification des webhooks Deliveroo |
 
 > **Pourquoi Uber Eats / Deliveroo sont "package" ?**
-> BeInDigital est **app partenaire** de ces plateformes. Les credentials API sont celles de BeInDigital, pas du restaurant. Le restaurant fournit uniquement ses identifiants propres (brandId, siteId) pour lier son compte.
+> BeYours est **app partenaire** de ces plateformes. Les credentials API sont celles de BeYours, pas du restaurant. Le restaurant fournit uniquement ses identifiants propres (brandId, siteId) pour lier son compte.
 
 ### Variables Site (par restaurant - 25+ vars)
 
@@ -114,7 +114,7 @@ packages/core/src/env/
 ```typescript
 import { getPackageEnv, getSiteEnv } from '@be-in-digital/core/env'
 
-// Variables plateforme BeInDigital
+// Variables plateforme BeYours
 const pkg = getPackageEnv()
 pkg.AWS_REGION           // string (garanti)
 pkg.UBER_EATS_CLIENT_ID // string | undefined (optionnel)
@@ -195,7 +195,7 @@ Deux fichiers de reference pour le onboarding :
 
 | Fichier | Contenu | Pour qui |
 |---|---|---|
-| `packages/core/.env.example` | 10 variables package | Equipe BeInDigital |
+| `packages/core/.env.example` | 10 variables package | Equipe BeYours |
 | `apps/restaurant-theme/.env.example` | 25+ vars site + rappel des vars package | Deploiement d'un restaurant |
 
 > A chaque deploiement, le fichier `.env.local` de `apps/restaurant-theme/` contient **toutes** les variables (package + site) puisque le process Node.js a besoin des deux a runtime.
@@ -204,7 +204,7 @@ Deux fichiers de reference pour le onboarding :
 
 ## Ajouter une nouvelle variable d'environnement
 
-1. **Determiner le niveau** : package (infra BeInDigital) ou site (par restaurant)
+1. **Determiner le niveau** : package (infra BeYours) ou site (par restaurant)
 2. **Ajouter au schema** dans `packages/core/src/env/schemas.ts`
    - Utiliser `.optional()` si la variable n'est pas requise pour tous les deploiements
    - Ajouter des validations Zod (`.url()`, `.email()`, `.startsWith()`, `.regex()`)

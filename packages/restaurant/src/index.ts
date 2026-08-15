@@ -1,5 +1,5 @@
 /**
- * BeInDigital Engine - Restaurant Package
+ * BeYours Engine - Restaurant Package
  *
  * Business logic, Zustand stores, and services for restaurant application
  */
