@@ -8,10 +8,8 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@beindigital/agency",
-    "@beindigital/restaurant",
-    "@beindigital/config",
-    "@beindigital/tokens",
-    "@beindigital/webgl-utils"
+    "@beyours/site",
+    "@beyours/reference",
+    "@beyours/boilerplate"
   ]
 }

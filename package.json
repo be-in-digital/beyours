@@ -5,8 +5,6 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:web-agency": "pnpm --filter @beindigital/agency dev",
-    "dev:web-restaurant": "pnpm --filter @beindigital/restaurant dev",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
@@ -17,7 +15,10 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build && changeset publish",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:site": "pnpm --filter @beyours/site dev",
+    "dev:reference": "pnpm --filter @beyours/reference dev",
+    "dev:boilerplate": "pnpm --filter @beyours/boilerplate dev"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
@@ -52,7 +53,7 @@
       "picomatch@<2.3.2": "^2.3.2",
       "react": "19.2.4",
       "react-dom": "19.2.4",
-      "convex": "1.31.7"
+      "eslint-plugin-react-hooks": "7.0.1"
     }
   }
 }

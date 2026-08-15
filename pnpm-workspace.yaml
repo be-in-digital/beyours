@@ -1,3 +1,8 @@
+# Le boilerplate declare les paquets moteur en versions publiees (^2.0.2) pour
+# la distribution client. En workspace on les relie localement : on developpe
+# contre le moteur courant. Le job de publication reecrit ces versions.
+linkWorkspacePackages: true
+
 packages:
   - "packages/*"
   - "apps/*"
