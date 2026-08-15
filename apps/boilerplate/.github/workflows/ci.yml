@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  web:
+    name: Lint + Test + Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Guard — pas d'overrides link: commités"
+        run: |
+          if grep -q '"link:' package.json; then
+            echo "::error::package.json contient des overrides link: (mode engine-link). Lancer pnpm engine:unlink avant de commiter."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        # --frozen-lockfile dès que le lockfile est commité ; sinon install
+        # simple (premier commit du template, avant le premier install tokené)
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (Vitest)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
+          CONVEX_SITE_URL: https://placeholder.convex.site
+
+  detect-mobile:
+    name: Detect mobile app
+    runs-on: ubuntu-latest
+    outputs:
+      has_mobile: ${{ steps.check.outputs.has_mobile }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f mobile/package.json ]; then
+            echo "has_mobile=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_mobile=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  mobile:
+    name: Lint + Typecheck (mobile)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: detect-mobile
+    if: needs.detect-mobile.outputs.has_mobile == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # L'app mobile est autonome (aucun package privé) : pas de token requis
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: pnpm install
+
+      - name: Lint mobile
+        working-directory: mobile
+        run: pnpm lint
+
+      - name: Typecheck mobile
+        working-directory: mobile
+        run: pnpm typecheck
+
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: web
+    # Activer en définissant la repo variable CONVEX_E2E_ENABLED=true
+    # + les secrets E2E_* (deployment Convex de test dédié)
+    if: vars.CONVEX_E2E_ENABLED == 'true'
+    env:
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL || 'https://placeholder.convex.cloud' }}
+      CONVEX_SITE_URL: ${{ secrets.E2E_CONVEX_SITE_URL || 'https://placeholder.convex.site' }}
+      BETTER_AUTH_URL: http://localhost:3000
+      SITE_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm test:e2e:install
+
+      - name: Run Playwright tests
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

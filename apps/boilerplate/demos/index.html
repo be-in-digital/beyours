@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Démos interactives · BeInDigital</title>
+<meta name="description" content="50 sites restaurant de démonstration : 5 thématiques × 10 designs, navigables, avec commande et paiement de test.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Démos de sites restaurant — BeInDigital">
+<meta property="og:description" content="5 thématiques, 10 designs chacune. Sites complets navigables, commande et paiement de test.">
+<meta property="og:image" content="/assets/shots/pizzeria-milano.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="/assets/shots/pizzeria-milano.jpg">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..800&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0c0f; color: #ececf1; font-family: 'Figtree', system-ui, sans-serif; line-height: 1.5; }
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 0 24px; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; max-width: 100%; }
+  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  .ribbon { background: #f5f4f2; color: #1a1a1a; text-align: center; font-size: 12.5px; font-weight: 650; padding: 8px 16px; }
+  .ribbon b { font-weight: 800; }
+  .kicker { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #f0803b; }
+  /* hero */
+  .hero { padding: 54px 0 8px; }
+  h1 { font-size: clamp(32px, 5.4vw, 56px); font-weight: 700; letter-spacing: -0.025em; margin: 16px 0; max-width: 20ch; line-height: 1.05; }
+  h1 .hl { color: #a5a2ac; }
+  .intro { color: #a5a2ac; font-size: 17px; max-width: 62ch; }
+  .intro b { color: #ececf1; font-weight: 650; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 22px; }
+  .cta { background: #f0803b; color: #16130f; font-weight: 750; font-size: 15px; padding: 13px 24px; border-radius: 999px; }
+  .cta:hover { background: #ff9350; }
+  .cta-ghost { border: 1px solid #38343f; color: #ececf1; font-weight: 650; font-size: 15px; padding: 13px 22px; border-radius: 999px; }
+  .cta-ghost:hover { border-color: #57525f; }
+  .stats { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; color: #8f8b98; font-size: 14px; padding: 8px 0 6px; }
+  .stats b { color: #ececf1; font-weight: 700; }
+  .stats i { width: 4px; height: 4px; border-radius: 50%; background: #38343f; }
+  /* showcase */
+  .showcase { display: grid; grid-template-columns: 1.55fr 1.1fr .55fr; gap: 16px; align-items: end; padding: 30px 0 6px; }
+  .showcase figure { margin: 0; position: relative; }
+  .showcase img { width: 100%; display: block; border-radius: 14px; border: 1px solid #262330; box-shadow: 0 30px 70px -30px #000; }
+  .showcase figcaption { position: absolute; top: 12px; left: 12px; background: #000000b0; backdrop-filter: blur(4px); color: #fff; font-size: 11.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
+  .sc-mob img { border-radius: 20px; }
+  @media (max-width: 820px) { .showcase { grid-template-columns: 1fr 1fr; } .sc-mob { display: none; } }
+  /* features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 44px 0 8px; }
+  @media (max-width: 900px) { .features { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+  .feat { border: 1px solid #221f27; background: #141318; border-radius: 14px; padding: 20px; }
+  .feat .fi { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: #f0803b1f; color: #f0803b; font-size: 18px; margin-bottom: 12px; }
+  .feat h3 { font-size: 16.5px; font-weight: 700; margin-bottom: 6px; }
+  .feat p { color: #a5a2ac; font-size: 13.5px; }
+  .feat p a { color: #f0803b; font-weight: 650; }
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding: 40px 0 8px; }
+  @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+  .step { border-top: 2px solid #262330; padding-top: 16px; }
+  .step .sn { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #f0803b; color: #16130f; font-weight: 800; font-size: 15px; margin-bottom: 10px; }
+  .step h3 { font-size: 17px; font-weight: 700; margin-bottom: 5px; }
+  .step p { color: #a5a2ac; font-size: 14px; }
+  /* galeries */
+  #galleries { padding-top: 56px; }
+  .gal-head h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 700; }
+  .gal-head p { color: #8f8b98; font-size: 14.5px; margin-top: 6px; }
+  .catnav { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 8px; }
+  .catnav a { font-size: 13px; font-weight: 650; border: 1px solid #2a2731; border-radius: 999px; padding: 8px 15px; color: #cfccd6; }
+  .catnav a:hover { border-color: #4a4655; color: #fff; }
+
+  section.cat { padding: 36px 0 6px; }
+  .cat-h { display: flex; align-items: baseline; gap: 14px; border-bottom: 1px solid #26232d; padding-bottom: 12px; margin-bottom: 22px; }
+  .cat-h h2 { font-size: 25px; font-weight: 700; }
+  .cat-h .n { color: #8f8b98; font-size: 13.5px; }
+
+  .gal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding-bottom: 26px; }
+  @media (max-width: 980px) { .gal { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 620px) { .gal { grid-template-columns: 1fr; } }
+  .card { display: flex; flex-direction: column; border: 1px solid #221f27; background: #141318; border-radius: 14px; overflow: hidden; transition: transform .16s, border-color .16s; }
+  .card:hover { transform: translateY(-3px); border-color: #3d3948; }
+  .shot { position: relative; aspect-ratio: 1280/800; overflow: hidden; cursor: zoom-in; background: #1a1820; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform .3s ease; }
+  .card:hover .shot img { transform: scale(1.025); }
+  .shot .zoom { position: absolute; right: 10px; bottom: 10px; background: #000c; color: #fff; font-size: 11.5px; font-weight: 700; padding: 5px 11px; border-radius: 999px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .card:hover .shot .zoom { opacity: 1; }
+  .b { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .tt { display: flex; align-items: center; gap: 9px; }
+  .tname { font-size: 17.5px; font-weight: 700; }
+  .dots { display: flex; gap: 4px; margin-left: auto; }
+  .dots i { width: 13px; height: 13px; border-radius: 50%; border: 1px solid #ffffff2e; }
+  .tbrand { font-size: 12.5px; color: #8f8b98; }
+  .lay { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+  .lay span { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9a96a4; border: 1px solid #2a2731; padding: 3px 7px; border-radius: 5px; }
+  .go { margin-top: 11px; font-size: 13px; font-weight: 700; color: var(--pc); }
+  .go:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  .note { border: 1px solid #221f27; border-radius: 14px; padding: 20px 22px; margin: 26px 0 60px; display: flex; gap: 18px; flex-wrap: wrap; align-items: center; background: #121116; }
+  .note .num { font-family: ui-monospace, Menlo, monospace; font-size: 17px; font-weight: 700; letter-spacing: .04em; }
+  .note .t { font-size: 13.5px; color: #a5a2ac; flex: 1; min-width: 240px; }
+  .note .t b { color: #ececf1; }
+  .foot { color: #6d6a75; font-size: 13px; padding-bottom: 50px; }
+
+  /* ── Visionneuse (lightbox) ── */
+  .lb { position: fixed; inset: 0; z-index: 100; background: rgba(6, 5, 10, .93); display: none; }
+  .lb.open { display: grid; grid-template-rows: auto 1fr auto; }
+  .lb-top { display: flex; align-items: center; gap: 14px; padding: 14px 20px; }
+  .lb-name { font-size: 16px; font-weight: 700; }
+  .lb-meta { font-size: 12.5px; color: #9a96a4; }
+  .lb-close { margin-left: auto; width: 40px; height: 40px; border-radius: 999px; border: 1px solid #ffffff2b; display: grid; place-items: center; font-size: 17px; }
+  .lb-close:hover { background: #ffffff14; }
+  .lb-stage { position: relative; display: grid; place-items: center; padding: 0 66px; min-height: 0; }
+  .lb-stage img { max-width: min(1120px, 100%); max-height: 100%; border-radius: 10px; border: 1px solid #ffffff1f; box-shadow: 0 40px 120px -30px #000; }
+  .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 46px; border-radius: 999px; border: 1px solid #ffffff2b; display: grid; place-items: center; font-size: 20px; background: #0d0c0fb8; }
+  .lb-nav:hover { background: #ffffff18; }
+  .lb-prev { left: 12px; } .lb-next { right: 12px; }
+  .lb-bot { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 20px 22px; flex-wrap: wrap; }
+  .lb-open-demo { background: var(--pc, #f0803b); color: #0d0c0f; font-weight: 800; font-size: 14px; padding: 12px 22px; border-radius: 999px; }
+  .lb-count { font-size: 12.5px; color: #9a96a4; }
+  .lb-brandbar { display: flex; align-items: center; gap: 8px; background: #16151b; border: 1px solid #2a2731; border-radius: 999px; padding: 5px 5px 5px 6px; }
+  .lb-brandbar input[type=text] { background: none; border: none; color: #ececf1; font: inherit; font-size: 13px; padding: 6px 8px; width: 132px; outline: none; }
+  .lb-brandbar input[type=text]::placeholder { color: #6d6a75; }
+  .ov-color { position: relative; width: 30px; height: 30px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 1px solid #ffffff28; }
+  .ov-color input { position: absolute; inset: -4px; width: 40px; height: 40px; border: none; padding: 0; cursor: pointer; }
+  .lb-copy { background: #ffffff14; color: #ececf1; font-size: 12.5px; font-weight: 650; padding: 8px 13px; border-radius: 999px; }
+  .lb-copy:hover { background: #ffffff22; }
+  @media (max-width: 640px) { .lb-brandbar input[type=text] { width: 96px; } }
+  @media (max-width: 640px) { .lb-stage { padding: 0 10px; } .lb-nav { display: none; } }
+</style>
+</head>
+<body>
+<div class="ribbon"><b>DÉMOS INTERACTIVES</b> · sites complets navigables · paiement en mode test Stripe · aucune commande réelle</div>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker">BeInDigital · sites restaurant</div>
+    <h1>Le site de votre restaurant, <span class="hl">à tester avant de le commander.</span></h1>
+    <p class="intro">50 designs prêts à l'emploi, 10 par thématique. Chacun est un <b>site complet</b> : carte, commande, réservation, plusieurs adresses, paiement de test et tableau de bord. Ouvrez-en un, cliquez partout, puis on le décline à votre marque.</p>
+    <div class="cta-row">
+      <a class="cta" href="#galleries">Voir les 50 designs</a>
+      <a class="cta-ghost" href="home.html?t=pizzeria-milano" target="_blank" rel="noopener">Tester une démo →</a>
+    </div>
+    <div class="stats">
+      <span><b>50</b> designs</span><i></i>
+      <span><b>5</b> thématiques</span><i></i>
+      <span><b>8</b> pages par site</span><i></i>
+      <span><b>Paiement</b> de test réel</span>
+    </div>
+  </header>
+
+  <section class="showcase">
+    <figure class="sc-desk"><img src="assets/shots/pizzeria-trattoria.jpg" alt="Site vitrine sur ordinateur" loading="lazy"><figcaption>Site vitrine</figcaption></figure>
+    <figure class="sc-admin"><img src="assets/shots/_admin.jpg" alt="Tableau de bord restaurateur" loading="lazy"><figcaption>Tableau de bord</figcaption></figure>
+    <figure class="sc-mob"><img src="assets/shots/_mobile.jpg" alt="Site sur téléphone" loading="lazy"><figcaption>Mobile</figcaption></figure>
+  </section>
+
+  <section class="features">
+    <div class="feat"><span class="fi">▤</span><h3>Sites complets, multipage</h3><p>Accueil, carte filtrable, à propos, adresses, réservation, contact. Pas une page de vente : un vrai site.</p></div>
+    <div class="feat"><span class="fi">▦</span><h3>Commande &amp; paiement de test</h3><p>Panier, checkout et paiement Stripe en mode test. Le client teste jusqu'au bout, sans débit réel.</p></div>
+    <div class="feat"><span class="fi">◎</span><h3>Plusieurs emplacements</h3><p>Un ou plusieurs lieux : le client choisit son adresse, la commande et la réservation s'y rattachent.</p></div>
+    <div class="feat"><span class="fi">▧</span><h3>Réservation en ligne</h3><p>Réservation de table confirmée sur-le-champ et annulable, avec choix du lieu et validation.</p></div>
+    <div class="feat"><span class="fi">▥</span><h3>Tableau de bord restaurateur</h3><p>Commandes qui tombent en direct, écran cuisine, réservations, chiffres. <a href="admin.html?t=pizzeria-milano" target="_blank" rel="noopener">Voir le back-office →</a></p></div>
+    <div class="feat"><span class="fi">◑</span><h3>Responsive &amp; à vos couleurs</h3><p>Impeccable sur téléphone. Chaque design se rebadge à votre nom et votre couleur en un clic.</p></div>
+  </section>
+
+  <section class="steps">
+    <div class="step"><span class="sn">1</span><h3>Choisissez un design</h3><p>Parcourez les 50 captures, feuilletez, comparez les thématiques.</p></div>
+    <div class="step"><span class="sn">2</span><h3>Testez le vrai site</h3><p>Naviguez, commandez, réservez, payez en test, ouvrez le tableau de bord.</p></div>
+    <div class="step"><span class="sn">3</span><h3>On le décline à votre marque</h3><p>On reprend le design choisi à vos couleurs, votre carte, vos photos.</p></div>
+  </section>
+
+  <div id="galleries">
+    <div class="gal-head"><h2>Les 50 designs</h2><p>Cliquez une capture pour l'agrandir et feuilleter la thématique.</p></div>
+    <nav class="catnav" id="catnav"></nav>
+  </div>
+  <div id="cats"></div>
+  <div class="note">
+    <div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8f8b98;margin-bottom:6px">Carte de test au paiement</div>
+      <div class="num">4242 4242 4242 4242</div>
+    </div>
+    <div class="t"><b>Date</b> future quelconque · <b>CVC</b> 3 chiffres · <b>Code postal</b> 75000. Aucun débit réel : Stripe est en mode test. C'est la vraie mécanique de paiement du site final.</div>
+  </div>
+  <div class="foot">Démonstration produit BeInDigital. Marques, plats, prix et photos sont des exemples. Le design final reprend le thème choisi, décliné à la marque du client.</div>
+</div>
+
+<!-- Visionneuse -->
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Aperçu du thème">
+  <div class="lb-top">
+    <span class="lb-name" id="lb-name"></span>
+    <span class="lb-meta" id="lb-meta"></span>
+    <button class="lb-close" id="lb-close" aria-label="Fermer">✕</button>
+  </div>
+  <div class="lb-stage">
+    <button class="lb-nav lb-prev" id="lb-prev" aria-label="Thème précédent">‹</button>
+    <img id="lb-img" src="" alt="">
+    <button class="lb-nav lb-next" id="lb-next" aria-label="Thème suivant">›</button>
+  </div>
+  <div class="lb-bot">
+    <span class="lb-count" id="lb-count"></span>
+    <div class="lb-brandbar">
+      <input id="ov-brand" type="text" placeholder="Nom du client" autocomplete="off" spellcheck="false">
+      <label class="ov-color" title="Couleur du client"><input id="ov-color" type="color" value="#e2661f"><span id="ov-swatch"></span></label>
+      <button class="lb-copy" id="lb-copy">Copier le lien</button>
+    </div>
+    <a class="lb-open-demo" id="lb-open" href="#" target="_blank" rel="noopener">Ouvrir la démo →</a>
+  </div>
+</div>
+
+<script src="assets/themes.js"></script>
+<script>
+  const X = window.BIDX;
+  const HERO_FR = { editorial: "Éditorial", fullbleed: "Pleine image", poster: "Affiche", split: "Duo photo", board: "Tableau des lieux", magazine: "Magazine", zen: "Zen", banner: "Bandeau direct", collage: "Collage", duo: "Diagonale" };
+  const MENU_FR = { dotted: "carte typographiée", tickets: "tickets", cards: "cartes photo", zen: "colonne fine", mosaic: "mosaïque", ledger: "registre", tabs: "onglets", bento: "bento" };
+  const shot = (t) => `assets/shots/${t.id}.jpg`;
+  const demoUrl = (t) => `home.html?t=${t.id}`;
+
+  document.getElementById("catnav").innerHTML =
+    X.ORDER.map((c) => `<a href="#${c}">${X.CATS[c].label} · 10</a>`).join("");
+
+  document.getElementById("cats").innerHTML = X.ORDER.map((c) => {
+    const themes = X.LIST.filter((t) => t.cat === c);
+    return `<section class="cat" id="${c}">
+      <div class="cat-h"><h2>${X.CATS[c].label}</h2><span class="n">${themes.length} designs, cliquez une capture pour feuilleter</span></div>
+      <div class="gal">${themes.map((t, i) => {
+        const pc = `hsl(${t.D.p})`;
+        const dots = [t.L.p, t.L.bg, t.D.bg].map((v) => `<i style="background:hsl(${v})"></i>`).join("");
+        return `<article class="card" style="--pc:${pc}">
+          <div class="shot" data-lb="${c}:${i}">
+            <img src="${shot(t)}" alt="Capture du thème ${t.name} (${X.CATS[c].label})" loading="lazy">
+            <span class="zoom">Agrandir</span>
+          </div>
+          <div class="b">
+            <div class="tt"><span class="tname">${t.name}</span><span class="dots">${dots}</span></div>
+            <div class="tbrand">${t.brand[0]}${t.brand[1]} · ${t.tag}</div>
+            <div class="lay"><span>${HERO_FR[t.hero]}</span><span>${MENU_FR[t.menu]}</span>${t.locN > 1 ? `<span>${t.locN} lieux</span>` : ""}</div>
+            <a class="go" href="${demoUrl(t)}">Ouvrir la démo →</a>
+          </div>
+        </article>`;
+      }).join("")}</div>
+    </section>`;
+  }).join("");
+
+  /* ── Visionneuse : navigation par catégorie ── */
+  const lb = document.getElementById("lb");
+  const lbImg = document.getElementById("lb-img"), lbName = document.getElementById("lb-name"),
+        lbMeta = document.getElementById("lb-meta"), lbOpen = document.getElementById("lb-open"),
+        lbCount = document.getElementById("lb-count");
+  let cur = { cat: null, i: 0 };
+  const catThemes = (c) => X.LIST.filter((t) => t.cat === c);
+  const ovBrand = document.getElementById("ov-brand"), ovColor = document.getElementById("ov-color");
+
+  function brandedUrl(t, abs) {
+    const p = new URLSearchParams({ t: t.id });
+    const b = ovBrand.value.trim(); if (b) p.set("brand", b);
+    if (ovColor.dataset.touched) p.set("primary", ovColor.value.replace("#", ""));
+    const rel = `home.html?${p.toString()}`;
+    return abs ? new URL(rel, location.href).href : rel;
+  }
+  function refreshOv() { const t = catThemes(cur.cat)[cur.i]; if (t) lbOpen.href = brandedUrl(t, false); }
+  ovBrand.addEventListener("input", refreshOv);
+  ovColor.addEventListener("input", () => { ovColor.dataset.touched = "1"; refreshOv(); });
+
+  function showLb(cat, i) {
+    const list = catThemes(cat);
+    cur = { cat, i: (i + list.length) % list.length };
+    const t = list[cur.i];
+    lbImg.src = shot(t);
+    lbImg.alt = `Capture du thème ${t.name}`;
+    lbName.textContent = `${t.name} · ${X.CATS[cat].label}`;
+    lbMeta.textContent = `${t.brand[0]}${t.brand[1]} · ${HERO_FR[t.hero]} · ${MENU_FR[t.menu]}${t.locN > 1 ? ` · ${t.locN} lieux` : ""}`;
+    lbOpen.href = brandedUrl(t, false);
+    lbOpen.style.setProperty("--pc", `hsl(${t.D.p})`);
+    lbCount.textContent = `${cur.i + 1} / ${list.length}`;
+    lb.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+  document.getElementById("lb-copy").addEventListener("click", () => {
+    const t = catThemes(cur.cat)[cur.i];
+    const customized = ovBrand.value.trim() || ovColor.dataset.touched;
+    // Sans personnalisation : lien de partage /s/<id> (aperçu OG riche).
+    // Personnalisé : lien direct home avec la marque/couleur (aperçu en direct).
+    const url = customized ? brandedUrl(t, true) : new URL(`s/${t.id}.html`, location.href).href;
+    navigator.clipboard && navigator.clipboard.writeText(url);
+    const b = document.getElementById("lb-copy"); const old = b.textContent;
+    b.textContent = "Lien copié ✓"; setTimeout(() => (b.textContent = old), 1600);
+  });
+  function closeLb() { lb.classList.remove("open"); document.body.style.overflow = ""; }
+  document.getElementById("cats").addEventListener("click", (e) => {
+    const s = e.target.closest("[data-lb]"); if (!s) return;
+    const [cat, i] = s.dataset.lb.split(":");
+    showLb(cat, +i);
+  });
+  document.getElementById("lb-close").addEventListener("click", closeLb);
+  document.getElementById("lb-prev").addEventListener("click", () => showLb(cur.cat, cur.i - 1));
+  document.getElementById("lb-next").addEventListener("click", () => showLb(cur.cat, cur.i + 1));
+  lb.addEventListener("click", (e) => { if (e.target === lb || e.target.classList.contains("lb-stage")) closeLb(); });
+  document.addEventListener("keydown", (e) => {
+    if (!lb.classList.contains("open")) return;
+    if (e.key === "Escape") closeLb();
+    else if (e.key === "ArrowLeft") showLb(cur.cat, cur.i - 1);
+    else if (e.key === "ArrowRight") showLb(cur.cat, cur.i + 1);
+  });
+</script>
+</body>
+</html>

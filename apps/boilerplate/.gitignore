@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Env — never commit real values
+.env
+.env.local
+.env.*.local
+.env.convex
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+e2e/.auth/
+
+# Convex
+.convex-build/
+
+# Vercel
+.vercel/
+
+# Tooling
+.codegraph/
+.context/
+.DS_Store
+*.log
+
+# Mode engine-link (pnpm engine:link) — jamais commité
+.engine-link.json
+.gstack/
