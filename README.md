@@ -3,7 +3,7 @@
 Site commercial de l'offre restauration BeYours : vitrine, tunnel de paiement,
 portail apporteurs d'affaires et console d'exploitation interne.
 
-**Next.js 16** (App Router) + **Convex** (backend) + **Stripe** + **Yousign**.
+**Next.js 16** (App Router) + **Convex** (backend) + **Stripe** + **AWS SES**.
 
 > BeYours est un nom de produit. L'entité éditrice reste **BeInDigital SAS** :
 > mentions légales, CGV et confidentialité sont à son nom.
@@ -64,7 +64,7 @@ pnpm dev:backend
 `convex/` — 19 tables, réparties en quatre domaines :
 
 - **Apporteurs** : `affiliateUsers`, `referralCodes`, `referrals`, `affiliateSettings`
-- **Contrats** : `contractVersions`, `contractSignatures` (signature électronique Yousign)
+- **Contrats** : `contractVersions`, `contractSignatures` — signature dans l'app, sans prestataire externe. Yousign a été retiré (abonnement expiré) ; le schéma garde des champs optionnels hérités.
 - **Commerce** : `orders`, `payments`, `subscriptions`, `invoices` (Stripe + Stripe Connect)
 - **Exploitation** : `saDeployments`, `saStores`, `saSalesSnapshots`, `saIncidents`,
   `saIncidentUpdates`, `saMonitoringChecks`, `saActivity`
