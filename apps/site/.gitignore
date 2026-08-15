@@ -1,0 +1,47 @@
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Dependencies
+node_modules/
+
+# Env — tout est ignoré, sauf les gabarits sans secret.
+# Ce dépôt manipule Stripe, Yousign et SES : un .env committé serait critique.
+.env*
+!.env.example
+!.env.production.example
+
+# Convex
+.convex/
+.convex-build/
+
+# TypeScript
+*.tsbuildinfo
+
+# Tests
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
+
+# Outillage d'agent — skills vendorisées, installées localement
+.claude/
+.agents/
+.junie/
+.mcp.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Vercel
+.vercel
