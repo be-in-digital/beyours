@@ -130,8 +130,11 @@ async function getDeliverooCredentials() {
 
 /**
  * Map Deliveroo status to internal order status
+ *
+ * Exported so tests can assert the Deliveroo vocabulary against the internal
+ * status machine rather than restating the mapping and letting it drift.
  */
-function mapDeliverooStatus(
+export function mapDeliverooStatus(
   deliverooStatus: string
 ): "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "completed" | "cancelled" {
   switch (deliverooStatus) {
