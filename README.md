@@ -1,229 +1,228 @@
 # BeYours
 
-Tout ce qui compose l'offre restauration **BeYours** : le site qui la vend, le
-moteur qui la fait tourner, et le gabarit qui la livre chez chaque client.
+Everything that makes up the **BeYours** restaurant offering: the site that
+sells it, the engine that runs it, and the template that ships it to each
+client.
 
-Monorepo pnpm + Turborepo. Next.js 16 · React 19 · Convex · TypeScript strict.
+pnpm + Turborepo monorepo. Next.js 16 · React 19 · Convex · strict TypeScript.
 
-**En ligne : https://beyours.fr**
+**Live: https://beyours.fr**
 
-![Catalogue de démos](docs/captures/demos-catalogue.png)
+![Demo catalogue](docs/captures/demos-catalogue.png)
 
-> **BeYours est le produit vendu aux restaurateurs. BeInDigital est l'agence.**
-> Deux marques, deux activités. La règle et ses exceptions sont détaillées dans
-> [Marque](#marque--ce-quon-renomme-et-ce-quon-ne-renomme-jamais) — à lire avant
-> tout rechercher-remplacer.
+> **BeYours is the product sold to restaurant owners. BeInDigital is the
+> agency.** Two brands, two businesses. The rule and its exceptions are spelled
+> out under [Naming](#naming-what-gets-renamed-and-what-never-does) — read it
+> before any find-and-replace.
 
 ---
 
-## En une minute
+## In one minute
 
 | | |
 | --- | --- |
-| **Ce qu'on vend** | Un site de commande en ligne clé en main pour restaurateurs, sans commission sur les ventes directes |
-| **Modèle** | Vente unique du site + 1 an de maintenance incluse, puis renouvellement annuel |
-| **Multi-établissement** | 1 restaurateur = 1 à N adresses, illimité |
-| **Comment on vend** | 50 démos navigables, panier réel, paiement Stripe en mode test — le prospect essaie avant d'acheter |
-| **Comment on livre** | 1 dépôt et 1 backend Convex par client, clonés depuis `apps/themes` |
-| **Qui amène les clients** | Des apporteurs d'affaires indépendants, contrat signé en ligne, commission suivie |
+| **What we sell** | A turnkey online ordering site for restaurants, with no commission on direct sales |
+| **Model** | One-off sale + 1 year of maintenance included, then annual renewal |
+| **Multi-location** | 1 owner = 1 to N locations, unlimited |
+| **How we sell it** | 50 browsable demos, real cart, Stripe test payments — prospects try before they buy |
+| **How we ship it** | 1 repository and 1 Convex backend per client, cloned from `apps/themes` |
+| **Who brings clients** | Independent affiliates, contract signed online, commissions tracked |
 
 ---
 
-## Les trois applications
+## The three applications
 
-C'est la chose à comprendre en premier : ce dépôt contient **trois applications
-Next.js distinctes**, qui ne se déploient pas au même endroit et ne servent pas
-le même public.
+This is the first thing to understand: the repository holds **three distinct
+Next.js applications**. They deploy to different places and serve different
+audiences.
 
-| App | Workspace | Public | Où ça tourne |
+| App | Workspace | Audience | Where it runs |
 | --- | --- | --- | --- |
-| [`apps/site`](apps/site) | `@beyours/site` | Prospects, apporteurs, équipe interne | Vercel → **beyours.fr** |
-| [`apps/reference`](apps/reference) | `@beyours/reference` | Personne — c'est le banc d'essai du moteur | Local / preview |
-| [`apps/themes`](apps/themes) | `@beyours/themes` | Chaque restaurant client, après clonage | Vercel, 1 projet par client |
+| [`apps/site`](apps/site) | `@beyours/site` | Prospects, affiliates, internal team | Vercel → **beyours.fr** |
+| [`apps/reference`](apps/reference) | `@beyours/reference` | Nobody — it is the engine's test bench | Local / preview |
+| [`apps/themes`](apps/themes) | `@beyours/themes` | Each client restaurant, after cloning | Vercel, 1 project per client |
 
-**`apps/site` — le site commercial.** Vitrine, catalogue de 52 templates,
-tunnel de paiement Stripe, portail apporteurs d'affaires et console
-d'exploitation interne, en 37 routes. Il ne dépend d'**aucun** paquet du
-moteur : c'est un site, pas une instance du produit.
+**`apps/site` — the commercial site.** Marketing pages, a catalogue of 52
+templates, the Stripe checkout, the affiliate portal and the internal operations
+console, across 37 routes. It depends on **none** of the engine packages: it is
+a website, not an instance of the product.
 
-**`apps/reference` — l'application de référence.** 98 routes, l'assemblage
-complet des dix paquets : storefront, dashboard admin, CMS, écran cuisine, jeux
-QR. C'est là qu'une fonctionnalité du moteur se développe et se prouve avant
-d'être publiée. Elle n'est vendue à personne.
+**`apps/reference` — the reference application.** 98 routes wiring all ten
+packages together: storefront, admin dashboard, CMS, kitchen display, QR games.
+This is where an engine feature is built and proven before it is published. It
+is sold to nobody.
 
-**`apps/themes` — le gabarit client.** Le miroir livrable de
-`apps/reference`, plus ce que le moteur ne peut pas porter : la zone client, les
-51 templates design, les scripts de création de site, les 50 démos
-commerciales.
+**`apps/themes` — the client template.** The shippable counterpart of
+`apps/reference`, plus everything the engine cannot carry: the client zone, the
+51 design templates, the site-creation scripts, the 50 sales demos.
 
-![Démo storefront](docs/captures/demo-storefront.png)
+![Storefront demo](docs/captures/demo-storefront.png)
 
-![Démo back-office](docs/captures/demo-admin.png)
+![Back-office demo](docs/captures/demo-admin.png)
 
 ---
 
-## Un push ne construit que ce qu'il touche
+## A push only builds what it touches
 
-C'est la raison d'être de la fusion. Chaque app porte son `vercel.json` :
+This is why the repositories were merged. Each app carries its own
+`vercel.json`:
 
 ```json
 { "ignoreCommand": "npx turbo-ignore @beyours/<app>" }
 ```
 
-Turbo suit le **graphe de dépendances**, pas l'arborescence :
+Turbo follows the **dependency graph**, not the directory tree:
 
-| Ce qu'on modifie | site | reference | themes |
+| What you change | site | reference | themes |
 | --- | --- | --- | --- |
-| `apps/site/**` | ✓ construit | ⏭ ignoré | ⏭ ignoré |
-| `packages/ui/**` | ⏭ ignoré | ✓ construit | ✓ construit |
-| `apps/themes/**` | ⏭ ignoré | ⏭ ignoré | ✓ construit |
+| `apps/site/**` | ✓ builds | ⏭ skipped | ⏭ skipped |
+| `packages/ui/**` | ⏭ skipped | ✓ builds | ✓ builds |
+| `apps/themes/**` | ⏭ skipped | ⏭ skipped | ✓ builds |
 
-Le site est épargné par un changement dans `packages/ui` parce qu'il n'en
-dépend pas — et ça, seul le graphe le sait. Une règle sur les chemins ne
-l'aurait pas deviné.
+The site is spared by a change in `packages/ui` because it does not depend on
+it — and only the graph knows that. A path-based rule would not have guessed.
 
-⚠️ Un changement à la **racine** (`package.json`, `pnpm-lock.yaml`,
-`turbo.json`) invalide tout le monde, par construction. C'est correct, mais ça
-veut dire qu'un bump de dépendance reconstruit les trois apps.
+⚠️ A change at the **root** (`package.json`, `pnpm-lock.yaml`, `turbo.json`)
+invalidates everything, by construction. That is correct, but it means a
+dependency bump rebuilds all three apps.
 
 ---
 
-## Structure
+## Layout
 
 ```
 apps/
-  site/          Site commercial — vitrine, catalogue, checkout, apporteurs, console
-  reference/     Application de référence du moteur (98 routes)
-  themes/        Le site livré au client — app + 51 templates + 50 démos
-  docs/          31 pages de documentation produit (markdown, pas un workspace)
+  site/          Commercial site — marketing, catalogue, checkout, affiliates, console
+  reference/     The engine's reference application (98 routes)
+  themes/        The site shipped to clients — app + 51 templates + 50 demos
+  docs/          31 pages of product documentation (markdown, not a workspace)
 
-packages/        Les 10 paquets publiés — voir ci-dessous
+packages/        The 10 published packages — see below
 
-.changeset/      Versioning des paquets (les apps en sont exclues)
-_project/        Notes d'architecture et de design historiques
-tasks/           Runbooks : go-live Uber Eats, rotation des secrets, audit prod
-docs/captures/   Captures de ce README
+.changeset/      Package versioning (the apps are excluded)
+_project/        Historical architecture and design notes
+tasks/           Runbooks: Uber Eats go-live, secret rotation, production audit
+docs/captures/   Screenshots used by this README
 ```
 
 ---
 
-## Les paquets du moteur
+## The engine packages
 
-Dix paquets publiés sur **GitHub Packages** sous le scope `@be-in-digital/*`,
-versionnés ensemble par changesets.
+Ten packages published to **GitHub Packages** under the `@be-in-digital/*`
+scope, versioned together by changesets.
 
-| Paquet | Contenu | Volume | Livré en |
+| Package | Contents | Size | Shipped as |
 | --- | --- | --- | --- |
-| `admin` | Pages et composants d'administration | 170 fichiers · 31 500 l. | source TS |
-| `convex-functions` | Fonctions backend Convex | 65 fichiers · 17 500 l. | source TS |
-| `core` | Auth, i18n, AWS (S3/SES), env, Sentry | 41 fichiers · 8 100 l. | `dist/` (tsup) |
-| `integrations` | Uber Eats, Deliveroo | 28 fichiers · 6 200 l. | `dist/` |
-| `convex-schema` | Tables et validateurs Convex | 32 fichiers · 5 800 l. | source TS |
-| `ui` | Composants React, design system | 57 fichiers · 4 300 l. | `dist/` |
-| `marketing` | Email, campagnes, segments | 13 fichiers · 3 400 l. | `dist/` |
-| `restaurant` | Logique métier, hooks, stores Zustand | 25 fichiers · 3 100 l. | `dist/` |
-| `cms` | Registre de blocs, validation, sanitisation | 14 fichiers · 2 400 l. | `dist/` |
-| `mcp-server` | Serveur MCP exposant le registre des paquets | 3 fichiers · 1 600 l. | `dist/` |
+| `admin` | Administration pages and components | 170 files · 31,500 lines | TS source |
+| `convex-functions` | Convex backend functions | 65 files · 17,500 lines | TS source |
+| `core` | Auth, i18n, AWS (S3/SES), env, Sentry | 41 files · 8,100 lines | `dist/` (tsup) |
+| `integrations` | Uber Eats, Deliveroo | 28 files · 6,200 lines | `dist/` |
+| `convex-schema` | Convex tables and validators | 32 files · 5,800 lines | TS source |
+| `ui` | React components, design system | 57 files · 4,300 lines | `dist/` |
+| `marketing` | Email, campaigns, segments | 13 files · 3,400 lines | `dist/` |
+| `restaurant` | Business logic, hooks, Zustand stores | 25 files · 3,100 lines | `dist/` |
+| `cms` | Block registry, validation, sanitisation | 14 files · 2,400 lines | `dist/` |
+| `mcp-server` | MCP server exposing the package registry | 3 files · 1,600 lines | `dist/` |
 
-**Trois paquets sont livrés en TypeScript brut** — `admin`, `convex-functions`
-et `convex-schema` pointent leur `main` sur `./src/index.ts`. C'est délibéré :
-le schéma et les fonctions doivent être lus par le compilateur Convex du client,
-et `admin` embarque des Server Components que transpiler casserait. Conséquence
-pratique : **ces trois-là n'ont pas de tâche `build`**, une erreur de type chez
-eux ne se révèle qu'au `type-check` ou au build de l'app qui les consomme.
+**Three packages ship as raw TypeScript** — `admin`, `convex-functions` and
+`convex-schema` point their `main` at `./src/index.ts`. This is deliberate: the
+schema and functions must be read by the client's Convex compiler, and `admin`
+carries Server Components that transpiling would break. Practical consequence:
+**those three have no `build` task**, so a type error in them only surfaces
+during `type-check` or in the build of the app that consumes them.
 
-### Le scope reste `@be-in-digital`
+### The scope stays `@be-in-digital`
 
-Les dépôts ont été renommés en `beyours-*`, pas le scope npm. Le changer
-casserait chaque site client à la prochaine installation. Il reste donc
-`@be-in-digital/*` — c'est un identifiant de registre, pas un nom de marque.
+The repositories were renamed to `beyours-*`; the npm scope was not. Changing it
+would break every client site on its next install. So it remains
+`@be-in-digital/*` — a registry identifier, not a brand name.
 
 ---
 
-## Comment un site client prend vie
+## How a client site comes to life
 
 ```
-packages/*                      publiés en @be-in-digital/* (changesets)
+packages/*                      published as @be-in-digital/* (changesets)
     │
-    ├──► apps/reference         le banc d'essai — on y prouve la feature
+    ├──► apps/reference         the test bench — where a feature is proven
     │
-    └──► apps/themes            le site livré au client
-              │  clone git (remote `template`)
+    └──► apps/themes            the site shipped to the client
+              │  git clone (remote `template`)
               ▼
-         dépôt du client        1 repo + 1 backend Convex + 1 projet Vercel
+         client repository      1 repo + 1 Convex backend + 1 Vercel project
 ```
 
-Création d'un site, depuis un terminal :
+Creating a site, from a terminal:
 
 ```bash
 beyours create client-luigi --name "Chez Luigi" --template pizzeria --repo be-in-digital/client-luigi
 ```
 
-La commande enchaîne clone → remote `template` → création du dépôt privé →
+The command chains clone → `template` remote → private repo creation →
 `pnpm install` → configuration (`site.config.ts`, secrets, `.env.local`) →
-commit initial → push. Détail dans
+initial commit → push. Details in
 [`apps/themes/README.md`](apps/themes/README.md).
 
-### Le miroir de distribution
+### The distribution mirror
 
-Le clone ne se fait pas depuis ce dépôt mais depuis
-**`be-in-digital/beyours-boilerplate`**, parce qu'un site client ne peut pas
-cloner un sous-dossier de monorepo : git clone des dépôts entiers. Le miroir
-est la découpe livrable.
+Clients do not clone this repository but
+**`be-in-digital/beyours-boilerplate`**, because a client site cannot clone a
+subdirectory of a monorepo: git clones whole repositories. The mirror is the
+shippable cut.
 
-[`scripts/publish-mirror.mjs`](scripts/publish-mirror.mjs) l'y pousse, en
-corrigeant les quatre choses qui n'ont de sens qu'ici :
+[`scripts/publish-mirror.mjs`](scripts/publish-mirror.mjs) pushes to it, fixing
+the four things that only make sense here:
 
-| | Dans `apps/themes` | Dans le miroir |
+| | In `apps/themes` | In the mirror |
 | --- | --- | --- |
-| Dépendances moteur | `workspace:^` | `^2.0.2` — la version publiée du moment |
-| Lockfile | celui de la racine | le sien, régénéré |
-| `vercel.json` | `turbo-ignore` | absent — pas de workspace turbo chez le client |
+| Engine dependencies | `workspace:^` | `^2.0.2` — whatever is published |
+| Lockfile | the root one | its own, regenerated |
+| `vercel.json` | `turbo-ignore` | absent — no turbo workspace on the client side |
 | `name` | `@beyours/themes` | `beyours-boilerplate` |
 
-`.github/workflows/publish-mirror.yml` le déclenche sur deux événements, parce
-que le miroir peut dériver de deux façons : un changement du gabarit (push sur
-`main` touchant `apps/themes/**`) et une republication des paquets (fin du
-workflow *Release*). `workflow_dispatch` permet un dry-run à la demande.
+`.github/workflows/publish-mirror.yml` triggers on two events, because the
+mirror can drift in two ways: a template change (push to `main` touching
+`apps/themes/**`) and a package republication (end of the *Release* workflow).
+`workflow_dispatch` allows an on-demand dry run.
 
-Localement :
+Locally:
 
 ```bash
 NODE_AUTH_TOKEN=<PAT read:packages> node scripts/publish-mirror.mjs --check
 ```
 
-⚠️ Le miroir est reconstruit intégralement à chaque passage : **un commit fait
-directement dessus disparaît**. Son historique, lui, est préservé — jamais de
-force-push, parce que chaque site client a un remote `template` qui pointe
-dessus et y fait des merges.
+⚠️ The mirror is rebuilt in full on every run: **a commit made directly on it
+disappears**. Its history, however, is preserved — never a force-push, because
+every client site has a `template` remote pointing at it and merges from it.
 
-Secret requis : `MIRROR_PUSH_TOKEN`, un PAT fine-grained `contents: write` sur
-`beyours-boilerplate`. Sans lui le job tourne en dry-run et signale la dérive
-sans pousser — `GITHUB_TOKEN` ne porte que sur le dépôt courant.
+Required secret: `MIRROR_PUSH_TOKEN`, a fine-grained PAT with `contents: write`
+on `beyours-boilerplate`. Without it the job runs as a dry run and reports drift
+without pushing — `GITHUB_TOKEN` is scoped to the current repository only.
 
-### Deux canaux de mise à jour, jamais un seul
+### Two update channels, never just one
 
-| Canal | Commande | Ce qui remonte |
+| Channel | Command | What it carries |
 | --- | --- | --- |
-| **npm** | `pnpm update:engine` | La logique métier — les paquets `@be-in-digital/*`, en semver |
-| **git** | `pnpm update:template` | Le shell applicatif — routes, wrappers Convex, scripts, configs |
+| **npm** | `pnpm update:engine` | Business logic — the `@be-in-digital/*` packages, by semver |
+| **git** | `pnpm update:template` | The application shell — routes, Convex wrappers, scripts, configs |
 
-Ils sont séparés parce qu'ils ont des rythmes différents : un correctif de
-logique se diffuse par un bump de version, une nouvelle route exige un merge
-git. Un site peut prendre l'un sans l'autre.
+They are separate because they move at different speeds: a logic fix spreads
+through a version bump, a new route requires a git merge. A site can take one
+without the other.
 
 ---
 
-## Le modèle de maintenance
+## The maintenance model
 
-Le site est vendu une fois, avec **un an de maintenance incluse**, puis
-renouvelé annuellement. Tant que le contrat couvre, le client reçoit toutes les
-mises à jour. À l'expiration, son déploiement **reste figé sur la dernière
-version publiée avant `coveredUntil`**, et il peut demander la migration
-complète du site vers l'hébergeur ou l'équipe de son choix.
+The site is sold once, with **one year of maintenance included**, then renewed
+annually. While the contract is covered, the client receives every update. Once
+it expires, their deployment **stays frozen on the last release published before
+`coveredUntil`**, and they can request a full migration of the site to the host
+or team of their choice.
 
-La logique est dans
-[`packages/convex-functions/src/maintenance.ts`](packages/convex-functions/src/maintenance.ts) :
+The logic lives in
+[`packages/convex-functions/src/maintenance.ts`](packages/convex-functions/src/maintenance.ts):
 
 ```ts
 export function isReleaseCovered(contract, releasedAt) {
@@ -231,204 +230,210 @@ export function isReleaseCovered(contract, releasedAt) {
 }
 ```
 
-⚠️ **Le gel n'est pas appliqué côté client.** `update-template.mjs` fait un
-`git fetch template` nu : rien ne vérifie l'état du contrat avant de tirer les
-commits. Un site expiré qui lance la commande reçoit tout. Le modèle économique
-est écrit, sa garde ne l'est pas.
+⚠️ **The freeze is not enforced client-side.** `update-template.mjs` runs a bare
+`git fetch template`: nothing checks the contract before pulling commits. An
+expired site that runs the command gets everything. The business model is
+written; its guard is not.
 
 ---
 
-## Marque : ce qu'on renomme, et ce qu'on ne renomme jamais
+## Naming: what gets renamed, and what never does
 
-Trois niveaux, à ne pas confondre :
+Three levels, not to be confused:
 
 | | |
 | --- | --- |
-| **BeYours** | Le produit restauration. Interfaces, emails, démos, documentation |
-| **Be in Digital** | La marque commerciale de l'agence, exploitée par la société |
-| **TUUM AGENCY SAS** | L'entité juridique — SIREN 930 817 697, RCS Paris |
+| **BeYours** | The restaurant product. Interfaces, emails, demos, documentation |
+| **Be in Digital** | The agency's registered trade name, operated by the company |
+| **TUUM AGENCY SAS** | The legal entity — SIREN 930 817 697, RCS Paris |
 
-**Ne jamais faire de rechercher-remplacer global.** Ces occurrences de
-`beindigital` doivent survivre :
+**Never run a global find-and-replace.** These occurrences of `beindigital` must
+survive:
 
-| Identifiant | Pourquoi il ne bouge pas |
+| Identifier | Why it does not move |
 | --- | --- |
-| `@be-in-digital/*` | Scope du registre npm — le changer casse chaque site client |
-| `.beindigital-site.json` | Sentinelle d'init présente dans tous les sites déployés |
-| `beindigital-addresses` · `beindigital-favorites` | Clés `localStorage` — les renommer vide les adresses et les favoris des clients finaux |
-| `beindigital-email-tracking` | Configuration Set qui existe côté AWS SES |
-| `integrator_brand_id: "beindigital"` | Identifiant déclaré chez Uber Eats |
-| `utm_source=beindigital` | L'attribution Unsplash doit correspondre au nom de l'app enregistrée chez eux |
-| `com.beindigital.<slug>` | Bundle identifier — figé une fois l'app publiée sur les stores |
-| `beindigital.fr` | Le domaine appartient bien à l'agence |
+| `@be-in-digital/*` | npm registry scope — changing it breaks every client site |
+| `.beindigital-site.json` | Init sentinel present in every deployed site |
+| `beindigital-addresses` · `beindigital-favorites` | `localStorage` keys — renaming them wipes end customers' addresses and favourites |
+| `beindigital-email-tracking` | A Configuration Set that exists in AWS SES |
+| `integrator_brand_id: "beindigital"` | Identifier registered with Uber Eats |
+| `utm_source=beindigital` | Unsplash attribution must match the registered app name |
+| `com.beindigital.<slug>` | Bundle identifier — frozen once the app is published to the stores |
+| `beindigital.fr` | The domain does belong to the agency |
 
-Et **`apps/site` est hors périmètre** : « Be in Digital » y est la marque sur
-laquelle des contrats d'apporteur sont **déjà signés**, dont la clause 5.2
-interdit précisément d'en altérer le nom. Tout part de
-[`apps/site/lib/legal/company.ts`](apps/site/lib/legal/company.ts) — ne jamais
-dupliquer ces informations ailleurs.
+And **`apps/site` is out of scope**: "Be in Digital" is the trade name that
+affiliate contracts are **already signed** against, and clause 5.2 forbids
+altering it. Everything flows from
+[`apps/site/lib/legal/company.ts`](apps/site/lib/legal/company.ts) — never
+duplicate that information elsewhere.
+
+### Language
+
+Everything in this repository is written in **English**: documentation, code
+comments, commit messages, variable names. The one exception is **user-facing
+content**, which is French — site copy, i18n catalogues, transactional emails,
+the demos and the legal pages. The audience is French restaurant owners.
 
 ---
 
-## Démarrer
+## Getting started
 
 ```bash
 pnpm install
 ```
 
-Pré-requis : **Node 20+**, **pnpm 10.4.1**.
+Requires **Node 20+** and **pnpm 10.4.1**.
 
-Aucun `NODE_AUTH_TOKEN` n'est nécessaire ici : dans le monorepo, les apps
-consomment les paquets en `workspace:^`, pas depuis le registre. Le token n'est
-requis que dans un **dépôt client**, qui installe depuis GitHub Packages.
+No `NODE_AUTH_TOKEN` is needed here: inside the monorepo the apps consume the
+packages through `workspace:^`, not from the registry. The token is only
+required in a **client repository**, which installs from GitHub Packages.
 
 ```bash
-pnpm dev:site          # site commercial
-pnpm dev:reference     # application de référence
-pnpm dev:themes   # gabarit client
+pnpm dev:site          # commercial site
+pnpm dev:reference     # reference application
+pnpm dev:themes        # client template
 ```
 
-Les apps à backend Convex ont besoin d'un second terminal (`convex dev` depuis
-le dossier de l'app). Chaque app documente son propre démarrage :
+Apps with a Convex backend need a second terminal (`convex dev` from the app
+directory). Each app documents its own startup:
 
 - [`apps/site/README.md`](apps/site/README.md)
 - [`apps/themes/README.md`](apps/themes/README.md)
-- [`apps/docs/`](apps/docs) — 31 pages : guides produit, référence API, déploiement
+- [`apps/docs/`](apps/docs) — 31 pages: product guides, API reference, deployment
 
 ---
 
-## Commandes
+## Commands
 
-| Commande | Effet |
+| Command | Effect |
 | --- | --- |
-| `pnpm build` | Construit tout, dans l'ordre du graphe |
-| `pnpm lint` · `pnpm type-check` | Qualité, sur les 13 workspaces |
-| `pnpm test` | Vitest — 56 fichiers : 48 dans les paquets, 6 sur le site, 2 sur l'app de référence |
-| `pnpm test:e2e` | Playwright — 43 specs sur l'app de référence, 43 sur le gabarit, 1 sur le site |
-| `pnpm changeset` | Déclare une évolution de paquet (obligatoire pour publier) |
+| `pnpm build` | Builds everything, in graph order |
+| `pnpm lint` · `pnpm type-check` | Quality, across the 13 workspaces |
+| `pnpm test` | Vitest — 56 files: 48 in packages, 6 on the site, 2 on the reference app |
+| `pnpm test:e2e` | Playwright — 43 specs on the reference app, 43 on the template, 1 on the site |
+| `pnpm changeset` | Declares a package change (required to publish) |
 | `pnpm format` | Prettier |
 
-Turbo met en cache : une seconde exécution sans changement ne relance rien.
+Turbo caches: a second run with no changes re-executes nothing.
 
 ---
 
-## Publier les paquets
+## Publishing the packages
 
-1. `pnpm changeset` — décrire l'évolution, choisir patch / minor / major
-2. Committer le fichier généré dans `.changeset/`
-3. Merger sur `main`
+1. `pnpm changeset` — describe the change, pick patch / minor / major
+2. Commit the generated file under `.changeset/`
+3. Merge to `main`
 
-Le workflow `release.yml` ouvre alors une PR « chore(release): version
-packages ». **La merger publie** sur GitHub Packages et met à jour les
-`CHANGELOG.md`.
+The `release.yml` workflow then opens a "chore(release): version packages" pull
+request. **Merging it publishes** to GitHub Packages and updates the
+`CHANGELOG.md` files.
 
-Les trois apps sont exclues du versioning (`.changeset/config.json`) : elles ne
-sont pas publiées, elles se déploient.
+All three apps are excluded from versioning (`.changeset/config.json`): they are
+not published, they are deployed.
 
 ---
 
 ## CI
 
-| Workflow | Ce qu'il fait |
+| Workflow | What it does |
 | --- | --- |
-| `ci.yml` | lint · type-check · test · build, sur PR et push `main` |
-| `e2e.yml` | Playwright sur l'app de référence, si les secrets `E2E_*` existent |
-| `release.yml` | changesets — PR de version, puis publication |
-| `security.yml` | gitleaks sur l'historique complet + `pnpm audit`, plus un passage quotidien |
+| `ci.yml` | lint · type-check · test · build, on PRs and pushes to `main` |
+| `e2e.yml` | Playwright on the reference app, if the `E2E_*` secrets exist |
+| `release.yml` | changesets — version PR, then publication |
+| `publish-mirror.yml` | Pushes `apps/themes` to the distribution mirror |
+| `security.yml` | gitleaks over full history + `pnpm audit`, plus a daily run |
 
-⚠️ **Les minutes GitHub Actions du plan Free (2 000/mois sur dépôts privés) sont
-épuisées** — le quota a été dépassé en juillet et en août 2026. Les jobs
-échouent en quelques secondes sans exécuter la moindre étape : une croix rouge
-sur une PR ne dit donc rien du code. Vérifier en local (`pnpm lint`,
-`pnpm type-check`, `pnpm test`, `pnpm build`) jusqu'à la remise à zéro mensuelle
-ou au relèvement du plafond de dépenses.
+⚠️ **The GitHub Actions minutes on the Free plan (2,000/month for private
+repositories) are exhausted** — the quota was exceeded in July and August 2026.
+Jobs fail within seconds without running a single step, so a red cross on a PR
+says nothing about the code. Verify locally (`pnpm lint`, `pnpm type-check`,
+`pnpm test`, `pnpm build`) until the monthly reset or a raised spending limit.
 
 ---
 
-## Déploiement
+## Deployment
 
-| Projet Vercel | Team | Source | Root Directory |
+| Vercel project | Team | Source | Root Directory |
 | --- | --- | --- | --- |
-| `beindigital-restaurant` | `be-in-digital` | ce dépôt, branche `main` → **beyours.fr** | `apps/site` |
-| 1 projet par client | `be-in-digital` | Le dépôt cloné du client | racine |
+| `beindigital-restaurant` | `be-in-digital` | this repo, `main` branch → **beyours.fr** | `apps/site` |
+| 1 project per client | `be-in-digital` | the client's cloned repository | root |
 
-Convex se pousse séparément, depuis le dossier de l'app : `npx convex deploy`.
-Chaque client a **son propre déploiement Convex** — l'isolation des données est
-structurelle, pas applicative.
+Convex is pushed separately, from the app directory: `npx convex deploy`. Each
+client has **their own Convex deployment** — data isolation is structural, not
+enforced in application code.
 
-### Retour arrière
+### Rolling back
 
-Le projet a été rebranché sur ce dépôt le 16/08/2026 ; il construisait
-auparavant le dépôt autonome `be-in-digital/beyours` avec Root Directory à la
-racine. Pour revenir à cet état :
+The project was reconnected to this repository on 2026-08-16; it previously
+built the standalone `be-in-digital/beyours` repository with Root Directory at
+the root. To return to that state:
 
 ```bash
 vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
 vercel git connect https://github.com/be-in-digital/beyours --scope be-in-digital
 ```
 
-Le dernier déploiement de production servi depuis l'ancienne configuration est
-`dpl_5cZtp6nZ3j8e4Mzv7GQHtj12N9BQ` — promouvable depuis le tableau de bord
-Vercel pour un retour immédiat, sans rebuild.
+The last production deployment served from the old configuration is
+`dpl_5cZtp6nZ3j8e4Mzv7GQHtj12N9BQ` — promotable from the Vercel dashboard for an
+immediate rollback, with no rebuild.
 
 ---
 
-## Points de vigilance
+## Things to watch
 
-**Le storefront de démo du site est une réimplémentation.**
-`apps/site/lib/template-storefront.ts` ne partage aucun code avec
-`apps/themes`. Un prospect essaie donc autre chose que ce qu'il achète, et
-les deux dérivent à chaque évolution. C'est le chantier d'architecture principal
-ouvert sur ce dépôt.
+**The site's demo storefront is a reimplementation.**
+`apps/site/lib/template-storefront.ts` shares no code with `apps/themes`, the
+product actually shipped. A prospect therefore tries something other than what
+they buy, and the two drift apart with every change. This is the main open
+architectural issue in the repository.
 
-**Le catalogue existe en trois exemplaires.** 52 entrées dans
-`apps/site/lib/templates-data.ts`, 51 dossiers dans
-`apps/themes/templates/`, 50 démos dans `apps/themes/demos/`. Trois
-listes qu'aucun test ne réconcilie.
+**The catalogue exists in three copies.** 52 entries in
+`apps/site/lib/templates-data.ts`, 51 directories in `apps/themes/templates/`,
+50 demos in `apps/themes/demos/`. Three lists that no test reconciles.
 
-**Un commit direct sur le miroir est perdu.**
-`be-in-digital/beyours-boilerplate` est reconstruit intégralement à chaque
-synchronisation (voir [Le miroir de distribution](#le-miroir-de-distribution)).
-Toute modification se fait ici, dans `apps/themes`.
+**A commit made directly on the mirror is lost.**
+`be-in-digital/beyours-boilerplate` is rebuilt in full on every sync (see
+[The distribution mirror](#the-distribution-mirror)). All changes belong here,
+in `apps/themes`.
 
-**11 tests d'intégration Deliveroo ne s'exécutent jamais.** Les fichiers
-`apps/reference/e2e/deliveroo/**/*.test.ts` tombent dans un angle mort : Vitest
-exclut `**/e2e/**`, et les projets Playwright ne matchent que `*.spec.ts`.
-Aucun des deux runners ne les voit. Vérifié : `playwright test --list` ne
-retourne aucun d'entre eux. Les renommer en `.spec.ts` et les câbler à un
-projet, ou les déplacer hors de `e2e/`.
+**11 Deliveroo integration tests never run.** The files
+`apps/reference/e2e/deliveroo/**/*.test.ts` fall into a blind spot: Vitest
+excludes `**/e2e/**`, and the Playwright projects only match `*.spec.ts`.
+Neither runner sees them. Verified: `playwright test --list` returns none of
+them. Rename them to `.spec.ts` and wire them to a project, or move them out of
+`e2e/`.
 
-**32 routes de `apps/reference/app/(admin)/` sont des redirections** vers
-`/dashboard/*`. Ce sont des alias historiques, pas des doublons : ne pas
-chercher à les fusionner.
-
----
-
-## Historique
-
-Ce dépôt s'appelait `beindigital`, puis `beyours-engine`. Il a hébergé jusqu'en
-août 2026 le moteur **et** les deux sites web de l'entreprise.
-
-Le découpage d'août 2026 a d'abord sorti les quatre projets dans quatre dépôts,
-puis regroupé les trois qui relèvent de BeYours — le site, le moteur, le gabarit
-— dans celui-ci, avec leur historique complet (`git subtree`). Le site de
-l'agence est parti de son côté, dans
-[`beindigital.fr`](https://github.com/be-in-digital/beindigital.fr) : autre
-marque, autre activité, aucune dépendance de code.
-
-⚠️ **Trois noms de dépôts ont été libérés par ces renommages :** `beindigital`,
-`beindigital-engine`, `beindigital-boilerplate`. Des scripts en production
-dépendent des redirections GitHub associées. **N'en recréez aucun** — créer un
-dépôt portant l'un de ces noms détruit silencieusement la redirection.
+**32 routes under `apps/reference/app/(admin)/` are redirects** to
+`/dashboard/*`. They are historical aliases, not duplicates: do not try to merge
+them.
 
 ---
 
-## Pour reprendre le projet
+## History
 
-Dans l'ordre, en arrivant sans contexte :
+This repository was called `beindigital`, then `beyours-engine`. Until August
+2026 it hosted the engine **and** both of the company's websites.
 
-1. Ce README, puis [`apps/docs/getting-started/introduction.md`](apps/docs/getting-started/introduction.md).
-2. La section [Marque](#marque--ce-quon-renomme-et-ce-quon-ne-renomme-jamais), avant de toucher à quoi que ce soit de nommé.
-3. `pnpm install && pnpm dev:reference` — l'app de référence est le chemin le plus court pour voir le produit entier tourner.
-4. `packages/convex-schema/src/` pour le modèle de données, `packages/convex-functions/src/` pour ce qui agit dessus.
-5. Ouvrir `apps/themes/demos/index.html` dans un navigateur : c'est ce qu'un prospect voit, et c'est navigable hors ligne.
+The August 2026 split first moved the four projects into four repositories, then
+regrouped the three that belong to BeYours — the site, the engine, the template
+— into this one, with their full history (`git subtree`). The agency site went
+its own way, to
+[`beindigital.fr`](https://github.com/be-in-digital/beindigital.fr): different
+brand, different business, no code dependency.
+
+⚠️ **Three repository names were freed by those renames:** `beindigital`,
+`beindigital-engine`, `beindigital-boilerplate`. Scripts in production rely on
+the associated GitHub redirects. **Do not recreate any of them** — creating a
+repository under one of those names silently destroys the redirect.
+
+---
+
+## Picking up the project
+
+In order, arriving with no context:
+
+1. This README, then [`apps/docs/getting-started/introduction.md`](apps/docs/getting-started/introduction.md).
+2. The [Naming](#naming-what-gets-renamed-and-what-never-does) section, before touching anything that carries a name.
+3. `pnpm install && pnpm dev:reference` — the reference app is the shortest path to seeing the whole product run.
+4. `packages/convex-schema/src/` for the data model, `packages/convex-functions/src/` for what acts on it.
+5. Open `apps/themes/demos/index.html` in a browser: that is what a prospect sees, and it works offline.

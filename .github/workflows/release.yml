@@ -44,8 +44,8 @@ jobs:
             ${{ runner.os }}-turbo-release-
 
       - name: Build packages
-        # Seuls les paquets sont publiés. Les apps ne le sont pas et leur
-        # build exige un env applicatif — inutile de le monter ici.
+        # Only the packages are published. The apps are not, and building them
+        # needs an application env — no reason to set that up here.
         run: pnpm build --filter='./packages/*'
 
       - name: Create Release Pull Request or Publish

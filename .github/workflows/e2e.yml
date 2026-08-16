@@ -57,8 +57,8 @@ jobs:
             ${{ runner.os }}-turbo-e2e-
 
       - name: Build application
-        # Les e2e portent sur l'app de référence : inutile de construire le
-        # site commercial ni le boilerplate ici.
+        # The e2e suite targets the reference app: no need to build the
+        # commercial site or the client template here.
         run: pnpm build --filter=@beyours/reference...
 
       - name: Check E2E secrets configured

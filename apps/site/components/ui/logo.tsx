@@ -7,20 +7,20 @@ interface LogoProps {
   priority?: boolean;
   className?: string;
   linked?: boolean;
-  /** "ink" pour fond clair (défaut), "light" pour fond olive/sombre */
+  /** "ink" for light backgrounds (default), "light" for olive/dark ones */
   variant?: "ink" | "light";
 }
 
 /**
- * Logo BeYours — wordmark « be ·yours » : encre + pastille terracotta.
+ * BeYours logo — the "be ·yours" wordmark: ink plus a terracotta pill.
  *
- * Deux variantes, mêmes tracés, trois remplissages permutés :
- *   ink   → encre #221c15, pastille #c5542c, contre-forme crème #faf5ee
- *   light → crème #fdf7ef, pastille #d5794d, contre-forme olive #23271c
+ * Two variants, same paths, three fills swapped:
+ *   ink   → ink #221c15, pill #c5542c, counterform cream #faf5ee
+ *   light → cream #fdf7ef, pill #d5794d, counterform olive #23271c
  *
- * Ce sont les tokens de la DA (--foreground, --primary, --background). Un
- * changement de palette dans globals.css doit être reporté ici à la main :
- * un SVG servi par <img> ne lit pas les variables CSS de la page.
+ * Those are the design tokens (--foreground, --primary, --background). A
+ * palette change in globals.css has to be mirrored here by hand: an SVG served
+ * through <img> does not read the page's CSS variables.
  */
 export function Logo({
   width = 128,

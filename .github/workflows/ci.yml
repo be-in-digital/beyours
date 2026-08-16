@@ -138,5 +138,5 @@ jobs:
         env:
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
           CONVEX_SITE_URL: https://placeholder.convex.site
-        # Les trois apps sont buildées : la fusion a rendu le graphe complet.
+        # All three apps are built: the merge made the graph complete.
         run: pnpm build

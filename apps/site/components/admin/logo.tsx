@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Marque BeYours Superadmin — pastille terracotta + wordmark.
+ * BeYours Superadmin mark — terracotta pill plus wordmark.
  *
- * Réduction du logo, pas sa reproduction : la pastille reprend la forme
- * signature (« ·yours » sur terracotta), le wordmark reste du texte dans la
- * police d'affichage du site. Le vrai tracé vit dans /logo-ink.svg, servi
- * par components/ui/logo.tsx — inutile de l'embarquer pour une puce de 32 px.
+ * A reduction of the logo, not a reproduction: the pill echoes the signature
+ * shape ("·yours" on terracotta), the wordmark stays as text in the site's
+ * display font. The real artwork lives in /logo-ink.svg, served by
+ * components/ui/logo.tsx — no reason to embed it for a 32 px badge.
  */
 export function Logo({
   withText = true,

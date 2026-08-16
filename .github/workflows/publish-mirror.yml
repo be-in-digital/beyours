@@ -1,17 +1,17 @@
-name: Publier le miroir
+name: Publish mirror
 
-# Pousse `apps/themes` vers be-in-digital/beyours-boilerplate, le dépôt d'où
-# les sites clients sont clonés, en réécrivant ce qui n'a de sens que dans le
-# monorepo (dépendances workspace:, lockfile, vercel.json, nom du paquet).
-# Détail des transformations : scripts/publish-mirror.mjs
+# Pushes `apps/themes` to be-in-digital/beyours-boilerplate, the repository
+# client sites are cloned from, rewriting everything that only makes sense
+# inside the monorepo (workspace: dependencies, lockfile, vercel.json, package
+# name). Transformation details: scripts/publish-mirror.mjs
 #
-# Deux déclencheurs, parce que le miroir peut dériver de deux façons :
-#   - le gabarit change            → push sur main touchant apps/themes/**
-#   - les paquets sont republiés   → fin du workflow Release
+# Two triggers, because the mirror can drift in two ways:
+#   - the template changes      → push to main touching apps/themes/**
+#   - the packages are released → the Release workflow finishes
 #
-# Secret requis : MIRROR_PUSH_TOKEN, un PAT fine-grained `contents: write`
-# sur beyours-boilerplate. Sans lui le job s'arrête proprement — GITHUB_TOKEN
-# ne porte que sur le dépôt courant et ne peut pas pousser ailleurs.
+# Required secret: MIRROR_PUSH_TOKEN, a fine-grained PAT with `contents: write`
+# on beyours-boilerplate. Without it the job stops cleanly — GITHUB_TOKEN is
+# scoped to the current repository and cannot push elsewhere.
 
 on:
   push:
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       check_only:
-        description: "Dry-run : signaler la dérive sans pousser"
+        description: "Dry run: report drift without pushing"
         type: boolean
         default: false
 
@@ -32,21 +32,21 @@ concurrency: publish-mirror
 
 jobs:
   publish:
-    name: Synchroniser le miroir
+    name: Sync the mirror
     runs-on: ubuntu-latest
-    # Sur workflow_run, ne rien faire si la Release a échoué.
+    # On workflow_run, do nothing if the Release failed.
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
       packages: read
     steps:
-      - name: Vérifier le secret de poussée
+      - name: Check the push secret
         id: gate
         env:
           MIRROR_PUSH_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
         run: |
           if [ -z "${MIRROR_PUSH_TOKEN}" ]; then
-            echo "::notice::MIRROR_PUSH_TOKEN absent — synchronisation en dry-run. Voir le README pour le créer."
+            echo "::notice::MIRROR_PUSH_TOKEN is missing — running as a dry run. See the README to create it."
             echo "can_push=false" >> "$GITHUB_OUTPUT"
           else
             echo "can_push=true" >> "$GITHUB_OUTPUT"
@@ -64,10 +64,10 @@ jobs:
           registry-url: "https://npm.pkg.github.com"
           scope: "@be-in-digital"
 
-      - name: Synchroniser
+      - name: Sync
         env:
-          # Lecture du registre : les paquets sont publiés par ce dépôt,
-          # GITHUB_TOKEN suffit avec `packages: read`.
+          # Registry read: the packages are published by this repository, so
+          # GITHUB_TOKEN is enough with `packages: read`.
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MIRROR_PUSH_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
         run: |

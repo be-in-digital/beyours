@@ -5,19 +5,18 @@ import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site-config";
 import "./globals.css";
 
 /**
- * Fonts — auto-hébergées via next/font/local, fichiers dans app/fonts/.
+ * Fonts — self-hosted through next/font/local, files under app/fonts/.
  *
- * Pourquoi pas next/font/google : ce chargeur télécharge les woff2 depuis
- * fonts.gstatic.com AU MOMENT DU BUILD. Sept familles, donc sept occasions
- * qu'une indisponibilité de Google fasse échouer un build sans qu'aucune
- * ligne n'ait changé. Le site agence en a fait les frais le 15/08/2026 :
- * trois 404 sur Fraunces ont cascadé en six erreurs « Module not found ».
+ * Why not next/font/google: that loader downloads the woff2 files from
+ * fonts.gstatic.com AT BUILD TIME. Seven families, so seven chances for a
+ * Google outage to fail a build with no line of code having changed. The
+ * agency site paid for it on 2026-08-15: three 404s on Fraunces cascaded into
+ * six "Module not found" errors.
  *
- * Les fichiers sont versionnés (9 woff2, 212 Ko, sous-ensemble latin) : le
- * build devient déterministe et fonctionne hors ligne. Six de ces polices
- * sont variables — un fichier couvre toute la plage de graisses, d'où les
- * `weight` en intervalle. Seule Zen Kaku est statique, d'où ses trois
- * fichiers.
+ * The files are committed (9 woff2, 212 KB, Latin subset): the build becomes
+ * deterministic and works offline. Six of these are variable fonts — one file
+ * covers the whole weight range, hence the interval `weight` values. Only Zen
+ * Kaku is static, hence its three files.
  */
 const geistSans = localFont({
   variable: "--font-geist-sans",

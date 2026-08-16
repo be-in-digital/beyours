@@ -1,54 +1,54 @@
-# `apps/reference` — l'application de référence du moteur
+# `apps/reference` — the engine's reference application
 
-L'assemblage complet des dix paquets `@be-in-digital/*` en une application qui
-tourne : storefront, dashboard admin, CMS, écran cuisine, jeux QR, i18n.
+All ten `@be-in-digital/*` packages wired together into an application that
+runs: storefront, admin dashboard, CMS, kitchen display, QR games, i18n.
 
-**Elle n'est vendue à personne et ne se déploie nulle part en production.**
-C'est le banc d'essai : une fonctionnalité du moteur se développe ici, s'y
-prouve, puis part en paquet publié.
+**It is sold to nobody and deployed nowhere in production.** It is the test
+bench: an engine feature is built here, proven here, then shipped as a published
+package.
 
 ---
 
-## Pourquoi elle existe
+## Why it exists
 
-Les paquets ne sont pas exécutables seuls. `@be-in-digital/admin` fournit des
-pages, `convex-schema` des tables, `ui` des composants — mais rien de tout ça ne
-se lance. Il faut une app qui les câble ensemble pour voir ce qu'on écrit.
+The packages are not runnable on their own. `@be-in-digital/admin` provides
+pages, `convex-schema` provides tables, `ui` provides components — but none of
+that starts. Something has to wire them together to see what you are writing.
 
-Cette app joue trois rôles :
+This app plays three roles:
 
-| Rôle | Concrètement |
+| Role | In practice |
 | --- | --- |
-| **Banc d'essai** | `pnpm dev:reference` fait tourner le produit entier depuis les sources du moteur, sans publier |
-| **Filet de type** | Trois paquets (`admin`, `convex-functions`, `convex-schema`) sont livrés en TypeScript brut et n'ont pas de tâche `build` — leurs erreurs de type n'apparaissent qu'ici |
-| **Base des e2e** | Les 43 specs Playwright du dépôt visent cette app |
+| **Test bench** | `pnpm dev:reference` runs the whole product from the engine sources, without publishing |
+| **Type safety net** | Three packages (`admin`, `convex-functions`, `convex-schema`) ship as raw TypeScript and have no `build` task — their type errors only surface here |
+| **E2E base** | The repository's 43 Playwright specs target this app |
 
-Elle ne se confond pas avec `apps/themes`, qui est le **livrable** : le
-gabarit y ajoute la zone client, les templates design, les scripts de création
-de site et les démos commerciales.
+Do not confuse it with `apps/themes`, which is the **deliverable**: the template
+adds the client zone, the design templates, the site-creation scripts and the
+sales demos.
 
 ---
 
-## Volumes
+## Size
 
 | | |
 | --- | --- |
-| **Routes** | 98 pages, 6 routes API |
-| **Paquets moteur consommés** | 9 sur 10 (tous sauf `mcp-server`) |
-| **Tests** | 2 fichiers Vitest, 43 specs Playwright — plus 11 fichiers orphelins, voir ci-dessous |
+| **Routes** | 98 pages, 6 API routes |
+| **Engine packages consumed** | 9 out of 10 (all but `mcp-server`) |
+| **Tests** | 2 Vitest files, 43 Playwright specs — plus 11 orphaned files, see below |
 
-Les surfaces, par route group :
+Surfaces, by route group:
 
-| Route group | Contenu |
+| Route group | Contents |
 | --- | --- |
-| `(storefront)` | Menu, produit, panier, checkout, compte, commandes, blog |
-| `(admin)` | Dashboard, produits, catégories, commandes, cuisine, stocks, clients, équipe, email, jeux, langues, CMS, abonnement |
-| `(auth)` | Connexion, inscription, mot de passe oublié |
-| `game/[qrCodeId]` | Parcours de gamification — QR de table → actions sociales → jeu → lot |
-| `display/[storeId]` | Écran cuisine (KDS) |
-| `preview/` | Prévisualisation des pages et articles CMS |
+| `(storefront)` | Menu, product, cart, checkout, account, orders, blog |
+| `(admin)` | Dashboard, products, categories, orders, kitchen, inventory, customers, team, email, games, languages, CMS, subscription |
+| `(auth)` | Sign in, sign up, forgotten password |
+| `game/[qrCodeId]` | Gamification flow — table QR → social actions → game → prize |
+| `display/[storeId]` | Kitchen display system (KDS) |
+| `preview/` | Preview of CMS pages and articles |
 
-⚠️ **32 pages de `(admin)/` sont des redirections** vers `/dashboard/*` :
+⚠️ **32 pages under `(admin)/` are redirects** to `/dashboard/*`:
 
 ```tsx
 export default function Page() {
@@ -56,81 +56,80 @@ export default function Page() {
 }
 ```
 
-Ce sont des alias historiques, conservés pour ne pas casser de liens. Ne pas
-chercher à les fusionner avec les pages qu'elles visent.
+They are historical aliases kept so links do not break. Do not try to merge them
+with the pages they point to.
 
 ---
 
-## 11 tests d'intégration ne s'exécutent jamais
+## 11 integration tests never run
 
-Les scénarios Deliveroo de `e2e/deliveroo/**/*.test.ts` tombent dans un angle
-mort entre les deux runners :
+The Deliveroo scenarios in `e2e/deliveroo/**/*.test.ts` fall into a blind spot
+between the two runners:
 
-| Runner | Pourquoi il les ignore |
+| Runner | Why it ignores them |
 | --- | --- |
-| **Vitest** | `vitest.config.ts` exclut `**/e2e/**` |
-| **Playwright** | Les projets de `playwright.config.ts` ne matchent que `*.spec.ts` |
+| **Vitest** | `vitest.config.ts` excludes `**/e2e/**` |
+| **Playwright** | The projects in `playwright.config.ts` only match `*.spec.ts` |
 
-Vérifiable : `npx playwright test --list` n'en retourne aucun, et `pnpm test`
-n'exécute que les 2 fichiers de `lib/`.
+Verifiable: `npx playwright test --list` returns none of them, and `pnpm test`
+only runs the 2 files under `lib/`.
 
-Onze scénarios — commandes refaites, programmées, annulées, remboursées, titres
-restaurant, articles manquants — écrits puis jamais lancés. Les renommer en
-`.spec.ts` et les rattacher à un projet Playwright, ou les sortir de `e2e/`
-pour que Vitest les voie.
+Eleven scenarios — remade orders, scheduled, cancelled, refunded, meal vouchers,
+missing items — written and never executed. Rename them to `.spec.ts` and attach
+them to a Playwright project, or move them out of `e2e/` so Vitest sees them.
 
 ---
 
-## Démarrer
+## Getting started
 
-Depuis la racine du monorepo :
+From the monorepo root:
 
 ```bash
 pnpm install
 pnpm dev:reference
 ```
 
-Le backend Convex a besoin d'un second terminal, depuis ce dossier :
+The Convex backend needs a second terminal, from this directory:
 
 ```bash
 npx convex dev
 ```
 
-Copier `.env.example` vers `.env.local` d'abord. Un déploiement Convex de
-développement suffit — cette app n'a pas d'instance de production.
+Copy `.env.example` to `.env.local` first. A development Convex deployment is
+enough — this app has no production instance.
 
 ---
 
-## Commandes
+## Commands
 
-Depuis ce dossier, ou via `pnpm --filter @beyours/reference <cmd>` :
+From this directory, or via `pnpm --filter @beyours/reference <cmd>`:
 
-| Commande | Effet |
+| Command | Effect |
 | --- | --- |
 | `pnpm dev` · `pnpm build` · `pnpm start` | Next.js |
-| `pnpm lint` · `pnpm type-check` | Qualité |
+| `pnpm lint` · `pnpm type-check` | Quality |
 | `pnpm test` · `pnpm test:coverage` | Vitest |
 | `pnpm test:e2e` · `pnpm test:e2e:ui` | Playwright |
 
 ---
 
-## Le rapport aux paquets
+## Relationship to the packages
 
-Les dépendances moteur sont déclarées en `workspace:^` : cette app construit
-toujours contre le **moteur courant du dépôt**, jamais contre une version
-publiée. C'est voulu — c'est ce qui permet de voir immédiatement l'effet d'un
-changement dans `packages/`.
+The engine dependencies are declared as `workspace:^`: this app always builds
+against the **repository's current engine**, never against a published version.
+That is intentional — it is what makes the effect of a change in `packages/`
+immediately visible.
 
-Le corollaire : ce qui passe ici ne prouve pas que la version publiée passera.
-Le gabarit client, lui, consomme les paquets **publiés** dans son dépôt miroir.
-C'est là que se voit une erreur d'`exports` ou de `files` mal déclarés.
+The corollary: what passes here does not prove the published version will pass.
+The client template consumes the **published** packages in its distribution
+mirror. That is where a badly declared `exports` or `files` field shows up.
 
 ---
 
-## Documentation liée
+## Related documentation
 
-- [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) — le design system de l'app
-- [`MISE_EN_PROD.md`](./MISE_EN_PROD.md) — checklist héritée, à lire avec du recul
-- [`../docs/`](../docs) — 31 pages de documentation produit : guides, référence
-  API Convex, déploiement
-- [README de la racine](../../README.md) — le monorepo et ses trois apps
+- [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) — the app's design system
+- [`MISE_EN_PROD.md`](./MISE_EN_PROD.md) — inherited checklist, read with care
+- [`../docs/`](../docs) — 31 pages of product documentation: guides, Convex API
+  reference, deployment
+- [Root README](../../README.md) — the monorepo and its three apps
