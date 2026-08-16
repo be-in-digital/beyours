@@ -9,6 +9,7 @@
 | Item | Where | Severity | Action |
 |---------|-----|---------|--------|
 | `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | hardcoded in `scripts/deliveroo-menu-scenarios.sh`, present in git history | High | Regenerate + purge the history |
+| **the same** Deliveroo `client_id` + `client_secret` | `apps/restaurant-theme/e2e/deliveroo/test-config.ts`, 18 commits | High | Same rotation; covered by `--replace-text` in Part B |
 | Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Medium (test account) | Invalidate the session + purge the file |
 
 > ⚠️ **`apps/restaurant-theme/` no longer exists** — that app was split into
@@ -27,11 +28,12 @@ The `Gitleaks (secret scan)` job in `.github/workflows/security.yml` scans the
 full history on every push. Run of 2026-08-16, 270 commits, **3 findings** — and
 the overlap with the table above is only partial:
 
-| Finding | Real leak? | Covered by this runbook? |
-|---|---|---|
-| `convex_jwt` in `apps/restaurant-theme/e2e/.auth/admin.json:15` (commit `7cf4d41`) | **Yes** | Yes — A.2 + Part B |
-| `ENCRYPTION_KEY` in `packages/core/src/env/__tests__/schemas.test.ts:101` (commits `9c3085d`, `51cb6b5`) | No — test fixture | n/a, allowlisted in `.gitleaks.toml` |
-| Deliveroo `client_secret` in `scripts/deliveroo-menu-scenarios.sh` | **Yes** | Yes — A.1 + Part B |
+| Finding | Reported by gitleaks? | Real leak? | Covered here? |
+|---|---|---|---|
+| `convex_jwt` in `apps/restaurant-theme/e2e/.auth/admin.json:15` | **Yes** | **Yes** | A.2 + Part B |
+| `ENCRYPTION_KEY` in `packages/core/src/env/__tests__/schemas.test.ts:101` | Was, until `061436a` | No — test fixture | allowlisted in `.gitleaks.toml` |
+| Deliveroo secret in `scripts/deliveroo-menu-scenarios.sh` | **No** | **Yes** | A.1 + Part B |
+| Deliveroo secret in `apps/restaurant-theme/e2e/deliveroo/test-config.ts` (18 commits) | **No** | **Yes** | A.1 + Part B |
 
 Two things follow:
 
@@ -101,49 +103,81 @@ This is a **test** account (`test.owner@beindigital.fr`) on the dev deployment:
 
 ```bash
 brew install git-filter-repo          # or: pipx install git-filter-repo
-cd /tmp && git clone git@github.com:be-in-digital/<repo>.git purge && cd purge
+cd /tmp && git clone https://github.com/be-in-digital/beyours.git purge && cd purge
 ```
 
 ### B.2 — Generate the replacement file from the history (no secret typed by hand)
 
-This one-liner reads the old version of the script and writes `secrets-to-redact.txt`
-in the format git-filter-repo expects, without you copying the value:
+> ⚠️ **Read the source commit carefully.** An earlier version of this step read
+> `origin/main:scripts/deliveroo-menu-scenarios.sh` — but that blob is already the
+> **fixed** one (`${DELIVEROO_CLIENT_ID:-}`, empty defaults). The `[^}]+` group
+> never matches, `secrets-to-redact.txt` ends up holding two raw shell lines
+> instead of `literal:…==>…` pairs, and filter-repo then replaces those two
+> harmless lines while **purging no secret at all** — with a successful exit code.
+> Read the value from `7cf4d41`, the commit that introduced it.
 
 ```bash
-git show origin/main:scripts/deliveroo-menu-scenarios.sh \
+git show 7cf4d41:scripts/deliveroo-menu-scenarios.sh \
   | grep -E 'DELIVEROO_CLIENT_(ID|SECRET):-' \
-  | sed -E 's/.*:-([^}]+)}.*/literal:\1==>***REDACTED***/' \
+  | sed -E 's/.*:-([^}]+)\}.*/literal:\1==>***REDACTED***/' \
   > secrets-to-redact.txt
 
-# Check (prints the structure only, not the value):
-sed -E 's/literal:.*==>/literal:<masqué>==>/' secrets-to-redact.txt
-# Must print 2 lines "literal:<masqué>==>***REDACTED***"
+# Check the STRUCTURE, not the eyeball: must print exactly 2.
+grep -c '^literal:.*==>' secrets-to-redact.txt
 ```
 
-> `secrets-to-redact.txt` is already in `.gitignore`. Delete it after the purge.
+The same two values also live in `apps/restaurant-theme/e2e/deliveroo/test-config.ts`
+(18 commits). `--replace-text` scrubs every blob in history, so that file is covered
+by the same replacement file — provided the two lines above are correct.
+
+> `secrets-to-redact.txt` is already in `.gitignore` (line 49). Delete it after the purge.
 
 ### B.3 — Rewrite the history
 
-```bash
-# 1) Replace the secret values in the WHOLE history
-git filter-repo --replace-text secrets-to-redact.txt
+> ⚠️ **One invocation, not two.** filter-repo refuses to run a second time on the
+> same clone (it is no longer "fresh" and aborts with `already_ran`). Splitting
+> this into two commands means the second one silently never executes.
 
-# 2) Remove the leaked auth state file from the WHOLE history
-#    KEEP this path as-is. `apps/restaurant-theme/` is gone from the working
-#    tree, but filter-repo matches paths AS THEY WERE IN THE COMMITS, and this
-#    is the only path the file ever had. Rewriting it to apps/reference/ or
-#    apps/themes/ would silently purge NOTHING.
-git filter-repo --path apps/restaurant-theme/e2e/.auth/admin.json --invert-paths
+```bash
+# KEEP the apps/restaurant-theme/ path as-is. That directory is gone from the
+# working tree, but filter-repo matches paths AS THEY WERE IN THE COMMITS, and
+# this is the only path that file ever had. Rewriting it to apps/reference/ or
+# apps/themes/ would purge NOTHING.
+git filter-repo \
+  --replace-text secrets-to-redact.txt \
+  --path apps/restaurant-theme/e2e/.auth/admin.json --invert-paths
 ```
 
 ### B.4 — Republish + clean up
 
 ```bash
-git remote add origin git@github.com:be-in-digital/<repo>.git   # filter-repo drops the remote as a safety measure
+git remote add origin https://github.com/be-in-digital/beyours.git   # filter-repo drops the remote as a safety measure
+
+# Check the branches survived the rewrite BEFORE pushing. filter-repo promotes
+# remote-tracking refs to local branches in a fresh clone, but if one is missing
+# here, `--all` silently leaves it untouched on the remote and the leaked history
+# comes straight back through it.
+git branch          # expect: main, changeset-release/main,
+                    #         chore/monorepo-beyours,
+                    #         claude/apps-reference-architecture-0e580f
+
 git push --force --all
 git push --force --tags
 rm -f secrets-to-redact.txt
 ```
+
+### Blast radius (measured 2026-08-16)
+
+387 commits across all local refs · **4 remote branches, all carrying the leak** ·
+35 tags, **10 of which carry both leaked artifacts**. Every one of them is rewritten,
+so every clone and every open PR is invalidated.
+
+> ⚠️ **A fresh clone of origin does not reach everything.** Commit `c0f09cb`
+> (pre-monorepo) also carries both leaks and is reachable only from the
+> **local-only** branches `archive/main-avant-monorepo` and
+> `claude/repo-structure-review-468e64`. They are on someone's machine, not on
+> origin, so the purge will not touch them. Whoever holds those branches keeps the
+> secret — they must delete them, or rewrite them separately.
 
 Then: tell the team to **re-clone** (old clones keep the leaked history), and
 rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a

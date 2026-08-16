@@ -32,4 +32,11 @@ paths = [
   # documentation keys (AKIAIOSFODNN7EXAMPLE / wJalrXUtnFEMI...EXAMPLEKEY).
   # Verified 2026-08-16: no real credential in this file.
   '''packages/core/src/env/__tests__/schemas\.test\.ts''',
+
+  # Same story, same directory: both build env fixtures around AWS's published
+  # documentation keys (AKIAIOSFODNN7EXAMPLE / wJalrXUtnFEMI...EXAMPLEKEY).
+  # A full-history sweep over all 5268 reachable blobs on 2026-08-16 found no
+  # real credential in either.
+  '''packages/core/src/env/__tests__/getters\.test\.ts''',
+  '''packages/core/src/env/__tests__/validate-all-env\.test\.ts''',
 ]
