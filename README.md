@@ -366,16 +366,25 @@ enforced in application code.
 
 The project was reconnected to this repository on 2026-08-16; it previously
 built the standalone `be-in-digital/beyours` repository with Root Directory at
-the root. To return to that state:
+the root.
+
+**Fastest path, and the one to reach for first:** promote deployment
+`dpl_5cZtp6nZ3j8e4Mzv7GQHtj12N9BQ` from the Vercel dashboard. That is the last
+production build served from the old configuration — it restores the site
+immediately, with no rebuild and no repository involved.
+
+**Full path**, if the site has to keep deploying from the old repository:
 
 ```bash
+gh repo unarchive be-in-digital/beyours                       # archived 2026-08-16
 vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
 vercel git connect https://github.com/be-in-digital/beyours --scope be-in-digital
 ```
 
-The last production deployment served from the old configuration is
-`dpl_5cZtp6nZ3j8e4Mzv7GQHtj12N9BQ` — promotable from the Vercel dashboard for an
-immediate rollback, with no rebuild.
+`be-in-digital/beyours` was archived once its history had been verified as
+fully reachable from this repository (`apps/site`, brought in with
+`git subtree`). It is read-only, kept only as this rollback path — nothing
+builds it any more.
 
 ---
 
