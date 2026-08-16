@@ -21,7 +21,7 @@
 import { type Role } from './rbac';
 
 /**
- * Utilisateur étendu avec les champs BeYours
+ * The user, extended with BeYours fields
  */
 export interface AuthUser {
   /** ID unique de l'utilisateur */
@@ -32,19 +32,19 @@ export interface AuthUser {
   name?: string;
   /** URL de l'avatar */
   image?: string;
-  /** Email vérifié */
+  /** Whether the email is verified */
   emailVerified: boolean;
   /** Rôle de l'utilisateur */
   role: Role;
-  /** ID du restaurant (null pour super_admin et customer) */
+  /** Restaurant id — null for super_admin and customer */
   restaurantId?: string;
-  /** ID du store par défaut */
+  /** Default store id */
   defaultStoreId?: string;
-  /** 2FA activé */
+  /** Whether 2FA is enabled */
   twoFactorEnabled: boolean;
-  /** Date de création */
+  /** Created at */
   createdAt: Date;
-  /** Date de dernière mise à jour */
+  /** Last updated at */
   updatedAt: Date;
 }
 
@@ -52,7 +52,7 @@ export interface AuthUser {
  * Session utilisateur
  */
 export interface AuthSession {
-  /** ID de la session */
+  /** Session id */
   id: string;
   /** ID de l'utilisateur */
   userId: string;
@@ -60,40 +60,40 @@ export interface AuthSession {
   token: string;
   /** Date d'expiration */
   expiresAt: Date;
-  /** IP de la session */
+  /** IP the session was opened from */
   ipAddress?: string;
   /** User agent */
   userAgent?: string;
-  /** Date de création */
+  /** Created at */
   createdAt: Date;
-  /** Date de dernière activité */
+  /** Last activity at */
   lastActivityAt: Date;
 }
 
 /**
- * Données complètes de session (session + user)
+ * A full session: the session record plus its user
  */
 export interface AuthSessionData {
   /** Session active */
   session: AuthSession;
-  /** Utilisateur associé */
+  /** The associated user */
   user: AuthUser;
 }
 
 /**
- * Credentials pour connexion email/password
+ * Credentials for email/password sign-in
  */
 export interface EmailPasswordCredentials {
   /** Email de l'utilisateur */
   email: string;
   /** Mot de passe */
   password: string;
-  /** Se souvenir de moi (session longue durée) */
+  /** Remember me — issues a long-lived session */
   rememberMe?: boolean;
 }
 
 /**
- * Données d'inscription
+ * Sign-up payload
  */
 export interface SignUpData {
   /** Email */
@@ -102,9 +102,9 @@ export interface SignUpData {
   password: string;
   /** Nom complet */
   name: string;
-  /** Rôle (par défaut: customer) */
+  /** Role, defaults to customer */
   role?: Role;
-  /** ID du restaurant (pour les rôles staff) */
+  /** Restaurant id, for staff roles */
   restaurantId?: string;
 }
 
@@ -114,7 +114,7 @@ export interface SignUpData {
 export type OAuthProvider = 'google' | 'facebook' | 'apple';
 
 /**
- * Données de réinitialisation de mot de passe
+ * Password reset payload
  */
 export interface PasswordResetData {
   /** Email de l'utilisateur */
@@ -122,15 +122,15 @@ export interface PasswordResetData {
 }
 
 /**
- * Données de vérification email
+ * Email verification payload
  */
 export interface EmailVerificationData {
-  /** Token de vérification */
+  /** Verification token */
   token: string;
 }
 
 /**
- * Données de changement de mot de passe
+ * Password change payload
  */
 export interface ChangePasswordData {
   /** Ancien mot de passe */
@@ -145,60 +145,60 @@ export interface ChangePasswordData {
 export interface TwoFactorConfig {
   /** Type de 2FA */
   type: 'totp' | 'email';
-  /** Secret TOTP (si type = totp) */
+  /** TOTP secret, when type is totp */
   secret?: string;
-  /** URI pour QR code (si type = totp) */
+  /** QR code URI, when type is totp */
   qrCodeUri?: string;
 }
 
 /**
- * Code 2FA pour vérification
+ * A 2FA code to verify
  */
 export interface TwoFactorVerification {
-  /** Code à 6 chiffres */
+  /** Six-digit code */
   code: string;
 }
 
 /**
- * Résultat de connexion
+ * Sign-in result
  */
 export interface SignInResult {
-  /** Succès de la connexion */
+  /** Whether sign-in succeeded */
   success: boolean;
-  /** Session créée (si success = true) */
+  /** The session created, when success is true */
   session?: AuthSessionData;
   /** 2FA requis */
   requiresTwoFactor?: boolean;
-  /** Token temporaire pour 2FA */
+  /** Short-lived token for the 2FA step */
   tempToken?: string;
-  /** Message d'erreur (si success = false) */
+  /** Error message, when success is false */
   error?: string;
 }
 
 /**
- * Résultat d'inscription
+ * Sign-up result
  */
 export interface SignUpResult {
-  /** Succès de l'inscription */
+  /** Whether sign-up succeeded */
   success: boolean;
-  /** Utilisateur créé (si success = true) */
+  /** The user created, when success is true */
   user?: AuthUser;
-  /** Email de vérification envoyé */
+  /** Whether the verification email was sent */
   verificationEmailSent?: boolean;
-  /** Message d'erreur (si success = false) */
+  /** Error message, when success is false */
   error?: string;
 }
 
 /**
- * Options pour la configuration Better Auth
- * NOTE: À typer correctement après installation de better-auth
+ * Better Auth configuration options
+ * NOTE: to be typed properly once better-auth is installed
  */
 export interface BetterAuthConfig {
   /** URL de base de l'application */
   baseUrl: string;
-  /** Secret pour signer les tokens */
+  /** Secret used to sign tokens */
   secret: string;
-  /** Adaptateur de base de données */
+  /** Database adapter */
   database: unknown; // ConvexAdapter après installation
   /** Providers OAuth */
   socialProviders?: {
@@ -219,29 +219,29 @@ export interface BetterAuthConfig {
   };
   /** Configuration de session */
   session?: {
-    /** Durée d'expiration en secondes (défaut: 7 jours) */
+    /** Expiry, in seconds. Defaults to 7 days */
     expiresIn?: number;
-    /** Durée avant refresh automatique en secondes (défaut: 1 jour) */
+    /** Delay before automatic refresh, in seconds. Defaults to 1 day */
     refreshAfter?: number;
   };
   /** Configuration email */
   emailAndPassword?: {
-    /** Vérification email requise */
+    /** Whether email verification is required */
     requireEmailVerification?: boolean;
-    /** Longueur minimale du mot de passe */
+    /** Minimum password length */
     minPasswordLength?: number;
   };
-  /** Plugins activés */
+  /** Enabled plugins */
   plugins?: unknown[]; // Plugins Better Auth
 }
 
 /**
- * Contexte d'authentification pour React
+ * Authentication context for React
  */
 export interface AuthContextValue {
-  /** Utilisateur connecté (null si non connecté) */
+  /** The signed-in user, null when signed out */
   user: AuthUser | null;
-  /** Session active (null si non connecté) */
+  /** The active session, null when signed out */
   session: AuthSession | null;
   /** État de chargement */
   isLoading: boolean;
@@ -249,20 +249,20 @@ export interface AuthContextValue {
   signIn: (credentials: EmailPasswordCredentials) => Promise<SignInResult>;
   /** Inscription */
   signUp: (data: SignUpData) => Promise<SignUpResult>;
-  /** Déconnexion */
+  /** Sign out */
   signOut: () => Promise<void>;
   /** Connexion OAuth */
   signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
   /** Envoi magic link */
   sendMagicLink: (email: string) => Promise<void>;
-  /** Réinitialisation mot de passe */
+  /** Request a password reset */
   resetPassword: (data: PasswordResetData) => Promise<void>;
   /** Changement de mot de passe */
   changePassword: (data: ChangePasswordData) => Promise<void>;
   /** Activer 2FA */
   enableTwoFactor: (type: 'totp' | 'email') => Promise<TwoFactorConfig>;
-  /** Désactiver 2FA */
+  /** Disable 2FA */
   disableTwoFactor: () => Promise<void>;
-  /** Vérifier code 2FA */
+  /** Verify a 2FA code */
   verifyTwoFactor: (verification: TwoFactorVerification) => Promise<boolean>;
 }

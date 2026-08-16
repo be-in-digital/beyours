@@ -18,27 +18,27 @@
  */
 
 /**
- * Rôles disponibles dans l'application
+ * Roles available in the application
  */
 export enum Role {
-  /** Accès total à tous les restaurants et fonctionnalités */
+  /** Full access to every restaurant and feature */
   SUPER_ADMIN = 'super_admin',
-  /** Accès complet à son restaurant uniquement */
+  /** Full access, to their own restaurant only */
   CLIENT_ADMIN = 'client_admin',
-  /** Gestion opérationnelle du restaurant */
+  /** Day-to-day running of the restaurant */
   MANAGER = 'manager',
-  /** Accès au Kitchen Display System uniquement */
+  /** Kitchen Display System only */
   KITCHEN = 'kitchen',
-  /** Gestion des commandes et tables */
+  /** Orders and tables */
   WAITER = 'waiter',
-  /** Accès aux livraisons uniquement */
+  /** Deliveries only */
   DELIVERY = 'delivery',
-  /** Accès aux propres commandes uniquement */
+  /** Their own orders only */
   CUSTOMER = 'customer',
 }
 
 /**
- * Ressources disponibles dans le système
+ * Resources the system knows about
  */
 export enum Resource {
   STORES = 'stores',
@@ -59,7 +59,7 @@ export enum Resource {
 }
 
 /**
- * Actions disponibles sur les ressources
+ * Actions that can be taken on a resource
  */
 export enum Action {
   READ = 'read',
@@ -76,16 +76,16 @@ export enum Action {
 }
 
 /**
- * Permission au format "resource:action"
+ * A permission, formatted "resource:action"
  * Exemples: "stores:read", "orders:write", "payments:refund"
  */
 export type Permission = `${Resource}:${Action}`;
 
 /**
- * Map des permissions par rôle
+ * Permissions granted to each role
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  // Super Admin : accès complet à tout
+  // Super Admin: full access to everything
   [Role.SUPER_ADMIN]: [
     'stores:read',
     'stores:write',
@@ -128,7 +128,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'system:migrate',
   ],
 
-  // Client Admin : tout sur son restaurant
+  // Client Admin: everything, within their own restaurant
   [Role.CLIENT_ADMIN]: [
     'stores:read',
     'stores:write',
@@ -165,7 +165,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'system:migrate',
   ],
 
-  // Manager : gestion opérationnelle
+  // Manager: day-to-day running
   [Role.MANAGER]: [
     'stores:read',
     'products:read',
@@ -228,11 +228,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 };
 
 /**
- * Vérifie si un rôle possède une permission donnée
+ * Whether a role holds a given permission
  *
  * @param userRole - Le rôle de l'utilisateur
- * @param permission - La permission à vérifier (format "resource:action")
- * @returns `true` si l'utilisateur a la permission, `false` sinon
+ * @param permission - The permission to check, formatted "resource:action"
+ * @returns `true` when the role holds it, `false` otherwise
  *
  * @example
  * ```ts
@@ -246,7 +246,7 @@ export function hasPermission(userRole: Role, permission: Permission): boolean {
     return false;
   }
 
-  // Super admin a tous les droits
+  // Super admin holds every permission
   if (userRole === Role.SUPER_ADMIN) {
     return true;
   }
@@ -255,11 +255,11 @@ export function hasPermission(userRole: Role, permission: Permission): boolean {
 }
 
 /**
- * Vérifie si un rôle possède au moins une des permissions données
+ * Whether a role holds at least one of the given permissions
  *
  * @param userRole - Le rôle de l'utilisateur
- * @param permissions - Liste des permissions à vérifier
- * @returns `true` si l'utilisateur a au moins une permission, `false` sinon
+ * @param permissions - The permissions to check
+ * @returns `true` when at least one is held, `false` otherwise
  *
  * @example
  * ```ts
@@ -275,11 +275,11 @@ export function hasAnyPermission(
 }
 
 /**
- * Vérifie si un rôle possède toutes les permissions données
+ * Whether a role holds every one of the given permissions
  *
  * @param userRole - Le rôle de l'utilisateur
- * @param permissions - Liste des permissions à vérifier
- * @returns `true` si l'utilisateur a toutes les permissions, `false` sinon
+ * @param permissions - The permissions to check
+ * @returns `true` when all are held, `false` otherwise
  *
  * @example
  * ```ts
@@ -295,10 +295,10 @@ export function hasAllPermissions(
 }
 
 /**
- * Récupère toutes les permissions d'un rôle
+ * Every permission granted to a role
  *
- * @param role - Le rôle dont on veut les permissions
- * @returns Tableau des permissions du rôle
+ * @param role - The role to look up
+ * @returns The role's permissions
  *
  * @example
  * ```ts
@@ -311,7 +311,7 @@ export function getRolePermissions(role: Role): Permission[] {
 }
 
 /**
- * Erreur levée lorsqu'un utilisateur n'a pas la permission requise
+ * Thrown when a user lacks the required permission
  */
 export class PermissionDeniedError extends Error {
   constructor(
@@ -328,16 +328,16 @@ export class PermissionDeniedError extends Error {
 }
 
 /**
- * Factory pour créer un middleware de vérification de permission
+ * Builds a guard that checks a single permission
  *
  * @param permission - La permission requise
- * @returns Fonction middleware qui vérifie la permission
- * @throws {PermissionDeniedError} Si l'utilisateur n'a pas la permission
+ * @returns A guard function checking that permission
+ * @throws {PermissionDeniedError} When the permission is not held
  *
  * @example
  * ```ts
  * const requireProductWrite = requirePermission('products:write')
- * requireProductWrite(userRole) // throw si pas la permission
+ * requireProductWrite(userRole) // throws when not held
  * ```
  */
 export function requirePermission(permission: Permission) {
@@ -349,16 +349,16 @@ export function requirePermission(permission: Permission) {
 }
 
 /**
- * Factory pour créer un middleware de vérification de permissions multiples (ANY)
+ * Builds a guard that checks for any one of several permissions
  *
- * @param permissions - Liste des permissions (au moins une requise)
- * @returns Fonction middleware qui vérifie les permissions
- * @throws {PermissionDeniedError} Si l'utilisateur n'a aucune des permissions
+ * @param permissions - The permissions, at least one of which is required
+ * @returns A guard function checking those permissions
+ * @throws {PermissionDeniedError} When none of them is held
  *
  * @example
  * ```ts
  * const requireOrderAccess = requireAnyPermission(['orders:read', 'orders:write'])
- * requireOrderAccess(userRole) // throw si aucune des permissions
+ * requireOrderAccess(userRole) // throws when none is held
  * ```
  */
 export function requireAnyPermission(permissions: Permission[]) {
@@ -371,16 +371,16 @@ export function requireAnyPermission(permissions: Permission[]) {
 }
 
 /**
- * Factory pour créer un middleware de vérification de permissions multiples (ALL)
+ * Builds a guard that checks for every one of several permissions
  *
- * @param permissions - Liste des permissions (toutes requises)
- * @returns Fonction middleware qui vérifie les permissions
- * @throws {PermissionDeniedError} Si l'utilisateur n'a pas toutes les permissions
+ * @param permissions - The permissions, all of which are required
+ * @returns A guard function checking those permissions
+ * @throws {PermissionDeniedError} When any one is missing
  *
  * @example
  * ```ts
  * const requireFullProductAccess = requireAllPermissions(['products:read', 'products:write'])
- * requireFullProductAccess(userRole) // throw si manque une permission
+ * requireFullProductAccess(userRole) // throws when one is missing
  * ```
  */
 export function requireAllPermissions(permissions: Permission[]) {
@@ -395,9 +395,9 @@ export function requireAllPermissions(permissions: Permission[]) {
 }
 
 /**
- * Parse une chaîne de rôle en enum Role
+ * Parses a string into a Role
  *
- * @param roleString - La chaîne à parser
+ * @param roleString - The string to parse
  * @returns Le rôle correspondant ou undefined
  *
  * @example
@@ -415,10 +415,10 @@ export function parseRole(roleString: string): Role | undefined {
 }
 
 /**
- * Vérifie si une chaîne est un rôle valide
+ * Whether a string is a valid role
  *
- * @param roleString - La chaîne à vérifier
- * @returns `true` si c'est un rôle valide, `false` sinon
+ * @param roleString - The string to check
+ * @returns `true` when it names a role, `false` otherwise
  *
  * @example
  * ```ts
