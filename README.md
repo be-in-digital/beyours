@@ -310,14 +310,29 @@ ou au relèvement du plafond de dépenses.
 
 ## Déploiement
 
-| Projet Vercel | Team | Source |
-| --- | --- | --- |
-| `beindigital-restaurant` | `be-in-digital` | `apps/site` → **beyours.fr** |
-| 1 projet par client | `be-in-digital` | Le dépôt cloné du client |
+| Projet Vercel | Team | Source | Root Directory |
+| --- | --- | --- | --- |
+| `beindigital-restaurant` | `be-in-digital` | ce dépôt, branche `main` → **beyours.fr** | `apps/site` |
+| 1 projet par client | `be-in-digital` | Le dépôt cloné du client | racine |
 
 Convex se pousse séparément, depuis le dossier de l'app : `npx convex deploy`.
 Chaque client a **son propre déploiement Convex** — l'isolation des données est
 structurelle, pas applicative.
+
+### Retour arrière
+
+Le projet a été rebranché sur ce dépôt le 16/08/2026 ; il construisait
+auparavant le dépôt autonome `be-in-digital/beyours` avec Root Directory à la
+racine. Pour revenir à cet état :
+
+```bash
+vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
+vercel git connect https://github.com/be-in-digital/beyours --scope be-in-digital
+```
+
+Le dernier déploiement de production servi depuis l'ancienne configuration est
+`dpl_5cZtp6nZ3j8e4Mzv7GQHtj12N9BQ` — promouvable depuis le tableau de bord
+Vercel pour un retour immédiat, sans rebuild.
 
 ---
 
