@@ -23,17 +23,17 @@ import { type Permission, type Role, hasPermission, PermissionDeniedError } from
 import type { AuthSessionData, AuthUser, AuthSession } from './types';
 
 /**
- * Erreur levée lorsqu'un utilisateur n'est pas authentifié
+ * Thrown when a user is not authenticated
  */
 export class UnauthorizedError extends Error {
-  constructor(message = 'Authentification requise') {
+  constructor(message = 'Authentication required') {
     super(message);
     this.name = 'UnauthorizedError';
   }
 }
 
 /**
- * Erreur levée lorsqu'un utilisateur n'a pas le rôle requis
+ * Thrown when a user does not hold the required role
  */
 export class ForbiddenError extends Error {
   constructor(
@@ -42,47 +42,47 @@ export class ForbiddenError extends Error {
   ) {
     super(
       userRole
-        ? `Rôle "${requiredRole}" requis, vous avez le rôle "${userRole}"`
-        : `Rôle "${requiredRole}" requis`
+        ? `Role "${requiredRole}" required, you have "${userRole}"`
+        : `Role "${requiredRole}" required`
     );
     this.name = 'ForbiddenError';
   }
 }
 
 /**
- * Récupère la session serveur depuis les cookies
+ * Reads the server session from the cookies
  *
- * @returns Session avec utilisateur ou null si non connecté
+ * @returns The session with its user, or null when signed out
  *
  * @example
  * ```ts
- * // Dans un Server Component
+ * // In a Server Component
  * export default async function DashboardPage() {
  *   const session = await getServerSession()
  *   if (!session) redirect('/auth/signin')
- *   return <div>Bonjour {session.user.name}</div>
+ *   return <div>Hello {session.user.name}</div>
  * }
  * ```
  *
- * NOTE: Après installation, utiliser:
+ * NOTE: once installed, use:
  * - const session = await auth.api.getSession({ headers: headers() })
  */
 export async function getServerSession(): Promise<AuthSessionData | null> {
-  // TODO: Implémenter avec Better Auth après installation
+  // TODO: implement with Better Auth once installed
   // const session = await auth.api.getSession({
   //   headers: headers(),
   // })
   // return session
 
   throw new Error(
-    'getServerSession: Better Auth non installé. Installez better-auth'
+    'getServerSession: Better Auth is not installed. Install better-auth'
   );
 }
 
 /**
- * Récupère l'utilisateur serveur depuis la session
+ * Reads the server user from the session
  *
- * @returns Utilisateur connecté ou null
+ * @returns The signed-in user, or null
  *
  * @example
  * ```ts
@@ -99,18 +99,18 @@ export async function getServerUser(): Promise<AuthUser | null> {
 }
 
 /**
- * Middleware qui requiert l'authentification
- * Throw une erreur si l'utilisateur n'est pas connecté
+ * Requires authentication.
+ * Throws when the user is not signed in.
  *
- * @returns Session garantie non-null
- * @throws {UnauthorizedError} Si non authentifié
+ * @returns A session guaranteed to be non-null
+ * @throws {UnauthorizedError} When not authenticated
  *
  * @example
  * ```ts
- * // Dans une API Route
+ * // In an API Route
  * export async function GET() {
  *   const session = await requireAuth()
- *   // session est garanti non-null ici
+ *   // session is guaranteed non-null here
  *   return Response.json({ userId: session.user.id })
  * }
  * ```
@@ -126,20 +126,20 @@ export async function requireAuth(): Promise<AuthSessionData> {
 }
 
 /**
- * Middleware qui requiert un rôle spécifique
- * Throw une erreur si l'utilisateur n'a pas le rôle
+ * Requires a specific role.
+ * Throws when the user does not hold it.
  *
- * @param role - Rôle requis
- * @returns Session avec utilisateur du bon rôle
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {ForbiddenError} Si rôle incorrect
+ * @param role - The required role
+ * @returns The session, with a user holding that role
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {ForbiddenError} When the role does not match
  *
  * @example
  * ```ts
- * // API Route réservée aux managers
+ * // API Route restricted to managers
  * export async function POST() {
  *   await requireRole(Role.MANAGER)
- *   // Code réservé aux managers
+ *   // Manager-only code
  * }
  * ```
  */
@@ -159,20 +159,20 @@ export async function requireRole(role: Role): Promise<AuthSessionData> {
 }
 
 /**
- * Middleware qui requiert au moins un des rôles
- * Throw une erreur si l'utilisateur n'a aucun des rôles
+ * Requires at least one of the given roles.
+ * Throws when the user holds none of them.
  *
- * @param roles - Liste des rôles acceptés
- * @returns Session avec utilisateur ayant un des rôles
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {ForbiddenError} Si aucun rôle ne correspond
+ * @param roles - The accepted roles
+ * @returns The session, with a user holding one of them
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {ForbiddenError} When no role matches
  *
  * @example
  * ```ts
- * // API Route pour le staff
+ * // API Route for staff
  * export async function GET() {
  *   await requireAnyRole([Role.MANAGER, Role.WAITER, Role.KITCHEN])
- *   // Code pour le staff
+ *   // Staff-only code
  * }
  * ```
  */
@@ -196,20 +196,20 @@ export async function requireAnyRole(roles: Role[]): Promise<AuthSessionData> {
 }
 
 /**
- * Middleware qui requiert une permission spécifique
- * Throw une erreur si l'utilisateur n'a pas la permission
+ * Requires a specific permission.
+ * Throws when the user does not hold it.
  *
- * @param permission - Permission requise
- * @returns Session avec utilisateur ayant la permission
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {PermissionDeniedError} Si permission manquante
+ * @param permission - The required permission
+ * @returns The session, with a user holding that permission
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {PermissionDeniedError} When the permission is missing
  *
  * @example
  * ```ts
- * // API Route pour supprimer un produit
+ * // API Route deleting a product
  * export async function DELETE() {
  *   await requirePermission('products:delete')
- *   // Code de suppression
+ *   // Deletion code
  * }
  * ```
  */
@@ -226,18 +226,18 @@ export async function requirePermissionGuard(
 }
 
 /**
- * Middleware qui requiert au moins une des permissions
+ * Requires at least one of the given permissions.
  *
- * @param permissions - Liste des permissions (au moins une requise)
- * @returns Session avec utilisateur ayant au moins une permission
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {PermissionDeniedError} Si aucune permission
+ * @param permissions - The permissions, at least one of which is required
+ * @returns The session, with a user holding at least one
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {PermissionDeniedError} When none is held
  *
  * @example
  * ```ts
  * export async function GET() {
  *   await requireAnyPermissionGuard(['orders:read', 'orders:write'])
- *   // Code avec accès lecture ou écriture
+ *   // Code needing read or write access
  * }
  * ```
  */
@@ -262,18 +262,18 @@ export async function requireAnyPermissionGuard(
 }
 
 /**
- * Middleware qui requiert toutes les permissions
+ * Requires every one of the given permissions.
  *
- * @param permissions - Liste des permissions (toutes requises)
- * @returns Session avec utilisateur ayant toutes les permissions
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {PermissionDeniedError} Si permission manquante
+ * @param permissions - The permissions, all of which are required
+ * @returns The session, with a user holding all of them
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {PermissionDeniedError} When the permission is missing
  *
  * @example
  * ```ts
  * export async function PUT() {
  *   await requireAllPermissionsGuard(['products:read', 'products:write'])
- *   // Code avec accès complet
+ *   // Code needing full access
  * }
  * ```
  */
@@ -292,17 +292,17 @@ export async function requireAllPermissionsGuard(
 }
 
 /**
- * Vérifie si l'utilisateur a accès à un restaurant spécifique
+ * Whether the user may access a given restaurant
  *
- * @param session - Session de l'utilisateur
- * @param restaurantId - ID du restaurant à vérifier
- * @returns `true` si accès autorisé
+ * @param session - The user's session
+ * @param restaurantId - The restaurant to check
+ * @returns `true` when access is allowed
  *
  * @example
  * ```ts
  * const session = await requireAuth()
  * if (!canAccessRestaurant(session, restaurantId)) {
- *   throw new ForbiddenError('Accès refusé à ce restaurant')
+ *   throw new ForbiddenError('Access denied to this restaurant')
  * }
  * ```
  */
@@ -310,27 +310,27 @@ export function canAccessRestaurant(
   session: AuthSessionData,
   restaurantId: string
 ): boolean {
-  // Super admin a accès à tout
+  // Super admin has access to everything
   if (session.user.role === 'super_admin') {
     return true;
   }
 
-  // Customer n'a pas accès aux restaurants
+  // Customers have no restaurant access
   if (session.user.role === 'customer') {
     return false;
   }
 
-  // Autres rôles : vérifier le restaurantId
+  // Other roles: check the restaurantId
   return session.user.restaurantId === restaurantId;
 }
 
 /**
- * Middleware qui requiert l'accès à un restaurant
+ * Requires access to a given restaurant.
  *
- * @param restaurantId - ID du restaurant
- * @returns Session avec accès au restaurant
- * @throws {UnauthorizedError} Si non authentifié
- * @throws {ForbiddenError} Si pas d'accès au restaurant
+ * @param restaurantId - The restaurant
+ * @returns The session, with access to that restaurant
+ * @throws {UnauthorizedError} When not authenticated
+ * @throws {ForbiddenError} When access is denied
  *
  * @example
  * ```ts
@@ -339,7 +339,7 @@ export function canAccessRestaurant(
  *   { params }: { params: { restaurantId: string } }
  * ) {
  *   const session = await requireRestaurantAccess(params.restaurantId)
- *   // Code avec accès au restaurant
+ *   // Code needing restaurant access
  * }
  * ```
  */
@@ -359,10 +359,10 @@ export async function requireRestaurantAccess(
 }
 
 /**
- * Helper pour gérer les erreurs auth dans les API Routes
+ * Maps auth errors onto HTTP responses, for use in API Routes
  *
- * @param error - Erreur à gérer
- * @returns Response avec le bon status code
+ * @param error - The error to map
+ * @returns A Response carrying the right status code
  *
  * @example
  * ```ts
@@ -398,20 +398,20 @@ export function handleAuthError(error: unknown): Response {
     );
   }
 
-  // Erreur inconnue
+  // Unknown error
   console.error('Auth error:', error);
   return Response.json(
-    { error: 'Une erreur est survenue' },
+    { error: 'Something went wrong' },
     { status: 500 }
   );
 }
 
 /**
- * HOF pour wrapper une API Route avec authentification
+ * Higher-order function wrapping an API Route with authentication
  *
- * @param handler - Handler de l'API Route
- * @param options - Options de protection
- * @returns Handler protégé
+ * @param handler - The API Route handler
+ * @param options - Protection options
+ * @returns The protected handler
  *
  * @example
  * ```ts
@@ -436,15 +436,15 @@ export function withAuthRoute<T extends unknown[]>(
 ) {
   return async (request: Request, ...args: T): Promise<Response> => {
     try {
-      // Vérifier authentification
+      // Check authentication
       const session = await requireAuth();
 
-      // Vérifier rôle si requis (super_admin bypasses)
+      // Check the role if required (super_admin bypasses)
       if (options?.requireRole && session.user.role !== 'super_admin' && session.user.role !== options.requireRole) {
         throw new ForbiddenError(options.requireRole, session.user.role);
       }
 
-      // Vérifier permission si requise
+      // Check the permission if required
       if (
         options?.requirePermission &&
         !hasPermission(session.user.role, options.requirePermission)
@@ -455,7 +455,7 @@ export function withAuthRoute<T extends unknown[]>(
         );
       }
 
-      // Appeler le handler
+      // Call the handler
       return await handler(request, session, ...args);
     } catch (error) {
       return handleAuthError(error);
