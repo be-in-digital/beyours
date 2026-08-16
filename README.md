@@ -24,7 +24,7 @@ Monorepo pnpm + Turborepo. Next.js 16 · React 19 · Convex · TypeScript strict
 | **Modèle** | Vente unique du site + 1 an de maintenance incluse, puis renouvellement annuel |
 | **Multi-établissement** | 1 restaurateur = 1 à N adresses, illimité |
 | **Comment on vend** | 50 démos navigables, panier réel, paiement Stripe en mode test — le prospect essaie avant d'acheter |
-| **Comment on livre** | 1 dépôt et 1 backend Convex par client, clonés depuis `apps/boilerplate` |
+| **Comment on livre** | 1 dépôt et 1 backend Convex par client, clonés depuis `apps/themes` |
 | **Qui amène les clients** | Des apporteurs d'affaires indépendants, contrat signé en ligne, commission suivie |
 
 ---
@@ -39,7 +39,7 @@ le même public.
 | --- | --- | --- | --- |
 | [`apps/site`](apps/site) | `@beyours/site` | Prospects, apporteurs, équipe interne | Vercel → **beyours.fr** |
 | [`apps/reference`](apps/reference) | `@beyours/reference` | Personne — c'est le banc d'essai du moteur | Local / preview |
-| [`apps/boilerplate`](apps/boilerplate) | `@beyours/boilerplate` | Chaque restaurant client, après clonage | Vercel, 1 projet par client |
+| [`apps/themes`](apps/themes) | `@beyours/themes` | Chaque restaurant client, après clonage | Vercel, 1 projet par client |
 
 **`apps/site` — le site commercial.** Vitrine, catalogue de 52 templates,
 tunnel de paiement Stripe, portail apporteurs d'affaires et console
@@ -51,7 +51,7 @@ complet des dix paquets : storefront, dashboard admin, CMS, écran cuisine, jeux
 QR. C'est là qu'une fonctionnalité du moteur se développe et se prouve avant
 d'être publiée. Elle n'est vendue à personne.
 
-**`apps/boilerplate` — le gabarit client.** Le miroir livrable de
+**`apps/themes` — le gabarit client.** Le miroir livrable de
 `apps/reference`, plus ce que le moteur ne peut pas porter : la zone client, les
 51 templates design, les scripts de création de site, les 50 démos
 commerciales.
@@ -72,11 +72,11 @@ C'est la raison d'être de la fusion. Chaque app porte son `vercel.json` :
 
 Turbo suit le **graphe de dépendances**, pas l'arborescence :
 
-| Ce qu'on modifie | site | reference | boilerplate |
+| Ce qu'on modifie | site | reference | themes |
 | --- | --- | --- | --- |
 | `apps/site/**` | ✓ construit | ⏭ ignoré | ⏭ ignoré |
 | `packages/ui/**` | ⏭ ignoré | ✓ construit | ✓ construit |
-| `apps/boilerplate/**` | ⏭ ignoré | ⏭ ignoré | ✓ construit |
+| `apps/themes/**` | ⏭ ignoré | ⏭ ignoré | ✓ construit |
 
 Le site est épargné par un changement dans `packages/ui` parce qu'il n'en
 dépend pas — et ça, seul le graphe le sait. Une règle sur les chemins ne
@@ -94,7 +94,7 @@ veut dire qu'un bump de dépendance reconstruit les trois apps.
 apps/
   site/          Site commercial — vitrine, catalogue, checkout, apporteurs, console
   reference/     Application de référence du moteur (98 routes)
-  boilerplate/   Gabarit cloné pour chaque client + templates + démos
+  themes/        Le site livré au client — app + 51 templates + 50 démos
   docs/          31 pages de documentation produit (markdown, pas un workspace)
 
 packages/        Les 10 paquets publiés — voir ci-dessous
@@ -147,7 +147,7 @@ packages/*                      publiés en @be-in-digital/* (changesets)
     │
     ├──► apps/reference         le banc d'essai — on y prouve la feature
     │
-    └──► apps/boilerplate       le gabarit livrable
+    └──► apps/themes            le site livré au client
               │  clone git (remote `template`)
               ▼
          dépôt du client        1 repo + 1 backend Convex + 1 projet Vercel
@@ -162,7 +162,7 @@ beyours create client-luigi --name "Chez Luigi" --template pizzeria --repo be-in
 La commande enchaîne clone → remote `template` → création du dépôt privé →
 `pnpm install` → configuration (`site.config.ts`, secrets, `.env.local`) →
 commit initial → push. Détail dans
-[`apps/boilerplate/README.md`](apps/boilerplate/README.md).
+[`apps/themes/README.md`](apps/themes/README.md).
 
 ### Deux canaux de mise à jour, jamais un seul
 
@@ -248,14 +248,14 @@ requis que dans un **dépôt client**, qui installe depuis GitHub Packages.
 ```bash
 pnpm dev:site          # site commercial
 pnpm dev:reference     # application de référence
-pnpm dev:boilerplate   # gabarit client
+pnpm dev:themes   # gabarit client
 ```
 
 Les apps à backend Convex ont besoin d'un second terminal (`convex dev` depuis
 le dossier de l'app). Chaque app documente son propre démarrage :
 
 - [`apps/site/README.md`](apps/site/README.md)
-- [`apps/boilerplate/README.md`](apps/boilerplate/README.md)
+- [`apps/themes/README.md`](apps/themes/README.md)
 - [`apps/docs/`](apps/docs) — 31 pages : guides produit, référence API, déploiement
 
 ---
@@ -325,19 +325,19 @@ structurelle, pas applicative.
 
 **Le storefront de démo du site est une réimplémentation.**
 `apps/site/lib/template-storefront.ts` ne partage aucun code avec
-`apps/boilerplate`. Un prospect essaie donc autre chose que ce qu'il achète, et
+`apps/themes`. Un prospect essaie donc autre chose que ce qu'il achète, et
 les deux dérivent à chaque évolution. C'est le chantier d'architecture principal
 ouvert sur ce dépôt.
 
 **Le catalogue existe en trois exemplaires.** 52 entrées dans
 `apps/site/lib/templates-data.ts`, 51 dossiers dans
-`apps/boilerplate/templates/`, 50 démos dans `apps/boilerplate/demos/`. Trois
+`apps/themes/templates/`, 50 démos dans `apps/themes/demos/`. Trois
 listes qu'aucun test ne réconcilie.
 
-**Le boilerplate a un miroir de distribution.** Les sites clients se créent
+**`apps/themes` a un miroir de distribution.** Les sites clients se créent
 depuis `be-in-digital/beyours-boilerplate`, pas depuis ce dépôt. Les dépendances
 y sont en versions publiées (`^2.0.2`), ici en `workspace:^`. Tant qu'un job ne
-pousse pas `apps/boilerplate` vers ce miroir en réécrivant les versions, **les
+pousse pas `apps/themes` vers ce miroir en réécrivant les versions, **les
 deux divergent** — et `sync-engine.yml` / `sync-from-engine.mjs` restent en
 place, bien que la fusion les ait rendus sans objet.
 
@@ -381,4 +381,4 @@ Dans l'ordre, en arrivant sans contexte :
 2. La section [Marque](#marque--ce-quon-renomme-et-ce-quon-ne-renomme-jamais), avant de toucher à quoi que ce soit de nommé.
 3. `pnpm install && pnpm dev:reference` — l'app de référence est le chemin le plus court pour voir le produit entier tourner.
 4. `packages/convex-schema/src/` pour le modèle de données, `packages/convex-functions/src/` pour ce qui agit dessus.
-5. Ouvrir `apps/boilerplate/demos/index.html` dans un navigateur : c'est ce qu'un prospect voit, et c'est navigable hors ligne.
+5. Ouvrir `apps/themes/demos/index.html` dans un navigateur : c'est ce qu'un prospect voit, et c'est navigable hors ligne.

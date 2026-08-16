@@ -18,7 +18,7 @@
     "prepare": "husky",
     "dev:site": "pnpm --filter @beyours/site dev",
     "dev:reference": "pnpm --filter @beyours/reference dev",
-    "dev:boilerplate": "pnpm --filter @beyours/boilerplate dev"
+    "dev:themes": "pnpm --filter @beyours/themes dev"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

@@ -23,7 +23,7 @@ Cette app joue trois rôles :
 | **Filet de type** | Trois paquets (`admin`, `convex-functions`, `convex-schema`) sont livrés en TypeScript brut et n'ont pas de tâche `build` — leurs erreurs de type n'apparaissent qu'ici |
 | **Base des e2e** | Les 43 specs Playwright du dépôt visent cette app |
 
-Elle ne se confond pas avec `apps/boilerplate`, qui est le **livrable** : le
+Elle ne se confond pas avec `apps/themes`, qui est le **livrable** : le
 gabarit y ajoute la zone client, les templates design, les scripts de création
 de site et les démos commerciales.
 
@@ -122,7 +122,7 @@ publiée. C'est voulu — c'est ce qui permet de voir immédiatement l'effet d'u
 changement dans `packages/`.
 
 Le corollaire : ce qui passe ici ne prouve pas que la version publiée passera.
-Le boilerplate, lui, consomme les paquets **publiés** dans son dépôt miroir.
+Le gabarit client, lui, consomme les paquets **publiés** dans son dépôt miroir.
 C'est là que se voit une erreur d'`exports` ou de `files` mal déclarés.
 
 ---

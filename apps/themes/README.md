@@ -1,4 +1,4 @@
-# `apps/boilerplate` — le gabarit des sites clients
+# `apps/themes` — le gabarit des sites clients
 
 Le site que chaque restaurant reçoit. Il embarque le shell applicatif complet
 — storefront e-commerce, dashboard admin, CMS, jeux QR, écran cuisine — et
@@ -8,14 +8,19 @@ Chaque client en est un **clone git**, avec son propre dépôt, son propre backe
 Convex et son propre projet Vercel.
 
 ```
-packages/*  (publiés en @be-in-digital/*)        ← logique métier, versionnée
+packages/*  (publiés en @be-in-digital/*)     ← logique métier, versionnée
    │  publish (changesets → GitHub Packages)
    ▼
-apps/boilerplate                                  ← shell app + wrappers convex
+apps/themes                                   ← shell app + wrappers convex
    │  clone / merge git (remote `template`)
    ▼
-dépôt du client (1 par restaurant)                ← site.config.ts + site/ + env
+dépôt du client (1 par restaurant)            ← site.config.ts + site/ + env
 ```
+
+> **Pourquoi « themes ».** Ce dossier porte le catalogue : `templates/`, 51
+> directions artistiques, une par thème vendu. C'est ce que le restaurateur
+> choisit et achète. L'application autour est le moteur de rendu qui donne vie
+> au thème retenu — un client en applique un seul, décliné à sa marque.
 
 > ⚠️ **Les clients ne clonent pas ce dossier, ils clonent le dépôt miroir**
 > `be-in-digital/beyours-boilerplate`. Ici les dépendances moteur sont en
@@ -306,5 +311,5 @@ test ne les réconcilie.
    passer sans conflit.
 4. `scripts/create-site.mjs` puis `scripts/init.mjs` : tout le parcours de
    création d'un site y tient.
-5. `pnpm dev:boilerplate` depuis la racine, avec un `convex dev` dans un second
+5. `pnpm dev:themes` depuis la racine, avec un `convex dev` dans un second
    terminal.

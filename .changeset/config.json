@@ -10,6 +10,6 @@
   "ignore": [
     "@beyours/site",
     "@beyours/reference",
-    "@beyours/boilerplate"
+    "@beyours/themes"
   ]
 }

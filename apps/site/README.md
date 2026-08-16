@@ -71,11 +71,11 @@ d'établissement — et applique le tout au runtime via des variables CSS scopé
 ![Démo pizzeria](docs/captures/demo-pizzeria.png)
 
 > ⚠️ **Ce storefront de démo est une réimplémentation.** Il ne partage aucun
-> code avec `apps/boilerplate`, le produit réellement livré. Un prospect essaie
+> code avec `apps/themes`, le produit réellement livré. Un prospect essaie
 > donc autre chose que ce qu'il achète, et les deux dérivent à chaque évolution.
 > C'est le chantier d'architecture principal ouvert sur le dépôt.
 >
-> À noter : `apps/boilerplate/demos/` contient déjà 50 démos navigables issues
+> À noter : `apps/themes/demos/` contient déjà 50 démos navigables issues
 > des vrais templates. La convergence passe probablement par là.
 
 ---
