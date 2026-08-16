@@ -1,0 +1,35 @@
+# Gitleaks configuration
+#
+# Run by .github/workflows/security.yml:
+#   gitleaks detect --source . --redact --verbose --no-banner
+#
+# The scan covers the FULL git history (checkout uses fetch-depth: 0), so a
+# finding may live in an old commit even when the working tree is clean.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# ⚠️  DO NOT allowlist a real leak here.
+#
+# An entry in this file only silences the scanner — the secret stays readable
+# in the history for anyone who clones the repo. A real leak is fixed by
+# rotating the credential and rewriting the history: see
+# tasks/secret-rotation-runbook.md.
+#
+# This file is ONLY for values that were never credentials in the first place:
+# fixtures in tests, documentation placeholders, vendor EXAMPLE keys.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures — values that were never real credentials"
+
+paths = [
+  # Unit tests for the Zod env schemas. This file exists to assert that the
+  # schemas accept/reject candidate values, so it is necessarily full of
+  # credential-SHAPED strings that are pure inventions: a 64-hex
+  # ENCRYPTION_KEY, sk_test_/pk_test_ prefixes, and AWS's own published
+  # documentation keys (AKIAIOSFODNN7EXAMPLE / wJalrXUtnFEMI...EXAMPLEKEY).
+  # Verified 2026-08-16: no real credential in this file.
+  '''packages/core/src/env/__tests__/schemas\.test\.ts''',
+]
