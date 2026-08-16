@@ -21,6 +21,27 @@
 > but **deleting a file does not purge the history**: past commits still expose
 > them for as long as the history is not rewritten.
 
+### What the automated scan sees (and misses)
+
+The `Gitleaks (secret scan)` job in `.github/workflows/security.yml` scans the
+full history on every push. Run of 2026-08-16, 270 commits, **3 findings** — and
+the overlap with the table above is only partial:
+
+| Finding | Real leak? | Covered by this runbook? |
+|---|---|---|
+| `convex_jwt` in `apps/restaurant-theme/e2e/.auth/admin.json:15` (commit `7cf4d41`) | **Yes** | Yes — A.2 + Part B |
+| `ENCRYPTION_KEY` in `packages/core/src/env/__tests__/schemas.test.ts:101` (commits `9c3085d`, `51cb6b5`) | No — test fixture | n/a, allowlisted in `.gitleaks.toml` |
+| Deliveroo `client_secret` in `scripts/deliveroo-menu-scenarios.sh` | **Yes** | Yes — A.1 + Part B |
+
+Two things follow:
+
+1. **Gitleaks does NOT flag the Deliveroo secret.** Its default rules do not
+   match that pattern. Do not treat a green Gitleaks run as proof the history is
+   clean — this runbook stays the source of truth for A.1.
+2. **The job will keep failing until Part B is done.** That is correct: the JWT
+   is a genuine leak still present in the history. Do not silence it by adding it
+   to `.gitleaks.toml` — that file is for non-credentials only.
+
 ---
 
 ## Part A — Secret rotation
