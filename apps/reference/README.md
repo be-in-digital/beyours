@@ -35,7 +35,7 @@ sales demos.
 | --- | --- |
 | **Routes** | 98 pages, 6 API routes |
 | **Engine packages consumed** | 9 out of 10 (all but `mcp-server`) |
-| **Tests** | 13 Vitest files (117 tests, 13 gated behind live credentials), 43 Playwright specs |
+| **Tests** | 13 Vitest files (118 tests, 13 gated behind live credentials), 43 Playwright specs |
 
 Surfaces, by route group:
 
@@ -85,9 +85,24 @@ through `config`: the fallback there is a real deployment, and defaulting to it
 would make every CI run fire signed payloads at a backend nobody asked for. Set
 the variables to run the live half locally.
 
-Three tests are `it.todo`: two asserted `expect(true).toBe(true)` and one only
-held comments. They never could fail, so they were reporting green for nothing —
-they need a mocked OAuth token and a mocked API response to become real.
+Three tests used to report green for nothing — two asserted
+`expect(true).toBe(true)`, one held only comments. They now assert production
+behaviour:
+
+| Test | Asserts |
+| --- | --- |
+| 401 retry | the client drops the cached token, mints a new one and replays the request **once**, carrying the fresh bearer |
+| 500 passthrough | a 500 is returned untouched, with no retry and no token burned |
+| OAuth failure | a failing token endpoint surfaces as `IntegrationError` with its status and platform |
+| Cancellation | `mapDeliverooStatus` + `canTransitionTo` agree that a Deliveroo order cannot be cancelled once preparing, ready, or with a rider |
+
+The first three mock `globalThis.fetch` through `withMockedFetch`, which clears
+the module-level token cache on both sides so a mocked token never leaks into
+the live suites and vice versa.
+
+Each was mutation-checked: breaking the corresponding production rule (removing
+the 401 retry, retrying on 500, renaming the OAuth error, allowing
+`preparing → cancelled`) makes exactly that test fail.
 
 ---
 
