@@ -49,7 +49,7 @@ beindigital/
 │   └── convex-functions/              # 🔲 Convex backend functions
 │
 ├── apps/                              # Applications
-│   ├── restaurant-theme/              # 🔲 Main restaurant theme app
+│   ├── reference/                         # 🔲 Engine test bench
 │   ├── admin-dashboard/               # 🔲 BeYours admin dashboard
 │   └── docs/                          # 🔲 Documentation site
 │
@@ -140,7 +140,7 @@ beindigital/
    - Store selector utilities
    - Multi-store logic
 
-4. **apps/restaurant-theme**
+4. **apps/reference**
    - Next.js 14 setup with App Router
    - Convex integration
    - Better Auth setup
@@ -263,7 +263,7 @@ pnpm release
 - Deliveroo SDK
 - PayPal SDK
 
-**apps/restaurant-theme:**
+**apps/reference:**
 - `next` - Framework
 - `convex` - Backend
 - `better-auth` - Auth

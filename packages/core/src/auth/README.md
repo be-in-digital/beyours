@@ -167,7 +167,7 @@ pnpm add better-auth @better-auth/convex @better-auth/two-factor
 ```
 
 ### 2. Configure Better Auth
-Create `apps/restaurant-theme/lib/auth.ts`:
+Create `apps/reference/lib/auth.ts`:
 ```ts
 import { betterAuth } from 'better-auth'
 import { convexAdapter } from '@better-auth/convex'
@@ -183,7 +183,7 @@ export const auth = betterAuth(
 ```
 
 ### 3. Create the React client
-Create `apps/restaurant-theme/lib/auth-client.ts`:
+Create `apps/reference/lib/auth-client.ts`:
 ```ts
 import { createAuthClient } from 'better-auth/react'
 
@@ -196,7 +196,7 @@ export { useAuth, usePermission, useRole } from '@be-in-digital/core/auth'
 ```
 
 ### 4. Add the provider
-In `apps/restaurant-theme/app/layout.tsx`:
+In `apps/reference/app/layout.tsx`:
 ```tsx
 import { SessionProvider } from 'better-auth/react'
 

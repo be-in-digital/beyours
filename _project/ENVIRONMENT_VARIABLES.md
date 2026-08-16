@@ -191,14 +191,20 @@ Files affected (deliberately not migrated):
 
 ## .env.example files
 
-Two reference files for onboarding:
+Six reference files for onboarding:
 
 | File | Contents | For whom |
 |---|---|---|
-| `packages/core/.env.example` | 10 package variables | BeYours team |
-| `apps/restaurant-theme/.env.example` | 25+ site vars + reminder of the package vars | Deploying a restaurant |
+| `packages/core/.env.example` | 10 package variables | BeYours team — canonical list of the platform credentials |
+| `apps/reference/.env.example` | Site vars + package vars | The engine's test bench |
+| `apps/themes/.env.example` | Site vars + package vars | Deploying a restaurant — web side |
+| `apps/themes/.env.convex.example` | Backend vars | Deploying a restaurant — Convex side (`pnpm convex:env`) |
+| `apps/site/.env.example` | The commercial site's own surface | Local dev on `apps/site` |
+| `apps/site/.env.production.example` | Documented prod values, no secret | Before any prod env change on `apps/site` |
 
-> On every deployment, the `.env.local` file in `apps/restaurant-theme/` holds **every** variable (package + site), since the Node.js process needs both at runtime.
+> On every deployment, the `.env.local` file in `apps/reference/` or `apps/themes/` holds **every** variable (package + site), since the Node.js process needs both at runtime.
+
+> `apps/site` does **not** follow the package/site split: it depends on none of the engine packages and has its own variable surface. `packages/core` is a library — nothing loads a `.env` there at runtime; the 10 platform variables are read from the host process env.
 
 ---
 

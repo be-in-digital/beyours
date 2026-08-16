@@ -33,7 +33,7 @@ packages/convex-functions/src/
 ### In Convex Functions (App)
 
 ```typescript
-// apps/restaurant-theme/convex/categories.ts
+// apps/reference/convex/categories.ts
 import { query, mutation } from "./_generated/server"
 import * as categoriesFns from "@be-in-digital/convex-functions/categories"
 

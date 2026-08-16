@@ -27,6 +27,10 @@ Contract status is **derived, never stored**: `active`, `expiring_soon` (≤ 30 
 A release is covered when `releasedAt <= coveredUntil`. The `system.checkForUpdates` action:
 
 1. Fetches the packument of `@be-in-digital/restaurant-theme` and syncs the release catalog (best effort — a registry outage falls back to the stored catalog).
+
+   > ⚠️ No package by that name is published by this repo (see `packages/*`).
+   > The request 404s, so the catalog silently stays empty. The real engine
+   > package name has to be decided before this feature can work.
 2. Resolves `latestVersion` (newest published) and `entitledVersion` (newest **covered**) by semver.
 3. Returns `hasEntitledUpdate`, `lockedVersions`, `maintenanceStatus`, `coveredUntil`.
 
@@ -101,6 +105,6 @@ BID_NOTIFY_EMAIL=ops@example.com         # migration request alerts (SES)
 
 - `packages/convex-schema/src/tables/maintenance.ts` — table definitions
 - `packages/convex-functions/src/maintenance.ts` — pure logic (status, gating, semver, transitions) + handlers
-- `apps/restaurant-theme/convex/maintenance.ts` — auth wrappers + internal ops mutations
-- `apps/restaurant-theme/convex/system.ts` — `checkForUpdates` with maintenance gating
+- `apps/reference/convex/maintenance.ts` — auth wrappers + internal ops mutations
+- `apps/reference/convex/system.ts` — `checkForUpdates` with maintenance gating
 - `packages/admin/src/pages/system/system-page.tsx` — Maintenance tab, gated updates, migration form

@@ -3,7 +3,7 @@
  *
  * Contains the menu payload builder that converts internal products/categories
  * to the Uber Eats API format. The actual Convex action handlers live in the
- * app-level wrapper (apps/restaurant-theme/convex/uberEatsMenuSync.ts) because
+ * app-level wrapper (apps/reference/convex/uberEatsMenuSync.ts) because
  * they need access to the generated `api` object for ctx.runQuery/runMutation.
  */
 

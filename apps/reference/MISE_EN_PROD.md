@@ -1,4 +1,4 @@
-# Production go-live — restaurant-theme
+# Production go-live — reference (engine)
 
 Checklist of everything **you** still have to do before officially going live.
 Status as of 18 July 2026: the code is ready (type-check 18/18, tests green, game flow
@@ -10,7 +10,7 @@ accounts, legal and decisions — not code.
 ## 1. Infrastructure & deployments
 
 - [ ] **Create the PRODUCTION Convex deployment** (`npx convex deploy` from
-  `apps/restaurant-theme`). Right now everything runs on the dev deployment
+  `apps/reference`). Right now everything runs on the dev deployment
   `dev:reliable-parrot-452` (team momoseck8, project beindigital-engine).
 - [ ] **Copy the env vars over to the prod Convex deployment** (`npx convex env set` for
   every key from dev, using the LIVE values, not the test ones) — see the sections below

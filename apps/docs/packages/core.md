@@ -250,7 +250,7 @@ Zod-based validation for all environment variables with a two-tier architecture.
 
 ```bash
 # Copy the template
-cp apps/restaurant-theme/.env.example apps/restaurant-theme/.env.local
+cp apps/reference/.env.example apps/reference/.env.local
 # Fill in the values
 ```
 

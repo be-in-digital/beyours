@@ -5,7 +5,7 @@
 ```
 ┌──────────────────────────┐
 │ beyours              │  logique métier + shell de référence
-│ (monorepo, changesets)   │  apps/restaurant-theme + packages/*
+│ (monorepo, changesets)   │  apps/reference + packages/*
 └─────────┬────────────────┘
           │ ① publish npm (@be-in-digital/* → GitHub Packages)
           │ ② sync du shell (maintainer, voir § Maintenance)
@@ -74,7 +74,7 @@ conflicts only appear if the site modified engine zones (avoid this, see
 ## Patched files (boilerplate vs engine delta)
 
 The boilerplate keeps a DELIBERATELY minimal delta against the engine's
-`apps/restaurant-theme`:
+`apps/reference`:
 
 | File | Nature of the patch |
 | --- | --- |
@@ -94,7 +94,7 @@ Everything else (`app/`, `components/`, `lib/`, `hooks/`, `cms/`, `convex/`,
 Resyncing the shell from the engine is **tooled and automated**:
 
 - **`pnpm sync:engine`** (maintainer, local) — a strict mirror from
-  `apps/restaurant-theme` of an engine clone (`--engine <path>`, `--check`
+  `apps/reference` of an engine clone (`--engine <path>`, `--check`
   for a dry run). The script protects the patched and boilerplate files,
   re-applies the `.env.example` header patch, reports the dependency diff
   (never auto-applied) and writes `.engine-sync.json` (the reference engine

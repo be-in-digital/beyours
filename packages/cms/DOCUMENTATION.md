@@ -88,10 +88,10 @@ packages/cms/src/
     └── svgSanitizer.ts             # SVG cleaning (security)
 ```
 
-### Application-side structure (example: restaurant-theme)
+### Application-side structure (example: reference)
 
 ```
-apps/restaurant-theme/
+apps/reference/
 ├── cms/                             # CMS definitions specific to the app
 │   ├── groups.ts                    # Page groups (6 groups)
 │   ├── index.ts                     # Barrel → exports appCmsConfig

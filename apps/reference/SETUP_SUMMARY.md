@@ -104,7 +104,7 @@ import { cn } from "@/lib/utils"
 #### Add More shadcn/ui Components
 
 ```bash
-cd apps/restaurant-theme
+cd apps/reference
 
 # Add individual components
 npx shadcn@latest add card
@@ -119,7 +119,7 @@ npx shadcn@latest add
 ### Project Structure
 
 ```
-apps/restaurant-theme/
+apps/reference/
 ├── app/
 │   ├── globals.css          # Design system CSS variables
 │   └── layout.tsx            # Root layout with fonts

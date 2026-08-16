@@ -312,7 +312,7 @@ translations: defineTable({...})
 
 1. **Copy the files into your app**
    ```bash
-   cp packages/convex-functions/src/*.ts apps/restaurant-theme/convex/
+   cp packages/convex-functions/src/*.ts apps/reference/convex/
    ```
 
 2. **Define the Convex schema**
@@ -321,7 +321,7 @@ translations: defineTable({...})
 
 3. **Generate the types**
    ```bash
-   cd apps/restaurant-theme
+   cd apps/reference
    npx convex dev
    ```
 

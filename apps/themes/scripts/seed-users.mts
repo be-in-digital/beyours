@@ -8,7 +8,7 @@
  *   - Convex dev running (pnpx convex dev)
  *
  * Usage:
- *   cd apps/restaurant-theme
+ *   cd apps/themes
  *   npx tsx scripts/seed-users.mts
  */
 

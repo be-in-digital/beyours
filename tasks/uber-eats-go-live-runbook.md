@@ -13,10 +13,11 @@ confirms production access.
 ## 0. PREREQUISITE — re-enable schema validation (data-migration debt)
 
 **✅ RESOLVED on dev (2026-07-04).** `schemaValidation` is back to **`true`** in
-`apps/restaurant-theme/convex/schema.ts` and the push passes validation on the
+`apps/reference/convex/schema.ts` and the push passes validation on the
 dev deployment (`reliable-parrot-452`). What was done:
 
-1. One-time migration added: `apps/restaurant-theme/convex/migrations.ts`
+1. One-time migration added: `apps/reference/convex/migrations.ts`
+   (mirrored in `apps/themes/convex/migrations.ts` for client instances)
    (`auditSchemaDrift` dry-run + `backfillSchemaDrift`).
    - `products`: `stock.trackStock`→`tracked`,
      `stock.autoDisableOnZero`→`autoDisableWhenEmpty`; `isFeatured`→`false`,
@@ -71,7 +72,7 @@ https://<prod-convex-deployment>.convex.site/connect/uber-eats/callback
 
 After step 0 is resolved:
 ```
-cd apps/restaurant-theme && npx convex deploy
+cd apps/reference && npx convex deploy    # a client instance: cd apps/themes
 ```
 
 Confirms the Uber fixes ship: order actions on `/v1/delivery/order/...`,

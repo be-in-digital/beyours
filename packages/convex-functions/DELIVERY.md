@@ -145,22 +145,22 @@ into the `convex/` folder of a Next.js app.
 ### Step 1: Copy the files
 ```bash
 cd packages/convex-functions
-pnpm copy-to restaurant-theme
+pnpm copy-to reference
 ```
 
 Or manually:
 ```bash
-cp packages/convex-functions/src/*.ts apps/restaurant-theme/convex/
+cp packages/convex-functions/src/*.ts apps/reference/convex/
 # Do NOT copy index.ts (barrel file)
 ```
 
 ### Step 2: Define the schema
-In `apps/restaurant-theme/convex/schema.ts`, define the Convex schema.
+In `apps/reference/convex/schema.ts`, define the Convex schema.
 See `USAGE.md` for a complete example.
 
 ### Step 3: Generate the types
 ```bash
-cd apps/restaurant-theme
+cd apps/reference
 npx convex dev
 ```
 
@@ -191,7 +191,7 @@ See `USAGE.md` for detailed examples.
 ## Recommended next steps
 
 ### Short term
-1. Copy the functions into `apps/restaurant-theme/convex/`
+1. Copy the functions into `apps/reference/convex/`
 2. Create the Convex schema in the app
 3. Test the functions against real data
 

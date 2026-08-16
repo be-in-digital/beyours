@@ -89,7 +89,7 @@ vercel env add GITHUB_TOKEN
 If deploying from the monorepo, set the **Root Directory** to the app folder:
 
 ```
-Root Directory: apps/restaurant-theme
+Root Directory: apps/themes
 ```
 
 ### Turborepo Integration

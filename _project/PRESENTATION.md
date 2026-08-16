@@ -79,7 +79,7 @@ On the website:
 │  └───────────────────────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │ apps/                                                 │  │
-│  │  ├── restaurant-theme/    (Complete Theme)           │  │
+│  │  ├── reference/          (engine test bench)           │  │
 │  │  ├── admin-dashboard/     (Your Global Dashboard)    │  │
 │  │  └── docs/                (Documentation)            │  │
 │  └───────────────────────────────────────────────────────┘  │

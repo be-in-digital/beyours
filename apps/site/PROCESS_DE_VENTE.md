@@ -68,7 +68,7 @@ targets: 3-5 customers at 90 days, 25-40 at 12 months.
 This is the 100% manual step. The runbook is already displayed in the console
 (`GO_LIVE_STEPS`), to be run in order for every new customer:
 
-1. **Clone the boilerplate** restaurant-theme for this customer (separate git
+1. **Clone the boilerplate** (`apps/themes`) for this customer (separate git
    repo `beindigital-boilerplate`).
 2. **Provision Convex** (dedicated prod deployment) + **Vercel** (dedicated project).
    → see the infra cost note: two-tier on a dev seat, ~50-250 €/year/customer.

@@ -78,7 +78,7 @@ Restaurant owners who purchase a BeYours theme and want to maintain an active bl
         | useAction        |                   |
         v                  v                   v
 +----------------------------------------------------------------------+
-|                     APP LAYER (Convex - restaurant-theme/convex/)      |
+|                     APP LAYER (Convex - reference/convex/)      |
 |                                                                       |
 |  blog.ts                 blogAutoConfig.ts    bidSubscription.ts       |
 |  (query/mutation)        (query/mutation)     (action "use node")     |
@@ -124,8 +124,8 @@ Restaurant owners who purchase a BeYours theme and want to maintain an active bl
 | Layer | Location | Runtime | Purpose |
 |-------|----------|---------|---------|
 | **Package Layer** | `packages/convex-functions/src/` | Default Convex | Pure business logic, guards, validators, query/mutation handlers. No auth, no API calls, no `"use node"`. Reusable across apps. |
-| **App Layer** | `apps/restaurant-theme/convex/` | Default Convex + `"use node"` | Convex function wrappers that add auth checks. Actions with `"use node"` handle external API calls (OpenAI, Unsplash, Stripe, S3). Internal functions bridge actions and the database. |
-| **UI Layer** | `apps/restaurant-theme/components/admin/blog/` and `subscription/` | Client (React) | React components using Convex hooks (`useQuery`, `useMutation`, `useAction`). Forms, dialogs, tables, rich text editor. |
+| **App Layer** | `apps/reference/convex/` | Default Convex + `"use node"` | Convex function wrappers that add auth checks. Actions with `"use node"` handle external API calls (OpenAI, Unsplash, Stripe, S3). Internal functions bridge actions and the database. |
+| **UI Layer** | `apps/reference/components/admin/blog/` and `subscription/` | Client (React) | React components using Convex hooks (`useQuery`, `useMutation`, `useAction`). Forms, dialogs, tables, rich text editor. |
 | **Schema Layer** | `packages/convex-schema/src/tables/` | Build-time | Convex table definitions with validators and indexes. |
 
 ### Why `"use node"` Separation?
@@ -699,7 +699,7 @@ useAction(api.blogImageGenerate.generateImage)
 
 ### 8.1 Search API
 
-**File:** `apps/restaurant-theme/convex/unsplashSearch.ts`
+**File:** `apps/reference/convex/unsplashSearch.ts`
 
 Two public actions for client-side Unsplash integration:
 
@@ -752,7 +752,7 @@ For cover images, Unsplash photos are downloaded and re-uploaded to S3 (not hotl
 
 ### 9.1 Tiptap Configuration
 
-**File:** `apps/restaurant-theme/components/admin/blog/BlogRichTextEditor.tsx`
+**File:** `apps/reference/components/admin/blog/BlogRichTextEditor.tsx`
 
 The editor uses Tiptap with the following extensions:
 
@@ -791,7 +791,7 @@ When an Unsplash image is selected via the BubbleMenu, the editor inserts the im
 
 ### 9.4 Autosave Mechanism
 
-**File:** `apps/restaurant-theme/components/admin/blog/BlogArticleEditor.tsx`
+**File:** `apps/reference/components/admin/blog/BlogArticleEditor.tsx`
 
 The editor implements a debounced autosave system:
 
@@ -825,7 +825,7 @@ The `BlogArticleEditor` organizes content into 5 tabs:
 
 ### 10.1 Configuration Form
 
-**File:** `apps/restaurant-theme/components/admin/blog/BlogAutoConfigForm.tsx`
+**File:** `apps/reference/components/admin/blog/BlogAutoConfigForm.tsx`
 
 The form uses React Hook Form + Zod validation with the following sections:
 
@@ -857,7 +857,7 @@ When a user downgrades their plan, the form automatically coerces values:
 
 ### 10.3 Config Page Orchestrator
 
-**File:** `apps/restaurant-theme/components/admin/blog/BlogAutoConfigPage.tsx`
+**File:** `apps/reference/components/admin/blog/BlogAutoConfigPage.tsx`
 
 The page displays one of three states:
 
@@ -1588,10 +1588,10 @@ All routes are under the `(admin)` route group and require authentication.
 
 | Test File | Location | Test Count | Coverage |
 |-----------|----------|------------|----------|
-| `blog-articles.spec.ts` | `apps/restaurant-theme/e2e/admin/` | 11 tests | Page loading, heading display, create article dialog, generate AI dialog, category manager, status tabs, empty states |
-| `blog-editor.spec.ts` | `apps/restaurant-theme/e2e/admin/` | 3 tests | Editor page loading, toolbar display, tab navigation |
-| `blog-auto-config.spec.ts` | `apps/restaurant-theme/e2e/admin/` | 5 tests | Config page loading, form elements visible, save button, locked state for unauthenticated users |
-| `subscription.spec.ts` | `apps/restaurant-theme/e2e/admin/` | 7 tests | Pricing cards display, plan features listed, billing toggle, subscribe buttons, current plan view |
+| `blog-articles.spec.ts` | `apps/reference/e2e/admin/` | 11 tests | Page loading, heading display, create article dialog, generate AI dialog, category manager, status tabs, empty states |
+| `blog-editor.spec.ts` | `apps/reference/e2e/admin/` | 3 tests | Editor page loading, toolbar display, tab navigation |
+| `blog-auto-config.spec.ts` | `apps/reference/e2e/admin/` | 5 tests | Config page loading, form elements visible, save button, locked state for unauthenticated users |
+| `subscription.spec.ts` | `apps/reference/e2e/admin/` | 7 tests | Pricing cards display, plan features listed, billing toggle, subscribe buttons, current plan view |
 
 ### 20.3 Running Tests
 
@@ -1609,7 +1609,7 @@ pnpm test:coverage
 pnpm test:e2e
 
 # Specific E2E test file
-pnpm playwright test apps/restaurant-theme/e2e/admin/blog-articles.spec.ts
+pnpm playwright test apps/reference/e2e/admin/blog-articles.spec.ts
 
 # E2E tests with UI
 pnpm test:e2e:ui
@@ -1769,7 +1769,7 @@ packages/
   cms/src/sanitize/
     svgSanitizer.ts                # SVG sanitization
 
-apps/restaurant-theme/
+apps/reference/
   convex/
     blogAutoGenerate.ts            # Action: generateArticle (Node runtime)
     blogAutoGenerateInternal.ts    # Internal: _checkAccess, _getGenerationContext, _createBlogImage, _saveGeneratedArticle

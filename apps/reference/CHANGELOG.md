@@ -1,4 +1,4 @@
-# @be-in-digital/restaurant-theme
+# @beyours/reference
 
 ## 2.0.0
 

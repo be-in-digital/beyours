@@ -19,7 +19,7 @@ beindigital/
 │   └── mcp-server/              # MCP server for AI assistants
 │
 ├── apps/
-│   ├── restaurant-theme/        # Main Next.js application
+│   ├── reference/              # Engine test bench (Next.js)
 │   │   ├── app/
 │   │   │   ├── (storefront)/    # Public pages (menu, cart, checkout)
 │   │   │   ├── (admin)/         # Admin pages (dashboard, products, kitchen)

@@ -11,7 +11,7 @@
  *   node --env-file=.env --import tsx scripts/uber-eats-validation.ts
  *
  * Prefer the equivalent Convex action for production-like execution:
- *   apps/restaurant-theme/convex/uberEatsActions.ts → runValidation
+ *   apps/reference/convex/uberEatsActions.ts → runValidation
  */
 
 import { uberEats } from "@be-in-digital/integrations"
