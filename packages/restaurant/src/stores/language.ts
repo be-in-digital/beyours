@@ -28,7 +28,7 @@ export interface Language {
 /**
  * Language state
  */
-interface LanguageState {
+export interface LanguageState {
   locale: string
   defaultLocale: string
   availableLanguages: Language[]
@@ -42,14 +42,14 @@ interface LanguageState {
 /**
  * Language actions
  */
-interface LanguageActions {
+export interface LanguageActions {
   setLocale: (code: string) => void
   initialize: (storeLanguages: Language[], storeDefault: string) => void
   setOverrides: (overrides: Record<string, Record<string, string>>) => void
   setStaticStrings: (strings: Map<string, Record<string, string>>) => void
 }
 
-type LanguageStore = LanguageState & LanguageActions
+export type LanguageStore = LanguageState & LanguageActions
 
 /**
  * Normalize a browser locale tag to a base code.

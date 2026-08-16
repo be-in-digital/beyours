@@ -12,7 +12,7 @@ import type { StoreDoc } from '../types'
 /**
  * Store state
  */
-interface StoreState {
+export interface StoreState {
   currentStore: StoreDoc | null
   stores: StoreDoc[]
 }
@@ -20,7 +20,7 @@ interface StoreState {
 /**
  * Store actions
  */
-interface StoreActions {
+export interface StoreActions {
   setCurrentStore: (store: StoreDoc) => void
   setStores: (stores: StoreDoc[]) => void
   clearCurrentStore: () => void
@@ -29,7 +29,7 @@ interface StoreActions {
 /**
  * Store store type
  */
-type StoreStore = StoreState & StoreActions
+export type StoreStore = StoreState & StoreActions
 
 /**
  * Store store with persistence for current store

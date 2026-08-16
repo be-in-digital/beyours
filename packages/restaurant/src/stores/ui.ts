@@ -10,7 +10,7 @@ import { create } from 'zustand'
 /**
  * UI state
  */
-interface UIState {
+export interface UIState {
   isMobileMenuOpen: boolean
   isCartOpen: boolean
   isSidebarOpen: boolean
@@ -20,7 +20,7 @@ interface UIState {
 /**
  * UI actions
  */
-interface UIActions {
+export interface UIActions {
   toggleMobileMenu: () => void
   toggleCart: () => void
   toggleSidebar: () => void
@@ -31,7 +31,7 @@ interface UIActions {
 /**
  * UI store type
  */
-type UIStore = UIState & UIActions
+export type UIStore = UIState & UIActions
 
 /**
  * UI store (no persistence)
