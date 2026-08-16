@@ -14,17 +14,22 @@ the six `.env.example` templates) plus `apps/site/MISE_EN_PROD.md` and
 
 ## 0. Two problems to settle first
 
-**A personal Convex account currently owns production.**
+**Production stays on its current Convex team — decided 2026-08-16.**
 `apps/site/.env.production.example` records the prod deployment as
 `fearless-poodle-133`, on **team `momoseck8` / project `wedilybird`**. That reads
-as a personal account, not a company one. Do **not** rebuild the project under a
-new account: use Convex's **project transfer**, which preserves deployments,
-URLs, env vars, data and deploy keys — a rebuild would mean re-wiring Vercel and
-Stripe. Transferring requires Team Admin on **both** teams.
+as a personal account rather than a company one, and moving it was considered.
+**The decision is to leave it where it is** — do not transfer, and do not rebuild
+it elsewhere. Treat this section as closed unless the owner reopens it.
 
-> ⚠️ Convex spending caps apply per **team**: a cap set too low disables **every
-> project on that team**, production included. Check the cap right after the
-> transfer.
+Two consequences to live with, since they do not go away by themselves:
+
+> ⚠️ **Convex spending caps apply per team.** A cap set too low on `momoseck8`
+> disables **every project on that team**, production included. Whoever owns that
+> team has to keep the cap funded, and know that they do.
+
+> ⚠️ **Account recovery runs through that team's owner.** Access to the production
+> backend depends on an account that is not `developers@beyours.fr`. Make sure at
+> least one other person can reach it.
 
 **Two brands, two addresses.** BeYours is the product, BeInDigital is the agency.
 Some existing accounts are on `hello@beindigital.fr` (the ClickUp workspace, for
@@ -107,7 +112,7 @@ they serve the commercial site and the fleet, not one restaurant.
 
 - [ ] `developers@beyours.fr` mailbox exists and is monitored
 - [ ] Decide BeYours vs BeInDigital ownership per service (§0)
-- [ ] Convex project **transferred** (not rebuilt) off the personal team; spending cap checked
+- [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
 - [ ] AWS account; SES out of sandbox (eu-west-3); S3 bucket
