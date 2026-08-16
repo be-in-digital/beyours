@@ -136,7 +136,7 @@ describe("Scenario 7: Cancelled Order", () => {
   // Test 4: Cancellation Restrictions
   // ========================================================================
 
-  it("should understand cancellation restrictions", async () => {
+  it.todo("should understand cancellation restrictions — asserts nothing today", async () => {
     log.test("Test 4: Validating cancellation restrictions");
 
     // Orders CANNOT be cancelled if:
