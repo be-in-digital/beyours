@@ -35,7 +35,7 @@ de site et les démos commerciales.
 | --- | --- |
 | **Routes** | 98 pages, 6 routes API |
 | **Paquets moteur consommés** | 9 sur 10 (tous sauf `mcp-server`) |
-| **Tests** | 56 fichiers Vitest, 43 specs Playwright |
+| **Tests** | 2 fichiers Vitest, 43 specs Playwright — plus 11 fichiers orphelins, voir ci-dessous |
 
 Les surfaces, par route group :
 
@@ -58,6 +58,26 @@ export default function Page() {
 
 Ce sont des alias historiques, conservés pour ne pas casser de liens. Ne pas
 chercher à les fusionner avec les pages qu'elles visent.
+
+---
+
+## 11 tests d'intégration ne s'exécutent jamais
+
+Les scénarios Deliveroo de `e2e/deliveroo/**/*.test.ts` tombent dans un angle
+mort entre les deux runners :
+
+| Runner | Pourquoi il les ignore |
+| --- | --- |
+| **Vitest** | `vitest.config.ts` exclut `**/e2e/**` |
+| **Playwright** | Les projets de `playwright.config.ts` ne matchent que `*.spec.ts` |
+
+Vérifiable : `npx playwright test --list` n'en retourne aucun, et `pnpm test`
+n'exécute que les 2 fichiers de `lib/`.
+
+Onze scénarios — commandes refaites, programmées, annulées, remboursées, titres
+restaurant, articles manquants — écrits puis jamais lancés. Les renommer en
+`.spec.ts` et les rattacher à un projet Playwright, ou les sortir de `e2e/`
+pour que Vitest les voie.
 
 ---
 

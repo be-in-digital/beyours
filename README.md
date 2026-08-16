@@ -266,8 +266,8 @@ le dossier de l'app). Chaque app documente son propre démarrage :
 | --- | --- |
 | `pnpm build` | Construit tout, dans l'ordre du graphe |
 | `pnpm lint` · `pnpm type-check` | Qualité, sur les 13 workspaces |
-| `pnpm test` | Vitest — 48 fichiers dans les paquets, 56 dans l'app de référence |
-| `pnpm test:e2e` | Playwright — 43 specs |
+| `pnpm test` | Vitest — 56 fichiers : 48 dans les paquets, 6 sur le site, 2 sur l'app de référence |
+| `pnpm test:e2e` | Playwright — 43 specs sur l'app de référence, 43 sur le gabarit, 1 sur le site |
 | `pnpm changeset` | Déclare une évolution de paquet (obligatoire pour publier) |
 | `pnpm format` | Prettier |
 
@@ -340,6 +340,13 @@ y sont en versions publiées (`^2.0.2`), ici en `workspace:^`. Tant qu'un job ne
 pousse pas `apps/boilerplate` vers ce miroir en réécrivant les versions, **les
 deux divergent** — et `sync-engine.yml` / `sync-from-engine.mjs` restent en
 place, bien que la fusion les ait rendus sans objet.
+
+**11 tests d'intégration Deliveroo ne s'exécutent jamais.** Les fichiers
+`apps/reference/e2e/deliveroo/**/*.test.ts` tombent dans un angle mort : Vitest
+exclut `**/e2e/**`, et les projets Playwright ne matchent que `*.spec.ts`.
+Aucun des deux runners ne les voit. Vérifié : `playwright test --list` ne
+retourne aucun d'entre eux. Les renommer en `.spec.ts` et les câbler à un
+projet, ou les déplacer hors de `e2e/`.
 
 **32 routes de `apps/reference/app/(admin)/` sont des redirections** vers
 `/dashboard/*`. Ce sont des alias historiques, pas des doublons : ne pas
