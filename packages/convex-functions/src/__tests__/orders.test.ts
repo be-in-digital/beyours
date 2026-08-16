@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
-import { createFromWebhook } from "../orders"
+import { describe, it, expect, vi } from "vitest"
+import { createFromWebhook, updateStatus } from "../orders"
 
 // ---------------------------------------------------------------------------
 // Minimal in-memory Convex DB mock supporting query().filter().first() + insert.
@@ -240,5 +240,111 @@ describe("createWithTicket", () => {
     expect((ticket?.doc.items as Array<{ options: string[] }>)[0]?.options).toEqual([
       "Taille: L",
     ])
+  })
+})
+
+// ============================================================================
+// updateStatus — transition enforcement
+// ============================================================================
+
+describe("updateStatus", () => {
+  function createOrderCtx(order: Record<string, unknown>, payments: Doc[] = []) {
+    const docs: Record<string, Record<string, unknown>> = {
+      "orders:1": { _id: "orders:1", ...order },
+    }
+    const patches: Array<{ id: string; updates: Record<string, unknown> }> = []
+
+    const ctx = {
+      db: {
+        get: async (id: string) => docs[id] ?? null,
+        patch: async (id: string, updates: Record<string, unknown>) => {
+          patches.push({ id, updates })
+          Object.assign(docs[id] ?? {}, updates)
+        },
+        query: () => ({
+          withIndex: () => ({ collect: async () => payments }),
+        }),
+      },
+    }
+    return { ctx, patches, docs }
+  }
+
+  const baseOrder = { status: "pending", paymentStatus: "unpaid" }
+
+  it("applies a valid transition", async () => {
+    const { ctx, patches } = createOrderCtx(baseOrder)
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "confirmed" })
+
+    expect(patches).toHaveLength(1)
+    expect(patches[0]?.updates.status).toBe("confirmed")
+  })
+
+  it("rejects a transition the table forbids", async () => {
+    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "preparing" })
+
+    await expect(
+      updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+    ).rejects.toThrow(/preparing.*cancelled/)
+
+    // Nothing must have been written before the guard fired.
+    expect(patches).toHaveLength(0)
+  })
+
+  it("rejects skipping a step", async () => {
+    const { ctx } = createOrderCtx(baseOrder)
+
+    await expect(
+      updateStatus.handler(ctx, { id: "orders:1", status: "completed" })
+    ).rejects.toThrow(/Invalid order status transition/)
+  })
+
+  it("treats a repeated status as an idempotent no-op", async () => {
+    // Webhook replays and double-clicked buttons land here; they must not blow up.
+    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "confirmed" })
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "confirmed" })
+
+    expect(patches).toHaveLength(0)
+  })
+
+  it("lets a ready order be sent out for delivery", async () => {
+    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "ready" })
+
+    await updateStatus.handler(ctx, {
+      id: "orders:1",
+      status: "out_for_delivery",
+    })
+
+    expect(patches[0]?.updates.status).toBe("out_for_delivery")
+  })
+
+  it("still refunds a paid order when the cancellation is legal", async () => {
+    const payments: Doc[] = [
+      { _id: "payments:1", status: "succeeded", amount: 2500 },
+    ]
+    const { ctx, patches } = createOrderCtx(
+      { status: "confirmed", paymentStatus: "paid" },
+      payments
+    )
+
+    await updateStatus.handler(ctx, {
+      id: "orders:1",
+      status: "cancelled",
+      cancellationReason: "out of stock",
+    })
+
+    const orderPatch = patches.find((p) => p.id === "orders:1")
+    expect(orderPatch?.updates.paymentStatus).toBe("refunded")
+    expect(orderPatch?.updates.cancellationReason).toBe("out of stock")
+    expect(patches.some((p) => p.id === "payments:1")).toBe(true)
+  })
+
+  it("throws when the order does not exist", async () => {
+    const { ctx } = createOrderCtx(baseOrder)
+
+    await expect(
+      updateStatus.handler(ctx, { id: "orders:missing", status: "confirmed" })
+    ).rejects.toThrow(/Order not found/)
   })
 })

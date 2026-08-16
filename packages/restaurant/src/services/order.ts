@@ -6,34 +6,28 @@
  */
 
 import type { OrderStatus, CartItem } from '../types'
-
-/**
- * Order status workflow transitions
- */
-const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ['confirmed', 'cancelled'],
-  confirmed: ['preparing', 'cancelled'],
-  preparing: ['ready', 'out_for_delivery'],
-  ready: ['completed'],
-  out_for_delivery: ['delivered'],
-  delivered: ['completed'],
-  completed: [],
-  cancelled: [],
-}
+import {
+  canTransitionOrderStatus,
+  getNextOrderStatuses,
+} from '@be-in-digital/convex-schema'
 
 /**
  * Get valid next statuses from current status
+ *
+ * Delegates to the status machine in `@be-in-digital/convex-schema`. This file
+ * used to carry its own copy of the table, which had drifted from the one the
+ * admin UI applies — `ready` could not be sent out for delivery here while the
+ * UI offered exactly that button.
  */
 export const getNextStatus = (currentStatus: OrderStatus): OrderStatus[] => {
-  return STATUS_TRANSITIONS[currentStatus] || []
+  return [...getNextOrderStatuses(currentStatus)]
 }
 
 /**
  * Check if status transition is valid
  */
 export const canTransitionTo = (from: OrderStatus, to: OrderStatus): boolean => {
-  const validTransitions = STATUS_TRANSITIONS[from] || []
-  return validTransitions.includes(to)
+  return canTransitionOrderStatus(from, to)
 }
 
 /**

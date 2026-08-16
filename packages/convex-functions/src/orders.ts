@@ -8,6 +8,8 @@
  */
 
 import { v } from "convex/values"
+import type { OrderStatus } from "@be-in-digital/convex-schema"
+import { canTransitionOrderStatus } from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 
@@ -364,6 +366,18 @@ export const updateStatus = {
   handler: async (ctx: any, args: { id: string; status: string; cancellationReason?: string }) => {
     const order = await ctx.db.get(args.id)
     if (!order) throw new Error("Order not found")
+
+    const from = order.status as OrderStatus
+    const to = args.status as OrderStatus
+
+    // Replaying the current status is a no-op, not an error: webhook retries
+    // and double-clicked buttons both land here, and failing them would turn a
+    // harmless repeat into a Deliveroo retry loop.
+    if (from === to) return
+
+    if (!canTransitionOrderStatus(from, to)) {
+      throw new Error(`Invalid order status transition: ${from} -> ${to}`)
+    }
 
     const now = Date.now()
     const updates: Record<string, unknown> = {

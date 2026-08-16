@@ -14,100 +14,16 @@ import {
 } from "@be-in-digital/ui"
 import { Input, Label } from "@be-in-digital/ui"
 import { toast } from "sonner"
-import {
-  CheckCircle,
-  ChefHat,
-  Clock,
-  PackageCheck,
-  Truck,
-  XCircle,
-} from "lucide-react"
+import { Clock } from "lucide-react"
 import type { OrderStatus } from "../../lib/types"
+import { statusTransitions } from "./order-status-transitions"
+import type { StatusAction } from "./order-status-transitions"
 
 type OrderStatusActionsProps = {
   orderId: string
   currentStatus: OrderStatus
 }
 
-type ButtonVariant = "default" | "destructive" | "outline" | "secondary"
-
-interface StatusAction {
-  label: string
-  nextStatus: OrderStatus
-  variant: ButtonVariant
-  icon: React.ComponentType<{ className?: string }>
-  requiresReason?: boolean
-}
-
-/**
- * Status transition configuration
- * Defines available actions based on current status
- */
-const statusTransitions: Record<OrderStatus, StatusAction[]> = {
-  pending: [
-    {
-      label: "Accepter la commande",
-      nextStatus: "confirmed",
-      variant: "default",
-      icon: CheckCircle,
-    },
-    {
-      label: "Refuser la commande",
-      nextStatus: "cancelled",
-      variant: "destructive",
-      icon: XCircle,
-      requiresReason: true,
-    },
-  ],
-  confirmed: [
-    {
-      label: "Commencer la préparation",
-      nextStatus: "preparing",
-      variant: "default",
-      icon: ChefHat,
-    },
-  ],
-  preparing: [
-    {
-      label: "Marquer comme prête",
-      nextStatus: "ready",
-      variant: "default",
-      icon: PackageCheck,
-    },
-  ],
-  ready: [
-    {
-      label: "Terminer la commande",
-      nextStatus: "completed",
-      variant: "default",
-      icon: CheckCircle,
-    },
-    {
-      label: "Envoyer en livraison",
-      nextStatus: "out_for_delivery",
-      variant: "secondary",
-      icon: Truck,
-    },
-  ],
-  out_for_delivery: [
-    {
-      label: "Marquer comme livrée",
-      nextStatus: "delivered",
-      variant: "default",
-      icon: CheckCircle,
-    },
-  ],
-  delivered: [
-    {
-      label: "Terminer la commande",
-      nextStatus: "completed",
-      variant: "default",
-      icon: CheckCircle,
-    },
-  ],
-  completed: [],
-  cancelled: [],
-}
 
 /**
  * Order status actions component
