@@ -173,15 +173,15 @@ export default function CgvPage() {
       </p>
 
       {/*
-        TEXTE PROPOSÉ — à faire valider par un conseil (CPI / avocat) avant mise
-        en ligne. Correction juridique : l'art. L. 221-3 du Code de la
-        consommation étend la rétractation de 14 jours au professionnel employant
-        au plus 5 salariés lorsque le contrat est conclu hors établissement
-        (démarchage porte-à-porte du GTM) et que son objet n'entre pas dans le
-        champ de son activité principale (un site web n'est pas de la
-        restauration). On ne peut donc pas éteindre ce droit pour tout « client
-        professionnel ». On sécurise plutôt un renoncement exprès à l'exécution
-        immédiate (art. L. 221-28), matérialisé par la case cochée au checkout.
+        PROPOSED TEXT — to be validated by counsel (IP lawyer / attorney) before
+        going live. Legal correction: art. L. 221-3 of the French consumer code
+        extends the 14-day withdrawal right to a professional employing at most
+        5 people when the contract is concluded away from business premises
+        (the door-to-door GTM) and its subject matter falls outside their main
+        line of business (a website is not catering). We therefore cannot
+        extinguish that right for every « client professionnel ». What we secure
+        instead is an express waiver tied to immediate performance (art. L.
+        221-28), evidenced by the box ticked at checkout.
       */}
       <h2>12. Droit de rétractation</h2>
       <p>

@@ -25,7 +25,7 @@ export function HeroSection() {
       className="relative overflow-hidden"
       aria-labelledby="hero-title"
     >
-      {/* Halo chaud, très doux */}
+      {/* Warm halo, very soft */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-hero-radial"
@@ -150,7 +150,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Bandeau réassurance, sous le hero */}
+      {/* Reassurance strip, below the hero */}
       <div className="relative border-y border-[color:var(--border)] bg-surface-1/60">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6">
           {trust.map((t) => (

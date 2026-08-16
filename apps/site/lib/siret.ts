@@ -1,7 +1,7 @@
 /**
- * Validation d'un SIRET : 14 chiffres + clé de Luhn (algorithme SIREN/SIRET).
- * Partagé par les écrans apporteur (contrat, profil). Le serveur
- * (`convex/affiliateUsers.ts`) revalide de son côté — validation UX ici.
+ * SIRET validation: 14 digits + Luhn check digit (SIREN/SIRET algorithm).
+ * Shared by the affiliate screens (contract, profile). The server
+ * (`convex/affiliateUsers.ts`) revalidates on its side — this one is for UX.
  */
 export function validateSiret(raw: string): boolean {
   const digits = raw.replace(/\s/g, "");

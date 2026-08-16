@@ -19,7 +19,7 @@ function goTo(path: string): () => void {
 // UI elements to walk the user through every feature.
 
 export const TOUR_STEPS: StepType[] = [
-  // ── Bienvenue ──────────────────────────────────────────────────────
+  // ── Welcome ────────────────────────────────────────────────────────
   {
     selector: '[data-tour="sidebar-brand"]',
     content:
@@ -54,7 +54,7 @@ export const TOUR_STEPS: StepType[] = [
       "Un clic et c'est parti !",
   },
 
-  // ── Commandes ──────────────────────────────────────────────────────
+  // ── Orders ─────────────────────────────────────────────────────────
   {
     selector: '[data-tour="orders-search"]',
     highlightedSelectors: ['[data-tour="nav-orders"]'],
@@ -73,7 +73,7 @@ export const TOUR_STEPS: StepType[] = [
       "et le statut de paiement. Cliquez sur une commande pour voir le détail complet.",
   },
 
-  // ── Cuisine KDS ────────────────────────────────────────────────────
+  // ── Kitchen KDS ────────────────────────────────────────────────────
   {
     selector: '[data-tour="kitchen-board"]',
     highlightedSelectors: ['[data-tour="nav-orders-kitchen"]'],
@@ -86,7 +86,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/orders/kitchen"),
   },
 
-  // ── Produits ───────────────────────────────────────────────────────
+  // ── Products ───────────────────────────────────────────────────────
   {
     selector: '[data-tour="products-header"]',
     highlightedSelectors: ['[data-tour="nav-products"]'],
@@ -106,7 +106,7 @@ export const TOUR_STEPS: StepType[] = [
       "La pagination gère les gros catalogues.",
   },
 
-  // ── Catégories ─────────────────────────────────────────────────────
+  // ── Categories ─────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-categories"]'],
@@ -117,7 +117,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/categories"),
   },
 
-  // ── Clients ────────────────────────────────────────────────────────
+  // ── Customers ──────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-customers"]'],
@@ -128,7 +128,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/customers"),
   },
 
-  // ── Inventaire ─────────────────────────────────────────────────────
+  // ── Inventory ──────────────────────────────────────────────────────
   {
     selector: '[data-tour="inventory-status"]',
     highlightedSelectors: ['[data-tour="nav-inventory"]'],
@@ -185,7 +185,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/email"),
   },
 
-  // ── Pages CMS ──────────────────────────────────────────────────────
+  // ── CMS Pages ──────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-content-pages"]'],
@@ -196,7 +196,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/content/pages"),
   },
 
-  // ── Composants ─────────────────────────────────────────────────────
+  // ── Components ─────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-content-components"]'],
@@ -218,7 +218,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/content/blog"),
   },
 
-  // ── Médiathèque ────────────────────────────────────────────────────
+  // ── Media Library ──────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-content-media"]'],
@@ -229,7 +229,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/content/media"),
   },
 
-  // ── Établissements ─────────────────────────────────────────────────
+  // ── Stores ─────────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-stores"]'],
@@ -241,7 +241,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/stores"),
   },
 
-  // ── Équipe ─────────────────────────────────────────────────────────
+  // ── Team ───────────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-team"]'],
@@ -253,7 +253,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/team"),
   },
 
-  // ── Langues ────────────────────────────────────────────────────────
+  // ── Languages ──────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-languages"]'],
@@ -265,7 +265,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/languages"),
   },
 
-  // ── Abonnement ─────────────────────────────────────────────────────
+  // ── Subscription ───────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-subscription"]'],
@@ -276,7 +276,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/subscription"),
   },
 
-  // ── Paramètres ─────────────────────────────────────────────────────
+  // ── Settings ───────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-settings"]'],
@@ -288,7 +288,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/settings"),
   },
 
-  // ── Système ────────────────────────────────────────────────────────
+  // ── System ─────────────────────────────────────────────────────────
   {
     selector: '[data-tour="main-content"]',
     highlightedSelectors: ['[data-tour="nav-system"]'],
@@ -299,7 +299,7 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/system"),
   },
 
-  // ── Fin ────────────────────────────────────────────────────────────
+  // ── End ────────────────────────────────────────────────────────────
   {
     selector: '[data-tour="sidebar-brand"]',
     content:

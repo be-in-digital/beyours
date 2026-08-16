@@ -1,6 +1,6 @@
-# Le boilerplate declare les paquets moteur en versions publiees (^2.0.2) pour
-# la distribution client. En workspace on les relie localement : on developpe
-# contre le moteur courant. Le job de publication reecrit ces versions.
+# The boilerplate declares the engine packages at published versions (^2.0.2)
+# for client distribution. In the workspace we link them locally instead, so we
+# develop against the current engine. The publish job rewrites those versions.
 linkWorkspacePackages: true
 
 packages:
@@ -11,5 +11,5 @@ ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
 
-# NOTE: les overrides pnpm vivent dans package.json racine ("pnpm.overrides")
-# — pnpm 10.4 ignore la section overrides de ce fichier.
+# NOTE: pnpm overrides live in the root package.json ("pnpm.overrides")
+# — pnpm 10.4 ignores the overrides section of this file.

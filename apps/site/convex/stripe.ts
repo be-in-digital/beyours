@@ -11,12 +11,12 @@ const planPrices = {
   premium: { creation: 750000, maintenanceMonthly: 20000, maintenanceYearly: 200000 },
 } as const;
 
-/* ── Offre fondateurs ──
-   10 premières créations Essentielle à 2 500 € HT (catalogue 3 500 €),
-   en échange de contreparties contractuelles (étude de cas, témoignage,
-   droit de référence). S'éteint par épuisement des places, jamais par date.
-   Non cumulable avec le parrainage : code appliqué = catalogue −10 %.
-   Dupliqué dans lib/payment-providers.ts (FOUNDERS_OFFER) — garder en phase. */
+/* ── Founders offer ──
+   The first 10 Essentielle builds at 2 500 € excl. tax (list price 3 500 €),
+   in exchange for contractual commitments (case study, testimonial, right to
+   name them as a reference). It ends when the slots run out, never on a date.
+   Not stackable with a referral: a code applied = list price −10 %.
+   Duplicated in lib/payment-providers.ts (FOUNDERS_OFFER) — keep them in sync. */
 const foundersOffer = {
   enabled: true,
   plan: "essentielle" as const,
@@ -24,13 +24,13 @@ const foundersOffer = {
   creationCents: 250000,
 };
 
-/* ── Mapping plan + billingPeriod → variable d'env du Stripe Price ID (récurrent) ──
-   AUCUN fallback en dur : un Price ID de TEST encaissé avec une clé Live ferait
-   échouer subscriptions.create (« No such price ») APRÈS le paiement — le client
-   est débité mais jamais provisionné, en silence. On exige donc les 4
-   STRIPE_PRICE_* (env Convex) et on échoue BRUYAMMENT s'il en manque un.
-   Au go-live : poser les 4 STRIPE_PRICE_* (env Convex prod) avec les Price IDs
-   live du compte Be in Digital. */
+/* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
+   NO hard-coded fallback: a TEST Price ID charged with a Live key would make
+   subscriptions.create fail (« No such price ») AFTER the payment — the customer
+   is debited but silently never provisioned. So we require all 4 STRIPE_PRICE_*
+   (Convex env) and fail LOUDLY when one is missing.
+   At go-live: set the 4 STRIPE_PRICE_* (prod Convex env) to the live Price IDs
+   of the Be in Digital account. */
 const MAINTENANCE_PRICE_ENV: Record<string, string> = {
   "essentielle:monthly": "STRIPE_PRICE_ESSENTIELLE_MONTHLY",
   "essentielle:yearly": "STRIPE_PRICE_ESSENTIELLE_YEARLY",
@@ -39,10 +39,10 @@ const MAINTENANCE_PRICE_ENV: Record<string, string> = {
 };
 
 /**
- * Résout le Stripe Price ID de maintenance pour un couple plan/période.
- * Throw une erreur explicite si la variable d'env correspondante est absente.
- * Appelée AVANT l'encaissement (createCheckoutSession, garde-fou provisioning)
- * ET dans createSubscription — on ne vend jamais ce qu'on ne pourra pas facturer.
+ * Resolves the maintenance Stripe Price ID for a plan/period pair.
+ * Throws an explicit error when the matching env var is missing.
+ * Called BEFORE collecting payment (createCheckoutSession, the provisioning
+ * guardrail) AND in createSubscription — we never sell what we cannot bill.
  */
 function resolveMaintenancePriceId(
   plan: string,
@@ -65,10 +65,10 @@ function resolveMaintenancePriceId(
   return priceId;
 }
 
-/* ── Mentions vendeur portées par la facture Stripe du 1er paiement ──
-   Le business profile (nom, adresse, TVA) reste réglé dans le dashboard Stripe ;
-   on ajoute ici le pied de facture légal + le SIRET en champ personnalisé.
-   Garder en phase avec apps/web-restaurant/lib/legal/company.ts (COMPANY). */
+/* ── Seller details carried by the Stripe invoice for the 1st payment ──
+   The business profile (name, address, VAT) stays configured in the Stripe
+   dashboard; here we add the legal invoice footer + the SIRET as a custom field.
+   Keep in sync with apps/web-restaurant/lib/legal/company.ts (COMPANY). */
 const SELLER_INVOICE_FOOTER =
   "TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
 const SELLER_SIRET = "930 817 697 00012";
@@ -80,14 +80,14 @@ function getStripe(): Stripe | null {
 }
 
 /* ── Stripe Tax ──
-   Off par défaut : la structure est en franchise en base (art. 293 B du CGI),
-   aucune TVA n'est facturée et le comportement reste identique.
-   Le jour de l'assujettissement (société au réel) :
-   1. activer Stripe Tax dans le dashboard (adresse du siège, immatriculation FR),
-   2. passer tax_behavior=exclusive sur les Prices de maintenance (dashboard),
-   3. poser STRIPE_TAX_ENABLED=true ici (env Convex) et
-      NEXT_PUBLIC_TVA_ENABLED=true côté Next (cf. lib/payment-providers.ts).
-   Les montants envoyés restent HT ; Stripe ajoute la TVA française (20 %). */
+   Off by default: the company is under franchise en base (art. 293 B of the
+   French tax code), no VAT is charged and behaviour stays identical.
+   The day it becomes VAT-liable (company on the régime réel):
+   1. enable Stripe Tax in the dashboard (registered address, FR registration),
+   2. switch the maintenance Prices to tax_behavior=exclusive (dashboard),
+   3. set STRIPE_TAX_ENABLED=true here (Convex env) and
+      NEXT_PUBLIC_TVA_ENABLED=true on the Next side (see lib/payment-providers.ts).
+   The amounts sent stay pre-tax; Stripe adds French VAT (20 %). */
 function stripeTaxEnabled(): boolean {
   return process.env.STRIPE_TAX_ENABLED === "true";
 }
@@ -116,29 +116,29 @@ export const createCheckoutSession = action({
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
     const stripe = getStripe();
 
-    // ── Garde-fou provisioning (fix paiement) ──
-    // Ne JAMAIS créer de session de paiement pour un plan dont l'abonnement de
-    // maintenance ne pourra pas être provisionné : si un Price ID de maintenance
-    // (env) manque, on échoue MAINTENANT — avant tout encaissement et avant même
-    // de créer la commande — plutôt qu'après le paiement (au webhook), ce qui
-    // laisserait un client débité sans être provisionné. En mode test (sans clé
-    // Stripe) aucun abonnement réel n'est créé : la validation ne s'applique pas.
+    // ── Provisioning guardrail (payment fix) ──
+    // NEVER open a checkout session for a plan whose maintenance subscription
+    // could not be provisioned: when a maintenance Price ID (env) is missing we
+    // fail NOW — before any payment is collected and before the order is even
+    // created — rather than after payment (in the webhook), which would leave a
+    // customer charged but not provisioned. In test mode (no Stripe key) no real
+    // subscription is created, so the check does not apply.
     if (stripe) {
       resolveMaintenancePriceId(args.plan, args.billingPeriod);
     }
 
-    // Calcul montant côté serveur (jamais confiance au client)
+    // Amount computed server-side (never trust the client)
     const prices = planPrices[args.plan];
     const maintenanceCents =
       args.billingPeriod === "monthly"
         ? prices.maintenanceMonthly
         : prices.maintenanceYearly;
 
-    // ── Referral (création uniquement, non cumulable avec l'offre fondateurs) ──
+    // ── Referral (build only, not stackable with the founders offer) ──
     let isReferral = false;
 
     if (args.referralCodeId && args.referrerId && args.discountPercent) {
-      // Anti-self-referral : comparer l'email du client avec celui de l'affilié
+      // Anti-self-referral: compare the customer's email with the affiliate's
       const affiliateEmail: string | null = await ctx.runQuery(
         internal.affiliateUsers.getEmailById,
         { affiliateUserId: args.referrerId },
@@ -156,7 +156,7 @@ export const createCheckoutSession = action({
       }
     }
 
-    // ── Offre fondateurs : tant qu'il reste des places, hors parrainage ──
+    // ── Founders offer: while slots remain, and outside any referral ──
     let isFounders = false;
     if (foundersOffer.enabled && args.plan === foundersOffer.plan && !isReferral) {
       const foundersSold: number = await ctx.runQuery(
@@ -175,7 +175,7 @@ export const createCheckoutSession = action({
     const totalCents = creationCents + maintenanceCents;
     const finalTotal = totalCents - discountAmountCents;
 
-    // Créer la commande dans Convex
+    // Create the order in Convex
     const orderId: Id<"orders"> = await ctx.runMutation(internal.orders.create, {
       customerEmail: args.customerEmail,
       customerFirstName: args.customerFirstName,
@@ -192,7 +192,7 @@ export const createCheckoutSession = action({
       isFounders,
     });
 
-    // Metadata referral pour le webhook
+    // Referral metadata for the webhook
     const referralMetadata: Record<string, string> = {};
     if (isReferral) {
       referralMetadata.referralCodeId = String(args.referralCodeId!);
@@ -201,7 +201,7 @@ export const createCheckoutSession = action({
       referralMetadata.discountAmountCents = String(discountAmountCents);
     }
 
-    // ── Mode test : pas de clé Stripe configurée ──
+    // ── Test mode: no Stripe key configured ──
     if (!stripe) {
       console.log(
         `[TEST MODE] Order ${orderId} created (${finalTotal} cents, discount: ${discountAmountCents}) — skipping Stripe`,
@@ -213,7 +213,7 @@ export const createCheckoutSession = action({
         paymentMethod: "card",
       });
 
-      // Créer le referral directement en mode test
+      // Create the referral straight away in test mode
       if (isReferral) {
         const settings = await ctx.runQuery(
           internal.affiliateSettings.getInternal,
@@ -247,7 +247,7 @@ export const createCheckoutSession = action({
 
     // ── Mode production : Stripe Checkout ──
 
-    // Créer un coupon Stripe si referral
+    // Create a Stripe coupon when this is a referral
     let couponId: string | undefined;
     if (isReferral && discountAmountCents > 0) {
       const coupon = await stripe.coupons.create({
@@ -259,7 +259,7 @@ export const createCheckoutSession = action({
       couponId = coupon.id;
     }
 
-    // BNPL toujours disponible (le paiement inclut la maintenance)
+    // BNPL always available (the payment includes maintenance)
     const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] =
       ["card", "alma"];
     if (args.buyerType === "personal") {
@@ -281,9 +281,9 @@ export const createCheckoutSession = action({
       customer_email: args.customerEmail,
       customer_creation: "always",
       client_reference_id: orderId,
-      // Émet une vraie facture PDF pour le paiement initial (Création + 1ʳᵉ
-      // maintenance). Sans ceci, un Checkout mode "payment" ne génère qu'un
-      // reçu, pas de facture téléchargeable.
+      // Issues a real PDF invoice for the initial payment (build + 1st year of
+      // maintenance). Without this, a Checkout in "payment" mode only produces a
+      // receipt, not a downloadable invoice.
       invoice_creation: {
         enabled: true,
         invoice_data: {
@@ -350,8 +350,8 @@ export const createCheckoutSession = action({
 });
 
 /* ═══════════════════════════════════════════════
-   Créer l'abonnement maintenance après le 1er paiement
-   Appelé par le webhook checkout.session.completed
+   Create the maintenance subscription after the 1st payment
+   Called by the checkout.session.completed webhook
    ═══════════════════════════════════════════════ */
 
 export const createSubscription = internalAction({
@@ -369,14 +369,14 @@ export const createSubscription = internalAction({
       return;
     }
 
-    // Résolution stricte : throw si l'env du Price ID manque, au lieu du retour
-    // silencieux d'avant (qui laissait la maintenance jamais facturée). Cet appel
-    // est encapsulé dans un try/catch côté webhook : l'échec est enregistré et
-    // notifié SANS renvoyer 500 (cf. http.ts handleCheckoutCompleted).
+    // Strict resolution: throws when the Price ID env var is missing, instead of
+    // the silent return we had before (which left maintenance never billed). The
+    // call is wrapped in a try/catch on the webhook side: the failure is recorded
+    // and reported WITHOUT returning 500 (see http.ts handleCheckoutCompleted).
     const priceId = resolveMaintenancePriceId(args.plan, args.billingPeriod);
 
-    // Calculer le début de la prochaine période
-    // (la première période est déjà payée dans le checkout)
+    // Work out when the next period starts
+    // (the first period is already paid for at checkout)
     const now = Math.floor(Date.now() / 1000);
     const trialEnd =
       args.billingPeriod === "monthly"

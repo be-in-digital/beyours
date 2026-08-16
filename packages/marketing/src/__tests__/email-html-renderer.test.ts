@@ -55,14 +55,14 @@ const branding: EmailBranding = {
 }
 
 describe("renderTextBlock", () => {
-  it("devrait rendre un bloc texte avec le contenu", () => {
+  it("renders a text block with its content", () => {
     const block: TextBlock = { type: "text", id: "t1", content: "Bonjour !" }
     const html = renderTextBlock(block)
     expect(html).toContain("Bonjour !")
     expect(html).toContain('align="left"')
   })
 
-  it("devrait respecter l'alignement center", () => {
+  it("respects the center alignment", () => {
     const block: TextBlock = {
       type: "text",
       id: "t1",
@@ -75,7 +75,7 @@ describe("renderTextBlock", () => {
 })
 
 describe("renderImageBlock", () => {
-  it("devrait rendre une image avec src et alt", () => {
+  it("renders an image with src and alt", () => {
     const block: ImageBlock = {
       type: "image",
       id: "i1",
@@ -87,7 +87,7 @@ describe("renderImageBlock", () => {
     expect(html).toContain('alt="Photo"')
   })
 
-  it("devrait envelopper dans un lien si linkUrl est fourni", () => {
+  it("wraps the image in a link when linkUrl is provided", () => {
     const block: ImageBlock = {
       type: "image",
       id: "i1",
@@ -99,7 +99,7 @@ describe("renderImageBlock", () => {
     expect(html).toContain("<a ")
   })
 
-  it("devrait utiliser width=600 par défaut", () => {
+  it("defaults to width=600", () => {
     const block: ImageBlock = {
       type: "image",
       id: "i1",
@@ -111,7 +111,7 @@ describe("renderImageBlock", () => {
 })
 
 describe("renderButtonBlock", () => {
-  it("devrait rendre un bouton avec texte et URL", () => {
+  it("renders a button with its text and URL", () => {
     const block: ButtonBlock = {
       type: "button",
       id: "b1",
@@ -123,7 +123,7 @@ describe("renderButtonBlock", () => {
     expect(html).toContain('href="https://shop.test"')
   })
 
-  it("devrait appliquer les couleurs personnalisées", () => {
+  it("applies the custom colors", () => {
     const block: ButtonBlock = {
       type: "button",
       id: "b1",
@@ -144,7 +144,7 @@ describe("renderProductBlock", () => {
     { id: "p2", name: "Tiramisu", price: 800 },
   ]
 
-  it("devrait rendre une liste de produits", () => {
+  it("renders a list of products", () => {
     const block: ProductBlock = {
       type: "product",
       id: "pr1",
@@ -155,7 +155,7 @@ describe("renderProductBlock", () => {
     expect(html).toContain("Tiramisu")
   })
 
-  it("devrait rendre un grid avec 2+ produits", () => {
+  it("renders a grid with 2+ products", () => {
     const block: ProductBlock = {
       type: "product",
       id: "pr1",
@@ -166,7 +166,7 @@ describe("renderProductBlock", () => {
     expect(html).toContain('width="50%"')
   })
 
-  it("devrait retourner une chaîne vide sans produits", () => {
+  it("returns an empty string when there are no products", () => {
     const block: ProductBlock = {
       type: "product",
       id: "pr1",
@@ -178,14 +178,14 @@ describe("renderProductBlock", () => {
 })
 
 describe("renderDividerBlock", () => {
-  it("devrait rendre un séparateur avec couleur par défaut", () => {
+  it("renders a divider with the default color", () => {
     const block: DividerBlock = { type: "divider", id: "d1" }
     const html = renderDividerBlock(block)
     expect(html).toContain("#eeeeee")
     expect(html).toContain("1px solid")
   })
 
-  it("devrait respecter les couleurs et épaisseurs personnalisées", () => {
+  it("respects custom colors and thickness", () => {
     const block: DividerBlock = {
       type: "divider",
       id: "d1",
@@ -198,13 +198,13 @@ describe("renderDividerBlock", () => {
 })
 
 describe("renderSpacerBlock", () => {
-  it("devrait rendre un espacement de 24px par défaut", () => {
+  it("renders a 24px spacer by default", () => {
     const block: SpacerBlock = { type: "spacer", id: "s1" }
     const html = renderSpacerBlock(block)
     expect(html).toContain('height="24"')
   })
 
-  it("devrait respecter une hauteur personnalisée", () => {
+  it("respects a custom height", () => {
     const block: SpacerBlock = { type: "spacer", id: "s1", height: 48 }
     const html = renderSpacerBlock(block)
     expect(html).toContain('height="48"')
@@ -212,7 +212,7 @@ describe("renderSpacerBlock", () => {
 })
 
 describe("renderBlockToEmailHtml", () => {
-  it("devrait dispatcher vers le bon renderer selon le type", () => {
+  it("dispatches to the right renderer for each type", () => {
     const text: TextBlock = { type: "text", id: "t1", content: "Hello" }
     expect(renderBlockToEmailHtml(text)).toContain("Hello")
 
@@ -220,14 +220,14 @@ describe("renderBlockToEmailHtml", () => {
     expect(renderBlockToEmailHtml(spacer)).toContain('height="24"')
   })
 
-  it("devrait retourner une chaîne vide pour un type inconnu", () => {
+  it("returns an empty string for an unknown type", () => {
     const unknown = { type: "unknown", id: "u1" } as any
     expect(renderBlockToEmailHtml(unknown)).toBe("")
   })
 })
 
 describe("renderTemplateToEmailHtml", () => {
-  it("devrait générer un document HTML complet", () => {
+  it("generates a complete HTML document", () => {
     const blocks = [
       { type: "text" as const, id: "t1", content: "Bienvenue !" },
       { type: "spacer" as const, id: "s1", height: 16 },
@@ -241,7 +241,7 @@ describe("renderTemplateToEmailHtml", () => {
     expect(html).toContain("https://example.com/unsub")
   })
 
-  it("devrait inclure le logo si fourni", () => {
+  it("includes the logo when provided", () => {
     const html = renderTemplateToEmailHtml(
       [],
       { ...branding, logoUrl: "https://cdn.test/logo.png" }
@@ -249,7 +249,7 @@ describe("renderTemplateToEmailHtml", () => {
     expect(html).toContain('src="https://cdn.test/logo.png"')
   })
 
-  it("devrait inclure les liens sociaux", () => {
+  it("includes the social links", () => {
     const html = renderTemplateToEmailHtml(
       [],
       {
@@ -264,7 +264,7 @@ describe("renderTemplateToEmailHtml", () => {
     expect(html).toContain("https://ig.com/test")
   })
 
-  it("devrait inclure le footerText si fourni", () => {
+  it("includes footerText when provided", () => {
     const html = renderTemplateToEmailHtml(
       [],
       { ...branding, footerText: "Pizza Express SARL" }
@@ -274,7 +274,7 @@ describe("renderTemplateToEmailHtml", () => {
 })
 
 describe("renderHeadingBlock", () => {
-  it("devrait rendre un titre H1 avec la bonne taille", () => {
+  it("renders an H1 heading at the right size", () => {
     const block: HeadingBlock = {
       type: "heading",
       id: "h1",
@@ -287,7 +287,7 @@ describe("renderHeadingBlock", () => {
     expect(html).toContain("font-weight:bold")
   })
 
-  it("devrait rendre un titre H3 avec couleur custom", () => {
+  it("renders an H3 heading with a custom color", () => {
     const block: HeadingBlock = {
       type: "heading",
       id: "h2",
@@ -300,7 +300,7 @@ describe("renderHeadingBlock", () => {
     expect(html).toContain("#FF5722")
   })
 
-  it("devrait respecter l'alignement", () => {
+  it("respects the alignment", () => {
     const block: HeadingBlock = {
       type: "heading",
       id: "h3",
@@ -314,7 +314,7 @@ describe("renderHeadingBlock", () => {
 })
 
 describe("renderSocialBlock", () => {
-  it("devrait rendre des liens sociaux avec noms capitalisés", () => {
+  it("renders social links with capitalized names", () => {
     const block: SocialBlock = {
       type: "social",
       id: "s1",
@@ -330,7 +330,7 @@ describe("renderSocialBlock", () => {
     expect(html).toContain('href="https://ig.com/resto"')
   })
 
-  it("devrait appliquer les couleurs de plateforme", () => {
+  it("applies the platform colors", () => {
     const block: SocialBlock = {
       type: "social",
       id: "s2",
@@ -342,7 +342,7 @@ describe("renderSocialBlock", () => {
 })
 
 describe("renderCouponBlock", () => {
-  it("devrait rendre un code promo avec bordure en pointillé", () => {
+  it("renders a promo code with a dashed border", () => {
     const block: CouponBlock = {
       type: "coupon",
       id: "c1",
@@ -355,7 +355,7 @@ describe("renderCouponBlock", () => {
     expect(html).toContain("dashed")
   })
 
-  it("devrait appliquer les couleurs personnalisées", () => {
+  it("applies the custom colors", () => {
     const block: CouponBlock = {
       type: "coupon",
       id: "c2",
@@ -371,7 +371,7 @@ describe("renderCouponBlock", () => {
 })
 
 describe("renderColumnsBlock", () => {
-  it("devrait rendre 2 colonnes de 50% avec blocs imbriqués", () => {
+  it("renders 2 columns of 50% with nested blocks", () => {
     const block: ColumnsBlock = {
       type: "columns",
       id: "col1",
@@ -387,7 +387,7 @@ describe("renderColumnsBlock", () => {
     expect(html).toContain('width="50%"')
   })
 
-  it("devrait rendre 3 colonnes de 33%", () => {
+  it("renders 3 columns of 33%", () => {
     const block: ColumnsBlock = {
       type: "columns",
       id: "col2",
@@ -405,7 +405,7 @@ describe("renderColumnsBlock", () => {
     expect(html).toContain('width="33%"')
   })
 
-  it("devrait rendre &nbsp; pour une colonne vide", () => {
+  it("renders &nbsp; for an empty column", () => {
     const block: ColumnsBlock = {
       type: "columns",
       id: "col3",
@@ -422,7 +422,7 @@ describe("renderColumnsBlock", () => {
 })
 
 describe("renderVideoBlock", () => {
-  it("devrait rendre une miniature cliquable", () => {
+  it("renders a clickable thumbnail", () => {
     const block: VideoBlock = {
       type: "video",
       id: "v1",
@@ -436,7 +436,7 @@ describe("renderVideoBlock", () => {
     expect(html).toContain('alt="Ma vidéo"')
   })
 
-  it("devrait respecter l'alignement", () => {
+  it("respects the alignment", () => {
     const block: VideoBlock = {
       type: "video",
       id: "v2",
@@ -450,7 +450,7 @@ describe("renderVideoBlock", () => {
 })
 
 describe("renderHeroBlock", () => {
-  it("devrait rendre un hero avec image de fond, titre et sous-titre", () => {
+  it("renders a hero with a background image, a title and a subtitle", () => {
     const block: HeroBlock = {
       type: "hero",
       id: "hero1",
@@ -465,7 +465,7 @@ describe("renderHeroBlock", () => {
     expect(html).toContain("background-image")
   })
 
-  it("devrait rendre un bouton CTA si fourni", () => {
+  it("renders a CTA button when provided", () => {
     const block: HeroBlock = {
       type: "hero",
       id: "hero2",
@@ -479,7 +479,7 @@ describe("renderHeroBlock", () => {
     expect(html).toContain('href="https://shop.test"')
   })
 
-  it("devrait appliquer les couleurs personnalisées", () => {
+  it("applies the custom colors", () => {
     const block: HeroBlock = {
       type: "hero",
       id: "hero3",
@@ -493,7 +493,7 @@ describe("renderHeroBlock", () => {
     expect(html).toContain("rgba(0,0,0,0.6)")
   })
 
-  it("devrait inclure VML pour Outlook", () => {
+  it("includes VML for Outlook", () => {
     const block: HeroBlock = {
       type: "hero",
       id: "hero4",
@@ -507,7 +507,7 @@ describe("renderHeroBlock", () => {
 })
 
 describe("renderMenuHighlightBlock", () => {
-  it("devrait rendre une liste de plats avec titre", () => {
+  it("renders a list of dishes with a title", () => {
     const block: MenuHighlightBlock = {
       type: "menu_highlight",
       id: "mh1",
@@ -526,7 +526,7 @@ describe("renderMenuHighlightBlock", () => {
     expect(html).toContain("7,50 €")
   })
 
-  it("devrait rendre un grid avec 2+ items", () => {
+  it("renders a grid with 2+ items", () => {
     const block: MenuHighlightBlock = {
       type: "menu_highlight",
       id: "mh2",
@@ -542,7 +542,7 @@ describe("renderMenuHighlightBlock", () => {
     expect(html).toContain("Plat B")
   })
 
-  it("devrait retourner vide sans items", () => {
+  it("returns empty when there are no items", () => {
     const block: MenuHighlightBlock = {
       type: "menu_highlight",
       id: "mh3",
@@ -552,7 +552,7 @@ describe("renderMenuHighlightBlock", () => {
     expect(html).toBe("")
   })
 
-  it("devrait appliquer la couleur d'accent", () => {
+  it("applies the accent color", () => {
     const block: MenuHighlightBlock = {
       type: "menu_highlight",
       id: "mh4",
@@ -565,7 +565,7 @@ describe("renderMenuHighlightBlock", () => {
 })
 
 describe("renderCountdownBlock", () => {
-  it("devrait rendre une date limite formatée", () => {
+  it("renders a formatted deadline date", () => {
     const block: CountdownBlock = {
       type: "countdown",
       id: "cd1",
@@ -579,7 +579,7 @@ describe("renderCountdownBlock", () => {
     expect(html).toContain("2026")
   })
 
-  it("devrait appliquer les couleurs personnalisées", () => {
+  it("applies the custom colors", () => {
     const block: CountdownBlock = {
       type: "countdown",
       id: "cd2",
@@ -592,7 +592,7 @@ describe("renderCountdownBlock", () => {
     expect(html).toContain("#FFFFFF")
   })
 
-  it("devrait utiliser le titre par défaut", () => {
+  it("falls back to the default title", () => {
     const block: CountdownBlock = {
       type: "countdown",
       id: "cd3",
@@ -606,7 +606,7 @@ describe("renderCountdownBlock", () => {
 // ─── Phase 2+3 : Gallery, Location, Hours, Testimonial, DecorativeDivider ────
 
 describe("renderGalleryBlock", () => {
-  it("devrait rendre une grille d'images", () => {
+  it("renders a grid of images", () => {
     const block: GalleryBlock = {
       type: "gallery",
       id: "gal1",
@@ -624,7 +624,7 @@ describe("renderGalleryBlock", () => {
     expect(html).toContain('width="50%"')
   })
 
-  it("devrait retourner vide sans images", () => {
+  it("returns empty when there are no images", () => {
     const block: GalleryBlock = {
       type: "gallery",
       id: "gal2",
@@ -634,7 +634,7 @@ describe("renderGalleryBlock", () => {
     expect(html).toBe("")
   })
 
-  it("devrait rendre 3 colonnes", () => {
+  it("renders 3 columns", () => {
     const block: GalleryBlock = {
       type: "gallery",
       id: "gal3",
@@ -649,7 +649,7 @@ describe("renderGalleryBlock", () => {
     expect(html).toContain('width="33%"')
   })
 
-  it("devrait envelopper les images avec un lien si linkUrl est fourni", () => {
+  it("wraps the images in a link when linkUrl is provided", () => {
     const block: GalleryBlock = {
       type: "gallery",
       id: "gal4",
@@ -663,7 +663,7 @@ describe("renderGalleryBlock", () => {
 })
 
 describe("renderLocationBlock", () => {
-  it("devrait rendre une adresse avec ville", () => {
+  it("renders an address with its city", () => {
     const block: LocationBlock = {
       type: "location",
       id: "loc1",
@@ -675,7 +675,7 @@ describe("renderLocationBlock", () => {
     expect(html).toContain("Paris 75001")
   })
 
-  it("devrait rendre le téléphone et l'email", () => {
+  it("renders the phone number and the email", () => {
     const block: LocationBlock = {
       type: "location",
       id: "loc2",
@@ -688,7 +688,7 @@ describe("renderLocationBlock", () => {
     expect(html).toContain("contact@resto.fr")
   })
 
-  it("devrait rendre un lien vers la carte", () => {
+  it("renders a link to the map", () => {
     const block: LocationBlock = {
       type: "location",
       id: "loc3",
@@ -700,7 +700,7 @@ describe("renderLocationBlock", () => {
     expect(html).toContain("Voir sur la carte")
   })
 
-  it("devrait respecter l'alignement", () => {
+  it("respects the alignment", () => {
     const block: LocationBlock = {
       type: "location",
       id: "loc4",
@@ -713,7 +713,7 @@ describe("renderLocationBlock", () => {
 })
 
 describe("renderHoursBlock", () => {
-  it("devrait rendre un tableau d'horaires avec titre", () => {
+  it("renders an opening-hours table with a title", () => {
     const block: HoursBlock = {
       type: "hours",
       id: "hrs1",
@@ -731,7 +731,7 @@ describe("renderHoursBlock", () => {
     expect(html).toContain("10h00 - 23h00")
   })
 
-  it("devrait retourner vide sans lignes", () => {
+  it("returns empty when there are no rows", () => {
     const block: HoursBlock = {
       type: "hours",
       id: "hrs2",
@@ -741,7 +741,7 @@ describe("renderHoursBlock", () => {
     expect(html).toBe("")
   })
 
-  it("devrait appliquer la couleur d'accent au titre", () => {
+  it("applies the accent color to the title", () => {
     const block: HoursBlock = {
       type: "hours",
       id: "hrs3",
@@ -753,7 +753,7 @@ describe("renderHoursBlock", () => {
     expect(html).toContain("#E91E63")
   })
 
-  it("devrait rendre sans titre", () => {
+  it("renders without a title", () => {
     const block: HoursBlock = {
       type: "hours",
       id: "hrs4",
@@ -766,7 +766,7 @@ describe("renderHoursBlock", () => {
 })
 
 describe("renderTestimonialBlock", () => {
-  it("devrait rendre une citation avec auteur", () => {
+  it("renders a quote with its author", () => {
     const block: TestimonialBlock = {
       type: "testimonial",
       id: "test1",
@@ -778,7 +778,7 @@ describe("renderTestimonialBlock", () => {
     expect(html).toContain("Marie Dupont")
   })
 
-  it("devrait rendre les étoiles", () => {
+  it("renders the stars", () => {
     const block: TestimonialBlock = {
       type: "testimonial",
       id: "test2",
@@ -787,11 +787,11 @@ describe("renderTestimonialBlock", () => {
       rating: 4,
     }
     const html = renderTestimonialBlock(block)
-    // 4 étoiles pleines + 1 vide
+    // 4 filled stars + 1 empty
     expect(html).toContain("&#9733;&#9733;&#9733;&#9733;&#9734;")
   })
 
-  it("devrait rendre un avatar", () => {
+  it("renders an avatar", () => {
     const block: TestimonialBlock = {
       type: "testimonial",
       id: "test3",
@@ -804,7 +804,7 @@ describe("renderTestimonialBlock", () => {
     expect(html).toContain("border-radius:50%")
   })
 
-  it("devrait appliquer les couleurs personnalisées", () => {
+  it("applies the custom colors", () => {
     const block: TestimonialBlock = {
       type: "testimonial",
       id: "test4",
@@ -820,7 +820,7 @@ describe("renderTestimonialBlock", () => {
 })
 
 describe("renderDecorativeDividerBlock", () => {
-  it("devrait rendre des points par défaut", () => {
+  it("renders dots by default", () => {
     const block: DecorativeDividerBlock = {
       type: "decorative_divider",
       id: "dd1",
@@ -830,7 +830,7 @@ describe("renderDecorativeDividerBlock", () => {
     expect(html).toContain("&#9679;")
   })
 
-  it("devrait rendre des étoiles", () => {
+  it("renders stars", () => {
     const block: DecorativeDividerBlock = {
       type: "decorative_divider",
       id: "dd2",
@@ -840,7 +840,7 @@ describe("renderDecorativeDividerBlock", () => {
     expect(html).toContain("&#9733;")
   })
 
-  it("devrait rendre des vagues", () => {
+  it("renders waves", () => {
     const block: DecorativeDividerBlock = {
       type: "decorative_divider",
       id: "dd3",
@@ -850,7 +850,7 @@ describe("renderDecorativeDividerBlock", () => {
     expect(html).toContain("&#126;")
   })
 
-  it("devrait rendre des losanges", () => {
+  it("renders diamonds", () => {
     const block: DecorativeDividerBlock = {
       type: "decorative_divider",
       id: "dd4",
@@ -860,7 +860,7 @@ describe("renderDecorativeDividerBlock", () => {
     expect(html).toContain("&#9670;")
   })
 
-  it("devrait respecter l'alignement et la couleur", () => {
+  it("respects the alignment and the color", () => {
     const block: DecorativeDividerBlock = {
       type: "decorative_divider",
       id: "dd5",
@@ -877,43 +877,43 @@ describe("renderDecorativeDividerBlock", () => {
 // ─── XSS Protection Tests ────────────────────────────────────────────────────
 
 describe("escapeHtml", () => {
-  it("devrait échapper les entités HTML", () => {
+  it("escapes HTML entities", () => {
     expect(escapeHtml('<script>alert("xss")</script>')).toBe(
       '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
     )
   })
 
-  it("devrait échapper les apostrophes", () => {
+  it("escapes apostrophes", () => {
     expect(escapeHtml("O'Brien & Co")).toBe("O&#39;Brien &amp; Co")
   })
 
-  it("devrait laisser le texte normal intact", () => {
+  it("leaves normal text untouched", () => {
     expect(escapeHtml("Bonjour le monde")).toBe("Bonjour le monde")
   })
 })
 
 describe("sanitizeUrl", () => {
-  it("devrait accepter les URLs https", () => {
+  it("accepts https URLs", () => {
     expect(sanitizeUrl("https://example.com")).toBe("https://example.com")
   })
 
-  it("devrait accepter les URLs http", () => {
+  it("accepts http URLs", () => {
     expect(sanitizeUrl("http://example.com")).toBe("http://example.com")
   })
 
-  it("devrait accepter les URLs mailto", () => {
+  it("accepts mailto URLs", () => {
     expect(sanitizeUrl("mailto:test@example.com")).toBe("mailto:test@example.com")
   })
 
-  it("devrait bloquer les URLs javascript:", () => {
+  it("blocks javascript: URLs", () => {
     expect(sanitizeUrl("javascript:alert(1)")).toBe("")
   })
 
-  it("devrait bloquer les URLs data:", () => {
+  it("blocks data: URLs", () => {
     expect(sanitizeUrl("data:text/html,<script>alert(1)</script>")).toBe("")
   })
 
-  it("devrait échapper les entités HTML dans les URLs", () => {
+  it("escapes HTML entities in URLs", () => {
     expect(sanitizeUrl('https://example.com/q?a=1&b="2"')).toBe(
       'https://example.com/q?a=1&amp;b=&quot;2&quot;'
     )
@@ -921,7 +921,7 @@ describe("sanitizeUrl", () => {
 })
 
 describe("XSS protection in blocks", () => {
-  it("devrait échapper le contenu XSS dans un bloc texte", () => {
+  it("escapes XSS content in a text block", () => {
     const block: TextBlock = {
       type: "text",
       id: "xss1",
@@ -932,7 +932,7 @@ describe("XSS protection in blocks", () => {
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;")
   })
 
-  it("devrait bloquer javascript: dans les URLs d'image", () => {
+  it("blocks javascript: in image URLs", () => {
     const block: ImageBlock = {
       type: "image",
       id: "xss2",
@@ -943,7 +943,7 @@ describe("XSS protection in blocks", () => {
     expect(html).toContain('src=""')
   })
 
-  it("devrait échapper le contenu XSS dans un bloc bouton", () => {
+  it("escapes XSS content in a button block", () => {
     const block: ButtonBlock = {
       type: "button",
       id: "xss3",
@@ -955,7 +955,7 @@ describe("XSS protection in blocks", () => {
     expect(html).toContain("&lt;script&gt;")
   })
 
-  it("devrait échapper le contenu XSS dans le branding du template", () => {
+  it("escapes XSS content in the template branding", () => {
     const xssBranding: EmailBranding = {
       primaryColor: "#FF0000",
       secondaryColor: "#000000",

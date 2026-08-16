@@ -132,7 +132,7 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Wordmark géant en contour — une seule ligne */}
+        {/* Giant outlined wordmark — kept to a single line */}
         <div
           aria-hidden="true"
           className="select-none whitespace-nowrap pt-2 text-center font-display font-semibold leading-none tracking-tight text-transparent"

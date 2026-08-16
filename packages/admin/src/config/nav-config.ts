@@ -100,8 +100,8 @@ export const navGroups: NavGroup[] = [
         icon: LayoutList,
         requiredPermission: "products:read",
       },
-      // "Clients" volontairement absent de la nav tant que la page n'est pas
-      // construite (la route /dashboard/customers reste accessible).
+      // "Clients" is deliberately kept out of the nav until the page is
+      // built (the /dashboard/customers route stays reachable).
       {
         label: "Inventaire",
         href: adminRoutes.inventory,
@@ -157,7 +157,7 @@ export const navGroups: NavGroup[] = [
         icon: FileText,
         requiredPermission: "settings:read",
       },
-      // "Composants" volontairement absent tant que l'éditeur n'existe pas.
+      // "Composants" is deliberately left out until the editor exists.
       {
         label: "Blog",
         icon: PenSquare,

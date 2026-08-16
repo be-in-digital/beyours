@@ -95,7 +95,7 @@ async function deliver(toEmail: string, email: BuiltEmail): Promise<{ sent: bool
     );
     return { sent: false };
   } catch (error) {
-    // Backstop : deliver ne doit JAMAIS throw (webhook Stripe / contact / cron).
+    // Backstop: deliver must NEVER throw (Stripe webhook / contact form / cron).
     console.error(
       `[email] "${email.subject}" exception vers ${toEmail} via ${provider.name}:`,
       error,
@@ -223,7 +223,7 @@ export const sendContactTeamNotification = internalAction({
   },
 });
 
-// ── Parrainage / affiliés ──────────────────────────────────────────────────────
+// ── Referral programme / affiliates ───────────────────────────────────────────
 
 export const sendAffiliateWelcome = internalAction({
   args: { toEmail: v.string(), firstName: v.string() },

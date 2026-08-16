@@ -1,15 +1,15 @@
 import type { DeviceCapabilities } from "./types";
 
 /**
- * detectCapabilities — détermine si le device peut supporter le WebGL
- * maximaliste, ou s'il faut servir un fallback DOM premium.
+ * detectCapabilities — works out whether the device can handle the maximalist
+ * WebGL, or whether we should serve a premium DOM fallback instead.
  *
- * Critères (Decision Log #11 + Multi-agent perf review) :
- * - deviceMemory <= 2 GB ou hardwareConcurrency <= 4 → tier "low" → fallback DOM
- * - prefers-reduced-motion → fallback DOM strict (image SVG du hero)
- * - sinon → tier "medium" ou "high" selon ressources
+ * Criteria (Decision Log #11 + multi-agent perf review):
+ * - deviceMemory <= 2 GB or hardwareConcurrency <= 4 → tier "low" → DOM fallback
+ * - prefers-reduced-motion → strict DOM fallback (the hero's SVG image)
+ * - otherwise → tier "medium" or "high" depending on resources
  *
- * Doit être appelé côté client uniquement (window/navigator requis).
+ * Must be called on the client only (window/navigator required).
  */
 export function detectCapabilities(): DeviceCapabilities {
   if (typeof window === "undefined") {
@@ -22,7 +22,7 @@ export function detectCapabilities(): DeviceCapabilities {
     };
   }
 
-  // navigator.deviceMemory peut être undefined sur certains navigateurs
+  // navigator.deviceMemory can be undefined in some browsers
   const nav = navigator as Navigator & { deviceMemory?: number };
   const deviceMemory = nav.deviceMemory ?? 4;
   const hardwareConcurrency = navigator.hardwareConcurrency ?? 4;

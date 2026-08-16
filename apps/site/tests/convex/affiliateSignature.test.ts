@@ -53,7 +53,7 @@ describe("affiliateSignature — signature électronique simple (SES) in-house",
     );
     expect(result.signatureId).toBeDefined();
 
-    // Piste d'audit enregistrée
+    // Audit trail recorded
     const sig = await t.run((ctx) => ctx.db.get(result.signatureId));
     expect(sig).not.toBeNull();
     expect(sig!.status).toBe("signed");
@@ -63,15 +63,15 @@ describe("affiliateSignature — signature électronique simple (SES) in-house",
     expect(sig!.signedAt).toBeGreaterThan(0);
     expect(sig!.signedDocumentFileId).toBeTruthy();
     expect(sig!.contractVersionId).toBe(contractVersionId);
-    // Hash serveur = SHA-256 du contenu exact (64 hex)
+    // Server-side hash = SHA-256 of the exact content (64 hex chars)
     expect(sig!.contractSnapshotHash).toMatch(/^[0-9a-f]{64}$/);
 
-    // Apporteur activé
+    // Affiliate activated
     const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
     expect(affiliate!.contractStatus).toBe("active");
     expect(affiliate!.acceptedContractVersionId).toBe(contractVersionId);
 
-    // PDF signé réellement stocké et non vide
+    // The signed PDF really is stored, and is not empty
     const pdfSize = await t.run(async (ctx) => {
       const blob = await ctx.storage.get(
         sig!.signedDocumentFileId as Id<"_storage">,
@@ -80,7 +80,7 @@ describe("affiliateSignature — signature électronique simple (SES) in-house",
     });
     expect(pdfSize).toBeGreaterThan(1000);
 
-    // Téléchargeable via la query dashboard
+    // Downloadable through the dashboard query
     const dl = await asUser.query(
       api.contractSignatures.getSignedContractUrl,
       {},

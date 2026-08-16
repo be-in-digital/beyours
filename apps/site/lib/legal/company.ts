@@ -1,42 +1,43 @@
 /**
- * Source de vérité — informations légales de l'éditeur.
+ * Source of truth — the publisher's legal information.
  *
- * L'entité juridique qui édite et exploite la marque commerciale « Be in
- * Digital » est **TUUM AGENCY**, SAS. Toutes les pages légales, la facturation
- * et les emails doivent référencer ces informations DEPUIS ce fichier — ne
- * jamais les dupliquer en dur ailleurs.
+ * The legal entity that publishes and operates the « Be in Digital »
+ * commercial brand is **TUUM AGENCY**, a SAS. Every legal page, invoice and
+ * email must reference this information FROM this file — never hard-code a
+ * duplicate elsewhere.
  *
- * Les champs à `null` correspondent à une information non encore communiquée
- * par le dirigeant : les pages les rendent via le marqueur <Todo/> afin
- * qu'aucune valeur ne soit inventée (règle projet : ne rien fabriquer).
+ * Fields set to `null` are information the company director has not provided
+ * yet: the pages render them through the <Todo/> marker so that no value is
+ * ever invented (project rule: fabricate nothing).
  *
- * Régime TVA : franchise en base (art. 293 B du CGI). Aucune TVA n'est facturée
- * (le moteur de paiement débite 0 € de taxe) et la mention rendue partout est
- * « TVA non applicable, art. 293 B du CGI ». Cohérent avec l'affichage du
- * checkout (`components/checkout/order-summary.tsx`, `TVA_ENABLED` off) et les
- * flags Stripe Tax OFF (`convex/stripe.ts`). Le jour de l'assujettissement au
- * réel : passer `VAT.regime` à "reel", `VAT.mention` au taux applicable et
- * flipper les flags (`NEXT_PUBLIC_TVA_ENABLED` + `STRIPE_TAX_ENABLED`).
+ * VAT regime: franchise en base (art. 293 B of the French tax code). No VAT is
+ * charged (the payment engine bills 0 € of tax) and the mention rendered
+ * everywhere is « TVA non applicable, art. 293 B du CGI ». Consistent with the
+ * checkout display (`components/checkout/order-summary.tsx`, `TVA_ENABLED`
+ * off) and the Stripe Tax flags being OFF (`convex/stripe.ts`). The day the
+ * company becomes VAT-liable (régime réel): set `VAT.regime` to "reel",
+ * `VAT.mention` to the applicable rate and flip both flags
+ * (`NEXT_PUBLIC_TVA_ENABLED` + `STRIPE_TAX_ENABLED`).
  *
- * Données confirmées par l'extrait INSEE / RNE (INPI) du 19/07/2026.
+ * Data confirmed by the INSEE / RNE (INPI) extract dated 19/07/2026.
  */
 
 export interface CompanyInfo {
-  /** Raison sociale (entité juridique). */
+  /** Registered company name (legal entity). */
   legalName: string;
-  /** Marque commerciale / nom du produit exploité. */
+  /** Commercial brand / name of the product being operated. */
   tradeName: string;
-  /** Forme juridique. */
+  /** Legal form. */
   legalForm: string;
-  /** Capital social en euros. `null` tant que non communiqué. */
+  /** Share capital in euros. `null` until the director provides it. */
   capitalEuros: number | null;
   siren: string;
   siret: string;
-  /** Registre du commerce et des sociétés + ville du greffe. */
+  /** Trade and companies register (RCS) + city of the registry. */
   rcs: string;
   apeCode: string;
   apeLabel: string;
-  /** N° TVA intracommunautaire (attribué même en franchise en base). */
+  /** Intra-EU VAT number (assigned even under the franchise en base regime). */
   vatNumber: string;
   address: {
     street: string;
@@ -44,11 +45,11 @@ export interface CompanyInfo {
     city: string;
     country: string;
   };
-  /** Président / représentant légal. `null` tant que non communiqué. */
+  /** President / legal representative. `null` until the director provides it. */
   legalRepresentative: string | null;
   email: string;
   phone: string | null;
-  /** Date d'immatriculation au RNE (INPI). */
+  /** Date of registration with the RNE (INPI). */
   registeredAt: string;
 }
 
@@ -76,21 +77,23 @@ export const COMPANY: CompanyInfo = {
 };
 
 /**
- * Régime de TVA appliqué. En franchise en base (art. 293 B du CGI), aucune TVA
- * n'est facturée et la mention légale correspondante est lue depuis `VAT.mention`
- * par les CGV (`app/(landing)/cgv/page.tsx`) et les mentions légales
- * (`app/(landing)/mentions-legales/page.tsx`), qui se réalignent donc seules.
+ * The VAT regime in force. Under franchise en base (art. 293 B of the French
+ * tax code) no VAT is charged, and the matching legal mention is read from
+ * `VAT.mention` by the terms of sale (`app/(landing)/cgv/page.tsx`) and the
+ * legal notice (`app/(landing)/mentions-legales/page.tsx`), so both realign on
+ * their own.
  *
- * NB — pied de facture : la mention 293 B doit AUSSI figurer sur la facture
- * Stripe. Le pied de facture `SELLER_INVOICE_FOOTER` vit dans `convex/stripe.ts`
- * (hors périmètre de ce fichier) et ne la porte pas encore : à compléter là-bas.
+ * NB — invoice footer: the 293 B mention must ALSO appear on the Stripe
+ * invoice. The `SELLER_INVOICE_FOOTER` footer lives in `convex/stripe.ts`
+ * (outside this file's scope) and does not carry it yet: complete it there.
  *
- * Garde-fou : la franchise en base des prestations de services a un plafond
- * (~37 500 € de CA / tolérance ~41 250 € en 2026). Surveiller le CA cumulé —
- * un seul ticket (une Création à plusieurs milliers d'€) peut le franchir →
- * passage au réel obligatoire, rétroactif au 1er du mois de dépassement.
- * À valider par un comptable. Ces seuils et mentions sont proposés et doivent
- * être validés par un conseil (comptable / avocat) avant mise en ligne.
+ * Guardrail: the franchise en base for services has a ceiling (~37 500 € of
+ * revenue / ~41 250 € tolerance in 2026). Watch cumulative revenue — a single
+ * ticket (one Création worth several thousand €) can cross it → switching to
+ * the régime réel becomes mandatory, retroactive to the 1st of the month the
+ * threshold was crossed. To be confirmed by an accountant. These thresholds
+ * and mentions are proposals and must be validated by counsel (accountant /
+ * lawyer) before going live.
  */
 export const VAT = {
   regime: "franchise" as "franchise" | "reel",
@@ -104,10 +107,10 @@ export interface HostingProvider {
 }
 
 /**
- * Hébergement — requis par la LCEN (art. 6-III) dans les mentions légales.
- * Le backend applicatif et la base de données sont opérés par Convex (certain,
- * cf. stack). L'hébergeur du frontend n'est pas figé dans le dépôt : à
- * confirmer selon le déploiement réel (probablement Vercel) avant mise en ligne.
+ * Hosting — required in the legal notice by the LCEN (art. 6-III).
+ * The application backend and the database are operated by Convex (certain,
+ * see the stack). The frontend host is not pinned down in the repository:
+ * confirm it against the actual deployment (probably Vercel) before going live.
  */
 export const HOSTING: {
   frontend: HostingProvider | null;
@@ -126,15 +129,15 @@ export const HOSTING: {
 };
 
 /**
- * Médiateur de la consommation — obligatoire dès lors qu'un consommateur
- * (achat `buyerType: "personal"`) peut acheter. À souscrire puis renseigner.
+ * Consumer mediator — mandatory as soon as a consumer can buy, meaning any
+ * `buyerType: "personal"` purchase. To be subscribed to, then filled in here.
  */
-export const CONSUMER_MEDIATOR: { name: string; url: string } | null = null; // [À COMPLÉTER]
+export const CONSUMER_MEDIATOR: { name: string; url: string } | null = null; // [TO BE COMPLETED]
 
-/** Date de dernière révision des documents légaux (statique, éditée à la main). */
+/** Date the legal documents were last revised (static, edited by hand). */
 export const LEGAL_LAST_UPDATED = "19 juillet 2026";
 
-/** Sous-traitants / services tiers traitant des données (RGPD). */
+/** Sub-processors / third-party services handling data (GDPR). */
 export const SUBPROCESSORS: { name: string; role: string; location: string }[] = [
   { name: "Convex, Inc.", role: "Hébergement applicatif et base de données", location: "États-Unis" },
   { name: "Stripe Payments Europe, Ltd.", role: "Traitement des paiements", location: "Irlande / États-Unis" },

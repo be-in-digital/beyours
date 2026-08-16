@@ -46,10 +46,10 @@ export function FeaturesNav() {
       : null;
     bentoObserver?.observe(bento as Element);
 
-    // Le CTA « intersecte » dès que son haut franchit la ligne des 70 % du
-    // viewport : isIntersecting bascule exactement au bon moment (entrée ET
-    // retour arrière), là où une comparaison de coordonnées au moment du
-    // trigger restait figée tant que le CTA était à l'écran.
+    // The CTA "intersects" as soon as its top crosses the 70 % line of the
+    // viewport: isIntersecting flips at exactly the right moment (both entering
+    // and scrolling back), where comparing coordinates at trigger time stayed
+    // stuck for as long as the CTA was on screen.
     const ctaObserver = cta
       ? new IntersectionObserver(
           ([entry]) => setBeforeCta(!entry?.isIntersecting),

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Process — Timeline "Comment ça marche"
+   Pricing Process — the "Comment ça marche" timeline
    ═══════════════════════════════════════════════ */
 
 import { processSteps } from "./pricing-data";

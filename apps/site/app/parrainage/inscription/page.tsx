@@ -27,7 +27,7 @@ export default function InscriptionPage() {
     };
   }, []);
 
-  // Après auth réussie → créer le profil affilié + code → contrat
+  // Once auth succeeds → create the affiliate profile + code → contract
   useEffect(() => {
     if (isAuthenticated && !hasCreated.current) {
       if (signupTimeout.current) clearTimeout(signupTimeout.current);
@@ -66,7 +66,7 @@ export default function InscriptionPage() {
       return;
     }
 
-    // Safety net: si l'auth ne complète pas en 15s, débloquer le bouton
+    // Safety net: if auth has not completed within 15s, unblock the button
     signupTimeout.current = setTimeout(() => {
       setError("L'inscription prend trop de temps. Rechargez la page et réessayez, ou essayez de vous connecter.");
       setIsSubmitting(false);
@@ -74,8 +74,8 @@ export default function InscriptionPage() {
 
     try {
       await signIn("password", { email, password, flow: "signUp" });
-      // signIn résout quand le compte est créé et la session active
-      // isAuthenticated passera à true via useConvexAuth, déclenchant le useEffect
+      // signIn resolves once the account is created and the session is active
+      // isAuthenticated flips to true through useConvexAuth, firing the useEffect
     } catch (err) {
       if (signupTimeout.current) clearTimeout(signupTimeout.current);
       const message = err instanceof Error ? err.message : String(err);

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Maintenance — Inclus + Hors périmètre
+   Pricing Maintenance — what is included + what is out of scope
    ═══════════════════════════════════════════════ */
 
 import { maintenanceIncluded, maintenanceExcluded } from "./pricing-data";
@@ -89,7 +89,7 @@ export function PricingMaintenance() {
           ))}
         </StaggerContainer>
 
-        {/* Hors périmètre */}
+        {/* Out of scope */}
         <FadeIn delay={0.3} className="mt-10">
           <div className="rounded-xl border border-[color:var(--border)] bg-secondary/60 p-6">
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">

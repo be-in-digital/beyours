@@ -6,9 +6,10 @@ import { CheckIcon, UnlockIcon, LockIcon, ExternalLinkIcon } from "lucide-react"
 import { gameSounds, haptics } from "@/lib/game"
 
 /**
- * Action "parrainage" : proposée une fois toutes les actions sociales faites.
- * Partager = jouer tout de suite (comme les autres actions). L'ami reçoit un
- * tour offert via le lien ; quand il joue, le parrain gagne un tour bonus.
+ * "Referral" action: offered once every social action has been completed.
+ * Sharing lets the player play immediately, like the other actions. The friend
+ * gets a free spin through the link; when they play, the referrer earns a
+ * bonus spin.
  */
 
 interface ReferralScreenProps {
@@ -54,7 +55,7 @@ export function ReferralScreen({
       haptics.light()
       window.setTimeout(() => setCopied(false), 1600)
     } catch {
-      /* clipboard indisponible : l'utilisateur copie à la main */
+      /* clipboard unavailable: the user copies the link by hand */
     }
   }
 
@@ -70,7 +71,7 @@ export function ReferralScreen({
           url: shareUrl,
         })
       } catch {
-        /* partage annulé : pas grave, le lien reste copiable */
+        /* share cancelled: no problem, the link is still copyable */
       }
     } else {
       await doCopy()
@@ -105,7 +106,7 @@ export function ReferralScreen({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center">
-        {/* Lien de parrainage */}
+        {/* Referral link */}
         <div className="w-full rounded-2xl border border-white/10 bg-white/[0.05] p-4">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
             Votre lien

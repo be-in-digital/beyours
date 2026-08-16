@@ -1,5 +1,5 @@
 /**
- * Tests pour le service S3
+ * Tests for the S3 service
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -32,7 +32,7 @@ describe('S3 Service', () => {
   })
 
   describe('upload', () => {
-    it('devrait uploader un fichier avec validation MIME réussie', async () => {
+    it('uploads a file that passes MIME validation', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.from('test image data')
 
@@ -55,7 +55,7 @@ describe('S3 Service', () => {
       )
     })
 
-    it('devrait uploader avec un nom de fichier personnalisé', async () => {
+    it('uploads with a custom filename', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.from('test')
 
@@ -68,7 +68,7 @@ describe('S3 Service', () => {
       expect(result.key).toBe('products/custom-product.png')
     })
 
-    it('devrait rejeter un fichier trop volumineux', async () => {
+    it('rejects a file that is too large', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.alloc(11 * 1024 * 1024) // 11MB (> 10MB limit)
 
@@ -80,7 +80,7 @@ describe('S3 Service', () => {
       ).rejects.toThrow('Fichier trop volumineux')
     })
 
-    it('devrait rejeter un type MIME non autorisé', async () => {
+    it('rejects a MIME type that is not allowed', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.from('test')
 
@@ -92,7 +92,7 @@ describe('S3 Service', () => {
       ).rejects.toThrow('Type MIME non autorisé')
     })
 
-    it('devrait accepter les PDFs dans le dossier cms', async () => {
+    it('accepts PDFs in the cms folder', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.from('test pdf')
 
@@ -104,7 +104,7 @@ describe('S3 Service', () => {
       expect(result.key).toMatch(/^cms\/[\w-]+\.pdf$/)
     })
 
-    it('devrait respecter maxSize personnalisé', async () => {
+    it('respects a custom maxSize', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.alloc(6 * 1024 * 1024) // 6MB
 
@@ -117,7 +117,7 @@ describe('S3 Service', () => {
       ).rejects.toThrow('Fichier trop volumineux')
     })
 
-    it('devrait uploader avec métadonnées personnalisées', async () => {
+    it('uploads with custom metadata', async () => {
       const service = createS3Service(mockConfig, mockClient)
       const file = Buffer.from('test')
 
@@ -136,7 +136,7 @@ describe('S3 Service', () => {
   })
 
   describe('getPresignedUploadUrl', () => {
-    it('devrait générer une URL presignée pour upload', async () => {
+    it('generates a presigned URL for upload', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       const result = await service.getPresignedUploadUrl({
@@ -156,7 +156,7 @@ describe('S3 Service', () => {
       })
     })
 
-    it('devrait rejeter un type MIME non autorisé', async () => {
+    it('rejects a MIME type that is not allowed', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       await expect(
@@ -169,7 +169,7 @@ describe('S3 Service', () => {
   })
 
   describe('getPresignedDownloadUrl', () => {
-    it('devrait générer une URL presignée pour téléchargement', async () => {
+    it('generates a presigned URL for download', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       const result = await service.getPresignedDownloadUrl(
@@ -188,7 +188,7 @@ describe('S3 Service', () => {
       })
     })
 
-    it('devrait utiliser 3600s par défaut', async () => {
+    it('defaults to 3600s', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       await service.getPresignedDownloadUrl('products/test.jpg')
@@ -202,7 +202,7 @@ describe('S3 Service', () => {
   })
 
   describe('delete', () => {
-    it('devrait supprimer un fichier', async () => {
+    it('deletes a file', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       await service.delete('products/test.jpg')
@@ -212,7 +212,7 @@ describe('S3 Service', () => {
       })
     })
 
-    it('devrait rejeter une clé vide', async () => {
+    it('rejects an empty key', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       await expect(service.delete('')).rejects.toThrow()
@@ -220,7 +220,7 @@ describe('S3 Service', () => {
   })
 
   describe('getPublicUrl', () => {
-    it('devrait retourner URL avec publicBaseUrl', async () => {
+    it('returns the URL built from publicBaseUrl', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       const url = service.getPublicUrl('products/test.jpg')
@@ -228,7 +228,7 @@ describe('S3 Service', () => {
       expect(url).toBe('https://cdn.example.com/products/test.jpg')
     })
 
-    it('devrait retourner URL S3 par défaut sans publicBaseUrl', async () => {
+    it('returns the default S3 URL when publicBaseUrl is missing', async () => {
       const configWithoutCDN = { ...mockConfig, publicBaseUrl: undefined }
       const service = createS3Service(configWithoutCDN, mockClient)
 
@@ -241,7 +241,7 @@ describe('S3 Service', () => {
   })
 
   describe('exists', () => {
-    it('devrait retourner true si le fichier existe', async () => {
+    it('returns true when the file exists', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       const exists = await service.exists('products/test.jpg')
@@ -252,7 +252,7 @@ describe('S3 Service', () => {
       })
     })
 
-    it('devrait retourner false si le fichier n\'existe pas', async () => {
+    it('returns false when the file does not exist', async () => {
       mockClient.headObject = vi.fn().mockRejectedValue(new Error('Not found'))
       const service = createS3Service(mockConfig, mockClient)
 
@@ -263,7 +263,7 @@ describe('S3 Service', () => {
   })
 
   describe('getMetadata', () => {
-    it('devrait retourner les métadonnées du fichier', async () => {
+    it('returns the file metadata', async () => {
       const service = createS3Service(mockConfig, mockClient)
 
       const metadata = await service.getMetadata('products/test.jpg')

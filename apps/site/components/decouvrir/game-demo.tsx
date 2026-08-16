@@ -25,10 +25,10 @@ import { Confetti } from "./confetti";
 import { RewardSeal, TicketQr } from "./reward-visuals";
 
 /* ═══════════════════════════════════════════════
-   Démo de jeu — parcours client fidèle, repensé pour convertir.
-   Principe : UNE action = UNE partie. À chaque visite, l'action change
-   (avis Google → Instagram → TikTok → parrainage). Le client revient
-   pour rejouer : c'est le moteur de fidélisation.
+   Game demo — a faithful customer journey, reworked to convert.
+   The principle: ONE action = ONE play. The action changes on every visit
+   (Google review → Instagram → TikTok → referral). The customer comes back
+   to play again: that is the loyalty engine.
    ═══════════════════════════════════════════════ */
 
 type Phase = "intro" | "action" | "play" | "result" | "claim" | "ticket";
@@ -50,8 +50,8 @@ const PRIZE = "Dessert offert";
 type Visit = {
   key: string;
   icon: typeof Star;
-  short: string; // libellé court (stepper)
-  actionLabel: string; // dans le téléphone
+  short: string; // short label (stepper)
+  actionLabel: string; // shown inside the phone
   cta: string;
   kind: "google" | "instagram" | "tiktok" | "referral";
   captionTitle: string;
@@ -157,9 +157,9 @@ export function GameDemo() {
 
   return (
     <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-16">
-      {/* ── Téléphone ── */}
+      {/* ── Phone ── */}
       <div className="mx-auto w-full max-w-[340px]">
-        {/* Sélecteur de jeu */}
+        {/* Game picker */}
         <div className="mb-5 flex rounded-full border border-[color:var(--border)] bg-surface-1 p-1 text-sm font-medium">
           {(
             [
@@ -240,7 +240,7 @@ export function GameDemo() {
         </PhoneShell>
       </div>
 
-      {/* ── Légende guidée ── */}
+      {/* ── Guided legend ── */}
       <div className="lg:pl-4">
         <VisitProgress visitIndex={visitIndex} />
         <AnimatePresence mode="wait">
@@ -282,7 +282,7 @@ export function GameDemo() {
   );
 }
 
-/* ── Coque téléphone ── */
+/* ── Phone shell ── */
 function PhoneShell({
   children,
   visit,
@@ -391,7 +391,7 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
   );
 }
 
-/* ── Étape action (UNE action → une partie), avec simulateur de validation ── */
+/* ── Action step (ONE action → one play), with a validation simulator ── */
 
 type ActionState = "ask" | "leaving" | "external" | "checking" | "ok";
 
@@ -779,7 +779,7 @@ function TicketScreen({
           </div>
         </motion.div>
 
-        {/* Confirmation d'envoi email (toujours) */}
+        {/* Email-sent confirmation (always shown) */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -814,7 +814,7 @@ function TicketScreen({
   );
 }
 
-/* ── Progression des visites (colonne légende) ── */
+/* ── Visit progression (legend column) ── */
 
 function VisitProgress({ visitIndex }: { visitIndex: number }) {
   const current = Math.min(visitIndex, VISITS.length - 1);

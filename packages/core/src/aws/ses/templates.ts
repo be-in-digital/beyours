@@ -1,24 +1,24 @@
 /**
- * Templates d'email pour SES
+ * Email templates for SES
  * @module aws/ses/templates
  */
 
 /**
- * Interface générique pour un template d'email
+ * Generic interface for an email template
  */
 export interface EmailTemplate<T = Record<string, unknown>> {
-  /** Nom du template */
+  /** Template name */
   name: string
-  /** Fonction générant le sujet */
+  /** Builds the subject line */
   subject: (data: T) => string
-  /** Fonction générant le contenu HTML */
+  /** Builds the HTML body */
   html: (data: T) => string
-  /** Fonction générant le contenu texte */
+  /** Builds the plain text body */
   text: (data: T) => string
 }
 
 /**
- * Données pour le template de confirmation de commande
+ * Data for the order confirmation template
  */
 export interface OrderConfirmationData {
   orderNumber: string
@@ -33,7 +33,7 @@ export interface OrderConfirmationData {
 }
 
 /**
- * Template de confirmation de commande
+ * Order confirmation template
  */
 export const orderConfirmationTemplate: EmailTemplate<OrderConfirmationData> = {
   name: 'orderConfirmation',
@@ -109,7 +109,7 @@ Merci de votre confiance !
 }
 
 /**
- * Données pour le template de réinitialisation de mot de passe
+ * Data for the password reset template
  */
 export interface SESPasswordResetData {
   resetLink: string
@@ -118,7 +118,7 @@ export interface SESPasswordResetData {
 }
 
 /**
- * Template de réinitialisation de mot de passe
+ * Password reset template
  */
 export const passwordResetTemplate: EmailTemplate<SESPasswordResetData> = {
   name: 'passwordReset',
@@ -182,7 +182,7 @@ Pour votre sécurité, ne partagez jamais ce lien.
 }
 
 /**
- * Données pour le template de bienvenue
+ * Data for the welcome template
  */
 export interface WelcomeData {
   userName: string
@@ -190,7 +190,7 @@ export interface WelcomeData {
 }
 
 /**
- * Template de bienvenue
+ * Welcome template
  */
 export const welcomeTemplate: EmailTemplate<WelcomeData> = {
   name: 'welcome',
@@ -259,7 +259,7 @@ Besoin d'aide ? Contactez notre support.
 }
 
 /**
- * Données pour le template de prix gagné
+ * Data for the prize won template
  */
 export interface PrizeWonData {
   prizeName: string
@@ -269,7 +269,7 @@ export interface PrizeWonData {
 }
 
 /**
- * Template de prix gagné
+ * Prize won template
  */
 export const prizeWonTemplate: EmailTemplate<PrizeWonData> = {
   name: 'prizeWon',
@@ -344,7 +344,7 @@ Nous avons hâte de vous voir !
 }
 
 /**
- * Map de tous les templates disponibles
+ * Map of every available template
  */
 export const sesEmailTemplates = {
   orderConfirmation: orderConfirmationTemplate,
@@ -354,12 +354,12 @@ export const sesEmailTemplates = {
 } as const
 
 /**
- * Type pour les noms de templates disponibles
+ * Union of the available template names
  */
 export type TemplateName = keyof typeof sesEmailTemplates
 
 /**
- * Récupère un template par son nom
+ * Looks up a template by name
  */
 export function getTemplate<T extends TemplateName>(
   name: T

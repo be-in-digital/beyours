@@ -52,8 +52,8 @@ export default function ContratPage() {
     }
   }, [affiliate, router]);
 
-  // Champs du formulaire : dérivés du profil chargé + saisies de l'utilisateur
-  // (pas d'effet de synchronisation → pas de re-render en cascade).
+  // Form fields: derived from the loaded profile plus the user's own edits
+  // (no syncing effect → no cascade of re-renders).
   const firstName = edits.firstName ?? affiliate?.firstName ?? "";
   const lastName = edits.lastName ?? affiliate?.lastName ?? "";
   const phone = edits.phone ?? affiliate?.phone ?? "";
@@ -66,7 +66,7 @@ export default function ContratPage() {
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setEdits((prev) => ({ ...prev, [key]: e.target.value }));
 
-  // Nom de signature : par défaut le nom du compte, surchargeable.
+  // Signature name: the account name by default, overridable.
   const signatureName =
     signatureNameOverride ??
     `${affiliate?.firstName ?? ""} ${affiliate?.lastName ?? ""}`.trim();
@@ -103,7 +103,7 @@ export default function ContratPage() {
         postalCode: postalCode.trim() || undefined,
       });
 
-      // IP best-effort pour la piste d'audit (lue côté serveur, non bloquante).
+      // Best-effort IP for the audit trail (read server-side, non-blocking).
       let signerIp: string | undefined;
       try {
         const ipRes = await fetch("/api/signer-ip");
@@ -123,8 +123,8 @@ export default function ContratPage() {
         signerIp,
       });
 
-      // La signature active l'apporteur (contractStatus → "active") :
-      // la query réactive déclenche la redirection ci-dessus.
+      // Signing activates the affiliate (contractStatus → "active"):
+      // the reactive query triggers the redirect above.
       setSigned(true);
     } catch (err) {
       console.error("Signature error:", err);

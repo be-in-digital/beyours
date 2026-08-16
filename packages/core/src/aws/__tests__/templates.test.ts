@@ -1,5 +1,5 @@
 /**
- * Tests pour les templates d'email
+ * Tests for the email templates
  */
 
 import { describe, it, expect } from 'vitest'
@@ -28,12 +28,12 @@ describe('Email Templates', () => {
       address: '123 Main Street, Paris, France',
     }
 
-    it('devrait générer un sujet correct', () => {
+    it('generates the right subject', () => {
       const subject = orderConfirmationTemplate.subject(mockData)
       expect(subject).toBe('Commande confirmée - #ORD-12345')
     })
 
-    it('devrait générer du HTML valide', () => {
+    it('generates valid HTML', () => {
       const html = orderConfirmationTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
@@ -45,7 +45,7 @@ describe('Email Templates', () => {
       expect(html).toContain('123 Main Street, Paris, France')
     })
 
-    it('devrait générer du texte correct', () => {
+    it('generates the right plain text', () => {
       const text = orderConfirmationTemplate.text(mockData)
 
       expect(text).toContain('Commande confirmée')
@@ -55,10 +55,10 @@ describe('Email Templates', () => {
       expect(text).toContain('Total : 34.00€')
     })
 
-    it('devrait interpoler les données correctement', () => {
+    it('interpolates the data correctly', () => {
       const html = orderConfirmationTemplate.html(mockData)
 
-      // Vérifier que les quantités et prix sont corrects
+      // Check that the quantities and prices are right
       expect(html).toContain('x 2')
       expect(html).toContain('x 3')
       expect(html).toContain('12.50')
@@ -73,12 +73,12 @@ describe('Email Templates', () => {
       expirationTime: '24 heures',
     }
 
-    it('devrait générer un sujet correct', () => {
+    it('generates the right subject', () => {
       const subject = passwordResetTemplate.subject(mockData)
       expect(subject).toBe('Réinitialisation de votre mot de passe')
     })
 
-    it('devrait générer du HTML valide avec lien', () => {
+    it('generates valid HTML with the link', () => {
       const html = passwordResetTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
@@ -88,7 +88,7 @@ describe('Email Templates', () => {
       expect(html).toContain('⚠️')
     })
 
-    it('devrait générer du texte avec avertissement', () => {
+    it('generates plain text with the warning', () => {
       const text = passwordResetTemplate.text(mockData)
 
       expect(text).toContain('Jane Doe')
@@ -104,12 +104,12 @@ describe('Email Templates', () => {
       dashboardLink: 'https://example.com/dashboard',
     }
 
-    it('devrait générer un sujet personnalisé', () => {
+    it('generates a personalized subject', () => {
       const subject = welcomeTemplate.subject(mockData)
       expect(subject).toBe('Bienvenue Alice Smith !')
     })
 
-    it('devrait générer du HTML avec fonctionnalités', () => {
+    it('generates HTML with the features', () => {
       const html = welcomeTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
@@ -120,7 +120,7 @@ describe('Email Templates', () => {
       expect(html).toContain('✅')
     })
 
-    it('devrait générer du texte avec liste de fonctionnalités', () => {
+    it('generates plain text with the feature list', () => {
       const text = welcomeTemplate.text(mockData)
 
       expect(text).toContain('Alice Smith')
@@ -138,12 +138,12 @@ describe('Email Templates', () => {
       expirationDate: '2026-03-15',
     }
 
-    it('devrait générer un sujet avec emoji et nom du prix', () => {
+    it('generates a subject with the emoji and the prize name', () => {
       const subject = prizeWonTemplate.subject(mockData)
       expect(subject).toBe('🎉 Félicitations ! Vous avez gagné : Dessert gratuit')
     })
 
-    it('devrait générer du HTML avec QR code', () => {
+    it('generates HTML with the QR code', () => {
       const html = prizeWonTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
@@ -155,7 +155,7 @@ describe('Email Templates', () => {
       expect(html).toContain('⏰')
     })
 
-    it('devrait générer du texte avec informations du prix', () => {
+    it('generates plain text with the prize details', () => {
       const text = prizeWonTemplate.text(mockData)
 
       expect(text).toContain('Bob Johnson')
@@ -167,36 +167,36 @@ describe('Email Templates', () => {
   })
 
   describe('getTemplate', () => {
-    it('devrait retourner le template orderConfirmation', () => {
+    it('returns the orderConfirmation template', () => {
       const template = getTemplate('orderConfirmation')
       expect(template.name).toBe('orderConfirmation')
     })
 
-    it('devrait retourner le template passwordReset', () => {
+    it('returns the passwordReset template', () => {
       const template = getTemplate('passwordReset')
       expect(template.name).toBe('passwordReset')
     })
 
-    it('devrait retourner le template welcome', () => {
+    it('returns the welcome template', () => {
       const template = getTemplate('welcome')
       expect(template.name).toBe('welcome')
     })
 
-    it('devrait retourner le template prizeWon', () => {
+    it('returns the prizeWon template', () => {
       const template = getTemplate('prizeWon')
       expect(template.name).toBe('prizeWon')
     })
 
-    it('devrait rejeter un template inexistant', () => {
+    it('rejects a template that does not exist', () => {
       expect(() =>
-        // @ts-expect-error - Test d'erreur
+        // @ts-expect-error - Error-path test
         getTemplate('nonexistent')
       ).toThrow('Template "nonexistent" introuvable')
     })
   })
 
   describe('HTML Validity', () => {
-    it('tous les templates devraient générer du HTML bien formé', () => {
+    it('every template generates well-formed HTML', () => {
       const templates = [
         orderConfirmationTemplate,
         passwordResetTemplate,

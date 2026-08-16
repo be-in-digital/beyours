@@ -126,7 +126,7 @@ export default function NewIncidentPage() {
               />
             </div>
 
-            {/* Gravité + Détecté par */}
+            {/* Severity + Detected by */}
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="severity">Gravité</Label>
@@ -158,7 +158,7 @@ export default function NewIncidentPage() {
               </div>
             </div>
 
-            {/* Déploiement */}
+            {/* Deployment */}
             <div className="space-y-1.5">
               <Label htmlFor="deployment">Déploiement</Label>
               <Select
@@ -211,7 +211,7 @@ export default function NewIncidentPage() {
               </div>
             </div>
 
-            {/* Assigné */}
+            {/* Assignee */}
             <div className="space-y-1.5">
               <Label htmlFor="assignee">Assigné à</Label>
               <Input

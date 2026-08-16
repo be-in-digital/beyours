@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// check-prod-bundle.mjs — garde-fou anti-récidive du bug #6
+// check-prod-bundle.mjs — guardrail against a repeat of bug #6
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// Les variables NEXT_PUBLIC_* sont inlinées dans le bundle au `next build`.
-// Ce script télécharge la page de prod + ses chunks JS RÉELLEMENT SERVIS et
-// échoue (exit 1) si une URL Convex INTERDITE y apparaît — typiquement une URL
-// morte (happy-otter-123), un déploiement de dev, ou le placeholder de secours
-// (NEXT_PUBLIC_CONVEX_URL absente au build). Le seul déploiement autorisé en
-// prod est fearless-poodle-133.
+// NEXT_PUBLIC_* variables are inlined into the bundle at `next build` time.
+// This script downloads the production page plus the JS chunks it ACTUALLY
+// SERVES and fails (exit 1) if a FORBIDDEN Convex URL shows up in them —
+// typically a dead URL (happy-otter-123), a dev deployment, or the emergency
+// placeholder (NEXT_PUBLIC_CONVEX_URL missing at build time). The only
+// deployment allowed in production is fearless-poodle-133.
 //
-// Usage :
+// Usage:
 //   node scripts/check-prod-bundle.mjs
 //   node scripts/check-prod-bundle.mjs https://beyours.fr
 //   node scripts/check-prod-bundle.mjs https://<preview>.vercel.app
 //   LIVE_URL=https://beyours.fr node scripts/check-prod-bundle.mjs
 //
-// Quand le lancer : APRÈS chaque déploiement de web-restaurant, et idéalement
-// en CI dans un step post-deploy Vercel. Exit ≠ 0 = bloquer / rollback.
+// When to run it: AFTER every web-restaurant deployment, and ideally in CI as a
+// Vercel post-deploy step. A non-zero exit means block / roll back.
 //
-// Aucune dépendance : Node >= 18 (fetch global). Testé Node 20.
+// No dependencies: Node >= 18 (global fetch). Tested on Node 20.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Seul déploiement Convex autorisé en prod (team momoseck8 / projet wedilybird).
+// The only Convex deployment allowed in prod (team momoseck8 / project wedilybird).
 const ALLOWED_CONVEX_SUBDOMAIN = "fearless-poodle-133";
 
-// Sous-domaines connus pour avoir cassé la prod (messages plus explicites).
-// La règle d'échec est de toute façon « sous-domaine != ALLOWED ».
+// Subdomains known to have broken production (so we can print a clearer message).
+// The failure rule is « subdomain != ALLOWED » either way.
 const HARD_BLOCKLIST = ["happy-otter-123"];
 
 const DEFAULT_URL = "https://beyours.fr";
@@ -53,7 +53,7 @@ async function fetchText(url) {
   }
 }
 
-// Récupère les URLs des chunks JS référencés (src="..." et <link href="....js">).
+// Collects the URLs of the referenced JS chunks (src="..." and <link href="....js">).
 function extractScriptUrls(html, baseUrl) {
   const urls = new Set();
   const re = /(?:src|href)\s*=\s*["']([^"']+?\.js(?:\?[^"']*)?)["']/gi;

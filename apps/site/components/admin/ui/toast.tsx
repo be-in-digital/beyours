@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle2, XCircle, Info, X } from "lucide-react";
 
-/* Toast minimal, sans dépendance externe (store module + portail). */
+/* Minimal toast, no external dependency (module store + portal). */
 
 type ToastKind = "success" | "error" | "info";
 type ToastItem = { id: number; kind: ToastKind; message: string };

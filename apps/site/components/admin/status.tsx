@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 type Variant = NonNullable<BadgeProps["variant"]>;
 type Meta = { label: string; variant: Variant };
 
-/* ── Vocabulaire de statut — unique source de vérité couleurs/labels ── */
+/* ── Status vocabulary — single source of truth for colours/labels ── */
 
 export const CLIENT_STATUS: Record<string, Meta> = {
   prospect: { label: "Prospect", variant: "info" },

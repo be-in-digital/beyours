@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   /tarifs — Page tarifs complète
+   /tarifs — the full pricing page
    ═══════════════════════════════════════════════ */
 
 import type { Metadata } from "next";

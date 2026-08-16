@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useCalendlyModal } from "@/lib/store";
 
 // ──────────────────────────────────────────────
-// Remplace cette URL par ton lien Calendly
+// Replace this URL with your own Calendly link
 const CALENDLY_URL = "https://calendly.com/hello-beindigital/new-meeting";
 // ──────────────────────────────────────────────
 

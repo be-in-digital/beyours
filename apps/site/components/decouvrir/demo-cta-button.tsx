@@ -4,7 +4,7 @@ import { useCalendlyModal } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 
-/** Bouton qui ouvre la modale Calendly (partagée par le layout du site). */
+/** Button that opens the Calendly modal (shared by the site layout). */
 export function CalendlyButton({
   children = "Réserver un appel",
   className,

@@ -1,5 +1,5 @@
 /**
- * Service SES pour l'envoi d'emails
+ * SES service for sending emails
  * @module aws/ses/client
  */
 
@@ -21,44 +21,44 @@ import {
 import { getTemplate, type TemplateName } from './templates'
 
 /**
- * Configuration pour le rate limiting SES
+ * SES rate limiting configuration
  */
-const SES_RATE_LIMIT = 14 // emails par seconde (limite sandbox)
-const BATCH_SIZE = 50 // taille des lots pour l'envoi en masse
+const SES_RATE_LIMIT = 14 // emails per second (sandbox limit)
+const BATCH_SIZE = 50 // batch size for bulk sends
 
 /**
- * Service SES pour l'envoi d'emails
+ * SES service for sending emails
  */
 export interface SESService {
   /**
-   * Envoie un email simple
-   * @param params - Paramètres d'envoi
-   * @returns ID du message envoyé
+   * Sends a plain email
+   * @param params - Send parameters
+   * @returns ID of the sent message
    */
   sendEmail(params: SendEmailParams): Promise<SendEmailResult>
 
   /**
-   * Envoie un email avec un template prédéfini
-   * @param params - Paramètres d'envoi avec template
-   * @returns ID du message envoyé
+   * Sends an email from a predefined template
+   * @param params - Templated send parameters
+   * @returns ID of the sent message
    */
   sendTemplatedEmail<T extends TemplateName>(
     params: SendTemplatedEmailParams<Parameters<(typeof import('./templates').sesEmailTemplates)[T]['html']>[0]>
   ): Promise<SendEmailResult>
 
   /**
-   * Envoie des emails en masse avec rate limiting
-   * @param params - Paramètres d'envoi en masse
-   * @returns Résultats détaillés pour chaque email
+   * Sends emails in bulk with rate limiting
+   * @param params - Bulk send parameters
+   * @returns Per-email detailed results
    */
   sendBulkEmail(params: SendBulkEmailParams): Promise<SendBulkEmailResult>
 }
 
 /**
- * Crée une instance du service SES
- * @param config - Configuration SES
- * @param client - Client SES injectable
- * @returns Instance du service SES
+ * Creates an SES service instance
+ * @param config - SES configuration
+ * @param client - Injectable SES client
+ * @returns The SES service instance
  */
 export function createSESService(
   config: SESConfig,
@@ -67,21 +67,21 @@ export function createSESService(
   const { fromEmail, fromName, replyToEmail } = config
 
   /**
-   * Formate l'adresse email de l'expéditeur
+   * Formats the sender address
    */
   function formatFromAddress(): string {
     return fromName ? `${fromName} <${fromEmail}>` : fromEmail
   }
 
   /**
-   * Attend un délai (pour le rate limiting)
+   * Waits for a delay (used by the rate limiter)
    */
   function delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   /**
-   * Divise un tableau en lots
+   * Splits an array into batches
    */
   function chunkArray<T>(array: T[], size: number): T[][] {
     const chunks: T[][] = []
@@ -93,11 +93,11 @@ export function createSESService(
 
   return {
     async sendEmail(params) {
-      // Validation des paramètres
+      // Validate the parameters
       const validatedParams = sendEmailParamsSchema.parse(params)
       const { to, subject, html, text, replyTo } = validatedParams
 
-      // Envoi via le client SES
+      // Send through the SES client
       const result = await client.sendEmail({
         from: formatFromAddress(),
         to,
@@ -111,14 +111,14 @@ export function createSESService(
     },
 
     async sendTemplatedEmail(params) {
-      // Validation des paramètres
+      // Validate the parameters
       const validatedParams = sendTemplatedEmailParamsSchema.parse(params)
       const { to, templateName, templateData, replyTo } = validatedParams
 
-      // Récupération du template
+      // Look up the template
       const template = getTemplate(templateName as TemplateName)
 
-      // Génération du contenu
+      // Render the content
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const subject = template.subject(templateData as any)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,7 +126,7 @@ export function createSESService(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const text = template.text(templateData as any)
 
-      // Envoi via le client SES
+      // Send through the SES client
       const result = await client.sendEmail({
         from: formatFromAddress(),
         to,
@@ -140,20 +140,20 @@ export function createSESService(
     },
 
     async sendBulkEmail(params) {
-      // Validation des paramètres
+      // Validate the parameters
       const validatedParams = sendBulkEmailParamsSchema.parse(params)
       const { recipients, replyTo } = validatedParams
 
       const results: SendBulkEmailResult['results'] = []
 
-      // Diviser en lots pour respecter les limites SES
+      // Split into batches to stay within the SES limits
       const batches = chunkArray(recipients, BATCH_SIZE)
 
-      // Calculer le délai entre chaque email pour le rate limiting
+      // Compute the per-email delay for rate limiting
       const delayBetweenEmails = Math.ceil(1000 / SES_RATE_LIMIT)
 
       for (const batch of batches) {
-        // Traiter chaque email du lot
+        // Process each email in the batch
         for (const recipient of batch) {
           try {
             const result = await client.sendEmail({

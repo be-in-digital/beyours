@@ -64,7 +64,7 @@ export const plans: Plan[] = [
 
 /* ── Comparison table ── */
 
-/** true = inclus · false = non inclus · "soon" = en cours de certification */
+/** true = included · false = not included · "soon" = certification under way */
 export type ComparisonStatus = boolean | "soon";
 
 export interface ComparisonCategory {

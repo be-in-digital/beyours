@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Model — "Pourquoi ce modèle de prix ?"
+   Pricing Model — the "Pourquoi ce modèle de prix ?" section
    ═══════════════════════════════════════════════ */
 
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";

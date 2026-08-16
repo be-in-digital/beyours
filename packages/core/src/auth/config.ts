@@ -40,8 +40,8 @@ export const MIN_PASSWORD_LENGTH = 8;
 /**
  * Base configuration for Better Auth
  *
- * @param options - Options de configuration
- * @returns Configuration Better Auth
+ * @param options - Configuration options
+ * @returns The Better Auth configuration
  *
  * @example
  * ```ts
@@ -53,7 +53,7 @@ export const MIN_PASSWORD_LENGTH = 8;
  * ```
  */
 export function createAuthConfig(options: {
-  /** URL de base de l'application */
+  /** Base URL of the application */
   baseUrl: string;
   /** Secret used to sign tokens */
   secret: string;
@@ -76,13 +76,13 @@ export function createAuthConfig(options: {
       url: convexUrl,
     },
 
-    // Configuration de session
+    // Session configuration
     session: {
       expiresIn: DEFAULT_SESSION_EXPIRY, // 7 jours
       refreshAfter: DEFAULT_SESSION_REFRESH, // 1 jour
     },
 
-    // Configuration email/password
+    // Email/password configuration
     emailAndPassword: {
       requireEmailVerification: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
@@ -118,12 +118,12 @@ export const authHooks = {
     role?: Role;
     restaurantId?: string;
   }) {
-    // Log l'inscription
+    // Log the sign-up
     console.info(
       `[Auth] Nouvel utilisateur inscrit: ${user.email} (${user.role ?? Role.CUSTOMER})`
     );
 
-    // TODO: Envoyer un email de bienvenue via AWS SES
+    // TODO: send a welcome email via AWS SES
     // TODO: seed the client's default data
     // TODO: notify the admin when this is a new restaurant
 
@@ -171,7 +171,7 @@ export const authHooks = {
 
     // TODO: add rate limiting
     // TODO: lock the account after N attempts
-    // TODO: Alerter en cas d'attaque brute force
+    // TODO: alert on brute-force attacks
 
     return;
   },
@@ -214,7 +214,7 @@ export const emailTemplates = {
   },
 
   /**
-   * Email de code 2FA
+   * 2FA code email
    */
   twoFactorCode: {
     subject: 'Code de vérification - BeYours',
@@ -222,7 +222,7 @@ export const emailTemplates = {
   },
 
   /**
-   * Email de bienvenue
+   * Welcome email
    */
   welcome: {
     subject: 'Bienvenue sur BeYours!',
@@ -230,7 +230,7 @@ export const emailTemplates = {
   },
 
   /**
-   * Email de magic link
+   * Magic link email
    */
   magicLink: {
     subject: 'Votre lien de connexion - BeYours',
@@ -242,9 +242,9 @@ export const emailTemplates = {
  * Redirect URL configuration
  */
 export const authRoutes = {
-  /** Page de connexion */
+  /** Sign-in page */
   signIn: '/auth/signin',
-  /** Page d'inscription */
+  /** Sign-up page */
   signUp: '/auth/signup',
   /** Where to land after a successful sign-in */
   afterSignIn: '/dashboard',
@@ -254,9 +254,9 @@ export const authRoutes = {
   verifyEmail: '/auth/verify-email',
   /** Password reset page */
   resetPassword: '/auth/reset-password',
-  /** Page de configuration 2FA */
+  /** 2FA setup page */
   twoFactor: '/settings/security/2fa',
-  /** Page d'erreur auth */
+  /** Auth error page */
   error: '/auth/error',
 };
 
@@ -304,7 +304,7 @@ export function validatePassword(password: string): {
     errors.push('Le mot de passe doit contenir au moins une minuscule');
   }
 
-  // Au moins un chiffre
+  // At least one digit
   if (!/[0-9]/.test(password)) {
     errors.push('Le mot de passe doit contenir au moins un chiffre');
   }
@@ -321,7 +321,7 @@ export function validatePassword(password: string): {
 }
 
 /**
- * Validation de l'email
+ * Email validation
  *
  * @param email - The email to validate
  * @returns `true` when the email is valid

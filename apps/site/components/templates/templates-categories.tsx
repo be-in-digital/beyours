@@ -89,7 +89,7 @@ export function TemplatesCategories() {
         className="pointer-events-none absolute inset-0 bg-section-radial"
       />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-        {/* En-tête */}
+        {/* Header */}
         <FadeIn>
           <div className="mb-14 text-center">
             <SectionBadge text={`${totalTemplates} templates`} />
@@ -104,7 +104,7 @@ export function TemplatesCategories() {
           </div>
         </FadeIn>
 
-        {/* Filtres catégories */}
+        {/* Category filters */}
         <FadeIn delay={0.1}>
           <div className="mb-12 flex flex-wrap justify-center gap-2.5">
             {TABS.map((tab) => {
@@ -140,7 +140,7 @@ export function TemplatesCategories() {
           </div>
         </FadeIn>
 
-        {/* Galerie de captures */}
+        {/* Screenshot gallery */}
         <AnimatePresence mode="wait">
           <motion.div
             key={active}
@@ -165,7 +165,7 @@ export function TemplatesCategories() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
                   />
-                  {/* Voile + label catégorie */}
+                  {/* Veil + category label */}
                   <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/85 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm">
                     <span
                       className="h-2 w-2 rounded-full"
@@ -182,7 +182,7 @@ export function TemplatesCategories() {
                   </div>
                 </div>
 
-                {/* Pied de carte */}
+                {/* Card footer */}
                 <div className="flex items-center justify-between gap-3 px-4 py-3.5">
                   <div className="min-w-0">
                     <h3 className="truncate font-display text-base font-semibold text-foreground">

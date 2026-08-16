@@ -40,9 +40,9 @@ export const createFromCheckout = internalMutation({
       .unique();
     if (existing) return existing._id;
 
-    // Dédup « Nouveau Client » (art. 3.2) : si l'email est déjà client (commande
-    // payée antérieure) ou déjà un contact connu, on bloque pour revue humaine
-    // au lieu de laisser filer la commission.
+    // « Nouveau Client » dedup (art. 3.2): if the email is already a customer (an
+    // earlier paid order) or an already-known contact, hold it for human review
+    // instead of letting the commission through.
     const priorOrders = await ctx.db
       .query("orders")
       .withIndex("by_email", (q) => q.eq("customerEmail", args.customerEmail))
@@ -146,7 +146,7 @@ export const markValidatedAsPayable = internalMutation({
     let marked = 0;
     for (const referral of validated) {
       const affiliate = await ctx.db.get(referral.referrerId);
-      // Aucun versement sans SIRET (pro) ni facture de l'apporteur (art. 4.2).
+      // No payout without a SIRET (professional) and the affiliate's invoice (art. 4.2).
       if (
         affiliate?.stripeConnectStatus === "active" &&
         affiliate.siret &&
@@ -185,9 +185,9 @@ export const getByIdInternal = internalQuery({
 });
 
 /**
- * Annule une commission (remboursement, impayé, litige). La reprise éventuelle
- * du transfer Stripe est faite en amont par l'action stripeConnect ; ici on
- * fige seulement le statut et la traçabilité.
+ * Cancels a commission (refund, unpaid invoice, dispute). Reversing the Stripe
+ * transfer, when needed, happens upstream in the stripeConnect action; here we
+ * only freeze the status and the audit trail.
  */
 export const cancelReferral = internalMutation({
   args: {
@@ -278,9 +278,9 @@ export const getMyStats = query({
   },
 });
 
-/* ── Facturation apporteur (facture obligatoire avant versement, art. 4.2) ── */
+/* ── Affiliate invoicing (invoice mandatory before payout, art. 4.2) ── */
 
-/** URL d'upload signée pour joindre une facture (le fichier est POSté dessus). */
+/** Signed upload URL for attaching an invoice (the file is POSTed to it). */
 export const generateInvoiceUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -290,7 +290,7 @@ export const generateInvoiceUploadUrl = mutation({
   },
 });
 
-/** Rattache la facture uploadée à une commission de l'apporteur connecté. */
+/** Attaches the uploaded invoice to a commission of the signed-in affiliate. */
 export const attachReferralInvoice = mutation({
   args: {
     referralId: v.id("referrals"),
@@ -321,7 +321,7 @@ export const attachReferralInvoice = mutation({
   },
 });
 
-/** URL de consultation de la facture — accessible au propriétaire ou à un admin. */
+/** Read URL for the invoice — available to its owner or to an admin. */
 export const getReferralInvoiceUrl = query({
   args: { referralId: v.id("referrals") },
   handler: async (ctx, args) => {

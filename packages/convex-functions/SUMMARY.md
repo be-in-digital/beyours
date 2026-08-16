@@ -1,140 +1,140 @@
-# Résumé - Package Convex Functions
+# Summary - Convex Functions Package
 
-## Vue d'ensemble
+## Overview
 
-Package partagé contenant **toutes les fonctions backend Convex** pour BeYours Engine.
+Shared package containing **all the Convex backend functions** for BeYours Engine.
 
-- **1,582 lignes de code TypeScript**
-- **10 modules fonctionnels**
-- **60+ fonctions (queries + mutations)**
-- **100% type-safe avec Convex validators**
-
----
-
-## Fichiers créés
-
-### 1. `src/helpers.ts` (29 lignes)
-Fonctions utilitaires pour le backend.
-
-**Fonctions:**
-- `generateOrderNumber()` - Génère un numéro de commande unique (ORD-YYYY-XXXX)
-- `generateSlug(text)` - Convertit un texte en slug URL-friendly
-- `now()` - Retourne le timestamp actuel
+- **1,582 lines of TypeScript code**
+- **10 functional modules**
+- **60+ functions (queries + mutations)**
+- **100% type-safe with Convex validators**
 
 ---
 
-### 2. `src/stores.ts` (198 lignes)
-Gestion des restaurants/magasins.
+## Files created
+
+### 1. `src/helpers.ts` (29 lines)
+Utility functions for the backend.
+
+**Functions:**
+- `generateOrderNumber()` - Generates a unique order number (ORD-YYYY-XXXX)
+- `generateSlug(text)` - Converts a text into a URL-friendly slug
+- `now()` - Returns the current timestamp
+
+---
+
+### 2. `src/stores.ts` (198 lines)
+Restaurant/store management.
 
 **Queries (3):**
-- `list()` - Liste tous les stores
-- `getById(id)` - Récupère un store par ID
-- `getBySlug(slug)` - Récupère un store par slug
+- `list()` - Lists all stores
+- `getById(id)` - Fetches a store by ID
+- `getBySlug(slug)` - Fetches a store by slug
 
 **Mutations (6):**
-- `create(...)` - Crée un nouveau store avec horaires par défaut
-- `update(id, ...)` - Met à jour les infos basiques
-- `updateHours(id, hours)` - Met à jour les horaires d'ouverture
-- `updateBranding(id, branding)` - Met à jour le branding (couleurs, logos)
-- `updateSettings(id, settings)` - Met à jour les paramètres (livraison, taxes, etc.)
-- `remove(id)` - Supprime un store
+- `create(...)` - Creates a new store with default opening hours
+- `update(id, ...)` - Updates the basic info
+- `updateHours(id, hours)` - Updates the opening hours
+- `updateBranding(id, branding)` - Updates the branding (colors, logos)
+- `updateSettings(id, settings)` - Updates the settings (delivery, taxes, etc.)
+- `remove(id)` - Deletes a store
 
 ---
 
-### 3. `src/products.ts` (236 lignes)
-Gestion du catalogue produits.
+### 3. `src/products.ts` (236 lines)
+Product catalog management.
 
 **Queries (5):**
-- `list(storeId)` - Liste tous les produits d'un store
-- `getById(id)` - Récupère un produit par ID
-- `getByCategory(storeId, categoryId)` - Produits d'une catégorie
-- `getBySlug(storeId, slug)` - Produit par slug
-- `getFeatured(storeId)` - Produits en vedette actifs
+- `list(storeId)` - Lists all the products of a store
+- `getById(id)` - Fetches a product by ID
+- `getByCategory(storeId, categoryId)` - Products in a category
+- `getBySlug(storeId, slug)` - Product by slug
+- `getFeatured(storeId)` - Active featured products
 
 **Mutations (5):**
-- `create(...)` - Crée un nouveau produit avec options, allergènes, nutritions
-- `update(id, ...)` - Met à jour un produit (tous champs optionnels)
-- `updateStock(id, quantity)` - Met à jour uniquement le stock
-- `toggleStatus(id)` - Active/désactive un produit
-- `remove(id)` - Supprime un produit
+- `create(...)` - Creates a new product with options, allergens, nutrition
+- `update(id, ...)` - Updates a product (all fields optional)
+- `updateStock(id, quantity)` - Updates the stock only
+- `toggleStatus(id)` - Enables/disables a product
+- `remove(id)` - Deletes a product
 
 ---
 
-### 4. `src/categories.ts` (115 lignes)
-Gestion des catégories de menu.
+### 4. `src/categories.ts` (115 lines)
+Menu category management.
 
 **Queries (2):**
-- `list(storeId)` - Liste toutes les catégories, triées par sortOrder
-- `getById(id)` - Récupère une catégorie par ID
+- `list(storeId)` - Lists all the categories, sorted by sortOrder
+- `getById(id)` - Fetches a category by ID
 
 **Mutations (4):**
-- `create(...)` - Crée une nouvelle catégorie
-- `update(id, ...)` - Met à jour une catégorie
-- `reorder(ids)` - Réorganise les catégories (drag & drop)
-- `remove(id)` - Supprime une catégorie
+- `create(...)` - Creates a new category
+- `update(id, ...)` - Updates a category
+- `reorder(ids)` - Reorders the categories (drag & drop)
+- `remove(id)` - Deletes a category
 
 ---
 
-### 5. `src/orders.ts` (205 lignes)
-Gestion des commandes clients.
+### 5. `src/orders.ts` (205 lines)
+Customer order management.
 
 **Queries (4):**
-- `list(storeId)` - Liste toutes les commandes (ordre décroissant)
-- `getById(id)` - Récupère une commande par ID
-- `getByCustomer(customerId)` - Commandes d'un client
-- `getByStatus(storeId, status)` - Commandes par statut
+- `list(storeId)` - Lists all the orders (descending order)
+- `getById(id)` - Fetches an order by ID
+- `getByCustomer(customerId)` - Orders of a customer
+- `getByStatus(storeId, status)` - Orders by status
 
 **Mutations (2):**
-- `create(...)` - Crée une commande (calcule automatiquement subtotal, taxes, livraison, total)
-- `updateStatus(id, status, reason?)` - Change le statut (gère completedAt/cancelledAt)
-- `remove(id)` - Supprime une commande
+- `create(...)` - Creates an order (automatically computes subtotal, taxes, delivery, total)
+- `updateStatus(id, status, reason?)` - Changes the status (handles completedAt/cancelledAt)
+- `remove(id)` - Deletes an order
 
-**Calculs automatiques:**
-- Subtotal (prix produits + options)
-- Taxes (basé sur store.settings.taxRate)
-- Frais de livraison (si type = delivery)
-- Total final
-- Génération du numéro de commande
+**Automatic calculations:**
+- Subtotal (product prices + options)
+- Taxes (based on store.settings.taxRate)
+- Delivery fee (if type = delivery)
+- Final total
+- Order number generation
 
 ---
 
-### 6. `src/kitchenTickets.ts` (201 lignes)
-Gestion du système de cuisine (KDS).
+### 6. `src/kitchenTickets.ts` (201 lines)
+Kitchen display system (KDS) management.
 
 **Queries (4):**
-- `getByStore(storeId)` - Tous les tickets d'un store
-- `getByStatus(storeId, status)` - Tickets par statut (pending, in_progress, etc.)
-- `getByStation(storeId, station)` - Tickets d'une station (grill, fryer, etc.)
-- `getByOrder(orderId)` - Tickets d'une commande
+- `getByStore(storeId)` - All the tickets of a store
+- `getByStatus(storeId, status)` - Tickets by status (pending, in_progress, etc.)
+- `getByStation(storeId, station)` - Tickets of a station (grill, fryer, etc.)
+- `getByOrder(orderId)` - Tickets of an order
 
 **Mutations (6):**
-- `create(...)` - Crée un ticket de cuisine
-- `updateStatus(id, status)` - Change le statut (gère startedAt/completedAt automatiquement)
-- `assignStation(id, station)` - Assigne à une station
-- `assignTo(id, userId)` - Assigne à un cuisinier
-- `incrementPrintCount(id)` - Incrémente le compteur d'impression
+- `create(...)` - Creates a kitchen ticket
+- `updateStatus(id, status)` - Changes the status (handles startedAt/completedAt automatically)
+- `assignStation(id, station)` - Assigns to a station
+- `assignTo(id, userId)` - Assigns to a cook
+- `incrementPrintCount(id)` - Increments the print counter
 
-**Statuts:**
-- `pending` - En attente
-- `in_progress` - En préparation (définit startedAt)
-- `ready` - Prêt (définit completedAt)
-- `completed` - Terminé (définit completedAt)
+**Statuses:**
+- `pending` - Waiting
+- `in_progress` - Being prepared (sets startedAt)
+- `ready` - Ready (sets completedAt)
+- `completed` - Done (sets completedAt)
 
 ---
 
-### 7. `src/payments.ts` (117 lignes)
-Gestion des paiements.
+### 7. `src/payments.ts` (117 lines)
+Payment management.
 
 **Queries (2):**
-- `getByOrder(orderId)` - Paiements d'une commande
-- `getByStore(storeId)` - Tous les paiements d'un store
+- `getByOrder(orderId)` - Payments of an order
+- `getByStore(storeId)` - All the payments of a store
 
 **Mutations (3):**
-- `create(...)` - Crée un nouveau paiement (statut: pending)
-- `updateStatus(id, status, externalId?)` - Met à jour le statut
-- `refund(id, amount, reason?)` - Rembourse (partiel ou total)
+- `create(...)` - Creates a new payment (status: pending)
+- `updateStatus(id, status, externalId?)` - Updates the status
+- `refund(id, amount, reason?)` - Refunds (partial or full)
 
-**Providers supportés:**
+**Supported providers:**
 - Stripe
 - SumUp
 - PayPal
@@ -143,84 +143,84 @@ Gestion des paiements.
 
 ---
 
-### 8. `src/teamMembers.ts` (141 lignes)
-Gestion de l'équipe.
+### 8. `src/teamMembers.ts` (141 lines)
+Team management.
 
 **Queries (3):**
-- `list(storeId)` - Tous les membres d'un store
-- `getByUser(userId)` - Memberships d'un utilisateur
-- `getByRole(storeId, role)` - Membres par rôle
+- `list(storeId)` - All the members of a store
+- `getByUser(userId)` - Memberships of a user
+- `getByRole(storeId, role)` - Members by role
 
 **Mutations (4):**
-- `create(...)` - Ajoute un membre à l'équipe
-- `update(id, ...)` - Met à jour rôle/permissions
-- `toggleActive(id)` - Active/désactive un membre
-- `remove(id)` - Supprime un membre
+- `create(...)` - Adds a member to the team
+- `update(id, ...)` - Updates role/permissions
+- `toggleActive(id)` - Enables/disables a member
+- `remove(id)` - Removes a member
 
-**Rôles:**
-- `owner` - Propriétaire
-- `manager` - Gérant
-- `staff` - Personnel
-- `kitchen` - Cuisinier
-- `delivery` - Livreur
+**Roles:**
+- `owner` - Owner
+- `manager` - Manager
+- `staff` - Staff
+- `kitchen` - Cook
+- `delivery` - Driver
 
 ---
 
-### 9. `src/languages.ts` (135 lignes)
-Gestion des langues (i18n dynamique).
+### 9. `src/languages.ts` (135 lines)
+Language management (dynamic i18n).
 
 **Queries (1):**
-- `list(storeId)` - Toutes les langues d'un store
+- `list(storeId)` - All the languages of a store
 
 **Mutations (5):**
-- `create(...)` - Ajoute une langue (déselectionne l'ancienne default si isDefault: true)
-- `update(id, ...)` - Met à jour une langue
-- `toggleActive(id)` - Active/désactive une langue
-- `setDefault(storeId, languageId)` - Définit comme langue par défaut (auto-update des autres)
-- `remove(id)` - Supprime une langue (refuse si isDefault)
+- `create(...)` - Adds a language (unsets the previous default if isDefault: true)
+- `update(id, ...)` - Updates a language
+- `toggleActive(id)` - Enables/disables a language
+- `setDefault(storeId, languageId)` - Sets it as the default language (auto-updates the others)
+- `remove(id)` - Deletes a language (refuses if isDefault)
 
-**Fonctionnalité unique:**
-- Admin peut ajouter **n'importe quelle langue**
-- Une seule langue `isDefault` par store (auto-gérée)
+**Unique feature:**
+- Admin can add **any language**
+- A single `isDefault` language per store (handled automatically)
 
 ---
 
-### 10. `src/translations.ts` (175 lignes)
-Gestion des traductions multi-langues.
+### 10. `src/translations.ts` (175 lines)
+Multi-language translation management.
 
 **Queries (2):**
-- `getForEntity(storeId, entityType, entityId)` - Traductions d'une entité
-- `getByLanguage(storeId, languageCode)` - Toutes les traductions d'une langue
+- `getForEntity(storeId, entityType, entityId)` - Translations of an entity
+- `getByLanguage(storeId, languageCode)` - All the translations of a language
 
 **Mutations (3):**
-- `upsert(...)` - Crée ou met à jour une traduction (upsert intelligent)
-- `bulkUpsert(translations)` - Bulk upsert pour traductions en masse
-- `remove(id)` - Supprime une traduction
+- `upsert(...)` - Creates or updates a translation (smart upsert)
+- `bulkUpsert(translations)` - Bulk upsert for mass translations
+- `remove(id)` - Deletes a translation
 
-**Entités traduisibles:**
-- `product` - Produits (nom, description, options)
-- `category` - Catégories
-- `page` - Pages CMS
+**Translatable entities:**
+- `product` - Products (name, description, options)
+- `category` - Categories
+- `page` - CMS pages
 - `menu` - Menus
-- `option` - Options de produits
+- `option` - Product options
 
-**Utilisation:**
+**Usage:**
 ```typescript
-// Upsert unique
+// Single upsert
 await upsert({
   storeId, entityType: "product", entityId: product._id,
   field: "name", languageCode: "fr", value: "Pizza",
   isAutoTranslated: false
 })
 
-// Bulk upsert (ex: traduction GPT de 50 produits)
+// Bulk upsert (e.g. GPT translation of 50 products)
 await bulkUpsert({ translations: [...] })
 ```
 
 ---
 
-### 11. `src/index.ts` (16 lignes)
-Barrel file exportant tous les modules.
+### 11. `src/index.ts` (16 lines)
+Barrel file exporting every module.
 
 ```typescript
 export * as stores from './stores'
@@ -237,31 +237,31 @@ export { generateOrderNumber, generateSlug, now } from './helpers'
 
 ---
 
-## Caractéristiques techniques
+## Technical characteristics
 
 ### Type Safety
-- Tous les arguments validés avec Convex validators (`v.string()`, `v.number()`, etc.)
-- Aucun type `any` dans les args (sauf metadata pour payments)
-- Support TypeScript complet
+- Every argument validated with Convex validators (`v.string()`, `v.number()`, etc.)
+- No `any` type in the args (except metadata for payments)
+- Full TypeScript support
 
-### Timestamps automatiques
-- `createdAt` sur toutes les mutations `create`
-- `updatedAt` sur toutes les mutations `update`/`patch`
-- Timestamps spéciaux: `startedAt`, `completedAt`, `cancelledAt`
+### Automatic timestamps
+- `createdAt` on every `create` mutation
+- `updatedAt` on every `update`/`patch` mutation
+- Special timestamps: `startedAt`, `completedAt`, `cancelledAt`
 
 ### Multi-tenant
-- Toutes les queries filtrent par `storeId`
-- Isolation des données garantie
+- Every query filters by `storeId`
+- Data isolation guaranteed
 
-### Logique métier embarquée
-- **Orders:** Calcul automatique des totaux (subtotal, taxes, livraison)
-- **Kitchen Tickets:** Gestion automatique des timestamps selon statut
-- **Languages:** Auto-désélection des autres langues si `isDefault: true`
-- **Translations:** Upsert intelligent (update si existe, insert sinon)
+### Business logic built in
+- **Orders:** Automatic total calculation (subtotal, taxes, delivery)
+- **Kitchen Tickets:** Automatic timestamp handling based on status
+- **Languages:** Auto-unsets the other languages if `isDefault: true`
+- **Translations:** Smart upsert (update if it exists, insert otherwise)
 
-### Indexes requis
+### Required indexes
 ```typescript
-// Dans schema.ts
+// In schema.ts
 stores: defineTable({...}).index("by_slug", ["slug"])
 products: defineTable({...})
   .index("by_store", ["storeId"])
@@ -289,79 +289,79 @@ translations: defineTable({...})
 
 ## Documentation
 
-### Fichiers de documentation créés
+### Documentation files created
 
-1. **README.md** - Vue d'ensemble du package, liste des fonctions
-2. **USAGE.md** - Guide d'utilisation complet avec exemples
-3. **SUMMARY.md** - Ce fichier (résumé technique)
+1. **README.md** - Package overview, list of functions
+2. **USAGE.md** - Full usage guide with examples
+3. **SUMMARY.md** - This file (technical summary)
 
-### Exemples fournis
+### Examples provided
 
-- Créer une commande avec calcul automatique
-- Gérer les tickets de cuisine
-- Traductions (upsert simple et bulk)
-- Gérer les langues (setDefault)
-- Utilisation dans composants Next.js
-- Tests avec ConvexTestingHelper
+- Creating an order with automatic calculation
+- Handling kitchen tickets
+- Translations (single and bulk upsert)
+- Managing languages (setDefault)
+- Usage inside Next.js components
+- Tests with ConvexTestingHelper
 
 ---
 
-## Prochaines étapes
+## Next steps
 
-### Pour utiliser ce package:
+### To use this package:
 
-1. **Copier les fichiers dans votre app**
+1. **Copy the files into your app**
    ```bash
    cp packages/convex-functions/src/*.ts apps/restaurant-theme/convex/
    ```
 
-2. **Définir le schema Convex**
-   - Utiliser le package `convex-schema` (à créer)
-   - Ou définir manuellement dans `convex/schema.ts`
+2. **Define the Convex schema**
+   - Use the `convex-schema` package (to be created)
+   - Or define it manually in `convex/schema.ts`
 
-3. **Générer les types**
+3. **Generate the types**
    ```bash
    cd apps/restaurant-theme
    npx convex dev
    ```
 
-4. **Utiliser dans votre app**
+4. **Use it in your app**
    ```typescript
    import { api } from "@/convex/_generated/api"
    const stores = useQuery(api.stores.list)
    ```
 
-### Fonctions additionnelles à créer:
+### Additional functions to create:
 
-Selon CLAUDE.md, il manque encore:
+According to CLAUDE.md, these are still missing:
 - `gameQRCodes.ts` - Gamification (QR codes)
-- `games.ts` - Configuration des jeux
-- `prizes.ts` - Gestion des prix
-- `gamePlays.ts` - Historique des parties
-- `prizeRedemptions.ts` - Utilisation des prix
-- `menus.ts` - Menus (collection de catégories)
-- `printerSettings.ts` - Configuration imprimantes
-- `translationJobs.ts` - Jobs de traduction GPT
+- `games.ts` - Game configuration
+- `prizes.ts` - Prize management
+- `gamePlays.ts` - Play history
+- `prizeRedemptions.ts` - Prize redemption
+- `menus.ts` - Menus (collection of categories)
+- `printerSettings.ts` - Printer configuration
+- `translationJobs.ts` - GPT translation jobs
 
-Ces modules peuvent être ajoutés ultérieurement selon les besoins.
+These modules can be added later as needed.
 
 ---
 
-## Statistiques
+## Statistics
 
-- **Total lignes de code:** 1,582
-- **Nombre de fichiers:** 11
+- **Total lines of code:** 1,582
+- **Number of files:** 11
 - **Queries:** 24
 - **Mutations:** 36
 - **Helpers:** 3
-- **Providers supportés:** 5 (Stripe, SumUp, PayPal, Square, Cash)
-- **Rôles d'équipe:** 5
-- **Statuts de commande:** 7
-- **Statuts de ticket:** 4
-- **Types de traduction:** 5
+- **Supported providers:** 5 (Stripe, SumUp, PayPal, Square, Cash)
+- **Team roles:** 5
+- **Order statuses:** 7
+- **Ticket statuses:** 4
+- **Translation types:** 5
 
 ---
 
 **Version:** 0.1.0
-**Créé le:** 14 février 2026
+**Created on:** February 14, 2026
 **Package:** `@be-in-digital/convex-functions`

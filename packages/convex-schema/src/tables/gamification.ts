@@ -78,10 +78,10 @@ export const gamesTable = defineTable({
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
     cooldownHours: v.optional(v.number()),
-    // "sequential" (défaut) = une action par visite, progressive d'une visite
-    // à l'autre. "all" = toutes les actions requises d'un coup (héritage).
+    // "sequential" (default) = one action per visit, advancing from one
+    // visit to the next. "all" = every required action at once (legacy).
     actionMode: v.optional(v.union(v.literal("all"), v.literal("sequential"))),
-    // Parrainage : action récurrente une fois les actions sociales épuisées.
+    // Referral: a recurring action once the social actions run out.
     referral: v.optional(v.object({
       enabled: v.boolean(),
       friendRewardLabel: v.optional(v.string()),
@@ -137,7 +137,7 @@ export const gamePlaysTable = defineTable({
   playerPhone: v.optional(v.string()),
   fingerprint: v.optional(v.string()),
   completedActions: v.array(v.string()), // Action IDs completed
-  referredByCode: v.optional(v.string()), // Parrain (code) si arrivé via parrainage
+  referredByCode: v.optional(v.string()), // Referrer code if arrived via referral
   didWin: v.boolean(),
   prizeId: v.optional(v.id("prizes")),
   ipAddress: v.optional(v.string()),

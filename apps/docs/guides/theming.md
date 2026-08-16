@@ -1,11 +1,11 @@
 # Theming Guide
 
-> **⚠️ Ce guide décrit une fonctionnalité qui n'a jamais été implémentée.**
-> Le paquet `@be-in-digital/themes` ne contenait que `export {}` et a été supprimé.
-> Aucun des six thèmes ci-dessous n'existe dans le code, et l'exemple d'import
-> plus bas ne fonctionne pas. Le theming réel passe aujourd'hui par le design
-> system de `packages/ui` et les réglages de branding du CMS.
-> Ce guide est à réécrire à partir du comportement réel avant d'être publié.
+> **⚠️ This guide describes a feature that was never implemented.**
+> The `@be-in-digital/themes` package contained nothing but `export {}` and has been removed.
+> None of the six themes below exist in the code, and the import example
+> further down does not work. Theming today goes through the design
+> system in `packages/ui` and the CMS branding settings.
+> This guide needs to be rewritten from the actual behavior before it is published.
 
 ## Available Themes
 

@@ -32,7 +32,7 @@ const geistMono = localFont({
   ],
 });
 
-// Display font — grotesque à caractère, chaleureux, hospitalité food
+// Display font — a grotesque with character: warm, food-hospitality feel
 const bricolage = localFont({
   variable: "--font-display",
   display: "swap",
@@ -41,26 +41,26 @@ const bricolage = localFont({
   ],
 });
 
-// Polices d'accent des templates interactifs (une identité par univers).
-// Pizzeria — serif éditorial
+// Accent typefaces for the interactive templates — one identity per vertical.
+// Pizzeria — editorial serif
 const fraunces = localFont({
   variable: "--font-editorial",
   display: "swap",
   src: [{ path: "./fonts/fraunces.woff2", weight: "100 900", style: "normal" }],
 });
-// Fast-food — grotesque d'impact
+// Fast food — impact grotesque
 const anton = localFont({
   variable: "--font-impact",
   display: "swap",
   src: [{ path: "./fonts/anton.woff2", weight: "400", style: "normal" }],
 });
-// Food truck — condensée
+// Food truck — condensed
 const oswald = localFont({
   variable: "--font-condensed",
   display: "swap",
   src: [{ path: "./fonts/oswald.woff2", weight: "200 700", style: "normal" }],
 });
-// Asiatique — sans épurée
+// Asian — pared-back sans
 const zenKaku = localFont({
   variable: "--font-zen",
   display: "swap",

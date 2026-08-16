@@ -1,49 +1,49 @@
-# Runbook — Rotation des secrets & purge de l'historique git
+# Runbook — Secret rotation & git history purge
 
-> Procédure opérationnelle suite à l'audit production. Ce fichier ne contient
-> **aucun secret** : les valeurs sont extraites de l'historique au moment de la
-> purge, ou saisies par toi dans les portails. Ne jamais committer de secret.
+> Operational procedure following the production audit. This file contains
+> **no secret**: the values are pulled out of the history at purge time, or
+> typed by you into the portals. Never commit a secret.
 
-## Contexte (ce qui a fuité)
+## Context (what leaked)
 
-| Élément | Où | Gravité | Action |
+| Item | Where | Severity | Action |
 |---------|-----|---------|--------|
-| `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | en dur dans `scripts/deliveroo-menu-scenarios.sh`, présent dans l'historique git | Élevée | Régénérer + purger l'historique |
-| Token de session Better Auth + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, dans l'historique | Moyenne (compte de test) | Invalider la session + purger le fichier |
+| `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | hardcoded in `scripts/deliveroo-menu-scenarios.sh`, present in git history | High | Regenerate + purge the history |
+| Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Medium (test account) | Invalidate the session + purge the file |
 
-> Le code actuel ne contient plus ces valeurs (corrigé sur la branche d'audit),
-> mais **supprimer un fichier ne purge pas l'historique** : les commits passés
-> les exposent toujours tant que l'historique n'est pas réécrit.
+> The current code no longer contains these values (fixed on the audit branch),
+> but **deleting a file does not purge the history**: past commits still expose
+> them for as long as the history is not rewritten.
 
 ---
 
-## Partie A — Rotation des secrets
+## Part A — Secret rotation
 
-Ordre général pour **tout** secret : **régénérer → propager partout → re-vérifier → révoquer l'ancien**. Ne jamais mettre la valeur dans le repo.
+General order for **any** secret: **regenerate → propagate everywhere → re-verify → revoke the old one**. Never put the value in the repo.
 
-### A.1 — Deliveroo (sandbox), prioritaire
+### A.1 — Deliveroo (sandbox), top priority
 
-1. **Régénérer** : Deliveroo Developer Portal → ton app sandbox → *Credentials* → régénérer le `client_secret`.
-2. **Propager** la nouvelle valeur dans chaque store qui en a besoin :
+1. **Regenerate**: Deliveroo Developer Portal → your sandbox app → *Credentials* → regenerate the `client_secret`.
+2. **Propagate** the new value to every store that needs it:
    ```bash
-   # Convex (runtime des webhooks/actions) — sur CHAQUE déploiement
+   # Convex (webhook/action runtime) — on EVERY deployment
    npx convex env set DELIVEROO_CLIENT_SECRET "<nouvelle_valeur>"          # dev
    npx convex env set DELIVEROO_CLIENT_SECRET "<nouvelle_valeur>" --prod   # prod
-   # Vercel (si lu côté Next) : Dashboard → Settings → Environment Variables
-   # GitHub (si un jour utilisé en CI) : gh secret set DELIVEROO_CLIENT_SECRET
-   # Local : apps/restaurant-theme/.env.local (jamais committé)
+   # Vercel (if read on the Next side): Dashboard → Settings → Environment Variables
+   # GitHub (if ever used in CI): gh secret set DELIVEROO_CLIENT_SECRET
+   # Local: apps/restaurant-theme/.env.local (never committed)
    ```
-3. **Re-vérifier** : envoyer un webhook signé de test (voir option 3 de l'audit : simulateur de webhooks) → doit répondre `200` ; un payload mal signé → `401`.
-4. **Révoquer** l'ancien secret dans le portail une fois le trafic sain.
+3. **Re-verify**: send a signed test webhook (see audit option 3: webhook simulator) → must answer `200`; a badly signed payload → `401`.
+4. **Revoke** the old secret in the portal once traffic is healthy.
 
-### A.2 — Invalider la session Better Auth fuitée
+### A.2 — Invalidate the leaked Better Auth session
 
-C'est un compte **de test** (`test.owner@beindigital.fr`) sur le déploiement dev :
+This is a **test** account (`test.owner@beindigital.fr`) on the dev deployment:
 
-- **Option simple (ciblée)** : Convex Dashboard → table `session` du composant Better Auth → supprimer la/les ligne(s) de ce user (et/ou supprimer le user de test). Le `convex_jwt` fuité expire de lui-même.
-- **Option radicale** : faire tourner `BETTER_AUTH_SECRET` (invalide **toutes** les sessions/JWT → déconnecte tout le monde). À réserver si un doute existe sur un compte réel.
+- **Simple option (targeted)**: Convex Dashboard → the Better Auth component's `session` table → delete that user's row(s) (and/or delete the test user). The leaked `convex_jwt` expires on its own.
+- **Nuclear option**: rotate `BETTER_AUTH_SECRET` (invalidates **every** session/JWT → logs everyone out). Keep this for cases where a real account is in doubt.
 
-### A.3 — Référence : où vit chaque secret (pour les rotations futures)
+### A.3 — Reference: where each secret lives (for future rotations)
 
 | Secret | Convex env | Vercel env | GitHub Secrets | `.env.local` |
 |--------|:---------:|:----------:|:--------------:|:------------:|
@@ -55,31 +55,31 @@ C'est un compte **de test** (`test.owner@beindigital.fr`) sur le déploiement de
 | `BETTER_AUTH_SECRET` | ✅ | ✅ | (E2E_*) | ✅ |
 | `ENCRYPTION_KEY` | ✅ | ✅ | (E2E_*) | ✅ |
 
-> ⚠️ **`ENCRYPTION_KEY`** chiffre les tokens OAuth stockés (`uberEatsConnections`).
-> Le faire tourner rend les tokens existants illisibles → les marchands devront
-> **relancer le flux OAuth de connexion**. À planifier, pas à improviser.
+> ⚠️ **`ENCRYPTION_KEY`** encrypts the stored OAuth tokens (`uberEatsConnections`).
+> Rotating it makes existing tokens unreadable → merchants will have to
+> **re-run the OAuth connect flow**. Plan it, don't improvise it.
 
 ---
 
-## Partie B — Purge de l'historique git
+## Part B — Git history purge
 
-> ⚠️ **Réécriture d'historique = force-push.** À coordonner avec l'équipe : tout
-> le monde devra **re-cloner**. Fais-le sur un **clone neuf complet**, PAS dans le
-> workspace Conductor (worktree lié, `.git` est un fichier → filter-repo casse).
-> Pré-requis : le secret Deliveroo doit déjà être **régénéré** (Partie A.1), pour
-> que la valeur historique soit morte même si la purge tarde.
+> ⚠️ **History rewrite = force-push.** Coordinate with the team: everyone will
+> have to **re-clone**. Do it on a **fresh full clone**, NOT in the Conductor
+> workspace (linked worktree, `.git` is a file → filter-repo breaks).
+> Prerequisite: the Deliveroo secret must already be **regenerated** (Part A.1),
+> so the historical value is dead even if the purge is delayed.
 
-### B.1 — Préparer un clone neuf + l'outil
+### B.1 — Prepare a fresh clone + the tool
 
 ```bash
-brew install git-filter-repo          # ou: pipx install git-filter-repo
+brew install git-filter-repo          # or: pipx install git-filter-repo
 cd /tmp && git clone git@github.com:be-in-digital/<repo>.git purge && cd purge
 ```
 
-### B.2 — Générer le fichier de remplacement depuis l'historique (aucun secret saisi à la main)
+### B.2 — Generate the replacement file from the history (no secret typed by hand)
 
-Ce one-liner lit l'ancienne version du script et écrit `secrets-to-redact.txt`
-au format attendu par git-filter-repo, sans que tu copies la valeur :
+This one-liner reads the old version of the script and writes `secrets-to-redact.txt`
+in the format git-filter-repo expects, without you copying the value:
 
 ```bash
 git show origin/main:scripts/deliveroo-menu-scenarios.sh \
@@ -87,51 +87,51 @@ git show origin/main:scripts/deliveroo-menu-scenarios.sh \
   | sed -E 's/.*:-([^}]+)}.*/literal:\1==>***REDACTED***/' \
   > secrets-to-redact.txt
 
-# Contrôle (n'affiche que la structure, pas la valeur) :
+# Check (prints the structure only, not the value):
 sed -E 's/literal:.*==>/literal:<masqué>==>/' secrets-to-redact.txt
-# Doit afficher 2 lignes "literal:<masqué>==>***REDACTED***"
+# Must print 2 lines "literal:<masqué>==>***REDACTED***"
 ```
 
-> `secrets-to-redact.txt` est déjà dans `.gitignore`. Supprime-le après la purge.
+> `secrets-to-redact.txt` is already in `.gitignore`. Delete it after the purge.
 
-### B.3 — Réécrire l'historique
+### B.3 — Rewrite the history
 
 ```bash
-# 1) Remplacer les valeurs de secret dans TOUT l'historique
+# 1) Replace the secret values in the WHOLE history
 git filter-repo --replace-text secrets-to-redact.txt
 
-# 2) Supprimer le fichier d'auth state fuité de TOUT l'historique
+# 2) Remove the leaked auth state file from the WHOLE history
 git filter-repo --path apps/restaurant-theme/e2e/.auth/admin.json --invert-paths
 ```
 
-### B.4 — Republier + nettoyer
+### B.4 — Republish + clean up
 
 ```bash
-git remote add origin git@github.com:be-in-digital/<repo>.git   # filter-repo retire le remote par sécurité
+git remote add origin git@github.com:be-in-digital/<repo>.git   # filter-repo drops the remote as a safety measure
 git push --force --all
 git push --force --tags
 rm -f secrets-to-redact.txt
 ```
 
-Puis : prévenir l'équipe de **re-cloner** (les anciens clones gardent l'historique
-fuité), et re-baser/fermer-rouvrir les PR ouvertes si nécessaire. GitHub peut
-garder des vues en cache quelques temps ; ouvrir un ticket support GitHub si le
-repo est public et qu'une purge immédiate du cache est requise.
+Then: tell the team to **re-clone** (old clones keep the leaked history), and
+rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a
+while; open a GitHub support ticket if the repo is public and an immediate cache
+purge is required.
 
-> Alternative : [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/)
+> Alternative: [BFG Repo-Cleaner](https://rtyley.github.io/bfg-repo-cleaner/)
 > (`bfg --replace-text secrets-to-redact.txt` + `bfg --delete-files admin.json`).
-> git-filter-repo est l'outil recommandé aujourd'hui.
+> git-filter-repo is the recommended tool today.
 
 ---
 
 ## Checklist
 
-- [ ] A.1 Deliveroo secret régénéré dans le portail
-- [ ] A.1 Propagé : Convex (dev + prod), Vercel, GitHub (si CI), `.env.local`
-- [ ] A.1 Webhook signé de test → `200` ; mal signé → `401`
-- [ ] A.1 Ancien secret Deliveroo révoqué
-- [ ] A.2 Session Better Auth fuitée supprimée (ou `BETTER_AUTH_SECRET` tourné)
-- [ ] B Purge d'historique faite sur un clone neuf + force-push
-- [ ] B Équipe prévenue de re-cloner ; PR ouvertes traitées
-- [ ] B `secrets-to-redact.txt` supprimé
-- [ ] Propriétaire + cadence de rotation définis (rotation périodique)
+- [ ] A.1 Deliveroo secret regenerated in the portal
+- [ ] A.1 Propagated: Convex (dev + prod), Vercel, GitHub (if CI), `.env.local`
+- [ ] A.1 Signed test webhook → `200`; badly signed → `401`
+- [ ] A.1 Old Deliveroo secret revoked
+- [ ] A.2 Leaked Better Auth session deleted (or `BETTER_AUTH_SECRET` rotated)
+- [ ] B History purge done on a fresh clone + force-push
+- [ ] B Team told to re-clone; open PRs handled
+- [ ] B `secrets-to-redact.txt` deleted
+- [ ] Owner + rotation cadence defined (periodic rotation)

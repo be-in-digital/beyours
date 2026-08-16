@@ -33,7 +33,7 @@ import {
   formatRelative,
 } from "@/lib/format";
 
-/* ── Statut d'un contrôle (up | degraded | down) → couleur cohérente ── */
+/* ── Status of a check (up | degraded | down) → consistent colour ── */
 const CHECK_STATUS: Record<
   string,
   { label: string; variant: "success" | "warning" | "danger" | "muted" }
@@ -75,7 +75,7 @@ export default function MonitoringPage() {
         </Badge>
       </PageHeader>
 
-      {/* Rollup santé */}
+      {/* Health rollup */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="Sains"
@@ -108,7 +108,7 @@ export default function MonitoringPage() {
         />
       </div>
 
-      {/* État des déploiements */}
+      {/* Deployment status */}
       <Card>
         <div className="flex items-center justify-between gap-3 p-5 pb-3">
           <div className="flex items-center gap-2">
@@ -204,7 +204,7 @@ export default function MonitoringPage() {
         )}
       </Card>
 
-      {/* Flux de contrôles récents */}
+      {/* Feed of recent checks */}
       <Card>
         <div className="flex items-center gap-2 p-5 pb-3">
           <Radio className="size-4 text-muted-foreground" />

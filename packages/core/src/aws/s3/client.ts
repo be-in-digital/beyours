@@ -40,14 +40,14 @@ import {
 } from './validation'
 
 /**
- * Service S3 pour la gestion des fichiers
+ * S3 service for file management
  */
 export interface S3Service {
   /**
-   * Upload un fichier vers S3
-   * @param file - Contenu du fichier
-   * @param options - Options d'upload
-   * @returns Informations sur le fichier uploadé
+   * Uploads a file to S3
+   * @param file - File contents
+   * @param options - Upload options
+   * @returns Details of the uploaded file
    */
   upload(
     file: Buffer | Uint8Array | Blob | string,
@@ -55,19 +55,19 @@ export interface S3Service {
   ): Promise<UploadResult>
 
   /**
-   * Génère une URL presignée pour l'upload direct depuis le navigateur
-   * @param options - Options d'upload
-   * @returns URL presignée et clé du fichier
+   * Generates a presigned URL for direct upload from the browser
+   * @param options - Upload options
+   * @returns The presigned URL and the file key
    */
   getPresignedUploadUrl(
     options: PresignedUploadOptions
   ): Promise<PresignedUploadResult>
 
   /**
-   * Génère une URL presignée pour le téléchargement
-   * @param key - Clé S3 du fichier
-   * @param expiresIn - Durée de validité en secondes (défaut: 3600)
-   * @returns URL presignée de téléchargement
+   * Generates a presigned URL for download
+   * @param key - S3 key of the file
+   * @param expiresIn - Lifetime in seconds (default: 3600)
+   * @returns The presigned download URL
    */
   getPresignedDownloadUrl(
     key: string,
@@ -75,38 +75,38 @@ export interface S3Service {
   ): Promise<PresignedDownloadResult>
 
   /**
-   * Supprime un fichier de S3
-   * @param key - Clé S3 du fichier
+   * Deletes a file from S3
+   * @param key - S3 key of the file
    */
   delete(key: string): Promise<void>
 
   /**
-   * Génère l'URL publique d'un fichier
-   * @param key - Clé S3 du fichier
-   * @returns URL publique
+   * Builds the public URL of a file
+   * @param key - S3 key of the file
+   * @returns The public URL
    */
   getPublicUrl(key: string): string
 
   /**
-   * Vérifie si un fichier existe
-   * @param key - Clé S3 du fichier
-   * @returns true si le fichier existe
+   * Whether a file exists
+   * @param key - S3 key of the file
+   * @returns true when the file exists
    */
   exists(key: string): Promise<boolean>
 
   /**
-   * Récupère les métadonnées d'un fichier
-   * @param key - Clé S3 du fichier
-   * @returns Métadonnées du fichier
+   * Fetches the metadata of a file
+   * @param key - S3 key of the file
+   * @returns The file metadata
    */
   getMetadata(key: string): Promise<ObjectMetadata>
 }
 
 /**
- * Crée une instance du service S3
- * @param config - Configuration S3
- * @param client - Client S3 injectable
- * @returns Instance du service S3
+ * Creates an S3 service instance
+ * @param config - S3 configuration
+ * @param client - Injectable S3 client
+ * @returns The S3 service instance
  */
 export function createS3Service(
   config: S3Config,
@@ -115,7 +115,7 @@ export function createS3Service(
   const { bucketName, publicBaseUrl } = config
 
   /**
-   * Génère une clé S3 unique
+   * Generates a unique S3 key
    */
   function generateKey(
     folder: string,
@@ -128,7 +128,7 @@ export function createS3Service(
   }
 
   /**
-   * Construit l'URL publique
+   * Builds the public URL
    */
   function buildPublicUrl(key: string): string {
     if (publicBaseUrl) {
@@ -138,7 +138,7 @@ export function createS3Service(
   }
 
   /**
-   * Calcule la taille d'un fichier
+   * Computes the size of a file
    */
   function getFileSize(file: Buffer | Uint8Array | Blob | string): number {
     if (typeof file === 'string') {
@@ -155,22 +155,22 @@ export function createS3Service(
 
   return {
     async upload(file, options) {
-      // Validation des options
+      // Validate the options
       const validatedOptions = uploadOptionsSchema.parse(options)
       const { folder, filename, contentType, maxSize, metadata } =
         validatedOptions
 
-      // Validation du type MIME
+      // Validate the MIME type
       validateMimeType(folder, contentType)
 
-      // Validation de la taille
+      // Validate the size
       const size = getFileSize(file)
       validateFileSize(folder, size, maxSize)
 
-      // Génération de la clé
+      // Generate the key
       const key = generateKey(folder, contentType, filename)
 
-      // Upload vers S3
+      // Upload to S3
       await client.putObject({
         key,
         body: file,
@@ -186,25 +186,25 @@ export function createS3Service(
     },
 
     async getPresignedUploadUrl(options) {
-      // Validation des options
+      // Validate the options
       const validatedOptions = presignedUploadOptionsSchema.parse(options)
       const { folder, filename, contentType, maxSize } = validatedOptions
 
-      // Validation du type MIME
+      // Validate the MIME type
       validateMimeType(folder, contentType)
 
-      // Génération de la clé
+      // Generate the key
       const key = generateKey(folder, contentType, filename)
 
-      // Résoudre la limite de taille : custom maxSize ou défaut du dossier
+      // Resolve the size limit: custom maxSize or the folder default
       const sizeLimit = maxSize ?? MAX_FILE_SIZES[folder]
 
-      // Durée de validité : 15 minutes
+      // Lifetime: 15 minutes
       const expiresIn = 15 * 60
 
-      // NOTE: Les presigned PUT URLs S3 ne supportent pas Content-Length-Range.
-      // La limite de taille est retournée pour enforcement côté client.
-      // Pour un enforcement serveur, migrer vers presigned POST avec policy conditions.
+      // NOTE: S3 presigned PUT URLs do not support Content-Length-Range.
+      // The size limit is returned so the client can enforce it.
+      // For server-side enforcement, move to presigned POST with policy conditions.
       const uploadUrl = await client.getSignedUrl({
         key,
         expiresIn,
@@ -220,10 +220,10 @@ export function createS3Service(
     },
 
     async getPresignedDownloadUrl(key, expiresIn = 3600) {
-      // Validation de la clé
+      // Validate the key
       s3KeySchema.parse(key)
 
-      // Génération de l'URL presignée
+      // Generate the presigned URL
       const downloadUrl = await client.getSignedUrl({
         key,
         expiresIn,
@@ -237,21 +237,21 @@ export function createS3Service(
     },
 
     async delete(key) {
-      // Validation de la clé
+      // Validate the key
       s3KeySchema.parse(key)
 
       await client.deleteObject({ key })
     },
 
     getPublicUrl(key) {
-      // Validation de la clé
+      // Validate the key
       s3KeySchema.parse(key)
 
       return buildPublicUrl(key)
     },
 
     async exists(key) {
-      // Validation de la clé
+      // Validate the key
       s3KeySchema.parse(key)
 
       try {
@@ -263,7 +263,7 @@ export function createS3Service(
     },
 
     async getMetadata(key) {
-      // Validation de la clé
+      // Validate the key
       s3KeySchema.parse(key)
 
       return await client.headObject({ key })

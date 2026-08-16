@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Features Data — 10 fonctionnalités organisées en 4 piliers
+   Features Data — 10 features organised into 4 pillars
    ═══════════════════════════════════════════════ */
 
 export type Pillar = "attirer" | "vendre" | "gerer" | "fideliser";
@@ -117,7 +117,7 @@ export const features: Feature[] = [
     deepDive: true,
   },
 
-  // ── Gérer ──
+  // ── Manage ──
   {
     id: "dashboard-administrateur",
     tag: "04",
@@ -191,7 +191,7 @@ export const features: Feature[] = [
     deepDive: true,
   },
 
-  // ── Fidéliser & Optimiser ──
+  // ── Retain & optimise ──
   {
     id: "fidelisation-gamification",
     tag: "07",

@@ -136,7 +136,7 @@ export default function AdminProspectsPage() {
         )}
       </Card>
 
-      {/* Messages de contact (formulaire du site) */}
+      {/* Contact messages (from the site form) */}
       <div>
         <h2 className="mb-3 font-display text-lg font-semibold text-foreground">
           Messages de contact

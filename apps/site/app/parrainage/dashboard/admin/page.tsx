@@ -4,11 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Déprécié — l'administration du programme d'apporteurs est désormais unifiée
- * dans la console superadmin (/admin/apporteurs), qui s'appuie sur la vraie
- * librairie de composants (tables, skeletons, toasts) et le thème « salle de
- * contrôle ». Ce stub redirige pour préserver les anciens liens / marque-pages.
- * Le contrôle d'accès (apporteur `role: admin`) est identique côté /admin.
+ * Deprecated — administering the affiliate programme now lives entirely in the
+ * superadmin console (/admin/apporteurs), which is built on the real component
+ * library (tables, skeletons, toasts) and the « salle de contrôle » theme. This
+ * stub redirects so that old links / bookmarks keep working. Access control
+ * (affiliate `role: admin`) is identical on the /admin side.
  */
 export default function DeprecatedAffiliateAdminPage() {
   const router = useRouter();

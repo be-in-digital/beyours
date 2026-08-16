@@ -1,73 +1,73 @@
-# Structure du package @be-in-digital/convex-schema
+# @be-in-digital/convex-schema package structure
 
-## Arborescence
+## Directory tree
 
 ```
 convex-schema/
 ├── src/
 │   ├── __tests__/
-│   │   └── validators.test.ts    # Tests unitaires (23 tests)
+│   │   └── validators.test.ts    # Unit tests (23 tests)
 │   ├── index.ts                  # Barrel exports
-│   ├── schema.ts                 # Schéma Convex complet (17 tables)
-│   ├── types.ts                  # Types TypeScript (90+ types)
-│   └── validators.ts             # Validators Zod (50+ validators)
-├── CHANGELOG.md                  # Historique des modifications
-├── EXAMPLES.md                   # Exemples d'utilisation
-├── README.md                     # Documentation principale
-├── STRUCTURE.md                  # Ce fichier
-├── package.json                  # Configuration du package
-├── tsconfig.json                 # Configuration TypeScript
-└── vitest.config.ts              # Configuration tests
+│   ├── schema.ts                 # Complete Convex schema (17 tables)
+│   ├── types.ts                  # TypeScript types (90+ types)
+│   └── validators.ts             # Zod validators (50+ validators)
+├── CHANGELOG.md                  # Change history
+├── EXAMPLES.md                   # Usage examples
+├── README.md                     # Main documentation
+├── STRUCTURE.md                  # This file
+├── package.json                  # Package configuration
+├── tsconfig.json                 # TypeScript configuration
+└── vitest.config.ts              # Test configuration
 ```
 
-## Fichiers principaux
+## Main files
 
 ### src/schema.ts (22KB)
 
-Le schéma complet de la base de données Convex avec 17 tables:
+The complete Convex database schema, with 17 tables:
 
 **Better Auth (4 tables)**
-1. `user` - Utilisateurs
+1. `user` - Users
 2. `session` - Sessions
-3. `account` - Comptes OAuth
-4. `verification` - Vérifications
+3. `account` - OAuth accounts
+4. `verification` - Verifications
 
 **BeYours Extensions (3 tables)**
-5. `userProfiles` - Profils étendus
-6. `stores` - Magasins
-7. `teamMembers` - Membres de l'équipe
+5. `userProfiles` - Extended profiles
+6. `stores` - Stores
+7. `teamMembers` - Team members
 
-**Catalogue (3 tables)**
-8. `categories` - Catégories
-9. `products` - Produits
-10. `menus` - Formules/combos
+**Catalog (3 tables)**
+8. `categories` - Categories
+9. `products` - Products
+10. `menus` - Set menus/combos
 
-**Commandes (3 tables)**
-11. `orders` - Commandes
-12. `kitchenTickets` - Tickets cuisine
-13. `printerSettings` - Imprimantes
+**Orders (3 tables)**
+11. `orders` - Orders
+12. `kitchenTickets` - Kitchen tickets
+13. `printerSettings` - Printers
 
-**Paiements (1 table)**
-14. `payments` - Paiements multi-providers
+**Payments (1 table)**
+14. `payments` - Multi-provider payments
 
 **i18n (3 tables)**
-15. `languages` - Langues
-16. `translations` - Traductions
-17. `translationJobs` - Jobs de traduction
+15. `languages` - Languages
+16. `translations` - Translations
+17. `translationJobs` - Translation jobs
 
-**Gamification (5 tables) - INTÉGRÉES DANS schema.ts**
-- `gameQRCodes` - QR codes tables
-- `requiredActions` - Actions sociales
-- `games` - Jeux (roue, carte à gratter)
-- `prizes` - Lots
-- `gamePlays` - Historique parties
-- `prizeRedemptions` - Rachats
+**Gamification (5 tables) - INCLUDED IN schema.ts**
+- `gameQRCodes` - Table QR codes
+- `requiredActions` - Social actions
+- `games` - Games (wheel, scratch card)
+- `prizes` - Prizes
+- `gamePlays` - Play history
+- `prizeRedemptions` - Redemptions
 
-**Total: 22 tables avec 35+ index optimisés**
+**Total: 22 tables with 35+ optimized indexes**
 
 ### src/validators.ts (20KB)
 
-50+ validators Zod pour validation stricte des inputs:
+50+ Zod validators for strict input validation:
 
 #### Stores (3 validators)
 - `createStoreSchema`
@@ -130,21 +130,21 @@ Le schéma complet de la base de données Convex avec 17 tables:
 - `updateUserProfileSchema`
 
 **Features:**
-- Messages d'erreur en français
-- Validation stricte des formats
-- Transformations automatiques
-- Valeurs par défaut intelligentes
-- Contraintes métier
+- Error messages in French
+- Strict format validation
+- Automatic transformations
+- Sensible default values
+- Business constraints
 
 ### src/types.ts (13KB)
 
-90+ types TypeScript exportés:
+90+ exported TypeScript types:
 
 #### Input Types
-Types pour les mutations Convex (CreateXInput, UpdateXInput)
+Types for Convex mutations (CreateXInput, UpdateXInput)
 
 #### Document Types
-Types complets incluant _id et _creationTime (XDoc)
+Full types including _id and _creationTime (XDoc)
 
 #### Enum Types
 OrderStatus, PaymentStatus, UserRole, GameType, etc.
@@ -155,15 +155,15 @@ ProductOption, OrderItem, SelectedOption, etc.
 #### Utility Types
 BaseEntity, PaginationParams, FilterParams, etc.
 
-**Avantages:**
-- Type safety complet
-- Auto-complétion IDE
-- Inférence automatique depuis Zod
-- Réutilisables dans tout le monorepo
+**Benefits:**
+- Full type safety
+- IDE autocompletion
+- Automatic inference from Zod
+- Reusable across the whole monorepo
 
 ### src/index.ts (155B)
 
-Barrel file qui exporte:
+Barrel file that exports:
 ```typescript
 export { default as schema } from './schema'
 export * from './validators'
@@ -172,83 +172,83 @@ export * from './types'
 
 ### src/__tests__/validators.test.ts
 
-23 tests unitaires couvrant:
+23 unit tests covering:
 
 #### Store Validators (3 tests)
-- Validation création valide
-- Rejet slug invalide
-- Validation update partiel
+- Valid creation passes
+- Invalid slug rejected
+- Partial update validation
 
 #### Product Validators (3 tests)
-- Validation produit avec options
-- Rejet prix négatif
-- Validation scheduling
+- Product with options validates
+- Negative price rejected
+- Scheduling validation
 
 #### Order Validators (3 tests)
-- Validation commande delivery
-- Rejet commande sans items
-- Validation update status
+- Delivery order validates
+- Order without items rejected
+- Status update validation
 
 #### Language Validators (2 tests)
-- Validation création langue
-- Normalisation code lowercase
+- Language creation validates
+- Code normalized to lowercase
 
 #### Gamification Validators (4 tests)
-- Validation jeu avec win ratio
-- Rejet win ratio > 100
-- Validation création lot
-- Validation game play
+- Game with win ratio validates
+- Win ratio > 100 rejected
+- Prize creation validates
+- Game play validates
 
 #### Kitchen Validators (1 test)
-- Validation création ticket
+- Ticket creation validates
 
 #### Payment Validators (3 tests)
-- Validation création paiement
-- Rejet montant <= 0
-- Normalisation currency uppercase
+- Payment creation validates
+- Amount <= 0 rejected
+- Currency normalized to uppercase
 
 #### Edge Cases (4 tests)
-- Gestion champs optionnels
-- Validation URLs
-- Validation emails
-- Cas limites divers
+- Optional field handling
+- URL validation
+- Email validation
+- Assorted edge cases
 
-**Résultats:** 23/23 tests passent ✅
+**Results:** 23/23 tests pass ✅
 
 ## Documentation
 
 ### README.md (6KB)
 
-Documentation principale incluant:
-- Vue d'ensemble du projet
-- Architecture multi-tenant
-- Liste des tables
-- Validateurs disponibles
-- Règles métier
-- Scripts disponibles
+Main documentation, covering:
+- Project overview
+- Multi-tenant architecture
+- Table list
+- Available validators
+- Business rules
+- Available scripts
 
 ### EXAMPLES.md (16KB)
 
-7+ exemples concrets:
-1. Installation et setup
-2. Création d'un magasin
-3. Création d'un produit avec options
-4. Création d'une commande complète
-5. Système de gamification complet
-6. Traduction automatique GPT-3.5
+7+ concrete examples:
+1. Installation and setup
+2. Creating a store
+3. Creating a product with options
+4. Creating a complete order
+5. Full gamification system
+6. Automatic GPT-3.5 translation
 7. Kitchen Display System
-8. Paiement multi-provider
-9. Gestion des erreurs
-10. Queries optimisées
-11. Conseils de performance
+8. Multi-provider payment
+9. Error handling
+10. Optimized queries
+11. Performance tips
 
 ### CHANGELOG.md (5KB)
 
-Historique des modifications selon [Keep a Changelog](https://keepachangelog.com/)
+Change history following [Keep a Changelog](https://keepachangelog.com/)
 
-### STRUCTURE.md (ce fichier)
+### STRUCTURE.md (this file)
 
-Vue d'ensemble de la structure du package
+Overview of the package structure
 
 ## Configuration
 
@@ -273,25 +273,25 @@ Vue d'ensemble de la structure du package
 
 ### tsconfig.json
 
-Hérite de `tsconfig.base.json` avec:
-- Strict mode activé
-- Output dans `./dist`
-- Inclut `src/**/*.ts`
-- Exclut tests et node_modules
+Extends `tsconfig.base.json` with:
+- Strict mode enabled
+- Output in `./dist`
+- Includes `src/**/*.ts`
+- Excludes tests and node_modules
 
 ### vitest.config.ts
 
-Configuration Vitest pour tests unitaires
+Vitest configuration for unit tests
 
-## Utilisation
+## Usage
 
-### Import du schéma
+### Importing the schema
 
 ```typescript
 import { schema } from '@be-in-digital/convex-schema'
 ```
 
-### Import des validators
+### Importing the validators
 
 ```typescript
 import {
@@ -301,7 +301,7 @@ import {
 } from '@be-in-digital/convex-schema'
 ```
 
-### Import des types
+### Importing the types
 
 ```typescript
 import type {
@@ -313,111 +313,111 @@ import type {
 } from '@be-in-digital/convex-schema'
 ```
 
-## Scripts disponibles
+## Available scripts
 
 ```bash
-# Vérification des types
+# Type checking
 pnpm type-check
 
 # Lint
 pnpm lint
 
-# Tests unitaires
+# Unit tests
 pnpm test
 
-# Tests en mode watch
+# Tests in watch mode
 pnpm test:watch
 
-# Nettoyage
+# Cleanup
 pnpm clean
 ```
 
-## Métriques
+## Metrics
 
 - **Tables**: 22
-- **Index**: 35+
+- **Indexes**: 35+
 - **Validators**: 50+
 - **Types**: 90+
-- **Tests**: 23 (100% passent)
-- **Taille**: ~55KB (code source)
-- **Documentation**: ~27KB (4 fichiers MD)
-- **Couverture tests**: 80%+ sur validators
+- **Tests**: 23 (100% pass)
+- **Size**: ~55KB (source code)
+- **Documentation**: ~27KB (4 MD files)
+- **Test coverage**: 80%+ on validators
 
-## Dépendances
+## Dependencies
 
 ### Production
-- `convex` ^1.18.0 - Backend BaaS
-- `zod` ^3.24.0 - Validation de schémas
+- `convex` ^1.18.0 - BaaS backend
+- `zod` ^3.24.0 - Schema validation
 
-### Développement
-- `typescript` ^5.7.0 - Compilateur TypeScript
-- `vitest` ^3.0.0 - Framework de tests
+### Development
+- `typescript` ^5.7.0 - TypeScript compiler
+- `vitest` ^3.0.0 - Test framework
 
 ## Conventions
 
-### Nommage
-- **Tables**: PascalCase pluriel (`stores`, `products`)
+### Naming
+- **Tables**: plural PascalCase (`stores`, `products`)
 - **Fields**: camelCase (`storeId`, `categoryId`)
-- **Validators**: camelCase avec suffixe Schema (`createStoreSchema`)
+- **Validators**: camelCase with a Schema suffix (`createStoreSchema`)
 - **Types**: PascalCase (`StoreDoc`, `CreateStoreInput`)
 
 ### Timestamps
-- Stockés en millisecondes (Date.now())
-- Champs: `createdAt`, `updatedAt`
-- Convex ajoute `_creationTime` automatiquement
+- Stored in milliseconds (Date.now())
+- Fields: `createdAt`, `updatedAt`
+- Convex adds `_creationTime` automatically
 
-### Prix
-- Stockés en centimes (integer)
-- Évite les problèmes de précision des floats
-- Exemple: 1250 = 12.50 EUR
+### Prices
+- Stored in cents (integer)
+- Avoids float precision problems
+- Example: 1250 = 12.50 EUR
 
 ### Codes
-- **Pays**: ISO 3166-1 alpha-2 (FR, ES, etc.)
-- **Langue**: ISO 639-1 (fr, en, es, zh-CN, etc.)
-- **Horaires**: Format HH:mm 24h
+- **Country**: ISO 3166-1 alpha-2 (FR, ES, etc.)
+- **Language**: ISO 639-1 (fr, en, es, zh-CN, etc.)
+- **Times**: HH:mm 24h format
 
 ### Index
-- Préfixe `by_` pour tous les index
-- Index composés: `by_storeId_status`
-- Toujours filtrer par `storeId` en premier (multi-tenant)
+- `by_` prefix on every index
+- Composite indexes: `by_storeId_status`
+- Always filter by `storeId` first (multi-tenant)
 
 ## Performance
 
-### Index optimisés
-Tous les index sont conçus pour:
-- Filtrage rapide par `storeId`
-- Tri efficace (`sortOrder`, `createdAt`)
-- Recherches fréquentes (`by_email`, `by_slug`)
+### Optimized indexes
+Every index is designed for:
+- Fast filtering by `storeId`
+- Efficient sorting (`sortOrder`, `createdAt`)
+- Frequent lookups (`by_email`, `by_slug`)
 
-### Bonnes pratiques
-1. Toujours utiliser les index dans les queries
-2. Limiter les résultats avec `.take(n)`
-3. Paginer les collections volumineuses
-4. Filtrer côté serveur, pas côté client
-5. Mettre en cache les données rarement modifiées
+### Best practices
+1. Always use indexes in queries
+2. Limit results with `.take(n)`
+3. Paginate large collections
+4. Filter on the server, not the client
+5. Cache rarely-changing data
 
-## Évolutions futures
+## Future work
 
-### v0.2.0 (prévu)
-- [ ] Validators pour webhooks
-- [ ] Types pour événements temps réel
-- [ ] Helpers calcul de prix
-- [ ] Utilities génération slugs
+### v0.2.0 (planned)
+- [ ] Validators for webhooks
+- [ ] Types for real-time events
+- [ ] Price calculation helpers
+- [ ] Slug generation utilities
 
-### v0.3.0 (prévu)
+### v0.3.0 (planned)
 - [ ] Migration scripts
 - [ ] Performance benchmarks
-- [ ] Documentation API auto-générée
-- [ ] Couverture tests 100%
+- [ ] Auto-generated API documentation
+- [ ] 100% test coverage
 
-## Licence
+## License
 
 Private - BeYours Team
 
 ## Support
 
-Pour toute question ou problème:
-1. Consulter `EXAMPLES.md`
-2. Lire les tests dans `__tests__/`
-3. Vérifier le `CHANGELOG.md`
-4. Contacter l'équipe BeYours
+For any question or problem:
+1. Check `EXAMPLES.md`
+2. Read the tests in `__tests__/`
+3. Check the `CHANGELOG.md`
+4. Contact the BeYours team

@@ -1,23 +1,23 @@
-# Services AWS - @be-in-digital/core
+# AWS Services - @be-in-digital/core
 
-Services pour S3 (stockage de fichiers) et SES (envoi d'emails) avec architecture injectable.
+Services for S3 (file storage) and SES (email sending) with an injectable architecture.
 
 ## Architecture
 
-Les services AWS utilisent une architecture **injectable** : vous fournissez votre propre client AWS SDK lors de la création du service. Cela permet :
-- **Testabilité** : injection de mocks pour les tests
-- **Flexibilité** : utilisation de différentes versions du SDK
-- **Pas de dépendances** : le package core ne dépend pas du SDK AWS
+The AWS services use an **injectable** architecture: you supply your own AWS SDK client when creating the service. This gives you:
+- **Testability**: inject mocks in tests
+- **Flexibility**: use different SDK versions
+- **No dependencies**: the core package does not depend on the AWS SDK
 
-## Service S3
+## S3 Service
 
-### Installation du SDK AWS
+### Installing the AWS SDK
 
 ```bash
 pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ```
 
-### Création du service
+### Creating the service
 
 ```typescript
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
@@ -31,10 +31,10 @@ const config = {
   accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   bucketName: 'my-bucket',
-  publicBaseUrl: 'https://cdn.example.com', // optionnel
+  publicBaseUrl: 'https://cdn.example.com', // optional
 }
 
-// Client AWS SDK
+// AWS SDK client
 const s3Client = new S3Client({
   region: config.region,
   credentials: {
@@ -43,7 +43,7 @@ const s3Client = new S3Client({
   },
 })
 
-// Adapter AWS SDK vers S3Operations
+// Adapter from the AWS SDK to S3Operations
 const s3Operations: S3Operations = {
   async putObject({ key, body, contentType, metadata }) {
     await s3Client.send(
@@ -91,13 +91,13 @@ const s3Operations: S3Operations = {
   },
 }
 
-// Création du service
+// Create the service
 const s3Service = createS3Service(config, s3Operations)
 ```
 
-### Utilisation
+### Usage
 
-#### Upload de fichier
+#### File upload
 
 ```typescript
 const file = Buffer.from('...')
@@ -105,8 +105,8 @@ const file = Buffer.from('...')
 const result = await s3Service.upload(file, {
   folder: 'products', // 'products' | 'branding' | 'stores' | 'cms'
   contentType: 'image/jpeg',
-  filename: 'product-123', // optionnel
-  metadata: { productId: '123' }, // optionnel
+  filename: 'product-123', // optional
+  metadata: { productId: '123' }, // optional
 })
 
 console.log(result)
@@ -117,7 +117,7 @@ console.log(result)
 // }
 ```
 
-#### URL presignée pour upload direct
+#### Presigned URL for direct upload
 
 ```typescript
 const presigned = await s3Service.getPresignedUploadUrl({
@@ -132,7 +132,7 @@ console.log(presigned)
 //   expiresAt: Date
 // }
 
-// Le client peut maintenant uploader directement
+// The client can now upload directly
 await fetch(presigned.uploadUrl, {
   method: 'PUT',
   body: file,
@@ -140,68 +140,68 @@ await fetch(presigned.uploadUrl, {
 })
 ```
 
-#### Autres opérations
+#### Other operations
 
 ```typescript
-// URL publique
+// Public URL
 const url = s3Service.getPublicUrl('products/abc123.jpg')
 
-// URL de téléchargement presignée
+// Presigned download URL
 const download = await s3Service.getPresignedDownloadUrl('products/abc123.jpg', 3600)
 
-// Vérifier l'existence
+// Check existence
 const exists = await s3Service.exists('products/abc123.jpg')
 
-// Métadonnées
+// Metadata
 const metadata = await s3Service.getMetadata('products/abc123.jpg')
 
-// Suppression
+// Delete
 await s3Service.delete('products/abc123.jpg')
 ```
 
 ### Validation
 
-Les types MIME et tailles sont automatiquement validés :
+MIME types and sizes are validated automatically:
 
 ```typescript
-// ✅ Accepté
+// ✅ Accepted
 await s3Service.upload(file, {
   folder: 'products',
-  contentType: 'image/jpeg', // OK pour products
+  contentType: 'image/jpeg', // OK for products
 })
 
-// ❌ Rejeté - PDF non autorisé pour products
+// ❌ Rejected - PDF not allowed for products
 await s3Service.upload(file, {
   folder: 'products',
-  contentType: 'application/pdf', // Erreur!
+  contentType: 'application/pdf', // Error!
 })
 
-// ✅ Accepté - PDF autorisé pour cms
+// ✅ Accepted - PDF allowed for cms
 await s3Service.upload(file, {
   folder: 'cms',
   contentType: 'application/pdf', // OK
 })
 ```
 
-**Tailles maximales par défaut :**
-- `products`, `branding`, `stores` : 10 MB
-- `cms` : 25 MB
+**Default maximum sizes:**
+- `products`, `branding`, `stores`: 10 MB
+- `cms`: 25 MB
 
-**Types MIME autorisés :**
-- Images : `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/svg+xml`
-- Documents (cms uniquement) : `application/pdf`
+**Allowed MIME types:**
+- Images: `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `image/svg+xml`
+- Documents (cms only): `application/pdf`
 
 ---
 
-## Service SES
+## SES Service
 
-### Installation du SDK AWS
+### Installing the AWS SDK
 
 ```bash
 pnpm add @aws-sdk/client-ses
 ```
 
-### Création du service
+### Creating the service
 
 ```typescript
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
@@ -218,7 +218,7 @@ const config = {
   replyToEmail: 'support@example.com',
 }
 
-// Client AWS SDK
+// AWS SDK client
 const sesClient = new SESClient({
   region: config.region,
   credentials: {
@@ -227,7 +227,7 @@ const sesClient = new SESClient({
   },
 })
 
-// Adapter AWS SDK vers SESOperations
+// Adapter from the AWS SDK to SESOperations
 const sesOperations: SESOperations = {
   async sendEmail({ from, to, subject, html, text, replyTo }) {
     const recipients = Array.isArray(to) ? to : [to]
@@ -253,18 +253,18 @@ const sesOperations: SESOperations = {
   },
 
   async sendTemplatedEmail({ from, to, templateName, templateData, replyTo }) {
-    // Non utilisé par le service car les templates sont gérés en interne
+    // Not used by the service: templates are handled internally
     throw new Error('Not implemented')
   },
 }
 
-// Création du service
+// Create the service
 const sesService = createSESService(config, sesOperations)
 ```
 
-### Utilisation
+### Usage
 
-#### Email simple
+#### Simple email
 
 ```typescript
 await sesService.sendEmail({
@@ -272,14 +272,14 @@ await sesService.sendEmail({
   subject: 'Bienvenue !',
   html: '<h1>Bienvenue</h1><p>Merci de votre inscription.</p>',
   text: 'Bienvenue ! Merci de votre inscription.',
-  replyTo: 'contact@example.com', // optionnel
+  replyTo: 'contact@example.com', // optional
 })
 ```
 
-#### Email avec template
+#### Templated email
 
 ```typescript
-// Confirmation de commande
+// Order confirmation
 await sesService.sendTemplatedEmail({
   to: 'customer@example.com',
   templateName: 'orderConfirmation',
@@ -295,7 +295,7 @@ await sesService.sendTemplatedEmail({
   },
 })
 
-// Réinitialisation de mot de passe
+// Password reset
 await sesService.sendTemplatedEmail({
   to: 'user@example.com',
   templateName: 'passwordReset',
@@ -306,7 +306,7 @@ await sesService.sendTemplatedEmail({
   },
 })
 
-// Bienvenue
+// Welcome
 await sesService.sendTemplatedEmail({
   to: 'newuser@example.com',
   templateName: 'welcome',
@@ -316,7 +316,7 @@ await sesService.sendTemplatedEmail({
   },
 })
 
-// Prix gagné
+// Prize won
 await sesService.sendTemplatedEmail({
   to: 'winner@example.com',
   templateName: 'prizeWon',
@@ -329,7 +329,7 @@ await sesService.sendTemplatedEmail({
 })
 ```
 
-#### Envoi en masse
+#### Bulk sending
 
 ```typescript
 const result = await sesService.sendBulkEmail({
@@ -344,12 +344,12 @@ const result = await sesService.sendBulkEmail({
       subject: 'Newsletter Mars 2026',
       html: '<h1>Newsletter</h1><p>Contenu...</p>',
     },
-    // ... jusqu'à des milliers
+    // ... up to thousands
   ],
   replyTo: 'contact@example.com',
 })
 
-// Résultat avec succès/erreurs
+// Result with successes/errors
 console.log(result.results)
 // [
 //   { to: 'user1@example.com', messageId: 'abc123' },
@@ -357,71 +357,71 @@ console.log(result.results)
 // ]
 ```
 
-**Rate limiting automatique** : Le service envoie max 14 emails/seconde (limite SES sandbox) et divise les envois en lots de 50.
+**Automatic rate limiting**: the service sends at most 14 emails/second (SES sandbox limit) and splits sends into batches of 50.
 
-### Templates disponibles
+### Available templates
 
-1. **orderConfirmation** : Confirmation de commande
-2. **passwordReset** : Réinitialisation de mot de passe
-3. **welcome** : Email de bienvenue
-4. **prizeWon** : Notification de prix gagné
+1. **orderConfirmation**: order confirmation
+2. **passwordReset**: password reset
+3. **welcome**: welcome email
+4. **prizeWon**: prize-won notification
 
-Chaque template génère automatiquement :
-- Sujet personnalisé
-- Contenu HTML responsive
-- Contenu texte (fallback)
+Every template automatically generates:
+- A personalized subject
+- Responsive HTML content
+- Plain-text content (fallback)
 
 ---
 
 ## Tests
 
-Les services incluent des tests complets (100% de couverture) :
+The services come with full tests (100% coverage):
 
 ```bash
-# Tous les tests AWS
+# All AWS tests
 pnpm --filter @be-in-digital/core test -- src/aws
 
-# Tests S3 uniquement
+# S3 tests only
 pnpm --filter @be-in-digital/core test -- src/aws/__tests__/s3.test.ts
 
-# Tests SES uniquement
+# SES tests only
 pnpm --filter @be-in-digital/core test -- src/aws/__tests__/ses.test.ts
 
-# Tests templates uniquement
+# Template tests only
 pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
 ```
 
 ---
 
-## Bonnes pratiques
+## Best practices
 
 ### S3
 
-1. **Toujours valider le type MIME** avant upload (fait automatiquement)
-2. **Utiliser des noms de fichiers uniques** (UUID par défaut)
-3. **Configurer un CloudFront** pour `publicBaseUrl`
-4. **Activer CORS** sur le bucket pour les uploads directs
-5. **Définir une politique de lifecycle** pour nettoyer les fichiers anciens
+1. **Always validate the MIME type** before upload (done automatically)
+2. **Use unique filenames** (UUID by default)
+3. **Set up CloudFront** for `publicBaseUrl`
+4. **Enable CORS** on the bucket for direct uploads
+5. **Define a lifecycle policy** to clean up old files
 
 ### SES
 
-1. **Toujours fournir un texte alternatif** pour les clients email sans HTML
-2. **Tester les emails** dans différents clients (Gmail, Outlook, etc.)
-3. **Sortir du sandbox SES** en production (limite de 14 emails/s)
-4. **Configurer SPF, DKIM, DMARC** pour améliorer la délivrabilité
-5. **Gérer les bounces et plaintes** via SNS
+1. **Always provide a plain-text alternative** for email clients without HTML
+2. **Test emails** in different clients (Gmail, Outlook, etc.)
+3. **Move out of the SES sandbox** in production (14 emails/s limit)
+4. **Configure SPF, DKIM, DMARC** to improve deliverability
+5. **Handle bounces and complaints** via SNS
 
-### Sécurité
+### Security
 
-1. **Ne jamais exposer les clés AWS** côté client
-2. **Utiliser IAM roles** en production plutôt que des clés
-3. **Limiter les permissions** au strict nécessaire
-4. **Chiffrer les fichiers sensibles** sur S3
-5. **Valider toutes les entrées** utilisateur avant envoi
+1. **Never expose AWS keys** on the client side
+2. **Use IAM roles** in production rather than keys
+3. **Restrict permissions** to the strict minimum
+4. **Encrypt sensitive files** on S3
+5. **Validate all user input** before sending
 
 ---
 
-## Variables d'environnement
+## Environment variables
 
 ```bash
 # AWS
@@ -431,7 +431,7 @@ AWS_SECRET_ACCESS_KEY=xxx
 
 # S3
 AWS_S3_BUCKET_NAME=my-bucket
-AWS_S3_PUBLIC_BASE_URL=https://cdn.example.com # optionnel
+AWS_S3_PUBLIC_BASE_URL=https://cdn.example.com # optional
 
 # SES
 AWS_SES_FROM_EMAIL=noreply@example.com

@@ -22,7 +22,7 @@
 import type { S3Folder } from '../types'
 
 /**
- * Paramètres pour l'opération putObject
+ * Parameters for the putObject operation
  */
 export interface PutObjectParams {
   key: string
@@ -32,14 +32,14 @@ export interface PutObjectParams {
 }
 
 /**
- * Paramètres pour l'opération deleteObject
+ * Parameters for the deleteObject operation
  */
 export interface DeleteObjectParams {
   key: string
 }
 
 /**
- * Paramètres pour l'opération getSignedUrl
+ * Parameters for the getSignedUrl operation
  */
 export interface GetSignedUrlParams {
   key: string
@@ -48,14 +48,14 @@ export interface GetSignedUrlParams {
 }
 
 /**
- * Paramètres pour l'opération headObject
+ * Parameters for the headObject operation
  */
 export interface HeadObjectParams {
   key: string
 }
 
 /**
- * Métadonnées d'un objet S3
+ * Metadata of an S3 object
  */
 export interface ObjectMetadata {
   size: number
@@ -65,7 +65,7 @@ export interface ObjectMetadata {
 }
 
 /**
- * Interface pour les opérations S3 (injectable)
+ * Injectable interface over the S3 operations
  */
 export interface S3Operations {
   putObject(params: PutObjectParams): Promise<void>
@@ -75,67 +75,67 @@ export interface S3Operations {
 }
 
 /**
- * Options pour l'upload de fichiers
+ * Options for a file upload
  */
 export interface UploadOptions {
-  /** Dossier de destination */
+  /** Destination folder */
   folder: S3Folder
-  /** Nom de fichier personnalisé (sans extension) */
+  /** Custom filename (without extension) */
   filename?: string
-  /** Type MIME du fichier */
+  /** MIME type of the file */
   contentType: string
-  /** Taille maximale autorisée (bytes) */
+  /** Maximum allowed size in bytes */
   maxSize?: number
-  /** Métadonnées personnalisées */
+  /** Custom metadata */
   metadata?: Record<string, string>
 }
 
 /**
- * Résultat d'un upload
+ * Result of an upload
  */
 export interface UploadResult {
-  /** Clé S3 du fichier */
+  /** S3 key of the file */
   key: string
-  /** URL publique du fichier */
+  /** Public URL of the file */
   url: string
-  /** Taille du fichier en bytes */
+  /** File size in bytes */
   size: number
 }
 
 /**
- * Options pour générer une URL presignée d'upload
+ * Options for generating a presigned upload URL
  */
 export interface PresignedUploadOptions {
-  /** Dossier de destination */
+  /** Destination folder */
   folder: S3Folder
-  /** Nom de fichier personnalisé (sans extension) */
+  /** Custom filename (without extension) */
   filename?: string
-  /** Type MIME du fichier */
+  /** MIME type of the file */
   contentType: string
-  /** Taille maximale autorisée (bytes) */
+  /** Maximum allowed size in bytes */
   maxSize?: number
 }
 
 /**
- * Résultat d'une URL presignée d'upload
+ * Result of a presigned upload URL
  */
 export interface PresignedUploadResult {
-  /** URL pour l'upload */
+  /** URL to upload to */
   uploadUrl: string
-  /** Clé S3 du fichier */
+  /** S3 key of the file */
   key: string
-  /** Taille max autorisée en bytes (à enforcer côté client — presigned PUT ne supporte pas Content-Length-Range) */
+  /** Max allowed size in bytes (enforce client-side — presigned PUT does not support Content-Length-Range) */
   maxSize: number
-  /** Date d'expiration */
+  /** Expiry date */
   expiresAt: Date
 }
 
 /**
- * Résultat d'une URL presignée de téléchargement
+ * Result of a presigned download URL
  */
 export interface PresignedDownloadResult {
-  /** URL de téléchargement */
+  /** Download URL */
   downloadUrl: string
-  /** Date d'expiration */
+  /** Expiry date */
   expiresAt: Date
 }

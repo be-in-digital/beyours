@@ -1,66 +1,66 @@
-# @be-in-digital/cms — Documentation Complète
+# @be-in-digital/cms — Complete Documentation
 
-> Package CMS générique pour BeYours Engine.
-> Ce package ne contient **aucune page prédéfinie**. Chaque application définit ses propres pages CMS.
+> Generic CMS package for BeYours Engine.
+> This package contains **no predefined pages**. Each application defines its own CMS pages.
 
 ---
 
-## Table des matières
+## Table of contents
 
-1. [Vue d'ensemble](#1-vue-densemble)
+1. [Overview](#1-overview)
 2. [Architecture](#2-architecture)
 3. [Installation](#3-installation)
-4. [Guide pas-à-pas : Ajouter le CMS à une nouvelle application](#4-guide-pas-à-pas--ajouter-le-cms-à-une-nouvelle-application)
-5. [Référence des types](#5-référence-des-types)
-6. [API du Registry](#6-api-du-registry)
-7. [Blocs réutilisables](#7-blocs-réutilisables)
+4. [Step-by-step guide: adding the CMS to a new application](#4-step-by-step-guide-adding-the-cms-to-a-new-application)
+5. [Type reference](#5-type-reference)
+6. [Registry API](#6-registry-api)
+7. [Reusable blocks](#7-reusable-blocks)
 8. [Validation](#8-validation)
-9. [Gestion des médias](#9-gestion-des-médias)
-10. [Sanitisation SVG](#10-sanitisation-svg)
-11. [Initialisation (Frontend + Backend)](#11-initialisation-frontend--backend)
-12. [Exemples concrets](#12-exemples-concrets)
-13. [Erreurs fréquentes et solutions](#13-erreurs-fréquentes-et-solutions)
-14. [Diagrammes](#14-diagrammes)
-15. [Glossaire](#15-glossaire)
+9. [Media handling](#9-media-handling)
+10. [SVG sanitization](#10-svg-sanitization)
+11. [Initialization (Frontend + Backend)](#11-initialization-frontend--backend)
+12. [Concrete examples](#12-concrete-examples)
+13. [Common errors and solutions](#13-common-errors-and-solutions)
+14. [Diagrams](#14-diagrams)
+15. [Glossary](#15-glossary)
 
 ---
 
-## 1. Vue d'ensemble
+## 1. Overview
 
-### Qu'est-ce que ce package ?
+### What is this package?
 
-`@be-in-digital/cms` est un **framework de définition de contenu** pour le CMS BeYours. Il fournit :
+`@be-in-digital/cms` is a **content definition framework** for the BeYours CMS. It provides:
 
-- Un **registre configurable** de pages et de groupes
-- Des **types TypeScript** stricts pour définir la structure du contenu
-- Une **validation** des données saisies (côté serveur, avant persistance)
-- La **gestion des médias** (limites de taille, types MIME)
-- La **sanitisation SVG** (sécurité)
+- A **configurable registry** of pages and groups
+- Strict **TypeScript types** to define the content structure
+- **Validation** of submitted data (server-side, before persistence)
+- **Media handling** (size limits, MIME types)
+- **SVG sanitization** (security)
 
-### Ce que ce package NE fait PAS
+### What this package does NOT do
 
-- Il ne contient **aucune définition de page**. C'est l'application qui les définit.
-- Il ne gère **aucune UI** (pas de composants React).
-- Il ne gère **aucune persistance** (pas de base de données). C'est le package `convex-functions` qui s'en charge.
-- Il ne gère **aucune authentification**.
+- It contains **no page definition**. The application defines them.
+- It handles **no UI** (no React components).
+- It handles **no persistence** (no database). The `convex-functions` package takes care of that.
+- It handles **no authentication**.
 
-### Principe fondamental
+### Core principle
 
 ```
 ┌─────────────────────────────────┐
-│   packages/cms                  │  ← Types, API, validation (générique)
-│   Ne contient AUCUNE page       │
+│   packages/cms                  │  ← Types, API, validation (generic)
+│   Contains NO page              │
 └────────────┬────────────────────┘
-             │ importé par
+             │ imported by
              ▼
 ┌─────────────────────────────────┐
-│   apps/mon-app/cms/             │  ← Définitions de pages (spécifique à l'app)
+│   apps/mon-app/cms/             │  ← Page definitions (app-specific)
 │   groups.ts + pages/*.ts        │
 └────────────┬────────────────────┘
              │ setCmsRegistry()
              ▼
 ┌─────────────────────────────────┐
-│   Registre en mémoire           │  ← Utilisé par admin UI, Convex, storefront
+│   In-memory registry            │  ← Used by admin UI, Convex, storefront
 │   getPageDefinition(), etc.     │
 └─────────────────────────────────┘
 ```
@@ -69,56 +69,56 @@
 
 ## 2. Architecture
 
-### Structure du package
+### Package structure
 
 ```
 packages/cms/src/
-├── index.ts                        # Point d'entrée — tous les exports
+├── index.ts                        # Entry point — all exports
 ├── registry/
-│   ├── types.ts                    # Types : PageDefinition, BlockDefinition, etc.
-│   ├── index.ts                    # API : setCmsRegistry, getPageDefinition, etc.
-│   ├── validation.ts               # Validation d'intégrité à l'initialisation
+│   ├── types.ts                    # Types: PageDefinition, BlockDefinition, etc.
+│   ├── index.ts                    # API: setCmsRegistry, getPageDefinition, etc.
+│   ├── validation.ts               # Integrity validation at initialization
 │   └── blocks/
-│       └── seoBlock.ts             # Bloc SEO réutilisable
+│       └── seoBlock.ts             # Reusable SEO block
 ├── validation/
-│   └── validateBlockValues.ts      # Validation des valeurs saisies
+│   └── validateBlockValues.ts      # Validation of submitted values
 ├── media/
-│   └── types.ts                    # Limites médias, validation upload
+│   └── types.ts                    # Media limits, upload validation
 └── sanitize/
-    └── svgSanitizer.ts             # Nettoyage SVG (sécurité)
+    └── svgSanitizer.ts             # SVG cleaning (security)
 ```
 
-### Structure côté application (exemple : restaurant-theme)
+### Application-side structure (example: restaurant-theme)
 
 ```
 apps/restaurant-theme/
-├── cms/                             # Définitions CMS propres à l'app
-│   ├── groups.ts                    # Groupes de pages (6 groupes)
-│   ├── index.ts                     # Barrel → exporte appCmsConfig
-│   └── pages/                       # 1 fichier par page (20 fichiers)
+├── cms/                             # CMS definitions specific to the app
+│   ├── groups.ts                    # Page groups (6 groups)
+│   ├── index.ts                     # Barrel → exports appCmsConfig
+│   └── pages/                       # 1 file per page (20 files)
 │       ├── homepage.ts
 │       ├── sign-in.ts
 │       ├── menu.ts
 │       └── ...
 ├── lib/cms/
-│   └── init.ts                      # Fichier d'initialisation (import side-effect)
+│   └── init.ts                      # Initialization file (side-effect import)
 ├── app/
 │   ├── (admin)/layout.tsx           # import "@/lib/cms/init"
 │   ├── (storefront)/layout.tsx      # import "@/lib/cms/init"
 │   └── preview/layout.tsx           # import "@/lib/cms/init"
 └── convex/
-    ├── cms.ts                       # import + setCmsRegistry() en haut du fichier
-    └── cmsAutoTranslate.ts          # idem
+    ├── cms.ts                       # import + setCmsRegistry() at the top of the file
+    └── cmsAutoTranslate.ts          # same
 ```
 
 ---
 
 ## 3. Installation
 
-Le package est déjà disponible dans le monorepo. Pour l'utiliser dans une app :
+The package is already available in the monorepo. To use it in an app:
 
 ```json
-// package.json de votre app
+// package.json of your app
 {
   "dependencies": {
     "@be-in-digital/cms": "workspace:*"
@@ -126,7 +126,7 @@ Le package est déjà disponible dans le monorepo. Pour l'utiliser dans une app 
 }
 ```
 
-Puis :
+Then:
 
 ```bash
 pnpm install
@@ -134,24 +134,24 @@ pnpm install
 
 ---
 
-## 4. Guide pas-à-pas : Ajouter le CMS à une nouvelle application
+## 4. Step-by-step guide: adding the CMS to a new application
 
-Ce guide part de zéro. Suivez chaque étape dans l'ordre.
+This guide starts from scratch. Follow each step in order.
 
-### Étape 1 : Créer le dossier `cms/` dans votre app
+### Step 1: Create the `cms/` folder in your app
 
 ```bash
 mkdir -p apps/mon-app/cms/pages
 ```
 
-### Étape 2 : Définir les groupes
+### Step 2: Define the groups
 
-Les groupes organisent vos pages dans le dashboard admin. Chaque groupe a :
-- `id` — identifiant unique (jamais de doublon)
-- `label` — nom affiché dans l'interface
-- `order` — ordre d'affichage (jamais de doublon, plus petit = en premier)
+Groups organize your pages in the admin dashboard. Each group has:
+- `id` — unique identifier (never duplicated)
+- `label` — name shown in the interface
+- `order` — display order (never duplicated, lower = first)
 
-Créez `apps/mon-app/cms/groups.ts` :
+Create `apps/mon-app/cms/groups.ts`:
 
 ```typescript
 import type { CmsGroupDefinition } from "@be-in-digital/cms"
@@ -163,15 +163,15 @@ export const cmsGroups: CmsGroupDefinition[] = [
 ]
 ```
 
-**Règles :**
-- `id` doit être unique (sinon erreur à l'initialisation)
-- `order` doit être unique (sinon erreur à l'initialisation)
-- Chaque groupe doit avoir au moins une page assignée (sinon erreur à l'initialisation)
-- Ne pas utiliser de strings libres pour les noms — toujours référencer `group.id`
+**Rules:**
+- `id` must be unique (otherwise an error at initialization)
+- `order` must be unique (otherwise an error at initialization)
+- Each group must have at least one page assigned (otherwise an error at initialization)
+- Don't use free-form strings for names — always reference `group.id`
 
-### Étape 3 : Définir une page
+### Step 3: Define a page
 
-Créez un fichier par page dans `apps/mon-app/cms/pages/`. Exemple pour une page d'accueil :
+Create one file per page in `apps/mon-app/cms/pages/`. Example for a homepage:
 
 ```typescript
 // apps/mon-app/cms/pages/homepage.ts
@@ -179,27 +179,27 @@ import type { PageDefinition } from "@be-in-digital/cms"
 import { seoBlock } from "@be-in-digital/cms"
 
 export const homepagePage: PageDefinition = {
-  slug: "homepage",           // Identifiant unique, correspond à la route
-  label: "Page d'accueil",    // Nom affiché dans l'admin
-  description: "Page d'accueil principale du site",  // Optionnel
-  groupId: "main",            // Référence un groupe défini dans groups.ts
+  slug: "homepage",           // Unique identifier, matches the route
+  label: "Page d'accueil",    // Name shown in the admin
+  description: "Page d'accueil principale du site",  // Optional
+  groupId: "main",            // References a group defined in groups.ts
 
   blocks: [
-    // Le bloc SEO est fourni par le package (réutilisable)
+    // The SEO block is provided by the package (reusable)
     seoBlock,
 
-    // Bloc personnalisé
+    // Custom block
     {
-      key: "hero",                     // Clé unique dans la page
-      label: "Section principale",     // Nom affiché dans l'admin
-      description: "Bannière en haut de la page",  // Optionnel
+      key: "hero",                     // Unique key within the page
+      label: "Section principale",     // Name shown in the admin
+      description: "Bannière en haut de la page",  // Optional
       fields: {
         title: {
-          type: "text",                // Type du champ (voir section Types)
-          label: "Titre principal",    // Nom affiché dans l'admin
-          required: true,              // Champ obligatoire ?
-          maxLength: 100,              // Longueur max (text/richtext uniquement)
-          hasCodeFallback: true,       // Le code a une valeur par défaut ?
+          type: "text",                // Field type (see the Type reference section)
+          label: "Titre principal",    // Name shown in the admin
+          required: true,              // Required field?
+          maxLength: 100,              // Max length (text/richtext only)
+          hasCodeFallback: true,       // Does the code have a default value?
         },
         subtitle: {
           type: "richtext",
@@ -210,7 +210,7 @@ export const homepagePage: PageDefinition = {
         backgroundImage: {
           type: "image",
           label: "Image de fond",
-          translatable: false,         // Les images ne sont pas traduisibles
+          translatable: false,         // Images are not translatable
           hasCodeFallback: true,
         },
       },
@@ -219,21 +219,21 @@ export const homepagePage: PageDefinition = {
 }
 ```
 
-### Étape 4 : Créer le barrel file (index.ts)
+### Step 4: Create the barrel file (index.ts)
 
-Créez `apps/mon-app/cms/index.ts` pour tout rassembler :
+Create `apps/mon-app/cms/index.ts` to tie everything together:
 
 ```typescript
 import type { PageDefinition } from "@be-in-digital/cms"
 import { cmsGroups } from "./groups"
 import { homepagePage } from "./pages/homepage"
 import { signInPage } from "./pages/sign-in"
-// ... importer toutes vos pages
+// ... import all your pages
 
 const pages: Record<string, PageDefinition> = {
   homepage: homepagePage,
   "sign-in": signInPage,
-  // ... toutes vos pages
+  // ... all your pages
 }
 
 export const appCmsConfig = {
@@ -242,11 +242,11 @@ export const appCmsConfig = {
 }
 ```
 
-**Important :** La clé dans `pages` (`"homepage"`, `"sign-in"`) doit correspondre exactement au `slug` de la page.
+**Important:** the key in `pages` (`"homepage"`, `"sign-in"`) must match the page `slug` exactly.
 
-### Étape 5 : Créer le fichier d'initialisation
+### Step 5: Create the initialization file
 
-Créez `apps/mon-app/lib/cms/init.ts` :
+Create `apps/mon-app/lib/cms/init.ts`:
 
 ```typescript
 import { setCmsRegistry } from "@be-in-digital/cms"
@@ -255,69 +255,69 @@ import { appCmsConfig } from "@/cms"
 setCmsRegistry(appCmsConfig)
 ```
 
-Ce fichier sera importé comme side-effect (juste `import "@/lib/cms/init"`, sans rien extraire).
+This file is imported for its side effect only (just `import "@/lib/cms/init"`, without extracting anything).
 
-### Étape 6 : Initialiser dans les layouts Next.js
+### Step 6: Initialize in the Next.js layouts
 
-Ajoutez l'import en haut de **chaque layout racine** qui utilise le CMS :
+Add the import at the top of **every root layout** that uses the CMS:
 
 ```typescript
 // app/(admin)/layout.tsx
-import "@/lib/cms/init"    // ← PREMIÈRE LIGNE après "use client"
+import "@/lib/cms/init"    // ← FIRST LINE after "use client"
 
-// ... reste du layout
+// ... rest of the layout
 ```
 
 ```typescript
 // app/(storefront)/layout.tsx
-import "@/lib/cms/init"    // ← PREMIÈRE LIGNE
+import "@/lib/cms/init"    // ← FIRST LINE
 
-// ... reste du layout
+// ... rest of the layout
 ```
 
 ```typescript
-// app/preview/layout.tsx (si vous avez un mode prévisualisation)
+// app/preview/layout.tsx (if you have a preview mode)
 import "@/lib/cms/init"
 
-// ... reste du layout
+// ... rest of the layout
 ```
 
-**Pourquoi chaque layout ?** Next.js peut charger n'importe quel layout indépendamment. Si un utilisateur arrive directement sur `/preview/homepage`, le registre doit être initialisé.
+**Why every layout?** Next.js can load any layout independently. If a user lands directly on `/preview/homepage`, the registry must be initialized.
 
-### Étape 7 : Initialiser dans les fichiers Convex
+### Step 7: Initialize in the Convex files
 
-Chaque fichier Convex qui utilise le CMS (`getPageDefinition`, `getBlockDefinition`, etc.) doit initialiser le registre **en haut du fichier** :
+Every Convex file that uses the CMS (`getPageDefinition`, `getBlockDefinition`, etc.) must initialize the registry **at the top of the file**:
 
 ```typescript
 // convex/cms.ts
 import { setCmsRegistry } from "@be-in-digital/cms"
-import { appCmsConfig } from "../cms"   // ← Import RELATIF (pas @/cms)
+import { appCmsConfig } from "../cms"   // ← RELATIVE import (not @/cms)
 setCmsRegistry(appCmsConfig)
 
-// ... le reste du code Convex
+// ... the rest of the Convex code
 ```
 
-**Pourquoi un import relatif ?** Le tsconfig de Convex et celui de Next.js résolvent `@/` différemment. L'import relatif `../cms` est plus sûr et fonctionne partout.
+**Why a relative import?** The Convex tsconfig and the Next.js tsconfig resolve `@/` differently. The relative import `../cms` is safer and works everywhere.
 
-**Pourquoi dans chaque fichier Convex ?** Convex charge les modules indépendamment. Si `cms.ts` et `cmsAutoTranslate.ts` utilisent tous les deux le registre, ils doivent chacun l'initialiser.
+**Why in every Convex file?** Convex loads modules independently. If `cms.ts` and `cmsAutoTranslate.ts` both use the registry, each of them has to initialize it.
 
-### Étape 8 : Vérifier
+### Step 8: Verify
 
 ```bash
-# Build du package CMS
+# Build the CMS package
 pnpm turbo build --filter=@be-in-digital/cms
 
-# Lancer les tests
+# Run the tests
 pnpm --filter @be-in-digital/cms test
 
-# Déployer Convex
+# Deploy Convex
 cd apps/mon-app && pnpx convex dev --once
 
 # Build Next.js
 pnpm turbo build --filter=@be-in-digital/mon-app
 ```
 
-Si `setCmsRegistry()` détecte une erreur dans votre configuration, il affichera un message explicite :
+If `setCmsRegistry()` detects an error in your configuration, it prints an explicit message:
 
 ```
 Error: [CMS Registry] Invalid config:
@@ -328,131 +328,131 @@ Error: [CMS Registry] Invalid config:
 
 ---
 
-## 5. Référence des types
+## 5. Type reference
 
 ### FieldType
 
-Les types de champs supportés :
+Supported field types:
 
-| Type       | Description                          | Données stockées            |
+| Type       | Description                          | Stored data                 |
 |------------|--------------------------------------|-----------------------------|
-| `text`     | Texte simple (une ligne)             | `textValue: string`         |
-| `richtext` | Texte riche (HTML)                   | `textValue: string`         |
+| `text`     | Plain text (single line)             | `textValue: string`         |
+| `richtext` | Rich text (HTML)                     | `textValue: string`         |
 | `image`    | Image (JPEG, PNG, WebP, SVG)         | `mediaId: string`           |
-| `video`    | Vidéo (MP4, WebM) ou embed YouTube   | `mediaId` ou `embedUrl`     |
-| `file`     | Fichier (PDF, DOCX, XLSX, PPTX)      | `mediaId: string`           |
-| `select`   | Liste déroulante                     | `textValue: string`         |
+| `video`    | Video (MP4, WebM) or YouTube embed   | `mediaId` or `embedUrl`     |
+| `file`     | File (PDF, DOCX, XLSX, PPTX)         | `mediaId: string`           |
+| `select`   | Dropdown list                        | `textValue: string`         |
 
 ### FieldDefinition
 
-Définit un champ éditable dans un bloc.
+Defines an editable field inside a block.
 
 ```typescript
 interface FieldDefinition {
-  type: FieldType                    // OBLIGATOIRE — type du champ
-  label: string                      // OBLIGATOIRE — nom affiché dans l'admin
-  description?: string               // Texte d'aide affiché sous le champ
-  required?: boolean                 // Le champ doit-il avoir une valeur ? (défaut: false)
-  maxLength?: number                 // Longueur max (text/richtext uniquement)
-  placeholder?: string               // Placeholder dans l'input
-  translatable?: boolean             // Peut être traduit ? (défaut: true pour text, false pour media)
-  hasCodeFallback: boolean           // OBLIGATOIRE — le code a-t-il une valeur par défaut ?
-  options?: SelectOption[]           // OBLIGATOIRE pour type "select" uniquement
-  group?: string                     // Grouper visuellement des champs ensemble dans l'admin
+  type: FieldType                    // REQUIRED — field type
+  label: string                      // REQUIRED — name shown in the admin
+  description?: string               // Help text shown under the field
+  required?: boolean                 // Must the field have a value? (default: false)
+  maxLength?: number                 // Max length (text/richtext only)
+  placeholder?: string               // Placeholder in the input
+  translatable?: boolean             // Can it be translated? (default: true for text, false for media)
+  hasCodeFallback: boolean           // REQUIRED — does the code have a default value?
+  options?: SelectOption[]           // REQUIRED for type "select" only
+  group?: string                     // Group fields together visually in the admin
 }
 ```
 
-**`hasCodeFallback` expliqué :**
+**`hasCodeFallback` explained:**
 
-- `true` = le composant storefront affiche une valeur par défaut si rien n'est saisi dans le CMS. L'admin peut "réinitialiser" le champ pour revenir au code.
-- `false` = pas de fallback. Si le champ est vide, rien ne s'affiche. Si `required: true` ET `hasCodeFallback: false`, le champ DOIT avoir une valeur pour publier.
+- `true` = the storefront component shows a default value if nothing is entered in the CMS. The admin can "reset" the field to fall back to the code.
+- `false` = no fallback. If the field is empty, nothing is displayed. If `required: true` AND `hasCodeFallback: false`, the field MUST have a value to publish.
 
 ### BlockDefinition
 
-Un bloc est une section éditable dans une page (ex: "Hero", "Formulaire", "SEO").
+A block is an editable section inside a page (e.g. "Hero", "Formulaire", "SEO").
 
 ```typescript
 interface BlockDefinition {
-  key: string                        // OBLIGATOIRE — clé unique dans la page
-  label: string                      // OBLIGATOIRE — nom affiché dans l'admin
-  description?: string               // Texte d'aide
-  fields: Record<string, FieldDefinition>  // OBLIGATOIRE — champs du bloc
+  key: string                        // REQUIRED — unique key within the page
+  label: string                      // REQUIRED — name shown in the admin
+  description?: string               // Help text
+  fields: Record<string, FieldDefinition>  // REQUIRED — fields of the block
 }
 ```
 
-**Règle :** les `key` doivent être uniques au sein d'une même page.
+**Rule:** `key` values must be unique within a single page.
 
 ### PageDefinition
 
-Une page CMS complète.
+A complete CMS page.
 
 ```typescript
 interface PageDefinition {
-  slug: string                       // OBLIGATOIRE — identifiant interne unique (ex: "sign-in", "homepage")
-  label: string                      // OBLIGATOIRE — nom affiché dans l'admin
-  description?: string               // Description dans l'admin
-  groupId?: string                   // ID du groupe (référence CmsGroupDefinition.id)
-  blocks: BlockDefinition[]          // OBLIGATOIRE — au moins 1 bloc
+  slug: string                       // REQUIRED — unique internal identifier (e.g. "sign-in", "homepage")
+  label: string                      // REQUIRED — name shown in the admin
+  description?: string               // Description in the admin
+  groupId?: string                   // Group ID (references CmsGroupDefinition.id)
+  blocks: BlockDefinition[]          // REQUIRED — at least 1 block
 }
 ```
 
-**Slug vs Route :** Le `slug` est un identifiant interne CMS, pas un chemin URL. Il ne correspond pas toujours à la route Next.js. Exemples :
+**Slug vs route:** the `slug` is an internal CMS identifier, not a URL path. It doesn't always match the Next.js route. Examples:
 
-| Slug CMS       | Route Next.js     |
+| CMS slug       | Next.js route     |
 |----------------|-------------------|
 | `homepage`     | `/`               |
 | `sign-in`      | `/sign-in`        |
 | `product-detail` | `/product/[productId]` |
-| `storefront-layout` | *(layout, pas une route)* |
+| `storefront-layout` | *(layout, not a route)* |
 
-C'est l'application qui fait le lien entre le slug CMS et la route, via les requêtes Convex `getPageBlocks({ pageSlug: "homepage" })`.
+The application maps the CMS slug to the route, through the Convex queries `getPageBlocks({ pageSlug: "homepage" })`.
 
 ### CmsGroupDefinition
 
-Un groupe organise les pages dans le dashboard admin.
+A group organizes pages in the admin dashboard.
 
 ```typescript
 interface CmsGroupDefinition {
-  id: string                         // OBLIGATOIRE — identifiant unique
-  label: string                      // OBLIGATOIRE — nom affiché
-  order: number                      // OBLIGATOIRE — position (plus petit = en premier)
+  id: string                         // REQUIRED — unique identifier
+  label: string                      // REQUIRED — displayed name
+  order: number                      // REQUIRED — position (lower = first)
 }
 ```
 
 ### CmsFieldValue
 
-La valeur stockée en base pour un champ. Utilisé côté backend (Convex).
+The value stored in the database for a field. Used on the backend (Convex).
 
 ```typescript
 interface CmsFieldValue {
-  type: FieldType                    // Type du champ
-  textValue?: string                 // Valeur texte (text, richtext, select)
-  mediaId?: string                   // Référence vers cmsMedia (image, video, file)
-  altText?: string                   // Texte alternatif (pour images)
-  embedUrl?: string                  // URL d'embed (pour vidéos YouTube/Vimeo)
+  type: FieldType                    // Field type
+  textValue?: string                 // Text value (text, richtext, select)
+  mediaId?: string                   // Reference to cmsMedia (image, video, file)
+  altText?: string                   // Alternative text (for images)
+  embedUrl?: string                  // Embed URL (for YouTube/Vimeo videos)
   embedProvider?: "youtube" | "vimeo"
-  isCleared?: boolean                // Reset explicite vers le fallback code
+  isCleared?: boolean                // Explicit reset to the code fallback
 }
 ```
 
 ### SelectOption
 
-Option pour un champ de type `select`.
+Option for a `select` field.
 
 ```typescript
 interface SelectOption {
-  value: string                      // Valeur stockée
-  label: string                      // Texte affiché dans le dropdown
+  value: string                      // Stored value
+  label: string                      // Text shown in the dropdown
 }
 ```
 
 ---
 
-## 6. API du Registry
+## 6. Registry API
 
 ### setCmsRegistry(config)
 
-Initialise le registre CMS. **Doit être appelé avant tout accès au registre.**
+Initializes the CMS registry. **Must be called before any access to the registry.**
 
 ```typescript
 import { setCmsRegistry } from "@be-in-digital/cms"
@@ -463,24 +463,24 @@ setCmsRegistry({
 })
 ```
 
-- Valide la configuration (voir section Validation)
-- Trie les groupes par `order`
-- Lève une erreur avec **toutes** les violations listées si la config est invalide
-- Peut être appelé plusieurs fois (remplace la config précédente)
+- Validates the configuration (see the Validation section)
+- Sorts the groups by `order`
+- Throws an error listing **every** violation if the config is invalid
+- Can be called several times (replaces the previous config)
 
 ### getCmsRegistry()
 
-Retourne le registre complet.
+Returns the full registry.
 
 ```typescript
 const { pages, groups } = getCmsRegistry()
 // pages: Record<string, PageDefinition>
-// groups: CmsGroupDefinition[] (triés par order)
+// groups: CmsGroupDefinition[] (sorted by order)
 ```
 
 ### getCmsGroups()
 
-Retourne les groupes triés par `order`.
+Returns the groups sorted by `order`.
 
 ```typescript
 const groups = getCmsGroups()
@@ -489,7 +489,7 @@ const groups = getCmsGroups()
 
 ### getPageDefinition(slug)
 
-Retourne la définition d'une page par son slug.
+Returns a page definition by its slug.
 
 ```typescript
 const page = getPageDefinition("homepage")
@@ -498,7 +498,7 @@ const page = getPageDefinition("homepage")
 
 ### getAllPageSlugs()
 
-Retourne tous les slugs enregistrés.
+Returns all registered slugs.
 
 ```typescript
 const slugs = getAllPageSlugs()
@@ -507,7 +507,7 @@ const slugs = getAllPageSlugs()
 
 ### getBlockDefinition(pageSlug, blockKey)
 
-Retourne un bloc spécifique d'une page.
+Returns a specific block from a page.
 
 ```typescript
 const block = getBlockDefinition("homepage", "hero")
@@ -516,7 +516,7 @@ const block = getBlockDefinition("homepage", "hero")
 
 ### getFieldDefinition(pageSlug, blockKey, fieldKey)
 
-Retourne un champ spécifique d'un bloc.
+Returns a specific field from a block.
 
 ```typescript
 const field = getFieldDefinition("homepage", "hero", "title")
@@ -525,11 +525,11 @@ const field = getFieldDefinition("homepage", "hero", "title")
 
 ---
 
-## 7. Blocs réutilisables
+## 7. Reusable blocks
 
 ### seoBlock
 
-Bloc SEO prêt à l'emploi, à ajouter aux pages indexables.
+Ready-to-use SEO block, to add to indexable pages.
 
 ```typescript
 import { seoBlock } from "@be-in-digital/cms"
@@ -539,7 +539,7 @@ export const homepagePage: PageDefinition = {
   label: "Page d'accueil",
   groupId: "main",
   blocks: [
-    seoBlock,        // ← Ajouter en premier bloc
+    seoBlock,        // ← Add as the first block
     {
       key: "hero",
       // ...
@@ -548,37 +548,37 @@ export const homepagePage: PageDefinition = {
 }
 ```
 
-Le bloc `seoBlock` contient 4 champs :
+The `seoBlock` block contains 4 fields:
 
-| Champ            | Type     | Description                                  |
+| Field            | Type     | Description                                  |
 |------------------|----------|----------------------------------------------|
-| `metaTitle`      | `text`   | Titre dans les résultats Google (max 70 car.) |
-| `metaDescription`| `text`   | Description Google (max 160 car.)             |
-| `ogImage`        | `image`  | Image partage réseaux sociaux                 |
-| `robots`         | `select` | Directives robots (index/noindex, follow/nofollow) |
+| `metaTitle`      | `text`   | Title in Google results (70 chars max)        |
+| `metaDescription`| `text`   | Google description (160 chars max)            |
+| `ogImage`        | `image`  | Social sharing image                          |
+| `robots`         | `select` | Robots directives (index/noindex, follow/nofollow) |
 
-**Quand l'utiliser :** sur toutes les pages qui doivent apparaître dans Google (homepage, menu, catégories, fiches produit, etc.). Ne pas l'ajouter aux pages d'authentification ou au panier.
+**When to use it:** on every page that should show up in Google (homepage, menu, categories, product pages, etc.). Don't add it to the authentication pages or the cart.
 
 ---
 
 ## 8. Validation
 
-### Validation à l'initialisation (setCmsRegistry)
+### Validation at initialization (setCmsRegistry)
 
-`setCmsRegistry()` exécute 4 vérifications automatiquement :
+`setCmsRegistry()` runs 4 checks automatically:
 
-| #  | Vérification                          | Exemple d'erreur                                              |
+| #  | Check                                 | Example error                                                 |
 |----|---------------------------------------|---------------------------------------------------------------|
 | 1  | `group.id` unique                     | `Duplicate group id: "main"`                                  |
 | 2  | `group.order` unique                  | `Duplicate group order: 1`                                    |
-| 3  | Chaque `page.groupId` existe          | `Page "settings" references unknown groupId "admin"`          |
-| 4  | Pas de groupe orphelin                | `Group "empty" (label: "Vide") has no pages assigned`         |
+| 3  | Every `page.groupId` exists           | `Page "settings" references unknown groupId "admin"`          |
+| 4  | No orphan group                       | `Group "empty" (label: "Vide") has no pages assigned`         |
 
-Si plusieurs violations existent, **toutes** sont listées dans le même message d'erreur.
+If several violations exist, **all** of them are listed in the same error message.
 
-### Validation des valeurs (validateBlockValues)
+### Value validation (validateBlockValues)
 
-Utilisé côté Convex, avant de persister un brouillon. Valide les données saisies par l'admin contre la définition du bloc.
+Used on the Convex side, before persisting a draft. Validates the data entered by the admin against the block definition.
 
 ```typescript
 import { validateBlockValues, getBlockDefinition } from "@be-in-digital/cms"
@@ -587,30 +587,30 @@ const blockDef = getBlockDefinition("homepage", "hero")
 const result = validateBlockValues(values, blockDef)
 
 if (!result.valid) {
-  // result.errors contient les détails
+  // result.errors holds the details
   console.error(result.errors)
 }
 ```
 
-**Vérifications effectuées :**
+**Checks performed:**
 
 | Code              | Description                                                    |
 |-------------------|----------------------------------------------------------------|
-| `unknown_field`   | Le champ n'existe pas dans la définition du bloc               |
-| `type_mismatch`   | Le type de la valeur ne correspond pas (ex: texte dans un champ image) |
-| `required`        | Champ requis sans fallback code et sans valeur                 |
-| `max_length`      | Texte dépassant la longueur maximale (HTML strippé pour richtext) |
-| `invalid_option`  | Valeur select non présente dans les options autorisées         |
+| `unknown_field`   | The field doesn't exist in the block definition                |
+| `type_mismatch`   | The value type doesn't match (e.g. text in an image field)     |
+| `required`        | Required field with no code fallback and no value              |
+| `max_length`      | Text exceeding the maximum length (HTML stripped for richtext) |
+| `invalid_option`  | Select value not present in the allowed options                |
 
-**Note :** les champs avec `isCleared: true` ne sont pas validés (reset explicite vers le fallback).
+**Note:** fields with `isCleared: true` are not validated (explicit reset to the fallback).
 
 ---
 
-## 9. Gestion des médias
+## 9. Media handling
 
-### Types de médias supportés
+### Supported media types
 
-| Type    | MIME acceptés                          | Taille max  |
+| Type    | Accepted MIME types                    | Max size    |
 |---------|----------------------------------------|-------------|
 | `image` | JPEG, PNG, WebP, SVG                   | 10 MB       |
 | `video` | MP4, WebM                              | 100 MB      |
@@ -618,7 +618,7 @@ if (!result.valid) {
 
 ### validateMediaUpload(filename, mimeType, size)
 
-Valide un fichier avant upload.
+Validates a file before upload.
 
 ```typescript
 import { validateMediaUpload } from "@be-in-digital/cms"
@@ -633,15 +633,15 @@ if (result.valid) {
 }
 ```
 
-**Codes d'erreur :**
+**Error codes:**
 
 | Code               | Description                                        |
 |--------------------|----------------------------------------------------|
-| `invalid_filename` | Nom de fichier vide                                |
-| `invalid_mime`     | Type MIME non autorisé                             |
-| `file_too_large`   | Fichier dépassant la taille maximale pour ce type  |
+| `invalid_filename` | Empty filename                                     |
+| `invalid_mime`     | MIME type not allowed                              |
+| `file_too_large`   | File exceeding the maximum size for this type      |
 
-### Fonctions utilitaires
+### Utility functions
 
 ```typescript
 import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@be-in-digital/cms"
@@ -649,72 +649,72 @@ import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@be-in
 getMediaKind("image/jpeg")           // "image"
 getMediaKind("video/mp4")            // "video"
 getMediaKind("application/pdf")      // "file"
-getMediaKind("text/html")            // null (non supporté)
+getMediaKind("text/html")            // null (unsupported)
 
 getExtensionFromMimeType("image/png")     // "png"
 getExtensionFromMimeType("video/mp4")     // "mp4"
 getExtensionFromMimeType("unknown/type")  // "bin" (fallback)
 
-CMS_MEDIA_LIMITS.image.maxSize       // 10485760 (10 MB en bytes)
+CMS_MEDIA_LIMITS.image.maxSize       // 10485760 (10 MB in bytes)
 CMS_MEDIA_LIMITS.image.mimeTypes     // ["image/jpeg", "image/jpg", ...]
 ```
 
 ---
 
-## 10. Sanitisation SVG
+## 10. SVG sanitization
 
-Les SVG uploadés sont nettoyés automatiquement pour supprimer les éléments dangereux.
+Uploaded SVGs are cleaned automatically to strip dangerous elements.
 
 ```typescript
 import { sanitizeSvg } from "@be-in-digital/cms"
 
 const result = sanitizeSvg(svgContent)
-// result.sanitized    → SVG nettoyé
+// result.sanitized    → cleaned SVG
 // result.removedElements → ["<script>", "onclick", ...]
 ```
 
-**Éléments supprimés :**
+**Removed elements:**
 - `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<input>`, `<foreignObject>`, etc.
-- Attributs `onclick`, `onload`, `onerror`, etc.
-- URIs `javascript:` dans les attributs `href` / `xlink:href`
+- `onclick`, `onload`, `onerror` attributes, etc.
+- `javascript:` URIs in the `href` / `xlink:href` attributes
 
-**Limite :** 1 MB maximum par SVG. Au-delà, une erreur est levée.
+**Limit:** 1 MB max per SVG. Beyond that, an error is thrown.
 
 ---
 
-## 11. Initialisation (Frontend + Backend)
+## 11. Initialization (Frontend + Backend)
 
-### Pourquoi initialiser ?
+### Why initialize?
 
-Le registre CMS est un **singleton en mémoire**. Il doit être rempli avant que le code puisse appeler `getPageDefinition()`, `getBlockDefinition()`, etc.
+The CMS registry is an **in-memory singleton**. It must be populated before any code can call `getPageDefinition()`, `getBlockDefinition()`, etc.
 
-### Où initialiser ?
+### Where to initialize?
 
-| Contexte              | Fichier                           | Méthode                                  |
+| Context               | File                              | Method                                   |
 |-----------------------|-----------------------------------|------------------------------------------|
-| Layout admin          | `app/(admin)/layout.tsx`          | `import "@/lib/cms/init"`                |
-| Layout storefront     | `app/(storefront)/layout.tsx`     | `import "@/lib/cms/init"`                |
-| Layout preview        | `app/preview/layout.tsx`          | `import "@/lib/cms/init"`                |
+| Admin layout          | `app/(admin)/layout.tsx`          | `import "@/lib/cms/init"`                |
+| Storefront layout     | `app/(storefront)/layout.tsx`     | `import "@/lib/cms/init"`                |
+| Preview layout        | `app/preview/layout.tsx`          | `import "@/lib/cms/init"`                |
 | Convex `cms.ts`       | `convex/cms.ts`                   | `import { appCmsConfig } from "../cms"`  |
-| Convex auto-translate | `convex/cmsAutoTranslate.ts`      | idem                                     |
+| Convex auto-translate | `convex/cmsAutoTranslate.ts`      | same                                     |
 
-### Pourquoi ça marche ?
+### Why does this work?
 
-- `setCmsRegistry()` est **idempotent** — l'appeler plusieurs fois ne pose aucun problème
-- Les fonctions Convex (`getPageDefinition`, etc.) sont appelées **à l'intérieur des handlers**, pas au moment du chargement du module. Le registre est donc déjà initialisé quand elles s'exécutent.
-- Les imports side-effect (`import "@/lib/cms/init"`) sont exécutés une seule fois par le bundler.
+- `setCmsRegistry()` is **idempotent** — calling it several times causes no problem
+- The Convex functions (`getPageDefinition`, etc.) are called **inside the handlers**, not at module load time. So the registry is already initialized when they run.
+- Side-effect imports (`import "@/lib/cms/init"`) are executed only once by the bundler.
 
-### Quand ajouter une nouvelle initialisation ?
+### When to add a new initialization?
 
-Vous devez ajouter `setCmsRegistry()` si :
-- Vous créez un **nouveau layout racine** Next.js qui utilise le CMS
-- Vous créez un **nouveau fichier Convex** qui importe depuis `@be-in-digital/cms`
+You must add `setCmsRegistry()` if:
+- You create a **new Next.js root layout** that uses the CMS
+- You create a **new Convex file** that imports from `@be-in-digital/cms`
 
 ---
 
-## 12. Exemples concrets
+## 12. Concrete examples
 
-### Exemple 1 : Page simple (page de connexion)
+### Example 1: Simple page (sign-in page)
 
 ```typescript
 // cms/pages/sign-in.ts
@@ -786,7 +786,7 @@ export const signInPage: PageDefinition = {
 }
 ```
 
-### Exemple 2 : Page avec bloc SEO et champs groupés visuellement
+### Example 2: Page with an SEO block and visually grouped fields
 
 ```typescript
 // cms/pages/homepage.ts
@@ -798,25 +798,25 @@ export const homepagePage: PageDefinition = {
   label: "Page d'accueil",
   groupId: "storefront",
   blocks: [
-    seoBlock,    // ← Bloc SEO réutilisable en premier
+    seoBlock,    // ← Reusable SEO block first
     {
       key: "features",
       label: "Section avantages",
       fields: {
-        // Les champs avec le même `group` sont affichés ensemble dans l'admin
+        // Fields sharing the same `group` are displayed together in the admin
         feature1Image: {
           type: "image",
           label: "Icône",
           translatable: false,
           hasCodeFallback: true,
-          group: "Avantage 1",      // ← Groupement visuel
+          group: "Avantage 1",      // ← Visual grouping
         },
         feature1Label: {
           type: "text",
           label: "Texte",
           maxLength: 60,
           hasCodeFallback: true,
-          group: "Avantage 1",      // ← Même groupe = même carte dans l'UI
+          group: "Avantage 1",      // ← Same group = same card in the UI
         },
         feature2Image: {
           type: "image",
@@ -838,7 +838,7 @@ export const homepagePage: PageDefinition = {
 }
 ```
 
-### Exemple 3 : Page avec champ select
+### Example 3: Page with a select field
 
 ```typescript
 {
@@ -861,9 +861,9 @@ export const homepagePage: PageDefinition = {
 }
 ```
 
-### Exemple 4 : Ajouter une nouvelle page à une app existante
+### Example 4: Add a new page to an existing app
 
-1. Créer le fichier `cms/pages/faq.ts` :
+1. Create the file `cms/pages/faq.ts`:
 
 ```typescript
 import type { PageDefinition } from "@be-in-digital/cms"
@@ -871,7 +871,7 @@ import type { PageDefinition } from "@be-in-digital/cms"
 export const faqPage: PageDefinition = {
   slug: "faq",
   label: "Questions fréquentes",
-  groupId: "storefront",  // Doit référencer un groupe existant
+  groupId: "storefront",  // Must reference an existing group
   blocks: [
     {
       key: "header",
@@ -895,51 +895,51 @@ export const faqPage: PageDefinition = {
 }
 ```
 
-2. L'importer dans `cms/index.ts` :
+2. Import it in `cms/index.ts`:
 
 ```typescript
 import { faqPage } from "./pages/faq"
 
 const pages: Record<string, PageDefinition> = {
-  // ... pages existantes
-  faq: faqPage,   // ← Ajouter ici (la clé DOIT correspondre au slug)
+  // ... existing pages
+  faq: faqPage,   // ← Add here (the key MUST match the slug)
 }
 ```
 
-3. Redéployer Convex et rebuilder Next.js :
+3. Redeploy Convex and rebuild Next.js:
 
 ```bash
 cd apps/mon-app && pnpx convex dev --once
 pnpm turbo build --filter=@be-in-digital/mon-app
 ```
 
-La nouvelle page apparaîtra automatiquement dans le dashboard admin, dans le groupe "Vitrine".
+The new page shows up automatically in the admin dashboard, in the "Vitrine" group.
 
 ---
 
-## 13. Erreurs fréquentes et solutions
+## 13. Common errors and solutions
 
 ### "CMS Registry is not initialized"
 
-**Cause :** Vous appelez `getPageDefinition()` ou une autre fonction du registre avant `setCmsRegistry()`.
+**Cause:** you call `getPageDefinition()` or another registry function before `setCmsRegistry()`.
 
-**Solution :** Vérifiez que :
-- Le layout Next.js contient `import "@/lib/cms/init"` en première ligne
-- Le fichier Convex contient `setCmsRegistry(appCmsConfig)` en haut du fichier
+**Solution:** check that:
+- The Next.js layout has `import "@/lib/cms/init"` on the first line
+- The Convex file has `setCmsRegistry(appCmsConfig)` at the top of the file
 
 ---
 
 ### "[CMS Registry] Invalid config: Duplicate group id"
 
-**Cause :** Deux groupes dans `groups.ts` ont le même `id`.
+**Cause:** two groups in `groups.ts` have the same `id`.
 
-**Solution :** Chaque groupe doit avoir un `id` unique.
+**Solution:** each group must have a unique `id`.
 
 ```typescript
-// ❌ Erreur
+// ❌ Error
 [
   { id: "main", label: "Principal", order: 1 },
-  { id: "main", label: "Secondaire", order: 2 },   // doublon !
+  { id: "main", label: "Secondaire", order: 2 },   // duplicate!
 ]
 
 // ✅ Correct
@@ -953,24 +953,24 @@ La nouvelle page apparaîtra automatiquement dans le dashboard admin, dans le gr
 
 ### "[CMS Registry] Invalid config: Duplicate group order"
 
-**Cause :** Deux groupes ont le même numéro d'`order`.
+**Cause:** two groups have the same `order` number.
 
-**Solution :** Chaque `order` doit être unique.
+**Solution:** each `order` must be unique.
 
 ---
 
 ### "[CMS Registry] Invalid config: Page references unknown groupId"
 
-**Cause :** Une page utilise un `groupId` qui n'existe dans aucun groupe.
+**Cause:** a page uses a `groupId` that doesn't exist in any group.
 
-**Solution :** Vérifiez que le `groupId` de la page correspond à un `id` dans `groups.ts`.
+**Solution:** check that the page's `groupId` matches an `id` in `groups.ts`.
 
 ```typescript
 // groups.ts
 [{ id: "storefront", label: "Vitrine", order: 1 }]
 
 // pages/faq.ts
-{ slug: "faq", groupId: "store" }   // ❌ "store" n'existe pas
+{ slug: "faq", groupId: "store" }   // ❌ "store" doesn't exist
 { slug: "faq", groupId: "storefront" }  // ✅ Correct
 ```
 
@@ -978,25 +978,25 @@ La nouvelle page apparaîtra automatiquement dans le dashboard admin, dans le gr
 
 ### "[CMS Registry] Invalid config: Group has no pages assigned"
 
-**Cause :** Un groupe existe dans `groups.ts` mais aucune page ne le référence.
+**Cause:** a group exists in `groups.ts` but no page references it.
 
-**Solution :** Soit supprimer le groupe, soit ajouter au moins une page avec ce `groupId`.
+**Solution:** either delete the group, or add at least one page with that `groupId`.
 
 ---
 
-### "La clé dans pages ne correspond pas au slug"
+### "The key in pages doesn't match the slug"
 
-**Cause :** Dans `cms/index.ts`, la clé de l'objet ne correspond pas au `slug` de la PageDefinition.
+**Cause:** in `cms/index.ts`, the object key doesn't match the `slug` of the PageDefinition.
 
 ```typescript
-// ❌ Erreur
+// ❌ Error
 const pages = {
-  "home": homepagePage,  // clé "home" mais slug "homepage"
+  "home": homepagePage,  // key "home" but slug "homepage"
 }
 
 // ✅ Correct
 const pages = {
-  "homepage": homepagePage,  // clé = slug
+  "homepage": homepagePage,  // key = slug
 }
 ```
 
@@ -1004,64 +1004,64 @@ const pages = {
 
 ### "Cannot find module '../cms'"
 
-**Cause :** Le fichier Convex ne trouve pas le dossier `cms/` avec un import relatif.
+**Cause:** the Convex file can't find the `cms/` folder with a relative import.
 
-**Solution :** Vérifiez le chemin relatif. Depuis `convex/cms.ts`, le dossier `cms/` est un niveau au-dessus : `"../cms"`.
+**Solution:** check the relative path. From `convex/cms.ts`, the `cms/` folder is one level up: `"../cms"`.
 
 ---
 
-### Import `@/cms` ne fonctionne pas dans Convex
+### Import `@/cms` doesn't work in Convex
 
-**Cause :** Le tsconfig Convex résout `@/` vers un dossier différent de Next.js.
+**Cause:** the Convex tsconfig resolves `@/` to a different folder than Next.js.
 
-**Solution :** Utilisez toujours un **import relatif** dans les fichiers Convex :
+**Solution:** always use a **relative import** in Convex files:
 
 ```typescript
-// ❌ Dans un fichier Convex
+// ❌ In a Convex file
 import { appCmsConfig } from "@/cms"
 
-// ✅ Dans un fichier Convex
+// ✅ In a Convex file
 import { appCmsConfig } from "../cms"
 ```
 
 ---
 
-## 14. Diagrammes
+## 14. Diagrams
 
-### Flux de données CMS
+### CMS data flow
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                           INITIALISATION                             │
+│                           INITIALIZATION                             │
 │                                                                      │
-│  apps/mon-app/cms/           →   setCmsRegistry()   →   Registre    │
-│  (groups.ts + pages/*.ts)         (validation)           (mémoire)   │
+│  apps/mon-app/cms/           →   setCmsRegistry()   →   Registry     │
+│  (groups.ts + pages/*.ts)         (validation)           (memory)    │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────┐
-│                           ADMIN (ÉCRITURE)                           │
+│                            ADMIN (WRITE)                             │
 │                                                                      │
-│  Dashboard    →  Formulaire  →  saveDraftBlock()  →  Convex DB      │
-│  (listPages)     (auto-généré     (validation         (cmsBlocks)    │
-│                   depuis le        validateBlockValues               │
-│                   registre)        + registre)                       │
+│  Dashboard    →  Form        →  saveDraftBlock()  →  Convex DB       │
+│  (listPages)     (generated       (validation         (cmsBlocks)    │
+│                   from the         validateBlockValues               │
+│                   registry)        + registry)                       │
 │                                                                      │
-│                               →  publishPage()    →  cmsBlocks      │
-│                                   (copie draft        (isDraft:false)│
-│                                    vers published)                   │
+│                               →  publishPage()    →  cmsBlocks       │
+│                                   (copy draft         (isDraft:false)│
+│                                    to published)                     │
 └──────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────┐
-│                          STOREFRONT (LECTURE)                         │
+│                          STOREFRONT (READ)                           │
 │                                                                      │
-│  Composant   →  getPageBlocks()  →  Valeurs publiées  →  Rendu     │
+│  Component   →  getPageBlocks()  →  Published values  →  Render      │
 │  (page.tsx)      (Convex query)      + fallback code      (HTML)     │
-│                                      si champ vide                   │
-│                                      et hasCodeFallback              │
+│                                      if field empty                  │
+│                                      and hasCodeFallback             │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Hiérarchie des types
+### Type hierarchy
 
 ```
 CmsGroupDefinition
@@ -1075,41 +1075,41 @@ PageDefinition
               ├── type, label, description
               ├── required, maxLength, placeholder
               ├── translatable, hasCodeFallback
-              ├── options (select uniquement)
-              └── group (groupement visuel)
+              ├── options (select only)
+              └── group (visual grouping)
 
-CmsFieldValue (stocké en DB)
+CmsFieldValue (stored in DB)
   ├── type
   ├── textValue (text, richtext, select)
   ├── mediaId (image, video, file)
   ├── altText, embedUrl, embedProvider
-  └── isCleared (reset vers fallback)
+  └── isCleared (reset to fallback)
 ```
 
 ---
 
-## 15. Glossaire
+## 15. Glossary
 
-| Terme            | Définition                                                                                         |
+| Term             | Definition                                                                                         |
 |------------------|----------------------------------------------------------------------------------------------------|
-| **Registre**     | Singleton en mémoire contenant toutes les pages et groupes CMS, initialisé par `setCmsRegistry()` |
-| **Page**         | Unité CMS identifiée par un slug (ex: `sign-in`, `homepage`). Le slug est un identifiant interne — il ne correspond pas toujours au chemin URL (ex: slug `homepage` → route `/`). |
-| **Bloc**         | Section éditable d'une page (ex: "Hero", "Formulaire", "SEO"). Contient des champs.               |
-| **Champ (Field)**| Unité atomique éditable (ex: titre, image, texte de bouton). A un type et des contraintes.         |
-| **Groupe**       | Catégorie organisationnelle pour regrouper les pages dans le dashboard admin.                       |
-| **Slug**         | Identifiant URL d'une page (ex: `"sign-in"`, `"homepage"`). Doit être unique.                     |
-| **Draft**        | Brouillon — valeurs modifiées mais pas encore publiées.                                            |
-| **Published**    | Valeurs publiées — visibles sur le storefront.                                                     |
-| **Fallback**     | Valeur par défaut codée en dur dans le composant, utilisée si le CMS est vide.                     |
-| **`hasCodeFallback`** | Indique si le composant affiche une valeur par défaut quand le CMS est vide.                  |
-| **`isCleared`**  | Reset explicite d'un champ vers sa valeur fallback (supprime la valeur CMS).                       |
-| **Side-effect import** | `import "@/lib/cms/init"` — exécute le fichier sans rien extraire, juste pour ses effets.    |
-| **seoBlock**     | Bloc SEO réutilisable fourni par le package (metaTitle, metaDescription, ogImage, robots).         |
-| **Barrel file**  | Fichier `index.ts` qui ré-exporte tous les éléments d'un dossier.                                 |
+| **Registry**     | In-memory singleton holding every CMS page and group, initialized by `setCmsRegistry()`           |
+| **Page**         | CMS unit identified by a slug (e.g. `sign-in`, `homepage`). The slug is an internal identifier — it doesn't always match the URL path (e.g. slug `homepage` → route `/`). |
+| **Block**        | Editable section of a page (e.g. "Hero", "Formulaire", "SEO"). Holds fields.                      |
+| **Field**        | Atomic editable unit (e.g. title, image, button text). Has a type and constraints.                 |
+| **Group**        | Organizational category used to group pages in the admin dashboard.                                 |
+| **Slug**         | URL identifier of a page (e.g. `"sign-in"`, `"homepage"`). Must be unique.                        |
+| **Draft**        | Values modified but not published yet.                                                             |
+| **Published**    | Published values — visible on the storefront.                                                      |
+| **Fallback**     | Default value hard-coded in the component, used when the CMS is empty.                             |
+| **`hasCodeFallback`** | Indicates whether the component shows a default value when the CMS is empty.                  |
+| **`isCleared`**  | Explicit reset of a field to its fallback value (removes the CMS value).                           |
+| **Side-effect import** | `import "@/lib/cms/init"` — runs the file without extracting anything, just for its effects. |
+| **seoBlock**     | Reusable SEO block provided by the package (metaTitle, metaDescription, ogImage, robots).          |
+| **Barrel file**  | `index.ts` file that re-exports everything in a folder.                                           |
 
 ---
 
-## Exports complets du package
+## Complete package exports
 
 ```typescript
 // Types
@@ -1135,18 +1135,18 @@ export {
   getAllPageSlugs,
 } from "@be-in-digital/cms"
 
-// Blocs réutilisables
+// Reusable blocks
 export { seoBlock } from "@be-in-digital/cms"
 
-// Validation des valeurs
+// Value validation
 export { validateBlockValues } from "@be-in-digital/cms"
 export type { ValidationError, ValidationResult } from "@be-in-digital/cms"
 
-// Sanitisation SVG
+// SVG sanitization
 export { sanitizeSvg } from "@be-in-digital/cms"
 export type { SanitizeResult } from "@be-in-digital/cms"
 
-// Médias
+// Media
 export {
   CMS_MEDIA_LIMITS,
   MIME_TO_EXT,

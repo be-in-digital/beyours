@@ -107,8 +107,8 @@ export default function GamePageContent() {
     [gameSession]
   )
 
-  // Progression "une action par visite" : l'action courante à réaliser (mode
-  // sequential), ou null si tout est fait. Le mode "all" garde l'ancien flux.
+  // "One action per visit" progression: the action currently due (sequential
+  // mode), or null once everything is done. "all" mode keeps the old flow.
   const currentAction = useMemo(() => {
     if (!gameSession) return null
     const prog = gameSession.progression
@@ -130,9 +130,10 @@ export default function GamePageContent() {
   const referralEnabled = gameSession?.referral.enabled ?? false
   const bonusAvailable = (gameSession?.referral.pendingBonuses ?? 0) > 0
 
-  // Après l'accueil : filleul → jeu direct (tour offert) ; tour bonus du parrain
-  // → jeu direct ; action sociale en attente → actions ; social épuisé +
-  // parrainage activé → referral (partager pour rejouer).
+  // After the welcome screen: referred friend → straight to the game (free
+  // spin); referrer bonus spin → straight to the game; social action pending →
+  // actions; social actions exhausted + referral enabled → referral (share to
+  // play again).
   const afterWelcome: GamePhase = useMemo(() => {
     if (!gameSession) return "game"
     if (isFriendWelcome) return "game"

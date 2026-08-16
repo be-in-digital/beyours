@@ -1,37 +1,37 @@
-# BeYours Engine - Plan d'Implementation Step-by-Step
+# BeYours Engine - Step-by-Step Implementation Plan
 
-## Phases couvertes : Phase 1 (MVP) + Phase 2 (Integrations)
+## Phases covered: Phase 1 (MVP) + Phase 2 (Integrations)
 
-**Date** : 14 Fevrier 2026
-**Etat actuel** : ~5% (boilerplate Next.js 16 + Tailwind CSS)
+**Date**: February 14, 2026
+**Current state**: ~5% (Next.js 16 + Tailwind CSS boilerplate)
 
 ---
 
-## Vue d'ensemble des etapes
+## Steps overview
 
 ```
 Phase 1 - MVP
-├── Etape 1  : Fondation Monorepo & CI/CD
-├── Etape 2  : Schema Convex & Fonctions Backend
-├── Etape 3  : Package Core (Auth, i18n, AWS)
-├── Etape 4  : Package UI (Composants shadcn/ui)
-├── Etape 5  : Package Restaurant (Logique Metier)
-├── Etape 6  : Package Themes (1er theme complet)
-├── Etape 7  : App Restaurant - Storefront
-├── Etape 8  : App Restaurant - Dashboard Admin
-├── Etape 9  : Kitchen Display System (KDS)
-├── Etape 10 : Systeme de Paiement
-├── Etape 11 : i18n + Traduction GPT
-└── Etape 12 : 5 Themes restants
+├── Step 1  : Monorepo Foundation & CI/CD
+├── Step 2  : Convex Schema & Backend Functions
+├── Step 3  : Core Package (Auth, i18n, AWS)
+├── Step 4  : UI Package (shadcn/ui Components)
+├── Step 5  : Restaurant Package (Business Logic)
+├── Step 6  : Themes Package (1st complete theme)
+├── Step 7  : Restaurant App - Storefront
+├── Step 8  : Restaurant App - Admin Dashboard
+├── Step 9  : Kitchen Display System (KDS)
+├── Step 10 : Payment System
+├── Step 11 : i18n + GPT Translation
+└── Step 12 : 5 Remaining Themes
 
 Phase 2 - Integrations
-├── Etape 13 : Package Integrations (Uber Eats)
-├── Etape 14 : Integration Deliveroo
-├── Etape 15 : Uber Direct (Livraison)
-├── Etape 16 : Email Marketing (Basique)
-├── Etape 17 : CMS (Pages Statiques)
-├── Etape 18 : Gestion Clients
-└── Etape 19 : App Admin Dashboard BeYours
+├── Step 13 : Integrations Package (Uber Eats)
+├── Step 14 : Deliveroo Integration
+├── Step 15 : Uber Direct (Delivery)
+├── Step 16 : Email Marketing (Basic)
+├── Step 17 : CMS (Static Pages)
+├── Step 18 : Customer Management
+└── Step 19 : BeYours Admin Dashboard App
 ```
 
 ---
@@ -40,397 +40,397 @@ Phase 2 - Integrations
 
 ---
 
-### Etape 1 : Fondation Monorepo & CI/CD
+### Step 1: Monorepo Foundation & CI/CD
 
-**Prerequis** : Aucun
-**Livrable** : Monorepo Turborepo fonctionnel avec CI/CD
+**Prerequisites**: None
+**Deliverable**: Working Turborepo monorepo with CI/CD
 
-#### 1.1 - Restructuration en Monorepo Turborepo
+#### 1.1 - Restructuring into a Turborepo monorepo
 
-- [ ] Sauvegarder le contenu actuel de `app/` et configs
-- [ ] Installer Turborepo : `pnpm add -Dw turbo`
-- [ ] Creer `turbo.json` avec pipelines (build, dev, test, lint)
-- [ ] Creer `tsconfig.base.json` (config TypeScript partagee)
-- [ ] Mettre a jour `pnpm-workspace.yaml` :
+- [ ] Back up the current contents of `app/` and the configs
+- [ ] Install Turborepo: `pnpm add -Dw turbo`
+- [ ] Create `turbo.json` with pipelines (build, dev, test, lint)
+- [ ] Create `tsconfig.base.json` (shared TypeScript config)
+- [ ] Update `pnpm-workspace.yaml`:
   ```yaml
   packages:
     - "packages/*"
     - "apps/*"
   ```
-- [ ] Mettre a jour `package.json` racine (scripts Turborepo)
+- [ ] Update the root `package.json` (Turborepo scripts)
 
-#### 1.2 - Creation de la structure des packages
+#### 1.2 - Creating the package structure
 
 ```
 packages/
-├── ui/                    # Composants React
+├── ui/                    # React components
 ├── core/                  # Auth, i18n, AWS, Payments
-├── restaurant/            # Logique metier restaurant
+├── restaurant/            # Restaurant business logic
 ├── integrations/          # Uber Eats, Deliveroo, Uber Direct
 ├── marketing/             # Email, Gamification
-├── cms/                   # CMS custom
-├── convex-schema/         # Schemas DB partagees
-├── convex-functions/      # Fonctions backend Convex
-└── themes/                # 6 themes predeterminants
+├── cms/                   # Custom CMS
+├── convex-schema/         # Shared DB schemas
+├── convex-functions/      # Convex backend functions
+└── themes/                # 6 predefined themes
 
 apps/
-├── restaurant-theme/      # App principale (Next.js 16)
-├── admin-dashboard/       # Dashboard BeYours
+├── restaurant-theme/      # Main app (Next.js 16)
+├── admin-dashboard/       # BeYours dashboard
 └── docs/                  # Documentation
 ```
 
-Pour chaque package :
-- [ ] `package.json` avec nom `@be-in-digital/<nom>`
-- [ ] `tsconfig.json` qui extend `tsconfig.base.json`
-- [ ] `tsup.config.ts` pour le build
+For each package:
+- [ ] `package.json` named `@be-in-digital/<nom>`
+- [ ] `tsconfig.json` extending `tsconfig.base.json`
+- [ ] `tsup.config.ts` for the build
 - [ ] `src/index.ts` (barrel file)
 - [ ] `vitest.config.ts`
 
-#### 1.3 - Configuration CI/CD GitHub Actions
+#### 1.3 - GitHub Actions CI/CD configuration
 
-- [ ] `.github/workflows/ci.yml` :
+- [ ] `.github/workflows/ci.yml`:
   - Lint (ESLint)
   - Type-check (tsc --noEmit)
-  - Tests unitaires (Vitest)
+  - Unit tests (Vitest)
   - Build (turbo build)
-  - Sur push/PR vers `main`
-- [ ] `.github/workflows/e2e.yml` :
-  - Tests Playwright
-  - Sur PR vers `main` uniquement
-- [ ] Configurer Husky + lint-staged pour pre-commit
+  - On push/PR to `main`
+- [ ] `.github/workflows/e2e.yml`:
+  - Playwright tests
+  - On PR to `main` only
+- [ ] Set up Husky + lint-staged for pre-commit
 
-#### 1.4 - Outils de developpement
+#### 1.4 - Development tooling
 
-- [ ] ESLint config partagee (eslint-config-custom)
-- [ ] Prettier config partagee
-- [ ] Changesets pour le versioning (`@changesets/cli`)
-- [ ] `.env.example` a la racine
+- [ ] Shared ESLint config (eslint-config-custom)
+- [ ] Shared Prettier config
+- [ ] Changesets for versioning (`@changesets/cli`)
+- [ ] `.env.example` at the root
 
-#### Tests de validation Etape 1
-- [ ] `pnpm install` reussit
-- [ ] `pnpm build` compile tous les packages (vides)
-- [ ] `pnpm lint` passe
-- [ ] `pnpm test` passe (0 tests, 0 erreurs)
-- [ ] GitHub Actions CI passe sur push
+#### Step 1 validation tests
+- [ ] `pnpm install` succeeds
+- [ ] `pnpm build` compiles every package (empty)
+- [ ] `pnpm lint` passes
+- [ ] `pnpm test` passes (0 tests, 0 errors)
+- [ ] GitHub Actions CI passes on push
 
 ---
 
-### Etape 2 : Schema Convex & Fonctions Backend
+### Step 2: Convex Schema & Backend Functions
 
-**Prerequis** : Etape 1
-**Livrable** : Schema complet + fonctions CRUD de base
+**Prerequisites**: Step 1
+**Deliverable**: Complete schema + basic CRUD functions
 
-#### 2.1 - Setup Convex
+#### 2.1 - Convex setup
 
-- [ ] Installer Convex : `pnpm add convex --filter @be-in-digital/convex-schema`
-- [ ] Initialiser Convex dans le package
-- [ ] Configurer `convex/` avec les fichiers generes
+- [ ] Install Convex: `pnpm add convex --filter @be-in-digital/convex-schema`
+- [ ] Initialize Convex inside the package
+- [ ] Set up `convex/` with the generated files
 
-#### 2.2 - Schema de base (package convex-schema)
+#### 2.2 - Base schema (convex-schema package)
 
-Tables core :
-- [ ] `users` - Profils utilisateurs (extension Better Auth)
+Core tables:
+- [ ] `users` - User profiles (Better Auth extension)
 - [ ] `sessions` - Sessions (Better Auth)
-- [ ] `accounts` - Comptes OAuth (Better Auth)
-- [ ] `verifications` - Tokens de verification
+- [ ] `accounts` - OAuth accounts (Better Auth)
+- [ ] `verifications` - Verification tokens
 
-Tables restaurant :
-- [ ] `stores` - Configuration des etablissements
-  - nom, adresse, geolocation, horaires, statut, tel, email
+Restaurant tables:
+- [ ] `stores` - Location configuration
+  - name, address, geolocation, hours, status, phone, email
   - integrations (uberEats, deliveroo)
-  - branding (couleurs, logo, favicon)
-- [ ] `products` - Catalogue produits
-  - nom, description, prix, images, categorie
-  - options, variantes, allergenes, nutrition
-  - stock, statut, scheduling
+  - branding (colors, logo, favicon)
+- [ ] `products` - Product catalog
+  - name, description, price, images, category
+  - options, variants, allergens, nutrition
+  - stock, status, scheduling
   - externalIds (uberEatsId, deliverooId)
-- [ ] `categories` - Categories de produits
-- [ ] `menus` - Menus/Formules
-- [ ] `orders` - Commandes
-  - items, total, statut, type (delivery/pickup/dine-in)
-  - clientId, storeId, paiement, timestamps
-- [ ] `orderItems` - Lignes de commande
+- [ ] `categories` - Product categories
+- [ ] `menus` - Menus/set menus
+- [ ] `orders` - Orders
+  - items, total, status, type (delivery/pickup/dine-in)
+  - clientId, storeId, payment, timestamps
+- [ ] `orderItems` - Order line items
 
-Tables KDS :
-- [ ] `kitchenTickets` - Tickets cuisine
-  - orderId, storeId, station, statut, priorite
+KDS tables:
+- [ ] `kitchenTickets` - Kitchen tickets
+  - orderId, storeId, station, status, priority
   - prepTime, assignedTo, timestamps
-- [ ] `printerSettings` - Config imprimantes
-  - storeId, nom, type (network/usb), ip, port
-  - station, autoPrint, statut
+- [ ] `printerSettings` - Printer config
+  - storeId, name, type (network/usb), ip, port
+  - station, autoPrint, status
 
-Tables equipe :
-- [ ] `teamMembers` - Membres de l'equipe
+Team tables:
+- [ ] `teamMembers` - Team members
   - userId, storeId, role, permissions
-  - horaires, statut
+  - hours, status
 
-Tables paiement :
+Payment tables:
 - [ ] `payments` - Transactions
-  - orderId, montant, provider, statut
+  - orderId, amount, provider, status
   - externalId, metadata
 
-#### 2.3 - Index pour la performance
+#### 2.3 - Indexes for performance
 
-- [ ] Index par `storeId` sur toutes les tables multi-store
-- [ ] Index par `status` sur orders, kitchenTickets
-- [ ] Index par `userId` sur users, sessions, orders
-- [ ] Index par `categoryId` sur products
-- [ ] Index composites (storeId + status, storeId + createdAt)
+- [ ] Index on `storeId` for every multi-store table
+- [ ] Index on `status` for orders, kitchenTickets
+- [ ] Index on `userId` for users, sessions, orders
+- [ ] Index on `categoryId` for products
+- [ ] Composite indexes (storeId + status, storeId + createdAt)
 
-#### 2.4 - Fonctions backend (package convex-functions)
+#### 2.4 - Backend functions (convex-functions package)
 
-Fonctions Stores :
+Store functions:
 - [ ] `stores.create` / `stores.update` / `stores.get` / `stores.list`
 - [ ] `stores.updateHours` / `stores.updateStatus`
 - [ ] `stores.updateBranding`
 
-Fonctions Products :
+Product functions:
 - [ ] `products.create` / `products.update` / `products.delete`
-- [ ] `products.list` (par storeId, avec pagination)
+- [ ] `products.list` (by storeId, with pagination)
 - [ ] `products.getByCategory`
 - [ ] `products.updateStock`
 - [ ] `products.toggleStatus`
 
-Fonctions Orders :
+Order functions:
 - [ ] `orders.create` / `orders.get` / `orders.list`
 - [ ] `orders.updateStatus`
-- [ ] `orders.getByStore` (avec filtres)
+- [ ] `orders.getByStore` (with filters)
 - [ ] `orders.getByCustomer`
 
-Fonctions Kitchen :
+Kitchen functions:
 - [ ] `kitchenTickets.create` / `kitchenTickets.update`
 - [ ] `kitchenTickets.getByStore` (real-time)
 - [ ] `kitchenTickets.assignStation`
 - [ ] `kitchenTickets.markComplete`
 
-Fonctions Team :
+Team functions:
 - [ ] `teamMembers.create` / `teamMembers.update` / `teamMembers.list`
 - [ ] `teamMembers.getByStore`
 
-#### 2.5 - Validators Zod partagees
+#### 2.5 - Shared Zod validators
 
-- [ ] `validators/store.ts` - Schema Zod pour les stores
-- [ ] `validators/product.ts` - Schema Zod pour les produits
-- [ ] `validators/order.ts` - Schema Zod pour les commandes
-- [ ] `validators/user.ts` - Schema Zod pour les utilisateurs
+- [ ] `validators/store.ts` - Zod schema for stores
+- [ ] `validators/product.ts` - Zod schema for products
+- [ ] `validators/order.ts` - Zod schema for orders
+- [ ] `validators/user.ts` - Zod schema for users
 
-#### Tests de validation Etape 2
-- [ ] Schema Convex deploye sur un projet dev
-- [ ] Toutes les fonctions CRUD testees unitairement
-- [ ] Validators Zod couvrent tous les inputs
-- [ ] Index performants (pas de scan complet)
+#### Step 2 validation tests
+- [ ] Convex schema deployed to a dev project
+- [ ] Every CRUD function covered by unit tests
+- [ ] Zod validators cover every input
+- [ ] Indexes perform well (no full scans)
 
 ---
 
-### Etape 3 : Package Core (Auth, i18n, AWS)
+### Step 3: Core Package (Auth, i18n, AWS)
 
-**Prerequis** : Etape 2
-**Livrable** : Authentification, internationalisation et services AWS
+**Prerequisites**: Step 2
+**Deliverable**: Authentication, internationalization and AWS services
 
-#### 3.1 - Authentification Better Auth
+#### 3.1 - Better Auth authentication
 
-- [ ] Installer Better Auth : `pnpm add better-auth --filter @be-in-digital/core`
-- [ ] Configuration Better Auth avec adaptateur Convex
-- [ ] Auth email/password avec verification email
-- [ ] OAuth providers : Google, Facebook, Apple
+- [ ] Install Better Auth: `pnpm add better-auth --filter @be-in-digital/core`
+- [ ] Better Auth configuration with the Convex adapter
+- [ ] Email/password auth with email verification
+- [ ] OAuth providers: Google, Facebook, Apple
 - [ ] Magic Link (passwordless)
-- [ ] Session management (7 jours, refresh apres 1 jour)
+- [ ] Session management (7 days, refresh after 1 day)
 - [ ] 2FA plugin (TOTP, SMS, Email)
 - [ ] Client auth hooks (`useAuth`, `useSession`)
 
 #### 3.2 - RBAC (Role-Based Access Control)
 
-- [ ] Definition des 7 roles :
-  - `super_admin` (droits complets)
-  - `client_admin` (tout sur son restaurant)
-  - `manager` (gestion operationnelle)
-  - `kitchen` (KDS uniquement)
-  - `waiter` (commandes)
-  - `delivery` (livraisons)
-  - `customer` (ses propres commandes)
-- [ ] Systeme de permissions granulaires (resource:action)
-- [ ] Middleware de verification `requirePermission()`
-- [ ] Hook client `usePermission()`
+- [ ] Define the 7 roles:
+  - `super_admin` (full rights)
+  - `client_admin` (everything on their own restaurant)
+  - `manager` (operational management)
+  - `kitchen` (KDS only)
+  - `waiter` (orders)
+  - `delivery` (deliveries)
+  - `customer` (their own orders)
+- [ ] Granular permission system (resource:action)
+- [ ] `requirePermission()` check middleware
+- [ ] `usePermission()` client hook
 
-#### 3.3 - i18n (Internationalisation)
+#### 3.3 - i18n (Internationalization)
 
-- [ ] Systeme i18n base sur cookies (primaire) + localStorage (fallback)
-- [ ] Detection automatique de la langue navigateur
-- [ ] Structure de traductions dynamique (pas de fichiers statiques)
-- [ ] Hook `useTranslation()`
-- [ ] Composant `<LanguageSwitcher />`
-- [ ] Support RTL (arabe, hebreu)
+- [ ] i18n system based on cookies (primary) + localStorage (fallback)
+- [ ] Automatic browser language detection
+- [ ] Dynamic translation structure (no static files)
+- [ ] `useTranslation()` hook
+- [ ] `<LanguageSwitcher />` component
+- [ ] RTL support (Arabic, Hebrew)
 
-#### 3.4 - Service AWS S3
+#### 3.4 - AWS S3 service
 
-- [ ] Client S3 configure (region eu-west-1)
-- [ ] Upload de fichiers avec presigned URLs
-- [ ] Dossiers organises : `products/`, `branding/`, `stores/`, `cms/`
-- [ ] Suppression de fichiers
-- [ ] Validation type MIME + taille max
-- [ ] Generation URL publique
+- [ ] S3 client configured (region eu-west-1)
+- [ ] File upload with presigned URLs
+- [ ] Organized folders: `products/`, `branding/`, `stores/`, `cms/`
+- [ ] File deletion
+- [ ] MIME type + max size validation
+- [ ] Public URL generation
 
-#### 3.5 - Service AWS SES
+#### 3.5 - AWS SES service
 
-- [ ] Client SES configure
-- [ ] Envoi email simple (`sendEmail`)
-- [ ] Envoi email template (`sendTemplatedEmail`)
-- [ ] Templates : confirmation commande, reset password, bienvenue
-- [ ] Gestion bounces et complaints
+- [ ] SES client configured
+- [ ] Plain email send (`sendEmail`)
+- [ ] Templated email send (`sendTemplatedEmail`)
+- [ ] Templates: order confirmation, password reset, welcome
+- [ ] Bounce and complaint handling
 
-#### Tests de validation Etape 3
-- [ ] Login/Register email + OAuth fonctionnels
-- [ ] 2FA active et verifie
-- [ ] RBAC bloque les acces non autorises
-- [ ] Upload S3 et envoi SES fonctionnels
-- [ ] i18n change la langue dynamiquement
-- [ ] Tests unitaires couvrent auth + RBAC (>80%)
+#### Step 3 validation tests
+- [ ] Email + OAuth login/register work
+- [ ] 2FA enabled and verified
+- [ ] RBAC blocks unauthorized access
+- [ ] S3 upload and SES send work
+- [ ] i18n switches language dynamically
+- [ ] Unit tests cover auth + RBAC (>80%)
 
 ---
 
-### Etape 4 : Package UI (Composants shadcn/ui)
+### Step 4: UI Package (shadcn/ui Components)
 
-**Prerequis** : Etape 1
-**Livrable** : Librairie de composants reutilisables
+**Prerequisites**: Step 1
+**Deliverable**: Reusable component library
 
-#### 4.1 - Setup shadcn/ui
+#### 4.1 - shadcn/ui setup
 
-- [ ] Configurer shadcn/ui dans le package `ui`
-- [ ] Utilitaire `cn()` (clsx + tailwind-merge)
-- [ ] Systeme de design tokens (couleurs, spacing, typography)
+- [ ] Set up shadcn/ui in the `ui` package
+- [ ] `cn()` utility (clsx + tailwind-merge)
+- [ ] Design token system (colors, spacing, typography)
 
-#### 4.2 - Composants de base
+#### 4.2 - Base components
 
-Layout :
+Layout:
 - [ ] `Container`, `Section`, `Grid`
 - [ ] `Header`, `Footer`, `Sidebar`
 - [ ] `PageHeader`, `PageTitle`
 
-Navigation :
+Navigation:
 - [ ] `Navbar`, `MobileMenu`
 - [ ] `Breadcrumb`
 - [ ] `Tabs`, `TabPanel`
 
-Formulaires :
+Forms:
 - [ ] `Input`, `Textarea`, `Select`
 - [ ] `Checkbox`, `Radio`, `Switch`
 - [ ] `DatePicker`, `TimePicker`
-- [ ] `FileUpload` (avec preview)
-- [ ] `Form` (wrapper React Hook Form)
+- [ ] `FileUpload` (with preview)
+- [ ] `Form` (React Hook Form wrapper)
 
-Affichage :
-- [ ] `Button` (variantes : primary, secondary, danger, ghost)
+Display:
+- [ ] `Button` (variants: primary, secondary, danger, ghost)
 - [ ] `Badge`, `Tag`
 - [ ] `Card`, `CardHeader`, `CardContent`
 - [ ] `Avatar`
-- [ ] `Table`, `DataTable` (avec tri, filtres, pagination)
+- [ ] `Table`, `DataTable` (with sorting, filters, pagination)
 - [ ] `Modal`, `Dialog`
 - [ ] `Toast`, `Notification`
 - [ ] `Skeleton`, `Spinner`
 - [ ] `EmptyState`
 - [ ] `Alert`
 
-Specifiques restaurant :
-- [ ] `ProductCard` (image, nom, prix, ajout panier)
-- [ ] `CartItem` (produit, quantite, prix, supprimer)
+Restaurant-specific:
+- [ ] `ProductCard` (image, name, price, add to cart)
+- [ ] `CartItem` (product, quantity, price, remove)
 - [ ] `OrderStatusBadge` (pending, preparing, ready, delivered)
-- [ ] `StoreSelector` (carte + liste des etablissements)
+- [ ] `StoreSelector` (map + list of locations)
 - [ ] `QuantitySelector` (+/-)
-- [ ] `PriceDisplay` (formatage devise)
-- [ ] `AllergenBadge` (icones allergenes)
+- [ ] `PriceDisplay` (currency formatting)
+- [ ] `AllergenBadge` (allergen icons)
 - [ ] `SpiceLevelIndicator`
 
-#### 4.3 - Composants admin
+#### 4.3 - Admin components
 
 - [ ] `AdminLayout` (sidebar + header + content)
-- [ ] `StatCard` (icone, valeur, label, tendance)
-- [ ] `Chart` (wrapper pour recharts ou chart.js)
-- [ ] `ActionBar` (boutons d'action groupes)
-- [ ] `FilterBar` (filtres inline)
+- [ ] `StatCard` (icon, value, label, trend)
+- [ ] `Chart` (wrapper for recharts or chart.js)
+- [ ] `ActionBar` (grouped action buttons)
+- [ ] `FilterBar` (inline filters)
 - [ ] `StatusTimeline`
 
-#### Tests de validation Etape 4
-- [ ] Tous les composants rendus sans erreur
-- [ ] Storybook (optionnel) ou fichiers de demo
-- [ ] Tests unitaires sur les composants interactifs
-- [ ] Responsive sur mobile/tablet/desktop
-- [ ] Accessibilite (ARIA labels, focus, keyboard nav)
+#### Step 4 validation tests
+- [ ] Every component renders without errors
+- [ ] Storybook (optional) or demo files
+- [ ] Unit tests on the interactive components
+- [ ] Responsive on mobile/tablet/desktop
+- [ ] Accessibility (ARIA labels, focus, keyboard nav)
 
 ---
 
-### Etape 5 : Package Restaurant (Logique Metier)
+### Step 5: Restaurant Package (Business Logic)
 
-**Prerequis** : Etapes 2, 3
-**Livrable** : Logique metier restaurant isolee
+**Prerequisites**: Steps 2, 3
+**Deliverable**: Restaurant business logic, isolated
 
-#### 5.1 - Gestion des stores
+#### 5.1 - Store management
 
-- [ ] `StoreService` : CRUD, heures d'ouverture, statut
-- [ ] `StoreSelector` : logique de selection (geolocation, URL params)
-- [ ] Hook `useCurrentStore()` - store actif dans le contexte
-- [ ] Hook `useStoreHours()` - statut ouvert/ferme
-- [ ] Zustand store : `useStoreStore`
+- [ ] `StoreService`: CRUD, opening hours, status
+- [ ] `StoreSelector`: selection logic (geolocation, URL params)
+- [ ] `useCurrentStore()` hook - active store in context
+- [ ] `useStoreHours()` hook - open/closed status
+- [ ] Zustand store: `useStoreStore`
 
-#### 5.2 - Gestion des produits
+#### 5.2 - Product management
 
-- [ ] `ProductService` : CRUD, categories, options
-- [ ] Calcul de prix avec options et variantes
-- [ ] Gestion du stock (decrementation, alerte)
-- [ ] Filtres : par categorie, allergene, disponibilite
-- [ ] Hook `useProducts(storeId)`
-- [ ] Hook `useProductsByCategory(storeId, categoryId)`
+- [ ] `ProductService`: CRUD, categories, options
+- [ ] Price calculation with options and variants
+- [ ] Stock management (decrement, alerts)
+- [ ] Filters: by category, allergen, availability
+- [ ] `useProducts(storeId)` hook
+- [ ] `useProductsByCategory(storeId, categoryId)` hook
 
-#### 5.3 - Panier (Cart)
+#### 5.3 - Cart
 
-- [ ] Zustand store : `useCartStore`
+- [ ] Zustand store: `useCartStore`
   - `addItem(product, quantity, options)`
   - `removeItem(itemId)`
   - `updateQuantity(itemId, quantity)`
   - `clearCart()`
   - `getTotal()` / `getItemCount()`
-- [ ] Persistance localStorage
-- [ ] Calcul sous-total, taxes, livraison, total
-- [ ] Validation stock avant checkout
+- [ ] localStorage persistence
+- [ ] Subtotal, tax, delivery and total calculation
+- [ ] Stock validation before checkout
 
-#### 5.4 - Commandes
+#### 5.4 - Orders
 
-- [ ] `OrderService` : creation, mise a jour statut
-- [ ] Workflow de statuts :
+- [ ] `OrderService`: creation, status updates
+- [ ] Status workflow:
   ```
   pending -> confirmed -> preparing -> ready -> completed
                                     -> out_for_delivery -> delivered
                     -> cancelled
   ```
-- [ ] Generation numero de commande unique
-- [ ] Calcul recap commande (items, options, total)
-- [ ] Hook `useOrders(storeId)` - liste en temps reel
-- [ ] Hook `useOrderStatus(orderId)` - suivi temps reel
+- [ ] Unique order number generation
+- [ ] Order summary calculation (items, options, total)
+- [ ] `useOrders(storeId)` hook - real-time list
+- [ ] `useOrderStatus(orderId)` hook - real-time tracking
 
-#### 5.5 - Tickets cuisine
+#### 5.5 - Kitchen tickets
 
-- [ ] `KitchenService` : creation ticket a partir de commande
-- [ ] Attribution station (entrees, plats, desserts, boissons)
-- [ ] Estimation temps de preparation
-- [ ] Priorite (normal, urgent, VIP)
-- [ ] Hook `useKitchenTickets(storeId)` - temps reel
+- [ ] `KitchenService`: create a ticket from an order
+- [ ] Station assignment (starters, mains, desserts, drinks)
+- [ ] Prep time estimate
+- [ ] Priority (normal, urgent, VIP)
+- [ ] `useKitchenTickets(storeId)` hook - real-time
 
-#### Tests de validation Etape 5
-- [ ] Cart : ajout, suppression, modification, total correct
-- [ ] Orders : workflow de statuts complet
-- [ ] Kitchen : creation et gestion tickets
-- [ ] Store : selection, horaires, statut
-- [ ] Tests unitaires >80% coverage
+#### Step 5 validation tests
+- [ ] Cart: add, remove, update, correct total
+- [ ] Orders: full status workflow
+- [ ] Kitchen: ticket creation and management
+- [ ] Store: selection, hours, status
+- [ ] Unit tests >80% coverage
 
 ---
 
-### Etape 6 : Package Themes (1er Theme Complet)
+### Step 6: Themes Package (1st Complete Theme)
 
-**Prerequis** : Etape 4
-**Livrable** : Systeme de themes + theme Fast Food complet
+**Prerequisites**: Step 4
+**Deliverable**: Theme system + complete Fast Food theme
 
-#### 6.1 - Architecture du systeme de themes
+#### 6.1 - Theme system architecture
 
-- [ ] Interface `ThemeConfig` :
+- [ ] `ThemeConfig` interface:
   ```typescript
   interface ThemeConfig {
     id: string
@@ -442,109 +442,109 @@ Specifiques restaurant :
     components: Record<string, ComponentType>
   }
   ```
-- [ ] `ThemeProvider` : React context pour le theme actif
+- [ ] `ThemeProvider`: React context for the active theme
 - [ ] `useTheme()` hook
-- [ ] Systeme de resolution de composants par theme
-- [ ] CSS variables generees dynamiquement
+- [ ] Per-theme component resolution system
+- [ ] Dynamically generated CSS variables
 
-#### 6.2 - Theme Fast Food (complet)
+#### 6.2 - Fast Food theme (complete)
 
-- [ ] Config : couleurs (rouge/jaune), typo (Poppins/Inter)
-- [ ] Hero : video produit appetissant
-- [ ] ProductCard : images XXL, ajout rapide
-- [ ] ProductGrid : grille dense, visuels dominants
-- [ ] Checkout : page unique (quick checkout)
-- [ ] Features activees : quickOrder, upselling, menuCombo
-- [ ] Composants specifiques : `MenuCombo`, `QuickOrderButton`
+- [ ] Config: colors (red/yellow), type (Poppins/Inter)
+- [ ] Hero: appetizing product video
+- [ ] ProductCard: XXL images, quick add
+- [ ] ProductGrid: dense grid, visuals dominate
+- [ ] Checkout: single page (quick checkout)
+- [ ] Features enabled: quickOrder, upselling, menuCombo
+- [ ] Theme-specific components: `MenuCombo`, `QuickOrderButton`
 
-#### 6.3 - Personnalisation client
+#### 6.3 - Client customization
 
-- [ ] Override couleurs (primary, secondary, accent)
-- [ ] Upload logo et favicon
-- [ ] Choix polices (heading, body)
-- [ ] Upload images hero
-- [ ] Preview en temps reel dans le dashboard
+- [ ] Color override (primary, secondary, accent)
+- [ ] Logo and favicon upload
+- [ ] Font choice (heading, body)
+- [ ] Hero image upload
+- [ ] Real-time preview in the dashboard
 
-#### Tests de validation Etape 6
-- [ ] Theme Fast Food rendu completement
-- [ ] Changement de couleurs applique en temps reel
-- [ ] Logo et favicon personnalises
+#### Step 6 validation tests
+- [ ] Fast Food theme renders completely
+- [ ] Color changes applied in real time
+- [ ] Custom logo and favicon
 - [ ] Responsive mobile/tablet/desktop
-- [ ] Fallback gracieux si un composant theme manque
+- [ ] Graceful fallback when a theme component is missing
 
 ---
 
-### Etape 7 : App Restaurant - Storefront
+### Step 7: Restaurant App - Storefront
 
-**Prerequis** : Etapes 2, 3, 4, 5, 6
-**Livrable** : Frontend client complet (menu, panier, commande)
+**Prerequisites**: Steps 2, 3, 4, 5, 6
+**Deliverable**: Complete customer frontend (menu, cart, order)
 
-#### 7.1 - Setup App Next.js 16
+#### 7.1 - Next.js 16 app setup
 
-- [ ] Creer `apps/restaurant-theme/` avec Next.js 16 (App Router)
-- [ ] Configurer Convex provider
-- [ ] Configurer Better Auth provider
-- [ ] Configurer theme provider
-- [ ] Layout racine avec metadata SEO
+- [ ] Create `apps/restaurant-theme/` with Next.js 16 (App Router)
+- [ ] Set up the Convex provider
+- [ ] Set up the Better Auth provider
+- [ ] Set up the theme provider
+- [ ] Root layout with SEO metadata
 
-#### 7.2 - Routes Storefront `(storefront)/`
+#### 7.2 - Storefront routes `(storefront)/`
 
-Pages publiques :
-- [ ] `/` - Page d'accueil (hero + produits populaires + categories)
-- [ ] `/menu` - Menu complet (categories, filtres, recherche)
-- [ ] `/menu/[categorySlug]` - Categorie specifique
-- [ ] `/product/[productId]` - Detail produit (options, allergenes, ajout panier)
-- [ ] `/cart` - Panier (liste items, modifier quantites, total)
-- [ ] `/checkout` - Checkout (infos livraison, paiement, confirmation)
-- [ ] `/order/[orderId]` - Suivi commande (statut temps reel)
-- [ ] `/store-selector` - Selection etablissement (carte + liste)
+Public pages:
+- [ ] `/` - Home page (hero + popular products + categories)
+- [ ] `/menu` - Full menu (categories, filters, search)
+- [ ] `/menu/[categorySlug]` - Specific category
+- [ ] `/product/[productId]` - Product detail (options, allergens, add to cart)
+- [ ] `/cart` - Cart (item list, edit quantities, total)
+- [ ] `/checkout` - Checkout (delivery info, payment, confirmation)
+- [ ] `/order/[orderId]` - Order tracking (real-time status)
+- [ ] `/store-selector` - Location selection (map + list)
 
-Pages auth :
-- [ ] `/login` - Connexion (email, OAuth, magic link)
-- [ ] `/register` - Inscription
-- [ ] `/forgot-password` - Reinitialisation mot de passe
-- [ ] `/account` - Profil client (commandes, adresses, preferences)
+Auth pages:
+- [ ] `/login` - Sign in (email, OAuth, magic link)
+- [ ] `/register` - Sign up
+- [ ] `/forgot-password` - Password reset
+- [ ] `/account` - Customer profile (orders, addresses, preferences)
 
-#### 7.3 - Composants Storefront
+#### 7.3 - Storefront components
 
-- [ ] `StoreHeader` - Logo, nom, horaires, selection store
-- [ ] `CategoryNav` - Navigation par categories (horizontal scroll)
-- [ ] `ProductGrid` - Grille de produits (theme-aware)
-- [ ] `ProductDetail` - Detail avec options, allergenes, nutritionnel
-- [ ] `Cart` - Panier lateral ou page
-- [ ] `CheckoutForm` - Formulaire multi-etapes
-- [ ] `OrderTracker` - Suivi en temps reel (timeline)
-- [ ] `StoreMap` - Carte des etablissements (Leaflet ou Google Maps)
+- [ ] `StoreHeader` - Logo, name, hours, store selection
+- [ ] `CategoryNav` - Category navigation (horizontal scroll)
+- [ ] `ProductGrid` - Product grid (theme-aware)
+- [ ] `ProductDetail` - Detail with options, allergens, nutrition
+- [ ] `Cart` - Side cart or full page
+- [ ] `CheckoutForm` - Multi-step form
+- [ ] `OrderTracker` - Real-time tracking (timeline)
+- [ ] `StoreMap` - Map of locations (Leaflet or Google Maps)
 
-#### 7.4 - Fonctionnalites
+#### 7.4 - Features
 
-- [ ] Recherche produits (debounced, fuzzy)
-- [ ] Filtres (allergenes, prix, disponibilite)
-- [ ] Ajout au panier avec options
-- [ ] Choix type commande (livraison, click & collect, sur place)
-- [ ] Adresse de livraison (saisie + geolocalisation)
-- [ ] Estimation temps de preparation
-- [ ] Notifications commande (Convex subscriptions)
+- [ ] Product search (debounced, fuzzy)
+- [ ] Filters (allergens, price, availability)
+- [ ] Add to cart with options
+- [ ] Order type choice (delivery, click & collect, dine-in)
+- [ ] Delivery address (manual entry + geolocation)
+- [ ] Prep time estimate
+- [ ] Order notifications (Convex subscriptions)
 
-#### Tests de validation Etape 7
-- [ ] Parcours complet : accueil -> menu -> panier -> checkout -> suivi
-- [ ] Responsive mobile-first
-- [ ] SEO : meta tags, og:image, structured data
-- [ ] Performance : Lighthouse >90
-- [ ] E2E Playwright : parcours commande complet
+#### Step 7 validation tests
+- [ ] Full journey: home -> menu -> cart -> checkout -> tracking
+- [ ] Mobile-first responsive
+- [ ] SEO: meta tags, og:image, structured data
+- [ ] Performance: Lighthouse >90
+- [ ] Playwright E2E: complete order journey
 
 ---
 
-### Etape 8 : App Restaurant - Dashboard Admin
+### Step 8: Restaurant App - Admin Dashboard
 
-**Prerequis** : Etapes 2, 3, 4, 5
-**Livrable** : Dashboard d'administration pour le restaurateur
+**Prerequisites**: Steps 2, 3, 4, 5
+**Deliverable**: Admin dashboard for the restaurant owner
 
-#### 8.1 - Layout Admin
+#### 8.1 - Admin layout
 
-- [ ] `AdminLayout` : sidebar + topbar + content
-- [ ] Navigation sidebar :
-  - Dashboard (vue d'ensemble)
+- [ ] `AdminLayout`: sidebar + topbar + content
+- [ ] Sidebar navigation:
+  - Dashboard (overview)
   - Commandes
   - Produits
   - Categories
@@ -557,286 +557,286 @@ Pages auth :
   - Langues
   - Parametres
 
-#### 8.2 - Dashboard principal
+#### 8.2 - Main dashboard
 
-- [ ] Vue d'ensemble temps reel :
-  - Commandes du jour (nombre, CA)
-  - Commandes en cours
-  - Produits les plus vendus
-  - Graphique ventes (jour/semaine/mois)
-- [ ] Alertes : stock bas, commandes en attente, imprimante hors ligne
+- [ ] Real-time overview:
+  - Today's orders (count, revenue)
+  - Orders in progress
+  - Best-selling products
+  - Sales chart (day/week/month)
+- [ ] Alerts: low stock, pending orders, printer offline
 
-#### 8.3 - Gestion des commandes
+#### 8.3 - Order management
 
-- [ ] Liste des commandes avec filtres (statut, date, type, source)
-- [ ] Detail commande (items, client, paiement, timeline)
-- [ ] Changement de statut (boutons d'action)
-- [ ] Notification sonore nouvelle commande
-- [ ] Badge source (site web, Uber Eats, Deliveroo)
+- [ ] Order list with filters (status, date, type, source)
+- [ ] Order detail (items, customer, payment, timeline)
+- [ ] Status change (action buttons)
+- [ ] Sound notification for new orders
+- [ ] Source badge (website, Uber Eats, Deliveroo)
 
-#### 8.4 - Gestion des produits
+#### 8.4 - Product management
 
-- [ ] CRUD produits (formulaire complet)
-- [ ] Upload images (multi-images, drag & drop)
-- [ ] Gestion categories (CRUD, reordonner)
-- [ ] Options et variantes (taille, supplements)
-- [ ] Gestion allergenes (badges visuels)
-- [ ] Infos nutritionnelles
-- [ ] Gestion du stock
-- [ ] Scheduling (disponibilite par horaire)
-- [ ] Import/export CSV
+- [ ] Product CRUD (full form)
+- [ ] Image upload (multi-image, drag & drop)
+- [ ] Category management (CRUD, reorder)
+- [ ] Options and variants (size, extras)
+- [ ] Allergen management (visual badges)
+- [ ] Nutrition info
+- [ ] Stock management
+- [ ] Scheduling (availability by time slot)
+- [ ] CSV import/export
 
-#### 8.5 - Gestion des etablissements
+#### 8.5 - Location management
 
-- [ ] CRUD etablissements
-- [ ] Horaires d'ouverture (par jour, periodes exceptionnelles)
-- [ ] Adresse et geolocalisation
-- [ ] Statut (ouvert, ferme, temporairement indisponible)
-- [ ] Branding par etablissement (optionnel)
+- [ ] Location CRUD
+- [ ] Opening hours (per day, exceptional periods)
+- [ ] Address and geolocation
+- [ ] Status (open, closed, temporarily unavailable)
+- [ ] Per-location branding (optional)
 
-#### 8.6 - Gestion equipe
+#### 8.6 - Team management
 
-- [ ] CRUD membres d'equipe
-- [ ] Attribution role (RBAC)
-- [ ] Attribution etablissement(s)
-- [ ] Logs d'activite
+- [ ] Team member CRUD
+- [ ] Role assignment (RBAC)
+- [ ] Location assignment
+- [ ] Activity logs
 
-#### 8.7 - Design / Personnalisation
+#### 8.7 - Design / Customization
 
-- [ ] Selection theme
-- [ ] Editeur couleurs (color picker en temps reel)
-- [ ] Upload logo / favicon
-- [ ] Selection polices
-- [ ] Preview du storefront
+- [ ] Theme selection
+- [ ] Color editor (real-time color picker)
+- [ ] Logo / favicon upload
+- [ ] Font selection
+- [ ] Storefront preview
 
-#### 8.8 - Parametres
+#### 8.8 - Settings
 
-- [ ] Informations restaurant
-- [ ] Configuration paiements (activer/desactiver providers)
-- [ ] Configuration livraison
-- [ ] Configuration emails
-- [ ] Gestion des imprimantes
+- [ ] Restaurant information
+- [ ] Payment configuration (enable/disable providers)
+- [ ] Delivery configuration
+- [ ] Email configuration
+- [ ] Printer management
 
-#### Tests de validation Etape 8
-- [ ] CRUD complet : produits, categories, stores, equipe
-- [ ] Dashboard temps reel avec donnees live
-- [ ] RBAC : chaque role voit uniquement ses pages
-- [ ] Responsive tablet (usage principal)
-- [ ] E2E : creation produit -> apparition sur storefront
+#### Step 8 validation tests
+- [ ] Full CRUD: products, categories, stores, team
+- [ ] Real-time dashboard with live data
+- [ ] RBAC: each role only sees its own pages
+- [ ] Tablet responsive (primary use)
+- [ ] E2E: create a product -> it shows up on the storefront
 
 ---
 
-### Etape 9 : Kitchen Display System (KDS)
+### Step 9: Kitchen Display System (KDS)
 
-**Prerequis** : Etapes 2, 5, 8
-**Livrable** : Affichage cuisine temps reel + impression tickets
+**Prerequisites**: Steps 2, 5, 8
+**Deliverable**: Real-time kitchen display + ticket printing
 
-#### 9.1 - Ecran KDS
+#### 9.1 - KDS screen
 
-- [ ] Vue grille des tickets en cours
-- [ ] Colonnes par statut : En attente / En preparation / Pret
-- [ ] Drag & drop entre colonnes
-- [ ] Timer par ticket (temps ecoule)
-- [ ] Code couleur priorite (normal, urgent, VIP)
-- [ ] Badge source commande (site, Uber Eats, Deliveroo)
-- [ ] Notification sonore nouveau ticket
+- [ ] Grid view of active tickets
+- [ ] Columns by status: En attente / En preparation / Pret
+- [ ] Drag & drop between columns
+- [ ] Per-ticket timer (elapsed time)
+- [ ] Priority color coding (normal, urgent, VIP)
+- [ ] Order source badge (website, Uber Eats, Deliveroo)
+- [ ] Sound notification for new tickets
 
 #### 9.2 - Multi-station
 
-- [ ] Configuration stations (entrees, plats, desserts, boissons)
-- [ ] Filtrage tickets par station
-- [ ] Vue "tout" pour le chef
+- [ ] Station configuration (starters, mains, desserts, drinks)
+- [ ] Ticket filtering by station
+- [ ] "tout" view for the chef
 
-#### 9.3 - Impression tickets
+#### 9.3 - Ticket printing
 
-- [ ] Support ESC/POS pour imprimantes thermiques
-- [ ] Auto-impression a la confirmation de commande
-- [ ] Impression manuelle (bouton reimpression)
-- [ ] Multi-imprimantes (1 par station possible)
-- [ ] Monitoring statut imprimantes
-- [ ] Format ticket : numero commande, items, options, type, heure
+- [ ] ESC/POS support for thermal printers
+- [ ] Auto-print on order confirmation
+- [ ] Manual printing (reprint button)
+- [ ] Multi-printer (1 per station possible)
+- [ ] Printer status monitoring
+- [ ] Ticket format: order number, items, options, type, time
 
-#### 9.4 - Analytics cuisine
+#### 9.4 - Kitchen analytics
 
-- [ ] Temps moyen de preparation par produit
-- [ ] Temps moyen total par commande
-- [ ] Taux d'achèvement dans les temps
-- [ ] Pic d'activite par heure
+- [ ] Average prep time per product
+- [ ] Average total time per order
+- [ ] On-time completion rate
+- [ ] Peak activity by hour
 
-#### Tests de validation Etape 9
-- [ ] Tickets apparaissent en temps reel
-- [ ] Drag & drop fonctionnel
-- [ ] Impression fonctionne (mockee en dev)
-- [ ] Multi-station filtre correctement
-- [ ] Son de notification
+#### Step 9 validation tests
+- [ ] Tickets appear in real time
+- [ ] Drag & drop works
+- [ ] Printing works (mocked in dev)
+- [ ] Multi-station filters correctly
+- [ ] Notification sound
 
 ---
 
-### Etape 10 : Systeme de Paiement
+### Step 10: Payment System
 
-**Prerequis** : Etapes 3, 7
-**Livrable** : Paiement multi-provider fonctionnel
+**Prerequisites**: Steps 3, 7
+**Deliverable**: Working multi-provider payments
 
-#### 10.1 - Architecture Payments
+#### 10.1 - Payments architecture
 
-- [ ] Interface abstraite `PaymentProcessor`
-- [ ] Factory `PaymentFactory.create(provider)`
-- [ ] Types partages : `PaymentIntent`, `PaymentResult`, `RefundResult`
+- [ ] Abstract `PaymentProcessor` interface
+- [ ] `PaymentFactory.create(provider)` factory
+- [ ] Shared types: `PaymentIntent`, `PaymentResult`, `RefundResult`
 
 #### 10.2 - Stripe
 
-- [ ] Installer `stripe` SDK
-- [ ] `StripeProcessor` implementant `PaymentProcessor`
-- [ ] Payment Intent (carte, Apple Pay, Google Pay)
+- [ ] Install the `stripe` SDK
+- [ ] `StripeProcessor` implementing `PaymentProcessor`
+- [ ] Payment Intent (card, Apple Pay, Google Pay)
 - [ ] 3D Secure / SCA
 - [ ] Webhooks (payment_succeeded, payment_failed, refund)
-- [ ] API Route : `POST /api/payments/stripe/webhook`
+- [ ] API route: `POST /api/payments/stripe/webhook`
 
 #### 10.3 - SumUp
 
-- [ ] `SumUpProcessor` implementant `PaymentProcessor`
-- [ ] Checkout via SumUp API
-- [ ] Support terminal physique (POS)
+- [ ] `SumUpProcessor` implementing `PaymentProcessor`
+- [ ] Checkout via the SumUp API
+- [ ] Physical terminal support (POS)
 - [ ] Webhooks
 
 #### 10.4 - PayPal
 
-- [ ] Installer `@paypal/paypal-js`
-- [ ] `PayPalProcessor` implementant `PaymentProcessor`
-- [ ] Checkout standard
+- [ ] Install `@paypal/paypal-js`
+- [ ] `PayPalProcessor` implementing `PaymentProcessor`
+- [ ] Standard checkout
 - [ ] Webhooks
 
 #### 10.5 - Square
 
-- [ ] `SquareProcessor` implementant `PaymentProcessor`
-- [ ] Checkout via Square API
-- [ ] Support Square Reader
+- [ ] `SquareProcessor` implementing `PaymentProcessor`
+- [ ] Checkout via the Square API
+- [ ] Square Reader support
 
-#### 10.6 - Cash (en especes)
+#### 10.6 - Cash (cash payments)
 
-- [ ] `CashProcessor` (pas de transaction externe)
-- [ ] Marquage paiement "en attente" -> "recu" par le staff
+- [ ] `CashProcessor` (no external transaction)
+- [ ] Payment marked "pending" -> "received" by staff
 
-#### 10.7 - Dashboard paiements
+#### 10.7 - Payments dashboard
 
-- [ ] Liste transactions avec filtres (provider, statut, date)
-- [ ] Detail transaction
-- [ ] Remboursement (total/partiel)
-- [ ] Export CSV/PDF
+- [ ] Transaction list with filters (provider, status, date)
+- [ ] Transaction detail
+- [ ] Refund (full/partial)
+- [ ] CSV/PDF export
 
-#### 10.8 - Checkout storefront
+#### 10.8 - Storefront checkout
 
-- [ ] Selection methode de paiement (dynamique selon config)
-- [ ] Formulaire carte (Stripe Elements)
-- [ ] Bouton PayPal
-- [ ] Confirmation paiement + redirection
-- [ ] Page erreur paiement avec retry
+- [ ] Payment method selection (dynamic, based on config)
+- [ ] Card form (Stripe Elements)
+- [ ] PayPal button
+- [ ] Payment confirmation + redirect
+- [ ] Payment error page with retry
 
-#### Tests de validation Etape 10
-- [ ] Stripe : paiement test mode reussi
-- [ ] PayPal : sandbox checkout reussi
-- [ ] Remboursement fonctionne
-- [ ] Webhooks traites correctement
-- [ ] Fallback si provider indisponible
-- [ ] E2E : checkout complet avec Stripe test
+#### Step 10 validation tests
+- [ ] Stripe: test-mode payment succeeds
+- [ ] PayPal: sandbox checkout succeeds
+- [ ] Refunds work
+- [ ] Webhooks handled correctly
+- [ ] Fallback when a provider is unavailable
+- [ ] E2E: full checkout with Stripe test mode
 
 ---
 
-### Etape 11 : i18n + Traduction GPT
+### Step 11: i18n + GPT Translation
 
-**Prerequis** : Etapes 3, 8
-**Livrable** : Systeme multilingue avec traduction automatique
+**Prerequisites**: Steps 3, 8
+**Deliverable**: Multilingual system with automatic translation
 
-#### 11.1 - Gestion dynamique des langues
+#### 11.1 - Dynamic language management
 
-- [ ] Table `languages` : code, nom, drapeau, actif, RTL
-- [ ] CRUD langues dans le dashboard admin
-- [ ] Pas de limite de langues (admin ajoute ce qu'il veut)
+- [ ] `languages` table: code, name, flag, active, RTL
+- [ ] Language CRUD in the admin dashboard
+- [ ] No limit on languages (the admin adds whatever they want)
 
-#### 11.2 - Systeme de traduction
+#### 11.2 - Translation system
 
-- [ ] Table `translations` : sourceText, targetLang, translatedText, type
-- [ ] Traduction des produits (nom, description)
-- [ ] Traduction des categories
-- [ ] Traduction des pages CMS
-- [ ] Traduction de l'interface admin (fichiers statiques)
+- [ ] `translations` table: sourceText, targetLang, translatedText, type
+- [ ] Product translation (name, description)
+- [ ] Category translation
+- [ ] CMS page translation
+- [ ] Admin UI translation (static files)
 
-#### 11.3 - Traduction automatique GPT-3.5-turbo
+#### 11.3 - Automatic GPT-3.5-turbo translation
 
-- [ ] API Route : `POST /api/translate`
+- [ ] API route: `POST /api/translate`
 - [ ] `translateWithGPT(text, sourceLang, targetLang, context)`
-- [ ] Batch translate : `batchTranslate(items, sourceLang, targetLang)`
-- [ ] Cout estime : ~$0.001/produit, ~$0.01/page
-- [ ] File d'attente pour les traductions en masse
-- [ ] Table `translationJobs` : suivi des traductions en cours
+- [ ] Batch translate: `batchTranslate(items, sourceLang, targetLang)`
+- [ ] Estimated cost: ~$0.001/product, ~$0.01/page
+- [ ] Queue for bulk translations
+- [ ] `translationJobs` table: tracking in-progress translations
 
-#### 11.4 - Dashboard i18n
+#### 11.4 - i18n dashboard
 
-- [ ] Liste des langues actives
-- [ ] Ajout/suppression de langues
-- [ ] Editeur de traductions manuelle
-- [ ] Bouton "Traduire tout" (bulk)
-- [ ] Progression traduction par langue
-- [ ] Cout estime avant lancement
+- [ ] List of active languages
+- [ ] Add/remove languages
+- [ ] Manual translation editor
+- [ ] "Traduire tout" button (bulk)
+- [ ] Translation progress per language
+- [ ] Estimated cost before launching
 
-#### 11.5 - Storefront multilingue
+#### 11.5 - Multilingual storefront
 
-- [ ] `<LanguageSwitcher />` dans le header
-- [ ] Changement de langue sans rechargement
-- [ ] Persistance cookie + localStorage
-- [ ] Support RTL (direction, alignement)
-- [ ] URLs localisees (optionnel)
+- [ ] `<LanguageSwitcher />` in the header
+- [ ] Language switch without a reload
+- [ ] Cookie + localStorage persistence
+- [ ] RTL support (direction, alignment)
+- [ ] Localized URLs (optional)
 
-#### Tests de validation Etape 11
-- [ ] Ajout d'une langue et traduction d'un produit
-- [ ] Traduction GPT retourne un resultat coherent
-- [ ] Batch translate fonctionne pour 50+ produits
-- [ ] Switch de langue instantane sur le storefront
-- [ ] RTL fonctionne pour l'arabe
+#### Step 11 validation tests
+- [ ] Add a language and translate a product
+- [ ] GPT translation returns a coherent result
+- [ ] Batch translate works for 50+ products
+- [ ] Instant language switch on the storefront
+- [ ] RTL works for Arabic
 
 ---
 
-### Etape 12 : 5 Themes Restants
+### Step 12: 5 Remaining Themes
 
-**Prerequis** : Etape 6
-**Livrable** : 6 themes complets et fonctionnels
+**Prerequisites**: Step 6
+**Deliverable**: 6 complete, working themes
 
-#### 12.1 - Theme Pizzeria
-- [ ] Couleurs : rouge italien, vert basilic, orange fromage
-- [ ] Layout : slider hero, masonry grid
-- [ ] Features : pizza builder, selection taille visuelle, moitie-moitie
-- [ ] Composants : `PizzaBuilder`, `SizeSelector`, `HalfAndHalf`
+#### 12.1 - Pizzeria theme
+- [ ] Colors: Italian red, basil green, cheese orange
+- [ ] Layout: hero slider, masonry grid
+- [ ] Features: pizza builder, visual size picker, half-and-half
+- [ ] Components: `PizzaBuilder`, `SizeSelector`, `HalfAndHalf`
 
-#### 12.2 - Theme Restaurant Chinois
-- [ ] Couleurs : rouge chinois, noir, or
-- [ ] Layout : grande image ambiance, liste avec icones
-- [ ] Features : indicateur piment, menus A/B/C, icones ingredients
-- [ ] Composants : `SpiceIndicator`, `MenuComboSelector`
+#### 12.2 - Chinese restaurant theme
+- [ ] Colors: Chinese red, black, gold
+- [ ] Layout: large ambience image, list with icons
+- [ ] Features: chili indicator, A/B/C set menus, ingredient icons
+- [ ] Components: `SpiceIndicator`, `MenuComboSelector`
 
-#### 12.3 - Theme Fine Dining
-- [ ] Couleurs : noir profond, or subtil, blanc casse
-- [ ] Layout : minimal elegant, grille aere
-- [ ] Features : descriptions detaillees, histoire du chef, accords vins
-- [ ] Composants : `ChefStory`, `WinePairing`
+#### 12.3 - Fine Dining theme
+- [ ] Colors: deep black, subtle gold, off-white
+- [ ] Layout: minimal and elegant, airy grid
+- [ ] Features: detailed descriptions, chef's story, wine pairings
+- [ ] Components: `ChefStory`, `WinePairing`
 
-#### 12.4 - Theme Cafe/Boulangerie
-- [ ] Couleurs : marron cafe, sable dore, caramel
-- [ ] Layout : carrousel, grille dense
-- [ ] Features : menu petit-dejeuner, specials du jour, badges allergenes
-- [ ] Composants : `DailySpecials`, `BreakfastMenu`
+#### 12.4 - Cafe/Bakery theme
+- [ ] Colors: coffee brown, golden sand, caramel
+- [ ] Layout: carousel, dense grid
+- [ ] Features: breakfast menu, daily specials, allergen badges
+- [ ] Components: `DailySpecials`, `BreakfastMenu`
 
-#### 12.5 - Theme Sushi Bar
-- [ ] Couleurs : noir, rouge japonais, blanc pur
-- [ ] Layout : video preparation, scroll horizontal
-- [ ] Features : commande par pieces, systeme assiettes, roll visuel
-- [ ] Composants : `PieceSelector`, `PlateSystem`, `WasabiLevel`
+#### 12.5 - Sushi Bar theme
+- [ ] Colors: black, Japanese red, pure white
+- [ ] Layout: preparation video, horizontal scroll
+- [ ] Features: order by the piece, plate system, visual roll
+- [ ] Components: `PieceSelector`, `PlateSystem`, `WasabiLevel`
 
-#### Tests de validation Etape 12
-- [ ] Chaque theme rendu completement sans erreur
-- [ ] Changement de theme dynamique
-- [ ] Personnalisation couleurs fonctionne sur chaque theme
-- [ ] Responsive mobile pour chaque theme
-- [ ] Composants specifiques fonctionnels (pizza builder, etc.)
+#### Step 12 validation tests
+- [ ] Every theme renders completely without errors
+- [ ] Dynamic theme switching
+- [ ] Color customization works on every theme
+- [ ] Mobile responsive for every theme
+- [ ] Theme-specific components work (pizza builder, etc.)
 
 ---
 
@@ -844,166 +844,166 @@ Pages auth :
 
 ---
 
-### Etape 13 : Integration Uber Eats
+### Step 13: Uber Eats Integration
 
-**Prerequis** : Etapes 2, 5, 8
-**Livrable** : Synchronisation menu + import commandes Uber Eats
+**Prerequisites**: Steps 2, 5, 8
+**Deliverable**: Menu sync + Uber Eats order import
 
-#### 13.1 - Setup API Uber Eats
+#### 13.1 - Uber Eats API setup
 
-- [ ] Configuration credentials API
-- [ ] Client HTTP avec auth OAuth2
-- [ ] Gestion des tokens (refresh automatique)
+- [ ] API credentials configuration
+- [ ] HTTP client with OAuth2 auth
+- [ ] Token handling (automatic refresh)
 - [ ] Rate limiting
 
-#### 13.2 - Synchronisation menu
+#### 13.2 - Menu sync
 
-- [ ] Export menu vers Uber Eats (categories, produits, prix, images)
-- [ ] Mapping des `externalIds.uberEatsId`
-- [ ] Sync bidirectionnelle (statut stock)
-- [ ] Sync automatique programmee (cron)
-- [ ] Sync manuelle depuis dashboard
+- [ ] Export the menu to Uber Eats (categories, products, prices, images)
+- [ ] `externalIds.uberEatsId` mapping
+- [ ] Two-way sync (stock status)
+- [ ] Scheduled automatic sync (cron)
+- [ ] Manual sync from the dashboard
 
-#### 13.3 - Import commandes
+#### 13.3 - Order import
 
-- [ ] Webhook reception commandes Uber Eats
-- [ ] Conversion commande externe -> commande interne
-- [ ] Creation automatique ticket cuisine
-- [ ] Badge "Uber Eats" sur le KDS
-- [ ] Auto-accept (configurable) ou accept manuel
+- [ ] Webhook receiving Uber Eats orders
+- [ ] Convert external order -> internal order
+- [ ] Automatic kitchen ticket creation
+- [ ] "Uber Eats" badge on the KDS
+- [ ] Auto-accept (configurable) or manual accept
 
-#### 13.4 - Mise a jour statuts
+#### 13.4 - Status updates
 
-- [ ] Sync statut commande vers Uber Eats
-- [ ] Estimation temps preparation
-- [ ] Annulation
+- [ ] Sync order status to Uber Eats
+- [ ] Prep time estimate
+- [ ] Cancellation
 
-#### 13.5 - Dashboard integration
+#### 13.5 - Integration dashboard
 
-- [ ] Page configuration Uber Eats
-- [ ] Statut connexion
-- [ ] Historique syncs
-- [ ] Mapping produits
+- [ ] Uber Eats configuration page
+- [ ] Connection status
+- [ ] Sync history
+- [ ] Product mapping
 
-#### Tests de validation Etape 13
-- [ ] Menu synchronise avec Uber Eats (sandbox)
-- [ ] Commande recue et creee automatiquement
-- [ ] Ticket cuisine cree avec badge Uber Eats
-- [ ] Statuts synchronises bidirectionnellement
+#### Step 13 validation tests
+- [ ] Menu synced with Uber Eats (sandbox)
+- [ ] Order received and created automatically
+- [ ] Kitchen ticket created with the Uber Eats badge
+- [ ] Statuses synced both ways
 
 ---
 
-### Etape 14 : Integration Deliveroo
+### Step 14: Deliveroo Integration
 
-**Prerequis** : Etape 13 (meme pattern)
-**Livrable** : Synchronisation menu + import commandes Deliveroo
+**Prerequisites**: Step 13 (same pattern)
+**Deliverable**: Menu sync + Deliveroo order import
 
-#### 14.1 - Setup API Deliveroo
-- [ ] Configuration credentials
-- [ ] Client HTTP avec auth
+#### 14.1 - Deliveroo API setup
+- [ ] Credentials configuration
+- [ ] HTTP client with auth
 - [ ] Rate limiting
 
-#### 14.2 - Synchronisation menu
-- [ ] Export menu vers Deliveroo
-- [ ] Mapping `externalIds.deliverooId`
-- [ ] Sync bidirectionnelle stock
+#### 14.2 - Menu sync
+- [ ] Export the menu to Deliveroo
+- [ ] `externalIds.deliverooId` mapping
+- [ ] Two-way stock sync
 
-#### 14.3 - Import commandes
-- [ ] Webhook reception commandes
-- [ ] Conversion + creation ticket cuisine
-- [ ] Badge "Deliveroo" sur KDS
-- [ ] Accept auto/manuel (configurable)
+#### 14.3 - Order import
+- [ ] Webhook receiving orders
+- [ ] Conversion + kitchen ticket creation
+- [ ] "Deliveroo" badge on the KDS
+- [ ] Auto/manual accept (configurable)
 
-#### 14.4 - Dashboard integration
-- [ ] Page configuration Deliveroo
-- [ ] Statut + historique
+#### 14.4 - Integration dashboard
+- [ ] Deliveroo configuration page
+- [ ] Status + history
 
-#### Tests de validation Etape 14
-- [ ] Memes criteres que Etape 13 pour Deliveroo
-
----
-
-### Etape 15 : Uber Direct (Livraison)
-
-**Prerequis** : Etape 7
-**Livrable** : Livraison via Uber Direct pour les commandes du site
-
-#### 15.1 - Setup API Uber Direct
-- [ ] Configuration credentials (Customer ID)
-- [ ] Client HTTP
-
-#### 15.2 - Demande de livraison
-- [ ] Creation delivery request : pickup (store) -> dropoff (client)
-- [ ] Estimation cout et temps
-- [ ] Validation zone de livraison
-
-#### 15.3 - Suivi temps reel
-- [ ] Tracking livreur (position GPS)
-- [ ] Statuts : assignation, pickup, en route, livre
-- [ ] Notifications client
-
-#### 15.4 - Integration checkout
-- [ ] Option "Livraison Uber Direct" au checkout
-- [ ] Affichage cout livraison
-- [ ] Estimation temps
-
-#### Tests de validation Etape 15
-- [ ] Livraison demandee et trackee (sandbox)
-- [ ] Suivi temps reel fonctionnel
-- [ ] Cout affiche au checkout
+#### Step 14 validation tests
+- [ ] Same criteria as Step 13, for Deliveroo
 
 ---
 
-### Etape 16 : Email Marketing (Basique)
+### Step 15: Uber Direct (Delivery)
 
-**Prerequis** : Etapes 3 (AWS SES), 8
-**Livrable** : Systeme d'emails transactionnels + campagnes basiques
+**Prerequisites**: Step 7
+**Deliverable**: Delivery via Uber Direct for orders placed on the site
 
-#### 16.1 - Emails transactionnels
+#### 15.1 - Uber Direct API setup
+- [ ] Credentials configuration (Customer ID)
+- [ ] HTTP client
 
-- [ ] Template : Confirmation de commande
-- [ ] Template : Commande prete (click & collect)
-- [ ] Template : Commande en livraison
-- [ ] Template : Commande livree
-- [ ] Template : Bienvenue nouveau client
-- [ ] Template : Reset mot de passe
-- [ ] Template : Facture/Recu
+#### 15.2 - Delivery request
+- [ ] Create a delivery request: pickup (store) -> dropoff (customer)
+- [ ] Cost and time estimate
+- [ ] Delivery zone validation
 
-#### 16.2 - Campagnes email basiques
+#### 15.3 - Real-time tracking
+- [ ] Courier tracking (GPS position)
+- [ ] Statuses: assignment, pickup, en route, delivered
+- [ ] Customer notifications
 
-- [ ] CRUD campagnes
-- [ ] Editeur email simple (WYSIWYG)
-- [ ] Selection destinataires (tous, segment basique)
-- [ ] Programmation envoi
-- [ ] Statistiques : envoyes, ouverts, cliques
+#### 15.4 - Checkout integration
+- [ ] "Livraison Uber Direct" option at checkout
+- [ ] Delivery cost display
+- [ ] Time estimate
 
-#### 16.3 - Dashboard email
-
-- [ ] Liste campagnes
-- [ ] Statistiques par campagne
-- [ ] Templates sauvegardees
-
-#### Tests de validation Etape 16
-- [ ] Emails transactionnels envoyes automatiquement
-- [ ] Campagne creee et envoyee
-- [ ] Statistiques trackees
+#### Step 15 validation tests
+- [ ] Delivery requested and tracked (sandbox)
+- [ ] Real-time tracking works
+- [ ] Cost shown at checkout
 
 ---
 
-### Etape 17 : CMS (Pages Statiques)
+### Step 16: Email Marketing (Basic)
 
-**Prerequis** : Etapes 3, 7
-**Livrable** : Pages statiques editables par le restaurateur
+**Prerequisites**: Steps 3 (AWS SES), 8
+**Deliverable**: Transactional email system + basic campaigns
 
-#### 17.1 - Systeme de pages
+#### 16.1 - Transactional emails
 
-- [ ] Table `cmsPages` : titre, slug, contenu, statut, SEO
-- [ ] CRUD pages dans le dashboard
-- [ ] Editeur de contenu (Markdown ou blocs simples)
-- [ ] Preview avant publication
-- [ ] Gestion brouillons / publie
+- [ ] Template: Order confirmation
+- [ ] Template: Order ready (click & collect)
+- [ ] Template: Order out for delivery
+- [ ] Template: Order delivered
+- [ ] Template: New customer welcome
+- [ ] Template: Password reset
+- [ ] Template: Invoice/Receipt
 
-#### 17.2 - Pages par defaut
+#### 16.2 - Basic email campaigns
+
+- [ ] Campaign CRUD
+- [ ] Simple email editor (WYSIWYG)
+- [ ] Recipient selection (everyone, basic segment)
+- [ ] Send scheduling
+- [ ] Stats: sent, opened, clicked
+
+#### 16.3 - Email dashboard
+
+- [ ] Campaign list
+- [ ] Per-campaign stats
+- [ ] Saved templates
+
+#### Step 16 validation tests
+- [ ] Transactional emails sent automatically
+- [ ] Campaign created and sent
+- [ ] Stats tracked
+
+---
+
+### Step 17: CMS (Static Pages)
+
+**Prerequisites**: Steps 3, 7
+**Deliverable**: Static pages the restaurant owner can edit
+
+#### 17.1 - Page system
+
+- [ ] `cmsPages` table: title, slug, content, status, SEO
+- [ ] Page CRUD in the dashboard
+- [ ] Content editor (Markdown or simple blocks)
+- [ ] Preview before publishing
+- [ ] Draft / published handling
+
+#### 17.2 - Default pages
 
 - [ ] A propos
 - [ ] Contact
@@ -1013,168 +1013,168 @@ Pages auth :
 
 #### 17.3 - SEO
 
-- [ ] Meta title, description, og:image par page
-- [ ] Sitemap.xml automatique
-- [ ] Robots.txt configurable
-- [ ] Schema.org pour restaurant (structured data)
+- [ ] Meta title, description, og:image per page
+- [ ] Automatic Sitemap.xml
+- [ ] Configurable Robots.txt
+- [ ] Schema.org for restaurant (structured data)
 
 #### 17.4 - Storefront
 
-- [ ] Route dynamique `/page/[slug]`
-- [ ] Footer avec liens vers pages CMS
-- [ ] 404 personnalisee
+- [ ] Dynamic route `/page/[slug]`
+- [ ] Footer with links to CMS pages
+- [ ] Custom 404
 
-#### Tests de validation Etape 17
-- [ ] Page creee dans admin -> visible sur storefront
-- [ ] SEO meta tags corrects
-- [ ] Sitemap genere
-- [ ] 404 pour slugs inexistants
-
----
-
-### Etape 18 : Gestion Clients
-
-**Prerequis** : Etapes 3, 7, 8
-**Livrable** : Profils clients et historique
-
-#### 18.1 - Profils clients
-
-- [ ] Table `customers` : nom, email, tel, adresses, preferences
-- [ ] Creation automatique a la 1ere commande
-- [ ] Lien avec le compte Better Auth
-
-#### 18.2 - Espace client (storefront)
-
-- [ ] `/account` - Profil (modifier infos)
-- [ ] `/account/orders` - Historique commandes
-- [ ] `/account/addresses` - Adresses sauvegardees
-- [ ] `/account/favorites` - Produits favoris
-- [ ] Re-commander en 1 clic
-
-#### 18.3 - Dashboard admin clients
-
-- [ ] Liste clients avec recherche
-- [ ] Fiche client : infos, commandes, CA total, derniere visite
-- [ ] Segmentation basique (nouveau, regulier, VIP)
-- [ ] Export CSV
-
-#### Tests de validation Etape 18
-- [ ] Profil client cree automatiquement
-- [ ] Historique commandes visible cote client
-- [ ] Fiche client complete cote admin
-- [ ] Re-commande en 1 clic
+#### Step 17 validation tests
+- [ ] Page created in admin -> visible on the storefront
+- [ ] Correct SEO meta tags
+- [ ] Sitemap generated
+- [ ] 404 for nonexistent slugs
 
 ---
 
-### Etape 19 : App Admin Dashboard BeYours
+### Step 18: Customer Management
 
-**Prerequis** : Toutes les etapes precedentes
-**Livrable** : Dashboard interne BeYours pour gerer les clients
+**Prerequisites**: Steps 3, 7, 8
+**Deliverable**: Customer profiles and history
 
-#### 19.1 - Setup app
+#### 18.1 - Customer profiles
 
-- [ ] `apps/admin-dashboard/` avec Next.js 16
-- [ ] Auth super_admin uniquement
-- [ ] Design fixe BeYours (pas de theme)
+- [ ] `customers` table: name, email, phone, addresses, preferences
+- [ ] Created automatically on the first order
+- [ ] Linked to the Better Auth account
 
-#### 19.2 - Gestion clients (restaurants)
+#### 18.2 - Customer area (storefront)
 
-- [ ] Liste des clients restaurants
-- [ ] Fiche client : infos, plan, maintenance, deployement
-- [ ] Statut maintenance (actif, expire, grace)
+- [ ] `/account` - Profile (edit info)
+- [ ] `/account/orders` - Order history
+- [ ] `/account/addresses` - Saved addresses
+- [ ] `/account/favorites` - Favorite products
+- [ ] One-click reorder
 
-#### 19.3 - Deploiement
+#### 18.3 - Admin customer dashboard
 
-- [ ] Creation repo client depuis template
-- [ ] Configuration initiale automatisee
-- [ ] Deploiement Vercel + Convex
+- [ ] Customer list with search
+- [ ] Customer record: info, orders, total revenue, last visit
+- [ ] Basic segmentation (new, regular, VIP)
+- [ ] CSV export
+
+#### Step 18 validation tests
+- [ ] Customer profile created automatically
+- [ ] Order history visible on the customer side
+- [ ] Complete customer record on the admin side
+- [ ] One-click reorder
+
+---
+
+### Step 19: BeYours Admin Dashboard App
+
+**Prerequisites**: All previous steps
+**Deliverable**: Internal BeYours dashboard to manage clients
+
+#### 19.1 - App setup
+
+- [ ] `apps/admin-dashboard/` with Next.js 16
+- [ ] super_admin auth only
+- [ ] Fixed BeYours design (no theming)
+
+#### 19.2 - Client management (restaurants)
+
+- [ ] List of restaurant clients
+- [ ] Client record: info, plan, maintenance, deployment
+- [ ] Maintenance status (active, expired, grace)
+
+#### 19.3 - Deployment
+
+- [ ] Create the client repo from a template
+- [ ] Automated initial configuration
+- [ ] Vercel + Convex deployment
 
 #### 19.4 - Maintenance
 
-- [ ] Notifications expiration maintenance
-- [ ] Gestion renouvellements
-- [ ] Historique mises a jour
+- [ ] Maintenance expiry notifications
+- [ ] Renewal management
+- [ ] Update history
 
-#### Tests de validation Etape 19
-- [ ] CRUD clients restaurants
-- [ ] Deploiement automatise (ou semi-automatise)
-- [ ] Alertes maintenance
+#### Step 19 validation tests
+- [ ] Restaurant client CRUD
+- [ ] Automated (or semi-automated) deployment
+- [ ] Maintenance alerts
 
 ---
 
-## Dependances entre etapes
+## Dependencies between steps
 
 ```
-Etape 1 (Fondation)
-├── Etape 2 (Convex Schema)
-│   ├── Etape 3 (Core Auth/i18n)
-│   │   ├── Etape 7 (Storefront)
-│   │   │   ├── Etape 10 (Paiements)
-│   │   │   ├── Etape 15 (Uber Direct)
-│   │   │   ├── Etape 17 (CMS)
-│   │   │   └── Etape 18 (Clients)
-│   │   ├── Etape 8 (Admin Dashboard)
-│   │   │   ├── Etape 9 (KDS)
-│   │   │   ├── Etape 11 (i18n GPT)
-│   │   │   ├── Etape 13 (Uber Eats)
-│   │   │   ├── Etape 14 (Deliveroo)
-│   │   │   └── Etape 16 (Email)
-│   │   └── Etape 5 (Restaurant Logic)
-│   └── Etape 5 (Restaurant Logic)
-├── Etape 4 (UI Components)
-│   └── Etape 6 (Theme Fast Food)
-│       └── Etape 12 (5 Themes restants)
-└── Etape 19 (Admin BeYours) [Apres tout]
+Step 1 (Foundation)
+├── Step 2 (Convex Schema)
+│   ├── Step 3 (Core Auth/i18n)
+│   │   ├── Step 7 (Storefront)
+│   │   │   ├── Step 10 (Payments)
+│   │   │   ├── Step 15 (Uber Direct)
+│   │   │   ├── Step 17 (CMS)
+│   │   │   └── Step 18 (Customers)
+│   │   ├── Step 8 (Admin Dashboard)
+│   │   │   ├── Step 9 (KDS)
+│   │   │   ├── Step 11 (i18n GPT)
+│   │   │   ├── Step 13 (Uber Eats)
+│   │   │   ├── Step 14 (Deliveroo)
+│   │   │   └── Step 16 (Email)
+│   │   └── Step 5 (Restaurant Logic)
+│   └── Step 5 (Restaurant Logic)
+├── Step 4 (UI Components)
+│   └── Step 6 (Fast Food Theme)
+│       └── Step 12 (5 remaining themes)
+└── Step 19 (BeYours Admin) [After everything]
 ```
 
-### Parallelisation possible
+### Possible parallelization
 
-Certaines etapes peuvent etre developpees en parallele :
+Some steps can be built in parallel:
 
-- **Etape 4** (UI) en parallele avec **Etape 2** (Schema) et **Etape 3** (Core)
-- **Etape 6** (Theme) des que Etape 4 est terminee
-- **Etape 12** (Themes restants) en parallele avec Etape 7-8
-- **Etape 13** (Uber Eats) et **Etape 14** (Deliveroo) en parallele
-- **Etape 16** (Email) et **Etape 17** (CMS) en parallele
+- **Step 4** (UI) in parallel with **Step 2** (Schema) and **Step 3** (Core)
+- **Step 6** (Theme) as soon as Step 4 is done
+- **Step 12** (Remaining themes) in parallel with Steps 7-8
+- **Step 13** (Uber Eats) and **Step 14** (Deliveroo) in parallel
+- **Step 16** (Email) and **Step 17** (CMS) in parallel
 
 ---
 
 ## Decision Log
 
-| # | Decision | Alternatives | Raison |
+| # | Decision | Alternatives | Rationale |
 |---|----------|-------------|--------|
-| 1 | Turborepo monorepo complet | App unique, monorepo simplifie | Modele business de vente de themes necessite packages modulaires et publiables |
-| 2 | AWS S3 + SES | Convex Storage + Resend | Plus de controle, moins cher a grande echelle, coherent avec CLAUDE.md |
-| 3 | Tests des le debut | Tests apres MVP | Qualite et fiabilite, eviter la dette technique |
-| 4 | Better Auth + Convex | NextAuth, Clerk, Auth0 | Framework-agnostic, type-safe, plugins modulaires, compatible Convex |
-| 5 | 1 theme complet d'abord | Tous les themes en parallele | Valider l'architecture theme avant de multiplier |
-| 6 | Phases 1+2 detaillees | Plan complet 5 phases | Focus sur le livrable prioritaire, phases 3-5 plus tard |
-| 7 | GPT-3.5-turbo pour traduction | DeepL API, Google Translate | Cout tres bas ($0.001/produit), qualite suffisante, deja dans le stack |
+| 1 | Full Turborepo monorepo | Single app, simplified monorepo | The theme-selling business model requires modular, publishable packages |
+| 2 | AWS S3 + SES | Convex Storage + Resend | More control, cheaper at scale, consistent with CLAUDE.md |
+| 3 | Tests from day one | Tests after the MVP | Quality and reliability, avoid technical debt |
+| 4 | Better Auth + Convex | NextAuth, Clerk, Auth0 | Framework-agnostic, type-safe, modular plugins, works with Convex |
+| 5 | One complete theme first | All themes in parallel | Validate the theme architecture before multiplying it |
+| 6 | Phases 1+2 detailed | Full 5-phase plan | Focus on the priority deliverable, phases 3-5 later |
+| 7 | GPT-3.5-turbo for translation | DeepL API, Google Translate | Very low cost ($0.001/product), good enough quality, already in the stack |
 
 ---
 
-## Hypotheses
+## Assumptions
 
-1. **Convex** supporte le volume prevu (centaines de produits, milliers de commandes/mois)
-2. **Better Auth** a un adaptateur Convex stable et maintenu
-3. Les **API Uber Eats et Deliveroo** sont accessibles (besoin de partenariat commercial)
-4. Le deploiement client sera sur **Vercel** (compatible Next.js 16)
-5. Le **budget AWS** est gere par client (chaque restaurant paie ses propres couts S3/SES)
+1. **Convex** handles the expected volume (hundreds of products, thousands of orders/month)
+2. **Better Auth** has a stable, maintained Convex adapter
+3. The **Uber Eats and Deliveroo APIs** are accessible (requires a commercial partnership)
+4. Client deployment will be on **Vercel** (Next.js 16 compatible)
+5. The **AWS budget** is handled per client (each restaurant pays its own S3/SES costs)
 
 ---
 
-## Risques identifies
+## Identified risks
 
-| Risque | Impact | Mitigation |
+| Risk | Impact | Mitigation |
 |--------|--------|-----------|
-| Better Auth + Convex : adaptateur instable | Haut | Tester tot, avoir un plan B (auth custom) |
-| APIs plateformes (Uber Eats, Deliveroo) : acces restreint | Moyen | Contacter les partenariats des Phase 1, mock en dev |
-| Complexite monorepo | Moyen | Setup solide en Etape 1, CI stricte |
-| Performance Convex avec beaucoup de tables | Bas | Index optimises, pagination systematique |
-| Impression thermique ESC/POS | Moyen | Librairie existante (escpos), tester avec vrai materiel |
+| Better Auth + Convex: unstable adapter | High | Test early, keep a plan B (custom auth) |
+| Platform APIs (Uber Eats, Deliveroo): restricted access | Medium | Contact the partnership teams starting in Phase 1, mock in dev |
+| Monorepo complexity | Medium | Solid setup in Step 1, strict CI |
+| Convex performance with many tables | Low | Optimized indexes, systematic pagination |
+| ESC/POS thermal printing | Medium | Existing library (escpos), test with real hardware |
 
 ---
 
-**Version** : 1.0.0
-**Date** : 14 Fevrier 2026
-**Auteur** : BeYours Team
+**Version**: 1.0.0
+**Date**: February 14, 2026
+**Author**: BeYours Team

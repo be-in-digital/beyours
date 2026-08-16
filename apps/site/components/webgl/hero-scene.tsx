@@ -9,22 +9,22 @@ import {
 } from "@/lib/webgl";
 
 /**
- * HeroScene — voile de braises au-dessus du hero cinématique.
+ * HeroScene — a veil of embers over the cinematic hero.
  *
- * Le hero est une photo plein écran (chef aux fourneaux) : la scène 3D
- * n'ajoute que ce que la photo ne peut pas faire — des braises qui
- * montent lentement, avec un parallax souris amorti. Sobriété héritée
- * de la doctrine agency : pas de blob, pas de post-processing.
- * Coupé sur devices faibles et en prefers-reduced-motion.
+ * The hero is a full-screen photo (a chef at the stove): the 3D scene only adds
+ * what the photo cannot do — embers drifting slowly upwards, with a damped
+ * mouse parallax. The restraint is inherited from the agency doctrine: no blob,
+ * no post-processing.
+ * Switched off on weak devices and under prefers-reduced-motion.
  */
 
-/** Pseudo-aléatoire déterministe (pur — compatible React Compiler) */
+/** Deterministic pseudo-random (pure — React Compiler friendly) */
 function seeded(i: number, salt: number): number {
   const x = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
   return x - Math.floor(x);
 }
 
-/** Braises mint qui montent lentement */
+/** Mint embers drifting slowly upwards */
 function Embers({ count = 90 }: { count?: number }) {
   const pointsRef = useRef<THREE.Points>(null);
 
@@ -50,8 +50,8 @@ function Embers({ count = 90 }: { count?: number }) {
     for (let i = 0; i < count; i++) {
       const phase = seeds[i * 2]!;
       const speed = seeds[i * 2 + 1]!;
-      let y = arr[i * 3 + 1]! + speed * delta; // monte doucement
-      if (y > 1.6) y = -1.6; // recycle en bas
+      let y = arr[i * 3 + 1]! + speed * delta; // drifts gently upwards
+      if (y > 1.6) y = -1.6; // recycled at the bottom
       arr[i * 3 + 1] = y;
       arr[i * 3] = arr[i * 3]! + Math.sin(t * 0.4 + phase) * 0.0009; // sway
     }
@@ -82,7 +82,7 @@ function SceneContent() {
   useFrame((state) => {
     const g = groupRef.current;
     if (!g) return;
-    // Parallax souris — subtil et lerpé (même réglage que l'agency)
+    // Mouse parallax — subtle and lerped (same settings as the agency site)
     const ty = state.mouse.x * 0.16;
     const tx = -state.mouse.y * 0.09;
     g.rotation.y += (ty - g.rotation.y) * 0.05;
@@ -104,14 +104,14 @@ export function HeroScene() {
   const [scrollFade, setScrollFade] = useState(1);
 
   useEffect(() => {
-    // rAF : évite un setState synchrone dans l'effect (règle React 19)
+    // rAF: avoids a synchronous setState inside the effect (React 19 rule)
     const raf = requestAnimationFrame(() => {
       setWebglReady(detectCapabilities().canRunFullWebGL);
     });
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  // Fade la scène quand on quitte le hero (30vh → 100vh), comme l'agency
+  // Fades the scene out as the hero scrolls away (30vh → 100vh), like the agency site
   useEffect(() => {
     if (!webglReady) return;
     const onScroll = () => {

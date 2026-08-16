@@ -21,18 +21,18 @@ const emptyStats: CampaignStats = {
 }
 
 describe("incrementCampaignStats", () => {
-  it("devrait incrémenter un champ de 1 par défaut", () => {
+  it("increments a field by 1 by default", () => {
     const result = incrementCampaignStats(emptyStats, "sent")
     expect(result.sent).toBe(1)
-    expect(result.delivered).toBe(0) // les autres restent intacts
+    expect(result.delivered).toBe(0) // the others stay untouched
   })
 
-  it("devrait incrémenter avec un montant personnalisé", () => {
+  it("increments by a custom amount", () => {
     const result = incrementCampaignStats(emptyStats, "opened", 5)
     expect(result.opened).toBe(5)
   })
 
-  it("ne devrait pas muter l'objet original", () => {
+  it("does not mutate the original object", () => {
     const original = { ...emptyStats, sent: 10 }
     const result = incrementCampaignStats(original, "sent")
     expect(result.sent).toBe(11)
@@ -41,13 +41,13 @@ describe("incrementCampaignStats", () => {
 })
 
 describe("incrementRevenueStat", () => {
-  it("devrait incrémenter revenue et converted", () => {
+  it("increments revenue and converted", () => {
     const result = incrementRevenueStat(emptyStats, 5000)
     expect(result.revenue).toBe(5000)
     expect(result.converted).toBe(1)
   })
 
-  it("devrait accumuler les revenues", () => {
+  it("accumulates revenue", () => {
     const first = incrementRevenueStat(emptyStats, 2000)
     const second = incrementRevenueStat(first, 3000)
     expect(second.revenue).toBe(5000)
@@ -56,7 +56,7 @@ describe("incrementRevenueStat", () => {
 })
 
 describe("computeStatRates", () => {
-  it("devrait calculer les taux basés sur delivered", () => {
+  it("computes the rates based on delivered", () => {
     const stats: CampaignStats = {
       sent: 100,
       delivered: 90,
@@ -70,17 +70,17 @@ describe("computeStatRates", () => {
     const rates = computeStatRates(stats)
     expect(rates.openRate).toBe(50) // 45/90 * 100
     expect(rates.clickRate).toBe(10) // 9/90 * 100
-    expect(rates.bounceRate).toBe(11.1) // 10/90 * 100 arrondi
-    expect(rates.unsubscribeRate).toBe(2.2) // 2/90 * 100 arrondi
+    expect(rates.bounceRate).toBe(11.1) // 10/90 * 100 rounded
+    expect(rates.unsubscribeRate).toBe(2.2) // 2/90 * 100 rounded
   })
 
-  it("devrait gérer delivered = 0 sans division par zéro", () => {
+  it("handles delivered = 0 without dividing by zero", () => {
     const rates = computeStatRates(emptyStats)
     expect(rates.openRate).toBe(0)
     expect(rates.clickRate).toBe(0)
   })
 
-  it("devrait arrondir à 1 décimale", () => {
+  it("rounds to 1 decimal place", () => {
     const stats: CampaignStats = {
       ...emptyStats,
       delivered: 3,
@@ -101,7 +101,7 @@ describe("calculateSubscriberMetadata", () => {
     orderTypes: ["delivery"],
   }
 
-  it("devrait incrémenter le nombre de commandes et le total dépensé", () => {
+  it("increments the order count and the total spent", () => {
     const order: OrderForMetadata = {
       amount: 3000,
       type: "delivery",
@@ -113,7 +113,7 @@ describe("calculateSubscriberMetadata", () => {
     expect(result.totalSpent).toBe(7000)
   })
 
-  it("devrait calculer la nouvelle moyenne arrondie", () => {
+  it("computes the new rounded average", () => {
     const order: OrderForMetadata = {
       amount: 3000,
       type: "pickup",
@@ -121,11 +121,11 @@ describe("calculateSubscriberMetadata", () => {
       orderedAt: 1700000100000,
     }
     const result = calculateSubscriberMetadata(baseMeta, order)
-    // 7000 / 3 = 2333.33... arrondi à 2333
+    // 7000 / 3 = 2333.33... rounded to 2333
     expect(result.averageOrderValue).toBe(2333)
   })
 
-  it("devrait ajouter un nouveau type de commande", () => {
+  it("adds a new order type", () => {
     const order: OrderForMetadata = {
       amount: 1000,
       type: "pickup",
@@ -136,7 +136,7 @@ describe("calculateSubscriberMetadata", () => {
     expect(result.orderTypes).toEqual(["delivery", "pickup"])
   })
 
-  it("ne devrait pas dupliquer les types de commande", () => {
+  it("does not duplicate order types", () => {
     const order: OrderForMetadata = {
       amount: 1000,
       type: "delivery",
@@ -147,7 +147,7 @@ describe("calculateSubscriberMetadata", () => {
     expect(result.orderTypes).toEqual(["delivery"])
   })
 
-  it("devrait merger les produits favoris et garder les 10 derniers", () => {
+  it("merges the favorite products and keeps the 10 most recent", () => {
     const order: OrderForMetadata = {
       amount: 1000,
       type: "delivery",
@@ -155,14 +155,14 @@ describe("calculateSubscriberMetadata", () => {
       orderedAt: 1700000100000,
     }
     const result = calculateSubscriberMetadata(baseMeta, order)
-    // Nouveaux produits en premier, puis existants
+    // New products first, then the existing ones
     expect(result.favoriteProducts).toContain("p3")
     expect(result.favoriteProducts).toContain("p4")
     expect(result.favoriteProducts).toContain("p1")
     expect(result.favoriteProducts.length).toBeLessThanOrEqual(10)
   })
 
-  it("devrait dédupliquer les produits favoris", () => {
+  it("deduplicates the favorite products", () => {
     const order: OrderForMetadata = {
       amount: 1000,
       type: "delivery",
@@ -174,7 +174,7 @@ describe("calculateSubscriberMetadata", () => {
     expect(p1Count).toBe(1)
   })
 
-  it("devrait mettre à jour lastOrderAt", () => {
+  it("updates lastOrderAt", () => {
     const order: OrderForMetadata = {
       amount: 1000,
       type: "delivery",
@@ -185,7 +185,7 @@ describe("calculateSubscriberMetadata", () => {
     expect(result.lastOrderAt).toBe(1700000100000)
   })
 
-  it("ne devrait pas muter l'objet original", () => {
+  it("does not mutate the original object", () => {
     const original = { ...baseMeta, favoriteProducts: [...baseMeta.favoriteProducts] }
     calculateSubscriberMetadata(original, {
       amount: 1000,

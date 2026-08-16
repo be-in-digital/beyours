@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 /* ═══════════════════════════════════════════════
-   Carte à gratter — jouable, autonome (canvas destination-out)
-   Le vernis se gratte réellement au doigt / à la souris. Révélation
-   automatique à ~50 % gratté, ou via le bouton « Tout révéler ».
+   Scratch card — playable, self-contained (canvas destination-out)
+   The coating really does scratch off under a finger or the mouse. It reveals
+   itself automatically at ~50 % scratched, or through the « Tout révéler » button.
    ═══════════════════════════════════════════════ */
 
 export function ScratchCard({
@@ -42,7 +42,7 @@ export function ScratchCard({
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Grain métallique
+    // Metallic grain
     for (let i = 0; i < 700; i++) {
       ctx.fillStyle =
         Math.random() > 0.5
@@ -51,7 +51,7 @@ export function ScratchCard({
       ctx.fillRect(Math.random() * w, Math.random() * h, 1.4, 1.4);
     }
 
-    // Texte gravé
+    // Engraved text
     ctx.fillStyle = "rgba(70,74,82,0.85)";
     ctx.font =
       "700 18px var(--font-display), system-ui, sans-serif";
@@ -118,7 +118,7 @@ export function ScratchCard({
         className="relative h-[190px] w-full overflow-hidden rounded-2xl border border-[color:var(--border)] shadow-[0_18px_40px_-22px_rgba(112,60,34,0.5)]"
         style={{ touchAction: "none" }}
       >
-        {/* Contenu révélé (dessous) */}
+        {/* Revealed content (underneath) */}
         <div
           className="absolute inset-0 grid place-items-center"
           style={{

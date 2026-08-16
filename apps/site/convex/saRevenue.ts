@@ -20,7 +20,7 @@ function paidRevenue(orders: Doc<"orders">[]): number {
     .reduce((sum, o) => sum + o.amountCents, 0);
 }
 
-/** Vue « Ventes & revenus » — chiffre d'affaires commercial RÉEL (thème + maintenance). */
+/** « Ventes & revenus » view — REAL sales revenue (theme + maintenance). */
 export const revenueOverview = query({
   args: { days: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -57,7 +57,7 @@ export const revenueOverview = query({
       .filter((o) => o.plan === "premium")
       .reduce((s, o) => s + o.amountCents, 0);
 
-    // Série journalière du CA (commandes payées)
+    // Daily revenue series (paid orders)
     const byDay = new Map<number, { revenueCents: number; orderCount: number }>();
     for (const o of inRange) {
       const d = startOfDay(o.createdAt);
@@ -83,7 +83,7 @@ export const revenueOverview = query({
       });
     }
 
-    // MRR depuis les abonnements actifs
+    // MRR from the active subscriptions
     const subscriptions = await ctx.db.query("subscriptions").take(5000);
     const activeSubs = subscriptions.filter((s) => s.status === "active");
     const mrrCents = activeSubs.reduce(
@@ -91,7 +91,7 @@ export const revenueOverview = query({
       0,
     );
 
-    // CA cumulé total (all-time paid)
+    // Total cumulative revenue (all-time paid)
     const totalRevenueCents = paidRevenue(orders);
 
     return {

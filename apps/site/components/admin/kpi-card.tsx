@@ -20,7 +20,7 @@ export function KpiCard({
   /** ratio, ex 0.073 → +7,3 % */
   delta?: number;
   deltaLabel?: string;
-  /** true si une baisse est « bonne » (ex : incidents) */
+  /** true when a decrease is « good » (e.g. incidents) */
   invertDelta?: boolean;
   hint?: string;
   icon?: React.ReactNode;

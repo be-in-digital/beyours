@@ -28,9 +28,9 @@ const moods = [
 
 /* ═══════════════════════════════════════════════
    Proof section — « jugez sur pièce »
-   Pas de témoignages placeholder ni de chiffres
-   invérifiables : on renvoie vers ce qui se
-   constate (templates, démo, tarifs publics).
+   No placeholder testimonials and no figures nobody
+   can check: we point at what a visitor can verify
+   (templates, live demo, public pricing).
    ═══════════════════════════════════════════════ */
 
 /* ── Component ── */
@@ -118,7 +118,7 @@ export function SocialProofSection() {
           </div>
         </FadeIn>
 
-        {/* Univers restauration — composition éditoriale asymétrique */}
+        {/* Restaurant world — asymmetric editorial composition */}
         <StaggerContainer
           className="grid grid-cols-1 sm:grid-cols-3 sm:grid-rows-2 gap-4 lg:gap-5 mb-12 lg:mb-14"
           stagger={0.1}

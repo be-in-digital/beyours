@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing FAQ — Accordéon custom, pas de dépendance
+   Pricing FAQ — custom accordion, no dependency
    ═══════════════════════════════════════════════ */
 
 "use client";

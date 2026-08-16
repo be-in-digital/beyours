@@ -48,11 +48,11 @@ export const addContractStatusToAffiliates = internalMutation({
 });
 
 /**
- * Cleanup: supprime les documents `payments` d'un ancien schéma (pré-orderId),
- * orphelins et non migrables (données Stripe TEST d'une version antérieure —
- * champs amountMinor/provider/providerEventId, sans orderId). À lancer une fois
- * pendant que schemaValidation est temporairement désactivé, puis re-déployer
- * avec la validation réactivée.
+ * Cleanup: deletes `payments` documents from an older schema (pre-orderId),
+ * orphaned and impossible to migrate (TEST Stripe data from an earlier version —
+ * amountMinor/provider/providerEventId fields, no orderId). Run it once while
+ * schemaValidation is temporarily disabled, then redeploy with validation
+ * turned back on.
  *   npx convex run migrations:deleteLegacyPayments
  */
 export const deleteLegacyPayments = internalMutation({
@@ -61,7 +61,7 @@ export const deleteLegacyPayments = internalMutation({
     const rows = await ctx.db.query("payments").take(5000);
     let deleted = 0;
     for (const row of rows) {
-      // Marqueur legacy : le schéma courant impose orderId (v.id("orders")).
+      // Legacy marker: the current schema requires orderId (v.id("orders")).
       if ((row as Record<string, unknown>).orderId === undefined) {
         await ctx.db.delete(row._id);
         deleted++;
@@ -72,10 +72,11 @@ export const deleteLegacyPayments = internalMutation({
 });
 
 /**
- * Cleanup: normalise la table `users` héritée d'un ancien schéma (champs
- * createdAt/fullName/planTier/role/locale/lastSeenAt absents du modèle
- * Convex-Auth actuel). Supprime les users de test (email en `.test` ou vide),
- * ramène les comptes réels à la forme auth (email/name/phone conservés).
+ * Cleanup: normalises the `users` table inherited from an older schema
+ * (createdAt/fullName/planTier/role/locale/lastSeenAt fields absent from the
+ * current Convex-Auth model). Deletes test users (email ending in `.test`, or
+ * empty), and brings real accounts back to the auth shape (email/name/phone
+ * are kept).
  *   npx convex run migrations:cleanupLegacyUsers --prod
  */
 export const cleanupLegacyUsers = internalMutation({
@@ -94,7 +95,7 @@ export const cleanupLegacyUsers = internalMutation({
     let normalized = 0;
     for (const row of rows) {
       const doc = row as Record<string, unknown>;
-      if (!EXTRA.some((k) => k in doc)) continue; // déjà au bon schéma
+      if (!EXTRA.some((k) => k in doc)) continue; // already on the right schema
       const email = typeof doc.email === "string" ? doc.email : "";
       if (email === "" || email.endsWith(".test")) {
         await ctx.db.delete(row._id);

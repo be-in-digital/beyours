@@ -1,23 +1,23 @@
 @AGENTS.md
 @DESIGN.md
 
-## Produit — Be in Digital
+## Product — Be in Digital
 
-Solution B2B complète pour restaurants :
+Complete B2B solution for restaurants:
 
-- **Site e-commerce clé en main** (commande en ligne, storefront)
-- **Back-office restaurant** (admin dashboard)
-- **Centralisation des commandes** multi-canaux
-- **Intégrations** Uber Eats, Deliveroo
-- **Click & Collect** et livraison
-- **KDS** (Kitchen Display System) + impression ticket
-- **Suivi temps réel** client
-- **CMS simple** pour menu/contenu
-- **Statistiques** / analytics
-- **Fidélité / gamification**
+- **Turnkey e-commerce site** (online ordering, storefront)
+- **Restaurant back office** (admin dashboard)
+- **Order centralization** across channels
+- **Integrations** with Uber Eats, Deliveroo
+- **Click & Collect** and delivery
+- **KDS** (Kitchen Display System) + ticket printing
+- **Real-time tracking** for the customer
+- **Simple CMS** for menu/content
+- **Statistics** / analytics
+- **Loyalty / gamification**
 
-**Modèle** : achat one-shot du site + maintenance annuelle.
-**Positionnement** : premium, food-tech, restaurant-first, orienté business.
+**Model**: one-off purchase of the site + annual maintenance.
+**Positioning**: premium, food-tech, restaurant-first, business-oriented.
 
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.

@@ -995,7 +995,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
             </div>
           )}
 
-          {/* Planifier la publication */}
+          {/* Schedule publication */}
           {article.status !== "archived" && article.status !== "published" && (
             <div className="rounded-lg border p-4 space-y-3">
               <div>

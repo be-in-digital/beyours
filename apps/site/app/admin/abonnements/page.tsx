@@ -55,7 +55,7 @@ function PlanBadge({ plan }: { plan: string }) {
   );
 }
 
-/** Puce d'échéance colorée selon l'urgence (jours restants). */
+/** Due-date chip, coloured by urgency (days remaining). */
 function DueChip({ end }: { end?: number | null }) {
   if (!end) {
     return <span className="text-xs text-muted-foreground">—</span>;

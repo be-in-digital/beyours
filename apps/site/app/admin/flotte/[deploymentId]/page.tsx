@@ -460,7 +460,7 @@ export default function DeploymentDetailPage() {
             </dl>
           </Card>
 
-          {/* Intégrations */}
+          {/* Integrations */}
           <Card className="p-5">
             <SectionTitle>
               <span className="inline-flex items-center gap-2">

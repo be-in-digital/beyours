@@ -1,22 +1,22 @@
 # i18n System - BeYours Engine
 
-Système d'internationalisation complet avec support multi-langues illimité, détection automatique, et traduction GPT-3.5.
+Complete internationalization system with unlimited multi-language support, automatic detection, and GPT-3.5 translation.
 
-## 🌍 Fonctionnalités
+## 🌍 Features
 
-- ✅ Support de **toutes les langues** (pas de limite)
-- ✅ Détection automatique (cookie → localStorage → navigateur/header → défaut)
-- ✅ Langues RTL supportées (arabe, hébreu, persan, etc.)
-- ✅ Traduction automatique via GPT-3.5-turbo
-- ✅ Interpolation de variables (`{{name}}`)
-- ✅ Pluralisation simple
-- ✅ Traductions fallback
-- ✅ TypeScript strict, 100% typé
-- ✅ 58 tests unitaires
+- ✅ Support for **every language** (no limit)
+- ✅ Automatic detection (cookie → localStorage → browser/header → default)
+- ✅ RTL languages supported (Arabic, Hebrew, Persian, etc.)
+- ✅ Automatic translation via GPT-3.5-turbo
+- ✅ Variable interpolation (`{{name}}`)
+- ✅ Simple pluralization
+- ✅ Fallback translations
+- ✅ TypeScript strict, 100% typed
+- ✅ 58 unit tests
 
 ## 📦 Installation
 
-Le package `@be-in-digital/core` est déjà installé dans le monorepo.
+The `@be-in-digital/core` package is already installed in the monorepo.
 
 ```typescript
 import {
@@ -29,26 +29,26 @@ import {
 } from '@be-in-digital/core/i18n'
 ```
 
-## 🚀 Usage Basique
+## 🚀 Basic Usage
 
 ### 1. Configuration
 
 ```typescript
 import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core/i18n'
 
-// Utiliser la config par défaut
+// Use the default config
 const config = {
   ...DEFAULT_I18N_CONFIG,
   supportedLocales: ['fr', 'en', 'es', 'ar'],
 }
 ```
 
-### 2. Détection de la langue
+### 2. Language Detection
 
 ```typescript
 import { detectLocale } from '@be-in-digital/core/i18n'
 
-// Côté serveur (Next.js)
+// Server side (Next.js)
 import { cookies, headers } from 'next/headers'
 
 const cookieString = cookies().toString()
@@ -59,26 +59,26 @@ const locale = detectLocale(config, {
   acceptLanguage,
 })
 
-// Côté client
+// Client side
 const locale = detectLocale(config, {
   useLocalStorage: true,
   useBrowser: true,
 })
 ```
 
-### 3. Persistance de la langue
+### 3. Language Persistence
 
 ```typescript
 import { setLocale, clearLocale } from '@be-in-digital/core/i18n'
 
-// Définir la langue (cookie + localStorage)
+// Set the language (cookie + localStorage)
 setLocale('fr', config)
 
-// Effacer la langue
+// Clear the language
 clearLocale(config)
 ```
 
-### 4. Traduction
+### 4. Translation
 
 ```typescript
 import { createTranslator } from '@be-in-digital/core/i18n'
@@ -96,14 +96,14 @@ t('hello_name', { name: 'Jean' }) // "Bonjour Jean"
 t('items_count', { count: 5 }) // "5 articles"
 ```
 
-## 🤖 Traduction Automatique GPT
+## 🤖 Automatic GPT Translation
 
 ### Setup
 
 ```typescript
 import { translateText, batchTranslate } from '@be-in-digital/core/i18n'
 
-// Créer un HTTP client (exemple avec fetch)
+// Create an HTTP client (fetch example)
 const httpClient = {
   async post(url: string, data: unknown, headers?: Record<string, string>) {
     const response = await fetch(url, {
@@ -121,21 +121,21 @@ const httpClient = {
 const apiKey = process.env.OPENAI_API_KEY!
 ```
 
-### Traduction Simple
+### Simple Translation
 
 ```typescript
 const translated = await translateText(
   'Bonjour le monde',
   'fr',
   'en',
-  'greeting', // contexte optionnel
+  'greeting', // optional context
   httpClient,
   apiKey
 )
 // "Hello world"
 ```
 
-### Traduction en Batch
+### Batch Translation
 
 ```typescript
 const items = [
@@ -151,17 +151,17 @@ results.forEach((result) => {
 })
 ```
 
-### Estimation des Coûts
+### Cost Estimation
 
 ```typescript
 import { estimateTranslationCost } from '@be-in-digital/core/i18n'
 
 const cost = estimateTranslationCost(text.length)
-// ~$0.001 par produit
-// ~$0.01 par page
+// ~$0.001 per product
+// ~$0.01 per page
 ```
 
-## 🎨 Langues RTL (Right-to-Left)
+## 🎨 RTL Languages (Right-to-Left)
 
 ```typescript
 import { isRtlLocale, getLocaleDirection } from '@be-in-digital/core/i18n'
@@ -169,27 +169,27 @@ import { isRtlLocale, getLocaleDirection } from '@be-in-digital/core/i18n'
 const isRtl = isRtlLocale('ar') // true
 const direction = getLocaleDirection('ar') // 'rtl'
 
-// Dans votre composant
+// In your component
 <div dir={direction}>
-  {/* Contenu */}
+  {/* Content */}
 </div>
 ```
 
-### Langues RTL supportées
+### Supported RTL languages
 
-- 🇸🇦 `ar` - Arabe
-- 🇮🇱 `he` - Hébreu
-- 🇮🇷 `fa` - Persan
-- 🇵🇰 `ur` - Ourdou
+- 🇸🇦 `ar` - Arabic
+- 🇮🇱 `he` - Hebrew
+- 🇮🇷 `fa` - Persian
+- 🇵🇰 `ur` - Urdu
 - 🇦🇫 `ps` - Pashto
 - 🇵🇰 `sd` - Sindhi
 - 🇮🇱 `yi` - Yiddish
 
-## 🔧 Hooks React (à implémenter dans l'app)
+## 🔧 React Hooks (to be implemented in the app)
 
-Le package core exporte uniquement les **types** des hooks. L'implémentation doit être faite dans l'application.
+The core package only exports the hook **types**. The implementation has to be done in the application.
 
-### Types disponibles
+### Available types
 
 ```typescript
 import type {
@@ -201,7 +201,7 @@ import type {
 } from '@be-in-digital/core/i18n'
 ```
 
-### Exemple d'implémentation
+### Implementation example
 
 ```typescript
 // app/hooks/useTranslation.ts
@@ -220,9 +220,9 @@ export function useTranslation(): UseTranslationReturn {
 }
 ```
 
-## 📊 Structure des Traductions
+## 📊 Translation Structure
 
-### Format recommandé
+### Recommended format
 
 ```typescript
 // translations/fr.json
@@ -240,34 +240,34 @@ export function useTranslation(): UseTranslationReturn {
 
 ### Namespaces
 
-Utilisez la notation par points pour organiser :
+Use dot notation to organize keys:
 
-- `common.*` - Textes communs
-- `product.*` - Produits
-- `order.*` - Commandes
-- `auth.*` - Authentification
+- `common.*` - Shared text
+- `product.*` - Products
+- `order.*` - Orders
+- `auth.*` - Authentication
 - `admin.*` - Admin
-- `error.*` - Messages d'erreur
+- `error.*` - Error messages
 
 ## 🧪 Tests
 
-Le système i18n est entièrement testé avec 58 tests unitaires.
+The i18n system is fully covered by 58 unit tests.
 
 ```bash
 pnpm --filter @be-in-digital/core test
 ```
 
-### Couverture
+### Coverage
 
-- ✅ Config et détection (23 tests)
+- ✅ Config and detection (23 tests)
 - ✅ Storage (cookies, localStorage) (11 tests)
-- ✅ Traduction et interpolation (14 tests)
+- ✅ Translation and interpolation (14 tests)
 - ✅ GPT translation (10 tests)
 
-## 🔐 Variables d'Environnement
+## 🔐 Environment Variables
 
 ```bash
-# Pour la traduction GPT (optionnel)
+# For GPT translation (optional)
 OPENAI_API_KEY=sk-...
 ```
 
@@ -290,52 +290,52 @@ interface I18nConfig {
 }
 ```
 
-### Fonctions Principales
+### Main Functions
 
-| Fonction | Description |
+| Function | Description |
 |----------|-------------|
-| `detectLocale()` | Détecte la langue avec cascade |
-| `setLocale()` | Définit la langue (cookie + localStorage) |
-| `createTranslator()` | Crée une fonction de traduction |
-| `translateText()` | Traduit via GPT-3.5 |
-| `batchTranslate()` | Traduit plusieurs items |
-| `isRtlLocale()` | Vérifie si RTL |
-| `getLocaleDirection()` | Retourne la direction |
+| `detectLocale()` | Detects the language through the cascade |
+| `setLocale()` | Sets the language (cookie + localStorage) |
+| `createTranslator()` | Creates a translation function |
+| `translateText()` | Translates via GPT-3.5 |
+| `batchTranslate()` | Translates several items |
+| `isRtlLocale()` | Checks whether a locale is RTL |
+| `getLocaleDirection()` | Returns the direction |
 
-## 💰 Coûts GPT-3.5
+## 💰 GPT-3.5 Costs
 
-| Volume | Coût Estimé |
+| Volume | Estimated Cost |
 |--------|-------------|
-| 1 produit | ~$0.001 |
-| 100 produits | ~$0.10 |
-| 1 page complète | ~$0.01 |
-| 1000 traductions | ~$1.00 |
+| 1 product | ~$0.001 |
+| 100 products | ~$0.10 |
+| 1 full page | ~$0.01 |
+| 1000 translations | ~$1.00 |
 
-*Basé sur GPT-3.5-turbo ($0.0005/1K input, $0.0015/1K output)*
+*Based on GPT-3.5-turbo ($0.0005/1K input, $0.0015/1K output)*
 
 ## 🎯 Best Practices
 
-1. **Toujours fournir un fallback**
+1. **Always provide a fallback**
    ```typescript
    const t = createTranslator(translations, locale, fallbackTranslations)
    ```
 
-2. **Utiliser des clés descriptives**
+2. **Use descriptive keys**
    ```typescript
-   // ✅ Bon
+   // ✅ Good
    t('product.add_to_cart')
 
-   // ❌ Mauvais
+   // ❌ Bad
    t('btn1')
    ```
 
-3. **Précharger les traductions**
+3. **Preload translations**
    ```typescript
-   // Charger toutes les traductions au démarrage
+   // Load every translation at startup
    const translations = await loadTranslations(locale)
    ```
 
-4. **Gérer les clés manquantes**
+4. **Handle missing keys**
    ```typescript
    const missing = getMissingKeys(frTranslations, enTranslations)
    if (missing.length > 0) {
@@ -343,24 +343,24 @@ interface I18nConfig {
    }
    ```
 
-5. **Optimiser les traductions GPT**
+5. **Optimize GPT translations**
    ```typescript
-   // Traduire en batch pour économiser
+   // Translate in batches to cut costs
    const results = await batchTranslate(items, 'fr', 'en', httpClient, apiKey)
    ```
 
-## 🚀 Migration depuis un système existant
+## 🚀 Migrating from an existing system
 
 ```typescript
 import { mergeTranslations, getMissingKeys } from '@be-in-digital/core/i18n'
 
-// Fusionner les anciennes et nouvelles traductions
+// Merge the old and new translations
 const merged = mergeTranslations(oldTranslations, newTranslations)
 
-// Identifier les clés manquantes
+// Identify the missing keys
 const missing = getMissingKeys(sourceTranslations, targetTranslations)
 
-// Traduire les clés manquantes
+// Translate the missing keys
 const toTranslate = missing.map(key => ({
   text: sourceTranslations[key],
   key,
@@ -371,14 +371,14 @@ const translated = await batchTranslate(toTranslate, 'fr', 'en', httpClient, api
 
 ## 📝 Notes
 
-- Le système supporte un **nombre illimité de langues**
-- La détection suit une **cascade** : cookie → localStorage → browser/header → default
-- Les traductions GPT incluent un **système de retry** avec backoff exponentiel
-- Le **rate limiting** est intégré (60 req/min par défaut)
-- Toutes les fonctions sont **100% typées** avec TypeScript strict
+- The system supports an **unlimited number of languages**
+- Detection follows a **cascade**: cookie → localStorage → browser/header → default
+- GPT translations include a **retry system** with exponential backoff
+- **Rate limiting** is built in (60 req/min by default)
+- Every function is **100% typed** with TypeScript strict mode
 
 ---
 
 **Version**: 2.0.0
 **Package**: `@be-in-digital/core`
-**Tests**: 58/58 passés ✅
+**Tests**: 58/58 passing ✅

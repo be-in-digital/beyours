@@ -1,10 +1,10 @@
-# Module Auth - @be-in-digital/core
+# Auth Module - @be-in-digital/core
 
-Ce module fournit une solution complète d'authentification avec **Better Auth** et un système **RBAC (Role-Based Access Control)** pour BeYours Engine.
+This module provides a complete authentication solution based on **Better Auth** plus an **RBAC (Role-Based Access Control)** system for BeYours Engine.
 
-## 📦 Installation des dépendances
+## 📦 Installing dependencies
 
-Le module auth est conçu pour fonctionner avec Better Auth. Installez les dépendances nécessaires :
+The auth module is designed to work with Better Auth. Install the required dependencies:
 
 ```bash
 pnpm add better-auth @better-auth/convex @better-auth/two-factor
@@ -12,37 +12,37 @@ pnpm add better-auth @better-auth/convex @better-auth/two-factor
 
 ## 🏗️ Architecture
 
-Le module est composé de 4 fichiers principaux :
+The module is made up of 4 main files:
 
-### 1. `rbac.ts` - Système de permissions (100% fonctionnel)
-Gère les 7 rôles et leurs permissions granulaires.
+### 1. `rbac.ts` - Permission system (100% functional)
+Handles the 7 roles and their granular permissions.
 
-**Rôles disponibles :**
-- `super_admin` - Accès total
-- `client_admin` - Tout sur son restaurant
-- `manager` - Gestion opérationnelle
-- `kitchen` - KDS uniquement
-- `waiter` - Commandes + tables
-- `delivery` - Livraisons uniquement
-- `customer` - Ses propres commandes
+**Available roles:**
+- `super_admin` - Full access
+- `client_admin` - Everything on their own restaurant
+- `manager` - Day-to-day operations
+- `kitchen` - KDS only
+- `waiter` - Orders + tables
+- `delivery` - Deliveries only
+- `customer` - Their own orders
 
-**Exemple d'utilisation :**
+**Usage example:**
 ```ts
 import { Role, hasPermission } from '@be-in-digital/core/auth'
 
-// Vérifier une permission
+// Check a permission
 hasPermission(Role.MANAGER, 'products:write') // true
 hasPermission(Role.CUSTOMER, 'products:delete') // false
 
-// Middleware de vérification
+// Check middleware
 const checkDelete = requirePermission('products:delete')
-checkDelete(userRole) // throw si pas la permission
+checkDelete(userRole) // throws if the permission is missing
 ```
 
-### 2. `config.ts` - Configuration Better Auth
-Configuration de base pour Better Auth avec Convex.
+### 2. `config.ts` - Better Auth configuration
+Base configuration for Better Auth with Convex.
 
-**Après installation de better-auth :**
+**After installing better-auth:**
 ```ts
 import { betterAuth } from 'better-auth'
 import { convexAdapter } from '@better-auth/convex'
@@ -59,7 +59,7 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
-    // ... autres providers
+    // ... other providers
   },
   plugins: [
     twoFactorPlugin({
@@ -70,20 +70,20 @@ export const auth = betterAuth({
 })
 ```
 
-### 3. `client.ts` - Hooks React
-Hooks et utilitaires pour le frontend React.
+### 3. `client.ts` - React hooks
+Hooks and utilities for the React frontend.
 
-**Après installation de better-auth/react :**
+**After installing better-auth/react:**
 ```tsx
 import { createAuthClient } from 'better-auth/react'
 import { usePermission, Role } from '@be-in-digital/core/auth'
 
-// Créer le client
+// Create the client
 const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_APP_URL!,
 })
 
-// Utiliser dans un composant
+// Use it in a component
 function ProductManager() {
   const { allowed, loading } = usePermission('products:write')
 
@@ -92,7 +92,7 @@ function ProductManager() {
   return <ProductForm />
 }
 
-// Composant conditionnel (à implémenter dans votre app)
+// Conditional component (to implement in your app)
 function CanAccess({ permission, children }: CanAccessProps) {
   const { allowed, loading } = usePermission(permission)
   if (loading) return null
@@ -100,10 +100,10 @@ function CanAccess({ permission, children }: CanAccessProps) {
 }
 ```
 
-### 4. `server.ts` - Utilitaires serveur
-Middlewares pour Server Components et API Routes.
+### 4. `server.ts` - Server utilities
+Middlewares for Server Components and API Routes.
 
-**Exemple dans un Server Component :**
+**Example in a Server Component:**
 ```ts
 import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
 
@@ -113,13 +113,13 @@ export default async function DashboardPage() {
 }
 ```
 
-**Exemple dans une API Route :**
+**Example in an API Route:**
 ```ts
 import { withAuthRoute } from '@be-in-digital/core/auth'
 
 export const DELETE = withAuthRoute(
   async (req, session) => {
-    // session est garanti non-null avec la bonne permission
+    // session is guaranteed non-null with the right permission
     return Response.json({ success: true })
   },
   { requirePermission: 'products:delete' }
@@ -128,17 +128,17 @@ export const DELETE = withAuthRoute(
 
 ## 🧪 Tests
 
-Le module RBAC est 100% testé avec 47 tests couvrant tous les scénarios.
+The RBAC module is 100% tested, with 47 tests covering every scenario.
 
 ```bash
-# Lancer les tests
+# Run the tests
 pnpm --filter @be-in-digital/core test
 
-# Tests en watch mode
+# Tests in watch mode
 pnpm --filter @be-in-digital/core test:watch
 ```
 
-## 📝 Variables d'environnement
+## 📝 Environment variables
 
 ```bash
 # Better Auth
@@ -148,7 +148,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 # Convex
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
 
-# OAuth Providers (optionnel)
+# OAuth Providers (optional)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 FACEBOOK_CLIENT_ID=
@@ -159,15 +159,15 @@ APPLE_KEY_ID=
 APPLE_PRIVATE_KEY=
 ```
 
-## 🚀 Étapes d'intégration
+## 🚀 Integration steps
 
-### 1. Installer Better Auth
+### 1. Install Better Auth
 ```bash
 pnpm add better-auth @better-auth/convex @better-auth/two-factor
 ```
 
-### 2. Configurer Better Auth
-Créer `apps/restaurant-theme/lib/auth.ts` :
+### 2. Configure Better Auth
+Create `apps/restaurant-theme/lib/auth.ts`:
 ```ts
 import { betterAuth } from 'better-auth'
 import { convexAdapter } from '@better-auth/convex'
@@ -182,8 +182,8 @@ export const auth = betterAuth(
 )
 ```
 
-### 3. Créer le client React
-Créer `apps/restaurant-theme/lib/auth-client.ts` :
+### 3. Create the React client
+Create `apps/restaurant-theme/lib/auth-client.ts`:
 ```ts
 import { createAuthClient } from 'better-auth/react'
 
@@ -191,12 +191,12 @@ export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_APP_URL!,
 })
 
-// Exporter les hooks
+// Export the hooks
 export { useAuth, usePermission, useRole } from '@be-in-digital/core/auth'
 ```
 
-### 4. Ajouter le provider
-Dans `apps/restaurant-theme/app/layout.tsx` :
+### 4. Add the provider
+In `apps/restaurant-theme/app/layout.tsx`:
 ```tsx
 import { SessionProvider } from 'better-auth/react'
 
@@ -213,21 +213,21 @@ export default function RootLayout({ children }) {
 }
 ```
 
-### 5. Protéger les pages
+### 5. Protect the pages
 ```tsx
 import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
 
 export default async function ProductsPage() {
   await requirePermission('products:read')
-  // Page protégée
+  // Protected page
 }
 ```
 
-## 📊 Matrice des permissions
+## 📊 Permission matrix
 
-| Rôle | Products | Orders | Kitchen | Team | Settings | Payments |
+| Role | Products | Orders | Kitchen | Team | Settings | Payments |
 |------|----------|--------|---------|------|----------|----------|
-| super_admin | ✅ Tout | ✅ Tout | ✅ Tout | ✅ Tout | ✅ Tout | ✅ Tout |
+| super_admin | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All | ✅ All |
 | client_admin | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ Read + Refund |
 | manager | ✅ Read + Write | ✅ CRUD | ✅ Read + Write | ✅ Read | ✅ Read | ✅ Read |
 | kitchen | ❌ | ✅ Read + Update Status | ✅ CRUD | ❌ | ❌ | ❌ |
@@ -235,19 +235,19 @@ export default async function ProductsPage() {
 | delivery | ❌ | ✅ Read + Update Status | ❌ | ❌ | ❌ | ❌ |
 | customer | ✅ Read | ✅ View Own | ❌ | ❌ | ❌ | ❌ |
 
-## 🔒 Sécurité
+## 🔒 Security
 
-- **TypeScript strict mode** : Aucun `any` type
-- **Zod validation** : Tous les inputs validés
-- **Permission checks** : Toujours vérifier côté serveur ET client
-- **Session management** : 7 jours d'expiration, refresh après 1 jour
-- **2FA support** : TOTP et email
-- **Rate limiting** : À implémenter dans les hooks
+- **TypeScript strict mode**: no `any` types
+- **Zod validation**: every input validated
+- **Permission checks**: always check on the server AND the client
+- **Session management**: 7-day expiry, refresh after 1 day
+- **2FA support**: TOTP and email
+- **Rate limiting**: to be implemented in the hooks
 
-## 📚 Documentation complète
+## 📚 Full documentation
 
-Voir `CLAUDE.md` à la racine du projet pour l'architecture complète.
+See `CLAUDE.md` at the project root for the complete architecture.
 
 ---
 
-**Note importante** : Le RBAC est 100% fonctionnel et testé SANS Better Auth. Les fonctions client.ts et server.ts sont des wrappers qui seront fonctionnels une fois Better Auth installé.
+**Important note**: RBAC is 100% functional and tested WITHOUT Better Auth. The client.ts and server.ts functions are wrappers that will work once Better Auth is installed.

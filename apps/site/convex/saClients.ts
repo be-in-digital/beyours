@@ -3,7 +3,7 @@ import { query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./admin";
 
-/** Clients dérivés des commandes RÉELLES (groupés par email). */
+/** Clients derived from REAL orders (grouped by email). */
 export const list = query({
   args: { search: v.optional(v.string()) },
   handler: async (ctx, args) => {

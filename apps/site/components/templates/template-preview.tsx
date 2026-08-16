@@ -45,7 +45,7 @@ export function TemplatePreview({
           </Link>
         </FadeIn>
 
-        {/* En-tête */}
+        {/* Header */}
         <FadeIn delay={0.1}>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -73,7 +73,7 @@ export function TemplatePreview({
           </div>
         </FadeIn>
 
-        {/* Capture du site livré + accès à la démo jouable plein écran */}
+        {/* Screenshot of the delivered site + entry to the full-screen playable demo */}
         <FadeIn delay={0.2}>
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -104,7 +104,7 @@ export function TemplatePreview({
             </div>
           </motion.div>
 
-          {/* CTA — visiter la vraie démo, plein écran et utilisable */}
+          {/* CTA — visit the real demo, full-screen and usable */}
           <div className="mt-7 flex flex-col items-center gap-3 text-center">
             <Link
               href={`/demo/${template.slug}`}
@@ -121,7 +121,7 @@ export function TemplatePreview({
           </div>
         </FadeIn>
 
-        {/* Ce qui est inclus + accent */}
+        {/* What is included + accent */}
         <FadeIn delay={0.25}>
           <div className="mt-10 grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
             <ul className="grid gap-3 sm:grid-cols-2">
@@ -151,7 +151,7 @@ export function TemplatePreview({
           </div>
         </FadeIn>
 
-        {/* Autres templates de la catégorie */}
+        {/* Other templates in the category */}
         {siblings.length > 0 && (
           <FadeIn delay={0.3}>
             <div className="mt-16">

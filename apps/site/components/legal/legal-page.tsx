@@ -10,10 +10,10 @@ interface LegalPageProps {
 }
 
 /**
- * Coquille de document légal — DA chaude food-editorial : fond papier, titre
- * Bricolage, colonne de lecture étroite. Le contenu passe en HTML sémantique
- * brut (h2 / h3 / p / ul / a), stylé une seule fois via variantes arbitraires
- * pour garder les pages lisibles.
+ * Legal document shell — warm food-editorial art direction: paper background,
+ * Bricolage headline, narrow reading column. The content comes through as plain
+ * semantic HTML (h2 / h3 / p / ul / a), styled once via arbitrary variants so
+ * the pages stay readable.
  */
 export function LegalPage({ title, subtitle, lastUpdated, children }: LegalPageProps) {
   return (
@@ -68,9 +68,9 @@ export function LegalPage({ title, subtitle, lastUpdated, children }: LegalPageP
 }
 
 /**
- * Marqueur d'information manquante — rendu visible exprès. Aucune valeur légale
- * (capital, nom du dirigeant, médiateur) n'est inventée : elle est signalée ici
- * jusqu'à ce que le dirigeant la fournisse.
+ * Missing-information marker — deliberately rendered visible. No legal value
+ * (share capital, director's name, mediator) is ever invented: it is flagged
+ * here until the director provides it.
  */
 export function Todo({ children }: { children: ReactNode }) {
   return (

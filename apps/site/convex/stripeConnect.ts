@@ -11,7 +11,7 @@ function getStripe(): Stripe | null {
   return new Stripe(key);
 }
 
-/* ── Onboarding : créer un compte Express + Account Link ── */
+/* ── Onboarding: create an Express account + Account Link ── */
 
 export const createAccountLink = action({
   args: {
@@ -30,7 +30,7 @@ export const createAccountLink = action({
 
     const stripe = getStripe();
 
-    // Mode test : simuler un compte Stripe Connect actif
+    // Test mode: fake an active Stripe Connect account
     if (!stripe) {
       await ctx.runMutation(
         internal.affiliateUsers.updateStripeConnectStatus,
@@ -106,7 +106,7 @@ export const createAccountLink = action({
   },
 });
 
-/* ── Vérifier le statut d'un compte Connect ── */
+/* ── Check the status of a Connect account ── */
 
 export const checkAccountStatus = action({
   args: {},
@@ -182,7 +182,7 @@ export const checkAccountStatus = action({
   },
 });
 
-/* ── Traitement des versements (payable → paid) ── */
+/* ── Payout processing (payable → paid) ── */
 
 export const processPayouts = internalAction({
   args: {},
@@ -229,7 +229,7 @@ export const processPayouts = internalAction({
           stripeTransferId: transfer.id,
         });
 
-        // Prévenir l'affilié que sa commission est versée (best-effort)
+        // Let the affiliate know their commission has been paid (best-effort)
         const affiliateEmail = await ctx.runQuery(
           internal.affiliateUsers.getEmailById,
           { affiliateUserId: referral.referrerId },
@@ -261,10 +261,10 @@ export const processPayouts = internalAction({
   },
 });
 
-/* ── Clawback : reprise / annulation d'une commission ──
-   Appelé par le webhook Stripe (remboursement, chargeback). Si la commission a
-   déjà été versée, on reprend le transfer (transfers.createReversal) ; sinon on
-   annule simplement. Exécute l'art. 4.3 du contrat d'apporteur. */
+/* ── Clawback: reverse / cancel a commission ──
+   Called by the Stripe webhook (refund, chargeback). When the commission has
+   already been paid out we reverse the transfer (transfers.createReversal);
+   otherwise we simply cancel it. Enforces art. 4.3 of the affiliate contract. */
 
 export const reverseReferralCommission = internalAction({
   args: {
@@ -277,7 +277,7 @@ export const reverseReferralCommission = internalAction({
     });
     if (!referral || referral.status === "cancelled") return;
 
-    // Déjà versée : tenter de reprendre les fonds sur le compte connecté.
+    // Already paid out: try to pull the funds back from the connected account.
     if (referral.status === "paid" && referral.stripeTransferId) {
       const stripe = getStripe();
       let adminNote = "Commission reprise avant traitement.";
@@ -308,7 +308,7 @@ export const reverseReferralCommission = internalAction({
       return;
     }
 
-    // Pas encore versée : simple annulation, rien à reprendre.
+    // Not paid out yet: a plain cancellation, nothing to reverse.
     await ctx.runMutation(internal.referrals.cancelReferral, {
       referralId: referral._id,
       reason: args.reason,

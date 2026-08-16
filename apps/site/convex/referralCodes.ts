@@ -60,7 +60,7 @@ export const validateCode = query({
       return { valid: false, error: "Code invalide ou désactivé" };
     }
 
-    // Récupérer les settings pour le discount par défaut
+    // Read the settings to get the default discount
     const settings = await ctx.db.query("affiliateSettings").take(1);
     const defaultDiscount = settings[0]?.defaultDiscountPercent ?? 10;
     const discountPercent = affiliate.discountOverridePercent ?? defaultDiscount;
@@ -89,7 +89,7 @@ export const generateMyCode = mutation({
       .unique();
     if (!affiliate) throw new Error("Profil apporteur introuvable");
 
-    // Vérifier qu'il n'a pas déjà un code actif
+    // Make sure they do not already have an active code
     const existing = await ctx.db
       .query("referralCodes")
       .withIndex("by_affiliateUserId", (q) =>
@@ -99,7 +99,7 @@ export const generateMyCode = mutation({
       .unique();
     if (existing) return existing;
 
-    // Générer un code unique
+    // Generate a unique code
     let code: string;
     let attempts = 0;
     do {
@@ -148,7 +148,7 @@ export const customizeMyCode = mutation({
       );
     }
 
-    // Vérifier que le code n'est pas déjà pris
+    // Make sure the code is not already taken
     const existing = await ctx.db
       .query("referralCodes")
       .withIndex("by_code", (q) => q.eq("code", normalizedCode))
@@ -157,7 +157,7 @@ export const customizeMyCode = mutation({
       throw new Error("Ce code est déjà utilisé");
     }
 
-    // Désactiver l'ancien code actif
+    // Deactivate the previously active code
     const currentCode = await ctx.db
       .query("referralCodes")
       .withIndex("by_affiliateUserId", (q) =>
@@ -169,7 +169,7 @@ export const customizeMyCode = mutation({
       await ctx.db.patch(currentCode._id, { isActive: false });
     }
 
-    // Créer le nouveau code personnalisé
+    // Create the new custom code
     const codeId = await ctx.db.insert("referralCodes", {
       affiliateUserId: affiliate._id,
       code: normalizedCode,

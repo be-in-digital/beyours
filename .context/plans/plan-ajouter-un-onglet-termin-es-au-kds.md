@@ -1,38 +1,38 @@
-# Plan : Ajouter un onglet "Terminées" au KDS
+# Plan: add a "Terminées" tab to the KDS
 
-## Contexte
-Le KDS affiche actuellement uniquement les 3 colonnes actives (En attente, En cours, Prêt). L'utilisateur veut pouvoir consulter les commandes terminées dans un onglet séparé avec recherche et filtres.
+## Context
+Today the KDS only shows the three active columns (En attente, En cours, Prêt). The user wants to browse completed orders in a separate tab, with search and filters.
 
-## Approche
-Ajouter un système de tabs `Actif / Terminées` au KDS en utilisant le composant `Tabs variant="line"` (pattern déjà utilisé dans OrdersContent et ProductsContent).
+## Approach
+Add an `Actif / Terminées` tab system to the KDS using the `Tabs variant="line"` component (a pattern already used in OrdersContent and ProductsContent).
 
-## Fichiers à modifier
+## Files to change
 
 ### 1. `apps/restaurant-theme/components/admin/kitchen/KitchenContent.tsx`
-- Wrapper avec `<Tabs defaultValue="active">` et 2 onglets :
-  - **Actif** : kanban actuel (3 colonnes)
-  - **Terminées** : nouveau composant `CompletedTickets`
-- Les singletons KDS (SoundManager, PrintTrigger, PrintStatusBadge, StationFilter) restent en dehors des tabs (toujours visibles)
+- Wrap it in `<Tabs defaultValue="active">` with two tabs:
+  - **Actif**: the current kanban (three columns)
+  - **Terminées**: a new `CompletedTickets` component
+- The KDS singletons (SoundManager, PrintTrigger, PrintStatusBadge, StationFilter) stay outside the tabs so they remain visible at all times
 
-### 2. `apps/restaurant-theme/components/admin/kitchen/CompletedTickets.tsx` (nouveau)
-- Utilise `api.kitchenTickets.getByStatus` avec `status: "completed"` (query indexée existante)
-- **Barre de recherche** : `Input` avec icone Search (filtre par orderNumber, customerName, productName)
-- **Filtres** :
-  - Source (Tous / Site web / Uber Eats / Deliveroo / Caisse) via `Select`
-  - Type (Tous / Livraison / A emporter / Sur place) via `Select`
-- **Grille de cards** : réutilise `TicketCard` en mode compact (les boutons d'action ne s'affichent pas car `status === "completed"`)
-- Filtrage client-side (pattern existant dans le projet)
+### 2. `apps/restaurant-theme/components/admin/kitchen/CompletedTickets.tsx` (new)
+- Uses `api.kitchenTickets.getByStatus` with `status: "completed"` (an existing indexed query)
+- **Search bar**: an `Input` with a Search icon (filters on orderNumber, customerName, productName)
+- **Filters**:
+  - Source (Tous / Site web / Uber Eats / Deliveroo / Caisse) through a `Select`
+  - Type (Tous / Livraison / A emporter / Sur place) through a `Select`
+- **Card grid**: reuses `TicketCard` in compact mode (the action buttons stay hidden because `status === "completed"`)
+- Client-side filtering (an existing pattern in this project)
 
 ### 3. `apps/restaurant-theme/components/admin/kitchen/index.ts`
-- Exporter `CompletedTickets`
+- Export `CompletedTickets`
 
-## Détails d'implémentation
+## Implementation details
 
-**Tab "Actif"** (contenu actuel inchangé) :
+**The "Actif" tab** (current content unchanged):
 - StationFilter + PrintStatusBadge
-- Kanban 3 colonnes
+- The three-column kanban
 
-**Tab "Terminées"** :
+**The "Terminées" tab**:
 ```
 [Rechercher par numero, client, produit...]  [Source: Tous v]  [Type: Tous v]
 ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
@@ -41,9 +41,9 @@ Ajouter un système de tabs `Actif / Terminées` au KDS en utilisant le composan
 └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
-## Vérification
-- Naviguer vers `/orders/kitchen`
-- Vérifier que l'onglet "Actif" affiche le kanban actuel
-- Cliquer sur "Terminées" et vérifier la liste des commandes complétées
-- Tester la recherche (par numéro, client, produit)
-- Tester les filtres source et type
+## Verification
+- Navigate to `/orders/kitchen`
+- Check that the "Actif" tab shows the current kanban
+- Click "Terminées" and check the list of completed orders
+- Test the search (by number, customer, product)
+- Test the source and type filters

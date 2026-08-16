@@ -1,38 +1,38 @@
 /**
- * Scene contract — formalise l'API d'une scène WebGL gérée par le SceneRegistry.
+ * Scene contract — formalises the API of a WebGL scene run by the SceneRegistry.
  *
- * Ce contrat permet de découpler les composants React (qui montent les scènes
- * via <SceneView slot="...">) de l'orchestration globale (canvas persistant
- * dans le root layout, gestion du frameloop, cleanup cross-route).
+ * The contract decouples the React components (which mount scenes through
+ * <SceneView slot="...">) from the global orchestration (a canvas that persists
+ * in the root layout, frameloop management, cross-route cleanup).
  *
- * Référence : Decision Log #19 (architecture WebGL formalisée).
+ * Reference: Decision Log #19 (formalised WebGL architecture).
  */
 export interface SceneContract<TParams = unknown> {
-  /** Identifiant unique de la scène (ex. "hero-liquid", "products-orbit"). */
+  /** Unique identifier of the scene (e.g. "hero-liquid", "products-orbit"). */
   id: string;
 
   /**
-   * Hook de montage : appelé quand la scène devient active.
-   * Reçoit les paramètres dérivés du DOM (taille, position, etc.).
+   * Mount hook: called when the scene becomes active.
+   * Receives the parameters derived from the DOM (size, position, etc.).
    */
   mount: (params: TParams) => void;
 
   /**
-   * Hook de démontage : DOIT disposer toutes les ressources GPU
-   * (géométries, matériaux, textures, render targets).
-   * Sans ça → memory leak inter-routes (risque critique #19).
+   * Unmount hook: MUST dispose of every GPU resource
+   * (geometries, materials, textures, render targets).
+   * Without it → a memory leak across routes (critical risk #19).
    */
   unmount: () => void;
 
   /**
-   * Update par frame avec progress de scroll [0,1] et delta time.
-   * Court-circuité automatiquement quand la section est hors viewport
-   * (voir SceneVisibilityManager).
+   * Per-frame update with the scroll progress [0,1] and the delta time.
+   * Automatically short-circuited when the section is outside the viewport
+   * (see SceneVisibilityManager).
    */
   update: (scrollProgress: number, deltaTime: number) => void;
 }
 
-/** État global du registry (consommable via Zustand). */
+/** Global registry state (consumable through Zustand). */
 export interface SceneRegistryState {
   scenes: Map<string, SceneContract>;
   activeSceneId: string | null;
@@ -40,16 +40,16 @@ export interface SceneRegistryState {
   viewport: { width: number; height: number };
 }
 
-/** Capabilities GPU du device courant. */
+/** GPU capabilities of the current device. */
 export interface DeviceCapabilities {
-  /** RAM device en GB (navigator.deviceMemory). */
+  /** Device RAM in GB (navigator.deviceMemory). */
   deviceMemory: number;
-  /** Cores logiques CPU. */
+  /** Logical CPU cores. */
   hardwareConcurrency: number;
-  /** Indique si le device peut supporter WebGL maximaliste. */
+  /** Whether the device can handle the maximalist WebGL. */
   canRunFullWebGL: boolean;
-  /** Tier de qualité dérivé : "high" | "medium" | "low". */
+  /** Derived quality tier: "high" | "medium" | "low". */
   tier: "high" | "medium" | "low";
-  /** prefers-reduced-motion respecté (fallback DOM total). */
+  /** prefers-reduced-motion honoured (full DOM fallback). */
   prefersReducedMotion: boolean;
 }

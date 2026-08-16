@@ -12,7 +12,7 @@ export function CtaSection() {
   return (
     <section id="cta" className="relative px-4 py-20 sm:px-6 sm:py-28">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem]">
-        {/* Photo d'ambiance restaurant — présente, pas noyée */}
+        {/* Restaurant mood photo — present, but not drowning the content */}
         <Image
           src="/photos/salle-restaurant2.webp"
           alt=""
@@ -20,7 +20,7 @@ export function CtaSection() {
           sizes="(max-width: 1152px) 100vw, 1152px"
           className="object-cover brightness-[1.15] saturate-[1.05]"
         />
-        {/* Scrim chaud pour la lisibilité */}
+        {/* Warm scrim for readability */}
         <div className="absolute inset-0 bg-[color:var(--olive)]/65" />
         <div className="absolute inset-0 bg-gradient-to-tr from-[color:var(--olive)]/95 via-[color:var(--olive)]/55 to-primary/30" />
         {/* Lueur terracotta */}

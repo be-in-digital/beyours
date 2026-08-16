@@ -69,9 +69,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Audit (fail on high/critical, prod deps only)
-        # `pnpm audit` parcourt le lockfile : il couvre donc tous les workspaces
-        # (apps/*, packages/*) sans --recursive
-        # (que pnpm v10 n'accepte de toute façon pas sur cette commande).
+        # `pnpm audit` walks the lockfile, so it already covers every workspace
+        # (apps/*, packages/*) without --recursive
+        # (which pnpm v10 doesn't accept on this command anyway).
         # --prod restricts the gate to deps that actually ship to users; lint
         # plugins, test runners and other dev tools are surfaced via local
         # `pnpm audit` runs but don't block PR merges.

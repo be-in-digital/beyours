@@ -443,7 +443,7 @@ function ReferralsTab() {
   );
 }
 
-/* ── Onglet Paramètres ── */
+/* ── Settings tab ── */
 
 function SettingsTab() {
   const settings = useQuery(api.affiliateSettings.get, {});

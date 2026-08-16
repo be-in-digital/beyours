@@ -1,142 +1,142 @@
-# Process de vente — Be in Digital Restauration
+# Sales process — Be in Digital Restauration
 
-La procédure qui manquait : comment on passe d'un restaurateur inconnu à un
-client payé, en ligne et sous maintenance. Elle décrit **ce qui est déjà câblé
-dans le produit**, **ce qui reste manuel**, et **qui fait quoi**.
+The procedure that was missing: how we get from an unknown restaurant owner to a
+paying customer, live and under maintenance. It covers **what is already wired
+into the product**, **what is still manual**, and **who does what**.
 
-Modèle de vente : **B2B assisté**, pas self-serve pur. Le checkout Stripe
-fonctionne en autonomie, mais à 3 500-7 500 € le panier, la vente se gagne en
-démo, pas au clic. Le self-serve sert de rampe de paiement, pas de canal
-d'acquisition. Cadre GTM validé : porte-à-porte Bordeaux, cible = restaurants
-déjà sur Uber Eats, accroche « 0 % de commission, récupérez vos clients »,
-démo pré-remplie. Objectifs réalistes : 3-5 clients à 90 jours, 25-40 à 12 mois.
+Sales model: **assisted B2B**, not pure self-serve. Stripe checkout runs on its
+own, but at a 3 500-7 500 € basket the sale is won in the demo, not on a click.
+Self-serve is a payment ramp, not an acquisition channel. Validated GTM frame:
+door-to-door in Bordeaux, target = restaurants already on Uber Eats, hook
+« 0 % de commission, récupérez vos clients », pre-filled demo. Realistic
+targets: 3-5 customers at 90 days, 25-40 at 12 months.
 
-> À ce volume, **le provisioning manuel est le bon choix** — ne pas industrialiser
-> l'automatisation tant qu'on n'a pas dépassé ~20-30 clients. Ce qu'il faut, c'est
-> un runbook répétable (§5), pas un pipeline CI/CD de déploiement.
+> At this volume, **manual provisioning is the right call** — do not industrialize
+> the automation until we are past ~20-30 customers. What is needed is a repeatable
+> runbook (§5), not a CI/CD deployment pipeline.
 
 ---
 
-## Les 7 étapes
+## The 7 steps
 
-### 1. Prospection
-**Qui** : commercial / fondateur · **Outil** : terrain + fichier prospects
+### 1. Prospecting
+**Who**: sales / founder · **Tool**: the field + a prospect list
 
-- Cible stricte : resto déjà sur Uber Eats / Deliveroo (douleur commission réelle).
-- Accroche unique : « Combien vous prend Uber Eats sur chaque commande ? Et si
+- Strict target: a restaurant already on Uber Eats / Deliveroo (real commission pain).
+- One hook only: « Combien vous prend Uber Eats sur chaque commande ? Et si
   ces clients devenaient les vôtres, sans commission ? »
-- Sortie de l'étape : un rendez-vous démo posé (Calendly).
+- Exit criterion: a demo meeting booked (Calendly).
 
-### 2. Qualification & démo
-**Qui** : commercial · **Outil** : `/decouvrir` (démo jouable) + Calendly (déjà câblés)
+### 2. Qualification & demo
+**Who**: sales · **Tool**: `/decouvrir` (playable demo) + Calendly (both already wired)
 
-- Envoyer le lien `/decouvrir` AVANT le rdv (jeu de fidélité + KDS jouables).
-- En rdv : dérouler la démo pré-remplie au nom du resto, montrer le storefront
-  sans commission, la roue de fidélité, le back-office.
-- Qualifier : nombre d'établissements, volume Uber Eats, qui décide, budget.
-- Sortie : plan pressenti (Essentielle 3 500 € / Premium 7 500 €) + offre
-  fondateurs si éligible (10 places à 2 500 €, compteur temps réel sur `/tarifs`).
+- Send the `/decouvrir` link BEFORE the meeting (loyalty game + KDS both playable).
+- In the meeting: run the demo pre-filled with the restaurant's name, show the
+  commission-free storefront, the loyalty wheel, the back office.
+- Qualify: number of locations, Uber Eats volume, who decides, budget.
+- Exit: the likely plan (Essentielle 3 500 € / Premium 7 500 €) + the founders
+  offer if eligible (10 seats at 2 500 €, real-time counter on `/tarifs`).
 
-### 3. Proposition
-**Qui** : commercial · **Outil** : page `/tarifs` + devis
+### 3. Proposal
+**Who**: sales · **Tool**: the `/tarifs` page + a quote
 
-- Prix HT (franchise en base, pas de TVA aujourd'hui — voir MISE_EN_PROD.md).
-- Poser le cadre maintenance : 1ʳᵉ année incluse dans la création, puis
-  1 000 €/an (Essentielle) ou 2 000 €/an (Premium), mensualisable.
-- Leviers : offre fondateurs (contreparties = étude de cas + témoignage + droit
-  de référence), paiement création en 3-4× (Alma/Klarna, déjà au checkout),
-  parrainage (−10 % création, 500 € au parrain).
-- Sortie : accord verbal + email récap avec le lien de commande.
+- Prices ex-VAT (franchise en base, no VAT today — see MISE_EN_PROD.md).
+- Set the maintenance frame: 1st year included in the build, then
+  1 000 €/year (Essentielle) or 2 000 €/year (Premium), payable monthly.
+- Levers: founders offer (in exchange for a case study + a testimonial + the
+  right to name them as a reference), build paid in 3-4 installments (Alma/Klarna,
+  already at checkout), referral (−10% on the build, 500 € to the referrer).
+- Exit: verbal agreement + a recap email with the order link.
 
-### 4. Signature & paiement
-**Qui** : client · **Outil** : `/checkout?plan=…` → Stripe (déjà câblé)
+### 4. Signing & payment
+**Who**: customer · **Tool**: `/checkout?plan=…` → Stripe (already wired)
 
-- Le client remplit ses infos (resto, ville, SIRET) et paie par carte, Alma ou
-  Klarna. Le montant est calculé côté serveur, jamais côté client.
-- Le webhook Stripe crée automatiquement : commande `paid`, abonnement
-  maintenance, ligne de parrainage si code appliqué.
-- **⚠️ Trou à combler avant prod** : aucun email de confirmation n'est envoyé, et
-  `/checkout/success` renvoie juste vers Calendly. Voir MISE_EN_PROD.md §4.
-- Contrat : la signature YouSign est câblée pour les **apporteurs d'affaires**.
-  Pour un **contrat client** (prestation + maintenance), l'adaptateur existe mais
-  le flux n'est pas branché — à décider (§ MISE_EN_PROD.md).
-- Sortie : commande `paid` visible dans `/admin/ventes`.
+- The customer fills in their details (restaurant, city, SIRET) and pays by card,
+  Alma or Klarna. The amount is computed server-side, never client-side.
+- The Stripe webhook automatically creates: a `paid` order, the maintenance
+  subscription, a referral line if a code was applied.
+- **⚠️ Gap to close before prod**: no confirmation email is sent, and
+  `/checkout/success` just points at Calendly. See MISE_EN_PROD.md §4.
+- Contract: YouSign signing is wired for **business introducers**. For a
+  **customer contract** (build + maintenance), the adapter exists but the flow
+  is not wired — to be decided (§ MISE_EN_PROD.md).
+- Exit: a `paid` order visible in `/admin/ventes`.
 
-### 5. Provisioning (go-live) — RUNBOOK MANUEL
-**Qui** : dev / ops · **Outil** : console `/admin/parametres` + comptes Convex/Vercel
+### 5. Provisioning (go-live) — MANUAL RUNBOOK
+**Who**: dev / ops · **Tool**: the `/admin/parametres` console + Convex/Vercel accounts
 
-C'est l'étape 100 % manuelle. Le runbook est déjà affiché dans la console
-(`GO_LIVE_STEPS`), à exécuter dans l'ordre pour chaque nouveau client :
+This is the 100% manual step. The runbook is already displayed in the console
+(`GO_LIVE_STEPS`), to be run in order for every new customer:
 
-1. **Cloner le boilerplate** restaurant-theme pour ce client (repo git séparé
-   `beindigital-boilerplate`).
-2. **Provisionner Convex** (déploiement prod dédié) + **Vercel** (projet dédié).
-   → cf. la note d'estimation infra : two-tier par siège dev, ~50-250 €/an/client.
-   Ne PAS créer un compte séparé par client (10× plus cher).
-3. **Renseigner les variables** : Stripe (clé, webhook, price maintenance), AWS
-   SES (expéditeur vérifié, région), les intégrations activées.
-4. **Déclarer le webhook Stripe** côté dashboard sur l'URL Convex du client.
-5. **Déployer le schéma Convex** (`convex deploy`) — tables, index, fonctions.
-6. **Smoke tests** : un achat + une commande de bout en bout en conditions réelles.
-7. **Bascule DNS** : le domaine final pointe sur l'instance, certificat actif.
-8. **Enregistrer le client dans la flotte** : `/admin/parametres` → « Provisionner »
-   (email client, domaine, plan, région). **Renseigner l'`orderId`** pour tracer
-   paiement → déploiement.
+1. **Clone the boilerplate** restaurant-theme for this customer (separate git
+   repo `beindigital-boilerplate`).
+2. **Provision Convex** (dedicated prod deployment) + **Vercel** (dedicated project).
+   → see the infra cost note: two-tier on a dev seat, ~50-250 €/year/customer.
+   Do NOT create a separate account per customer (10× more expensive).
+3. **Fill in the variables**: Stripe (key, webhook, maintenance price), AWS
+   SES (verified sender, region), the enabled integrations.
+4. **Register the Stripe webhook** in the dashboard, on the customer's Convex URL.
+5. **Deploy the Convex schema** (`convex deploy`) — tables, indexes, functions.
+6. **Smoke tests**: one purchase + one order end to end under real conditions.
+7. **DNS cutover**: the final domain points at the instance, certificate active.
+8. **Register the customer in the fleet**: `/admin/parametres` → « Provisionner »
+   (customer email, domain, plan, region). **Fill in the `orderId`** to trace
+   payment → deployment.
 
-- Sortie : instance en ligne, enregistrée dans `saDeployments`, statut `live`.
+- Exit: instance online, recorded in `saDeployments`, status `live`.
 
 ### 6. Kickoff & onboarding
-**Qui** : commercial + client · **Outil** : rendez-vous (Calendly) + livraison
+**Who**: sales + customer · **Tool**: a meeting (Calendly) + delivery
 
-- Rdv de lancement : récupérer le contenu réel (menu, photos, horaires, logo,
-  moyens de paiement du resto), configurer le premier établissement.
-- Former le staff : back-office, écran cuisine (KDS), validation des lots du jeu.
-- Remettre : accès admin, lien du site, QR codes de fidélité à imprimer.
-- Sortie : le resto prend ses premières vraies commandes.
+- Launch meeting: collect the real content (menu, photos, opening hours, logo,
+  the restaurant's payment methods), configure the first location.
+- Train the staff: back office, kitchen display (KDS), validating game prizes.
+- Hand over: admin access, the site link, loyalty QR codes to print.
+- Exit: the restaurant takes its first real orders.
 
-### 7. Maintenance & renouvellement
-**Qui** : système + ops · **Outil** : `maintenance.ts` + Stripe (déjà câblé)
+### 7. Maintenance & renewal
+**Who**: system + ops · **Tool**: `maintenance.ts` + Stripe (already wired)
 
-- 1ʳᵉ année incluse. À l'échéance, l'abonnement maintenance se renouvelle via
-  Stripe (webhook BID → `maintenance._applyStripeRenewal`, déjà branché).
-- Le client peut demander une migration de site depuis son back-office
-  (Système → Maintenance) — demande + emails, traitée par l'équipe.
-- **⚠️ Trou** : aucune relance sur paiement échoué. À combler (MISE_EN_PROD.md §2).
+- 1st year included. At the renewal date, the maintenance subscription renews
+  through Stripe (BID webhook → `maintenance._applyStripeRenewal`, already wired).
+- The customer can request a site migration from their back office
+  (Système → Maintenance) — a request + emails, handled by the team.
+- **⚠️ Gap**: nothing chases a failed payment. To be closed (MISE_EN_PROD.md §2).
 
 ---
 
-## Qui fait quoi (RACI condensé)
+## Who does what (condensed RACI)
 
-| Étape | Commercial | Dev/Ops | Système (auto) | Client |
+| Step | Sales | Dev/Ops | System (auto) | Customer |
 |---|---|---|---|---|
-| 1 Prospection | **R** | | | |
-| 2 Démo | **R** | | démo `/decouvrir` | participe |
-| 3 Proposition | **R** | | | |
-| 4 Paiement | accompagne | | commande+abo+parrainage | **R** paie |
-| 5 Provisioning | | **R** (runbook) | webhook→flotte (partiel) | |
-| 6 Kickoff | **R** | configure | | fournit contenu |
-| 7 Maintenance | | relances | renouvellement Stripe | |
+| 1 Prospecting | **R** | | | |
+| 2 Demo | **R** | | `/decouvrir` demo | attends |
+| 3 Proposal | **R** | | | |
+| 4 Payment | assists | | order+subscription+referral | **R** pays |
+| 5 Provisioning | | **R** (runbook) | webhook→fleet (partial) | |
+| 6 Kickoff | **R** | configures | | supplies content |
+| 7 Maintenance | | chasing | Stripe renewal | |
 
 ---
 
-## Ce qui est solide vs fragile aujourd'hui
+## What is solid vs fragile today
 
-**Solide (déjà câblé, exploitable)** : tarifs clairs et alignés back/front,
-checkout Stripe (carte/Alma/Klarna), calcul serveur-side, offre fondateurs avec
-compteur réel, parrainage + versement des commissions (Stripe Connect),
-console `/admin` (ventes, clients, prospects, flotte), démo `/decouvrir`,
-renouvellement maintenance.
+**Solid (already wired, usable)**: clear prices, aligned back/front, Stripe
+checkout (card/Alma/Klarna), server-side calculation, founders offer with a real
+counter, referrals + commission payouts (Stripe Connect),
+the `/admin` console (sales, customers, prospects, fleet), the `/decouvrir` demo,
+maintenance renewal.
 
-**Fragile (à combler avant d'ouvrir la vente)** — détail et priorités dans
-`MISE_EN_PROD.md` :
-1. Le formulaire `/contact` ne fait rien (les prospects écrivent dans le vide).
-2. Aucun email de confirmation ni de suivi après paiement.
-3. Pas de facture conforme FR (aujourd'hui = PDF Stripe brut).
-4. Pas de page légale (CGV, mentions, confidentialité).
-5. Provisioning 100 % manuel — acceptable à ce volume, mais le runbook ci-dessus
-   doit être suivi à la lettre.
+**Fragile (to close before opening sales)** — detail and priorities in
+`MISE_EN_PROD.md`:
+1. The `/contact` form does nothing (prospects write into the void).
+2. No confirmation or follow-up email after payment.
+3. No FR-compliant invoice (today = the raw Stripe PDF).
+4. No legal page (CGV, mentions légales, privacy).
+5. Provisioning 100% manual — acceptable at this volume, but the runbook above
+   has to be followed to the letter.
 
 ---
 
-**Version** : 1.0 · **Créé** : 2026-07-19 · basé sur l'audit du code réel et le
-plan GTM validé. À revoir après les 3 premières ventes.
+**Version**: 1.0 · **Created**: 2026-07-19 · based on an audit of the real code and
+the validated GTM plan. To revisit after the first 3 sales.

@@ -12,8 +12,8 @@ import {
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
 /* ═══════════════════════════════════════════════
-   Storyboard « étape par étape » + valeur du système de jeu.
-   Modèle : UNE action = UNE partie, à chaque visite (boucle de fidélité).
+   Step-by-step storyboard + why the game system is worth it.
+   The model: ONE action = ONE play, on every visit (the loyalty loop).
    ═══════════════════════════════════════════════ */
 
 const STEPS = [
@@ -103,7 +103,7 @@ export function GameWalkthrough() {
         })}
       </StaggerContainer>
 
-      {/* Pourquoi c'est puissant */}
+      {/* Why this works so well */}
       <div className="mt-14 grid gap-4 md:grid-cols-3">
         {VALUE.map((v, i) => {
           const Icon = v.icon;

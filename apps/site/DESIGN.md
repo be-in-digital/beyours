@@ -1,102 +1,102 @@
-# Design — Site vitrine Be in Digital
+# Design — Be in Digital marketing site
 
-> ## ⚠️ DIRECTION ACTUELLE (refonte 2026-07 — prime sur tout ce qui suit)
+> ## ⚠️ CURRENT DIRECTION (2026-07 redesign — overrides everything below)
 >
-> La DA a **pivoté** d'un dark premium mint/teal vers un **warm food-editorial**,
-> validé par le client (plus chaleureux, food-first, montre le vrai produit).
-> Les sections ci-dessous décrivant le « dark futuriste / néon mint » sont
-> **obsolètes** — les garder seulement comme historique.
+> The art direction has **pivoted** from a premium dark mint/teal to a **warm
+> food-editorial** look, signed off by the client (warmer, food-first, shows the
+> real product). The sections below describing the “dark futuristic / neon mint”
+> look are **obsolete** — keep them as history only.
 >
-> **Palette réelle (tokens dans `app/globals.css`, thème clair) :**
-> - Fond papier `--background: #faf5ee` · texte ink `--foreground: #221c15`
-> - Surfaces claires `--surface-1: #fffdf9` → `--surface-3: #ece0cf`
-> - **Accent unique = terracotta** `--primary: #c5542c` (échelle
->   `--primary-50…900`), texte sur accent `--primary-foreground: #fdf7ef`
-> - Ancrage sombre chaud (footer, CTA, 1 panneau/page max) = **olive**
+> **Actual palette (tokens in `app/globals.css`, light theme):**
+> - Paper background `--background: #faf5ee` · ink text `--foreground: #221c15`
+> - Light surfaces `--surface-1: #fffdf9` → `--surface-3: #ece0cf`
+> - **Single accent = terracotta** `--primary: #c5542c` (scale
+>   `--primary-50…900`), text on the accent `--primary-foreground: #fdf7ef`
+> - Warm dark anchor (footer, CTA, 1 panel per page max) = **olive**
 >   `--olive: #23271c`
-> - Bordures chaudes `--border: #e6d8c4` · ombres teintées brun
->   `rgba(112,60,34,…)` (jamais de glow néon)
+> - Warm borders `--border: #e6d8c4` · brown-tinted shadows
+>   `rgba(112,60,34,…)` (never a neon glow)
 >
-> **Typo :** display = **Bricolage Grotesque** (`font-display`), corps = Geist,
-> mono = Geist Mono. Plus de serif Instrument.
+> **Type:** display = **Bricolage Grotesque** (`font-display`), body = Geist,
+> mono = Geist Mono. The Instrument serif is gone.
 >
-> **Principes :** vraies photos culinaires + aperçus PRODUIT réels (le composant
-> `storefront-preview.tsx` = mini site de commande fonctionnel), pas de faux
-> mockups en div gris, pas de dashboard abstrait. Mouvement doux (framer-motion,
-> reduced-motion respecté). Un seul accent verrouillé (terracotta) sur tout le
+> **Principles:** real food photography + real PRODUCT previews (the
+> `storefront-preview.tsx` component is a working mini ordering site), no fake
+> mockups made of gray divs, no abstract dashboard. Soft motion (framer-motion,
+> reduced-motion respected). One accent locked (terracotta) across the whole
 > site.
 >
-> **Interdits :** mint/teal (`#52cfaf`, `rgba(82,207,175,*)`), `bg-black/*`,
-> `bg-white/[0.0x]`, `#101014/#0a0a0a`, glows néon, em-dash visibles.
+> **Banned:** mint/teal (`#52cfaf`, `rgba(82,207,175,*)`), `bg-black/*`,
+> `bg-white/[0.0x]`, `#101014/#0a0a0a`, neon glows, visible em dashes.
 
-## 1. Objectif
+## 1. Goal
 
-Créer un site vitrine **premium**, **immersif** et **très moderne** pour **Be in Digital**, en s’inspirant du site de référence tout en l’adaptant au branding de la marque.
+Build a **premium**, **immersive** and **very modern** marketing site for **Be in Digital**, drawing on the reference site while adapting it to the brand.
 
-Le site doit transmettre immédiatement :
+The site has to convey immediately:
 
 * innovation,
 * performance,
-* crédibilité,
-* maîtrise produit,
-* spécialisation restauration,
-* image premium.
+* credibility,
+* product mastery,
+* restaurant specialization,
+* a premium image.
 
 ---
 
-## 2. Référence créative
+## 2. Creative reference
 
-Référence principale : le site Framer partagé par le client.
+Main reference: the Framer site the client shared.
 
-### Ce qu’on reprend de la référence
+### What we take from the reference
 
-* univers **dark futuriste / premium tech**,
-* ambiance immersive avec **glow, halos, light streaks, profondeur**,
-* hero très visuel avec impact immédiat,
-* grandes sections aérées,
-* cartes produit / dashboard avec effet vitrine,
-* compositions cinématiques,
-* footer très marquant.
+* the **dark futuristic / premium tech** world,
+* an immersive mood built on **glow, halos, light streaks, depth**,
+* a very visual hero with immediate impact,
+* large, airy sections,
+* product / dashboard cards with a showcase effect,
+* cinematic compositions,
+* a footer that really lands.
 
-### Ce qu’on n’imite pas tel quel
+### What we do not copy as-is
 
-* les couleurs bleu / violet dominantes,
-* le wording générique type “AI SaaS”,
-* les sections décoratives sans lien avec l’offre,
-* les effets trop gratuits s’ils nuisent à la lisibilité.
+* the dominant blue / purple colors,
+* the generic “AI SaaS” wording,
+* decorative sections with no link to the offer,
+* effects that are too gratuitous when they hurt legibility.
 
 ---
 
-## 3. Adaptation au branding Be in Digital
+## 3. Adapting it to Be in Digital branding
 
-### Direction couleur
+### Color direction
 
-Le site doit conserver le langage visuel premium et immersif de la référence, mais être **recoloré** selon le branding Be in Digital.
+The site must keep the premium, immersive visual language of the reference, but be **recolored** to Be in Digital branding.
 
-L’intention couleur est :
+The color intent is:
 
-* fond très sombre,
-* accent mint / teal,
-* texte clair,
-* surfaces premium,
-* halos lumineux contrôlés,
-* contraste net.
+* very dark background,
+* mint / teal accent,
+* light text,
+* premium surfaces,
+* controlled light halos,
+* sharp contrast.
 
-### Règle importante
+### Important rule
 
-Le design ne doit **pas** être défini à partir de codes hex hardcodés dans les composants.
+The design must **not** be defined from hex codes hardcoded in the components.
 
-On veut un système basé sur des **variables CSS sémantiques** afin de :
+We want a system built on **semantic CSS variables**, in order to:
 
-* faciliter le theming,
-* garder une cohérence globale,
-* permettre des ajustements rapides,
-* éviter les couleurs dispersées dans le code,
-* préparer une éventuelle évolution du branding.
+* make theming easier,
+* keep global consistency,
+* allow quick adjustments,
+* avoid colors scattered through the code,
+* be ready for a possible change of branding.
 
-### Variables attendues
+### Expected variables
 
-Le système couleur doit être pensé autour de variables comme :
+The color system has to be designed around variables like:
 
 * `--background`
 * `--foreground`
@@ -119,105 +119,105 @@ Le système couleur doit être pensé autour de variables comme :
 * `--hero-radial`
 * `--section-radial`
 
-### Code couleur du branding
+### Brand color codes
 
-Même si l’implémentation doit reposer sur des variables CSS, on garde ici les **couleurs source du branding** pour servir de référence design.
+Even though the implementation has to rely on CSS variables, we keep the **source brand colors** here as a design reference.
 
-#### Couleurs source
+#### Source colors
 
-* Primary / Mint : `#52CFAF`
-* Dark / Black : `#0A0A0A`
-* White : `#FFFFFF`
+* Primary / Mint: `#52CFAF`
+* Dark / Black: `#0A0A0A`
+* White: `#FFFFFF`
 
-#### Palette étendue de référence
+#### Extended reference palette
 
-* Primary 50 : `#EEFAF7`
-* Primary 100 : `#DCF5EF`
-* Primary 200 : `#C2EEE3`
-* Primary 300 : `#A0E5D3`
-* Primary 400 : `#7DDBC3`
-* Primary 500 : `#52CFAF`
-* Primary 600 : `#46B095`
-* Primary 700 : `#39917A`
-* Primary 800 : `#2D7260`
-* Primary 900 : `#215346`
+* Primary 50: `#EEFAF7`
+* Primary 100: `#DCF5EF`
+* Primary 200: `#C2EEE3`
+* Primary 300: `#A0E5D3`
+* Primary 400: `#7DDBC3`
+* Primary 500: `#52CFAF`
+* Primary 600: `#46B095`
+* Primary 700: `#39917A`
+* Primary 800: `#2D7260`
+* Primary 900: `#215346`
 
-#### Neutres de référence
+#### Reference neutrals
 
-* Neutral 900 : `#0A0A0A`
-* Neutral 800 : `#1A1A1A`
-* Neutral 700 : `#2A2A2A`
-* Neutral 600 : `#4A4A4A`
-* Neutral 500 : `#6B6B6B`
-* Neutral 400 : `#9A9A9A`
-* Neutral 300 : `#CFCFCF`
-* Neutral 200 : `#E8E8E8`
-* Neutral 100 : `#F5F5F5`
-* Neutral 50 : `#FAFAFA`
+* Neutral 900: `#0A0A0A`
+* Neutral 800: `#1A1A1A`
+* Neutral 700: `#2A2A2A`
+* Neutral 600: `#4A4A4A`
+* Neutral 500: `#6B6B6B`
+* Neutral 400: `#9A9A9A`
+* Neutral 300: `#CFCFCF`
+* Neutral 200: `#E8E8E8`
+* Neutral 100: `#F5F5F5`
+* Neutral 50: `#FAFAFA`
 
-#### Mapping recommandé vers les variables CSS
+#### Recommended mapping onto the CSS variables
 
-* `--background` : fond principal très sombre dérivé de `#0A0A0A`
-* `--foreground` : texte principal dérivé de `#FFFFFF`
-* `--primary` : accent principal dérivé de `#52CFAF`
-* `--primary-foreground` : texte sombre sur accent mint
-* `--muted-foreground` : gris clair dérivé de la palette neutre
-* `--border` : bordure subtile dérivée des neutres sombres
-* `--glow-primary` : halo mint dérivé de `#52CFAF`
+* `--background`: very dark main background derived from `#0A0A0A`
+* `--foreground`: main text derived from `#FFFFFF`
+* `--primary`: main accent derived from `#52CFAF`
+* `--primary-foreground`: dark text on the mint accent
+* `--muted-foreground`: light gray derived from the neutral palette
+* `--border`: subtle border derived from the dark neutrals
+* `--glow-primary`: mint halo derived from `#52CFAF`
 
-#### Règle d’usage
+#### Usage rule
 
-Les hex ci-dessus servent uniquement de **référentiel de branding**.
-Le code du site doit ensuite passer par des **variables CSS sémantiques** et non par des hex dispersés dans les composants.
+The hex values above are only a **branding reference**.
+The site code then has to go through **semantic CSS variables**, not hex values scattered across the components.
 
-### Traduction visuelle de la référence
+### Translating the reference visually
 
-Le site de référence repose sur un univers néon bleu / violet sur fond sombre.
+The reference site rests on a blue / purple neon world over a dark background.
 
-Pour Be in Digital, il faut :
+For Be in Digital, we need to:
 
-* remplacer les lueurs violettes dominantes par des lueurs mint / teal,
-* conserver un fond quasi noir,
-* garder des surfaces sombres premium,
-* utiliser l’accent de marque pour guider le regard,
-* limiter le nombre de couleurs secondaires.
+* replace the dominant purple glows with mint / teal glows,
+* keep a near-black background,
+* keep premium dark surfaces,
+* use the brand accent to lead the eye,
+* limit the number of secondary colors.
 
-### Règle branding
+### Branding rule
 
-Le site doit être perçu comme :
+The site has to read as:
 
 * premium,
 * tech,
-* élégant,
-* maîtrisé,
+* elegant,
+* controlled,
 * restaurant-first,
-* orienté business.
+* business-oriented.
 
-Il ne doit pas être perçu comme :
+It must not read as:
 
-* un template générique,
-* un site crypto,
-* un site gaming,
-* un site “AI gadget”,
-* un site trop froid ou trop corporate.
+* a generic template,
+* a crypto site,
+* a gaming site,
+* an “AI gadget” site,
+* a site that is too cold or too corporate.
 
 ---
 
-## 4. Direction artistique
+## 4. Art direction
 
-### Intention visuelle
+### Visual intent
 
-Créer une interface qui donne l’impression d’un produit digital de nouvelle génération, avec :
+Build an interface that feels like a next-generation digital product, with:
 
-* profondeur,
-* contrastes élégants,
-* glow subtil,
-* surfaces vitrées,
-* cartes sombres premium,
-* halos lumineux contrôlés,
-* effets de perspective.
+* depth,
+* elegant contrast,
+* subtle glow,
+* glass surfaces,
+* premium dark cards,
+* controlled light halos,
+* perspective effects.
 
-### Mot-clés créatifs
+### Creative keywords
 
 * dark luxury,
 * food-tech premium,
@@ -228,118 +228,118 @@ Créer une interface qui donne l’impression d’un produit digital de nouvelle
 * elegant,
 * cinematic UI.
 
-### Règles visuelles
+### Visual rules
 
-* fond principal très sombre,
-* sections respirantes,
-* pas trop de bruit visuel,
-* glow subtil et contrôlé,
-* effets lumineux utilisés pour guider l’œil,
-* hiérarchie typographique forte,
-* visuels produit toujours mis en valeur.
+* very dark main background,
+* sections that breathe,
+* not too much visual noise,
+* subtle, controlled glow,
+* light effects used to lead the eye,
+* strong typographic hierarchy,
+* product visuals always given prominence.
 
 ---
 
-## 5. Architecture visuelle de la homepage
+## 5. Visual architecture of the homepage
 
 ### 5.1 Navbar
 
-* logo Be in Digital,
-* liens principaux,
-* CTA principal : **Réserver une démo** ou **Prendre rendez-vous**,
-* style sombre avec légère transparence et bordure fine.
+* Be in Digital logo,
+* main links,
+* primary CTA: **Réserver une démo** or **Prendre rendez-vous**,
+* dark style with slight transparency and a hairline border.
 
 ### 5.2 Hero
 
 * badge,
-* titre fort orienté transformation digitale restaurant,
-* sous-titre orienté bénéfices,
-* CTA principal,
-* CTA secondaire,
-* grand mockup produit ou composition dashboard + mobile + storefront,
-* fond sombre avec flux lumineux et halo centré.
+* strong headline about restaurant digital transformation,
+* benefit-driven subhead,
+* primary CTA,
+* secondary CTA,
+* large product mockup, or a dashboard + mobile + storefront composition,
+* dark background with light streams and a centered halo.
 
-### 5.3 Section problème
+### 5.3 Problem section
 
-Illustrer :
+Illustrate:
 
-* dépendance aux plateformes,
-* image digitale faible,
-* outils dispersés,
-* manque de fidélisation,
-* perte de temps,
-* difficulté à centraliser les opérations.
+* dependence on the platforms,
+* weak digital image,
+* scattered tools,
+* no customer loyalty,
+* time lost,
+* how hard it is to centralize operations.
 
-### 5.4 Section solution / plateforme
+### 5.4 Solution / platform section
 
-Présenter Be in Digital comme le centre de contrôle digital du restaurant :
+Present Be in Digital as the restaurant's digital control center:
 
-* dashboard administrateur,
-* storefront / commande en ligne,
+* admin dashboard,
+* storefront / online ordering,
 * menu management,
-* gestion des commandes,
-* marketing / fidélité,
-* expérience mobile.
+* order management,
+* marketing / loyalty,
+* mobile experience.
 
-### 5.5 Section fonctionnalités
+### 5.5 Features section
 
-Format en grille premium avec cartes sombres :
+Premium grid layout with dark cards:
 
-* site web restaurant premium,
-* commande en ligne directe,
-* gestion du menu,
-* dashboard admin,
-* centralisation des commandes,
-* fidélisation / gamification,
-* expérience mobile,
-* accompagnement digital.
+* premium restaurant website,
+* direct online ordering,
+* menu management,
+* admin dashboard,
+* order centralization,
+* loyalty / gamification,
+* mobile experience,
+* digital support.
 
-### 5.6 Section écosystème produit
+### 5.6 Product ecosystem section
 
-Montrer les briques Be in Digital :
+Show the Be in Digital building blocks:
 
 * storefront,
 * dashboard,
-* fidélité,
+* loyalty,
 * analytics,
-* menu digital,
-* branding digital.
+* digital menu,
+* digital branding.
 
-### 5.7 Section bénéfices
+### 5.7 Benefits section
 
-Traduire les fonctionnalités en gains concrets :
+Turn the features into concrete gains:
 
-* plus de contrôle,
-* meilleure image,
-* plus de commandes directes,
-* gain de temps,
-* meilleure expérience client,
-* outils centralisés.
+* more control,
+* better image,
+* more direct orders,
+* time saved,
+* better customer experience,
+* centralized tools.
 
-### 5.8 Section réassurance
+### 5.8 Trust section
 
-Mettre en avant :
+Put forward:
 
-* spécialisation restauration,
-* approche sur mesure,
-* accompagnement humain,
-* design premium,
-* vision business,
-* stack moderne.
+* restaurant specialization,
+* a bespoke approach,
+* human support,
+* premium design,
+* business vision,
+* a modern stack.
 
-### 5.9 CTA final
+### 5.9 Final CTA
 
-Section immersive, simple, lisible et très claire, avec un bouton principal bien visible.
+An immersive section, simple, legible and very clear, with one prominent primary button.
 
 ### 5.10 Footer
 
-Footer fort visuellement, immersif, recoloré selon le branding mint / dark, avec liens utiles et contact.
+A visually strong, immersive footer, recolored to the mint / dark branding, with useful links and contact details.
 
 ---
 
-## 6. Système de composants
+## 6. Component system
 
-Composants principaux :
+Main components:
 
 * `Navbar`
 * `HeroSection`
@@ -354,12 +354,12 @@ Composants principaux :
 * `CTASection`
 * `Footer`
 
-### Règles communes
+### Shared rules
 
-* border radius généreux,
-* spacing premium,
-* fond sombre multi-couches,
-* bordures très subtiles,
-* ombres diffuses,
-* glow mint très maîtrisé,
-* cohérenc
+* generous border radius,
+* premium spacing,
+* layered dark background,
+* very subtle borders,
+* diffuse shadows,
+* tightly controlled mint glow,
+* consistenc

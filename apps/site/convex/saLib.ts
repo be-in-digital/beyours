@@ -1,7 +1,7 @@
 import type { QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 
-/* Helpers partagés du superadmin console (GMV, agrégats, constantes). */
+/* Shared helpers for the superadmin console (GMV, aggregates, constants). */
 
 export const DAY_MS = 86_400_000;
 
@@ -9,13 +9,13 @@ export function startOfDay(ts: number): number {
   return Math.floor(ts / DAY_MS) * DAY_MS;
 }
 
-/** Prix maintenance annuels (centimes) par plan — sert au calcul MRR. */
+/** Annual maintenance prices (cents) per plan — used to compute MRR. */
 export const MAINTENANCE_ANNUAL_CENTS: Record<string, number> = {
   essentielle: 49000,
   premium: 89000,
 };
 
-/** Équivalent mensuel (centimes) d'une maintenance annuelle. */
+/** Monthly equivalent (cents) of an annual maintenance fee. */
 export function monthlyEquivalentCents(plan: string): number {
   return Math.round((MAINTENANCE_ANNUAL_CENTS[plan] ?? 49000) / 12);
 }

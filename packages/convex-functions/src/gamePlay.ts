@@ -123,9 +123,9 @@ async function completedActionIdsFor(
 }
 
 /**
- * Pure : à partir des actions actives ordonnées et des actions déjà réalisées
- * par ce device (peut contenir des ids périmés), calcule la progression
- * séquentielle — l'action courante étant la première non encore faite.
+ * Pure: from the ordered active actions and the ones this device has already
+ * done (the list may hold stale ids), computes the sequential progression —
+ * the current action being the first one not yet completed.
  */
 export function selectSequentialProgression(
   orderedActionIds: string[],
@@ -240,9 +240,9 @@ export const getSession = {
 
     const prizes = await loadAvailablePrizes(ctx, qr.storeId)
 
-    // Progression : en mode "sequential" (défaut), on ne présente qu'UNE action
-    // par visite, la suivante non encore réalisée par ce device. Le mode "all"
-    // conserve l'ancien comportement (toutes les actions d'un coup).
+    // Progression: in "sequential" mode (the default) only ONE action is shown
+    // per visit, the next one this device has not done yet. "all" mode keeps
+    // the old behavior (every action at once).
     const actionMode: "all" | "sequential" = game.config?.actionMode ?? "sequential"
     let progression:
       | { mode: "all" }
@@ -274,8 +274,8 @@ export const getSession = {
       }
     }
 
-    // Parrainage : filleul (arrivé via ?ref, jamais joué), bonus du parrain
-    // (tours gagnés non utilisés), et code partageable du joueur.
+    // Referral: friend (arrived via ?ref, never played), referrer bonuses
+    // (plays earned but unused), and the player's shareable code.
     const referralCfg = game.config?.referral
     let isFriendWelcome = false
     if (args.ref && args.fingerprint) {
@@ -293,8 +293,8 @@ export const getSession = {
       ? await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
       : null
     const pendingBonuses = myReferral?.pendingBonuses ?? 0
-    // Un tour bonus (parrain) ou un tour offert (filleul) débloque le jeu même
-    // si le cooldown court encore.
+    // A bonus play (referrer) or a free play (friend) unlocks the game even
+    // while the cooldown is still running.
     if (pendingBonuses > 0 || isFriendWelcome) cooldown = { active: false }
 
     const referral = {
@@ -382,8 +382,8 @@ export const play = {
     const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
     const isFirstPlay = latest === null
 
-    // Parrainage : bonus du parrain (tour offert malgré le cooldown) et
-    // détection du filleul (arrivé via ?ref, première partie).
+    // Referral: referrer bonus (a free play despite the cooldown) and
+    // friend detection (arrived via ?ref, first play).
     const myReferral = await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
     const hasBonus = (myReferral?.pendingBonuses ?? 0) > 0
     let refRow: Doc<"gameReferrals"> | null = null
@@ -439,14 +439,14 @@ export const play = {
       updatedAt: now,
     })
 
-    // Tour bonus consommé : on décrémente le crédit du parrain.
+    // Bonus play consumed: decrement the referrer's credit.
     if (consumedBonus && myReferral) {
       await ctx.db.patch(myReferral._id, {
         pendingBonuses: Math.max(0, myReferral.pendingBonuses - 1),
         updatedAt: now,
       })
     }
-    // Filleul qui joue pour la première fois : le parrain gagne un tour bonus.
+    // Friend playing for the first time: the referrer earns a bonus play.
     if (isFriendWelcome && refRow) {
       await ctx.db.patch(refRow._id, {
         conversions: refRow.conversions + 1,

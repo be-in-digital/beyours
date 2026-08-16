@@ -1,122 +1,122 @@
 # Auto Blog Engine — Feature Spec
 
-> Upsell premium : generation automatique d'articles de blog via LLM.
+> Premium upsell: automatic generation of blog articles via LLM.
 
 ---
 
-## 1. Modele d'abonnement
+## 1. Subscription model
 
 | | Starter | Pro | Enterprise |
 |---|---------|-----|------------|
-| Articles/mois | 2 | 8 (2/semaine) | ~30 (quotidien) |
-| Thematiques | 3 max | Illimitees | Illimitees |
-| Traduction multi-langue | Non | Non | Oui |
-| Mode approbation | Brouillon uniquement | Brouillon ou auto-publish | Brouillon ou auto-publish + multi-langue |
+| Articles/month | 2 | 8 (2/week) | ~30 (daily) |
+| Topics | 3 max | Unlimited | Unlimited |
+| Multi-language translation | No | No | Yes |
+| Approval mode | Draft only | Draft or auto-publish | Draft or auto-publish + multi-language |
 
-- **Billing** : Stripe Subscriptions, au niveau **owner account** (pas par store)
-- **1 owner = N stores** : les droits viennent de l'abonnement owner, pas du store
-- **Config editoriale** : par store (chaque store peut avoir ses propres reglages)
+- **Billing**: Stripe Subscriptions, at the **owner account** level (not per store)
+- **1 owner = N stores**: rights come from the owner subscription, not from the store
+- **Editorial config**: per store (each store can have its own settings)
 
 ---
 
-## 2. Parametres configurables (`blogAutoConfig`)
+## 2. Configurable parameters (`blogAutoConfig`)
 
-| Parametre | Type | Description |
+| Parameter | Type | Description |
 |-----------|------|-------------|
-| `themes` | `string[]` | Liste libre guidee (ex: "recettes de saison", "evenements locaux") |
-| `frequency` | `"weekly" \| "monthly"` | Frequence de generation |
-| `preferredWeekday` | `number? (0-6)` | Jour prefere si weekly |
-| `preferredMonthDay` | `number? (1-28)` | Jour prefere si monthly |
-| `preferredHour` | `number (0-23)` | Heure locale preferee |
-| `timezone` | `string` | Ex: "Europe/Paris" |
-| `tone` | `"formel" \| "decontracte" \| "storytelling"` | Ton de redaction |
-| `primaryLocale` | `string` | Langue source (ex: "fr") |
-| `autoTranslate` | `boolean` | Branche sur le pipeline i18n existant |
-| `approvalMode` | `"draft_review" \| "auto_publish"` | Mode d'approbation |
-| `targetStoreIds` | `Id<"stores">[]?` | Stores pour contexte local (optionnel) |
-| `categoryId` | `Id<"blogCategories">?` | Categorie par defaut pour les articles generes |
+| `themes` | `string[]` | Free-form guided list (e.g. "seasonal recipes", "local events") |
+| `frequency` | `"weekly" \| "monthly"` | Generation frequency |
+| `preferredWeekday` | `number? (0-6)` | Preferred day if weekly |
+| `preferredMonthDay` | `number? (1-28)` | Preferred day if monthly |
+| `preferredHour` | `number (0-23)` | Preferred local hour |
+| `timezone` | `string` | E.g. "Europe/Paris" |
+| `tone` | `"formel" \| "decontracte" \| "storytelling"` | Writing tone |
+| `primaryLocale` | `string` | Source language (e.g. "fr") |
+| `autoTranslate` | `boolean` | Plugs into the existing i18n pipeline |
+| `approvalMode` | `"draft_review" \| "auto_publish"` | Approval mode |
+| `targetStoreIds` | `Id<"stores">[]?` | Stores used for local context (optional) |
+| `categoryId` | `Id<"blogCategories">?` | Default category for generated articles |
 
-**Regles d'approbation par plan** :
-- Starter : `draft_review` uniquement
-- Pro : `draft_review` ou `auto_publish`
-- Enterprise : `draft_review` ou `auto_publish` + multi-langue
+**Per-plan approval rules**:
+- Starter: `draft_review` only
+- Pro: `draft_review` or `auto_publish`
+- Enterprise: `draft_review` or `auto_publish` + multi-language
 
 ---
 
-## 3. Generation du contenu
+## 3. Content generation
 
-### 3.1 LLM — Approche model-agnostic
+### 3.1 LLM — Model-agnostic approach
 
-Config par type de tache (pas de SKU fige) :
+Config per task type (no hardcoded SKU):
 
 ```
-generationModel: string   // ex: "gpt-4o-mini" (eco) ou "gpt-4o" (qualite)
-seoModel: string           // pour meta/keywords
-translationModel: string   // deja existant via i18n
+generationModel: string   // e.g. "gpt-4o-mini" (cheap) or "gpt-4o" (quality)
+seoModel: string           // for meta/keywords
+translationModel: string   // already exists via i18n
 ```
 
-- **Standard (Starter/Pro)** : modele eco
-- **Enterprise** : modele qualite pour reecriture + multi-langue
+- **Standard (Starter/Pro)**: cheap model
+- **Enterprise**: quality model for rewriting + multi-language
 
-### 3.2 Sources de contexte
+### 3.2 Context sources
 
-Le LLM recoit un contexte structure, jamais un prompt vide :
+The LLM receives structured context, never an empty prompt:
 
-1. **Restaurant/marque** : nom, positionnement, specialites, ton de marque
-2. **Menu/produits/categories** : plats populaires, nouveautes, prix
-3. **Localisation** : ville, quartier, saisonnalite locale, evenements
-4. **Donnees internes** : promos, horaires speciaux, actualites
-5. **Historique articles** : titres/sujets deja publies → eviter les doublons
+1. **Restaurant/brand**: name, positioning, specialties, brand tone
+2. **Menu/products/categories**: popular dishes, new items, prices
+3. **Location**: city, neighborhood, local seasonality, events
+4. **Internal data**: promos, special hours, news
+5. **Article history**: titles/topics already published → avoid duplicates
 
-**Types d'articles generes** :
-- Recettes de saison
-- Focus produit / plat signature
-- Actualites du restaurant
-- Evenements locaux lies a la marque
-- Coulisses / storytelling
-- Accords mets-vins
+**Types of generated articles**:
+- Seasonal recipes
+- Product focus / signature dish
+- Restaurant news
+- Local events connected to the brand
+- Behind the scenes / storytelling
+- Food and wine pairings
 
 ### 3.3 Images
 
-Ordre de priorite :
-1. **cmsMedia existant** en priorite (coherent avec la marque)
-2. **Fallback stock photos** (Unsplash/Pexels API) si aucun visuel interne
-3. **Generation IA** : hors scope V1
+Priority order:
+1. **Existing cmsMedia** first (consistent with the brand)
+2. **Stock photo fallback** (Unsplash/Pexels API) if there is no internal visual
+3. **AI generation**: out of scope for V1
 
-En V1 : si pas d'image pertinente, l'article sort sans cover (le restaurateur peut l'ajouter en review).
+In V1: if no relevant image is found, the article ships without a cover (the restaurant owner can add one during review).
 
 ### 3.4 SEO
 
-Le moteur genere automatiquement :
+The engine automatically generates:
 - `slug`
 - `metaTitle`
 - `metaDescription`
-- Mots-cles cibles
-- Angle SEO avant redaction
+- Target keywords
+- The SEO angle, before writing
 
-**Override admin** : le restaurateur peut corriger slug, metas, titre final apres generation.
+**Admin override**: the restaurant owner can fix the slug, the metas and the final title after generation.
 
 ---
 
-## 4. Architecture technique
+## 4. Technical architecture
 
-### 4.1 Nouvelles tables Convex
+### 4.1 New Convex tables
 
-#### `blogAutoConfig` — Configuration editoriale par store
+#### `blogAutoConfig` — Editorial configuration per store
 
 ```typescript
 {
   ownerId: string,              // Better Auth userId
-  storeId: Id<"stores">,        // config par store
+  storeId: Id<"stores">,        // config per store
 
   isEnabled: boolean,
 
   themes: string[],
   frequency: "weekly" | "monthly",
-  preferredWeekday?: number,    // 0-6 si weekly
-  preferredMonthDay?: number,   // 1-28 si monthly
-  preferredHour: number,        // heure locale
-  timezone: string,             // ex: "Europe/Paris"
+  preferredWeekday?: number,    // 0-6 if weekly
+  preferredMonthDay?: number,   // 1-28 if monthly
+  preferredHour: number,        // local hour
+  timezone: string,             // e.g. "Europe/Paris"
 
   tone: "formel" | "decontracte" | "storytelling",
   primaryLocale: string,
@@ -135,9 +135,9 @@ Le moteur genere automatiquement :
 }
 ```
 
-**Index** : `by_storeId`, `by_ownerId`, `by_isEnabled`
+**Indexes**: `by_storeId`, `by_ownerId`, `by_isEnabled`
 
-#### `blogAutoQueue` — File d'attente / journal de jobs
+#### `blogAutoQueue` — Job queue / job log
 
 ```typescript
 {
@@ -164,16 +164,16 @@ Le moteur genere automatiquement :
 
   retryCount: number,
   maxRetries: number,           // default 3
-  idempotencyKey: string,       // ex: storeId + yyyy-mm + slot + theme
+  idempotencyKey: string,       // e.g. storeId + yyyy-mm + slot + theme
 
   createdAt: number,
   updatedAt: number,
 }
 ```
 
-**Index** : `by_storeId`, `by_status_scheduledFor`, `by_configId`, `by_idempotencyKey`
+**Indexes**: `by_storeId`, `by_status_scheduledFor`, `by_configId`, `by_idempotencyKey`
 
-#### `blogAutoUsage` — Quotas mensuels
+#### `blogAutoUsage` — Monthly quotas
 
 ```typescript
 {
@@ -185,88 +185,88 @@ Le moteur genere automatiquement :
 }
 ```
 
-**Index** : `by_ownerId_periodKey`
+**Indexes**: `by_ownerId_periodKey`
 
-### 4.2 Crons Convex (2 crons separes)
+### 4.2 Convex crons (2 separate crons)
 
-#### A. `planAutoBlogJobs` — Toutes les heures
+#### A. `planAutoBlogJobs` — Every hour
 
-Role :
-1. Lire les `blogAutoConfig` avec `isEnabled=true`
-2. Verifier le plan owner + quota restant (`blogAutoUsage`)
-3. Calculer si un article doit etre planifie selon frequence/jour/heure/timezone
-4. Creer un `blogAutoQueue(status="pending")` avec `idempotencyKey` pour eviter doublons
+Role:
+1. Read the `blogAutoConfig` entries with `isEnabled=true`
+2. Check the owner plan + remaining quota (`blogAutoUsage`)
+3. Compute whether an article should be scheduled based on frequency/day/hour/timezone
+4. Create a `blogAutoQueue(status="pending")` with an `idempotencyKey` to avoid duplicates
 
-**Ce cron ne genere PAS le contenu.** Il ne fait que planifier.
+**This cron does NOT generate content.** It only schedules.
 
-#### B. `executeAutoBlogQueue` — Toutes les 5-15 minutes
+#### B. `executeAutoBlogQueue` — Every 5-15 minutes
 
-Role :
-1. Recuperer les jobs `pending` avec `scheduledFor <= now`
-2. Passer le job en `generating`
-3. Appeler le pipeline de generation (Convex action → API OpenAI)
-4. Marquer `draft_created` / `published` / `failed`
-5. Incrementer `blogAutoUsage.generatedCount`
+Role:
+1. Fetch the `pending` jobs with `scheduledFor <= now`
+2. Move the job to `generating`
+3. Call the generation pipeline (Convex action → OpenAI API)
+4. Mark `draft_created` / `published` / `failed`
+5. Increment `blogAutoUsage.generatedCount`
 
-**Separer planification et execution** → plus fiable, plus debogable.
+**Separating planning from execution** → more reliable, easier to debug.
 
-### 4.3 Pipeline de generation
+### 4.3 Generation pipeline
 
 ```
-1. Selection du job
+1. Job selection
    └─ blogAutoQueue.status = "pending"
 
-2. Assemblage du contexte
-   ├─ Infos restaurant/marque (stores, nom, specialites)
-   ├─ Menu / produits / categories
-   ├─ Localisation (ville, quartier, saison)
-   ├─ Donnees internes (promos, horaires speciaux)
-   ├─ Theme choisi
-   ├─ Ton et langue
-   └─ Historique articles publies (anti-doublon)
+2. Context assembly
+   ├─ Restaurant/brand info (stores, name, specialties)
+   ├─ Menu / products / categories
+   ├─ Location (city, neighborhood, season)
+   ├─ Internal data (promos, special hours)
+   ├─ Chosen theme
+   ├─ Tone and language
+   └─ History of published articles (anti-duplicate)
 
-3. Prompt LLM
-   └─ Genere : title, excerpt, content (HTML), metaTitle, metaDescription, keywords, suggestion d'image
+3. LLM prompt
+   └─ Generates: title, excerpt, content (HTML), metaTitle, metaDescription, keywords, image suggestion
 
-4. Selection d'image
-   ├─ Recherche cmsMedia par mots-cles
-   └─ Fallback : pas d'image (ou stock photo en V2)
+4. Image selection
+   ├─ Search cmsMedia by keywords
+   └─ Fallback: no image (or stock photo in V2)
 
-5. Creation article (fonctions existantes)
+5. Article creation (existing functions)
    ├─ createArticle({ storeId, title, categoryId })
    ├─ saveDraft({ articleId, draftContent, categoryId, tagIds })
-   └─ Si auto_publish : publishArticle({ articleId })
+   └─ If auto_publish: publishArticle({ articleId })
 
-6. Traduction (si autoTranslate=true et plan le permet)
-   └─ Declenche le pipeline i18n existant
+6. Translation (if autoTranslate=true and the plan allows it)
+   └─ Triggers the existing i18n pipeline
 
-7. Mise a jour queue
+7. Queue update
    ├─ articleId
    ├─ status: "draft_created" | "published"
    └─ timestamps
 ```
 
-**Important** : l'auto-blog est une surcouche d'orchestration, PAS un second systeme d'articles. Il reutilise `createArticle`, `saveDraft`, `publishArticle`.
+**Important**: auto-blog is an orchestration layer, NOT a second article system. It reuses `createArticle`, `saveDraft`, `publishArticle`.
 
 ---
 
-## 5. Gating / Controle d'acces
+## 5. Gating / Access control
 
-### 5.1 Hierarchie
+### 5.1 Hierarchy
 
 ```
-Stripe = source de verite (paie ou non)
+Stripe = source of truth (paying or not)
     ↓
-Owner Entitlements = ce qu'il a le droit d'utiliser
+Owner Entitlements = what they are allowed to use
     ↓
-Store Config = comment il veut l'utiliser sur ce store
+Store Config = how they want to use it on this store
 ```
 
-`blogAutoConfig.isEnabled` est un toggle de config locale, PAS la source de verite billing.
+`blogAutoConfig.isEnabled` is a local config toggle, NOT the billing source of truth.
 
 ### 5.2 Owner Feature Entitlements
 
-Derives de Stripe, stockes cote app :
+Derived from Stripe, stored app-side:
 
 ```typescript
 autoBlog: {
@@ -279,148 +279,148 @@ autoBlog: {
 }
 ```
 
-### 5.3 Trois niveaux de gating
+### 5.3 Three levels of gating
 
-#### A. UI Admin
-- Pas de plan → section masquee + upsell CTA
-- Quota atteint → bouton desactive + message
-- Starter → max 3 themes, draft only
-- Badge plan actuel + compteur usage mensuel
+#### A. Admin UI
+- No plan → section hidden + upsell CTA
+- Quota reached → button disabled + message
+- Starter → 3 themes max, draft only
+- Current plan badge + monthly usage counter
 
-#### B. Backend (mutations/actions Convex)
-Chaque mutation sensible reverifie :
-- Feature active
-- Quota restant
-- Limites du plan (themes, auto-publish, multi-langue)
+#### B. Backend (Convex mutations/actions)
+Every sensitive mutation re-checks:
+- Feature is active
+- Remaining quota
+- Plan limits (themes, auto-publish, multi-language)
 
-**Ne jamais faire confiance a l'UI seule.**
+**Never trust the UI alone.**
 
 #### C. Cron
-Le cron ignore les stores si :
-- Abonnement expire
-- Quota atteint
-- Feature desactivee
+The cron skips stores if:
+- The subscription has expired
+- The quota is reached
+- The feature is disabled
 
-### 5.4 Webhooks Stripe
+### 5.4 Stripe webhooks
 
-Events a ecouter :
+Events to listen to:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
 - `invoice.payment_failed`
 
-Effets :
-- Activer/desactiver `autoBlog`
-- Mettre a jour le plan
-- Recalculer les limites
+Effects:
+- Enable/disable `autoBlog`
+- Update the plan
+- Recompute the limits
 
-Etats intermediaires :
-- `past_due` → acces lecture seule, pas de nouvelles generations
-- `canceled` → feature coupee
+Intermediate states:
+- `past_due` → read-only access, no new generations
+- `canceled` → feature cut off
 
-### 5.5 Tables de gating
+### 5.5 Gating tables
 
 ```
-ownerSubscription / billing table     ← synchro Stripe webhooks
-ownerFeatureEntitlements              ← droits derives
-blogAutoConfig (par store)            ← config editoriale
-blogAutoUsage (par owner/mois)        ← quotas
+ownerSubscription / billing table     ← synced from Stripe webhooks
+ownerFeatureEntitlements              ← derived rights
+blogAutoConfig (per store)            ← editorial config
+blogAutoUsage (per owner/month)       ← quotas
 ```
 
 ---
 
-## 6. UX Admin — Ecrans
+## 6. Admin UX — Screens
 
-### 6.1 Page Auto Blog (`/content/blog/auto`)
+### 6.1 Auto Blog page (`/content/blog/auto`)
 
-**Si pas d'abonnement** : page d'upsell avec presentation des plans
+**If no subscription**: upsell page presenting the plans
 
-**Si abonne** :
-- Header : "Blog Automatique" + badge plan + compteur usage (ex: "3/8 articles ce mois")
-- Config editoriale (formulaire)
-- Historique des generations (table blogAutoQueue)
-- Toggle activer/desactiver
+**If subscribed**:
+- Header: "Blog Automatique" + plan badge + usage counter (e.g. "3/8 articles ce mois")
+- Editorial config (form)
+- Generation history (blogAutoQueue table)
+- Enable/disable toggle
 
 ### 6.2 Configuration
 
-- Themes : input multi-values (chips + add)
-- Frequence : radio weekly/monthly + selects jour/heure
-- Ton : radio 3 options
-- Langue : select
-- Auto-traduction : toggle (gate par plan)
-- Mode approbation : radio draft/auto-publish (gate par plan)
-- Categorie par defaut : select depuis blogCategories
+- Themes: multi-value input (chips + add)
+- Frequency: weekly/monthly radio + day/hour selects
+- Tone: radio, 3 options
+- Language: select
+- Auto-translation: toggle (gated by plan)
+- Approval mode: radio draft/auto-publish (gated by plan)
+- Default category: select from blogCategories
 
-### 6.3 Historique / Queue
+### 6.3 History / Queue
 
-Table avec colonnes :
+Table with columns:
 - Theme
-- Statut (pending/generating/draft/published/failed)
-- Date planifiee
-- Article (lien vers editeur si cree)
-- Actions (annuler si pending, relancer si failed)
+- Status (pending/generating/draft/published/failed)
+- Scheduled date
+- Article (link to the editor if created)
+- Actions (cancel if pending, retry if failed)
 
-### 6.4 Badge dans la liste blog
+### 6.4 Badge in the blog list
 
-Articles generes automatiquement : badge "Auto" distinctif dans BlogArticlesTable.
+Automatically generated articles: distinctive "Auto" badge in BlogArticlesTable.
 
 ---
 
-## 7. Phases d'implementation
+## 7. Implementation phases
 
 ### Phase 1 — Schema + Gating (P0)
-- Tables : `blogAutoConfig`, `blogAutoQueue`, `blogAutoUsage`
+- Tables: `blogAutoConfig`, `blogAutoQueue`, `blogAutoUsage`
 - Owner entitlements / feature flags
-- Stripe webhooks pour auto-blog
-- Page upsell si pas d'abonnement
+- Stripe webhooks for auto-blog
+- Upsell page if no subscription
 
 ### Phase 2 — Config UI (P1)
-- Page `/content/blog/auto`
-- Formulaire configuration
-- Validation des limites par plan
+- `/content/blog/auto` page
+- Configuration form
+- Validation of per-plan limits
 
-### Phase 3 — Pipeline generation (P1)
-- Convex action pour appel LLM
-- Assemblage contexte restaurant
-- Creation article via fonctions existantes
-- Cron `executeAutoBlogQueue`
+### Phase 3 — Generation pipeline (P1)
+- Convex action for the LLM call
+- Restaurant context assembly
+- Article creation through the existing functions
+- `executeAutoBlogQueue` cron
 
-### Phase 4 — Planification (P1)
-- Cron `planAutoBlogJobs`
-- Logique frequence/timezone/jours preferes
+### Phase 4 — Scheduling (P1)
+- `planAutoBlogJobs` cron
+- Frequency/timezone/preferred-day logic
 - Deduplication via `idempotencyKey`
 
-### Phase 5 — Traduction + Polish (P2)
-- Integration pipeline i18n existant
-- Selection d'images cmsMedia
-- Historique/queue UI
-- Metriques usage
+### Phase 5 — Translation + Polish (P2)
+- Integration with the existing i18n pipeline
+- cmsMedia image selection
+- History/queue UI
+- Usage metrics
 
 ---
 
-## 8. Decisions techniques
+## 8. Technical decisions
 
-| Decision | Choix | Raison |
+| Decision | Choice | Rationale |
 |----------|-------|--------|
 | Billing level | Owner account | 1 owner = N stores |
-| Config level | Par store | Chaque store a ses reglages |
-| Source verite billing | Stripe | Pas de statut billing dans blogAutoConfig |
-| LLM | GPT (model-agnostic config) | eco pour standard, qualite pour Enterprise |
-| Images V1 | cmsMedia existant | Coherence marque, pas de generation IA |
-| Article creation | Fonctions blog existantes | Surcouche, pas de duplication |
-| Crons | 2 separes (plan + execute) | Fiabilite, debuggabilite |
-| Anti-doublon | idempotencyKey | storeId + period + slot + theme |
-| Approbation default | draft_review | Securite, gate par plan |
+| Config level | Per store | Each store has its own settings |
+| Billing source of truth | Stripe | No billing status in blogAutoConfig |
+| LLM | GPT (model-agnostic config) | cheap for standard, quality for Enterprise |
+| Images V1 | Existing cmsMedia | Brand consistency, no AI generation |
+| Article creation | Existing blog functions | A layer on top, no duplication |
+| Crons | 2 separate ones (plan + execute) | Reliability, debuggability |
+| Anti-duplicate | idempotencyKey | storeId + period + slot + theme |
+| Default approval | draft_review | Safety, gated by plan |
 
 ---
 
-## 9. Risques et mitigations
+## 9. Risks and mitigations
 
-| Risque | Mitigation |
+| Risk | Mitigation |
 |--------|------------|
-| Contenu LLM hors sujet | Contexte structure + review obligatoire (Starter) |
-| Doublons d'articles | idempotencyKey + historique anti-doublon |
-| Quota depasse | Double check : cron + mutation |
+| Off-topic LLM content | Structured context + mandatory review (Starter) |
+| Duplicate articles | idempotencyKey + anti-duplicate history |
+| Quota exceeded | Double check: cron + mutation |
 | Stripe webhook rate | Idempotent handlers + retry |
-| Cout LLM eleve | Modele eco par defaut, qualite gate par plan |
-| Restaurateur oublie de review | Notification/email quand draft genere |
+| High LLM cost | Cheap model by default, quality gated by plan |
+| Restaurant owner forgets to review | Notification/email when a draft is generated |

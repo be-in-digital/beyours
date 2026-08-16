@@ -11,7 +11,7 @@ import {
   MAINTENANCE_ANNUAL_CENTS,
 } from "./saLib";
 
-/** Bundle KPI de la vue d'ensemble superadmin (commercial réel + flotte + GMV). */
+/** KPI bundle for the superadmin overview (real sales + fleet + GMV). */
 export const overview = query({
   args: {},
   handler: async (ctx) => {
@@ -40,7 +40,7 @@ export const overview = query({
         ctx.db.query("saActivity").withIndex("by_createdAt").order("desc").take(8),
       ]);
 
-    /* Commerce (réel) */
+    /* Sales (real) */
     const paid = orders.filter((o) => o.status === "paid");
     const rev30 = paid
       .filter((o) => o.createdAt >= since30)

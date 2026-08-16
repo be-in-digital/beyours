@@ -11,7 +11,7 @@ import {
   APPORTEUR_CONTRACT_TITLE,
 } from "./contractContent";
 
-/** SHA-256 hex d'un contenu de contrat (piste d'audit / intégrité). */
+/** SHA-256 hex digest of a contract's content (audit trail / integrity). */
 async function sha256Hex(content: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest(
     "SHA-256",
@@ -188,16 +188,16 @@ export const seedV1 = internalMutation({
 });
 
 /**
- * Publie et active le VRAI contrat d'apporteur d'affaires (texte canonique de
- * `contractContent.ts`), en remplacement de tout placeholder « (TEST) ».
+ * Publishes and activates the REAL affiliate contract (the canonical text from
+ * `contractContent.ts`), replacing any « (TEST) » placeholder.
  *
- * À lancer une fois, en dev comme en prod, via la CLI Convex :
+ * Run once, in dev as well as in prod, through the Convex CLI:
  *   npx convex run contractVersions:publishApporteurContract
  *
- * Effets : archive la version active, insère le contrat réel en « active »,
- * et repasse en « blocked_new_version » les apporteurs qui n'ont pas encore
- * signé cette version (ils devront re-signer). Idempotent : ne fait rien si la
- * version active porte déjà ce contenu.
+ * Effects: archives the active version, inserts the real contract as « active »,
+ * and moves back to « blocked_new_version » every affiliate who has not signed
+ * this version yet (they will have to re-sign). Idempotent: does nothing if the
+ * active version already carries this content.
  */
 export const publishApporteurContract = internalMutation({
   args: {},
@@ -229,7 +229,7 @@ export const publishApporteurContract = internalMutation({
       activatedAt: now,
     });
 
-    // Forcer la re-signature des apporteurs actifs sur l'ancienne version.
+    // Force affiliates still active on the previous version to re-sign.
     const affiliates = await ctx.db
       .query("affiliateUsers")
       .withIndex("by_contractStatus", (q) => q.eq("contractStatus", "active"))

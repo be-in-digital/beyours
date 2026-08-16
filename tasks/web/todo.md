@@ -1,32 +1,32 @@
-# Programme Apporteur d'Affaires — Phase 1
+# Business Referrer Program — Phase 1
 
-## Auth + Inscription + Code parrainage
+## Auth + Signup + Referral code
 
-- [ ] Installer les dépendances (@convex-dev/auth, convex-test, vitest, @edge-runtime/vm)
-- [ ] Mettre à jour convex/schema.ts (authTables + affiliateUsers, referralCodes, affiliateSettings)
-- [ ] Configurer Convex Auth (auth.config.ts, auth.ts avec Password provider)
-- [ ] Mettre à jour convex/http.ts (ajouter auth routes)
-- [ ] Créer convex/affiliateUsers.ts (CRUD apporteurs)
-- [ ] Créer convex/referralCodes.ts (génération et gestion codes)
-- [ ] Créer convex/affiliateSettings.ts (config globale)
-- [ ] Mettre à jour components/convex-provider.tsx (ConvexAuthNextjsServerProvider)
-- [ ] Créer proxy.ts pour la protection des routes
-- [ ] Créer lib/affiliate-store.ts (Zustand store)
-- [ ] Créer app/parrainage/layout.tsx
-- [ ] Créer app/parrainage/page.tsx (landing page)
-- [ ] Créer app/parrainage/inscription/page.tsx
-- [ ] Créer app/parrainage/connexion/page.tsx
-- [ ] Créer app/parrainage/dashboard/page.tsx (basique)
-- [ ] Créer app/parrainage/dashboard/profil/page.tsx
-- [ ] Créer app/parrainage/dashboard/partage/page.tsx
-- [ ] Mettre à jour components/footer.tsx (lien apporteur)
-- [ ] Configurer vitest + écrire tests unitaires
-- [ ] Déployer sur Convex (pnpx convex deploy)
+- [ ] Install the dependencies (@convex-dev/auth, convex-test, vitest, @edge-runtime/vm)
+- [ ] Update convex/schema.ts (authTables + affiliateUsers, referralCodes, affiliateSettings)
+- [ ] Configure Convex Auth (auth.config.ts, auth.ts with Password provider)
+- [ ] Update convex/http.ts (add auth routes)
+- [ ] Create convex/affiliateUsers.ts (referrer CRUD)
+- [ ] Create convex/referralCodes.ts (code generation and management)
+- [ ] Create convex/affiliateSettings.ts (global config)
+- [ ] Update components/convex-provider.tsx (ConvexAuthNextjsServerProvider)
+- [ ] Create proxy.ts for route protection
+- [ ] Create lib/affiliate-store.ts (Zustand store)
+- [ ] Create app/parrainage/layout.tsx
+- [ ] Create app/parrainage/page.tsx (landing page)
+- [ ] Create app/parrainage/inscription/page.tsx
+- [ ] Create app/parrainage/connexion/page.tsx
+- [ ] Create app/parrainage/dashboard/page.tsx (basic)
+- [ ] Create app/parrainage/dashboard/profil/page.tsx
+- [ ] Create app/parrainage/dashboard/partage/page.tsx
+- [ ] Update components/footer.tsx (referrer link)
+- [ ] Configure vitest + write unit tests
+- [ ] Deploy to Convex (pnpx convex deploy)
 
-## Tests Phase 1
-- [ ] Test: inscription email/password
-- [ ] Test: connexion
-- [ ] Test: génération code parrainage
-- [ ] Test: personnalisation code
-- [ ] Test: protection routes (redirect si non auth)
-- [ ] Test: dashboard basique accessible après auth
+## Phase 1 tests
+- [ ] Test: email/password signup
+- [ ] Test: login
+- [ ] Test: referral code generation
+- [ ] Test: code customization
+- [ ] Test: route protection (redirect if not authenticated)
+- [ ] Test: basic dashboard reachable after auth

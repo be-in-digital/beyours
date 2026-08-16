@@ -256,14 +256,14 @@ export function TrustSection() {
 function CentralSeal({ keyword }: { keyword: string | null }) {
   return (
     <div className="flex shrink-0 flex-col items-center">
-      {/* Médaillon en profondeur : perspective + calques étagés (translateZ),
-          incliné vers la souris — même langage 3D que le storefront du hero */}
+      {/* Medallion with real depth: perspective + stacked layers (translateZ),
+          tilting towards the mouse — the same 3D language as the hero storefront */}
       <Tilt3D maxTilt={13} scale={1.02} className="animate-float">
         <div
           className="relative grid h-[240px] w-[240px] place-items-center sm:h-[270px] sm:w-[270px]"
           style={{ transformStyle: "preserve-3d" }}
         >
-          {/* Disque de base */}
+          {/* Base disc */}
           <div className="absolute inset-0 rounded-full border border-[color:var(--border)] bg-surface-1 shadow-[0_36px_80px_-32px_rgba(112,60,34,0.55)]" />
           {/* Halo chaud interne */}
           <div
@@ -272,7 +272,7 @@ function CentralSeal({ keyword }: { keyword: string | null }) {
             style={{ transform: "translateZ(14px)" }}
           />
 
-          {/* Anneau tireté rotatif — calque intermédiaire */}
+          {/* Rotating dashed ring — middle layer */}
           <div
             aria-hidden="true"
             className="absolute inset-3"
@@ -294,7 +294,7 @@ function CentralSeal({ keyword }: { keyword: string | null }) {
             </svg>
           </div>
 
-          {/* Cœur du médaillon — calque le plus proche */}
+          {/* Heart of the medallion — the closest layer */}
           <div
             className="relative flex flex-col items-center"
             style={{ transform: "translateZ(48px)" }}
@@ -302,7 +302,7 @@ function CentralSeal({ keyword }: { keyword: string | null }) {
             <span className="grid h-20 w-20 place-items-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_36px_-14px_rgba(197,84,44,0.65)]">
               <Utensils className="h-8 w-8" strokeWidth={1.7} />
             </span>
-            {/* Mot-clé du pilier survolé — visible uniquement au survol des cartes */}
+            {/* Keyword of the hovered pillar — only visible while hovering a card */}
             <span
               className={`mt-3 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-all duration-300 ${
                 keyword ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"

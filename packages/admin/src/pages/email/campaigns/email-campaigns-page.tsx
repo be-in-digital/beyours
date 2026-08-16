@@ -418,7 +418,7 @@ export function EmailCampaignsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {/* Envoyer — brouillon ou planifiée */}
+                          {/* Send — draft or scheduled only */}
                           {["draft", "scheduled"].includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => handleSend(campaign)}
@@ -428,45 +428,45 @@ export function EmailCampaignsPage() {
                               {sendingId === campaign._id ? "Envoi..." : "Envoyer"}
                             </DropdownMenuItem>
                           )}
-                          {/* Modifier — brouillon ou planifiée */}
+                          {/* Edit — draft or scheduled only */}
                           {["draft", "scheduled"].includes(campaign.status) && (
                             <DropdownMenuItem onClick={() => openEdit(campaign)}>
                               <Pencil className="mr-2 h-4 w-4" />
                               Modifier
                             </DropdownMenuItem>
                           )}
-                          {/* Aperçu */}
+                          {/* Preview */}
                           <DropdownMenuItem onClick={() => setPreviewCampaign(campaign)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Aperçu
                           </DropdownMenuItem>
-                          {/* Envoyer un test */}
+                          {/* Send a test */}
                           <DropdownMenuItem onClick={() => { setTestCampaign(campaign); setTestEmail("") }}>
                             <TestTube className="mr-2 h-4 w-4" />
                             Envoyer un test
                           </DropdownMenuItem>
-                          {/* Dupliquer — toujours disponible */}
+                          {/* Duplicate — always available */}
                           <DropdownMenuItem onClick={() => handleDuplicate(campaign)}>
                             <Copy className="mr-2 h-4 w-4" />
                             Dupliquer
                           </DropdownMenuItem>
-                          {/* Renvoyer supprimé : une campagne envoyée ne doit pas être re-envoyée.
-                             Pour renvoyer, dupliquer la campagne et envoyer la copie. */}
-                          {/* Stats — envoyée */}
+                          {/* Resend was removed: a campaign that has already been sent must never be re-sent.
+                             To resend, duplicate the campaign and send the copy. */}
+                          {/* Stats — sent only */}
                           {campaign.status === "sent" && (
                             <DropdownMenuItem onClick={() => setStatsCampaign(campaign)}>
                               <BarChart2 className="mr-2 h-4 w-4" />
                               Voir les stats
                             </DropdownMenuItem>
                           )}
-                          {/* Pause — en cours d'envoi */}
+                          {/* Pause — while sending */}
                           {campaign.status === "sending" && (
                             <DropdownMenuItem onClick={() => handlePause(campaign._id)}>
                               <PauseCircle className="mr-2 h-4 w-4" />
                               Mettre en pause
                             </DropdownMenuItem>
                           )}
-                          {/* Relancer — en pause */}
+                          {/* Resume — while paused */}
                           {campaign.status === "paused" && (
                             <DropdownMenuItem
                               onClick={() => handleSend(campaign)}
@@ -476,14 +476,14 @@ export function EmailCampaignsPage() {
                               Relancer
                             </DropdownMenuItem>
                           )}
-                          {/* Annuler */}
+                          {/* Cancel */}
                           {["draft", "scheduled", "paused"].includes(campaign.status) && (
                             <DropdownMenuItem onClick={() => handleCancel(campaign._id)}>
                               <XCircle className="mr-2 h-4 w-4" />
                               Annuler
                             </DropdownMenuItem>
                           )}
-                          {/* Supprimer */}
+                          {/* Delete */}
                           {["draft", "cancelled"].includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => setDeletingId(campaign._id)}

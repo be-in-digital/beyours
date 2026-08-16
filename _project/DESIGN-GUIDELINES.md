@@ -1,155 +1,155 @@
 # DESIGN-GUIDELINES.md — Workflow & UI/UX Standards
 
-> Fichier complémentaire au CLAUDE.md global.
-> Définit le workflow de développement structuré et les standards de design UI/UX.
+> Companion file to the global CLAUDE.md.
+> Defines the structured development workflow and the UI/UX design standards.
 
 ---
 
-## Workflow de développement structuré
+## Structured development workflow
 
-Pour toute tâche complexe (multi-fichiers, nouvelle feature, refactor majeur), suivre obligatoirement ces 3 phases.
-Pour les tâches simples (fix rapide, question, édition d'un seul fichier), aller droit au but.
+For any complex task (multi-file, new feature, major refactor), these 3 phases are mandatory.
+For simple tasks (quick fix, question, single-file edit), go straight to the point.
 
 ### Phase 1 — PLANNING
 
-- Analyser le codebase existant et identifier les fichiers/modules impactés
-- Créer un plan d'implémentation avant d'écrire du code :
-  - Objectif et contexte
-  - Liste des fichiers à créer / modifier / supprimer
-  - Grouper les changements par composant (dépendances d'abord)
-  - Identifier les breaking changes et risques
-- Utiliser ce format de checklist pour le suivi :
-  - `[ ]` à faire
-  - `[/]` en cours
-  - `[x]` terminé
-- **Ne jamais coder avant validation du plan**
+- Analyze the existing codebase and identify the affected files/modules
+- Write an implementation plan before writing any code:
+  - Goal and context
+  - List of files to create / modify / delete
+  - Group the changes by component (dependencies first)
+  - Identify breaking changes and risks
+- Use this checklist format to track progress:
+  - `[ ]` to do
+  - `[/]` in progress
+  - `[x]` done
+- **Never write code before the plan is approved**
 
 ### Phase 2 — EXECUTION
 
-- Implémenter selon le plan validé, composant par composant
-- Mettre à jour la checklist au fur et à mesure
-- Si complexité inattendue → revenir en PLANNING, ne pas improviser
-- Si contexte insuffisant → demander des clarifications plutôt que deviner
+- Implement the approved plan, component by component
+- Keep the checklist up to date as you go
+- Unexpected complexity → go back to PLANNING, do not improvise
+- Not enough context → ask for clarification rather than guess
 
 ### Phase 3 — VERIFICATION
 
-- Tester les changements (unit, intégration, e2e selon le cas)
-- Vérifier zéro régression sur les fonctionnalités existantes
-- Résumer ce qui a été fait + résultats des tests
-- Si bugs mineurs → corriger et re-vérifier (rester en VERIFICATION)
-- Si problème de design fondamental → retour en PLANNING
+- Test the changes (unit, integration, e2e as appropriate)
+- Confirm zero regressions on existing functionality
+- Summarize what was done + the test results
+- Minor bugs → fix and re-verify (stay in VERIFICATION)
+- Fundamental design problem → back to PLANNING
 
 ---
 
-## Format du plan d'implémentation
+## Implementation plan format
 
 ```markdown
-# [Objectif]
+# [Goal]
 
-Brève description du problème et de ce que le changement accomplit.
+Short description of the problem and what the change accomplishes.
 
-## Points nécessitant validation
+## Points needing approval
 
 > [!WARNING]
-> Breaking changes, décisions de design majeures, choix d'architecture...
+> Breaking changes, major design decisions, architecture choices...
 
-## Changements proposés
+## Proposed changes
 
-### [Nom du composant/module]
+### [Component/module name]
 
-#### [MODIFY] fichier.tsx
-- Description des modifications
+#### [MODIFY] file.tsx
+- Description of the changes
 
-#### [NEW] nouveau-fichier.tsx
-- Description du contenu
+#### [NEW] new-file.tsx
+- Description of the contents
 
-#### [DELETE] ancien-fichier.tsx
-- Raison de la suppression
+#### [DELETE] old-file.tsx
+- Reason for removal
 
-## Plan de vérification
+## Verification plan
 
-- Commandes de test exactes à lancer
-- Vérifications manuelles si nécessaire
+- Exact test commands to run
+- Manual checks if needed
 ```
 
 ---
 
-## Standards de Design UI/UX
+## UI/UX Design Standards
 
-### Principes fondamentaux
+### Core principles
 
-1. **Intention avant tout** — Chaque choix de design doit avoir une raison. Pas de "ça fait joli", mais "ça guide l'utilisateur vers X".
-2. **Cohérence** — Un design system unifié sur tout le projet. Utiliser des CSS variables / tokens Tailwind pour les couleurs, espacements, typographies.
-3. **Mobile-first** — Concevoir d'abord pour mobile/tablette (contexte restaurant = souvent sur tablette ou petit écran).
-4. **Accessibilité** — Contrastes suffisants, tailles de touch targets ≥ 44px, labels sur les inputs, navigation clavier.
+1. **Intent above all** — Every design choice needs a reason. Not "it looks nice", but "it steers the user toward X".
+2. **Consistency** — One unified design system across the whole project. Use CSS variables / Tailwind tokens for colors, spacing, typography.
+3. **Mobile-first** — Design for mobile/tablet first (a restaurant context usually means a tablet or a small screen).
+4. **Accessibility** — Sufficient contrast, touch targets ≥ 44px, labels on inputs, keyboard navigation.
 
-### Typographie
+### Typography
 
-- Choisir des polices distinctives et lisibles, pas des polices génériques (éviter Inter, Arial, Roboto par défaut)
-- Pairer une police display (titres) avec une police body (texte courant) complémentaire
-- Hiérarchie claire : tailles, graisses et couleurs distinctes entre h1 → h2 → h3 → body → caption
-- Utiliser des Google Fonts ou des polices auto-hébergées pour la performance
+- Pick distinctive, readable typefaces, not generic ones (avoid defaulting to Inter, Arial, Roboto)
+- Pair a display face (headings) with a complementary body face (running text)
+- Clear hierarchy: distinct sizes, weights and colors across h1 → h2 → h3 → body → caption
+- Use Google Fonts or self-hosted fonts for performance
 
-### Couleurs & Thèmes
+### Colors & Themes
 
-- Définir une palette via CSS variables / Tailwind config :
-  - Couleur primaire (brand)
-  - Couleur secondaire (accent)
-  - Couleurs sémantiques (success, warning, error, info)
-  - Couleurs neutres (backgrounds, borders, textes)
-- Une couleur dominante avec des accents marqués > une palette répartie uniformément
-- Supporter le dark mode dès le départ (shadcn/ui le facilite)
-- Ne jamais hardcoder les couleurs dans les composants
+- Define a palette through CSS variables / Tailwind config:
+  - Primary color (brand)
+  - Secondary color (accent)
+  - Semantic colors (success, warning, error, info)
+  - Neutral colors (backgrounds, borders, text)
+- One dominant color with sharp accents beats an evenly spread palette
+- Support dark mode from the start (shadcn/ui makes it easy)
+- Never hardcode colors in components
 
 ### Layout & Composition
 
-- Utiliser des grilles CSS / Flexbox avec des breakpoints cohérents
-- Jouer avec le whitespace : des marges généreuses > tout entassé
-- Asymétrie contrôlée et éléments qui cassent la grille (quand c'est pertinent) pour éviter l'effet "template"
-- Sidebar collapsible (mode icônes) pour les dashboards — indispensable avec 25+ items de navigation
+- Use CSS grid / Flexbox with consistent breakpoints
+- Work the whitespace: generous margins beat cramming everything in
+- Controlled asymmetry and elements that break the grid (where it fits) to avoid the "template" look
+- Collapsible sidebar (icon mode) for dashboards — essential with 25+ navigation items
 
 ### Animations & Micro-interactions
 
-- Prioriser CSS natif (transitions, keyframes) pour la performance
-- Framer Motion pour les animations complexes en React
-- Se concentrer sur les moments à fort impact :
-  - Entrée de page (staggered reveal)
-  - Hover states surprenants
-  - Feedback sur les actions (boutons, formulaires)
-  - Transitions entre les vues
-- Subtil > Flashy : des animations qui guident, pas qui distraient
-- `prefers-reduced-motion` : toujours respecter cette préférence utilisateur
+- Prefer native CSS (transitions, keyframes) for performance
+- Framer Motion for complex animations in React
+- Focus on the high-impact moments:
+  - Page entry (staggered reveal)
+  - Surprising hover states
+  - Feedback on actions (buttons, forms)
+  - Transitions between views
+- Subtle > flashy: animations that guide, not animations that distract
+- `prefers-reduced-motion`: always honor this user preference
 
-### Arrière-plans & Détails visuels
+### Backgrounds & Visual details
 
-- Créer de la profondeur plutôt que des fonds plats (dégradés subtils, textures légères, ombres en couches)
-- Techniques disponibles : gradient mesh, noise textures, patterns géométriques, transparences, grain overlays
-- Adapter au contexte : un dashboard restaurant ≠ une landing page marketing
+- Build depth instead of flat backgrounds (subtle gradients, light textures, layered shadows)
+- Techniques available: gradient mesh, noise textures, geometric patterns, transparency, grain overlays
+- Fit the context: a restaurant dashboard ≠ a marketing landing page
 
-### Composants (shadcn/ui + Tailwind)
+### Components (shadcn/ui + Tailwind)
 
-- shadcn/ui comme base, personnaliser les variantes pour le brand
-- Chaque composant doit être :
-  - Responsive par défaut
+- shadcn/ui as the base, customize the variants for the brand
+- Every component must be:
+  - Responsive by default
   - Accessible (aria labels, keyboard nav, focus rings)
-  - Cohérent avec le design system (couleurs, espacements, border-radius)
-- Préférer les composants composables (Compound Components) aux props massives
-- Pas de props drilling > 2 niveaux → Zustand ou Context
+  - Consistent with the design system (colors, spacing, border-radius)
+- Prefer composable components (Compound Components) over huge prop lists
+- No prop drilling beyond 2 levels → Zustand or Context
 
-### Ce qu'il faut éviter absolument
+### What to avoid at all costs
 
-- ❌ Esthétique "AI générique" : gradients violet sur fond blanc, layouts prévisibles, polices par défaut
-- ❌ Tout mettre en gras ou en majuscules
-- ❌ Surcharge d'animations sans purpose
-- ❌ Couleurs hardcodées dans les composants
-- ❌ Ignorer les états (loading, empty, error, disabled)
-- ❌ Oublier le responsive / touch targets sur mobile
+- ❌ The "generic AI" look: purple gradients on white, predictable layouts, default fonts
+- ❌ Bolding or capitalizing everything
+- ❌ Animation overload with no purpose
+- ❌ Hardcoded colors in components
+- ❌ Ignoring states (loading, empty, error, disabled)
+- ❌ Forgetting responsive / touch targets on mobile
 
-### Ce qu'il faut toujours faire
+### What to always do
 
-- ✅ Gérer TOUS les états UI : loading, empty, error, success, disabled
-- ✅ Skeleton loaders plutôt que spinners quand possible
-- ✅ Feedback visuel immédiat sur chaque action utilisateur
-- ✅ Transitions fluides entre les pages/vues
-- ✅ Tester sur mobile, tablette ET desktop
-- ✅ Utiliser les CSS variables pour tout ce qui est thématique
+- ✅ Handle EVERY UI state: loading, empty, error, success, disabled
+- ✅ Skeleton loaders rather than spinners where possible
+- ✅ Immediate visual feedback on every user action
+- ✅ Smooth transitions between pages/views
+- ✅ Test on mobile, tablet AND desktop
+- ✅ Use CSS variables for anything themeable

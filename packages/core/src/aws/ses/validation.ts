@@ -1,22 +1,22 @@
 /**
- * Schémas de validation Zod pour SES
+ * Zod validation schemas for SES
  * @module aws/ses/validation
  */
 
 import { z } from 'zod'
 
 /**
- * Schéma pour un email
+ * Schema for a single email address
  */
 export const emailSchema = z.string().email('Email invalide')
 
 /**
- * Schéma pour un ou plusieurs emails
+ * Schema for one or more email addresses
  */
 export const emailsSchema = z.union([emailSchema, z.array(emailSchema).min(1)])
 
 /**
- * Schéma pour les paramètres d'envoi d'email
+ * Schema for the email send parameters
  */
 export const sendEmailParamsSchema = z.object({
   to: emailsSchema,
@@ -27,7 +27,7 @@ export const sendEmailParamsSchema = z.object({
 })
 
 /**
- * Schéma pour les paramètres d'envoi avec template
+ * Schema for the templated email send parameters
  */
 export const sendTemplatedEmailParamsSchema = z.object({
   to: emailsSchema,
@@ -37,7 +37,7 @@ export const sendTemplatedEmailParamsSchema = z.object({
 })
 
 /**
- * Schéma pour les paramètres d'envoi en masse
+ * Schema for the bulk email send parameters
  */
 export const sendBulkEmailParamsSchema = z.object({
   recipients: z
@@ -54,7 +54,7 @@ export const sendBulkEmailParamsSchema = z.object({
 })
 
 /**
- * Normalise un ou plusieurs emails en tableau
+ * Normalizes one or more email addresses into an array
  */
 export function normalizeEmails(to: string | string[]): string[] {
   return Array.isArray(to) ? to : [to]

@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * Rafale de confettis légère (DOM + framer-motion), sans dépendance ni canvas.
- * Se superpose au parent (positionné en relative). Respecte reduced-motion.
- * Pseudo-aléatoire déterministe (Math.sin) : pur, stable entre les rendus.
+ * Lightweight confetti burst (DOM + framer-motion), no dependency, no canvas.
+ * Overlays its parent (which must be position: relative). Honours reduced-motion.
+ * Deterministic pseudo-random (Math.sin): pure, and stable across renders.
  */
 const COLORS = [
   "#c5542c", // terracotta (marque)
@@ -17,7 +17,7 @@ const COLORS = [
   "#efd8b8", // paille
 ];
 
-/** Bruit déterministe dans [0, 1) — fonction pure, autorisée au rendu. */
+/** Deterministic noise in [0, 1) — a pure function, safe to call while rendering. */
 function noise(seed: number) {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
   return x - Math.floor(x);
@@ -44,7 +44,7 @@ export function Confetti({
         const r7 = noise(i + 37.1);
         return {
           id: i,
-          left: 50 + (r1 * 2 - 1) * 12, // % — part du centre haut
+          left: 50 + (r1 * 2 - 1) * 12, // % — starts from the top centre
           color: COLORS[i % COLORS.length],
           dx: (r2 * 2 - 1) * 220,
           dy: 320 + r3 * 260,

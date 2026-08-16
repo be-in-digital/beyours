@@ -47,7 +47,7 @@ const STATUS_OPTIONS: { value: InvoiceStatus; label: string }[] = [
   { value: "uncollectible", label: "Irrécouvrable" },
 ];
 
-/** Ordre d'affichage stable pour la ventilation par statut. */
+/** Stable display order for the breakdown by status. */
 const STATUS_ORDER: InvoiceStatus[] = [
   "paid",
   "open",

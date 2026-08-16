@@ -35,7 +35,7 @@ export function validateCmsRegistry(config: CmsRegistryConfig): void {
     seenOrders.add(order)
   }
 
-  // 3. chaque page.groupId référence un groupe existant
+  // 3. every page.groupId points at a group that exists
   const groupIdSet = new Set(groupIds)
   for (const [slug, page] of Object.entries(config.pages)) {
     if (page.groupId && !groupIdSet.has(page.groupId)) {
@@ -59,7 +59,7 @@ export function validateCmsRegistry(config: CmsRegistryConfig): void {
     }
   }
 
-  // 4. pas de groupe orphelin (chaque groupe a au moins une page)
+  // 4. no orphan groups (every group owns at least one page)
   const usedGroupIds = new Set(
     Object.values(config.pages)
       .map((p) => p.groupId)

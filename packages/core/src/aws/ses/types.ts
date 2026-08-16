@@ -1,66 +1,66 @@
 /**
- * Types pour le service SES
+ * Types for the SES service
  * @module aws/ses/types
  */
 
 /**
- * Paramètres pour l'envoi d'email
+ * Parameters for sending an email
  */
 export interface SendEmailParams {
-  /** Destinataire(s) */
+  /** Recipient(s) */
   to: string | string[]
-  /** Sujet de l'email */
+  /** Email subject */
   subject: string
-  /** Contenu HTML */
+  /** HTML body */
   html: string
-  /** Contenu texte (fallback) */
+  /** Plain text body (fallback) */
   text?: string
-  /** Email de réponse */
+  /** Reply-to address */
   replyTo?: string
 }
 
 /**
- * Paramètres pour l'envoi d'email avec template
+ * Parameters for sending a templated email
  */
 export interface SendTemplatedEmailParams<T = Record<string, unknown>> {
-  /** Destinataire(s) */
+  /** Recipient(s) */
   to: string | string[]
-  /** Nom du template */
+  /** Template name */
   templateName: string
-  /** Données pour le template */
+  /** Data injected into the template */
   templateData: T
-  /** Email de réponse */
+  /** Reply-to address */
   replyTo?: string
 }
 
 /**
- * Paramètres pour l'envoi en masse
+ * Parameters for a bulk send
  */
 export interface SendBulkEmailParams {
-  /** Liste de destinataires */
+  /** Recipient list */
   recipients: Array<{
     to: string
     subject: string
     html: string
     text?: string
   }>
-  /** Email de réponse */
+  /** Reply-to address */
   replyTo?: string
 }
 
 /**
- * Résultat d'envoi d'email
+ * Result of an email send
  */
 export interface SendEmailResult {
-  /** ID du message */
+  /** Message ID */
   messageId: string
 }
 
 /**
- * Résultat d'envoi en masse
+ * Result of a bulk send
  */
 export interface SendBulkEmailResult {
-  /** Résultats individuels */
+  /** Per-recipient results */
   results: Array<{
     to: string
     messageId?: string
@@ -69,11 +69,11 @@ export interface SendBulkEmailResult {
 }
 
 /**
- * Interface pour les opérations SES (injectable)
+ * Injectable interface over the SES operations
  */
 export interface SESOperations {
   /**
-   * Envoie un email simple
+   * Sends a plain email
    */
   sendEmail(params: {
     from: string
@@ -85,7 +85,7 @@ export interface SESOperations {
   }): Promise<SendEmailResult>
 
   /**
-   * Envoie un email avec template
+   * Sends an email rendered from a template
    */
   sendTemplatedEmail(params: {
     from: string

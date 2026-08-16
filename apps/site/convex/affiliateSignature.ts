@@ -1,22 +1,22 @@
 "use node";
 
 /**
- * Signature électronique simple (SES) in-house — apporteurs d'affaires.
+ * In-house simple electronic signature (SES) — affiliates.
  *
- * Alternative à Yousign : la signature se fait dans l'app, sans prestataire
- * tiers. Niveau juridique = signature électronique SIMPLE (eIDAS art. 25,
- * recevable ; la charge de la preuve incombe à Be in Digital). Adapté à un
- * mandat d'apporteur B2B à faible enjeu.
+ * An alternative to Yousign: signing happens inside the app, with no third-party
+ * provider. Legal level = SIMPLE electronic signature (eIDAS art. 25, admissible;
+ * the burden of proof lies with Be in Digital). Suitable for a low-stakes B2B
+ * affiliate mandate.
  *
- * Piste d'audit conservée :
- *  - identité : compte apporteur authentifié (email + mot de passe)
- *  - consentement explicite + nom saisi par le signataire
- *  - horodatage serveur
- *  - empreinte SHA-256 du contenu exact signé (intégrité)
- *  - PDF signé + page « certificat de signature » stocké (Convex storage)
+ * Audit trail kept:
+ *  - identity: authenticated affiliate account (email + password)
+ *  - explicit consent + the name typed by the signatory
+ *  - server-side timestamp
+ *  - SHA-256 digest of the exact signed content (integrity)
+ *  - signed PDF + « certificat de signature » page stored (Convex storage)
  *
- * Yousign a été retiré (abonnement expiré, non utilisé) ; pour un éventuel
- * passage à une signature AVANCÉE/QUALIFIÉE, réintégrer un prestataire qualifié.
+ * Yousign was removed (subscription expired, unused); should we ever move to an
+ * ADVANCED/QUALIFIED signature, bring a qualified provider back in.
  */
 
 import { v } from "convex/values";
@@ -93,7 +93,7 @@ async function generateSignedContractPdf(opts: {
   });
   y -= 22;
 
-  // Corps du contrat (word-wrap, multi-pages)
+  // Contract body (word-wrapped, spans several pages)
   for (const raw of opts.content.split("\n")) {
     const isBold =
       raw.startsWith("Article ") ||
@@ -114,7 +114,7 @@ async function generateSignedContractPdf(opts: {
     }
   }
 
-  // ── Page certificat de signature ──
+  // ── Signature certificate page ──
   const cert = pdf.addPage([A4.w, A4.h]);
   let cy = A4.h - MARGIN;
   cert.drawText("CERTIFICAT DE SIGNATURE ÉLECTRONIQUE", {
@@ -179,9 +179,9 @@ async function generateSignedContractPdf(opts: {
 }
 
 /**
- * Signe le contrat d'apporteur dans l'app (SES), sans prestataire tiers.
- * Génère le PDF signé + certificat, le stocke, enregistre la piste d'audit,
- * et active l'apporteur.
+ * Signs the affiliate contract inside the app (SES), with no third-party
+ * provider. Generates the signed PDF + certificate, stores it, records the audit
+ * trail, and activates the affiliate.
  */
 export const signAffiliateContract = action({
   args: {
@@ -225,7 +225,7 @@ export const signAffiliateContract = action({
       .update(contract.content, "utf8")
       .digest("hex");
 
-    // 1. Enregistrer la signature (status "signed" + audit)
+    // 1. Record the signature (status "signed" + audit trail)
     const signatureId = await ctx.runMutation(
       internal.contractSignatures.createInAppSignatureRecord,
       {
@@ -240,7 +240,7 @@ export const signAffiliateContract = action({
       },
     );
 
-    // 2. PDF signé + certificat
+    // 2. Signed PDF + certificate
     const bytes = await generateSignedContractPdf({
       content: contract.content,
       title: contract.title,
@@ -254,14 +254,14 @@ export const signAffiliateContract = action({
       signerIp: args.signerIp,
     });
 
-    // 3. Stocker le document signé (copie ArrayBuffer propre pour BlobPart)
+    // 3. Store the signed document (clean ArrayBuffer copy for BlobPart)
     const buf = new Uint8Array(bytes.byteLength);
     buf.set(bytes);
     const storageId = await ctx.storage.store(
       new Blob([buf], { type: "application/pdf" }),
     );
 
-    // 4. Attacher le document + activer l'apporteur
+    // 4. Attach the document + activate the affiliate
     await ctx.runMutation(
       internal.contractSignatures.activateAfterSignature,
       {

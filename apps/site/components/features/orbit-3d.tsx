@@ -22,13 +22,13 @@ import { Tilt3D } from "@/components/ui/tilt-3d";
 import { features, pillarOrder, type Pillar } from "./features-data";
 
 /**
- * Orbit3D — écosystème en orbite 3D autour du restaurant.
- * Deux anneaux elliptiques en perspective : les nœuds passent DEVANT
- * l'orbe (grands, nets) puis DERRIÈRE (petits, estompés, floutés).
- * Chorégraphie d'entrée depuis le centre, ralenti + libellé au survol,
- * et chaque nœud est cliquable (scroll vers la fonctionnalité).
- * Positions calculées image par image (transform/opacity GPU).
- * Statique si prefers-reduced-motion.
+ * Orbit3D — the ecosystem orbiting the restaurant in 3D.
+ * Two elliptical rings drawn in perspective: nodes pass IN FRONT of the orb
+ * (large, sharp) and then BEHIND it (small, faded, blurred).
+ * They fly in from the centre, slow down and show a label on hover, and every
+ * node is clickable (scrolls to the matching feature).
+ * Positions are computed frame by frame (GPU transform/opacity).
+ * Static under prefers-reduced-motion.
  */
 
 const pillarIcons: Record<Pillar, LucideIcon> = {
@@ -65,7 +65,7 @@ const featureIcons: Record<string, LucideIcon> = {
   analytics: BarChart3,
 };
 
-// Anneaux : rayons de l'ellipse (px), vitesse (rad/s), échelle mini au fond
+// Rings: ellipse radii (px), speed (rad/s), minimum scale at the far side
 const RING_PILLARS = { rx: 172, ry: 60, speed: 0.13, minScale: 0.8 };
 const RING_FEATURES = { rx: 272, ry: 100, speed: -0.08, minScale: 0.68 };
 
@@ -81,15 +81,15 @@ function applyPose(
 ) {
   if (!el) return;
   const x = Math.sin(angle) * ring.rx * appear;
-  const depth = Math.cos(angle); // 1 = devant, -1 = derrière
+  const depth = Math.cos(angle); // 1 = in front, -1 = behind
   const y = depth * ring.ry * appear;
   const scale =
     (ring.minScale + (1.06 - ring.minScale) * (depth + 1) * 0.5) *
     (0.5 + 0.5 * appear);
   el.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
   el.style.opacity = ((0.4 + 0.6 * (depth + 1) * 0.5) * appear).toFixed(3);
-  el.style.zIndex = String(20 + Math.round(depth * 15)); // orbe central à 20
-  // flou léger quand le nœud passe derrière — le vrai indice de profondeur
+  el.style.zIndex = String(20 + Math.round(depth * 15)); // central orb sits at 20
+  // slight blur as the node passes behind — the real depth cue
   el.style.filter = depth < -0.12 ? `blur(${(-depth * 1.5).toFixed(1)}px)` : "";
 }
 
@@ -117,7 +117,7 @@ export function Orbit3D() {
     const elapsed = (t - start.current) / 1000;
     const dt = Math.min(delta, 64) / 1000;
 
-    // ralenti au survol, lerpé
+    // slowed down on hover, lerped
     const target = hoverRef.current ? 0.1 : 1;
     speedFactor.current += (target - speedFactor.current) * 0.07;
     angles.current.pillars += dt * RING_PILLARS.speed * speedFactor.current;
@@ -148,24 +148,24 @@ export function Orbit3D() {
           className="absolute left-1/2 top-1/2 h-[200px] w-[544px] -translate-x-1/2 -translate-y-1/2 rounded-[100%] border border-[color:var(--border)]"
         />
 
-        {/* Ombre au sol — ancre le système */}
+        {/* Ground shadow — anchors the whole system */}
         <div
           aria-hidden="true"
           className="absolute left-1/2 top-[76%] h-16 w-[380px] -translate-x-1/2 rounded-[100%] bg-[radial-gradient(50%_50%_at_50%_50%,rgba(112,60,34,0.14),transparent_70%)] blur-md"
         />
 
-        {/* Halo derrière l'orbe */}
+        {/* Halo behind the orb */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.10] blur-3xl"
         />
 
-        {/* Orbe central — le restaurant */}
+        {/* Central orb — the restaurant */}
         <div
           className="absolute left-1/2 top-1/2 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-[color:var(--border-accent)] bg-surface-1 shadow-[0_18px_44px_-20px_rgba(197,84,44,0.5)]"
           style={{ zIndex: 20 }}
         >
-          {/* anneau tireté qui tourne autour de l'orbe */}
+          {/* dashed ring rotating around the orb */}
           <svg
             aria-hidden="true"
             className="absolute -inset-3 h-[calc(100%+24px)] w-[calc(100%+24px)] animate-[spin_28s_linear_infinite]"
@@ -186,7 +186,7 @@ export function Orbit3D() {
           </span>
         </div>
 
-        {/* Anneau intérieur — les 4 piliers (cliquables) */}
+        {/* Inner ring — the 4 pillars (clickable) */}
         {pillarOrder.map((key, i) => {
           const Icon = pillarIcons[key];
           const base = (i / pillarOrder.length) * Math.PI * 2;
@@ -219,7 +219,7 @@ export function Orbit3D() {
           );
         })}
 
-        {/* Anneau extérieur — les 10 fonctionnalités (cliquables) */}
+        {/* Outer ring — the 10 features (clickable) */}
         {features.map((feature, i) => {
           const Icon = featureIcons[feature.id] ?? Star;
           const base = (i / features.length) * Math.PI * 2 + 0.5;
@@ -249,7 +249,7 @@ export function Orbit3D() {
           );
         })}
 
-        {/* Libellé du nœud survolé */}
+        {/* Label of the hovered node */}
         <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
           <span
             className={`rounded-full border border-[color:var(--border-accent)] bg-surface-1 px-4 py-1.5 text-xs font-semibold text-primary shadow-[0_10px_24px_-14px_rgba(112,60,34,0.5)] transition-all duration-300 ${

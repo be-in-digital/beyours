@@ -8,7 +8,7 @@ import {
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-/* ── Helper : vérifier que l'utilisateur est admin ── */
+/* ── Helper: check that the user is an admin ── */
 
 export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const userId = await getAuthUserId(ctx);
@@ -248,7 +248,7 @@ export const resetAllStripeConnect = internalMutation({
   },
 });
 
-/* ── Internal : reset contrat affilié (pour tests) ── */
+/* ── Internal: reset an affiliate's contract (for tests) ── */
 
 export const resetAffiliateContract = internalMutation({
   args: { email: v.string() },
@@ -288,7 +288,7 @@ export const resetAffiliateContract = internalMutation({
   },
 });
 
-/* ── Internal : promotion admin (à lancer depuis le dashboard Convex) ── */
+/* ── Internal: promote to admin (run it from the Convex dashboard) ── */
 
 export const promoteToAdmin = internalMutation({
   args: { email: v.string() },

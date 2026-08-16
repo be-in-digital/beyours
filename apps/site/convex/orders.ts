@@ -100,12 +100,12 @@ export const get = query({
   },
 });
 
-/* ── Offre fondateurs ──
-   Nombre de ventes fondateurs encaissées. Sert au compteur public
-   (« X places restantes ») et au calcul de prix côté checkout.
-   Seules les commandes payées consomment un slot : deux checkouts
-   simultanés sur la dernière place peuvent théoriquement se croiser,
-   risque accepté à cette échelle. */
+/* ── Founders offer ──
+   Number of founder sales collected. Feeds the public counter
+   (« X places restantes ») and the price calculation at checkout.
+   Only paid orders consume a slot: two checkouts racing for the last
+   place could in theory cross each other, a risk we accept at this
+   scale. */
 
 export const countFoundersSold = query({
   args: {},

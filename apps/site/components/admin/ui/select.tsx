@@ -2,7 +2,7 @@ import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Select natif stylé — robuste, accessible, sans dépendance de popover. */
+/** Styled native select — sturdy, accessible, no popover dependency. */
 const Select = React.forwardRef<
   HTMLSelectElement,
   React.SelectHTMLAttributes<HTMLSelectElement>

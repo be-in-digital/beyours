@@ -1,30 +1,30 @@
-# Design — Kitchen Display, Ecran Salle & Tracking Client
+# Design — Kitchen Display, Front-of-House Screen & Customer Tracking
 
-**Date** : 2026-02-23
-**Statut** : Valide — pret pour implementation
-**Branche** : kitchen
+**Date**: 2026-02-23
+**Status**: Approved — ready for implementation
+**Branch**: kitchen
 
 ---
 
 ## 1. Understanding Summary
 
-### Ce qu'on construit
+### What we are building
 
-3 interfaces liees par le flux de commande + 1 systeme d'impression browser kiosk :
+Three interfaces tied together by the order flow, plus a browser-kiosk printing system:
 
-- **KDS cuisine** : Kanban ameliore avec gros boutons tactiles, alertes sonores/visuelles configurables, impression browser kiosk via `window.print()` + Chrome `--kiosk-printing`
-- **Ecran salle** : Double zone "en preparation" / "prets a recuperer", validation pickup par staff + auto-dismiss configurable, optimise TV
-- **Tracking mobile client** : Timeline statut + temps estime restant, acces par token opaque nanoid 21+
+- **Kitchen KDS**: an upgraded kanban with large touch targets, configurable audio and visual alerts, and browser-kiosk printing through `window.print()` + Chrome `--kiosk-printing`
+- **Front-of-house screen**: two zones, "en preparation" / "prets a recuperer", pickup confirmed by staff plus a configurable auto-dismiss, tuned for a TV
+- **Customer mobile tracking**: a status timeline plus the estimated time remaining, reached through an opaque nanoid token of 21+ characters
 
-### Pour qui
+### Who it is for
 
-| Interface | Utilisateur | Acces |
+| Interface | User | Access |
 |-----------|------------|-------|
-| KDS | Staff cuisine | Auth staff existante |
-| Ecran salle | Clients en salle + staff comptoir | URL publique + storeId, pas d'auth |
-| Tracking mobile | Client final | Lien avec token opaque nanoid 21+ |
+| KDS | Kitchen staff | Existing staff auth |
+| Front-of-house screen | Dine-in customers and counter staff | Public URL + storeId, no auth |
+| Mobile tracking | End customer | Link carrying an opaque nanoid token (21+) |
 
-### Flux complet
+### End-to-end flow
 
 ```
 Commande (site / Uber Eats / Deliveroo)
@@ -65,73 +65,73 @@ Tracking mobile --> client voit "Votre commande est prete !"
 Statut "done" --> completedAt = now, ticket disparait de tous les ecrans
 ```
 
-### Non-goals explicites
+### Explicit non-goals
 
-- Pas de multi-station KDS en V1
-- Pas d'impression cloud en V1 (architecture prete, implementation plus tard)
-- Pas de vue livreur dediee
-- Pas de tracking position livreur sur carte
-- Pas de notifications push/SMS au client
-- Pas de tiroir-caisse automatique (limite browser kiosk)
-- Pas de detail items dans le tracking client (le client connait sa commande)
+- No multi-station KDS in V1
+- No cloud printing in V1 (the architecture is ready, the implementation comes later)
+- No dedicated courier view
+- No courier position tracking on a map
+- No push or SMS notifications to the customer
+- No automatic cash drawer (a browser-kiosk limitation)
+- No line-item detail in customer tracking (the customer already knows what they ordered)
 
 ---
 
 ## 2. Assumptions
 
-- L'impression browser kiosk est declenchee **cote client dans le navigateur du KDS** via `window.print()` sur subscription Convex
-- Chrome `--kiosk-printing` bypass le dialog d'impression et envoie a l'imprimante par defaut
-- Le temps estime par produit est un **champ optionnel** — si absent, pas affiche au client
-- L'ecran salle est une **page full-screen** optimisee TV (gros texte, fond sombre, pas de header/nav)
-- Les alertes sonores necessitent un **clic initial** du staff pour debloquer l'autoplay audio (restriction navigateur)
-- Les APIs cloud (Sunmi/Star/Epson) seront appelees depuis Convex actions — **hors scope V1**
-- Le layout 58mm est identique au 80mm mais sans QR code et avec espacement reduit
-- `window.print()` ne garantit pas que le papier est sorti — on sait seulement que le process a ete declenche
-- Le token opaque nanoid 21+ est suffisamment long pour empecher le brute-force
-- Un ticket avec `status="done"` et `completedAt > 24h` est considere expire pour le tracking
+- Browser-kiosk printing is triggered **client-side, in the KDS browser**, from a Convex subscription through `window.print()`
+- Chrome `--kiosk-printing` skips the print dialog and sends straight to the default printer
+- Per-product prep time is an **optional field** — when it is missing, nothing is shown to the customer
+- The front-of-house screen is a **full-screen page** tuned for a TV (large text, dark background, no header or nav)
+- Audio alerts need an **initial click** from staff to unlock audio autoplay (a browser restriction)
+- The cloud APIs (Sunmi/Star/Epson) will be called from Convex actions — **out of scope for V1**
+- The 58mm layout matches the 80mm one but drops the QR code and tightens the spacing
+- `window.print()` does not guarantee that paper came out — all we know is that the process was triggered
+- An opaque nanoid token of 21+ characters is long enough to make brute-forcing impractical
+- A ticket with `status="done"` and `completedAt` older than 24h counts as expired for tracking
 
 ---
 
 ## 3. Decision Log
 
-| # | Decision | Choix | Alternatives considerees | Raison |
+| # | Decision | Choice | Alternatives considered | Rationale |
 |---|----------|-------|-------------------------|--------|
-| 1 | Confirmation commande | Configurable par store (auto ou manual) | Toujours auto, toujours manuelle, par canal | Chaque restaurant a ses habitudes |
-| 2 | KDS interaction | Gros boutons dedies (min 64px, font 18px+) | Touch simple, swipe, mode plein ecran sequentiel | Mains sales/gantees en cuisine, cible tactile large |
-| 3 | Multi-station KDS | Hors scope V1 | Implementer maintenant | YAGNI, a ajouter plus tard si besoin |
-| 4 | Alertes sonores KDS | Configurables par evenement + volume, 1 bip par store (anti-cacophonie) | Son unique generique, pas de son | Adaptable a chaque ambiance, pas de cacophonie avec N tickets |
-| 5 | Impression V1 | Browser kiosk (Chrome --kiosk-printing + window.print()) | Serveur d'impression local, Electron app, cloud direct | Zero cout, zero dependance, friction unique a l'install |
-| 6 | Architecture impression | Multi-provider unifie (browser + 3 cloud) | Browser uniquement | Pret pour Sunmi/Star/Epson sans refactoring |
-| 7 | Providers cloud (hors scope V1) | Sunmi NT311 (recommande), Star mC-Print3, Epson TM-m30II | Autres marques | Prix, robustesse IP52, maturite cloud API |
-| 8 | Triggers impression | Configurable par store, defaults = confirmed + ready + reprint | Fixes, non configurables | Chaque restaurant a son setup (avec/sans comptoir pickup, food truck sans imprimante) |
-| 9 | Format papier | 80mm default, 58mm supporte (sans QR, espacement reduit) | 80mm uniquement | Couvre tout le marche |
-| 10 | Layout ticket | Logo, #commande, source/type, client, items+options+notes, allergies, temps estime, QR reimpression, branding | Layout simplifie | Complet et lisible, toutes les infos necessaires en cuisine |
-| 11 | QR sur ticket | Declenche reimpression (staff scanne → reprint) | Lien tracking client, lien admin | Pratique sans chercher dans l'UI |
-| 12 | Variant ticket | "TICKET COMMANDE" vs "TICKET RETRAIT" selon printTrigger | Ticket unique | Distinction visuelle claire pour le staff |
-| 13 | Impression dans iframe | Iframe isolee pour le rendu ticket | CSS @media print avec display:none sur le body | Pas de CSS app qui parasite, impression stable |
-| 14 | Queue impression | 1 job a la fois (isPrintingRef + currentTicketIdRef), timeout 20s | Parallele, sans timeout | Dedup, gestion echec, pas de race condition |
-| 15 | Statut imprimante | 3 niveaux : badge rouge (30s) → toast (1min, une fois) → alerte sonore (2min) | Alerte immediate, pas d'alerte | Detection progressive, anti-spam |
-| 16 | Fallback impression | Badge "non imprimee" + alerte sonore, reprint manuel toujours autorise | Backup auto vers autre imprimante | V1 simple, backup auto = V2 |
-| 17 | Ecran salle format | Double zone classique fast-food, fond sombre, numeros 64px+ | Zone unique, liste scrollable | Lisible de loin (5m+), classique et reconnu |
-| 18 | Ecran salle pickup | Validation manuelle staff (depuis KDS ou admin) + auto-dismiss configurable (default 15min) | Touch sur l'ecran TV, auto seulement | Ecran TV = display passif, double securite (manuel + auto) |
-| 19 | Ecran salle pagination | Rotation auto toutes les 15s si > 10 numeros par zone | Scroll, pas de pagination | Pas de scroll sur TV, rotation lisible |
-| 20 | Ecran salle heartbeat | Pastille "Live" qui pulse + horloge mise a jour chaque minute | Rien | Le staff sait que l'ecran n'est pas fige |
-| 21 | Temps estime | Defini par produit dans le catalogue (champ optionnel) | Formule par nb items, dynamique base sur charge, combine catalogue+charge | Le restaurateur connait ses temps mieux qu'un algorithme |
-| 22 | Tracking client contenu | Timeline statut + countdown temps estime | Statut simple, detail items, position livreur | Suffisant sans surcharger, pas de donnees sensibles |
-| 23 | Tracking client acces | Token opaque nanoid 21+ dans l'URL | orderId Convex, token signe JWT | Anti brute-force, simple, pas d'expiration a gerer |
-| 24 | Tracking client erreur | "Commande introuvable" + "Commande terminee" (> 24h) | Rien (404 generique) | UX propre avec lien retour vers le store |
-| 25 | Temps reel | Convex subscriptions partout (KDS, ecran salle, tracking) | Polling pour tracking client | Stack existante, ~100-500ms de latence |
-| 26 | Securite KDS | Auth staff existante | URL simple, PIN | Outil interne, doit etre protege |
-| 27 | Securite ecran salle | URL + storeId, pas d'auth | Auth, PIN, token | Donnees non sensibles (numeros seulement), ecran TV dedie |
-| 28 | Securite tracking | Token opaque nanoid 21+ | JWT signe, orderId | Suffisamment long pour empecher brute-force |
-| 29 | Approche architecture | Modulaire par package (logique dans packages/, pages minces dans app/) | Tout dans l'app, micro-apps separees | Coherent avec l'architecture existante, reutilisable entre themes |
-| 30 | Onboarding impression | Script auto (.bat/.sh) qui configure Chrome + raccourci KDS | Documentation manuelle, app Electron | 30 min max, faisable a distance, zero dependance |
+| 1 | Order confirmation | Configurable per store (auto or manual) | Always auto, always manual, per channel | Every restaurant has its own habits |
+| 2 | KDS interaction | Dedicated large buttons (min 64px, 18px+ font) | Plain touch, swipe, sequential full-screen mode | Dirty or gloved hands in the kitchen need a large touch target |
+| 3 | Multi-station KDS | Out of scope for V1 | Build it now | YAGNI — add it later if the need shows up |
+| 4 | KDS audio alerts | Configurable per event plus volume, one beep per store (anti-cacophony) | A single generic sound, or no sound at all | Adapts to each room, and N tickets do not turn into noise |
+| 5 | V1 printing | Browser kiosk (Chrome --kiosk-printing + window.print()) | Local print server, Electron app, direct cloud | No cost, no dependency, friction only at install time |
+| 6 | Printing architecture | Unified multi-provider (browser + 3 cloud) | Browser only | Ready for Sunmi/Star/Epson without a refactor |
+| 7 | Cloud providers (out of scope for V1) | Sunmi NT311 (recommended), Star mC-Print3, Epson TM-m30II | Other brands | Price, IP52 ruggedness, maturity of the cloud API |
+| 8 | Print triggers | Configurable per store, defaults = confirmed + ready + reprint | Fixed, not configurable | Every restaurant has its own setup (with or without a pickup counter, food trucks with no printer) |
+| 9 | Paper format | 80mm by default, 58mm supported (no QR, tighter spacing) | 80mm only | Covers the whole market |
+| 10 | Ticket layout | Logo, order number, source/type, customer, items+options+notes, allergies, estimated time, reprint QR, branding | A simplified layout | Complete and readable — everything the kitchen needs |
+| 11 | QR on the ticket | Triggers a reprint (staff scans → reprint) | Customer tracking link, admin link | Handy, no hunting through the UI |
+| 12 | Ticket variant | "TICKET COMMANDE" vs "TICKET RETRAIT" depending on printTrigger | A single ticket for everything | An obvious visual distinction for staff |
+| 13 | Printing inside an iframe | An isolated iframe renders the ticket | CSS @media print with display:none on the body | No app CSS bleeding in, printing stays stable |
+| 14 | Print queue | One job at a time (isPrintingRef + currentTicketIdRef), 20s timeout | Parallel, no timeout | Dedup, failure handling, no race conditions |
+| 15 | Printer status | Three levels: red badge (30s) → toast (1min, once) → audio alert (2min) | Alert immediately, or no alert at all | Escalates gradually, does not spam |
+| 16 | Print fallback | A "non imprimee" badge plus an audio alert, with a manual reprint always allowed | Automatic failover to a backup printer | Keep V1 simple — automatic failover is a V2 concern |
+| 17 | Front-of-house screen format | The classic fast-food two-zone board, dark background, 64px+ numbers | A single zone, or a scrolling list | Readable from 5m+, and a format people already recognise |
+| 18 | Front-of-house pickup | Manual staff confirmation (from the KDS or the admin) plus a configurable auto-dismiss (default 15min) | Touch on the TV itself, or auto-dismiss only | The TV is a passive display, and manual plus auto gives two safety nets |
+| 19 | Front-of-house pagination | Auto-rotate every 15s once a zone holds more than 10 numbers | Scrolling, or no pagination | You cannot scroll a TV, and rotation stays readable |
+| 20 | Front-of-house heartbeat | A pulsing "Live" dot plus a clock that ticks every minute | Nothing | Staff can tell the screen has not frozen |
+| 21 | Estimated time | Set per product in the catalog (an optional field) | A formula based on item count, a dynamic load-based estimate, or catalog plus load combined | The owner knows their own timings better than an algorithm does |
+| 22 | Customer tracking content | A status timeline plus a countdown to the estimated time | Bare status, line-item detail, courier position | Enough without overloading, and no sensitive data |
+| 23 | Customer tracking access | An opaque nanoid token (21+) in the URL | The Convex orderId, or a signed JWT | Brute-force resistant, simple, and no expiry to manage |
+| 24 | Customer tracking errors | "Commande introuvable" and "Commande terminee" (past 24h) | Nothing (a generic 404) | Clean UX with a link back to the store |
+| 25 | Real time | Convex subscriptions everywhere (KDS, front-of-house screen, tracking) | Polling for customer tracking | It is the stack we already have, ~100-500ms of latency |
+| 26 | KDS security | Existing staff auth | A plain URL, or a PIN | An internal tool — it has to be protected |
+| 27 | Front-of-house security | URL + storeId, no auth | Auth, PIN, token | Nothing sensitive (order numbers only) on a dedicated TV |
+| 28 | Tracking security | An opaque nanoid token (21+) | A signed JWT, or the orderId | Long enough to make brute-forcing impractical |
+| 29 | Architectural approach | Modular by package (logic in packages/, thin pages in app/) | Everything in the app, or separate micro-apps | Consistent with the existing architecture and reusable across themes |
+| 30 | Printing onboarding | An automated script (.bat/.sh) that configures Chrome and creates a KDS shortcut | Manual documentation, or an Electron app | 30 minutes at most, doable remotely, no dependencies |
 
 ---
 
-## 4. Schema — Modifications
+## 4. Schema — Changes
 
-### 4.1 `packages/convex-schema/src/tables/stores.ts` — Nouveaux champs
+### 4.1 `packages/convex-schema/src/tables/stores.ts` — New fields
 
 ```typescript
 orderConfirmation: "auto" | "manual"  // default: "manual"
@@ -157,13 +157,13 @@ soundConfig: {
 }
 ```
 
-### 4.2 `packages/convex-schema/src/tables/products.ts` — Nouveau champ
+### 4.2 `packages/convex-schema/src/tables/products.ts` — New field
 
 ```typescript
 estimatedPrepTime?: number  // en minutes, optionnel
 ```
 
-### 4.3 `packages/convex-schema/src/tables/kitchenTickets.ts` — Nouveaux champs
+### 4.3 `packages/convex-schema/src/tables/kitchenTickets.ts` — New fields
 
 ```typescript
 // Timestamps de lifecycle (invariants backend)
@@ -205,16 +205,16 @@ kitchenTickets.index("by_store_status_readyAt",
   ["storeId", "status", "readyAt"])
 ```
 
-### 4.5 Invariants backend dans `updateStatus`
+### 4.5 Backend invariants in `updateStatus`
 
-Toute transition de statut enforce les timestamps :
-- `"in_progress"` → `startedAt = now` (si pas deja set)
+Every status transition enforces the timestamps:
+- `"in_progress"` → `startedAt = now` (unless already set)
 - `"ready"` → `readyAt = now`
 - `"done"` → `completedAt = now`
 
-Toute mutation qui set `printStatus="pending"` DOIT aussi set `printRequestedAt=now`.
-Si `printConfig.enabled=false` ou trigger pas actif → `printStatus="not_required"`.
-Aucun ticket ne peut etre `printStatus="pending"` sans `printRequestedAt`. C'est un invariant.
+Any mutation that sets `printStatus="pending"` MUST also set `printRequestedAt=now`.
+If `printConfig.enabled=false` or the trigger is not active → `printStatus="not_required"`.
+No ticket may sit at `printStatus="pending"` without a `printRequestedAt`. That is an invariant.
 
 ---
 
@@ -294,9 +294,9 @@ markPickedUp(ticketId)
 
 ---
 
-## 6. KDS Cuisine — Design detaille
+## 6. Kitchen KDS — Detailed design
 
-### 6.1 Structure fichiers
+### 6.1 File structure
 
 ```
 packages/admin/src/pages/kitchen/
@@ -310,13 +310,13 @@ packages/admin/src/pages/kitchen/
   print-status-badge.tsx        CREER
 ```
 
-### 6.2 kitchen-page.tsx (MODIFIER)
+### 6.2 kitchen-page.tsx (MODIFY)
 
-Responsabilites :
-- Charge storeId + storeSettings
-- Monte 2 singletons : `<KitchenSoundManager>` + `<KitchenPrintTrigger>`
-- Affiche `<PrintStatusBadge>`
-- Le tout dans un `<ToastProvider>`
+Responsibilities:
+- Loads storeId + storeSettings
+- Mounts two singletons: `<KitchenSoundManager>` + `<KitchenPrintTrigger>`
+- Renders `<PrintStatusBadge>`
+- All of it inside a `<ToastProvider>`
 
 ```tsx
 <ToastProvider>
@@ -332,9 +332,9 @@ Responsabilites :
 </ToastProvider>
 ```
 
-### 6.3 ticket-card.tsx (MODIFIER)
+### 6.3 ticket-card.tsx (MODIFY)
 
-Layout tactile :
+Touch layout:
 
 ```
 +-------------------------------------+
@@ -352,62 +352,62 @@ Layout tactile :
 +--------------------------------------+
 ```
 
-- Bouton principal (action suivante) : sticky footer, pleine largeur
-  - `new` → "Commencer" (bleu)
-  - `in_progress` → "Pret !" (vert)
-  - `ready` → "Termine" (gris) + bouton secondaire "Marquer recupere"
-- Bouton reprint : icone imprimante petit, a droite du badge print
-- Badge print : pending → chrono, printed → check vert, failed → warning orange
-- Label "Non imprimee" si pending > 2min
+- Primary button (the next action): sticky footer, full width
+  - `new` → "Commencer" (blue)
+  - `in_progress` → "Pret !" (green)
+  - `ready` → "Termine" (grey) plus a secondary "Marquer recupere" button
+- Reprint button: a small printer icon, to the right of the print badge
+- Print badge: pending → stopwatch, printed → green check, failed → orange warning
+- A "Non imprimee" label once pending exceeds 2min
 
-### 6.4 kitchen-sound-manager.tsx (CREER)
+### 6.4 kitchen-sound-manager.tsx (CREATE)
 
-Inputs : storeId, soundConfig
+Inputs: storeId, soundConfig
 
-Donnees ecoutees :
-- `getOverdueCount(storeId)` → nombre de tickets en retard
-- `getPrintStuckCount(storeId)` → nombre de tickets non imprimes
+Data it subscribes to:
+- `getOverdueCount(storeId)` → the number of late tickets
+- `getPrintStuckCount(storeId)` → the number of unprinted tickets
 
-Comportement :
-1. Au mount → overlay "Cliquer pour activer les alertes sonores"
-2. Au clic → AudioContext initialise, overlay disparait
-3. Regles (anti-cacophonie = 1 bip par store, pas par ticket) :
-   - Nouveau ticket → son "ding" court (declenche sur changement de liste)
-   - overdueCount > 0 → bip toutes les 30s
-   - printStuckCount > 0 → bip toutes les 30s
-4. Banniere visuelle quand un bip est actif : "X tickets en retard / X non imprimes"
-5. Respecte soundConfig (enabled + volume par evenement)
+Behavior:
+1. On mount → an overlay reading "Cliquer pour activer les alertes sonores"
+2. On click → the AudioContext initializes and the overlay disappears
+3. Rules (anti-cacophony = one beep per store, not per ticket):
+   - New ticket → a short "ding" (fired when the list changes)
+   - overdueCount > 0 → a beep every 30s
+   - printStuckCount > 0 → a beep every 30s
+4. A visual banner while a beep is active: "X tickets en retard / X non imprimes"
+5. Honors soundConfig (enabled + volume per event)
 
-Sons : fichiers mp3 dans `/public/sounds/` (3 fichiers legers)
+Sounds: mp3 files in `/public/sounds/` (three lightweight files)
 
-### 6.5 kitchen-print-trigger.tsx (CREER)
+### 6.5 kitchen-print-trigger.tsx (CREATE)
 
-Inputs : storeId, printConfig, soundConfig, onToast
+Inputs: storeId, printConfig, soundConfig, onToast
 
-Donnees : `printQueue = getPrintQueue(storeId)`
+Data: `printQueue = getPrintQueue(storeId)`
 
-Regles :
-- Si `!printConfig.enabled` → n'imprime jamais auto (sauf reprint = action staff)
-- Verrouillage : `isPrintingRef` + `currentTicketIdRef` (dedup)
+Rules:
+- If `!printConfig.enabled` → never print automatically (a reprint is a staff action and is exempt)
+- Locking: `isPrintingRef` + `currentTicketIdRef` (dedup)
 
-Flow :
-1. Si `isPrintingRef.current === true` → ignore
-2. Prendre `printQueue[0]` (premier en file)
+Flow:
+1. If `isPrintingRef.current === true` → skip
+2. Take `printQueue[0]` (head of the queue)
 3. `isPrintingRef.current = true`, `currentTicketIdRef.current = ticket._id`
 4. Toast "Impression #A172..."
-5. Rendre `<PrintTicketLayout>` dans iframe isolee
-6. Appeler `iframe.contentWindow.print()`
-7. Ecouter `onafterprint` → `markPrintSent(ticket._id)` + toast "Impression lancee"
-8. Timeout 20s sans `onafterprint` → `markPrintFailed(ticket._id, "timeout")` + toast "Impression bloquee"
-9. Clear handlers + `isPrintingRef.current = false` → prochain ticket se lance
+5. Render `<PrintTicketLayout>` inside an isolated iframe
+6. Call `iframe.contentWindow.print()`
+7. Listen for `onafterprint` → `markPrintSent(ticket._id)` plus an "Impression lancee" toast
+8. 20s with no `onafterprint` → `markPrintFailed(ticket._id, "timeout")` plus an "Impression bloquee" toast
+9. Clear the handlers, set `isPrintingRef.current = false` → the next ticket starts
 
-### 6.6 print-ticket-layout.tsx (CREER)
+### 6.6 print-ticket-layout.tsx (CREATE)
 
-Rendu dans iframe isolee (pas dans le DOM principal).
+Rendered inside an isolated iframe, not in the main DOM.
 
-Props : ticket data + paperSize + variant ("order" | "pickup")
+Props: ticket data + paperSize + variant ("order" | "pickup")
 
-Layout (80mm, largeur utile 72mm) :
+Layout (80mm, 72mm of usable width):
 
 ```
 [LOGO STORE]
@@ -438,23 +438,23 @@ sharuka78.fr
 Powered by Be In Digital
 ```
 
-Layout 58mm (largeur utile 48mm) : identique mais sans QR, espacement reduit, identifiant court "Reprint: A172".
+58mm layout (48mm of usable width): the same, minus the QR, with tighter spacing and a short identifier, "Reprint: A172".
 
-Variant : affiche "TICKET COMMANDE" ou "TICKET RETRAIT" selon `printTrigger`.
+Variant: prints "TICKET COMMANDE" or "TICKET RETRAIT" depending on `printTrigger`.
 
-### 6.7 print-status-badge.tsx (CREER)
+### 6.7 print-status-badge.tsx (CREATE)
 
-Badge dans le header du KDS :
-- Vert si aucun probleme
-- Rouge si `hasPendingOlderThan(30s)` OU `hasFailedRecent(10min)`
-- Toast si pending > 1min (une seule fois, `lastToastAtRef` anti-spam)
-- Son delegue au SoundManager via `getPrintStuckCount`
+A badge in the KDS header:
+- Green when nothing is wrong
+- Red on `hasPendingOlderThan(30s)` OR `hasFailedRecent(10min)`
+- A toast once pending exceeds 1min (once only, with `lastToastAtRef` guarding against spam)
+- Sound is delegated to the SoundManager through `getPrintStuckCount`
 
 ---
 
-## 7. Ecran Salle — Design detaille
+## 7. Front-of-House Screen — Detailed design
 
-### 7.1 Structure fichiers
+### 7.1 File structure
 
 ```
 packages/convex-schema/src/tables/stores.ts              MODIFIER (displayConfig)
@@ -476,7 +476,7 @@ apps/restaurant-theme/app/display/[storeId]/
   use-flash-detection.ts      CREER
 ```
 
-### 7.2 Constantes
+### 7.2 Constants
 
 ```typescript
 // packages/restaurant/src/constants/display.ts
@@ -515,52 +515,52 @@ type DisplayPayload = { preparing, ready, displayConfig, storeBranding, serverNo
 +----------------------------------------------------------+
 ```
 
-### 7.5 Composants
+### 7.5 Components
 
-**page.tsx** : subscription Convex `getForDisplay(storeId)`, full-screen, pas d'auth, import display.css
+**page.tsx**: a Convex subscription to `getForDisplay(storeId)`, full-screen, no auth, imports display.css
 
-**display-header.tsx** : logo store centre, horloge live (update chaque minute), jour de la semaine, pastille "Live" qui pulse
+**display-header.tsx**: the store logo centered, a live clock (updated every minute), the weekday, and a pulsing "Live" dot
 
-**display-column.tsx** : composant colonne reutilisable, titre + liste de numeros, pagination si > max (rotation auto 15s), affichage "Page 1/2"
+**display-column.tsx**: a reusable column component — a title plus a list of numbers, paginated past the max (auto-rotating every 15s), showing "Page 1/2"
 
-**display-ticket-number.tsx** : numero de commande en gros (64px+), animation flash 3s quand le ticket apparait nouvellement dans "ready" (detection via Set local des tickets deja vus)
+**display-ticket-number.tsx**: the order number in large type (64px+), with a 3s flash animation the first time a ticket shows up in "ready" (detected with a local Set of already-seen tickets)
 
-**display-footer.tsx** : URL du restaurant + "Powered by Be In Digital"
+**display-footer.tsx**: the restaurant URL plus "Powered by Be In Digital"
 
 ### 7.6 Hooks
 
-**use-pagination.ts** : timer de rotation (15s), calcul nb pages selon limites, reset a page 1 quand les donnees changent
+**use-pagination.ts**: the rotation timer (15s), the page count derived from the limits, and a reset to page 1 whenever the data changes
 
-**use-flash-detection.ts** : maintient un Set des IDs deja vus, retourne les IDs a flasher (nouveaux depuis le dernier render)
+**use-flash-detection.ts**: keeps a Set of already-seen IDs and returns the ones to flash (new since the last render)
 
 ### 7.7 Styles (display.css)
 
-- Mode sombre par defaut (fond sombre, texte clair)
-- Numeros en 64px minimum
-- Contraste eleve pour lisibilite TV
-- Curseur cache (mode kiosk)
-- Animation flash (clignotement subtil 3s)
-- Animation pulse pour pastille "Live"
-- Pas de scroll (`overflow: hidden`)
+- Dark mode by default (dark background, light text)
+- Numbers at 64px minimum
+- High contrast for TV readability
+- Cursor hidden (kiosk mode)
+- Flash animation (a subtle 3s blink)
+- Pulse animation for the "Live" dot
+- No scrolling (`overflow: hidden`)
 
 ### 7.8 Pickup validation
 
-Le staff valide depuis le KDS (bouton "Marquer recupere" quand status=ready) ou depuis la page admin orders. L'ecran salle est un **display passif** — pas de touch sur la TV.
+Staff confirm from the KDS (the "Marquer recupere" button once status=ready) or from the admin orders page. The front-of-house screen is a **passive display** — nobody touches the TV.
 
-Disparition d'un numero :
-1. Staff clique "Marquer recupere" → `markPickedUp(ticketId)` → `pickedUpAt = now` → disparition immediate
-2. Auto-dismiss : `readyAt + autoDismissMinutes > now` → disparition auto
-3. Ticket passe en status "done" → disparition immediate
+A number disappears when:
+1. Staff click "Marquer recupere" → `markPickedUp(ticketId)` → `pickedUpAt = now` → it vanishes immediately
+2. Auto-dismiss: `readyAt + autoDismissMinutes > now` → it vanishes on its own
+3. The ticket moves to status "done" → it vanishes immediately
 
-### 7.9 Settings display (optionnel V1)
+### 7.9 Display settings (optional in V1)
 
-Page admin : toggle autoDismissEnabled + input autoDismissMinutes, sauvegarde dans `store.displayConfig`.
+An admin page: an autoDismissEnabled toggle and an autoDismissMinutes input, saved to `store.displayConfig`.
 
 ---
 
-## 8. Tracking Mobile Client — Design detaille
+## 8. Customer Mobile Tracking — Detailed design
 
-### 8.1 Structure fichiers
+### 8.1 File structure
 
 ```
 packages/convex-functions/src/kitchenTickets.ts    MODIFIER (getByTrackingToken)
@@ -574,21 +574,21 @@ apps/restaurant-theme/app/(storefront)/track/[token]/
   tracking-footer.tsx       CREER
 ```
 
-### 8.2 Route et acces
+### 8.2 Route and access
 
 ```
 /track/[token]  — ex: /track/V1StGXR8_Z5jdHi6B-myT
 ```
 
-URL publique, pas d'auth, page standalone (pas de header app, pas de menu).
+A public URL, no auth, a standalone page (no app header, no menu).
 
-### 8.3 Ecrans d'erreur
+### 8.3 Error screens
 
-- Token introuvable → "Commande introuvable — le lien est invalide." + lien "Retourner sur {storeName}"
-- Ticket done + completedAt > 24h → "Cette commande est terminee depuis le {date}." + meme lien
-- Si store branding non resolvable → branding generique BeInDigital
+- Token not found → "Commande introuvable — le lien est invalide." plus a "Retourner sur {storeName}" link
+- Ticket done with completedAt older than 24h → "Cette commande est terminee depuis le {date}." plus the same link
+- If store branding cannot be resolved → fall back to generic BeInDigital branding
 
-### 8.4 Layout mobile
+### 8.4 Mobile layout
 
 ```
 +-------------------------+
@@ -625,162 +625,162 @@ URL publique, pas d'auth, page standalone (pas de header app, pas de menu).
 +-------------------------+
 ```
 
-### 8.5 Composants
+### 8.5 Components
 
-**page.tsx** : subscription Convex `getByTrackingToken(token)`, gestion erreurs (introuvable, expire), meta viewport mobile, theme clair
+**page.tsx**: a Convex subscription to `getByTrackingToken(token)`, error handling (not found, expired), a mobile viewport meta tag, light theme
 
-**tracking-header.tsx** : logo + nom store + numero commande + type (livraison/pickup/sur place)
+**tracking-header.tsx**: logo, store name, order number, and type (delivery / pickup / dine-in)
 
-**tracking-timeline.tsx** : 4 etapes verticales adaptees selon orderType
-- pickup/dine_in : "Recue" → "En preparation" → "Prete" → "Recuperee"
-- delivery : "Recue" → "En preparation" → "Prete" → "Livree"
-- Icone par etape : check (done), cercle pulse (current), cercle vide (future)
-- Timestamp si deja passe (ex: "19:42")
-- "Estime ~19:56" si c'est l'etape suivante et estimatedReadyAt existe
+**tracking-timeline.tsx**: four vertical steps, adapted to orderType
+- pickup/dine_in: "Recue" → "En preparation" → "Prete" → "Recuperee"
+- delivery: "Recue" → "En preparation" → "Prete" → "Livree"
+- One icon per step: a check (done), a pulsing circle (current), an empty circle (upcoming)
+- A timestamp once the step has passed (e.g. "19:42")
+- "Estime ~19:56" when it is the next step and estimatedReadyAt exists
 
-**tracking-countdown.tsx** :
+**tracking-countdown.tsx**:
 - `status in ["new","in_progress"]` → "Pret dans ~X min" (Math.max(0, Math.ceil((estimatedReadyAt - now) / 60000)))
-- Si `estimatedReadyAt` n'existe pas → ne rien afficher
-- Si `estimatedReadyAt < now` (en retard) → "Bientot pret"
-- Si `status = "ready"` → "Votre commande est prete !" avec animation
-- Si `status = "done"` → "Commande terminee — merci !"
-- Update toutes les 30s
+- If `estimatedReadyAt` does not exist → render nothing
+- If `estimatedReadyAt < now` (running late) → "Bientot pret"
+- If `status = "ready"` → "Votre commande est prete !", animated
+- If `status = "done"` → "Commande terminee — merci !"
+- Updates every 30s
 
-**tracking-store-info.tsx** : seulement si orderType = "pickup" ou "dine_in"
-- Nom + adresse complete du store
-- Lien Google Maps : `https://www.google.com/maps/search/?api=1&query={encodedAddress}`
+**tracking-store-info.tsx**: only when orderType is "pickup" or "dine_in"
+- The store name plus its full address
+- A Google Maps link: `https://www.google.com/maps/search/?api=1&query={encodedAddress}`
 
-**tracking-footer.tsx** : URL du restaurant + "Powered by BeInDigital"
+**tracking-footer.tsx**: the restaurant URL plus "Powered by BeInDigital"
 
-### 8.6 Considerations UX
+### 8.6 UX considerations
 
-- Convex subscription = temps reel automatique, pas de pull-to-refresh
-- Meta viewport : `width=device-width, initial-scale=1`
-- Theme clair par defaut (telephone, pas TV)
-- Animation subtile : pulse sur l'etape en cours, transition douce au changement de statut
-- Favicon dynamique : pastille verte quand "pret" (visible dans les onglets)
-- Page standalone : pas de login, pas de navigation
-
----
-
-## 9. Impression — Onboarding browser kiosk
-
-### Scenario d'installation (30 min, faisable a distance)
-
-1. Le restaurateur recoit un email avec un lien de telechargement → script .bat (Windows) ou .sh (Mac)
-2. Double-clic sur le script :
-   - Chrome detecte ou installe automatiquement
-   - Raccourci "KDS BeInDigital" cree sur le bureau
-   - Le raccourci pointe vers : `chrome.exe --kiosk-printing https://app.beindigital.com/kds?store=XXX`
-3. Le restaurateur ouvre Parametres Imprimantes :
-   - Selectionne l'imprimante thermique comme imprimante par defaut
-   - Configure le format papier (80mm x continu)
-   - C'est une seule fois
-4. Double-clic sur le raccourci KDS :
-   - Chrome s'ouvre, plein ecran possible avec F11
-   - Clic "Tester l'impression" dans le dashboard
-   - Le ticket sort sans dialog
-   - C'est termine
-
-### Limites browser kiosk
-
-- Mise en page via CSS `@media print` (pas ESC/POS natif)
-- Pas de coupure papier auto
-- Pas d'ouverture tiroir-caisse
-- Largeur papier configuree dans les parametres imprimante (une seule fois)
-- Si le client n'a pas besoin du tiroir-caisse, couvre 95% des cas
+- A Convex subscription gives real time for free, so there is no pull-to-refresh
+- Viewport meta: `width=device-width, initial-scale=1`
+- Light theme by default (this is a phone, not a TV)
+- Subtle animation: a pulse on the current step, and a soft transition when the status changes
+- Dynamic favicon: a green dot when the order is ready (visible in the tab strip)
+- Standalone page: no login, no navigation
 
 ---
 
-## 10. Alertes imprimante — 3 niveaux
+## 9. Printing — Browser-kiosk onboarding
 
-| Niveau | Declencheur | Action |
+### Install walkthrough (30 min, doable remotely)
+
+1. The owner receives an email with a download link → a .bat script (Windows) or a .sh script (Mac)
+2. Double-click the script:
+   - Chrome is detected, or installed automatically
+   - A "KDS BeInDigital" shortcut is created on the desktop
+   - The shortcut points at: `chrome.exe --kiosk-printing https://app.beindigital.com/kds?store=XXX`
+3. The owner opens Printer Settings:
+   - Sets the thermal printer as the default printer
+   - Sets the paper format (80mm x continuous)
+   - This is a one-time step
+4. Double-click the KDS shortcut:
+   - Chrome opens, and F11 gives full screen
+   - Click "Tester l'impression" in the dashboard
+   - The ticket prints with no dialog
+   - Done
+
+### Browser-kiosk limitations
+
+- Layout comes from CSS `@media print`, not native ESC/POS
+- No automatic paper cut
+- No cash-drawer kick
+- Paper width is configured in the printer settings (once)
+- If the customer does not need the cash drawer, this covers 95% of cases
+
+---
+
+## 10. Printer alerts — three levels
+
+| Level | Trigger | Action |
 |--------|-------------|--------|
-| Badge rouge | Ticket pending > 30s OU failed recent < 10min | Pastille rouge dans le header KDS |
-| Toast staff | Ticket pending > 1min | Notification dans le KDS (une seule fois, anti-spam) |
-| Alerte sonore | Ticket pending > 2min | Bip repete toutes les 30s via SoundManager |
+| Red badge | Ticket pending > 30s OR a recent failure < 10min | A red dot in the KDS header |
+| Staff toast | Ticket pending > 1min | A notification in the KDS (once only, anti-spam) |
+| Audio alert | Ticket pending > 2min | A beep repeated every 30s through the SoundManager |
 
-Fallback si offline :
-1. Alerte visuelle immediate (badge + toast)
-2. Si imprimante backup configuree → basculer auto (V2)
-3. Si pas de backup → alerte sonore + commande marquee "Non imprimee"
+Fallback when offline:
+1. An immediate visual alert (badge + toast)
+2. If a backup printer is configured → fail over automatically (V2)
+3. With no backup → an audio alert and the order flagged "Non imprimee"
 
 ---
 
-## 11. Recap complet des fichiers
+## 11. Full file recap
 
-### Fichiers a MODIFIER
+### Files to MODIFY
 
-| Fichier | Modifications |
+| File | Changes |
 |---------|--------------|
 | `packages/convex-schema/src/tables/stores.ts` | orderConfirmation, printConfig, displayConfig, soundConfig |
 | `packages/convex-schema/src/tables/products.ts` | estimatedPrepTime |
 | `packages/convex-schema/src/tables/kitchenTickets.ts` | startedAt, readyAt, completedAt, pickedUpAt, trackingToken, estimatedReadyAt, printStatus, printAttempts, printRequestedAt, printTrigger, lastPrintAt, printFailedAt, lastPrintError + 5 indexes |
-| `packages/convex-functions/src/kitchenTickets.ts` | getPrintQueue, getOverdueCount, getPrintStuckCount, getForDisplay, getByTrackingToken, markPrintSent, markPrintFailed, requestReprint, markPickedUp + invariants updateStatus |
-| `packages/admin/src/pages/kitchen/kitchen-page.tsx` | Monte singletons + PrintStatusBadge |
-| `packages/admin/src/pages/kitchen/ticket-card.tsx` | Gros boutons + badge print + reprint + marquer recupere |
+| `packages/convex-functions/src/kitchenTickets.ts` | getPrintQueue, getOverdueCount, getPrintStuckCount, getForDisplay, getByTrackingToken, markPrintSent, markPrintFailed, requestReprint, markPickedUp + updateStatus invariants |
+| `packages/admin/src/pages/kitchen/kitchen-page.tsx` | Mounts the singletons + PrintStatusBadge |
+| `packages/admin/src/pages/kitchen/ticket-card.tsx` | Large buttons + print badge + reprint + mark as picked up |
 
-### Fichiers a CREER
+### Files to CREATE
 
-| Fichier | Description |
+| File | Description |
 |---------|------------|
-| `packages/restaurant/src/constants/display.ts` | Constantes ecran salle |
-| `packages/restaurant/src/types/display.ts` | Types DisplayTicket, DisplayPayload |
-| `packages/admin/src/pages/kitchen/kitchen-sound-manager.tsx` | Alertes sonores configurables |
-| `packages/admin/src/pages/kitchen/kitchen-print-trigger.tsx` | Queue impression browser kiosk |
-| `packages/admin/src/pages/kitchen/print-ticket-layout.tsx` | Layout HTML/CSS du ticket |
-| `packages/admin/src/pages/kitchen/print-status-badge.tsx` | Badge statut imprimante |
-| `packages/admin/src/pages/settings/display-settings.tsx` | Settings ecran salle (optionnel V1) |
-| `apps/restaurant-theme/app/display/[storeId]/page.tsx` | Page ecran salle |
-| `apps/restaurant-theme/app/display/[storeId]/display-column.tsx` | Colonne avec pagination |
-| `apps/restaurant-theme/app/display/[storeId]/display-ticket-number.tsx` | Numero avec flash |
-| `apps/restaurant-theme/app/display/[storeId]/display-header.tsx` | Header avec horloge + Live |
-| `apps/restaurant-theme/app/display/[storeId]/display-footer.tsx` | Footer branding |
-| `apps/restaurant-theme/app/display/[storeId]/display.css` | Styles mode sombre TV |
-| `apps/restaurant-theme/app/display/[storeId]/use-pagination.ts` | Hook pagination rotation |
-| `apps/restaurant-theme/app/display/[storeId]/use-flash-detection.ts` | Hook detection nouveaux tickets |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/page.tsx` | Page tracking client |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-timeline.tsx` | Timeline verticale |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-countdown.tsx` | Countdown temps estime |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-store-info.tsx` | Adresse store + Google Maps |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-header.tsx` | Header logo + commande |
-| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-footer.tsx` | Footer branding |
+| `packages/restaurant/src/constants/display.ts` | Front-of-house screen constants |
+| `packages/restaurant/src/types/display.ts` | DisplayTicket and DisplayPayload types |
+| `packages/admin/src/pages/kitchen/kitchen-sound-manager.tsx` | Configurable audio alerts |
+| `packages/admin/src/pages/kitchen/kitchen-print-trigger.tsx` | Browser-kiosk print queue |
+| `packages/admin/src/pages/kitchen/print-ticket-layout.tsx` | HTML/CSS layout of the ticket |
+| `packages/admin/src/pages/kitchen/print-status-badge.tsx` | Printer status badge |
+| `packages/admin/src/pages/settings/display-settings.tsx` | Front-of-house screen settings (optional in V1) |
+| `apps/restaurant-theme/app/display/[storeId]/page.tsx` | Front-of-house screen page |
+| `apps/restaurant-theme/app/display/[storeId]/display-column.tsx` | Column with pagination |
+| `apps/restaurant-theme/app/display/[storeId]/display-ticket-number.tsx` | Number with flash |
+| `apps/restaurant-theme/app/display/[storeId]/display-header.tsx` | Header with clock + Live |
+| `apps/restaurant-theme/app/display/[storeId]/display-footer.tsx` | Branding footer |
+| `apps/restaurant-theme/app/display/[storeId]/display.css` | Dark-mode TV styles |
+| `apps/restaurant-theme/app/display/[storeId]/use-pagination.ts` | Pagination rotation hook |
+| `apps/restaurant-theme/app/display/[storeId]/use-flash-detection.ts` | New-ticket detection hook |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/page.tsx` | Customer tracking page |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-timeline.tsx` | Vertical timeline |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-countdown.tsx` | Estimated-time countdown |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-store-info.tsx` | Store address + Google Maps |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-header.tsx` | Header with logo + order |
+| `apps/restaurant-theme/app/(storefront)/track/[token]/tracking-footer.tsx` | Branding footer |
 
-**Total : 6 fichiers modifies + 21 fichiers crees**
+**Total: 6 files modified + 21 files created**
 
 ---
 
-## 12. Ordre d'implementation suggere
+## 12. Suggested implementation order
 
 ### Phase 1 — Schema & Backend
-1. Modifier schemas (stores, products, kitchenTickets)
-2. Ajouter indexes
-3. Implementer mutations (updateStatus invariants, markPickedUp, markPrintSent/Failed, requestReprint)
-4. Implementer queries (getPrintQueue, getOverdueCount, getPrintStuckCount, getForDisplay, getByTrackingToken)
+1. Update the schemas (stores, products, kitchenTickets)
+2. Add the indexes
+3. Implement the mutations (updateStatus invariants, markPickedUp, markPrintSent/Failed, requestReprint)
+4. Implement the queries (getPrintQueue, getOverdueCount, getPrintStuckCount, getForDisplay, getByTrackingToken)
 
-### Phase 2 — KDS ameliore
-5. Modifier ticket-card (gros boutons + badge print + reprint)
-6. Creer print-ticket-layout (iframe, layout 80mm/58mm)
-7. Creer kitchen-print-trigger (queue impression)
-8. Creer print-status-badge
-9. Creer kitchen-sound-manager
-10. Modifier kitchen-page (integration singletons)
+### Phase 2 — Upgraded KDS
+5. Update ticket-card (large buttons + print badge + reprint)
+6. Create print-ticket-layout (iframe, 80mm/58mm layouts)
+7. Create kitchen-print-trigger (print queue)
+8. Create print-status-badge
+9. Create kitchen-sound-manager
+10. Update kitchen-page (wire in the singletons)
 
-### Phase 3 — Ecran salle
-11. Creer constantes + types
-12. Creer page display + composants (header, column, ticket-number, footer)
-13. Creer hooks (pagination, flash-detection)
-14. Creer display.css
-15. Ajouter bouton "Marquer recupere" dans ticket-card
+### Phase 3 — Front-of-house screen
+11. Create the constants and types
+12. Create the display page and its components (header, column, ticket-number, footer)
+13. Create the hooks (pagination, flash-detection)
+14. Create display.css
+15. Add the "Marquer recupere" button to ticket-card
 
-### Phase 4 — Tracking client
-16. Creer page tracking + composants (header, timeline, countdown, store-info, footer)
-17. Gerer ecrans d'erreur (introuvable, expire)
+### Phase 4 — Customer tracking
+16. Create the tracking page and its components (header, timeline, countdown, store-info, footer)
+17. Handle the error screens (not found, expired)
 
-### Phase 5 — Settings admin
-18. Creer display-settings (optionnel V1)
-19. Integrer print settings dans les settings existants du store
+### Phase 5 — Admin settings
+18. Create display-settings (optional in V1)
+19. Fold the print settings into the store's existing settings
 
 ### Phase 6 — Tests
-20. Tests unitaires (services, utils)
-21. Tests E2E (flux complet KDS, ecran salle, tracking)
+20. Unit tests (services, utils)
+21. E2E tests (the full KDS flow, front-of-house screen, tracking)

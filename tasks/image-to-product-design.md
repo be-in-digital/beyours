@@ -2,71 +2,71 @@
 
 ## Overview
 
-Fonctionnalite "Image to Product" permettant a l'admin de creer des produits depuis une image uploadee. Deux modes : photo de plat (1 produit) ou photo de menu papier (N produits). L'IA analyse, extrait et genere les informations manquantes. L'admin revoit et valide avant creation.
+"Image to Product" feature that lets the admin create products from an uploaded image. Two modes: photo of a dish (1 product) or photo of a paper menu (N products). The AI analyzes, extracts and generates the missing information. The admin reviews and confirms before creation.
 
 ## Understanding Summary
 
-- **Quoi** : Creation de produits depuis une image via IA (vision + generation)
-- **Pourquoi** : Accelerer le setup initial d'un restaurant — eviter la saisie manuelle
-- **Pour qui** : Admins restaurant lors de la configuration initiale
-- **Modes** : plat unique (1 image → 1 produit) / menu complet (1 image → N produits)
-- **Workflow** : Upload → Analyse IA → Preview pre-rempli → Validation admin → Creation
-- **Volume** : Faible (setup initial, quelques dizaines/mois/restaurant)
-- **MVP** : Francais uniquement, une image a la fois
+- **What**: Product creation from an image via AI (vision + generation)
+- **Why**: Speed up the initial setup of a restaurant — avoid manual data entry
+- **For whom**: Restaurant admins during initial configuration
+- **Modes**: single dish (1 image → 1 product) / full menu (1 image → N products)
+- **Workflow**: Upload → AI analysis → Pre-filled preview → Admin confirmation → Creation
+- **Volume**: Low (initial setup, a few dozen per month per restaurant)
+- **MVP**: French only, one image at a time
 
 ## Architecture
 
-### Flux de donnees
+### Data flow
 
 ```
 ADMIN UI
-  1. Upload image (ImageUploader existant → S3)
-  2. Choix mode : plat unique vs menu
-  3. Appel Convex action: imageToProduct.analyze
-     (URL S3 + mode + storeId)
+  1. Upload image (existing ImageUploader → S3)
+  2. Mode choice: single dish vs menu
+  3. Call Convex action: imageToProduct.analyze
+     (S3 URL + mode + storeId)
 
-CONVEX ACTION (Node.js runtime) — une seule action orchestratrice
-  4. Verification acces storeId
+CONVEX ACTION (Node.js runtime) — a single orchestrating action
+  4. Check access to storeId
   5. processImage() helper
-     - fetch image depuis S3
-     - Sharp : resize (max 2048px), WebP, nettete
-     - Si resolution < 800px : upscale Replicate (Real-ESRGAN)
-     - Re-upload image traitee → S3 products/{uuid}.webp
+     - fetch image from S3
+     - Sharp: resize (max 2048px), WebP, sharpening
+     - If resolution < 800px: Replicate upscale (Real-ESRGAN)
+     - Re-upload processed image → S3 products/{uuid}.webp
   6. analyzeWithVision() helper
-     - OpenAI GPT-4o Structured Outputs (json_schema strict)
-     - Mode single : extraction nom/description/ingredients/allergenes/categorie
-     - Mode menu : OCR + extraction structuree de N produits avec prix
-  7. enrichMissingSuggestions() helper (conditionnel)
-     - GPT-4o SEULEMENT si des champs sont vides (description, ingredients)
-     - Skip si la vision a tout rempli
+     - OpenAI GPT-4o Structured Outputs (strict json_schema)
+     - Single mode: extract name/description/ingredients/allergens/category
+     - Menu mode: OCR + structured extraction of N products with prices
+  7. enrichMissingSuggestions() helper (conditional)
+     - GPT-4o ONLY if some fields are empty (description, ingredients)
+     - Skipped if vision filled everything in
   8. mapCategories() helper
-     - Query categories existantes du store via storeId
-     - Matching fuzzy (lowercase, sans accents)
-     - Pre-mappe matchedCategoryId si correspondance > 80%
-  9. Post-traitement metier
+     - Query the store's existing categories via storeId
+     - Fuzzy matching (lowercase, accent-insensitive)
+     - Pre-maps matchedCategoryId if the match is > 80%
+  9. Business post-processing
      - Force allergens.source = "inferred"
-     - Normalise prix en centimes entier non-negatif
-     - Garantit conventions champs vides
-  10. Retourne AnalyzeImageResult (ephemere, pas stocke en DB)
+     - Normalize prices to non-negative integer cents
+     - Enforce the empty-field conventions
+  10. Returns AnalyzeImageResult (ephemeral, not stored in the DB)
 
 ADMIN UI
-  11. Preview : liste de suggestion-cards editables
-      - Badges source (Detecte/Genere/Deduit) par champ
-      - Warnings globaux + par card
-      - Confidence discrete par champ
-      - Select categorie existante pre-selectionne
-      - Checkbox inclure/exclure chaque produit
-  12. Validation champs minimums avant creation en lot
-  13. Confirmation → mutation products.create (existante)
-  14. Auto-translate se declenche normalement
+  11. Preview: list of editable suggestion cards
+      - Source badges (Detecte/Genere/Deduit) per field
+      - Global warnings + per-card warnings
+      - Discreet per-field confidence
+      - Existing-category select pre-selected
+      - Checkbox to include/exclude each product
+  12. Minimum-field validation before batch creation
+  13. Confirmation → products.create mutation (existing)
+  14. Auto-translate triggers as usual
 ```
 
-### Provider IA
+### AI provider
 
-- **Premier provider** : OpenAI GPT-4o (coherent avec l'existant GPT-3.5-turbo)
-- **Architecture** : provider-agnostic, migration possible vers AI Gateway
-- **Image upscale** : Replicate Real-ESRGAN (fallback si resolution < 800px)
-- **Image processing** : Sharp (Node.js, dans le runtime Convex)
+- **First provider**: OpenAI GPT-4o (consistent with the existing GPT-3.5-turbo)
+- **Architecture**: provider-agnostic, migration to AI Gateway possible
+- **Image upscale**: Replicate Real-ESRGAN (fallback if resolution < 800px)
+- **Image processing**: Sharp (Node.js, inside the Convex runtime)
 
 ## Types
 
@@ -76,7 +76,7 @@ type AiFieldSource = "detected" | "generated" | "inferred"
 type AiField<T> = {
   value: T
   source: AiFieldSource
-  confidence: number  // 0-1 par champ
+  confidence: number  // 0-1 per field
 }
 
 type ParsingWarning = {
@@ -89,12 +89,12 @@ type ProductSuggestion = {
   tempId: string
   name: AiField<string>
   description: AiField<string>
-  price: AiField<number | null>         // centimes, entier non-negatif
+  price: AiField<number | null>         // cents, non-negative integer
   ingredients: AiField<string[]>
-  allergens: AiField<string[]>          // TOUJOURS source="inferred"
+  allergens: AiField<string[]>          // ALWAYS source="inferred"
   detectedCategoryName: AiField<string | null>
   suggestedCategoryName: AiField<string>
-  matchedCategoryId: string | null      // rempli par mapCategories()
+  matchedCategoryId: string | null      // filled by mapCategories()
   imageUrl: string
   originalImageUrl: string
   imageEnhanced: boolean
@@ -115,13 +115,13 @@ type AnalyzeImageResult = {
 
 ## Zod Schemas (Structured Outputs)
 
-### Vision mode single
+### Vision — single mode
 
 ```typescript
 const singleProductVisionSchema = z.object({
   name: aiStringField,
   description: aiStringField,
-  price: aiNumberField,               // centimes, null si non visible
+  price: aiNumberField,               // cents, null if not visible
   ingredients: aiStringArrayField,
   allergens: aiStringArrayField,
   detectedCategoryName: aiNullableStringField,
@@ -130,7 +130,7 @@ const singleProductVisionSchema = z.object({
 })
 ```
 
-### Vision mode menu
+### Vision — menu mode
 
 ```typescript
 const menuVisionResultSchema = z.object({
@@ -147,7 +147,7 @@ const menuVisionResultSchema = z.object({
 })
 ```
 
-### Enrichissement
+### Enrichment
 
 ```typescript
 const enrichmentResultSchema = z.object({
@@ -159,28 +159,28 @@ const enrichmentResultSchema = z.object({
 })
 ```
 
-## Composants UI
+## UI components
 
 ```
 packages/admin/src/pages/products/
-  products-page.tsx              # existant — ajout bouton "Creer depuis image"
-  product-form.tsx               # existant — reutilise en mode pre-rempli
+  products-page.tsx              # existing — add "Creer depuis image" button
+  product-form.tsx               # existing — reused in pre-filled mode
 
   image-to-product/
-    image-to-product-page.tsx    # Page principale du flow
-    image-upload-step.tsx        # Upload + choix mode
-    analysis-loading.tsx         # Skeleton + progression
-    suggestions-review.tsx       # Liste des suggestions + actions lot
-    suggestion-card.tsx          # Card par produit suggere (editable)
-    ai-field-badge.tsx           # Badge "Detecte" / "Genere" / "Deduit"
-    category-mapper.tsx          # Select categorie existante
-    warning-banner.tsx           # Warnings globaux + par card
-    confidence-indicator.tsx     # Indicateur visuel discret 0-100%
+    image-to-product-page.tsx    # Main page of the flow
+    image-upload-step.tsx        # Upload + mode choice
+    analysis-loading.tsx         # Skeleton + progress
+    suggestions-review.tsx       # Suggestion list + batch actions
+    suggestion-card.tsx          # Card per suggested product (editable)
+    ai-field-badge.tsx           # "Detecte" / "Genere" / "Deduit" badge
+    category-mapper.tsx          # Existing-category select
+    warning-banner.tsx           # Global + per-card warnings
+    confidence-indicator.tsx     # Discreet 0-100% visual indicator
 ```
 
-## Prompts IA
+## AI prompts
 
-### Mode single (plat unique)
+### Single mode (one dish)
 
 ```
 Tu es un expert en restauration et gastronomie.
@@ -205,7 +205,7 @@ Regles :
 Langue : francais.
 ```
 
-### Mode menu (extraction multi-produits)
+### Menu mode (multi-product extraction)
 
 ```
 Tu es un expert en restauration et OCR de menus.
@@ -227,7 +227,7 @@ Regles par champ :
 Langue : francais.
 ```
 
-### Enrichissement (conditionnel)
+### Enrichment (conditional)
 
 ```
 Tu es un expert en gastronomie et redaction de fiches produits.
@@ -242,49 +242,49 @@ Regles :
 Produits : {productsJson}
 ```
 
-## Estimation couts
+## Cost estimate
 
-| Etape | Cout estime |
+| Step | Estimated cost |
 |-------|-------------|
-| Vision GPT-4o (1 image) | ~$0.01-0.03 |
-| Enrichissement GPT-4o (si necessaire) | ~$0.005-0.01 |
-| Upscale Replicate (si necessaire) | ~$0.02-0.05 |
-| **Total typique** | **~$0.01-0.08** |
+| GPT-4o vision (1 image) | ~$0.01-0.03 |
+| GPT-4o enrichment (if needed) | ~$0.005-0.01 |
+| Replicate upscale (if needed) | ~$0.02-0.05 |
+| **Typical total** | **~$0.01-0.08** |
 
 ## Decision Log
 
-| # | Decision | Alternatives | Raison |
+| # | Decision | Alternatives | Rationale |
 |---|----------|-------------|--------|
-| 1 | Pipeline sequentiel avec preview | Modal wizard, page dediee | Reutilise ProductForm, pas de duplication |
-| 2 | Tout via Convex actions | API Route Next.js | Coherence architecture projet |
-| 3 | Une seule action orchestratrice | Actions chainees | Evite surcout inter-actions |
-| 4 | OpenAI GPT-4o premier provider | AI Gateway, Gemini | Coherent avec existant, provider-agnostic |
-| 5 | Structured Outputs (json_schema strict) | json_object, parsing manuel | Garantie conformite schema |
-| 6 | AiField avec source enum | Boolean aiGenerated | Plus granulaire, meilleure transparence |
-| 7 | Confidence par champ | Par produit | Admin cible les champs a verifier |
-| 8 | Allergenes TOUJOURS inferred | Permettre detected | Responsabilite legale |
-| 9 | Sharp + upscale IA fallback (<800px) | IA systematique | Bon ratio qualite/cout |
-| 10 | Replicate Real-ESRGAN upscale | Modele multimodal | API simple, cout previsible |
-| 11 | Enrichissement conditionnel | Toujours/jamais enrichir | Economie tokens |
-| 12 | Matching categories fuzzy Convex | Matching IA, exact | Simple, suffisant |
-| 13 | Resultat ephemere client | Table temporaire | Faible volume, pas de persistance |
-| 14 | MVP francais uniquement | Multi-langue | Traduction auto existante prend le relais |
-| 15 | Prix centimes entier non-negatif | Float euros | Coherent schema Convex existant |
+| 1 | Sequential pipeline with preview | Modal wizard, dedicated page | Reuses ProductForm, no duplication |
+| 2 | Everything through Convex actions | Next.js API Route | Consistent with the project architecture |
+| 3 | A single orchestrating action | Chained actions | Avoids inter-action overhead |
+| 4 | OpenAI GPT-4o as first provider | AI Gateway, Gemini | Consistent with the existing setup, provider-agnostic |
+| 5 | Structured Outputs (strict json_schema) | json_object, manual parsing | Guaranteed schema conformance |
+| 6 | AiField with a source enum | Boolean aiGenerated | More granular, better transparency |
+| 7 | Confidence per field | Per product | Admin targets the fields worth checking |
+| 8 | Allergens ALWAYS inferred | Allow detected | Legal liability |
+| 9 | Sharp + AI upscale fallback (<800px) | AI every time | Good quality/cost ratio |
+| 10 | Replicate Real-ESRGAN upscale | Multimodal model | Simple API, predictable cost |
+| 11 | Conditional enrichment | Always/never enrich | Saves tokens |
+| 12 | Fuzzy category matching in Convex | AI matching, exact match | Simple, good enough |
+| 13 | Ephemeral client-side result | Temporary table | Low volume, no persistence |
+| 14 | French-only MVP | Multi-language | The existing auto-translation takes over |
+| 15 | Price as non-negative integer cents | Float euros | Consistent with the existing Convex schema |
 
 ## Assumptions
 
-- Images de qualite correcte (photo smartphone)
-- Categories du store existent deja
-- Traduction auto se declenche apres creation (pas pendant analyse)
-- Cout IA acceptable (~$0.01-0.08/image)
-- Prix en euros (devise du store)
-- MVP : francais, une image a la fois
-- Sharp est compatible avec le runtime Node.js de Convex
-- Replicate Real-ESRGAN est accessible via API HTTP depuis Convex
+- Images of decent quality (smartphone photo)
+- The store's categories already exist
+- Auto-translation runs after creation (not during analysis)
+- Acceptable AI cost (~$0.01-0.08/image)
+- Prices in euros (store currency)
+- MVP: French, one image at a time
+- Sharp is compatible with Convex's Node.js runtime
+- Replicate Real-ESRGAN is reachable over HTTP API from Convex
 
-## Risques
+## Risks
 
-- **Sharp dans Convex** : verifier que le runtime Node.js de Convex supporte les binaires natifs de Sharp. Fallback : processing cote client ou Lambda separee.
-- **Timeout Convex action** : le pipeline complet (Sharp + Vision + Enrichissement + Upscale) peut prendre 15-30s. Verifier les limites d'execution des actions Convex.
-- **Qualite OCR menus** : les menus papier photographies en conditions reelles (eclairage, angle) peuvent etre difficiles a lire. Les warnings couvrent ce risque.
-- **Cout Replicate** : surveiller l'usage upscale pour eviter les surprises de facturation.
+- **Sharp inside Convex**: verify that Convex's Node.js runtime supports Sharp's native binaries. Fallback: client-side processing or a separate Lambda.
+- **Convex action timeout**: the full pipeline (Sharp + Vision + Enrichment + Upscale) can take 15-30s. Check the execution limits of Convex actions.
+- **Menu OCR quality**: paper menus photographed in real conditions (lighting, angle) can be hard to read. The warnings cover this risk.
+- **Replicate cost**: monitor upscale usage to avoid billing surprises.

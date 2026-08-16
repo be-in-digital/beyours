@@ -55,7 +55,7 @@ export default function DecouvrirPage() {
     <div className="paper-grain relative">
       <DecouvrirHero />
 
-      {/* ── Ce que les plateformes coûtent ── */}
+      {/* ── What the platforms cost ── */}
       <section className="relative px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-7xl">
           <SectionIntro
@@ -71,7 +71,7 @@ export default function DecouvrirPage() {
         </div>
       </section>
 
-      {/* ── Le jeu ── */}
+      {/* ── The game ── */}
       <section
         id="jeu"
         className="relative scroll-mt-24 bg-surface-1/50 px-4 py-20 sm:px-6 sm:py-28"
@@ -90,7 +90,7 @@ export default function DecouvrirPage() {
         </div>
       </section>
 
-      {/* ── Toutes les fonctionnalités ── */}
+      {/* ── Every feature ── */}
       <section className="relative px-4 py-20 sm:px-6 sm:py-28">
         <div className="mx-auto max-w-7xl">
           <SectionIntro

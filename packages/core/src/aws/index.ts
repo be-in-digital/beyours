@@ -1,5 +1,5 @@
 /**
- * Barrel file pour les services AWS
+ * Barrel file for the AWS services
  * @module aws
  */
 

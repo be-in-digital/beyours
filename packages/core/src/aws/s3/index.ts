@@ -1,5 +1,5 @@
 /**
- * Barrel file pour le service S3
+ * Barrel file for the S3 service
  * @module aws/s3
  */
 

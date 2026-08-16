@@ -4,16 +4,16 @@ import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 
 /* ═══════════════════════════════════════════════
-   Roue de la fortune — jouable, autonome (SVG + framer-motion)
-   Rendu 100 % client : aucune dépendance backend.
-   La roue s'arrête sur le segment `winningIndex` fourni par le parent
-   (le vrai produit résout le gain côté serveur, taux piloté par l'admin).
+   Wheel of fortune — playable, self-contained (SVG + framer-motion)
+   Rendered 100 % client-side: no backend dependency.
+   The wheel stops on the `winningIndex` segment handed down by the parent
+   (in the real product the win is resolved server-side, at an admin-set rate).
    ═══════════════════════════════════════════════ */
 
 export type WheelSegment = {
   label: string;
   color: string;
-  text: string; // couleur du texte
+  text: string; // text colour
   win?: boolean;
 };
 
@@ -21,7 +21,7 @@ const CX = 160;
 const CY = 160;
 const R = 158;
 
-/** Point sur le cercle à `deg` degrés (sens horaire depuis le haut). */
+/** Point on the circle at `deg` degrees (clockwise from the top). */
 function pointOnCircle(deg: number, radius: number) {
   const rad = ((deg - 90) * Math.PI) / 180;
   return { x: CX + radius * Math.cos(rad), y: CY + radius * Math.sin(rad) };
@@ -60,7 +60,7 @@ export function WheelOfFortune({
 
     const centerDeg = winningIndex * seg + seg / 2;
     const current = rotationRef.current;
-    // Ramène le centre du segment gagnant sous l'aiguille (en haut, 0°).
+    // Brings the centre of the winning segment under the needle (top, 0°).
     const delta = (360 - ((centerDeg + current) % 360)) % 360;
     const next = current + 360 * 5 + delta;
 

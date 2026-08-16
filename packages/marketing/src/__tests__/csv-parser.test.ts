@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest"
 import { parseSubscriberCsv } from "../csv-parser"
 
 describe("parseSubscriberCsv", () => {
-  describe("parsing basique", () => {
-    it("devrait parser un CSV simple avec email uniquement", () => {
+  describe("basic parsing", () => {
+    it("parses a simple CSV with only an email column", () => {
       const csv = `email
 alice@example.com
 bob@example.com`
@@ -15,7 +15,7 @@ bob@example.com`
       expect(result.subscribers[0]?.email).toBe("alice@example.com")
     })
 
-    it("devrait parser un CSV complet avec toutes les colonnes", () => {
+    it("parses a full CSV with every column", () => {
       const csv = `email,first_name,last_name,tags
 alice@example.com,Alice,Martin,vip;premium
 bob@example.com,Bob,Dupont,nouveau`
@@ -29,7 +29,7 @@ bob@example.com,Bob,Dupont,nouveau`
       })
     })
 
-    it("devrait convertir les emails en minuscules", () => {
+    it("lowercases the emails", () => {
       const csv = `email
 ALICE@EXAMPLE.COM`
       const result = parseSubscriberCsv(csv)
@@ -37,8 +37,8 @@ ALICE@EXAMPLE.COM`
     })
   })
 
-  describe("détection de colonnes", () => {
-    it("devrait détecter courriel et étiquettes (alias FR)", () => {
+  describe("column detection", () => {
+    it("detects courriel and étiquettes (French aliases)", () => {
       const csv = `courriel,étiquettes
 test@example.com,tag1;tag2`
       const result = parseSubscriberCsv(csv)
@@ -47,21 +47,21 @@ test@example.com,tag1;tag2`
       expect(result.subscribers[0]?.tags).toEqual(["tag1", "tag2"])
     })
 
-    it("devrait détecter prénom via alias français", () => {
+    it("detects prénom through the French alias", () => {
       const csv = `courriel,prénom
 test@example.com,Jean`
       const result = parseSubscriberCsv(csv)
       expect(result.subscribers[0]?.firstName).toBe("Jean")
     })
 
-    it("devrait détecter les alias e-mail", () => {
+    it("detects the e-mail alias", () => {
       const csv = `e-mail
 test@example.com`
       const result = parseSubscriberCsv(csv)
       expect(result.validRows).toBe(1)
     })
 
-    it("devrait échouer si la colonne email est introuvable", () => {
+    it("fails when the email column is missing", () => {
       const csv = `name,phone
 Alice,0612345678`
       const result = parseSubscriberCsv(csv)
@@ -71,8 +71,8 @@ Alice,0612345678`
     })
   })
 
-  describe("gestion des erreurs", () => {
-    it("devrait ignorer les lignes vides", () => {
+  describe("error handling", () => {
+    it("skips empty lines", () => {
       const csv = `email
 
 alice@example.com
@@ -83,7 +83,7 @@ bob@example.com
       expect(result.validRows).toBe(2)
     })
 
-    it("devrait signaler les emails invalides", () => {
+    it("reports invalid emails", () => {
       const csv = `email
 valid@example.com
 invalid-email
@@ -95,14 +95,14 @@ ok@test.com`
       expect(result.errors.length).toBeGreaterThanOrEqual(1)
     })
 
-    it("devrait retourner un résultat vide pour un CSV vide", () => {
+    it("returns an empty result for an empty CSV", () => {
       const result = parseSubscriberCsv("")
       expect(result.totalRows).toBe(0)
       expect(result.validRows).toBe(0)
       expect(result.subscribers).toHaveLength(0)
     })
 
-    it("devrait ignorer les lignes sans email", () => {
+    it("skips rows without an email", () => {
       const csv = `email,first_name
 alice@example.com,Alice
 ,Bob`
@@ -113,21 +113,21 @@ alice@example.com,Alice
   })
 
   describe("tags", () => {
-    it("devrait parser les tags séparés par des points-virgules", () => {
+    it("parses tags separated by semicolons", () => {
       const csv = `email,tags
 alice@example.com,vip;premium;gold`
       const result = parseSubscriberCsv(csv)
       expect(result.subscribers[0]?.tags).toEqual(["vip", "premium", "gold"])
     })
 
-    it("devrait parser les tags séparés par des pipes", () => {
+    it("parses tags separated by pipes", () => {
       const csv = `email,tags
 alice@example.com,vip|premium`
       const result = parseSubscriberCsv(csv)
       expect(result.subscribers[0]?.tags).toEqual(["vip", "premium"])
     })
 
-    it("devrait retourner un tableau vide si pas de tags", () => {
+    it("returns an empty array when there are no tags", () => {
       const csv = `email,tags
 alice@example.com,`
       const result = parseSubscriberCsv(csv)
@@ -135,8 +135,8 @@ alice@example.com,`
     })
   })
 
-  describe("CSV avec guillemets", () => {
-    it("devrait gérer les champs entre guillemets", () => {
+  describe("quoted CSV", () => {
+    it("handles quoted fields", () => {
       const csv = `email,first_name,last_name
 "alice@example.com","Alice","De La Rue"`
       const result = parseSubscriberCsv(csv)
@@ -144,7 +144,7 @@ alice@example.com,`
       expect(result.subscribers[0]?.lastName).toBe("De La Rue")
     })
 
-    it("devrait gérer les guillemets échappés (quotes stripped post-parse)", () => {
+    it("handles escaped quotes (quotes stripped post-parse)", () => {
       // parseRow handles "" → " correctly, but the field extraction
       // strips remaining quotes with .replace(/['"]/g, "")
       const csv = `email,first_name
@@ -154,8 +154,8 @@ alice@example.com,"Al""ice"`
     })
   })
 
-  describe("retours à la ligne", () => {
-    it("devrait gérer les retours CRLF", () => {
+  describe("line endings", () => {
+    it("handles CRLF line endings", () => {
       const csv = "email\r\nalice@example.com\r\nbob@example.com"
       const result = parseSubscriberCsv(csv)
       expect(result.validRows).toBe(2)

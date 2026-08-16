@@ -37,12 +37,12 @@ const eur = (n: number) =>
   n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 
 /**
- * Aperçu réel du produit livré : un mini site de commande restaurant,
- * fonctionnel (ajout au panier), à l'image d'un établissement.
+ * A real preview of what gets delivered: a miniature restaurant ordering site,
+ * working (you can add to the cart), styled like an actual venue.
  */
 export function StorefrontPreview({ className = "" }: { className?: string }) {
   const reduce = useReducedMotion();
-  const [cart, setCart] = useState<number[]>([1]); // indices ajoutés (démarre avec 1 article)
+  const [cart, setCart] = useState<number[]>([1]); // indices added (starts with 1 item)
 
   const add = (i: number) => setCart((c) => [...c, i]);
   const count = cart.length;
@@ -50,7 +50,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
 
   return (
     <div className={`relative ${className}`}>
-      {/* Cadre navigateur — le site livré */}
+      {/* Browser frame — the delivered site */}
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -70,7 +70,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
           </div>
         </div>
 
-        {/* En-tête établissement */}
+        {/* Venue header */}
         <div className="relative h-32 w-full overflow-hidden sm:h-36">
           <Image
             src="/photos/plat-gastronomie.webp"

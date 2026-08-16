@@ -39,17 +39,17 @@ import type {
 /**
  * React hook for authentication
  *
- * @returns Contexte d'authentification complet
+ * @returns The full authentication context
  *
  * @example
  * ```tsx
  * function MyComponent() {
  *   const { user, isLoading, signIn, signOut } = useAuth()
  *
- *   if (isLoading) return <div>Chargement...</div>
+ *   if (isLoading) return <div>Loading...</div>
  *   if (!user) return <div>Signed out</div>
  *
- *   return <div>Bonjour {user.name}</div>
+ *   return <div>Hello {user.name}</div>
  * }
  * ```
  *
@@ -86,7 +86,7 @@ export function useUser(): AuthUser | null {
 /**
  * Hook returning the current session
  *
- * @returns Session active ou null
+ * @returns The active session, or null
  *
  * @example
  * ```tsx
@@ -178,7 +178,7 @@ export function useAnyPermission(permissions: Permission[]): {
 /**
  * Hook checking for every one of several permissions
  *
- * @param permissions - Liste de permissions (toutes requises)
+ * @param permissions - The permissions, all of which are required
  * @returns An object carrying `allowed` and `loading`
  *
  * @example
@@ -253,12 +253,12 @@ export function useAnyRole(roles: Role[]): boolean {
 /**
  * Builds the auth client
  *
- * @param options - Options de configuration
+ * @param options - Configuration options
  * @returns The configured auth client
  *
  * @example
  * ```ts
- * // Dans app/providers.tsx
+ * // In app/providers.tsx
  * const authClient = createAuthClient({
  *   baseUrl: process.env.NEXT_PUBLIC_APP_URL!,
  * })
@@ -336,7 +336,7 @@ export type WithAuthOptions = {
  * ) {
  *   return function ProtectedComponent(props: P) {
  *     const { user, isLoading } = useAuth()
- *     // ... logique de protection
+ *     // ... guard logic
  *     return <Component {...props} />
  *   }
  * }

@@ -22,12 +22,12 @@ import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from '../types'
 import type { S3Folder } from '../types'
 
 /**
- * Schéma pour les dossiers S3
+ * Schema for the S3 folders
  */
 export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms', 'email', 'users'])
 
 /**
- * Schéma pour les options d'upload
+ * Schema for the upload options
  */
 export const uploadOptionsSchema = z.object({
   folder: s3FolderSchema,
@@ -40,7 +40,7 @@ export const uploadOptionsSchema = z.object({
 })
 
 /**
- * Schéma pour les options d'URL presignée d'upload
+ * Schema for the presigned upload URL options
  */
 export const presignedUploadOptionsSchema = z.object({
   folder: s3FolderSchema,
@@ -52,7 +52,7 @@ export const presignedUploadOptionsSchema = z.object({
 })
 
 /**
- * Schéma pour une clé S3
+ * Schema for an S3 key
  */
 export const s3KeySchema = z.string()
   .min(1, 'La clé S3 est requise')
@@ -62,7 +62,7 @@ export const s3KeySchema = z.string()
   )
 
 /**
- * Valide le type MIME pour un dossier donné
+ * Validates the MIME type against a given folder
  */
 export function validateMimeType(folder: S3Folder, contentType: string): void {
   const allowedTypes = ALLOWED_MIME_TYPES[folder]
@@ -75,7 +75,7 @@ export function validateMimeType(folder: S3Folder, contentType: string): void {
 }
 
 /**
- * Valide la taille d'un fichier
+ * Validates a file size
  */
 export function validateFileSize(
   folder: S3Folder,
@@ -94,7 +94,7 @@ export function validateFileSize(
 }
 
 /**
- * Extrait l'extension d'un type MIME
+ * Maps a MIME type to its file extension
  */
 export function getExtensionFromMimeType(contentType: string): string {
   const mimeToExt: Record<string, string> = {

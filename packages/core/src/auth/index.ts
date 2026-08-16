@@ -1,5 +1,5 @@
 /**
- * @be-in-digital/core - Authentification et RBAC
+ * @be-in-digital/core - Authentication and RBAC
  *
  * A complete authentication solution built on Better Auth, plus a
  * role-based access control system, for the BeYours engine.
@@ -40,7 +40,7 @@ export {
 } from './rbac';
 
 // ============================================================================
-// Types et interfaces
+// Types and interfaces
 // ============================================================================
 export type {
   AuthUser,
@@ -77,7 +77,7 @@ export {
 } from './config';
 
 // ============================================================================
-// Client React (hooks et composants)
+// React client (hooks and components)
 // ============================================================================
 export {
   useAuth,

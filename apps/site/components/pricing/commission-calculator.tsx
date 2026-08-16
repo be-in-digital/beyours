@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Commission Calculator — CA plateformes → coût réel
+   Commission Calculator — platform revenue → real cost
    ═══════════════════════════════════════════════ */
 
 "use client";
@@ -11,9 +11,9 @@ import { FadeIn } from "@/components/ui/motion";
 import { FOUNDERS_OFFER } from "@/lib/payment-providers";
 import { formatPrice } from "./pricing-data";
 
-/* Taux marketplace + livraison des plateformes (jusqu'à 30 %). */
+/* Combined marketplace + delivery rate charged by the platforms (up to 30 %). */
 const COMMISSION_RATE = 0.3;
-/* Essentielle : création + 1ère année de maintenance, puis maintenance seule. */
+/* Essentielle: build + 1st year of maintenance, then maintenance alone. */
 const CATALOG_YEAR_ONE_COST = 4500;
 const FOUNDERS_YEAR_ONE_COST = FOUNDERS_OFFER.creationCents / 100 + 1000;
 const NEXT_YEARS_COST = 1000;
@@ -87,7 +87,7 @@ export function CommissionCalculator() {
                 </div>
               </div>
 
-              {/* Résultats */}
+              {/* Results */}
               <div className="space-y-4">
                 <div className="flex items-baseline justify-between gap-4 pb-4 border-b border-[color:var(--border)]">
                   <span className="text-sm text-muted-foreground">

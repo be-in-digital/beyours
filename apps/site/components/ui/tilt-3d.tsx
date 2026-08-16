@@ -10,9 +10,9 @@ import {
 } from "framer-motion";
 
 /**
- * Tilt3D — donne de la vraie profondeur 3D à un élément : il s'incline
- * en perspective vers le curseur (rotateX/rotateY en transform GPU).
- * Zéro effet si prefers-reduced-motion ou sur mobile (pas de survol fin).
+ * Tilt3D — gives an element genuine 3D depth: it tilts in perspective towards
+ * the cursor (rotateX/rotateY as a GPU transform).
+ * No effect at all under prefers-reduced-motion or on mobile (no fine hover).
  */
 export function Tilt3D({
   children,
@@ -25,13 +25,13 @@ export function Tilt3D({
   className?: string;
   maxTilt?: number;
   scale?: number;
-  /** léger reflet lumineux qui suit le curseur (pour surfaces sombres) */
+  /** faint light reflection following the cursor (for dark surfaces) */
   glare?: boolean;
 }) {
   const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
 
-  // position normalisée du curseur dans l'élément, -0.5 → 0.5
+  // cursor position inside the element, normalised to -0.5 → 0.5
   const px = useMotionValue(0);
   const py = useMotionValue(0);
 

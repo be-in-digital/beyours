@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Plans — Cards création + toggle maintenance
+   Pricing Plans — build cards + maintenance toggle
    ═══════════════════════════════════════════════ */
 
 "use client";
@@ -18,7 +18,7 @@ export function PricingPlans({
   ctaMode = "call",
 }: {
   showHeader?: boolean;
-  /** "call" = ouvre Calendly (home) · "checkout" = mène au paiement (page Tarifs) */
+  /** "call" = opens Calendly (home) · "checkout" = goes to payment (pricing page) */
   ctaMode?: "call" | "checkout";
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
@@ -26,7 +26,7 @@ export function PricingPlans({
   const devMode = useDevMode((s) => s.enabled);
   const goCheckout = ctaMode === "checkout" || devMode;
 
-  /* Offre fondateurs : places restantes en temps réel */
+  /* Founders offer: slots remaining, in real time */
   const foundersSold = useQuery(
     api.orders.countFoundersSold,
     FOUNDERS_OFFER.enabled ? {} : "skip",
@@ -147,7 +147,7 @@ export function PricingPlans({
                     </p>
                   </div>
 
-                  {/* Prix création */}
+                  {/* Build price */}
                   <div className="mb-4 pb-4 border-b border-[color:var(--border)]">
                     <div className="text-xs text-muted-foreground/70 uppercase tracking-wider mb-1">
                       Création
@@ -244,7 +244,7 @@ export function PricingPlans({
                     ))}
                   </ul>
 
-                  {/* Option design personnalisé */}
+                  {/* Custom design add-on */}
                   <div className="mb-6 px-3 py-2.5 rounded-lg border border-[color:var(--border)] bg-secondary">
                     <span className="text-xs text-muted-foreground">
                       + Option design personnalisé à partir de{" "}
@@ -296,7 +296,7 @@ export function PricingPlans({
           })}
         </StaggerContainer>
 
-        {/* Ancre de comparaison — commissions plateformes */}
+        {/* Comparison anchor — platform commissions */}
         <FadeIn delay={0.2}>
           <div className="mt-10 rounded-2xl border border-primary/15 bg-primary/[0.03] px-6 py-5 sm:px-8 text-center">
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl mx-auto">
@@ -322,7 +322,7 @@ export function PricingPlans({
           </div>
         </FadeIn>
 
-        {/* Notes de bas */}
+        {/* Footnotes */}
         <FadeIn delay={0.4}>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-xs text-muted-foreground/60">
             <span className="flex items-center gap-1.5">

@@ -156,7 +156,7 @@ describe('Product Validators', () => {
       externalIds: { uberEatsId: 'ue-item-456' },
       platformOverrides: {
         uberEats: {
-          price: 1400, // prix plus eleve sur Uber Eats
+          price: 1400, // higher price on Uber Eats
           isActive: true,
           lastSyncedAt: Date.now(),
         },

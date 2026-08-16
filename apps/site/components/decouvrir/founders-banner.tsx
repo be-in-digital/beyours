@@ -6,9 +6,9 @@ import { Flame } from "lucide-react";
 import { FOUNDERS_OFFER } from "@/lib/payment-providers";
 
 /* ═══════════════════════════════════════════════
-   Bannière « Offre fondateurs » — mise en évidence forte.
-   Places restantes en direct (compteur Convex countFoundersSold).
-   Se masque si l'offre est épuisée ou désactivée.
+   « Offre fondateurs » banner — deliberately loud.
+   Remaining slots live (the Convex countFoundersSold counter).
+   Hides itself when the offer runs out or is switched off.
    ═══════════════════════════════════════════════ */
 
 export function FoundersBanner() {

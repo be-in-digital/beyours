@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { initialsOf } from "@/lib/format";
 
-/** Avatar textuel (initiales) — pas d'image, teinte pilotée par `color`. */
+/** Text avatar (initials) — no image, tint driven by `color`. */
 function Avatar({
   name,
   color,

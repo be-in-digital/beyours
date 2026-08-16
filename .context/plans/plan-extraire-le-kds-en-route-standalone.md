@@ -1,70 +1,70 @@
-# Plan : Extraire le KDS en route standalone
+# Plan: move the KDS onto a standalone route
 
-## Contexte
-Le KDS (Kitchen Display System) est actuellement dans le layout admin à `app/(admin)/orders/kitchen/`. Un KDS est affiché sur un écran dédié en cuisine — il doit être une page standalone plein écran, comme `/display/[storeId]`. Le dashboard admin gardera juste un lien qui ouvre le KDS dans un nouvel onglet.
+## Context
+The KDS (Kitchen Display System) currently lives inside the admin layout at `app/(admin)/orders/kitchen/`. A KDS runs on a dedicated screen in the kitchen, so it should be a standalone full-screen page like `/display/[storeId]`. The admin dashboard will keep nothing but a link that opens the KDS in a new tab.
 
-Bonus : résout l'erreur runtime (`"kitchen"` capturé par `[orderId]`).
+Bonus: this also fixes the runtime error where `"kitchen"` was being captured by `[orderId]`.
 
-## Changements
+## Changes
 
-### 1. Créer `app/kitchen/[storeId]/page.tsx`
-Page KDS standalone, même pattern que `/display/[storeId]` :
-- `useParams` pour extraire `storeId`
-- Importe `KitchenContent` avec prop `storeId`
-- Header minimal (titre + lien retour admin)
-- Inclut `SeedKitchenButton` pour dev/test
+### 1. Create `app/kitchen/[storeId]/page.tsx`
+A standalone KDS page, following the same pattern as `/display/[storeId]`:
+- `useParams` to pull out `storeId`
+- Imports `KitchenContent` and passes it the `storeId` prop
+- A minimal header (title plus a link back to the admin)
+- Includes `SeedKitchenButton` for dev and test
 
-### 2. Créer `app/kitchen/[storeId]/layout.tsx`
-Layout minimal plein écran :
-- Pas de sidebar/header admin
-- `Toaster` (sonner) pour les notifications
+### 2. Create `app/kitchen/[storeId]/layout.tsx`
+A minimal full-screen layout:
+- No admin sidebar or header
+- `Toaster` (sonner) for notifications
 - Full viewport height
 
-### 3. Déplacer `SeedKitchenButton.tsx`
-De `app/(admin)/orders/kitchen/SeedKitchenButton.tsx` vers `app/kitchen/[storeId]/SeedKitchenButton.tsx`
+### 3. Move `SeedKitchenButton.tsx`
+From `app/(admin)/orders/kitchen/SeedKitchenButton.tsx` to `app/kitchen/[storeId]/SeedKitchenButton.tsx`
 
-### 4. Modifier `KitchenContent` — ajouter prop `storeId`
-**Fichier** : `components/admin/kitchen/KitchenContent.tsx`
-- Ajouter prop `storeId?: Id<"stores">`
-- Si fourni → utiliser directement ; sinon → fallback `useAdminStoreId()`
-- Permet d'utiliser le composant en contexte admin ET standalone
+### 4. Change `KitchenContent` — add a `storeId` prop
+**File**: `components/admin/kitchen/KitchenContent.tsx`
+- Add a `storeId?: Id<"stores">` prop
+- Use it directly when it's supplied, otherwise fall back to `useAdminStoreId()`
+- This lets the component work in both the admin context and the standalone one
 
-### 5. Mettre à jour nav-config — lien externe
-**Fichier** : `packages/admin/src/config/nav-config.ts`
-- Ajouter `external?: boolean` au type `NavItem`
-- Changer l'item Cuisine (KDS) : `href: "/kitchen"`, `external: true`
+### 5. Update nav-config — external link
+**File**: `packages/admin/src/config/nav-config.ts`
+- Add `external?: boolean` to the `NavItem` type
+- Change the Cuisine (KDS) item to `href: "/kitchen"`, `external: true`
 
-### 6. Mettre à jour le sidebar — supporter liens externes dynamiques
-**Fichier** : `packages/admin/src/components/app-sidebar.tsx`
-- Importer `useStoreStore` de `@be-in-digital/restaurant`
-- Pour les items `external: true` :
-  - Construire le href dynamique : `${entry.href}/${currentStore._id}`
-  - Utiliser `<a target="_blank">` au lieu de `<Link>`
+### 6. Update the sidebar — support dynamic external links
+**File**: `packages/admin/src/components/app-sidebar.tsx`
+- Import `useStoreStore` from `@be-in-digital/restaurant`
+- For items marked `external: true`:
+  - Build the href dynamically: `${entry.href}/${currentStore._id}`
+  - Use `<a target="_blank">` instead of `<Link>`
 
-### 7. Supprimer l'ancienne route
-- Supprimer `app/(admin)/orders/kitchen/page.tsx`
-- Supprimer `app/(admin)/orders/kitchen/SeedKitchenButton.tsx`
+### 7. Delete the old route
+- Delete `app/(admin)/orders/kitchen/page.tsx`
+- Delete `app/(admin)/orders/kitchen/SeedKitchenButton.tsx`
 
-### 8. Conserver le garde `isValidOrderId`
-**Fichier** : `packages/admin/src/pages/orders/order-detail-page.tsx`
-- La validation déjà en place dans le working copy reste (protection défensive)
+### 8. Keep the `isValidOrderId` guard
+**File**: `packages/admin/src/pages/orders/order-detail-page.tsx`
+- The validation already present in the working copy stays as defensive protection
 
-## Fichiers impactés
+## Affected files
 
-| Action | Fichier |
+| Action | File |
 |--------|---------|
-| Créer | `apps/restaurant-theme/app/kitchen/[storeId]/page.tsx` |
-| Créer | `apps/restaurant-theme/app/kitchen/[storeId]/layout.tsx` |
-| Déplacer | `SeedKitchenButton.tsx` → `app/kitchen/[storeId]/` |
-| Modifier | `apps/restaurant-theme/components/admin/kitchen/KitchenContent.tsx` |
-| Modifier | `packages/admin/src/config/nav-config.ts` |
-| Modifier | `packages/admin/src/components/app-sidebar.tsx` |
-| Supprimer | `apps/restaurant-theme/app/(admin)/orders/kitchen/page.tsx` |
-| Supprimer | `apps/restaurant-theme/app/(admin)/orders/kitchen/SeedKitchenButton.tsx` |
-| Garder | `packages/admin/src/pages/orders/order-detail-page.tsx` (garde existant) |
+| Create | `apps/restaurant-theme/app/kitchen/[storeId]/page.tsx` |
+| Create | `apps/restaurant-theme/app/kitchen/[storeId]/layout.tsx` |
+| Move | `SeedKitchenButton.tsx` → `app/kitchen/[storeId]/` |
+| Change | `apps/restaurant-theme/components/admin/kitchen/KitchenContent.tsx` |
+| Change | `packages/admin/src/config/nav-config.ts` |
+| Change | `packages/admin/src/components/app-sidebar.tsx` |
+| Delete | `apps/restaurant-theme/app/(admin)/orders/kitchen/page.tsx` |
+| Delete | `apps/restaurant-theme/app/(admin)/orders/kitchen/SeedKitchenButton.tsx` |
+| Keep | `packages/admin/src/pages/orders/order-detail-page.tsx` (the existing guard) |
 
-## Vérification
-1. `/kitchen/{storeId}` affiche le KDS plein écran sans sidebar admin
-2. Lien "Cuisine (KDS)" dans la nav admin → ouvre `/kitchen/{storeId}` dans un nouvel onglet
-3. `/orders/{invalidId}` affiche "Commande introuvable" sans crash
-4. `pnpm build` passe sans erreur
+## Verification
+1. `/kitchen/{storeId}` shows the KDS full-screen with no admin sidebar
+2. The "Cuisine (KDS)" link in the admin nav opens `/kitchen/{storeId}` in a new tab
+3. `/orders/{invalidId}` shows "Commande introuvable" without crashing
+4. `pnpm build` passes with no errors

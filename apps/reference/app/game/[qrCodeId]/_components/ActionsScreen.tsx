@@ -16,12 +16,12 @@ import {
 import { gameSounds, haptics, type GameAction, type GameActionType } from "@/lib/game"
 
 /**
- * Écran des actions avant le jeu.
+ * Pre-game actions screen.
  *
- * - mode "sequential" (défaut produit) : UNE action par visite. Le client fait
- *   l'action (on ouvre le lien, compte à rebours de vérification au retour),
- *   puis il joue. Un stepper montre la progression d'une visite à l'autre.
- * - mode "all" (héritage) : toutes les actions requises d'un coup.
+ * - "sequential" mode (product default): ONE action per visit. The customer
+ *   performs the action (we open the link, then a verification countdown runs
+ *   on return), then plays. A stepper tracks progress from visit to visit.
+ * - "all" mode (legacy): every required action at once.
  */
 
 interface ActionsScreenProps {
@@ -100,7 +100,7 @@ export function ActionsScreen({
   )
 
   // ────────────────────────────────────────────────────────────
-  // Mode séquentiel : une seule action, avec stepper de progression.
+  // Sequential mode: a single action, with a progress stepper.
   // ────────────────────────────────────────────────────────────
   if (mode === "sequential" && current) {
     const currentStatus = statuses[current.id] ?? "todo"
@@ -124,7 +124,7 @@ export function ActionsScreen({
           </p>
         </div>
 
-        {/* Stepper de progression (visite après visite) */}
+        {/* Progress stepper (visit after visit) */}
         <div className="mb-7 flex items-center justify-center gap-2">
           {actions.map((a, i) => {
             const done = completedActionIds.includes(a.id) || statuses[a.id] === "done"
@@ -156,7 +156,7 @@ export function ActionsScreen({
           })}
         </div>
 
-        {/* Carte de l'action unique */}
+        {/* Single action card */}
         <div className="flex flex-1 flex-col items-center justify-center">
           <motion.button
             type="button"
@@ -266,12 +266,12 @@ export function ActionsScreen({
   }
 
   // ────────────────────────────────────────────────────────────
-  // Mode "all" (héritage) : toutes les actions requises d'un coup.
+  // "all" mode (legacy): every required action at once.
   // ────────────────────────────────────────────────────────────
   return <AllActionsView actions={actions} statuses={statuses} countdowns={countdowns} startQuest={startQuest} onAllDone={onAllDone} />
 }
 
-/* ── Vue héritage (toutes les actions) ── */
+/* ── Legacy view (all actions) ── */
 
 function AllActionsView({
   actions,

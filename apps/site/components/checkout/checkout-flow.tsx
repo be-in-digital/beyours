@@ -22,10 +22,10 @@ export function CheckoutFlow() {
   const store = useCheckoutStore();
   const createCheckout = useAction(api.stripe.createCheckoutSession);
 
-  // Consentement exprès à l'exécution immédiate (art. L. 221-28 du Code de la
-  // consommation) : non pré-coché, il matérialise la renonciation au droit de
-  // rétractation et bloque le paiement tant qu'il n'est pas donné. TEXTE PROPOSÉ,
-  // à faire valider par un conseil (CPI / avocat) avant mise en ligne.
+  // Express consent to immediate performance (art. L. 221-28 of the French
+  // consumer code): never pre-checked, it evidences the waiver of the
+  // withdrawal right and blocks payment until it is given. PROPOSED TEXT, to be
+  // validated by counsel (IP lawyer / attorney) before going live.
   const [consentRetractation, setConsentRetractation] = useState(false);
 
   const foundersSold = useQuery(api.orders.countFoundersSold, {});
@@ -195,8 +195,8 @@ export function CheckoutFlow() {
                 ← Retour
               </button>
 
-              {/* Consentement exprès à l'exécution immédiate (art. L. 221-28) :
-                  non pré-coché, il débloque les moyens de paiement. */}
+              {/* Express consent to immediate performance (art. L. 221-28):
+                  never pre-checked, it unlocks the payment methods. */}
               <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4">
                 <input
                   type="checkbox"

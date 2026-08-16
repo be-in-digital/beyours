@@ -1,17 +1,17 @@
-# Variables d'environnement - Architecture
+# Environment variables - Architecture
 
-## Vue d'ensemble
+## Overview
 
-Les variables d'environnement de BeYours Engine sont separees en **deux niveaux** distincts, refletant le modele business ou BeYours vend un theme Next.js a chaque restaurant.
+BeYours Engine environment variables are split into **two distinct levels**, mirroring the business model where BeYours sells a Next.js theme to each restaurant.
 
 ```
 +-------------------------------------------------------------------+
-|                    BeYours (Plateforme)                        |
+|                    BeYours (Platform)                          |
 |                                                                   |
 |   AWS Account    OpenAI     Uber Eats Partner   Deliveroo Partner  |
 |   (S3, SES)     (GPT-3.5)   (App Credentials)  (App Credentials)  |
 |                                                                   |
-|   10 variables "package" partagees par tous les sites              |
+|   10 "package" variables shared by all sites                       |
 +-------------------------------------------------------------------+
         |                    |                    |
         v                    v                    v
@@ -21,83 +21,83 @@ Les variables d'environnement de BeYours Engine sont separees en **deux niveaux*
 |  Convex instance | |  Convex instance | |  Convex instance |
 |  Auth secret     | |  Auth secret     | |  Auth secret     |
 |  S3 bucket       | |  S3 bucket       | |  S3 bucket       |
-|  SES domaine     | |  SES domaine     | |  SES domaine     |
+|  SES domain      | |  SES domain      | |  SES domain      |
 |  Stripe account  | |  PayPal account  | |  SumUp account   |
 |  Sentry DSN      | |  Sentry DSN      | |  Sentry DSN      |
 |  Google Maps key | |  Google Maps key | |  Google Maps key  |
 |                  | |                  | |                  |
 |  25+ variables   | |  25+ variables   | |  25+ variables   |
-|  "site" propres  | |  "site" propres  | |  "site" propres  |
+|  "site"-specific | |  "site"-specific | |  "site"-specific |
 +------------------+ +------------------+ +------------------+
 ```
 
 ---
 
-## Separation Package vs Site
+## Package vs Site separation
 
-### Variables Package (infra BeYours - 10 vars)
+### Package variables (BeYours infra - 10 vars)
 
-Ce sont les credentials gerees par BeYours, partagees entre tous les restaurants deployes.
+These are the credentials BeYours manages, shared across every deployed restaurant.
 
-| Variable | Requis | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `AWS_REGION` | oui | Region AWS du compte BeYours |
-| `AWS_ACCESS_KEY_ID` | oui | Cle d'acces IAM BeYours |
-| `AWS_SECRET_ACCESS_KEY` | oui | Secret IAM BeYours |
-| `OPENAI_API_KEY` | oui | Cle API OpenAI (prefixe `sk-`) pour traductions GPT |
-| `UBER_EATS_CLIENT_ID` | non | Client ID de l'app partenaire Uber Eats |
-| `UBER_EATS_CLIENT_SECRET` | non | Client secret Uber Eats |
-| `UBER_EATS_WEBHOOK_SECRET` | non | Secret de verification des webhooks Uber Eats |
-| `DELIVEROO_CLIENT_ID` | non | Client ID de l'app partenaire Deliveroo |
-| `DELIVEROO_CLIENT_SECRET` | non | Client secret Deliveroo |
-| `DELIVEROO_WEBHOOK_SECRET` | non | Secret de verification des webhooks Deliveroo |
+| `AWS_REGION` | yes | AWS region of the BeYours account |
+| `AWS_ACCESS_KEY_ID` | yes | BeYours IAM access key |
+| `AWS_SECRET_ACCESS_KEY` | yes | BeYours IAM secret |
+| `OPENAI_API_KEY` | yes | OpenAI API key (`sk-` prefix) for GPT translations |
+| `UBER_EATS_CLIENT_ID` | no | Client ID of the Uber Eats partner app |
+| `UBER_EATS_CLIENT_SECRET` | no | Uber Eats client secret |
+| `UBER_EATS_WEBHOOK_SECRET` | no | Secret used to verify Uber Eats webhooks |
+| `DELIVEROO_CLIENT_ID` | no | Client ID of the Deliveroo partner app |
+| `DELIVEROO_CLIENT_SECRET` | no | Deliveroo client secret |
+| `DELIVEROO_WEBHOOK_SECRET` | no | Secret used to verify Deliveroo webhooks |
 
-> **Pourquoi Uber Eats / Deliveroo sont "package" ?**
-> BeYours est **app partenaire** de ces plateformes. Les credentials API sont celles de BeYours, pas du restaurant. Le restaurant fournit uniquement ses identifiants propres (brandId, siteId) pour lier son compte.
+> **Why are Uber Eats / Deliveroo "package" level?**
+> BeYours is a **partner app** on these platforms. The API credentials are BeYours', not the restaurant's. The restaurant only supplies its own identifiers (brandId, siteId) to link its account.
 
-### Variables Site (par restaurant - 25+ vars)
+### Site variables (per restaurant - 25+ vars)
 
-Chaque restaurant deploye fournit ses propres valeurs.
+Each deployed restaurant supplies its own values.
 
-| Categorie | Variable | Requis | Description |
+| Category | Variable | Required | Description |
 |---|---|---|---|
-| **Convex** | `CONVEX_DEPLOYMENT` | non | ID du deploiement Convex |
-| | `NEXT_PUBLIC_CONVEX_URL` | oui | URL publique de l'instance Convex |
-| | `CONVEX_SITE_URL` | non | URL du site Convex (pour webhooks) |
-| **Auth** | `BETTER_AUTH_SECRET` | oui | Secret unique pour l'authentification |
-| | `BETTER_AUTH_URL` | non | URL du service d'auth |
-| | `SITE_URL` | non | URL du site (origines de confiance) |
-| | `ENCRYPTION_KEY` | non | Cle AES-256-GCM (64 chars hex) |
-| **App** | `NEXT_PUBLIC_APP_URL` | non | URL publique de l'app |
-| | `ADMIN_URL` | non | URL de redirection admin |
-| **AWS S3** | `AWS_S3_BUCKET_NAME` | non | Bucket S3 propre au restaurant |
-| **AWS SES** | `AWS_SES_FROM_EMAIL` | non | Email expediteur du restaurant |
-| | `AWS_SES_FROM_NAME` | non | Nom d'expediteur |
-| | `AWS_SES_REPLY_TO_EMAIL` | non | Adresse de reponse |
-| | `AWS_SES_CONFIGURATION_SET` | non | Configuration Set SES |
-| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | non | DSN Sentry propre au client |
-| **Maps** | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | non | Cle Google Maps propre au client |
-| **Stripe** | `STRIPE_SECRET_KEY` | non | Cle secrete (prefixe `sk_`) |
-| | `STRIPE_PUBLISHABLE_KEY` | non | Cle publique (prefixe `pk_`) |
-| | `STRIPE_WEBHOOK_SECRET` | non | Secret webhook (prefixe `whsec_`) |
-| **PayPal** | `PAYPAL_CLIENT_ID` | non | Client ID PayPal du restaurant |
-| | `PAYPAL_CLIENT_SECRET` | non | Client secret PayPal |
-| **SumUp** | `SUMUP_CLIENT_ID` | non | Client ID SumUp du restaurant |
-| | `SUMUP_CLIENT_SECRET` | non | Client secret SumUp |
-| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | non | Mode sandbox (`true`/`false`) |
-| **Deliveroo** | `DELIVEROO_BRAND_ID` | non | ID de la marque Deliveroo du restaurant |
-| | `DELIVEROO_SITE_ID` | non | ID du site Deliveroo du restaurant |
-| | `DELIVEROO_IS_SANDBOX` | non | Mode sandbox (`true`/`false`) |
+| **Convex** | `CONVEX_DEPLOYMENT` | no | Convex deployment ID |
+| | `NEXT_PUBLIC_CONVEX_URL` | yes | Public URL of the Convex instance |
+| | `CONVEX_SITE_URL` | no | Convex site URL (for webhooks) |
+| **Auth** | `BETTER_AUTH_SECRET` | yes | Unique secret for authentication |
+| | `BETTER_AUTH_URL` | no | URL of the auth service |
+| | `SITE_URL` | no | Site URL (trusted origins) |
+| | `ENCRYPTION_KEY` | no | AES-256-GCM key (64 hex chars) |
+| **App** | `NEXT_PUBLIC_APP_URL` | no | Public URL of the app |
+| | `ADMIN_URL` | no | Admin redirect URL |
+| **AWS S3** | `AWS_S3_BUCKET_NAME` | no | S3 bucket owned by the restaurant |
+| **AWS SES** | `AWS_SES_FROM_EMAIL` | no | Restaurant sender email |
+| | `AWS_SES_FROM_NAME` | no | Sender name |
+| | `AWS_SES_REPLY_TO_EMAIL` | no | Reply-to address |
+| | `AWS_SES_CONFIGURATION_SET` | no | SES Configuration Set |
+| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | no | Sentry DSN owned by the client |
+| **Maps** | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | no | Google Maps key owned by the client |
+| **Stripe** | `STRIPE_SECRET_KEY` | no | Secret key (`sk_` prefix) |
+| | `STRIPE_PUBLISHABLE_KEY` | no | Public key (`pk_` prefix) |
+| | `STRIPE_WEBHOOK_SECRET` | no | Webhook secret (`whsec_` prefix) |
+| **PayPal** | `PAYPAL_CLIENT_ID` | no | Restaurant's PayPal client ID |
+| | `PAYPAL_CLIENT_SECRET` | no | PayPal client secret |
+| **SumUp** | `SUMUP_CLIENT_ID` | no | Restaurant's SumUp client ID |
+| | `SUMUP_CLIENT_SECRET` | no | SumUp client secret |
+| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | no | Sandbox mode (`true`/`false`) |
+| **Deliveroo** | `DELIVEROO_BRAND_ID` | no | Restaurant's Deliveroo brand ID |
+| | `DELIVEROO_SITE_ID` | no | Restaurant's Deliveroo site ID |
+| | `DELIVEROO_IS_SANDBOX` | no | Sandbox mode (`true`/`false`) |
 
 ---
 
-## Architecture technique
+## Technical architecture
 
-### Schema de validation (Zod)
+### Validation schema (Zod)
 
-Les schemas sont definis dans `packages/core/src/env/schemas.ts` et exportes via :
-- `@be-in-digital/core` (export principal)
-- `@be-in-digital/core/env` (sub-path export, sans dependances Node.js)
+The schemas are defined in `packages/core/src/env/schemas.ts` and exported via:
+- `@be-in-digital/core` (main export)
+- `@be-in-digital/core/env` (sub-path export, no Node.js dependencies)
 
 ```
 packages/core/src/env/
@@ -114,37 +114,37 @@ packages/core/src/env/
 ```typescript
 import { getPackageEnv, getSiteEnv } from '@be-in-digital/core/env'
 
-// Variables plateforme BeYours
+// BeYours platform variables
 const pkg = getPackageEnv()
-pkg.AWS_REGION           // string (garanti)
-pkg.UBER_EATS_CLIENT_ID // string | undefined (optionnel)
+pkg.AWS_REGION           // string (guaranteed)
+pkg.UBER_EATS_CLIENT_ID // string | undefined (optional)
 
-// Variables propres au restaurant
+// Restaurant-specific variables
 const site = getSiteEnv()
-site.BETTER_AUTH_SECRET  // string (garanti)
-site.STRIPE_SECRET_KEY   // string | undefined (optionnel)
+site.BETTER_AUTH_SECRET  // string (guaranteed)
+site.STRIPE_SECRET_KEY   // string | undefined (optional)
 ```
 
-**Comportement :**
-- Premier appel : valide `process.env` via le schema Zod
-- Appels suivants : retourne le resultat en cache (memoized)
-- Throw `ZodError` si une variable requise est manquante ou invalide
-- `_resetEnvCache()` disponible pour les tests
+**Behavior:**
+- First call: validates `process.env` against the Zod schema
+- Later calls: return the cached result (memoized)
+- Throws `ZodError` if a required variable is missing or invalid
+- `_resetEnvCache()` available for tests
 
-### Flux de validation
+### Validation flow
 
 ```
-                          Demarrage
+                           Startup
                              |
                              v
                    +-------------------+
                    | instrumentation.ts |  <-- Next.js startup hook
                    |                   |
-                   | getPackageEnv()   |  -- Valide les 10 vars package
-                   | getSiteEnv()     |  -- Valide les 25+ vars site
+                   | getPackageEnv()   |  -- Validates the 10 package vars
+                   | getSiteEnv()     |  -- Validates the 25+ site vars
                    +-------------------+
                              |
-                    OK?      |      KO?
+                    OK?      |     FAIL?
                    +----+    |    +----+
                    |    v    |    v    |
                    | Continue|  dev: warn |
@@ -155,80 +155,80 @@ site.STRIPE_SECRET_KEY   // string | undefined (optionnel)
                              |
                              v
                    +-------------------+
-                   | getPackageEnv()   |  -- Cache hit (deja valide)
-                   | getSiteEnv()     |  -- Cache hit (deja valide)
+                   | getPackageEnv()   |  -- Cache hit (already validated)
+                   | getSiteEnv()     |  -- Cache hit (already validated)
                    +-------------------+
                              |
                              v
-                   Acces type-safe aux variables
+                   Type-safe access to variables
 ```
 
 ---
 
-## Import selon le contexte Convex
+## Imports depending on the Convex context
 
-Le bundler Convex distingue deux runtimes :
+The Convex bundler distinguishes two runtimes:
 
-| Runtime | Fichiers concernes | Pattern d'import |
+| Runtime | Files affected | Import pattern |
 |---|---|---|
 | **"use node"** (Node.js) | `oauthConnect.ts`, `teamMembersEmail.ts`, `deliverooWebhook.ts`, `validateIntegration.ts`, imports, menu syncs, orders | `import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env"` |
 | **V8 isolate** (httpAction, queries, mutations) | `uberEatsWebhook.ts`, `deliverooWebhookHandler.ts`, `oauthCallbackHandlers.ts`, `kitchenTickets.ts` | `const { getPackageEnv } = await import("@be-in-digital/core/env")` |
-| **V8 isolate** (config module) | `auth.ts` | `process.env.SITE_URL` (garde le pattern direct, pas de Zod) |
+| **V8 isolate** (config module) | `auth.ts` | `process.env.SITE_URL` (keeps the direct pattern, no Zod) |
 
-> **Pourquoi `auth.ts` ne migre pas ?**
-> Ce fichier configure Better Auth au niveau module (pas dans un handler async). Il s'execute tres tot dans le cycle de vie Convex et l'import du package core pourrait poser des problemes de bundling dans le V8 isolate.
+> **Why doesn't `auth.ts` migrate?**
+> This file configures Better Auth at module level (not inside an async handler). It runs very early in the Convex lifecycle, and importing the core package could cause bundling problems in the V8 isolate.
 
-### Variables `NEXT_PUBLIC_*` (client-side)
+### `NEXT_PUBLIC_*` variables (client-side)
 
-Les variables prefixees `NEXT_PUBLIC_` sont **inlinées au build** par Next.js. Elles ne sont pas validables cote serveur au runtime.
+Variables prefixed with `NEXT_PUBLIC_` are **inlined at build time** by Next.js. They cannot be validated server-side at runtime.
 
-Fichiers concernes (non migres, voulu) :
-- `app/providers.tsx` : `process.env.NEXT_PUBLIC_CONVEX_URL`
-- `lib/convex.ts` : `process.env.NEXT_PUBLIC_CONVEX_URL`
-- `app/(test)/address-test/page.tsx` : `process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+Files affected (deliberately not migrated):
+- `app/providers.tsx`: `process.env.NEXT_PUBLIC_CONVEX_URL`
+- `lib/convex.ts`: `process.env.NEXT_PUBLIC_CONVEX_URL`
+- `app/(test)/address-test/page.tsx`: `process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 
 ---
 
-## Fichiers .env.example
+## .env.example files
 
-Deux fichiers de reference pour le onboarding :
+Two reference files for onboarding:
 
-| Fichier | Contenu | Pour qui |
+| File | Contents | For whom |
 |---|---|---|
-| `packages/core/.env.example` | 10 variables package | Equipe BeYours |
-| `apps/restaurant-theme/.env.example` | 25+ vars site + rappel des vars package | Deploiement d'un restaurant |
+| `packages/core/.env.example` | 10 package variables | BeYours team |
+| `apps/restaurant-theme/.env.example` | 25+ site vars + reminder of the package vars | Deploying a restaurant |
 
-> A chaque deploiement, le fichier `.env.local` de `apps/restaurant-theme/` contient **toutes** les variables (package + site) puisque le process Node.js a besoin des deux a runtime.
+> On every deployment, the `.env.local` file in `apps/restaurant-theme/` holds **every** variable (package + site), since the Node.js process needs both at runtime.
 
 ---
 
-## Ajouter une nouvelle variable d'environnement
+## Adding a new environment variable
 
-1. **Determiner le niveau** : package (infra BeYours) ou site (par restaurant)
-2. **Ajouter au schema** dans `packages/core/src/env/schemas.ts`
-   - Utiliser `.optional()` si la variable n'est pas requise pour tous les deploiements
-   - Ajouter des validations Zod (`.url()`, `.email()`, `.startsWith()`, `.regex()`)
-3. **Mettre a jour le `.env.example`** correspondant
-4. **Rebuild le package** : `pnpm --filter @be-in-digital/core build`
-5. **Utiliser le getter** dans le code consommateur :
+1. **Pick the level**: package (BeYours infra) or site (per restaurant)
+2. **Add it to the schema** in `packages/core/src/env/schemas.ts`
+   - Use `.optional()` if the variable is not required for every deployment
+   - Add Zod validations (`.url()`, `.email()`, `.startsWith()`, `.regex()`)
+3. **Update the matching `.env.example`**
+4. **Rebuild the package**: `pnpm --filter @be-in-digital/core build`
+5. **Use the getter** in the consuming code:
    ```typescript
-   const pkg = getPackageEnv()  // ou getSiteEnv()
+   const pkg = getPackageEnv()  // or getSiteEnv()
    const maVar = pkg.MA_NOUVELLE_VAR
    ```
 
 ---
 
-## Generer une ENCRYPTION_KEY
+## Generating an ENCRYPTION_KEY
 
 ```bash
 openssl rand -hex 32
-# Produit un string de 64 caracteres hexadecimaux (32 bytes)
-# Exemple : a1b2c3d4e5f6...
+# Produces a 64-character hex string (32 bytes)
+# Example: a1b2c3d4e5f6...
 ```
 
 ---
 
-## Diagramme complet des flux
+## Full flow diagram
 
 ```
 +==========================================+
@@ -269,7 +269,7 @@ openssl rand -hex 32
 +==========================================+
           |                    |
     export "."          export "./env"
-    (avec Node.js deps)  (Zod seulement)
+    (with Node.js deps)  (Zod only)
           |                    |
           v                    v
 +------------------+  +--------------------+
@@ -291,7 +291,7 @@ openssl rand -hex 32
 ```
 
 ```
-Flux de donnees: Ou chaque variable est lue
+Data flow: where each variable is read
 ======================================================
 
 process.env
@@ -304,12 +304,12 @@ process.env
     |       +-- OPENAI_API_KEY --------> GPT translation (via param)
     |       +-- UBER_EATS_CLIENT_ID ---> uberEatsWebhook, import, menuSync,
     |       |                            validate, kitchenTickets
-    |       +-- UBER_EATS_CLIENT_SECRET> (memes fichiers)
+    |       +-- UBER_EATS_CLIENT_SECRET> (same files)
     |       +-- UBER_EATS_WEBHOOK_SEC > uberEatsWebhook
     |       +-- DELIVEROO_CLIENT_ID ---> deliverooWebhookHandler, webhook,
     |       |                            import, menuSync, orders, validate,
     |       |                            kitchenTickets
-    |       +-- DELIVEROO_CLIENT_SECRET> (memes fichiers)
+    |       +-- DELIVEROO_CLIENT_SECRET> (same files)
     |       +-- DELIVEROO_WEBHOOK_SEC -> deliverooWebhookHandler
     |
     +-- siteEnvSchema.parse() --> SiteEnv (cached)
@@ -324,13 +324,13 @@ process.env
             +-- AWS_SES_FROM_EMAIL ----> SES adapter, teamMembersEmail
             +-- STRIPE_SECRET_KEY -----> oauthConnect, oauthCallbackHandlers
             +-- STRIPE_PUBLISHABLE_KEY> client-side (build inline)
-            +-- STRIPE_WEBHOOK_SECRET -> webhook handler (futur)
-            +-- PAYPAL_* -------------> PayPal integration (futur)
+            +-- STRIPE_WEBHOOK_SECRET -> webhook handler (future)
+            +-- PAYPAL_* -------------> PayPal integration (future)
             +-- SUMUP_* --------------> oauthConnect
-            +-- UBER_EATS_SANDBOX ----> tous les fichiers Uber Eats
+            +-- UBER_EATS_SANDBOX ----> all the Uber Eats files
             +-- DELIVEROO_BRAND_ID ----> DB (storeIntegrations)
             +-- DELIVEROO_SITE_ID -----> DB (storeIntegrations)
-            +-- DELIVEROO_IS_SANDBOX --> tous les fichiers Deliveroo
+            +-- DELIVEROO_IS_SANDBOX --> all the Deliveroo files
             +-- SENTRY_DSN -----------> sentry config (via param)
             +-- GOOGLE_MAPS_KEY ------> address autocomplete (build inline)
 ```

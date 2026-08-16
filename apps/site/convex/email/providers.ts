@@ -205,7 +205,7 @@ export function resolveEmailTransport(): EmailTransport {
     };
   }
 
-  // Défaut : SES — comportement historique inchangé.
+  // Default: SES — historical behaviour unchanged.
   const region = process.env.AWS_REGION ?? "eu-west-3";
   const from = process.env.AWS_SES_FROM_EMAIL;
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID;

@@ -3,8 +3,8 @@
 import * as React from "react";
 
 /**
- * Slot minimal (façon Radix Slot) — fusionne les props du parent sur son unique
- * enfant. Évite une dépendance externe pour `asChild`.
+ * Minimal Slot (in the spirit of Radix Slot) — merges the parent's props onto
+ * its single child. Avoids an external dependency just for `asChild`.
  */
 export const Slot = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }>(
   ({ children, ...props }, ref) => {

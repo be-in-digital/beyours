@@ -1,6 +1,6 @@
 import * as React from "react";
 
-/** Sparkline SVG légère (aucune dépendance) — courbe + remplissage doux. */
+/** Lightweight SVG sparkline (no dependency) — curve + soft fill. */
 export function Sparkline({
   data,
   width = 96,

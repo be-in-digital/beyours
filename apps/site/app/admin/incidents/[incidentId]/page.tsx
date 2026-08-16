@@ -115,7 +115,7 @@ export default function IncidentDetailPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Colonne principale — timeline + formulaire de mise à jour */}
+        {/* Main column — timeline + update form */}
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardContent className="p-5">
@@ -127,7 +127,7 @@ export default function IncidentDetailPage() {
           <AddUpdateForm incidentId={incident._id} />
         </div>
 
-        {/* Colonne latérale — méta + assignation */}
+        {/* Side column — metadata + assignment */}
         <div className="space-y-6">
           <Card>
             <CardContent className="p-5">

@@ -62,7 +62,7 @@ function PlanBadge({ plan }: { plan: string }) {
   );
 }
 
-/** Barre de proportion sobre (à la SourceBreakdown, mais binaire A vs B). */
+/** Understated proportion bar (like SourceBreakdown, but binary A vs B). */
 function SplitBar({
   title,
   a,
@@ -184,7 +184,7 @@ export default function VentesPage() {
         </div>
       )}
 
-      {/* CA + répartition */}
+      {/* Revenue + breakdown */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex items-start justify-between gap-4 p-5 pb-2">
@@ -401,7 +401,7 @@ export default function VentesPage() {
         </Card>
       </div>
 
-      {/* Dernières commandes */}
+      {/* Latest orders */}
       <Card>
         <div className="flex items-center justify-between gap-4 p-5 pb-3">
           <SectionTitle className="mb-0">Dernières commandes</SectionTitle>

@@ -1,5 +1,5 @@
 /**
- * Tests pour le système RBAC (Role-Based Access Control)
+ * Tests for the RBAC (Role-Based Access Control) system
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,9 +18,9 @@ import {
   type Permission,
 } from '../rbac';
 
-describe('RBAC - Permissions par rôle', () => {
+describe('RBAC - permissions per role', () => {
   describe('Super Admin', () => {
-    it('devrait avoir accès à toutes les permissions', () => {
+    it('grants access to every permission', () => {
       const permissions: Permission[] = [
         'stores:read',
         'stores:write',
@@ -51,14 +51,14 @@ describe('RBAC - Permissions par rôle', () => {
       });
     });
 
-    it('devrait avoir toutes les permissions possibles', () => {
+    it('has all the possible permissions', () => {
       const allPermissions = getRolePermissions(Role.SUPER_ADMIN);
       expect(allPermissions.length).toBeGreaterThan(20);
     });
   });
 
   describe('Client Admin', () => {
-    it('devrait avoir accès complet à son restaurant', () => {
+    it('has full access to its own restaurant', () => {
       expect(hasPermission(Role.CLIENT_ADMIN, 'stores:read')).toBe(true);
       expect(hasPermission(Role.CLIENT_ADMIN, 'stores:write')).toBe(true);
       expect(hasPermission(Role.CLIENT_ADMIN, 'products:write')).toBe(true);
@@ -70,13 +70,13 @@ describe('RBAC - Permissions par rôle', () => {
       expect(hasPermission(Role.CLIENT_ADMIN, 'analytics:read')).toBe(true);
     });
 
-    it('ne devrait pas pouvoir supprimer des stores', () => {
+    it('cannot delete stores', () => {
       expect(hasPermission(Role.CLIENT_ADMIN, 'stores:delete')).toBe(false);
     });
   });
 
   describe('Manager', () => {
-    it('devrait avoir accès à la gestion opérationnelle', () => {
+    it('has access to operational management', () => {
       expect(hasPermission(Role.MANAGER, 'stores:read')).toBe(true);
       expect(hasPermission(Role.MANAGER, 'products:read')).toBe(true);
       expect(hasPermission(Role.MANAGER, 'products:write')).toBe(true);
@@ -86,7 +86,7 @@ describe('RBAC - Permissions par rôle', () => {
       expect(hasPermission(Role.MANAGER, 'analytics:read')).toBe(true);
     });
 
-    it('ne devrait pas pouvoir supprimer des produits ou gérer l\'équipe', () => {
+    it('cannot delete products or manage the team', () => {
       expect(hasPermission(Role.MANAGER, 'products:delete')).toBe(false);
       expect(hasPermission(Role.MANAGER, 'team:write')).toBe(false);
       expect(hasPermission(Role.MANAGER, 'settings:write')).toBe(false);
@@ -94,14 +94,14 @@ describe('RBAC - Permissions par rôle', () => {
   });
 
   describe('Kitchen', () => {
-    it('devrait avoir accès uniquement au KDS', () => {
+    it('has access to the KDS only', () => {
       expect(hasPermission(Role.KITCHEN, 'kitchen:read')).toBe(true);
       expect(hasPermission(Role.KITCHEN, 'kitchen:write')).toBe(true);
       expect(hasPermission(Role.KITCHEN, 'orders:read')).toBe(true);
       expect(hasPermission(Role.KITCHEN, 'orders:update_status')).toBe(true);
     });
 
-    it('ne devrait pas avoir accès aux autres ressources', () => {
+    it('has no access to the other resources', () => {
       expect(hasPermission(Role.KITCHEN, 'products:read')).toBe(false);
       expect(hasPermission(Role.KITCHEN, 'products:write')).toBe(false);
       expect(hasPermission(Role.KITCHEN, 'stores:read')).toBe(false);
@@ -112,7 +112,7 @@ describe('RBAC - Permissions par rôle', () => {
   });
 
   describe('Waiter', () => {
-    it('devrait avoir accès aux commandes et tables', () => {
+    it('has access to orders and tables', () => {
       expect(hasPermission(Role.WAITER, 'orders:read')).toBe(true);
       expect(hasPermission(Role.WAITER, 'orders:write')).toBe(true);
       expect(hasPermission(Role.WAITER, 'orders:update_status')).toBe(true);
@@ -122,7 +122,7 @@ describe('RBAC - Permissions par rôle', () => {
       expect(hasPermission(Role.WAITER, 'menus:read')).toBe(true);
     });
 
-    it('ne devrait pas avoir accès au KDS ou aux settings', () => {
+    it('has no access to the KDS or the settings', () => {
       expect(hasPermission(Role.WAITER, 'kitchen:read')).toBe(false);
       expect(hasPermission(Role.WAITER, 'settings:read')).toBe(false);
       expect(hasPermission(Role.WAITER, 'team:read')).toBe(false);
@@ -131,14 +131,14 @@ describe('RBAC - Permissions par rôle', () => {
   });
 
   describe('Delivery', () => {
-    it('devrait avoir accès uniquement aux livraisons', () => {
+    it('has access to deliveries only', () => {
       expect(hasPermission(Role.DELIVERY, 'deliveries:read')).toBe(true);
       expect(hasPermission(Role.DELIVERY, 'deliveries:write')).toBe(true);
       expect(hasPermission(Role.DELIVERY, 'orders:read')).toBe(true);
       expect(hasPermission(Role.DELIVERY, 'orders:update_status')).toBe(true);
     });
 
-    it('ne devrait pas avoir accès aux autres ressources', () => {
+    it('has no access to the other resources', () => {
       expect(hasPermission(Role.DELIVERY, 'products:read')).toBe(false);
       expect(hasPermission(Role.DELIVERY, 'kitchen:read')).toBe(false);
       expect(hasPermission(Role.DELIVERY, 'settings:read')).toBe(false);
@@ -147,14 +147,14 @@ describe('RBAC - Permissions par rôle', () => {
   });
 
   describe('Customer', () => {
-    it('devrait avoir accès uniquement à ses propres commandes', () => {
+    it('has access to its own orders only', () => {
       expect(hasPermission(Role.CUSTOMER, 'orders:view_own')).toBe(true);
       expect(hasPermission(Role.CUSTOMER, 'products:read')).toBe(true);
       expect(hasPermission(Role.CUSTOMER, 'menus:read')).toBe(true);
       expect(hasPermission(Role.CUSTOMER, 'games:read')).toBe(true);
     });
 
-    it('ne devrait pas avoir accès aux fonctionnalités admin', () => {
+    it('has no access to the admin features', () => {
       expect(hasPermission(Role.CUSTOMER, 'orders:write')).toBe(false);
       expect(hasPermission(Role.CUSTOMER, 'products:write')).toBe(false);
       expect(hasPermission(Role.CUSTOMER, 'stores:read')).toBe(false);
@@ -166,33 +166,33 @@ describe('RBAC - Permissions par rôle', () => {
 });
 
 describe('hasPermission', () => {
-  it('devrait retourner true pour une permission valide', () => {
+  it('returns true for a valid permission', () => {
     expect(hasPermission(Role.MANAGER, 'products:write')).toBe(true);
   });
 
-  it('devrait retourner false pour une permission non autorisée', () => {
+  it('returns false for a permission that is not granted', () => {
     expect(hasPermission(Role.CUSTOMER, 'products:delete')).toBe(false);
   });
 
-  it('devrait retourner false pour un rôle inconnu', () => {
+  it('returns false for an unknown role', () => {
     expect(hasPermission('invalid_role' as Role, 'products:read')).toBe(false);
   });
 });
 
 describe('hasAnyPermission', () => {
-  it('devrait retourner true si au moins une permission est accordée', () => {
+  it('returns true when at least one permission is granted', () => {
     expect(
       hasAnyPermission(Role.WAITER, ['orders:write', 'kitchen:write'])
     ).toBe(true);
   });
 
-  it('devrait retourner false si aucune permission n\'est accordée', () => {
+  it('returns false when no permission is granted', () => {
     expect(
       hasAnyPermission(Role.CUSTOMER, ['orders:delete', 'products:delete'])
     ).toBe(false);
   });
 
-  it('devrait retourner true si toutes les permissions sont accordées', () => {
+  it('returns true when every permission is granted', () => {
     expect(
       hasAnyPermission(Role.CLIENT_ADMIN, ['products:read', 'products:write'])
     ).toBe(true);
@@ -200,25 +200,25 @@ describe('hasAnyPermission', () => {
 });
 
 describe('hasAllPermissions', () => {
-  it('devrait retourner true si toutes les permissions sont accordées', () => {
+  it('returns true when every permission is granted', () => {
     expect(
       hasAllPermissions(Role.CLIENT_ADMIN, ['products:read', 'products:write'])
     ).toBe(true);
   });
 
-  it('devrait retourner false si au moins une permission manque', () => {
+  it('returns false when at least one permission is missing', () => {
     expect(
       hasAllPermissions(Role.KITCHEN, ['orders:read', 'products:delete'])
     ).toBe(false);
   });
 
-  it('devrait retourner true pour une liste vide de permissions', () => {
+  it('returns true for an empty permission list', () => {
     expect(hasAllPermissions(Role.CUSTOMER, [])).toBe(true);
   });
 });
 
 describe('getRolePermissions', () => {
-  it('devrait retourner toutes les permissions pour un rôle', () => {
+  it('returns every permission for a role', () => {
     const permissions = getRolePermissions(Role.KITCHEN);
     expect(permissions).toContain('kitchen:read');
     expect(permissions).toContain('kitchen:write');
@@ -226,12 +226,12 @@ describe('getRolePermissions', () => {
     expect(permissions).toContain('orders:update_status');
   });
 
-  it('devrait retourner un tableau vide pour un rôle invalide', () => {
+  it('returns an empty array for an invalid role', () => {
     const permissions = getRolePermissions('invalid_role' as Role);
     expect(permissions).toEqual([]);
   });
 
-  it('devrait retourner le plus de permissions pour super_admin', () => {
+  it('returns the most permissions for super_admin', () => {
     const superAdminPerms = getRolePermissions(Role.SUPER_ADMIN);
     const clientAdminPerms = getRolePermissions(Role.CLIENT_ADMIN);
     const customerPerms = getRolePermissions(Role.CUSTOMER);
@@ -242,21 +242,21 @@ describe('getRolePermissions', () => {
 });
 
 describe('requirePermission', () => {
-  it('ne devrait pas throw si la permission est accordée', () => {
+  it('does not throw when the permission is granted', () => {
     const middleware = requirePermission('products:write');
     expect(() => middleware(Role.MANAGER)).not.toThrow();
   });
 
-  it('devrait throw PermissionDeniedError si la permission est refusée', () => {
+  it('throws PermissionDeniedError when the permission is denied', () => {
     const middleware = requirePermission('products:delete');
     expect(() => middleware(Role.KITCHEN)).toThrow(PermissionDeniedError);
   });
 
-  it('devrait inclure le rôle dans l\'erreur', () => {
+  it('includes the role in the error', () => {
     const middleware = requirePermission('settings:write');
     try {
       middleware(Role.WAITER);
-      expect.fail('Devrait throw');
+      expect.fail('Should have thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(PermissionDeniedError);
       expect((error as PermissionDeniedError).userRole).toBe(Role.WAITER);
@@ -266,43 +266,43 @@ describe('requirePermission', () => {
 });
 
 describe('requireAnyPermission', () => {
-  it('ne devrait pas throw si au moins une permission est accordée', () => {
+  it('does not throw when at least one permission is granted', () => {
     const middleware = requireAnyPermission(['orders:read', 'orders:write']);
     expect(() => middleware(Role.WAITER)).not.toThrow();
   });
 
-  it('devrait throw si aucune permission n\'est accordée', () => {
+  it('throws when no permission is granted', () => {
     const middleware = requireAnyPermission(['kitchen:write', 'settings:write']);
     expect(() => middleware(Role.CUSTOMER)).toThrow(PermissionDeniedError);
   });
 });
 
 describe('requireAllPermissions', () => {
-  it('ne devrait pas throw si toutes les permissions sont accordées', () => {
+  it('does not throw when every permission is granted', () => {
     const middleware = requireAllPermissions(['products:read', 'products:write']);
     expect(() => middleware(Role.MANAGER)).not.toThrow();
   });
 
-  it('devrait throw si au moins une permission manque', () => {
+  it('throws when at least one permission is missing', () => {
     const middleware = requireAllPermissions(['orders:read', 'products:delete']);
     expect(() => middleware(Role.KITCHEN)).toThrow(PermissionDeniedError);
   });
 
-  it('devrait throw avec la première permission manquante', () => {
+  it('throws with the first missing permission', () => {
     const middleware = requireAllPermissions(['orders:read', 'products:delete', 'settings:write']);
     try {
       middleware(Role.WAITER);
-      expect.fail('Devrait throw');
+      expect.fail('Should have thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(PermissionDeniedError);
-      // Devrait throw pour la première permission manquante
+      // Should throw on the first missing permission
       expect((error as PermissionDeniedError).permission).toBe('products:delete');
     }
   });
 });
 
 describe('parseRole', () => {
-  it('devrait parser un rôle valide en minuscules', () => {
+  it('parses a valid role in lowercase', () => {
     expect(parseRole('super_admin')).toBe(Role.SUPER_ADMIN);
     expect(parseRole('client_admin')).toBe(Role.CLIENT_ADMIN);
     expect(parseRole('manager')).toBe(Role.MANAGER);
@@ -312,17 +312,17 @@ describe('parseRole', () => {
     expect(parseRole('customer')).toBe(Role.CUSTOMER);
   });
 
-  it('devrait parser un rôle valide en majuscules', () => {
+  it('parses a valid role in uppercase', () => {
     expect(parseRole('SUPER_ADMIN')).toBe(Role.SUPER_ADMIN);
     expect(parseRole('CLIENT_ADMIN')).toBe(Role.CLIENT_ADMIN);
   });
 
-  it('devrait parser un rôle valide en casse mixte', () => {
+  it('parses a valid role in mixed case', () => {
     expect(parseRole('Super_Admin')).toBe(Role.SUPER_ADMIN);
     expect(parseRole('Client_Admin')).toBe(Role.CLIENT_ADMIN);
   });
 
-  it('devrait retourner undefined pour un rôle invalide', () => {
+  it('returns undefined for an invalid role', () => {
     expect(parseRole('invalid')).toBeUndefined();
     expect(parseRole('admin')).toBeUndefined();
     expect(parseRole('')).toBeUndefined();
@@ -330,7 +330,7 @@ describe('parseRole', () => {
 });
 
 describe('isValidRole', () => {
-  it('devrait retourner true pour un rôle valide', () => {
+  it('returns true for a valid role', () => {
     expect(isValidRole('super_admin')).toBe(true);
     expect(isValidRole('client_admin')).toBe(true);
     expect(isValidRole('manager')).toBe(true);
@@ -340,7 +340,7 @@ describe('isValidRole', () => {
     expect(isValidRole('customer')).toBe(true);
   });
 
-  it('devrait retourner false pour un rôle invalide', () => {
+  it('returns false for an invalid role', () => {
     expect(isValidRole('invalid')).toBe(false);
     expect(isValidRole('admin')).toBe(false);
     expect(isValidRole('')).toBe(false);
@@ -349,45 +349,45 @@ describe('isValidRole', () => {
 });
 
 describe('PermissionDeniedError', () => {
-  it('devrait avoir un message avec permission et rôle', () => {
+  it('builds a message with the permission and the role', () => {
     const error = new PermissionDeniedError('products:delete', Role.WAITER);
     expect(error.message).toContain('products:delete');
     expect(error.message).toContain('waiter');
     expect(error.name).toBe('PermissionDeniedError');
   });
 
-  it('devrait avoir un message avec permission uniquement', () => {
+  it('builds a message with the permission only', () => {
     const error = new PermissionDeniedError('settings:write');
     expect(error.message).toContain('settings:write');
     expect(error.name).toBe('PermissionDeniedError');
   });
 });
 
-describe('Scénarios d\'usage réels', () => {
-  it('Un manager peut créer des produits mais pas les supprimer', () => {
+describe('Real-world usage scenarios', () => {
+  it('a manager can create products but not delete them', () => {
     expect(hasPermission(Role.MANAGER, 'products:write')).toBe(true);
     expect(hasPermission(Role.MANAGER, 'products:delete')).toBe(false);
   });
 
-  it('Un waiter peut prendre des commandes mais pas accéder à la cuisine', () => {
+  it('a waiter can take orders but cannot access the kitchen', () => {
     expect(hasPermission(Role.WAITER, 'orders:write')).toBe(true);
     expect(hasPermission(Role.WAITER, 'kitchen:read')).toBe(false);
   });
 
-  it('Un kitchen peut voir et traiter les commandes', () => {
+  it('a kitchen user can see and process orders', () => {
     expect(hasPermission(Role.KITCHEN, 'orders:read')).toBe(true);
     expect(hasPermission(Role.KITCHEN, 'orders:update_status')).toBe(true);
     expect(hasPermission(Role.KITCHEN, 'kitchen:write')).toBe(true);
   });
 
-  it('Un client admin peut tout faire sauf supprimer le store', () => {
+  it('a client admin can do everything except delete the store', () => {
     expect(hasPermission(Role.CLIENT_ADMIN, 'products:write')).toBe(true);
     expect(hasPermission(Role.CLIENT_ADMIN, 'products:delete')).toBe(true);
     expect(hasPermission(Role.CLIENT_ADMIN, 'team:write')).toBe(true);
     expect(hasPermission(Role.CLIENT_ADMIN, 'stores:delete')).toBe(false);
   });
 
-  it('Un customer ne peut que consulter', () => {
+  it('a customer can only read', () => {
     expect(hasPermission(Role.CUSTOMER, 'products:read')).toBe(true);
     expect(hasPermission(Role.CUSTOMER, 'orders:view_own')).toBe(true);
     expect(hasPermission(Role.CUSTOMER, 'products:write')).toBe(false);

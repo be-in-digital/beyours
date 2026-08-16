@@ -149,7 +149,7 @@ export default function AdminOverviewPage() {
         />
       </div>
 
-      {/* Graphes + santé/incidents */}
+      {/* Charts + health/incidents */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex items-start justify-between gap-4 p-5 pb-2">
@@ -235,7 +235,7 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
-      {/* Activité */}
+      {/* Activity */}
       <Card className="p-5">
         <SectionTitle>Activité récente</SectionTitle>
         {activity.length === 0 ? (

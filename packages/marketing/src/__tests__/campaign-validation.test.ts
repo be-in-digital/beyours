@@ -18,27 +18,27 @@ describe("validateCampaign", () => {
     vi.restoreAllMocks()
   })
 
-  it("devrait valider une campagne correcte", () => {
+  it("accepts a valid campaign", () => {
     const result = validateCampaign(validCampaign())
     expect(result.valid).toBe(true)
     expect(result.errors).toHaveLength(0)
   })
 
   describe("name", () => {
-    it("devrait échouer si name est vide", () => {
+    it("fails when name is empty", () => {
       const result = validateCampaign(validCampaign({ name: "" }))
       expect(result.valid).toBe(false)
       expect(result.errors).toContain("Le nom de la campagne est requis")
     })
 
-    it("devrait échouer si name est juste des espaces", () => {
+    it("fails when name is only whitespace", () => {
       const result = validateCampaign(validCampaign({ name: "   " }))
       expect(result.valid).toBe(false)
     })
   })
 
   describe("subject", () => {
-    it("devrait échouer si subject est vide", () => {
+    it("fails when subject is empty", () => {
       const result = validateCampaign(validCampaign({ subject: "" }))
       expect(result.valid).toBe(false)
       expect(result.errors).toContain("L'objet de l'email est requis")
@@ -46,13 +46,13 @@ describe("validateCampaign", () => {
   })
 
   describe("templateId", () => {
-    it("devrait échouer si templateId est absent", () => {
+    it("fails when templateId is missing", () => {
       const result = validateCampaign(validCampaign({ templateId: undefined }))
       expect(result.valid).toBe(false)
       expect(result.errors).toContain("Un modèle d'email est requis")
     })
 
-    it("devrait échouer si le template a 0 blocs", () => {
+    it("fails when the template has 0 blocks", () => {
       const result = validateCampaign(validCampaign({ templateBlockCount: 0 }))
       expect(result.valid).toBe(false)
       expect(result.errors).toContain(
@@ -60,7 +60,7 @@ describe("validateCampaign", () => {
       )
     })
 
-    it("devrait passer si templateBlockCount est undefined", () => {
+    it("passes when templateBlockCount is undefined", () => {
       const result = validateCampaign(
         validCampaign({ templateBlockCount: undefined })
       )
@@ -69,7 +69,7 @@ describe("validateCampaign", () => {
   })
 
   describe("audienceCount", () => {
-    it("devrait échouer si audience est 0", () => {
+    it("fails when the audience is 0", () => {
       const result = validateCampaign(validCampaign({ audienceCount: 0 }))
       expect(result.valid).toBe(false)
       expect(result.errors).toContain(
@@ -79,7 +79,7 @@ describe("validateCampaign", () => {
   })
 
   describe("A/B test", () => {
-    it("devrait échouer avec moins de 2 variantes", () => {
+    it("fails with fewer than 2 variants", () => {
       const result = validateCampaign(
         validCampaign({
           abTestEnabled: true,
@@ -92,7 +92,7 @@ describe("validateCampaign", () => {
       )
     })
 
-    it("devrait échouer si les pourcentages ne totalisent pas 100%", () => {
+    it("fails when the percentages do not add up to 100%", () => {
       const result = validateCampaign(
         validCampaign({
           abTestEnabled: true,
@@ -106,7 +106,7 @@ describe("validateCampaign", () => {
       expect(result.errors[0]).toContain("100%")
     })
 
-    it("devrait passer si les pourcentages totalisent 100%", () => {
+    it("passes when the percentages add up to 100%", () => {
       const result = validateCampaign(
         validCampaign({
           abTestEnabled: true,
@@ -119,7 +119,7 @@ describe("validateCampaign", () => {
       expect(result.valid).toBe(true)
     })
 
-    it("devrait échouer si une variante n'a pas de sujet", () => {
+    it("fails when a variant has no subject", () => {
       const result = validateCampaign(
         validCampaign({
           abTestEnabled: true,
@@ -133,7 +133,7 @@ describe("validateCampaign", () => {
       expect(result.errors).toContain("L'objet de la variante est requis")
     })
 
-    it("ne devrait pas valider les variantes si abTestEnabled est false", () => {
+    it("does not validate the variants when abTestEnabled is false", () => {
       const result = validateCampaign(
         validCampaign({ abTestEnabled: false, variants: [] })
       )
@@ -142,7 +142,7 @@ describe("validateCampaign", () => {
   })
 
   describe("scheduledAt", () => {
-    it("devrait échouer si la date est dans le passé", () => {
+    it("fails when the date is in the past", () => {
       const pastDate = Date.now() - 60_000
       const result = validateCampaign(
         validCampaign({ scheduledAt: pastDate })
@@ -153,7 +153,7 @@ describe("validateCampaign", () => {
       )
     })
 
-    it("devrait passer si la date est dans le futur", () => {
+    it("passes when the date is in the future", () => {
       const futureDate = Date.now() + 3_600_000
       const result = validateCampaign(
         validCampaign({ scheduledAt: futureDate })
@@ -161,13 +161,13 @@ describe("validateCampaign", () => {
       expect(result.valid).toBe(true)
     })
 
-    it("devrait passer si scheduledAt est null", () => {
+    it("passes when scheduledAt is null", () => {
       const result = validateCampaign(validCampaign({ scheduledAt: null }))
       expect(result.valid).toBe(true)
     })
   })
 
-  it("devrait retourner toutes les erreurs en une seule fois", () => {
+  it("returns every error at once", () => {
     const result = validateCampaign({
       name: "",
       subject: "",

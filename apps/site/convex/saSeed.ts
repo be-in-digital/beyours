@@ -3,13 +3,13 @@ import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 /* ══════════════════════════════════════════════
-   Seed superadmin console.
-   - Seed le COMMERCIAL de démo uniquement si `orders` est vide
-     (ne pollue jamais une base avec de vraies ventes).
-   - (Re)construit toujours les tables ops `sa*` à partir des
-     commandes payées présentes. Ne wipe QUE les tables `sa*`.
-   `pnpm seed`        → seed si flotte vide
-   `pnpm seed:reset`  → vide les tables sa* puis reconstruit
+   Superadmin console seed.
+   - Seeds the demo SALES data only when `orders` is empty
+     (never pollutes a database that holds real sales).
+   - Always (re)builds the `sa*` ops tables from the paid orders
+     already present. Wipes ONLY the `sa*` tables.
+   `pnpm seed`        → seed when the fleet is empty
+   `pnpm seed:reset`  → wipe the sa* tables, then rebuild
    ══════════════════════════════════════════════ */
 
 const DAY = 86_400_000;
@@ -129,7 +129,7 @@ async function seedCommercial(ctx: MutationCtx) {
     const rand = mulberry32(idx * 6151 + 7);
     const signedAt = now - Math.floor((60 + rand() * 400) * DAY);
 
-    // Commande de création (payée)
+    // Build order (paid)
     const creationCents = CREATION_CENTS[r.plan];
     const orderId = await ctx.db.insert("orders", {
       customerEmail: r.email,
@@ -235,7 +235,7 @@ async function seedCommercial(ctx: MutationCtx) {
 
 async function seedAffiliates(ctx: MutationCtx) {
   const now = Date.now();
-  // Paramètres du programme
+  // Programme settings
   const existingSettings = await ctx.db.query("affiliateSettings").take(1);
   if (existingSettings.length === 0) {
     await ctx.db.insert("affiliateSettings", {
@@ -281,7 +281,7 @@ async function seedAffiliates(ctx: MutationCtx) {
     codeIds.push(cid);
   }
 
-  // Quelques parrainages liés à des commandes existantes
+  // A few referrals attached to existing orders
   const orders = await ctx.db.query("orders").take(200);
   const paidOrders = orders.filter((o) => o.status === "paid").slice(0, 5);
   const statuses = ["paid", "validated", "pending", "payable", "paid"] as const;
@@ -311,7 +311,7 @@ async function buildOps(ctx: MutationCtx) {
   const orders = await ctx.db.query("orders").take(5000);
   const configByEmail = new Map(RESTAURANTS.map((r) => [r.email, r]));
 
-  // 1 déploiement par client (commande de création, payée ou en attente)
+  // 1 deployment per client (build order, paid or pending)
   const seen = new Set<string>();
   const creationOrders = orders.filter((o) => o.orderType === "creation");
   let idx = 0;
@@ -378,7 +378,7 @@ async function buildOps(ctx: MutationCtx) {
       });
     }
 
-    // Ventes 60 j pour déploiements live
+    // 60 days of sales for live deployments
     const baseDaily = cfg?.baseDaily ?? (o.plan === "premium" ? 150000 : 90000);
     if (depStatus === "live" && baseDaily > 0) {
       const weekday = [1.05, 0.82, 0.9, 0.98, 1.12, 1.35, 1.28];

@@ -44,7 +44,7 @@ function textDoc(lines: string[]): string {
   return [...lines, "", `${BRAND.name} — Restauration`].join("\n")
 }
 
-// ── 1. Confirmation de commande (après paiement) ─────────────────────────────
+// ── 1. Order confirmation (after payment) ────────────────────────────────────
 
 export interface OrderConfirmationData {
   firstName: string
@@ -112,7 +112,7 @@ export function orderConfirmationEmail(data: OrderConfirmationData): BuiltEmail 
   }
 }
 
-// ── 2. Reçu de renouvellement maintenance ────────────────────────────────────
+// ── 2. Maintenance renewal receipt ───────────────────────────────────────────
 
 export interface RenewalReceiptData {
   plan: Plan
@@ -162,7 +162,7 @@ export function renewalReceiptEmail(data: RenewalReceiptData): BuiltEmail {
   }
 }
 
-// ── 3. Relance paiement échoué (dunning) ─────────────────────────────────────
+// ── 3. Failed-payment follow-up (dunning) ────────────────────────────────────
 
 export interface PaymentFailedData {
   amountCents: number
@@ -200,7 +200,7 @@ export function paymentFailedEmail(data: PaymentFailedData): BuiltEmail {
   }
 }
 
-// ── 4. Confirmation de prise de contact (au prospect) ────────────────────────
+// ── 4. Contact-request confirmation (to the prospect) ────────────────────────
 
 export interface ContactConfirmationData {
   firstName: string
@@ -235,7 +235,7 @@ export function contactConfirmationEmail(data: ContactConfirmationData): BuiltEm
   }
 }
 
-// ── 5. Notification équipe : nouveau lead de contact ─────────────────────────
+// ── 5. Team notification: new contact lead ───────────────────────────────────
 
 export interface ContactTeamData {
   name: string
@@ -283,7 +283,7 @@ export function contactTeamNotificationEmail(data: ContactTeamData): BuiltEmail 
   }
 }
 
-// ── 6. Parrainage : bienvenue affilié ────────────────────────────────────────
+// ── 6. Referral programme: affiliate welcome ─────────────────────────────────
 
 export interface AffiliateWelcomeData {
   firstName: string
@@ -320,7 +320,7 @@ export function affiliateWelcomeEmail(data: AffiliateWelcomeData): BuiltEmail {
   }
 }
 
-// ── 7. Parrainage : commission validée / versée ──────────────────────────────
+// ── 7. Referral programme: commission validated / paid ───────────────────────
 
 export interface AffiliateCommissionData {
   amountCents: number

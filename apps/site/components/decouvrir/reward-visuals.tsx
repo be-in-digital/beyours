@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════
-   Visuels de récompense premium
-   - RewardSeal : médaillon or (remplace l'icône cadeau générique)
-   - TicketQr   : QR code d'aspect authentique (finders, timing,
-     alignment, modules arrondis sur fond blanc). Décoratif côté démo ;
-     le vrai produit encode le code de retrait.
+   Premium reward visuals
+   - RewardSeal: gold medallion (replaces the generic gift icon)
+   - TicketQr  : convincing-looking QR code (finders, timing,
+     alignment, rounded modules on white). Decorative in the demo;
+     the real product encodes the redemption code.
    ═══════════════════════════════════════════════ */
 
-/** Chemin d'une étoile à N branches (Math.cos/sin : pur, OK au rendu). */
+/** Path of an N-pointed star (Math.cos/sin: pure, fine during render). */
 function starPath(cx: number, cy: number, outer: number, inner: number) {
   const points = 5;
   let d = "";
@@ -55,7 +55,7 @@ export function RewardSeal({
         stroke="#8a6a1f"
         strokeWidth="1.5"
       />
-      {/* Anneau pointillé */}
+      {/* Dotted ring */}
       <circle
         cx="50"
         cy="50"
@@ -66,7 +66,7 @@ export function RewardSeal({
         strokeDasharray="1 3.4"
         opacity="0.55"
       />
-      {/* Pastille intérieure */}
+      {/* Inner disc */}
       <circle cx="50" cy="50" r="34" fill="url(#seal-inner)" />
       <circle
         cx="50"
@@ -77,7 +77,7 @@ export function RewardSeal({
         strokeWidth="0.8"
         opacity="0.6"
       />
-      {/* Étoile */}
+      {/* Star */}
       <path
         d={starPath(50, 49.5, 19, 7.6)}
         fill="#fffdf4"
@@ -144,7 +144,7 @@ export function TicketQr({
     for (let x = 0; x < N; x++) {
       if (reservedFinder(x, y) || reservedAlign(x, y)) continue;
       if (x === 6 || y === 6) {
-        // pistes de synchronisation
+        // timing patterns
         if ((x + y) % 2 === 0) dots.push([x, y]);
         continue;
       }

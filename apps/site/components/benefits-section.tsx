@@ -22,7 +22,7 @@ export function BenefitsSection() {
 
         {/* Bento Grid — Row 1 */}
         <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4" stagger={0.1}>
-          {/* ═══ HERO CARD: Plus de commandes directes ═══ */}
+          {/* ═══ HERO CARD: more direct orders ═══ */}
           <StaggerItem className="lg:col-span-3 bento-card bento-card--hero group">
             <div className="p-6 lg:p-8 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
@@ -90,7 +90,7 @@ export function BenefitsSection() {
             </div>
           </StaggerItem>
 
-          {/* ═══ Plus de contrôle ═══ */}
+          {/* ═══ More control ═══ */}
           <StaggerItem className="lg:col-span-3 bento-card group">
             <div className="p-6 lg:p-8 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
@@ -172,7 +172,7 @@ export function BenefitsSection() {
             </div>
           </StaggerItem>
 
-          {/* ═══ Gain de temps ═══ */}
+          {/* ═══ Time saved ═══ */}
           <StaggerItem className="lg:col-span-2 bento-card group">
             <div className="p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
@@ -213,7 +213,7 @@ export function BenefitsSection() {
             </div>
           </StaggerItem>
 
-          {/* ═══ Fidélisation renforcée ═══ */}
+          {/* ═══ Stronger customer loyalty ═══ */}
           <StaggerItem className="lg:col-span-2 bento-card group">
             <div className="p-6 h-full flex flex-col">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
@@ -264,7 +264,7 @@ export function BenefitsSection() {
             </div>
           </StaggerItem>
 
-          {/* ═══ HERO CARD 2: Vision centralisée ═══ */}
+          {/* ═══ HERO CARD 2: one central view ═══ */}
           <StaggerItem className="md:col-span-2 lg:col-span-6 bento-card bento-card--hero group">
             <div className="p-6 lg:p-8">
               <div className="lg:grid lg:grid-cols-2 lg:gap-8 items-center">

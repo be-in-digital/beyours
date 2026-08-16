@@ -1,207 +1,207 @@
-# Design V1 — Programme Apporteur d'Affaires Be in Digital
+# Design V1 — Be in Digital Business Referrer Program
 
-> Document validé le 2026-03-26. Prêt pour implémentation.
+> Document approved on 2026-03-26. Ready for implementation.
 
 ---
 
-## 1. Objectif
+## 1. Goal
 
-Mettre en place un programme d'apporteur d'affaires permettant :
+Ship a business referrer program that lets:
 
-- à un apporteur de s'inscrire,
-- d'obtenir un code/lien,
-- de partager ce code,
-- de générer une réduction pour le client parrainé,
-- et de recevoir une commission une fois la commande validée.
+- a referrer sign up,
+- get a code/link,
+- share that code,
+- generate a discount for the referred customer,
+- and receive a commission once the order is validated.
 
 ---
 
 ## 2. Decision Log
 
-### 1. Modèle d'inscription apporteur
+### 1. Referrer signup model
 
-**Décision :** inscription en deux temps.
+**Decision:** two-step signup.
 
-- étape 1 : création rapide du compte
-- étape 2 : complétion du profil + Stripe Connect avant premier versement
+- step 1: quick account creation
+- step 2: profile completion + Stripe Connect before the first payout
 
-**Pourquoi :** réduire la friction à l'entrée tout en gardant un onboarding paiement propre.
+**Why:** cut entry friction while keeping payment onboarding clean.
 
-### 2. Type de programme
+### 2. Program type
 
-**Décision :** programme mono-niveau.
+**Decision:** single-tier program.
 
-- un seul apporteur par client/commande
-- pas de sous-parrainage
-- pas de MLM
+- one referrer per customer/order
+- no sub-referrals
+- no MLM
 
-**Pourquoi :** simplicité métier et technique pour la V1.
+**Why:** business and technical simplicity for V1.
 
-### 3. Récompense apporteur
+### 3. Referrer reward
 
-**Décision :** commission par défaut de 500 €, modifiable par l'admin par apporteur.
+**Decision:** default commission of 500 €, editable by the admin per referrer.
 
-- stockée en `commissionOverrideCents` si override
-- snapshot dans `referrals.commissionCents` au moment du paiement
+- stored in `commissionOverrideCents` when overridden
+- snapshotted into `referrals.commissionCents` at payment time
 
-**Pourquoi :** permettre des cas particuliers sans casser l'historique.
+**Why:** allow special cases without breaking history.
 
-### 4. Réduction client parrainé
+### 4. Referred customer discount
 
-**Décision :** réduction par défaut de 10 % sur le paiement initial uniquement.
+**Decision:** default discount of 10 % on the initial payment only.
 
-- jamais sur la maintenance
-- modifiable par apporteur
-- snapshot dans `referrals.discountPercent` et `discountAmountCents`
+- never on maintenance
+- editable per referrer
+- snapshotted into `referrals.discountPercent` and `discountAmountCents`
 
-**Pourquoi :** garder une offre simple et protéger les revenus récurrents.
+**Why:** keep the offer simple and protect recurring revenue.
 
-### 5. Validation d'un parrainage
+### 5. Referral validation
 
-**Décision :** un referral devient validé après un délai business de 14 jours.
+**Decision:** a referral becomes validated after a business delay of 14 days.
 
-- il ne s'agit pas d'une vérité juridique universelle
-- c'est un tampon anti-remboursement / litige / annulation
+- this is not a universal legal truth
+- it is a buffer against refunds / disputes / cancellations
 
-**Pourquoi :** sécuriser les versements sans attendre plusieurs mois.
+**Why:** de-risk payouts without waiting several months.
 
-### 6. Moment de création du referral
+### 6. When the referral is created
 
-**Décision :** le referral est créé uniquement au paiement initial confirmé.
+**Decision:** the referral is created only on confirmed initial payment.
 
-- jamais à la simple saisie du code
-- jamais à la création de la session Stripe seule
+- never on simply entering the code
+- never on Stripe session creation alone
 
-**Pourquoi :** éviter les faux positifs et garder un modèle financier propre.
+**Why:** avoid false positives and keep the financial model clean.
 
-### 7. Attribution du parrainage
+### 7. Referral attribution
 
-**Décision :** champ manuel dans le checkout, avec support de `?ref=CODE` en préremplissage/auto-validation.
+**Decision:** manual field in the checkout, with `?ref=CODE` support for prefill/auto-validation.
 
-- un seul code actif appliqué par checkout
-- calcul côté serveur uniquement
+- a single active code applied per checkout
+- server-side calculation only
 
-**Pourquoi :** rester simple sans se fermer à une future V2 plus trackée.
+**Why:** stay simple without ruling out a more tracked V2 later.
 
-### 8. Stockage de la vérité métier
+### 8. Where the business truth is stored
 
-**Décision :** toute validation, réduction et création de referral se fait côté serveur.
+**Decision:** all validation, discounting and referral creation happens server-side.
 
-- le front ne sert qu'à l'UX
-- Stripe reçoit le montant recalculé par le backend
+- the frontend is for UX only
+- Stripe receives the amount recomputed by the backend
 
-**Pourquoi :** sécurité, cohérence, anti-fraude.
+**Why:** security, consistency, anti-fraud.
 
-### 9. Authentification
+### 9. Authentication
 
-**Décision :** Convex Auth.
+**Decision:** Convex Auth.
 
-- pas de `passwordHash` dans la table métier `users`
-- `users.authUserId` sert de lien avec l'identité auth
+- no `passwordHash` in the `users` business table
+- `users.authUserId` is the link to the auth identity
 
-**Pourquoi :** éviter de reconstruire la couche auth.
+**Why:** avoid rebuilding the auth layer.
 
-### 10. Versements
+### 10. Payouts
 
-**Décision :** Stripe Connect Express.
+**Decision:** Stripe Connect Express.
 
-- onboarding hébergé par Stripe
-- statut réel basé sur `account.updated` + relecture Account
-- `active` seulement si compte réellement payable (`payouts_enabled`, `capabilities.transfers`, pas de blocage)
+- onboarding hosted by Stripe
+- real status based on `account.updated` + re-reading the Account
+- `active` only if the account is genuinely payable (`payouts_enabled`, `capabilities.transfers`, no block)
 
-**Pourquoi :** onboarding simple, conformité Stripe, faible charge d'implémentation.
+**Why:** simple onboarding, Stripe compliance, low implementation cost.
 
 ### 11. Payout model V1
 
-**Décision :** pas de table `payouts` en V1.
+**Decision:** no `payouts` table in V1.
 
-- les versements sont dérivés des referrals
-- `stripeTransferId` stocké directement dans referrals
+- payouts are derived from referrals
+- `stripeTransferId` stored directly on referrals
 
-**Pourquoi :** limiter la complexité initiale.
+**Why:** limit initial complexity.
 
-### 12. Dashboard admin
+### 12. Admin dashboard
 
-**Décision :** intégration dans le dashboard existant sous `/dashboard/affiliation/*`
+**Decision:** integrated into the existing dashboard under `/dashboard/affiliation/*`
 
-**Pourquoi :** cohérence produit, pas de deuxième univers admin.
+**Why:** product consistency, no second admin universe.
 
-### 13. Dashboard apporteur
+### 13. Referrer dashboard
 
-**Décision :** espace dédié sous `/parrainage/dashboard/*`
+**Decision:** dedicated area under `/parrainage/dashboard/*`
 
-**Pourquoi :** expérience claire, orientée partage, gains et onboarding paiement.
+**Why:** a clear experience focused on sharing, earnings and payment onboarding.
 
-### 14. États d'un referral
+### 14. Referral states
 
-**Décision :** machine à états : `pending` → `validated` → `payable` → `paid` | `cancelled` | `blocked`
+**Decision:** state machine: `pending` → `validated` → `payable` → `paid` | `cancelled` | `blocked`
 
-**Pourquoi :** couvrir le cycle automatique et les exceptions manuelles.
+**Why:** cover the automatic cycle and the manual exceptions.
 
-### 15. Garde-fous principaux
+### 15. Main guardrails
 
-**Décision :**
+**Decision:**
 
-- auto-parrainage interdit
-- code désactivé = inutilisable
-- apporteur suspendu = pas de nouveaux referrals
+- self-referral forbidden
+- disabled code = unusable
+- suspended referrer = no new referrals
 - 1 `orderId` = 1 referral max
-- `programEnabled = false` = pause globale
+- `programEnabled = false` = global pause
 
-**Pourquoi :** fiabilité métier minimale indispensable.
+**Why:** the minimum business reliability we cannot ship without.
 
 ---
 
-## 3. Modèle de données
+## 3. Data model
 
-### Table `users`
+### `users` table
 
-| Champ | Type | Notes |
+| Field | Type | Notes |
 |-------|------|-------|
-| `authUserId` | string | Lien Convex Auth |
+| `authUserId` | string | Convex Auth link |
 | `email` | string, unique | |
 | `role` | `"affiliate"` \| `"admin"` | |
-| `firstName` | string, optionnel | Requis avant versement |
-| `lastName` | string, optionnel | Requis avant versement |
-| `phone` | string, optionnel | |
+| `firstName` | string, optional | Required before payout |
+| `lastName` | string, optional | Required before payout |
+| `phone` | string, optional | |
 | `status` | `"pending"` \| `"active"` \| `"suspended"` \| `"rejected"` | |
 | `stripeConnectAccountId` | string, nullable | |
 | `stripeConnectStatus` | `"not_started"` \| `"pending"` \| `"active"` \| `"disabled"` | |
-| `commissionOverrideCents` | number, nullable | Override admin |
-| `discountOverridePercent` | number, nullable | Override admin |
+| `commissionOverrideCents` | number, nullable | Admin override |
+| `discountOverridePercent` | number, nullable | Admin override |
 | `createdAt` | number | |
 | `updatedAt` | number | |
 
-**Index :** `by_email`, `by_authUserId`, `by_status`, `by_role`
+**Indexes:** `by_email`, `by_authUserId`, `by_status`, `by_role`
 
-### Table `referralCodes`
+### `referralCodes` table
 
-| Champ | Type | Notes |
+| Field | Type | Notes |
 |-------|------|-------|
 | `userId` | ref `users` | |
-| `code` | string, unique | Personnalisable |
+| `code` | string, unique | Customizable |
 | `isCustom` | boolean | |
 | `status` | `"active"` \| `"disabled"` | |
 | `createdAt` | number | |
 | `updatedAt` | number | |
 
-**Index :** `by_code`, `by_userId`
-**Règle V1 :** 1 code actif principal par apporteur.
+**Indexes:** `by_code`, `by_userId`
+**V1 rule:** 1 main active code per referrer.
 
-### Table `referrals`
+### `referrals` table
 
-| Champ | Type | Notes |
+| Field | Type | Notes |
 |-------|------|-------|
-| `referrerId` | ref `users` | L'apporteur |
+| `referrerId` | ref `users` | The referrer |
 | `referralCodeId` | ref `referralCodes` | |
 | `orderId` | ref `orders`, unique | 1 order = 1 referral max |
 | `customerEmail` | string | Snapshot |
 | `customerName` | string, nullable | Snapshot |
 | `status` | `"pending"` \| `"validated"` \| `"payable"` \| `"paid"` \| `"cancelled"` \| `"blocked"` | |
 | `statusReason` | string, nullable | `"refund"`, `"chargeback"`, `"fraud_suspected"`, `"self_referral"`, `"manual_admin_block"`, `"duplicate"` (extensible) |
-| `commissionCents` | number | Snapshot (50000 par défaut) |
-| `discountPercent` | number | Snapshot (10 par défaut) |
-| `discountAmountCents` | number | Montant réel appliqué |
+| `commissionCents` | number | Snapshot (50000 by default) |
+| `discountPercent` | number | Snapshot (10 by default) |
+| `discountAmountCents` | number | Actual amount applied |
 | `stripeTransferId` | string, nullable | |
 | `adminNote` | string, nullable | |
 | `createdAt` | number | |
@@ -212,110 +212,110 @@ Mettre en place un programme d'apporteur d'affaires permettant :
 | `blockedAt` | number, nullable | |
 | `cancelledAt` | number, nullable | |
 
-**Index :** `by_referrerId`, `by_orderId`, `by_status`, `by_referralCodeId`
+**Indexes:** `by_referrerId`, `by_orderId`, `by_status`, `by_referralCodeId`
 
-### Table `affiliateSettings` (1 document)
+### `affiliateSettings` table (1 document)
 
-| Champ | Type | Notes |
+| Field | Type | Notes |
 |-------|------|-------|
 | `defaultCommissionCents` | number | 50000 (500 €) |
 | `defaultDiscountPercent` | number | 10 |
 | `validationDelayDays` | number | 14 |
-| `programEnabled` | boolean | Coupe-circuit |
+| `programEnabled` | boolean | Circuit breaker |
 | `updatedAt` | number | |
 
 ---
 
-## 4. Architecture des routes
+## 4. Route architecture
 
 ### Public
 
 ```
-/parrainage                → Landing page programme + CTA inscription
-/parrainage/inscription    → Formulaire d'inscription
-/parrainage/connexion      → Formulaire de connexion
-/parrainage/conditions     → Règles, éligibilité, montants, cas de blocage
+/parrainage                → Program landing page + signup CTA
+/parrainage/inscription    → Signup form
+/parrainage/connexion      → Login form
+/parrainage/conditions     → Rules, eligibility, amounts, blocking cases
 ```
 
-### Apporteur (auth requise)
+### Referrer (auth required)
 
 ```
-/parrainage/dashboard              → Stats, graphiques, revenus cumulés
-/parrainage/dashboard/filleuls     → Liste filleuls + statuts
-/parrainage/dashboard/versements   → Historique versements
-/parrainage/dashboard/profil       → Profil + Stripe Connect onboarding
-/parrainage/dashboard/partage      → Code, lien, partage réseaux
+/parrainage/dashboard              → Stats, charts, cumulative earnings
+/parrainage/dashboard/filleuls     → Referred customers list + statuses
+/parrainage/dashboard/versements   → Payout history
+/parrainage/dashboard/profil       → Profile + Stripe Connect onboarding
+/parrainage/dashboard/partage      → Code, link, social sharing
 ```
 
-### Admin (auth + rôle admin)
+### Admin (auth + admin role)
 
 ```
-/dashboard/affiliation              → KPIs + actions prioritaires
-/dashboard/affiliation/apporteurs   → Liste apporteurs, actions
-/dashboard/affiliation/parrainages  → Referrals, filtres, actions manuelles
-/dashboard/affiliation/versements   → Suivi payouts / transfers
-/dashboard/affiliation/parametres   → Config globale, coupe-circuit
+/dashboard/affiliation              → KPIs + priority actions
+/dashboard/affiliation/apporteurs   → Referrer list, actions
+/dashboard/affiliation/parrainages  → Referrals, filters, manual actions
+/dashboard/affiliation/versements   → Payout / transfer tracking
+/dashboard/affiliation/parametres   → Global config, circuit breaker
 ```
 
-### Existant modifié
+### Existing, modified
 
 ```
-/checkout   → + champ "Code parrainage" optionnel
-Footer      → + lien "Devenir apporteur d'affaires" → /parrainage
+/checkout   → + optional "Code parrainage" field
+Footer      → + "Devenir apporteur d'affaires" link → /parrainage
 ```
 
-### Protection des routes — Défense en profondeur
+### Route protection — Defense in depth
 
-1. `proxy.ts` → filtrage amont, redirection non-connectés
-2. Layout serveur protégé → contrôle d'accès avec `redirect()`
-3. Vérification de rôle dans les queries/mutations Convex
+1. `proxy.ts` → upstream filtering, redirect for unauthenticated users
+2. Protected server layout → access control with `redirect()`
+3. Role check in the Convex queries/mutations
 
 ---
 
-## 5. Flow Stripe Connect + Versements
+## 5. Stripe Connect flow + payouts
 
-### Onboarding Stripe Connect Express
+### Stripe Connect Express onboarding
 
-1. Clic "Configurer mon compte de paiement"
-2. Action Convex : créer/récupérer Connected Account Express
-3. Créer Account Link (`return_url` + `refresh_url`)
-4. Redirection Stripe hosted onboarding
-5. `refresh_url` = recrée un Account Link côté serveur
-6. `return_url` = retour UI (indicatif seulement)
-7. Vérité métier : webhook `account.updated` + relecture Account API
-8. `stripeConnectStatus = "active"` SEULEMENT si `payouts_enabled = true` + `capabilities.transfers = active` + pas de blocage
+1. Click "Configurer mon compte de paiement"
+2. Convex action: create/fetch the Express Connected Account
+3. Create an Account Link (`return_url` + `refresh_url`)
+4. Redirect to the Stripe hosted onboarding
+5. `refresh_url` = recreates an Account Link server-side
+6. `return_url` = UI return (indicative only)
+7. Business truth: `account.updated` webhook + re-read of the Account API
+8. `stripeConnectStatus = "active"` ONLY if `payouts_enabled = true` + `capabilities.transfers = active` + no block
 
-### Création du referral (idempotent)
+### Referral creation (idempotent)
 
-1. Écouter `checkout.session.completed`
-2. (V2+) Écouter aussi `checkout.session.async_payment_succeeded`
-3. Vérifier `payment_status`
-4. Créer referral en `"pending"` — idempotent sur `orderId`
-5. Metadata Stripe : `referralId`, `referrerId`, `orderId`
+1. Listen to `checkout.session.completed`
+2. (V2+) Also listen to `checkout.session.async_payment_succeeded`
+3. Check `payment_status`
+4. Create the referral as `"pending"` — idempotent on `orderId`
+5. Stripe metadata: `referralId`, `referrerId`, `orderId`
 
-### Validation (cron quotidien)
+### Validation (daily cron)
 
-1. Referrals `"pending"` où `createdAt + 14j < now`
-2. Vérifier absence remboursement / annulation / litige
-3. Si OK → `"validated"`
-4. Si problème → `"cancelled"` + `statusReason`
+1. `"pending"` referrals where `createdAt + 14j < now`
+2. Check there is no refund / cancellation / dispute
+3. If OK → `"validated"`
+4. If there is a problem → `"cancelled"` + `statusReason`
 
-### Passage à payable
+### Transition to payable
 
-1. Cron : referrals `"validated"` + `stripeConnectStatus "active"` → `"payable"`
-2. Aussi sur webhook `account.updated` → promouvoir referrals `"validated"` si compte vient de passer `"active"`
+1. Cron: referrals `"validated"` + `stripeConnectStatus "active"` → `"payable"`
+2. Also on the `account.updated` webhook → promote `"validated"` referrals if the account just turned `"active"`
 
-### Versement
+### Payout
 
-1. Pour chaque referral `"payable"` non bloqué
-2. Transfer Stripe vers Connected Account (metadata + `transfer_group`)
-3. Succès → `"paid"`, stocker `stripeTransferId`, set `paidAt`
-4. Échec → garder `"payable"`, stocker erreur, retenter via job, notifier admin
-5. Stripe ne retente PAS un transfer raté automatiquement
+1. For each non-blocked `"payable"` referral
+2. Stripe Transfer to the Connected Account (metadata + `transfer_group`)
+3. Success → `"paid"`, store `stripeTransferId`, set `paidAt`
+4. Failure → keep `"payable"`, store the error, retry via job, notify the admin
+5. Stripe does NOT retry a failed transfer automatically
 
 ---
 
-## 6. Modification du checkout
+## 6. Checkout changes
 
 ### Zustand store
 
@@ -328,210 +328,210 @@ referralError: string | null
 
 ### UX
 
-- Champ optionnel à l'étape "info"
-- `?ref=CODE` → auto-injection + auto-validation au chargement
-- Si valide : "Code de parrainage appliqué"
-- Si invalide : message d'erreur
-- Bouton "Retirer le code" disponible
-- Récapitulatif : ligne réduction visible, total ajusté
+- Optional field at the "info" step
+- `?ref=CODE` → auto-injection + auto-validation on load
+- If valid: "Code de parrainage appliqué"
+- If invalid: error message
+- "Retirer le code" button available
+- Summary: discount line visible, total adjusted
 
-### Serveur — `createCheckoutSession()`
+### Server — `createCheckoutSession()`
 
-1. Recalcul complet du prix côté serveur
-2. Validation code (actif, apporteur actif, programme activé)
-3. Anti auto-parrainage : `email client ≠ email apporteur` (best effort V1)
-4. Calcul réduction sur mise en service uniquement
-5. Session Stripe : `client_reference_id` + metadata
-6. Aucun referral créé à ce stade
+1. Full server-side price recomputation
+2. Code validation (active code, active referrer, program enabled)
+3. Anti self-referral: `email client ≠ email apporteur` (best effort V1)
+4. Discount computed on the setup fee only
+5. Stripe session: `client_reference_id` + metadata
+6. No referral created at this stage
 
 ### Webhook
 
 1. `checkout.session.completed`
-2. Lire `client_reference_id` + metadata
-3. Si `referralCodeId` → créer referral idempotent sur `orderId`
+2. Read `client_reference_id` + metadata
+3. If `referralCodeId` → create the referral, idempotent on `orderId`
 
 ---
 
-## 7. Dashboard apporteur
+## 7. Referrer dashboard
 
-### Vue d'ensemble
+### Overview
 
-- KPIs : revenus totaux, en attente, nombre filleuls
-- 1 graphique : revenus par mois
-- 5 derniers filleuls
+- KPIs: total earnings, pending, number of referred customers
+- 1 chart: earnings per month
+- last 5 referred customers
 
-### Filleuls
+### Referred customers
 
-- Tableau : Date, Client, Plan (si dispo), Statut, Commission
-- Filtres par statut, pastilles couleur
+- Table: Date, Customer, Plan (if available), Status, Commission
+- Filters by status, colored dots
 
-### Versements
+### Payouts
 
-- Tableau : Date, Montant, Statut (Payé / Versable / En attente)
-- Solde disponible + total versé
+- Table: Date, Amount, Status (Paid / Payable / Pending)
+- Available balance + total paid out
 
-### Profil
+### Profile
 
-- Infos personnelles (prénom, nom, email readonly, téléphone)
-- Stripe Connect : statut + action selon état
-- Bandeau prioritaire si commissions validated mais Stripe pas actif
+- Personal info (first name, last name, email readonly, phone)
+- Stripe Connect: status + action depending on state
+- Priority banner if commissions are validated but Stripe is not active
 
-### Partage
+### Sharing
 
-- Code affiché en gros (copiable)
-- Lien complet copiable
-- Personnalisation du code (1 fois en V1)
-- Boutons partage : WhatsApp, Email, X, LinkedIn, Copier
-
----
-
-## 8. Dashboard admin
-
-### Vue d'ensemble
-
-- KPIs : apporteurs actifs, parrainages du mois, commissions versées/en attente
-- `programEnabled` affiché (pas de toggle direct, lien vers paramètres)
-- Bloc actions prioritaires : payable à verser, bloqués récents, Stripe incomplets, transfers en erreur
-
-### Apporteurs
-
-- Tableau : Prénom Nom, Email, Statut, Code, Stripe Connect (badge), Overrides, Filleuls, Revenus
-- Actions : activer/suspendre/rejeter, modifier commission/réduction, désactiver code
-- Route future : `/apporteurs/[userId]` (modale en V1)
-
-### Parrainages
-
-- Tableau : Date, Apporteur, Client, Plan (si dispo), Montant commande, Commission, Réduction, Statut
-- Actions : bloquer (statusReason + adminNote obligatoires), débloquer (retour intelligent), forcer validation
-- Déblocage intelligent : retour vers statut cohérent (payable/validated/pending selon conditions)
-
-### Versements et transferts
-
-- Vue dérivée des referrals
-- Tableau : Date, Apporteur, Referral/orderId, Montant, Statut, stripeTransferId, Erreur
-- Filtres : payable, paid, failed/retry
-- Action : retenter transfer échoué
-
-### Paramètres
-
-- Commission par défaut, réduction par défaut, délai validation, programEnabled
-- Validation stricte (commission > 0, discount 0-100, délai >= 0)
-- Avertissement fort si programEnabled = false
-- Confirmation visuelle après sauvegarde
+- Code shown large (copyable)
+- Full link copyable
+- Code customization (once in V1)
+- Share buttons: WhatsApp, Email, X, LinkedIn, Copy
 
 ---
 
-## 9. Règles métier finales
+## 8. Admin dashboard
 
-### Éligibilité
+### Overview
 
-- Inscription publique
-- 1 compte par personne
-- Compte suspendable/rejetable
-- 1 code actif principal en V1
+- KPIs: active referrers, referrals this month, commissions paid/pending
+- `programEnabled` displayed (no direct toggle, link to settings)
+- Priority actions block: payable awaiting payout, recently blocked, incomplete Stripe, transfers in error
+
+### Referrers
+
+- Table: First name Last name, Email, Status, Code, Stripe Connect (badge), Overrides, Referred customers, Earnings
+- Actions: activate/suspend/reject, edit commission/discount, disable code
+- Future route: `/apporteurs/[userId]` (modal in V1)
+
+### Referrals
+
+- Table: Date, Referrer, Customer, Plan (if available), Order amount, Commission, Discount, Status
+- Actions: block (statusReason + adminNote required), unblock (smart return), force validation
+- Smart unblock: return to a consistent status (payable/validated/pending depending on conditions)
+
+### Payouts and transfers
+
+- View derived from the referrals
+- Table: Date, Referrer, Referral/orderId, Amount, Status, stripeTransferId, Error
+- Filters: payable, paid, failed/retry
+- Action: retry a failed transfer
+
+### Settings
+
+- Default commission, default discount, validation delay, programEnabled
+- Strict validation (commission > 0, discount 0-100, delay >= 0)
+- Strong warning if programEnabled = false
+- Visual confirmation after save
+
+---
+
+## 9. Final business rules
+
+### Eligibility
+
+- Public signup
+- 1 account per person
+- Account can be suspended/rejected
+- 1 main active code in V1
 
 ### Checkout
 
-- Code optionnel
-- Réduction sur mise en service uniquement
-- Calcul serveur uniquement
-- Aucun referral avant paiement confirmé
+- Code optional
+- Discount on the setup fee only
+- Server-side calculation only
+- No referral before confirmed payment
 
-### Validation / Versement
+### Validation / Payout
 
-- Validation après délai business (14j)
-- Versement si Stripe Connect actif
-- Blocage admin possible à tout moment
-- Retry si transfer échoué
+- Validation after the business delay (14 days)
+- Payout if Stripe Connect is active
+- Admin block possible at any time
+- Retry if the transfer failed
 
-### Unicité
+### Uniqueness
 
 - 1 orderId = 1 referral max
-- 1 checkout = 1 code appliqué max
-- Code désactivé = plus de nouveaux referrals
+- 1 checkout = 1 applied code max
+- Disabled code = no new referrals
 
 ### Audit V1
 
-- Toute action manuelle met à jour : `updatedAt` + `adminNote` + `statusReason`
+- Every manual action updates: `updatedAt` + `adminNote` + `statusReason`
 
 ---
 
 ## 10. Non-goals V1
 
 - Multi-level referral
-- Tracking clics avancé
-- Table payouts
-- Page détail filleul
-- Analytics marketing poussées
-- Édition email apporteur depuis dashboard
-- Gestion financière self-service
+- Advanced click tracking
+- Payouts table
+- Referred-customer detail page
+- Deep marketing analytics
+- Editing the referrer email from the dashboard
+- Self-service financial management
 
 ---
 
-## 11. Prévus V2+
+## 11. Planned for V2+
 
-- Tracking clics → conversions
-- Page détail referral
-- Historique modifications paramètres
-- Table payouts
-- Vue détaillée apporteur admin
-- Campagnes de referral
-- Attribution avancée
-- Lien public enrichi avec tracking
-
----
-
-## 12. Critères d'acceptation
-
-Le système est correct si :
-
-- [ ] Un apporteur peut s'inscrire et se connecter
-- [ ] Un code de parrainage actif est disponible dans son espace
-- [ ] Un client peut appliquer ce code dans le checkout
-- [ ] La réduction est calculée uniquement sur la mise en service
-- [ ] Le paiement Stripe reflète le montant recalculé
-- [ ] Un referral est créé après paiement confirmé
-- [ ] Le referral passe correctement par les statuts attendus
-- [ ] Stripe Connect permet de débloquer les versements
-- [ ] Un transfer réussi marque le referral en `paid`
-- [ ] L'admin peut superviser, bloquer, débloquer et configurer
+- Click → conversion tracking
+- Referral detail page
+- Settings change history
+- Payouts table
+- Detailed admin referrer view
+- Referral campaigns
+- Advanced attribution
+- Enriched public link with tracking
 
 ---
 
-## 13. Ordre d'implémentation recommandé
+## 12. Acceptance criteria
 
-### Phase 1 — Fondations
+The system is correct if:
 
-- Tables Convex (users, referralCodes, referrals, affiliateSettings)
-- Auth Convex
+- [ ] A referrer can sign up and log in
+- [ ] An active referral code is available in their area
+- [ ] A customer can apply that code in the checkout
+- [ ] The discount is computed on the setup fee only
+- [ ] The Stripe payment reflects the recomputed amount
+- [ ] A referral is created after confirmed payment
+- [ ] The referral moves correctly through the expected statuses
+- [ ] Stripe Connect unlocks the payouts
+- [ ] A successful transfer marks the referral as `paid`
+- [ ] The admin can supervise, block, unblock and configure
 
-### Phase 2 — Inscription + Dashboard basique
+---
 
-- Pages publiques : /parrainage, inscription, connexion
-- Dashboard apporteur minimal
-- Génération code principal
+## 13. Recommended implementation order
 
-### Phase 3 — Checkout + Tracking
+### Phase 1 — Foundations
 
-- Intégration checkout : champ code, validation serveur
-- Metadata Stripe
-- Webhook : création referral
+- Convex tables (users, referralCodes, referrals, affiliateSettings)
+- Convex Auth
 
-### Phase 4 — Validation + Paiements
+### Phase 2 — Signup + basic dashboard
 
-- Cron validation (14j)
-- Onboarding Stripe Connect
-- Passage payable → paid
+- Public pages: /parrainage, inscription, connexion
+- Minimal referrer dashboard
+- Main code generation
+
+### Phase 3 — Checkout + tracking
+
+- Checkout integration: code field, server-side validation
+- Stripe metadata
+- Webhook: referral creation
+
+### Phase 4 — Validation + payments
+
+- Validation cron (14 days)
+- Stripe Connect onboarding
+- Transition payable → paid
 
 ### Phase 5 — Admin
 
-- Dashboard admin complet
-- Actions manuelles
-- Paramètres globaux
+- Full admin dashboard
+- Manual actions
+- Global settings
 
 ### Phase 6 — Polish
 
 - UX polish
 - Tests
-- Observabilité
-- Retries payout / erreurs Stripe
+- Observability
+- Payout retries / Stripe errors

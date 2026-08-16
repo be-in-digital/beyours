@@ -7,16 +7,16 @@ import {
 } from "../segment-filter"
 
 describe("getNestedValue", () => {
-  it("devrait accéder à une valeur de premier niveau", () => {
+  it("reads a top-level value", () => {
     expect(getNestedValue({ name: "Alice" }, "name")).toBe("Alice")
   })
 
-  it("devrait accéder à une valeur imbriquée via dot-notation", () => {
+  it("reads a nested value through dot notation", () => {
     const obj = { metadata: { totalOrders: 5 } }
     expect(getNestedValue(obj, "metadata.totalOrders")).toBe(5)
   })
 
-  it("devrait retourner undefined pour un chemin inexistant", () => {
+  it("returns undefined for a path that does not exist", () => {
     expect(getNestedValue({ a: 1 }, "b")).toBeUndefined()
     expect(getNestedValue({ a: { b: 1 } }, "a.c")).toBeUndefined()
   })
@@ -39,69 +39,69 @@ describe("evaluateRule", () => {
   }
 
   describe("equals / not_equals", () => {
-    it("equals devrait correspondre à une valeur identique", () => {
+    it("equals matches an identical value", () => {
       expect(evaluateRule(subscriber, rule({ field: "status", operator: "equals", value: "active" }))).toBe(true)
     })
 
-    it("equals devrait échouer pour une valeur différente", () => {
+    it("equals fails for a different value", () => {
       expect(evaluateRule(subscriber, rule({ field: "status", operator: "equals", value: "pending" }))).toBe(false)
     })
 
-    it("not_equals devrait correspondre à une valeur différente", () => {
+    it("not_equals matches a different value", () => {
       expect(evaluateRule(subscriber, rule({ field: "status", operator: "not_equals", value: "pending" }))).toBe(true)
     })
   })
 
   describe("gt / lt / gte / lte", () => {
-    it("gt devrait comparer numériquement", () => {
+    it("gt compares numerically", () => {
       expect(evaluateRule(subscriber, rule({ field: "metadata.totalOrders", operator: "gt", value: "5" }))).toBe(true)
       expect(evaluateRule(subscriber, rule({ field: "metadata.totalOrders", operator: "gt", value: "10" }))).toBe(false)
     })
 
-    it("lte devrait inclure l'égalité", () => {
+    it("lte includes equality", () => {
       expect(evaluateRule(subscriber, rule({ field: "metadata.totalOrders", operator: "lte", value: "10" }))).toBe(true)
     })
   })
 
   describe("contains / not_contains", () => {
-    it("contains devrait vérifier les tableaux", () => {
+    it("contains checks arrays", () => {
       expect(evaluateRule(subscriber, rule({ field: "tags", operator: "contains", value: "vip" }))).toBe(true)
       expect(evaluateRule(subscriber, rule({ field: "tags", operator: "contains", value: "gold" }))).toBe(false)
     })
 
-    it("contains devrait vérifier les chaînes (insensible à la casse)", () => {
+    it("contains checks strings (case-insensitive)", () => {
       expect(evaluateRule(subscriber, rule({ field: "email", operator: "contains", value: "alice" }))).toBe(true)
       expect(evaluateRule(subscriber, rule({ field: "email", operator: "contains", value: "ALICE" }))).toBe(true)
     })
 
-    it("not_contains devrait fonctionner inversement", () => {
+    it("not_contains works the other way round", () => {
       expect(evaluateRule(subscriber, rule({ field: "tags", operator: "not_contains", value: "gold" }))).toBe(true)
       expect(evaluateRule(subscriber, rule({ field: "tags", operator: "not_contains", value: "vip" }))).toBe(false)
     })
   })
 
   describe("before / after", () => {
-    it("before devrait comparer les timestamps", () => {
+    it("before compares timestamps", () => {
       const now = Date.now()
       expect(evaluateRule(subscriber, rule({ field: "metadata.lastOrderAt", operator: "before", value: String(now) }))).toBe(true)
     })
 
-    it("after devrait comparer inversement", () => {
+    it("after compares the other way round", () => {
       const farPast = Date.now() - 30 * 24 * 60 * 60 * 1000
       expect(evaluateRule(subscriber, rule({ field: "metadata.lastOrderAt", operator: "after", value: String(farPast) }))).toBe(true)
     })
   })
 
   describe("in_last_days", () => {
-    it("devrait retourner true si la valeur est dans les N derniers jours", () => {
+    it("returns true when the value falls within the last N days", () => {
       expect(evaluateRule(subscriber, rule({ field: "metadata.lastOrderAt", operator: "in_last_days", value: "7" }))).toBe(true)
     })
 
-    it("devrait retourner false si la valeur est trop ancienne", () => {
+    it("returns false when the value is too old", () => {
       expect(evaluateRule(subscriber, rule({ field: "metadata.lastOrderAt", operator: "in_last_days", value: "2" }))).toBe(false)
     })
 
-    it("devrait retourner false pour une valeur non numérique", () => {
+    it("returns false for a non-numeric value", () => {
       expect(evaluateRule(subscriber, rule({ field: "metadata.lastOrderAt", operator: "in_last_days", value: "abc" }))).toBe(false)
     })
   })
@@ -114,13 +114,13 @@ describe("buildSegmentFilter", () => {
     { email: "c@test.com", status: "pending", metadata: { totalOrders: 3 } },
   ]
 
-  it("devrait retourner tous les abonnés si pas de règles", () => {
+  it("returns every subscriber when there are no rules", () => {
     const filter = buildSegmentFilter([], "and")
     const result = subscribers.filter(filter)
     expect(result).toHaveLength(3)
   })
 
-  it("devrait filtrer avec AND (toutes les règles)", () => {
+  it("filters with AND (every rule)", () => {
     const rules: SegmentRule[] = [
       { id: "r1", field: "status", operator: "equals", value: "active" },
       { id: "r2", field: "metadata.totalOrders", operator: "gt", value: "10" },
@@ -131,7 +131,7 @@ describe("buildSegmentFilter", () => {
     expect(result[0]?.email).toBe("b@test.com")
   })
 
-  it("devrait filtrer avec OR (au moins une règle)", () => {
+  it("filters with OR (at least one rule)", () => {
     const rules: SegmentRule[] = [
       { id: "r1", field: "status", operator: "equals", value: "pending" },
       { id: "r2", field: "metadata.totalOrders", operator: "gt", value: "10" },

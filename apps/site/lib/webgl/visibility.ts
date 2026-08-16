@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * useSceneVisibility — Intersection Observer hook qui détecte si une scène
- * est dans le viewport (avec marge configurable).
+ * useSceneVisibility — Intersection Observer hook that detects whether a scene
+ * is inside the viewport (with a configurable margin).
  *
- * Usage : la scène court-circuite useFrame quand visible === false,
- * évitant la consommation GPU sur scènes hors écran (voir Decision Log #19).
+ * Usage: the scene short-circuits useFrame when visible === false, which avoids
+ * burning GPU on off-screen scenes (see Decision Log #19).
  *
- * rootMargin par défaut "200px" : pré-charge légèrement avant l'arrivée
- * en viewport pour éviter le flash de scène vide.
+ * The default rootMargin of "200px" warms the scene up slightly before it
+ * reaches the viewport, so it never flashes in empty.
  */
 export function useSceneVisibility<T extends Element = HTMLDivElement>(
   options: { rootMargin?: string; threshold?: number | number[] } = {},

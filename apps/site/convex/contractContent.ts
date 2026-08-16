@@ -1,32 +1,34 @@
 /**
- * Texte canonique du contrat d'apporteur d'affaires (v1.0) sous contrôle de
- * version. Chargé et activé via `contractVersions.publishApporteurContract`.
+ * Canonical text of the affiliate (apporteur d'affaires) contract (v1.0), under
+ * version control. Loaded and activated through
+ * `contractVersions.publishApporteurContract`.
  *
- * Rendu en texte brut (`whitespace-pre-wrap`) sur /parrainage/contrat : pas de
- * Markdown, on structure avec des ARTICLES numérotés et des lignes vides.
+ * Rendered as plain text (`whitespace-pre-wrap`) on /parrainage/contrat: no
+ * Markdown, structure comes from numbered ARTICLES and blank lines.
  *
- * Cohérent avec les « points clés » affichés sur la page de signature
- * (commission 500 € / client signé au barème en vigueur, versée après une
- * période de validation de 14 j ; intermédiaire indépendant ; aucun
- * encaissement au nom de la Société ; attribution par lien/code de parrainage ;
- * signature électronique simple horodatée).
+ * Consistent with the « points clés » shown on the signature page (500 € per
+ * signed client at the scale in force, paid after a 14-day validation period;
+ * independent intermediary; no collection of funds on behalf of the company;
+ * attribution through a referral link/code; timestamped simple electronic
+ * signature).
  *
- * Version durcie après audit par panel d'experts (droit des contrats, fiscal /
- * social, cohérence contrat<->code), 2026-07-20 :
- *  - programme réservé aux PROFESSIONNELS (SIREN), pour sortir du droit de la
- *    consommation et sécuriser DAS2 (art. 240 CGI) + solidarité URSSAF ;
- *  - délai de versement honnête (période de validation, pas de délai ferme que
- *    le code ne tient pas) ;
- *  - montant = barème en vigueur au jour de la commande (pas « 500 € » gravé),
- *    non révisable à la baisse pour les ventes déjà attribuées ;
- *  - anti-potestativité (bonne foi + critères objectifs datés) ;
- *  - TVA : forfait TTC (optimum en franchise en base, cf. company.ts VAT) ;
- *  - non-contournement 12 mois, territorialité France + RAS art. 182 B,
- *    art. 11 sans acceptation tacite (re-signature expresse), juridiction
- *    scindée commerçant / autre.
- * La clause de reversement (art. 4.3) reste un DROIT de la Société ; son
- * exécution automatique (webhooks refund/chargeback + reprise Stripe) est un
- * chantier code séparé, à câbler.
+ * Hardened after an expert-panel audit (contract law, tax / social security,
+ * contract<->code consistency) on 2026-07-20:
+ *  - the programme is reserved for PROFESSIONALS (SIREN), which takes it out of
+ *    consumer law and secures DAS2 (art. 240 CGI) + URSSAF joint liability;
+ *  - honest payment deadline (a validation period, not a firm deadline the code
+ *    does not honour);
+ *  - amount = the scale in force on the order date (not a hard-coded « 500 € »),
+ *    never revised downwards for sales already attributed;
+ *  - anti-potestativity (good faith + dated objective criteria);
+ *  - VAT: flat amount inclusive of tax (optimal under franchise en base, see
+ *    company.ts VAT);
+ *  - 12-month non-circumvention, France territoriality + withholding under art.
+ *    182 B, art. 11 with no tacit acceptance (express re-signature required),
+ *    jurisdiction split between merchants and others.
+ * The clawback clause (art. 4.3) remains a RIGHT of the company; enforcing it
+ * automatically (refund/chargeback webhooks + Stripe reversal) is a separate
+ * piece of work, still to be wired up.
  */
 
 export const APPORTEUR_CONTRACT_TITLE = "Contrat d'apporteur d'affaires";

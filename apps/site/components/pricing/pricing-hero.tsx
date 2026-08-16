@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Hero — Badge + titre + sous-titre + pattern
+   Pricing Hero — badge + title + subtitle + pattern
    ═══════════════════════════════════════════════ */
 
 import { SectionBadge } from "@/components/ui/section-badge";

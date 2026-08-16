@@ -11,7 +11,7 @@ describe("generateDoubleOptInToken", () => {
     vi.restoreAllMocks()
   })
 
-  it("devrait générer un token UUID", () => {
+  it("generates a UUID token", () => {
     const result = generateDoubleOptInToken()
     expect(result.token).toBeDefined()
     expect(result.token.length).toBeGreaterThan(0)
@@ -21,7 +21,7 @@ describe("generateDoubleOptInToken", () => {
     )
   })
 
-  it("devrait définir une expiration 48h dans le futur", () => {
+  it("sets the expiry 48h in the future", () => {
     const before = Date.now()
     const result = generateDoubleOptInToken()
     const after = Date.now()
@@ -31,7 +31,7 @@ describe("generateDoubleOptInToken", () => {
     expect(result.expiresAt).toBeLessThanOrEqual(after + ttl48h)
   })
 
-  it("devrait générer des tokens uniques", () => {
+  it("generates unique tokens", () => {
     const t1 = generateDoubleOptInToken()
     const t2 = generateDoubleOptInToken()
     expect(t1.token).not.toBe(t2.token)
@@ -42,7 +42,7 @@ describe("isDoubleOptInValid", () => {
   const future = Date.now() + 60_000
   const past = Date.now() - 60_000
 
-  it("devrait retourner true pour un abonné pending avec token valide", () => {
+  it("returns true for a pending subscriber with a valid token", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInToken: "abc-123",
@@ -51,7 +51,7 @@ describe("isDoubleOptInValid", () => {
     expect(isDoubleOptInValid(subscriber)).toBe(true)
   })
 
-  it("devrait retourner false si status n'est pas pending", () => {
+  it("returns false when the status is not pending", () => {
     const subscriber: SubscriberForOptIn = {
       status: "active",
       doubleOptInToken: "abc-123",
@@ -60,7 +60,7 @@ describe("isDoubleOptInValid", () => {
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })
 
-  it("devrait retourner false si token est manquant", () => {
+  it("returns false when the token is missing", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInExpiresAt: future,
@@ -68,7 +68,7 @@ describe("isDoubleOptInValid", () => {
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })
 
-  it("devrait retourner false si expiresAt est manquant", () => {
+  it("returns false when expiresAt is missing", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInToken: "abc-123",
@@ -76,7 +76,7 @@ describe("isDoubleOptInValid", () => {
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })
 
-  it("devrait retourner false si le token est expiré", () => {
+  it("returns false when the token has expired", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInToken: "abc-123",
@@ -87,7 +87,7 @@ describe("isDoubleOptInValid", () => {
 })
 
 describe("processDoubleOptIn", () => {
-  it("devrait retourner les données de confirmation", () => {
+  it("returns the confirmation data", () => {
     const now = 1700000000000
     const result = processDoubleOptIn(now)
     expect(result).toEqual({
@@ -98,7 +98,7 @@ describe("processDoubleOptIn", () => {
     })
   })
 
-  it("devrait utiliser Date.now() par défaut", () => {
+  it("defaults to Date.now()", () => {
     const before = Date.now()
     const result = processDoubleOptIn()
     const after = Date.now()
@@ -107,7 +107,7 @@ describe("processDoubleOptIn", () => {
     expect(result.doubleOptInAt as number).toBeLessThanOrEqual(after)
   })
 
-  it("devrait effacer le token et l'expiration", () => {
+  it("clears the token and the expiry", () => {
     const result = processDoubleOptIn()
     expect(result.doubleOptInToken).toBeUndefined()
     expect(result.doubleOptInExpiresAt).toBeUndefined()

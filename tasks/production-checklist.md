@@ -1,49 +1,49 @@
-# Checklist Production — Stripe BID Subscriptions
+# Production Checklist — Stripe BID Subscriptions
 
-> **IMPORTANT** : Les credentials actuels sont en mode **test**. Avant la mise en production, il faut remplacer par les vrais credentials live.
+> **IMPORTANT**: the current credentials are in **test** mode. Before going to production, they must be replaced with the real live credentials.
 
 ---
 
-## Convex Env Vars a mettre a jour (deployment prod : `robust-elephant-263`)
+## Convex env vars to update (prod deployment: `robust-elephant-263`)
 
-| Variable | Actuel (test) | A remplacer par |
+| Variable | Current (test) | Replace with |
 |----------|---------------|-----------------|
-| `STRIPE_BID_SECRET_KEY` | `sk_test_•••` (voir secret store) | `sk_live_...` (cle live Stripe) |
-| `STRIPE_BID_WEBHOOK_SECRET` | `whsec_•••` (voir secret store) | `whsec_...` (nouveau webhook live) |
-| `STRIPE_BID_PRICE_STARTER` | `price_1T6zX9K8R9QQdjlQi9OztwRa` | Price ID live Starter mensuel |
-| `STRIPE_BID_PRICE_PRO` | `price_1T6zXAK8R9QQdjlQfUGoJZxD` | Price ID live Pro mensuel |
-| `STRIPE_BID_PRICE_ENTERPRISE` | `price_1T6zXBK8R9QQdjlQqzIRvk9F` | Price ID live Enterprise mensuel |
-| `STRIPE_BID_PRICE_STARTER_ANNUAL` | `price_1T6zXwK8R9QQdjlQ7aw8SLt9` | Price ID live Starter annuel |
-| `STRIPE_BID_PRICE_PRO_ANNUAL` | `price_1T6zXxK8R9QQdjlQW6UaGd2g` | Price ID live Pro annuel |
-| `STRIPE_BID_PRICE_ENTERPRISE_ANNUAL` | `price_1T6zXyK8R9QQdjlQS3iIsp46` | Price ID live Enterprise annuel |
-| `BID_APP_URL` | `https://reliable-parrot-452.convex.site` | URL de prod (ex: `https://app.beindigital.fr`) |
+| `STRIPE_BID_SECRET_KEY` | `sk_test_•••` (see secret store) | `sk_live_...` (Stripe live key) |
+| `STRIPE_BID_WEBHOOK_SECRET` | `whsec_•••` (see secret store) | `whsec_...` (new live webhook) |
+| `STRIPE_BID_PRICE_STARTER` | `price_1T6zX9K8R9QQdjlQi9OztwRa` | Live Starter monthly price ID |
+| `STRIPE_BID_PRICE_PRO` | `price_1T6zXAK8R9QQdjlQfUGoJZxD` | Live Pro monthly price ID |
+| `STRIPE_BID_PRICE_ENTERPRISE` | `price_1T6zXBK8R9QQdjlQqzIRvk9F` | Live Enterprise monthly price ID |
+| `STRIPE_BID_PRICE_STARTER_ANNUAL` | `price_1T6zXwK8R9QQdjlQ7aw8SLt9` | Live Starter annual price ID |
+| `STRIPE_BID_PRICE_PRO_ANNUAL` | `price_1T6zXxK8R9QQdjlQW6UaGd2g` | Live Pro annual price ID |
+| `STRIPE_BID_PRICE_ENTERPRISE_ANNUAL` | `price_1T6zXyK8R9QQdjlQS3iIsp46` | Live Enterprise annual price ID |
+| `BID_APP_URL` | `https://reliable-parrot-452.convex.site` | Prod URL (e.g. `https://app.beindigital.fr`) |
 
-## Etapes pour la prod
+## Steps for production
 
-1. **Creer les produits live dans Stripe Dashboard** (ou via CLI avec `--live`)
-   - Auto Blog - Starter : 9€/mois, 75.60€/an
-   - Auto Blog - Pro : 29€/mois, 243.60€/an
-   - Auto Blog - Enterprise : 79€/mois, 663.60€/an
+1. **Create the live products in the Stripe Dashboard** (or via CLI with `--live`)
+   - Auto Blog - Starter: 9€/month, 75.60€/year
+   - Auto Blog - Pro: 29€/month, 243.60€/year
+   - Auto Blog - Enterprise: 79€/month, 663.60€/year
 
-2. **Creer un nouveau webhook live** dans Stripe Dashboard
-   - URL : `https://<convex-prod-domain>.convex.site/webhooks/stripe-bid`
-   - Events : `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+2. **Create a new live webhook** in the Stripe Dashboard
+   - URL: `https://<convex-prod-domain>.convex.site/webhooks/stripe-bid`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 
-3. **Mettre a jour les env vars Convex** sur le deployment prod `robust-elephant-263` :
+3. **Update the Convex env vars** on the prod deployment `robust-elephant-263`:
    ```bash
    cd apps/restaurant-theme
    pnpx convex env set STRIPE_BID_SECRET_KEY "sk_live_..." --prod
    pnpx convex env set STRIPE_BID_WEBHOOK_SECRET "whsec_..." --prod
-   # ... (toutes les variables ci-dessus)
+   # ... (all the variables above)
    ```
 
-4. **Deployer les fonctions Convex en prod** :
+4. **Deploy the Convex functions to prod**:
    ```bash
    pnpx convex deploy
    ```
 
-5. **Tester le flux complet** en live avec une vraie carte avant de lancer commercialement
+5. **Test the full flow** live with a real card before the commercial launch
 
 ---
 
-*Derniere mise a jour : 2026-03-03*
+*Last updated: 2026-03-03*

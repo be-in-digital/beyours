@@ -12,7 +12,7 @@ const http = httpRouter();
 auth.addHttpRoutes(http);
 
 /* ═══════════════════════════════════════════════
-   Webhook Stripe — 5 événements gérés :
+   Stripe webhook — 5 events handled:
    1. checkout.session.completed
    2. invoice.payment_succeeded
    3. invoice.payment_failed
@@ -31,7 +31,7 @@ async function verifyStripeSignature(
 
   if (!ts || !sig) return false;
 
-  // Vérifier que le timestamp n'est pas trop vieux (5 minutes)
+  // Make sure the timestamp is not too old (5 minutes)
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - parseInt(ts)) > 300) return false;
 
@@ -56,7 +56,7 @@ async function verifyStripeSignature(
   return expectedSig === sig;
 }
 
-// Type souple pour les événements Stripe
+// Loose type for Stripe events
 interface StripeEvent {
   id: string;
   type: string;
@@ -82,7 +82,7 @@ http.route({
       return new Response("Webhook secret not configured", { status: 500 });
     }
 
-    // Vérification signature
+    // Signature verification
     const valid = await verifyStripeSignature(body, signature, webhookSecret);
     if (!valid) {
       return new Response("Invalid signature", { status: 400 });
@@ -90,7 +90,7 @@ http.route({
 
     const event: StripeEvent = JSON.parse(body);
 
-    // Idempotence — si déjà processed, skip. Si existe mais pas processed, on re-tente.
+    // Idempotency — skip if already processed. If it exists but is not processed, retry.
     const existing = await ctx.runQuery(
       internal.stripeEvents.getByEventId,
       { eventId: event.id },
@@ -164,7 +164,7 @@ async function handleCheckoutCompleted(
     ?? session.customer_email as string | undefined;
   const metadata = session.metadata as Record<string, string> | undefined;
 
-  // Retrouver la commande
+  // Look the order up
   const order = await ctx.runQuery(
     internal.orders.getByStripeSessionId,
     { stripeSessionId: sessionId },
@@ -174,17 +174,17 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // ── Idempotence de l'encaissement (fix paiement) ──
-  // La transition pending→paid de la commande est notre clé d'idempotence pour
-  // les effets NON idempotents par nature (email de confirmation). Un rejeu du
-  // webhook Stripe (redelivery, ou 2ᵉ tentative après une erreur) retrouve la
-  // commande déjà « paid » et NE réémet donc PAS l'email. Les autres effets
-  // (ligne de paiement, abonnement) ont chacun leur propre garde d'existence.
+  // ── Payment collection idempotency (payment fix) ──
+  // The order's pending→paid transition is our idempotency key for the effects
+  // that are NOT idempotent by nature (the confirmation email). A replay of the
+  // Stripe webhook (redelivery, or a 2nd attempt after an error) finds the order
+  // already « paid » and therefore does NOT resend the email. The other effects
+  // (payment row, subscription) each have their own existence guard.
   const firstProcessing = order.status !== "paid";
 
-  // Méthode de paiement — payment_method_types contient les méthodes autorisées, pas celle utilisée.
-  // On utilise payment_method_collection ou on infère : si une seule méthode autorisée, c'est celle-là.
-  // Sinon, on regarde si Stripe indique la méthode dans les charges (non disponible dans session seule).
+  // Payment method — payment_method_types holds the allowed methods, not the one used.
+  // Either use payment_method_collection or infer it: with a single allowed method, that is the one.
+  // Otherwise, check whether Stripe reports the method on the charges (not available on the session alone).
   const paymentMethodTypes = session.payment_method_types as string[] | undefined;
   let pmt = "card";
   if (paymentMethodTypes && paymentMethodTypes.length === 1) {
@@ -192,21 +192,21 @@ async function handleCheckoutCompleted(
   }
   const paymentMethod = pmt === "alma" ? "alma" : pmt === "klarna" ? "klarna" : "card";
 
-  // Effets à-envoyer-une-seule-fois, gardés par la transition pending→paid.
-  // On flippe le statut EN PREMIER (clé d'idempotence), puis on programme
-  // l'email : un rejeu ne repassera jamais ici (statut déjà « paid »).
+  // Send-exactly-once effects, guarded by the pending→paid transition.
+  // Flip the status FIRST (the idempotency key), then schedule the email:
+  // a replay will never come back through here (status already « paid »).
   if (firstProcessing) {
-    // Mettre à jour la commande (pending → paid)
+    // Update the order (pending → paid)
     await ctx.runMutation(internal.orders.updateStatus, {
       orderId: order._id,
       status: "paid" as const,
       paymentMethod: paymentMethod as "card" | "alma" | "klarna",
     });
 
-    // Email de confirmation au client (best-effort, ne bloque jamais le webhook).
-    // amount_total = montant réellement débité (TTC si la TVA est active, sinon HT),
-    // toujours juste, contrairement au montant HT stocké sur la commande.
-    // Envoyé UNE seule fois (garde firstProcessing) — pas à chaque retry Stripe.
+    // Confirmation email to the customer (best-effort, never blocks the webhook).
+    // amount_total = the amount actually charged (tax included when VAT is on,
+    // excluded otherwise), always right, unlike the pre-tax amount on the order.
+    // Sent ONCE (firstProcessing guard) — not on every Stripe retry.
     await ctx.scheduler.runAfter(0, internal.email.send.sendOrderConfirmation, {
       toEmail: order.customerEmail,
       firstName: order.customerFirstName,
@@ -219,9 +219,9 @@ async function handleCheckoutCompleted(
     });
   }
 
-  // Créer le paiement — idempotent via le payment_intent (garde d'existence
-  // indépendante du statut : referme la ligne de paiement même si un rejeu
-  // survient après une panne partielle du 1er passage).
+  // Create the payment — idempotent through the payment_intent (an existence
+  // guard independent of the status: it still closes the payment row when a
+  // replay follows a partial failure of the first pass).
   const paymentIntent = session.payment_intent as string | undefined;
   if (paymentIntent) {
     const existingPayment = await ctx.runQuery(
@@ -239,13 +239,13 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // ── Abonnement maintenance (facturation récurrente) ──
-  // Idempotent : on ne crée l'abonnement que s'il n'en existe pas déjà pour
-  // cette commande (un rejeu ne double pas l'abonnement). Encapsulé dans un
-  // try/catch : un échec APRÈS l'encaissement (ex. Price ID live absent) ne
-  // doit PAS renvoyer 500 — sinon Stripe rejoue l'event en boucle et empile les
-  // effets. On enregistre l'échec sur la commande + dans le flux d'activité ops,
-  // puis on renvoie 200. Un rejeu ultérieur retentera (garde d'existence).
+  // ── Maintenance subscription (recurring billing) ──
+  // Idempotent: the subscription is only created when none exists yet for this
+  // order (a replay does not duplicate it). Wrapped in a try/catch: a failure
+  // AFTER the payment was collected (e.g. a missing live Price ID) must NOT
+  // return 500 — Stripe would replay the event in a loop and stack up effects.
+  // We record the failure on the order + in the ops activity feed, then return
+  // 200. A later replay will try again (existence guard).
   if (customerId && metadata?.billingPeriod) {
     const plan = metadata.plan as "essentielle" | "premium";
     const billingPeriod = metadata.billingPeriod as "monthly" | "yearly";
@@ -268,9 +268,9 @@ async function handleCheckoutCompleted(
           status: "active" as const,
         });
       } catch (err) {
-        // Le paiement est déjà encaissé : on N'ÉCHOUE PAS le webhook (pas de
-        // 500 → pas de boucle de rejeu Stripe). On trace l'échec pour que
-        // l'ops le VOIE et provisionne l'abonnement manuellement.
+        // The payment is already collected: we do NOT fail the webhook (no 500 →
+        // no Stripe replay loop). We log the failure so that ops SEE it and
+        // provision the subscription by hand.
         console.error(
           `[STRIPE] createSubscription a échoué pour la commande ${order._id} après encaissement — provisioning manuel requis:`,
           err,
@@ -285,9 +285,9 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Créer le referral si applicable (idempotent sur orderId)
+  // Create the referral when applicable (idempotent on orderId)
   if (metadata?.referralCodeId && metadata?.referrerId) {
-    // Garde anti-auto-parrainage côté serveur (invariant, indépendant du front).
+    // Server-side self-referral guard (an invariant, independent of the front end).
     const referrerEmail = await ctx.runQuery(
       internal.affiliateUsers.getEmailById,
       { affiliateUserId: metadata.referrerId as Id<"affiliateUsers"> },
@@ -349,11 +349,11 @@ async function handleInvoiceSucceeded(
   const hostedUrl = invoice.hosted_invoice_url as string | undefined;
   const periodStart = invoice.period_start as number | undefined;
   const periodEnd = invoice.period_end as number | undefined;
-  // "subscription_create" = 1ʳᵉ facture (déjà couverte par la confirmation de
-  // commande) ; "subscription_cycle" = vrai renouvellement → reçu dédié.
+  // "subscription_create" = the 1st invoice (already covered by the order
+  // confirmation); "subscription_cycle" = a real renewal → dedicated receipt.
   const billingReason = invoice.billing_reason as string | undefined;
 
-  // Trouver la subscription Convex (si liée)
+  // Find the Convex subscription (when one is linked)
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
   let plan: "essentielle" | "premium" = "essentielle";
 
@@ -368,7 +368,7 @@ async function handleInvoiceSucceeded(
     }
   }
 
-  // Vérifier si la facture existe déjà
+  // Check whether the invoice already exists
   const existingInvoice = await ctx.runQuery(
     internal.invoices.getByStripeInvoiceId,
     { stripeInvoiceId: invoiceId },
@@ -399,8 +399,8 @@ async function handleInvoiceSucceeded(
     });
   }
 
-  // Reçu de renouvellement (seulement pour les vrais renouvellements ; la 1ʳᵉ
-  // facture est déjà couverte par l'email de confirmation de commande).
+  // Renewal receipt (only for real renewals; the 1st invoice is already covered
+  // by the order confirmation email).
   if (billingReason === "subscription_cycle" && customerEmail) {
     await ctx.scheduler.runAfter(0, internal.email.send.sendRenewalReceipt, {
       toEmail: customerEmail,
@@ -467,7 +467,7 @@ async function handleInvoiceFailed(
     });
   }
 
-  // Relance de paiement au client (dunning) : Stripe retentera automatiquement.
+  // Dunning email to the customer: Stripe will retry the payment automatically.
   if (customerEmail) {
     await ctx.scheduler.runAfter(0, internal.email.send.sendPaymentFailed, {
       toEmail: customerEmail,
@@ -563,12 +563,12 @@ async function handleAccountUpdated(
   }
 }
 
-/* ── 7. charge.refunded / charge.dispute.created : clawback commission ──
-   Remboursement complet ou rétrofacturation : la vente est défaite, la
-   commission d'apport n'est plus due (art. 4.3 du contrat). On marque le
-   paiement remboursé + la commande annulée, puis on reprend ou annule la
-   commission. Remboursement partiel : ignoré (traitement manuel). Litige
-   gagné après coup : réintégration manuelle. */
+/* ── 7. charge.refunded / charge.dispute.created: commission clawback ──
+   Full refund or chargeback: the sale is undone, so the referral commission
+   is no longer owed (art. 4.3 of the contract). We mark the payment refunded
+   + the order cancelled, then reverse or cancel the commission. Partial
+   refund: ignored (handled manually). Dispute won afterwards: reinstated
+   manually. */
 
 async function handleChargeReversal(
   ctx: {
@@ -581,7 +581,7 @@ async function handleChargeReversal(
 ) {
   const obj = event.data.object;
 
-  // Remboursement partiel : on ne reprend pas la commission automatiquement.
+  // Partial refund: we do not claw the commission back automatically.
   if (event.type === "charge.refunded" && obj.refunded !== true) {
     console.log(
       `Remboursement partiel sur ${obj.id as string} — clawback ignoré (manuel)`,
@@ -604,7 +604,7 @@ async function handleChargeReversal(
     return;
   }
 
-  // Paiement remboursé + commande annulée (libère un slot fondateur).
+  // Payment refunded + order cancelled (frees up a founder slot).
   await ctx.runMutation(internal.payments.updateStatus, {
     paymentId: payment._id,
     status: "refunded" as const,
@@ -614,7 +614,7 @@ async function handleChargeReversal(
     status: "cancelled" as const,
   });
 
-  // Reprise / annulation de la commission d'apport le cas échéant.
+  // Reverse / cancel the referral commission where applicable.
   const referral = await ctx.runQuery(internal.referrals.getByOrderId, {
     orderId: payment.orderId,
   });
@@ -653,12 +653,12 @@ function mapSubscriptionStatus(
   }
 }
 
-/* ── Traçabilité du provisioning d'abonnement (fix paiement) ──
-   Enregistre l'issue de la création de l'abonnement maintenance SUR la commande
-   (`subscriptionStatus`) et, en cas d'échec, pousse une entrée dans le flux
-   d'activité ops (saActivity kind:"system") : l'équipe VOIT ainsi une vente
-   encaissée mais non provisionnée et la traite manuellement. Appelée par
-   handleCheckoutCompleted (webhook Stripe), jamais 500 après encaissement. */
+/* ── Subscription provisioning traceability (payment fix) ──
+   Records the outcome of the maintenance subscription creation ON the order
+   (`subscriptionStatus`) and, on failure, pushes an entry into the ops activity
+   feed (saActivity kind:"system"): the team then SEES a sale that was collected
+   but never provisioned and handles it by hand. Called by
+   handleCheckoutCompleted (Stripe webhook), never 500 after collection. */
 export const recordSubscriptionOutcome = internalMutation({
   args: {
     orderId: v.id("orders"),

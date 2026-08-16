@@ -1,6 +1,6 @@
 /**
- * Helpers de formatage — fr-FR, montants en centimes (comme le modèle Convex).
- * Tout ce qui touche à l'argent transite en centimes (entiers) et se formate ici.
+ * Formatting helpers — fr-FR, amounts in cents (like the Convex model).
+ * Everything money-related travels as cents (integers) and is formatted here.
  */
 
 const CURRENCY_LOCALE = "fr-FR";
@@ -13,7 +13,7 @@ export function formatCents(cents: number, currency = "EUR"): string {
   }).format((cents ?? 0) / 100);
 }
 
-/** 123456 (cents) → "1 235 €" (pas de décimales, pour les KPI compacts) */
+/** 123456 (cents) → "1 235 €" (no decimals, for compact KPIs) */
 export function formatCentsRounded(cents: number, currency = "EUR"): string {
   return new Intl.NumberFormat(CURRENCY_LOCALE, {
     style: "currency",
@@ -22,7 +22,7 @@ export function formatCentsRounded(cents: number, currency = "EUR"): string {
   }).format((cents ?? 0) / 100);
 }
 
-/** 1234567 (cents) → "12,3 k€" — pour gros chiffres de dashboard */
+/** 1234567 (cents) → "12,3 k€" — for large dashboard figures */
 export function formatCentsCompact(cents: number, currency = "EUR"): string {
   const euros = (cents ?? 0) / 100;
   const compact = new Intl.NumberFormat(CURRENCY_LOCALE, {
@@ -52,7 +52,7 @@ export function formatPercent(ratio: number, withSign = false): string {
   return withSign && (ratio ?? 0) > 0 ? `+${v}` : v;
 }
 
-/** points de pourcentage déjà calculés (12.4 → "12,4 %") */
+/** percentage points, already computed (12.4 → "12,4 %") */
 export function formatPercentPoints(points: number): string {
   return `${new Intl.NumberFormat(CURRENCY_LOCALE, {
     maximumFractionDigits: 1,
@@ -104,7 +104,7 @@ const RELATIVE_FMT = new Intl.RelativeTimeFormat(CURRENCY_LOCALE, {
   numeric: "auto",
 });
 
-/** "il y a 3 h", "dans 12 j" — relatif à maintenant */
+/** "il y a 3 h", "dans 12 j" — relative to now */
 export function formatRelative(ts?: number | null, now = Date.now()): string {
   if (!ts) return "—";
   const diff = ts - now;
@@ -125,7 +125,7 @@ export function formatRelative(ts?: number | null, now = Date.now()): string {
   return RELATIVE_FMT.format(Math.round(diff / year), "year");
 }
 
-/** Nombre de jours entiers entre maintenant et une date future (négatif si passée). */
+/** Whole days between now and a future date (negative when it is in the past). */
 export function daysUntil(ts?: number | null, now = Date.now()): number {
   if (!ts) return 0;
   return Math.ceil((ts - now) / (24 * 60 * 60 * 1000));

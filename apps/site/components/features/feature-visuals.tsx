@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
-   Feature Visuals — mini-UI claires façon storefront
-   Reconstruit en produit réel : cartes menu photo,
-   flux de commandes, intégrations, graphiques terracotta.
+   Feature Visuals — clean mini-UIs in the storefront style
+   Rebuilt as the real product: photo menu cards,
+   order feeds, integrations, terracotta charts.
    ═══════════════════════════════════════════════ */
 
 import Image from "next/image";
@@ -41,7 +41,7 @@ export function FeatureVisual({ feature }: { feature: Feature }) {
     case "analytics":
       return <AnalyticsVisual />;
     default:
-      // Fallback aligné sur le pattern déclaré
+      // Fallback aligned on the declared pattern
       if (feature.mockupPattern === "mobile") return <MobileAppVisual />;
       if (feature.mockupPattern === "integration") return <IntegrationVisual />;
       return <AnalyticsVisual />;
@@ -81,7 +81,7 @@ function SiteWebVisual() {
     <VisualCard>
       <BrowserBar url="trattoria-nonna.fr" />
 
-      {/* Hero établissement */}
+      {/* Venue hero */}
       <div className="relative h-40 w-full overflow-hidden sm:h-44">
         <Image
           src="/photos/plat-gastronomie.webp"
@@ -141,7 +141,7 @@ function SiteWebVisual() {
   );
 }
 
-/* ── 02 · Commande en ligne — panier fonctionnel ── */
+/* ── 02 · Online ordering — a working cart ── */
 
 const commandeItems = [
   {
@@ -233,7 +233,7 @@ function CommandeVisual() {
   );
 }
 
-/* ── 09 · Expérience mobile — téléphone clair ── */
+/* ── 09 · Mobile experience — light phone ── */
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -253,7 +253,7 @@ function MobileAppVisual() {
   return (
     <div className="flex items-center justify-center py-2">
       <PhoneFrame>
-        {/* En-tête app */}
+        {/* App header */}
         <div className="flex items-center justify-between px-4 pb-1 pt-3">
           <div>
             <p className="text-[10px] font-medium text-muted-foreground">
@@ -268,7 +268,7 @@ function MobileAppVisual() {
           </span>
         </div>
 
-        {/* Visuel plat mis en avant */}
+        {/* Featured dish visual */}
         <div className="relative mx-4 mt-1 h-24 overflow-hidden rounded-xl">
           <Image
             src="/photos/burger-premium.webp"
@@ -317,7 +317,7 @@ function MobileAppVisual() {
           </div>
         </div>
 
-        {/* Barre de nav */}
+        {/* Nav bar */}
         <div className="flex items-center justify-around border-t border-[color:var(--border)] px-4 py-2.5">
           <UtensilsCrossed className="h-4 w-4 text-primary" strokeWidth={2} />
           <ShoppingBag className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
@@ -328,7 +328,7 @@ function MobileAppVisual() {
   );
 }
 
-/* ── 05 · Centralisation des commandes — flux unifié ── */
+/* ── 05 · Order centralisation — one unified feed ── */
 
 const orderFlow = [
   {
@@ -360,7 +360,7 @@ const orderFlow = [
 function CentralisationVisual() {
   return (
     <VisualCard>
-      {/* En-tête tableau de bord */}
+      {/* Dashboard header */}
       <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
         <p className="text-xs font-semibold text-foreground">
           Commandes en direct
@@ -370,7 +370,7 @@ function CentralisationVisual() {
         </span>
       </div>
 
-      {/* Lignes de commande */}
+      {/* Order rows */}
       <div className="divide-y divide-[color:var(--border)]">
         {orderFlow.map((o) => (
           <div key={o.ref} className="flex items-center gap-3 px-4 py-3">
@@ -409,7 +409,7 @@ function CentralisationVisual() {
         ))}
       </div>
 
-      {/* Canaux plateformes à venir — inactif tant que non certifié */}
+      {/* Upcoming platform channels — inactive until certified */}
       <div className="flex items-center gap-2 border-t border-[color:var(--border)] bg-background px-4 py-2.5 opacity-60">
         <span className="h-1.5 w-1.5 rounded-full bg-surface-4" />
         <span className="text-[10px] font-medium text-muted-foreground">
@@ -434,7 +434,7 @@ function CentralisationVisual() {
   );
 }
 
-/* ── 06 · Intégrations — vrais logos vers le hub ── */
+/* ── 06 · Integrations — real logos feeding the hub ── */
 
 const integrationRows = [
   { name: "Uber Eats", logo: "/logos/uber-eats.png", detail: "Commandes synchronisées dès la certification" },
@@ -483,7 +483,7 @@ function IntegrationVisual() {
           ))}
         </div>
 
-        {/* Convergence vers le hub */}
+        {/* Everything converging on the hub */}
         <div className="mt-4 flex items-center justify-center gap-2">
           <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[color:var(--border-contrast)]" />
           <span className="inline-flex items-center gap-2 rounded-full bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-primary-foreground shadow-[0_10px_24px_-14px_rgba(197,84,44,0.6)]">
@@ -500,7 +500,7 @@ function IntegrationVisual() {
   );
 }
 
-/* ── 07 · Fidélité & gamification — carte claire, cohérente avec les autres ── */
+/* ── 07 · Loyalty & gamification — light card, consistent with the others ── */
 
 function FideliteVisual() {
   return (
@@ -526,7 +526,7 @@ function FideliteVisual() {
           </span>
         </div>
 
-        {/* Progression vers palier */}
+        {/* Progress towards the next tier */}
         <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-background p-3">
           <div className="flex items-center justify-between text-[11px] font-medium text-secondary-foreground">
             <span className="tabular-nums">320 pts</span>
@@ -540,7 +540,7 @@ function FideliteVisual() {
           </p>
         </div>
 
-        {/* Défi + récompense */}
+        {/* Challenge + reward */}
         <div className="mt-3 grid grid-cols-2 gap-2.5">
           <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -577,7 +577,7 @@ const analyticsBars = [45, 58, 52, 70, 64, 82, 76, 95];
 function AnalyticsVisual() {
   return (
     <VisualCard>
-      {/* En-tête */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
         <p className="text-xs font-semibold text-foreground">Performances</p>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
@@ -607,7 +607,7 @@ function AnalyticsVisual() {
         ))}
       </div>
 
-      {/* Graphique à barres terracotta */}
+      {/* Terracotta bar chart */}
       <div className="px-4 pb-4">
         <div className="rounded-xl border border-[color:var(--border)] bg-background p-4">
           <div className="flex items-center justify-between">

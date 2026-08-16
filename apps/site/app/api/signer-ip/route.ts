@@ -1,7 +1,7 @@
 /**
- * Renvoie l'adresse IP de l'appelant, lue côté serveur via l'en-tête de proxy.
- * Sert à horodater la piste d'audit de la signature électronique de l'apporteur
- * (l'IP n'est pas accessible depuis une action Convex classique).
+ * Returns the caller's IP address, read server-side from the proxy header.
+ * Used to stamp the audit trail of the affiliate's electronic signature (the IP
+ * is not reachable from a regular Convex action).
  */
 export async function GET(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");

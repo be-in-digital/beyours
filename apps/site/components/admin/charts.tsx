@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-/* Charts SVG légers (aucune dépendance) — area + bar, largeur mesurée. */
+/* Lightweight SVG charts (no dependency) — area + bar, measured width. */
 
 type Point = { label: string; value: number };
 

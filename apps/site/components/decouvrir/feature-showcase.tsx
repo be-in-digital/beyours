@@ -31,9 +31,9 @@ import { features } from "@/components/features/features-data";
 import { cn } from "@/lib/utils";
 
 /* ═══════════════════════════════════════════════
-   Vitrine interactive des fonctionnalités.
-   5 onglets, chacun avec un visuel vivant (vrai produit, KDS animé,
-   KPIs qui s'animent, traduction IA, fidélité). Puis la liste complète.
+   Interactive feature showcase.
+   5 tabs, each with a live visual (the real product, an animated KDS,
+   animating KPIs, AI translation, loyalty). Then the full list.
    ═══════════════════════════════════════════════ */
 
 const TABS = [
@@ -94,7 +94,7 @@ export function FeatureShowcase() {
         </AnimatePresence>
       </div>
 
-      {/* Tout est inclus */}
+      {/* Everything is included */}
       <AllFeaturesGrid />
     </div>
   );
@@ -418,7 +418,7 @@ function FidelitePanel() {
   );
 }
 
-/* ── Toutes les fonctionnalités, listées ── */
+/* ── Every feature, listed out ── */
 
 const FEATURE_ICONS: Record<string, typeof Store> = {
   "site-web-premium": Store,

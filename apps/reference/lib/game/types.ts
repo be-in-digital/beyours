@@ -49,7 +49,7 @@ export interface GameConfig {
   referral?: { enabled: boolean; friendRewardLabel?: string }
 }
 
-/** Progression des actions pour ce device (mode "sequential"). */
+/** Action progress for this device ("sequential" mode). */
 export type ActionProgression =
   | { mode: "all" }
   | {
@@ -59,7 +59,7 @@ export type ActionProgression =
       allDone: boolean
     }
 
-/** État du parrainage renvoyé par getSession. */
+/** Referral state returned by getSession. */
 export interface ReferralState {
   enabled: boolean
   isFriendWelcome: boolean

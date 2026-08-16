@@ -8,7 +8,7 @@ import {
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 
-/** Valide un SIRET : 14 chiffres + clé de Luhn (formule SIREN/SIRET). */
+/** Validates a SIRET: 14 digits + Luhn check digit (SIREN/SIRET formula). */
 function isValidSiret(raw: string): boolean {
   const digits = raw.replace(/\s/g, "");
   if (!/^\d{14}$/.test(digits)) return false;
@@ -73,7 +73,7 @@ export const completeProfile = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Non authentifié");
 
-    // Programme réservé aux professionnels : SIRET obligatoire et valide.
+    // The programme is for professionals only: a valid SIRET is mandatory.
     const siret = args.siret.replace(/\s/g, "");
     if (!isValidSiret(siret)) {
       throw new Error("Numéro SIRET invalide (14 chiffres attendus)");
@@ -105,7 +105,7 @@ export const createAfterSignup = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Non authentifié");
 
-    // Vérifier qu'un affiliateUser n'existe pas déjà
+    // Make sure an affiliateUser does not already exist
     const existing = await ctx.db
       .query("affiliateUsers")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -129,7 +129,7 @@ export const createAfterSignup = mutation({
       createdAt: Date.now(),
     });
 
-    // Email de bienvenue (best-effort). L'email vit sur le compte auth.
+    // Welcome email (best-effort). The address lives on the auth account.
     const user = await ctx.db.get(userId);
     if (user?.email) {
       await ctx.scheduler.runAfter(0, internal.email.send.sendAffiliateWelcome, {

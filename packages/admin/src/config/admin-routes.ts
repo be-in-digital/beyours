@@ -3,10 +3,10 @@
  * Every admin link, redirect, and navigation reference MUST use these constants.
  */
 export const adminRoutes = {
-  // ─── Principal ──────────────────────────────────────────────────────────────
+  // ─── Main ───────────────────────────────────────────────────────────────────
   dashboard: "/dashboard",
 
-  // ─── Opérations ─────────────────────────────────────────────────────────────
+  // ─── Operations ─────────────────────────────────────────────────────────────
   orders: "/dashboard/orders",
   orderDetail: (id: string) => `/dashboard/orders/${id}` as const,
   kitchen: "/dashboard/orders/kitchen",
@@ -37,7 +37,7 @@ export const adminRoutes = {
   emailSegments: "/dashboard/email/segments",
   emailConfig: "/dashboard/email/config",
 
-  // ─── Contenu ────────────────────────────────────────────────────────────────
+  // ─── Content ────────────────────────────────────────────────────────────────
   contentPages: "/dashboard/content/pages",
   contentPageEdit: (slug: string) => `/dashboard/content/pages/${slug}` as const,
   contentComponents: "/dashboard/content/components",
@@ -46,7 +46,7 @@ export const adminRoutes = {
   contentBlogArticle: (id: string) => `/dashboard/content/blog/${id}` as const,
   contentMedia: "/dashboard/content/media",
 
-  // ─── Organisation ───────────────────────────────────────────────────────────
+  // ─── Organization ───────────────────────────────────────────────────────────
   stores: "/dashboard/stores",
   storeDetail: (id: string) => `/dashboard/stores/${id}` as const,
   team: "/dashboard/team",

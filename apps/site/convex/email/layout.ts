@@ -6,9 +6,9 @@
  * inline styles because email clients (Outlook, Gmail) don't support flexbox,
  * grid, or <style> reliably.
  *
- * Direction artistique (DESIGN.md, refonte 2026-07 warm food-editorial) :
- * papier #faf5ee, encre #221c15, accent terracotta #c5542c, ancrage olive
- * #23271c. Un seul accent. Pas de glow, pas de mint.
+ * Art direction (DESIGN.md, 2026-07 warm food-editorial redesign): paper
+ * #faf5ee, ink #221c15, terracotta accent #c5542c, olive anchor #23271c.
+ * A single accent. No glow, no mint.
  */
 
 export const BRAND = {

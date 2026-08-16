@@ -107,7 +107,7 @@ describe("referrals.markValidatedAsPayable", () => {
     });
     const orderId = await data.setupOrder(t);
     const referralId = await data.createReferral(t, affiliateUserId, referralCodeId, orderId, "validated");
-    // Facture obligatoire avant versement (art. 4.2) : attacher une facture.
+    // Invoice mandatory before payout (art. 4.2): attach an invoice.
     await t.run(async (ctx) => {
       const storageId = await ctx.storage.store(
         new Blob(["facture"], { type: "application/pdf" }),

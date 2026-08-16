@@ -1,5 +1,5 @@
 /**
- * Tests pour le service SES
+ * Tests for the SES service
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -29,7 +29,7 @@ describe('SES Service', () => {
   })
 
   describe('sendEmail', () => {
-    it('devrait envoyer un email simple', async () => {
+    it('sends a simple email', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       const result = await service.sendEmail({
@@ -50,7 +50,7 @@ describe('SES Service', () => {
       })
     })
 
-    it('devrait envoyer à plusieurs destinataires', async () => {
+    it('sends to several recipients', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendEmail({
@@ -66,7 +66,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait utiliser replyTo personnalisé', async () => {
+    it('uses a custom replyTo', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendEmail({
@@ -83,7 +83,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait rejeter un email invalide', async () => {
+    it('rejects an invalid email', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await expect(
@@ -95,7 +95,7 @@ describe('SES Service', () => {
       ).rejects.toThrow()
     })
 
-    it('devrait rejeter un sujet vide', async () => {
+    it('rejects an empty subject', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await expect(
@@ -107,7 +107,7 @@ describe('SES Service', () => {
       ).rejects.toThrow()
     })
 
-    it('devrait formater l\'expéditeur sans nom si fromName absent', async () => {
+    it('formats the sender without a name when fromName is missing', async () => {
       const configWithoutName = { ...mockConfig, fromName: undefined }
       const service = createSESService(configWithoutName, mockClient)
 
@@ -126,7 +126,7 @@ describe('SES Service', () => {
   })
 
   describe('sendTemplatedEmail', () => {
-    it('devrait envoyer un email avec template orderConfirmation', async () => {
+    it('sends an email with the orderConfirmation template', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       const result = await service.sendTemplatedEmail({
@@ -155,7 +155,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait envoyer un email avec template passwordReset', async () => {
+    it('sends an email with the passwordReset template', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendTemplatedEmail({
@@ -176,7 +176,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait envoyer un email avec template welcome', async () => {
+    it('sends an email with the welcome template', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendTemplatedEmail({
@@ -196,7 +196,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait envoyer un email avec template prizeWon', async () => {
+    it('sends an email with the prizeWon template', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendTemplatedEmail({
@@ -218,7 +218,7 @@ describe('SES Service', () => {
       )
     })
 
-    it('devrait rejeter un template inexistant', async () => {
+    it('rejects a template that does not exist', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await expect(
@@ -232,7 +232,7 @@ describe('SES Service', () => {
   })
 
   describe('sendBulkEmail', () => {
-    it('devrait envoyer plusieurs emails avec rate limiting', async () => {
+    it('sends several emails with rate limiting', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       const result = await service.sendBulkEmail({
@@ -260,7 +260,7 @@ describe('SES Service', () => {
       expect(mockClient.sendEmail).toHaveBeenCalledTimes(3)
     })
 
-    it('devrait gérer les erreurs partielles', async () => {
+    it('handles partial failures', async () => {
       mockClient.sendEmail = vi
         .fn()
         .mockResolvedValueOnce({ messageId: 'msg-1' })
@@ -297,7 +297,7 @@ describe('SES Service', () => {
     })
 
     it(
-      'devrait diviser en lots de 50 emails',
+      'splits into batches of 50 emails',
       async () => {
         const service = createSESService(mockConfig, mockClient)
 
@@ -309,13 +309,13 @@ describe('SES Service', () => {
 
         await service.sendBulkEmail({ recipients })
 
-        // 120 emails = 3 lots (50 + 50 + 20)
+        // 120 emails = 3 batches (50 + 50 + 20)
         expect(mockClient.sendEmail).toHaveBeenCalledTimes(120)
       },
-      15000 // Timeout de 15 secondes pour le rate limiting
+      15000 // 15s timeout to accommodate rate limiting
     )
 
-    it('devrait rejeter une liste vide', async () => {
+    it('rejects an empty list', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await expect(
@@ -323,7 +323,7 @@ describe('SES Service', () => {
       ).rejects.toThrow()
     })
 
-    it('devrait utiliser replyToEmail par défaut', async () => {
+    it('uses replyToEmail by default', async () => {
       const service = createSESService(mockConfig, mockClient)
 
       await service.sendBulkEmail({

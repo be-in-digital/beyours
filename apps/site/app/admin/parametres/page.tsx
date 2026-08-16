@@ -148,7 +148,7 @@ function ProfileCard({ admin }: { admin: ReturnType<typeof useAdmin> }) {
   );
 }
 
-/* ── Provisionner un déploiement ── */
+/* ── Provision a deployment ── */
 function ProvisionCard() {
   const [open, setOpen] = React.useState(false);
   return (
@@ -206,7 +206,7 @@ function ProvisionDialog({
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = React.useState(false);
 
-  // Réinitialise le formulaire à chaque ouverture.
+  // Resets the form every time it is opened.
   React.useEffect(() => {
     if (open) setForm(EMPTY_FORM);
   }, [open]);
@@ -395,7 +395,7 @@ function ProvisionDialog({
   );
 }
 
-/* ── File de provisioning ── */
+/* ── Provisioning queue ── */
 function ProvisioningQueue() {
   const queue = useQuery(api.saFleet.list, { status: "provisioning" });
 
@@ -478,7 +478,7 @@ function GoLiveChecklist() {
   );
 }
 
-/* ── Ingestion des métriques ── */
+/* ── Metrics ingestion ── */
 function MetricsIngestion() {
   const rows = [
     {
@@ -521,7 +521,7 @@ function MetricsIngestion() {
   );
 }
 
-/* ── À propos ── */
+/* ── About ── */
 function AboutCard() {
   return (
     <Card className="p-5">

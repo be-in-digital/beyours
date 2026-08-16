@@ -6,9 +6,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
 /**
- * Upload de la facture de l'apporteur pour une commission donnée.
- * Flux Convex : generateUploadUrl -> POST du fichier -> attachReferralInvoice.
- * La facture est obligatoire avant tout versement (art. 4.2 du contrat).
+ * Uploads the affiliate's invoice for a given commission.
+ * Convex flow: generateUploadUrl -> POST the file -> attachReferralInvoice.
+ * The invoice is mandatory before any payout (art. 4.2 of the contract).
  */
 export function InvoiceUpload({
   referralId,

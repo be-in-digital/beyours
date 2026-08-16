@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Pricing Comparison — Tableau comparatif par bénéfice
+   Pricing Comparison — comparison table, benefit by benefit
    ═══════════════════════════════════════════════ */
 
 import { comparisonCategories } from "./pricing-data";
@@ -41,7 +41,7 @@ function Cross() {
   );
 }
 
-/* En cours de certification par la plateforme tierce — offert dès validation. */
+/* Certification with the third-party platform is under way — free once approved. */
 function Soon() {
   return (
     <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-surface-2 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground text-center">

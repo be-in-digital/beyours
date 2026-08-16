@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-/* ── Dev mode (global, activé par ?dev=true dans l'URL) ── */
+/* ── Dev mode (global, switched on by ?dev=true in the URL) ── */
 
 interface DevModeStore {
   enabled: boolean;

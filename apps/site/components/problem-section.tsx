@@ -69,7 +69,7 @@ function ProblemCard({ problem }: { problem: (typeof problems)[number] }) {
   const { Icon, Visual } = problem;
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
-      {/* Visuel qui incarne le problème */}
+      {/* Visual that embodies the problem */}
       <div className="relative h-44 overflow-hidden border-b border-[color:var(--border)] bg-secondary/50">
         <Visual />
       </div>
@@ -90,7 +90,7 @@ function ProblemCard({ problem }: { problem: (typeof problems)[number] }) {
   );
 }
 
-/* ── Visuel 1 : la commission ampute la commande ── */
+/* ── Visual 1: the commission eats into the order ── */
 function CommissionVisual() {
   return (
     <div className="flex h-full flex-col justify-center p-5">
@@ -141,7 +141,7 @@ function CommissionVisual() {
   );
 }
 
-/* ── Visuel 2 : un site vieillissant ── */
+/* ── Visual 2: an ageing website ── */
 function OldSiteVisual() {
   return (
     <div className="h-full p-4">
@@ -154,7 +154,7 @@ function OldSiteVisual() {
             restaurant-le-vieux.fr
           </span>
         </div>
-        {/* corps daté — flex-1, se compresse, ne rogne jamais */}
+        {/* dated body — flex-1, compresses, never clips */}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1.5 px-3">
           <ImageOff
             className="h-6 w-6 shrink-0 text-muted-foreground/50"
@@ -164,7 +164,7 @@ function OldSiteVisual() {
             Aperçu indisponible
           </span>
         </div>
-        {/* pied daté — toujours visible */}
+        {/* dated footer — always visible */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[color:var(--border)] px-2.5 py-1.5">
           <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground">
             Menu.pdf
@@ -178,7 +178,7 @@ function OldSiteVisual() {
   );
 }
 
-/* ── Visuel 3 : fidélité inexistante ── */
+/* ── Visual 3: no loyalty to speak of ── */
 function LoyaltyVisual() {
   return (
     <div className="flex h-full flex-col justify-center gap-4 p-5">

@@ -111,7 +111,7 @@ export function SolutionSection() {
             </div>
           </StaggerItem>
 
-          {/* C — Gestion du menu */}
+          {/* C — Menu management */}
           <StaggerItem className="bento-card flex flex-col p-6">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
               <UtensilsCrossed className="h-5 w-5" strokeWidth={1.8} />
@@ -177,7 +177,7 @@ export function SolutionSection() {
             </div>
           </StaggerItem>
 
-          {/* E — Fidélité */}
+          {/* E — Loyalty */}
           <StaggerItem className="bento-card flex flex-col p-6 md:col-span-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-primary">
               Engagement
@@ -190,7 +190,7 @@ export function SolutionSection() {
               entre deux visites, avec les coordonnées de vos clients.
             </p>
             <div className="mt-4 space-y-3 rounded-xl border border-[color:var(--border)] bg-background p-4">
-              {/* Le jeu + la récompense */}
+              {/* The game + the reward */}
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
@@ -209,7 +209,7 @@ export function SolutionSection() {
                   Dessert offert
                 </span>
               </div>
-              {/* La fiche client capturée */}
+              {/* The captured customer record */}
               <div className="flex items-center gap-2.5 border-t border-[color:var(--border)] pt-3">
                 <Mail
                   className="h-4 w-4 shrink-0 text-muted-foreground"

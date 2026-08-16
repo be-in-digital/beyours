@@ -6,7 +6,7 @@
 
 ### Business Model
 - **Product**: Next.js theme sold once per restaurant
-- **Multi-store**: 1 restaurant owner = 1-∞ locations (illimité)
+- **Multi-store**: 1 restaurant owner = 1-∞ locations (unlimited)
 - **Pricing**: Per store
 - **Maintenance**: 1 year included, then annual renewal
 
@@ -81,12 +81,12 @@ beindigital/
 └── package.json
 ```
 
-**Sites web (`apps/web-*`)** : migrés depuis l'ancien repo `beindigital.fr`.
-Scope `@beindigital/*` (sans tirets — distinct des packages produits `@be-in-digital/*`),
-packages partagés `packages/web-{config,tokens,webgl-utils}`, exclus de changesets
-(déploiement continu, pas de versioning). Chaque app a son `CLAUDE.md`/`DESIGN.md`.
-Le repo séparé `beindigital-boilerplate` reste le template git cloné pour chaque
-site client ; il consomme les packages `@be-in-digital/*` publiés.
+**Websites (`apps/web-*`)**: migrated from the old `beindigital.fr` repo.
+They use the `@beindigital/*` scope (no hyphens — distinct from the product packages
+under `@be-in-digital/*`), share `packages/web-{config,tokens,webgl-utils}`, and are
+excluded from changesets (continuous deployment, no versioning). Each app has its own
+`CLAUDE.md`/`DESIGN.md`. The separate `beindigital-boilerplate` repo remains the git
+template cloned for each client site; it consumes the published `@be-in-digital/*` packages.
 
 ---
 
@@ -307,7 +307,7 @@ When working on tasks:
 7. **i18n**: Use cookies (primary) or localStorage (fallback)
 8. **State**: Zustand for client, Convex for server
 9. **Run tests** before commit: `pnpm test && pnpm test:e2e`
-10. **Ne JAMAIS mentionner "Claude Code"** dans les messages de commit (pas de `Co-Authored-By: Claude`, ni aucune référence à Claude)
+10. **NEVER mention "Claude Code"** in commit messages (no `Co-Authored-By: Claude`, and no reference to Claude at all)
 
 ---
 

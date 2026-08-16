@@ -5,9 +5,9 @@ import { FadeIn } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
 
 /* ═══════════════════════════════════════════════
-   Comparatif honnête par modèle économique.
-   Chiffres sourcés (voir « Sources » en bas de page). Aucun prix
-   concurrent inventé : fourchettes publiques ou modèles décrits.
+   Honest comparison, one business model at a time.
+   Sourced figures (see « Sources » at the bottom of the page). No competitor
+   price is invented: public ranges, or the model described as published.
    ═══════════════════════════════════════════════ */
 
 type Tone = "good" | "bad" | "neutral";
@@ -172,7 +172,7 @@ export function CompetitorComparison() {
         </div>
       </FadeIn>
 
-      {/* Mobile — cartes par modèle */}
+      {/* Mobile — one card per model */}
       <div className="grid gap-4 md:hidden">
         {MODELS.map((m, mi) => (
           <FadeIn key={m.name} delay={mi * 0.05}>

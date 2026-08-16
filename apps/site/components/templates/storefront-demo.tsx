@@ -35,14 +35,14 @@ type View = "home" | "menu" | "product" | "checkout" | "confirmed";
 type CartLine = { item: MenuItem; qty: number };
 
 /**
- * Site de commande démo, **visitable et utilisable** en plein écran, peint aux
- * couleurs / à la police / à l'ambiance d'un template. Tokens scopés en
- * variables CSS sur le conteneur racine. Aucun backend : panier et commande
- * simulés côté client.
+ * Demo ordering site, **browsable and usable** full-screen, painted in a
+ * template's colours / typeface / atmosphere. Tokens are scoped as CSS
+ * variables on the root container. No backend: the cart and the order are
+ * simulated client-side.
  *
- * Reçoit les données brutes (template + catégorie, sérialisables) et résout le
- * thème côté client — l'icône lucide du thème ne traverse jamais la frontière
- * serveur→client.
+ * Takes the raw data (template + category, both serialisable) and resolves the
+ * theme on the client — the theme's lucide icon never crosses the server→client
+ * boundary.
  */
 export function StorefrontDemo({
   template,
@@ -138,7 +138,7 @@ export function StorefrontDemo({
 
   return (
     <div style={scope} className="flex min-h-screen flex-col">
-      {/* Bandeau démo */}
+      {/* Demo banner */}
       <div
         className="flex items-center justify-center gap-3 px-4 py-1.5 text-center text-[11px] font-medium sm:text-xs"
         style={{ background: accent, color: accentInk }}
@@ -238,7 +238,7 @@ export function StorefrontDemo({
                 </div>
               </section>
 
-              {/* Infos établissement */}
+              {/* Venue details */}
               <section className="mx-auto grid max-w-5xl gap-4 px-5 py-8 sm:grid-cols-3 sm:px-6">
                 {[
                   { icon: Clock, label: "Horaires", value: theme.hours },
@@ -287,7 +287,7 @@ export function StorefrontDemo({
               <h1 className="text-3xl font-semibold" style={{ fontFamily: heading }}>La carte</h1>
               <p className="mt-1 text-muted-foreground">{theme.cuisine} · {theme.city}</p>
 
-              {/* Onglets catégories */}
+              {/* Category tabs */}
               <div className="sticky top-[68px] z-20 -mx-5 mb-2 mt-5 flex gap-2 overflow-x-auto px-5 py-2 sm:top-[72px]" style={{ background: palette.bg }}>
                 {theme.menu.map((cat) => (
                   <a
@@ -412,7 +412,7 @@ export function StorefrontDemo({
                   <p className="text-xs text-muted-foreground">Démo — aucun paiement réel ne sera effectué.</p>
                 </div>
 
-                {/* Récap */}
+                {/* Order summary */}
                 <aside className="h-fit rounded-2xl border bg-surface-1 p-5" style={{ borderColor: palette.border }}>
                   <h2 className="text-lg font-semibold" style={{ fontFamily: heading }}>Récapitulatif</h2>
                   <div className="mt-3 space-y-2.5">
@@ -467,7 +467,7 @@ export function StorefrontDemo({
         </AnimatePresence>
       </main>
 
-      {/* Footer thémé */}
+      {/* Themed footer */}
       <footer className="border-t px-5 py-8 sm:px-6" style={{ borderColor: palette.border, background: palette.surface }}>
         <div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">

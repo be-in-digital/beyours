@@ -43,13 +43,13 @@ export const submit = mutation({
       createdAt: now,
     });
 
-    // Confirmation au prospect (best-effort)
+    // Confirmation to the prospect (best-effort)
     await ctx.scheduler.runAfter(0, internal.email.send.sendContactConfirmation, {
       toEmail: email,
       firstName: firstNameOf(name),
     });
 
-    // Notification interne à l'équipe (best-effort)
+    // Internal notification to the team (best-effort)
     await ctx.scheduler.runAfter(
       0,
       internal.email.send.sendContactTeamNotification,
@@ -66,7 +66,7 @@ export const submit = mutation({
   },
 });
 
-/** Admin: leads du formulaire de contact, plus récents en premier. */
+/** Admin: contact-form leads, most recent first. */
 export const list = query({
   args: {},
   handler: async (ctx) => {

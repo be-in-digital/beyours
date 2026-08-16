@@ -1,49 +1,49 @@
 /**
- * Types partagés pour les services AWS
+ * Shared types for the AWS services
  * @module aws/types
  */
 
 /**
- * Configuration de base AWS
+ * Base AWS configuration
  */
 export interface AWSConfig {
-  /** Région AWS (ex: eu-west-1) */
+  /** AWS region (e.g. eu-west-1) */
   region: string
-  /** Clé d'accès AWS */
+  /** AWS access key ID */
   accessKeyId: string
-  /** Clé secrète AWS */
+  /** AWS secret access key */
   secretAccessKey: string
 }
 
 /**
- * Configuration pour S3
+ * S3 configuration
  */
 export interface S3Config extends AWSConfig {
-  /** Nom du bucket S3 */
+  /** S3 bucket name */
   bucketName: string
-  /** URL de base publique (CloudFront ou S3 public URL) */
+  /** Public base URL (CloudFront or the public S3 URL) */
   publicBaseUrl?: string
 }
 
 /**
- * Configuration pour SES
+ * SES configuration
  */
 export interface SESConfig extends AWSConfig {
-  /** Email expéditeur */
+  /** Sender email address */
   fromEmail: string
-  /** Nom de l'expéditeur */
+  /** Sender display name */
   fromName?: string
-  /** Email de réponse */
+  /** Reply-to address */
   replyToEmail?: string
 }
 
 /**
- * Dossiers autorisés pour le stockage S3
+ * Folders allowed for S3 storage
  */
 export type S3Folder = 'products' | 'branding' | 'stores' | 'cms' | 'email' | 'users'
 
 /**
- * Types MIME autorisés
+ * Allowed MIME types
  */
 export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   products: [
@@ -96,7 +96,7 @@ export const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
 } as const
 
 /**
- * Tailles maximales par dossier (en bytes)
+ * Maximum file size per folder, in bytes
  */
 export const MAX_FILE_SIZES: Record<S3Folder, number> = {
   products: 10 * 1024 * 1024, // 10MB

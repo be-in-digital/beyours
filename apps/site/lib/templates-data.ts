@@ -1,15 +1,15 @@
-// ⚙️ Catalogue de templates — généré depuis le boilerplate
-// (beindigital-boilerplate · demos/assets/themes.js). Captures : public/templates/shots/.
+// ⚙️ Template catalogue — generated from the boilerplate
+// (beindigital-boilerplate · demos/assets/themes.js). Screenshots: public/templates/shots/.
 
 export interface Template {
   slug: string;
   name: string;
   tagline: string;
-  /** couleur d'accent du template (thème clair) */
+  /** accent colour of the template (light theme) */
   accent: string;
-  /** couleur d'accent du template (thème sombre) */
+  /** accent colour of the template (dark theme) */
   accentDark: string;
-  /** capture d'écran du template */
+  /** screenshot of the template */
   shot: string;
 }
 
@@ -17,7 +17,7 @@ export interface Category {
   id: string;
   label: string;
   description: string;
-  /** couleur représentative de la catégorie */
+  /** colour that stands for the category */
   accent: string;
   templates: Template[];
 }

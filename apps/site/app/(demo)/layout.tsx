@@ -1,5 +1,5 @@
-// Layout plein écran des démos de templates : volontairement dépouillé — pas
-// de navbar ni de footer de la landing. Le storefront démo occupe tout l'écran.
+// Full-screen layout for the template demos: deliberately stripped down — none
+// of the landing navbar or footer. The demo storefront fills the whole screen.
 export default function DemoLayout({
   children,
 }: {

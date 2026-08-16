@@ -8,7 +8,7 @@ export const get = query({
   handler: async (ctx) => {
     const settings = await ctx.db.query("affiliateSettings").take(1);
     if (settings.length === 0) {
-      // Valeurs par défaut
+      // Default values
       return {
         defaultCommissionCents: 50000,
         defaultDiscountPercent: 10,

@@ -1,16 +1,16 @@
-// Thème de storefront démo — dérive un vrai mini-site de commande, visitable et
-// utilisable en plein écran, à partir d'un template du catalogue
-// (lib/templates-data.ts).
+// Demo storefront theme — derives a real mini ordering site, browsable and
+// usable full-screen, from a catalogue template (lib/templates-data.ts).
 //
-// Un template porte son identité couleur (accent / accentDark) ; l'univers
-// (pizzeria, fast-food, …) porte l'ambiance : humeur de fond, police, arrondi,
-// carte complète, infos établissement. Les deux se combinent ici en un thème
-// complet, appliqué au runtime via des variables CSS scopées sur le storefront.
+// A template carries its colour identity (accent / accentDark); the universe
+// (pizzeria, fast-food, …) carries the atmosphere: background mood, typeface,
+// corner radius, full menu, venue details. The two are combined here into a
+// complete theme, applied at runtime through CSS variables scoped to the
+// storefront.
 
 import { Pizza, Beef, Sandwich, Drumstick, Soup, type LucideIcon } from "lucide-react";
 import type { Category, Template } from "./templates-data";
 
-/** Humeur de base : détermine fond, surfaces, encre, bordures. */
+/** Base mood: drives background, surfaces, ink and borders. */
 export type StorefrontMood = "paper" | "night" | "ink";
 
 export interface MenuItem {
@@ -35,13 +35,13 @@ export interface StorefrontPalette {
   ink: string;
   muted: string;
   border: string;
-  /** voile posé sur la photo d'en-tête pour lisibilité du titre */
+  /** veil laid over the header photo so the title stays readable */
   headerOverlay: string;
 }
 
 interface UniversePreset {
   mood: StorefrontMood;
-  /** variable CSS de police d'affichage (déclarée dans app/layout.tsx) */
+  /** CSS variable of the display font (declared in app/layout.tsx) */
   fontVar: string;
   radius: string;
   cuisine: string;
@@ -56,7 +56,7 @@ interface UniversePreset {
 }
 
 export interface StorefrontTheme {
-  // Établissement (fictif, dérivé du template)
+  // Venue (fictional, derived from the template)
   name: string;
   cuisine: string;
   city: string;
@@ -79,7 +79,7 @@ export interface StorefrontTheme {
   icon: LucideIcon;
 }
 
-/** Palettes de base par humeur (le reste est teinté par l'accent du template). */
+/** Base palettes per mood (the rest is tinted by the template's accent). */
 const MOODS: Record<StorefrontMood, StorefrontPalette> = {
   paper: {
     bg: "#faf5ee",
@@ -344,8 +344,9 @@ const UNIVERSES: Record<string, UniversePreset> = {
 const FALLBACK: UniversePreset = UNIVERSES.pizzeria!;
 
 /**
- * Encre lisible sur une couleur d'accent : texte sombre si l'accent est clair,
- * blanc sinon. Parse la luminosité d'une chaîne `hsl(H S% L%)` ou renvoie blanc.
+ * Ink that stays readable on an accent colour: dark text when the accent is
+ * light, white otherwise. Parses the lightness of an `hsl(H S% L%)` string, and
+ * falls back to white.
  */
 function readableInk(color: string): string {
   const nums = color.match(/\d+(?:\.\d+)?/g);
@@ -356,15 +357,15 @@ function readableInk(color: string): string {
 }
 
 /**
- * Combine un template (identité couleur) et sa catégorie (univers) en un thème
- * complet, prêt à peindre le storefront démo.
+ * Combines a template (colour identity) with its category (universe) into a
+ * complete theme, ready to paint the demo storefront.
  */
 export function resolveStorefrontTheme(
   template: Template,
   category: Category,
 ): StorefrontTheme {
   const preset = UNIVERSES[category.id] ?? FALLBACK;
-  // En humeur nuit, l'accent clair (accentDark) ressort mieux sur fond sombre.
+  // In the night mood, the light accent (accentDark) reads better on a dark background.
   const accent = preset.mood === "night" ? template.accentDark : template.accent;
 
   return {
@@ -389,7 +390,7 @@ export function resolveStorefrontTheme(
   };
 }
 
-/** Tous les plats à plat (utilitaire : mises en avant, recherche d'un item). */
+/** Every dish, flattened (helper for highlights and item lookups). */
 export function flattenMenu(menu: MenuCategory[]): MenuItem[] {
   return menu.flatMap((c) => c.items);
 }

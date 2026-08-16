@@ -17,8 +17,8 @@ describe("useEmailTemplateEditorStore", () => {
     useEmailTemplateEditorStore.getState().reset()
   })
 
-  describe("état initial", () => {
-    it("devrait avoir un état vide par défaut", () => {
+  describe("initial state", () => {
+    it("starts with an empty state", () => {
       const state = useEmailTemplateEditorStore.getState()
       expect(state.blocks).toHaveLength(0)
       expect(state.selectedBlockId).toBeNull()
@@ -30,7 +30,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("load", () => {
-    it("devrait charger les données du template", () => {
+    it("loads the template data", () => {
       const blocks = [textBlock("t1"), spacerBlock("s1")]
       useEmailTemplateEditorStore.getState().load({
         blocks,
@@ -46,7 +46,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(state.history).toHaveLength(0)
     })
 
-    it("devrait réinitialiser la sélection", () => {
+    it("resets the selection", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.load({ blocks: [textBlock("t1")], subject: "", previewText: "" })
       store.selectBlock("t1")
@@ -57,7 +57,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("addBlock", () => {
-    it("devrait ajouter un bloc à la fin", () => {
+    it("appends a block at the end", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(spacerBlock("s1"))
@@ -68,11 +68,11 @@ describe("useEmailTemplateEditorStore", () => {
       expect(state.isDirty).toBe(true)
     })
 
-    it("devrait ajouter un bloc à un index spécifique", () => {
+    it("inserts a block at a specific index", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(textBlock("t3"))
-      store.addBlock(textBlock("t2"), 1) // insérer au milieu
+      store.addBlock(textBlock("t2"), 1) // insert in the middle
 
       const ids = useEmailTemplateEditorStore
         .getState()
@@ -80,7 +80,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(ids).toEqual(["t1", "t2", "t3"])
     })
 
-    it("devrait empiler l'historique", () => {
+    it("pushes onto the history", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
 
@@ -89,7 +89,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("updateBlock", () => {
-    it("devrait mettre à jour les propriétés d'un bloc", () => {
+    it("updates the properties of a block", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1", "Ancien"))
       store.updateBlock("t1", { content: "Nouveau" })
@@ -98,7 +98,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(block?.type === "text" && block.content).toBe("Nouveau")
     })
 
-    it("ne devrait pas affecter les autres blocs", () => {
+    it("leaves the other blocks untouched", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1", "A"))
       store.addBlock(textBlock("t2", "B"))
@@ -110,7 +110,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("removeBlock", () => {
-    it("devrait supprimer un bloc par id", () => {
+    it("removes a block by id", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(textBlock("t2"))
@@ -121,7 +121,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(state.blocks[0]?.id).toBe("t2")
     })
 
-    it("devrait désélectionner si le bloc supprimé était sélectionné", () => {
+    it("clears the selection when the removed block was selected", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.selectBlock("t1")
@@ -130,7 +130,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(useEmailTemplateEditorStore.getState().selectedBlockId).toBeNull()
     })
 
-    it("ne devrait pas changer la sélection si un autre bloc est supprimé", () => {
+    it("keeps the selection when another block is removed", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(textBlock("t2"))
@@ -142,7 +142,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("moveBlock", () => {
-    it("devrait déplacer un bloc d'un index à un autre", () => {
+    it("moves a block from one index to another", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("a"))
       store.addBlock(textBlock("b"))
@@ -155,7 +155,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(ids).toEqual(["b", "c", "a"])
     })
 
-    it("ne devrait rien faire si fromIndex === toIndex", () => {
+    it("does nothing when fromIndex === toIndex", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("a"))
       const historyBefore = useEmailTemplateEditorStore.getState().history.length
@@ -165,7 +165,7 @@ describe("useEmailTemplateEditorStore", () => {
       )
     })
 
-    it("ne devrait rien faire si les index sont hors limites", () => {
+    it("does nothing when the indexes are out of bounds", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("a"))
       store.moveBlock(-1, 0)
@@ -176,7 +176,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("selectBlock / clearSelection", () => {
-    it("devrait sélectionner un bloc", () => {
+    it("selects a block", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.selectBlock("t1")
@@ -184,7 +184,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(useEmailTemplateEditorStore.getState().selectedBlockId).toBe("t1")
     })
 
-    it("devrait effacer la sélection", () => {
+    it("clears the selection", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.selectBlock("t1")
@@ -195,21 +195,21 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("setSubject / setPreviewText", () => {
-    it("devrait mettre à jour le subject et marquer isDirty", () => {
+    it("updates the subject and marks isDirty", () => {
       useEmailTemplateEditorStore.getState().setSubject("Nouveau sujet")
       const state = useEmailTemplateEditorStore.getState()
       expect(state.subject).toBe("Nouveau sujet")
       expect(state.isDirty).toBe(true)
     })
 
-    it("devrait mettre à jour le previewText", () => {
+    it("updates the previewText", () => {
       useEmailTemplateEditorStore.getState().setPreviewText("Aperçu")
       expect(useEmailTemplateEditorStore.getState().previewText).toBe("Aperçu")
     })
   })
 
   describe("undo", () => {
-    it("devrait restaurer l'état précédent des blocs", () => {
+    it("restores the previous block state", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(textBlock("t2"))
@@ -220,7 +220,7 @@ describe("useEmailTemplateEditorStore", () => {
       expect(state.blocks[0]?.id).toBe("t1")
     })
 
-    it("devrait supporter plusieurs undo", () => {
+    it("supports several undos", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.addBlock(textBlock("t2"))
@@ -231,12 +231,12 @@ describe("useEmailTemplateEditorStore", () => {
       expect(useEmailTemplateEditorStore.getState().blocks).toHaveLength(1)
     })
 
-    it("ne devrait rien faire si l'historique est vide", () => {
+    it("does nothing when the history is empty", () => {
       useEmailTemplateEditorStore.getState().undo()
       expect(useEmailTemplateEditorStore.getState().blocks).toHaveLength(0)
     })
 
-    it("devrait mettre isDirty à false quand l'historique est épuisé", () => {
+    it("sets isDirty to false once the history is exhausted", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.undo()
@@ -246,7 +246,7 @@ describe("useEmailTemplateEditorStore", () => {
   })
 
   describe("reset", () => {
-    it("devrait remettre l'état initial complet", () => {
+    it("restores the full initial state", () => {
       const store = useEmailTemplateEditorStore.getState()
       store.addBlock(textBlock("t1"))
       store.setSubject("Test")

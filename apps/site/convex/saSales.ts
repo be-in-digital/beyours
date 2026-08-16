@@ -10,7 +10,7 @@ import {
   readSnapshotsInRange,
 } from "./saLib";
 
-/** GMV agrégée de la flotte de restaurants déployés (ventes RÉELLES des restos). */
+/** Aggregated GMV of the deployed restaurant fleet (the restaurants' REAL sales). */
 export const fleetOverview = query({
   args: { days: v.optional(v.number()) },
   handler: async (ctx, args) => {

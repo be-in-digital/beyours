@@ -26,9 +26,9 @@ export function SourceBreakdown({
   const total =
     bySource.website + bySource.uber_eats + bySource.deliveroo + bySource.pos ||
     1;
-  // On n'affiche que les sources qui ont réellement des commandes. Uber Eats
-  // et Deliveroo restent masqués tant que les intégrations ne sont pas
-  // certifiées (valeur à 0), pour ne pas afficher de canal vide.
+  // Only sources that actually have orders are shown. Uber Eats and Deliveroo
+  // stay hidden while their integrations are not certified (value at 0), so we
+  // never display an empty channel.
   const visibleSources = SOURCES.filter((s) => bySource[s.key] > 0);
   const noPlatformOrders =
     bySource.uber_eats === 0 && bySource.deliveroo === 0;

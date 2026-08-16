@@ -1,159 +1,160 @@
-# Mise en production — Be in Digital Restauration (site de vente)
+# Production launch — Be in Digital Restauration (sales site)
 
-Ce qui reste pour **vendre et encaisser pour de vrai** sur `web-restaurant` (le
-site qui commercialise le produit). Le pendant côté produit livré au client est
-`apps/restaurant-theme/MISE_EN_PROD.md` — ne pas confondre.
+What is left to do before we can **really sell and take money** on `web-restaurant`
+(the site that commercializes the product). Its counterpart on the delivered
+product side is `apps/restaurant-theme/MISE_EN_PROD.md` — do not confuse the two.
 
-État : le socle commercial est **~70 % réel** (checkout Stripe, webhooks
-idempotents et signés, abonnements, parrainage + versement Connect, offre
-fondateurs). Ce qui suit sont les trous à combler, classés par gravité.
-Le déroulé de vente lui-même est dans `PROCESS_DE_VENTE.md`.
+Status: the commercial foundation is **~70% real** (Stripe checkout, idempotent
+and signed webhooks, subscriptions, referrals + Connect payouts, founders
+offer). What follows are the holes left to fill, ranked by severity.
+The sales sequence itself lives in `PROCESS_DE_VENTE.md`.
 
-Légende : 🔴 bloque l'ouverture de la vente · 🟠 à faire vite après · 🟡 confort.
-Chaque item marque **[décision]** (choix humain) ou **[build]** (à coder) ou
-**[config]** (paramétrage/compte).
-
----
-
-## 1. Paiement Stripe — passer en réel
-
-- [ ] 🔴 **[config] Basculer Stripe en mode Live** : `STRIPE_SECRET_KEY` en
-  `sk_live_…`, recréer le webhook sur l'endpoint prod, mettre `STRIPE_WEBHOOK_SECRET`
-  à jour. Aujourd'hui, clé absente = commande marquée `paid` sans Stripe (mode test).
-- [ ] 🔴 **[config] Vérifier les 4 Price IDs de maintenance** (`price_1TEn…` dans
-  `convex/stripe.ts:28-33`) : confirmer dans le dashboard qu'ils existent bien en
-  **Live mode**, pas seulement en test. Recréer côté Live si besoin.
-- [ ] 🟠 **[build] Dunning (paiement échoué)** : aujourd'hui `invoice.payment_failed`
-  laisse la facture `open` et ne fait rien. Activer la relance Stripe (Smart
-  Retries dans le dashboard) + un email de relance au client. Sinon un
-  renouvellement qui échoue passe inaperçu.
-- [ ] 🟡 **[build] Remboursements** : aucun flux refund. Ajouter une action admin
-  (annulation création avant go-live, geste commercial). Peut attendre le 1ᵉʳ cas.
-
-## 2. Facturation conforme (droit français) — 🔴 bloquant pour facturer
-
-Aujourd'hui la « facture » = le PDF hébergé par Stripe. Insuffisant légalement.
-
-- [ ] 🔴 **[décision] Entité + mentions** : figer la structure émettrice (SASU
-  validée d'après les décisions projet), SIRET, RCS, adresse siège, capital.
-- [ ] 🔴 **[build] Facture PDF en marque propre** : numérotation **séquentielle
-  et continue** (obligation FR), mentions légales, détail des prestations
-  (création vs maintenance), date, coordonnées client. Générer à la réception du
-  webhook `invoice.payment_succeeded` (le champ `invoicePdfUrl` stocke actuellement
-  le PDF Stripe — le remplacer par le PDF maison).
-- [ ] 🔴 **[décision] TVA** : rester en **franchise en base** (art. 293 B, TVA à 0,
-  état actuel) OU passer au réel. Si passage : activer Stripe Tax (dashboard +
-  immatriculation), `tax_behavior=exclusive` sur les Prices, `STRIPE_TAX_ENABLED=true`
-  (Convex) et `NEXT_PUBLIC_TVA_ENABLED=true` (Next). Le code est déjà prêt pour ce flip.
-- [ ] 🟠 **[build] Facturation électronique 2026-2027** : anticiper l'obligation
-  Plateforme Agréée (l'adaptateur enfichable existe déjà côté web-agency ; prévoir
-  le même ici avant 09/2027).
-
-## 3. Contrats & signature
-
-- [ ] 🔴 **[config] YouSign en prod** : `YOUSIGN_API_KEY` de production (aujourd'hui
-  défaut sandbox `api-sandbox.yousign.app/v3`).
-- [ ] 🔴 **[build] Vérifier la signature du webhook YouSign** : `convex/http.ts:476`
-  porte un `TODO` — le webhook n'est pas vérifié. Implémenter la vérification HMAC +
-  `YOUSIGN_WEBHOOK_SECRET`. Trou de sécurité tant que non fait.
-- [ ] 🟠 **[décision] Contrat client** : la signature YouSign est câblée pour les
-  **apporteurs**. Décider si la **prestation client** (création + maintenance)
-  passe par un contrat signé avant go-live, et brancher le même flux si oui.
-
-## 4. Parcours de vente — combler les trous (détail dans PROCESS_DE_VENTE.md)
-
-- [x] ✅ **Formulaire `/contact` réparé** (2026-07-19) : branché sur
-  `contactLeads.submit` → persiste le lead + email de confirmation au prospect +
-  email de notification à l'équipe. Leads visibles dans `/admin/prospects`
-  (section « Messages de contact »). Ne fuit plus.
-- [x] ✅ **Emails transactionnels branchés** (2026-07-19) : confirmation de
-  commande (`checkout.session.completed`), reçu de renouvellement
-  (`invoice.payment_succeeded`, vrais renouvellements), relance dunning
-  (`invoice.payment_failed`), + bienvenue/versement affiliés. Système brandé
-  (`convex/email/`), envoi SES best-effort (ne bloque jamais un webhook), testé
-  (10 tests). **Reste** : configurer SES + les env vars (§7) pour l'envoi réel.
-- [ ] 🟠 **[build] Page de suivi / mini-portail client** : une page où le client
-  retrouve sa commande, sa facture, l'état de mise en ligne, et les ressources
-  d'onboarding. Aujourd'hui `/checkout/success` = un simple bouton Calendly.
-
-## 5. Provisioning & flotte (voir aussi PROCESS_DE_VENTE.md §5)
-
-Le provisioning est **100 % manuel**, et **c'est acceptable au volume visé**
-(≤ ~20-30 clients). Ne pas sur-industrialiser maintenant. À faire quand même :
-
-- [ ] 🟠 **[build] Lier commande → déploiement** : `saDeployments.orderId` existe
-  mais n'est jamais rempli. Passer l'`orderId` dans le formulaire « Provisionner »
-  pour tracer paiement → instance (audit + suivi).
-- [ ] 🟡 **[build] Monitoring réel** : `saMonitoringChecks` est une table vide de
-  sens sans boucle. Ajouter un cron (toutes les 5-10 min) qui ping chaque instance
-  `live` et enregistre un check. À faire quand il y aura plusieurs instances.
-- [ ] 🟡 **[décision] Automatisation du provisioning** : à repousser jusqu'à ~20-30
-  clients. Le runbook manuel (PROCESS_DE_VENTE.md §5) suffit d'ici là.
-
-## 6. Légal & conformité — 🔴 obligatoire avant d'encaisser
-
-- [ ] 🔴 **[build] Pages légales absentes** : aucune CGV, mentions légales, ni
-  politique de confidentialité sur le site. Obligatoires pour vendre en France.
-  Créer les 3 pages + liens footer.
-- [ ] 🔴 **[décision] CGV de prestation** : durée, livraison, maintenance,
-  résiliation, propriété du site à la fin, rétractation (ou son exclusion en B2B).
-- [ ] 🟠 **[build] RGPD** : mentionner la collecte (leads, clients, gagnants du jeu),
-  cookies si analytics ajouté, durées de rétention.
-
-## 7. Déploiement du site de vente lui-même
-
-- [ ] 🔴 **[config] Convex prod + Vercel** pour `web-restaurant` (l'app de vente),
-  avec toutes les env vars Live (Stripe, YouSign, AWS SES, Calendly).
-- [ ] 🔴 **[config] Domaine** de la vitrine (ex. `beyours.fr`) +
-  `/decouvrir` public (le lien envoyé aux prospects).
-- [ ] 🟠 **[config] Emails transactionnels** : le système est construit et branché
-  (§4). Pour l'activer en réel, poser les env vars sur le déploiement Convex de
-  web-restaurant : `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-  `AWS_SES_FROM_EMAIL` (expéditeur vérifié), `BID_NOTIFY_EMAIL` (boîte équipe pour
-  les leads), `SITE_URL` (liens + logo absolus), `CALENDLY_URL` (optionnel, bouton
-  rdv). Puis **sortir SES du sandbox** (eu-west-3) pour livrer aux vrais clients.
-- [ ] 🟡 **[config] Analytics** : brancher un suivi conversion (déjà PostHog dans
-  l'org) sur le funnel tarifs → checkout → paiement, pour piloter.
-- [ ] 🟠 **[config] Email — provider au choix (SES OU Resend)** : `deliver()` est
-  désormais multi-provider (`convex/email/providers.ts`). Défaut = SES (rien ne
-  change). Pour NE PAS gater le lancement sur la sortie de sandbox AWS (déjà
-  refusée), poser sur le Convex prod : `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`,
-  `RESEND_FROM_EMAIL` (domaine vérifié chez Resend, approuvé en jours). Les
-  instances clients restent sur SES.
-
-### Checklist cutover env (anti-récidive bug #6)
-
-Les `NEXT_PUBLIC_*` sont **inlinées au `next build`** ; changer la variable Vercel
-ne suffit pas, il faut re-builder. Valeurs de prod dans `.env.production.example`.
-
-- [ ] 🔴 **[config]** Poser `NEXT_PUBLIC_CONVEX_URL=https://fearless-poodle-133.convex.cloud`
-  (+ `…_CONVEX_SITE_URL`, `…_SITE_URL`) sur l'env **Production** Vercel.
-- [ ] 🔴 **[config] REBUILD SANS CACHE** (Vercel → Redeploy, **décocher** « Use
-  existing Build Cache »). Un redeploy simple réutilise l'ancien bundle et NE
-  ré-inline PAS.
-- [ ] 🔴 **[config]** Vérifier le bundle servi :
-  `node scripts/check-prod-bundle.mjs https://beyours.fr` → doit
-  finir sur **✓** (exit 0).
-- [ ] 🔴 **[config]** Ouvrir `/decouvrir` en **navigation privée** → **200** +
-  données live (un chargement infini = URL Convex morte).
+Legend: 🔴 blocks opening sales · 🟠 do it soon after · 🟡 nice to have.
+Every item is tagged **[decision]** (a human call) or **[build]** (to be coded) or
+**[config]** (settings/account).
 
 ---
 
-## Ordre recommandé
+## 1. Stripe payments — switch to real money
 
-1. **Bloquer la fuite** : formulaire `/contact` + email post-paiement (§4) — cheap,
-   gros impact, chaque prospect perdu coûte cher à ce stade.
-2. **Rendre l'encaissement légal** : facture PDF conforme + pages légales +
-   décision TVA (§2, §6).
-3. **Passer Stripe/YouSign en Live** et vérifier les Price IDs (§1, §3).
-4. **Déployer** web-restaurant en prod + SES hors sandbox (§7).
-5. **Le reste** (portail client, monitoring, dunning fin, automatisation
-   provisioning) au fil des premières ventes.
+- [ ] 🔴 **[config] Switch Stripe to Live mode**: `STRIPE_SECRET_KEY` set to
+  `sk_live_…`, recreate the webhook on the prod endpoint, update `STRIPE_WEBHOOK_SECRET`.
+  Today, a missing key means the order is marked `paid` with no Stripe (test mode).
+- [ ] 🔴 **[config] Check the 4 maintenance Price IDs** (`price_1TEn…` in
+  `convex/stripe.ts:28-33`): confirm in the dashboard that they really exist in
+  **Live mode**, not only in test. Recreate them on the Live side if needed.
+- [ ] 🟠 **[build] Dunning (failed payment)**: today `invoice.payment_failed`
+  leaves the invoice `open` and does nothing. Turn on Stripe retries (Smart
+  Retries in the dashboard) + a chaser email to the customer. Otherwise a failed
+  renewal goes unnoticed.
+- [ ] 🟡 **[build] Refunds**: no refund flow at all. Add an admin action
+  (cancelling a build before go-live, a goodwill gesture). Can wait for the 1st case.
 
-Les **décisions** qui te reviennent (personne d'autre ne peut les prendre) :
-statut TVA, contrat client signé ou non, entité émettrice des factures, et le
-seuil à partir duquel on automatise le provisioning.
+## 2. Compliant invoicing (French law) — 🔴 blocks invoicing
+
+Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
+
+- [ ] 🔴 **[decision] Entity + legal mentions**: lock down the issuing structure (SASU
+  validated per the project decisions), SIRET, RCS, registered office address, capital.
+- [ ] 🔴 **[build] Own-brand PDF invoice**: **sequential and unbroken**
+  numbering (an FR requirement), legal mentions, breakdown of the services
+  (build vs maintenance), date, customer details. Generate it when the
+  `invoice.payment_succeeded` webhook arrives (the `invoicePdfUrl` field
+  currently stores the Stripe PDF — replace it with our own).
+- [ ] 🔴 **[decision] VAT**: stay under **franchise en base** (art. 293 B, VAT at 0,
+  current state) OR switch to the standard regime. If switching: enable Stripe Tax
+  (dashboard + registration), `tax_behavior=exclusive` on the Prices, `STRIPE_TAX_ENABLED=true`
+  (Convex) and `NEXT_PUBLIC_TVA_ENABLED=true` (Next). The code is already ready for that flip.
+- [ ] 🟠 **[build] E-invoicing 2026-2027**: get ahead of the Plateforme Agréée
+  requirement (the pluggable adapter already exists on the web-agency side; plan
+  the same one here before 09/2027).
+
+## 3. Contracts & signing
+
+- [ ] 🔴 **[config] YouSign in prod**: a production `YOUSIGN_API_KEY` (today it
+  defaults to the sandbox `api-sandbox.yousign.app/v3`).
+- [ ] 🔴 **[build] Verify the YouSign webhook signature**: `convex/http.ts:476`
+  carries a `TODO` — the webhook is not verified. Implement HMAC verification +
+  `YOUSIGN_WEBHOOK_SECRET`. It is a security hole until this is done.
+- [ ] 🟠 **[decision] Customer contract**: YouSign signing is wired for the
+  **introducers**. Decide whether the **customer engagement** (build + maintenance)
+  goes through a signed contract before go-live, and wire the same flow if it does.
+
+## 4. Sales journey — fill the gaps (detail in PROCESS_DE_VENTE.md)
+
+- [x] ✅ **`/contact` form fixed** (2026-07-19): wired to
+  `contactLeads.submit` → persists the lead + a confirmation email to the prospect +
+  a notification email to the team. Leads visible in `/admin/prospects`
+  (« Messages de contact » section). No longer leaking.
+- [x] ✅ **Transactional emails wired** (2026-07-19): order
+  confirmation (`checkout.session.completed`), renewal receipt
+  (`invoice.payment_succeeded`, real renewals), dunning chaser
+  (`invoice.payment_failed`), + affiliate welcome/payout. Branded system
+  (`convex/email/`), best-effort SES sending (never blocks a webhook), tested
+  (10 tests). **Left**: configure SES + the env vars (§7) for real sending.
+- [ ] 🟠 **[build] Tracking page / mini customer portal**: a page where the customer
+  finds their order, their invoice, the go-live status, and the onboarding
+  resources. Today `/checkout/success` is a single Calendly button.
+
+## 5. Provisioning & fleet (see also PROCESS_DE_VENTE.md §5)
+
+Provisioning is **100% manual**, and **that is acceptable at the volume we target**
+(≤ ~20-30 customers). Do not over-industrialize it now. Still worth doing:
+
+- [ ] 🟠 **[build] Link order → deployment**: `saDeployments.orderId` exists
+  but is never filled in. Pass the `orderId` through the « Provisionner » form
+  so payment → instance is traceable (audit + follow-up).
+- [ ] 🟡 **[build] Real monitoring**: `saMonitoringChecks` is a table with no
+  meaning without a loop. Add a cron (every 5-10 min) that pings each `live`
+  instance and records a check. Do it once there are several instances.
+- [ ] 🟡 **[decision] Automating provisioning**: push it back until ~20-30
+  customers. The manual runbook (PROCESS_DE_VENTE.md §5) is enough until then.
+
+## 6. Legal & compliance — 🔴 mandatory before taking money
+
+- [ ] 🔴 **[build] Legal pages missing**: no CGV, no mentions légales, no
+  privacy policy on the site. All mandatory to sell in France.
+  Create the 3 pages + footer links.
+- [ ] 🔴 **[decision] CGV for the engagement**: term, delivery, maintenance,
+  termination, ownership of the site at the end, right of withdrawal (or its
+  exclusion in B2B).
+- [ ] 🟠 **[build] GDPR**: state what is collected (leads, customers, game winners),
+  cookies if analytics is added, retention periods.
+
+## 7. Deploying the sales site itself
+
+- [ ] 🔴 **[config] Convex prod + Vercel** for `web-restaurant` (the sales app),
+  with every Live env var (Stripe, YouSign, AWS SES, Calendly).
+- [ ] 🔴 **[config] Domain** for the marketing site (e.g. `beyours.fr`) +
+  a public `/decouvrir` (the link sent to prospects).
+- [ ] 🟠 **[config] Transactional emails**: the system is built and wired
+  (§4). To turn it on for real, set the env vars on web-restaurant's Convex
+  deployment: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+  `AWS_SES_FROM_EMAIL` (verified sender), `BID_NOTIFY_EMAIL` (team inbox for
+  leads), `SITE_URL` (absolute links + logo), `CALENDLY_URL` (optional, booking
+  button). Then **get SES out of the sandbox** (eu-west-3) to deliver to real customers.
+- [ ] 🟡 **[config] Analytics**: wire conversion tracking (PostHog is already in
+  the org) onto the pricing → checkout → payment funnel, so we can steer.
+- [ ] 🟠 **[config] Email — pick a provider (SES OR Resend)**: `deliver()` is
+  now multi-provider (`convex/email/providers.ts`). Default = SES (nothing
+  changes). To avoid gating the launch on getting out of the AWS sandbox (already
+  refused), set on the prod Convex: `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`,
+  `RESEND_FROM_EMAIL` (domain verified with Resend, approved within days). Customer
+  instances stay on SES.
+
+### Env cutover checklist (so bug #6 does not come back)
+
+`NEXT_PUBLIC_*` values are **inlined at `next build`**; changing the Vercel variable
+is not enough, you have to rebuild. Prod values are in `.env.production.example`.
+
+- [ ] 🔴 **[config]** Set `NEXT_PUBLIC_CONVEX_URL=https://fearless-poodle-133.convex.cloud`
+  (+ `…_CONVEX_SITE_URL`, `…_SITE_URL`) on the Vercel **Production** environment.
+- [ ] 🔴 **[config] REBUILD WITHOUT CACHE** (Vercel → Redeploy, **uncheck** « Use
+  existing Build Cache »). A plain redeploy reuses the old bundle and does NOT
+  re-inline.
+- [ ] 🔴 **[config]** Check the bundle actually served:
+  `node scripts/check-prod-bundle.mjs https://beyours.fr` → must
+  end on **✓** (exit 0).
+- [ ] 🔴 **[config]** Open `/decouvrir` in a **private window** → **200** +
+  live data (an endless loading state = dead Convex URL).
 
 ---
 
-**Version** : 1.0 · **Créé** : 2026-07-19 · basé sur l'audit du code réel.
+## Recommended order
+
+1. **Stop the leak**: `/contact` form + post-payment email (§4) — cheap,
+   big impact, every prospect lost is expensive at this stage.
+2. **Make taking money legal**: compliant PDF invoice + legal pages +
+   VAT decision (§2, §6).
+3. **Switch Stripe/YouSign to Live** and check the Price IDs (§1, §3).
+4. **Deploy** web-restaurant to prod + SES out of the sandbox (§7).
+5. **Everything else** (customer portal, monitoring, fine-grained dunning,
+   provisioning automation) as the first sales come in.
+
+The **decisions** that fall to you (nobody else can make them):
+VAT status, signed customer contract or not, the entity issuing the invoices, and
+the threshold at which we automate provisioning.
+
+---
+
+**Version**: 1.0 · **Created**: 2026-07-19 · based on an audit of the real code.

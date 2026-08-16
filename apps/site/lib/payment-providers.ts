@@ -14,9 +14,9 @@ export interface PaymentOption {
   installments?: number[];
 }
 
-/* ── Matrice d'autorisation ── */
-/* Le premier paiement inclut toujours la maintenance,
-   donc le BNPL est toujours disponible. */
+/* ── Eligibility matrix ── */
+/* The first payment always includes maintenance,
+   so BNPL is always available. */
 
 export function getAllowedPaymentMethods(
   buyerType: BuyerType,
@@ -28,7 +28,7 @@ export function getAllowedPaymentMethods(
   return methods;
 }
 
-/* ── Options affichées côté UI ── */
+/* ── Options displayed in the UI ── */
 
 export const paymentOptions: PaymentOption[] = [
   {
@@ -50,7 +50,7 @@ export const paymentOptions: PaymentOption[] = [
   },
 ];
 
-/* ── Calcul montant par échéance ── */
+/* ── Per-instalment amount ── */
 
 export function getInstallmentAmount(
   totalCents: number,
@@ -59,24 +59,24 @@ export function getInstallmentAmount(
   return Math.ceil(totalCents / installments);
 }
 
-/* ── TVA ── */
-/* Tous les prix (planPrices, pricing-data) s'entendent HT.
-   Tant que la structure est en franchise en base (art. 293 B du CGI),
-   le flag reste off : aucune TVA n'est ajoutée et le checkout affiche
-   la mention légale. Le jour de l'assujettissement (société au réel),
-   activer NEXT_PUBLIC_TVA_ENABLED=true côté Next ET STRIPE_TAX_ENABLED=true
-   côté Convex (voir convex/stripe.ts) — les deux vont ensemble. */
+/* ── VAT ── */
+/* Every price (planPrices, pricing-data) is quoted excluding tax.
+   While the company is under franchise en base (art. 293 B of the French tax
+   code) the flag stays off: no VAT is added and the checkout displays the legal
+   mention. The day it becomes VAT-liable (company on the régime réel), set
+   NEXT_PUBLIC_TVA_ENABLED=true on the Next side AND STRIPE_TAX_ENABLED=true on
+   the Convex side (see convex/stripe.ts) — the two go together. */
 
 export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
 export const TVA_RATE_PERCENT = 20;
 
-/* ── Offre fondateurs ──
-   10 premières créations Essentielle à 2 500 € HT (catalogue 3 500 €),
-   contre contreparties contractuelles (étude de cas, témoignage, référence).
-   S'éteint par épuisement des places (compteur api.orders.countFoundersSold),
-   jamais par date. Non cumulable avec le parrainage : un code appliqué
-   bascule sur le prix catalogue −10 %. Le prix catalogue ne change pas.
-   Dupliqué dans convex/stripe.ts (foundersOffer) — garder en phase. */
+/* ── Founders offer ──
+   The first 10 Essentielle builds at 2 500 € excl. tax (list price 3 500 €),
+   in exchange for contractual commitments (case study, testimonial, reference).
+   It ends when the slots run out (api.orders.countFoundersSold counter), never
+   on a date. Not stackable with a referral: applying a code switches to the
+   list price −10 %. The list price itself never changes.
+   Duplicated in convex/stripe.ts (foundersOffer) — keep them in sync. */
 
 export const FOUNDERS_OFFER = {
   enabled: true,
@@ -85,7 +85,7 @@ export const FOUNDERS_OFFER = {
   creationCents: 250000,
 } as const;
 
-/* ── Prix des plans (en centimes, HT) ── */
+/* ── Plan prices (in cents, excluding tax) ── */
 
 export const planPrices = {
   essentielle: {
@@ -100,7 +100,7 @@ export const planPrices = {
   },
 } as const;
 
-/* ── Détail du premier paiement (création + 1ère période maintenance) ── */
+/* ── First-payment breakdown (build + 1st maintenance period) ── */
 
 export function getFirstPaymentBreakdown(
   plan: "essentielle" | "premium",
@@ -118,28 +118,28 @@ export function getFirstPaymentBreakdown(
   };
 }
 
-/* ── Totaux checkout (remise parrainage + TVA éventuelle) ──
-   Source unique pour le récapitulatif et les montants d'échéances,
-   afin que l'aperçu 2x/3x/4x reflète exactement ce que Stripe
-   facturera (remise déduite, TVA incluse si applicable). */
+/* ── Checkout totals (referral discount + VAT when it applies) ──
+   The single source for the order summary and the instalment amounts, so that
+   the 2x/3x/4x preview matches exactly what Stripe will charge (discount
+   deducted, VAT included where applicable). */
 
 export function getCheckoutTotals(
   plan: "essentielle" | "premium",
   billingPeriod: BillingPeriod,
   discountPercent?: number,
-  /** Offre fondateurs applicable (places restantes, pas de code parrainage) */
+  /** Founders offer applies (slots remaining, no referral code) */
   foundersActive?: boolean,
 ): {
   creation: number;
-  /** Prix catalogue de la création (affiché en référence si fondateurs) */
+  /** List price of the build (shown for reference under the founders offer) */
   catalogCreation: number;
   maintenance: number;
   discount: number;
   foundersApplied: boolean;
-  /** HT après remise */
+  /** pre-tax amount after discount */
   subtotal: number;
   tva: number;
-  /** Montant réellement débité (TTC si TVA active, sinon = subtotal) */
+  /** Amount actually charged (tax included when VAT is on, otherwise = subtotal) */
   total: number;
 } {
   const { creation: catalogCreation, maintenance } = getFirstPaymentBreakdown(
@@ -147,7 +147,7 @@ export function getCheckoutTotals(
     billingPeriod,
   );
   const hasReferral = Boolean(discountPercent && discountPercent > 0);
-  // Non-cumul : le code parrainage s'applique au prix catalogue.
+  // No stacking: the referral code applies to the list price.
   const foundersApplied = Boolean(
     foundersActive &&
       FOUNDERS_OFFER.enabled &&

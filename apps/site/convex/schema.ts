@@ -8,15 +8,15 @@ export default defineSchema({
   /* ── Programme Apporteur d'Affaires ── */
 
   affiliateUsers: defineTable({
-    userId: v.id("users"), // ref vers authTables.users
+    userId: v.id("users"), // ref to authTables.users
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     postalCode: v.optional(v.string()),
-    // Programme réservé aux professionnels : SIRET requis (validé à la
-    // complétion du profil, avant signature ; aucun versement sans SIRET).
+    // The programme is for professionals only: SIRET required (validated when
+    // the profile is completed, before signing; no payout without a SIRET).
     siret: v.optional(v.string()),
     role: v.union(v.literal("affiliate"), v.literal("admin")),
     status: v.union(
@@ -82,7 +82,7 @@ export default defineSchema({
     blockedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     stripeTransferId: v.optional(v.string()),
-    // Facture de l'apporteur — obligatoire avant versement (art. 4.2 du contrat).
+    // The affiliate's invoice — mandatory before payout (art. 4.2 of the contract).
     invoiceStorageId: v.optional(v.id("_storage")),
     invoiceUploadedAt: v.optional(v.number()),
     adminNote: v.optional(v.string()),
@@ -138,7 +138,7 @@ export default defineSchema({
     signedDocumentFileId: v.optional(v.string()),
     signerIp: v.optional(v.string()),
     signedAt: v.optional(v.number()),
-    // Signature électronique simple (SES) in-house — piste d'audit
+    // In-house simple electronic signature (SES) — audit trail
     signerName: v.optional(v.string()),
     signerUserAgent: v.optional(v.string()),
     signatureMethod: v.optional(
@@ -192,14 +192,15 @@ export default defineSchema({
       v.union(v.literal("card"), v.literal("alma"), v.literal("klarna")),
     ),
     stripeSessionId: v.optional(v.string()),
-    /* Vente au tarif fondateurs (2 500 € HT, 10 places) — consomme un slot. */
+    /* Sale at the founders price (2 500 € excl. tax, 10 slots) — consumes a slot. */
     isFounders: v.optional(v.boolean()),
-    /* ── Provisioning de l'abonnement maintenance après le 1er paiement ──
-       Optionnel/additif (aucune migration) : absent = commande legacy ou pas
-       encore traitée par le webhook. "active" = abonnement Stripe créé ;
-       "failed" = paiement encaissé mais abonnement NON créé → provisioning
-       manuel requis (tracé aussi dans saActivity kind:"system"). Écrit par le
-       webhook Stripe (internal.http.recordSubscriptionOutcome). */
+    /* ── Maintenance subscription provisioning after the 1st payment ──
+       Optional/additive (no migration): absent = a legacy order, or one the
+       webhook has not processed yet. "active" = the Stripe subscription was
+       created; "failed" = the payment was collected but the subscription was
+       NOT created → manual provisioning required (also logged in saActivity
+       kind:"system"). Written by the Stripe webhook
+       (internal.http.recordSubscriptionOutcome). */
     subscriptionStatus: v.optional(
       v.union(v.literal("active"), v.literal("failed")),
     ),
@@ -286,10 +287,10 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_eventId", ["eventId"]),
 
-  /* ══ Superadmin console — flotte / incidents / monitoring ══
-     Tables préfixées « sa » (self-contained, dénormalisées par
-     customerEmail — pas de table clients : les clients sont
-     dérivés des `orders`). */
+  /* ══ Superadmin console — fleet / incidents / monitoring ══
+     Tables prefixed with « sa » (self-contained, denormalised by
+     customerEmail — there is no clients table: clients are derived
+     from `orders`). */
 
   saDeployments: defineTable({
     customerEmail: v.string(),
@@ -510,8 +511,8 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_createdAt", ["createdAt"]),
 
-  /* Leads issus du formulaire de contact du site (distinct de whitelist,
-     qui est la waitlist). Alimenté par contactLeads.submit. */
+  /* Leads coming from the site's contact form (distinct from whitelist,
+     which is the waitlist). Fed by contactLeads.submit. */
   contactLeads: defineTable({
     name: v.string(),
     email: v.string(),

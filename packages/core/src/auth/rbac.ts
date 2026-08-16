@@ -189,7 +189,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'menus:read',
   ],
 
-  // Kitchen : KDS uniquement
+  // Kitchen: KDS only
   [Role.KITCHEN]: [
     'kitchen:read',
     'kitchen:write',
@@ -197,7 +197,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'orders:update_status',
   ],
 
-  // Waiter : commandes et tables
+  // Waiter: orders and tables
   [Role.WAITER]: [
     'orders:read',
     'orders:write',
@@ -210,7 +210,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payments:read',
   ],
 
-  // Delivery : livraisons uniquement
+  // Delivery: deliveries only
   [Role.DELIVERY]: [
     'deliveries:read',
     'deliveries:write',
@@ -218,7 +218,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'orders:update_status',
   ],
 
-  // Customer : ses propres commandes
+  // Customer: their own orders
   [Role.CUSTOMER]: [
     'orders:view_own',
     'products:read',
@@ -230,7 +230,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 /**
  * Whether a role holds a given permission
  *
- * @param userRole - Le rôle de l'utilisateur
+ * @param userRole - The user's role
  * @param permission - The permission to check, formatted "resource:action"
  * @returns `true` when the role holds it, `false` otherwise
  *
@@ -257,7 +257,7 @@ export function hasPermission(userRole: Role, permission: Permission): boolean {
 /**
  * Whether a role holds at least one of the given permissions
  *
- * @param userRole - Le rôle de l'utilisateur
+ * @param userRole - The user's role
  * @param permissions - The permissions to check
  * @returns `true` when at least one is held, `false` otherwise
  *
@@ -277,7 +277,7 @@ export function hasAnyPermission(
 /**
  * Whether a role holds every one of the given permissions
  *
- * @param userRole - Le rôle de l'utilisateur
+ * @param userRole - The user's role
  * @param permissions - The permissions to check
  * @returns `true` when all are held, `false` otherwise
  *
@@ -330,7 +330,7 @@ export class PermissionDeniedError extends Error {
 /**
  * Builds a guard that checks a single permission
  *
- * @param permission - La permission requise
+ * @param permission - The required permission
  * @returns A guard function checking that permission
  * @throws {PermissionDeniedError} When the permission is not held
  *
@@ -398,7 +398,7 @@ export function requireAllPermissions(permissions: Permission[]) {
  * Parses a string into a Role
  *
  * @param roleString - The string to parse
- * @returns Le rôle correspondant ou undefined
+ * @returns The matching role, or undefined
  *
  * @example
  * ```ts

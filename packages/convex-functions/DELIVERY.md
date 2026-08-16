@@ -1,311 +1,311 @@
-# Livraison - Package Convex Functions
+# Delivery - Convex Functions Package
 
-## Résumé de la livraison
+## Delivery summary
 
-Package `@be-in-digital/convex-functions` créé avec succès.
+Package `@be-in-digital/convex-functions` created successfully.
 
-### Date de livraison
-14 février 2026
+### Delivery date
+February 14, 2026
 
 ### Version
 0.1.0
 
 ---
 
-## Fichiers créés
+## Files created
 
-### Code source (src/)
+### Source code (src/)
 
-| Fichier | Lignes | Description |
+| File | Lines | Description |
 |---------|--------|-------------|
-| `helpers.ts` | 32 | Fonctions utilitaires (generateOrderNumber, generateSlug, now) |
-| `stores.ts` | 191 | Gestion des restaurants (9 fonctions) |
-| `products.ts` | 230 | Gestion des produits (10 fonctions) |
-| `categories.ts` | 110 | Gestion des catégories (6 fonctions) |
-| `orders.ts` | 215 | Gestion des commandes (6 fonctions) |
-| `kitchenTickets.ts` | 198 | Système de cuisine KDS (10 fonctions) |
-| `payments.ts` | 129 | Gestion des paiements (5 fonctions) |
-| `teamMembers.ts` | 135 | Gestion de l'équipe (6 fonctions) |
-| `languages.ts` | 140 | Gestion des langues (5 fonctions) |
-| `translations.ts` | 186 | Gestion des traductions (5 fonctions) |
+| `helpers.ts` | 32 | Utility functions (generateOrderNumber, generateSlug, now) |
+| `stores.ts` | 191 | Restaurant management (9 functions) |
+| `products.ts` | 230 | Product management (10 functions) |
+| `categories.ts` | 110 | Category management (6 functions) |
+| `orders.ts` | 215 | Order management (6 functions) |
+| `kitchenTickets.ts` | 198 | KDS kitchen system (10 functions) |
+| `payments.ts` | 129 | Payment management (5 functions) |
+| `teamMembers.ts` | 135 | Team management (6 functions) |
+| `languages.ts` | 140 | Language management (5 functions) |
+| `translations.ts` | 186 | Translation management (5 functions) |
 | `index.ts` | 16 | Barrel file (exports) |
 | **TOTAL** | **1,582** | **10 modules + 1 barrel** |
 
 ### Tests (src/__tests__/)
 
-| Fichier | Tests | Coverage |
+| File | Tests | Coverage |
 |---------|-------|----------|
-| `helpers.test.ts` | 13 | 100% sur helpers |
+| `helpers.test.ts` | 13 | 100% on helpers |
 
 ### Documentation
 
-| Fichier | Taille | Description |
+| File | Size | Description |
 |---------|--------|-------------|
-| `README.md` | 5.7 KB | Vue d'ensemble du package |
-| `USAGE.md` | 9.3 KB | Guide d'utilisation complet avec exemples |
-| `SUMMARY.md` | 11 KB | Résumé technique détaillé |
-| `CHANGELOG.md` | 5.2 KB | Historique des versions |
-| `DELIVERY.md` | Ce fichier | Document de livraison |
+| `README.md` | 5.7 KB | Package overview |
+| `USAGE.md` | 9.3 KB | Full usage guide with examples |
+| `SUMMARY.md` | 11 KB | Detailed technical summary |
+| `CHANGELOG.md` | 5.2 KB | Version history |
+| `DELIVERY.md` | This file | Delivery document |
 
 ### Configuration
 
-| Fichier | Description |
+| File | Description |
 |---------|-------------|
-| `package.json` | Configuration npm/pnpm |
-| `tsconfig.json` | Configuration TypeScript |
-| `vitest.config.ts` | Configuration des tests |
-| `.gitignore` | Fichiers à ignorer dans git |
+| `package.json` | npm/pnpm configuration |
+| `tsconfig.json` | TypeScript configuration |
+| `vitest.config.ts` | Test configuration |
+| `.gitignore` | Files to ignore in git |
 
 ### Scripts
 
-| Fichier | Description |
+| File | Description |
 |---------|-------------|
-| `scripts/copy-to-app.sh` | Script pour copier les fonctions vers une app |
+| `scripts/copy-to-app.sh` | Script to copy the functions into an app |
 
 ---
 
-## Statistiques globales
+## Overall statistics
 
 ### Code
-- **Total lignes de code**: 1,582
-- **Fichiers TypeScript**: 11
-- **Fichiers de test**: 1
-- **Tests unitaires**: 13 (tous passent ✅)
+- **Total lines of code**: 1,582
+- **TypeScript files**: 11
+- **Test files**: 1
+- **Unit tests**: 13 (all passing ✅)
 
-### Fonctions
-- **Queries (lectures)**: 24
-- **Mutations (écritures)**: 36
+### Functions
+- **Queries (reads)**: 24
+- **Mutations (writes)**: 36
 - **Helpers**: 3
-- **TOTAL**: 63 fonctions
+- **TOTAL**: 63 functions
 
 ### Modules
-- Stores (9 fonctions)
-- Products (10 fonctions)
-- Categories (6 fonctions)
-- Orders (6 fonctions)
-- Kitchen Tickets (10 fonctions)
-- Payments (5 fonctions)
-- Team Members (6 fonctions)
-- Languages (5 fonctions)
-- Translations (5 fonctions)
-- Helpers (3 fonctions)
+- Stores (9 functions)
+- Products (10 functions)
+- Categories (6 functions)
+- Orders (6 functions)
+- Kitchen Tickets (10 functions)
+- Payments (5 functions)
+- Team Members (6 functions)
+- Languages (5 functions)
+- Translations (5 functions)
+- Helpers (3 functions)
 
 ---
 
-## Fonctionnalités implémentées
+## Implemented features
 
 ### ✅ Multi-tenant
-- Toutes les queries filtrent par `storeId`
-- Isolation complète des données entre restaurants
+- Every query filters by `storeId`
+- Complete data isolation between restaurants
 
 ### ✅ Type Safety
-- Validators Convex sur tous les arguments
-- TypeScript strict (sauf pour ce package car `./_generated/server` n'existe pas)
-- Aucun type `any` sauf metadata paiements
+- Convex validators on every argument
+- TypeScript strict (except for this package, since `./_generated/server` does not exist)
+- No `any` type except payment metadata
 
-### ✅ Timestamps automatiques
-- `createdAt` sur tous les `create`
-- `updatedAt` sur tous les `update`/`patch`
-- Timestamps spéciaux: `startedAt`, `completedAt`, `cancelledAt`
+### ✅ Automatic timestamps
+- `createdAt` on every `create`
+- `updatedAt` on every `update`/`patch`
+- Special timestamps: `startedAt`, `completedAt`, `cancelledAt`
 
-### ✅ Logique métier
-- **Orders**: Calcul automatique des totaux (subtotal, taxes, livraison)
-- **Kitchen Tickets**: Gestion automatique des timestamps selon statut
-- **Languages**: Auto-désélection des autres langues par défaut
-- **Translations**: Upsert intelligent (update/insert selon existence)
+### ✅ Business logic
+- **Orders**: Automatic total calculation (subtotal, taxes, delivery)
+- **Kitchen Tickets**: Automatic timestamp handling based on status
+- **Languages**: Auto-unsets the other default languages
+- **Translations**: Smart upsert (update/insert depending on existence)
 
-### ✅ Support multi-provider
-- **Paiements**: Stripe, SumUp, PayPal, Square, Cash
-- **Rôles**: Owner, Manager, Staff, Kitchen, Delivery
-- **Types de commande**: Delivery, Pickup, Dine-in
-- **Statuts**: 7 statuts pour orders, 4 pour kitchen tickets
+### ✅ Multi-provider support
+- **Payments**: Stripe, SumUp, PayPal, Square, Cash
+- **Roles**: Owner, Manager, Staff, Kitchen, Delivery
+- **Order types**: Delivery, Pickup, Dine-in
+- **Statuses**: 7 statuses for orders, 4 for kitchen tickets
 
 ---
 
-## Tests effectués
+## Tests run
 
-### Tests unitaires
+### Unit tests
 ```bash
 pnpm test
 ```
-Résultat: **13 tests passés** ✅
+Result: **13 tests passed** ✅
 
-### Couverture
+### Coverage
 - helpers.ts: **100%**
 
 ### Type checking
-Note: Type checking échoue car `./_generated/server` n'existe pas dans ce package.
-C'est normal et attendu. Les types seront résolus quand les fichiers seront copiés
-dans le dossier `convex/` d'une app Next.js.
+Note: type checking fails because `./_generated/server` does not exist in this package.
+That is normal and expected. The types will resolve once the files are copied
+into the `convex/` folder of a Next.js app.
 
 ---
 
-## Comment utiliser ce package
+## How to use this package
 
-### Étape 1: Copier les fichiers
+### Step 1: Copy the files
 ```bash
 cd packages/convex-functions
 pnpm copy-to restaurant-theme
 ```
 
-Ou manuellement:
+Or manually:
 ```bash
 cp packages/convex-functions/src/*.ts apps/restaurant-theme/convex/
-# Ne PAS copier index.ts (barrel file)
+# Do NOT copy index.ts (barrel file)
 ```
 
-### Étape 2: Définir le schema
-Dans `apps/restaurant-theme/convex/schema.ts`, définir le schema Convex.
-Voir `USAGE.md` pour un exemple complet.
+### Step 2: Define the schema
+In `apps/restaurant-theme/convex/schema.ts`, define the Convex schema.
+See `USAGE.md` for a complete example.
 
-### Étape 3: Générer les types
+### Step 3: Generate the types
 ```bash
 cd apps/restaurant-theme
 npx convex dev
 ```
 
-### Étape 4: Utiliser dans l'app
+### Step 4: Use it in the app
 ```typescript
 import { api } from "@/convex/_generated/api"
 const stores = useQuery(api.stores.list)
 ```
 
-Voir `USAGE.md` pour des exemples détaillés.
+See `USAGE.md` for detailed examples.
 
 ---
 
-## Scripts disponibles
+## Available scripts
 
-| Script | Commande | Description |
+| Script | Command | Description |
 |--------|----------|-------------|
-| Test | `pnpm test` | Lance les tests unitaires |
-| Test watch | `pnpm test:watch` | Lance les tests en mode watch |
-| Test coverage | `pnpm test:coverage` | Génère le rapport de couverture |
-| Lint | `pnpm lint` | Vérifie le code avec ESLint |
-| Type check | `pnpm type-check` | Vérifie les types TypeScript |
-| Copy to app | `pnpm copy-to <app-name>` | Copie les fichiers vers une app |
-| Clean | `pnpm clean` | Supprime node_modules |
+| Test | `pnpm test` | Runs the unit tests |
+| Test watch | `pnpm test:watch` | Runs the tests in watch mode |
+| Test coverage | `pnpm test:coverage` | Generates the coverage report |
+| Lint | `pnpm lint` | Checks the code with ESLint |
+| Type check | `pnpm type-check` | Checks the TypeScript types |
+| Copy to app | `pnpm copy-to <app-name>` | Copies the files into an app |
+| Clean | `pnpm clean` | Removes node_modules |
 
 ---
 
-## Prochaines étapes recommandées
+## Recommended next steps
 
-### Court terme
-1. Copier les fonctions vers `apps/restaurant-theme/convex/`
-2. Créer le schema Convex dans l'app
-3. Tester les fonctions avec des données réelles
+### Short term
+1. Copy the functions into `apps/restaurant-theme/convex/`
+2. Create the Convex schema in the app
+3. Test the functions against real data
 
-### Moyen terme
-1. Créer le package `@be-in-digital/convex-schema`
-2. Ajouter plus de tests (coverage > 80%)
-3. Ajouter les modules gamification:
+### Medium term
+1. Create the `@be-in-digital/convex-schema` package
+2. Add more tests (coverage > 80%)
+3. Add the gamification modules:
    - `gameQRCodes.ts`
    - `games.ts`
    - `prizes.ts`
    - `gamePlays.ts`
    - `prizeRedemptions.ts`
 
-### Long terme
-1. Créer un générateur de code pour nouvelles fonctions
-2. Ajouter des tests E2E avec Convex
-3. Documenter les patterns d'optimisation (batching, caching)
+### Long term
+1. Build a code generator for new functions
+2. Add E2E tests with Convex
+3. Document the optimization patterns (batching, caching)
 
 ---
 
-## Dépendances
+## Dependencies
 
 ### Production
-- `convex`: ^1.18.0 - BaaS Convex
-- `zod`: ^3.24.0 - Validation des données
+- `convex`: ^1.18.0 - Convex BaaS
+- `zod`: ^3.24.0 - Data validation
 
-### Développement
+### Development
 - `typescript`: ^5.7.0
 - `vitest`: ^3.0.0
 
 ---
 
-## Structure du package
+## Package structure
 
 ```
 packages/convex-functions/
 ├── src/
 │   ├── __tests__/
-│   │   └── helpers.test.ts       # Tests unitaires
-│   ├── helpers.ts                # Utilitaires
-│   ├── stores.ts                 # Gestion stores
-│   ├── products.ts               # Gestion produits
-│   ├── categories.ts             # Gestion catégories
-│   ├── orders.ts                 # Gestion commandes
-│   ├── kitchenTickets.ts         # Système cuisine
-│   ├── payments.ts               # Gestion paiements
-│   ├── teamMembers.ts            # Gestion équipe
-│   ├── languages.ts              # Gestion langues
-│   ├── translations.ts           # Gestion traductions
+│   │   └── helpers.test.ts       # Unit tests
+│   ├── helpers.ts                # Utilities
+│   ├── stores.ts                 # Store management
+│   ├── products.ts               # Product management
+│   ├── categories.ts             # Category management
+│   ├── orders.ts                 # Order management
+│   ├── kitchenTickets.ts         # Kitchen system
+│   ├── payments.ts               # Payment management
+│   ├── teamMembers.ts            # Team management
+│   ├── languages.ts              # Language management
+│   ├── translations.ts           # Translation management
 │   └── index.ts                  # Barrel file
 ├── scripts/
-│   └── copy-to-app.sh            # Script de copie
+│   └── copy-to-app.sh            # Copy script
 ├── .gitignore                    # Git ignore
-├── CHANGELOG.md                  # Historique versions
-├── DELIVERY.md                   # Ce fichier
-├── README.md                     # Documentation principale
-├── SUMMARY.md                    # Résumé technique
-├── USAGE.md                      # Guide d'utilisation
-├── package.json                  # Config npm
-├── tsconfig.json                 # Config TypeScript
-└── vitest.config.ts              # Config tests
+├── CHANGELOG.md                  # Version history
+├── DELIVERY.md                   # This file
+├── README.md                     # Main documentation
+├── SUMMARY.md                    # Technical summary
+├── USAGE.md                      # Usage guide
+├── package.json                  # npm config
+├── tsconfig.json                 # TypeScript config
+└── vitest.config.ts              # Test config
 ```
 
 ---
 
-## Conformité CLAUDE.md
+## CLAUDE.md compliance
 
-Ce package respecte toutes les directives de CLAUDE.md:
+This package follows every CLAUDE.md guideline:
 
 - ✅ Tech stack: Convex, TypeScript, Zod
 - ✅ Code standards: Strict mode, validation, JSDoc
-- ✅ File naming: PascalCase composants, camelCase utils
-- ✅ Testing: Vitest configuré, tests écrits
-- ✅ Multi-store: Toutes les fonctions filtrent par `restaurant_id` (storeId)
-- ✅ State management: Convex pour server state
-- ✅ Barrel files: index.ts créé
+- ✅ File naming: PascalCase components, camelCase utils
+- ✅ Testing: Vitest configured, tests written
+- ✅ Multi-store: Every function filters by `restaurant_id` (storeId)
+- ✅ State management: Convex for server state
+- ✅ Barrel files: index.ts created
 
 ---
 
-## Points d'attention
+## Things to watch out for
 
 ### 1. Type checking
-Le type checking échoue car `./_generated/server` n'existe pas dans ce package.
-C'est normal et attendu. Les fichiers sont conçus pour être copiés dans une app
-où Convex générera les types.
+Type checking fails because `./_generated/server` does not exist in this package.
+That is normal and expected. The files are meant to be copied into an app
+where Convex will generate the types.
 
-### 2. Tests incomplets
-Seuls les helpers ont des tests pour l'instant. Les fonctions Convex nécessitent
-un environnement Convex pour être testées (ConvexTestingHelper).
+### 2. Incomplete tests
+Only the helpers have tests for now. The Convex functions need
+a Convex environment to be tested (ConvexTestingHelper).
 
-### 3. Pas de validation Zod
-Les validations utilisent les Convex validators (`v.string()`, etc.) au lieu de Zod.
-C'est la pratique recommandée par Convex.
+### 3. No Zod validation
+Validation uses the Convex validators (`v.string()`, etc.) instead of Zod.
+That is the practice Convex recommends.
 
 ---
 
 ## Support
 
-Pour toute question ou problème:
+For any question or issue:
 
-1. Consulter `USAGE.md` pour les exemples
-2. Consulter `SUMMARY.md` pour les détails techniques
-3. Consulter `README.md` pour la vue d'ensemble
-4. Consulter la doc Convex: https://docs.convex.dev
-
----
-
-## Licence
-
-Privé - BeYours Team
+1. Check `USAGE.md` for the examples
+2. Check `SUMMARY.md` for the technical details
+3. Check `README.md` for the overview
+4. Check the Convex docs: https://docs.convex.dev
 
 ---
 
-**Livré le:** 14 février 2026
+## License
+
+Private - BeYours Team
+
+---
+
+**Delivered on:** February 14, 2026
 **Version:** 0.1.0
 **Package:** `@be-in-digital/convex-functions`
-**Statut:** ✅ Complet et fonctionnel
+**Status:** ✅ Complete and working

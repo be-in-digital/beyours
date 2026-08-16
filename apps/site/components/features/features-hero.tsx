@@ -13,7 +13,7 @@ import { Orbit3D } from "./orbit-3d";
 import { pillarOrder, pillars, type Pillar } from "./features-data";
 
 /* ═══════════════════════════════════════════════
-   Features Hero — écosystème en orbite 3D (warm)
+   Features Hero — ecosystem in a 3D orbit (warm)
    ═══════════════════════════════════════════════ */
 
 const pillarIcons: Record<Pillar, LucideIcon> = {
@@ -89,7 +89,7 @@ export function FeaturesHero() {
           </FadeIn>
         </div>
 
-        {/* Écosystème en orbite 3D — Desktop only */}
+        {/* Ecosystem in a 3D orbit — desktop only */}
         <BlurIn className="hidden lg:block">
           <Orbit3D />
         </BlurIn>
