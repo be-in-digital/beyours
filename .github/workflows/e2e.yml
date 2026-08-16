@@ -46,7 +46,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm --filter restaurant-theme exec playwright install --with-deps chromium
+        run: pnpm --filter @beyours/reference exec playwright install --with-deps chromium
 
       - name: Restore Turbo cache
         uses: actions/cache@v4
@@ -73,7 +73,7 @@ jobs:
 
       - name: Seed test users
         if: steps.check-secrets.outputs.configured == 'true'
-        working-directory: apps/restaurant-theme
+        working-directory: apps/reference
         run: |
           # Start dev server in background for seeding
           pnpm dev &
@@ -98,7 +98,7 @@ jobs:
 
       - name: Run Playwright tests
         if: steps.check-secrets.outputs.configured == 'true'
-        run: pnpm test:e2e --filter=@be-in-digital/restaurant-theme
+        run: pnpm test:e2e --filter=@beyours/reference
         env:
           CI: true
 
@@ -111,7 +111,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: apps/restaurant-theme/playwright-report/
+          path: apps/reference/playwright-report/
           retention-days: 7
 
       - name: Upload test results
@@ -119,7 +119,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: apps/restaurant-theme/test-results/
+          path: apps/reference/test-results/
           retention-days: 7
 
   # Always-passing job so branch protection rules don't block PRs
