@@ -78,8 +78,8 @@ export const COMPANY: CompanyInfo = {
 /**
  * Régime de TVA appliqué. En franchise en base (art. 293 B du CGI), aucune TVA
  * n'est facturée et la mention légale correspondante est lue depuis `VAT.mention`
- * par les CGV (`app/(site)/cgv/page.tsx`) et les mentions légales
- * (`app/(site)/mentions-legales/page.tsx`), qui se réalignent donc seules.
+ * par les CGV (`app/(landing)/cgv/page.tsx`) et les mentions légales
+ * (`app/(landing)/mentions-legales/page.tsx`), qui se réalignent donc seules.
  *
  * NB — pied de facture : la mention 293 B doit AUSSI figurer sur la facture
  * Stripe. Le pied de facture `SELLER_INVOICE_FOOTER` vit dans `convex/stripe.ts`

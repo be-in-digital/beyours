@@ -34,7 +34,7 @@ C'est la particularité de cette app, et ce qu'il faut comprendre en premier.
 
 | Route | Public | Pages | Contenu |
 | --- | --- | --- | --- |
-| `(site)` | Prospects | 14 | Accueil, fonctionnalités, tarifs, catalogue, contact, checkout, pages légales |
+| `(landing)` | Prospects | 14 | Accueil, fonctionnalités, tarifs, catalogue, contact, checkout, pages légales |
 | `(demo)` | Prospects | 1 | Démo interactive d'un template, `demo/[slug]` |
 | `parrainage` | Apporteurs externes | 8 | Inscription, contrat signé, tableau de bord, partage |
 | `admin` | Équipe interne | 14 | Clients, flotte, incidents, monitoring, factures, abonnements, ventes, prospects |
