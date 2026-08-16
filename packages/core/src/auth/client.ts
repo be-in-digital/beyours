@@ -37,7 +37,7 @@ import type {
 } from './types';
 
 /**
- * Hook React pour l'authentification
+ * React hook for authentication
  *
  * @returns Contexte d'authentification complet
  *
@@ -47,27 +47,27 @@ import type {
  *   const { user, isLoading, signIn, signOut } = useAuth()
  *
  *   if (isLoading) return <div>Chargement...</div>
- *   if (!user) return <div>Non connecté</div>
+ *   if (!user) return <div>Signed out</div>
  *
  *   return <div>Bonjour {user.name}</div>
  * }
  * ```
  *
- * NOTE: Après installation, implémenter avec:
+ * NOTE: once installed, implement with:
  * - const { data: session, isLoading } = useSession()
  * - const { signIn, signOut, ... } = useAuthClient()
  */
 export function useAuth(): AuthContextValue {
-  // TODO: Implémenter avec Better Auth React hooks après installation
+  // TODO: implement with the Better Auth React hooks once installed
   throw new Error(
     'useAuth: Better Auth non installé. Installez better-auth et @better-auth/react'
   );
 }
 
 /**
- * Hook pour obtenir l'utilisateur courant
+ * Hook returning the current user
  *
- * @returns Utilisateur connecté ou null
+ * @returns The signed-in user, or null
  *
  * @example
  * ```tsx
@@ -84,7 +84,7 @@ export function useUser(): AuthUser | null {
 }
 
 /**
- * Hook pour obtenir la session courante
+ * Hook returning the current session
  *
  * @returns Session active ou null
  *
@@ -93,7 +93,7 @@ export function useUser(): AuthUser | null {
  * function SessionInfo() {
  *   const session = useSession()
  *   if (!session) return null
- *   return <div>Session expire le {session.expiresAt}</div>
+ *   return <div>Session expires on {session.expiresAt}</div>
  * }
  * ```
  */
@@ -103,10 +103,10 @@ export function useSession() {
 }
 
 /**
- * Hook pour vérifier une permission
+ * Hook checking a single permission
  *
- * @param permission - Permission à vérifier
- * @returns Objet avec `allowed` et `loading`
+ * @param permission - The permission to check
+ * @returns An object carrying `allowed` and `loading`
  *
  * @example
  * ```tsx
@@ -141,10 +141,10 @@ export function usePermission(permission: Permission): {
 }
 
 /**
- * Hook pour vérifier plusieurs permissions (ANY)
+ * Hook checking for any one of several permissions
  *
- * @param permissions - Liste de permissions (au moins une requise)
- * @returns Objet avec `allowed` et `loading`
+ * @param permissions - The permissions, at least one of which is required
+ * @returns An object carrying `allowed` and `loading`
  *
  * @example
  * ```tsx
@@ -176,10 +176,10 @@ export function useAnyPermission(permissions: Permission[]): {
 }
 
 /**
- * Hook pour vérifier plusieurs permissions (ALL)
+ * Hook checking for every one of several permissions
  *
  * @param permissions - Liste de permissions (toutes requises)
- * @returns Objet avec `allowed` et `loading`
+ * @returns An object carrying `allowed` and `loading`
  *
  * @example
  * ```tsx
@@ -211,10 +211,10 @@ export function useAllPermissions(permissions: Permission[]): {
 }
 
 /**
- * Hook pour vérifier un rôle spécifique
+ * Hook checking a single role
  *
- * @param role - Rôle à vérifier
- * @returns `true` si l'utilisateur a le rôle
+ * @param role - The role to check
+ * @returns `true` when the user holds that role
  *
  * @example
  * ```tsx
@@ -231,10 +231,10 @@ export function useRole(role: Role): boolean {
 }
 
 /**
- * Hook pour vérifier plusieurs rôles (ANY)
+ * Hook checking for any one of several roles
  *
- * @param roles - Liste de rôles (au moins un requis)
- * @returns `true` si l'utilisateur a au moins un des rôles
+ * @param roles - The roles, at least one of which is required
+ * @returns `true` when the user holds at least one of them
  *
  * @example
  * ```tsx
@@ -251,10 +251,10 @@ export function useAnyRole(roles: Role[]): boolean {
 }
 
 /**
- * Factory pour créer le client auth
+ * Builds the auth client
  *
  * @param options - Options de configuration
- * @returns Client auth configuré
+ * @returns The configured auth client
  *
  * @example
  * ```ts
@@ -268,22 +268,22 @@ export function useAnyRole(roles: Role[]): boolean {
  * }
  * ```
  *
- * NOTE: Après installation, utiliser:
+ * NOTE: once installed, use:
  * - import { createAuthClient } from 'better-auth/react'
  */
 export function createAuthClient(options: { baseUrl: string }) {
-  // TODO: Implémenter avec Better Auth après installation
+  // TODO: implement with Better Auth once installed
   // return createAuthClient({ baseURL: options.baseUrl })
 
   return {
     baseUrl: options.baseUrl,
-    // Placeholder pour éviter les erreurs TypeScript
+    // Placeholder, to keep TypeScript quiet
     _placeholder: true,
   };
 }
 
 /**
- * Provider React pour l'authentification
+ * React provider for authentication
  *
  * @example
  * ```tsx
@@ -303,20 +303,20 @@ export function createAuthClient(options: { baseUrl: string }) {
  * }
  * ```
  *
- * NOTE: Après installation, utiliser le provider de better-auth/react
+ * NOTE: once installed, use the provider from better-auth/react
  */
 export function AuthProvider(_props: { children: ReactNode }): ReactNode {
-  // TODO: Implémenter avec Better Auth Provider après installation
+  // TODO: implement with the Better Auth Provider once installed
   throw new Error(
     'AuthProvider: Better Auth non installé. Installez better-auth et @better-auth/react'
   );
 }
 
 /**
- * Type pour un composant protégé par authentification
+ * Type of a component gated behind authentication
  *
- * NOTE: L'implémentation de ce HOC doit être faite dans l'application
- * après installation de better-auth/react, car elle nécessite JSX
+ * NOTE: this HOC has to be implemented in the application itself, once
+ * better-auth/react is installed, because it needs JSX
  */
 export type WithAuthOptions = {
   requireRole?: Role;
@@ -325,11 +325,11 @@ export type WithAuthOptions = {
 };
 
 /**
- * Type pour créer un HOC d'authentification
+ * Type of the authentication HOC factory
  *
  * @example
  * ```tsx
- * // Dans votre app après installation de better-auth
+ * // In your app, once better-auth is installed
  * export function withAuth<P extends object>(
  *   Component: ComponentType<P>,
  *   options?: WithAuthOptions
@@ -348,10 +348,10 @@ export type WithAuthFactory = <P extends object>(
 ) => ComponentType<P>;
 
 /**
- * Props pour le composant CanAccess
+ * Props for the CanAccess component
  *
- * NOTE: L'implémentation de ce composant doit être faite dans l'application
- * après installation de better-auth/react, car elle nécessite JSX
+ * NOTE: this component has to be implemented in the application itself,
+ * once better-auth/react is installed, because it needs JSX
  */
 export type CanAccessProps = {
   permission: Permission;
@@ -360,11 +360,11 @@ export type CanAccessProps = {
 };
 
 /**
- * Type pour le composant CanAccess
+ * Type of the CanAccess component
  *
  * @example
  * ```tsx
- * // Dans votre app après installation de better-auth
+ * // In your app, once better-auth is installed
  * export function CanAccess({ permission, children, fallback }: CanAccessProps) {
  *   const { allowed, loading } = usePermission(permission)
  *   if (loading) return null
@@ -375,10 +375,10 @@ export type CanAccessProps = {
 export type CanAccessComponent = (props: CanAccessProps) => ReactNode;
 
 /**
- * Props pour le composant RoleGate
+ * Props for the RoleGate component
  *
- * NOTE: L'implémentation de ce composant doit être faite dans l'application
- * après installation de better-auth/react, car elle nécessite JSX
+ * NOTE: this component has to be implemented in the application itself,
+ * once better-auth/react is installed, because it needs JSX
  */
 export type RoleGateProps = {
   role: Role;
@@ -387,11 +387,11 @@ export type RoleGateProps = {
 };
 
 /**
- * Type pour le composant RoleGate
+ * Type of the RoleGate component
  *
  * @example
  * ```tsx
- * // Dans votre app après installation de better-auth
+ * // In your app, once better-auth is installed
  * export function RoleGate({ role, children, fallback }: RoleGateProps) {
  *   const hasRole = useRole(role)
  *   return hasRole ? <>{children}</> : fallback ? <>{fallback}</> : null
