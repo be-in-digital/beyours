@@ -66,7 +66,7 @@ const MIRROR_OWNED = [".git", "node_modules", ".next", "pnpm-lock.yaml", "next-e
 const MIRROR_README_BANNER = `<!-- Generated automatically — do not edit here. -->
 
 > ⚠️ **Generated repository.** Its contents are produced from \`apps/themes\` in
-> the [beyours-engine](https://github.com/${MIRROR_REPO.split("/")[0]}/beyours-engine)
+> the [beyours](https://github.com/${MIRROR_REPO.split("/")[0]}/beyours)
 > monorepo and replaced in full on every sync. **A commit made directly here
 > will be lost** — changes belong in the monorepo.
 >

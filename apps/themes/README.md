@@ -222,7 +222,7 @@ tests and points at the engine changelogs.
 ## Developing against a local engine (no registry)
 
 ```bash
-git clone https://github.com/be-in-digital/beyours-engine ../beyours-engine
+git clone https://github.com/be-in-digital/beyours ../beyours
 pnpm engine:link       # pnpm link: overrides pointing at the clone
 # … develop …
 pnpm engine:unlink     # back to the registry (never commit in link mode)

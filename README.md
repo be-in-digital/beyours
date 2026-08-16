@@ -420,20 +420,27 @@ them.
 
 ## History
 
-This repository was called `beindigital`, then `beyours-engine`. Until August
-2026 it hosted the engine **and** both of the company's websites.
+This repository was called `beindigital`, then `beyours-engine`, and is now
+`beyours`. Until August 2026 it hosted the engine **and** both of the company's
+websites.
 
 The August 2026 split first moved the four projects into four repositories, then
 regrouped the three that belong to BeYours — the site, the engine, the template
-— into this one, with their full history (`git subtree`). The agency site went
-its own way, to
+— into this one, with their full history (`git subtree`). `beyours-engine` was
+then dropped as a name: the repository is no longer just the engine. The agency
+site went its own way, to
 [`beindigital.fr`](https://github.com/be-in-digital/beindigital.fr): different
 brand, different business, no code dependency.
 
-⚠️ **Three repository names were freed by those renames:** `beindigital`,
-`beindigital-engine`, `beindigital-boilerplate`. Scripts in production rely on
-the associated GitHub redirects. **Do not recreate any of them** — creating a
-repository under one of those names silently destroys the redirect.
+`be-in-digital/beyours-legacy-site` is the archived, read-only remains of the
+standalone site repository. It was renamed out of the way to free the `beyours`
+name; its history is fully reachable here through `apps/site`.
+
+⚠️ **Four repository names were freed by those renames:** `beindigital`,
+`beindigital-engine`, `beindigital-boilerplate`, `beyours-engine`. Scripts in
+production rely on the associated GitHub redirects. **Do not recreate any of
+them** — creating a repository under one of those names silently destroys the
+redirect.
 
 ---
 
