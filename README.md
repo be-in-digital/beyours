@@ -164,6 +164,43 @@ La commande enchaîne clone → remote `template` → création du dépôt priv�
 commit initial → push. Détail dans
 [`apps/themes/README.md`](apps/themes/README.md).
 
+### Le miroir de distribution
+
+Le clone ne se fait pas depuis ce dépôt mais depuis
+**`be-in-digital/beyours-boilerplate`**, parce qu'un site client ne peut pas
+cloner un sous-dossier de monorepo : git clone des dépôts entiers. Le miroir
+est la découpe livrable.
+
+[`scripts/publish-mirror.mjs`](scripts/publish-mirror.mjs) l'y pousse, en
+corrigeant les quatre choses qui n'ont de sens qu'ici :
+
+| | Dans `apps/themes` | Dans le miroir |
+| --- | --- | --- |
+| Dépendances moteur | `workspace:^` | `^2.0.2` — la version publiée du moment |
+| Lockfile | celui de la racine | le sien, régénéré |
+| `vercel.json` | `turbo-ignore` | absent — pas de workspace turbo chez le client |
+| `name` | `@beyours/themes` | `beyours-boilerplate` |
+
+`.github/workflows/publish-mirror.yml` le déclenche sur deux événements, parce
+que le miroir peut dériver de deux façons : un changement du gabarit (push sur
+`main` touchant `apps/themes/**`) et une republication des paquets (fin du
+workflow *Release*). `workflow_dispatch` permet un dry-run à la demande.
+
+Localement :
+
+```bash
+NODE_AUTH_TOKEN=<PAT read:packages> node scripts/publish-mirror.mjs --check
+```
+
+⚠️ Le miroir est reconstruit intégralement à chaque passage : **un commit fait
+directement dessus disparaît**. Son historique, lui, est préservé — jamais de
+force-push, parce que chaque site client a un remote `template` qui pointe
+dessus et y fait des merges.
+
+Secret requis : `MIRROR_PUSH_TOKEN`, un PAT fine-grained `contents: write` sur
+`beyours-boilerplate`. Sans lui le job tourne en dry-run et signale la dérive
+sans pousser — `GITHUB_TOKEN` ne porte que sur le dépôt courant.
+
 ### Deux canaux de mise à jour, jamais un seul
 
 | Canal | Commande | Ce qui remonte |
@@ -349,12 +386,10 @@ ouvert sur ce dépôt.
 `apps/themes/templates/`, 50 démos dans `apps/themes/demos/`. Trois
 listes qu'aucun test ne réconcilie.
 
-**`apps/themes` a un miroir de distribution.** Les sites clients se créent
-depuis `be-in-digital/beyours-boilerplate`, pas depuis ce dépôt. Les dépendances
-y sont en versions publiées (`^2.0.2`), ici en `workspace:^`. Tant qu'un job ne
-pousse pas `apps/themes` vers ce miroir en réécrivant les versions, **les
-deux divergent** — et `sync-engine.yml` / `sync-from-engine.mjs` restent en
-place, bien que la fusion les ait rendus sans objet.
+**Un commit direct sur le miroir est perdu.**
+`be-in-digital/beyours-boilerplate` est reconstruit intégralement à chaque
+synchronisation (voir [Le miroir de distribution](#le-miroir-de-distribution)).
+Toute modification se fait ici, dans `apps/themes`.
 
 **11 tests d'intégration Deliveroo ne s'exécutent jamais.** Les fichiers
 `apps/reference/e2e/deliveroo/**/*.test.ts` tombent dans un angle mort : Vitest

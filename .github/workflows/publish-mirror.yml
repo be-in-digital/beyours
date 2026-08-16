@@ -1,0 +1,79 @@
+name: Publier le miroir
+
+# Pousse `apps/themes` vers be-in-digital/beyours-boilerplate, le dépôt d'où
+# les sites clients sont clonés, en réécrivant ce qui n'a de sens que dans le
+# monorepo (dépendances workspace:, lockfile, vercel.json, nom du paquet).
+# Détail des transformations : scripts/publish-mirror.mjs
+#
+# Deux déclencheurs, parce que le miroir peut dériver de deux façons :
+#   - le gabarit change            → push sur main touchant apps/themes/**
+#   - les paquets sont republiés   → fin du workflow Release
+#
+# Secret requis : MIRROR_PUSH_TOKEN, un PAT fine-grained `contents: write`
+# sur beyours-boilerplate. Sans lui le job s'arrête proprement — GITHUB_TOKEN
+# ne porte que sur le dépôt courant et ne peut pas pousser ailleurs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/themes/**"
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      check_only:
+        description: "Dry-run : signaler la dérive sans pousser"
+        type: boolean
+        default: false
+
+concurrency: publish-mirror
+
+jobs:
+  publish:
+    name: Synchroniser le miroir
+    runs-on: ubuntu-latest
+    # Sur workflow_run, ne rien faire si la Release a échoué.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Vérifier le secret de poussée
+        id: gate
+        env:
+          MIRROR_PUSH_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+        run: |
+          if [ -z "${MIRROR_PUSH_TOKEN}" ]; then
+            echo "::notice::MIRROR_PUSH_TOKEN absent — synchronisation en dry-run. Voir le README pour le créer."
+            echo "can_push=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_push=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@be-in-digital"
+
+      - name: Synchroniser
+        env:
+          # Lecture du registre : les paquets sont publiés par ce dépôt,
+          # GITHUB_TOKEN suffit avec `packages: read`.
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MIRROR_PUSH_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+        run: |
+          if [ "${{ steps.gate.outputs.can_push }}" = "true" ] \
+             && [ "${{ inputs.check_only }}" != "true" ]; then
+            node scripts/publish-mirror.mjs
+          else
+            node scripts/publish-mirror.mjs --check
+          fi

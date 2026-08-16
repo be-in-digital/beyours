@@ -25,8 +25,12 @@ dépôt du client (1 par restaurant)            ← site.config.ts + site/ + env
 > ⚠️ **Les clients ne clonent pas ce dossier, ils clonent le dépôt miroir**
 > `be-in-digital/beyours-boilerplate`. Ici les dépendances moteur sont en
 > `workspace:^` (on développe contre le moteur courant) ; là-bas elles sont en
-> versions publiées. Tant qu'un job ne pousse pas ce dossier vers le miroir en
-> réécrivant les versions, **les deux divergent**.
+> versions publiées, avec leur propre lockfile.
+>
+> La traversée est automatisée : `.github/workflows/publish-mirror.yml` pousse
+> ce dossier vers le miroir à chaque changement, et après chaque publication de
+> paquets. Voir [`scripts/publish-mirror.mjs`](../../scripts/publish-mirror.mjs)
+> à la racine du monorepo pour les quatre transformations appliquées.
 
 ---
 
@@ -240,7 +244,6 @@ pnpm engine:unlink     # retour au registre (ne jamais commiter en mode link)
 | `pnpm convex:env` | Applique `.env.convex` via `convex env set` |
 | `pnpm template:list` / `template:apply <slug>` | Templates design (5 verticaux + neutre) |
 | `pnpm update:engine` / `update:template` | Mises à jour |
-| `pnpm sync:engine` | (Mainteneur) resync du miroir depuis l'engine |
 | `pnpm engine:link` / `engine:unlink` | Dev local contre l'engine |
 
 ## Déploiement
@@ -252,8 +255,7 @@ Env vars : toutes les `[REQUIS]` de `.env.example` + `NODE_AUTH_TOKEN`
 
 **CI GitHub Actions** : `ci.yml` (lint + typecheck + tests + build, secret
 `GH_PACKAGES_TOKEN` requis ; e2e via `CONVEX_E2E_ENABLED=true` + secrets
-`E2E_*` ; job mobile conditionnel) et `sync-engine.yml` (resync automatique
-du miroir engine par PR). Runbook complet des secrets :
+`E2E_*` ; job mobile conditionnel). Runbook complet des secrets :
 [`docs/SETUP-CI.md`](docs/SETUP-CI.md).
 
 ## Sécurité
@@ -280,13 +282,6 @@ du miroir engine par PR). Runbook complet des secrets :
 (`packages/convex-functions/src/maintenance.ts`). En pratique,
 `scripts/update-template.mjs` fait un `git fetch template` nu : un site expiré
 qui lance la commande reçoit tout. La garde reste à écrire.
-
-**La machinerie de miroir survit à sa raison d'être.**
-`scripts/sync-from-engine.mjs` et `.github/workflows/sync-engine.yml`
-resynchronisaient ce dossier depuis `apps/reference` quand les deux vivaient
-dans des dépôts séparés. Depuis la fusion ils n'ont plus d'objet — ils sont
-conservés tant que le job de publication vers le miroir de distribution n'existe
-pas, parce qu'on ne retire pas un mécanisme avant d'avoir livré son remplaçant.
 
 **Le `.github/` de ce dossier n'est pas inerte.** GitHub ne lit que le
 `.github/` de la racine du dépôt, donc ces workflows ne s'exécutent pas ici —
