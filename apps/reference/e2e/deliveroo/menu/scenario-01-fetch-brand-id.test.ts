@@ -10,7 +10,7 @@ import { deliveroo } from "@be-in-digital/integrations";
 
 const { fetchDeliveroo, getAccessToken } = deliveroo;
 type DeliverooCredentials = Parameters<typeof getAccessToken>[0];
-import { config, log } from "../test-config";
+import { config, hasDeliverooSandbox, log } from "../test-config";
 
 // ============================================================================
 // Credentials for sandbox
@@ -21,6 +21,8 @@ const credentials: DeliverooCredentials = {
   clientSecret: config.CLIENT_SECRET,
   sandboxMode: config.IS_SANDBOX,
 };
+
+const itWithDeliverooSandbox = it.runIf(hasDeliverooSandbox);
 
 // ============================================================================
 // Test Suite
@@ -38,7 +40,7 @@ describe("Deliveroo Menu - Scenario 1: Fetch Brand ID", () => {
   // Test 1: OAuth Token Retrieval
   // ========================================================================
 
-  it("should obtain OAuth access token with valid credentials", async () => {
+  itWithDeliverooSandbox("should obtain OAuth access token with valid credentials", async () => {
     log.test("Test 1: Obtaining OAuth access token");
 
     const token = await getAccessToken(credentials);
@@ -59,7 +61,7 @@ describe("Deliveroo Menu - Scenario 1: Fetch Brand ID", () => {
   // Test 2: Fetch Brand ID via Site API
   // ========================================================================
 
-  it("should fetch brand ID successfully with valid site location ID", async () => {
+  itWithDeliverooSandbox("should fetch brand ID successfully with valid site location ID", async () => {
     log.test("Test 2: Fetching brand ID via site API");
 
     // Use the site API to list brands/sites
@@ -91,7 +93,7 @@ describe("Deliveroo Menu - Scenario 1: Fetch Brand ID", () => {
   // Test 3: Brand ID Format Validation
   // ========================================================================
 
-  it("should validate brand ID follows UUID format", async () => {
+  itWithDeliverooSandbox("should validate brand ID follows UUID format", async () => {
     log.test("Test 3: Validating brand ID format");
 
     const brandId = config.BRAND_ID;
@@ -108,7 +110,7 @@ describe("Deliveroo Menu - Scenario 1: Fetch Brand ID", () => {
   // Test 4: Consistent Token for Same Credentials
   // ========================================================================
 
-  it("should return valid tokens for same credentials", async () => {
+  itWithDeliverooSandbox("should return valid tokens for same credentials", async () => {
     log.test("Test 4: Validating token retrieval consistency");
 
     // Both calls should return valid tokens
@@ -167,7 +169,7 @@ describe("Deliveroo Menu - Scenario 1: Fetch Brand ID", () => {
   // Test 7: API Types Distinction
   // ========================================================================
 
-  it("should support different API types (order, menu, site)", async () => {
+  itWithDeliverooSandbox("should support different API types (order, menu, site)", async () => {
     log.test("Test 7: Validating API type routing");
 
     // The fetchDeliveroo function supports different API types
@@ -230,7 +232,7 @@ describe("Deliveroo Menu - Brand ID Error Handling", () => {
   // Test 2: Handle 401 Unauthorized
   // ========================================================================
 
-  it("should handle 401 Unauthorized (invalid token)", async () => {
+  it.todo("should handle 401 Unauthorized (invalid token) — needs a mocked OAuth token", async () => {
     log.test("Error Test 2: Handling 401 Unauthorized");
 
     // This would require mocking the OAuth token generation
@@ -280,7 +282,7 @@ describe("Deliveroo Menu - Brand ID Error Handling", () => {
   // Test 4: Handle 500 Server Error
   // ========================================================================
 
-  it("should handle 500 Server Error", async () => {
+  it.todo("should handle 500 Server Error — needs a mocked API response", async () => {
     log.test("Error Test 4: Handling 500 Server Error");
 
     // Server errors should be caught and re-thrown with context

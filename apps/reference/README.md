@@ -35,7 +35,7 @@ sales demos.
 | --- | --- |
 | **Routes** | 98 pages, 6 API routes |
 | **Engine packages consumed** | 9 out of 10 (all but `mcp-server`) |
-| **Tests** | 2 Vitest files, 43 Playwright specs — plus 11 orphaned files, see below |
+| **Tests** | 13 Vitest files (117 tests, 13 gated behind live credentials), 43 Playwright specs |
 
 Surfaces, by route group:
 
@@ -61,22 +61,33 @@ with the pages they point to.
 
 ---
 
-## 11 integration tests never run
+## The 11 Deliveroo scenarios
 
-The Deliveroo scenarios in `e2e/deliveroo/**/*.test.ts` fall into a blind spot
-between the two runners:
+They used to fall into a blind spot between the two runners: Vitest excluded
+`**/e2e/**`, and the Playwright projects only match `*.spec.ts`. Written, never
+executed.
 
-| Runner | Why it ignores them |
-| --- | --- |
-| **Vitest** | `vitest.config.ts` excludes `**/e2e/**` |
-| **Playwright** | The projects in `playwright.config.ts` only match `*.spec.ts` |
+They are Vitest suites, not Playwright ones — the exclude is now narrowed to
+`**/e2e/**/*.spec.ts`, so `pnpm test` picks them up. Playwright is unaffected
+and still lists 510 tests across 44 files.
 
-Verifiable: `npx playwright test --list` returns none of them, and `pnpm test`
-only runs the 2 files under `lib/`.
+Most of the assertions are offline: they build a Deliveroo webhook payload and
+check its shape. Those run everywhere, on every push. **13 tests need something
+live** and are gated behind environment variables, skipped by default:
 
-Eleven scenarios — remade orders, scheduled, cancelled, refunded, meal vouchers,
-missing items — written and never executed. Rename them to `.spec.ts` and attach
-them to a Playwright project, or move them out of `e2e/` so Vitest sees them.
+| Gate | Requires | Covers |
+| --- | --- | --- |
+| `hasWebhookTarget` | `CONVEX_SITE_URL` **and** `DELIVEROO_WEBHOOK_SECRET` (or `DELIVEROO_CLIENT_SECRET`) | scenarios 2 and 8 — POST a signed webhook to a deployment |
+| `hasDeliverooSandbox` | `DELIVEROO_CLIENT_ID`, `DELIVEROO_CLIENT_SECRET`, `DELIVEROO_BRAND_ID` | scenario 1 — calls the Deliveroo sandbox API |
+
+`CONVEX_SITE_URL` is read straight from the environment for the gate, never
+through `config`: the fallback there is a real deployment, and defaulting to it
+would make every CI run fire signed payloads at a backend nobody asked for. Set
+the variables to run the live half locally.
+
+Three tests are `it.todo`: two asserted `expect(true).toBe(true)` and one only
+held comments. They never could fail, so they were reporting green for nothing —
+they need a mocked OAuth token and a mocked API response to become real.
 
 ---
 

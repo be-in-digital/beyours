@@ -23,6 +23,31 @@ export const config = {
 };
 
 // ============================================================================
+// Live-run Gates
+// ============================================================================
+
+/**
+ * Whether a webhook target is configured.
+ *
+ * CONVEX_SITE_URL is read from the environment directly, never through
+ * `config`: the fallback there is a real deployment, and defaulting to it
+ * would make every CI run fire signed payloads at a backend nobody asked for.
+ */
+export const hasWebhookTarget = Boolean(
+  process.env.CONVEX_SITE_URL &&
+    (process.env.DELIVEROO_WEBHOOK_SECRET || process.env.DELIVEROO_CLIENT_SECRET),
+);
+
+/** Whether Deliveroo sandbox credentials are available for direct API calls. */
+export const hasDeliverooSandbox = Boolean(
+  config.CLIENT_ID && config.CLIENT_SECRET && config.BRAND_ID,
+);
+
+// Only the booleans are exported. Wrapping them in `it.runIf(...)` here and
+// exporting that would give the export an inferred type TypeScript cannot
+// name (TS2742/TS4023) — each suite declares its own local wrapper instead.
+
+// ============================================================================
 // Utilities
 // ============================================================================
 
