@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1143" viewBox="0 0 2048 1143">
+  <title>be yours logo</title>
+  <desc>Black "be" followed by an orange rounded capsule containing a white dot and the word "yours".</desc>
+
+  <!-- Transparent background -->
+  <g transform="translate(470 445)">
+    <!-- "be" -->
+    <text x="0" y="185"
+          font-family="Arial, Helvetica, sans-serif"
+          font-size="180"
+          font-weight="800"
+          letter-spacing="-12"
+          fill="#17180D">be</text>
+
+    <!-- Orange capsule -->
+    <rect x="300" y="0" width="800" height="250" rx="125"
+          fill="#C94D20"/>
+
+    <!-- White dot -->
+    <circle cx="385" cy="125" r="30" fill="#FFFDF7"/>
+
+    <!-- "yours" -->
+    <text x="435" y="185"
+          font-family="Arial, Helvetica, sans-serif"
+          font-size="178"
+          font-weight="800"
+          letter-spacing="-10"
+          fill="#FFFDF7">yours</text>
+  </g>
+</svg>

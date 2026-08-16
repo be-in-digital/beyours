@@ -14,17 +14,29 @@ interface LogoProps {
 /**
  * BeYours logo — the "be ·yours" wordmark: ink plus a terracotta pill.
  *
- * Two variants, same paths, three fills swapped:
- *   ink   → ink #221c15, pill #c5542c, counterform cream #faf5ee
- *   light → cream #fdf7ef, pill #d5794d, counterform olive #23271c
+ * Two variants. Only the "be" changes colour — the pill keeps its terracotta
+ * and its cream wordmark in both, because that pairing is the mark itself:
+ *   ink   → "be" #17180D, pill #C94D20, wordmark #FFFDF7
+ *   light → "be" #FFFDF7, pill #C94D20, wordmark #FFFDF7
  *
- * Those are the design tokens (--foreground, --primary, --background). A
- * palette change in globals.css has to be mirrored here by hand: an SVG served
- * through <img> does not read the page's CSS variables.
+ * The letterforms are outlined paths, not <text>. A wordmark served through
+ * <img> gets no web fonts: a <text> element would render in whatever the
+ * viewer's system resolves `Arial, Helvetica, sans-serif` to, and since the
+ * pill has a fixed width, a wider fallback would push "yours" past its curve.
+ * Outlines make the mark identical everywhere. Regenerate them from the
+ * source file rather than editing the path data by hand.
+ *
+ * viewBox is 1100×250 — ratio 4.4. Keep width and height consistent with it,
+ * otherwise Next reserves the wrong box and the logo jumps on load.
+ *
+ * Note: these fills are the delivered brand colours and sit a shade off the
+ * design tokens (--foreground #221c15, --primary #c5542c, --background
+ * #faf5ee). An SVG served through <img> cannot read CSS variables, so a
+ * palette change has to be mirrored here by hand.
  */
 export function Logo({
   width = 128,
-  height = 42,
+  height = 29,
   priority = false,
   className,
   linked = true,
