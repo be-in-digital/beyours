@@ -26,7 +26,12 @@ interface LogoProps {
  * Outlines make the mark identical everywhere. Regenerate them from the
  * source file rather than editing the path data by hand.
  *
- * viewBox is 1100×250 — ratio 4.4. Keep width and height consistent with it,
+ * The pill was rebalanced against the delivered file: it ran 800 units wide,
+ * leaving 55 units of terracotta before the dot and 220 after the "s". At 640
+ * the margins read 55 and 60. Everything else — glyph sizes, letter-spacing,
+ * baseline, dot — is untouched.
+ *
+ * viewBox is 940×250 — ratio 3.76. Keep width and height consistent with it,
  * otherwise Next reserves the wrong box and the logo jumps on load.
  *
  * Note: these fills are the delivered brand colours and sit a shade off the
@@ -36,7 +41,7 @@ interface LogoProps {
  */
 export function Logo({
   width = 128,
-  height = 29,
+  height = 34,
   priority = false,
   className,
   linked = true,

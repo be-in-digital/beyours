@@ -83,7 +83,7 @@ export function Footer() {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <div className="grid gap-12 py-16 lg:grid-cols-[1.5fr_1fr_1fr_1fr] lg:gap-8">
           <div className="max-w-xs">
-            <Logo width={132} height={30} linked variant="light" />
+            <Logo width={132} height={35} linked variant="light" />
             <p className="mt-5 text-sm leading-relaxed text-[color:var(--primary-100)]/70">
               La plateforme digitale des restaurateurs indépendants. Votre
               vitrine, vos commandes et vos données, réunies au même endroit.
