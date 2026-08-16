@@ -31,7 +31,9 @@
 
 3. **Update the Convex env vars** on the prod deployment `robust-elephant-263`:
    ```bash
-   cd apps/restaurant-theme
+   # Engine context: apps/reference. A client instance: apps/themes.
+   # Both mirror the same convex/ wrappers (bidSubscription, bidStripeWebhook).
+   cd apps/reference
    pnpx convex env set STRIPE_BID_SECRET_KEY "sk_live_..." --prod
    pnpx convex env set STRIPE_BID_WEBHOOK_SECRET "whsec_..." --prod
    # ... (all the variables above)

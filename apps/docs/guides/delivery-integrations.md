@@ -33,7 +33,7 @@ Delivery integrations are split across the monorepo so the base stays reusable:
 | API clients + mappers | `packages/integrations/src/{uber-eats,deliveroo}` | Pure HTTP clients, OAuth helpers, signature verification, order/menu mappers. No Convex, no app imports. |
 | Shared tables | `packages/convex-schema/src/tables` | `orders`, `storeIntegrations`, `externalProductMappings`, `uberEatsConnections`, `oauthStates`, … |
 | Reusable handlers | `packages/convex-functions/src/orders.ts` | `createFromWebhook` (idempotent), `updateFromWebhook`. |
-| App wiring | `apps/restaurant-theme/convex/{http,uberEats*,deliveroo*}.ts` | HTTP webhook routes, OAuth callback, auto-accept logic, kitchen tickets. |
+| App wiring | `apps/reference/convex/{http,uberEats*,deliveroo*}.ts` | HTTP webhook routes, OAuth callback, auto-accept logic, kitchen tickets. |
 
 **Credentials are platform-level, not per-restaurant.** BeYours is the partner
 app registered with Uber and Deliveroo, so `*_CLIENT_ID` / `*_CLIENT_SECRET` /
@@ -56,7 +56,7 @@ Validated by Zod in `packages/core/src/env/schemas.ts`. Copy the template and fi
 real values — never commit `.env.local`:
 
 ```bash
-cp apps/restaurant-theme/.env.example apps/restaurant-theme/.env.local
+cp apps/reference/.env.example apps/reference/.env.local
 ```
 
 ### Platform-level (BeYours partner apps — `packageEnvSchema`)
@@ -106,7 +106,7 @@ Base URLs are selected automatically per mode in
 ### OAuth provisioning (connect a merchant)
 
 Uber Eats uses an Authorization-Code flow (`eats.pos_provisioning`). Code:
-`apps/restaurant-theme/convex/uberEatsOAuth.ts` + `uberEatsOAuthHttp.ts`.
+`apps/reference/convex/uberEatsOAuth.ts` + `uberEatsOAuthHttp.ts`.
 
 1. **Register the redirect URI** in the Uber developer portal (exactly):
    `${CONVEX_SITE_URL}/connect/uber-eats/callback`
@@ -123,7 +123,7 @@ per restaurant).
 
 ### Uber Eats webhooks
 
-- **Endpoint:** registered on the Convex HTTP router (`apps/restaurant-theme/convex/http.ts`)
+- **Endpoint:** registered on the Convex HTTP router (`apps/reference/convex/http.ts`)
   → `uberEatsWebhook.handleWebhook`.
 - **Signature:** header `x-uber-signature`, `HMAC-SHA256(signingSecret, rawBody)`
   hex, where `signingSecret = UBER_EATS_WEBHOOK_SECRET || UBER_EATS_CLIENT_SECRET`.
@@ -171,7 +171,7 @@ UBER_EATS_TEST_ORDER_ID=... UBER_EATS_RUN_DESTRUCTIVE=true \
 - **Events handled:** `order.new`, `order.status_update`, and `menu.*`
   (upload_completed / upload_failed / validation_error).
 - ASAP vs scheduled order handling and `sync_status` reporting follow Deliveroo's
-  docs (`apps/restaurant-theme/convex/deliverooWebhook.ts`).
+  docs (`apps/reference/convex/deliverooWebhook.ts`).
 
 ### Menu sync & sandbox scenarios
 

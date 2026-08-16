@@ -313,6 +313,10 @@ export const checkForUpdates = action({
     //    a registry outage must not hide already-known releases)
     try {
       const res = await fetch(
+        // TODO(beyours): no package named @be-in-digital/restaurant-theme is published
+        // by this repo (see packages/*). This request 404s, so the release catalog
+        // silently stays empty. Point it at the real engine package before relying
+        // on the maintenance / update feature.
         "https://registry.npmjs.org/@be-in-digital/restaurant-theme",
         { headers: { Accept: "application/json" } }
       )

@@ -74,7 +74,7 @@ packages/
 └── themes/                # 6 predefined themes
 
 apps/
-├── restaurant-theme/      # Main app (Next.js 16)
+├── reference/             # Engine test bench (Next.js 16)
 ├── admin-dashboard/       # BeYours dashboard
 └── docs/                  # Documentation
 ```
@@ -481,7 +481,7 @@ Restaurant-specific:
 
 #### 7.1 - Next.js 16 app setup
 
-- [ ] Create `apps/restaurant-theme/` with Next.js 16 (App Router)
+- [ ] Create `apps/reference/` with Next.js 16 (App Router)
 - [ ] Set up the Convex provider
 - [ ] Set up the Better Auth provider
 - [ ] Set up the theme provider

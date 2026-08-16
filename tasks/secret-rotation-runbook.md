@@ -11,6 +11,12 @@
 | `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | hardcoded in `scripts/deliveroo-menu-scenarios.sh`, present in git history | High | Regenerate + purge the history |
 | Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Medium (test account) | Invalidate the session + purge the file |
 
+> ⚠️ **`apps/restaurant-theme/` no longer exists** — that app was split into
+> `apps/reference` and `apps/themes`. The path above is kept **verbatim on
+> purpose**: it is the path the file had *in the commits*, and that is what
+> Part B targets. Verified — it is the only path this file ever had. Do not
+> "modernize" it.
+
 > The current code no longer contains these values (fixed on the audit branch),
 > but **deleting a file does not purge the history**: past commits still expose
 > them for as long as the history is not rewritten.
@@ -31,7 +37,8 @@ General order for **any** secret: **regenerate → propagate everywhere → re-v
    npx convex env set DELIVEROO_CLIENT_SECRET "<nouvelle_valeur>" --prod   # prod
    # Vercel (if read on the Next side): Dashboard → Settings → Environment Variables
    # GitHub (if ever used in CI): gh secret set DELIVEROO_CLIENT_SECRET
-   # Local: apps/restaurant-theme/.env.local (never committed)
+   # Local: apps/reference/.env.local and apps/themes/.env.local (never committed)
+   #        plus apps/themes/.env.convex if the value is applied via `pnpm convex:env`
    ```
 3. **Re-verify**: send a signed test webhook (see audit option 3: webhook simulator) → must answer `200`; a badly signed payload → `401`.
 4. **Revoke** the old secret in the portal once traffic is healthy.
@@ -101,6 +108,10 @@ sed -E 's/literal:.*==>/literal:<masqué>==>/' secrets-to-redact.txt
 git filter-repo --replace-text secrets-to-redact.txt
 
 # 2) Remove the leaked auth state file from the WHOLE history
+#    KEEP this path as-is. `apps/restaurant-theme/` is gone from the working
+#    tree, but filter-repo matches paths AS THEY WERE IN THE COMMITS, and this
+#    is the only path the file ever had. Rewriting it to apps/reference/ or
+#    apps/themes/ would silently purge NOTHING.
 git filter-repo --path apps/restaurant-theme/e2e/.auth/admin.json --invert-paths
 ```
 

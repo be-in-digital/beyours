@@ -1,5 +1,10 @@
 # Production-Readiness & Architecture Audit — Delivery Integrations
 
+> **Historical record — paths are as they were at audit time.** `apps/restaurant-theme`
+> has since been split into `apps/reference` (engine test bench) and `apps/themes`
+> (client template). The paths below are left untouched on purpose: rewriting them
+> would misreport what was actually changed, and where.
+
 Branch: `audit/production-readiness-architecture` (from `origin/main`).
 Scope: secrets/repo hygiene, package architecture, Convex schema, production
 config, Uber Eats / Deliveroo (OAuth, webhooks, mapping, idempotence), CI, docs.

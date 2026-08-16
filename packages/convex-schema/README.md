@@ -165,7 +165,7 @@ All `userId` fields use `v.string()` (not `v.id("user")`) to reference Better Au
 
 ### Source of Truth
 
-The app schema at `apps/restaurant-theme/convex/schema.ts` is the **source of truth** for all table definitions. This package exports those definitions for reuse.
+The app schema at `apps/reference/convex/schema.ts` is the **source of truth** for all table definitions. This package exports those definitions for reuse.
 
 ## Available Tables
 

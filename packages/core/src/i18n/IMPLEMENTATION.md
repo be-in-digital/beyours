@@ -141,7 +141,7 @@ The i18n system is **ready to use**. To enable it in the package:
 
 1. **Another agent** will update `packages/core/src/index.ts` to export the i18n module
 2. **The application** will implement the React hooks based on the provided types
-3. **The translations** will be stored in `apps/restaurant-theme/translations/`
+3. **The translations** will be stored in `apps/reference/translations/`
 
 ### 💡 Usage
 

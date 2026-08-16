@@ -2,7 +2,7 @@
 
 What is left to do before we can **really sell and take money** on `web-restaurant`
 (the site that commercializes the product). Its counterpart on the delivered
-product side is `apps/restaurant-theme/MISE_EN_PROD.md` — do not confuse the two.
+product side is `apps/reference/MISE_EN_PROD.md` — do not confuse the two.
 
 Status: the commercial foundation is **~70% real** (Stripe checkout, idempotent
 and signed webhooks, subscriptions, referrals + Connect payouts, founders

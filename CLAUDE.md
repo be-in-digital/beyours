@@ -60,33 +60,46 @@ beindigital/
 │   └── mcp-server/            # MCP Package Registry
 │
 ├── apps/
-│   ├── restaurant-theme/      # Main App
-│   │   ├── app/
-│   │   │   ├── (storefront)/  # Menu, Cart, Checkout
-│   │   │   ├── (admin)/       # Dashboard, Products, Kitchen, Games, Languages
-│   │   │   ├── game/[qrCodeId]/ # Gamification Flow
-│   │   │   └── api/           # Webhooks, Upload, Print, Emails
+│   ├── site/                  # @beyours/site — commercial site → beyours.fr
+│   │   ├── app/               # Marketing, template catalogue, Stripe checkout,
+│   │   │                      # affiliate portal, internal ops console
+│   │   └── convex/            # Its OWN Convex backend (separate from the engine)
+│   │
+│   ├── reference/             # @beyours/reference — the engine's test bench
+│   │   ├── app/               # Storefront, admin, CMS, kitchen display, QR games
 │   │   ├── components/        # UI, Storefront, Admin, Game
 │   │   ├── lib/               # Stores, Utils, AWS, Printing, Translation
-│   │   ├── convex/            # Schema, Functions
-│   │   ├── e2e/               # Playwright tests
+│   │   ├── convex/            # Schema, Functions (thin wrappers over the packages)
+│   │   ├── e2e/               # Playwright tests — the CI e2e target
 │   │   └── __tests__/         # Vitest tests
 │   │
-│   ├── web-agency/            # Site vitrine BeInDigital Agency (beindigital.fr)
-│   ├── web-restaurant/        # Site offre BeInDigital Restauration (landing + Convex propre)
-│   └── docs/                  # Documentation
+│   ├── themes/                # @beyours/themes — the client template (cloned per client)
+│   │   ├── templates/         # Vertical designs (pizzeria, fast-food, food-truck…)
+│   │   ├── demos/             # 50 sales demos
+│   │   ├── site/              # CLIENT zone — per-site customization
+│   │   └── convex/            # Same wrappers as reference
+│   │
+│   └── docs/                  # Documentation (no package.json)
 │
 ├── .github/workflows/         # CI/CD (tests, lint, deploy)
 ├── turbo.json
 └── package.json
 ```
 
-**Websites (`apps/web-*`)**: migrated from the old `beindigital.fr` repo.
-They use the `@beindigital/*` scope (no hyphens — distinct from the product packages
-under `@be-in-digital/*`), share `packages/web-{config,tokens,webgl-utils}`, and are
-excluded from changesets (continuous deployment, no versioning). Each app has its own
-`CLAUDE.md`/`DESIGN.md`. The separate `beindigital-boilerplate` repo remains the git
-template cloned for each client site; it consumes the published `@be-in-digital/*` packages.
+**Three applications, three audiences.** `apps/site` is the commercial site and
+depends on **none** of the engine packages — it is a website, not an instance of the
+product. `apps/reference` is where an engine feature is built and proven; it is sold
+to nobody. `apps/themes` is the shippable counterpart, cloned into one repo and one
+Convex backend per client.
+
+**Two scopes, deliberately.** The three apps use `@beyours/*`; the ten engine packages
+under `packages/` use `@be-in-digital/*` (private GitHub Packages). Installing them
+needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
+`pnpm engine:link <engine-clone>` for local symlinks.
+
+> **BeYours is the product sold to restaurant owners. BeInDigital is the agency.**
+> Two brands, two businesses — read the Naming section of `README.md` before any
+> find-and-replace.
 
 ---
 
