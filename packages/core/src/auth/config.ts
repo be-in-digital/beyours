@@ -23,22 +23,22 @@ import { type BetterAuthConfig } from './types';
 import { Role } from './rbac';
 
 /**
- * Durée de session par défaut (7 jours en secondes)
+ * Default session lifetime, in seconds (7 days)
  */
 export const DEFAULT_SESSION_EXPIRY = 7 * 24 * 60 * 60;
 
 /**
- * Durée avant refresh automatique (1 jour en secondes)
+ * Delay before automatic refresh, in seconds (1 day)
  */
 export const DEFAULT_SESSION_REFRESH = 24 * 60 * 60;
 
 /**
- * Longueur minimale du mot de passe
+ * Minimum password length
  */
 export const MIN_PASSWORD_LENGTH = 8;
 
 /**
- * Configuration de base pour Better Auth
+ * Base configuration for Better Auth
  *
  * @param options - Options de configuration
  * @returns Configuration Better Auth
@@ -55,7 +55,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 export function createAuthConfig(options: {
   /** URL de base de l'application */
   baseUrl: string;
-  /** Secret pour signer les tokens */
+  /** Secret used to sign tokens */
   secret: string;
   /** URL Convex */
   convexUrl: string;
@@ -69,7 +69,7 @@ export function createAuthConfig(options: {
     secret,
 
     // Adaptateur Convex
-    // NOTE: Après installation, utiliser:
+    // NOTE: once installed, use:
     // database: convexAdapter({ convexUrl }),
     database: {
       type: 'convex',
@@ -92,7 +92,7 @@ export function createAuthConfig(options: {
     socialProviders,
 
     // Plugins
-    // NOTE: Après installation, ajouter:
+    // NOTE: once installed, add:
     // plugins: [
     //   twoFactorPlugin({
     //     methods: ['totp', 'email'],
@@ -104,13 +104,13 @@ export function createAuthConfig(options: {
 }
 
 /**
- * Hooks de cycle de vie pour Better Auth
+ * Better Auth lifecycle hooks
  *
- * Permet d'ajouter de la logique custom lors des événements auth
+ * A place to hang custom logic on auth events
  */
 export const authHooks = {
   /**
-   * Hook appelé après une inscription réussie
+   * Called after a successful sign-up
    */
   async afterSignUp(user: {
     id: string;
@@ -124,81 +124,81 @@ export const authHooks = {
     );
 
     // TODO: Envoyer un email de bienvenue via AWS SES
-    // TODO: Créer les données par défaut pour le client
-    // TODO: Notifier l'admin si c'est un nouveau restaurant
+    // TODO: seed the client's default data
+    // TODO: notify the admin when this is a new restaurant
 
     return user;
   },
 
   /**
-   * Hook appelé après une connexion réussie
+   * Called after a successful sign-in
    */
   async afterSignIn(session: {
     userId: string;
     ipAddress?: string;
     userAgent?: string;
   }) {
-    // Log la connexion
+    // Log the sign-in
     console.info(
       `[Auth] Connexion utilisateur: ${session.userId} depuis ${session.ipAddress ?? 'unknown'}`
     );
 
-    // TODO: Vérifier activité suspecte
-    // TODO: Logger pour analytics
+    // TODO: check for suspicious activity
+    // TODO: emit an analytics event
 
     return session;
   },
 
   /**
-   * Hook appelé avant déconnexion
+   * Called just before sign-out
    */
   async beforeSignOut(sessionId: string) {
-    // Log la déconnexion
+    // Log the sign-out
     console.info(`[Auth] Déconnexion session: ${sessionId}`);
 
-    // TODO: Nettoyer les données de session côté client
-    // TODO: Invalider les tokens refresh
+    // TODO: clear client-side session data
+    // TODO: invalidate refresh tokens
 
     return true;
   },
 
   /**
-   * Hook appelé lors d'une tentative de connexion échouée
+   * Called on a failed sign-in attempt
    */
   async onSignInFailed(email: string, reason: string) {
-    // Log l'échec
+    // Log the failure
     console.warn(`[Auth] Échec connexion pour ${email}: ${reason}`);
 
-    // TODO: Implémenter rate limiting
-    // TODO: Bloquer après X tentatives
+    // TODO: add rate limiting
+    // TODO: lock the account after N attempts
     // TODO: Alerter en cas d'attaque brute force
 
     return;
   },
 
   /**
-   * Hook appelé lors d'une vérification 2FA
+   * Called on a 2FA verification
    */
   async onTwoFactorVerify(userId: string, success: boolean) {
     console.info(
       `[Auth] Vérification 2FA pour ${userId}: ${success ? 'OK' : 'ÉCHEC'}`
     );
 
-    // TODO: Logger pour sécurité
-    // TODO: Alerter l'utilisateur si échec
+    // TODO: emit a security log
+    // TODO: alert the user on failure
 
     return;
   },
 };
 
 /**
- * Configuration des templates d'emails
+ * Email template configuration
  *
- * NOTE: À intégrer avec AWS SES
+ * NOTE: to be wired into AWS SES
  */
 export const emailTemplates = {
   /**
-   * Email de vérification
+   * Verification email
    */
   verifyEmail: {
     subject: 'Vérifiez votre email - BeYours',
@@ -206,7 +206,7 @@ export const emailTemplates = {
   },
 
   /**
-   * Email de réinitialisation de mot de passe
+   * Password reset email
    */
   resetPassword: {
     subject: 'Réinitialisation de mot de passe - BeYours',
@@ -239,20 +239,20 @@ export const emailTemplates = {
 };
 
 /**
- * Configuration des URLs de redirection
+ * Redirect URL configuration
  */
 export const authRoutes = {
   /** Page de connexion */
   signIn: '/auth/signin',
   /** Page d'inscription */
   signUp: '/auth/signup',
-  /** Page après connexion réussie */
+  /** Where to land after a successful sign-in */
   afterSignIn: '/dashboard',
-  /** Page après inscription réussie */
+  /** Where to land after a successful sign-up */
   afterSignUp: '/onboarding',
-  /** Page de vérification email */
+  /** Email verification page */
   verifyEmail: '/auth/verify-email',
-  /** Page de réinitialisation mot de passe */
+  /** Password reset page */
   resetPassword: '/auth/reset-password',
   /** Page de configuration 2FA */
   twoFactor: '/settings/security/2fa',
@@ -261,7 +261,8 @@ export const authRoutes = {
 };
 
 /**
- * Messages d'erreur standardisés
+ * Standard error messages.
+ * Kept in French: they are written to be shown to the end user.
  */
 export const authErrors = {
   INVALID_CREDENTIALS: 'Email ou mot de passe incorrect',
@@ -278,10 +279,10 @@ export const authErrors = {
 } as const;
 
 /**
- * Validation du mot de passe
+ * Password validation
  *
- * @param password - Mot de passe à valider
- * @returns Résultat de validation avec erreurs éventuelles
+ * @param password - The password to validate
+ * @returns The result, carrying any errors found
  */
 export function validatePassword(password: string): {
   valid: boolean;
@@ -293,12 +294,12 @@ export function validatePassword(password: string): {
     errors.push(authErrors.WEAK_PASSWORD);
   }
 
-  // Au moins une majuscule
+  // At least one uppercase letter
   if (!/[A-Z]/.test(password)) {
     errors.push('Le mot de passe doit contenir au moins une majuscule');
   }
 
-  // Au moins une minuscule
+  // At least one lowercase letter
   if (!/[a-z]/.test(password)) {
     errors.push('Le mot de passe doit contenir au moins une minuscule');
   }
@@ -308,7 +309,7 @@ export function validatePassword(password: string): {
     errors.push('Le mot de passe doit contenir au moins un chiffre');
   }
 
-  // Au moins un caractère spécial
+  // At least one special character
   if (!/[^A-Za-z0-9]/.test(password)) {
     errors.push('Le mot de passe doit contenir au moins un caractère spécial');
   }
@@ -322,8 +323,8 @@ export function validatePassword(password: string): {
 /**
  * Validation de l'email
  *
- * @param email - Email à valider
- * @returns `true` si l'email est valide
+ * @param email - The email to validate
+ * @returns `true` when the email is valid
  */
 export function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

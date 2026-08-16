@@ -1,8 +1,8 @@
 /**
  * @be-in-digital/core - Authentification et RBAC
  *
- * Ce module fournit une solution complète d'authentification avec Better Auth
- * et un système RBAC (Role-Based Access Control) pour BeYours Engine.
+ * A complete authentication solution built on Better Auth, plus a
+ * role-based access control system, for the BeYours engine.
  *
  * @module auth
  *
