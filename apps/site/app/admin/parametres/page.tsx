@@ -532,9 +532,9 @@ function AboutCard() {
         </h2>
       </div>
       <p className="max-w-2xl text-sm text-muted-foreground">
-        Console superadmin BeInDigital — tour de contrôle des revenus, des
+        Console superadmin BeYours — tour de contrôle des revenus, des
         clients, de la flotte de déploiements, des incidents et de la
-        maintenance. Intégrée au site web-restaurant, thème sombre.
+        maintenance. Intégrée au site commercial, thème sombre.
       </p>
       <div className="mt-4 flex items-center gap-2">
         <Badge variant="muted">web-restaurant</Badge>

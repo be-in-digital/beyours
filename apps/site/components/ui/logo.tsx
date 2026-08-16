@@ -12,10 +12,15 @@ interface LogoProps {
 }
 
 /**
- * Logo Be in Digital — wordmark historique « B·IN·DIGITAL », recoloré
- * pour la DA chaude : encre + accent terracotta sur fond clair,
- * crème + terracotta sur fond olive. Contre-formes assorties au fond.
- * Ratio source ≈ 489.45 / 160.85 (~3.04).
+ * Logo BeYours — wordmark « be ·yours » : encre + pastille terracotta.
+ *
+ * Deux variantes, mêmes tracés, trois remplissages permutés :
+ *   ink   → encre #221c15, pastille #c5542c, contre-forme crème #faf5ee
+ *   light → crème #fdf7ef, pastille #d5794d, contre-forme olive #23271c
+ *
+ * Ce sont les tokens de la DA (--foreground, --primary, --background). Un
+ * changement de palette dans globals.css doit être reporté ici à la main :
+ * un SVG servi par <img> ne lit pas les variables CSS de la page.
  */
 export function Logo({
   width = 128,
@@ -28,7 +33,7 @@ export function Logo({
   const img = (
     <Image
       src={variant === "light" ? "/logo-light.svg" : "/logo-ink.svg"}
-      alt="Be in Digital"
+      alt="BeYours"
       width={width}
       height={height}
       priority={priority}
@@ -40,7 +45,7 @@ export function Logo({
   if (!linked) return img;
 
   return (
-    <Link href="/" className="shrink-0" aria-label="Be in Digital — accueil">
+    <Link href="/" className="shrink-0" aria-label="BeYours — accueil">
       {img}
     </Link>
   );

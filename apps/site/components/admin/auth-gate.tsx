@@ -71,7 +71,7 @@ export function AdminGate({ children }: { children: React.ReactNode }) {
           </div>
           <h1 className="font-display text-lg font-semibold">Accès réservé</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Cet espace est réservé aux administrateurs BeInDigital.
+            Cet espace est réservé aux administrateurs BeYours.
           </p>
           <Link
             href="/parrainage/dashboard"
