@@ -151,13 +151,17 @@ export function TemplatesCategories() {
             className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
           >
             {filtered.map((t, i) => (
-              <button
+              <div
                 key={t.slug}
-                onClick={() => setLightbox(i)}
-                className="group block cursor-pointer overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 text-left shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-[color:var(--border-contrast)] hover:shadow-[0_22px_50px_-24px_rgba(112,60,34,0.45)]"
+                className="group flex flex-col overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 text-left shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all duration-300 hover:-translate-y-1 hover:border-[color:var(--border-contrast)] hover:shadow-[0_22px_50px_-24px_rgba(112,60,34,0.45)]"
               >
-                {/* Capture */}
-                <div className="relative aspect-[16/10] overflow-hidden border-b border-[color:var(--border)]">
+                {/* Capture — opens the lightbox, unchanged behaviour */}
+                <button
+                  type="button"
+                  onClick={() => setLightbox(i)}
+                  aria-label={`Agrandir l'aperçu du template ${t.name}`}
+                  className="relative block w-full cursor-pointer aspect-[16/10] overflow-hidden border-b border-[color:var(--border)]"
+                >
                   <Image
                     src={t.shot}
                     alt={`Aperçu du template ${t.name} — ${t.categoryLabel}`}
@@ -180,10 +184,15 @@ export function TemplatesCategories() {
                       Agrandir
                     </span>
                   </div>
-                </div>
+                </button>
 
-                {/* Card footer */}
-                <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+                {/* Card footer — a real link to the template page. Without it the
+                    50 /templates/[slug] pages have no crawlable path in and stay
+                    undiscoverable, whatever the sitemap says. */}
+                <Link
+                  href={`/templates/${t.slug}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-surface-2"
+                >
                   <div className="min-w-0">
                     <h3 className="truncate font-display text-base font-semibold text-foreground">
                       {t.name}
@@ -196,8 +205,8 @@ export function TemplatesCategories() {
                     className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
                     strokeWidth={2}
                   />
-                </div>
-              </button>
+                </Link>
+              </div>
             ))}
           </motion.div>
         </AnimatePresence>
