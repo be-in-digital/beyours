@@ -5,7 +5,8 @@ import { Logo } from "@/components/ui/logo";
 export const metadata: Metadata = {
   title: "Programme Apporteur d'Affaires — BeYours",
   description:
-    "Devenez apporteur d'affaires BeYours et gagnez 500 € pour chaque client parrainé.",
+    "Devenez apporteur d'affaires BeYours et gagnez 500 € pour chaque client parrainé. Contrat signé en ligne, commissions suivies depuis votre tableau de bord.",
+  alternates: { canonical: "/parrainage" },
 };
 
 export default function ParrainageLayout({

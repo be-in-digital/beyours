@@ -20,6 +20,13 @@ export async function generateMetadata({
   return {
     title: `${result.template.name} — Template ${result.category.label} — BeYours`,
     description: result.template.tagline,
+    alternates: { canonical: `/templates/${slug}` },
+    openGraph: {
+      title: `${result.template.name} — Template ${result.category.label}`,
+      description: result.template.tagline,
+      url: `/templates/${slug}`,
+      type: "website",
+    },
   };
 }
 
