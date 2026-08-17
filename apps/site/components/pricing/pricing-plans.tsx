@@ -196,13 +196,17 @@ export function PricingPlans({
                         HT{maintenanceLabel}
                       </span>
                     </div>
+                    {/* Spelled out as a sum: the total can land on the same
+                        figure as the list creation price, and two identical
+                        numbers meaning different things read as an error. */}
                     <p className="mt-2 text-xs text-muted-foreground/70">
-                      Soit{" "}
+                      Première année&nbsp;: {formatPrice(creationPrice)}&nbsp;€
+                      de création + {formatPrice(plan.maintenanceYearly)}&nbsp;€
+                      de maintenance, soit{" "}
                       <span className="text-foreground/90 font-medium">
                         {formatPrice(creationPrice + plan.maintenanceYearly)}&nbsp;€&nbsp;HT
-                      </span>{" "}
-                      la première année, tout compris, puis{" "}
-                      {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT/an.
+                      </span>
+                      . Puis {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT/an.
                     </p>
                     {isFounders && (
                       <p className="mt-2 text-xs text-muted-foreground">

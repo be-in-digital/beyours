@@ -5,7 +5,7 @@
  * All data is static and server-authored — no user input is ever embedded.
  */
 
-import { SITE_URL, SITE_NAME, SITE_EMAIL } from "@/lib/site-config";
+import { SITE_URL, SITE_NAME, SITE_EMAIL, SOCIAL_LINKS } from "@/lib/site-config";
 
 const LOGO_URL = `${SITE_URL}/logo.png`;
 
@@ -28,12 +28,7 @@ export function OrganizationJsonLd() {
     logo: LOGO_URL,
     description:
       "Plateforme digitale premium pour restaurateurs : site web, commande en ligne, fidélité, analytics.",
-    sameAs: [
-      "https://instagram.com/beindigital.fr",
-      "https://tiktok.com/@beindigital.fr",
-      "https://linkedin.com/company/beindigital-fr",
-      "https://x.com/beindigital_fr",
-    ],
+    sameAs: Object.values(SOCIAL_LINKS),
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "sales",

@@ -65,17 +65,18 @@ export function MobileCarousel({
       </CarouselContent>
 
       {dots && count > 1 && (
-        <div className="flex items-center justify-center gap-1.5 mt-6">
+        <div className="mt-6 flex items-center justify-center gap-2">
           {Array.from({ length: count }).map((_, i) => (
             <button
               key={i}
               type="button"
               aria-label={`Aller au slide ${i + 1}`}
+              aria-current={current === i}
               className={cn(
-                "h-1.5 rounded-full transition-all duration-300",
+                "h-2 rounded-full transition-all duration-300",
                 current === i
-                  ? "w-6 bg-primary/60"
-                  : "w-1.5 bg-white/15"
+                  ? "w-7 bg-primary"
+                  : "w-2 bg-foreground/25 hover:bg-foreground/40"
               )}
               onClick={() => api?.scrollTo(i)}
             />

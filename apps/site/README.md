@@ -211,11 +211,6 @@ Neutralised by an `eslint-plugin-react-hooks@7.0.1` override hoisted to the
 monorepo root — 7.1.1 promotes them to errors. These are real signals worth
 addressing.
 
-**The logo still shows the old "B·IN·DIGITAL" wordmark** while the site
-announces BeYours. `components/ui/logo.tsx` serves an image, not a string: it is
-an asset to redraw. Drop the new SVG at `public/logo-ink.svg`; the
-dark-background variant is the same file with three fills swapped.
-
 **`MISE_EN_PROD.md`** documents `YOUSIGN_API_KEY` and `YOUSIGN_WEBHOOK_SECRET`
 for a provider that was dropped.
 

@@ -39,7 +39,7 @@ export function TemplatesHero() {
         style={{ y: contentY }}
       >
         <FadeIn delay={0.1}>
-          <SectionBadge text="Templates restaurant" />
+          <SectionBadge text="Modèles restaurant" />
         </FadeIn>
 
         <FadeIn delay={0.2}>

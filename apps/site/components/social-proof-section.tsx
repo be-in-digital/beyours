@@ -49,10 +49,10 @@ export function SocialProofSection() {
 
   const proofs: ProofItem[] = [
     {
-      title: "Parcourez les templates",
+      title: "Parcourez les modèles",
       description:
         "Des maquettes complètes par type d'établissement — pizzeria, gastro, fast food, café. Ce que vous voyez est ce que vous obtenez.",
-      cta: "Voir les templates",
+      cta: "Voir les modèles",
       href: "/templates",
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

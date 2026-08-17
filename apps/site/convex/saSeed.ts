@@ -341,7 +341,7 @@ async function buildOps(ctx: MutationCtx) {
       city: o.city,
       orderId: o._id,
       name: `${o.restaurantName} — ${depStatus === "live" ? "Prod" : depStatus}`,
-      domain: `${o.restaurantName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.beindigital.app`,
+      domain: `${o.restaurantName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}.beyours.app`,
       convexUrl: `https://${["swift", "bright", "warm", "clever", "brave"][idx % 5]}-${["otter", "fox", "heron", "lynx", "wren"][idx % 5]}-${100 + idx}.convex.cloud`,
       environment: "production",
       status: depStatus,

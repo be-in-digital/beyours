@@ -67,7 +67,7 @@ export const createAccountLink = action({
             ...(email ? { email } : {}),
           },
           business_profile: {
-            url: "https://beindigital.fr",
+            url: "https://beyours.fr",
           },
           metadata: {
             affiliateUserId: String(affiliate._id),
