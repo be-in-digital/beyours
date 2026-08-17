@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { HeroSection } from "@/components/hero-section";
 import { ProblemSection } from "@/components/problem-section";
 import { SolutionSection } from "@/components/solution-section";
@@ -11,6 +12,15 @@ import {
   WebsiteJsonLd,
   FaqJsonLd,
 } from "@/components/seo/json-ld";
+
+// The canonical used to live on the root layout, where every route inherited it.
+// It belongs here, on the page it actually describes.
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+    languages: { "fr-FR": "/" },
+  },
+};
 
 export default function Home() {
   return (

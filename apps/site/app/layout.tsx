@@ -100,12 +100,12 @@ export const metadata: Metadata = {
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
-  alternates: {
-    canonical: "/",
-    languages: {
-      "fr-FR": "/",
-    },
-  },
+  // NO `alternates.canonical` here on purpose. Next.js inherits root metadata
+  // into every route, so a canonical set at this level is emitted by every page
+  // that does not override it — which told Google that the 50 /templates/[slug]
+  // pages and the /parrainage section were duplicates of the homepage. Each
+  // route now declares its own canonical; the homepage does it in
+  // app/(landing)/page.tsx.
   openGraph: {
     type: "website",
     locale: "fr_FR",
