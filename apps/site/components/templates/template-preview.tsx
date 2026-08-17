@@ -88,7 +88,7 @@ export function TemplatePreview({
               <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
               <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
               <span className="ml-3 truncate rounded-full bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                {template.slug}.beindigital.fr
+                {template.slug}.beyours.fr
               </span>
             </div>
             {/* Capture */}

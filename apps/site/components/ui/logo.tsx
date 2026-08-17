@@ -16,8 +16,8 @@ interface LogoProps {
  *
  * Two variants. Only the "be" changes colour — the pill keeps its terracotta
  * and its cream wordmark in both, because that pairing is the mark itself:
- *   ink   → "be" #17180D, pill #C94D20, wordmark #FFFDF7
- *   light → "be" #FFFDF7, pill #C94D20, wordmark #FFFDF7
+ *   ink   → "be" #23271c, pill #c5542c, wordmark #fdf7ef
+ *   light → "be" #fdf7ef, pill #c5542c, wordmark #fdf7ef
  *
  * The letterforms are outlined paths, not <text>. A wordmark served through
  * <img> gets no web fonts: a <text> element would render in whatever the
@@ -26,22 +26,20 @@ interface LogoProps {
  * Outlines make the mark identical everywhere. Regenerate them from the
  * source file rather than editing the path data by hand.
  *
- * The pill was rebalanced against the delivered file: it ran 800 units wide,
- * leaving 55 units of terracotta before the dot and 220 after the "s". At 640
- * the margins read 55 and 60. Everything else — glyph sizes, letter-spacing,
- * baseline, dot — is untouched.
+ * /logo-ink.svg is the delivered artwork, untouched. /logo-light.svg is the
+ * same file with the single ink fill swapped for cream — rebuild it that way
+ * when a new version lands, don't redraw it.
  *
- * viewBox is 940×250 — ratio 3.76. Keep width and height consistent with it,
- * otherwise Next reserves the wrong box and the logo jumps on load.
+ * viewBox is 1421.7×326.7 — ratio 4.35. Keep width and height consistent with
+ * it, otherwise Next reserves the wrong box and the logo jumps on load.
  *
- * Note: these fills are the delivered brand colours and sit a shade off the
- * design tokens (--foreground #221c15, --primary #c5542c, --background
- * #faf5ee). An SVG served through <img> cannot read CSS variables, so a
- * palette change has to be mirrored here by hand.
+ * These fills now match the design tokens (--olive #23271c, --primary #c5542c,
+ * --primary-foreground #fdf7ef), but an SVG served through <img> cannot read
+ * CSS variables — a palette change still has to be mirrored here by hand.
  */
 export function Logo({
   width = 128,
-  height = 34,
+  height = 29,
   priority = false,
   className,
   linked = true,
