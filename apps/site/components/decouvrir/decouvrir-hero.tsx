@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { MousePointerClick, ArrowRight, Sparkles } from "lucide-react";
 import { StorefrontPreview } from "@/components/storefront-preview";
-import { BookingButton } from "./demo-cta-button";
+import { DiscoveryCallButton } from "./discovery-call-button";
 
 export function DecouvrirHero() {
   return (
@@ -56,10 +56,10 @@ export function DecouvrirHero() {
               <Sparkles className="h-4 w-4" />
               Essayer le jeu
             </a>
-            <BookingButton className="!bg-transparent !text-foreground !shadow-none border border-[color:var(--border-contrast)] hover:!bg-secondary">
+            <DiscoveryCallButton className="!bg-transparent !text-foreground !shadow-none border border-[color:var(--border-contrast)] hover:!bg-secondary">
               Réserver un appel
               <ArrowRight className="h-4 w-4" />
-            </BookingButton>
+            </DiscoveryCallButton>
           </motion.div>
 
           <motion.div

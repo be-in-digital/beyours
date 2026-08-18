@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { FadeIn } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
-import { BookingButton } from "@/components/checkout/booking-button";
+import { KickoffCallButton } from "@/components/checkout/kickoff-call-button";
 
 export default function CheckoutSuccessPage() {
   return (
@@ -39,7 +39,7 @@ export default function CheckoutSuccessPage() {
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <BookingButton />
+            <KickoffCallButton />
             <Link
               href="/"
               className="rounded-full bg-surface-2 border border-[color:var(--border-contrast)] px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-surface-3"
