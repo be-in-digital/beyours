@@ -2,7 +2,7 @@
 
 import { BadgeCheck, Mail } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
-import { BookingButton } from "./demo-cta-button";
+import { DiscoveryCallButton } from "./discovery-call-button";
 import { SITE_EMAIL } from "@/lib/site-config";
 
 export function DecouvrirCta() {
@@ -23,7 +23,7 @@ export function DecouvrirCta() {
 
           <FadeIn delay={0.1}>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-              <BookingButton>Réserver un appel</BookingButton>
+              <DiscoveryCallButton>Réserver un appel</DiscoveryCallButton>
               <a
                 href={`mailto:${SITE_EMAIL}`}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-6 py-3.5 text-base font-medium text-[color:var(--background)] transition-colors hover:bg-white/10"

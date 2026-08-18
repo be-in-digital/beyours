@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 
 /** Button that opens the booking modal (shared by the site layout). */
-export function BookingButton({
+export function DiscoveryCallButton({
   children = "Réserver un appel",
   className,
   size = "lg",

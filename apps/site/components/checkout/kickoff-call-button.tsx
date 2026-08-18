@@ -2,7 +2,7 @@
 
 import { useBookingModal } from "@/lib/store";
 
-export function BookingButton() {
+export function KickoffCallButton() {
   const { open } = useBookingModal();
 
   return (

@@ -8,7 +8,7 @@ import { GameWalkthrough } from "@/components/decouvrir/game-walkthrough";
 import { FeatureShowcase } from "@/components/decouvrir/feature-showcase";
 import { CompetitorComparison } from "@/components/decouvrir/competitor-comparison";
 import { DecouvrirCta } from "@/components/decouvrir/decouvrir-cta";
-import { BookingButton } from "@/components/decouvrir/demo-cta-button";
+import { DiscoveryCallButton } from "@/components/decouvrir/discovery-call-button";
 import { FoundersBanner } from "@/components/decouvrir/founders-banner";
 import { SITE_URL } from "@/lib/site-config";
 
@@ -177,9 +177,9 @@ export default function DecouvrirPage() {
                   Offre fondateurs : 2 500 € HT pour les 10 premiers
                 </p>
                 <div className="mt-6 flex flex-col gap-3">
-                  <BookingButton className="w-full">
+                  <DiscoveryCallButton className="w-full">
                     Réserver un appel
-                  </BookingButton>
+                  </DiscoveryCallButton>
                   <Link
                     href="/tarifs"
                     className="inline-flex w-full items-center justify-center rounded-full border border-[color:var(--border)] px-5 py-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
