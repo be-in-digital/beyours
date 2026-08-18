@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useMotionValueEvent, useScroll } from "framer-motion";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { Logo } from "@/components/ui/logo";
 import { SITE_WHATSAPP_URL } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ const navLinks = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
   const pathname = usePathname();
   const { scrollY } = useScroll();
 
@@ -119,7 +119,7 @@ export function Navbar() {
             </a>
 
             <button
-              onClick={() => openCalendly()}
+              onClick={() => openBooking()}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground whitespace-nowrap transition-[filter,transform] duration-200 hover:brightness-110 active:scale-[0.98] cursor-pointer glow-primary"
             >
               Réserver un appel
@@ -200,7 +200,7 @@ export function Navbar() {
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground mt-2 cursor-pointer"
                 onClick={() => {
                   setMobileOpen(false);
-                  openCalendly();
+                  openBooking();
                 }}
               >
                 Réserver un appel

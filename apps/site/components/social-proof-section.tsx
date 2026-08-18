@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { MagicCard } from "@/components/ui/magic-card";
 import { SectionBadge } from "@/components/ui/section-badge";
@@ -45,7 +45,7 @@ interface ProofItem {
 }
 
 export function SocialProofSection() {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
 
   const proofs: ProofItem[] = [
     {
@@ -183,7 +183,7 @@ export function SocialProofSection() {
                 <div className="mt-6 pt-5 border-t border-[color:var(--border-subtle)]">
                   {proof.onClick ? (
                     <button
-                      onClick={() => openCalendly()}
+                      onClick={() => openBooking()}
                       className="group inline-flex items-center gap-2 text-sm font-medium text-primary hover:brightness-110 transition-all cursor-pointer"
                     >
                       {proof.cta}

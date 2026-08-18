@@ -54,7 +54,11 @@ function teamEmail(): string | null {
 }
 
 function bookingUrl(): string | undefined {
-  return process.env.CALENDLY_URL ?? undefined;
+  // BOOKING_URL is the name going forward. CALENDLY_URL is kept as a fallback
+  // because it is the name currently set on the deployed Convex environment:
+  // dropping it here would silently strip the booking link out of the
+  // post-purchase emails until someone remembered to rename the deployed var.
+  return process.env.BOOKING_URL ?? process.env.CALENDLY_URL ?? undefined;
 }
 
 /**

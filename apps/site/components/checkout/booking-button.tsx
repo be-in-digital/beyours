@@ -1,9 +1,9 @@
 "use client";
 
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 
-export function CalendlyButton() {
-  const { open } = useCalendlyModal();
+export function BookingButton() {
+  const { open } = useBookingModal();
 
   return (
     <button

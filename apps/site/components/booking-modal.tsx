@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Cal, { getCalApi } from "@calcom/embed-react";
-import { useCalendlyModal, type BookingVariant } from "@/lib/store";
+import { useBookingModal, type BookingVariant } from "@/lib/store";
 
 // Booking runs on bookself.app (Cal.com), under the BeYours brand. The old
 // link pointed at calendly.com/hello-beindigital — the agency, on a site that
@@ -30,8 +30,8 @@ const BOOKING_COPY: Record<BookingVariant, { title: string; subtitle: string }> 
   },
 };
 
-export function CalendlyModal() {
-  const { isOpen, close, variant } = useCalendlyModal();
+export function BookingModal() {
+  const { isOpen, close, variant } = useBookingModal();
 
   // Lock body scroll
   useEffect(() => {

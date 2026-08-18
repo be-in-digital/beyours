@@ -36,14 +36,14 @@ export const useWhitelistModal = create<WhitelistModalStore>((set) => ({
 
 export type BookingVariant = "decouverte" | "lancement";
 
-interface CalendlyModalStore {
+interface BookingModalStore {
   isOpen: boolean;
   variant: BookingVariant;
   open: (variant?: BookingVariant) => void;
   close: () => void;
 }
 
-export const useCalendlyModal = create<CalendlyModalStore>((set) => ({
+export const useBookingModal = create<BookingModalStore>((set) => ({
   isOpen: false,
   variant: "decouverte",
   // Guarded on purpose: most call sites pass the handler straight to onClick,

@@ -5,7 +5,7 @@ import { motion, useScroll, useTransform } from "framer-motion";
 import { ChefHat, Sparkles, Users, ArrowUpRight, ArrowDown } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 
 /* ═══════════════════════════════════════════════
    About Hero — warm food-editorial
@@ -33,7 +33,7 @@ const pillars = [
 ];
 
 export function AboutHero() {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
   const sectionRef = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -80,7 +80,7 @@ export function AboutHero() {
         <FadeIn delay={0.5}>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
-              onClick={() => openCalendly()}
+              onClick={() => openBooking()}
               className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition-all duration-200 hover:brightness-105"
             >
               Nous contacter
