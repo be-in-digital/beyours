@@ -100,6 +100,29 @@ export const get = query({
   },
 });
 
+/* ── Checkout success gate ──
+   Answers one question for /checkout/success: may this visitor be shown the
+   kickoff booking button? Deliberately narrow — it returns a boolean and a
+   first name, never the order document, because it is a PUBLIC query and the
+   orderId travels in a URL. Anything more (email, phone, SIRET, amount) would
+   be readable by anyone holding or guessing an id.
+
+   Takes a raw string rather than v.id so a malformed id returns null instead
+   of throwing: the page has to render a refusal, not a server error. */
+export const getCheckoutAccess = query({
+  args: { orderId: v.string() },
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("orders", args.orderId);
+    if (!id) return null;
+    const order = await ctx.db.get(id);
+    if (!order) return null;
+    return {
+      paid: order.status === "paid",
+      firstName: order.customerFirstName,
+    };
+  },
+});
+
 /* ── Founders offer ──
    Number of founder sales collected. Feeds the public counter
    (« X places restantes ») and the price calculation at checkout.

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { FadeIn } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
-import { KickoffCallButton } from "@/components/checkout/kickoff-call-button";
+import { Suspense } from "react";
+import { KickoffGate } from "@/components/checkout/kickoff-gate";
 
 export default function CheckoutSuccessPage() {
   return (
@@ -39,7 +40,13 @@ export default function CheckoutSuccessPage() {
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <KickoffCallButton />
+            <Suspense
+              fallback={
+                <div className="h-12 w-56 mx-auto rounded-full bg-surface-2 animate-pulse" />
+              }
+            >
+              <KickoffGate />
+            </Suspense>
             <Link
               href="/"
               className="rounded-full bg-surface-2 border border-[color:var(--border-contrast)] px-6 py-3 text-sm font-medium text-foreground transition-all hover:bg-surface-3"
