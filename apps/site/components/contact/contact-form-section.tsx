@@ -330,7 +330,7 @@ export function ContactFormSection() {
                   discuter de votre projet en détail. Sans engagement.
                 </p>
                 <button
-                  onClick={openCalendly}
+                  onClick={() => openCalendly()}
                   className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition-all duration-200 hover:brightness-105"
                 >
                   Réserver un appel

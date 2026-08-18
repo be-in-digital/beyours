@@ -183,7 +183,7 @@ export function SocialProofSection() {
                 <div className="mt-6 pt-5 border-t border-[color:var(--border-subtle)]">
                   {proof.onClick ? (
                     <button
-                      onClick={openCalendly}
+                      onClick={() => openCalendly()}
                       className="group inline-flex items-center gap-2 text-sm font-medium text-primary hover:brightness-110 transition-all cursor-pointer"
                     >
                       {proof.cta}

@@ -7,7 +7,7 @@ export function CalendlyButton() {
 
   return (
     <button
-      onClick={open}
+      onClick={() => open("lancement")}
       className="rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-all hover:brightness-110 flex items-center gap-2 cursor-pointer"
     >
       <svg

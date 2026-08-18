@@ -94,7 +94,7 @@ export function HeroSection() {
               className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4"
             >
               <MagneticButton
-                onClick={openCalendly}
+                onClick={() => openCalendly()}
                 strength={20}
                 className="glow-primary bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground hover:brightness-105"
               >

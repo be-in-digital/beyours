@@ -59,7 +59,7 @@ export function CtaSection() {
             className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
           >
             <MagneticButton
-              onClick={openCalendly}
+              onClick={() => openCalendly()}
               strength={22}
               className="bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] hover:brightness-105"
             >

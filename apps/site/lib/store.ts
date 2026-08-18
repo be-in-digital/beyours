@@ -34,15 +34,23 @@ export const useWhitelistModal = create<WhitelistModalStore>((set) => ({
   close: () => set({ isOpen: false }),
 }));
 
+export type BookingVariant = "decouverte" | "lancement";
+
 interface CalendlyModalStore {
   isOpen: boolean;
-  open: () => void;
+  variant: BookingVariant;
+  open: (variant?: BookingVariant) => void;
   close: () => void;
 }
 
 export const useCalendlyModal = create<CalendlyModalStore>((set) => ({
   isOpen: false,
-  open: () => set({ isOpen: true }),
+  variant: "decouverte",
+  // Guarded on purpose: most call sites pass the handler straight to onClick,
+  // so `open` receives a MouseEvent rather than a variant. Anything that is
+  // not the post-purchase variant falls back to the public one.
+  open: (variant) =>
+    set({ isOpen: true, variant: variant === "lancement" ? "lancement" : "decouverte" }),
   close: () => set({ isOpen: false }),
 }));
 

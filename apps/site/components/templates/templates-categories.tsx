@@ -218,7 +218,7 @@ export function TemplatesCategories() {
               Un univers vous parle ? On l’adapte à votre enseigne.
             </p>
             <button
-              onClick={openCalendly}
+              onClick={() => openCalendly()}
               className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.5)] transition-all duration-200 hover:brightness-105"
             >
               Réserver une démo
