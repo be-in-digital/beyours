@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { FadeIn } from "@/components/ui/motion";
 import { MagneticButton } from "@/components/ui/magnetic-button";
 
 export function CtaSection() {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
 
   return (
     <section id="cta" className="relative px-4 py-20 sm:px-6 sm:py-28">
@@ -59,7 +59,7 @@ export function CtaSection() {
             className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
           >
             <MagneticButton
-              onClick={() => openCalendly()}
+              onClick={() => openBooking()}
               strength={22}
               className="bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] hover:brightness-105"
             >

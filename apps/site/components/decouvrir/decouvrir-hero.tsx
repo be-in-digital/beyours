@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { MousePointerClick, ArrowRight, Sparkles } from "lucide-react";
 import { StorefrontPreview } from "@/components/storefront-preview";
-import { CalendlyButton } from "./demo-cta-button";
+import { BookingButton } from "./demo-cta-button";
 
 export function DecouvrirHero() {
   return (
@@ -56,10 +56,10 @@ export function DecouvrirHero() {
               <Sparkles className="h-4 w-4" />
               Essayer le jeu
             </a>
-            <CalendlyButton className="!bg-transparent !text-foreground !shadow-none border border-[color:var(--border-contrast)] hover:!bg-secondary">
+            <BookingButton className="!bg-transparent !text-foreground !shadow-none border border-[color:var(--border-contrast)] hover:!bg-secondary">
               Réserver un appel
               <ArrowRight className="h-4 w-4" />
-            </CalendlyButton>
+            </BookingButton>
           </motion.div>
 
           <motion.div

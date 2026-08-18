@@ -5,7 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowUpRight, Check, MousePointerClick } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import type { Template, Category } from "@/lib/templates-data";
 
 const INCLUS = [
@@ -22,7 +22,7 @@ export function TemplatePreview({
   template: Template;
   category: Category;
 }) {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
   const siblings = category.templates
     .filter((t) => t.slug !== template.slug)
     .slice(0, 6);
@@ -64,7 +64,7 @@ export function TemplatePreview({
               </p>
             </div>
             <button
-              onClick={() => openCalendly()}
+              onClick={() => openBooking()}
               className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.5)] transition-all duration-200 hover:brightness-105"
             >
               Réserver une démo

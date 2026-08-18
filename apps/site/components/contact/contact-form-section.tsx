@@ -13,7 +13,7 @@ import {
   Mail,
 } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { SITE_EMAIL, SOCIAL_LINKS } from "@/lib/site-config";
 
 type FormState = "idle" | "sending" | "sent" | "error";
@@ -77,7 +77,7 @@ const INPUT_CLASS =
   "w-full rounded-xl border border-[color:var(--border)] bg-surface-1 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]";
 
 export function ContactFormSection() {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
   const submitLead = useMutation(api.contactLeads.submit);
   const [formState, setFormState] = useState<FormState>("idle");
   const [errors, setErrors] = useState<FormErrors>({});
@@ -314,10 +314,10 @@ export function ContactFormSection() {
             </div>
           </FadeIn>
 
-          {/* Right — Calendly + quick info + socials */}
+          {/* Right — booking + quick info + socials */}
           <FadeIn direction="right" className="flex">
             <div className="flex flex-1 flex-col gap-6">
-              {/* Calendly CTA card */}
+              {/* Booking CTA card */}
               <div className="rounded-2xl border border-[color:var(--border-accent)] bg-surface-1 p-8 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] sm:p-10">
                 <span className="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
                   <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
@@ -330,7 +330,7 @@ export function ContactFormSection() {
                   discuter de votre projet en détail. Sans engagement.
                 </p>
                 <button
-                  onClick={() => openCalendly()}
+                  onClick={() => openBooking()}
                   className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition-all duration-200 hover:brightness-105"
                 >
                   Réserver un appel

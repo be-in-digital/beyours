@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { MagneticButton } from "@/components/ui/magnetic-button";
 import { RevealText } from "@/components/ui/reveal-text";
 import { StorefrontPreview } from "@/components/storefront-preview";
@@ -18,7 +18,7 @@ const trust = [
 ];
 
 export function HeroSection() {
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
 
   return (
     <section
@@ -94,7 +94,7 @@ export function HeroSection() {
               className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4"
             >
               <MagneticButton
-                onClick={() => openCalendly()}
+                onClick={() => openBooking()}
                 strength={20}
                 className="glow-primary bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground hover:brightness-105"
               >

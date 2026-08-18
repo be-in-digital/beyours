@@ -10,7 +10,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { plans, formatPrice, type BillingPeriod } from "./pricing-data";
 import { FOUNDERS_OFFER, TVA_ENABLED } from "@/lib/payment-providers";
-import { useCalendlyModal, useDevMode } from "@/lib/store";
+import { useBookingModal, useDevMode } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
 /* Anchor figures for the platform-commission comparison. A restaurant doing
@@ -81,11 +81,11 @@ export function PricingPlans({
   ctaMode = "call",
 }: {
   showHeader?: boolean;
-  /** "call" = opens Calendly (home) · "checkout" = goes to payment (pricing page) */
+  /** "call" = opens the booking modal (home) · "checkout" = goes to payment (pricing page) */
   ctaMode?: "call" | "checkout";
 }) {
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
-  const { open: openCalendly } = useCalendlyModal();
+  const { open: openBooking } = useBookingModal();
   const devMode = useDevMode((s) => s.enabled);
   const goCheckout = ctaMode === "checkout" || devMode;
 
@@ -346,7 +346,7 @@ export function PricingPlans({
                       </Link>
                     ) : (
                       <button
-                        onClick={() => openCalendly()}
+                        onClick={() => openBooking()}
                         className={`w-full rounded-full py-3.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
                           plan.featured
                             ? "bg-primary text-primary-foreground hover:brightness-105 glow-primary"

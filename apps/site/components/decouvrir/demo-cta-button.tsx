@@ -1,11 +1,11 @@
 "use client";
 
-import { useCalendlyModal } from "@/lib/store";
+import { useBookingModal } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { CalendarDays } from "lucide-react";
 
-/** Button that opens the Calendly modal (shared by the site layout). */
-export function CalendlyButton({
+/** Button that opens the booking modal (shared by the site layout). */
+export function BookingButton({
   children = "Réserver un appel",
   className,
   size = "lg",
@@ -16,7 +16,7 @@ export function CalendlyButton({
   size?: "md" | "lg";
   withIcon?: boolean;
 }) {
-  const { open } = useCalendlyModal();
+  const { open } = useBookingModal();
   return (
     <button
       type="button"
