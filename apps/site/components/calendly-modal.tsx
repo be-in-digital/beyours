@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Cal, { getCalApi } from "@calcom/embed-react";
 import { useCalendlyModal, type BookingVariant } from "@/lib/store";
 
 // Booking runs on bookself.app (Cal.com), under the BeYours brand. The old
@@ -8,9 +9,14 @@ import { useCalendlyModal, type BookingVariant } from "@/lib/store";
 // sells BeYours. Two events, two audiences:
 //   decouverte : public, prospects with questions
 //   lancement  : post-purchase kickoff, linked from /checkout/success only
-const BOOKING_URLS: Record<BookingVariant, string> = {
-  decouverte: "https://bookself.app/beyours/decouverte",
-  lancement: "https://bookself.app/beyours/lancement",
+// Self-hosted Cal.com instance, so both the origin and the embed script have to
+// be pointed at it explicitly.
+const CAL_ORIGIN = "https://bookself.app";
+const CAL_EMBED_JS = `${CAL_ORIGIN}/embed/embed.js`;
+
+const BOOKING_LINKS: Record<BookingVariant, string> = {
+  decouverte: "beyours/decouverte",
+  lancement: "beyours/lancement",
 };
 
 const BOOKING_COPY: Record<BookingVariant, { title: string; subtitle: string }> = {
@@ -48,11 +54,33 @@ export function CalendlyModal() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [isOpen, close]);
 
+  // Cal exposes its own CSS variables. Feed it the site accent so the buttons
+  // inside the calendar match the page: DESIGN.md locks a single accent
+  // (terracotta #c5542c) and bans the teal Cal ships as its default.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    void (async () => {
+      const cal = await getCalApi({
+        namespace: variant,
+        embedJsUrl: CAL_EMBED_JS,
+      });
+      if (cancelled) return;
+      cal("ui", {
+        theme: "light",
+        cssVarsPerTheme: {
+          light: { "cal-brand": "#c5542c" },
+          dark: { "cal-brand": "#c5542c" },
+        },
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, variant]);
+
   if (!isOpen) return null;
 
-  // Cal.com honours ?theme; the Calendly-specific colour params it replaced were
-  // silently ignored here.
-  const embedUrl = `${BOOKING_URLS[variant]}?theme=light`;
   const copy = BOOKING_COPY[variant];
 
   return (
@@ -94,13 +122,16 @@ export function CalendlyModal() {
           </button>
         </div>
 
-        {/* Calendly iframe */}
-        <div className="flex-1 relative">
-          <iframe
-            src={embedUrl}
-            className="absolute inset-0 w-full h-full border-0"
-            title="Réserver un appel — Calendly"
-            loading="lazy"
+        {/* Cal.com embed. Sizes itself to its content, unlike the raw iframe it
+            replaced, which was pinned to a fixed height and cramped on mobile. */}
+        <div className="flex-1 overflow-y-auto">
+          <Cal
+            namespace={variant}
+            calLink={BOOKING_LINKS[variant]}
+            calOrigin={CAL_ORIGIN}
+            embedJsUrl={CAL_EMBED_JS}
+            config={{ theme: "light", layout: "month_view" }}
+            style={{ width: "100%", height: "100%", overflow: "scroll" }}
           />
         </div>
       </div>
