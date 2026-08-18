@@ -13,6 +13,69 @@ import { FOUNDERS_OFFER, TVA_ENABLED } from "@/lib/payment-providers";
 import { useCalendlyModal, useDevMode } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
+/* Anchor figures for the platform-commission comparison. A restaurant doing
+   this much through the delivery platforms, at their top commission rate. */
+const PLATFORM_MONTHLY_SALES = 8000;
+const PLATFORM_COMMISSION_PERCENT = 30;
+
+const footnoteIconProps = {
+  className: "h-3.5 w-3.5",
+  viewBox: "0 0 16 16",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.5,
+  "aria-hidden": true,
+} as const;
+
+/* The four conditions attached to every plan. Each one carries an icon so the
+   rows line up: the VAT line used to be the odd one out without one. */
+const footnotes = [
+  {
+    label: "La création se paie une seule fois, au lancement",
+    icon: (
+      <svg {...footnoteIconProps}>
+        <circle cx="8" cy="8" r="6.5" />
+        <path d="M8 5v3.5l2.5 1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "Payable en 3 ou 4 fois avec Alma ou Klarna",
+    icon: (
+      <svg {...footnoteIconProps}>
+        <rect x="2" y="4" width="12" height="9" rx="1.5" />
+        <path d="M2 7h12" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "La première année de maintenance est obligatoire",
+    icon: (
+      <svg {...footnoteIconProps}>
+        <path
+          d="M3.5 8.5L6.5 11.5L12.5 4.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    label: TVA_ENABLED
+      ? "Prix HT · TVA 20 % ajoutée au paiement, récupérable par votre établissement"
+      : "TVA non applicable, art. 293 B du CGI",
+    icon: (
+      <svg {...footnoteIconProps}>
+        <path
+          d="M3.5 2.5h9v11l-2-1.2-2 1.2-2-1.2-2 1.2z"
+          strokeLinejoin="round"
+        />
+        <path d="M6 6h4M6 8.5h4" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+];
+
 export function PricingPlans({
   showHeader = false,
   ctaMode = "call",
@@ -300,17 +363,31 @@ export function PricingPlans({
           })}
         </StaggerContainer>
 
-        {/* Comparison anchor — platform commissions */}
+        {/* Comparison anchor — platform commissions.
+            Both sides are stated per year on purpose: the earlier copy put a
+            monthly commission next to a first-year cost, so the reader had to
+            reconcile the units before the comparison meant anything. */}
         <FadeIn delay={0.2}>
           <div className="mt-10 rounded-2xl border border-primary/15 bg-primary/[0.03] px-6 py-5 sm:px-8 text-center">
             <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl mx-auto">
-              À titre de comparaison : un restaurant qui encaisse{" "}
-              <span className="text-foreground font-medium">8&nbsp;000&nbsp;€/mois</span>{" "}
-              via les plateformes de livraison peut leur reverser jusqu&apos;à{" "}
+              Un restaurant qui vend{" "}
               <span className="text-foreground font-medium">
-                2&nbsp;400&nbsp;€ de commissions chaque mois
+                {formatPrice(PLATFORM_MONTHLY_SALES)}&nbsp;€ par mois
               </span>{" "}
-              (jusqu&apos;à 30&nbsp;%). Votre site en direct&nbsp;:{" "}
+              sur les plateformes de livraison leur laisse jusqu&apos;à{" "}
+              {PLATFORM_COMMISSION_PERCENT}&nbsp;% de commission, soit{" "}
+              <span className="text-foreground font-medium">
+                {formatPrice(
+                  ((PLATFORM_MONTHLY_SALES * PLATFORM_COMMISSION_PERCENT) /
+                    100) *
+                    12,
+                )}
+                &nbsp;€ sur l&apos;année
+              </span>
+              .
+            </p>
+            <p className="mt-2.5 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl mx-auto">
+              Les mêmes commandes sur votre propre site&nbsp;:{" "}
               <span className="text-primary font-medium">
                 {formatPrice(
                   (foundersLive
@@ -318,65 +395,35 @@ export function PricingPlans({
                     : plans[0]!.creation) + plans[0]!.maintenanceYearly,
                 )}
                 &nbsp;€&nbsp;HT la première année
-                {foundersLive ? " (offre fondateurs)" : ""}, puis{" "}
-                {formatPrice(plans[0]!.maintenanceYearly)}&nbsp;€&nbsp;HT/an
+                {foundersLive ? " (tarif fondateurs)" : ""}, maintenance
+                comprise, puis{" "}
+                {formatPrice(plans[0]!.maintenanceYearly)}&nbsp;€&nbsp;HT par an
               </span>
-              , et aucune commission sur vos commandes.
+              . Et aucune commission sur vos commandes.
             </p>
           </div>
         </FadeIn>
 
-        {/* Footnotes */}
+        {/* Footnotes. These used to be a centred flex row that wrapped into a
+            ragged 2 + 1 + 1 arrangement, with nothing sharing a left edge and
+            labels centred on their own line. A grid keeps the same panel at
+            every width: one column on mobile, two from sm. The 1px gaps show
+            the panel background through, which draws the separators without a
+            border on each cell. */}
         <FadeIn delay={0.4}>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-xs text-muted-foreground/60">
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
+          <ul className="mx-auto mt-8 grid max-w-3xl gap-px overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--border)] text-xs text-muted-foreground sm:grid-cols-2">
+            {footnotes.map((note) => (
+              <li
+                key={note.label}
+                className="flex items-start gap-2.5 bg-surface-1 px-4 py-3"
               >
-                <circle cx="8" cy="8" r="6.5" />
-                <path d="M8 5v3.5l2.5 1.5" strokeLinecap="round" />
-              </svg>
-              Frais de création payés une seule fois au lancement
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <rect x="2" y="4" width="12" height="9" rx="1.5" />
-                <path d="M2 7h12" strokeLinecap="round" />
-              </svg>
-              Paiement de la création en 3 ou 4 fois disponible (Alma, Klarna)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                viewBox="0 0 16 16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              >
-                <path
-                  d="M3.5 8.5L6.5 11.5L12.5 4.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Première année de maintenance obligatoire
-            </span>
-            <span className="flex items-center gap-1.5">
-              {TVA_ENABLED
-                ? "Prix hors taxes, TVA 20 % en sus (récupérable)"
-                : "TVA non applicable, art. 293 B du CGI"}
-            </span>
-          </div>
+                <span className="mt-px shrink-0 text-primary/70">
+                  {note.icon}
+                </span>
+                <span>{note.label}</span>
+              </li>
+            ))}
+          </ul>
         </FadeIn>
       </div>
     </section>

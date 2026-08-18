@@ -77,27 +77,31 @@ export const COMPANY: CompanyInfo = {
 };
 
 /**
- * The VAT regime in force. Under franchise en base (art. 293 B of the French
- * tax code) no VAT is charged, and the matching legal mention is read from
+ * The VAT regime in force. The company operates on the régime réel: VAT is
+ * charged at the standard rate, and the matching legal mention is read from
  * `VAT.mention` by the terms of sale (`app/(landing)/cgv/page.tsx`) and the
  * legal notice (`app/(landing)/mentions-legales/page.tsx`), so both realign on
  * their own.
  *
- * NB — invoice footer: the 293 B mention must ALSO appear on the Stripe
- * invoice. The `SELLER_INVOICE_FOOTER` footer lives in `convex/stripe.ts`
- * (outside this file's scope) and does not carry it yet: complete it there.
+ * The mention here is the customer-facing one. The Stripe invoice carries the
+ * intra-EU VAT number through `SELLER_INVOICE_FOOTER` in `convex/stripe.ts`,
+ * which is what an invoice legally needs under this regime — the old 293 B
+ * franchise mention must NOT be added there.
  *
- * Guardrail: the franchise en base for services has a ceiling (~37 500 € of
- * revenue / ~41 250 € tolerance in 2026). Watch cumulative revenue — a single
- * ticket (one Création worth several thousand €) can cross it → switching to
- * the régime réel becomes mandatory, retroactive to the 1st of the month the
- * threshold was crossed. To be confirmed by an accountant. These thresholds
- * and mentions are proposals and must be validated by counsel (accountant /
- * lawyer) before going live.
+ * Two flags gate the actual charging, and they go together: display and
+ * checkout totals follow `NEXT_PUBLIC_TVA_ENABLED` (Next side, see
+ * `lib/payment-providers.ts`), Stripe follows `STRIPE_TAX_ENABLED` (Convex
+ * side, see `convex/stripe.ts`). Setting one without the other means the site
+ * quotes a total it does not collect, or the reverse.
+ *
+ * Every price in the app is quoted excluding tax, which is the right B2B
+ * convention here — restaurants recover the VAT. Switching regime therefore
+ * changes what the checkout adds, never the catalogue figures. Rate and
+ * wording still have to be validated by an accountant.
  */
 export const VAT = {
-  regime: "franchise" as "franchise" | "reel",
-  mention: "TVA non applicable, art. 293 B du CGI",
+  regime: "reel" as "franchise" | "reel",
+  mention: "TVA applicable au taux de 20 % (art. 278 du CGI)",
 } as const;
 
 export interface HostingProvider {

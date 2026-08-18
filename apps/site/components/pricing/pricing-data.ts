@@ -225,7 +225,7 @@ export const faqItems = [
   {
     question: "Les prix affichés sont-ils HT ou TTC ?",
     answer:
-      "Tous les prix s'affichent hors taxes (HT), comme il est d'usage entre professionnels. Si la TVA s'applique, elle est détaillée au moment du paiement et figure sur votre facture : votre établissement la récupère. Côté comptabilité, la création s'enregistre généralement comme un investissement amortissable et la maintenance comme une charge déductible ; votre expert-comptable vous confirmera le traitement adapté à votre situation.",
+      "Tous les prix s'affichent hors taxes (HT), comme il est d'usage entre professionnels. La TVA de 20 % est ajoutée au moment du paiement et figure sur votre facture : votre établissement la récupère. Côté comptabilité, la création s'enregistre généralement comme un investissement amortissable et la maintenance comme une charge déductible ; votre expert-comptable vous confirmera le traitement adapté à votre situation.",
   },
   {
     question: "Y a-t-il des frais cachés ?",
