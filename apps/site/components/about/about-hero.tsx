@@ -80,7 +80,7 @@ export function AboutHero() {
         <FadeIn delay={0.5}>
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
-              onClick={openCalendly}
+              onClick={() => openCalendly()}
               className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition-all duration-200 hover:brightness-105"
             >
               Nous contacter

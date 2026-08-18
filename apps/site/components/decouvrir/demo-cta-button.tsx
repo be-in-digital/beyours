@@ -20,7 +20,7 @@ export function CalendlyButton({
   return (
     <button
       type="button"
-      onClick={open}
+      onClick={() => open()}
       className={cn(
         "btn-magnetic inline-flex items-center justify-center gap-2 rounded-full bg-primary font-semibold text-primary-foreground shadow-[0_14px_34px_-14px_rgba(197,84,44,0.7)] transition-[filter,transform] duration-200 hover:brightness-110 active:scale-[0.98]",
         size === "lg" ? "px-7 py-3.5 text-base" : "px-5 py-2.5 text-sm",

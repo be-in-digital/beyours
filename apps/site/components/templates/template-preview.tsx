@@ -64,7 +64,7 @@ export function TemplatePreview({
               </p>
             </div>
             <button
-              onClick={openCalendly}
+              onClick={() => openCalendly()}
               className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-[0_14px_40px_-16px_rgba(197,84,44,0.5)] transition-all duration-200 hover:brightness-105"
             >
               Réserver une démo

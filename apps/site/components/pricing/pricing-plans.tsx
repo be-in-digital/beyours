@@ -283,7 +283,7 @@ export function PricingPlans({
                       </Link>
                     ) : (
                       <button
-                        onClick={openCalendly}
+                        onClick={() => openCalendly()}
                         className={`w-full rounded-full py-3.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
                           plan.featured
                             ? "bg-primary text-primary-foreground hover:brightness-105 glow-primary"

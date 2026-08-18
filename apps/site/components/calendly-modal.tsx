@@ -1,15 +1,31 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCalendlyModal } from "@/lib/store";
+import { useCalendlyModal, type BookingVariant } from "@/lib/store";
 
-// ──────────────────────────────────────────────
-// Replace this URL with your own Calendly link
-const CALENDLY_URL = "https://calendly.com/hello-beindigital/new-meeting";
-// ──────────────────────────────────────────────
+// Booking runs on bookself.app (Cal.com), under the BeYours brand. The old
+// link pointed at calendly.com/hello-beindigital — the agency, on a site that
+// sells BeYours. Two events, two audiences:
+//   decouverte : public, prospects with questions
+//   lancement  : post-purchase kickoff, linked from /checkout/success only
+const BOOKING_URLS: Record<BookingVariant, string> = {
+  decouverte: "https://bookself.app/beyours/decouverte",
+  lancement: "https://bookself.app/beyours/lancement",
+};
+
+const BOOKING_COPY: Record<BookingVariant, { title: string; subtitle: string }> = {
+  decouverte: {
+    title: "Réserver un appel",
+    subtitle: "Choisissez un créneau qui vous convient",
+  },
+  lancement: {
+    title: "Lancer votre site",
+    subtitle: "Choisissez un créneau pour la mise en route",
+  },
+};
 
 export function CalendlyModal() {
-  const { isOpen, close } = useCalendlyModal();
+  const { isOpen, close, variant } = useCalendlyModal();
 
   // Lock body scroll
   useEffect(() => {
@@ -34,7 +50,10 @@ export function CalendlyModal() {
 
   if (!isOpen) return null;
 
-  const embedUrl = `${CALENDLY_URL}?hide_gdpr_banner=1&background_color=faf5ee&text_color=221c15&primary_color=c5542c`;
+  // Cal.com honours ?theme; the Calendly-specific colour params it replaced were
+  // silently ignored here.
+  const embedUrl = `${BOOKING_URLS[variant]}?theme=light`;
+  const copy = BOOKING_COPY[variant];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
@@ -50,10 +69,10 @@ export function CalendlyModal() {
         <div className="relative flex items-center justify-between px-6 py-4 border-b border-[color:var(--border)]">
           <div>
             <h3 className="text-lg font-semibold text-foreground">
-              Réserver un appel
+              {copy.title}
             </h3>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Choisissez un créneau qui vous convient
+              {copy.subtitle}
             </p>
           </div>
           <button
