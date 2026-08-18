@@ -73,7 +73,14 @@ export function Navbar() {
       >
         <div className="px-4 sm:px-6 flex items-center justify-between gap-4 lg:gap-6 h-14">
           <Link href="/" className="flex items-center shrink-0" aria-label="BeYours — Retour à l'accueil">
-            <Logo width={120} height={28} priority linked={false} />
+            {/* Narrower on mobile: at 120px it ate a third of the capsule. */}
+            <Logo
+              width={120}
+              height={28}
+              priority
+              linked={false}
+              className="w-[96px] sm:w-[120px]"
+            />
           </Link>
 
           {/* Desktop links */}
