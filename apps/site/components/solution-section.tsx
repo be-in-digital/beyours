@@ -15,9 +15,15 @@ export function SolutionSection() {
           <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance sm:text-4xl lg:text-[2.75rem]">
             Tout votre restaurant, réuni en ligne.
           </h2>
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Le site, la commande, le menu, les intégrations et la fidélité.
-            Une seule plateforme, pensée pour la restauration.
+          {/* Bridge from « Le constat », which shows the platforms taking 30 %.
+              The offer is not to leave them but to stop depending on them, so
+              the certification and the commission grievance stop reading as a
+              contradiction two sections apart. */}
+          <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
+            Rien ne vous oblige à quitter les plateformes, il s&apos;agit de ne
+            plus en dépendre : un canal direct sans commission, et leurs
+            commandes réunies aux vôtres. Le site, le menu, les intégrations et
+            la fidélité, au même endroit.
           </p>
         </FadeIn>
 
@@ -71,16 +77,27 @@ export function SolutionSection() {
               Toutes vos commandes, un seul flux
             </h3>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              Site, click &amp; collect, sur place : tout arrive au même
-              endroit, en temps réel. Uber Eats &amp; Deliveroo rejoindront le
-              même flux dès leur certification.
+              Site, click &amp; collect, sur place et Deliveroo : tout arrive
+              au même endroit, en temps réel. Deliveroo a certifié notre
+              application. Il ne manque qu&apos;Uber Eats, dont la validation
+              est en attente : l&apos;unification est à 70 %.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {[
-                { name: "Votre site", logo: null, soon: false },
-                { name: "Sur place", logo: null, soon: false },
-                { name: "Uber Eats", logo: "/logos/uber-eats.png", soon: true },
-                { name: "Deliveroo", logo: "/logos/deliveroo.png", soon: true },
+                { name: "Votre site", logo: null, soon: false, tag: null },
+                { name: "Sur place", logo: null, soon: false, tag: null },
+                {
+                  name: "Deliveroo",
+                  logo: "/logos/deliveroo.png",
+                  soon: false,
+                  tag: "Certifié",
+                },
+                {
+                  name: "Uber Eats",
+                  logo: "/logos/uber-eats.png",
+                  soon: true,
+                  tag: "En attente",
+                },
               ].map((s) => (
                 <span
                   key={s.name}
@@ -98,11 +115,13 @@ export function SolutionSection() {
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   )}
                   {s.name}
-                  {s.soon && (
-                    <span className="text-[10px] text-muted-foreground/70">
-                      · bientôt
+                  {s.tag ? (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${s.soon ? "bg-surface-2 text-muted-foreground" : "bg-primary/12 text-primary"}`}
+                    >
+                      {s.tag}
                     </span>
-                  )}
+                  ) : null}
                 </span>
               ))}
               <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">

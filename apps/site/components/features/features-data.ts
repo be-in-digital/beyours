@@ -162,7 +162,7 @@ export const features: Feature[] = [
     shortDescription:
       "Réunissez toutes vos commandes directes dans un seul flux en temps réel.",
     longDescription:
-      "Vos commandes directes convergent dans un flux unique et en temps réel : celles de votre site, du click & collect et du sur place. Fini le jonglage entre les écrans et les commandes manquées ; tout se gère au même endroit, avec alertes sonores et notifications instantanées. Les commandes Uber Eats & Deliveroo rejoindront ce flux dès la certification des plateformes.",
+      "Vos commandes directes convergent dans un flux unique et en temps réel : celles de votre site, du click & collect et du sur place. Fini le jonglage entre les écrans et les commandes manquées ; tout se gère au même endroit, avec alertes sonores et notifications instantanées. Les commandes Deliveroo y arrivent déjà, notre application étant certifiée ; celles d'Uber Eats rejoindront le flux une fois la validation obtenue.",
     benefits: [
       "Toutes vos commandes directes dans un seul écran",
       "Alertes sonores et notifications push en temps réel",
@@ -176,15 +176,15 @@ export const features: Feature[] = [
     id: "integration-plateformes",
     tag: "06",
     title: "Intégration Uber Eats & Deliveroo",
-    subtitle: "Certification en cours",
+    subtitle: "Deliveroo certifié, Uber en attente",
     shortDescription:
-      "En cours de certification officielle auprès des plateformes. Offerte à tous les clients dès validation.",
+      "Deliveroo a certifié notre application : les commandes arrivent dans votre dashboard. Uber Eats est en attente de validation. Offerte à tous les clients, sans surcoût.",
     longDescription:
-      "L'intégration est en cours de certification officielle auprès d'Uber et de Deliveroo. Dès validation, les commandes Uber Eats et Deliveroo arriveront directement dans votre dashboard, sans double saisie, et Uber Direct permettra la livraison depuis votre propre site sans flotte de livreurs. Offerte à tous les clients, sans surcoût, via la maintenance ; les clients existants sont activés en priorité. Nous ne promettons pas de date : elle dépend des plateformes.",
+      "Deliveroo a certifié notre application : les commandes Deliveroo arrivent directement dans votre dashboard, sans double saisie. Côté Uber, la validation est en attente ; une fois obtenue, les commandes Uber Eats rejoindront le même flux et Uber Direct permettra la livraison depuis votre propre site sans flotte de livreurs. L'unification de vos canaux est donc à 70 %. L'intégration est offerte à tous les clients, sans surcoût, via la maintenance ; les clients existants sont activés en priorité. Nous ne promettons pas de date pour Uber : elle dépend de la plateforme.",
     benefits: [
-      "Certification officielle Uber & Deliveroo en cours",
-      "Offerte à tous les clients dès validation, sans surcoût",
-      "Vos commandes plateformes rejoindront votre flux unique",
+      "Deliveroo : application certifiée, commandes intégrées",
+      "Uber Eats & Uber Direct : validation en attente, sans date annoncée",
+      "Offerte à tous les clients, sans surcoût",
     ],
     pillar: "gerer",
     mockupPattern: "integration",

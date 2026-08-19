@@ -91,12 +91,12 @@ export function HeroSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease, delay: 1 }}
-              className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4"
+              className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4"
             >
               <MagneticButton
                 onClick={() => openBooking()}
                 strength={20}
-                className="glow-primary bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground hover:brightness-105"
+                className="glow-primary w-full bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground hover:brightness-105 sm:w-auto"
               >
                 Réserver un appel
                 <svg
@@ -115,7 +115,7 @@ export function HeroSection() {
               </MagneticButton>
               <Link
                 href="/templates"
-                className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--border-contrast)] bg-surface-1 px-6 py-3 text-base font-medium text-foreground transition-colors duration-300 hover:bg-secondary"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full border border-[color:var(--border-contrast)] bg-surface-1 px-6 py-3 text-base font-medium text-foreground transition-colors duration-300 hover:bg-secondary sm:w-auto"
               >
                 Voir un exemple de site
                 <svg
@@ -152,7 +152,10 @@ export function HeroSection() {
 
       {/* Reassurance strip, below the hero */}
       <div className="relative border-y border-[color:var(--border)] bg-surface-1/60">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 py-4 sm:px-6">
+        {/* Mobile: a shrink-wrapped column centred as a block, so the three
+            checks share one left edge instead of each line centring on its
+            own length. The centred row comes back from sm, where they fit. */}
+        <div className="mx-auto flex w-fit max-w-6xl flex-col items-start gap-y-2 px-4 py-4 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-8 sm:px-6">
           {trust.map((t) => (
             <span
               key={t}
