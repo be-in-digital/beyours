@@ -409,14 +409,15 @@ function CentralisationVisual() {
         ))}
       </div>
 
-      {/* Upcoming platform channels — inactive until certified */}
-      <div className="flex items-center gap-2 border-t border-[color:var(--border)] bg-background px-4 py-2.5 opacity-60">
-        <span className="h-1.5 w-1.5 rounded-full bg-surface-4" />
-        <span className="text-[10px] font-medium text-muted-foreground">
-          Uber Eats · Deliveroo — bientôt
+      {/* Platform channels: Deliveroo is certified and live, Uber Eats is
+          still awaiting validation. No date is announced for Uber. */}
+      <div className="flex items-center gap-2 border-t border-[color:var(--border)] bg-background px-4 py-2.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+        <span className="text-[10px] font-medium text-foreground">
+          Deliveroo — commandes intégrées
         </span>
         <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
-          Certification en cours
+          Uber Eats en attente
         </span>
       </div>
 
@@ -437,9 +438,24 @@ function CentralisationVisual() {
 /* ── 06 · Integrations — real logos feeding the hub ── */
 
 const integrationRows = [
-  { name: "Uber Eats", logo: "/logos/uber-eats.png", detail: "Commandes synchronisées dès la certification" },
-  { name: "Deliveroo", logo: "/logos/deliveroo.png", detail: "Menu à jour dès la certification" },
-  { name: "Uber Direct", logo: "/logos/uber-direct.png", detail: "Livraison sans flotte, après validation" },
+  {
+    name: "Deliveroo",
+    logo: "/logos/deliveroo.png",
+    detail: "Menu et commandes synchronisés",
+    live: true,
+  },
+  {
+    name: "Uber Eats",
+    logo: "/logos/uber-eats.png",
+    detail: "Commandes synchronisées une fois la validation obtenue",
+    live: false,
+  },
+  {
+    name: "Uber Direct",
+    logo: "/logos/uber-direct.png",
+    detail: "Livraison sans flotte, après validation",
+    live: false,
+  },
 ];
 
 function IntegrationVisual() {
@@ -448,11 +464,10 @@ function IntegrationVisual() {
       <div className="p-5">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-semibold text-foreground">
-            Canaux à venir
+            Canaux de commande
           </p>
-          <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
-            <Clock className="h-3 w-3" strokeWidth={2.4} />
-            Certification en cours
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+            Unification à 70 %
           </span>
         </div>
 
@@ -476,9 +491,15 @@ function IntegrationVisual() {
                 <p className="text-xs font-semibold text-foreground">{r.name}</p>
                 <p className="text-[10px] text-muted-foreground">{r.detail}</p>
               </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
-                <Clock className="h-3 w-3" strokeWidth={2.4} /> Bientôt
-              </span>
+              {r.live ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+                  <Check className="h-3 w-3" strokeWidth={2.6} /> Certifié
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                  <Clock className="h-3 w-3" strokeWidth={2.4} /> En attente
+                </span>
+              )}
             </div>
           ))}
         </div>

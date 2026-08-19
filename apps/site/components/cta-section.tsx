@@ -56,12 +56,12 @@ export function CtaSection() {
 
           <FadeIn
             delay={0.3}
-            className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4"
+            className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4"
           >
             <MagneticButton
               onClick={() => openBooking()}
               strength={22}
-              className="bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] hover:brightness-105"
+              className="w-full bg-primary px-8 py-4 text-base font-semibold text-primary-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] hover:brightness-105 sm:w-auto"
             >
               Réserver un appel
               <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -70,7 +70,7 @@ export function CtaSection() {
             </MagneticButton>
             <Link
               href="/templates"
-              className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-6 py-3.5 text-base font-medium text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/[0.12]"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-6 py-3.5 text-base font-medium text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white/[0.12] sm:w-auto"
             >
               Voir des exemples de sites
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">

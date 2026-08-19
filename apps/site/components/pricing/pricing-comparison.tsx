@@ -41,11 +41,12 @@ function Cross() {
   );
 }
 
-/* Certification with the third-party platform is under way — free once approved. */
+/* Deliveroo has certified the app; Uber is still awaiting validation, with no
+   date announced. Free for every client either way. */
 function Soon() {
   return (
     <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-surface-2 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground text-center">
-      Certification en cours
+      Deliveroo actif · Uber en attente
     </span>
   );
 }
