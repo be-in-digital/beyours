@@ -217,13 +217,17 @@ export function PricingPlans({
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span
-                        className={`text-3xl sm:text-4xl font-bold tracking-tight ${plan.comingSoon ? "text-muted-foreground/50" : "text-foreground"}`}
+                        className={`text-3xl sm:text-4xl font-bold tracking-tight ${plan.comingSoon ? "text-muted-foreground/50" : creationPrice === 0 ? "text-primary" : "text-foreground"}`}
                       >
-                        {formatPrice(creationPrice)}&nbsp;€
+                        {creationPrice === 0
+                          ? "Offerte"
+                          : `${formatPrice(creationPrice)} €`}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        HT · paiement unique
-                      </span>
+                      {creationPrice > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          HT · paiement unique
+                        </span>
+                      )}
                     </div>
                     {isFounders && (
                       <p className="mt-1.5 text-xs text-muted-foreground">
@@ -235,13 +239,15 @@ export function PricingPlans({
                         {FOUNDERS_OFFER.totalSlots} places
                       </p>
                     )}
-                    <p className="mt-1.5 text-xs text-muted-foreground/70">
-                      ou 4&nbsp;×&nbsp;
-                      <span className="text-foreground/90 font-medium">
-                        {formatPrice(creationPrice / 4)}&nbsp;€
-                      </span>{" "}
-                      avec Alma, sans frais
-                    </p>
+                    {creationPrice > 0 && (
+                      <p className="mt-1.5 text-xs text-muted-foreground/70">
+                        ou 4&nbsp;×&nbsp;
+                        <span className="text-foreground/90 font-medium">
+                          {formatPrice(creationPrice / 4)}&nbsp;€
+                        </span>{" "}
+                        avec Alma, sans frais
+                      </p>
+                    )}
                   </div>
 
                   {/* Prix maintenance */}
@@ -263,13 +269,29 @@ export function PricingPlans({
                         figure as the list creation price, and two identical
                         numbers meaning different things read as an error. */}
                     <p className="mt-2 text-xs text-muted-foreground/70">
-                      Première année&nbsp;: {formatPrice(creationPrice)}&nbsp;€
-                      de création + {formatPrice(plan.maintenanceYearly)}&nbsp;€
-                      de maintenance, soit{" "}
-                      <span className="text-foreground/90 font-medium">
-                        {formatPrice(creationPrice + plan.maintenanceYearly)}&nbsp;€&nbsp;HT
-                      </span>
-                      . Puis {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT/an.
+                      {creationPrice === 0 ? (
+                        <>
+                          Création offerte, vous ne payez que la maintenance
+                          &nbsp;:{" "}
+                          <span className="text-foreground/90 font-medium">
+                            {formatPrice(plan.maintenanceYearly)}&nbsp;€&nbsp;HT
+                          </span>{" "}
+                          la première année, puis autant chaque année.
+                        </>
+                      ) : (
+                        <>
+                          Première année&nbsp;: {formatPrice(creationPrice)}
+                          &nbsp;€ de création +{" "}
+                          {formatPrice(plan.maintenanceYearly)}&nbsp;€ de
+                          maintenance, soit{" "}
+                          <span className="text-foreground/90 font-medium">
+                            {formatPrice(creationPrice + plan.maintenanceYearly)}
+                            &nbsp;€&nbsp;HT
+                          </span>
+                          . Puis {formatPrice(plan.maintenanceYearly)}
+                          &nbsp;€&nbsp;HT/an.
+                        </>
+                      )}
                     </p>
                     {isFounders && (
                       <p className="mt-2 text-xs text-muted-foreground">
@@ -395,8 +417,7 @@ export function PricingPlans({
                     : plans[0]!.creation) + plans[0]!.maintenanceYearly,
                 )}
                 &nbsp;€&nbsp;HT la première année
-                {foundersLive ? " (tarif fondateurs)" : ""}, maintenance
-                comprise, puis{" "}
+                {foundersLive ? " (tarif fondateurs, création offerte)" : ", maintenance comprise"}, puis{" "}
                 {formatPrice(plans[0]!.maintenanceYearly)}&nbsp;€&nbsp;HT par an
               </span>
               . Et aucune commission sur vos commandes.

@@ -112,8 +112,8 @@ export function CommissionCalculator() {
                       {foundersLive ? " (fondateurs)" : ""}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      maintenance comprise, puis{" "}
-                      {formatPrice(NEXT_YEARS_COST)}&nbsp;€&nbsp;HT/an
+                      {foundersLive ? "création offerte" : "maintenance comprise"},
+                      puis {formatPrice(NEXT_YEARS_COST)}&nbsp;€&nbsp;HT/an
                     </span>
                   </span>
                 </div>

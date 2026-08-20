@@ -71,7 +71,8 @@ export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
 export const TVA_RATE_PERCENT = 20;
 
 /* ── Founders offer ──
-   The first 10 Essentielle builds at 2 500 € excl. tax (list price 3 500 €),
+   The first 10 Essentielle builds have their creation waived entirely (list
+   price 3 500 €): the client pays the annual maintenance and nothing else,
    in exchange for contractual commitments (case study, testimonial, reference).
    It ends when the slots run out (api.orders.countFoundersSold counter), never
    on a date. Not stackable with a referral: applying a code switches to the
@@ -82,7 +83,7 @@ export const FOUNDERS_OFFER = {
   enabled: true,
   plan: "essentielle" as const,
   totalSlots: 10,
-  creationCents: 250000,
+  creationCents: 0,
 } as const;
 
 /* ── Plan prices (in cents, excluding tax) ── */
