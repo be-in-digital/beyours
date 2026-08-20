@@ -28,7 +28,8 @@ export default function MentionsLegalesPage() {
       </p>
       <ul>
         <li>
-          <strong>{COMPANY.legalName}</strong>, {COMPANY.legalForm}
+          <strong>{COMPANY.operatorName}</strong>, nom commercial de{" "}
+          {COMPANY.legalName}, {COMPANY.legalForm}
         </li>
         <li>
           Capital social : {capital ?? <Todo>montant du capital social</Todo>}
@@ -50,13 +51,13 @@ export default function MentionsLegalesPage() {
       </ul>
       <p>
         <strong>Marque commerciale :</strong> « {SITE_NAME} » est une marque
-        exploitée par {COMPANY.legalName}.
+        exploitée par {COMPANY.operatorName}.
       </p>
 
       <h2>2. Directeur de la publication</h2>
       <p>
         Le directeur de la publication est le représentant légal de{" "}
-        {COMPANY.legalName} :{" "}
+        {COMPANY.operatorName} :{" "}
         {COMPANY.legalRepresentative ?? (
           <Todo>nom du représentant légal (Président)</Todo>
         )}
