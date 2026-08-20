@@ -14,13 +14,13 @@ export default function CgvPage() {
   return (
     <LegalPage
       title="Conditions générales de vente"
-      subtitle={`Les présentes conditions régissent la vente de la solution ${SITE_NAME}, éditée par ${COMPANY.legalName}, à ses clients professionnels et consommateurs.`}
+      subtitle={`Les présentes conditions régissent la vente de la solution ${SITE_NAME}, éditée par ${COMPANY.operatorName}, à ses clients professionnels et consommateurs.`}
       lastUpdated={LEGAL_LAST_UPDATED}
     >
       <h2>1. Objet et champ d&apos;application</h2>
       <p>
         Les présentes conditions générales de vente (les « CGV ») régissent
-        l&apos;ensemble des relations entre {COMPANY.legalName} (le
+        l&apos;ensemble des relations entre {COMPANY.operatorName} (le
         « Prestataire ») et toute personne physique ou morale passant commande
         de la solution {SITE_NAME} (le « Client »). Toute commande implique
         l&apos;acceptation sans réserve des présentes CGV, qui prévalent sur tout
