@@ -1422,3 +1422,73 @@ tests / 0 erreur, themes 0 erreur, typechecks OK.
 - Devis de livraison non lié à l'adresse ni à usage unique ; mode `percentage`
   avec adresse enregistrée = impasse silencieuse.
 
+---
+
+## Audit des moyens de paiement (21 août) — constat, aucun correctif
+
+Demandé en cours de bloc : les moyens de paiement sont-ils tous configurables,
+codés et testés ? Vérifié dans le code, sans accès à un compte.
+
+### Ce que l'écran de réglages offre
+
+Carte (`stripe` | `sumup`, avec Connecter/Déconnecter OAuth), PayPal (bascule +
+e-mail), Espèces (bascule, limitée au retrait/sur place et au client connecté).
+**Square est absent de l'écran.**
+
+### Matrice prestataire × cycle de vie
+
+| | Stripe | SumUp | PayPal | Square | Espèces |
+| --- | --- | --- | --- | --- | --- |
+| Écran de config | oui | oui | oui | **non** | oui |
+| Création d'encaissement | oui | oui | oui | **non** | oui |
+| Vérification au retour | oui | oui | oui | **non** | n/a |
+| Remboursement | oui | oui | oui | refus explicite | manuel |
+| Webhook | oui, signé | **non** | **non** | **non** | n/a |
+| Connexion OAuth | stockée mais **ignorée** | stockée et **utilisée** | **aucune** | **non** | n/a |
+
+### Les cinq dettes
+
+1. **La connexion Stripe est stockée puis ignorée.**
+   `/connect/stripe/callback` écrit un `paymentConnections` et l'écran affiche
+   « connecté », mais `stripe.ts` ne référence aucun compte connecté —
+   ni `stripeAccount`, ni `on_behalf_of`, ni `transfer_data`. L'encaissement
+   passe toujours par `STRIPE_SECRET_KEY`, la clé de la plateforme. Le
+   restaurateur croit encaisser sur son compte. SumUp, lui, lit et déchiffre
+   réellement le jeton du commerçant.
+
+2. **`paypalEmail` n'est jamais lu.** Le champ existe dans les réglages et le
+   schéma ; `paypal.ts` ne contient ni `payee` ni `email_address`. Le schéma
+   `paymentConnections` accepte `paypal` en commentant « merchant_id from
+   onboarding webhook » — ce webhook n'existe pas.
+
+3. **Ni SumUp ni PayPal n'ont de webhook.** Seule la page de retour confirme le
+   paiement. Un client qui paie puis ferme son onglet laisse la commande en
+   `pending` indéfiniment. Stripe est le seul couvert, signature vérifiée.
+
+4. **Square est un fantôme.** Présent dans le schéma `payments`, dans le type
+   `PaymentProvider`, dans un filtre de l'écran paiements, dans `CLAUDE.md` et
+   dans deux pages de doc (`SQUARE_ACCESS_TOKEN=`). Zéro ligne
+   d'implémentation, aucune variable d'environnement déclarée. Seul
+   `routeRefund` le traite honnêtement, en `unsupported`.
+
+5. **Le bouton « carte » n'est jamais conditionné.** PayPal et espèces sont
+   masqués si désactivés ; la carte s'affiche toujours, même sans prestataire
+   configuré. Le client remplit tout, valide, et reçoit
+   `STRIPE_SECRET_KEY is not configured`.
+
+### Couverture de tests
+
+44 tests couvrent la **logique** (règlement, anti-rejeu inter-commandes,
+montants, devises, remboursement à deux temps). Solide.
+
+**Aucun test ne couvre les actions prestataire** — `createCheckoutSession`,
+`createPayPalOrder`, `createCheckout`, `verify*`, `internalRefund`. Aucun appel
+HTTP simulé. La logique pure est tenue, la couture avec les API ne l'est pas.
+
+### Décision
+
+**Aucun correctif maintenant** (arbitré le 21 août). Les points 1 et 2 changent
+un flux d'argent et relèvent de la branche prestataires annoncée en début de
+sprint, bac à sable en main. Les points 3, 4 et 5 sont plus circonscrits et
+restent à planifier.
+
