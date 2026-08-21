@@ -32,13 +32,17 @@ export const getByStore = storeQuery({
 });
 
 export const create = storeMutation({
-  permission: "payments:refund",
+  // Recording a payment is not refunding one. The wrong verb also tied taking
+  // money to the right to give it back.
+  permission: "payments:write",
   args: defs.create.args,
   handler: (ctx, args) => defs.create.handler(ctx, args),
 });
 
 export const updateStatus = storeMutation({
-  permission: "payments:refund",
+  // Same wrong verb as `create`: this moves a payment through its states, it
+  // does not refund anything.
+  permission: "payments:write",
   storeIdFrom: paymentsStoreId,
   args: defs.updateStatus.args,
   handler: (ctx, args) => defs.updateStatus.handler(ctx, args),

@@ -88,7 +88,11 @@ const orderStoreId = storeIdFromDocument("Order not found");
 
 // Protected: Admin only — verify store access via order's storeId
 export const updateStatus = storeMutation({
-  permission: "orders:write",
+  // The permission exists precisely for this: advancing an order through its
+  // lifecycle. Under `orders:write` the two roles whose entire job is to move
+  // an order forward — kitchen and delivery — were refused, while the kitchen
+  // display screen offered them the button.
+  permission: "orders:update_status",
   args: defs.updateStatus.args,
   storeIdFrom: orderStoreId,
   handler: (ctx, args) => defs.updateStatus.handler(ctx, args),

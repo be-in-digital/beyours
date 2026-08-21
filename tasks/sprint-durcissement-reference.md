@@ -1275,3 +1275,59 @@ du propriétaire, et refus sur permission inconnue. Garde neutralisée →
 themes lint 0 erreur, typecheck OK, `pnpm build` OK. 29 fichiers reportés sur
 themes ; `auth.ts` et `http.ts` restent volontairement à l'écart.
 
+## Relecture, point 2 — les permissions qui nommaient le mauvais verbe (21 août)
+
+Quatre points d'appel refusaient quelqu'un que le produit place au centre.
+
+| Fonction | Avant | Après | Qui était refusé |
+| --- | --- | --- | --- |
+| `orders.updateStatus` | `orders:write` | `orders:update_status` | la **cuisine** et la **livraison**, dont c'est tout le métier |
+| `payments.create` | `payments:refund` | `payments:write` | verbe faux : encaisser n'est pas rembourser |
+| `payments.updateStatus` | `payments:refund` | `payments:write` | idem |
+| `orders.remove` | `orders:delete` | inchangé | le **propriétaire**, à qui la table ne donnait pas `orders:delete` |
+| `contactMessages.updateStatus` | `customers:write` | inchangé | le **propriétaire**, à qui la table ne donnait pas `customers:write` |
+
+Deux des cinq ne se corrigent donc pas au point d'appel mais dans la table des
+rôles : le verbe y était juste, c'est le rôle qui ne l'avait pas. `client_admin`
+gagne `orders:delete`, `payments:write` et `customers:write` — un propriétaire
+qui peut supprimer un produit, un membre d'équipe et une page, mais pas une
+commande de son propre restaurant, c'était un oubli, pas une politique.
+
+`payments:write` est ajouté aux deux rôles qui détenaient déjà `payments:refund`,
+et à eux seuls : le verbe est réparé sans que l'accès effectif ne bouge. Élargir
+au manager ou au serveur serait une décision produit distincte, non prise ici.
+
+### Le test qui ne prouvait rien
+
+La première version de ces tests interrogeait `checkStorePermission` avec des
+**chaînes** de permission. Preuve de morsure : remettre `orders:write` sur
+`orders.updateStatus` les laissait **tous au vert**. Ils validaient la table des
+rôles et rien du point d'appel — une couverture qui se lit comme une garantie
+sans en être une.
+
+Réécrits pour appeler les vraies mutations avec un vrai document. Nouvelle
+preuve de morsure :
+
+| Régression simulée | Effet |
+| --- | --- |
+| `orders:write` remis sur `updateStatus` | **2 tests au rouge** |
+| `orders:delete` retiré au `client_admin` | **1 test au rouge** |
+| restauration | 135 verts |
+
+Un test intermédiaire a d'ailleurs échoué pour une bonne raison :
+`confirmed → out_for_delivery` n'est pas une transition légale. C'était le test
+qui était faux, pas le code ; le coursier enlève une commande **prête**.
+
+**Portes** : reference 135 tests (contre 129), 0 erreur de lint, type-check OK.
+themes 0 erreur, typecheck OK. `packages/core` 195, `convex-functions` 448.
+
+### Reste en suspens : le manager et le marketing
+
+`DEFAULT_ROLE_PERMISSIONS` dans `packages/admin/src/pages/team/team-page.tsx`
+coche **tous** les modules pour un manager, « Jeux / Marketing » compris. La
+table RBAC ne lui donne ni `marketing:read` ni `marketing:write` ni
+`games:write`. L'écran promet, le serveur refuse.
+
+Deux issues opposées — élargir le rôle, ou cesser de le promettre — et le choix
+est une décision produit, pas un correctif. En attente d'arbitrage.
+

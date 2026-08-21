@@ -111,6 +111,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'analytics:read',
     'analytics:view_all',
     'payments:read',
+    'payments:write',
     'payments:refund',
     'translations:read',
     'translations:write',
@@ -145,6 +146,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'orders:read',
     'orders:write',
     'orders:update_status',
+    // An owner may delete a product, a team member and a page, but could not
+    // delete an order in their own restaurant. The gap was an oversight, not a
+    // policy.
+    'orders:delete',
     'kitchen:read',
     'kitchen:write',
     'team:read',
@@ -154,12 +159,16 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:write',
     'analytics:read',
     'payments:read',
+    'payments:write',
     'payments:refund',
     'translations:read',
     'translations:write',
     'games:read',
     'games:write',
     'customers:read',
+    // Marking a contact message handled needs this. Without it the owner could
+    // read their own customers but never act on them.
+    'customers:write',
     'marketing:read',
     'marketing:write',
     'content:read',

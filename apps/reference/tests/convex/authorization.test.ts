@@ -432,3 +432,128 @@ describe("action guards", () => {
   })
 })
 
+/** An order with only the fields the schema demands. */
+async function seedOrder(
+  t: ReturnType<typeof convexTest>,
+  storeId: Id<"stores">,
+  status: "confirmed" | "ready" = "confirmed"
+) {
+  return t.run((ctx) =>
+    ctx.db.insert("orders", {
+      storeId,
+      orderNumber: "ORD-2026-0001",
+      customerInfo: { name: "Camille" },
+      type: "delivery" as const,
+      status,
+      items: [
+        {
+          productName: "Margherita",
+          quantity: 1,
+          unitPrice: 1000,
+          selectedOptions: [],
+          subtotal: 1000,
+        },
+      ],
+      subtotal: 1000,
+      taxAmount: 100,
+      total: 1100,
+      paymentStatus: "paid" as const,
+      source: "website" as const,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  )
+}
+
+/**
+ * Permissions that named the wrong verb.
+ *
+ * These call the real mutations, not the permission helper. An earlier version
+ * asserted on permission STRINGS, which proved the role table and nothing about
+ * the call site: putting `orders:write` back on `orders.updateStatus` left them
+ * all green. A test that cannot fail on the change it describes is worse than
+ * no test, because it reads as coverage.
+ */
+describe("permission verbs", () => {
+  test("the kitchen can advance an order it is cooking", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    const asKitchen = await seedUser(t, "user:k1", "kitchen", [storeId])
+
+    await expect(
+      asKitchen.mutation(api.orders.updateStatus, {
+        id: orderId,
+        status: "preparing",
+      })
+    ).resolves.not.toThrow()
+  })
+
+  test("the delivery role can advance an order — its entire job", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    // `confirmed -> out_for_delivery` is not a legal transition; the courier
+    // picks up an order that is ready.
+    const orderId = await seedOrder(t, storeId, "ready")
+    const asDelivery = await seedUser(t, "user:d1", "delivery", [storeId])
+
+    await expect(
+      asDelivery.mutation(api.orders.updateStatus, {
+        id: orderId,
+        status: "out_for_delivery",
+      })
+    ).resolves.not.toThrow()
+  })
+
+  test("a customer still cannot advance anyone's order", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    const asCustomer = await seedUser(t, "user:mallory", "customer", [])
+
+    await expect(
+      asCustomer.mutation(api.orders.updateStatus, {
+        id: orderId,
+        status: "completed",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("the kitchen of ANOTHER restaurant cannot advance this order", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Chez Luigi")
+    const theirs = await seedStore(t, "Chez Marco")
+    const orderId = await seedOrder(t, mine)
+    const asKitchen = await seedUser(t, "user:k2", "kitchen", [theirs])
+
+    await expect(
+      asKitchen.mutation(api.orders.updateStatus, {
+        id: orderId,
+        status: "preparing",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("an owner can delete an order in their own restaurant", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    const asAdmin = await seedUser(t, "user:a1", "client_admin", [storeId])
+
+    await expect(
+      asAdmin.mutation(api.orders.remove, { id: orderId })
+    ).resolves.not.toThrow()
+  })
+
+  test("the kitchen cannot delete an order", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    const asKitchen = await seedUser(t, "user:k1", "kitchen", [storeId])
+
+    await expect(
+      asKitchen.mutation(api.orders.remove, { id: orderId })
+    ).rejects.toThrow()
+  })
+})
+
