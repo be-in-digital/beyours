@@ -1695,3 +1695,67 @@ rougit. Une suite qui n'a jamais échoué n'a jamais démontré qu'elle fonction
 c'est précisément ainsi que ces 510 tests sont restés inertes pendant des mois
 en annonçant un succès.
 
+## Exécution réelle de la suite e2e (21 août) — quatre défauts dans la chaîne d'amorçage
+
+Enchaînement demandé de bout en bout : poser les secrets du déploiement, semer
+les comptes, lancer la suite. Chaque étape a révélé un défaut, tous invisibles
+tant que personne ne tentait l'opération.
+
+### 1. `api.d.ts` transposé à la main : confirmé exact
+
+`npx convex dev --once` a régénéré le codegen. **Aucune différence** avec le
+fichier transposé depuis reference. La réserve posée lors de l'alignement du
+miroir est levée.
+
+### 2. Le script de peuplement appelait une mutation publique sans session
+
+`seed-users.mts` créait les profils via `ConvexHttpClient` → `userProfiles.upsert`,
+qui exige depuis le sprint 2 un acteur autorisé. Résultat : `Not authenticated`
+sur les six comptes.
+
+Et il affichait **« Seeding complete! »** malgré tout. Les comptes existaient,
+aucun n'avait de rôle, et la suite e2e aurait échoué sur un écran admin pour une
+raison ne pointant nulle part vers ici.
+
+Corrigé : les profils passent par `userProfiles:internalUpsert`, exécuté par
+`npx convex run` — le CLI s'authentifie comme le déploiement, l'autorité
+correcte pour provisionner, et inatteignable depuis un navigateur. Le script
+sort désormais en code non nul si un profil manque.
+
+### 3. Le peuplement n'était pas rejouable
+
+Après un passage partiel, le script s'arrêtait sur « No users were created. They
+may already exist. Exiting. » — alors que l'étape des profils est indépendante.
+Aucun nombre de relances ne pouvait réparer l'état.
+
+Corrigé : un compte existant est rouvert par connexion pour récupérer son
+identifiant, et l'étape 2 est atteinte dans tous les cas.
+
+### 4. `requireEmailVerification: true` rendait les comptes semés inutilisables
+
+Troisième raison pour laquelle la suite n'a jamais pu tourner : `auth.setup.ts`
+se connecte avec un compte que `seed-users.mts` crée sans boîte aux lettres où
+cliquer un lien. La connexion renvoyait `EMAIL_NOT_VERIFIED`.
+
+La vérification devient optionnelle **à défaut fermé** :
+
+```ts
+requireEmailVerification: process.env.AUTH_ALLOW_UNVERIFIED_EMAIL !== "true"
+```
+
+Une variable absente ou mal orthographiée laisse la vérification active. À poser
+sur un déploiement de test uniquement, jamais sur celui d'un restaurant.
+
+### Une erreur de ma part sur le diagnostic
+
+Mon premier message d'échec accusait le mot de passe semé. La vraie cause était
+`EMAIL_NOT_VERIFIED`. Le message rapporte maintenant ce que le serveur a dit —
+une supposition dans un message d'erreur envoie son lecteur sur une fausse piste,
+ce qui est pire que pas de message du tout.
+
+### État
+
+`Running 510 tests` avec les trois projets `setup`, `public` et `admin`
+déclarés : le verrou local est levé pour la première fois. Le binaire Chromium
+manquait également et a été installé.
+
