@@ -161,6 +161,38 @@ export const capturePayPalOrder = action({
     viewToken?: string;
     email?: string;
   }> => {
+    interface OrderData {
+      total: number;
+      orderNumber: string;
+      storeId: string;
+      paymentStatus: string;
+      viewToken?: string;
+      customerInfo?: { email?: string };
+    }
+
+    // Read the order BEFORE calling PayPal.
+    //
+    // A capture can only happen once. The customer who reloads the confirmation
+    // page — or comes back to it from their history — used to send a second
+    // capture, get ORDER_ALREADY_CAPTURED back, and land on "Confirmation
+    // impossible" for an order that was paid. The client-side `hasRun` ref only
+    // ever protected against a re-render, never against a reload; idempotence
+    // belongs here, where the truth is.
+    const order: OrderData | null = await ctx.runQuery(internal.orders.internalGetById, {
+      id: args.orderId,
+    });
+    if (!order) throw new Error("Order not found");
+
+    if (order.paymentStatus === "paid") {
+      return {
+        status: "paid" as const,
+        orderId: args.orderId,
+        orderNumber: order.orderNumber,
+        viewToken: order.viewToken,
+        email: order.customerInfo?.email,
+      };
+    }
+
     const env = getPayPalEnv();
     const accessToken = await getAccessToken(env);
 
@@ -193,19 +225,6 @@ export const capturePayPalOrder = action({
         };
       }>;
     };
-
-    interface OrderData {
-      total: number;
-      orderNumber: string;
-      storeId: string;
-      paymentStatus: string;
-      viewToken?: string;
-      customerInfo?: { email?: string };
-    }
-    const order: OrderData | null = await ctx.runQuery(internal.orders.internalGetById, {
-      id: args.orderId,
-    });
-    if (!order) throw new Error("Order not found");
 
     const captured = readPayPalCapture(capture);
 

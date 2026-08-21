@@ -89,6 +89,35 @@ export const getByStatus = {
 /**
  * Get orders by view token (public access for order confirmation page)
  */
+/**
+ * The payment state of one order, and nothing else.
+ *
+ * The post-payment landing page has an orderId and, on some return paths, no
+ * provider reference at all — SumUp's 3-D Secure sends the browser straight to
+ * the redirect URL, bypassing the widget callback that would have carried the
+ * checkout id. The page used to treat that case as success: it announced
+ * "votre paiement a bien été reçu" and emptied the basket without asking
+ * anyone. A refused card produced a confirmation screen.
+ *
+ * This is the smallest honest answer to "what actually happened": the stored
+ * status, the order number, and nothing that identifies a customer. The order
+ * id is an opaque Convex id the caller already holds.
+ */
+export const getPaymentState = {
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx: any, args: { orderId: string }) => {
+    const order = await ctx.db.get(args.orderId)
+    if (!order) return null
+    return {
+      paymentStatus: order.paymentStatus as string,
+      status: order.status as string,
+      orderNumber: order.orderNumber as string,
+    }
+  },
+}
+
 export const getByViewToken = {
   args: {
     orderId: v.id("orders"),
