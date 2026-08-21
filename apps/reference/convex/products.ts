@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import * as defs from "@be-in-digital/convex-functions/products";
+import { requireStorePermission } from "@be-in-digital/convex-functions/auth";
 import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (public for storefront) ===
@@ -137,11 +138,26 @@ export const updateWithPropagation = storeMutation({
   },
 });
 
+/**
+ * Copy one restaurant's catalogue into another.
+ *
+ * Two stores, and the seam can only scope to one — so it scopes to the side
+ * that gets WRITTEN. It used to scope to the source, which is the wrong half:
+ * the caller proved rights over the restaurant being read while the products
+ * and categories landed in a restaurant they might not administer at all. A
+ * manager of one store could stuff their catalogue into someone else's.
+ *
+ * The source is checked in the handler, at `products:read` — copying a
+ * competitor's catalogue into your own is the symmetric abuse.
+ */
 export const duplicateCatalog = storeMutation({
   args: defs.duplicateCatalog.args,
-  storeIdFrom: async (_ctx, args) => args.sourceStoreId,
+  storeIdFrom: async (_ctx, args) => args.targetStoreId,
   permission: "products:write",
-  handler: (ctx, args) => defs.duplicateCatalog.handler(ctx, args),
+  handler: async (ctx, args) => {
+    await requireStorePermission(ctx, args.sourceStoreId, "products:read");
+    return defs.duplicateCatalog.handler(ctx, args);
+  },
 });
 
 export const setTrendingProducts = storeMutation({
