@@ -1492,3 +1492,61 @@ un flux d'argent et relèvent de la branche prestataires annoncée en début de
 sprint, bac à sable en main. Les points 3, 4 et 5 sont plus circonscrits et
 restent à planifier.
 
+## Bloc paiement et suivi — les deux derniers (21 août)
+
+### 4. `/track/[token]` était injoignable — régression de mon propre durcissement
+
+La page de confirmation lisait le jeton de suivi via
+`kitchenTickets.getByOrder`. Le sprint 2 l'a mise sous `kitchen:read` : correct,
+et ça a cassé la fonctionnalité pour les seules personnes qui en ont besoin. Un
+invité est refusé, le jeton revient `undefined`, le bouton « Suivre ma commande »
+ne s'affiche jamais. La route `/track/[token]` existait sans que rien ne puisse
+l'atteindre. **Rien n'a échoué bruyamment** — c'est ce qui rend ce genre de
+régression coûteux.
+
+Le correctif n'est pas de rouvrir la requête cuisine mais de servir le jeton
+depuis le chemin de lecture de la commande, sous la règle qui la gouverne déjà :
+le jeton de vue émis à la commande, ou le client qui l'a passée
+(`orders.getTrackingToken`).
+
+Même défaut sur les écrans « en attente » et « échec » de la page de succès :
+`settle()` recevait le jeton de vue et le jetait, puis `Actions` proposait
+`/order/…` sans jeton — une page vide pour un invité. Le jeton est transporté, et
+le bouton ne s'affiche que s'il est utilisable.
+
+**Preuve de morsure** : contrôle de propriété neutralisé → 1 test au rouge.
+
+### 5. Le devis de livraison n'était lié ni à l'adresse ni à un usage
+
+`orders.create` vérifiait l'existence, le restaurant et l'expiration. Deux trous
+restaient.
+
+La table `deliveryQuotes` stocke `dropoffLatitude` / `dropoffLongitude` avec le
+commentaire « to detect a changed address » — **personne ne les lisait**. Un
+devis pris pour l'immeuble d'à côté payait une livraison à trente kilomètres. Et
+le devis était réutilisable indéfiniment : un seul devis bon marché payait toutes
+les livraisons futures.
+
+La règle est extraite en module pur `deliveryQuote` — comme `promotionDiscount`
+et `refundPolicy`, parce que chaque refus décide de ce que le client paie :
+
+| Refus | Cause |
+| --- | --- |
+| `missing` / `wrong_store` / `expired` | déjà couverts, désormais testés |
+| `already_used` | **nouveau** — `consumedByOrderId` marque le devis à la création |
+| `address_mismatch` | **nouveau** — tolérance de ~110 m, l'écart d'un géocodeur, pas d'une rue |
+| `address_not_located` | **nouveau** — et le message dit quoi faire |
+
+Ce dernier refus est l'impasse signalée en relecture : une adresse enregistrée
+sans coordonnées produisait « un devis de livraison est requis », ce qui ne dit
+rien à un client qui vient justement d'en saisir une. Le message renvoie
+maintenant vers les suggestions d'adresse.
+
+**Preuve de morsure** : tolérance de coordonnées rendue énorme → 2 tests au
+rouge ; usage unique neutralisé → 1 test au rouge.
+
+**Portes** : `convex-functions` 473 (contre 457), `core` 195, reference 143
+tests / 0 erreur, themes 0 erreur, `pnpm build` OK, typechecks OK.
+
+**Le bloc paiement et suivi de commande est clos : 5 défauts sur 5.**
+

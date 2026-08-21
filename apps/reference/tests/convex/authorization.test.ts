@@ -630,3 +630,99 @@ describe("manager runs the restaurant", () => {
   })
 })
 
+/**
+ * The guest's route to their own order.
+ *
+ * Sprint 2 put `kitchenTickets.getByOrder` behind `kitchen:read` — correct, and
+ * it silently broke live tracking, because the confirmation page read the
+ * tracking token from there. The guest was refused, the token came back
+ * undefined, and the button never rendered: `/track/[token]` existed with
+ * nothing able to reach it. Nothing failed loudly. These tests make that
+ * failure loud.
+ */
+describe("a guest can reach their own order", () => {
+  test("the view token yields the tracking token", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    await t.run((ctx) => ctx.db.patch(orderId, { viewToken: "vt-secret" }))
+    await t.run((ctx) =>
+      ctx.db.insert("kitchenTickets", {
+        storeId,
+        orderId,
+        orderNumber: "ORD-2026-0001",
+        status: "pending" as const,
+        priority: "normal" as const,
+        items: [],
+        source: "website" as const,
+        orderType: "delivery" as const,
+        trackingToken: "track-abc",
+        printStatus: "not_required" as const,
+        printAttempts: 0,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const token = await t.query(api.orders.getTrackingToken, {
+      orderId,
+      viewToken: "vt-secret",
+    })
+    expect(token).toBe("track-abc")
+  })
+
+  test("a wrong view token yields nothing", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    await t.run((ctx) => ctx.db.patch(orderId, { viewToken: "vt-secret" }))
+    await t.run((ctx) =>
+      ctx.db.insert("kitchenTickets", {
+        storeId,
+        orderId,
+        orderNumber: "ORD-2026-0001",
+        status: "pending" as const,
+        priority: "normal" as const,
+        items: [],
+        source: "website" as const,
+        orderType: "delivery" as const,
+        trackingToken: "track-abc",
+        printStatus: "not_required" as const,
+        printAttempts: 0,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const token = await t.query(api.orders.getTrackingToken, {
+      orderId,
+      viewToken: "vt-guessed",
+    })
+    expect(token).toBeNull()
+  })
+
+  test("no token and no session yields nothing", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+
+    const token = await t.query(api.orders.getTrackingToken, { orderId })
+    expect(token).toBeNull()
+  })
+
+  test("the payment state is readable, and says only what it should", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+
+    const state = await t.query(api.orders.getPaymentState, { orderId })
+    expect(state).toEqual({
+      paymentStatus: "paid",
+      status: "confirmed",
+      orderNumber: "ORD-2026-0001",
+    })
+    // No customer, no address, no amount — the page never needed them.
+    expect(Object.keys(state ?? {})).toHaveLength(3)
+  })
+})
+

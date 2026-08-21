@@ -30,6 +30,7 @@
     "./paymentSettlement": "./src/paymentSettlement.ts",
     "./refundPolicy": "./src/refundPolicy.ts",
     "./orderTotals": "./src/orderTotals.ts",
+    "./deliveryQuote": "./src/deliveryQuote.ts",
     "./profileProvisioning": "./src/profileProvisioning.ts",
     "./storeFunctions": "./src/storeFunctions.ts",
     "./teamAccess": "./src/teamAccess.ts",
