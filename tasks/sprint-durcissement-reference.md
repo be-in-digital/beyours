@@ -554,7 +554,8 @@ Trois tests miroirs vérifient l'inverse — le propriétaire passe, le super-ad
 traverse, **et la cuisine lit toujours son propre écran**. C'était le vrai risque
 de S2-4 : verrouiller la cuisine hors de l'outil qu'elle utilise.
 
-**S2-11 — deux règles ESLint** (`eslint-rules/convex-auth.mjs`), appliquées à
+**S2-11 — deux règles ESLint** (`@be-in-digital/convex-functions/eslint/convex-auth`,
+déplacées le 21 août depuis `apps/reference/eslint-rules/`), appliquées à
 `convex/*.ts` :
 
 | Règle | Interdit |
@@ -1018,3 +1019,62 @@ désactivée → 3 tests au rouge. Restauration vérifiée à **448/448**.
 | Sync menu Deliveroo/Uber Eats morte (`getByStorePlatform` store-scopée appelée par un planificateur) | **préexistant** |
 | `duplicateCatalog` garde la source au lieu de la cible | **préexistant** |
 | `uberEatsActions` (10 actions) et `getDeliveryQuote` sans garde | **préexistant** |
+
+---
+
+## Passe `apps/themes` — étape 1 : le seam et la garde (21 août)
+
+Le seam était **déjà** en place : `apps/themes/convex/lib/storeFunctions.ts` est
+identique à celui de reference et instancie la même fabrique du paquet. Rien à
+porter de ce côté.
+
+La règle ESLint, elle, n'existait que dans `apps/reference`. Elle vit maintenant
+dans `packages/convex-functions/eslint/convex-auth.mjs`, à côté du seam qu'elle
+protège, et les deux applications l'importent. Une règle qui n'aurait existé que
+dans le banc d'essai aurait laissé le gabarit client — celui qu'on clone chez le
+restaurateur — redériver vers exactement l'habitude qu'elle existe pour arrêter.
+
+**Ce que la règle a trouvé en arrivant dans `apps/themes` :**
+
+| | reference | themes |
+| --- | --- | --- |
+| `no-unguarded-convex-function` | 0 | **230** |
+| `require-convex-permission` | 0 | **29** |
+| | | **259 erreurs sur 38 fichiers** |
+
+Reference reste à 0 erreur / 70 avertissements après le déplacement.
+
+### Ce que la mesure a révélé sur la dérive themes ↔ reference
+
+`apps/themes/convex` ne porte **aucun** marqueur `PATCH BOILERPLATE` : c'est un
+miroir pur de `apps/reference/convex`, pas une variante. Sur 92 fichiers :
+
+- **47 identiques**
+- **45 divergents** — la divergence est le durcissement des sprints 1 et 2
+- **6 absents de themes** : `prizeRedemptions.ts`, `gamePlay.ts`,
+  `requiredActions.ts`, `gameEmail.ts`, `maintenance.ts`, `maintenanceEmail.ts`
+
+Ces six-là expliquent le plantage signalé en relecture : `GamesPage` appelle
+`api.prizeRedemptions.*`, module absent. **Tout le parcours jeu QR est mort dans
+le gabarit client** — pas seulement la page des lots.
+
+Comparaison des surfaces exportées, fichier par fichier : elles coïncident
+partout sauf six exports, et les six sont précisément les fuites que reference a
+fermées.
+
+| Fichier | themes seul | reference seul |
+| --- | --- | --- |
+| `orders.ts` | `getByCustomer` | — |
+| `teamMembers.ts` | `getByUser` | `getMyMemberships`, `internalAssertCanManage`, `internalAssertCanManageMember` |
+| `ownerEntitlements.ts` | `getByOwnerId` | `internalGetByOwnerId`, `internalUpsert` |
+| `storeIntegrations.ts` | `getByBrandId`, `getBySiteId`, `listByPlatformEnabled` | `internalGetByBrandId`, `internalGetBySiteId` |
+| `bidSubscription.ts` | — | `createMaintenanceCheckoutSession` |
+
+Conclusion opérationnelle : la suite n'est pas 38 corrections à la main mais un
+**alignement du miroir**, reference → themes, appelants compris. Reference a déjà
+mis à jour ses propres appelants (`deliverooWebhook`, `deliverooMenuSync`,
+`uberEatsMenuSync` pointent vers les versions internes), donc l'opération est
+cohérente d'un bloc. À vérifier avant de la lancer : les appelants hors `convex/`
+(`app/`, `components/`, `lib/`) qui référencent encore les noms publics
+supprimés.
+

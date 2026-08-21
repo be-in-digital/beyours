@@ -9,6 +9,11 @@
  *
  * They only apply to `convex/*.ts` in an app — the place where a Convex function
  * becomes publicly callable.
+ *
+ * They live in this package, next to the seam they enforce, rather than inside
+ * one app: `apps/reference` and `apps/themes` wrap the same package definitions,
+ * so a rule that existed in only one of them would let the client template drift
+ * back into exactly the habit the rule exists to stop.
  */
 
 /** Wrappers that expose a function with no authorisation at all. */
@@ -139,9 +144,12 @@ export const requireConvexPermission = {
   },
 };
 
-export default {
+/** The plugin object an app's flat config registers under `convex/`. */
+const convexAuthPlugin = {
   rules: {
     "no-unguarded-convex-function": noUnguardedConvexFunction,
     "require-convex-permission": requireConvexPermission,
   },
 };
+
+export default convexAuthPlugin;
