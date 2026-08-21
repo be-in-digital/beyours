@@ -30,7 +30,7 @@ type Outcome =
       viewToken?: string
       email?: string
     }
-  | { state: "pending"; label: string }
+  | { state: "pending"; label: string; orderId?: string; viewToken?: string }
   | { state: "failed"; message: string }
 
 function CheckoutSuccessContent() {
@@ -139,7 +139,15 @@ function CheckoutSuccessContent() {
         // Only now: the basket must survive a failed or abandoned payment.
         clearCart()
       } else {
-        setOutcome({ state: "pending", label: status })
+        // Carry the view token through: the pending screen offers a link to the
+        // order, and without the token that link is a dead end for a guest —
+        // exactly the person who just paid and has no account.
+        setOutcome({
+          state: "pending",
+          label: status,
+          orderId: result.orderId ?? orderId,
+          viewToken: result.viewToken,
+        })
       }
     }
 
@@ -198,7 +206,7 @@ function CheckoutSuccessContent() {
           Votre banque n&apos;a pas encore confirmé le paiement (statut&nbsp;:{" "}
           {outcome.label}). La commande sera préparée dès réception.
         </p>
-        <Actions orderId={orderId} />
+        <Actions orderId={outcome.orderId ?? orderId} viewToken={outcome.viewToken} />
       </Shell>
     )
   }
@@ -272,11 +280,23 @@ function CheckoutSuccessContent() {
   )
 }
 
-function Actions({ orderId }: { orderId?: string }) {
+function Actions({
+  orderId,
+  viewToken,
+}: {
+  orderId?: string
+  viewToken?: string
+}) {
+  // `/order/[orderId]` answers the customer who placed the order or the holder
+  // of the view token, and nobody else. Offering the link without a token sent
+  // a guest to an empty page; better no button than a broken one.
+  const href =
+    orderId && viewToken ? `/order/${orderId}?token=${viewToken}` : undefined
+
   return (
     <div className="flex flex-col justify-center gap-4 sm:flex-row">
-      {orderId && (
-        <Link href={`/order/${orderId}`}>
+      {href && (
+        <Link href={href}>
           <Button className="h-14 rounded-2xl bg-[#0D5C3F] px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-[#0A412D]">
             Voir la commande
           </Button>

@@ -52,6 +52,10 @@ export const getByStatus = storeQuery({
   args: defs.getByStatus.args,
   handler: (ctx, args) => defs.getByStatus.handler(ctx, args),
 });
+// @public-by-design: same rule as `getById` — the view token issued at checkout,
+// or the customer who placed the order. Returns one opaque token, nothing else.
+export const getTrackingToken = query(defs.getTrackingToken);
+
 // @public-by-design: the post-payment page holds an opaque order id and needs
 // to know whether the payment actually landed. Returns the status and the order
 // number only — no customer, no address, no amount.
