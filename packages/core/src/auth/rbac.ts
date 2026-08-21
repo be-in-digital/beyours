@@ -202,6 +202,14 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payments:read',
     'translations:read',
     'games:read',
+    // The team screen has always offered a manager the "Jeux / Marketing"
+    // module by default, while the role table withheld it — the screen
+    // promised and the server refused. Resolved in favour of the screen: a
+    // manager runs the restaurant day to day, campaigns and in-store games
+    // included.
+    'games:write',
+    'marketing:read',
+    'marketing:write',
     'customers:read',
     'content:read',
     'content:write',

@@ -1329,5 +1329,18 @@ table RBAC ne lui donne ni `marketing:read` ni `marketing:write` ni
 `games:write`. L'écran promet, le serveur refuse.
 
 Deux issues opposées — élargir le rôle, ou cesser de le promettre — et le choix
-est une décision produit, pas un correctif. En attente d'arbitrage.
+est une décision produit, pas un correctif.
 
+**Arbitré le 21 août : élargir le manager.** `MANAGER` reçoit `marketing:read`,
+`marketing:write` et `games:write`. L'écran disait vrai, c'est la table qui
+avait tort. Un manager mène désormais campagnes et jeux du restaurant qu'il
+dirige — et rien de plus : quatre tests figent qu'il ne franchit pas la
+frontière d'établissement, et que le serveur n'a pas été élargi au passage.
+
+| Régression simulée | Effet |
+| --- | --- |
+| `marketing:write` et `games:write` retirés au manager | **2 tests au rouge** |
+| restauration | 139 verts |
+
+Un de ces tests a d'abord échoué sur un argument manquant (`ruleOperator`) —
+mon test était incomplet, pas le code.

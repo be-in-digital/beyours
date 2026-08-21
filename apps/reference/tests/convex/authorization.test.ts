@@ -557,3 +557,76 @@ describe("permission verbs", () => {
   })
 })
 
+/**
+ * The manager and the marketing module.
+ *
+ * The team screen has always ticked "Jeux / Marketing" for a manager by
+ * default while the role table withheld it. Resolved in favour of the screen —
+ * so it has to be the screen's promise these tests hold, not the table's.
+ */
+describe("manager runs the restaurant", () => {
+  test("a manager can create an in-store game", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asManager = await seedUser(t, "user:m1", "manager", [storeId])
+
+    await expect(
+      asManager.mutation(api.games.create, {
+        storeId,
+        type: "wheel",
+        name: "Roue du vendredi",
+        winRatio: 30,
+        isActive: true,
+      })
+    ).resolves.not.toThrow()
+  })
+
+  test("a manager can create a marketing segment", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asManager = await seedUser(t, "user:m1", "manager", [storeId])
+
+    await expect(
+      asManager.mutation(api.emailSegments.create, {
+        storeId,
+        name: "Habitués",
+        rules: [],
+        ruleOperator: "and",
+      })
+    ).resolves.not.toThrow()
+  })
+
+  test("a manager of ANOTHER restaurant still cannot", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Chez Luigi")
+    const theirs = await seedStore(t, "Chez Marco")
+    const asManager = await seedUser(t, "user:m1", "manager", [theirs])
+
+    await expect(
+      asManager.mutation(api.games.create, {
+        storeId: mine,
+        type: "wheel",
+        name: "Roue pirate",
+        winRatio: 100,
+        isActive: true,
+      })
+    ).rejects.toThrow()
+  })
+
+  test("widening the manager did not widen the waiter", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asWaiter = await seedUser(t, "user:w1", "waiter", [storeId])
+
+    await expect(
+      asWaiter.mutation(api.games.create, {
+        storeId,
+        type: "scratch_card",
+        name: "Ticket",
+        winRatio: 50,
+        isActive: true,
+      })
+    ).rejects.toThrow()
+  })
+})
+
