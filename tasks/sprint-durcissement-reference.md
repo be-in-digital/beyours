@@ -1078,3 +1078,63 @@ cohérente d'un bloc. À vérifier avant de la lancer : les appelants hors `conv
 (`app/`, `components/`, `lib/`) qui référencent encore les noms publics
 supprimés.
 
+### Étape 1 bis — vérification des appelants hors `convex/` (21 août)
+
+Avant d'aligner le miroir, il fallait s'assurer que les six exports que
+reference a supprimés ou rendus internes ne sont appelés nulle part ailleurs
+dans themes. Ils ne le sont pas :
+
+| Zone balayée | Appelants de `getByCustomer`, `getByUser`, `getByOwnerId`, `getByBrandId`, `getBySiteId`, `listByPlatformEnabled` |
+| --- | --- |
+| `apps/themes/{app,components,lib,hooks}` | 0 |
+| `packages/*` | 0 |
+
+Confrontation exhaustive : chaque `api.<module>.<fn>` du code applicatif de
+themes, vérifié contre la surface que `convex/` exposera après alignement.
+**Aucun appel ne casserait.** L'alignement du miroir `convex/` est sûr.
+
+#### Ce que la vérification a trouvé en plus
+
+Le premier balayage ne couvrait que `apps/themes` et n'a rien vu. C'était le
+mauvais périmètre : les pages admin de themes montent des composants venus de
+**`packages/admin`**, et c'est là que vivent les appels. Élargi au paquet :
+
+| Module appelé | Par | État dans themes |
+| --- | --- | --- |
+| `prizeRedemptions.getStats`, `.listPlays`, `.listRedemptions`, `.redeemByCode` | `games-page.tsx`, `winners-page.tsx` | **module absent** |
+| `requiredActions.list`, `.create`, `.update`, `.remove` | `actions-page.tsx` | **module absent** |
+
+themes route bien vers ces pages (`dashboard/games`, `games/winners`,
+`games/actions`). Elles plantent au rendu.
+
+**Pourquoi `tsc` ne le voit pas** : `app/(admin)/layout.tsx` injecte l'api via
+`setApi(api as unknown as Record<string, unknown>)`, et le store la stocke en
+`any`. Le typage est perdu à la frontière — la seule sanction est un
+`TypeError` au rendu. Une classe de panne que ni le typecheck ni le lint ne
+peuvent attraper, et que seul l'alignement ferme.
+
+#### Ce que l'alignement de `convex/` ne réparera PAS
+
+- **Le parcours jeu QR vitrine est un placeholder**, pas un bug. themes livre
+  un `GameContent.tsx` de 28 lignes affichant « Gamification flow will be
+  implemented here ». Manquent aussi les 10 composants de jeu, les 8 fichiers
+  `lib/game/` (roue, confettis, empreinte, sons) et toute la route
+  `/game/prize/[code]`. Le gabarit client vend une fonctionnalité qu'il
+  n'embarque pas.
+
+#### Fausses pistes écartées (vérifiées, non défectueuses)
+
+- `maintenance.ts` / `maintenanceEmail.ts` absents : **correct**. C'est le
+  verrou de mise à jour du moteur, et themes ne l'appelle nulle part.
+- `lib/services/contact-service.ts` absent : inutilisé dans themes.
+- Les routes Next `api/webhooks/{stripe,deliveroo/*}` propres à themes ne sont
+  pas un second chemin non gardé : ce sont des pierres tombales renvoyant
+  `410` vers l'endpoint Convex. Vérifié en lisant les trois fichiers.
+
+#### Réserve sur la portée
+
+L'alignement en bloc se justifie pour `convex/` — les surfaces exportées
+coïncident et themes ne porte aucun `PATCH BOILERPLATE`. Il ne se justifie
+**pas** tel quel pour `app/` et `components/` : themes y possède 47 composants
+et 5 routes que reference n'a pas. Ces zones se traitent à la main, pas en bloc.
+
