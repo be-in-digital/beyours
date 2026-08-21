@@ -933,3 +933,88 @@ Un ticket n'est fini que si les cinq points sont vrais :
 - L'accessibilité : les specs `auth-a11y` / `admin-a11y` sont référencées dans
   `playwright.config.ts:64,80` mais **n'existent pas sur disque**. À traiter dans un
   lot dédié, après celui-ci.
+
+---
+
+## Revue de contrôle du 21 août — trois escalades refermées
+
+Trois relecteurs indépendants ont passé le diff complet (130 fichiers) au
+crible. Ils ont trouvé des défauts **dans les correctifs eux-mêmes**. Les trois
+escalades de privilèges sont refermées ci-dessous ; le reste est listé en
+section « Reste à traiter ».
+
+### E1 — Plafond global de promotion contournable
+
+`usageCount` n'était incrémenté que si un email était fourni. Une promotion
+`maxTotalUsage: 1` restait donc utilisable indéfiniment par des commandes
+anonymes : la remise s'appliquait, le compteur ne bougeait jamais. Le plafond
+*par client* avait été fermé, le plafond *global* non.
+
+Le compteur avance maintenant dès qu'une promotion est appliquée ; seul le
+registre `promotionUsages`, qui est indexé par email, reste conditionné. Les
+emails sont normalisés en minuscules **des deux côtés** — sans quoi `A@b.com` et
+`a@b.com` étaient deux clients distincts.
+
+### E2 — Un propriétaire pouvait éjecter le super-administrateur
+
+`assertCanAssignProfile` ne raisonnait que sur le rôle **demandé**. Or `upsert`
+écrase. Un `client_admin` écrivait donc
+`{ userId: <le super-admin>, role: "customer", storeIds: [] }` : rôle non
+administratif, aucun établissement étranger, toutes les vérifications
+passaient — et le déploiement se retrouvait sans administrateur.
+
+La politique reçoit désormais le **profil existant** de la cible et refuse deux
+choses de plus : toucher à quelqu'un qui détient déjà un rôle d'administration,
+et réassigner un membre rattaché à un établissement qu'on n'administre pas
+(sinon on débauche le personnel d'un confrère).
+
+### E3 — Accepter une invitation écrasait le profil
+
+Trois conséquences réelles : inviter le super-administrateur en `kitchen` le
+rétrogradait dès qu'il cliquait ; un gérant invité dans un second restaurant
+perdait le premier ; et une adhésion « tous établissements » produisait une liste
+vide, donc le membre ne recevait **rien** tout en perdant ce qu'il avait — le bug
+de l'écran décoratif, recréé.
+
+`invitationGrant` fusionne maintenant au lieu de remplacer : jamais de
+rétrogradation, jamais de perte d'établissement. Une invitation **ajoute** un
+lieu de travail, elle ne redéfinit pas la personne.
+
+### E3bis — La révocation, moitié manquante du pont
+
+J'avais construit l'octroi sans la reprise. Retirer un membre supprimait la ligne
+`teamMembers` et laissait `userProfiles` intact : un employé licencié disparaissait
+de l'écran d'équipe en gardant `manager` sur le restaurant. `revocationEffect`
+retire l'établissement concerné et rend le rôle `customer` quand il n'en reste
+aucun — sans jamais rétrograder un administrateur, dont l'autorité ne vient pas
+du registre.
+
+### Aussi corrigé
+
+`globalSettings.get` ne retirait que 2 des 4 credentials Uber Direct :
+`customerId` et `apiKey` étaient servis à tout visiteur anonyme, alors que mon
+annotation `@public-by-design` affirmait le contraire. C'est exactement le
+blanchiment que la double annotation devait empêcher.
+
+**Preuves de morsure** : garde E2 neutralisée → 3 tests au rouge ; fusion E3
+désactivée → 3 tests au rouge. Restauration vérifiée à **448/448**.
+
+### Reste à traiter (relecture du 21 août)
+
+| Sujet | Origine |
+| --- | --- |
+| La règle ESLint ignore `action(…)` — ~56 actions publiques non couvertes, dont `kitchenTickets.acceptTicket/completeTicket/cancelTicket` pilotables par tout compte | mien |
+| `orders.updateStatus` sous `orders:write` : le rôle `delivery` ne peut plus faire avancer une commande | mien |
+| `payments.create` / `updateStatus` sous `payments:refund` — mauvais verbe | mien |
+| `MANAGER` privé de `marketing:*` alors que l'UI équipe le lui promet | arbitrage à trancher |
+| `client_admin` bloqué sur `orders.remove` et `contactMessages.updateStatus` | mien |
+| Page de succès : la branche sans référence prestataire déclare le paiement reçu et vide le panier sans rien vérifier (retour 3-D Secure SumUp) | mien |
+| `/track/[token]` inatteignable : le bouton pointe vers `/order/…`, qui plante pour un invité | mien |
+| Rechargement de la page de succès PayPal → `ORDER_ALREADY_CAPTURED` → écran d'échec sur une commande payée | mien |
+| Mode `percentage` : adresse enregistrée sans coordonnées = impasse silencieuse | mien |
+| Devis de livraison non lié à l'adresse commandée ni à usage unique | mien |
+| Remboursement : pas de verrou avant l'appel prestataire, `externalRefundId` scalaire écrasé par un second remboursement partiel | mien |
+| `claimFirstAdmin` : course ouverte sur un déploiement neuf | mien |
+| Sync menu Deliveroo/Uber Eats morte (`getByStorePlatform` store-scopée appelée par un planificateur) | **préexistant** |
+| `duplicateCatalog` garde la source au lieu de la cible | **préexistant** |
+| `uberEatsActions` (10 actions) et `getDeliveryQuote` sans garde | **préexistant** |

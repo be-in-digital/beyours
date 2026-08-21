@@ -341,7 +341,10 @@ export const create = {
           .withIndex("by_promotionId_customerEmail", (q: any) =>
             q
               .eq("promotionId", args.promotionId)
-              .eq("customerEmail", args.customerInfo.email)
+              // Normalised the same way it is written below: without this,
+              // `A@b.com` and `a@b.com` are two different customers and the
+              // per-customer cap is bypassed by changing the case.
+              .eq("customerEmail", args.customerInfo.email!.trim().toLowerCase())
           )
           .collect()
         customerUsageCount = usages.length
@@ -402,21 +405,32 @@ export const create = {
       updatedAt: now,
     })
 
-    // Increment promotion usage if a promotion was applied
-    if (args.promotionId && args.customerInfo.email) {
+    // Count the use as soon as a promotion was applied.
+    //
+    // This whole block used to sit behind `&& args.customerInfo.email`, so an
+    // anonymous order got the discount without ever moving the counter: a
+    // promotion capped at `maxTotalUsage: 1` stayed redeemable forever. The
+    // per-customer cap was closed by refusing anonymous orders, but the GLOBAL
+    // cap was not — the counter simply never advanced.
+    if (args.promotionId) {
       const promo = await ctx.db.get(args.promotionId)
       if (promo) {
         await ctx.db.patch(args.promotionId, {
           usageCount: (promo.usageCount ?? 0) + 1,
           updatedAt: now,
         })
-        await ctx.db.insert("promotionUsages", {
-          storeId: args.storeId,
-          promotionId: args.promotionId,
-          customerEmail: args.customerInfo.email,
-          orderId,
-          usedAt: now,
-        })
+
+        // The per-customer ledger is keyed on email, so it only exists for an
+        // identified customer. The global counter above does not depend on it.
+        if (args.customerInfo.email) {
+          await ctx.db.insert("promotionUsages", {
+            storeId: args.storeId,
+            promotionId: args.promotionId,
+            customerEmail: args.customerInfo.email.trim().toLowerCase(),
+            orderId,
+            usedAt: now,
+          })
+        }
       }
     }
 

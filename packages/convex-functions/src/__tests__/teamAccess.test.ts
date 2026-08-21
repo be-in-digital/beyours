@@ -4,6 +4,7 @@ import {
   assertCanManageMember,
   assertInvitationAcceptable,
   invitationGrant,
+  revocationEffect,
   INVITATION_LIFETIME_MS,
   TeamAccessError,
   type TeamActor,
@@ -196,6 +197,93 @@ describe("invitationGrant", () => {
     // restaurant is created. Chain-wide access stays a super admin's business.
     expect(invitationGrant({ role: "manager", allStores: true }).storeIds).toEqual([])
   })
+
+  it("never demotes someone who already holds a higher role", () => {
+    // The attack: a client admin invites the SUPER ADMIN as `kitchen` on their
+    // own store. Accepting used to REPLACE the profile, so one click on the
+    // invitation link stripped the deployment of its administrator.
+    const grant = invitationGrant(
+      { role: "kitchen", storeId: STORE_A, allStores: false },
+      { role: Role.SUPER_ADMIN, storeIds: [] }
+    )
+    expect(grant.role).toBe(Role.SUPER_ADMIN)
+  })
+
+  it("adds the new restaurant instead of replacing the previous one", () => {
+    // A manager invited to a second restaurant used to lose the first.
+    const grant = invitationGrant(
+      { role: "manager", storeId: STORE_B, allStores: false },
+      { role: Role.MANAGER, storeIds: [STORE_A] }
+    )
+    expect(grant.storeIds.sort()).toEqual([STORE_A, STORE_B].sort())
+  })
+
+  it("promotes when the invitation is for a higher role", () => {
+    const grant = invitationGrant(
+      { role: "manager", storeId: STORE_A, allStores: false },
+      { role: Role.CUSTOMER, storeIds: [] }
+    )
+    expect(grant.role).toBe(Role.MANAGER)
+    expect(grant.storeIds).toEqual([STORE_A])
+  })
+
+  it("does not strip an existing profile on a chain-wide invitation", () => {
+    // Chain-wide grants no store list, so replacing would leave the member with
+    // nothing at all — the "decorative team screen" bug, recreated.
+    const grant = invitationGrant(
+      { role: "manager", allStores: true },
+      { role: Role.MANAGER, storeIds: [STORE_A] }
+    )
+    expect(grant.storeIds).toEqual([STORE_A])
+  })
+})
+
+// ============================================================================
+// Revocation — the half that was missing
+// ============================================================================
+
+describe("revocationEffect", () => {
+  it("removes only the store the membership covered", () => {
+    expect(
+      revocationEffect({
+        profile: { role: Role.MANAGER, storeIds: [STORE_A, STORE_B] },
+        storeId: STORE_A,
+        allStores: false,
+      })
+    ).toEqual({ role: Role.MANAGER, storeIds: [STORE_B] })
+  })
+
+  it("drops staff rights entirely when no workplace is left", () => {
+    // A dismissed employee used to vanish from the roster and keep `manager` —
+    // products, orders, customers — on the restaurant.
+    expect(
+      revocationEffect({
+        profile: { role: Role.MANAGER, storeIds: [STORE_A] },
+        storeId: STORE_A,
+        allStores: false,
+      })
+    ).toEqual({ role: Role.CUSTOMER, storeIds: [] })
+  })
+
+  it("clears everything for a chain-wide membership", () => {
+    expect(
+      revocationEffect({
+        profile: { role: Role.MANAGER, storeIds: [STORE_A, STORE_B] },
+        allStores: true,
+      })
+    ).toEqual({ role: Role.CUSTOMER, storeIds: [] })
+  })
+
+  it.each([Role.SUPER_ADMIN, Role.CLIENT_ADMIN])(
+    "never downgrades %s through a roster change",
+    (role) => {
+      // Their authority does not come from the roster in the first place.
+      const profile = { role, storeIds: [STORE_A] }
+      expect(
+        revocationEffect({ profile, storeId: STORE_A, allStores: false })
+      ).toEqual(profile)
+    }
+  )
 
   it("never grants an administrative role", () => {
     // The schema only allows these four, and this pins that the mapping cannot

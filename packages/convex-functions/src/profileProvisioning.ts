@@ -40,7 +40,9 @@ export interface ProvisioningTarget {
 export type ProvisioningRejectionReason =
   | "not_permitted"
   | "cannot_grant_admin"
+  | "cannot_touch_admin"
   | "store_not_owned"
+  | "target_not_owned"
   | "cannot_demote_self"
   | "custom_permissions_forbidden"
 
@@ -76,8 +78,19 @@ const DELEGATABLE_ROLES: ReadonlySet<Role> = new Set([
 export function assertCanAssignProfile(params: {
   actor: ProvisioningActor
   target: ProvisioningTarget
+  /**
+   * The target's profile as it stands today, when one exists.
+   *
+   * Reasoning only about the REQUESTED role leaves the door wide open, because
+   * `upsert` overwrites: a client admin could write
+   * `{ userId: <the super admin>, role: "customer", storeIds: [] }` — a
+   * non-admin role, no foreign store, every check passes — and lock the owner
+   * out of their own deployment. What matters is who the target IS, not only
+   * what they are about to become.
+   */
+  existingTarget?: Pick<ProvisioningTarget, "role" | "storeIds"> | null
 }): void {
-  const { actor, target } = params
+  const { actor, target, existingTarget } = params
 
   if (actor.role === Role.SUPER_ADMIN) {
     // Even a super admin should not strip their own super-admin role by
@@ -99,6 +112,30 @@ export function assertCanAssignProfile(params: {
   }
 
   // From here on the actor is a client admin.
+
+  // Never touch someone who already holds an administrative role. Without this,
+  // "demoting" an admin passes every other check — the requested role is
+  // harmless, and an admin being stripped of their stores has none to compare.
+  if (existingTarget && ADMIN_ROLES.has(existingTarget.role)) {
+    throw new ProvisioningRejectedError(
+      "cannot_touch_admin",
+      "Seul un super administrateur peut modifier le profil d'un administrateur."
+    )
+  }
+
+  // An existing member of another restaurant is not yours to reassign, even
+  // towards your own stores — that is how you poach or lock out a colleague.
+  if (existingTarget) {
+    const owned = new Set(actor.storeIds)
+    const foreignExisting = existingTarget.storeIds.filter((id) => !owned.has(id))
+    if (foreignExisting.length > 0) {
+      throw new ProvisioningRejectedError(
+        "target_not_owned",
+        "Cet utilisateur appartient à un établissement que vous n'administrez pas."
+      )
+    }
+  }
+
   if (ADMIN_ROLES.has(target.role)) {
     throw new ProvisioningRejectedError(
       "cannot_grant_admin",

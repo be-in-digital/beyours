@@ -8,7 +8,9 @@ import {
   assertCanManageMember,
   assertInvitationAcceptable,
   invitationGrant,
+  revocationEffect,
 } from "@be-in-digital/convex-functions/teamAccess";
+import { Role } from "@be-in-digital/core/auth/rbac";
 
 const memberStoreId = storeIdFromDocument("Team member not found");
 
@@ -31,6 +33,46 @@ async function requireCanManage(
     member,
   });
   return user;
+}
+
+/**
+ * Take back what a membership granted.
+ *
+ * The counterpart of `acceptInvitation`: since `userProfiles` is the single
+ * source of authority, removing someone from the roster has to write there too,
+ * or the removal is cosmetic.
+ */
+async function revokeProfileAccess(
+  ctx: Parameters<typeof getAuthUser>[0] & {
+    db: { patch: (id: unknown, updates: unknown) => Promise<unknown> };
+  },
+  member: { userId?: string; storeId?: string; allStores: boolean }
+) {
+  if (!member.userId) return;
+
+  const profile = await ctx.db
+    .query("userProfiles")
+    .withIndex("by_userId", (q: { eq: (f: string, v: unknown) => unknown }) =>
+      q.eq("userId", member.userId)
+    )
+    .first();
+  if (!profile) return;
+
+  const next = revocationEffect({
+    profile: { role: profile.role as Role, storeIds: profile.storeIds },
+    storeId: member.storeId,
+    allStores: member.allStores,
+  });
+
+  if (next.role === profile.role && next.storeIds.length === profile.storeIds.length) {
+    return;
+  }
+
+  await ctx.db.patch(profile._id, {
+    role: next.role,
+    storeIds: next.storeIds,
+    updatedAt: Date.now(),
+  });
 }
 
 // === QUERIES ===
@@ -198,12 +240,30 @@ export const acceptInvitation = mutation({
     });
 
     // The bridge: give the accepted member the profile the auth chain reads.
-    const grant = invitationGrant(member);
+    //
+    // Merged against the existing profile, never replacing it — otherwise an
+    // invitation becomes a demotion vector, and joining a second restaurant
+    // means losing the first.
+    const existingProfile = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    const grant = invitationGrant(
+      member,
+      existingProfile
+        ? {
+            role: existingProfile.role as Role,
+            storeIds: existingProfile.storeIds,
+          }
+        : null
+    );
+
     return profileDefs.upsert.handler(ctx, {
       userId: identity.subject,
       role: grant.role,
       storeIds: grant.storeIds,
-      permissions: [],
+      permissions: existingProfile?.permissions ?? [],
     });
   },
 });
@@ -264,7 +324,17 @@ export const toggleActive = mutation({
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Team member not found");
     await requireCanManage(ctx, existing);
-    return defs.toggleActive.handler(ctx, args);
+
+    const result = await defs.toggleActive.handler(ctx, args);
+
+    // Deactivating must actually take the rights away. Without this the member
+    // simply looks inactive on the team screen while `userProfiles` — the record
+    // the authorisation chain reads — still grants everything.
+    const reread = await ctx.db.get(args.id);
+    if (reread && reread.isActive === false && reread.userId) {
+      await revokeProfileAccess(ctx, reread);
+    }
+    return result;
   },
 });
 
@@ -276,6 +346,12 @@ export const remove = mutation({
     const existing = await ctx.db.get(args.id);
     if (!existing) throw new Error("Team member not found");
     await requireCanManage(ctx, existing);
+
+    // Revoke BEFORE deleting: once the row is gone there is nothing left to
+    // tell us which store the person is losing. A dismissed employee used to
+    // vanish from the roster and keep `manager` on the restaurant.
+    if (existing.userId) await revokeProfileAccess(ctx, existing);
+
     return defs.remove.handler(ctx, args);
   },
 });

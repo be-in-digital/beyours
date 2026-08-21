@@ -154,9 +154,20 @@ export interface InvitationGrant {
  * admin's business, which is also who is allowed to create them.
  */
 export function invitationGrant(
-  member: Pick<TeamMemberRecord, "role" | "storeId" | "allStores">
+  member: Pick<TeamMemberRecord, "role" | "storeId" | "allStores">,
+  /**
+   * The invitee's profile as it stands, when they already have one.
+   *
+   * Acceptance used to REPLACE role and storeIds outright. Three consequences,
+   * all real: a client admin could invite the super admin as `kitchen` on their
+   * own store and demote them the moment they clicked the link; a manager
+   * invited to a second restaurant lost the first; and a chain-wide invitation
+   * produced an empty store list, so the member ended up with nothing at all
+   * while losing what they had.
+   */
+  existing?: { role: Role; storeIds: string[] } | null
 ): InvitationGrant {
-  const role: Role =
+  const invitedRole: Role =
     member.role === "manager"
       ? Role.MANAGER
       : member.role === "kitchen"
@@ -165,8 +176,69 @@ export function invitationGrant(
           ? Role.WAITER
           : Role.DELIVERY
 
+  const invitedStoreIds =
+    !member.allStores && member.storeId ? [member.storeId] : []
+
+  if (!existing) {
+    return { role: invitedRole, storeIds: invitedStoreIds }
+  }
+
+  // Never lower an existing role, and never drop stores already granted:
+  // an invitation ADDS a workplace, it does not redefine the person.
+  const keepsHigherRole = ROLE_RANK[existing.role] >= ROLE_RANK[invitedRole]
+
   return {
-    role,
-    storeIds: !member.allStores && member.storeId ? [member.storeId] : [],
+    role: keepsHigherRole ? existing.role : invitedRole,
+    storeIds: Array.from(new Set([...existing.storeIds, ...invitedStoreIds])),
+  }
+}
+
+/**
+ * Ordering used to decide whether an invitation would demote someone.
+ *
+ * Only relative order matters, not the numbers.
+ */
+const ROLE_RANK: Record<Role, number> = {
+  [Role.SUPER_ADMIN]: 60,
+  [Role.CLIENT_ADMIN]: 50,
+  [Role.MANAGER]: 40,
+  [Role.KITCHEN]: 30,
+  [Role.WAITER]: 30,
+  [Role.DELIVERY]: 30,
+  [Role.CUSTOMER]: 10,
+}
+
+/**
+ * What a profile must become when a membership is revoked or deactivated.
+ *
+ * The grant half of this bridge was built and the revoke half was not: removing
+ * someone from the roster deleted the `teamMembers` row and left their
+ * `userProfiles` record untouched, so a dismissed employee kept `manager` — and
+ * with it products, orders and customer access — on a restaurant whose team
+ * screen no longer listed them.
+ *
+ * An admin is never downgraded by a roster change: their authority does not
+ * come from the roster in the first place.
+ */
+export function revocationEffect(params: {
+  profile: { role: Role; storeIds: string[] }
+  /** Store the membership covered, if any. */
+  storeId?: string
+  allStores: boolean
+}): { role: Role; storeIds: string[] } {
+  const { profile, storeId, allStores } = params
+
+  if (profile.role === Role.SUPER_ADMIN || profile.role === Role.CLIENT_ADMIN) {
+    return profile
+  }
+
+  const remaining = allStores
+    ? []
+    : profile.storeIds.filter((id) => id !== storeId)
+
+  // No workplace left means no reason to keep staff rights.
+  return {
+    role: remaining.length > 0 ? profile.role : Role.CUSTOMER,
+    storeIds: remaining,
   }
 }

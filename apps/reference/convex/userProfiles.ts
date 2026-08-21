@@ -48,6 +48,13 @@ export const upsert = mutation({
   handler: async (ctx, args) => {
     const actor = await getAuthUser(ctx);
 
+    // `upsert` OVERWRITES role and storeIds, so the policy has to see who the
+    // target is today — not only the role being requested.
+    const existing = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+
     assertCanAssignProfile({
       actor: {
         userId: actor.userId,
@@ -60,6 +67,9 @@ export const upsert = mutation({
         storeIds: args.storeIds,
         permissions: args.permissions,
       },
+      existingTarget: existing
+        ? { role: existing.role as Role, storeIds: existing.storeIds }
+        : null,
     });
 
     return defs.upsert.handler(ctx, args);

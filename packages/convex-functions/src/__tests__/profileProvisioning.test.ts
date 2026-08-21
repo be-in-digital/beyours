@@ -89,6 +89,66 @@ describe("the audited escalation", () => {
     }
   )
 
+  it("refuses an owner demoting the super admin", () => {
+    // The escalation the first version of this policy missed entirely: it only
+    // looked at the REQUESTED role. `customer` is not an admin role, an empty
+    // store list contains no foreign store — every check passed, and `upsert`
+    // overwrites. One call and the deployment has no administrator.
+    const error = rejection(() =>
+      assertCanAssignProfile({
+        actor: actor({ storeIds: [STORE_A] }),
+        target: target({ userId: "user:root", role: Role.CUSTOMER, storeIds: [] }),
+        existingTarget: { role: Role.SUPER_ADMIN, storeIds: [] },
+      })
+    )
+    expect(error.reason).toBe("cannot_touch_admin")
+  })
+
+  it("refuses an owner demoting another client admin", () => {
+    expect(
+      rejection(() =>
+        assertCanAssignProfile({
+          actor: actor({ storeIds: [STORE_A] }),
+          target: target({ role: Role.KITCHEN, storeIds: [STORE_A] }),
+          existingTarget: { role: Role.CLIENT_ADMIN, storeIds: [STORE_A] },
+        })
+      ).reason
+    ).toBe("cannot_touch_admin")
+  })
+
+  it("refuses poaching a member of a restaurant the actor does not administer", () => {
+    // Requested stores are all owned, so the old check passed — but the person
+    // belongs to someone else's team.
+    const error = rejection(() =>
+      assertCanAssignProfile({
+        actor: actor({ storeIds: [STORE_A] }),
+        target: target({ role: Role.MANAGER, storeIds: [STORE_A] }),
+        existingTarget: { role: Role.MANAGER, storeIds: [STORE_B] },
+      })
+    )
+    expect(error.reason).toBe("target_not_owned")
+  })
+
+  it("still lets an owner update a member of their own store", () => {
+    expect(() =>
+      assertCanAssignProfile({
+        actor: actor({ storeIds: [STORE_A] }),
+        target: target({ role: Role.KITCHEN, storeIds: [STORE_A] }),
+        existingTarget: { role: Role.MANAGER, storeIds: [STORE_A] },
+      })
+    ).not.toThrow()
+  })
+
+  it("lets a super admin demote another admin", () => {
+    expect(() =>
+      assertCanAssignProfile({
+        actor: actor({ userId: "user:root", role: Role.SUPER_ADMIN, storeIds: [] }),
+        target: target({ role: Role.CUSTOMER, storeIds: [] }),
+        existingTarget: { role: Role.CLIENT_ADMIN, storeIds: [STORE_B] },
+      })
+    ).not.toThrow()
+  })
+
   it("refuses a client admin setting bespoke permissions", () => {
     // A permission list bypasses the role table entirely.
     expect(
