@@ -16,35 +16,41 @@ import * as cmsDefs from "@be-in-digital/convex-functions/cms"
 import { publishPageCore } from "@be-in-digital/convex-functions/cmsPublish"
 import { saveDraftBlockCore } from "@be-in-digital/convex-functions/cms"
 import { scheduleCmsTranslation, schedulePageTranslation } from "./cmsAutoTranslate"
-import { storeMutation, authedQuery } from "./lib/storeFunctions"
+import { storeQuery, storeMutation } from "./lib/storeFunctions";
 
 // ============================================================================
 // Queries
 // ============================================================================
 
 /** List all CMS pages for a store (public) */
+// @public-by-design: published storefront page content, no auth by design
 export const listPages = query(cmsDefs.listPages)
 
 /** Get page status (public) */
+// @public-by-design: published storefront page content, no auth by design
 export const getPage = query(cmsDefs.getPage)
 
 /** Get published blocks for storefront (public, no auth) */
+// @public-by-design: published storefront page content, no auth by design
 export const getPageBlocks = query(cmsDefs.getPageBlocks)
 
 /** Get draft + published blocks for admin editor (auth-protected) */
-export const getAdminPageBlocks = authedQuery({
+export const getAdminPageBlocks = storeQuery({
+  permission: "content:read",
   args: cmsDefs.getAdminPageBlocks.args,
   handler: (ctx, args) => cmsDefs.getAdminPageBlocks.handler(ctx, args),
 })
 
 /** Get preview blocks: draft > published (auth-protected) */
-export const getPreviewPageBlocks = authedQuery({
+export const getPreviewPageBlocks = storeQuery({
+  permission: "content:read",
   args: cmsDefs.getPreviewPageBlocks.args,
   handler: (ctx, args) => cmsDefs.getPreviewPageBlocks.handler(ctx, args),
 })
 
 /** Get a single block draft (auth-protected) */
-export const getBlockDraft = authedQuery({
+export const getBlockDraft = storeQuery({
+  permission: "content:read",
   args: cmsDefs.getBlockDraft.args,
   handler: (ctx, args) => cmsDefs.getBlockDraft.handler(ctx, args),
 })
@@ -55,6 +61,7 @@ export const getBlockDraft = authedQuery({
 
 /** Save draft block — built via saveDraftBlockCore helper */
 export const saveDraftBlock = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),
@@ -70,6 +77,7 @@ export const saveDraftBlock = storeMutation({
 
 /** Reset a single field to fallback */
 export const resetField = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),
@@ -82,6 +90,7 @@ export const resetField = storeMutation({
 
 /** Reset an entire block */
 export const resetBlock = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),
@@ -93,6 +102,7 @@ export const resetBlock = storeMutation({
 
 /** Reset all blocks for a page */
 export const resetPage = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),
@@ -103,6 +113,7 @@ export const resetPage = storeMutation({
 
 /** Translate all text fields of a page at once */
 export const translateAllPageFields = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),
@@ -127,6 +138,7 @@ export const translateAllPageFields = storeMutation({
 
 /** Publish all draft blocks for a page */
 export const publishPage = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     pageSlug: v.string(),

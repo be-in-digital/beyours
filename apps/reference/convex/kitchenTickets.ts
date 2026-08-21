@@ -2,7 +2,10 @@ import { query, internalMutation, internalQuery, action } from "./_generated/ser
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import * as defs from "@be-in-digital/convex-functions/kitchenTickets";
-import { storeQuery, authedQuery, authedMutation } from "./lib/storeFunctions";
+import { storeQuery, storeMutation, storeIdFromDocument, storeIdFromField } from "./lib/storeFunctions";
+
+const kitchenTicketsStoreId = storeIdFromDocument("Ticket not found");
+const kitchenTickets_getByOrderStoreId = storeIdFromField("orderId", "Order not found");
 
 // === INTERNAL QUERIES (no auth, called from actions) ===
 
@@ -50,91 +53,119 @@ export const internalUpdateStatus = internalMutation({
 // === QUERIES ===
 
 export const getByStore = storeQuery({
+  permission: "kitchen:read",
   args: defs.getByStore.args,
   handler: (ctx, args) => defs.getByStore.handler(ctx, args),
 });
 export const getByStatus = storeQuery({
+  permission: "kitchen:read",
   args: defs.getByStatus.args,
   handler: (ctx, args) => defs.getByStatus.handler(ctx, args),
 });
 
 export const getByStation = storeQuery({
+  permission: "kitchen:read",
   args: defs.getByStation.args,
   handler: (ctx, args) => defs.getByStation.handler(ctx, args),
 });
 
-export const getByOrder = authedQuery({
+export const getByOrder = storeQuery({
+  permission: "kitchen:read",
+  storeIdFrom: kitchenTickets_getByOrderStoreId,
   args: defs.getByOrder.args,
   handler: (ctx, args) => defs.getByOrder.handler(ctx, args),
 });
 
 export const getPrintQueue = storeQuery({
+  permission: "kitchen:read",
   args: defs.getPrintQueue.args,
   handler: (ctx, args) => defs.getPrintQueue.handler(ctx, args),
 });
 
 export const getOverdueCount = storeQuery({
+  permission: "kitchen:read",
   args: defs.getOverdueCount.args,
   handler: (ctx, args) => defs.getOverdueCount.handler(ctx, args),
 });
 
 export const getPrintStuckCount = storeQuery({
+  permission: "kitchen:read",
   args: defs.getPrintStuckCount.args,
   handler: (ctx, args) => defs.getPrintStuckCount.handler(ctx, args),
 });
 
 export const getForDisplay = storeQuery({
+  permission: "kitchen:read",
   args: defs.getForDisplay.args,
   handler: (ctx, args) => defs.getForDisplay.handler(ctx, args),
 });
 
 // Public: token-based access for customer order tracking
+// @public-by-design: order tracking by opaque token. The payload carries
+// preparation state only — no customer details.
 export const getByTrackingToken = query(defs.getByTrackingToken);
 
 // === MUTATIONS (authenticated) ===
 
-export const create = authedMutation({
+export const create = storeMutation({
+  permission: "kitchen:write",
   args: defs.create.args,
   handler: (ctx, args) => defs.create.handler(ctx, args),
 });
 
-export const updateStatus = authedMutation({
+export const updateStatus = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.updateStatus.args,
   handler: (ctx, args) => defs.updateStatus.handler(ctx, args),
 });
 
-export const markPickedUp = authedMutation({
+export const markPickedUp = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.markPickedUp.args,
   handler: (ctx, args) => defs.markPickedUp.handler(ctx, args),
 });
 
-export const markPrintSent = authedMutation({
+export const markPrintSent = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.markPrintSent.args,
   handler: (ctx, args) => defs.markPrintSent.handler(ctx, args),
 });
 
-export const markPrintFailed = authedMutation({
+export const markPrintFailed = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.markPrintFailed.args,
   handler: (ctx, args) => defs.markPrintFailed.handler(ctx, args),
 });
 
-export const requestReprint = authedMutation({
+export const requestReprint = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.requestReprint.args,
   handler: (ctx, args) => defs.requestReprint.handler(ctx, args),
 });
 
-export const assignStation = authedMutation({
+export const assignStation = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.assignStation.args,
   handler: (ctx, args) => defs.assignStation.handler(ctx, args),
 });
 
-export const assignTo = authedMutation({
+export const assignTo = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.assignTo.args,
   handler: (ctx, args) => defs.assignTo.handler(ctx, args),
 });
 
 /** @deprecated Use markPrintSent instead */
-export const incrementPrintCount = authedMutation({
+export const incrementPrintCount = storeMutation({
+  permission: "kitchen:write",
+  storeIdFrom: kitchenTicketsStoreId,
   args: defs.incrementPrintCount.args,
   handler: (ctx, args) => defs.incrementPrintCount.handler(ctx, args),
 });

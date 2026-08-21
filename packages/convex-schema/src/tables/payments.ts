@@ -33,6 +33,14 @@ export const paymentsTable = defineTable({
   })),
   refundedAmount: v.optional(v.number()),
   refundReason: v.optional(v.string()),
+  // Proof the money actually moved. The refund used to be a database patch with
+  // no provider call at all, so "refunded" meant nothing. These two fields exist
+  // so a refund can be reconciled against the provider.
+  externalRefundId: v.optional(v.string()),
+  refundedAt: v.optional(v.number()),
+  // "api" = confirmed by the provider; "manual" = settled outside the system
+  // (cash refunded at the counter) and recorded here on the staff's word.
+  refundMethod: v.optional(v.union(v.literal("api"), v.literal("manual"))),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

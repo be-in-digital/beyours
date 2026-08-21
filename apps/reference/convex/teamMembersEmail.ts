@@ -183,6 +183,14 @@ export const sendInvitationEmail = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
+    // Being logged in is not enough: this reaches the roster through
+    // `inviteInternal`, so without this check any account could invite itself
+    // as manager on any store — or chain-wide.
+    await ctx.runQuery(internal.teamMembers.internalAssertCanManage, {
+      storeId: args.storeId,
+      allStores: args.allStores,
+    });
+
     const token = randomUUID();
 
     // Create the team member record with pending status
@@ -253,6 +261,10 @@ export const resendInvitationEmail = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    await ctx.runQuery(internal.teamMembers.internalAssertCanManageMember, {
+      id: args.memberId,
+    });
 
     const newToken = randomUUID();
 

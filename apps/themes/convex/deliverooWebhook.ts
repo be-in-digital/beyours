@@ -522,7 +522,7 @@ async function handleStatusUpdate(
         for (const item of itemsWithPLU) {
           try {
             const mapping = await ctx.runQuery(
-              api.externalProductMappings.getByExternal,
+              internal.externalProductMappings.internalGetByExternal,
               { externalId: item.pos_item_id!, platform: "deliveroo" }
             );
             if (!mapping) {

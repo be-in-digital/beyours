@@ -1,47 +1,62 @@
 import { internalMutation } from "./_generated/server";
 import * as defs from "@be-in-digital/convex-functions/emailAutomations";
-import { storeQuery, authedQuery, authedMutation } from "./lib/storeFunctions";
+import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
+
+const emailAutomationsStoreId = storeIdFromDocument("Automation not found");
 
 // === Queries (auth-protected) ===
 
 export const list = storeQuery({
+  permission: "marketing:read",
   args: defs.list.args,
   handler: (ctx, args) => defs.list.handler(ctx, args),
 });
 
-export const getById = authedQuery({
+export const getById = storeQuery({
+  permission: "marketing:read",
+  storeIdFrom: emailAutomationsStoreId,
   args: defs.getById.args,
   handler: (ctx, args) => defs.getById.handler(ctx, args),
 });
 
 export const listActive = storeQuery({
+  permission: "marketing:read",
   args: defs.listActive.args,
   handler: (ctx, args) => defs.listActive.handler(ctx, args),
 });
 
 // === Mutations (auth-protected) ===
 
-export const create = authedMutation({
+export const create = storeMutation({
+  permission: "marketing:write",
   args: defs.create.args,
   handler: (ctx, args) => defs.create.handler(ctx, args),
 });
 
-export const update = authedMutation({
+export const update = storeMutation({
+  permission: "marketing:write",
+  storeIdFrom: emailAutomationsStoreId,
   args: defs.update.args,
   handler: (ctx, args) => defs.update.handler(ctx, args),
 });
 
-export const remove = authedMutation({
+export const remove = storeMutation({
+  permission: "marketing:write",
+  storeIdFrom: emailAutomationsStoreId,
   args: defs.remove.args,
   handler: (ctx, args) => defs.remove.handler(ctx, args),
 });
 
-export const activate = authedMutation({
+export const activate = storeMutation({
+  permission: "marketing:write",
+  storeIdFrom: emailAutomationsStoreId,
   args: defs.activate.args,
   handler: (ctx, args) => defs.activate.handler(ctx, args),
 });
 
-export const pause = authedMutation({
+export const pause = storeMutation({
+  permission: "marketing:write",
+  storeIdFrom: emailAutomationsStoreId,
   args: defs.pause.args,
   handler: (ctx, args) => defs.pause.handler(ctx, args),
 });

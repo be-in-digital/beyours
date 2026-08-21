@@ -25,29 +25,40 @@ import {
   unarchiveArticleCore,
 } from "@be-in-digital/convex-functions/blogPublish"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
-import { storeMutation, authedQuery } from "./lib/storeFunctions"
+import { storeQuery, storeMutation, storeIdFromField } from "./lib/storeFunctions";
+
+const blogStoreId = storeIdFromField("articleId", "Article not found");
 
 // ============================================================================
 // Public Queries (storefront, no auth)
 // ============================================================================
 
+// @public-by-design: published blog content, served to anonymous readers
 export const listPublishedArticles = query(blogDefs.listPublishedArticles)
+// @public-by-design: published blog content, served to anonymous readers
 export const listByCategory = query(blogDefs.listByCategory)
+// @public-by-design: published blog content, served to anonymous readers
 export const listByTag = query(blogDefs.listByTag)
+// @public-by-design: published blog content, served to anonymous readers
 export const getArticleBySlug = query(blogDefs.getArticleBySlug)
+// @public-by-design: published blog content, served to anonymous readers
 export const listCategories = query(blogDefs.listCategories)
+// @public-by-design: published blog content, served to anonymous readers
 export const listTags = query(blogDefs.listTags)
 
 // ============================================================================
 // Admin Queries (auth-protected)
 // ============================================================================
 
-export const listAdminArticles = authedQuery({
+export const listAdminArticles = storeQuery({
+  permission: "content:read",
   args: blogDefs.listAdminArticles.args,
   handler: (ctx, args) => blogDefs.listAdminArticles.handler(ctx, args),
 })
 
-export const getAdminArticle = authedQuery({
+export const getAdminArticle = storeQuery({
+  permission: "content:read",
+  storeIdFrom: blogStoreId,
   args: blogDefs.getAdminArticle.args,
   handler: (ctx, args) => blogDefs.getAdminArticle.handler(ctx, args),
 })
@@ -89,6 +100,7 @@ async function storeIdFromTag(
 
 /** Create a new blog article (draft) */
 export const createArticle = storeMutation({
+  permission: "content:write",
   args: {
     storeId: v.id("stores"),
     title: v.string(),
@@ -105,6 +117,7 @@ export const createArticle = storeMutation({
 
 /** Save draft content for an article */
 export const saveDraft = storeMutation({
+  permission: "content:write",
   args: {
     articleId: v.id("blogArticles"),
     draftContent: v.any(),
@@ -139,6 +152,7 @@ export const saveDraft = storeMutation({
 
 /** Publish an article */
 export const publishArticle = storeMutation({
+  permission: "content:write",
   args: { articleId: v.id("blogArticles") },
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args, identity) =>
@@ -147,6 +161,7 @@ export const publishArticle = storeMutation({
 
 /** Schedule an article for future publication */
 export const scheduleArticle = storeMutation({
+  permission: "content:write",
   args: {
     articleId: v.id("blogArticles"),
     publishAt: v.number(),
@@ -166,6 +181,7 @@ export const scheduleArticle = storeMutation({
 
 /** Unschedule an article (revert to draft) */
 export const unscheduleArticle = storeMutation({
+  permission: "content:write",
   args: { articleId: v.id("blogArticles") },
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args) => unscheduleArticleCore(ctx, args.articleId),
@@ -173,6 +189,7 @@ export const unscheduleArticle = storeMutation({
 
 /** Archive an article */
 export const archiveArticle = storeMutation({
+  permission: "content:write",
   args: { articleId: v.id("blogArticles") },
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args) => archiveArticleCore(ctx, args.articleId),
@@ -180,6 +197,7 @@ export const archiveArticle = storeMutation({
 
 /** Unarchive an article */
 export const unarchiveArticle = storeMutation({
+  permission: "content:write",
   args: { articleId: v.id("blogArticles") },
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args) => unarchiveArticleCore(ctx, args.articleId),
@@ -187,6 +205,7 @@ export const unarchiveArticle = storeMutation({
 
 /** Delete an article */
 export const deleteArticle = storeMutation({
+  permission: "content:delete",
   args: { articleId: v.id("blogArticles") },
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args) => deleteArticleCore(ctx, args),
@@ -197,17 +216,20 @@ export const deleteArticle = storeMutation({
 // ============================================================================
 
 export const createCategory = storeMutation({
+  permission: "content:write",
   args: blogDefs.createCategory.args,
   handler: (ctx, args) => blogDefs.createCategory.handler(ctx, args),
 })
 
 export const updateCategory = storeMutation({
+  permission: "content:write",
   args: blogDefs.updateCategory.args,
   storeIdFrom: storeIdFromCategory,
   handler: (ctx, args) => blogDefs.updateCategory.handler(ctx, args),
 })
 
 export const deleteCategory = storeMutation({
+  permission: "content:delete",
   args: blogDefs.deleteCategory.args,
   storeIdFrom: storeIdFromCategory,
   handler: (ctx, args) => blogDefs.deleteCategory.handler(ctx, args),
@@ -218,17 +240,20 @@ export const deleteCategory = storeMutation({
 // ============================================================================
 
 export const createTag = storeMutation({
+  permission: "content:write",
   args: blogDefs.createTag.args,
   handler: (ctx, args) => blogDefs.createTag.handler(ctx, args),
 })
 
 export const deleteTag = storeMutation({
+  permission: "content:delete",
   args: blogDefs.deleteTag.args,
   storeIdFrom: storeIdFromTag,
   handler: (ctx, args) => blogDefs.deleteTag.handler(ctx, args),
 })
 
 export const updateArticleTags = storeMutation({
+  permission: "content:write",
   args: blogDefs.updateArticleTags.args,
   storeIdFrom: storeIdFromArticle,
   handler: (ctx, args) => blogDefs.updateArticleTags.handler(ctx, args),

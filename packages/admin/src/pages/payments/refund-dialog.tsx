@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useMutation } from "convex/react"
+import { useAction } from "convex/react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -28,7 +28,10 @@ interface RefundDialogProps {
 export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps) {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const api = useAdminApiStore((s) => s.api)
-  const refundMutation = useMutation(api?.payments?.refund ?? ("skip" as never))
+  // An action, not a mutation: the refund calls the payment provider before
+  // anything is recorded. `payments.refund` was a database-only patch that
+  // reported success while the customer was never paid back.
+  const refundPayment = useAction(api?.payments?.refundPayment ?? ("skip" as never))
 
   const maxRefundAmount = payment.amount - (payment.refundedAmount || 0)
   const [refundAmount, setRefundAmount] = useState(maxRefundAmount)
@@ -51,14 +54,16 @@ export function RefundDialog({ payment, open, onOpenChange }: RefundDialogProps)
     setIsSubmitting(true)
 
     try {
-      await refundMutation({
+      await refundPayment({
         id: payment._id,
         amount: refundAmount,
         reason: reason.trim() || undefined,
       })
 
       toast.success(
-        `Remboursement de ${formatPrice(refundAmount, payment.currency)} traité avec succès`
+        payment.provider === "cash"
+          ? `Remboursement de ${formatPrice(refundAmount, payment.currency)} enregistré (espèces, à remettre au client)`
+          : `Remboursement de ${formatPrice(refundAmount, payment.currency)} confirmé par ${payment.provider}`
       )
       onOpenChange(false)
       setRefundAmount(maxRefundAmount)

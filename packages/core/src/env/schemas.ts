@@ -74,6 +74,8 @@ export const siteEnvSchema = z.object({
   // PayPal (per restaurant)
   PAYPAL_CLIENT_ID: opt(z.string().min(1)),
   PAYPAL_CLIENT_SECRET: opt(z.string().min(1)),
+  // IMPORTANT: when UNSET this defaults to PRODUCTION. Keep "true" for sandbox.
+  PAYPAL_SANDBOX_MODE: opt(z.enum(['true', 'false'])),
 
   // SumUp (per restaurant)
   SUMUP_CLIENT_ID: opt(z.string().min(1)),

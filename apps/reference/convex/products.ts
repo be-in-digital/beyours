@@ -7,13 +7,23 @@ import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (public for storefront) ===
 
+// @public-by-design: the catalogue IS the storefront. Prices and availability
+// are meant to be readable without an account.
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const list = query(defs.list);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getById = query(defs.getById);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getByCategory = query(defs.getByCategory);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getBySlug = query(defs.getBySlug);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getFeatured = query(defs.getFeatured);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getManualTrending = query(defs.getManualTrending);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getTrending = query(defs.getTrending);
+// @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getManyByIds = query(defs.getManyByIds);
 
 // === Helpers ===

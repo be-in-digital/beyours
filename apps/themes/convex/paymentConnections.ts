@@ -1,11 +1,35 @@
-import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
+import { mutation, internalMutation, internalQuery } from "./_generated/server";
 import * as defs from "@be-in-digital/convex-functions/paymentConnections";
 import { v } from "convex/values";
+import { authedQuery } from "./lib/storeFunctions";
+import { getAuthUser } from "@be-in-digital/convex-functions/auth";
+import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
+
+/**
+ * Payment connections are deployment-level, not store-level, so the store-scoped
+ * seam does not apply — authorisation is a plain permission check.
+ *
+ * These were bare public queries. The encrypted tokens are stripped by the defs
+ * layer, but the merchant id, the provider and the connection state were
+ * readable by anyone.
+ */
+async function requirePaymentsRead(ctx: Parameters<typeof getAuthUser>[0]) {
+  const user = await getAuthUser(ctx);
+  if (!hasPermission(user.role as Role, "payments:read")) {
+    throw new Error("Access denied: payments:read required");
+  }
+}
 
 // === Queries ===
 
 /** Get a single connection by provider (tokens stripped). */
-export const getByProvider = query(defs.getByProvider);
+export const getByProvider = authedQuery({
+  args: defs.getByProvider.args,
+  handler: async (ctx, args) => {
+    await requirePaymentsRead(ctx);
+    return defs.getByProvider.handler(ctx, args);
+  },
+});
 
 /** Internal: get full record WITH encrypted tokens — for payment actions only */
 export const internalGetByProvider = internalQuery({
@@ -21,7 +45,13 @@ export const internalGetByProvider = internalQuery({
 });
 
 /** Get all connections (tokens stripped). */
-export const getAll = query(defs.getAll);
+export const getAll = authedQuery({
+  args: defs.getAll.args,
+  handler: async (ctx) => {
+    await requirePaymentsRead(ctx);
+    return defs.getAll.handler(ctx);
+  },
+});
 
 // === Mutations ===
 

@@ -1,9 +1,13 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import {
+  assertSettlesOrder,
+  readPayPalCapture,
+} from "@be-in-digital/convex-functions/paymentSettlement";
 
 // ---------------------------------------------------------------------------
 // PayPal helpers
@@ -26,9 +30,14 @@ function getPayPalEnv(): PayPalEnv {
     throw new Error("PayPal credentials are not configured");
   }
 
-  // Detect sandbox mode: sandbox client IDs typically start with specific patterns
-  const isSandbox =
-    clientId.startsWith("sb-") || clientId.startsWith("A") === false;
+  // Sandbox is an explicit setting, not a guess. The previous heuristic —
+  // `clientId.startsWith("sb-") || clientId.startsWith("A") === false` — sent
+  // every live client id that did not happen to begin with "A" to the sandbox
+  // host, where payments are never actually collected.
+  //
+  // Follows the UBER_EATS_SANDBOX_MODE / DELIVEROO_IS_SANDBOX convention: unset
+  // means PRODUCTION, so a missing variable never silently voids real payments.
+  const isSandbox = site.PAYPAL_SANDBOX_MODE === "true";
   const baseUrl = isSandbox
     ? "https://api-m.sandbox.paypal.com"
     : "https://api-m.paypal.com";
@@ -172,6 +181,15 @@ export const capturePayPalOrder = action({
     const capture = (await response.json()) as {
       id: string;
       status: string;
+      purchase_units?: Array<{
+        reference_id?: string;
+        payments?: {
+          captures?: Array<{
+            id?: string;
+            amount?: { currency_code?: string; value?: string };
+          }>;
+        };
+      }>;
     };
 
     interface OrderData {
@@ -185,8 +203,24 @@ export const capturePayPalOrder = action({
     const order: OrderData | null = await ctx.runQuery(internal.orders.internalGetById, {
       id: args.orderId,
     });
+    if (!order) throw new Error("Order not found");
 
-    if (capture.status === "COMPLETED" && order) {
+    const captured = readPayPalCapture(capture);
+
+    if (capture.status === "COMPLETED") {
+      // `reference_id` was set to the order id at creation but never read back,
+      // so a completed capture for any order marked THIS one paid. Both the
+      // reference and the captured amount must match before settling.
+      assertSettlesOrder(
+        {
+          provider: "paypal",
+          reference: captured.reference,
+          amountMajor: captured.amountMajor,
+          currency: captured.currency,
+        },
+        { orderId: args.orderId, total: order.total }
+      );
+
       if (order.paymentStatus !== "paid") {
         await ctx.runMutation(internal.orders.internalUpdatePaymentStatus, {
           id: args.orderId,
@@ -200,7 +234,10 @@ export const capturePayPalOrder = action({
             amount: order.total,
             currency: "EUR",
             provider: "paypal",
-            externalId: args.paypalOrderId,
+            // The CAPTURE id, not the order id: PayPal refunds are issued
+            // against a capture. Storing the order id here would have made
+            // every refund attempt fail at the provider.
+            externalId: captured.captureId ?? args.paypalOrderId,
           });
         } catch {
           // Payment record may already exist
@@ -219,8 +256,58 @@ export const capturePayPalOrder = action({
     return {
       status: capture.status.toLowerCase(),
       orderId: args.orderId,
-      orderNumber: order?.orderNumber,
-      viewToken: order?.viewToken,
+      orderNumber: order.orderNumber,
+      viewToken: order.viewToken,
     };
+  },
+});
+
+/**
+ * Issue a refund against a PayPal capture.
+ *
+ * Internal: the orchestration, authorisation and bookkeeping live in
+ * `payments.refundPayment`. This only talks to PayPal and reports what it said.
+ */
+export const internalRefund = internalAction({
+  args: {
+    captureId: v.string(),
+    /** Amount in cents. */
+    amount: v.number(),
+    currency: v.string(),
+  },
+  handler: async (_ctx, args): Promise<{ refundId: string }> => {
+    const env = getPayPalEnv();
+    const accessToken = await getAccessToken(env);
+
+    const response = await fetch(
+      `${env.baseUrl}/v2/payments/captures/${args.captureId}/refund`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: {
+            value: (args.amount / 100).toFixed(2),
+            currency_code: args.currency,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text().catch(() => "");
+      throw new Error(`PayPal refund failed: ${error || response.status}`);
+    }
+
+    const refund = (await response.json()) as { id?: string; status?: string };
+
+    // PayPal reports COMPLETED or PENDING. Anything else is not a refund.
+    if (refund.status && !["COMPLETED", "PENDING"].includes(refund.status)) {
+      throw new Error(`PayPal refund returned status ${refund.status}`);
+    }
+
+    return { refundId: refund.id ?? args.captureId };
   },
 });

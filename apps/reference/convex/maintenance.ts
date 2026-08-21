@@ -66,6 +66,7 @@ async function requireSuperAdmin(ctx: QueryCtx | MutationCtx) {
  * contract, derived status, update entitlement, release catalog with
  * covered/locked flags, and the open migration request if any.
  */
+// @guarded-inline: account owner or super admin checked in the handler
 export const getOverview = query({
   args: { currentVersion: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -110,6 +111,7 @@ export const getOverview = query({
 })
 
 /** All migration requests (history included), newest first */
+// @guarded-inline: account owner or super admin checked in the handler
 export const listMigrationRequests = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -124,6 +126,7 @@ export const listMigrationRequests = query({
  * Request the migration of the whole site to another host/team.
  * Available at any time, highlighted once maintenance has expired.
  */
+// @guarded-inline: account owner or super admin checked in the handler
 export const requestMigration = mutation({
   args: {
     contactEmail: v.string(),
@@ -177,6 +180,7 @@ export const requestMigration = mutation({
 })
 
 /** Cancel an open migration request (client side) */
+// @guarded-inline: account owner or super admin checked in the handler
 export const cancelMigrationRequest = mutation({
   args: {
     requestId: v.id("migrationRequests"),
@@ -207,6 +211,7 @@ export const cancelMigrationRequest = mutation({
 // ─── Mutations (BeYours side) ───────────────────────────────────────────────
 
 /** Move a migration request through its fulfilment workflow */
+// @guarded-inline: account owner or super admin checked in the handler
 export const updateMigrationRequestStatus = mutation({
   args: {
     requestId: v.id("migrationRequests"),
@@ -236,6 +241,7 @@ export const updateMigrationRequestStatus = mutation({
 })
 
 /** Set / renew the maintenance contract (BeYours team) */
+// @guarded-inline: account owner or super admin checked in the handler
 export const setContract = mutation({
   args: {
     startedAt: v.number(),

@@ -348,3 +348,217 @@ describe("updateStatus", () => {
     ).rejects.toThrow(/Order not found/)
   })
 })
+
+// ============================================================================
+// create — the discount is server-side, end to end
+//
+// The pure arithmetic lives in promotionDiscount.test.ts. These tests cover the
+// wiring: that `create` reads the stored promotion and ignores the client.
+// ============================================================================
+
+import { create } from "../orders"
+
+describe("create — promotion handling", () => {
+  const NOW_ISH = Date.now()
+
+  function createPricingCtx(promotion?: Record<string, unknown>) {
+    const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
+    const patched: Array<{ id: string; updates: Record<string, unknown> }> = []
+    let counter = 0
+
+    const docs: Record<string, Record<string, unknown>> = {
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", settings: { taxRate: 10 } },
+      "products:1": {
+        _id: "products:1",
+        storeId: "stores:1",
+        name: "Pizza",
+        price: 10_000,
+        options: [],
+      },
+      // Copied, not referenced: `patch` mutates in place, and a shared literal
+      // would carry usageCount from one test into the next.
+      ...(promotion ? { "promotions:1": { ...promotion } } : {}),
+    }
+
+    const ctx = {
+      db: {
+        insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
+          const id = `${table}:${++counter}`
+          docs[id] = { _id: id, ...doc }
+          inserted.push({ table, doc })
+          return id
+        }),
+        get: vi.fn(async (id: string) => docs[id] ?? null),
+        patch: vi.fn(async (id: string, updates: Record<string, unknown>) => {
+          Object.assign(docs[id] ?? {}, updates)
+          patched.push({ id, updates })
+        }),
+        query: vi.fn(() => {
+          const chain = {
+            withIndex: () => chain,
+            order: () => chain,
+            first: async () => null,
+            take: async () => [],
+            collect: async () => [],
+          }
+          return chain
+        }),
+      },
+    }
+    return { ctx, inserted, patched }
+  }
+
+  const baseArgs = {
+    storeId: "stores:1",
+    customerInfo: { name: "Nadia", email: "nadia@example.com" },
+    items: [
+      {
+        productId: "products:1",
+        productName: "Pizza",
+        quantity: 1,
+        unitPrice: 10_000,
+        subtotal: 10_000,
+        selectedOptions: [],
+      },
+    ],
+    type: "pickup" as const,
+    paymentMethod: "card",
+  }
+
+  function orderFrom(inserted: Array<{ table: string; doc: Record<string, unknown> }>) {
+    return inserted.find((entry) => entry.table === "orders")?.doc
+  }
+
+  const validPromo = {
+    _id: "promotions:1",
+    storeId: "stores:1",
+    isActive: true,
+    startDate: NOW_ISH - 86_400_000,
+    endDate: NOW_ISH + 86_400_000,
+    discountType: "percentage",
+    discountValue: 10,
+    usageCount: 0,
+  }
+
+  it("charges subtotal + tax when no promotion is applied", async () => {
+    const { ctx, inserted } = createPricingCtx()
+    await create.handler(ctx, baseArgs as never)
+
+    const order = orderFrom(inserted)
+    // 10 000 + 10% tax = 11 000
+    expect(order?.total).toBe(11_000)
+    expect(order?.discountAmount).toBeUndefined()
+  })
+
+  it("IGNORES a forged discountAmount smuggled by the client", async () => {
+    // This is the exact exploit the audit found: `discountAmount: 99999999`
+    // used to produce a 0 € order that still sent a ticket to the kitchen.
+    const { ctx, inserted } = createPricingCtx()
+    await create.handler(
+      ctx,
+      { ...baseArgs, discountAmount: 99_999_999 } as never
+    )
+
+    const order = orderFrom(inserted)
+    expect(order?.total).toBe(11_000)
+    expect(order?.discountAmount).toBeUndefined()
+  })
+
+  it("applies the discount computed from the stored promotion", async () => {
+    const { ctx, inserted } = createPricingCtx(validPromo)
+    await create.handler(
+      ctx,
+      { ...baseArgs, promotionId: "promotions:1" } as never
+    )
+
+    const order = orderFrom(inserted)
+    // 10% of the 10 000 subtotal = 1 000 off 11 000
+    expect(order?.discountAmount).toBe(1_000)
+    expect(order?.total).toBe(10_000)
+  })
+
+  it("uses the stored promotion even when the client forges a bigger one", async () => {
+    const { ctx, inserted } = createPricingCtx(validPromo)
+    await create.handler(
+      ctx,
+      {
+        ...baseArgs,
+        promotionId: "promotions:1",
+        discountAmount: 99_999_999,
+      } as never
+    )
+
+    const order = orderFrom(inserted)
+    expect(order?.discountAmount).toBe(1_000)
+    expect(order?.total).toBe(10_000)
+  })
+
+  it("rejects a promotion belonging to another store", async () => {
+    const { ctx } = createPricingCtx({ ...validPromo, storeId: "stores:999" })
+
+    await expect(
+      create.handler(ctx, { ...baseArgs, promotionId: "promotions:1" } as never)
+    ).rejects.toThrow(/n'appartient pas à ce restaurant/)
+  })
+
+  it("rejects an expired promotion instead of burning a usage slot", async () => {
+    const { ctx, inserted } = createPricingCtx({
+      ...validPromo,
+      endDate: NOW_ISH - 1,
+    })
+
+    await expect(
+      create.handler(ctx, { ...baseArgs, promotionId: "promotions:1" } as never)
+    ).rejects.toThrow(/expiré/)
+
+    expect(inserted.find((entry) => entry.table === "orders")).toBeUndefined()
+    expect(inserted.find((entry) => entry.table === "promotionUsages")).toBeUndefined()
+  })
+
+  it("rejects a promotion that reached its global usage cap", async () => {
+    const { ctx } = createPricingCtx({
+      ...validPromo,
+      maxTotalUsage: 3,
+      usageCount: 3,
+    })
+
+    await expect(
+      create.handler(ctx, { ...baseArgs, promotionId: "promotions:1" } as never)
+    ).rejects.toThrow(/limite d'utilisation/)
+  })
+
+  it("refuses a per-customer-capped promotion on an anonymous order", async () => {
+    const { ctx } = createPricingCtx({ ...validPromo, maxUsagePerCustomer: 1 })
+
+    await expect(
+      create.handler(
+        ctx,
+        {
+          ...baseArgs,
+          customerInfo: { name: "Anonyme" }, // no email
+          promotionId: "promotions:1",
+        } as never
+      )
+    ).rejects.toThrow(/renseignez votre email/)
+  })
+
+  it("throws when the referenced promotion does not exist", async () => {
+    const { ctx } = createPricingCtx()
+
+    await expect(
+      create.handler(ctx, { ...baseArgs, promotionId: "promotions:1" } as never)
+    ).rejects.toThrow(/Promotion not found/)
+  })
+
+  it("records the usage once the order is accepted", async () => {
+    const { ctx, inserted, patched } = createPricingCtx(validPromo)
+    await create.handler(
+      ctx,
+      { ...baseArgs, promotionId: "promotions:1" } as never
+    )
+
+    expect(patched.find((p) => p.id === "promotions:1")?.updates.usageCount).toBe(1)
+    const usage = inserted.find((entry) => entry.table === "promotionUsages")
+    expect(usage?.doc.customerEmail).toBe("nadia@example.com")
+  })
+})

@@ -6,7 +6,9 @@ import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (public for storefront) ===
 
+// @public-by-design: menus are the published storefront offering.
 export const list = query(defs.list);
+// @public-by-design: menus are the published storefront offering
 export const getById = query(defs.getById);
 
 // === Mutations (with menu sync trigger) ===
@@ -28,6 +30,7 @@ async function scheduleMenuSync(ctx: MutationCtx) {
 const menuStoreId = storeIdFromDocument("Menu not found");
 
 export const create = storeMutation({
+  permission: "menus:write",
   args: defs.create.args,
   handler: async (ctx, args) => {
     const result = await defs.create.handler(ctx, args);
@@ -37,6 +40,7 @@ export const create = storeMutation({
 });
 
 export const update = storeMutation({
+  permission: "menus:write",
   args: defs.update.args,
   storeIdFrom: menuStoreId,
   handler: async (ctx, args) => {
@@ -47,6 +51,7 @@ export const update = storeMutation({
 });
 
 export const toggleStatus = storeMutation({
+  permission: "menus:write",
   args: defs.toggleStatus.args,
   storeIdFrom: menuStoreId,
   handler: async (ctx, args) => {
@@ -57,6 +62,7 @@ export const toggleStatus = storeMutation({
 });
 
 export const remove = storeMutation({
+  permission: "menus:write",
   args: defs.remove.args,
   storeIdFrom: menuStoreId,
   handler: async (ctx, args) => {

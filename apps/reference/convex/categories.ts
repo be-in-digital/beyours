@@ -5,8 +5,13 @@ import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (public for storefront) ===
 
+// @public-by-design: the storefront renders the category menu to anonymous
+// visitors. Categories carry no store-confidential data.
+// @public-by-design: storefront category menu, rendered for anonymous visitors
 export const list = query(defs.list);
+// @public-by-design: storefront category menu, rendered for anonymous visitors
 export const getById = query(defs.getById);
+// @public-by-design: storefront category menu, rendered for anonymous visitors
 export const listActiveWithCounts = query(defs.listActiveWithCounts);
 
 // === Mutations (with authorization) ===
@@ -26,6 +31,7 @@ export const update = storeMutation({
   handler: (ctx, args) => defs.update.handler(ctx, args),
 });
 
+// @guarded-inline: authorises inside the handler
 export const reorder = mutation({
   args: defs.reorder.args,
   handler: async (ctx, args) => {

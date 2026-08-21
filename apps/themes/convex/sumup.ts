@@ -1,9 +1,10 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
+import { assertSettlesOrder } from "@be-in-digital/convex-functions/paymentSettlement";
 
 // ---------------------------------------------------------------------------
 // Inline AES-256-GCM decryption (same pattern as oauthConnect.ts)
@@ -140,6 +141,7 @@ export const verifyCheckout = action({
       transaction_id?: string;
       checkout_reference?: string;
       amount?: number;
+      currency?: string;
     };
 
     interface OrderData {
@@ -153,11 +155,23 @@ export const verifyCheckout = action({
     const order: OrderData | null = await ctx.runQuery(internal.orders.internalGetById, {
       id: args.orderId,
     });
+    if (!order) throw new Error("Order not found");
 
-    if (
-      (checkout.status === "PAID" || checkout.status === "AUTHORIZED") &&
-      order
-    ) {
+    if (checkout.status === "PAID" || checkout.status === "AUTHORIZED") {
+      // The checkout id and the order id arrive as independent arguments, so
+      // nothing stops a caller pairing a cheap paid checkout with an expensive
+      // pending order. SumUp echoes back the reference we set at creation and
+      // the amount it actually took — both must match before anything settles.
+      assertSettlesOrder(
+        {
+          provider: "sumup",
+          reference: checkout.checkout_reference,
+          amountMajor: checkout.amount,
+          currency: checkout.currency,
+        },
+        { orderId: args.orderId, total: order.total }
+      );
+
       if (order.paymentStatus !== "paid") {
         await ctx.runMutation(internal.orders.internalUpdatePaymentStatus, {
           id: args.orderId,
@@ -194,8 +208,48 @@ export const verifyCheckout = action({
     return {
       status: checkout.status.toLowerCase(),
       orderId: args.orderId,
-      orderNumber: order?.orderNumber,
-      viewToken: order?.viewToken,
+      orderNumber: order.orderNumber,
+      viewToken: order.viewToken,
     };
+  },
+});
+
+/**
+ * Issue a refund against a SumUp transaction.
+ *
+ * Internal: authorisation and bookkeeping live in `payments.refundPayment`.
+ * This only talks to SumUp and reports what it said.
+ */
+export const internalRefund = internalAction({
+  args: {
+    /** The stored SumUp transaction id. */
+    externalId: v.string(),
+    /** Amount in cents. */
+    amount: v.number(),
+  },
+  handler: async (ctx, args): Promise<{ refundId: string }> => {
+    const { accessToken } = await getSumUpAccessToken(ctx);
+
+    const response = await fetch(
+      `https://api.sumup.com/v0.1/me/refund/${args.externalId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        // SumUp expects major units, like the checkout creation above.
+        body: JSON.stringify({ amount: args.amount / 100 }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text().catch(() => "");
+      throw new Error(`SumUp refund failed: ${error || response.status}`);
+    }
+
+    // SumUp answers 204 No Content on success and returns no refund id, so the
+    // transaction id is the only reconciliation handle available.
+    return { refundId: args.externalId };
   },
 });

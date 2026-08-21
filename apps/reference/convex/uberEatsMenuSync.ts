@@ -138,7 +138,7 @@ export const syncAllStores = internalAction({
   handler: async (ctx) => {
     // Query all enabled Uber Eats integrations
     const allIntegrations = await ctx.runQuery(
-      api.storeIntegrations.listByPlatformEnabled,
+      internal.storeIntegrations.internalListByPlatformEnabled,
       { platform: "uberEats" }
     ) as StoreIntegrationRecord[];
 

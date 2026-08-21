@@ -1,7 +1,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import * as defs from "@be-in-digital/convex-functions/storeIntegrations";
-import { storeQuery, authedQuery, authedMutation } from "./lib/storeFunctions";
+import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // Internal (no-auth) variant for webhook handlers, which run without a user identity.
 export const internalListByPlatformEnabled = internalQuery({
@@ -12,52 +12,54 @@ export const internalListByPlatformEnabled = internalQuery({
 // === Queries (auth-protected where applicable) ===
 
 export const listByStore = storeQuery({
+  permission: "settings:read",
   args: defs.listByStore.args,
   handler: (ctx, args) => defs.listByStore.handler(ctx, args),
 });
-export const listByPlatformEnabled = authedQuery({
-  args: defs.listByPlatformEnabled.args,
-  handler: (ctx, args) => defs.listByPlatformEnabled.handler(ctx, args),
-});
-
 export const getByStorePlatform = storeQuery({
+  permission: "settings:read",
   args: defs.getByStorePlatform.args,
   handler: (ctx, args) => defs.getByStorePlatform.handler(ctx, args),
 });
 
-export const getBySiteId = authedQuery({
-  args: defs.getBySiteId.args,
-  handler: (ctx, args) => defs.getBySiteId.handler(ctx, args),
-});
+// `listByPlatformEnabled`, `getBySiteId` and `getByBrandId` search ACROSS every
+// store — that is their whole purpose: an incoming Uber Eats or Deliveroo event
+// carries a platform id, and these resolve which restaurant it belongs to. They
+// cannot be store-scoped, and the webhooks that need them run as
+// `internalAction`s with no user identity. So they are internal only; the public
+// exports they used to have let anyone enumerate every connected restaurant.
+export const internalGetBySiteId = internalQuery(defs.getBySiteId);
+export const internalGetByBrandId = internalQuery(defs.getByBrandId);
 
-export const getByBrandId = authedQuery({
-  args: defs.getByBrandId.args,
-  handler: (ctx, args) => defs.getByBrandId.handler(ctx, args),
-});
+// === Mutations (store-scoped) ===
 
-// === Mutations (protected) ===
-
-export const upsert = authedMutation({
+export const upsert = storeMutation({
+  permission: "settings:write",
   args: defs.upsert.args,
   handler: (ctx, args) => defs.upsert.handler(ctx, args),
 });
 
-export const updateMenuSyncStatus = authedMutation({
+export const updateMenuSyncStatus = storeMutation({
+  permission: "settings:write",
   args: defs.updateMenuSyncStatus.args,
   handler: (ctx, args) => defs.updateMenuSyncStatus.handler(ctx, args),
 });
 
-export const remove = authedMutation({
+export const remove = storeMutation({
+  permission: "settings:write",
   args: defs.remove.args,
+  storeIdFrom: storeIdFromDocument("Integration not found"),
   handler: (ctx, args) => defs.remove.handler(ctx, args),
 });
 
-export const toggleAutoAccept = authedMutation({
+export const toggleAutoAccept = storeMutation({
+  permission: "settings:write",
   args: defs.toggleAutoAccept.args,
   handler: (ctx, args) => defs.toggleAutoAccept.handler(ctx, args),
 });
 
-export const updateOrderMode = authedMutation({
+export const updateOrderMode = storeMutation({
+  permission: "settings:write",
   args: defs.updateOrderMode.args,
   handler: (ctx, args) => defs.updateOrderMode.handler(ctx, args),
 });

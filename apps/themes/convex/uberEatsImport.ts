@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { generateSlug } from "@be-in-digital/convex-functions"
 import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
@@ -85,7 +85,7 @@ export const importFromStore = action({
       }) as CategoryRecord[];
 
       const existingMappings = await ctx.runQuery(
-        api.externalProductMappings.listByStorePlatform,
+        internal.externalProductMappings.internalListByStorePlatform,
         { storeId: args.storeId, platform: "uberEats" }
       ) as MappingRecord[];
 
@@ -176,7 +176,7 @@ export const importFromStore = action({
           });
 
           // Create external mapping
-          await ctx.runMutation(api.externalProductMappings.upsert, {
+          await ctx.runMutation(internal.externalProductMappings.internalUpsert, {
             storeId: args.storeId,
             platform: "uberEats",
             internalProductId: productId,

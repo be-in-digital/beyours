@@ -223,8 +223,23 @@ export const getDeliveryQuote = action({
       throw new Error(`UBER_API_ERROR (${estimateResponse.status}): ${text}`);
     }
 
-    return parseEstimateResponse(
+    const quote = parseEstimateResponse(
       (await estimateResponse.json()) as UberEstimateResponse
     );
+
+    // Persist the quote. `orders.create` reads the fee from here rather than
+    // from a client argument, so a browser cannot dictate its own delivery
+    // charge in percentage fee mode.
+    await ctx.runMutation(internal.deliveryQuotes.internalRecord, {
+      estimateId: quote.estimateId,
+      storeId: args.storeId,
+      fee: quote.fee,
+      currency: quote.currency,
+      dropoffLatitude: args.dropoffLatitude,
+      dropoffLongitude: args.dropoffLongitude,
+      expiresAt: quote.expiresAt,
+    });
+
+    return quote;
   },
 });

@@ -66,6 +66,7 @@ function isLockActive(lock: { expiresAt: number } | undefined | null): boolean {
 // ─── Queries ────────────────────────────────────────────────────────────────────
 
 /** Get system info: version snapshot, lock status, migrations, last backup */
+// @guarded-inline: system:* permission checked in the handler
 export const getSystemInfo = query({
   args: {},
   handler: async (ctx) => {
@@ -88,6 +89,7 @@ export const getSystemInfo = query({
 })
 
 /** Get paginated audit log */
+// @guarded-inline: system:* permission checked in the handler
 export const getAuditLog = query({
   args: {
     paginationOpts: v.object({
@@ -256,6 +258,7 @@ export const _addAppliedMigration = internalMutation({
 // ─── Mutations ──────────────────────────────────────────────────────────────────
 
 /** Force release system lock (owner/admin only) */
+// @guarded-inline: system:* permission checked in the handler
 export const forceReleaseLock = mutation({
   args: {},
   handler: async (ctx) => {
@@ -277,6 +280,7 @@ export const forceReleaseLock = mutation({
 })
 
 /** Sync runtime version to DB snapshot */
+// @guarded-inline: system:* permission checked in the handler
 export const syncVersion = mutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {

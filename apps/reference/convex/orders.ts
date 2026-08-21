@@ -1,16 +1,19 @@
 import { query, internalMutation, internalQuery, mutation } from "./_generated/server";
 import * as defs from "@be-in-digital/convex-functions/orders";
-import { storeQuery, storeMutation, storeIdFromDocument, authedQuery } from "./lib/storeFunctions";
+import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { v } from "convex/values";
 
 // === Queries (auth-protected) ===
 
 export const list = storeQuery({
+  permission: "orders:read",
   args: defs.list.args,
   handler: (ctx, args) => defs.list.handler(ctx, args),
 });
 
 /** Get order by ID with access control (owner via auth OR view token) */
+// @guarded-inline: returns the order only to its owner (session) or to the
+// holder of the view token; otherwise null
 export const getById = query({
   args: {
     id: v.id("orders"),
@@ -36,18 +39,25 @@ export const getById = query({
   },
 });
 
-export const getByCustomer = authedQuery({
-  args: defs.getByCustomer.args,
-  handler: (ctx, args) => defs.getByCustomer.handler(ctx, args),
-});
+// REMOVED: `getByCustomer` took an arbitrary `customerId` and returned that
+// customer's entire order history — names, phones, delivery addresses, items —
+// behind nothing but an "are you logged in" check. Any account could read any
+// other customer's orders by passing their id.
+//
+// It had no caller. `getMyOrders` below is what the account page uses, and it
+// derives the customer from the session instead of taking it as an argument.
 
 export const getByStatus = storeQuery({
+  permission: "orders:read",
   args: defs.getByStatus.args,
   handler: (ctx, args) => defs.getByStatus.handler(ctx, args),
 });
+// @public-by-design: a guest reads their own order with the view token issued
+// at checkout. The token is the authorisation.
 export const getByViewToken = query(defs.getByViewToken);
 
 /** Get orders for the currently authenticated user (backend deduces user from auth) */
+// @guarded-inline: derives the customer from the session; never takes an id
 export const getMyOrders = query({
   args: {},
   handler: async (ctx) => {
@@ -68,6 +78,7 @@ export const getMyOrders = query({
  * Storefront checkout: the order + kitchen-ticket invariant lives in the
  * defs layer (defs.createWithTicket) — this wrapper is transport only.
  */
+// @public-by-design: guest order access is guarded by the view token issued at checkout
 export const create = mutation({
   args: defs.createWithTicket.args,
   handler: (ctx, args) => defs.createWithTicket.handler(ctx, args),
@@ -77,12 +88,14 @@ const orderStoreId = storeIdFromDocument("Order not found");
 
 // Protected: Admin only — verify store access via order's storeId
 export const updateStatus = storeMutation({
+  permission: "orders:write",
   args: defs.updateStatus.args,
   storeIdFrom: orderStoreId,
   handler: (ctx, args) => defs.updateStatus.handler(ctx, args),
 });
 
 export const remove = storeMutation({
+  permission: "orders:delete",
   args: defs.remove.args,
   storeIdFrom: orderStoreId,
   handler: (ctx, args) => defs.remove.handler(ctx, args),
