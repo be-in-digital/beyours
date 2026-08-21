@@ -1550,3 +1550,79 @@ tests / 0 erreur, themes 0 erreur, `pnpm build` OK, typechecks OK.
 
 **Le bloc paiement et suivi de commande est clos : 5 défauts sur 5.**
 
+---
+
+## Les trois derniers points de la relecture (21 août)
+
+### 1. Synchro de menu morte — et j'avais aggravé le cas
+
+Le défaut signalé était réel : `syncStore` lisait l'intégration via
+`api.storeIntegrations.getByStorePlatform`, store-scopée, donc exigeant une
+session — que le balayage planifié n'a pas.
+
+**Et j'avais empilé dessus.** Au bloc précédent j'ai posé
+`checkStorePermission` sur `syncStore` sans lire le commentaire situé trois
+lignes plus bas, qui disait exactement ceci :
+
+> `Note: No auth check here — syncStore is also scheduled by syncAllStores (no user context).`
+
+Le balayage appelait `api.*.syncStore` : ma garde l'aurait tué net.
+
+Séparé en deux : `syncStore` reste l'action publique gardée et n'est plus qu'une
+coquille ; `internalSyncStore` porte le travail et n'est joignable ni depuis un
+navigateur ni sans identité. Le balayage l'appelle directement, et lit
+l'intégration par `internal.storeIntegrations.internalGetByStorePlatform`.
+
+**Un test structurel gèle l'invariant** : aucune `internalAction` ne doit
+appeler une fonction **gardée**. Il ne peut pas être comportemental — le
+planificateur n'est pas quelque chose que `convex-test` exécute — donc il est
+assuré contre la source.
+
+Sa première version interdisait tout `api.*` et a immédiatement dénoncé quatre
+cas. Trois étaient de faux positifs — `products.list`, `categories.list` et
+`stores.getById` sont publiques par conception, une synchro a le droit de lire
+le catalogue — et le quatrième était l'URL `https://api.sumup.com`. **La règle
+était trop stricte, pas le code.** Resserrée sur le vrai critère : la cible
+est-elle enveloppée dans `storeQuery` / `storeMutation` / `authed*`. Un second
+test vérifie que le détecteur reconnaît bien une fonction gardée, sans quoi
+l'assertion passerait en ne prouvant rien.
+
+**Preuve de morsure** : balayage remis sur l'action gardée → 1 test au rouge.
+
+### 2. `duplicateCatalog` gardait la source, pas la cible
+
+`storeIdFrom` pointait sur `sourceStoreId` — la moitié qu'on **lit**. Les
+produits et catégories, eux, atterrissaient dans `targetStoreId`. Un manager
+prouvait ses droits sur le restaurant lu, puis écrivait dans un restaurant qu'il
+n'administre pas.
+
+Le seam garde désormais la **cible** (`products:write`), et le handler vérifie
+la source en `products:read` — copier le catalogue d'un concurrent chez soi est
+l'abus symétrique, et il n'était pas couvert non plus.
+
+**Preuve de morsure** : seam remis sur la source → 1 test au rouge.
+
+### 3. `claimFirstAdmin` : le premier venu prenait le déploiement
+
+Le vrai risque n'était pas une course de données mais ceci : **l'inscription est
+ouverte sur la vitrine**, et la mutation n'exigeait qu'un compte authentifié.
+Sur un déploiement neuf, le premier inconnu à l'appeler devenait super
+administrateur. « Aucun appelant dans l'interface » ne protège personne : les
+noms de fonctions Convex se lisent dans le bundle client.
+
+C'est un trou que j'ai introduit au sprint 2 en créant cette fonction.
+
+Elle exige maintenant un secret que seul le déployeur détient
+(`ADMIN_BOOTSTRAP_TOKEN`), comparé en temps constant. Et elle **échoue fermée** :
+variable non définie → personne ne passe. Une variable absente qui laisserait
+entrer recréerait le trou sur exactement les déploiements que personne n'a
+encore configurés.
+
+**Preuve de morsure** : échec-fermé transformé en échec-ouvert → 2 tests au
+rouge.
+
+**Portes** : reference 153 tests (contre 143), 0 erreur, type-check OK ;
+`convex-functions` 473 ; `core` 195 ; themes 0 erreur, typecheck OK.
+
+**La liste de relecture est close.**
+
