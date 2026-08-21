@@ -1138,3 +1138,53 @@ coïncident et themes ne porte aucun `PATCH BOILERPLATE`. Il ne se justifie
 **pas** tel quel pour `app/` et `components/` : themes y possède 47 composants
 et 5 routes que reference n'a pas. Ces zones se traitent à la main, pas en bloc.
 
+### Étape 2 — alignement du miroir `convex/` (21 août)
+
+50 fichiers alignés sur `apps/reference/convex`, dont les **6 modules absents**
+(`prizeRedemptions`, `requiredActions`, `gamePlay`, `gameEmail`, `maintenance`,
+`maintenanceEmail`), plus `_generated/api.d.ts` — le codegen Convex exige un
+déploiement configuré, mais `_generated/` ne contient rien de spécifique à un
+déploiement et les cinq fichiers ne divergeaient que des 12 lignes des modules
+manquants. Vérifié fichier par fichier avant transposition.
+
+| | avant | après |
+| --- | --- | --- |
+| erreurs de lint | 259 | **0** |
+| fonctions store-scopées | 29 | 189 |
+| dont sans `permission:` | 23 | **0** |
+| annotations | 4 | 94 |
+| appels de `packages/admin` dans le vide | 8 | **0** |
+| fuites publiques (`getByUser`, `getByCustomer`, …) | 6 | **0** |
+
+`pnpm build` passe, `tsc --noEmit` passe. Reference reste à 0 erreur,
+122 tests verts ; le paquet à 448/448.
+
+**Preuve de morsure dans themes** : permission retirée de `prizes.ts` →
+`require-convex-permission` au rouge ; `storeQuery` dégradé en `query` →
+`no-unguarded-convex-function` au rouge. Fichier restauré à l'identique.
+
+#### Deux divergences délibérées, conservées
+
+Le balayage préalable des 45 diffs a évité deux dégâts qu'un copier-coller en
+bloc aurait causés :
+
+- **`auth.ts`** — reference fait confiance à `localhost:3000-3003` parce que ses
+  espaces de travail se disputent les ports. Un site client tourne sur son
+  domaine et n'a aucune raison d'accepter une origine de développement. themes
+  garde sa liste stricte ; seule l'annotation a été portée. La raison est
+  inscrite dans le fichier pour qu'une future synchro ne la « corrige » pas.
+- **`http.ts`** — le commentaire de reference affirme que les routes Next
+  `/api/webhooks/*` ont été supprimées. C'est vrai chez elle, faux dans themes,
+  qui les garde comme pierres tombales `410`. Commentaire réécrit pour dire ce
+  qui est réellement vrai là où il se trouve.
+
+Deux fichiers divergent donc encore, et c'est voulu. Tout le reste est identique.
+
+#### Ce qui reste ouvert sur themes
+
+- Le parcours jeu QR **vitrine** reste un placeholder de 28 lignes : le backend
+  est là maintenant, l'interface non (10 composants, 8 fichiers `lib/game/`, la
+  route `/game/prize/[code]`). L'admin du jeu, lui, fonctionne.
+- `app/` et `components/` ne sont pas alignés et ne doivent pas l'être en bloc :
+  themes y possède 47 composants et 5 routes que reference n'a pas.
+

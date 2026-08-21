@@ -12,16 +12,19 @@ import { storeQuery, storeMutation } from "./lib/storeFunctions";
 //    would reject Uber Eats and Deliveroo themselves.
 
 export const listByStorePlatform = storeQuery({
+  permission: "products:read",
   args: defs.listByStorePlatform.args,
   handler: (ctx, args) => defs.listByStorePlatform.handler(ctx, args),
 });
 
 export const upsert = storeMutation({
+  permission: "products:write",
   args: defs.upsert.args,
   handler: (ctx, args) => defs.upsert.handler(ctx, args),
 });
 
 export const removeAllByStorePlatform = storeMutation({
+  permission: "products:write",
   args: defs.removeAllByStorePlatform.args,
   handler: (ctx, args) => defs.removeAllByStorePlatform.handler(ctx, args),
 });

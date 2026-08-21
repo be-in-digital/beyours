@@ -27,6 +27,7 @@ import {
   prizesTable,
   gamePlaysTable,
   prizeRedemptionsTable,
+  gameReferralsTable,
   promotionsTable,
   promotionUsagesTable,
   emailSubscribersTable,
@@ -66,6 +67,9 @@ import {
   cmsMaintenanceTable,
   cmsAccountTable,
   systemAuditLogTable,
+  maintenanceContractsTable,
+  platformReleasesTable,
+  migrationRequestsTable,
 } from "@be-in-digital/convex-schema";
 
 /**
@@ -104,6 +108,7 @@ export default defineSchema({
   prizes: prizesTable,
   gamePlays: gamePlaysTable,
   prizeRedemptions: prizeRedemptionsTable,
+  gameReferrals: gameReferralsTable,
   promotions: promotionsTable,
   promotionUsages: promotionUsagesTable,
   emailSubscribers: emailSubscribersTable,
@@ -145,6 +150,10 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
+  // Maintenance & migration
+  maintenanceContracts: maintenanceContractsTable,
+  platformReleases: platformReleasesTable,
+  migrationRequests: migrationRequestsTable,
 }, {
   // Re-enabled 2026-07-04 after backfilling drifted rows (see convex/migrations.ts
   // and tasks/uber-eats-go-live-runbook.md §0). Run migrations:backfillSchemaDrift

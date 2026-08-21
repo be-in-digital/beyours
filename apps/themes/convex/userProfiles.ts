@@ -18,6 +18,7 @@ import { Role } from "@be-in-digital/core/auth/rbac";
 /**
  * Get the authenticated user's own profile.
  */
+// @guarded-inline: session-derived, or policy-checked in the handler
 export const getMyProfile = query({
   args: {},
   handler: async (ctx) => {
@@ -41,10 +42,18 @@ export const getMyProfile = query({
  * write access — passed straight through, on any store id the caller chose.
  * The whole policy now lives in `assertCanAssignProfile`.
  */
+// @guarded-inline: session-derived, or policy-checked in the handler
 export const upsert = mutation({
   args: defs.upsert.args,
   handler: async (ctx, args) => {
     const actor = await getAuthUser(ctx);
+
+    // `upsert` OVERWRITES role and storeIds, so the policy has to see who the
+    // target is today — not only the role being requested.
+    const existing = await ctx.db
+      .query("userProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
 
     assertCanAssignProfile({
       actor: {
@@ -58,6 +67,9 @@ export const upsert = mutation({
         storeIds: args.storeIds,
         permissions: args.permissions,
       },
+      existingTarget: existing
+        ? { role: existing.role as Role, storeIds: existing.storeIds }
+        : null,
     });
 
     return defs.upsert.handler(ctx, args);
@@ -72,6 +84,7 @@ export const upsert = mutation({
  * editing the database directly. The claim is self-closing: once a super admin
  * exists this always throws, so it cannot be replayed.
  */
+// @guarded-inline: session-derived, or policy-checked in the handler
 export const claimFirstAdmin = mutation({
   args: {},
   handler: async (ctx) => {
@@ -103,6 +116,7 @@ export const claimFirstAdmin = mutation({
 /**
  * Update own profile (customer-facing: phones, language, avatar)
  */
+// @guarded-inline: session-derived, or policy-checked in the handler
 export const updateMyProfile = mutation({
   args: {
     phones: defs.updateProfile.args.phones,

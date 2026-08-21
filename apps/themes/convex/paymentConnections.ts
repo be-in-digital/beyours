@@ -23,6 +23,7 @@ async function requirePaymentsRead(ctx: Parameters<typeof getAuthUser>[0]) {
 // === Queries ===
 
 /** Get a single connection by provider (tokens stripped). */
+// @guarded-inline: deployment-level, guarded by payments:read in the handler
 export const getByProvider = authedQuery({
   args: defs.getByProvider.args,
   handler: async (ctx, args) => {
@@ -45,6 +46,7 @@ export const internalGetByProvider = internalQuery({
 });
 
 /** Get all connections (tokens stripped). */
+// @guarded-inline: deployment-level, guarded by payments:read in the handler
 export const getAll = authedQuery({
   args: defs.getAll.args,
   handler: async (ctx) => {
@@ -70,11 +72,15 @@ export const upsert = internalMutation({
  * Disconnect (delete) a payment connection.
  * Requires an authenticated session.
  */
+// @guarded-inline: deployment-level, so the store seam does not apply — but
+// auth alone let any account sever the restaurant's payment provider.
 export const disconnect = mutation({
   args: defs.disconnect.args,
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const user = await getAuthUser(ctx);
+    if (!hasPermission(user.role as Role, "settings:write")) {
+      throw new Error("Access denied: settings:write required");
+    }
     return defs.disconnect.handler(ctx, args);
   },
 });

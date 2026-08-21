@@ -222,7 +222,7 @@ export const syncAllStores = internalAction({
   handler: async (ctx) => {
     // Query all enabled Deliveroo integrations
     const allIntegrations = await ctx.runQuery(
-      api.storeIntegrations.listByPlatformEnabled,
+      internal.storeIntegrations.internalListByPlatformEnabled,
       { platform: "deliveroo" }
     ) as StoreIntegrationRecord[];
 

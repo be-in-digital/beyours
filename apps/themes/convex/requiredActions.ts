@@ -1,8 +1,8 @@
-import * as defs from "@be-in-digital/convex-functions/games";
+import * as defs from "@be-in-digital/convex-functions/requiredActions";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
-// A game document carries its `winRatio`. Exposed publicly, the odds the owner
-// configured were readable by anyone holding a storeId.
+// Game configuration, not storefront data: the player's own screen reads the
+// required actions through `gamePlay.getSession`, never through this list.
 export const list = storeQuery({
   permission: "games:read",
   args: defs.list.args,
@@ -15,23 +15,16 @@ export const create = storeMutation({
   handler: (ctx, args) => defs.create.handler(ctx, args),
 });
 
-export const updateWinRatio = storeMutation({
-  permission: "games:write",
-  args: defs.updateWinRatio.args,
-  storeIdFrom: storeIdFromDocument("Game not found"),
-  handler: (ctx, args) => defs.updateWinRatio.handler(ctx, args),
-});
-
 export const update = storeMutation({
   permission: "games:write",
   args: defs.update.args,
-  storeIdFrom: storeIdFromDocument("Game not found"),
+  storeIdFrom: storeIdFromDocument("Action not found"),
   handler: (ctx, args) => defs.update.handler(ctx, args),
 });
 
 export const remove = storeMutation({
   permission: "games:write",
   args: defs.remove.args,
-  storeIdFrom: storeIdFromDocument("Game not found"),
+  storeIdFrom: storeIdFromDocument("Action not found"),
   handler: (ctx, args) => defs.remove.handler(ctx, args),
 });
