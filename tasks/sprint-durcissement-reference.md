@@ -1344,3 +1344,81 @@ frontière d'établissement, et que le serveur n'a pas été élargi au passage.
 
 Un de ces tests a d'abord échoué sur un argument manquant (`ruleOperator`) —
 mon test était incomplet, pas le code.
+
+---
+
+## Bloc paiement et suivi de commande (21 août) — 3 défauts sur 5
+
+### 1. La page de succès déclarait un paiement reçu sans rien vérifier
+
+La branche finale de `checkout/success/page.tsx` posait `state: "paid"` et
+vidait le panier. Son commentaire disait « a cash order, or a manual visit ».
+**Faux** : le comptant confirme sur `checkout/page.tsx` et n'atterrit jamais
+ici. Ce qui y atterrit, c'est un retour qui a perdu sa référence — le
+**3-D Secure SumUp** avant tout : `redirectUrl` vaut
+`…/checkout/success?orderId=…` sans `checkoutId`, et c'est ce lien que la banque
+utilise, en contournant le widget qui, lui, aurait ajouté la référence.
+
+Une carte refusée obtenait donc un écran de confirmation.
+
+La branche interroge maintenant le serveur — nouvelle requête
+`orders.getPaymentState`, qui rend le statut, l'état et le numéro de commande,
+**et rien d'autre** : ni client, ni adresse, ni montant. Payé → confirmation et
+panier vidé. Sinon → écran « paiement en attente ». Sans `orderId` → lien
+incomplet, annoncé comme tel.
+
+### 2. Recharger la page de confirmation PayPal cassait une commande payée
+
+`capturePayPalOrder` appelait PayPal **avant** de lire quoi que ce soit. Une
+capture ne se fait qu'une fois : au rechargement, PayPal renvoie
+`ORDER_ALREADY_CAPTURED`, l'action lève, et le client voit « Confirmation
+impossible » sur une commande bel et bien payée. Le garde-fou `hasRun` côté
+React ne protégeait que du re-rendu, jamais du rechargement.
+
+La commande est lue en premier ; si elle est déjà payée, l'action rend le
+résultat sans toucher au prestataire. L'idempotence appartient au serveur.
+
+Stripe et SumUp ne relisent qu'un statut — rejouables sans dommage. Vérifié.
+
+### 3. Le remboursement : pas de verrou, et une preuve écrasée
+
+`recordRefund` revalidait contre un document frais, donc la base ne pouvait pas
+dépasser le solde. Ce qu'elle ne pouvait pas faire, c'est s'exécuter **avant**
+le prestataire : deux demandes simultanées lisaient toutes deux
+`refundedAmount: 0`, passaient toutes deux `planRefund`, et envoyaient toutes
+deux l'argent. La base restait cohérente, la caisse non.
+
+Remplacé par un remboursement à deux temps — une mutation Convex étant une
+transaction, la réservation est le point de sérialisation :
+
+| Étape | Rôle |
+| --- | --- |
+| `reserveRefund` | engage le montant **avant** l'appel prestataire |
+| `confirmRefund` | attache la référence prestataire **à ce remboursement-là** |
+| `releaseRefund` | rend le montant si le prestataire refuse |
+
+Et `externalRefundId`, champ scalaire, était écrasé par chaque remboursement
+partiel : le premier perdait sa preuve et devenait irréconciliable. Un tableau
+`refunds` conserve désormais chaque opération ; le scalaire pointe toujours vers
+le dernier, pour les écrans qui le lisent.
+
+**Un bug que mes propres tests ont attrapé** : ma première version de
+`releaseRefund` reposait le statut à `completed` — que `REFUNDABLE_STATUSES`
+rejette. Libérer un remboursement échoué aurait rendu l'argent définitivement
+non remboursable, l'exact contraire du but. Corrigé en `succeeded`, et figé par
+un test dédié.
+
+**Preuve de morsure** : statut de libération remis à `completed` → 2 tests au
+rouge ; restauration → 457 verts.
+
+**Portes** : `convex-functions` 457 (contre 448), `core` 195, reference 139
+tests / 0 erreur, themes 0 erreur, typechecks OK.
+
+### Reste du bloc
+
+- `/track/[token]` inatteignable pour un invité : la page commande obtient le
+  jeton de suivi via `kitchenTickets.getByOrder`, désormais store-scopée sous
+  `kitchen:read` — un invité est refusé, donc le lien ne s'affiche jamais.
+- Devis de livraison non lié à l'adresse ni à usage unique ; mode `percentage`
+  avec adresse enregistrée = impasse silencieuse.
+

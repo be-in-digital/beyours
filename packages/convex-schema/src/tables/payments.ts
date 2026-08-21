@@ -36,7 +36,30 @@ export const paymentsTable = defineTable({
   // Proof the money actually moved. The refund used to be a database patch with
   // no provider call at all, so "refunded" meant nothing. These two fields exist
   // so a refund can be reconciled against the provider.
+  // The LAST refund's provider reference. Kept for the screens that already
+  // read it; `refunds` below is the record that does not lose history.
   externalRefundId: v.optional(v.string()),
+  // Every refund, in order. A scalar `externalRefundId` was overwritten by each
+  // partial refund, so a payment refunded twice kept only the second proof and
+  // the first became unreconcilable.
+  refunds: v.optional(
+    v.array(
+      v.object({
+        amount: v.number(),
+        reason: v.optional(v.string()),
+        externalRefundId: v.optional(v.string()),
+        method: v.union(v.literal("api"), v.literal("manual")),
+        // "reserved" is written before the provider is called, so a second
+        // concurrent refund sees the balance already committed.
+        state: v.union(
+          v.literal("reserved"),
+          v.literal("confirmed"),
+          v.literal("released")
+        ),
+        at: v.number(),
+      })
+    )
+  ),
   refundedAt: v.optional(v.number()),
   // "api" = confirmed by the provider; "manual" = settled outside the system
   // (cash refunded at the counter) and recorded here on the staff's word.
