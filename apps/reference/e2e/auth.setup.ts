@@ -9,11 +9,33 @@ import { test as setup, expect } from "@playwright/test"
  * Requires:
  *   - A running Convex backend with seeded users (npx tsx scripts/seed-users.mts)
  *   - NEXT_PUBLIC_CONVEX_URL in .env.local
+ *   - SEED_PASSWORD, the same value the seed script used
  */
 
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
+/** The account `scripts/seed-users.mts` creates with the `client_admin` role. */
+const ADMIN_EMAIL = "test.owner@beindigital.fr"
+
+/**
+ * The seeded password, which only the environment knows.
+ *
+ * This file used to carry a literal — and not even the right one, since
+ * `seed-users.mts` reads `SEED_PASSWORD`. So the setup only ever worked on a
+ * machine where the two happened to agree, and failed with "wrong credentials"
+ * everywhere else. The seed script's own comment says it: never hardcode a
+ * password, not even a throwaway.
+ */
+const ADMIN_PASSWORD = process.env.SEED_PASSWORD ?? ""
+
 setup("authenticate as admin", async ({ page }) => {
+  // Fail here, with the reason, rather than thirty seconds later on a login
+  // form that simply refused an empty password.
+  expect(
+    ADMIN_PASSWORD,
+    "SEED_PASSWORD is not set — run the seed script and export the same value"
+  ).not.toBe("")
+
   // Wait for full network idle to ensure Convex backend is connected
   await page.goto("/sign-in", {
     waitUntil: "networkidle",
@@ -36,8 +58,8 @@ setup("authenticate as admin", async ({ page }) => {
   await page.waitForLoadState("networkidle")
 
   // Fill credentials using input IDs (labels are ambiguous due to "Mot de passe oublié" link)
-  await page.locator("#email").fill("test.owner@beindigital.fr")
-  await page.locator("#password").fill("julien")
+  await page.locator("#email").fill(ADMIN_EMAIL)
+  await page.locator("#password").fill(ADMIN_PASSWORD)
 
   await page.getByRole("button", { name: /se connecter/i }).click()
 

@@ -50,10 +50,13 @@ secrets-to-redact.txt
 
 # env files (can opt-in for committing if needed)
 .env*
-# ...but example templates MUST be committed (no secrets, placeholders only)
+# ...but example templates MUST be committed (no secrets, placeholders only).
+# Match any `.env.<something>.example`, not a hand-maintained list: the e2e
+# template was written, ignored by this very rule, and would have been invisible
+# to everyone who cloned the repo.
 !.env.example
 !**/.env.example
-!**/.env.production.example
+!**/*.example
 
 # vercel
 .vercel

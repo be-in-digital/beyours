@@ -1626,3 +1626,72 @@ rouge.
 
 **La liste de relecture est close.**
 
+---
+
+## S0-1 — préparer les tests e2e (21 août)
+
+Déploiement Convex lié par l'utilisateur, `ADMIN_BOOTSTRAP_TOKEN` posé dessus.
+Le verrou local est levé : `hasRealBackend = true`, donc les projets `setup` et
+`admin` se déclarent enfin.
+
+### Correction de mon propre énoncé
+
+J'avais annoncé `CONVEX_E2E_ENABLED` comme le verrou. **Faux** : c'est une
+variable **GitHub Actions**. En local, le verrou est ailleurs, dans
+`playwright.config.ts` :
+
+```ts
+const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
+```
+
+Sans URL réelle, les projets `setup` et `admin` ne sont **pas déclarés du tout**.
+Playwright annonce alors un succès sur la poignée de tests publics exécutés : il
+n'y a aucune ligne « skipped » pour un projet qui n'existe pas. Trois façons
+d'être vert en ne testant rien — la troisième étant le `::warning::` de CI quand
+un secret manque.
+
+### Un défaut trouvé en préparant
+
+`e2e/auth.setup.ts` codait le mot de passe **en dur** (`"julien"`), alors que
+`scripts/seed-users.mts` lit `SEED_PASSWORD`. Les deux ne coïncidaient pas : la
+connexion n'aurait réussi que sur une machine où la valeur semée valait
+justement `julien`. Le script de peuplement dit pourtant lui-même « never
+hardcode passwords ».
+
+Corrigé : les deux lisent `SEED_PASSWORD`, et le setup échoue immédiatement avec
+la raison si la variable est absente, plutôt que trente secondes plus tard sur un
+formulaire ayant refusé un mot de passe vide.
+
+### Un piège de `.gitignore`
+
+`.env.e2e.example` était **ignoré** : la règle `.env*` ne comportait des
+exceptions que pour `.env.example` et `.env.production.example`. Le modèle aurait
+été invisible pour quiconque clone. L'exception couvre désormais tout
+`*.example`, et il est vérifié que `.env.local` reste bien ignoré.
+
+### Livré
+
+| Fichier | Contenu |
+| --- | --- |
+| `apps/{reference,themes}/e2e/README.md` | pourquoi la suite était inerte, la marche à suivre locale en 5 étapes, la liste des secrets CI |
+| `apps/{reference,themes}/.env.e2e.example` | les variables, **séparées** entre celles du déploiement Convex et celles du lanceur |
+| `e2e/auth.setup.ts` | mot de passe lu depuis l'environnement, échec explicite |
+| `.gitignore` | les modèles `*.example` cessent d'être ignorés |
+
+La distinction la plus utile de ces deux documents : une variable lue par une
+**fonction Convex** doit être posée sur le déploiement (`npx convex env set`) —
+un `.env.local` ne lui est jamais visible. C'est ce qui a fait échouer la
+première tentative de pose du jeton d'amorçage.
+
+### Ce qui reste à faire, et qui vous revient
+
+1. `npx convex env set BETTER_AUTH_SECRET …` et `ENCRYPTION_KEY` (64 hex) sur le
+   déploiement — seul `ADMIN_BOOTSTRAP_TOKEN` y est défini aujourd'hui.
+2. `export SEED_PASSWORD=…` puis `npx tsx scripts/seed-users.mts`.
+3. `pnpm test:e2e`, en vérifiant que l'en-tête nomme bien **trois** projets.
+
+**Et avant de croire un vert** : neutraliser une garde et vérifier que la suite
+rougit. Une suite qui n'a jamais échoué n'a jamais démontré qu'elle fonctionne —
+c'est précisément ainsi que ces 510 tests sont restés inertes pendant des mois
+en annonçant un succès.
+
