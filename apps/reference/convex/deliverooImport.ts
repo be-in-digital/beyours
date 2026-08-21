@@ -41,6 +41,7 @@ type StoreIntegrationRecord = {
  * 6. For each PulledCategory: match by name or create
  * 7. For each PulledItem: skip if already mapped, else create product + mapping
  */
+// @guarded-inline: checks products:write on the storeId it is given
 export const importFromStore = action({
   args: { storeId: v.id("stores") },
   handler: async (ctx, args) => {
@@ -49,6 +50,14 @@ export const importFromStore = action({
     if (!identity) {
       return { success: false, error: "Unauthorized", imported: 0, skipped: 0, categoriesCreated: 0 };
     }
+
+    // Being logged in was the whole check: any customer account of any
+    // restaurant reached this. The storeId is an argument, so it has to be
+    // matched against what the caller may actually do there.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: args.storeId,
+      permission: "products:write",
+    });
 
     // 2. Get store integration
     const integration = await ctx.runQuery(

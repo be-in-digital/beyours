@@ -59,6 +59,7 @@ async function getSumUpAccessToken(ctx: any): Promise<{ accessToken: string; mer
  * Create a SumUp checkout for card payment.
  * Returns checkoutId to be used with SumUp Card Widget.
  */
+// @public-by-design: a guest checking out has no account; the amount is read from the order server-side, never taken from the caller
 export const createCheckout = action({
   args: {
     orderId: v.id("orders"),
@@ -106,6 +107,7 @@ export const createCheckout = action({
  * Verify a SumUp checkout after payment.
  * Updates order and creates payment record if paid.
  */
+// @public-by-design: called from the return page by a guest; assertSettlesOrder binds the checkout to this order, currency and amount
 export const verifyCheckout = action({
   args: {
     checkoutId: v.string(),

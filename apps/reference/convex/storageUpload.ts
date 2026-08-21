@@ -65,6 +65,7 @@ function buildPublicUrl(bucketName: string, region: string, key: string) {
  *  3. Client PUTs file directly to uploadUrl
  *  4. Client stores publicUrl as the permanent accessible URL
  */
+// @guarded-inline: checks content:write by role — no store to scope against
 export const getPresignedUploadUrl = action({
   args: {
     folder: v.string(),
@@ -74,6 +75,12 @@ export const getPresignedUploadUrl = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    // Deployment-wide operation with no store to scope against. "Logged in"
+    // included every customer account, so the check is by role.
+    await ctx.runQuery(internal.authHelpers.checkPermission, {
+      permission: "content:write",
+    });
 
     // Validate folder
     const folder = args.folder as S3Folder;
@@ -128,6 +135,7 @@ export const getPresignedUploadUrl = action({
  *  4. Client PUTs file to uploadUrl
  *  5. Client calls confirmUpload({ mediaId })
  */
+// @guarded-inline: checks content:write on the store owning the media
 export const getPresignedUrlForMedia = action({
   args: {
     mediaId: v.id("cmsMedia"),
@@ -142,6 +150,14 @@ export const getPresignedUrlForMedia = action({
       { mediaId: args.mediaId },
     );
     if (!media) throw new Error("Media not found");
+
+    // The media record carries the restaurant it belongs to. Without this, any
+    // logged-in account could confirm or re-presign an upload for any store's
+    // media library.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: media.storeId,
+      permission: "content:write",
+    });
 
     // Only allow presign for processing or failed (retry) status
     if (media.status !== "processing" && media.status !== "failed") {

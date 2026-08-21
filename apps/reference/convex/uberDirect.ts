@@ -126,6 +126,9 @@ async function callEstimatesEndpoint(
  * Get a delivery quote from Uber Direct.
  * Returns the estimated fee and delivery time for a given dropoff location.
  */
+// @public-by-design: the checkout page asks for a delivery quote before the
+// guest has paid or signed in. NOTE: the quote is not yet bound to the address
+// it was priced for, nor single-use — tracked separately on the review list.
 export const getDeliveryQuote = action({
   args: {
     storeId: v.id("stores"),

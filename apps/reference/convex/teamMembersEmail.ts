@@ -164,6 +164,7 @@ function buildReminderHtml(
 /**
  * Send team invitation email via AWS SES and create the team member record.
  */
+// @guarded-inline: runs teamMembers.internalAssertCanManage, the roster policy
 export const sendInvitationEmail = action({
   args: {
     storeId: v.optional(v.id("stores")),
@@ -253,6 +254,7 @@ export const sendInvitationEmail = action({
 /**
  * Resend invitation email to a pending team member.
  */
+// @guarded-inline: runs teamMembers.internalAssertCanManageMember
 export const resendInvitationEmail = action({
   args: {
     memberId: v.id("teamMembers"),

@@ -660,6 +660,7 @@ function postProcess(
 
 // ─── Main Action ─────────────────────────────────────────────────────────────
 
+// @guarded-inline: runs authHelpers.checkStorePermission on the target store
 export const analyze = action({
   args: {
     imageUrl: v.string(),

@@ -18,6 +18,7 @@ interface OrderData {
  * Create a Stripe Checkout Session for card payment.
  * Redirects user to Stripe's hosted payment page.
  */
+// @public-by-design: a guest checking out has no account; the amount is read from the order server-side, never taken from the caller
 export const createCheckoutSession = action({
   args: {
     orderId: v.id("orders"),
@@ -79,6 +80,7 @@ export const createCheckoutSession = action({
  * Verify a Stripe Checkout Session after redirect.
  * Updates order and creates payment record if paid.
  */
+// @public-by-design: called from the return page by a guest; assertSettlesOrder binds the session to this order, currency and amount
 export const verifyCheckoutSession = action({
   args: {
     sessionId: v.string(),

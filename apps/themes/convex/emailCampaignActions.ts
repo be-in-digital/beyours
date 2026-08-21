@@ -48,6 +48,7 @@ function delay(ms: number): Promise<void> {
  *
  * NOTE: For large campaigns (5 000+), consider scheduling batches via ctx.scheduler.
  */
+// @guarded-inline: runs authHelpers.checkStorePermission on the campaign's store
 export const send = action({
   args: {
     campaignId: v.id("emailCampaigns"),
@@ -195,6 +196,7 @@ export const send = action({
  * Send a test email for preview purposes.
  * Prepends "[TEST]" to the subject line.
  */
+// @guarded-inline: runs authHelpers.checkStorePermission before sending the test
 export const sendTest = action({
   args: {
     campaignId: v.id("emailCampaigns"),

@@ -1188,3 +1188,90 @@ Deux fichiers divergent donc encore, et c'est voulu. Tout le reste est identique
 - `app/` et `components/` ne sont pas alignés et ne doivent pas l'être en bloc :
   themes y possède 47 composants et 5 routes que reference n'a pas.
 
+---
+
+## Relecture, point 1 — la règle ESLint était aveugle aux `action(…)` (21 août)
+
+`BARE_BUILDERS` couvrait `query` et `mutation`, les deux constructeurs que
+l'audit avait pris en flagrant délit, et s'arrêtait là. Une action est pourtant
+tout aussi publiquement appelable. **56 actions** passaient donc à côté du
+garde-fou dans chaque application.
+
+La règle les couvre désormais, avec un message distinct : conseiller
+`storeQuery` à une action serait absurde — elle n'a pas de `ctx.db`. Le message
+renvoie vers `ctx.runQuery(internal.…)` et `@guarded-inline`.
+
+### Triage des 56 (reference)
+
+Le classement par nom de fonction ne suffisait pas : `internalLoadForRefund`
+appelle `requireStorePermission` dans son corps, et mon premier balayage l'avait
+rangée en « aucune garde » ; à l'inverse `internalAssertCanManage` était bien
+une garde que je cherchais en minuscules. Il a fallu **résoudre chaque cible
+interne** et inspecter son corps.
+
+| Verdict | Nombre | Traitement |
+| --- | --- | --- |
+| déjà correctement gardées | 14 | annotation `@guarded-inline` |
+| publiques par nature (paiement invité, devis de livraison) | 7 | `@public-by-design` motivée |
+| « connecté » seulement | 25 | garde réelle ajoutée |
+| rien du tout | 10 | garde réelle ajoutée |
+
+### Les trous réels qui ont été fermés
+
+- **Cuisine** (`acceptTicket`, `readyTicket`, `completeTicket`, `cancelTicket`) :
+  tout compte connecté pouvait accepter, avancer, terminer ou annuler un ticket
+  dans n'importe quel restaurant. Désormais `kitchen:write` sur la boutique du
+  ticket — vérifié par test que la cuisine garde l'accès au sien.
+- **`uberEatsActions`** (10 actions) : activer une intégration, réécrire un
+  article de menu, créer une promotion, marquer une commande prête. Le helper
+  local `requireAuth` ne vérifiait que la session ; il exige maintenant
+  `settings:write` par rôle. Ces actions manipulent des UUID Uber Eats, pas des
+  ids Convex : il n'y a pas de locataire sur lequel se rabattre.
+- **Synchro de menu** (Deliveroo ×2, Uber Eats ×1) : aucune garde.
+  → `products:write` sur la boutique synchronisée.
+- **OAuth prestataire** (`oauthConnect.generateOAuthUrl`,
+  `uberEatsOAuth.*`) : brancher un encaisseur de paiement ne demandait qu'un
+  compte. → `settings:write`.
+- **S3** (`getPresignedUploadUrl`, `getPresignedUrlForMedia`) : n'importe quel
+  compte obtenait une URL d'envoi. → `content:write`, et sur le média la garde
+  s'accroche à la boutique propriétaire.
+- **Import de catalogue** (Deliveroo, Uber Eats) et **traduction** :
+  → `products:write` / `translations:write` sur le `storeId` reçu.
+
+### Un défaut réparé au passage
+
+`deliverooOrders.acceptOrder/rejectOrder/updatePrepStage` lisaient la commande
+via `api.orders.getById`, qui ne répond qu'au client propriétaire ou au porteur
+du jeton de suivi — **jamais au personnel**. Ces trois actions tombaient donc
+systématiquement sur « Order not found ». Vérifié sur `main` : préexistant, pas
+une régression du sprint. Elles lisent maintenant par le chemin interne et
+vérifient `orders:update_status` sur la boutique de la commande.
+
+### Nouvelle garde : `authHelpers.checkPermission`
+
+`checkStorePermission` ne peut rien dire d'une opération sans boutique —
+brancher Stripe, démarrer un OAuth Uber Eats, demander une URL S3. Et « est
+connecté » n'est pas une réponse : ça inclut tout client ayant commandé une
+pizza une fois. La nouvelle garde vérifie la permission **par rôle**.
+`hasPermission` échoue fermé sur une chaîne inconnue, donc une faute de frappe
+refuse au lieu d'accorder — un test le fige.
+
+### Ce que la règle ne prouve PAS
+
+Preuve de morsure en deux temps :
+
+1. Annotation retirée d'`acceptTicket` → règle au rouge. ✅
+2. `requireAuth` ramené à « connecté » en **gardant** les annotations →
+   **aucune erreur**. La règle lit la revendication, elle ne la vérifie pas.
+
+C'est une limite inhérente à une règle de lint, et la nommer vaut mieux que
+l'ignorer. Elle est comblée par **7 tests** sur les deux helpers par lesquels
+passent toutes les actions gardées : refus d'un client, refus d'un manager
+d'un autre établissement, refus de la cuisine sur un réglage global, acceptation
+du propriétaire, et refus sur permission inconnue. Garde neutralisée →
+3 tests au rouge ; restaurée → 129 verts.
+
+**Portes** : reference lint 0 erreur, type-check OK, 129 tests (contre 122).
+themes lint 0 erreur, typecheck OK, `pnpm build` OK. 29 fichiers reportés sur
+themes ; `auth.ts` et `http.ts` restent volontairement à l'écart.
+

@@ -17,7 +17,7 @@
 
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
-import { api } from "../../convex/_generated/api"
+import { api, internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 
@@ -333,3 +333,102 @@ describe("identity is never an argument", () => {
     expect(mine?.userId).toBe("user:c1")
   })
 })
+
+/**
+ * The guards the 56 actions rely on.
+ *
+ * The ESLint rule can tell you an action CLAIMS to be guarded — it reads the
+ * `@guarded-inline` comment — but it cannot tell you the claim is true. Proving
+ * that took neutralising a guard by hand and watching lint stay green. These
+ * tests close the gap for the two helpers every guarded action routes through:
+ * if either stops refusing, they go red.
+ */
+describe("action guards", () => {
+  test("checkStorePermission refuses a customer on someone else's store", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asCustomer = await seedUser(t, "user:mallory", "customer", [])
+
+    await expect(
+      asCustomer.query(internal.authHelpers.checkStorePermission, {
+        storeId,
+        permission: "kitchen:write",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("checkStorePermission refuses a manager of ANOTHER store", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Chez Luigi")
+    const theirs = await seedStore(t, "Chez Marco")
+    const asManager = await seedUser(t, "user:m1", "manager", [mine])
+
+    await expect(
+      asManager.query(internal.authHelpers.checkStorePermission, {
+        storeId: theirs,
+        permission: "kitchen:write",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("checkStorePermission lets the kitchen work its own kitchen", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asKitchen = await seedUser(t, "user:k1", "kitchen", [storeId])
+
+    await expect(
+      asKitchen.query(internal.authHelpers.checkStorePermission, {
+        storeId,
+        permission: "kitchen:write",
+      })
+    ).resolves.toBe(true)
+  })
+
+  test("checkPermission refuses a customer a deployment-wide setting", async () => {
+    const t = newHarness()
+    const asCustomer = await seedUser(t, "user:mallory", "customer", [])
+
+    await expect(
+      asCustomer.query(internal.authHelpers.checkPermission, {
+        permission: "settings:write",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("checkPermission refuses the kitchen a deployment-wide setting", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asKitchen = await seedUser(t, "user:k1", "kitchen", [storeId])
+
+    await expect(
+      asKitchen.query(internal.authHelpers.checkPermission, {
+        permission: "settings:write",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("checkPermission lets a client admin connect a payment provider", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asAdmin = await seedUser(t, "user:a1", "client_admin", [storeId])
+
+    await expect(
+      asAdmin.query(internal.authHelpers.checkPermission, {
+        permission: "settings:write",
+      })
+    ).resolves.toBe(true)
+  })
+
+  test("an unknown permission string denies rather than grants", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const asAdmin = await seedUser(t, "user:a1", "client_admin", [storeId])
+
+    await expect(
+      asAdmin.query(internal.authHelpers.checkPermission, {
+        permission: "settings:wrtie",
+      })
+    ).rejects.toThrow()
+  })
+})
+

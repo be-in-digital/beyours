@@ -48,6 +48,7 @@ function buildPublicUrl(key: string): string {
  * 4. Schedule image processing (thumb + card variants)
  * 5. Increment image usage (after S3 success)
  */
+// @guarded-inline: runs _checkImageAccess, which enforces the store quota and rights
 export const generateImage = action({
   args: {
     storeId: v.id("stores"),

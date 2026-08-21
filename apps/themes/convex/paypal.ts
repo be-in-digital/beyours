@@ -74,6 +74,7 @@ async function getAccessToken(env: PayPalEnv): Promise<string> {
 /**
  * Create a PayPal order and return the approval URL for redirect.
  */
+// @public-by-design: a guest checking out has no account; the amount is read from the order server-side, never taken from the caller
 export const createPayPalOrder = action({
   args: {
     orderId: v.id("orders"),
@@ -147,6 +148,7 @@ export const createPayPalOrder = action({
  * Capture a PayPal order after user approval.
  * Updates order and creates payment record.
  */
+// @public-by-design: called from the return page by a guest; assertSettlesOrder binds the capture to this order, currency and amount
 export const capturePayPalOrder = action({
   args: {
     paypalOrderId: v.string(),

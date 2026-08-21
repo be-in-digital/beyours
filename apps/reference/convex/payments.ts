@@ -77,6 +77,7 @@ export const internalRecordRefund = internalMutation(defs.recordRefund);
  * Nothing is written unless the money actually moved — except for cash, which
  * is handed back at the counter and recorded as a manual refund.
  */
+// @guarded-inline: internalLoadForRefund requires payments:refund on the payment's store
 export const refundPayment = action({
   args: {
     id: v.id("payments"),

@@ -19,6 +19,19 @@
 /** Wrappers that expose a function with no authorisation at all. */
 const BARE_BUILDERS = new Set(["query", "mutation"]);
 
+/**
+ * `action(…)` is just as publicly callable as `query(…)`, and was the rule's
+ * blind spot: it covered the two builders the audit had found abused and
+ * stopped there, leaving 56 actions — Uber Eats order acceptance, kitchen
+ * ticket transitions, Stripe and PayPal calls — reachable by any account.
+ *
+ * Actions get their own message because the advice differs: an action has no
+ * `ctx.db`, so it cannot use the store-scoped builders. It has to check
+ * authorisation through `ctx.runQuery(internal.…)` and say so with
+ * `@guarded-inline`.
+ */
+const ACTION_BUILDERS = new Set(["action"]);
+
 /** Wrappers that check a session but not the tenant. */
 const AUTH_ONLY_BUILDERS = new Set(["authedQuery", "authedMutation"]);
 
@@ -84,6 +97,10 @@ export const noUnguardedConvexFunction = {
       authOnly:
         "`{{name}}(…)` only checks that someone is logged in — any account of any restaurant passes. " +
         "Use `storeQuery`/`storeMutation` so the tenant is checked too.",
+      bareAction:
+        "`action(…)` is publicly callable and this one checks nothing. An action has no `ctx.db`, so " +
+        "check authorisation with `ctx.runQuery(internal.…)` and mark it `// {{guarded}}: <reason>` — " +
+        "or `// {{annotation}}: <reason>` if it is genuinely open to anyone.",
     },
   },
   create(context) {
@@ -101,6 +118,16 @@ export const noUnguardedConvexFunction = {
             node,
             messageId: "bare",
             data: { name, annotation: ANNOTATION },
+          });
+          return;
+        }
+
+        if (ACTION_BUILDERS.has(name)) {
+          if (hasPublicAnnotation(sourceCode, node)) return;
+          context.report({
+            node,
+            messageId: "bareAction",
+            data: { annotation: ANNOTATION, guarded: GUARDED_ANNOTATION },
           });
           return;
         }

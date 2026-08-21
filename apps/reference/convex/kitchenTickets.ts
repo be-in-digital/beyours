@@ -203,6 +203,7 @@ async function getDeliverooCredentials() {
 /**
  * Accept a kitchen ticket: update status + notify platform (Uber Eats / Deliveroo).
  */
+// @guarded-inline: checks kitchen:write on the ticket's own store
 export const acceptTicket = action({
   args: { id: v.id("kitchenTickets") },
   handler: async (ctx, args) => {
@@ -211,6 +212,14 @@ export const acceptTicket = action({
 
     const ticket = await ctx.runQuery(internal.kitchenTickets.internalGetById, { id: args.id });
     if (!ticket) throw new Error("Kitchen ticket not found");
+
+    // The ticket carries the restaurant; check the caller may work its kitchen.
+    // Being logged in was the only requirement before, so any customer account
+    // could accept, ready, complete or cancel tickets in any restaurant.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: ticket.storeId,
+      permission: "kitchen:write",
+    });
 
     // 1. Update ticket status to in_progress
     await ctx.runMutation(internal.kitchenTickets.internalUpdateStatus, {
@@ -266,6 +275,7 @@ export const acceptTicket = action({
  * - Deliveroo: POST /order/v2/orders/{id}/prep_stage { stage: "ready" }
  * - Uber Eats: POST /v1/eats/orders/{id}/mark_order_as_ready_for_pickup
  */
+// @guarded-inline: checks kitchen:write on the ticket's own store
 export const readyTicket = action({
   args: { id: v.id("kitchenTickets") },
   handler: async (ctx, args) => {
@@ -274,6 +284,14 @@ export const readyTicket = action({
 
     const ticket = await ctx.runQuery(internal.kitchenTickets.internalGetById, { id: args.id });
     if (!ticket) throw new Error("Kitchen ticket not found");
+
+    // The ticket carries the restaurant; check the caller may work its kitchen.
+    // Being logged in was the only requirement before, so any customer account
+    // could accept, ready, complete or cancel tickets in any restaurant.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: ticket.storeId,
+      permission: "kitchen:write",
+    });
 
     // 1. Update ticket status to ready
     await ctx.runMutation(internal.kitchenTickets.internalUpdateStatus, {
@@ -336,6 +354,7 @@ export const readyTicket = action({
  * Mark a kitchen ticket as completed (picked up by driver/customer).
  * Updates ticket + order status. Pickup is tracked by the driver's app on platforms.
  */
+// @guarded-inline: checks kitchen:write on the ticket's own store
 export const completeTicket = action({
   args: { id: v.id("kitchenTickets") },
   handler: async (ctx, args) => {
@@ -344,6 +363,14 @@ export const completeTicket = action({
 
     const ticket = await ctx.runQuery(internal.kitchenTickets.internalGetById, { id: args.id });
     if (!ticket) throw new Error("Kitchen ticket not found");
+
+    // The ticket carries the restaurant; check the caller may work its kitchen.
+    // Being logged in was the only requirement before, so any customer account
+    // could accept, ready, complete or cancel tickets in any restaurant.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: ticket.storeId,
+      permission: "kitchen:write",
+    });
 
     // 1. Mark picked up
     try {
@@ -380,6 +407,7 @@ export const completeTicket = action({
  * - Deliveroo: reject (pre-accept only). Post-accept cancel not available via API.
  * - Website: orders.internalUpdateStatus already marks payments as refunded at DB level.
  */
+// @guarded-inline: checks kitchen:write on the ticket's own store
 export const cancelTicket = action({
   args: {
     id: v.id("kitchenTickets"),
@@ -391,6 +419,14 @@ export const cancelTicket = action({
 
     const ticket = await ctx.runQuery(internal.kitchenTickets.internalGetById, { id: args.id });
     if (!ticket) throw new Error("Kitchen ticket not found");
+
+    // The ticket carries the restaurant; check the caller may work its kitchen.
+    // Being logged in was the only requirement before, so any customer account
+    // could accept, ready, complete or cancel tickets in any restaurant.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: ticket.storeId,
+      permission: "kitchen:write",
+    });
 
     const wasAccepted = ticket.status !== "pending";
     const cancelReason = args.reason ?? "Commande annulée par le restaurant";

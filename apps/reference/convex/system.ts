@@ -303,6 +303,7 @@ export const syncVersion = mutation({
  * then the entitled version is resolved against `coveredUntil`. Releases
  * published after the end of coverage are reported as locked.
  */
+// @guarded-inline: getAuthUser + hasPermission on system:*
 export const checkForUpdates = action({
   args: { currentVersion: v.string() },
   handler: async (ctx, args): Promise<UpdateCheckResult> => {
@@ -385,6 +386,7 @@ export const checkForUpdates = action({
 })
 
 /** Export a full backup as JSON */
+// @guarded-inline: getAuthUser + hasPermission on system:backup
 export const exportBackup = action({
   args: {},
   handler: async (ctx) => {
@@ -468,6 +470,7 @@ export const exportBackup = action({
 })
 
 /** Import backup — dry run mode by default */
+// @guarded-inline: getAuthUser + hasPermission on system:restore
 export const importBackup = action({
   args: {
     manifest: v.any(),
@@ -596,6 +599,7 @@ export const importBackup = action({
 })
 
 /** Run pending migrations */
+// @guarded-inline: getAuthUser + hasPermission on system:migrate
 export const runMigrations = action({
   args: {},
   handler: async (ctx) => {

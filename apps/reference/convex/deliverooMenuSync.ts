@@ -30,9 +30,17 @@ import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
  * 10. Call deliveroo.pushMenu() from integrations package
  * 11. Update menuSyncStatus to "success" or "error"
  */
+// @guarded-inline: checks products:write on the store being synced
 export const syncStore = action({
   args: { storeId: v.id("stores") },
   handler: async (ctx, args) => {
+    // Pushing a menu to a delivery platform is a write on the restaurant's
+    // catalogue. Nothing checked the caller at all before.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: args.storeId,
+      permission: "products:write",
+    });
+
     // Note: No auth check here — syncStore is also scheduled by syncAllStores (no user context).
     // Protection: syncAllStores is an internalAction, and direct calls only trigger a harmless menu push.
 
@@ -148,9 +156,17 @@ export const syncStore = action({
  * Fetch the current menu from Deliveroo to verify sync results.
  * Temporary diagnostic action — can be removed after verification.
  */
+// @guarded-inline: checks products:write on the store being synced
 export const checkMenu = action({
   args: { storeId: v.id("stores") },
   handler: async (ctx, args) => {
+    // Pushing a menu to a delivery platform is a write on the restaurant's
+    // catalogue. Nothing checked the caller at all before.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: args.storeId,
+      permission: "products:write",
+    });
+
     const integration = await ctx.runQuery(
       api.storeIntegrations.getByStorePlatform,
       { storeId: args.storeId, platform: "deliveroo" }
