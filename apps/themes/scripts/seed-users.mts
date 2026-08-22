@@ -263,6 +263,35 @@ async function main() {
     return
   }
 
+  // Step 3: the restaurant the staff will administer.
+  //
+  // Accounts alone are not a usable fixture: with an empty `stores` table every
+  // profile carries `storeIds: []`, so authentication succeeds and every admin
+  // screen still renders nothing.
+  console.log("\nStep 3: Seeding the test restaurant...\n")
+
+  try {
+    const { stdout } = await run("npx", [
+      "convex",
+      "run",
+      "seedFixture:internalSeedFixture",
+      "{}",
+    ])
+    const summary = stdout.trim().split("\n").pop() ?? ""
+    console.log(`  [OK]   ${summary}`)
+  } catch (err: unknown) {
+    const message =
+      err && typeof err === "object" && "stderr" in err
+        ? String((err as { stderr: unknown }).stderr).trim()
+        : String(err)
+    console.error(`  [ERR]  Restaurant fixture: ${message}`)
+    console.error(
+      "\n=== Seeding FAILED: accounts exist but there is no restaurant to administer ===\n"
+    )
+    process.exitCode = 1
+    return
+  }
+
   console.log("\n=== Seeding complete! ===\n")
 
   console.log("Test users summary:")

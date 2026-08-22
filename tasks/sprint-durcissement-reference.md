@@ -1805,3 +1805,57 @@ Il manque une amorce d'établissement — et probablement des catégories et des
 produits pour les écrans de catalogue. C'est le prochain obstacle, et il est
 distinct de tout ce qui précède.
 
+### L'amorce d'établissement — et ce qu'elle a mis au jour (22 août)
+
+`convex/seedFixture.ts`, mutation **interne** (inatteignable depuis un
+navigateur, appelée par `npx convex run`) et idempotente de bout en bout : un
+établissement « Chez Luigi (test) », trois catégories, cinq produits, et le
+rattachement de l'établissement à tous les profils dont le rôle travaille en
+restaurant. Les clients gardent une liste vide — c'est ce qu'est un client.
+
+Branchée en étape 3 de `seed-users.mts`, qui sort en code non nul si elle
+échoue : des comptes sans restaurant ne sont pas une amorce utilisable.
+
+**L'amorce seule n'a rien réglé** — l'échantillon `navigation` est passé de
+17 à **20 échecs**. La capture directe de `/dashboard` a donné la vraie cause :
+
+```
+PAGEERROR Could not find Convex client!
+`useQuery` must be used in the React component tree under `ConvexProvider`.
+```
+
+Le provider existe pourtant bien dans `app/providers.tsx`.
+
+#### Deux copies de Convex dans le dépôt
+
+| Paquet | Déclare | Résolvait vers |
+| --- | --- | --- |
+| `apps/{reference,themes}`, `convex-schema`, `convex-functions` | `1.31.7` | 1.31.7 |
+| `apps/site` | `^1.34.0` | 1.44.0 |
+| **`packages/admin`** | **pair `>=1.0.0`** | **1.44.0** |
+
+`packages/admin` déclarait Convex en dépendance de pair sans contrainte, et pnpm
+lui a donné la version la plus haute présente dans le dépôt — celle tirée par
+`apps/site`. Son `useQuery` venait donc de 1.44.0 pendant que l'application
+fournissait le contexte depuis 1.31.7. Deux instances, deux contextes React,
+aucun lien entre les deux : **toute l'interface d'administration plantait au
+rendu**, pour tout le monde, pas seulement en test.
+
+Corrigé en épinglant `convex@1.31.7` en devDependency de `packages/admin`. Les
+deux résolvent désormais vers la même instance. `apps/site` n'est pas touché.
+
+**Effet mesuré** sur l'échantillon `navigation` : 20 échecs / 4 succès →
+**11 échecs / 13 succès**, et l'erreur `Could not find Convex client` a disparu.
+
+#### Ce qui reste ouvert
+
+Les 11 échecs restants ne sont pas diagnostiqués. Ils échouent toujours sur
+`[data-slot="sidebar"]`, mais la cause n'est plus la même puisque la moitié des
+tests du même fichier passent désormais — compilation à la demande trop lente,
+ou écrans réellement incomplets. À reprendre.
+
+Ce que l'exécution réelle aura démontré : un typecheck, un lint et 821 tests
+unitaires verts n'empêchaient pas l'interface d'administration d'être
+entièrement cassée par une résolution de dépendance. Aucune analyse statique ne
+pouvait le voir.
+

@@ -80,6 +80,7 @@ import type * as products from "../products.js";
 import type * as promotions from "../promotions.js";
 import type * as requiredActions from "../requiredActions.js";
 import type * as seed from "../seed.js";
+import type * as seedFixture from "../seedFixture.js";
 import type * as seedKitchenOrders from "../seedKitchenOrders.js";
 import type * as storageUpload from "../storageUpload.js";
 import type * as storeIntegrations from "../storeIntegrations.js";
@@ -185,6 +186,7 @@ declare const fullApi: ApiFromModules<{
   promotions: typeof promotions;
   requiredActions: typeof requiredActions;
   seed: typeof seed;
+  seedFixture: typeof seedFixture;
   seedKitchenOrders: typeof seedKitchenOrders;
   storageUpload: typeof storageUpload;
   storeIntegrations: typeof storeIntegrations;
