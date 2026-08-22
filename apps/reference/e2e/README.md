@@ -55,6 +55,17 @@ npx convex env set SITE_URL http://localhost:3000
 `ENCRYPTION_KEY` must be exactly 64 hex characters — it is the AES-256-GCM key
 protecting the payment-provider tokens in `paymentConnections`.
 
+**2 bis. Four variables a PRODUCTION server refuses to start without.**
+
+`instrumentation.ts` validates them at boot, so `next start` dies before serving
+anything. A dev server tolerates their absence, which is why this only bites
+when running against a build. Placeholders are enough — no test reaches S3, SES
+or OpenAI today:
+
+```bash
+export AWS_REGION=eu-west-3 AWS_ACCESS_KEY_ID=placeholder AWS_SECRET_ACCESS_KEY=placeholder OPENAI_API_KEY=sk-placeholder
+```
+
 **3. Set what the RUNNER reads.** Copy `.env.e2e.example` to `.env.e2e` and fill
 it in, or export the variables. The one that matters most:
 

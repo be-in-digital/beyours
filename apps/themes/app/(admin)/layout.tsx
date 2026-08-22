@@ -38,11 +38,18 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       />
       <SidebarInset>
         <AdminHeader storeSelector={<StoreSelector />} />
-        <main className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden" data-tour="main-content">
+        {/*
+          A div, not a <main>: `SidebarInset` already renders the page's `main`
+          landmark, and nesting a second one inside it is invalid HTML — a page
+          has exactly one. Assistive technology was announcing two, and
+          Playwright's `getByRole("main")` resolved to both, which is how it
+          surfaced.
+        */}
+        <div className="flex-1 px-6 py-5 lg:px-8 min-w-0 overflow-x-hidden" data-tour="main-content">
           <div className="mx-auto max-w-[1600px]">
             <StoreGuard>{children}</StoreGuard>
           </div>
-        </main>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )

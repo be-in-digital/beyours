@@ -1932,3 +1932,74 @@ version construite sous CI (`E2E_USE_BUILD=true` pour l'obtenir en local).
 
 Ce qui restait tenait entièrement au serveur de développement.
 
+## La suite complète, sur la version construite (22 août)
+
+**Premier chiffre réel jamais obtenu sur ces 510 tests.**
+
+| | |
+| --- | --- |
+| réussis | **344** |
+| échecs | **107** |
+| ignorés | 7 |
+| non exécutés | 52 |
+| durée | 29,5 min |
+
+### Le serveur de production refusait de démarrer
+
+`instrumentation.ts` valide quatre variables au démarrage et `next start` meurt
+avant de servir la moindre requête : `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `OPENAI_API_KEY`. Le serveur de développement s'en
+accommodait, donc rien ne le révélait tant qu'on ne visait pas un build.
+
+**Je les avais documentées comme « optionnelles »** dans le modèle et le mode
+d'emploi écrits la veille. C'était faux. Les deux sont corrigés, avec la raison
+et des valeurs bouchons — aucun test n'atteint réellement S3, SES ou OpenAI.
+
+### Répartition des 107 échecs
+
+| Signature | Occurrences |
+| --- | --- |
+| `expect(locator).toBeVisible()` / élément absent | 65 + 47 |
+| `toHaveURL` | 17 |
+| clic expiré | 8 |
+| **`strict mode violation: locator('main') resolved to 2 elements`** | **7** |
+| `option 'Actif'` résolue à 2 éléments | 3 |
+
+### Un vrai défaut : deux `<main>` imbriqués
+
+`SidebarInset` (`packages/admin/src/ui/sidebar.tsx:307`) rend un `<main>`, et
+`app/(admin)/layout.tsx` en rendait un second à l'intérieur. Une page a
+exactement un repère `main` : les technologies d'assistance en annonçaient deux.
+Corrigé en `<div>` — c'est `SidebarInset` qui porte le repère.
+
+Sans la suite e2e, ce défaut serait resté invisible : ni le typecheck, ni le
+lint, ni un test unitaire ne regardent la structure du document rendu.
+
+### Des tests écrits contre une interface qui n'existe plus
+
+Preuve sans appel — des libellés **anglais** attendus dans une application
+française :
+
+| Attendu | Occurrences |
+| --- | --- |
+| `heading "Shopping Cart"` | 4 |
+| `heading "Select Store"` | 4 |
+| `heading "Checkout"` | 4 |
+| `heading "Connexion"` | 5 |
+
+Ces spécifications datent d'avant la traduction de l'interface. Elles n'ont
+jamais pu passer, et personne ne l'a su parce que la suite n'a jamais tourné.
+
+### Ce que ce chiffre vaut, et ce qu'il ne vaut pas
+
+344 tests qui passent, c'est un socle réel : la vitrine, l'authentification, la
+navigation admin, une large part des écrans de gestion répondent.
+
+Les 107 échecs ne sont **pas** 107 défauts. À vue de nez, la majorité sont des
+sélecteurs périmés. Mais je ne l'ai pas établi test par test, et je ne
+présenterai pas une estimation comme un tri. Ce qui est établi : au moins un
+défaut applicatif réel (le double `main`), et trois autres corrigés en amont
+(`StoreSelector`, la double instance Convex, le masque de la visite guidée).
+
+Les 52 non exécutés restent inexpliqués — aucun crash de worker dans le journal.
+
