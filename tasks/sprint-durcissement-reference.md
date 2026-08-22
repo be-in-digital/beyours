@@ -1759,3 +1759,49 @@ ce qui est pire que pas de message du tout.
 déclarés : le verrou local est levé pour la première fois. Le binaire Chromium
 manquait également et a été installé.
 
+### Le `setup` e2e : diagnostic par capture réseau (22 août)
+
+183 échecs `admin` sur le premier run complet, tous dérivés d'une seule cause :
+`auth.setup.ts` n'obtenait pas de session.
+
+**La connexion n'était pas en cause.** Capture réseau d'un rejeu isolé :
+
+| Requête | Réponse |
+| --- | --- |
+| `POST /api/auth/sign-in/email` | **200**, jeton émis |
+| `GET /api/auth/get-session` | **200**, session valide |
+| `GET /api/auth/convex/token` | **200**, JWT Convex émis |
+| `GET /menu?_rsc=…` | `net::ERR_ABORTED` — préchargement annulé, sans conséquence |
+
+Et après quinze secondes, l'URL était bien `http://localhost:3000/menu`.
+
+**La cause réelle est arithmétique.** Le test dispose de **60 s** au total
+(`timeout` de `playwright.config.ts`), alors que ses étapes demandent
+60 + 30 + 30 + 30 + 60 = **210 s** d'attentes. Aucune de ces limites n'est
+atteignable : le test ne peut mourir qu'au bout de 60 s. Sur un serveur
+Turbopack froid, compiler `/sign-in` prend à lui seul une vingtaine de
+secondes, et `/menu` compile ensuite à la demande.
+
+Corrigé : `setup.setTimeout(180_000)` donne à l'étape son propre budget, et
+l'attente `networkidle` posée après le clic est supprimée — Convex maintient un
+WebSocket ouvert, donc le réseau n'est jamais au repos sur cette application ;
+cette attente ne pouvait que consommer le budget avant de le céder au contrôle
+qui compte. La redirection **est** le signal.
+
+**Vérifié** : `setup` passe en 11,2 s, l'état de session est écrit.
+
+### Le blocage suivant : le peuplement ne crée aucun restaurant
+
+Échantillon `navigation` relancé avec une session valide : **17 échecs, 7
+succès**, tous les échecs identiques —
+`waiting for locator('[data-slot="sidebar"]')`.
+
+Vérification sur le déploiement : la table `stores` est **vide**, et tous les
+profils portent `storeIds: []`. `seed-users.mts` crée des comptes et rien
+d'autre. Les écrans admin n'ont aucun établissement à administrer, donc la barre
+latérale ne se monte pas.
+
+Il manque une amorce d'établissement — et probablement des catégories et des
+produits pour les écrans de catalogue. C'est le prochain obstacle, et il est
+distinct de tout ce qui précède.
+

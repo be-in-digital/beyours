@@ -28,6 +28,19 @@ const ADMIN_EMAIL = "test.owner@beindigital.fr"
  */
 const ADMIN_PASSWORD = process.env.SEED_PASSWORD ?? ""
 
+/**
+ * This step needs its own budget.
+ *
+ * The suite-wide timeout is 60 s, while the waits below asked for 60 + 30 + 30
+ * + 30 + 60 = 210 s. None of those limits was reachable: the test could only
+ * ever die at 60 s total — and it did, every time, on a cold Turbopack server
+ * where compiling `/sign-in` alone takes about twenty seconds and `/menu`
+ * compiles on demand right after. The login itself was never the problem;
+ * verified by capturing the network, where sign-in, session and the Convex
+ * token exchange all return 200 and the browser does reach `/menu`.
+ */
+setup.setTimeout(180_000)
+
 setup("authenticate as admin", async ({ page }) => {
   // Fail here, with the reason, rather than thirty seconds later on a login
   // form that simply refused an empty password.
@@ -63,11 +76,12 @@ setup("authenticate as admin", async ({ page }) => {
 
   await page.getByRole("button", { name: /se connecter/i }).click()
 
-  // Wait for auth API response before checking URL
-  await page.waitForLoadState("networkidle", { timeout: 30_000 })
-
-  // After login, the app redirects to /menu or /dashboard
-  await expect(page).toHaveURL(/\/(dashboard|menu)/, { timeout: 60_000 })
+  // Wait on the URL, not on "networkidle".
+  //
+  // Convex holds an open WebSocket, so the network is never idle on this app;
+  // that wait could only burn budget and then hand what was left to the check
+  // that actually matters. The redirect IS the signal.
+  await expect(page).toHaveURL(/\/(dashboard|menu)/, { timeout: 90_000 })
 
   await page.context().storageState({ path: ADMIN_STORAGE_STATE })
 })
