@@ -83,5 +83,24 @@ setup("authenticate as admin", async ({ page }) => {
   // that actually matters. The redirect IS the signal.
   await expect(page).toHaveURL(/\/(dashboard|menu)/, { timeout: 90_000 })
 
+  // Mark the onboarding tour as already seen, before the state is saved.
+  //
+  // On a fresh account the tour opens by itself and lays a `reactour__mask`
+  // over the page, which swallows every click — `sidebar.spec.ts` timed out
+  // trying to reach a link the mask was covering. The provider records
+  // completion under `bid-tour-<userId>`, so writing that key is the same thing
+  // a human does by closing the tour once. The tour itself deserves its own
+  // test; it must not silently break every other one.
+  const session = await page.evaluate(async () => {
+    const res = await fetch("/api/auth/get-session")
+    return (await res.json()) as { user?: { id?: string } } | null
+  })
+  const userId = session?.user?.id
+  expect(userId, "no session user id after login").toBeTruthy()
+
+  await page.evaluate((id) => {
+    localStorage.setItem(`bid-tour-${id}`, "done")
+  }, userId)
+
   await page.context().storageState({ path: ADMIN_STORAGE_STATE })
 })

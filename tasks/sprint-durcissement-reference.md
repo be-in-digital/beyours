@@ -1859,3 +1859,76 @@ unitaires verts n'empêchaient pas l'interface d'administration d'être
 entièrement cassée par une résolution de dépendance. Aucune analyse statique ne
 pouvait le voir.
 
+### Les 11 échecs restants : diagnostic (22 août)
+
+Trois causes distinctes, dont **une seule** est un défaut applicatif.
+
+#### 1. `StoreSelector` écrivait dans un store pendant son propre rendu
+
+```
+Cannot update a component (`StoreSelector`) while rendering a different
+component (`StoreSelector`).
+```
+
+`setCurrentStore` était appelé dans le corps du rendu, lignes 22-26. C'est la
+variété qui peut boucler : l'écriture modifie le store auquel ce composant est
+lui-même abonné, ce qui programme un rendu, qui réécrit. Seule la comparaison
+d'identifiant arrêtait la seconde passe.
+
+`StoreGuard`, juste à côté, fait la même sélection correctement dans un
+`useEffect`. Corrigé de la même façon — et gardé ici, car `StoreGuard` se
+court-circuite sur les routes établissements, réglages et équipe, où le
+sélecteur reste pourtant à l'écran.
+
+C'est la même classe d'erreur que j'avais commise moi-même sur
+`checkout/pay/page.tsx` plus tôt dans ce sprint.
+
+#### 2. Le masque de la visite guidée avalait les clics
+
+`<div class="reactour__mask">` interceptait les clics sur la barre latérale :
+`sidebar.spec.ts` expirait en attendant un lien que le masque recouvrait. Sur un
+compte neuf, la visite s'ouvre seule.
+
+`auth.setup.ts` écrit désormais `bid-tour-<userId> = "done"` dans le
+`localStorage` avant d'enregistrer la session — exactement ce que fait un humain
+en fermant la visite une fois. La visite mérite son propre test ; elle ne doit
+pas casser silencieusement tous les autres.
+
+#### 3. Un test écrit contre une interface qui n'existe plus
+
+`routing.spec.ts` attendait un titre « Connexion ». Le `h1` de cette page dit
+« Bon retour parmi nous », et `auth.setup.ts` — écrit par quelqu'un qui avait
+regardé la page — acceptait déjà l'un ou l'autre.
+
+#### 4. Tout le reste : la compilation à la demande
+
+Le reste n'était pas des défauts. Mesure sans ambiguïté sur `routing.spec.ts` :
+
+| Test | Serveur froid | Passe suivante |
+| --- | --- | --- |
+| redirection `/dashboard` | **échec à 18,2 s** | **succès en 4,6 s** |
+| redirection `/dashboard/products` | **échec à 18,2 s** | **succès en 4,7 s** |
+| redirection `/orders`, `/stores` | succès en 7,3 s | succès en 4,1 s |
+
+Turbopack compile chaque route au premier appel, et en développement cela coûte
+dix à vingt secondes — plus que la durée de vie accordée à la plupart de ces
+tests. Un `/dashboard` qui « refuse de rediriger un visiteur anonyme » se
+révélait rediriger en 4,6 s au run suivant. Aucune faille : la protection
+fonctionne.
+
+**Correctif structurel** : la CI construit déjà l'application avec `pnpm build`,
+mais `playwright.config.ts` relançait `pnpm dev` — donc elle recompilait page par
+page ce qu'elle venait de construire. Le serveur de test sert désormais la
+version construite sous CI (`E2E_USE_BUILD=true` pour l'obtenir en local).
+
+#### Résultat sur l'échantillon `navigation`
+
+| Étape | Échecs / Succès |
+| --- | --- |
+| avant l'alignement de Convex | 20 / 4 |
+| après l'alignement de Convex | 11 / 13 |
+| après visite guidée + titre corrigés | 1 / 23 |
+| après `StoreSelector` | **0 sur un serveur chaud** |
+
+Ce qui restait tenait entièrement au serveur de développement.
+
