@@ -295,12 +295,12 @@ function MigrationRequestForm({
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       })
       toast.success(
-        "Demande de migration envoyee. L'equipe BeYours vous recontactera."
+        "Demande de migration envoyée. L'équipe BeYours vous recontactera."
       )
       onSubmitted()
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Echec de l'envoi de la demande"
+        err instanceof Error ? err.message : "Échec de l'envoi de la demande"
       )
     } finally {
       setSubmitting(false)
@@ -346,7 +346,7 @@ function MigrationRequestForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="migration-team">Equipe repreneuse</Label>
+          <Label htmlFor="migration-team">Équipe repreneuse</Label>
           <Input
             id="migration-team"
             placeholder="Agence ou developpeur qui reprend le site"
@@ -355,7 +355,7 @@ function MigrationRequestForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="migration-team-email">Email de l'equipe</Label>
+          <Label htmlFor="migration-team-email">Email de l'équipe</Label>
           <Input
             id="migration-team-email"
             type="email"
@@ -442,7 +442,7 @@ function OpenMigrationRequestView({
       setConfirmCancelOpen(false)
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Echec de l'annulation"
+        err instanceof Error ? err.message : "Échec de l'annulation"
       )
     } finally {
       setCancelling(false)
@@ -477,7 +477,7 @@ function OpenMigrationRequestView({
         </div>
         {request.targetTeam && (
           <div>
-            <p className="text-xs text-muted-foreground">Equipe repreneuse</p>
+            <p className="text-xs text-muted-foreground">Équipe repreneuse</p>
             <p className="text-sm font-medium">
               {request.targetTeam}
               {request.targetTeamEmail && (
@@ -527,7 +527,7 @@ function OpenMigrationRequestView({
           <AlertDialogHeader>
             <AlertDialogTitle>Annuler la demande de migration ?</AlertDialogTitle>
             <AlertDialogDescription>
-              La demande en cours sera annulee. Vous pourrez en creer une
+              La demande en cours sera annulee. Vous pourrez en créer une
               nouvelle a tout moment.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -563,8 +563,8 @@ function MigrationCard({ overview }: { overview: MaintenanceOverview }) {
         </CardTitle>
         <CardDescription>
           Votre site vous appartient : vous pouvez a tout moment demander sa
-          migration complete vers le serveur et l'equipe de votre choix.
-          L'equipe BeYours prepare alors le transfert (code, donnees,
+          migration complete vers le serveur et l'équipe de votre choix.
+          L'équipe BeYours prepare alors le transfert (code, données,
           medias) avec votre repreneur.
         </CardDescription>
       </CardHeader>
@@ -589,7 +589,7 @@ function MigrationCard({ overview }: { overview: MaintenanceOverview }) {
                 <DialogHeader>
                   <DialogTitle>Demande de migration</DialogTitle>
                   <DialogDescription>
-                    Indiquez ou et vers qui migrer votre site. L'equipe
+                    Indiquez ou et vers qui migrer votre site. L'équipe
                     BeYours vous recontactera pour organiser le transfert.
                   </DialogDescription>
                 </DialogHeader>

@@ -2003,3 +2003,104 @@ défaut applicatif réel (le double `main`), et trois autres corrigés en amont
 
 Les 52 non exécutés restent inexpliqués — aucun crash de worker dans le journal.
 
+## Tri des 107 échecs et des 52 non exécutés (22 août)
+
+### Les 52 non exécutés : résolu, et c'est un levier
+
+Aucun mystère et aucun crash. Quatre fichiers déclarent
+`describe.configure({ mode: "serial" })` ; en mode série, le premier échec
+abandonne tout le reste du bloc.
+
+| Fichier | Exécutés | Abandonnés |
+| --- | --- | --- |
+| `team.spec.ts` | 1 | **17** |
+| `product-form.spec.ts` | 2 | **16** |
+| `games.spec.ts` | 3 | **11** |
+| `stores.spec.ts` | 10 | **8** |
+| | | **52** — le compte exact |
+
+**Quatre échecs empêchaient 52 tests de tourner.** C'est le meilleur rapport
+effort/effet de toute la suite.
+
+### Répartition des 107
+
+| Cause | Nombre | Nature |
+| --- | --- | --- |
+| sélecteur ambigu (barre latérale + page) | 13 | test |
+| deux `<main>` imbriqués | 8 | **défaut applicatif** |
+| barre latérale absente | 7 | à creuser |
+| titre « Connexion » disparu | 6 | test périmé |
+| libellé **anglais** attendu | 6 | test périmé |
+| accents manquants dans l'interface | 1 (+17 en cascade) | **défaut applicatif** |
+| autocomplétion Google (clé absente) | 2 | environnement |
+| URL inattendue | 17 | à creuser |
+| divers (libellés renommés, dialogues) | 47 | mixte |
+
+### Deux défauts applicatifs confirmés et corrigés
+
+**1. Deux `<main>` imbriqués** — `SidebarInset` en rend un, le layout admin en
+rendait un second dedans. Une page a exactement un repère `main`.
+
+**2. Du français sans accents dans l'interface.** Le test `team.spec.ts`
+cherchait « Gestion de l'équipe » ; l'interface affichait « Gestion de
+l'equipe ». **Le test avait raison.** Le balayage a trouvé 53 segments répartis
+sur 12 fichiers de `packages/admin` : « Gerez les membres de votre equipe,
+leurs roles et permissions », « Veuillez selectionner un etablissement »,
+« Echec de l'apercu », « Base de donnees », « Parametres », « Categorie »…
+
+C'est un défaut de qualité visible par le restaurateur, dans un produit vendu
+en France. Aucun typecheck ni lint ne le voit.
+
+### Mon script de correction a cassé deux choses
+
+Il fallait le dire. Le remplacement automatique a touché ce qu'il ne devait pas :
+
+| Dégât | Détection |
+| --- | --- |
+| classe CSS `recharts-reference-line` → `recharts-référence-line` | relecture du diff |
+| identifiant `categories.length` → `catégories.length` | **typecheck** |
+
+Les deux sont réparés, et les trois typechecks sont à zéro. La leçon tient en
+une ligne : un remplacement par expression régulière sur du code source doit
+être relu ligne à ligne, pas seulement compté. La première passe était en outre
+incomplète — elle ne voyait que le texte JSX tenant sur une seule ligne, et le
+sous-titre fautif s'étalait sur deux.
+
+### Des tests écrits contre une interface qui n'existe plus
+
+| Attendu par le test | Réalité |
+| --- | --- |
+| `heading "Shopping Cart"` | interface en français |
+| `heading "Select Store"` | idem |
+| `heading "Checkout"` | idem |
+| `heading "Connexion"` | « Bon retour parmi nous » |
+| `button "Créer un compte"` | « Créer mon compte » |
+
+Ces spécifications n'ont **jamais** pu passer. Personne ne l'a su parce que la
+suite n'a jamais tourné.
+
+### Ce qui reste
+
+Les 17 « URL inattendue », les 7 « barre latérale absente » et une partie des 47
+« divers » ne sont pas triés. Certains sont sûrement des tests périmés de plus,
+d'autres peut-être de vrais défauts. Je ne les compte dans aucune des deux piles
+tant que je ne les ai pas ouverts.
+
+### Effet mesuré sur les quatre fichiers `serial`
+
+| | Réussis | Échecs | Non exécutés |
+| --- | --- | --- | --- |
+| avant | 17 | 4 | 48 |
+| après | **22** | 4 | 43 |
+
+Chaque correctif déplace le bloqueur plus loin dans la chaîne : `games` est
+passé de la ligne 47 à 78, `product-form` de 23 à 58, `team` de 30 à 114. Le
+mode `serial` rend ce déblocage forcément itératif — on ne voit l'échec suivant
+qu'une fois le précédent levé.
+
+C'est aussi ce qui rend ces quatre fichiers coûteux : 43 tests restent
+inaccessibles derrière 4 échecs. Une piste à trancher séparément — le mode
+`serial` est-il vraiment nécessaire ici, ou est-ce un héritage ? S'il tombe, les
+43 tests s'exécutent et échouent (ou passent) chacun pour leur propre raison,
+ce qui est bien plus informatif.
+

@@ -22,9 +22,13 @@ test.describe("Product Form", () => {
 
     test("should display back button to /products", async ({ page }) => {
       // The back button/link should navigate to /products
-      const backLink = page.getByRole("link", { name: /retour|produits/i }).or(
-        page.locator('a[href="/dashboard/products"]')
-      )
+      // Scoped to the page content: the sidebar also links to
+      // /dashboard/products, so an unscoped lookup matched both it and the
+      // breadcrumb. First test of a `serial` block — sixteen others never ran.
+      const backLink = page
+        .locator('[data-tour="main-content"]')
+        .locator('a[href="/dashboard/products"]')
+        .first()
 
       await expect(backLink).toBeVisible({ timeout: 15_000 })
     })

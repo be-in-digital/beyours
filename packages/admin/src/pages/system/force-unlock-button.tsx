@@ -39,7 +39,7 @@ export function ForceUnlockButton({ info }: { info: SystemInfo }) {
       toast.success("Verrou systeme libere")
       setConfirmUnlockOpen(false)
     } catch {
-      toast.error("Echec du deverrouillage")
+      toast.error("Échec du deverrouillage")
     } finally {
       setReleasing(false)
     }

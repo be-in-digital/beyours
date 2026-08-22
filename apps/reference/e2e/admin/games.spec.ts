@@ -45,12 +45,20 @@ test.describe("Gamification", () => {
     })
 
     test("should link to the four setup surfaces", async ({ page }) => {
+      // Scoped to the page content: the sidebar links to these same four
+      // routes, so an unscoped lookup matches twice and Playwright refuses.
+      // This is the first test in a `serial` block, so its failure took
+      // eleven others with it.
+      const content = page.locator('[data-tour="main-content"]')
+
       await expect(
-        page.getByRole("link", { name: /Jeux & Lots/ })
+        content.getByRole("link", { name: /Jeux & Lots/ })
       ).toBeVisible({ timeout: 15_000 })
-      await expect(page.getByRole("link", { name: /Codes QR/ })).toBeVisible()
-      await expect(page.getByRole("link", { name: /Actions requises/ })).toBeVisible()
-      await expect(page.getByRole("link", { name: /Gagnants/ })).toBeVisible()
+      await expect(content.getByRole("link", { name: /Codes QR/ })).toBeVisible()
+      await expect(
+        content.getByRole("link", { name: /Actions requises/ })
+      ).toBeVisible()
+      await expect(content.getByRole("link", { name: /Gagnants/ })).toBeVisible()
     })
 
     test("should show latest plays section", async ({ page }) => {

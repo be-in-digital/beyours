@@ -33,7 +33,7 @@ export function ImageUploadStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Creer depuis une image</CardTitle>
+        <CardTitle className="text-lg">Créer depuis une image</CardTitle>
         <CardDescription>
           Uploadez une photo de plat ou de menu — l'IA analysera l'image pour
           pre-remplir les informations produit.

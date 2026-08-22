@@ -54,7 +54,7 @@ export function ImageToProductPage() {
 
   const handleAnalyze = async (imageUrl: string, mode: ImageToProductMode) => {
     if (!storeId) {
-      toast.error("Veuillez selectionner un etablissement")
+      toast.error("Veuillez sélectionner un établissement")
       return
     }
 
@@ -191,7 +191,7 @@ export function ImageToProductPage() {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <p className="text-sm text-muted-foreground">
-          Veuillez selectionner un etablissement
+          Veuillez sélectionner un établissement
         </p>
       </div>
     )
@@ -208,7 +208,7 @@ export function ImageToProductPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Creer depuis une image
+            Créer depuis une image
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             L'IA analyse votre image pour pre-remplir les informations produit

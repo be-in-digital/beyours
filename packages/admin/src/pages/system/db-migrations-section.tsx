@@ -39,7 +39,7 @@ export function MigrationsSection({ info }: { info: SystemInfo }) {
       const result = await runMigrations({})
       toast.success(result.message)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Echec des migrations")
+      toast.error(error instanceof Error ? error.message : "Échec des migrations")
     } finally {
       setRunning(false)
     }
@@ -53,7 +53,7 @@ export function MigrationsSection({ info }: { info: SystemInfo }) {
           Migrations
         </CardTitle>
         <CardDescription>
-          Gerez les migrations de donnees de votre application
+          Gérez les migrations de données de votre application
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

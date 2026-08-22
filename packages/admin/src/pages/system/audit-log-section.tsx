@@ -94,7 +94,7 @@ export function AuditLogSection() {
               <SelectItem value="all">Toutes les actions</SelectItem>
               <SelectItem value="backup_export">Export backup</SelectItem>
               <SelectItem value="backup_import">Import backup</SelectItem>
-              <SelectItem value="backup_import_dryrun">Import (apercu)</SelectItem>
+              <SelectItem value="backup_import_dryrun">Import (aperçu)</SelectItem>
               <SelectItem value="migration_run">Migration</SelectItem>
               <SelectItem value="version_check">Verification version</SelectItem>
               <SelectItem value="lock_force_release">Deverrouillage</SelectItem>
@@ -145,7 +145,7 @@ export function AuditLogSection() {
                             className="bg-red-500/10 text-red-500"
                           >
                             <XCircleIcon className="h-3 w-3 mr-1" />
-                            Echec
+                            Échec
                           </Badge>
                         )}
                       </TableCell>

@@ -42,7 +42,7 @@ export function CategoryMapper({
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <label className="text-xs font-medium text-muted-foreground">Categorie</label>
+        <label className="text-xs font-medium text-muted-foreground">Catégorie</label>
         <AiFieldBadge source={suggestedSource} />
         {isNewCategory && (
           <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500 text-amber-600">
@@ -53,7 +53,7 @@ export function CategoryMapper({
       </div>
       <Select value={value ?? ""} onValueChange={onChange}>
         <SelectTrigger className={`h-8 text-xs ${isNewCategory ? "border-amber-500/50" : ""}`}>
-          <SelectValue placeholder={suggestedName || "Choisir une categorie"} />
+          <SelectValue placeholder={suggestedName || "Choisir une catégorie"} />
         </SelectTrigger>
         <SelectContent>
           {categories.map((cat) => (

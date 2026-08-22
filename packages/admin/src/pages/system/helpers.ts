@@ -16,7 +16,7 @@ export function formatActionLabel(action: string): string {
   const labels: Record<string, string> = {
     backup_export: "Export backup",
     backup_import: "Import backup",
-    backup_import_dryrun: "Import (apercu)",
+    backup_import_dryrun: "Import (aperçu)",
     migration_run: "Migration",
     version_check: "Verification version",
     lock_force_release: "Deverrouillage force",
@@ -37,7 +37,7 @@ export function formatDate(ts: number): string {
 
 export const MIGRATION_SCOPE_LABELS: Record<string, string> = {
   code: "Code du site",
-  database: "Base de donnees",
+  database: "Base de données",
   assets: "Medias & fichiers (S3)",
   domain: "Nom de domaine",
   emails: "Emails & templates",
