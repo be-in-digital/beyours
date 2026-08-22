@@ -2104,3 +2104,48 @@ inaccessibles derrière 4 échecs. Une piste à trancher séparément — le mod
 43 tests s'exécutent et échouent (ou passent) chacun pour leur propre raison,
 ce qui est bien plus informatif.
 
+## Le mode `serial` n'était pas nécessaire (22 août)
+
+Vérifié avant de toucher quoi que ce soit, sur les quatre fichiers concernés :
+
+| Indice d'une vraie dépendance | Constat |
+| --- | --- |
+| `beforeAll` | **aucun** dans les quatre |
+| variables partagées au niveau `describe` | **aucune** |
+| bouton de validation cliqué (Enregistrer, Créer, Confirmer, Supprimer…) | **aucun** |
+| navigation propre à chaque test | `beforeEach` partout |
+
+Aucun test n'écrit en base. Même ceux qui s'appellent « delete » se contentent
+d'ouvrir la confirmation puis d'annuler. Il n'y a donc **rien** qu'un test
+transmette au suivant.
+
+Et l'origine : `git log -S` fait remonter `mode: "serial"` à
+`1228afac chore: câbler le monorepo BeYours` — un commit de câblage global, sans
+un mot sur l'isolation des tests. Le mode n'a pas été choisi, il a été charrié.
+
+### Effet du retrait
+
+| | Réussis | Échecs | Non exécutés |
+| --- | --- | --- | --- |
+| avec `serial` | 22 | 4 | **43** |
+| sans `serial` | **57** | 12 | **0** |
+
+**+35 tests au vert**, et les 43 qui étaient cachés s'exécutent enfin — chacun
+échouant ou passant pour sa propre raison. Douze échecs réels apparaissent, qui
+étaient jusque-là invisibles derrière quatre.
+
+C'est exactement le compromis à faire : douze diagnostics lisibles valent mieux
+que quatre diagnostics et cinquante-deux silences.
+
+### Les 12 restants
+
+| Fichier | Échecs |
+| --- | --- |
+| `product-form.spec.ts` | 5 (champs du formulaire, onglets, gestion de stock) |
+| `team.spec.ts` | 3 (filtre par statut, dialogue d'invitation) |
+| `games.spec.ts` | 2 (catalogue) |
+| `stores.spec.ts` | 2 (titre, champs du dialogue) |
+
+Non triés. Ils rejoignent les 17 « URL inattendue », les 7 « barre latérale
+absente » et une partie des 47 « divers » du bilan précédent.
+

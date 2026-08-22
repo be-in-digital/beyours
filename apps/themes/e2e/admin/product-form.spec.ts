@@ -3,7 +3,17 @@ import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 
 test.describe("Product Form", () => {
-  test.describe.configure({ mode: "serial" })
+  // Not serial.
+  //
+  // These tests share nothing: no `beforeAll`, no describe-scope variables, and
+  // not one of them submits a form — the delete tests open the confirmation and
+  // cancel it. Each re-navigates in its own `beforeEach`.
+  //
+  // Serial mode arrived in a bulk monorepo-wiring commit, unexplained, and cost
+  // far more than it gave: the first failure abandons the whole block, so four
+  // failures were hiding 52 tests across these four files. Independent tests
+  // each fail for their own reason, which is the only kind of failure worth
+  // reading.
 
   test.describe("New Product Page", () => {
     test.beforeEach(async ({ page }) => {
