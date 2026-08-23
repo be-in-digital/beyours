@@ -6,11 +6,13 @@ import { useState, useEffect } from "react"
 import { type AddressValue } from "@be-in-digital/ui"
 import { calculateDeliveryFee } from "@be-in-digital/convex-functions/deliveryFee"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
 import type { PaymentConnection } from "./settings-types"
 
 export function useSettingsForm() {
-  const { api, storeId: adminStoreId } = useAdminApiStore()
+  const api = useAdminApiStore((s) => s.api)
+  const adminStoreId = useAdminStoreId()
   const settings = useQuery(api.globalSettings.get)
   const updateSettings = useMutation(api.globalSettings.upsert)
 

@@ -16,6 +16,18 @@ interface UseNearestStoreResult {
   requestLocation: () => void
 }
 
+export interface UseNearestStoreOptions {
+  /**
+   * Ask the browser for the visitor's position as soon as the hook mounts.
+   *
+   * Off by default. It used to be unconditional, which meant every storefront
+   * page opened with a location prompt - including on single-location
+   * restaurants, where the answer cannot change which store is shown. Callers
+   * turn it on only when the distance is about to decide something.
+   */
+  autoLocate?: boolean
+}
+
 /**
  * useNearestStore
  *
@@ -24,7 +36,11 @@ interface UseNearestStoreResult {
  *
  * If geolocation is unavailable or denied, returns stores without distance info.
  */
-export function useNearestStore(stores: StoreDoc[]): UseNearestStoreResult {
+export function useNearestStore(
+  stores: StoreDoc[],
+  options?: UseNearestStoreOptions
+): UseNearestStoreResult {
+  const autoLocate = options?.autoLocate ?? false
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -66,10 +82,10 @@ export function useNearestStore(stores: StoreDoc[]): UseNearestStoreResult {
     )
   }, [])
 
-  // Auto-request location on mount
   useEffect(() => {
+    if (!autoLocate) return
     requestLocation()
-  }, [requestLocation])
+  }, [autoLocate, requestLocation])
 
   // Compute distances and sort
   const storesWithDistance: StoreWithDistance[] = useMemo(() => {

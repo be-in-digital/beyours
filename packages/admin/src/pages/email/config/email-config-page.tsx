@@ -27,6 +27,7 @@ import {
 import { LoadingState } from "../../../components/loading-state"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { ResolvingStore } from "../../../components/resolving-store"
 
 const emailConfigSchema = z.object({
   senderName: z.string().min(1, "Le nom d'expéditeur est requis").max(100),
@@ -158,21 +159,7 @@ export function EmailConfigPage() {
     }
   }
 
-  if (!storeId) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <Settings2 />
-          </EmptyMedia>
-          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>
-            Veuillez sélectionner un établissement pour configurer l&apos;email marketing
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (config === undefined) {
     return <LoadingState variant="form" />

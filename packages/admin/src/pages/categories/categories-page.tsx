@@ -31,6 +31,7 @@ import { Plus, ArrowUp, ArrowDown, Pencil, Trash2 } from "lucide-react"
 import { CategoryForm } from "./category-form"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { ResolvingStore } from "../../components/resolving-store"
 
 export function CategoriesPage() {
   const { api } = useAdminApiStore()
@@ -100,13 +101,7 @@ export function CategoriesPage() {
     }
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">Veuillez sélectionner un établissement</p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   return (
     <div className="space-y-6">

@@ -31,6 +31,7 @@ import {
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { ResolvingStore } from "../../components/resolving-store"
 
 interface Language {
   _id: string
@@ -134,19 +135,7 @@ export function LanguagesPage({ embedded = false }: LanguagesPageProps) {
     }
   }
 
-  if (!storeId) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <LanguagesIcon />
-          </EmptyMedia>
-          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les langues</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (languages === undefined) {
     return <LoadingState />

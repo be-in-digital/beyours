@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
-import { useStoreStore, type StoreDoc } from "@be-in-digital/restaurant"
+import { useAdminStoreSelection, type StoreDoc } from "@be-in-digital/restaurant"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
@@ -17,26 +17,26 @@ export function StoreSelector() {
   const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query ref is dynamic
   const stores = useQuery(api?.stores?.list ?? ("skip" as any)) as StoreDoc[] | undefined
-  const currentStore = useStoreStore((state) => state.currentStore)
-  const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
+  const storeId = useAdminStoreSelection((s) => s.storeId)
+  const setStoreId = useAdminStoreSelection((s) => s.setStoreId)
 
   // Auto-select when only one store exists.
   //
   // This used to run in the render body, which React reports as "Cannot update
-  // a component while rendering a different component" — a setState during
+  // a component while rendering a different component" - a setState during
   // render, and the kind that can loop: the write changes the store this very
   // component subscribes to, which schedules another render, which writes
   // again. It survived only because the id comparison stopped the second pass.
   //
   // `StoreGuard` performs the same selection correctly, in an effect. This is
   // the same fix, kept here because `StoreGuard` bypasses itself on the stores,
-  // settings and team routes — where the selector is still on screen.
+  // settings and team routes - where the selector is still on screen.
   const singleStore = stores?.length === 1 ? stores[0] : null
   useEffect(() => {
-    if (singleStore && currentStore?._id !== singleStore._id) {
-      setCurrentStore(singleStore)
+    if (singleStore && storeId !== singleStore._id) {
+      setStoreId(singleStore._id)
     }
-  }, [singleStore, currentStore, setCurrentStore])
+  }, [singleStore, storeId, setStoreId])
 
   if (stores === undefined) {
     return <div className="h-8 rounded-md bg-muted/40 animate-pulse" />
@@ -53,17 +53,17 @@ export function StoreSelector() {
     )
   }
 
-  const handleStoreChange = (storeId: string) => {
-    const store = stores.find((s) => s._id === storeId)
+  const handleStoreChange = (nextId: string) => {
+    const store = stores.find((s) => s._id === nextId)
     if (store) {
-      setCurrentStore(store)
+      setStoreId(store._id)
       toast.success(`Établissement : ${store.name}`)
     }
   }
 
   return (
     <Select
-      value={currentStore?._id as string}
+      value={storeId ?? undefined}
       onValueChange={handleStoreChange}
     >
       <SelectTrigger className="h-8 text-xs">

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
+import { useSelectAdminStore } from "../hooks/admin-hooks"
 import { Avatar, AvatarFallback, AvatarImage } from "@be-in-digital/ui"
 import {
   DropdownMenu,
@@ -34,9 +35,14 @@ export function SidebarUserMenu() {
   const router = useRouter()
   const user = useAdminAuthStore((s) => s.user)
   const signOut = useAdminAuthStore((s) => s.signOut)
+  const clearStore = useSelectAdminStore()
 
   const handleSignOut = async () => {
     if (signOut) await signOut()
+    // Drop the establishment with the session. It outlived the sign-out
+    // before, so the next person to use this browser was greeted by name with
+    // the previous user's restaurant until the server said otherwise.
+    clearStore(null)
     toast.success("Déconnexion réussie")
     router.push("/sign-in")
   }

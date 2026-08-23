@@ -712,11 +712,22 @@ export const packages: PackageInfo[] = [
         example: "const { items, addItem, total } = useCartStore()",
       },
       {
-        name: "useStoreStore",
+        name: "useAdminStoreSelection",
         type: "store",
-        description: "Current store Zustand store: store data, hours, status",
+        description:
+          "Id of the establishment being administered. Persisted; the document itself comes from Convex",
         importPath: "@be-in-digital/restaurant/stores",
-        tags: ["store", "zustand"],
+        tags: ["store", "zustand", "admin"],
+        example: "const storeId = useAdminStoreSelection((s) => s.storeId)",
+      },
+      {
+        name: "useStorefrontStoreSelection",
+        type: "store",
+        description:
+          "Id of the establishment the visitor is browsing. Kept apart from the admin selection",
+        importPath: "@be-in-digital/restaurant/stores",
+        tags: ["store", "zustand", "storefront"],
+        example: "const storeId = useStorefrontStoreSelection((s) => s.storeId)",
       },
       {
         name: "useUIStore",
@@ -741,16 +752,10 @@ export const packages: PackageInfo[] = [
         tags: ["hook", "cart"],
       },
       {
-        name: "useCurrentStore",
-        type: "hook",
-        description: "Get current store data and status",
-        importPath: "@be-in-digital/restaurant/hooks",
-        tags: ["hook", "store"],
-      },
-      {
         name: "useNearestStore",
         type: "hook",
-        description: "Find nearest store by geolocation",
+        description:
+          "Find nearest store by geolocation. Pass { autoLocate: true } to prompt on mount; off by default",
         importPath: "@be-in-digital/restaurant/hooks",
         tags: ["hook", "store", "geo"],
       },

@@ -3,7 +3,10 @@
 import { useQuery } from "convex/react"
 import { useSearchParams } from "next/navigation"
 import { api } from "@/convex/_generated/api"
-import { useStoreStore, useLanguageStore } from "@be-in-digital/restaurant"
+import {
+  useStorefrontStoreSelection,
+  useLanguageStore,
+} from "@be-in-digital/restaurant"
 import {
   getFieldDefinition,
 } from "@be-in-digital/cms"
@@ -43,6 +46,14 @@ export interface UseCmsPageResult {
 
 interface UseCmsPageOptions {
   mode?: "public" | "preview"
+  /**
+   * Whose content to read. Defaults to the store the visitor is browsing.
+   *
+   * The admin layout passes its own selection instead: an owner editing Lyon
+   * while a customer tab sits on Paris must see Lyon's branding, and the two
+   * zones no longer share a selection.
+   */
+  storeId?: string | null
 }
 
 const EMPTY_FIELD: CmsFieldAccessor = {
@@ -66,9 +77,10 @@ export function useCmsPage(
   const searchParams = useSearchParams()
   const isPreviewParam = searchParams.get("preview") === "true"
   const mode = options?.mode ?? (isPreviewParam ? "preview" : "public")
-  const storeId = useStoreStore(
-    (s) => s.currentStore?._id,
-  ) as Id<"stores"> | undefined
+  const storefrontStoreId = useStorefrontStoreSelection((s) => s.storeId)
+  const storeId = (options?.storeId ?? storefrontStoreId ?? undefined) as
+    | Id<"stores">
+    | undefined
   const locale = useLanguageStore((s) => s.locale)
 
   // Choose query based on mode

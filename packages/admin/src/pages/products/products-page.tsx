@@ -36,6 +36,7 @@ import {
 } from "@be-in-digital/ui"
 import { ProductsTable } from "./products-table"
 import { MenusTab } from "./menus-tab"
+import { ResolvingStore } from "../../components/resolving-store"
 
 /** Build page numbers with ellipsis for large page counts */
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -125,15 +126,7 @@ export function ProductsPage() {
     setCurrentPage(1)
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">
-          Veuillez sélectionner un établissement pour afficher les produits
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   const paginationStart = totalItems > 0 ? (safePage - 1) * ADMIN_PAGE_SIZE + 1 : 0
   const paginationEnd = Math.min(safePage * ADMIN_PAGE_SIZE, totalItems)
