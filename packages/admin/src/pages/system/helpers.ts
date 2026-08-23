@@ -47,7 +47,7 @@ export const MIGRATION_STATUS_LABELS: Record<MigrationRequestStatus, string> = {
   pending: "En attente",
   acknowledged: "Prise en compte",
   in_progress: "En cours",
-  completed: "Terminee",
+  completed: "Terminée",
   cancelled: "Annulee",
   declined: "Refusee",
 }

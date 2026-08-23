@@ -121,7 +121,7 @@ export function AuditLogSection() {
                     <TableHead>Action</TableHead>
                     <TableHead>Resultat</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Details</TableHead>
+                    <TableHead>Détails</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

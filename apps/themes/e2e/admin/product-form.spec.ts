@@ -85,7 +85,7 @@ test.describe("Product Form", () => {
 
       // Price field
       await expect(
-        page.getByLabel("Prix (EUR)")
+        page.getByLabel(/Prix \(€\)/)  // le formulaire affiche « Prix (€) », jamais « Prix (EUR) »
       ).toBeVisible()
     })
 
@@ -193,15 +193,11 @@ test.describe("Product Form", () => {
 
       // Scheduling fields for availability dates
       await expect(
-        page
-          .getByText("Disponible à partir de")
-          .or(page.getByLabel("Disponible à partir de"))
+        page.getByText("Disponible à partir de").first()
       ).toBeVisible({ timeout: 15_000 })
 
       await expect(
-        page
-          .getByText("Disponible jusqu'à")
-          .or(page.getByLabel("Disponible jusqu'à"))
+        page.getByText("Disponible jusqu'à").first()
       ).toBeVisible()
     })
   })
@@ -318,14 +314,20 @@ test.describe("Product Form", () => {
     }) => {
       // Find and enable the stock tracking toggle
       const stockToggle = page
-        .getByRole("switch", { name: /stock/i })
-        .or(page.getByRole("switch").first())
+        // The input is `sr-only` — visually hidden by design, the visible
+        // toggle being drawn by the wrapping label. Playwright never reports an
+        // sr-only element as visible, so asserting on the control could not
+        // work whatever its ARIA role. Target what the user sees and clicks,
+        // exactly as the sibling test at :168 already does.
+        .getByText("Suivre le stock de ce produit")
 
       await expect(stockToggle).toBeVisible({ timeout: 15_000 })
 
-      // Enable stock tracking if not already enabled
-      const isChecked = await stockToggle.getAttribute("aria-checked")
-      if (isChecked !== "true") {
+      // State read from the input, not the label: `getAttribute` on a label
+      // always returns null, so this branch was decorative — it clicked every
+      // time and merely happened to be right.
+      const stockInput = page.locator("#stock-tracked")
+      if (!(await stockInput.isChecked())) {
         await stockToggle.click()
       }
 
@@ -348,14 +350,19 @@ test.describe("Product Form", () => {
     }) => {
       // Find the stock tracking toggle
       const stockToggle = page
-        .getByRole("switch", { name: /stock/i })
-        .or(page.getByRole("switch").first())
+        // The input is `sr-only` — visually hidden by design, the visible
+        // toggle being drawn by the wrapping label. Playwright never reports an
+        // sr-only element as visible, so asserting on the control could not
+        // work whatever its ARIA role. Target what the user sees and clicks,
+        // exactly as the sibling test at :168 already does.
+        .getByText("Suivre le stock de ce produit")
 
       await expect(stockToggle).toBeVisible({ timeout: 15_000 })
 
-      // Enable tracking first to ensure fields appear
-      const isChecked = await stockToggle.getAttribute("aria-checked")
-      if (isChecked !== "true") {
+      // Enable tracking first so the fields appear. State read from the input,
+      // not the label — see the sibling test above.
+      const stockInput = page.locator("#stock-tracked")
+      if (!(await stockInput.isChecked())) {
         await stockToggle.click()
         await page.waitForTimeout(500)
       }

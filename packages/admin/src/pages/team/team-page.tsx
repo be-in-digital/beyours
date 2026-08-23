@@ -84,9 +84,9 @@ const PERMISSION_MODULES = [
   { id: "orders", label: "Commandes" },
   { id: "products", label: "Produits / Menu" },
   { id: "kitchen", label: "Cuisine (KDS)" },
-  { id: "team", label: "Equipe" },
-  { id: "settings", label: "Parametres" },
-  { id: "integrations", label: "Integrations" },
+  { id: "team", label: "Équipe" },
+  { id: "settings", label: "Paramètres" },
+  { id: "integrations", label: "Intégrations" },
   { id: "marketing", label: "Jeux / Marketing" },
 ] as const
 
@@ -282,7 +282,7 @@ export function TeamPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Membre</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Rôle</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="hidden md:table-cell">Perimetre</TableHead>
                 <TableHead className="hidden md:table-cell">Date d'ajout</TableHead>
@@ -573,7 +573,7 @@ function InviteDialog({
 
           {/* Role */}
           <div className="space-y-2">
-            <Label htmlFor="invite-role">Role</Label>
+            <Label htmlFor="invite-role">Rôle</Label>
             <Select value={role} onValueChange={(v) => handleRoleChange(v as Role)}>
               <SelectTrigger id="invite-role">
                 <SelectValue />
@@ -722,7 +722,7 @@ function EditDialog({
         <div className="space-y-4">
           {/* Role */}
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>Rôle</Label>
             <Select value={role} onValueChange={(v) => handleRoleChange(v as Role)}>
               <SelectTrigger>
                 <SelectValue />

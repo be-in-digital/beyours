@@ -2149,3 +2149,59 @@ que quatre diagnostics et cinquante-deux silences.
 Non triés. Ils rejoignent les 17 « URL inattendue », les 7 « barre latérale
 absente » et une partie des 47 « divers » du bilan précédent.
 
+## Tri des échecs des quatre fichiers admin (22 août)
+
+Point de départ : 22 réussis, 4 échecs, 43 non exécutés. **Arrivée : 64 réussis,
+5 échecs, 0 non exécuté.**
+
+### Défauts applicatifs trouvés et corrigés
+
+| Défaut | Effet |
+| --- | --- |
+| libellés d'un mot sans accent (`"Equipe"`, `"Parametres"`, `"Integrations"`, `>Role<`, `>Details<`) | 3 tests |
+| `Switch` annoncé comme case à cocher | accessibilité |
+
+La première passe d'accents avait manqué ces libellés : mon expression exigeait
+une espace dans la chaîne pour ne viser que de la prose, ce qui excluait tout
+libellé d'un seul mot. Corrigé.
+
+Le `Switch` de `packages/ui` est un `<input type="checkbox">` masqué. Il portait
+donc le rôle implicite `checkbox` alors qu'il *paraît* et *fonctionne* comme un
+interrupteur. `role="switch"` est un rôle valide pour cet input et décrit ce que
+l'utilisateur voit.
+
+**Mais ce correctif n'a pas fait passer le test**, et il faut le dire : l'input
+est `sr-only`, donc Playwright ne le considérera jamais comme visible, quel que
+soit son rôle. Le test devait viser ce que l'utilisateur voit et clique — le
+libellé — comme le faisait déjà son voisin à la ligne 168.
+
+### Défauts de test corrigés
+
+| Test | Cause |
+| --- | --- |
+| `selectFilter` (helper partagé) | Radix rend chaque option deux fois — la stylée et une native cachée. Cadré sur le `listbox` ouvert. |
+| `Prix (EUR)` | le formulaire affiche `Prix (€)`, cette orthographe n'a jamais existé |
+| `Disponible à partir de` / `jusqu'à` | `.or()` de `getByText` et `getByLabel` sur le **même** libellé : deux correspondances |
+| état du commutateur de stock | `getAttribute("aria-checked")` sur un libellé rend toujours `null` — la branche était décorative, elle cliquait à chaque fois et tombait juste par hasard |
+
+### Deux erreurs de ma part, à noter
+
+1. J'ai corrigé « Disponible à partir de » et **laissé la ligne suivante**, qui
+   répétait le même motif avec « Disponible jusqu'à ». Vu à l'exécution suivante.
+2. J'ai présenté `role="switch"` comme le correctif du test alors qu'il ne l'est
+   pas. C'est un gain d'accessibilité réel, rien de plus.
+
+### Les 5 qui restent — non diagnostiqués
+
+| Test | Ce qu'il attend | Constat |
+| --- | --- | --- |
+| `games:88` | `getByText('Jeux', exact)` | le `h2` « Jeux » existe |
+| `games:96` | un `%` dans le dialogue | non vérifié |
+| `product-form:109` | un message de validation | non vérifié |
+| `product-form:312` | « Seuil de stock faible » | **la chaîne existe** (ligne 725), donc l'activation du suivi n'a pas pris |
+| `stores:168` | libellé `/Adresse/` dans le dialogue | **la chaîne existe** (ligne 337) ; la page a deux `DialogContent`, le test en ouvre peut-être un et cherche dans l'autre |
+
+Ces cinq n'échouent pas sur un libellé périmé : le texte attendu est bien dans le
+code. Ils échouent sur l'accès au contenu. Je les laisse non triés plutôt que
+d'avancer une hypothèse comme un résultat.
+
