@@ -2298,3 +2298,49 @@ tri.
 `/dashboard` et ne le trouve pas. Non diagnostiqué ; l'hypothèse la plus simple
 est un tableau de bord vide faute de commandes, mais je ne l'ai pas vérifiée.
 
+## Les deux débordements mobiles — corrigés (22 août)
+
+### Le coupable, trouvé par mesure
+
+Un test de diagnostic listant les éléments dont le bord droit dépasse le
+viewport a donné la même réponse sur les deux pages :
+
+| Page | `scrollWidth` | Élément fautif |
+| --- | --- | --- |
+| `/dashboard` | 382 (vp 375) | groupe droit de l'en-tête, largeur 219 |
+| `/dashboard/orders` | 388 (vp 375) | le même |
+
+L'en-tête admin est un `justify-between` entre deux groupes, et **aucun des deux
+ne pouvait rétrécir** : le groupe de droite portait `shrink-0`, celui de gauche
+n'avait pas `min-w-0` — un enfant flex refuse de descendre sous la largeur de son
+contenu tant qu'on ne le lui autorise pas explicitement.
+
+### Le correctif
+
+- groupe de gauche : `min-w-0`, fil d'Ariane en `truncate` et `flex-nowrap` ;
+- groupe de droite : `shrink-0` conservé (ces contrôles doivent rester
+  utilisables), mais le nom d'établissement plafonné à `7.5rem` sous `sm`.
+
+**Vérifié** : `scrollWidth` passe à 375 = viewport sur les deux pages. La bande
+d'onglets de `/dashboard/orders`, large de 790 px, reste large — mais elle est
+clippée par son conteneur et ne fait plus glisser la page, ce qui est le
+comportement attendu d'une barre d'onglets défilante.
+
+**Fichier `admin-responsive.spec.ts` : 2 réussis / 12 échecs → 13 / 1.**
+
+### Une incohérence du design system corrigée au passage
+
+`packages/ui`'s `Card` rendait un `<div>` nu, sans `data-slot="card"`, alors que
+toutes les autres primitives du système en portent un (`button`, `breadcrumb`,
+`sidebar`, `dialog`…). Aligné.
+
+**Ce correctif n'a pas fait passer le test qui le cherchait**, et il faut le
+dire : l'attribut est bien dans le build (vérifié), mais `/dashboard` n'affiche
+aucune carte — il rend « Veuillez sélectionner un restaurant ». Le `storeId`
+n'est pas résolu au moment du test. C'est un problème distinct, non résolu.
+
+### Reste sur ce fichier
+
+`admin-responsive.spec.ts:156` — le tableau de bord sans établissement
+sélectionné. À reprendre avec les autres cas de résolution d'établissement.
+

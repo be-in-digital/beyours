@@ -66,11 +66,19 @@ export function AdminHeader({ storeSelector }: AdminHeaderProps) {
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b px-4">
-      <div className="flex items-center gap-2">
+      {/*
+        `min-w-0` so this half can actually give way.
+
+        The header is `justify-between` between two groups, and neither could
+        shrink: at 375 px their sum came to 382 px and the whole admin scrolled
+        sideways under the thumb. A flex child refuses to shrink below its
+        content unless `min-width: 0` says otherwise.
+      */}
+      <div className="flex min-w-0 items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
+        <Breadcrumb className="min-w-0">
+          <BreadcrumbList className="flex-nowrap">
             {parentLabel && parentHref ? (
               <>
                 <BreadcrumbItem>
@@ -89,7 +97,7 @@ export function AdminHeader({ storeSelector }: AdminHeaderProps) {
               </>
             ) : (
               <BreadcrumbItem>
-                <BreadcrumbPage className="text-sm font-medium">
+                <BreadcrumbPage className="truncate text-sm font-medium">
                   {currentLabel}
                 </BreadcrumbPage>
               </BreadcrumbItem>
@@ -98,9 +106,11 @@ export function AdminHeader({ storeSelector }: AdminHeaderProps) {
         </Breadcrumb>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {storeSelector && (
-          <div className="shrink-0">{storeSelector}</div>
+          // Capped on a phone: a long restaurant name is what pushed the group
+          // past the viewport. Unbounded again from `sm` upwards.
+          <div className="min-w-0 max-w-[7.5rem] sm:max-w-none">{storeSelector}</div>
         )}
 
         {/* Language switcher */}

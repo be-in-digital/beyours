@@ -7,6 +7,11 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
+    // Every other primitive in this design system carries its `data-slot`
+    // (button, breadcrumb, sidebar, dialog…). Card did not, so styling hooks
+    // and tests that address the system by slot could not see it — the
+    // dashboard's stat cards were invisible to `[data-slot="card"]`.
+    data-slot="card"
     className={cn(
       "rounded-lg border bg-card text-card-foreground shadow-sm",
       className
