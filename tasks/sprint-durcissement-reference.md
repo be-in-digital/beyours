@@ -2255,3 +2255,46 @@ Sept dans `store-detail` (contenus des onglets Horaires, Paramètres,
 Intégrations, plus « Adresse » sur Général) et un dans `stores` (champs du
 dialogue de création). Non diagnostiqués.
 
+## Les 7 « barre latérale absente » (22 août)
+
+Tous dans `admin-responsive.spec.ts`, tous dans les blocs **mobile (375×667)**.
+
+### La cause : un helper écrit pour le bureau seulement
+
+Sur un écran étroit, la barre latérale vit dans un `Sheet` — un tiroir modal
+**fermé par défaut**. `[data-slot="sidebar"]` n'est donc pas dans le DOM tant que
+l'utilisateur n'a pas ouvert le tiroir. C'est le comportement voulu.
+
+`waitForAdminPage` attendait cette barre inconditionnellement : sur mobile,
+l'attente ne pouvait aboutir. Le helper choisit désormais son repère selon le
+viewport — le déclencheur du tiroir en dessous de 768 px, la barre au-dessus.
+
+**Effet sur le fichier : 12 échecs → 3.**
+
+### Ce que ça a révélé : deux vrais défauts d'affichage
+
+Les tests mobiles s'exécutent enfin, et deux échouent sur **leur vraie
+assertion** — pas sur un locator :
+
+```
+expect(hasOverflow).toBe(false)   →   received: true
+```
+
+| Page | À 375 px |
+| --- | --- |
+| `/dashboard` | **déborde horizontalement** |
+| `/dashboard/orders` | **déborde horizontalement** |
+
+Un débordement horizontal sur téléphone, c'est une page qui glisse latéralement
+sous le doigt. Le test existait pour attraper exactement ça et ne l'a jamais pu :
+il mourait avant, sur la barre latérale.
+
+Je n'ai pas cherché l'élément fautif — c'est une investigation CSS distincte du
+tri.
+
+### Le troisième restant
+
+`admin-responsive.spec.ts:156` (bureau) attend `[data-slot="card"]` sur
+`/dashboard` et ne le trouve pas. Non diagnostiqué ; l'hypothèse la plus simple
+est un tableau de bord vide faute de commandes, mais je ne l'ai pas vérifiée.
+
