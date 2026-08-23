@@ -2,10 +2,20 @@ import { defineConfig, devices } from "@playwright/test"
 import { readFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
 
-// Load .env.local so NEXT_PUBLIC_* vars are available to test files
-const envLocalPath = resolve(__dirname, ".env.local")
-if (existsSync(envLocalPath)) {
-  for (const line of readFileSync(envLocalPath, "utf-8").split("\n")) {
+// Load the env files so NEXT_PUBLIC_* and the suite's own variables reach both
+// the test files and the server started below.
+//
+// `.env.e2e` comes first and `.env.local` fills the gaps; a value already
+// exported in the shell beats both. `.env.e2e.example` has told readers to
+// "copy to .env.e2e" since it was written, while this file read only
+// `.env.local` - so following the instructions changed nothing, and a
+// production server refused to boot on the four variables
+// `instrumentation.ts` demands.
+for (const fileName of [".env.e2e", ".env.local"]) {
+  const envPath = resolve(__dirname, fileName)
+  if (!existsSync(envPath)) continue
+
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
     const trimmed = line.trim()
     if (!trimmed || trimmed.startsWith("#")) continue
     const eqIdx = trimmed.indexOf("=")
