@@ -277,16 +277,19 @@ test.describe("Stores Page", () => {
         timeout: 60_000,
       })
 
-      const rows = page.locator("tbody tr")
-      const rowCount = await rows.count().catch(() => 0)
+      // This test used to count rows the instant the DOM was ready — before
+      // Convex had answered — find zero, skip the `if`, and report success
+      // having asserted nothing. A test that cannot fail is worse than none.
+      //
+      // It also clicked the row rather than the link inside it. `TableRow` has
+      // no onClick; the anchor in the name cell is what navigates.
+      const storeLink = page
+        .locator('tbody tr a[href^="/dashboard/stores/"]')
+        .first()
+      await expect(storeLink).toBeVisible({ timeout: 30_000 })
 
-      if (rowCount > 0) {
-        await rows.first().click()
-        await page.waitForLoadState("domcontentloaded")
-
-        // Should navigate to a store detail page
-        await expect(page).toHaveURL(/\/dashboard\/stores\//, { timeout: 15_000 })
-      }
+      await storeLink.click()
+      await expect(page).toHaveURL(/\/dashboard\/stores\/.+/, { timeout: 15_000 })
     })
   })
 

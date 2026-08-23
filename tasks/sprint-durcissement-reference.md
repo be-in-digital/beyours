@@ -2205,3 +2205,53 @@ Ces cinq n'échouent pas sur un libellé périmé : le texte attendu est bien da
 code. Ils échouent sur l'accès au contenu. Je les laisse non triés plutôt que
 d'avancer une hypothèse comme un résultat.
 
+## Les 17 « URL inattendue » (22 août)
+
+**Un seul fichier, une seule cause.** Les 17 venaient tous de
+`store-detail.spec.ts`, tous avec le même écart : attendu
+`/dashboard/stores/<id>`, reçu `/dashboard/stores`.
+
+### La cause : la ligne du tableau n'est pas cliquable
+
+Le helper `navigateToFirstStore` clique `tbody tr` et attend une navigation.
+Or `TableRow` ne porte **aucun `onClick`** : la navigation vit dans un `<Link>`
+à l'intérieur de la cellule du nom. Cliquer au centre de la ligne tombe sur la
+cellule qui s'y trouve et ne va nulle part.
+
+L'interface n'a jamais offert le clic sur la ligne. C'est le test qui se
+trompait. Corrigé : il vise l'ancre.
+
+**Effet : 17 échecs → 7.**
+
+### Un test qui ne pouvait pas échouer
+
+`stores.spec.ts:274` — « should navigate to store detail on row click » —
+**passait**. Il compte les lignes à l'instant du `domcontentloaded`, avant que
+Convex n'ait répondu, trouve zéro, saute le `if (rowCount > 0)` et se déclare
+réussi sans avoir rien vérifié. Il contenait pourtant le même défaut que les 17
+autres.
+
+Réécrit pour attendre l'ancre puis exiger la navigation : il peut désormais
+échouer, ce qui est la moindre des choses pour un test.
+
+### Un défaut d'accessibilité trouvé au passage
+
+`getByLabel(/Adresse/)` échoue alors que le texte existe. `AddressAutocomplete`
+rend cinq `<label>` **sans `htmlFor`** et cinq `<input>` **sans `id`** : rien ne
+les associe. Un lecteur d'écran annonce cinq champs anonymes, et cliquer un
+libellé ne donne pas le focus.
+
+Câblé avec `React.useId()`, typecheck vert.
+
+**Mais je n'ai pas pu vérifier que ce correctif change le résultat des tests** :
+après reconstruction, le compte reste à 28 réussis / 8 échecs, et je ne retrouve
+pas le libellé « Adresse de l'établissement » dans la sortie de build que j'ai
+inspectée. Le correctif est juste sur le fond — un libellé doit pointer vers son
+champ — mais je ne le présente pas comme la résolution de ces tests.
+
+### Reste sur ces deux fichiers : 8 échecs
+
+Sept dans `store-detail` (contenus des onglets Horaires, Paramètres,
+Intégrations, plus « Adresse » sur Général) et un dans `stores` (champs du
+dialogue de création). Non diagnostiqués.
+
