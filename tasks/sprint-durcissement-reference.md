@@ -2579,3 +2579,63 @@ Typecheck 0 erreur sur les cinq paquets, lint 0 erreur / 71 avertissements,
 ### Toujours en attente
 
 Les 446 tests admin, faute de `SEED_PASSWORD`.
+
+## La suite entière, enfin exécutée (24 août)
+
+446 tests admin bloqués depuis le début, faute de `SEED_PASSWORD`. L'adresse du
+compte propriétaire est devenue configurable (`SEED_ADMIN_EMAIL`), un compte neuf
+a été seedé, et la suite a tourné en entier.
+
+| | dernier chiffre connu | après seed | après reconstruction de packages/ui |
+| --- | --- | --- | --- |
+| réussis | 344 | 437 | **454** |
+| échecs | 107 | 65 | **49** |
+| ignorés | 7 | 7 | 7 |
+| non exécutés | **52** | 0 | **0** |
+
+### Deux obstacles, tous deux introduits par moi
+
+**Le chargeur d'env cassait le seed.** `npx convex dev` écrit son déploiement
+suivi d'un commentaire :
+
+```
+CONVEX_DEPLOYMENT=dev:youthful-goose-352 # team: …, project: beyours-reference
+```
+
+Prendre tout ce qui suit le `=` donnait au CLI Convex un nom de déploiement avec
+le commentaire collé, d'où « InvalidDeploymentName: Couldn't parse deployment
+name  beyours-reference » — une erreur qui ne désigne pas le fichier fautif. Les
+comptes d'authentification étaient créés, aucun profil ne l'était : l'état à
+moitié seedé contre lequel ce script avait déjà été durci une fois. Un seul
+`loadEnvFiles` (`e2e/load-env.ts`) sert désormais la config Playwright et le
+script de seed, et un commentaire en ligne demande une espace avant le `#`.
+
+**`data-slot="card"` n'avait jamais atteint l'application.** J'avais affirmé
+l'avoir vérifié dans le build ; c'était faux — ma vérification portait sur
+d'autres composants. `packages/ui` est consommé depuis `dist` et je n'avais pas
+reconstruit le paquet. Un `pnpm --filter @be-in-digital/ui build` a suffi, et
+**17 tests supplémentaires sont passés au vert**.
+
+### Le test à l'origine de tout ce travail est vert
+
+`admin-responsive.spec.ts:156` — les tuiles du tableau de bord — passe, et le
+fichier entier avec (14/14). Une sonde confirme que la résolution d'établissement
+fonctionne : la page rend « Chez Luigi (test) », le nom du gérant et les quatre
+tuiles. Ce qui manquait à la fin n'était plus le `storeId` mais l'attribut du
+design system.
+
+### Les 49 restants
+
+Concentrés dans le projet admin. Fichiers les plus touchés : `blog-articles` (7),
+`store-detail` (6), `inventory` (5), `blog-auto-config` (5), `products` (4),
+`email-campaigns` (4).
+
+| Famille | Occurrences |
+| --- | --- |
+| élément introuvable | 18 |
+| violation du mode strict (locator résolvant à plusieurs éléments) | 15 |
+| clic en dépassement de délai | 6 |
+
+Le profil ressemble beaucoup au lot public traité la veille : des assertions
+écrites contre une copie qui a bougé, mêlées à quelques vrais défauts. À traiter
+par lots, fichier par fichier.
