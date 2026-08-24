@@ -1,6 +1,24 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
+
+/**
+ * Dismisses the sound-alert gate that covers the kitchen board.
+ *
+ * Browsers refuse to play audio without a user gesture, so the page opens with
+ * a full-screen click catcher asking for one. It is a real element doing a real
+ * job — and it swallows every click underneath it, which is why the station
+ * filter waited out its thirty seconds while Playwright reported the overlay
+ * "intercepts pointer events". A kitchen screen starts by tapping it; so does
+ * this suite.
+ */
+async function activateSoundAlerts(page: Page) {
+  const gate = page.getByRole("button", { name: "Activer les alertes sonores" })
+  if (await gate.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await gate.click()
+    await expect(gate).toBeHidden({ timeout: 10_000 })
+  }
+}
 
 test.describe("Kitchen Page", () => {
   test.describe("Page Structure", () => {
@@ -138,6 +156,8 @@ test.describe("Kitchen Page", () => {
       if (await noStore.isVisible().catch(() => false)) {
         return
       }
+
+      await activateSoundAlerts(page)
 
       const stationFilter = page.getByRole("combobox").first()
 

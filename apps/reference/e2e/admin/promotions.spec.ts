@@ -210,9 +210,13 @@ test.describe("Promotions Page", () => {
       .click()
     const dialog = await waitForDialog(page)
     await dialog.getByLabel("Nom de la promotion").clear()
-    await dialog
-      .getByRole("button", { name: "Créer la promotion" })
-      .click()
+
+    // The dialog body scrolls and the submit button sits below its fold, so a
+    // plain click spent its whole timeout reporting "element is outside of the
+    // viewport" on a button that is perfectly reachable once scrolled to.
+    const submit = dialog.getByRole("button", { name: "Créer la promotion" })
+    await submit.scrollIntoViewIfNeeded()
+    await submit.click()
     // Dialog still open = validation failed
     await expect(dialog).toBeVisible()
 
