@@ -82,12 +82,12 @@ export function GenerateArticleDialog({
       onOpenChange(false)
       resetForm()
       router.push(`/dashboard/content/blog/${result.articleId}`)
-      toast.success("Article genere avec succes")
+      toast.success("Article généré avec succès")
     } catch (err) {
       toast.error(
         err instanceof Error
           ? err.message
-          : "La generation a echoue, reessayez"
+          : "La génération a échoué, réessayez"
       )
     } finally {
       setIsGenerating(false)
@@ -106,12 +106,12 @@ export function GenerateArticleDialog({
       setCategoryId(newId as string)
       setNewCategoryName("")
       setShowNewCategory(false)
-      toast.success("Categorie creee")
+      toast.success("Catégorie créée")
     } catch (err) {
       toast.error(
         err instanceof Error
           ? err.message
-          : "Erreur lors de la creation"
+          : "Erreur lors de la création"
       )
     } finally {
       setIsCreatingCategory(false)
@@ -136,7 +136,7 @@ export function GenerateArticleDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generer avec l&apos;IA</DialogTitle>
+            <DialogTitle>Générer avec l&apos;IA</DialogTitle>
           </DialogHeader>
           <div className="flex justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -152,9 +152,9 @@ export function GenerateArticleDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generer avec l&apos;IA</DialogTitle>
+            <DialogTitle>Générer avec l&apos;IA</DialogTitle>
             <DialogDescription>
-              Cette fonctionnalite necessite un abonnement Auto Blog actif.
+              Cette fonctionnalité nécessite un abonnement Auto Blog actif.
             </DialogDescription>
           </DialogHeader>
           <div className="text-center py-6 space-y-4">
@@ -183,15 +183,15 @@ export function GenerateArticleDialog({
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <DialogTitle>Generer avec l&apos;IA</DialogTitle>
+            <DialogTitle>Générer avec l&apos;IA</DialogTitle>
             <Badge variant="secondary" className="text-xs">
               {remainingQuota >= 9999
-                ? "Illimite"
+                ? "Illimité"
                 : `${remainingQuota} restant${remainingQuota > 1 ? "s" : ""}`}
             </Badge>
           </div>
           <DialogDescription>
-            Decrivez le sujet et l&apos;IA generera un article complet en
+            Décrivez le sujet et l&apos;IA générera un article complet en
             brouillon.
           </DialogDescription>
         </DialogHeader>
@@ -210,7 +210,7 @@ export function GenerateArticleDialog({
                 id="generate-topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Ex: Les bienfaits des ingredients frais"
+                placeholder="Ex: Les bienfaits des ingrédients frais"
                 required
                 autoFocus
                 disabled={isGenerating}
@@ -231,7 +231,7 @@ export function GenerateArticleDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="formel">Formel</SelectItem>
-                  <SelectItem value="decontracte">Decontracte</SelectItem>
+                  <SelectItem value="decontracte">Décontracté</SelectItem>
                   <SelectItem value="storytelling">Storytelling</SelectItem>
                 </SelectContent>
               </Select>
@@ -295,14 +295,14 @@ export function GenerateArticleDialog({
               ) : (
                 <p className="text-xs text-muted-foreground">
                   L&apos;article sera traduit dans toutes les langues actives du
-                  store apres generation.
+                  store après génération.
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Categorie</label>
+                <label className="text-sm font-medium">Catégorie</label>
                 {!showNewCategory && (
                   <Button
                     type="button"
@@ -323,7 +323,7 @@ export function GenerateArticleDialog({
                   <Input
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="Nom de la categorie"
+                    placeholder="Nom de la catégorie"
                     disabled={isCreatingCategory}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
@@ -357,7 +357,7 @@ export function GenerateArticleDialog({
                   disabled={isGenerating}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choisir une categorie" />
+                    <SelectValue placeholder="Choisir une catégorie" />
                   </SelectTrigger>
                   <SelectContent>
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -371,7 +371,7 @@ export function GenerateArticleDialog({
               ) : (
                 <div className="rounded-md border border-dashed p-3 text-center">
                   <p className="text-sm text-muted-foreground mb-2">
-                    Aucune categorie
+                    Aucune catégorie
                   </p>
                   <Button
                     type="button"
@@ -380,7 +380,7 @@ export function GenerateArticleDialog({
                     onClick={() => setShowNewCategory(true)}
                   >
                     <FolderPlus className="mr-2 h-4 w-4" />
-                    Creer une categorie
+                    Créer une catégorie
                   </Button>
                 </div>
               )}
@@ -408,12 +408,12 @@ export function GenerateArticleDialog({
                 {isGenerating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generation en cours...
+                    Génération en cours...
                   </>
                 ) : (
                   <>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    Generer
+                    Générer
                   </>
                 )}
               </Button>

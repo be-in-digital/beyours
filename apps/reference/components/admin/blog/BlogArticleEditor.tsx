@@ -364,7 +364,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
       setNewTagInput("")
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Erreur lors de la creation du tag",
+        err instanceof Error ? err.message : "Erreur lors de la création du tag",
       )
     }
   }
@@ -381,7 +381,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
   }
 
   const showValidationErrors = (missing: string[]) => {
-    toast.error("Elements manquants pour la publication", {
+    toast.error("Éléments manquants pour la publication", {
       description: missing.map((m) => `• ${m}`).join("\n"),
       duration: 6000,
     })
@@ -399,7 +399,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
     try {
       await flushPendingSave()
       await publishArticle({ articleId: articleId as Id<"blogArticles"> })
-      toast.success("Article publie")
+      toast.success("Article publié")
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Erreur lors de la publication",
@@ -443,7 +443,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
   const handleUnschedule = async () => {
     try {
       await unscheduleArticle({ articleId: articleId as Id<"blogArticles"> })
-      toast.success("Planification annulee")
+      toast.success("Planification annulée")
       setScheduleDate("")
     } catch (err) {
       toast.error(
@@ -557,17 +557,17 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           {article.status === "scheduled" && (
             <Badge variant="outline" className="text-xs">
               <Clock className="mr-1 h-3 w-3" />
-              Planifie
+              Planifié
             </Badge>
           )}
           {article.status === "published" && (
             <Badge variant="default" className="text-xs">
-              Publie
+              Publié
             </Badge>
           )}
           {article.status === "archived" && (
             <Badge variant="outline" className="text-xs">
-              Archive
+              Archivé
             </Badge>
           )}
           {article.hasUnpublishedChanges && article.status === "published" && (
@@ -580,7 +580,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           <Link href={`/preview/blog/${articleId}`} target="_blank">
             <Button variant="outline" size="sm">
               <Eye className="mr-2 h-4 w-4" />
-              Apercu
+              Aperçu
             </Button>
           </Link>
 
@@ -698,7 +698,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           <TabsTrigger value="content">Contenu</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
-          <TabsTrigger value="tags">Categories & Tags</TabsTrigger>
+          <TabsTrigger value="tags">Catégories & Tags</TabsTrigger>
           <TabsTrigger value="publication">Publication</TabsTrigger>
         </TabsList>
 
@@ -721,7 +721,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               placeholder="url-de-l-article"
             />
             <p className="text-xs text-muted-foreground">
-              URL de l&apos;article. Genere automatiquement depuis le titre.
+              URL de l&apos;article. Généré automatiquement depuis le titre.
             </p>
           </div>
 
@@ -863,14 +863,14 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
         <TabsContent value="tags" className="space-y-6 mt-4">
           {/* Category */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Categorie</label>
+            <label className="text-sm font-medium">Catégorie</label>
             {categories && categories.length > 0 ? (
               <Select
                 value={localCategoryId}
                 onValueChange={handleCategoryChange}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choisir une categorie" />
+                  <SelectValue placeholder="Choisir une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
@@ -883,7 +883,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               </Select>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Aucune categorie disponible.
+                Aucune catégorie disponible.
               </p>
             )}
           </div>
@@ -963,12 +963,12 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           <div className="rounded-lg border p-4">
             <p className="text-sm font-medium">Statut actuel</p>
             <p className="text-sm text-muted-foreground mt-1">
-              {article.status === "draft" && "Brouillon — non publie"}
+              {article.status === "draft" && "Brouillon — non publié"}
               {article.status === "scheduled" &&
-                `Planifie pour le ${article.scheduledPublishAt ? formatDate(article.scheduledPublishAt) : "..."}`}
+                `Planifié pour le ${article.scheduledPublishAt ? formatDate(article.scheduledPublishAt) : "..."}`}
               {article.status === "published" &&
-                `Publie le ${article.publishedAt ? formatDate(article.publishedAt) : "..."}`}
-              {article.status === "archived" && "Archive"}
+                `Publié le ${article.publishedAt ? formatDate(article.publishedAt) : "..."}`}
+              {article.status === "archived" && "Archivé"}
             </p>
           </div>
 
@@ -1035,7 +1035,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
               <div>
                 <p className="text-sm font-medium">Publication planifiee</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  L&apos;article sera publie automatiquement le{" "}
+                  L&apos;article sera publié automatiquement le{" "}
                   {article.scheduledPublishAt
                     ? formatDate(article.scheduledPublishAt)
                     : "..."}
