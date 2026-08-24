@@ -305,9 +305,81 @@ export const internalSeedFixture = internalMutation({
       ownersEntitled += 1
     }
 
+    // --- A template and one draft campaign ----------------------------------
+    //
+    // The campaign row actions — preview, send a test, duplicate — live in a
+    // dropdown on a table row, so with an empty table seven tests skipped
+    // themselves with "No campaigns in table to test". A campaign needs a
+    // template, so both are seeded.
+    //
+    // Draft on purpose: a draft has never been sent and never will be by
+    // sitting here, so nothing in this fixture can put mail on the wire.
+    const existingTemplate = await ctx.db
+      .query("emailTemplates")
+      .withIndex("by_storeId", (q) => q.eq("storeId", storeId))
+      .first()
+
+    const templateId =
+      existingTemplate?._id ??
+      (await ctx.db.insert("emailTemplates", {
+        storeId,
+        name: "Modèle de test",
+        subject: "Des nouvelles de Chez Luigi",
+        previewText: "Nos plats de la semaine",
+        category: "marketing" as const,
+        blocks: [
+          {
+            type: "heading" as const,
+            id: "heading-1",
+            content: "Des nouvelles de Chez Luigi",
+            level: "h1" as const,
+            alignment: "center" as const,
+          },
+          {
+            type: "text" as const,
+            id: "text-1",
+            content: "Découvrez nos plats de la semaine.",
+            alignment: "left" as const,
+          },
+        ],
+        createdAt: now,
+        updatedAt: now,
+      }))
+
+    const existingCampaign = await ctx.db
+      .query("emailCampaigns")
+      .withIndex("by_storeId", (q) => q.eq("storeId", storeId))
+      .first()
+
+    if (!existingCampaign) {
+      await ctx.db.insert("emailCampaigns", {
+        storeId,
+        name: "Campagne de test",
+        subject: "Des nouvelles de Chez Luigi",
+        previewText: "Nos plats de la semaine",
+        templateId,
+        status: "draft" as const,
+        abTestEnabled: false,
+        stats: {
+          sent: 0,
+          delivered: 0,
+          opened: 0,
+          clicked: 0,
+          bounced: 0,
+          unsubscribed: 0,
+          converted: 0,
+          revenue: 0,
+        },
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
     return {
       storeId,
       storeCreated: !existing,
+      templateCreated: !existingTemplate,
+      campaignCreated: !existingCampaign,
       categories: categoryIds.size,
       productsCreated,
       profilesAttached,
