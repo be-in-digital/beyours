@@ -158,6 +158,19 @@ test.describe("Sign In Page", () => {
         page.getByRole("heading", { name: /Bon retour/ })
       ).toBeVisible({ timeout: 30_000 })
 
+      // Hold the sign-in response open for a moment.
+      //
+      // The loading state is transient by nature: against a local Convex the
+      // request finishes in tens of milliseconds, so the button had usually
+      // returned to "Se connecter" before the assertion ever looked. Polling
+      // does not help — the state is already gone. Delaying the response is
+      // what makes this a test about the loading state rather than about how
+      // fast the backend happens to be today.
+      await page.route("**/api/auth/sign-in/email", async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 2_000))
+        await route.continue()
+      })
+
       await page.getByLabel("Email").fill(SEED_EMAIL)
       await page.getByLabel("Mot de passe").fill(SEED_PASSWORD)
 
