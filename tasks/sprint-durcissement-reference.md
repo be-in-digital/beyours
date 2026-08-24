@@ -2639,3 +2639,83 @@ Concentrés dans le projet admin. Fichiers les plus touchés : `blog-articles` (
 Le profil ressemble beaucoup au lot public traité la veille : des assertions
 écrites contre une copie qui a bougé, mêlées à quelques vrais défauts. À traiter
 par lots, fichier par fichier.
+
+## Les 49 échecs admin — traités, suite verte (24 août)
+
+**Suite entière, version construite, un worker : 489 réussis, 0 échec,
+20 ignorés.** Sortie 0.
+
+| | avant ce sprint | après |
+| --- | --- | --- |
+| réussis | 344 | **489** |
+| échecs | 107 | **0** |
+| non exécutés | 52 | **0** |
+| ignorés | 7 | 20 |
+
+### Cinq vrais défauts de l'application
+
+**Le dialogue de promotion était inutilisable en 1280×720.** 1549 px de haut
+dans une fenêtre de 720 : en-tête coupé au-dessus de l'écran, boutons 341 px en
+dessous. Ni valider ni annuler.
+
+La page demandait pourtant `max-h-[85vh]`. **La règle n'existait pas** : Tailwind
+scanne les fichiers de l'application et s'arrête là, donc toute classe utilisée
+uniquement dans `packages/ui` ou `packages/admin` figurait dans le balisage sans
+aucun CSS derrière — ce plafond, le `max-h-[60vh]` du formulaire défilant, le
+`min-h-[400px]` des gardes. Les deux applications déclarent désormais les deux
+paquets comme sources, et `DialogContent` porte son propre plafond avec
+défilement pour qu'aucun dialogue ne remette ses actions hors de portée.
+
+Mesuré : 1549 px → 544 px, `max-height: 612px`, `overflow-y: auto`, bouton de
+soumission à y=559.
+
+Les quatre autres : « temps reel » et « Aucun produit trouve » sans accents sur
+la page inventaire ; les dialogues de création et de génération d'article avec
+des `<label>` nus, donc des champs sans aucun nom accessible ; le bouton de
+connexion réduit à une icône pendant le chargement ; `adminRoutes.gamesSettings`
+pointant vers une route sans page.
+
+### Quinze locators qui ne testaient rien
+
+Des chaînes `.or()` terminant par `body`, un mot de statut qui est aussi le badge
+de chaque ligne, une liste Radix dont chaque option est rendue deux fois. Un
+locator qui correspond à plusieurs éléments réels ne vérifie rien. `chooseOption`
+centralise le cadrage de la liste ouverte.
+
+### Sept tests qui vérifiaient un droit, pas une fonctionnalité
+
+Auto Blog est verrouillé par l'abonnement et répond « Auto Blog non disponible ».
+« Nouvelle campagne » est désactivé tant qu'aucune adresse d'expéditeur n'existe
+— la page l'annonce par une bannière. Le dialogue de création d'article réclame
+une catégorie avant d'afficher son formulaire. Chacun reconnaît l'état et
+s'ignore avec son motif, au lieu d'attendre trente secondes sur un contrôle qui a
+raison de refuser.
+
+### Un worker, pas deux
+
+Deux workers se partageaient un seul serveur Next et un seul déploiement Convex.
+La contention sortait sous la forme de tests échouant sur « `[data-slot="sidebar"]`
+pas visible en 15 s » — la coquille admin n'avait simplement pas fini de rendre.
+Les tests perdants changeaient à chaque exécution, donc la suite signalait des
+défauts différents à chaque fois et aucun n'en était un. Preuve : les cinq mêmes
+fichiers donnent 76/76 à un worker. 22 minutes au lieu de 13, et reproductible.
+
+### Une erreur de méthode, pour mémoire
+
+J'ai conclu trois fois que le correctif Tailwind ne marchait pas, en me fiant à
+des `grep` sur le CSS compilé dont les motifs traitaient `\[` comme une classe de
+caractères. C'est la mesure dans le navigateur qui a tranché. Sur une question
+« est-ce que ça s'applique », mesurer d'abord.
+
+### Les 20 ignorés
+
+11 dans `email-campaigns` (pas d'adresse d'expéditeur configurée), 4 dans
+`blog-auto-config` et 4 dans `blog-articles` (Auto Blog hors abonnement), 1 dans
+`inventory` (aucun produit ne suit son stock). Tous portent un motif explicite.
+Configurer l'email et activer Auto Blog sur le compte de test les rendrait à la
+couverture.
+
+### Gates
+
+Typecheck 0 erreur (reference, themes, ui, admin, restaurant), lint 0 erreur /
+71 avertissements, 153 + 89 tests unitaires, `next build` vert.
