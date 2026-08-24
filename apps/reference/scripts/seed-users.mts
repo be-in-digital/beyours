@@ -14,8 +14,35 @@
 
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import { readFileSync, existsSync } from "node:fs"
+import { resolve, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const run = promisify(execFile)
+
+/**
+ * Load the env files the way `playwright.config.ts` does.
+ *
+ * The alternative was telling people to `set -a && source .env.e2e`, which is
+ * wrong twice: a dotenv file is not a shell script, and any value the shell
+ * treats as syntax — a redirection, a quote, a backtick — makes the whole thing
+ * a parse error instead of a variable. The script reads the files itself.
+ */
+const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+for (const fileName of [".env.e2e", ".env.local"]) {
+  const envPath = resolve(appRoot, fileName)
+  if (!existsSync(envPath)) continue
+
+  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith("#")) continue
+    const eqIdx = trimmed.indexOf("=")
+    if (eqIdx === -1) continue
+    const key = trimmed.slice(0, eqIdx)
+    const value = trimmed.slice(eqIdx + 1)
+    if (!process.env[key]) process.env[key] = value
+  }
+}
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +60,7 @@ if (!CONVEX_URL) {
 }
 if (!SEED_PASSWORD) {
   console.error(
-    "SEED_PASSWORD is required (set it in .env.local — test accounts only). Aborting."
+    "SEED_PASSWORD is required (set it in .env.e2e — test accounts only). Aborting."
   )
   process.exit(1)
 }
