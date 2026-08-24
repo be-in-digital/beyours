@@ -31,7 +31,7 @@ test.describe("Sign Up Page", () => {
       await expect(passwordInput).toHaveAttribute("type", "password")
       await expect(passwordInput).toHaveAttribute(
         "placeholder",
-        "Min. 6 caractères"
+        "Min. 8 caractères"
       )
     })
 
@@ -39,7 +39,7 @@ test.describe("Sign Up Page", () => {
       await page.goto("/sign-up", { waitUntil: "domcontentloaded" })
 
       await expect(
-        page.getByRole("button", { name: "Créer un compte" })
+        page.getByRole("button", { name: "Créer mon compte" })
       ).toBeVisible()
     })
 
@@ -60,7 +60,7 @@ test.describe("Sign Up Page", () => {
     }) => {
       await page.goto("/sign-up", { waitUntil: "domcontentloaded" })
 
-      await page.getByRole("button", { name: "Créer un compte" }).click()
+      await page.getByRole("button", { name: "Créer mon compte" }).click()
 
       // The name field should prevent submission via browser validation
       const nameInput = page.getByLabel("Nom")
@@ -77,13 +77,13 @@ test.describe("Sign Up Page", () => {
       await page.getByLabel("Email").fill("test@example.com")
       await page.getByLabel("Mot de passe").fill("12345")
 
-      // The password field has minLength=6, so "12345" (5 chars) should be invalid
+      // The password field has minLength=8, so "12345" (5 chars) should be invalid
       const passwordInput = page.getByLabel("Mot de passe")
-      await expect(passwordInput).toHaveAttribute("minlength", "6")
+      await expect(passwordInput).toHaveAttribute("minlength", "8")
 
       // Verify the value is shorter than the minimum
       const value = await passwordInput.inputValue()
-      expect(value.length).toBeLessThan(6)
+      expect(value.length).toBeLessThan(8)
     })
   })
 
@@ -100,7 +100,7 @@ test.describe("Sign Up Page", () => {
       await page.getByLabel("Email").fill("test.owner@beindigital.fr")
       await page.getByLabel("Mot de passe").fill("password123")
 
-      await page.getByRole("button", { name: "Créer un compte" }).click()
+      await page.getByRole("button", { name: "Créer mon compte" }).click()
 
       // Error banner (div with red styling) or toast should appear
       const errorBanner = page.locator(".bg-red-50, .bg-red-900\\/20, [role='alert']")
@@ -121,7 +121,7 @@ test.describe("Sign Up Page", () => {
       await page.getByLabel("Email").fill(uniqueEmail)
       await page.getByLabel("Mot de passe").fill("password123")
 
-      await page.getByRole("button", { name: "Créer un compte" }).click()
+      await page.getByRole("button", { name: "Créer mon compte" }).click()
 
       // After submission, we should see either:
       // - A success redirect (away from /sign-up)
