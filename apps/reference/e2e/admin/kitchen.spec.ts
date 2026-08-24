@@ -93,7 +93,7 @@ test.describe("Kitchen Page", () => {
 
       // Either there are ticket cards or empty messages
       await expect(
-        emptyMessage.first().or(ticketCard)
+        emptyMessage.first().or(ticketCard).first()
       ).toBeVisible({ timeout: 15_000 })
     })
   })
@@ -144,6 +144,10 @@ test.describe("Kitchen Page", () => {
       if (
         await stationFilter.isVisible({ timeout: 5_000 }).catch(() => false)
       ) {
+        // The kitchen board is a set of scrollable columns; the filter can sit
+        // outside the viewport, where a plain click waits out its full timeout
+        // instead of failing.
+        await stationFilter.scrollIntoViewIfNeeded()
         await stationFilter.click()
 
         // Options should appear
@@ -185,7 +189,7 @@ test.describe("Kitchen Page", () => {
       const emptyMessage = page.getByText("Aucun ticket")
 
       await expect(
-        ticketCard.or(emptyMessage.first())
+        ticketCard.or(emptyMessage.first()).first()
       ).toBeVisible({ timeout: 15_000 })
     })
   })

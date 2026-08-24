@@ -203,8 +203,11 @@ export function GenerateArticleDialog({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sujet</label>
+              <label className="text-sm font-medium" htmlFor="generate-topic">
+                Sujet
+              </label>
               <Input
+                id="generate-topic"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
                 placeholder="Ex: Les bienfaits des ingredients frais"
@@ -215,13 +218,15 @@ export function GenerateArticleDialog({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Ton</label>
+              <label className="text-sm font-medium" htmlFor="generate-tone">
+                Ton
+              </label>
               <Select
                 value={tone}
                 onValueChange={setTone}
                 disabled={isGenerating}
               >
-                <SelectTrigger>
+                <SelectTrigger id="generate-tone">
                   <SelectValue placeholder="Choisir un ton" />
                 </SelectTrigger>
                 <SelectContent>
@@ -233,13 +238,15 @@ export function GenerateArticleDialog({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Langue</label>
+              <label className="text-sm font-medium" htmlFor="generate-locale">
+                Langue
+              </label>
               <Select
                 value={locale}
                 onValueChange={setLocale}
                 disabled={isGenerating}
               >
-                <SelectTrigger>
+                <SelectTrigger id="generate-locale">
                   <SelectValue placeholder="Choisir une langue" />
                 </SelectTrigger>
                 <SelectContent>

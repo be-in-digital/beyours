@@ -16,8 +16,8 @@ test.describe("CMS Page Editor", () => {
       // Should display the heading
       await expect(page.getByRole("heading", { name: "Pages" })).toBeVisible()
 
-      // Should display a table with page entries
-      const table = page.locator("table")
+      // One table per page group, so the list is several tables, not one.
+      const table = page.locator("table").first()
       await expect(table).toBeVisible({ timeout: 15_000 })
     })
 

@@ -28,7 +28,6 @@ export const adminRoutes = {
   gamesQrCodes: "/dashboard/games/qr-codes",
   gamesActions: "/dashboard/games/actions",
   gamesWinners: "/dashboard/games/winners",
-  gamesSettings: "/dashboard/games/settings",
 
   email: "/dashboard/email",
   emailCampaigns: "/dashboard/email/campaigns",

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 import {
@@ -8,6 +8,22 @@ import {
 } from "../helpers/dialog.helpers"
 
 const CAMPAIGNS_URL = "/dashboard/email/campaigns"
+
+/**
+ * Skips when the store has no sender address configured.
+ *
+ * "Nouvelle campagne" is deliberately disabled until then — the page says so in
+ * an amber banner — so the wizard tests were waiting thirty seconds on a button
+ * that is correct to refuse the click. A missing configuration is a state to
+ * recognise, not a failure to report.
+ */
+async function skipIfEmailUnconfigured(page: Page) {
+  const banner = page.getByText("Configuration email requise")
+  const missing = await banner
+    .isVisible({ timeout: 5_000 })
+    .catch(() => false)
+  test.skip(missing, "no sender address configured for this store")
+}
 
 test.describe("Email Campaigns Page", () => {
   test.describe("Page Structure", () => {
@@ -58,6 +74,7 @@ test.describe("Email Campaigns Page", () => {
         timeout: 60_000,
       })
       await waitForAdminPage(page)
+      await skipIfEmailUnconfigured(page)
     })
 
     test("should open wizard dialog when clicking create button", async ({
