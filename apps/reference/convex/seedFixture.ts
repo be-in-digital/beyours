@@ -48,6 +48,29 @@ const PRODUCTS = [
 /** Roles that work in a restaurant, and therefore need it on their profile. */
 const STAFF_ROLES = new Set(["client_admin", "manager", "kitchen", "waiter", "delivery"])
 
+/**
+ * A blog category, so the "Nouvel article" dialog has something to offer.
+ *
+ * Without one it replaces its form with "créez d'abord une catégorie", and four
+ * tests about the form were really testing the absence of this row.
+ */
+const BLOG_CATEGORY = { name: "Actualités", slug: "actualites" }
+
+/**
+ * The sender address the email marketing needs before it will do anything.
+ *
+ * "Nouvelle campagne" stays disabled until `fromEmail` is set, which is correct
+ * — and left eleven tests waiting on a button that is right to refuse. The
+ * address is deliberately a `.test` domain: it is reserved by RFC 2606 and can
+ * never be delivered to, so a run that unexpectedly sends mail fails loudly
+ * rather than reaching a real inbox.
+ */
+const EMAIL_SENDER = {
+  senderName: "Chez Luigi (test)",
+  fromEmail: "no-reply@chez-luigi.test",
+  replyToEmail: "contact@chez-luigi.test",
+}
+
 export const internalSeedFixture = internalMutation({
   args: {},
   handler: async (ctx) => {
@@ -161,12 +184,137 @@ export const internalSeedFixture = internalMutation({
       profilesAttached += 1
     }
 
+    // --- One product that tracks its stock ----------------------------------
+    //
+    // The inventory editor only exists for a tracked product; with none, the
+    // quantity column is a row of dashes and the test for its +/- buttons had
+    // nothing to look at.
+    const firstProduct = await ctx.db
+      .query("products")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("storeId"), storeId),
+          q.eq(q.field("slug"), PRODUCTS[0]!.slug)
+        )
+      )
+      .first()
+
+    let stockTracked = false
+    if (firstProduct && !firstProduct.stock?.tracked) {
+      await ctx.db.patch(firstProduct._id, {
+        stock: {
+          tracked: true,
+          quantity: 12,
+          lowStockThreshold: 3,
+          autoDisableWhenEmpty: false,
+        },
+        updatedAt: now,
+      })
+      stockTracked = true
+    }
+
+    // --- A blog category ----------------------------------------------------
+    const existingBlogCategory = await ctx.db
+      .query("blogCategories")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("storeId"), storeId),
+          q.eq(q.field("slug"), BLOG_CATEGORY.slug)
+        )
+      )
+      .first()
+
+    if (!existingBlogCategory) {
+      await ctx.db.insert("blogCategories", {
+        storeId,
+        name: BLOG_CATEGORY.name,
+        slug: BLOG_CATEGORY.slug,
+        sortOrder: 0,
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    // --- The sender address -------------------------------------------------
+    const existingEmailConfig = await ctx.db
+      .query("emailConfig")
+      .withIndex("by_storeId", (q) => q.eq("storeId", storeId))
+      .first()
+
+    if (!existingEmailConfig) {
+      await ctx.db.insert("emailConfig", {
+        storeId,
+        senderName: EMAIL_SENDER.senderName,
+        fromEmail: EMAIL_SENDER.fromEmail,
+        replyToEmail: EMAIL_SENDER.replyToEmail,
+        branding: {
+          primaryColor: "#0D5C3F",
+          secondaryColor: "#F97316",
+          footerText: "Chez Luigi — établissement de test",
+        },
+        unsubscribeText: "Se désinscrire",
+        maxEmailsPerWeek: 3,
+        automationSettings: {
+          welcomeEnabled: false,
+          postOrderEnabled: false,
+          birthdayEnabled: false,
+          inactiveEnabled: false,
+          abandonedCartEnabled: false,
+        },
+        createdAt: now,
+        updatedAt: now,
+      })
+    }
+
+    // --- Auto Blog on the owner accounts ------------------------------------
+    //
+    // Entitlements hang off the Better Auth user id, which is what
+    // `getAccessStatus` reads from the session. Owners only: this grants a paid
+    // feature, and a test deployment is the only place that is acceptable.
+    let ownersEntitled = 0
+
+    for (const profile of profiles) {
+      if (profile.role !== "client_admin") continue
+
+      const existingEntitlement = await ctx.db
+        .query("ownerEntitlements")
+        .withIndex("by_ownerId", (q) => q.eq("ownerId", profile.userId))
+        .first()
+
+      const autoBlog = {
+        enabled: true,
+        plan: "pro" as const,
+        monthlyQuota: 30,
+        allowMultiLanguage: true,
+        allowAutoPublish: true,
+        monthlyImageQuota: 100,
+      }
+
+      if (existingEntitlement) {
+        if (existingEntitlement.autoBlog.enabled) continue
+        await ctx.db.patch(existingEntitlement._id, { autoBlog, updatedAt: now })
+      } else {
+        await ctx.db.insert("ownerEntitlements", {
+          ownerId: profile.userId,
+          autoBlog,
+          imageToProduct: { enabled: true, monthlyAnalysisQuota: 50 },
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+      ownersEntitled += 1
+    }
+
     return {
       storeId,
       storeCreated: !existing,
       categories: categoryIds.size,
       productsCreated,
       profilesAttached,
+      stockTracked,
+      blogCategoryCreated: !existingBlogCategory,
+      emailConfigured: !existingEmailConfig,
+      ownersEntitled,
     }
   },
 })
