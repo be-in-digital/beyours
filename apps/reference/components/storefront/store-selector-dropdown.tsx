@@ -85,10 +85,12 @@ export function StoreSelectorDropdown({
   const setCartStoreId = useCartStore((s) => s.setStoreId)
 
   const stores = convexStores ?? []
-  // Distances are shown in this panel, so asking for the position here is what
-  // the visitor came for - hence autoLocate, which the resolver leaves off.
+  // Distances belong in this panel, but the panel is mounted in the header of
+  // every page - so asking on mount asks everywhere. A visitor who already
+  // granted their position gets distances straight away; everyone else gets
+  // the "Localiser" button below, and no prompt they did not ask for.
   const { storesWithDistance, isLocating, requestLocation } =
-    useNearestStore(stores, { autoLocate: true })
+    useNearestStore(stores, { useGrantedLocation: true })
 
   const currentStore =
     stores.find((s: { _id: string }) => s._id === storeId) ?? null

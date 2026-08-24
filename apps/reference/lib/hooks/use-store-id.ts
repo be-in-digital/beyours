@@ -20,9 +20,10 @@ import {
  * renamed store or a change of opening hours reaches the visitor on the next
  * render. Storing the whole document meant it stayed frozen in localStorage.
  *
- * Geolocation is only requested when it can decide something: several stores,
- * and none chosen yet. It used to be asked for on every page load, including
- * single-location restaurants.
+ * The visitor is never asked for their position here. If they granted it
+ * earlier the nearest store wins; otherwise the first one does. Asking on
+ * arrival - which is what this used to do on every storefront page - puts a
+ * permission prompt in front of someone who came to read a menu.
  */
 export function useStoreId(): {
   storeId: string | null
@@ -40,7 +41,7 @@ export function useStoreId(): {
   const needsResolution = !!stores && !store
 
   const { nearestStore } = useNearestStore(stores ?? [], {
-    autoLocate: needsResolution && (stores?.length ?? 0) > 1,
+    useGrantedLocation: needsResolution && (stores?.length ?? 0) > 1,
   })
 
   useEffect(() => {

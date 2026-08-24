@@ -20,12 +20,22 @@ export interface UseNearestStoreOptions {
   /**
    * Ask the browser for the visitor's position as soon as the hook mounts.
    *
-   * Off by default. It used to be unconditional, which meant every storefront
-   * page opened with a location prompt - including on single-location
-   * restaurants, where the answer cannot change which store is shown. Callers
-   * turn it on only when the distance is about to decide something.
+   * This prompts. Off by default, and reserved for the UI whose whole point is
+   * distance - the "Nos restaurants" panel. It used to be unconditional, so
+   * every storefront page opened with a location prompt, including on
+   * single-location restaurants where the answer cannot change anything.
    */
   autoLocate?: boolean
+
+  /**
+   * Use the position only if the visitor has already granted it.
+   *
+   * Never prompts and never touches the Geolocation API otherwise, which also
+   * keeps it clear of a permissions-policy violation where the API is blocked
+   * outright. This is what automatic resolution wants: honour a permission the
+   * visitor gave earlier, ask nothing of the one who did not.
+   */
+  useGrantedLocation?: boolean
 }
 
 /**
@@ -41,6 +51,7 @@ export function useNearestStore(
   options?: UseNearestStoreOptions
 ): UseNearestStoreResult {
   const autoLocate = options?.autoLocate ?? false
+  const useGrantedLocation = options?.useGrantedLocation ?? false
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -86,6 +97,26 @@ export function useNearestStore(
     if (!autoLocate) return
     requestLocation()
   }, [autoLocate, requestLocation])
+
+  useEffect(() => {
+    if (autoLocate || !useGrantedLocation) return
+    if (typeof navigator === 'undefined' || !navigator.permissions) return
+
+    let cancelled = false
+    navigator.permissions
+      .query({ name: 'geolocation' as PermissionName })
+      .then((status) => {
+        if (!cancelled && status.state === 'granted') requestLocation()
+      })
+      .catch(() => {
+        // A browser that will not answer the question is a browser we do not
+        // ask the position of either.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [autoLocate, useGrantedLocation, requestLocation])
 
   // Compute distances and sort
   const storesWithDistance: StoreWithDistance[] = useMemo(() => {
