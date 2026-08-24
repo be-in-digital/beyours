@@ -12,9 +12,10 @@ const planPrices = {
 } as const;
 
 /* ── Founders offer ──
-   The first 10 Essentielle builds at 2 500 € excl. tax (list price 3 500 €),
-   in exchange for contractual commitments (case study, testimonial, right to
-   name them as a reference). It ends when the slots run out, never on a date.
+   The first 10 Essentielle builds with the creation offered (list price
+   3 500 € excl. tax), only the annual maintenance staying due, in exchange for
+   contractual commitments (case study, testimonial, right to name them as a
+   reference). It ends when the slots run out, never on a date.
    Not stackable with a referral: a code applied = list price −10 %.
    Duplicated in lib/payment-providers.ts (FOUNDERS_OFFER) — keep them in sync. */
 const foundersOffer = {
@@ -63,6 +64,30 @@ function resolveMaintenancePriceId(
     );
   }
   return priceId;
+}
+
+/* ── Maps plan → env var holding the PERSISTENT Stripe Product of the creation line ──
+   The founders coupon is restricted to that product (applies_to), so its
+   3 500 € land entirely on the creation line. Without it Stripe spreads an
+   amount_off pro rata over EVERY line of the session: a « creation offerte »
+   would bill 777,78 € of creation and 222,22 € of maintenance on the customer's
+   invoice — the right total, the wrong split between an amortizable investment
+   and a deductible charge. A product built on the fly (product_data) cannot be
+   targeted by applies_to, hence these persistent ones. */
+const CREATION_PRODUCT_ENV: Record<string, string> = {
+  essentielle: "STRIPE_PRODUCT_CREATION_ESSENTIELLE",
+  premium: "STRIPE_PRODUCT_CREATION_PREMIUM",
+};
+
+/**
+ * Persistent Stripe Product ID of the creation line, or null when not
+ * configured. Never throws: a missing product must not block a sale, it only
+ * costs the targeted discount (see useFoundersCoupon).
+ */
+function resolveCreationProductId(plan: string): string | null {
+  const envName = CREATION_PRODUCT_ENV[plan];
+  if (!envName) return null;
+  return process.env[envName] ?? null;
 }
 
 /* ── Seller details carried by the Stripe invoice for the 1st payment ──
@@ -174,10 +199,22 @@ export const createCheckoutSession = action({
        free. Without the env var configured we fall back to the old behaviour
        (a 0 € line, cap enforced by the counter alone) rather than block a sale. */
     const foundersCouponId = process.env.STRIPE_FOUNDERS_COUPON_ID;
-    const useFoundersCoupon = isFounders && !!foundersCouponId;
+    const creationProductId = resolveCreationProductId(args.plan);
+    /* Both are required: the coupon caps the offer, the product is what the
+       coupon is restricted to. With the coupon but no product the discount
+       would spread over the maintenance line, so we fall back to the 0 € line
+       (correct invoice, cap left to the Convex counter) rather than issue a
+       wrongly split one. */
+    const useFoundersCoupon =
+      isFounders && !!foundersCouponId && !!creationProductId;
     if (isFounders && !foundersCouponId) {
       console.error(
         "STRIPE_FOUNDERS_COUPON_ID absent: offre fondateurs appliquée sans plafond Stripe",
+      );
+    } else if (isFounders && !creationProductId) {
+      console.error(
+        `${CREATION_PRODUCT_ENV[args.plan]} absent: offre fondateurs appliquée sans plafond Stripe ` +
+          "(le coupon aurait réparti la remise sur la maintenance)",
       );
     }
 
@@ -279,6 +316,12 @@ export const createCheckoutSession = action({
         currency: "eur",
         duration: "once",
         name: `Parrainage -${args.discountPercent}%`,
+        /* Computed on the creation only, so restrict it there: otherwise
+           Stripe spreads it over the maintenance line too (see
+           CREATION_PRODUCT_ENV). */
+        ...(creationProductId
+          ? { applies_to: { products: [creationProductId] } }
+          : {}),
       });
       couponId = coupon.id;
     }
@@ -328,12 +371,20 @@ export const createCheckoutSession = action({
             currency: "eur",
             unit_amount: creationCents,
             ...taxBehavior,
-            product_data: {
-              name: `Be in Digital — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
-              description: isFounders
-                ? "Création de votre solution digitale — Tarif fondateurs, 10 places"
-                : "Création de votre solution digitale",
-            },
+            /* Persistent product when configured — required for the founders
+               coupon to target this line only. Its name and description then
+               come from the Stripe catalogue; the offer is named by the
+               discount line the coupon adds to the invoice. */
+            ...(creationProductId
+              ? { product: creationProductId }
+              : {
+                  product_data: {
+                    name: `Be in Digital — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
+                    description: isFounders
+                      ? "Création de votre solution digitale — Tarif fondateurs, 10 places"
+                      : "Création de votre solution digitale",
+                  },
+                }),
           },
           quantity: 1,
         },
