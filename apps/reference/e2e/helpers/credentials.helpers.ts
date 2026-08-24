@@ -11,8 +11,12 @@ import { test } from "@playwright/test"
  * missing environment variable.
  */
 
-/** The account `scripts/seed-users.mts` creates with the `client_admin` role. */
-export const SEED_EMAIL = "test.owner@beindigital.fr"
+/**
+ * The account `scripts/seed-users.mts` creates with the `client_admin` role.
+ * `SEED_ADMIN_EMAIL` overrides it; the seed script reads the same variable.
+ */
+export const SEED_EMAIL =
+  process.env.SEED_ADMIN_EMAIL ?? "test.owner@beindigital.fr"
 
 /** Whatever the seed script was given. Only the environment knows it. */
 export const SEED_PASSWORD = process.env.SEED_PASSWORD ?? ""
