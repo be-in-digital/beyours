@@ -2459,3 +2459,59 @@ Un compromis assumé : `useStoreId` ne renvoie plus l'id persisté immédiatemen
 il attend que `stores.list` confirme son existence. C'est un aller-retour Convex
 de plus avant la première requête du menu, contre la garantie de ne jamais
 interroger un établissement supprimé.
+
+## Vérification e2e de la consolidation (23 août)
+
+### Deux obstacles avant le premier chiffre
+
+`next start` refusait de démarrer : `instrumentation.ts` valide quatre
+variables au boot (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`OPENAI_API_KEY`) et `.env.local` ne les a pas. `.env.e2e.example` dit depuis sa
+rédaction de copier le fichier vers `.env.e2e` — mais `playwright.config.ts` ne
+lisait que `.env.local`, donc suivre l'instruction ne changeait rien. La config
+lit maintenant les deux, `.env.e2e` d'abord, un export shell primant sur tout.
+
+`SEED_PASSWORD` n'est stocké nulle part : ni dans un fichier, ni dans les
+variables du déploiement Convex. Le projet `setup` échoue donc sur son
+assertion, et les 446 tests admin ne s'exécutent pas. **La moitié admin de cette
+vérification reste à faire** et demande la valeur employée au moment du seed.
+
+### Comparaison contre le commit d'avant
+
+Projet `public`, version construite, `4437435` puis `HEAD`.
+
+| | réussis | échecs |
+| --- | --- | --- |
+| avant (`4437435`) | 30 | 33 |
+| après consolidation | 29 | 34 |
+| après correctif géoloc | **35** | **28** |
+
+La première mesure montrait **une régression**, à moi : `/store-selector`
+enregistrait « Permissions policy violation: Geolocation access has been
+blocked ».
+
+### La cause, en deux endroits
+
+Rendre la géolocalisation optionnelle n'avait pas suffi : deux appelants la
+réclamaient toujours au montage. Le résolveur, dès qu'il voyait plusieurs
+établissements sans sélection — c'est-à-dire à l'arrivée du visiteur. Et le
+panneau « Nos restaurants », qui vit dans l'en-tête de **toutes** les pages : le
+monter quelque part, c'est demander partout.
+
+Les deux utilisent maintenant `useGrantedLocation` : la position sert si le
+visiteur l'a accordée auparavant, et l'API n'est pas touchée sinon — pas de
+demande, et rien qu'une politique de permissions puisse rejeter. Le bouton
+« Localiser » du panneau reste pour qui veut l'accorder sur le moment ; sans
+position, le plus proche est simplement le premier.
+
+**Aucune régression, cinq tests réparés** — les vérifications d'erreurs console
+de menu, panier, paiement, suivi et mise en page boutique. Messages
+« geolocation blocked » sur l'ensemble du run : 20 → 0.
+
+### Les 28 échecs restants du projet public
+
+Antérieurs à ce travail, identiques au commit de référence. Deux exemples
+suffisent à donner le genre : un test attend le lien « Se connecter » quand
+l'en-tête affiche « Connexion », un autre attend « Powered by BeYours Engine »
+qui n'existe dans aucun fichier. Le renommage `3d6b93e` du 15 août a déplacé la
+copie sans que les tests suivent. À traiter comme un lot à part.
