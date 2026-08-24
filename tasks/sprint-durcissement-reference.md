@@ -2783,3 +2783,27 @@ immédiates.
 Un essai de reprise est désormais accordé en local (deux en CI). Ce genre de
 hoquet apparaît environ une fois par exécution complète ; Playwright le signale
 alors comme *flaky*, ce qui le laisse visible au lieu de l'absorber en silence.
+
+## Suite entière verte, rien d'ignoré (24 août)
+
+**509 réussis, 0 échec, 0 ignoré.** Sortie 0, 20,4 minutes, version construite,
+un worker.
+
+Les sept derniers ignorés tenaient au menu déroulant d'une ligne de campagne :
+sans campagne dans le tableau, ils s'écartaient eux-mêmes. Le fixture crée
+maintenant un modèle d'email et une campagne **en brouillon** — un brouillon n'a
+jamais été envoyé et ne le sera pas en restant dans un tableau, donc rien de ce
+fixture ne peut mettre du courrier sur le réseau. Même raisonnement que l'adresse
+en `.test`.
+
+L'exécution a confirmé l'idempotence au passage : `templateCreated: false`, un
+modèle existait déjà et a été réutilisé plutôt que dupliqué.
+
+### Le trajet complet
+
+| | départ | arrivée |
+| --- | --- | --- |
+| réussis | 344 | **509** |
+| échecs | 107 | **0** |
+| non exécutés | 52 | **0** |
+| ignorés | 7 | **0** |
