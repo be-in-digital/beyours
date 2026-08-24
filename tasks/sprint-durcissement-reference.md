@@ -2807,3 +2807,55 @@ modèle existait déjà et a été réutilisé plutôt que dupliqué.
 | échecs | 107 | **0** |
 | non exécutés | 52 | **0** |
 | ignorés | 7 | **0** |
+
+## Les gardes qui décidaient trop tôt (24 août)
+
+**508 réussis, 1 instable, 0 ignoré.** Sortie 0, 22,7 minutes, charge machine
+2,21 au départ et 5,00 à l'arrivée.
+
+Le total de la suite bougeait entre 504 et 509 d'un run à l'autre sans qu'une
+ligne de code change. La cause : sept tests du menu déroulant de campagne
+s'ouvraient sur
+
+```
+const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+test.skip(!hasTable, "No campaigns in table to test")
+```
+
+Deux défauts empilés. `isVisible()` est une **lecture unique qui ne réessaie
+pas**, contrairement à `expect().toBeVisible()` qui interroge jusqu'à
+l'échéance. Et cinq secondes, c'est moins que ce dont la requête Convex a besoin
+sur une machine occupée. La vérification tombait donc sur une page encore vide,
+en concluait qu'il n'y avait pas de campagne, et le test s'excusait — trois dans
+un run, trois autres dans le suivant.
+
+Les deux gardes attendent maintenant que la page se pose sur l'une de ses deux
+formes réelles — un tableau ou « Aucune campagne », la bannière ambre ou un
+bouton actif — avant de trancher. **Un test ignoré veut désormais dire ce qu'il
+annonce.**
+
+Le helper `skipIfEmailUnconfigured`, écrit la veille, portait la même faiblesse :
+page pas encore rendue, garde qui conclut « configuré », test qui va cliquer un
+bouton désactivé. Corrigé pareil.
+
+Balayage fait : plus aucune garde de cette forme dans la suite. Les 62 autres
+`isVisible()` sont des branches conditionnelles **à l'intérieur** des tests —
+elles orientent un parcours optionnel au lieu de décider si un test s'exécute.
+Forme différente, non touchées.
+
+### L'instable restant
+
+`inventory:26`, sur `[data-slot="sidebar"]` introuvable en 30 s — la coquille
+admin qui n'a pas rendu, sans rapport avec le contenu du test. Environ une fois
+sur cinq cents ; la reprise le couvre et Playwright le signale comme *flaky*,
+donc visible.
+
+### Bilan du sprint
+
+| | départ | arrivée |
+| --- | --- | --- |
+| réussis | 344 | **508** |
+| échecs | 107 | **0** |
+| non exécutés | 52 | **0** |
+| ignorés | 7 | **0** |
+| sortie | 1 | **0** |
