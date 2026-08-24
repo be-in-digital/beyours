@@ -13,7 +13,15 @@ export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // One retry locally, two in CI.
+  //
+  // Roughly once per full run the admin shell fails to render inside 30s and a
+  // test dies on "[data-slot=\"sidebar\"] not found" — a server or Convex
+  // hiccup, not a defect: the spec that lost passed 33/33 on four immediate
+  // repeats. A retry keeps that from reading as a failure, and Playwright
+  // reports the test as flaky rather than as passed, so it stays visible
+  // instead of being quietly absorbed.
+  retries: process.env.CI ? 2 : 1,
   // One worker, everywhere.
   //
   // Two workers share a single Next server and a single Convex deployment, and

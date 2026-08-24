@@ -2719,3 +2719,67 @@ couverture.
 
 Typecheck 0 erreur (reference, themes, ui, admin, restaurant), lint 0 erreur /
 71 avertissements, 153 + 89 tests unitaires, `next build` vert.
+
+## Le compte de test, configuré (24 août)
+
+Vingt tests s'ignoraient sur l'état du compte, pas sur le produit. Le fixture
+(`internalSeedFixture`, déjà `internalMutation` donc inatteignable depuis un
+navigateur) met désormais le compte dans l'état que ces tests décrivent :
+
+| Ajout | Ce qu'il débloque |
+| --- | --- |
+| adresse d'expéditeur | « Nouvelle campagne » cesse d'être désactivé |
+| Auto Blog sur les comptes propriétaires | le générateur et sa page de config rendent leurs formulaires |
+| une catégorie de blog | le dialogue de création montre son formulaire au lieu d'« créez d'abord une catégorie » |
+| un produit suivant son stock | la colonne quantité cesse d'être une rangée de tirets |
+
+**Treize tests sont revenus à la couverture** : 20 ignorés → 7.
+
+L'adresse est `no-reply@chez-luigi.test`. Le domaine `.test` est réservé par la
+RFC 2606 et ne peut jamais être délivré : un run qui se mettrait à envoyer
+échouerait bruyamment au lieu d'atteindre une vraie boîte.
+
+### Les 7 qui restent
+
+Les actions du menu déroulant de campagne exigent une campagne dans le tableau —
+laquelle réclame un modèle d'email et une douzaine de champs obligatoires. C'est
+de la donnée de test, pas de la configuration.
+
+### `subscription.spec.ts`, réparé au passage
+
+Trois de ses tests lisaient `isVisible()`, un instantané qui **ne réessaie pas**,
+et couraient donc contre le rendu des cartes tarifaires : perdu environ une fois
+sur trois, en deux secondes. L'un combinait `Promise.any` sur trois de ces
+lectures — cette forme se résout dès que la première répond, **y compris quand
+elle répond faux**, puisqu'un `false` tenu est une promesse tenue.
+
+Deux autres assertaient `expect(typeof x).toBe("boolean")` : un booléen est
+toujours un booléen, ces tests ne pouvaient pas échouer. Ils vérifient maintenant
+ce que la vue tarifaire montre. 25/25 sur trois répétitions.
+
+### Un état fugace ne s'attend pas
+
+`sign-in:150` vérifie « Connexion en cours… ». Contre un Convex local la requête
+aboutit en quelques dizaines de millisecondes : le bouton était déjà revenu à son
+libellé normal quand l'assertion regardait, et attendre n'y peut rien — on
+n'attend pas un état déjà passé. Le test mesurait la latence du backend. Il
+retient maintenant la réponse deux secondes. 42/42 sur trois répétitions.
+
+### Un run trompeur, pour mémoire
+
+Une exécution complète a annoncé 5 échecs sur les éléments les plus élémentaires
+de la boutique — titre du menu, lien de marque — et a duré **49,6 minutes au lieu
+de 20**. Rejoués proprement : 67/68 en 1,2 minute. C'était la machine. Rapporter
+ces cinq-là tels quels aurait envoyé chasser des fantômes. **Un run lent est un
+run à rejouer avant d'être cru.**
+
+### État final
+
+Suite entière, version construite, un worker : **501 réussis, 7 ignorés**, 20,8
+minutes. L'unique échec du dernier run (`subscription.spec.ts:6`, coquille admin
+non rendue en 30 s) ne s'est pas reproduit : 33/33 sur quatre répétitions
+immédiates.
+
+Un essai de reprise est désormais accordé en local (deux en CI). Ce genre de
+hoquet apparaît environ une fois par exécution complète ; Playwright le signale
+alors comme *flaky*, ce qui le laisse visible au lieu de l'absorber en silence.
