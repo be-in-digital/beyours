@@ -21,7 +21,7 @@ const foundersOffer = {
   enabled: true,
   plan: "essentielle" as const,
   totalSlots: 10,
-  creationCents: 250000,
+  creationCents: 0,
 };
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
@@ -70,7 +70,7 @@ function resolveMaintenancePriceId(
    dashboard; here we add the legal invoice footer + the SIRET as a custom field.
    Keep in sync with apps/web-restaurant/lib/legal/company.ts (COMPANY). */
 const SELLER_INVOICE_FOOTER =
-  "TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
+  "Be in Digital, nom commercial de TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
 const SELLER_SIRET = "930 817 697 00012";
 
 function getStripe(): Stripe | null {
@@ -166,12 +166,30 @@ export const createCheckoutSession = action({
       isFounders = foundersSold < foundersOffer.totalSlots;
     }
 
-    const creationCents = isFounders
-      ? foundersOffer.creationCents
-      : prices.creation;
-    const discountAmountCents = isReferral
+    /* Founders: the creation line keeps its list price and a PERSISTENT Stripe
+       coupon zeroes it, so Stripe enforces the 10-slot cap itself through the
+       coupon's max_redemptions. The Convex counter cannot: countFoundersSold
+       only sees orders already « paid », so checkouts opened before the first
+       webhook lands never reserve a slot, and more than 10 builds could go out
+       free. Without the env var configured we fall back to the old behaviour
+       (a 0 € line, cap enforced by the counter alone) rather than block a sale. */
+    const foundersCouponId = process.env.STRIPE_FOUNDERS_COUPON_ID;
+    const useFoundersCoupon = isFounders && !!foundersCouponId;
+    if (isFounders && !foundersCouponId) {
+      console.error(
+        "STRIPE_FOUNDERS_COUPON_ID absent: offre fondateurs appliquée sans plafond Stripe",
+      );
+    }
+
+    const creationCents =
+      isFounders && !useFoundersCoupon
+        ? foundersOffer.creationCents
+        : prices.creation;
+    const foundersDiscountCents = useFoundersCoupon ? prices.creation : 0;
+    const referralDiscountCents = isReferral
       ? Math.round((creationCents * args.discountPercent!) / 100)
       : 0;
+    const discountAmountCents = foundersDiscountCents + referralDiscountCents;
     const totalCents = creationCents + maintenanceCents;
     const finalTotal = totalCents - discountAmountCents;
 
@@ -247,11 +265,17 @@ export const createCheckoutSession = action({
 
     // ── Mode production : Stripe Checkout ──
 
-    // Create a Stripe coupon when this is a referral
+    /* One coupon per session at most. Founders and referral are mutually
+       exclusive by construction (isFounders requires !isReferral), so these
+       two branches never compete. The founders coupon is reused across
+       sessions on purpose: that shared redemption count is what caps the
+       offer. The referral one is created per session, being customer-specific. */
     let couponId: string | undefined;
-    if (isReferral && discountAmountCents > 0) {
+    if (useFoundersCoupon) {
+      couponId = foundersCouponId;
+    } else if (isReferral && referralDiscountCents > 0) {
       const coupon = await stripe.coupons.create({
-        amount_off: discountAmountCents,
+        amount_off: referralDiscountCents,
         currency: "eur",
         duration: "once",
         name: `Parrainage -${args.discountPercent}%`,

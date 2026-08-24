@@ -14,13 +14,13 @@ export default function ConfidentialitePage() {
   return (
     <LegalPage
       title="Politique de confidentialité"
-      subtitle={`${COMPANY.legalName}, éditeur de ${SITE_NAME}, s'engage à protéger vos données personnelles conformément au Règlement général sur la protection des données (RGPD) et à la loi Informatique et Libertés.`}
+      subtitle={`${COMPANY.operatorName}, éditeur de ${SITE_NAME}, s'engage à protéger vos données personnelles conformément au Règlement général sur la protection des données (RGPD) et à la loi Informatique et Libertés.`}
       lastUpdated={LEGAL_LAST_UPDATED}
     >
       <h2>1. Responsable du traitement</h2>
       <p>
         Le responsable du traitement des données collectées sur ce site est{" "}
-        <strong>{COMPANY.legalName}</strong>, {COMPANY.address.street},{" "}
+        <strong>{COMPANY.operatorName}</strong>, {COMPANY.address.street},{" "}
         {COMPANY.address.postalCode} {COMPANY.address.city}. Pour toute question
         relative à vos données, écrivez à{" "}
         <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>.
@@ -75,7 +75,7 @@ export default function ConfidentialitePage() {
 
       <h2>4. Destinataires et sous-traitants</h2>
       <p>
-        Vos données sont destinées aux équipes habilitées de {COMPANY.legalName}.
+        Vos données sont destinées aux équipes habilitées de {COMPANY.operatorName}.
         Nous faisons appel à des sous-traitants qui n&apos;interviennent que sur
         instruction et pour les finalités ci-dessus :
       </p>
@@ -138,7 +138,7 @@ export default function ConfidentialitePage() {
 
       <h2>9. Sécurité</h2>
       <p>
-        {COMPANY.legalName} met en œuvre des mesures techniques et
+        {COMPANY.operatorName} met en œuvre des mesures techniques et
         organisationnelles appropriées (chiffrement des échanges, contrôle des
         accès, hébergement sécurisé) afin de protéger vos données contre tout
         accès non autorisé, perte ou altération.

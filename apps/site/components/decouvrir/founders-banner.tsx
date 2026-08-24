@@ -40,7 +40,9 @@ export function FoundersBanner() {
             Offre fondateurs
           </span>
           <p className="mt-3 font-display text-2xl font-semibold leading-tight text-[color:var(--background)] sm:text-3xl">
-            {foundersPrice.toLocaleString("fr-FR")} € HT{" "}
+            {foundersPrice === 0
+              ? "Création offerte"
+              : `${foundersPrice.toLocaleString("fr-FR")} € HT`}{" "}
             <span className="text-lg font-normal text-[color:var(--background)]/45 line-through">
               3 500 €
             </span>{" "}
