@@ -2515,3 +2515,67 @@ suffisent à donner le genre : un test attend le lien « Se connecter » quand
 l'en-tête affiche « Connexion », un autre attend « Powered by BeYours Engine »
 qui n'existe dans aucun fichier. Le renommage `3d6b93e` du 15 août a déplacé la
 copie sans que les tests suivent. À traiter comme un lot à part.
+
+## Les 28 échecs du projet public — traités (24 août)
+
+Projet `public`, version construite : **30 réussis / 33 échecs → 60 / 0**, plus
+trois ignorés explicites.
+
+### Vingt-deux : des assertions restées en arrière
+
+Le renommage du 15 août (`3d6b93e`) a déplacé la copie, les tests ne l'ont pas
+suivie. Une boutique française interrogée sur « Shopping Cart », « Checkout » et
+« Select Store » ; une page de connexion dont le titre est « Bon retour parmi
+nous » cherchée sous « Connexion » ; un pied de page fouillé pour « Powered by
+BeYours Engine », qui n'existe dans aucun fichier. Les assertions nomment
+maintenant ce que les pages disent, sans changer ce que chaque test vérifie.
+
+Deux détails du même ordre : le mot de passe d'inscription exige huit caractères
+et non six, et l'espace réservé du champ est une rangée de points, pas une
+phrase.
+
+### Trois vrais défauts, trouvés par ces tests
+
+**`/imagery/hero-burger-v2.png` n'existe pas** — `public/imagery/` non plus.
+C'était le repli de l'accueil sans image de couverture et de **toute fiche
+produit sans photo** : ces pages réclamaient à l'optimiseur d'images un fichier
+absent et récoltaient un 400. C'est exactement ce que signalait depuis le début
+le test d'erreurs console de l'accueil. Les deux appels rendent désormais le
+cadre vide plutôt que de demander un fichier jamais versé.
+
+**`useGooglePlacesAutocomplete` sort sur une clé vide** avant même de demander
+le script Maps. Or la spec d'autocomplétion intercepte cette requête pour y
+répondre par un mock : elle simulait un appel que le composant avait déjà
+renoncé à faire. La page de fixture fournit sa propre clé.
+
+**Le champ « Nom » de l'inscription n'avait pas de `type`.**
+
+### Trois tests qui ne pouvaient pas dire la vérité
+
+`sign-in.spec.ts` se connectait avec le littéral « julien » — la faute pour
+laquelle `auth.setup.ts` avait déjà été corrigé. Ils lisent `SEED_PASSWORD` et
+s'ignorent proprement quand il manque, au lieu d'échouer sur une variable
+absente en donnant l'air d'un formulaire cassé. Nouveau helper
+`e2e/helpers/credentials.helpers.ts`. L'un d'eux attendait aussi `networkidle`,
+que la WebSocket Convex interdit d'atteindre.
+
+### Trois tests mal écrits
+
+Deux chaînes de localisateurs finissaient par `.or(locator("body"))`, qui ne
+peut pas se résoudre à un élément unique — `body` correspond toujours, et le
+reste de la page aussi.
+
+Et `/checkout` avec une Box vide affiche son état vide, pas le formulaire de
+commande : c'est la page qui fonctionne. Atteindre « Finaliser Commande »
+suppose un panier garni, ce qui relève d'un test de parcours et non d'une
+vérification de rendu. Le test assertit maintenant ce que la page montre
+réellement, et le dit en commentaire.
+
+### Gates
+
+Typecheck 0 erreur sur les cinq paquets, lint 0 erreur / 71 avertissements,
+153 + 89 tests unitaires, `next build` vert.
+
+### Toujours en attente
+
+Les 446 tests admin, faute de `SEED_PASSWORD`.
