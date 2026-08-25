@@ -268,7 +268,7 @@ export function TeamPage() {
             <EmptyMedia variant="icon">
               <UserIcon />
             </EmptyMedia>
-            <EmptyTitle>{teamMembers.length === 0 ? "Aucun membre" : "Aucun resultat"}</EmptyTitle>
+            <EmptyTitle>{teamMembers.length === 0 ? "Aucun membre" : "Aucun résultat"}</EmptyTitle>
             <EmptyDescription>
               {teamMembers.length === 0
                 ? "Invitez votre premier membre pour commencer"
@@ -284,7 +284,7 @@ export function TeamPage() {
                 <TableHead>Membre</TableHead>
                 <TableHead>Rôle</TableHead>
                 <TableHead>Statut</TableHead>
-                <TableHead className="hidden md:table-cell">Perimetre</TableHead>
+                <TableHead className="hidden md:table-cell">Périmètre</TableHead>
                 <TableHead className="hidden md:table-cell">Date d'ajout</TableHead>
                 <TableHead className="w-[60px]" />
               </TableRow>

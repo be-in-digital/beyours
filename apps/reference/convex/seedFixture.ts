@@ -49,6 +49,21 @@ const PRODUCTS = [
 const STAFF_ROLES = new Set(["client_admin", "manager", "kitchen", "waiter", "delivery"])
 
 /**
+ * The team roster shown on the Équipe screen.
+ *
+ * Mirrors the accounts `seed-users.mts` already creates rather than inventing
+ * people: the row a test clicks then belongs to someone who can actually sign
+ * in, which is what a real registry looks like. One row is left `pending` — an
+ * invitation that has been sent and not yet accepted is a normal state of that
+ * screen, and the status column exists to show it.
+ */
+const TEAM = [
+  { name: "Marie Martin", email: "test.manager@beindigital.fr", role: "manager" as const, status: "accepted" as const },
+  { name: "Pierre Dupont", email: "test.cuisine@beindigital.fr", role: "kitchen" as const, status: "accepted" as const },
+  { name: "Sophie Laurent", email: "test.service@beindigital.fr", role: "waiter" as const, status: "pending" as const },
+]
+
+/**
  * A blog category, so the "Nouvel article" dialog has something to offer.
  *
  * Without one it replaces its form with "créez d'abord une catégorie", and four
@@ -375,9 +390,53 @@ export const internalSeedFixture = internalMutation({
       })
     }
 
+    // --- The team registry --------------------------------------------------
+    //
+    // Five tests skipped themselves on "this store has no table to inspect":
+    // the Équipe screen answers "Aucun membre" with an empty registry, so the
+    // columns, the row dropdown and the edit and delete dialogs had nothing to
+    // open.
+    //
+    // `userId` is stamped on the accepted rows from the matching profile, which
+    // is what accepting an invitation produces — a row with an email and no
+    // account behind it would look accepted while being unreachable.
+    const profilesByUserId = new Map(profiles.map((p) => [p.userId, p]))
+    let teamMembersCreated = 0
+
+    for (const member of TEAM) {
+      const found = await ctx.db
+        .query("teamMembers")
+        .withIndex("by_email", (q) => q.eq("email", member.email))
+        .first()
+      if (found) continue
+
+      // The seeded profiles carry no email, so the role is what ties a row to
+      // an account here; each seeded role is held by exactly one account.
+      const profile = [...profilesByUserId.values()].find(
+        (p) => p.role === member.role && p.storeIds.includes(storeId)
+      )
+
+      await ctx.db.insert("teamMembers", {
+        storeId,
+        allStores: false,
+        userId: member.status === "accepted" ? profile?.userId : undefined,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        permissions: [],
+        invitationStatus: member.status,
+        invitedAt: now,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      teamMembersCreated += 1
+    }
+
     return {
       storeId,
       storeCreated: !existing,
+      teamMembersCreated,
       templateCreated: !existingTemplate,
       campaignCreated: !existingCampaign,
       categories: categoryIds.size,
