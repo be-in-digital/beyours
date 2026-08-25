@@ -2,6 +2,14 @@
    Pricing Data — Plans, comparatif, maintenance, FAQ
    ═══════════════════════════════════════════════ */
 
+import { planPrices } from "@/convex/planPrices";
+
+/* Les montants affichés ici sont dérivés de convex/planPrices.ts (source
+   unique, en centimes) et convertis en euros pour l'affichage. Ne jamais
+   réécrire un montant en dur : la page tarifs afficherait un prix que le
+   checkout ne facture pas. */
+const eur = (cents: number) => cents / 100;
+
 export type BillingPeriod = "monthly" | "yearly";
 
 export interface Plan {
@@ -24,9 +32,9 @@ export const plans: Plan[] = [
     subtitle: "Site web restaurant",
     description:
       "Une solution complète pour disposer d'une présence digitale moderne, professionnelle et performante.",
-    creation: 3500,
-    maintenanceMonthly: 100,
-    maintenanceYearly: 1000,
+    creation: eur(planPrices.essentielle.creation),
+    maintenanceMonthly: eur(planPrices.essentielle.maintenanceMonthly),
+    maintenanceYearly: eur(planPrices.essentielle.maintenanceYearly),
     featured: false,
     features: [
       "Site vitrine premium à votre image",
@@ -46,9 +54,9 @@ export const plans: Plan[] = [
     subtitle: "Site web + application mobile",
     description:
       "L'offre complète pour les restaurants qui veulent une présence digitale totale : site web professionnel et application mobile native.",
-    creation: 7500,
-    maintenanceMonthly: 200,
-    maintenanceYearly: 2000,
+    creation: eur(planPrices.premium.creation),
+    maintenanceMonthly: eur(planPrices.premium.maintenanceMonthly),
+    maintenanceYearly: eur(planPrices.premium.maintenanceYearly),
     featured: true,
     comingSoon: true,
     features: [

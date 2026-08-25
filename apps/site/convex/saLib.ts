@@ -1,5 +1,6 @@
 import type { QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import { planPrices, type PlanId } from "./planPrices";
 
 /* Shared helpers for the superadmin console (GMV, aggregates, constants). */
 
@@ -9,15 +10,27 @@ export function startOfDay(ts: number): number {
   return Math.floor(ts / DAY_MS) * DAY_MS;
 }
 
-/** Annual maintenance prices (cents) per plan — used to compute MRR. */
-export const MAINTENANCE_ANNUAL_CENTS: Record<string, number> = {
-  essentielle: 49000,
-  premium: 89000,
+/** Annual maintenance prices (cents) per plan — used to compute MRR.
+    Derived from convex/planPrices.ts so the console can never quote a price
+    the checkout does not charge. */
+export const MAINTENANCE_ANNUAL_CENTS: Record<PlanId, number> = {
+  essentielle: planPrices.essentielle.maintenanceYearly,
+  premium: planPrices.premium.maintenanceYearly,
 };
 
+/** Annual maintenance fee (cents) for a plan. Throws on an unknown plan
+    rather than under-reporting revenue with a silent default. */
+export function annualMaintenanceCents(plan: PlanId): number {
+  const cents = MAINTENANCE_ANNUAL_CENTS[plan];
+  if (cents === undefined) {
+    throw new Error(`Unknown plan "${plan}": no maintenance price`);
+  }
+  return cents;
+}
+
 /** Monthly equivalent (cents) of an annual maintenance fee. */
-export function monthlyEquivalentCents(plan: string): number {
-  return Math.round((MAINTENANCE_ANNUAL_CENTS[plan] ?? 49000) / 12);
+export function monthlyEquivalentCents(plan: PlanId): number {
+  return Math.round(annualMaintenanceCents(plan) / 12);
 }
 
 export type SalesSummary = {
