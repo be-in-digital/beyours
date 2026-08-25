@@ -4,6 +4,7 @@ import {
   waitForAdminPage,
   navigateViaSidebar,
 } from "../helpers/navigation.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 test.describe("Dashboard Page", () => {
   test.describe("Page Loading", () => {
@@ -111,12 +112,14 @@ test.describe("Dashboard Page", () => {
     test("should display numeric values in stat cards", async ({ page }) => {
       // Stat cards should contain numeric values (currency, count, etc.)
       const statCards = page.locator('[data-slot="card"]')
-      await expect(statCards.first()).toBeVisible({ timeout: 15_000 })
 
-      // At least one card should contain a number or currency symbol
-      const cardTexts = await statCards.allTextContents()
-      const hasNumericValue = cardTexts.some((text) => /\d/.test(text))
-      expect(hasNumericValue).toBe(true)
+      // `allTextContents()` is a snapshot, like `count()`: it read the cards the
+      // instant the first one appeared, before their figures had arrived, and
+      // found no digit. Filtering and asserting polls until a card actually
+      // carries a number — which is what the test is about.
+      await expect(
+        statCards.filter({ hasText: /\d/ }).first()
+      ).toBeVisible({ timeout: 15_000 })
     })
 
     test("should display 7-day chart with day labels", async ({ page }) => {
@@ -172,7 +175,7 @@ test.describe("Dashboard Page", () => {
           // First row should contain data cells
           const firstRow = rows.first()
           const cells = firstRow.locator("td")
-          const cellCount = await cells.count()
+          const cellCount = await countAfterLoad(cells)
           expect(cellCount).toBeGreaterThanOrEqual(3)
         }
       }

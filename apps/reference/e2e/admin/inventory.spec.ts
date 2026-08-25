@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
 import { applySearch } from "../helpers/filter.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 test.describe("Inventory Page", () => {
   test.describe("Page Structure", () => {
@@ -201,22 +202,24 @@ test.describe("Inventory Page", () => {
 
       if (await table.isVisible({ timeout: 15_000 }).catch(() => false)) {
         const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+        const rowCount = await countAfterLoad(rows)
 
-        if (rowCount > 0) {
-          // Only a product that tracks its stock gets the editor — an untracked
-          // one shows a dash. Asserting on the first row regardless found zero
-          // buttons and read as a missing feature.
-          const tracked = rows.filter({ hasNot: page.getByText("Non suivi") })
-          const trackedCount = await tracked.count()
-          test.skip(
-            trackedCount === 0,
-            "no product in this store tracks its stock"
-          )
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(rowCount < 1, "the list is empty on this deployment")
 
-          const buttons = tracked.first().getByRole("button")
-          expect(await buttons.count()).toBeGreaterThanOrEqual(2)
-        }
+        // Only a product that tracks its stock gets the editor — an untracked
+        // one shows a dash. Asserting on the first row regardless found zero
+        // buttons and read as a missing feature.
+        const tracked = rows.filter({ hasNot: page.getByText("Non suivi") })
+        const trackedCount = await countAfterLoad(tracked)
+        test.skip(
+          trackedCount === 0,
+          "no product in this store tracks its stock"
+        )
+
+        const buttons = tracked.first().getByRole("button")
+        expect(await countAfterLoad(buttons)).toBeGreaterThanOrEqual(2)
       }
     })
 
@@ -225,15 +228,17 @@ test.describe("Inventory Page", () => {
 
       if (await table.isVisible({ timeout: 15_000 }).catch(() => false)) {
         const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+        const rowCount = await countAfterLoad(rows)
 
-        if (rowCount > 0) {
-          // Threshold column should contain an input or editable value
-          const thresholdHeader = page.getByText("Seuil alerte", {
-            exact: false,
-          })
-          await expect(thresholdHeader).toBeVisible()
-        }
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(rowCount < 1, "the list is empty on this deployment")
+
+        // Threshold column should contain an input or editable value
+        const thresholdHeader = page.getByText("Seuil alerte", {
+          exact: false,
+        })
+        await expect(thresholdHeader).toBeVisible()
       }
     })
 
@@ -242,14 +247,16 @@ test.describe("Inventory Page", () => {
 
       if (await table.isVisible({ timeout: 15_000 }).catch(() => false)) {
         const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+        const rowCount = await countAfterLoad(rows)
 
-        if (rowCount > 0) {
-          const autoDisableHeader = page.getByText("Auto-désactivation", {
-            exact: false,
-          })
-          await expect(autoDisableHeader).toBeVisible()
-        }
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(rowCount < 1, "the list is empty on this deployment")
+
+        const autoDisableHeader = page.getByText("Auto-désactivation", {
+          exact: false,
+        })
+        await expect(autoDisableHeader).toBeVisible()
       }
     })
 
@@ -258,15 +265,17 @@ test.describe("Inventory Page", () => {
 
       if (await table.isVisible({ timeout: 15_000 }).catch(() => false)) {
         const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+        const rowCount = await countAfterLoad(rows)
 
-        if (rowCount > 0) {
-          // The column header, not the "Non suivi" badge repeated on each row.
-          const trackingHeader = page
-            .locator("thead")
-            .getByText("Suivi", { exact: true })
-          await expect(trackingHeader).toBeVisible()
-        }
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(rowCount < 1, "the list is empty on this deployment")
+
+        // The column header, not the "Non suivi" badge repeated on each row.
+        const trackingHeader = page
+          .locator("thead")
+          .getByText("Suivi", { exact: true })
+        await expect(trackingHeader).toBeVisible()
       }
     })
   })
@@ -289,11 +298,13 @@ test.describe("Inventory Page", () => {
 
         // Just verify pagination exists if there are enough rows
         const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+        const rowCount = await countAfterLoad(rows)
 
-        if (rowCount >= 10) {
-          await expect(pagination.first()).toBeVisible({ timeout: 5_000 })
-        }
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(rowCount < 10, "the list is empty on this deployment")
+
+        await expect(pagination.first()).toBeVisible({ timeout: 5_000 })
       }
     })
   })

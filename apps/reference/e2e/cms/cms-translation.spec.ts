@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 test.describe("CMS Translation", () => {
   test.describe("Translation Controls", () => {
@@ -124,12 +125,14 @@ test.describe("CMS Translation", () => {
 
       // Look for translation buttons showing a number (translations exist)
       const countButtons = page.getByRole("button", { name: /^\d+$/ })
-      const count = await countButtons.count()
+      const count = await countAfterLoad(countButtons)
 
-      if (count > 0) {
-        const text = await countButtons.first().textContent()
-        expect(Number(text)).toBeGreaterThan(0)
-      }
+      // A silent `if` here let the test pass having checked nothing when the
+      // list came back empty. A skip says so instead.
+      test.skip(count < 1, "there is nothing to translate on this page")
+
+      const text = await countButtons.first().textContent()
+      expect(Number(text)).toBeGreaterThan(0)
     })
   })
 

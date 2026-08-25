@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 const STORES_URL = "/dashboard/stores"
 
@@ -58,16 +59,18 @@ test.describe("Store Detail Page", () => {
     // there and goes nowhere, which is why all seventeen tests in this file
     // failed on the same "still on /dashboard/stores".
     const storeLinks = page.locator('tbody tr a[href^="/dashboard/stores/"]')
-    const rowCount = await storeLinks.count().catch(() => 0)
+    const rowCount = await countAfterLoad(storeLinks)
 
-    if (rowCount > 0) {
-      await storeLinks.first().click()
-      await page.waitForLoadState("domcontentloaded")
+    // A silent `if` here let the test pass having checked nothing when the
+    // list came back empty. A skip says so instead.
+    test.skip(rowCount < 1, "the list is empty on this deployment")
 
-      // Wait for the store detail page to load
-      await expect(page).toHaveURL(/\/dashboard\/stores\//, { timeout: 15_000 })
-      return true
-    }
+    await storeLinks.first().click()
+    await page.waitForLoadState("domcontentloaded")
+
+    // Wait for the store detail page to load
+    await expect(page).toHaveURL(/\/dashboard\/stores\//, { timeout: 15_000 })
+    return true
 
     return false
   }
@@ -177,14 +180,14 @@ test.describe("Store Detail Page", () => {
 
         // Check that there are time input fields (open/close)
         const timeInputs = page.locator('input[type="time"]')
-        const timeInputCount = await timeInputs.count()
+        const timeInputCount = await countAfterLoad(timeInputs)
 
         // At least 2 time inputs per day (open and close) for 7 days = 14
         expect(timeInputCount).toBeGreaterThanOrEqual(2)
 
         // Check for Fermé/Ouvert toggle switches
         const switches = page.getByRole("switch")
-        const switchCount = await switches.count()
+        const switchCount = await countAfterLoad(switches)
         expect(switchCount).toBeGreaterThanOrEqual(1)
       }
     })

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 /**
  * Dismisses the sound-alert gate that covers the kitchen board.
@@ -172,15 +173,17 @@ test.describe("Kitchen Page", () => {
 
         // Options should appear
         const options = page.getByRole("option")
-        const optionCount = await options.count()
+        const optionCount = await countAfterLoad(options)
 
-        if (optionCount > 0) {
-          await options.first().click()
-          await page.waitForTimeout(500)
+        // A silent `if` here let the test pass having checked nothing when the
+        // list came back empty. A skip says so instead.
+        test.skip(optionCount < 1, "the station filter offers no option")
 
-          // Page should still render without errors
-          await expect(mainContent).toBeVisible()
-        }
+        await options.first().click()
+        await page.waitForTimeout(500)
+
+        // Page should still render without errors
+        await expect(mainContent).toBeVisible()
       }
     })
   })
