@@ -4,9 +4,9 @@ import { COMPANY, HOSTING, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME, SITE_URL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Mentions légales — Be in Digital",
+  title: "Mentions légales",
   description:
-    "Informations légales de l'éditeur du site Be in Digital (TUUM AGENCY, SAS) : identité, hébergement, propriété intellectuelle.",
+    `Informations légales de l'éditeur du site ${SITE_NAME} — ${COMPANY.operatorName} (${COMPANY.legalName}, SAS) : identité, hébergement, propriété intellectuelle.`,
   alternates: { canonical: "/mentions-legales" },
 };
 

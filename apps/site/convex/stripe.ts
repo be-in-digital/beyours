@@ -379,7 +379,7 @@ export const createCheckoutSession = action({
               ? { product: creationProductId }
               : {
                   product_data: {
-                    name: `Be in Digital — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
+                    name: `BeYours — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
                     description: isFounders
                       ? "Création de votre solution digitale — Tarif fondateurs, 10 places"
                       : "Création de votre solution digitale",
@@ -394,7 +394,7 @@ export const createCheckoutSession = action({
             unit_amount: maintenanceCents,
             ...taxBehavior,
             product_data: {
-              name: `Be in Digital — ${planLabel} — Maintenance`,
+              name: `BeYours — ${planLabel} — Maintenance`,
               description: `Maintenance — ${periodLabel}`,
             },
           },

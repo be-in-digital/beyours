@@ -4,9 +4,9 @@ import { COMPANY, SUBPROCESSORS, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Politique de confidentialité — Be in Digital",
+  title: "Politique de confidentialité",
   description:
-    "Comment Be in Digital (TUUM AGENCY) collecte, utilise et protège vos données personnelles, conformément au RGPD.",
+    `Comment ${COMPANY.operatorName} (${COMPANY.legalName}), éditeur de la solution ${SITE_NAME}, collecte, utilise et protège vos données personnelles, conformément au RGPD.`,
   alternates: { canonical: "/confidentialite" },
 };
 
