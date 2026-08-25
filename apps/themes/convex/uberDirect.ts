@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalMutation } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
@@ -226,5 +226,351 @@ export const getDeliveryQuote = action({
     return parseEstimateResponse(
       (await estimateResponse.json()) as UberEstimateResponse
     );
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Delivery lifecycle
+//
+// Everything above books nothing: it prices a course. The actions below are
+// what actually put a courier on the road, and what keeps the order in step
+// with them.
+// ---------------------------------------------------------------------------
+
+const CREATE_ORDER_URL = "https://api.uber.com/v1/eats/deliveries/orders";
+
+/** Resolve credentials once; every lifecycle action needs the same three. */
+async function requireUberConfig(ctx: any): Promise<{
+  clientId: string;
+  clientSecret: string;
+  customerId: string;
+}> {
+  const settings = await ctx.runQuery(internal.globalSettings.getInternal, {});
+  if (!settings) {
+    throw new Error("SETTINGS_NOT_FOUND");
+  }
+
+  const uberConfig = settings.integrations?.uberDirect;
+  if (!uberConfig?.enabled) {
+    throw new Error("UBER_DIRECT_DISABLED");
+  }
+  if (!uberConfig.clientId || !uberConfig.clientSecret) {
+    throw new Error(
+      "UBER_DIRECT_NOT_CONFIGURED: Missing clientId or clientSecret"
+    );
+  }
+  if (!uberConfig.customerId) {
+    throw new Error(
+      "UBER_DIRECT_NOT_CONFIGURED: Missing customerId (Uber store ID)"
+    );
+  }
+
+  return {
+    clientId: uberConfig.clientId,
+    clientSecret: uberConfig.clientSecret,
+    customerId: uberConfig.customerId,
+  };
+}
+
+/**
+ * Call Uber with a token, retrying once on 401.
+ *
+ * The token lives in a module-level cache shared with the quote path, so it can
+ * be revoked between two calls. One eviction and one retry is the difference
+ * between a transient 401 and a failed delivery.
+ */
+async function callUber(
+  clientId: string,
+  clientSecret: string,
+  url: string,
+  init: { method: string; body?: string; idempotencyKey?: string }
+): Promise<Response> {
+  const send = async (token: string) =>
+    fetch(url, {
+      method: init.method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        // Uber replays on network timeouts. Without this header a retried
+        // create would dispatch a second courier to the same address, and we
+        // would pay for both.
+        ...(init.idempotencyKey
+          ? { "X-Idempotency-Key": init.idempotencyKey }
+          : {}),
+      },
+      ...(init.body ? { body: init.body } : {}),
+    });
+
+  let token = await getOAuthToken(clientId, clientSecret);
+  let response = await send(token);
+
+  if (response.status === 401) {
+    tokenCache.delete(clientId);
+    token = await getOAuthToken(clientId, clientSecret);
+    response = await send(token);
+  }
+
+  return response;
+}
+
+/**
+ * Book a courier for an order that already has a quote.
+ *
+ * Idempotent on the order: an order that already carries a delivery id returns
+ * it untouched rather than booking a second courier.
+ */
+export const createDelivery = action({
+  args: {
+    orderId: v.id("orders"),
+    /** Unix ms when the food will be ready. Omit for ASAP. */
+    pickupAt: v.optional(v.number()),
+    pickupInstructions: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{
+    deliveryId: string;
+    trackingUrl?: string;
+    fee?: number;
+    alreadyBooked: boolean;
+  }> => {
+    const order = await ctx.runQuery(internal.orders.internalGetById, {
+      id: args.orderId,
+    });
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+
+    // Booking twice costs two couriers and two fees.
+    if (order.uberDirectDeliveryId) {
+      return {
+        deliveryId: order.uberDirectDeliveryId,
+        trackingUrl: order.uberDirectTrackingUrl,
+        fee: order.uberDirectFee,
+        alreadyBooked: true,
+      };
+    }
+
+    if (!order.uberDirectEstimateId) {
+      throw new Error(
+        "NO_QUOTE: Call getDeliveryQuote before booking a courier"
+      );
+    }
+
+    const config = await requireUberConfig(ctx);
+    const { uberDirect } = await import("@be-in-digital/integrations");
+
+    let body: string;
+    try {
+      body = JSON.stringify(
+        uberDirect.buildCreateDeliveryRequest(order as any, {
+          uberStoreId: config.customerId,
+          quote: { estimateId: order.uberDirectEstimateId },
+          pickupAt: args.pickupAt,
+          pickupInstructions: args.pickupInstructions,
+        })
+      );
+    } catch (err) {
+      // A payload error is ours, not Uber's — surface the code as-is so the
+      // caller can tell "no phone number" from "Uber is down".
+      throw new Error(
+        err instanceof Error ? err.message : "UBER_DIRECT_PAYLOAD_INVALID"
+      );
+    }
+
+    const response = await callUber(
+      config.clientId,
+      config.clientSecret,
+      CREATE_ORDER_URL,
+      { method: "POST", body, idempotencyKey: order.orderNumber }
+    );
+
+    if (response.status === 409) {
+      throw new Error(
+        "DELIVERY_ALREADY_EXISTS: Uber already has a delivery for this order"
+      );
+    }
+    if (response.status === 422) {
+      throw new Error(
+        "QUOTE_EXPIRED_OR_UNDELIVERABLE: Re-quote before booking again"
+      );
+    }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`UBER_API_ERROR (${response.status}): ${text}`);
+    }
+
+    const created = (await response.json()) as {
+      order_id: string;
+      order_tracking_url?: string;
+      full_fee?: { total: number };
+    };
+
+    await ctx.runMutation(internal.uberDirect.recordDelivery, {
+      orderId: args.orderId,
+      deliveryId: created.order_id,
+      trackingUrl: created.order_tracking_url,
+      fee: created.full_fee?.total,
+    });
+
+    return {
+      deliveryId: created.order_id,
+      trackingUrl: created.order_tracking_url,
+      fee: created.full_fee?.total,
+      alreadyBooked: false,
+    };
+  },
+});
+
+/**
+ * Cancel a booked delivery.
+ *
+ * Cancels the courier only. The order is left alone on purpose: cancelling it
+ * is a separate decision, subject to the order status machine, and the two do
+ * not always go together — a restaurant may cancel a courier to deliver the
+ * order itself.
+ */
+export const cancelDelivery = action({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args): Promise<{ cancelled: boolean }> => {
+    const order = await ctx.runQuery(internal.orders.internalGetById, {
+      id: args.orderId,
+    });
+    if (!order) {
+      throw new Error("ORDER_NOT_FOUND");
+    }
+    if (!order.uberDirectDeliveryId) {
+      throw new Error("NO_DELIVERY: This order has no Uber Direct delivery");
+    }
+
+    const config = await requireUberConfig(ctx);
+    const response = await callUber(
+      config.clientId,
+      config.clientSecret,
+      `${CREATE_ORDER_URL}/${encodeURIComponent(order.uberDirectDeliveryId)}/cancel`,
+      { method: "POST" }
+    );
+
+    // Already terminal on Uber's side: nothing to cancel, and reporting an
+    // error here would push the operator to retry a no-op.
+    if (response.status === 409 || response.status === 404) {
+      return { cancelled: false };
+    }
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`UBER_API_ERROR (${response.status}): ${text}`);
+    }
+
+    // Uber will also send a FAILED webhook; writing it here keeps the admin
+    // screen honest in the meantime. Not an incident: we asked for it.
+    await ctx.runMutation(internal.uberDirect.applyDeliveryStatus, {
+      deliveryId: order.uberDirectDeliveryId,
+      status: "FAILED",
+      needsAttention: false,
+    });
+
+    return { cancelled: true };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal mutations — the only writers of the Uber Direct fields
+// ---------------------------------------------------------------------------
+
+/** Attach a freshly booked delivery to its order. */
+export const recordDelivery = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    deliveryId: v.string(),
+    trackingUrl: v.optional(v.string()),
+    fee: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+
+    await ctx.db.patch(args.orderId, {
+      uberDirectDeliveryId: args.deliveryId,
+      uberDirectStatus: "SCHEDULED" as const,
+      uberDirectStatusAt: Date.now(),
+      ...(args.trackingUrl ? { uberDirectTrackingUrl: args.trackingUrl } : {}),
+      ...(args.fee !== undefined ? { uberDirectFee: args.fee } : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Apply a courier status to the order it belongs to.
+ *
+ * Called by the webhook, so it must be idempotent: Uber replays events, and a
+ * replay must not throw — a 500 here puts us in a retry loop.
+ */
+export const applyDeliveryStatus = internalMutation({
+  args: {
+    deliveryId: v.string(),
+    status: v.string(),
+    trackingUrl: v.optional(v.string()),
+    /** Overrides the status-derived alert. A cancellation we asked for is a
+     *  known state, not an incident, and must not raise a flag. */
+    needsAttention: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args): Promise<{ applied: boolean; reason?: string }> => {
+    const { uberDirect } = await import("@be-in-digital/integrations");
+
+    if (!uberDirect.isUberDirectStatus(args.status)) {
+      // An unknown status must stall the delivery, not move the order
+      // somewhere arbitrary. Recorded as a no-op, not an error.
+      console.error(
+        `[Uber Direct] Unknown status "${args.status}" for delivery ${args.deliveryId}`
+      );
+      return { applied: false, reason: "UNKNOWN_STATUS" };
+    }
+
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_uberDirectDeliveryId", (q) =>
+        q.eq("uberDirectDeliveryId", args.deliveryId)
+      )
+      .first();
+
+    if (!order) {
+      // A delivery we never booked, or one booked by another environment.
+      console.error(`[Uber Direct] No order for delivery ${args.deliveryId}`);
+      return { applied: false, reason: "ORDER_NOT_FOUND" };
+    }
+
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
+      uberDirectStatus: args.status,
+      uberDirectStatusAt: now,
+      updatedAt: now,
+    };
+    if (args.trackingUrl) patch.uberDirectTrackingUrl = args.trackingUrl;
+    const needsAttention =
+      args.needsAttention ?? uberDirect.requiresManualIntervention(args.status);
+    if (needsAttention) {
+      patch.uberDirectFailedAt = now;
+    }
+    await ctx.db.patch(order._id, patch);
+
+    const target = uberDirect.orderStatusForDeliveryStatus(args.status);
+    if (!target || order.status === target) {
+      return { applied: true };
+    }
+
+    // The order machine has the final say. A courier update that would make an
+    // illegal move is recorded on the delivery and dropped for the order —
+    // an operator who already advanced the order by hand must not be undone.
+    const { canTransitionOrderStatus } = await import(
+      "@be-in-digital/convex-schema"
+    );
+    if (!canTransitionOrderStatus(order.status, target)) {
+      console.warn(
+        `[Uber Direct] ${args.status} would move order ${order.orderNumber} ${order.status} -> ${target}, which the status machine forbids`
+      );
+      return { applied: true, reason: "TRANSITION_REFUSED" };
+    }
+
+    await ctx.db.patch(order._id, { status: target, updatedAt: now });
+    return { applied: true };
   },
 });

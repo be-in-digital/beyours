@@ -51,6 +51,22 @@ export const ordersTable = defineTable({
   // Uber Direct delivery tracking
   uberDirectEstimateId: v.optional(v.string()),
   uberDirectFee: v.optional(v.number()), // actual Uber Direct cost in cents
+  // Set once the delivery is booked; the webhook finds the order by this id.
+  uberDirectDeliveryId: v.optional(v.string()),
+  uberDirectStatus: v.optional(v.union(
+    v.literal("SCHEDULED"),
+    v.literal("EN_ROUTE_TO_PICKUP"),
+    v.literal("ARRIVED_AT_PICKUP"),
+    v.literal("EN_ROUTE_TO_DROPOFF"),
+    v.literal("ARRIVED_AT_DROPOFF"),
+    v.literal("COMPLETED"),
+    v.literal("FAILED")
+  )),
+  uberDirectTrackingUrl: v.optional(v.string()),
+  uberDirectStatusAt: v.optional(v.number()),
+  /** Set when Uber reports FAILED. The order machine forbids
+   *  out_for_delivery -> cancelled, so this needs a human, not a transition. */
+  uberDirectFailedAt: v.optional(v.number()),
   deliveryFeeMode: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
   promotionId: v.optional(v.id("promotions")),
   discountAmount: v.optional(v.number()),
@@ -111,3 +127,4 @@ export const ordersTable = defineTable({
   .index("by_orderNumber", ["orderNumber"])
   .index("by_source", ["source"])
   .index("by_external_order", ["externalOrderId"])
+  .index("by_uberDirectDeliveryId", ["uberDirectDeliveryId"])
