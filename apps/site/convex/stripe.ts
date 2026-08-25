@@ -6,20 +6,7 @@ import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
-
-/* ── Founders offer ──
-   The first 10 Essentielle builds with the creation offered (list price
-   3 500 € excl. tax), only the annual maintenance staying due, in exchange for
-   contractual commitments (case study, testimonial, right to name them as a
-   reference). It ends when the slots run out, never on a date.
-   Not stackable with a referral: a code applied = list price −10 %.
-   Duplicated in lib/payment-providers.ts (FOUNDERS_OFFER) — keep them in sync. */
-const foundersOffer = {
-  enabled: true,
-  plan: "essentielle" as const,
-  totalSlots: 10,
-  creationCents: 0,
-};
+import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -189,33 +176,23 @@ export const createCheckoutSession = action({
 
     /* Founders: the creation line keeps its list price and a PERSISTENT Stripe
        coupon zeroes it, so Stripe enforces the 10-slot cap itself through the
-       coupon's max_redemptions. The Convex counter cannot: countFoundersSold
-       only sees orders already « paid », so checkouts opened before the first
-       webhook lands never reserve a slot, and more than 10 builds could go out
-       free. Without the env var configured we fall back to the old behaviour
-       (a 0 € line, cap enforced by the counter alone) rather than block a sale. */
+       coupon's max_redemptions. The Convex counter cannot hold it alone — it
+       reads a snapshot, Stripe keeps the ledger — so a live checkout that
+       cannot reach the coupon is REFUSED rather than served free
+       (see resolveFoundersPricing). */
     const foundersCouponId = process.env.STRIPE_FOUNDERS_COUPON_ID;
     const creationProductId = resolveCreationProductId(args.plan);
-    /* Both are required: the coupon caps the offer, the product is what the
-       coupon is restricted to. With the coupon but no product the discount
-       would spread over the maintenance line, so we fall back to the 0 € line
-       (correct invoice, cap left to the Convex counter) rather than issue a
-       wrongly split one. */
-    const useFoundersCoupon =
-      isFounders && !!foundersCouponId && !!creationProductId;
-    if (isFounders && !foundersCouponId) {
-      console.error(
-        "STRIPE_FOUNDERS_COUPON_ID absent: offre fondateurs appliquée sans plafond Stripe",
-      );
-    } else if (isFounders && !creationProductId) {
-      console.error(
-        `${CREATION_PRODUCT_ENV[args.plan]} absent: offre fondateurs appliquée sans plafond Stripe ` +
-          "(le coupon aurait réparti la remise sur la maintenance)",
-      );
-    }
+    const foundersPricing = resolveFoundersPricing({
+      isFounders,
+      couponId: foundersCouponId,
+      creationProductId,
+      stripeLive: stripe !== null,
+      creationProductEnvName: CREATION_PRODUCT_ENV[args.plan],
+    });
+    const useFoundersCoupon = foundersPricing === "coupon";
 
     const creationCents =
-      isFounders && !useFoundersCoupon
+      foundersPricing === "zero-line"
         ? foundersOffer.creationCents
         : prices.creation;
     const foundersDiscountCents = useFoundersCoupon ? prices.creation : 0;

@@ -192,7 +192,8 @@ export default defineSchema({
       v.union(v.literal("card"), v.literal("alma"), v.literal("klarna")),
     ),
     stripeSessionId: v.optional(v.string()),
-    /* Sale at the founders price (2 500 € excl. tax, 10 slots) — consumes a slot. */
+    /* Founders sale: creation offered (10 slots) — consumes a slot while the
+       order is paid, or pending and still payable. See convex/foundersOffer.ts. */
     isFounders: v.optional(v.boolean()),
     /* ── Maintenance subscription provisioning after the 1st payment ──
        Optional/additive (no migration): absent = a legacy order, or one the
