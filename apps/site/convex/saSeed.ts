@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { planPrices } from "./planPrices";
 
 /* ══════════════════════════════════════════════
    Superadmin console seed.
@@ -64,8 +65,16 @@ const RESTAURANTS: Resto[] = [
   { first: "Omar", last: "Yıldız", email: "omar@maisonkebab.fr", phone: "0600112233", restaurant: "Maison Kebab", city: "Dijon", plan: "essentielle", buyerType: "business", siret: "88900122300025", sub: "canceled", health: "unknown", behind: false, baseDaily: 0, stores: 1 },
 ];
 
-const CREATION_CENTS = { essentielle: 190000, premium: 350000 };
-const MAINT_CENTS = { essentielle: 49000, premium: 890 * 100 };
+/* Demo clients are priced off the real plan prices — a seeder quoting stale
+   amounts makes the console's revenue figures wrong for the seeded fleet. */
+const CREATION_CENTS = {
+  essentielle: planPrices.essentielle.creation,
+  premium: planPrices.premium.creation,
+};
+const MAINT_CENTS = {
+  essentielle: planPrices.essentielle.maintenanceYearly,
+  premium: planPrices.premium.maintenanceYearly,
+};
 const LATEST_VERSION = "2.1.0";
 const BEHIND_VERSION = "2.0.1";
 
