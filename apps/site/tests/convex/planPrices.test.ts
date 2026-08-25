@@ -19,6 +19,31 @@ const modules = import.meta.glob("../../convex/**/*.ts");
 
 const PLANS = ["essentielle", "premium"] as const;
 
+/* Montants attendus, en centimes. Épinglés en dur ici volontairement : c'est le
+   seul endroit du repo où les prix sont écrits deux fois, pour qu'une
+   modification involontaire de planPrices.ts fasse tomber un test. */
+describe("les montants facturés", () => {
+  test("Essentielle : 100 €/mois (soit 1 200 €/an), ou 1 000 €/an en annuel", () => {
+    expect(planPrices.essentielle.maintenanceMonthly).toBe(10000);
+    expect(planPrices.essentielle.maintenanceYearly).toBe(100000);
+    expect(planPrices.essentielle.creation).toBe(350000);
+  });
+
+  test("Premium : 200 €/mois (soit 2 400 €/an), ou 2 000 €/an en annuel", () => {
+    expect(planPrices.premium.maintenanceMonthly).toBe(20000);
+    expect(planPrices.premium.maintenanceYearly).toBe(200000);
+    expect(planPrices.premium.creation).toBe(750000);
+  });
+
+  /* Les deux offres appliquent la même remise annuelle : 2 mois offerts.
+     Si un prix bouge d'un côté sans l'autre, ce test le signale. */
+  test.each(PLANS)("%s : l'annuel revient à 10 mensualités", (plan) => {
+    expect(planPrices[plan].maintenanceYearly).toBe(
+      planPrices[plan].maintenanceMonthly * 10,
+    );
+  });
+});
+
 describe("plan prices are the single source of truth", () => {
   test.each(PLANS)(
     "%s: the console's annual maintenance equals planPrices",
