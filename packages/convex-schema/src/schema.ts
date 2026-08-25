@@ -30,6 +30,7 @@ import {
   promotionsTable,
   promotionUsagesTable,
   favoritesTable,
+  customerAddressesTable,
   contactMessagesTable,
   emailSubscribersTable,
   emailTemplatesTable,
@@ -110,6 +111,7 @@ export default defineSchema({
   uberEatsConnections: uberEatsConnectionsTable,
   oauthStates: oauthStatesTable,
   favorites: favoritesTable,
+  customerAddresses: customerAddressesTable,
   contactMessages: contactMessagesTable,
   // Email Marketing
   emailSubscribers: emailSubscribersTable,

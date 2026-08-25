@@ -25,6 +25,7 @@ export {
 } from "./gamification"
 export { promotionsTable, promotionUsagesTable } from "./promotions"
 export { favoritesTable } from "./favorites"
+export { customerAddressesTable } from "./customerAddresses"
 export { contactMessagesTable } from "./contactMessages"
 export {
   emailBlockValidator,

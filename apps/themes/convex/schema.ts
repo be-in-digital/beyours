@@ -47,6 +47,7 @@ import {
   blogAutoQueueTable,
   blogAutoUsageTable,
   favoritesTable,
+  customerAddressesTable,
   contactMessagesTable,
   cmsTable,
   cmsHomeTable,
@@ -123,6 +124,7 @@ export default defineSchema({
   blogAutoQueue: blogAutoQueueTable,
   blogAutoUsage: blogAutoUsageTable,
   favorites: favoritesTable,
+  customerAddresses: customerAddressesTable,
   contactMessages: contactMessagesTable,
   // CMS (storefront page tables)
   cms: cmsTable,
