@@ -5,11 +5,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-
-const planPrices = {
-  essentielle: { creation: 350000, maintenanceMonthly: 10000, maintenanceYearly: 100000 },
-  premium: { creation: 750000, maintenanceMonthly: 20000, maintenanceYearly: 200000 },
-} as const;
+import { planPrices } from "./planPrices";
 
 /* ── Founders offer ──
    The first 10 Essentielle builds with the creation offered (list price

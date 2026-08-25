@@ -8,7 +8,7 @@ import {
   buildDailySeries,
   readSnapshotsInRange,
   monthlyEquivalentCents,
-  MAINTENANCE_ANNUAL_CENTS,
+  annualMaintenanceCents,
 } from "./saLib";
 
 /** KPI bundle for the superadmin overview (real sales + fleet + GMV). */
@@ -76,7 +76,7 @@ export const overview = query({
     for (const s of activeSubs) {
       if ((s.currentPeriodEnd ?? 0) && (s.currentPeriodEnd ?? 0) <= in30) {
         due30Count += 1;
-        due30Cents += MAINTENANCE_ANNUAL_CENTS[s.plan] ?? 49000;
+        due30Cents += annualMaintenanceCents(s.plan);
       }
     }
     const pastDueSubs = subscriptions.filter((s) => s.status === "past_due").length;

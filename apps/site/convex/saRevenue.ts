@@ -6,7 +6,7 @@ import {
   DAY_MS,
   startOfDay,
   monthlyEquivalentCents,
-  MAINTENANCE_ANNUAL_CENTS,
+  annualMaintenanceCents,
 } from "./saLib";
 
 const MONTH_LABELS = [
@@ -174,7 +174,7 @@ export const subscriptionsOverview = query({
         const end = s.currentPeriodEnd ?? 0;
         if (end && end <= in30) {
           due30 += 1;
-          due30Cents += MAINTENANCE_ANNUAL_CENTS[s.plan] ?? 49000;
+          due30Cents += annualMaintenanceCents(s.plan);
         }
         if (end && end <= in90) due90 += 1;
       }
@@ -184,7 +184,7 @@ export const subscriptionsOverview = query({
       .sort((a, b) => (a.currentPeriodEnd ?? 0) - (b.currentPeriodEnd ?? 0))
       .map((s) => ({
         ...s,
-        annualCents: MAINTENANCE_ANNUAL_CENTS[s.plan] ?? 49000,
+        annualCents: annualMaintenanceCents(s.plan),
         monthlyEqCents: monthlyEquivalentCents(s.plan),
       }));
 
