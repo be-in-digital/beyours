@@ -4,6 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./admin";
 import { recordSaActivity } from "./saActivity";
 import { DAY_MS, startOfDay, summarize } from "./saLib";
+import { newLicenseKey } from "./maintenance";
 
 const HEALTH_RANK: Record<string, number> = {
   down: 3,
@@ -204,6 +205,9 @@ export const create = mutation({
       provisionedAt: now,
       integrations: [],
       maintenance: { status: "none", autoRenew: false },
+      /* Stamped now so the site can be provisioned with it in its sentinel;
+         without one its update scripts read as unregistered. */
+      licenseKey: newLicenseKey(),
       createdAt: now,
       updatedAt: now,
     });
@@ -276,5 +280,36 @@ export const update = mutation({
       customerEmail: dep.customerEmail,
       deploymentId: dep._id,
     });
+  },
+});
+
+/* ── License key ──
+   Issues (or rotates) the key a site presents to /maintenance/status. Sites
+   provisioned before the entitlement gate existed have none and read as
+   unregistered until this runs; rotating one invalidates the key held by the
+   site, so it has to be written back into its .beindigital-site.json. */
+export const issueLicenseKey = mutation({
+  args: { deploymentId: v.id("saDeployments") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const dep = await ctx.db.get(args.deploymentId);
+    if (!dep) throw new Error("Déploiement introuvable.");
+
+    const licenseKey = newLicenseKey();
+    await ctx.db.patch(args.deploymentId, {
+      licenseKey,
+      updatedAt: Date.now(),
+    });
+    await recordSaActivity(ctx, {
+      kind: "deployment",
+      action: "deployment.license_issued",
+      summary: dep.licenseKey
+        ? `Clé de licence de « ${dep.name} » régénérée — à reporter dans son .beindigital-site.json`
+        : `Clé de licence émise pour « ${dep.name} »`,
+      actorName: `${admin.firstName ?? "Admin"}`,
+      customerEmail: dep.customerEmail,
+      deploymentId: dep._id,
+    });
+    return licenseKey;
   },
 });

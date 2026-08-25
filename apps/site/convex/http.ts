@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { recordSaActivity } from "./saActivity";
+import { entitlementMessage } from "./maintenance";
 
 const http = httpRouter();
 
@@ -681,6 +682,74 @@ export const recordSubscriptionOutcome = internalMutation({
       });
     }
   },
+});
+
+/* ═══════════════════════════════════════════════
+   Maintenance entitlement — GET /maintenance/status?key=…
+
+   Asked by a client site's update scripts before they pull anything
+   (apps/themes/scripts/lib/maintenance.mjs). Read-only, no side effect, and
+   deliberately forgiving: an unknown key answers « unregistered » rather than
+   an error, so the scripts can tell « we have no contract on file » apart from
+   « the API is down » — the second must never block a client who pays.
+   ═══════════════════════════════════════════════ */
+
+http.route({
+  path: "/maintenance/status",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const key = new URL(request.url).searchParams.get("key");
+
+    const json = (body: Record<string, unknown>) =>
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        },
+      });
+
+    if (!key) {
+      return json({
+        found: false,
+        entitled: true,
+        reason: "unregistered",
+        coveredUntil: null,
+        message: entitlementMessage({
+          entitled: true,
+          reason: "unregistered",
+          coveredUntil: null,
+        }),
+      });
+    }
+
+    const result = await ctx.runQuery(internal.maintenance.byLicenseKey, {
+      licenseKey: key,
+    });
+
+    if (!result) {
+      return json({
+        found: false,
+        entitled: true,
+        reason: "unregistered",
+        coveredUntil: null,
+        message: entitlementMessage({
+          entitled: true,
+          reason: "unregistered",
+          coveredUntil: null,
+        }),
+      });
+    }
+
+    return json({
+      found: true,
+      site: result.site,
+      entitled: result.entitled,
+      reason: result.reason,
+      coveredUntil: result.coveredUntil,
+      message: entitlementMessage(result),
+    });
+  }),
 });
 
 export default http;

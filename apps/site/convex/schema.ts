@@ -356,12 +356,20 @@ export default defineSchema({
       coveredUntil: v.optional(v.number()),
       autoRenew: v.boolean(),
     }),
+    /* ── Update entitlement ──
+       Opaque key written into the site's .beindigital-site.json at
+       provisioning. Its update scripts present it to /maintenance/status to
+       learn whether the contract still covers them (convex/maintenance.ts).
+       Optional: sites provisioned before the gate existed have none, and are
+       treated as unregistered — allowed through, and listed as such. */
+    licenseKey: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_status", ["status"])
     .index("by_health", ["health"])
+    .index("by_licenseKey", ["licenseKey"])
     .index("by_customerEmail", ["customerEmail"]),
 
   saStores: defineTable({
