@@ -41,9 +41,7 @@ test.describe("Kitchen Page", () => {
       await expect(enAttente.or(noStore)).toBeVisible({ timeout: 15_000 })
 
       // If no-store message is shown, skip column checks
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       await expect(page.getByText("En attente")).toBeVisible()
       await expect(page.getByText("En cours")).toBeVisible()
@@ -61,9 +59,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(enAttente.or(noStore)).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       // Column headers should be visible with proper text
       const columns = ["En attente", "En cours", "Prêt", "Terminé"]
@@ -80,9 +76,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(enAttente.or(noStore)).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       // Column headers typically display a count badge (e.g., "(0)" or a number)
       // Look for any numeric indicator near the column headers
@@ -102,9 +96,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(enAttente.or(noStore)).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       // At least some columns should show empty state if no tickets
       const emptyMessage = page.getByText("Aucun ticket")
@@ -134,9 +126,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(mainContent).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       // Station filter is a dropdown/select element
       const stationFilter = page
@@ -154,9 +144,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(mainContent).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       await activateSoundAlerts(page)
 
@@ -203,9 +191,7 @@ test.describe("Kitchen Page", () => {
 
       await expect(enAttente.or(noStore)).toBeVisible({ timeout: 15_000 })
 
-      if (await noStore.isVisible().catch(() => false)) {
-        return
-      }
+      test.skip(await noStore.isVisible({ timeout: 5_000 }).catch(() => false), "no establishment is selected")
 
       // Either ticket cards exist or empty state is shown
       const ticketCard = page.locator('[data-slot="card"]').first()

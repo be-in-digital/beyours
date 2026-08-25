@@ -152,10 +152,12 @@ test.describe("Dashboard Page", () => {
       await expect(ordersTable.or(emptyState)).toBeVisible({ timeout: 15_000 })
 
       // If table is visible, it should have at most 10 rows
-      if (await ordersTable.isVisible()) {
-        const rowCount = await page.locator("tbody tr").count()
-        expect(rowCount).toBeLessThanOrEqual(10)
-      }
+      // A silent `if` here let the test finish green having asserted nothing
+      // when the element never showed. A skip states the gap instead.
+      test.skip(!(await ordersTable.isVisible({ timeout: 15_000 })), "the dashboard shows no orders table")
+
+      const rowCount = await page.locator("tbody tr").count()
+      expect(rowCount).toBeLessThanOrEqual(10)
     })
 
     test("should display order number, customer, amount in table", async ({
@@ -167,18 +169,22 @@ test.describe("Dashboard Page", () => {
       await expect(ordersTable.or(emptyState)).toBeVisible({ timeout: 15_000 })
 
       // If table exists with rows, check for expected column content
-      if (await ordersTable.isVisible()) {
-        const rows = page.locator("tbody tr")
-        const rowCount = await rows.count()
+      // A silent `if` here let the test finish green having asserted nothing
+      // when the element never showed. A skip states the gap instead.
+      test.skip(!(await ordersTable.isVisible({ timeout: 15_000 })), "the dashboard shows no orders table")
 
-        if (rowCount > 0) {
-          // First row should contain data cells
-          const firstRow = rows.first()
-          const cells = firstRow.locator("td")
-          const cellCount = await countAfterLoad(cells)
-          expect(cellCount).toBeGreaterThanOrEqual(3)
-        }
-      }
+      const rows = page.locator("tbody tr")
+      const rowCount = await rows.count()
+
+      // A silent `if` here let the test finish green having asserted nothing
+      // when the list came back empty. A skip states the gap instead.
+      test.skip(rowCount === 0, "the list is empty on this deployment")
+
+      // First row should contain data cells
+      const firstRow = rows.first()
+      const cells = firstRow.locator("td")
+      const cellCount = await countAfterLoad(cells)
+      expect(cellCount).toBeGreaterThanOrEqual(3)
     })
   })
 

@@ -378,10 +378,9 @@ test.describe("Promotions Page", () => {
     await page.waitForTimeout(500)
     const items = listContainer.locator("label")
     const emptyText = listContainer.getByText("Aucun produit trouvé")
-    const count = await countAfterLoad(items)
-    if (count === 0) {
-      await expect(emptyText).toBeVisible()
-    }
+    // Asserting the empty message only when the list was empty meant a
+    // populated list was never checked at all. One assertion covers both.
+    await expect(items.first().or(emptyText)).toBeVisible()
   })
 
   test("should allow selecting and filtering categories", async ({ page }) => {
@@ -417,10 +416,9 @@ test.describe("Promotions Page", () => {
     await page.waitForTimeout(500)
     const items = listContainer.locator("label")
     const emptyText = listContainer.getByText("Aucune catégorie trouvée")
-    const count = await countAfterLoad(items)
-    if (count === 0) {
-      await expect(emptyText).toBeVisible()
-    }
+    // Asserting the empty message only when the list was empty meant a
+    // populated list was never checked at all. One assertion covers both.
+    await expect(items.first().or(emptyText)).toBeVisible()
   })
 
   // ──────────────────────────────────────────────────
