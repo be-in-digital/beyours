@@ -180,6 +180,8 @@ export function CheckoutForm({
             city: saved.city,
             postalCode: saved.postalCode,
             country: saved.country,
+            latitude: saved.latitude,
+            longitude: saved.longitude,
           }
         }
       } else {

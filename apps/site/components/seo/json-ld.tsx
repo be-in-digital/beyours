@@ -95,11 +95,11 @@ const faqItems = [
   },
   {
     q: "Peut-on intégrer Uber Eats et Deliveroo à la plateforme ?",
-    a: "Les intégrations Uber Eats et Deliveroo sont en cours de certification officielle auprès des plateformes. Dès validation, elles seront offertes à tous les clients sans surcoût : les commandes plateformes rejoindront le même flux que les commandes directes dans le dashboard.",
+    a: "Deliveroo a certifié notre application : les commandes arrivent dans le dashboard. Uber Eats est en attente de validation par la plateforme, sans date annoncée. Dès obtention, les commandes Uber Eats rejoindront le même flux, sans surcoût.",
   },
   {
     q: "Comment fonctionne la livraison ?",
-    a: "Le click & collect est disponible dès le lancement. La livraison depuis votre site via Uber Direct est en cours de certification et sera proposée dès validation, sans surcoût.",
+    a: "Le click & collect est disponible dès le lancement. La livraison depuis votre site s'appuie sur Uber Direct : le restaurant ouvre son propre compte Uber Direct, renseigne ses identifiants dans les réglages, et les courses sont facturées par Uber au tarif de sa zone.",
   },
   {
     q: "Y a-t-il un engagement dans la durée ?",

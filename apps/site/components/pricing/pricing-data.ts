@@ -260,7 +260,7 @@ export const faqItems = [
   {
     question: "Les intégrations Uber Eats & Deliveroo sont-elles incluses ?",
     answer:
-      "Elles sont en cours de certification officielle auprès d'Uber et de Deliveroo. Dès validation, elles seront offertes à tous les clients, sans surcoût, via la maintenance : vos commandes plateformes rejoindront le même flux que vos commandes directes, et les clients existants seront activés en priorité. Nous ne promettons pas de date, elle dépend des plateformes. Votre site, la commande en ligne directe et le click & collect fonctionnent dès le premier jour et n'en dépendent pas.",
+      "Deliveroo a certifié notre application : les commandes y arrivent déjà. Uber Eats est en attente de validation par la plateforme ; nous ne promettons pas de date, elle ne dépend pas de nous. Dès obtention, les commandes rejoindront le même flux, sans surcoût, via la maintenance, et les clients existants seront activés en priorité. Votre site, la commande en ligne directe et le click & collect fonctionnent dès le premier jour et n'en dépendent pas.",
   },
 ];
 
