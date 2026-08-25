@@ -4,9 +4,9 @@ import { COMPANY, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Conditions générales de vente — Be in Digital",
+  title: "Conditions générales de vente",
   description:
-    "Conditions générales de vente de la solution Be in Digital : création du site, maintenance annuelle, paiement, propriété intellectuelle, garanties.",
+    `Conditions générales de vente de la solution ${SITE_NAME}, éditée par ${COMPANY.operatorName} : création du site, maintenance annuelle, paiement, propriété intellectuelle, garanties.`,
   alternates: { canonical: "/cgv" },
 };
 

@@ -6,6 +6,7 @@
  */
 
 import { SITE_URL, SITE_NAME, SITE_EMAIL, SOCIAL_LINKS } from "@/lib/site-config";
+import { COMPANY } from "@/lib/legal";
 
 const LOGO_URL = `${SITE_URL}/logo.png`;
 
@@ -23,11 +24,14 @@ export function OrganizationJsonLd() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: SITE_NAME,
+    /* The organization is the AGENCY, not the product. Naming it after the
+       solution is what made Google and the AI assistants conflate the two.
+       `name` is the trade name we lead with, `legalName` the RCS entity. */
+    name: COMPANY.operatorName,
+    legalName: COMPANY.legalName,
     url: SITE_URL,
     logo: LOGO_URL,
-    description:
-      "Plateforme digitale premium pour restaurateurs : site web, commande en ligne, fidélité, analytics.",
+    description: `Agence spécialisée dans la digitalisation des restaurants, éditrice de la solution ${SITE_NAME} : site web, commande en ligne, fidélité, analytics.`,
     sameAs: Object.values(SOCIAL_LINKS),
     contactPoint: {
       "@type": "ContactPoint",
@@ -59,7 +63,8 @@ export function SoftwareApplicationJsonLd() {
     },
     publisher: {
       "@type": "Organization",
-      name: SITE_NAME,
+      name: COMPANY.operatorName,
+      legalName: COMPANY.legalName,
       url: SITE_URL,
       logo: LOGO_URL,
     },
@@ -131,7 +136,8 @@ export function WebsiteJsonLd() {
     inLanguage: "fr-FR",
     publisher: {
       "@type": "Organization",
-      name: SITE_NAME,
+      name: COMPANY.operatorName,
+      legalName: COMPANY.legalName,
       url: SITE_URL,
       logo: LOGO_URL,
     },

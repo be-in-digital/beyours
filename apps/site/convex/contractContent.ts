@@ -53,7 +53,7 @@ ci-après ensemble « les Parties ».
 
 PRÉAMBULE
 
-La Société édite et commercialise « Be in Digital », une solution digitale destinée aux restaurateurs (création d'un site de commande en ligne et de son back-office, puis maintenance annuelle). L'Apporteur, agissant dans le cadre d'une activité professionnelle indépendante, souhaite présenter à la Société des prospects susceptibles de souscrire à ses offres, en contrepartie d'une commission, dans le cadre d'une simple mise en relation, sans mandat de représentation ni de négociation. Le programme est réservé aux personnes agissant à titre professionnel. C'est dans ce contexte que les Parties ont convenu ce qui suit.
+La Société édite et commercialise « BeYours », une solution digitale destinée aux restaurateurs (création d'un site de commande en ligne et de son back-office, puis maintenance annuelle). L'Apporteur, agissant dans le cadre d'une activité professionnelle indépendante, souhaite présenter à la Société des prospects susceptibles de souscrire à ses offres, en contrepartie d'une commission, dans le cadre d'une simple mise en relation, sans mandat de représentation ni de négociation. Le programme est réservé aux personnes agissant à titre professionnel. C'est dans ce contexte que les Parties ont convenu ce qui suit.
 
 
 ARTICLE 1. OBJET
