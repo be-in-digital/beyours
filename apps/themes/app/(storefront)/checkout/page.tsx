@@ -16,7 +16,7 @@ import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
-import { useAddressesStore } from "@/lib/stores/addresses-store"
+import { useAddresses } from "@/lib/hooks/use-addresses"
 import { CheckoutForm } from "@/components/storefront/checkout-form"
 import { OrderSummary } from "@/components/storefront/order-summary"
 import { SignInDialog } from "@/components/storefront/sign-in-dialog"
@@ -39,10 +39,7 @@ export default function CheckoutPage() {
   const orderType = useCartStore((s) => s.orderType)
   const clearCart = useCartStore((s) => s.clearCart)
   const getSubtotal = useCartStore((s) => s.getSubtotal)
-  const addresses = useAddressesStore(
-    (s: { addresses: import("@/lib/stores/addresses-store").SavedAddress[] }) =>
-      s.addresses
-  )
+  const { addresses } = useAddresses(!!session?.user)
 
   const createOrder = useMutation(api.orders.create)
   const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
