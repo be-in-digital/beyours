@@ -4,9 +4,9 @@ import { COMPANY, HOSTING, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME, SITE_URL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Mentions légales — Be in Digital",
+  title: "Mentions légales",
   description:
-    "Informations légales de l'éditeur du site Be in Digital (TUUM AGENCY, SAS) : identité, hébergement, propriété intellectuelle.",
+    `Informations légales de l'éditeur du site ${SITE_NAME} — ${COMPANY.operatorName} (${COMPANY.legalName}, SAS) : identité, hébergement, propriété intellectuelle.`,
   alternates: { canonical: "/mentions-legales" },
 };
 
@@ -28,7 +28,8 @@ export default function MentionsLegalesPage() {
       </p>
       <ul>
         <li>
-          <strong>{COMPANY.legalName}</strong>, {COMPANY.legalForm}
+          <strong>{COMPANY.operatorName}</strong>, nom commercial de{" "}
+          {COMPANY.legalName}, {COMPANY.legalForm}
         </li>
         <li>
           Capital social : {capital ?? <Todo>montant du capital social</Todo>}
@@ -50,13 +51,13 @@ export default function MentionsLegalesPage() {
       </ul>
       <p>
         <strong>Marque commerciale :</strong> « {SITE_NAME} » est une marque
-        exploitée par {COMPANY.legalName}.
+        exploitée par {COMPANY.operatorName}.
       </p>
 
       <h2>2. Directeur de la publication</h2>
       <p>
         Le directeur de la publication est le représentant légal de{" "}
-        {COMPANY.legalName} :{" "}
+        {COMPANY.operatorName} :{" "}
         {COMPANY.legalRepresentative ?? (
           <Todo>nom du représentant légal (Président)</Todo>
         )}
