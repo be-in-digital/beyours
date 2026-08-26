@@ -23,6 +23,7 @@ import {
 } from "@be-in-digital/ui"
 import { Input, Label, Textarea } from "@be-in-digital/ui"
 import { OrderStatusActions } from "./order-status-actions"
+import { UberDirectPanel } from "./uber-direct-panel"
 import { ArrowLeft, RotateCcw } from "lucide-react"
 import { Button } from "@be-in-digital/ui"
 import { toast } from "sonner"
@@ -267,6 +268,10 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
   ) as Order | null | undefined
 
   // Fetch associated payments
+  const globalSettings = useQuery(
+    api?.globalSettings?.get ?? ("skip" as never),
+    api ? {} : "skip"
+  )
   const payments = useQuery(
     api?.payments?.getByOrder ?? ("skip" as never),
     order ? { orderId: order._id } : "skip"
@@ -472,6 +477,21 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               <OrderStatusActions orderId={order._id} currentStatus={order.status} />
             </CardContent>
           </Card>
+
+          {/* Uber Direct courier — renders itself away on non-delivery orders */}
+          <UberDirectPanel
+            api={api}
+            orderId={order._id}
+            orderType={order.type}
+            uberDirectDeliveryId={order.uberDirectDeliveryId}
+            uberDirectStatus={order.uberDirectStatus}
+            uberDirectTrackingUrl={order.uberDirectTrackingUrl}
+            uberDirectFee={order.uberDirectFee}
+            uberDirectFailedAt={order.uberDirectFailedAt}
+            enabled={
+              globalSettings?.integrations?.uberDirect?.enabled === true
+            }
+          />
 
           {/* Payment Information */}
           <Card className="border-border/50">

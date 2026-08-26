@@ -2,6 +2,13 @@
    Pricing Data — Plans, comparatif, maintenance, FAQ
    ═══════════════════════════════════════════════ */
 
+import { planPrices } from "@/convex/planPrices";
+
+/* Amounts shown here derive from convex/planPrices.ts (the single source, in
+   cents) and are converted to euros for display. Never hard-code an amount
+   back in: the pricing page would quote a price the checkout does not charge. */
+const eur = (cents: number) => cents / 100;
+
 export type BillingPeriod = "monthly" | "yearly";
 
 export interface Plan {
@@ -24,9 +31,9 @@ export const plans: Plan[] = [
     subtitle: "Site web restaurant",
     description:
       "Une solution complète pour disposer d'une présence digitale moderne, professionnelle et performante.",
-    creation: 3500,
-    maintenanceMonthly: 100,
-    maintenanceYearly: 1000,
+    creation: eur(planPrices.essentielle.creation),
+    maintenanceMonthly: eur(planPrices.essentielle.maintenanceMonthly),
+    maintenanceYearly: eur(planPrices.essentielle.maintenanceYearly),
     featured: false,
     features: [
       "Site vitrine premium à votre image",
@@ -46,9 +53,9 @@ export const plans: Plan[] = [
     subtitle: "Site web + application mobile",
     description:
       "L'offre complète pour les restaurants qui veulent une présence digitale totale : site web professionnel et application mobile native.",
-    creation: 7500,
-    maintenanceMonthly: 200,
-    maintenanceYearly: 2000,
+    creation: eur(planPrices.premium.creation),
+    maintenanceMonthly: eur(planPrices.premium.maintenanceMonthly),
+    maintenanceYearly: eur(planPrices.premium.maintenanceYearly),
     featured: true,
     comingSoon: true,
     features: [
@@ -200,7 +207,7 @@ export const faqItems = [
   {
     question: "Qu'est-ce que l'offre fondateurs ?",
     answer:
-      "Les 10 premiers restaurants bénéficient d'une création à 2 500 € HT au lieu de 3 500 € HT, en échange de contreparties simples : une étude de cas chiffrée, un témoignage et la possibilité de vous citer en référence. Le nombre de places est limité par notre capacité de livraison. À l'épuisement des 10 places, le prix catalogue s'applique automatiquement. L'offre n'est pas cumulable avec un code de parrainage, et la maintenance reste au tarif normal.",
+      "Les 10 premiers restaurants ne paient pas la création, offerte au lieu de 3 500 € HT : seule la maintenance annuelle reste due. En échange, des contreparties simples : une étude de cas chiffrée, un témoignage et la possibilité de vous citer en référence. Le nombre de places est limité par notre capacité de livraison. À l'épuisement des 10 places, le prix catalogue s'applique automatiquement. L'offre n'est pas cumulable avec un code de parrainage, et la maintenance reste au tarif normal.",
   },
   {
     question: "La maintenance est-elle obligatoire ?",
@@ -260,7 +267,7 @@ export const faqItems = [
   {
     question: "Les intégrations Uber Eats & Deliveroo sont-elles incluses ?",
     answer:
-      "Elles sont en cours de certification officielle auprès d'Uber et de Deliveroo. Dès validation, elles seront offertes à tous les clients, sans surcoût, via la maintenance : vos commandes plateformes rejoindront le même flux que vos commandes directes, et les clients existants seront activés en priorité. Nous ne promettons pas de date, elle dépend des plateformes. Votre site, la commande en ligne directe et le click & collect fonctionnent dès le premier jour et n'en dépendent pas.",
+      "Deliveroo a certifié notre application : les commandes y arrivent déjà. Uber Eats est en attente de validation par la plateforme ; nous ne promettons pas de date, elle ne dépend pas de nous. Dès obtention, les commandes rejoindront le même flux, sans surcoût, via la maintenance, et les clients existants seront activés en priorité. Votre site, la commande en ligne directe et le click & collect fonctionnent dès le premier jour et n'en dépendent pas.",
   },
 ];
 

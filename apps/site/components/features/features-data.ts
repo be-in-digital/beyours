@@ -180,7 +180,7 @@ export const features: Feature[] = [
     shortDescription:
       "Deliveroo a certifié notre application : les commandes arrivent dans votre dashboard. Uber Eats est en attente de validation. Offerte à tous les clients, sans surcoût.",
     longDescription:
-      "Deliveroo a certifié notre application : les commandes Deliveroo arrivent directement dans votre dashboard, sans double saisie. Côté Uber, la validation est en attente ; une fois obtenue, les commandes Uber Eats rejoindront le même flux et Uber Direct permettra la livraison depuis votre propre site sans flotte de livreurs. L'unification de vos canaux est donc à 70 %. L'intégration est offerte à tous les clients, sans surcoût, via la maintenance ; les clients existants sont activés en priorité. Nous ne promettons pas de date pour Uber : elle dépend de la plateforme.",
+      "Deliveroo a certifié notre application : les commandes Deliveroo arrivent directement dans votre dashboard, sans double saisie. Côté Uber Eats, la validation de la plateforme est en attente ; une fois obtenue, ces commandes rejoindront le même flux. L'unification de vos canaux est donc à 70 %. L'intégration est offerte à tous les clients, sans surcoût, via la maintenance ; les clients existants sont activés en priorité. Nous ne promettons pas de date pour Uber : elle dépend de la plateforme.",
     benefits: [
       "Deliveroo : application certifiée, commandes intégrées",
       "Uber Eats & Uber Direct : validation en attente, sans date annoncée",
