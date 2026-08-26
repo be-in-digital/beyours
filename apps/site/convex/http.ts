@@ -262,6 +262,7 @@ async function handleCheckoutCompleted(
           customerEmail: customerEmail ?? order.customerEmail,
           plan,
           billingPeriod,
+          buyerType: order.buyerType,
         });
         await ctx.runMutation(internal.http.recordSubscriptionOutcome, {
           orderId: order._id,
@@ -341,6 +342,7 @@ async function handleInvoiceSucceeded(
 ) {
   const invoice = event.data.object;
   const invoiceId = invoice.id as string;
+  const invoiceNumber = invoice.number as string | undefined;
   const subscriptionId = invoice.subscription as string | undefined;
   const customerId = invoice.customer as string;
   const customerEmail = invoice.customer_email as string;
@@ -378,6 +380,7 @@ async function handleInvoiceSucceeded(
     await ctx.runMutation(internal.invoices.updateStatus, {
       stripeInvoiceId: invoiceId,
       status: "paid" as const,
+      invoiceNumber,
       invoicePdfUrl: invoicePdf,
       hostedInvoiceUrl: hostedUrl,
       paidAt: Date.now(),
@@ -386,6 +389,7 @@ async function handleInvoiceSucceeded(
     await ctx.runMutation(internal.invoices.create, {
       subscriptionId: convexSubscriptionId,
       stripeInvoiceId: invoiceId,
+      invoiceNumber,
       stripeCustomerId: customerId,
       customerEmail: customerEmail ?? "",
       plan,
