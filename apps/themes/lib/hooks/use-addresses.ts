@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { Doc, Id } from "@/convex/_generated/dataModel"
 import { useAddressesStore, type SavedAddress } from "@/lib/stores/addresses-store"
 
 /**
@@ -72,8 +72,8 @@ export function useAddresses(isAuthenticated: boolean) {
 
   const addresses: SavedAddress[] = useMemo(() => {
     if (!isAuthenticated) return local
-    return (remote ?? []).map((a: any) => ({
-      id: a._id as string,
+    return (remote ?? []).map((a: Doc<"customerAddresses">) => ({
+      id: a._id,
       label: a.label,
       street: a.street,
       city: a.city,
