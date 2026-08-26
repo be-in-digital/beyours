@@ -6,6 +6,7 @@
  */
 
 import { SITE_URL, SITE_NAME, SITE_EMAIL, SOCIAL_LINKS } from "@/lib/site-config";
+import { COMPANY } from "@/lib/legal";
 
 const LOGO_URL = `${SITE_URL}/logo.png`;
 
@@ -23,11 +24,14 @@ export function OrganizationJsonLd() {
   const data = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: SITE_NAME,
+    /* The organization is the AGENCY, not the product. Naming it after the
+       solution is what made Google and the AI assistants conflate the two.
+       `name` is the trade name we lead with, `legalName` the RCS entity. */
+    name: COMPANY.operatorName,
+    legalName: COMPANY.legalName,
     url: SITE_URL,
     logo: LOGO_URL,
-    description:
-      "Plateforme digitale premium pour restaurateurs : site web, commande en ligne, fidélité, analytics.",
+    description: `Agence spécialisée dans la digitalisation des restaurants, éditrice de la solution ${SITE_NAME} : site web, commande en ligne, fidélité, analytics.`,
     sameAs: Object.values(SOCIAL_LINKS),
     contactPoint: {
       "@type": "ContactPoint",
@@ -59,7 +63,8 @@ export function SoftwareApplicationJsonLd() {
     },
     publisher: {
       "@type": "Organization",
-      name: SITE_NAME,
+      name: COMPANY.operatorName,
+      legalName: COMPANY.legalName,
       url: SITE_URL,
       logo: LOGO_URL,
     },
@@ -90,11 +95,11 @@ const faqItems = [
   },
   {
     q: "Peut-on intégrer Uber Eats et Deliveroo à la plateforme ?",
-    a: "Les intégrations Uber Eats et Deliveroo sont en cours de certification officielle auprès des plateformes. Dès validation, elles seront offertes à tous les clients sans surcoût : les commandes plateformes rejoindront le même flux que les commandes directes dans le dashboard.",
+    a: "Deliveroo a certifié notre application : les commandes arrivent dans le dashboard. Uber Eats est en attente de validation par la plateforme, sans date annoncée. Dès obtention, les commandes Uber Eats rejoindront le même flux, sans surcoût.",
   },
   {
     q: "Comment fonctionne la livraison ?",
-    a: "Le click & collect est disponible dès le lancement. La livraison depuis votre site via Uber Direct est en cours de certification et sera proposée dès validation, sans surcoût.",
+    a: "Le click & collect est disponible dès le lancement. La livraison depuis votre site s'appuie sur Uber Direct : le restaurant ouvre son propre compte Uber Direct, renseigne ses identifiants dans les réglages, et les courses sont facturées par Uber au tarif de sa zone.",
   },
   {
     q: "Y a-t-il un engagement dans la durée ?",
@@ -131,7 +136,8 @@ export function WebsiteJsonLd() {
     inLanguage: "fr-FR",
     publisher: {
       "@type": "Organization",
-      name: SITE_NAME,
+      name: COMPANY.operatorName,
+      legalName: COMPANY.legalName,
       url: SITE_URL,
       logo: LOGO_URL,
     },

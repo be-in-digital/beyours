@@ -4,9 +4,9 @@ import { COMPANY, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME } from "@/lib/site-config";
 
 export const metadata: Metadata = {
-  title: "Conditions générales de vente — Be in Digital",
+  title: "Conditions générales de vente",
   description:
-    "Conditions générales de vente de la solution Be in Digital : création du site, maintenance annuelle, paiement, propriété intellectuelle, garanties.",
+    `Conditions générales de vente de la solution ${SITE_NAME}, éditée par ${COMPANY.operatorName} : création du site, maintenance annuelle, paiement, propriété intellectuelle, garanties.`,
   alternates: { canonical: "/cgv" },
 };
 
@@ -14,13 +14,13 @@ export default function CgvPage() {
   return (
     <LegalPage
       title="Conditions générales de vente"
-      subtitle={`Les présentes conditions régissent la vente de la solution ${SITE_NAME}, éditée par ${COMPANY.legalName}, à ses clients professionnels et consommateurs.`}
+      subtitle={`Les présentes conditions régissent la vente de la solution ${SITE_NAME}, éditée par ${COMPANY.operatorName}, à ses clients professionnels et consommateurs.`}
       lastUpdated={LEGAL_LAST_UPDATED}
     >
       <h2>1. Objet et champ d&apos;application</h2>
       <p>
         Les présentes conditions générales de vente (les « CGV ») régissent
-        l&apos;ensemble des relations entre {COMPANY.legalName} (le
+        l&apos;ensemble des relations entre {COMPANY.operatorName} (le
         « Prestataire ») et toute personne physique ou morale passant commande
         de la solution {SITE_NAME} (le « Client »). Toute commande implique
         l&apos;acceptation sans réserve des présentes CGV, qui prévalent sur tout

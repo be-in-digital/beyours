@@ -283,7 +283,7 @@ export default function DashboardPage() {
           <h2 className="text-base font-semibold mb-1">Mes filleuls</h2>
           <p className="mb-4 text-xs text-muted-foreground">
             Pour être payé, joignez votre facture (établie à l&apos;ordre de{" "}
-            {COMPANY.legalName}, {COMPANY.address.street},{" "}
+            {COMPANY.operatorName}, {COMPANY.address.street},{" "}
             {COMPANY.address.postalCode} {COMPANY.address.city}, SIRET{" "}
             {COMPANY.siret}) à chaque commission. Aucun versement sans facture.
           </p>
