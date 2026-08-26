@@ -10,7 +10,7 @@
 |---------|-----|---------|--------|
 | `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | hardcoded in `scripts/deliveroo-menu-scenarios.sh`, present in git history | High | Regenerate + purge the history |
 | **the same** Deliveroo `client_id` + `client_secret` | `apps/restaurant-theme/e2e/deliveroo/test-config.ts`, 18 commits | High | Same rotation; covered by `--replace-text` in Part B |
-| Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Medium (test account) | Invalidate the session + purge the file |
+| Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Low since 2026-02-25 (was Medium — expired, test account) | Accepted in `.gitleaksignore`; still purged by Part B |
 
 > ⚠️ **`apps/restaurant-theme/` no longer exists** — that app was split into
 > `apps/reference` and `apps/themes`. The path above is kept **verbatim on
@@ -40,9 +40,20 @@ Two things follow:
 1. **Gitleaks does NOT flag the Deliveroo secret.** Its default rules do not
    match that pattern. Do not treat a green Gitleaks run as proof the history is
    clean — this runbook stays the source of truth for A.1.
-2. **The job will keep failing until Part B is done.** That is correct: the JWT
-   is a genuine leak still present in the history. Do not silence it by adding it
-   to `.gitleaks.toml` — that file is for non-credentials only.
+2. **The JWT finding is accepted, not fixed** (decided 2026-08-26). It is
+   recorded in `.gitleaksignore`, with the measurements that justify it: the
+   token expired 2026-02-25, it was a 15-minute session on a dev deployment,
+   both cookies were scoped to localhost, and the repository is private. It is
+   deliberately NOT in `.gitleaks.toml`, which stays reserved for values that
+   were never credentials.
+
+   The consequence has to be said plainly: **Gitleaks is now green while the
+   history is still dirty.** The Deliveroo secret above is undetected by the
+   scanner and still unrotated. Read this runbook, not the check.
+
+   Purging was deferred rather than rejected: Part B rewrites every SHA and
+   would invalidate the 14 pull requests open at the time. Do it once the queue
+   is empty.
 
 ---
 
@@ -196,7 +207,16 @@ purge is required.
 - [ ] A.1 Propagated: Convex (dev + prod), Vercel, GitHub (if CI), `.env.local`
 - [ ] A.1 Signed test webhook → `200`; badly signed → `401`
 - [ ] A.1 Old Deliveroo secret revoked
-- [ ] A.2 Leaked Better Auth session deleted (or `BETTER_AUTH_SECRET` rotated)
+- [x] A.2 Leaked `convex_jwt` expired on its own 2026-02-25 (verified 2026-08-26)
+- [ ] A.2 Test account's Better Auth `session` rows deleted on the dev deployment
+      (hygiene only — measured 2026-08-26 on `reliable-parrot-452`, the
+      `beindigital-engine` dev deployment: **224 session rows, 0 still valid**;
+      199 belong to `test.owner@beindigital.fr` and none are active. The two rows
+      matching the leaked cookie expired 2026-03-04. Nothing here is exploitable;
+      deleting is tidying, not remediation. The CLI cannot do it — `convex data`
+      is read-only and no deployed function touches the component — so it is a
+      Convex Dashboard operation: Data → component `betterAuth` → `session`.)
+- [ ] Re-check `.gitleaksignore` when the PR queue is empty: purge, then drop the entry
 - [ ] B History purge done on a fresh clone + force-push
 - [ ] B Team told to re-clone; open PRs handled
 - [ ] B `secrets-to-redact.txt` deleted
