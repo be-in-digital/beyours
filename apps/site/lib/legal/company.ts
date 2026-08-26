@@ -1,8 +1,10 @@
 /**
  * Source of truth — the publisher's legal information.
  *
- * The legal entity that publishes and operates the « Be in Digital »
- * commercial brand is **TUUM AGENCY**, a SAS. Every legal page, invoice and
+ * The company trades as **Be in Digital** (the agency) and sells **BeYours**
+ * (the product). Its registered name at the RCS is **TUUM AGENCY**, a SAS.
+ * Prose uses `operatorName`; the dénomination sociale `legalName` stays
+ * wherever the law requires it: invoice footer and legal notice. Every legal page, invoice and
  * email must reference this information FROM this file — never hard-code a
  * duplicate elsewhere.
  *
@@ -10,14 +12,7 @@
  * yet: the pages render them through the <Todo/> marker so that no value is
  * ever invented (project rule: fabricate nothing).
  *
- * VAT regime: franchise en base (art. 293 B of the French tax code). No VAT is
- * charged (the payment engine bills 0 € of tax) and the mention rendered
- * everywhere is « TVA non applicable, art. 293 B du CGI ». Consistent with the
- * checkout display (`components/checkout/order-summary.tsx`, `TVA_ENABLED`
- * off) and the Stripe Tax flags being OFF (`convex/stripe.ts`). The day the
- * company becomes VAT-liable (régime réel): set `VAT.regime` to "reel",
- * `VAT.mention` to the applicable rate and flip both flags
- * (`NEXT_PUBLIC_TVA_ENABLED` + `STRIPE_TAX_ENABLED`).
+ * VAT regime: régime réel, 20 %. See the VAT block below.
  *
  * Data confirmed by the INSEE / RNE (INPI) extract dated 19/07/2026.
  */
@@ -27,6 +22,10 @@ export interface CompanyInfo {
   legalName: string;
   /** Commercial brand / name of the product being operated. */
   tradeName: string;
+  /** Name the company trades under and leads with on documents. Prose says
+   *  « Be in Digital »; the registered `legalName` still appears wherever the
+   *  law requires the dénomination sociale (invoice footer, legal notice). */
+  operatorName: string;
   /** Legal form. */
   legalForm: string;
   /** Share capital in euros. `null` until the director provides it. */
@@ -55,7 +54,8 @@ export interface CompanyInfo {
 
 export const COMPANY: CompanyInfo = {
   legalName: "TUUM AGENCY",
-  tradeName: "Be in Digital",
+  tradeName: "BeYours",
+  operatorName: "Be in Digital",
   legalForm: "SAS (société par actions simplifiée)",
   capitalEuros: 1000,
   siren: "930 817 697",

@@ -141,8 +141,8 @@ export default function DecouvrirPage() {
                   {[
                     "Fidélité, jeu concours, KDS et multi-langues inclus",
                     "0 % de commission sur les commandes directes",
-                    "Paiement de la création en 3 ou 4 fois (Alma, Klarna)",
-                    "Offre fondateurs : 2 500 € HT pour les 10 premiers",
+                    "Paiement de la création en 3 ou 4 fois (Alma, Klarna) hors offre fondateurs",
+                    "Offre fondateurs : création offerte pour les 10 premiers",
                   ].map((t) => (
                     <li key={t} className="flex items-start gap-2.5">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
@@ -174,7 +174,7 @@ export default function DecouvrirPage() {
                   1re année incluse, puis renouvellement annuel
                 </p>
                 <p className="mt-4 self-start rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
-                  Offre fondateurs : 2 500 € HT pour les 10 premiers
+                  Offre fondateurs : création offerte pour les 10 premiers
                 </p>
                 <div className="mt-6 flex flex-col gap-3">
                   <DiscoveryCallButton className="w-full">

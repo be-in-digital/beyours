@@ -146,9 +146,22 @@ export function Navbar() {
             </button>
           </div>
 
-          {/* Mobile toggle */}
-          <button
-            className="lg:hidden p-2 text-foreground cursor-pointer"
+          {/* Mobile: WhatsApp sits in the bar itself, left of the burger, so
+              reaching us costs no tap. Icon only, the bar has no room for a
+              label. Desktop keeps the labelled link next to the CTA. */}
+          <div className="flex items-center gap-1 lg:hidden">
+            <a
+              href={SITE_WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Une question ? Écrivez-nous sur WhatsApp"
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary transition-colors duration-200 hover:bg-primary/20"
+            >
+              <WhatsAppIcon />
+            </a>
+
+            <button
+              className="p-2 text-foreground cursor-pointer"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={mobileOpen}
@@ -162,7 +175,8 @@ export function Navbar() {
                 <path d="M3 6h18M7 12h14M12 18h9" />
               </svg>
             )}
-          </button>
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}
@@ -193,16 +207,6 @@ export function Navbar() {
                   </Link>
                 );
               })}
-              <a
-                href={SITE_WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                onClick={() => setMobileOpen(false)}
-              >
-                <WhatsAppIcon />
-                Une question&nbsp;?
-              </a>
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground mt-2 cursor-pointer"
                 onClick={() => {

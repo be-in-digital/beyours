@@ -61,6 +61,16 @@ export interface OrderDeliveryAddress {
   instructions?: string
 }
 
+/** Courier status, verbatim from Uber Direct. */
+export type UberDirectStatus =
+  | "SCHEDULED"
+  | "EN_ROUTE_TO_PICKUP"
+  | "ARRIVED_AT_PICKUP"
+  | "EN_ROUTE_TO_DROPOFF"
+  | "ARRIVED_AT_DROPOFF"
+  | "COMPLETED"
+  | "FAILED"
+
 export interface Order {
   _id: string
   orderNumber: string
@@ -75,6 +85,16 @@ export interface Order {
   discountAmount?: number
   total: number
   deliveryAddress?: OrderDeliveryAddress
+  // Uber Direct courier, present only on delivery orders that booked one.
+  uberDirectEstimateId?: string
+  uberDirectDeliveryId?: string
+  uberDirectStatus?: UberDirectStatus
+  uberDirectTrackingUrl?: string
+  uberDirectFee?: number
+  uberDirectStatusAt?: number
+  /** Set when Uber reports a failed delivery. The order status machine
+   *  forbids out_for_delivery -> cancelled, so this needs a human. */
+  uberDirectFailedAt?: number
   paymentMethod?: string
   paymentStatus: OrderPaymentStatus
   source: OrderSource
