@@ -79,7 +79,7 @@ export const TVA_RATE_PERCENT = 20;
    It ends when the slots run out (api.orders.countFoundersSold counter), never
    on a date. Not stackable with a referral: applying a code switches to the
    list price −10 %. The list price itself never changes.
-   Duplicated in convex/stripe.ts (foundersOffer) — keep them in sync. */
+   Duplicated in convex/foundersOffer.ts (foundersOffer) — keep them in sync. */
 
 export const FOUNDERS_OFFER = {
   enabled: true,

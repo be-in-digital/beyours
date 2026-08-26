@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
+import { FOUNDERS_HOLD_MS } from "./foundersOffer";
 
 const buyerTypeValidator = v.union(
   v.literal("business"),
@@ -130,15 +131,37 @@ export const getCheckoutAccess = query({
    place could in theory cross each other, a risk we accept at this
    scale. */
 
+/* ── Founders slots consumed ──
+   Counts paid sales AND the checkouts still in flight. It used to see « paid »
+   orders only, so every checkout opened before the first webhook landed still
+   read ten free slots, and more than ten builds could go out free. A pending
+   order now holds its slot for as long as its Stripe session stays payable
+   (FOUNDERS_HOLD_MS); past that the customer can no longer pay it and the slot
+   returns to the pool on its own — there is no checkout.session.expired
+   webhook to release it for us.
+   Second layer only: what actually caps the offer is the Stripe coupon's
+   max_redemptions (see convex/foundersOffer.ts). This keeps the storefront
+   from advertising a slot someone else is already paying for. */
 export const countFoundersSold = query({
   args: {},
   handler: async (ctx) => {
-    const sold = await ctx.db
+    const paid = await ctx.db
       .query("orders")
       .withIndex("by_isFounders_and_status", (q) =>
         q.eq("isFounders", true).eq("status", "paid"),
       )
       .collect();
-    return sold.length;
+
+    const inFlight = await ctx.db
+      .query("orders")
+      .withIndex("by_isFounders_and_status", (q) =>
+        q.eq("isFounders", true).eq("status", "pending"),
+      )
+      .collect();
+
+    const heldSince = Date.now() - FOUNDERS_HOLD_MS;
+    return (
+      paid.length + inFlight.filter((o) => o.createdAt >= heldSince).length
+    );
   },
 });
