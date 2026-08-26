@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal/legal-page";
-import { COMPANY, VAT, LEGAL_LAST_UPDATED } from "@/lib/legal";
+import { COMPANY, VAT, LATE_PAYMENT, LEGAL_LAST_UPDATED } from "@/lib/legal";
 import { SITE_NAME } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -89,6 +89,21 @@ export default function CgvPage() {
         choisie (mensuelle ou annuelle). En cas d&apos;échec de paiement, le
         Prestataire pourra suspendre la Solution après information du Client et
         relances restées sans effet.
+      </p>
+      {/* Mandatory between professionals (art. L441-9 and L441-10 of the
+          commercial code), and it has to match what the invoice states — both
+          read LATE_PAYMENT from lib/legal/company.ts. */}
+      <p>
+        <strong>Retard de paiement (clients professionnels).</strong> Toute somme
+        non réglée à l&apos;échéance donne lieu, sans rappel préalable, à des
+        pénalités de retard calculées au {LATE_PAYMENT.penaltyRate}, ainsi
+        qu&apos;à une indemnité forfaitaire pour frais de recouvrement de{" "}
+        {LATE_PAYMENT.indemnityEuros} €. Lorsque les frais de recouvrement
+        exposés sont supérieurs à ce montant, le Prestataire peut en demander le
+        complément sur justification.{" "}
+        {LATE_PAYMENT.earlyPaymentDiscount ??
+          "Aucun escompte n'est accordé pour paiement anticipé"}
+        .
       </p>
 
       <h2>6. Création et livraison</h2>

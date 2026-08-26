@@ -1,0 +1,39 @@
+# Gitleaks — accepted findings.
+#
+# Distinct from .gitleaks.toml on purpose. That file allowlists values that were
+# NEVER credentials: test fixtures, vendor EXAMPLE keys, documentation
+# placeholders. This file records findings that WERE real credentials and are
+# accepted as no longer exploitable, each with the evidence that makes it so.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# An entry here only silences the scanner. It does NOT purge the history: the
+# value stays readable to anyone who can clone the repo. Part B of
+# tasks/secret-rotation-runbook.md is the only thing that removes it for real.
+#
+# A green Gitleaks run is NOT proof the history is clean. The default rules do
+# not match the Deliveroo client_secret, which is still present in 18 commits
+# and still rated High. The runbook, not this check, is the state of play.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Better Auth convex_jwt captured in a Playwright storageState fixture.
+# Measured 2026-08-26 before accepting it:
+#   - exp 2026-02-25 15:18 UTC. Lifetime iat->exp = 900 s, so a 15-minute
+#     session token, expired six months ago. Convex validates exp: it opens
+#     nothing.
+#   - the paired better-auth.session_token cookie expired 2026-03-04.
+#   - both cookies were scoped to domain=localhost.
+#   - issuer reliable-parrot-452.convex.site, a dev deployment, and the subject
+#     is the seeded test owner rather than a real account.
+#   - the repository is private, and apps/restaurant-theme/ no longer exists.
+#
+# Accepted rather than purged because Part B rewrites every SHA and would
+# invalidate the 14 open pull requests, the six-PR stack included. Revisit once
+# the queue is empty: see A.2 and Part B of tasks/secret-rotation-runbook.md.
+# Two fingerprints for ONE secret: gitleaks fingerprints per commit, and the
+# same blob was committed twice on 2026-03-11. 7cf4d41 is reachable from main;
+# c0f09cb is reachable only from 33 pushed package tags (and the local
+# archive/main-avant-monorepo branch), which the CI checkout fetches too. A full
+# scan over all 492 reachable commits on 2026-08-26 found these two and nothing
+# else for this file.
+7cf4d4100018a617363c2c6133bee27c05c9e650:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15
+c0f09cb0b61eb8b7377e0aa781232057d3274099:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15

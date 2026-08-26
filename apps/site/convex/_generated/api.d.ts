@@ -24,6 +24,7 @@ import type * as email_send from "../email/send.js";
 import type * as email_templates from "../email/templates.js";
 import type * as http from "../http.js";
 import type * as invoices from "../invoices.js";
+import type * as maintenance from "../maintenance.js";
 import type * as migrations from "../migrations.js";
 import type * as orders from "../orders.js";
 import type * as payments from "../payments.js";
@@ -68,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   "email/templates": typeof email_templates;
   http: typeof http;
   invoices: typeof invoices;
+  maintenance: typeof maintenance;
   migrations: typeof migrations;
   orders: typeof orders;
   payments: typeof payments;

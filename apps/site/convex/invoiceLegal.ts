@@ -1,0 +1,134 @@
+import { COMPANY, LATE_PAYMENT, VAT } from "../lib/legal/company";
+
+/* ── Legal mentions carried by every invoice ──
+   French law lists what an invoice must state (art. L441-9 of the commercial
+   code, art. 242 nonies A of annex II to the tax code). Stripe supplies the
+   date, the number, the lines, the totals and the buyer; everything about the
+   SELLER has to be handed to it.
+
+   Built from lib/legal/company.ts, which is the single source of truth for the
+   company's identity and says so: « never hard-code a duplicate elsewhere ».
+   convex/stripe.ts used to hold its own copy, pointing at a file path that no
+   longer exists — a wrong SIRET on an invoice is a real problem, and two
+   copies is how one gets there.
+
+   Bundling: Convex builds convex/ with esbuild, which follows this relative
+   import out of the directory. company.ts imports nothing, so nothing else
+   comes with it. */
+
+/* Grouped by hand rather than through toLocaleString("fr-FR"): the Convex
+   runtime is not guaranteed to carry French locale data, and a capital
+   rendered « 1,000 € » on an invoice reads as a thousandth of the amount. */
+function formatCapital(): string {
+  if (COMPANY.capitalEuros === null) return "";
+  const grouped = String(COMPANY.capitalEuros).replace(
+    /\B(?=(\d{3})+(?!\d))/g,
+    "\u00a0",
+  );
+  return ` au capital de ${grouped} €`;
+}
+
+/**
+ * Identity of the seller, as the law wants it named: the trade name we lead
+ * with, then the dénomination sociale, legal form, capital, registered office
+ * and RCS entry.
+ */
+export function sellerIdentity(): string {
+  return (
+    `${COMPANY.operatorName}, nom commercial de ${COMPANY.legalName}, ` +
+    `${COMPANY.legalForm.replace(/\s*\(.*\)$/, "")}${formatCapital()}, ` +
+    `${COMPANY.address.street}, ${COMPANY.address.postalCode} ${COMPANY.address.city}. ` +
+    `${COMPANY.rcs}.`
+  );
+}
+
+/**
+ * The VAT sentence for the regime in force.
+ *
+ * Under the franchise en base nothing is charged and the invoice has to say
+ * why. On the régime réel the rate shows on each line and the intra-EU number
+ * is what the invoice needs instead — adding the 293 B mention there would
+ * state something false (see the VAT block in lib/legal/company.ts).
+ */
+export function vatMention(): string {
+  return VAT.regime === "franchise"
+    ? "TVA non applicable, art. 293 B du CGI."
+    : `TVA intracommunautaire ${COMPANY.vatNumber}.`;
+}
+
+/**
+ * Late payment terms, mandatory between professionals (art. L441-9 and
+ * L441-10). Deliberately the statutory fallback rather than an invented rate:
+ * with nothing agreed in the terms of sale, that is exactly what applies.
+ * Choosing three times the legal interest rate instead is a commercial
+ * decision, and it belongs in the CGV before it belongs here.
+ *
+ * Left off a consumer's invoice, where these terms have no place.
+ */
+export function latePaymentTerms(): string {
+  const discount =
+    LATE_PAYMENT.earlyPaymentDiscount ?? "Aucun escompte pour paiement anticipé";
+  return (
+    `En cas de retard de paiement, pénalités au ${LATE_PAYMENT.penaltyRate}, ` +
+    "exigibles sans rappel, et indemnité forfaitaire pour frais de recouvrement " +
+    `de ${LATE_PAYMENT.indemnityEuros} € (art. L441-10 du code de commerce). ` +
+    `${discount}.`
+  );
+}
+
+/**
+ * The footer Stripe prints at the bottom of the invoice.
+ * A consumer sale drops the late payment terms, which only bind professionals.
+ */
+export function invoiceFooter(buyerType: "business" | "personal"): string {
+  const parts = [sellerIdentity(), vatMention()];
+  if (buyerType === "business") parts.push(latePaymentTerms());
+  return parts.join(" ");
+}
+
+/** SIRET, which the footer has no room to carry legibly. */
+export function invoiceCustomFields(): { name: string; value: string }[] {
+  return [{ name: "SIRET", value: COMPANY.siret }];
+}
+
+/**
+ * Everything Stripe needs to print a compliant invoice, in the shape both
+ * `checkout.sessions.create` (invoice_data) and `customers.update`
+ * (invoice_settings) accept.
+ */
+export function invoiceLegalSettings(buyerType: "business" | "personal"): {
+  footer: string;
+  custom_fields: { name: string; value: string }[];
+} {
+  return {
+    footer: invoiceFooter(buyerType),
+    custom_fields: invoiceCustomFields(),
+  };
+}
+
+/**
+ * Flags a configuration that would issue a wrong invoice, without blocking the
+ * sale: a company on the régime réel that charges no VAT is billing something
+ * it owes the state anyway. Returns the problem to report, or null.
+ *
+ * Deliberately not fatal — which of the two to align is a fiscal decision, not
+ * an engineering one (ClickUp 869eprr1e).
+ */
+export function vatConfigurationProblem(taxCharged: boolean): string | null {
+  if (VAT.regime === "reel" && !taxCharged) {
+    return (
+      "Régime réel déclaré (lib/legal/company.ts) mais TVA non facturée " +
+      "(STRIPE_TAX_ENABLED absent) : les factures émises sont incohérentes et " +
+      "la TVA reste due. Activer Stripe Tax + NEXT_PUBLIC_TVA_ENABLED, ou " +
+      "repasser VAT.regime en « franchise ». Voir ClickUp 869eprr1e."
+    );
+  }
+  if (VAT.regime === "franchise" && taxCharged) {
+    return (
+      "Franchise en base déclarée (lib/legal/company.ts) mais TVA facturée " +
+      "par Stripe : la facture porte une TVA que l'entreprise n'a pas à " +
+      "collecter. Voir ClickUp 869eprr1e."
+    );
+  }
+  return null;
+}
