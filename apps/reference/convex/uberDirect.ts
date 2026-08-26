@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { action, internalMutation } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
@@ -240,7 +241,7 @@ export const getDeliveryQuote = action({
 const CREATE_ORDER_URL = "https://api.uber.com/v1/eats/deliveries/orders";
 
 /** Resolve credentials once; every lifecycle action needs the same three. */
-async function requireUberConfig(ctx: any): Promise<{
+async function requireUberConfig(ctx: ActionCtx): Promise<{
   clientId: string;
   clientSecret: string;
   customerId: string;
@@ -361,7 +362,7 @@ export const createDelivery = action({
     let body: string;
     try {
       body = JSON.stringify(
-        uberDirect.buildCreateDeliveryRequest(order as any, {
+        uberDirect.buildCreateDeliveryRequest(order, {
           uberStoreId: config.customerId,
           quote: { estimateId: order.uberDirectEstimateId },
           pickupAt: args.pickupAt,
