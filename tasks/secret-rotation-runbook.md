@@ -208,7 +208,14 @@ purge is required.
 - [ ] A.1 Signed test webhook → `200`; badly signed → `401`
 - [ ] A.1 Old Deliveroo secret revoked
 - [x] A.2 Leaked `convex_jwt` expired on its own 2026-02-25 (verified 2026-08-26)
-- [ ] A.2 Test account's Better Auth `session` row deleted on the dev deployment
+- [ ] A.2 Test account's Better Auth `session` rows deleted on the dev deployment
+      (hygiene only — measured 2026-08-26 on `reliable-parrot-452`, the
+      `beindigital-engine` dev deployment: **224 session rows, 0 still valid**;
+      199 belong to `test.owner@beindigital.fr` and none are active. The two rows
+      matching the leaked cookie expired 2026-03-04. Nothing here is exploitable;
+      deleting is tidying, not remediation. The CLI cannot do it — `convex data`
+      is read-only and no deployed function touches the component — so it is a
+      Convex Dashboard operation: Data → component `betterAuth` → `session`.)
 - [ ] Re-check `.gitleaksignore` when the PR queue is empty: purge, then drop the entry
 - [ ] B History purge done on a fresh clone + force-push
 - [ ] B Team told to re-clone; open PRs handled
