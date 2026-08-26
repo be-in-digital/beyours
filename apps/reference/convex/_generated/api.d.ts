@@ -33,6 +33,7 @@ import type * as cmsSeed from "../cmsSeed.js";
 import type * as cmsSeedData from "../cmsSeedData.js";
 import type * as cmsSvgUpload from "../cmsSvgUpload.js";
 import type * as contactMessages from "../contactMessages.js";
+import type * as customerAddresses from "../customerAddresses.js";
 import type * as deliverooImport from "../deliverooImport.js";
 import type * as deliverooMenuSync from "../deliverooMenuSync.js";
 import type * as deliverooOrders from "../deliverooOrders.js";
@@ -139,6 +140,7 @@ declare const fullApi: ApiFromModules<{
   cmsSeedData: typeof cmsSeedData;
   cmsSvgUpload: typeof cmsSvgUpload;
   contactMessages: typeof contactMessages;
+  customerAddresses: typeof customerAddresses;
   deliverooImport: typeof deliverooImport;
   deliverooMenuSync: typeof deliverooMenuSync;
   deliverooOrders: typeof deliverooOrders;

@@ -192,7 +192,8 @@ export default defineSchema({
       v.union(v.literal("card"), v.literal("alma"), v.literal("klarna")),
     ),
     stripeSessionId: v.optional(v.string()),
-    /* Sale at the founders price (2 500 € excl. tax, 10 slots) — consumes a slot. */
+    /* Founders sale: creation offered (10 slots) — consumes a slot while the
+       order is paid, or pending and still payable. See convex/foundersOffer.ts. */
     isFounders: v.optional(v.boolean()),
     /* ── Maintenance subscription provisioning after the 1st payment ──
        Optional/additive (no migration): absent = a legacy order, or one the
@@ -257,6 +258,11 @@ export default defineSchema({
     orderId: v.optional(v.id("orders")),
     subscriptionId: v.optional(v.id("subscriptions")),
     stripeInvoiceId: v.string(),
+    /* The number PRINTED on the invoice, which is the one the law cares about
+       — stripeInvoiceId is an internal handle (in_…) that appears nowhere on
+       the document. Optional: invoices recorded before this was kept have
+       none, and a draft has no number yet. */
+    invoiceNumber: v.optional(v.string()),
     stripeCustomerId: v.string(),
     customerEmail: v.string(),
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
@@ -356,12 +362,20 @@ export default defineSchema({
       coveredUntil: v.optional(v.number()),
       autoRenew: v.boolean(),
     }),
+    /* ── Update entitlement ──
+       Opaque key written into the site's .beindigital-site.json at
+       provisioning. Its update scripts present it to /maintenance/status to
+       learn whether the contract still covers them (convex/maintenance.ts).
+       Optional: sites provisioned before the gate existed have none, and are
+       treated as unregistered — allowed through, and listed as such. */
+    licenseKey: v.optional(v.string()),
     notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_status", ["status"])
     .index("by_health", ["health"])
+    .index("by_licenseKey", ["licenseKey"])
     .index("by_customerEmail", ["customerEmail"]),
 
   saStores: defineTable({

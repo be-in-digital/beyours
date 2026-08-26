@@ -257,8 +257,11 @@ export default function FacturesPage() {
               {data.list.map((inv) => (
                 <TableRow key={inv._id}>
                   <TableCell>
+                    {/* The number printed on the document, which is the one a
+                        client or an auditor will quote. Older records only
+                        have the internal Stripe handle. */}
                     <span className="font-mono text-xs text-muted-foreground">
-                      {inv.stripeInvoiceId}
+                      {inv.invoiceNumber ?? inv.stripeInvoiceId}
                     </span>
                   </TableCell>
                   <TableCell>
