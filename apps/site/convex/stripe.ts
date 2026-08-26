@@ -5,11 +5,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-
-const planPrices = {
-  essentielle: { creation: 350000, maintenanceMonthly: 10000, maintenanceYearly: 100000 },
-  premium: { creation: 750000, maintenanceMonthly: 20000, maintenanceYearly: 200000 },
-} as const;
+import { planPrices } from "./planPrices";
 
 /* ── Founders offer ──
    The first 10 Essentielle builds with the creation offered (list price
@@ -379,7 +375,7 @@ export const createCheckoutSession = action({
               ? { product: creationProductId }
               : {
                   product_data: {
-                    name: `Be in Digital — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
+                    name: `BeYours — ${planLabel} — Création${isFounders ? " (Offre fondateurs)" : ""}`,
                     description: isFounders
                       ? "Création de votre solution digitale — Tarif fondateurs, 10 places"
                       : "Création de votre solution digitale",
@@ -394,7 +390,7 @@ export const createCheckoutSession = action({
             unit_amount: maintenanceCents,
             ...taxBehavior,
             product_data: {
-              name: `Be in Digital — ${planLabel} — Maintenance`,
+              name: `BeYours — ${planLabel} — Maintenance`,
               description: `Maintenance — ${periodLabel}`,
             },
           },

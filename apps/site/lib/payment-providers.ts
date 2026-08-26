@@ -1,3 +1,5 @@
+import { planPrices } from "@/convex/planPrices";
+
 /* ═══════════════════════════════════════════════
    Payment Providers — Config, matrice, helpers
    ═══════════════════════════════════════════════ */
@@ -88,18 +90,10 @@ export const FOUNDERS_OFFER = {
 
 /* ── Plan prices (in cents, excluding tax) ── */
 
-export const planPrices = {
-  essentielle: {
-    creation: 350000,
-    maintenanceMonthly: 10000,
-    maintenanceYearly: 100000,
-  },
-  premium: {
-    creation: 750000,
-    maintenanceMonthly: 20000,
-    maintenanceYearly: 200000,
-  },
-} as const;
+/* Prices live in convex/planPrices.ts — the single source of truth shared with
+   the checkout and the superadmin console. Re-exported here so the existing
+   `@/lib/payment-providers` import sites keep working unchanged. */
+export { planPrices };
 
 /* ── First-payment breakdown (build + 1st maintenance period) ── */
 
