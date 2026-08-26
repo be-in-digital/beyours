@@ -72,6 +72,7 @@
     "./bidSubscription": "./src/bidSubscription.ts",
     "./blogAutoGenerate": "./src/blogAutoGenerate.ts",
     "./favorites": "./src/favorites.ts",
+    "./customerAddresses": "./src/customerAddresses.ts",
     "./contactMessages": "./src/contactMessages.ts",
     "./deliveryFee": "./src/deliveryFee.ts",
     "./auth": "./src/auth.ts",
