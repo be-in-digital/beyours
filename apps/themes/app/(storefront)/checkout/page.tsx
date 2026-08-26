@@ -50,7 +50,6 @@ export default function CheckoutPage() {
   const createStripeSession = useAction(api.stripe.createCheckoutSession)
   const createSumUpCheckout = useAction(api.sumup.createCheckout)
   const createPayPalOrder = useAction(api.paypal.createPayPalOrder)
-  const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
   const store = useQuery(
     api.stores.getById,
     storeId ? { id: storeId as Id<"stores"> } : "skip"
