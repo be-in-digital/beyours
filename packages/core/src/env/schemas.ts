@@ -23,6 +23,11 @@ export const packageEnvSchema = z.object({
   UBER_EATS_CLIENT_SECRET: opt(z.string().min(1)),
   UBER_EATS_WEBHOOK_SECRET: opt(z.string().min(1)),
 
+  // Uber Direct (delivery-as-a-service). Rides on the Uber Eats app
+  // credentials; only the webhook secret can differ, and it falls back to the
+  // Uber Eats one when unset.
+  UBER_DIRECT_WEBHOOK_SECRET: opt(z.string().min(1)),
+
   // Deliveroo (BeYours app partner)
   DELIVEROO_CLIENT_ID: opt(z.string().min(1)),
   DELIVEROO_CLIENT_SECRET: opt(z.string().min(1)),
