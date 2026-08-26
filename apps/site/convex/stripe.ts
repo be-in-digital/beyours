@@ -6,20 +6,11 @@ import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
-
-/* ── Founders offer ──
-   The first 10 Essentielle builds with the creation offered (list price
-   3 500 € excl. tax), only the annual maintenance staying due, in exchange for
-   contractual commitments (case study, testimonial, right to name them as a
-   reference). It ends when the slots run out, never on a date.
-   Not stackable with a referral: a code applied = list price −10 %.
-   Duplicated in lib/payment-providers.ts (FOUNDERS_OFFER) — keep them in sync. */
-const foundersOffer = {
-  enabled: true,
-  plan: "essentielle" as const,
-  totalSlots: 10,
-  creationCents: 0,
-};
+import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
+import {
+  invoiceLegalSettings,
+  vatConfigurationProblem,
+} from "./invoiceLegal";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -86,13 +77,11 @@ function resolveCreationProductId(plan: string): string | null {
   return process.env[envName] ?? null;
 }
 
-/* ── Seller details carried by the Stripe invoice for the 1st payment ──
+/* ── Seller details carried by every Stripe invoice ──
    The business profile (name, address, VAT) stays configured in the Stripe
-   dashboard; here we add the legal invoice footer + the SIRET as a custom field.
-   Keep in sync with apps/web-restaurant/lib/legal/company.ts (COMPANY). */
-const SELLER_INVOICE_FOOTER =
-  "Be in Digital, nom commercial de TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
-const SELLER_SIRET = "930 817 697 00012";
+   dashboard; the legal mentions come from convex/invoiceLegal.ts, which reads
+   lib/legal/company.ts. They used to be two hard-coded strings here, pointing
+   at a file path that no longer existed. */
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -189,33 +178,23 @@ export const createCheckoutSession = action({
 
     /* Founders: the creation line keeps its list price and a PERSISTENT Stripe
        coupon zeroes it, so Stripe enforces the 10-slot cap itself through the
-       coupon's max_redemptions. The Convex counter cannot: countFoundersSold
-       only sees orders already « paid », so checkouts opened before the first
-       webhook lands never reserve a slot, and more than 10 builds could go out
-       free. Without the env var configured we fall back to the old behaviour
-       (a 0 € line, cap enforced by the counter alone) rather than block a sale. */
+       coupon's max_redemptions. The Convex counter cannot hold it alone — it
+       reads a snapshot, Stripe keeps the ledger — so a live checkout that
+       cannot reach the coupon is REFUSED rather than served free
+       (see resolveFoundersPricing). */
     const foundersCouponId = process.env.STRIPE_FOUNDERS_COUPON_ID;
     const creationProductId = resolveCreationProductId(args.plan);
-    /* Both are required: the coupon caps the offer, the product is what the
-       coupon is restricted to. With the coupon but no product the discount
-       would spread over the maintenance line, so we fall back to the 0 € line
-       (correct invoice, cap left to the Convex counter) rather than issue a
-       wrongly split one. */
-    const useFoundersCoupon =
-      isFounders && !!foundersCouponId && !!creationProductId;
-    if (isFounders && !foundersCouponId) {
-      console.error(
-        "STRIPE_FOUNDERS_COUPON_ID absent: offre fondateurs appliquée sans plafond Stripe",
-      );
-    } else if (isFounders && !creationProductId) {
-      console.error(
-        `${CREATION_PRODUCT_ENV[args.plan]} absent: offre fondateurs appliquée sans plafond Stripe ` +
-          "(le coupon aurait réparti la remise sur la maintenance)",
-      );
-    }
+    const foundersPricing = resolveFoundersPricing({
+      isFounders,
+      couponId: foundersCouponId,
+      creationProductId,
+      stripeLive: stripe !== null,
+      creationProductEnvName: CREATION_PRODUCT_ENV[args.plan],
+    });
+    const useFoundersCoupon = foundersPricing === "coupon";
 
     const creationCents =
-      isFounders && !useFoundersCoupon
+      foundersPricing === "zero-line"
         ? foundersOffer.creationCents
         : prices.creation;
     const foundersDiscountCents = useFoundersCoupon ? prices.creation : 0;
@@ -334,6 +313,10 @@ export const createCheckoutSession = action({
       args.billingPeriod === "monthly" ? "premier mois" : "première année";
 
     const taxOn = stripeTaxEnabled();
+    /* Not fatal: which of the two to align is a fiscal decision, not ours.
+       But an invoice issued in the meantime is wrong, so it has to be seen. */
+    const vatProblem = vatConfigurationProblem(taxOn);
+    if (vatProblem) console.error(`[TVA] ${vatProblem}`);
     const taxBehavior = taxOn
       ? { tax_behavior: "exclusive" as const }
       : {};
@@ -349,15 +332,15 @@ export const createCheckoutSession = action({
       // receipt, not a downloadable invoice.
       invoice_creation: {
         enabled: true,
-        invoice_data: {
-          footer: SELLER_INVOICE_FOOTER,
-          custom_fields: [{ name: "SIRET", value: SELLER_SIRET }],
-        },
+        invoice_data: invoiceLegalSettings(args.buyerType),
       },
+      /* The buyer's address is a mandatory mention on any invoice, whether or
+         not VAT is charged — it used to be collected only when Stripe Tax was
+         on, which left every invoice issued without it incomplete. */
+      billing_address_collection: "required" as const,
       ...(taxOn
         ? {
             automatic_tax: { enabled: true },
-            billing_address_collection: "required" as const,
             tax_id_collection: { enabled: true },
           }
         : {}),
@@ -432,6 +415,8 @@ export const createSubscription = internalAction({
     customerEmail: v.string(),
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
     billingPeriod: v.union(v.literal("monthly"), v.literal("yearly")),
+    /* Decides whether the renewal invoices carry the late payment terms. */
+    buyerType: v.union(v.literal("business"), v.literal("personal")),
   },
   handler: async (ctx, args): Promise<void> => {
     const stripe = getStripe();
@@ -453,6 +438,20 @@ export const createSubscription = internalAction({
       args.billingPeriod === "monthly"
         ? now + 30 * 24 * 60 * 60 // +30 jours
         : now + 365 * 24 * 60 * 60; // +365 jours
+
+    /* ── Legal mentions on the renewal invoices ──
+       invoice_creation on the Checkout session covers the FIRST invoice only.
+       Every renewal after it is raised by Stripe from the subscription, and
+       carried nothing: no seller identity, no SIRET, no VAT mention, no late
+       payment terms. That is the whole recurring revenue billed on invoices
+       that do not hold up.
+
+       Stripe has no footer field on a subscription — the setting lives on the
+       customer and applies to every invoice raised for them from now on. Set
+       before the subscription so the first renewal already has it. */
+    await stripe.customers.update(args.stripeCustomerId, {
+      invoice_settings: invoiceLegalSettings(args.buyerType),
+    });
 
     const subscription = await stripe.subscriptions.create({
       customer: args.stripeCustomerId,

@@ -31,6 +31,7 @@ import {
   promotionsTable,
   promotionUsagesTable,
   favoritesTable,
+  customerAddressesTable,
   contactMessagesTable,
   emailSubscribersTable,
   emailTemplatesTable,
@@ -112,6 +113,7 @@ export default defineSchema({
   oauthStates: oauthStatesTable,
   deliveryQuotes: deliveryQuotesTable,
   favorites: favoritesTable,
+  customerAddresses: customerAddressesTable,
   contactMessages: contactMessagesTable,
   // Email Marketing
   emailSubscribers: emailSubscribersTable,

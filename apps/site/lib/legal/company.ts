@@ -84,9 +84,10 @@ export const COMPANY: CompanyInfo = {
  * their own.
  *
  * The mention here is the customer-facing one. The Stripe invoice carries the
- * intra-EU VAT number through `SELLER_INVOICE_FOOTER` in `convex/stripe.ts`,
- * which is what an invoice legally needs under this regime — the old 293 B
- * franchise mention must NOT be added there.
+ * intra-EU VAT number through `vatMention()` in `convex/invoiceLegal.ts`, which
+ * is what an invoice legally needs under this regime — the old 293 B franchise
+ * mention must NOT be added there. That function follows `regime` below, so the
+ * two can no longer contradict each other.
  *
  * Two flags gate the actual charging, and they go together: display and
  * checkout totals follow `NEXT_PUBLIC_TVA_ENABLED` (Next side, see
@@ -102,6 +103,29 @@ export const COMPANY: CompanyInfo = {
 export const VAT = {
   regime: "reel" as "franchise" | "reel",
   mention: "TVA applicable au taux de 20 % (art. 278 du CGI)",
+} as const;
+
+/**
+ * Late payment terms between professionals — mandatory BOTH in the terms of
+ * sale and on the invoice (art. L441-9 and L441-10 of the commercial code).
+ *
+ * These are the statutory defaults, which is precisely what applies when the
+ * terms of sale agree nothing else — so stating them invents no commercial
+ * term. Three times the legal interest rate is the usual alternative; picking
+ * it is a commercial decision, and it changes the CGV and the invoice together
+ * from here.
+ *
+ * Read by `app/(landing)/cgv/page.tsx` and by `convex/invoiceLegal.ts`.
+ * Consumers are outside this: these terms bind professionals only.
+ */
+export const LATE_PAYMENT = {
+  /** Basis of the penalty rate, worded as the law words it. */
+  penaltyRate:
+    "taux d'intérêt appliqué par la Banque centrale européenne à son opération de refinancement la plus récente, majoré de 10 points de pourcentage",
+  /** Flat indemnity for recovery costs (art. D. 441-5). */
+  indemnityEuros: 40,
+  /** Early payment discount granted. None, and an invoice must say so. */
+  earlyPaymentDiscount: null as string | null,
 } as const;
 
 export interface HostingProvider {
