@@ -4,10 +4,9 @@
 
 import { planPrices } from "@/convex/planPrices";
 
-/* Les montants affichés ici sont dérivés de convex/planPrices.ts (source
-   unique, en centimes) et convertis en euros pour l'affichage. Ne jamais
-   réécrire un montant en dur : la page tarifs afficherait un prix que le
-   checkout ne facture pas. */
+/* Amounts shown here derive from convex/planPrices.ts (the single source, in
+   cents) and are converted to euros for display. Never hard-code an amount
+   back in: the pricing page would quote a price the checkout does not charge. */
 const eur = (cents: number) => cents / 100;
 
 export type BillingPeriod = "monthly" | "yearly";
