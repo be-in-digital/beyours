@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { action, internalMutation } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
 // ---------------------------------------------------------------------------
@@ -258,7 +259,7 @@ export const getDeliveryQuote = action({
 const CREATE_ORDER_URL = "https://api.uber.com/v1/eats/deliveries/orders";
 
 /** Resolve credentials once; every lifecycle action needs the same three. */
-async function requireUberConfig(ctx: any): Promise<{
+async function requireUberConfig(ctx: ActionCtx): Promise<{
   clientId: string;
   clientSecret: string;
   customerId: string;
@@ -337,6 +338,7 @@ async function callUber(
  * Idempotent on the order: an order that already carries a delivery id returns
  * it untouched rather than booking a second courier.
  */
+// @guarded-inline: checks orders:update_status on the order's store below
 export const createDelivery = action({
   args: {
     orderId: v.id("orders"),
@@ -356,6 +358,14 @@ export const createDelivery = action({
     if (!order) {
       throw new Error("ORDER_NOT_FOUND");
     }
+
+    // Booking a courier spends the restaurant's money, and cancelling one stops
+    // a delivery that is under way. Both need the same authority as advancing
+    // the order itself — without this, any caller could do either on any order.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: order.storeId,
+      permission: "orders:update_status",
+    });
 
     // Booking twice costs two couriers and two fees.
     if (order.uberDirectDeliveryId) {
@@ -379,7 +389,7 @@ export const createDelivery = action({
     let body: string;
     try {
       body = JSON.stringify(
-        uberDirect.buildCreateDeliveryRequest(order as any, {
+        uberDirect.buildCreateDeliveryRequest(order, {
           uberStoreId: config.customerId,
           quote: { estimateId: order.uberDirectEstimateId },
           pickupAt: args.pickupAt,
@@ -446,6 +456,7 @@ export const createDelivery = action({
  * not always go together — a restaurant may cancel a courier to deliver the
  * order itself.
  */
+// @guarded-inline: checks orders:update_status on the order's store below
 export const cancelDelivery = action({
   args: { orderId: v.id("orders") },
   handler: async (ctx, args): Promise<{ cancelled: boolean }> => {
@@ -455,6 +466,15 @@ export const cancelDelivery = action({
     if (!order) {
       throw new Error("ORDER_NOT_FOUND");
     }
+
+    // Booking a courier spends the restaurant's money, and cancelling one stops
+    // a delivery that is under way. Both need the same authority as advancing
+    // the order itself — without this, any caller could do either on any order.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: order.storeId,
+      permission: "orders:update_status",
+    });
+
     if (!order.uberDirectDeliveryId) {
       throw new Error("NO_DELIVERY: This order has no Uber Direct delivery");
     }
