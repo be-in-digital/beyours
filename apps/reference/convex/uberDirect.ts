@@ -389,13 +389,7 @@ export const createDelivery = action({
     let body: string;
     try {
       body = JSON.stringify(
-        /*
-         * The package types its input independently of the Convex document;
-         * the fields it reads are all present, and the two shapes are not
-         * exported together.
-         */
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        uberDirect.buildCreateDeliveryRequest(order as any, {
+        uberDirect.buildCreateDeliveryRequest(order, {
           uberStoreId: config.customerId,
           quote: { estimateId: order.uberDirectEstimateId },
           pickupAt: args.pickupAt,
