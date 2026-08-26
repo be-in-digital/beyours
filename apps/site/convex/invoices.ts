@@ -15,6 +15,7 @@ export const create = internalMutation({
     orderId: v.optional(v.id("orders")),
     subscriptionId: v.optional(v.id("subscriptions")),
     stripeInvoiceId: v.string(),
+    invoiceNumber: v.optional(v.string()),
     stripeCustomerId: v.string(),
     customerEmail: v.string(),
     plan: planValidator,
@@ -38,6 +39,9 @@ export const updateStatus = internalMutation({
   args: {
     stripeInvoiceId: v.string(),
     status: statusValidator,
+    /* Stripe assigns the number when the invoice leaves draft, so an invoice
+       first seen as a draft only gets it on a later event. */
+    invoiceNumber: v.optional(v.string()),
     invoicePdfUrl: v.optional(v.string()),
     hostedInvoiceUrl: v.optional(v.string()),
     paidAt: v.optional(v.number()),
@@ -52,6 +56,8 @@ export const updateStatus = internalMutation({
     if (!invoice) return null;
 
     const patch: Record<string, unknown> = { status: args.status };
+    if (args.invoiceNumber !== undefined)
+      patch.invoiceNumber = args.invoiceNumber;
     if (args.invoicePdfUrl !== undefined)
       patch.invoicePdfUrl = args.invoicePdfUrl;
     if (args.hostedInvoiceUrl !== undefined)

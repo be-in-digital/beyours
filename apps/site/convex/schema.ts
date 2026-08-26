@@ -258,6 +258,11 @@ export default defineSchema({
     orderId: v.optional(v.id("orders")),
     subscriptionId: v.optional(v.id("subscriptions")),
     stripeInvoiceId: v.string(),
+    /* The number PRINTED on the invoice, which is the one the law cares about
+       — stripeInvoiceId is an internal handle (in_…) that appears nowhere on
+       the document. Optional: invoices recorded before this was kept have
+       none, and a draft has no number yet. */
+    invoiceNumber: v.optional(v.string()),
     stripeCustomerId: v.string(),
     customerEmail: v.string(),
     plan: v.union(v.literal("essentielle"), v.literal("premium")),

@@ -7,6 +7,10 @@ import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
+import {
+  invoiceLegalSettings,
+  vatConfigurationProblem,
+} from "./invoiceLegal";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -73,13 +77,11 @@ function resolveCreationProductId(plan: string): string | null {
   return process.env[envName] ?? null;
 }
 
-/* ── Seller details carried by the Stripe invoice for the 1st payment ──
+/* ── Seller details carried by every Stripe invoice ──
    The business profile (name, address, VAT) stays configured in the Stripe
-   dashboard; here we add the legal invoice footer + the SIRET as a custom field.
-   Keep in sync with apps/web-restaurant/lib/legal/company.ts (COMPANY). */
-const SELLER_INVOICE_FOOTER =
-  "Be in Digital, nom commercial de TUUM AGENCY, SAS au capital de 1 000 €, 229 rue Saint-Honoré, 75001 Paris. R.C.S. Paris 930 817 697. TVA intracommunautaire FR31 930 817 697.";
-const SELLER_SIRET = "930 817 697 00012";
+   dashboard; the legal mentions come from convex/invoiceLegal.ts, which reads
+   lib/legal/company.ts. They used to be two hard-coded strings here, pointing
+   at a file path that no longer existed. */
 
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -311,6 +313,10 @@ export const createCheckoutSession = action({
       args.billingPeriod === "monthly" ? "premier mois" : "première année";
 
     const taxOn = stripeTaxEnabled();
+    /* Not fatal: which of the two to align is a fiscal decision, not ours.
+       But an invoice issued in the meantime is wrong, so it has to be seen. */
+    const vatProblem = vatConfigurationProblem(taxOn);
+    if (vatProblem) console.error(`[TVA] ${vatProblem}`);
     const taxBehavior = taxOn
       ? { tax_behavior: "exclusive" as const }
       : {};
@@ -326,15 +332,15 @@ export const createCheckoutSession = action({
       // receipt, not a downloadable invoice.
       invoice_creation: {
         enabled: true,
-        invoice_data: {
-          footer: SELLER_INVOICE_FOOTER,
-          custom_fields: [{ name: "SIRET", value: SELLER_SIRET }],
-        },
+        invoice_data: invoiceLegalSettings(args.buyerType),
       },
+      /* The buyer's address is a mandatory mention on any invoice, whether or
+         not VAT is charged — it used to be collected only when Stripe Tax was
+         on, which left every invoice issued without it incomplete. */
+      billing_address_collection: "required" as const,
       ...(taxOn
         ? {
             automatic_tax: { enabled: true },
-            billing_address_collection: "required" as const,
             tax_id_collection: { enabled: true },
           }
         : {}),
@@ -409,6 +415,8 @@ export const createSubscription = internalAction({
     customerEmail: v.string(),
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
     billingPeriod: v.union(v.literal("monthly"), v.literal("yearly")),
+    /* Decides whether the renewal invoices carry the late payment terms. */
+    buyerType: v.union(v.literal("business"), v.literal("personal")),
   },
   handler: async (ctx, args): Promise<void> => {
     const stripe = getStripe();
@@ -430,6 +438,20 @@ export const createSubscription = internalAction({
       args.billingPeriod === "monthly"
         ? now + 30 * 24 * 60 * 60 // +30 jours
         : now + 365 * 24 * 60 * 60; // +365 jours
+
+    /* ── Legal mentions on the renewal invoices ──
+       invoice_creation on the Checkout session covers the FIRST invoice only.
+       Every renewal after it is raised by Stripe from the subscription, and
+       carried nothing: no seller identity, no SIRET, no VAT mention, no late
+       payment terms. That is the whole recurring revenue billed on invoices
+       that do not hold up.
+
+       Stripe has no footer field on a subscription — the setting lives on the
+       customer and applies to every invoice raised for them from now on. Set
+       before the subscription so the first renewal already has it. */
+    await stripe.customers.update(args.stripeCustomerId, {
+      invoice_settings: invoiceLegalSettings(args.buyerType),
+    });
 
     const subscription = await stripe.subscriptions.create({
       customer: args.stripeCustomerId,
