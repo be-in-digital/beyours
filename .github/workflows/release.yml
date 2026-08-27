@@ -67,13 +67,37 @@ jobs:
       # and pushes whatever is missing, so a merged version bump releases
       # itself. With nothing to do it prints "No unpublished projects to
       # publish" and exits 0.
+      # `changeset publish` tags each published package with `git tag -m`, an
+      # ANNOTATED tag, and an annotated tag needs a committer. A runner has
+      # none, so the tag command failed - and changesets prints "New tag: X"
+      # before tagging and ignores the result, so the failure was invisible.
+      # `changesets/action` used to set this identity; dropping the action in
+      # #122 dropped it too, and 4bfc4f1d published three packages and tagged
+      # nothing.
+      - name: Identify the tagger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Publish packages
         run: pnpm exec changeset publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # `changeset publish` tags each released package locally. The checkout
-      # carries no other tags, so this pushes only what it just made, and is a
-      # no-op when it published nothing.
+      # The checkout fetches with --no-tags, so anything here was made by the
+      # step above and belongs on the remote. A publish that tagged nothing
+      # leaves this a no-op.
+      #
+      # `git push --tags` is quiet about doing nothing, which is exactly how the
+      # missing identity stayed hidden: it reported "Everything up-to-date"
+      # while three packages went out untagged. So compare instead of trusting
+      # it - if a version was published, its tag must exist here.
       - name: Push release tags
-        run: git push --tags
+        run: |
+          tags=$(git tag --points-at HEAD)
+          if [ -z "$tags" ]; then
+            echo "No tags created — nothing was published."
+            exit 0
+          fi
+          echo "Pushing:"; echo "$tags" | sed "s/^/  /"
+          git push origin --tags
