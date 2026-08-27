@@ -19,6 +19,8 @@ export interface AuditEntry {
   action: string
   performedBy: string
   performedAt: number
+  /** Set on establishment entries, absent on system-wide ones. */
+  targetStoreId?: string
   details?: string
   result: "success" | "failure"
   errorMessage?: string

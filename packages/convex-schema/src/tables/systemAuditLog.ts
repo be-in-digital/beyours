@@ -3,7 +3,14 @@ import { v } from "convex/values"
 
 /**
  * System audit log table.
- * Tracks all system-level operations (backups, restores, migrations, version checks).
+ *
+ * Tracks system-level operations (backups, restores, migrations, version
+ * checks) and establishment changes (creation, edits, deletion).
+ *
+ * `targetStoreId` is set on establishment entries and left unset on the
+ * system-wide ones, which belong to no single store. That distinction is what
+ * lets a reader without super-admin rights be shown the system entries plus
+ * the stores they actually have access to, and nothing else.
  */
 export const systemAuditLogTable = defineTable({
   action: v.union(
@@ -16,12 +23,18 @@ export const systemAuditLogTable = defineTable({
     v.literal("maintenance_contract_set"),
     v.literal("migration_request_created"),
     v.literal("migration_request_status_changed"),
+    v.literal("store_created"),
+    v.literal("store_updated"),
+    v.literal("store_deleted"),
   ),
   performedBy: v.string(),
   performedAt: v.number(),
+  /** The establishment the entry is about. Unset for system-wide operations. */
+  targetStoreId: v.optional(v.id("stores")),
   details: v.optional(v.string()),
   result: v.union(v.literal("success"), v.literal("failure")),
   errorMessage: v.optional(v.string()),
 })
   .index("by_performedAt", ["performedAt"])
   .index("by_action", ["action"])
+  .index("by_targetStoreId_performedAt", ["targetStoreId", "performedAt"])

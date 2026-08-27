@@ -3,7 +3,7 @@ import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { getAuthUser } from "@be-in-digital/convex-functions/auth"
 import * as maintenanceDefs from "@be-in-digital/convex-functions/maintenance"
-import { hasPermission, type Permission, type Role } from "@be-in-digital/core/auth/rbac"
+import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
 import { migrations } from "./migrations/index"
 
 // Type returned by systemInternal.getAuthUserInternal
@@ -88,6 +88,35 @@ export const getSystemInfo = query({
   },
 })
 
+/**
+ * Can this reader see this entry?
+ *
+ * System operations belong to no establishment and stay visible to every
+ * `system:read` holder. Establishment entries are scoped the way the rest of
+ * the admin surface is scoped: a super admin sees all of them, anyone else sees
+ * the stores their profile actually lists. Without this the journal would be
+ * the one screen where a client admin could read another establishment's
+ * address and opening hours.
+ *
+ * Your own actions are always yours to read back, whatever the scope says.
+ * `stores.create` is the one mutation the store-scoped seam cannot guard —
+ * there is no store yet to check membership against — and nothing afterwards
+ * adds the new establishment to the creator's profile, so a client admin can
+ * end up outside the restaurant they just opened. Scoping alone would then hide
+ * their own creation from them: the journal would go silent on precisely the
+ * action it exists to record. Showing it back reveals nothing, since they are
+ * the one who did it.
+ */
+function canReadAuditEntry(
+  user: { userId: string; role: Role; storeIds: string[] },
+  entry: { performedBy: string; targetStoreId?: string },
+): boolean {
+  if (!entry.targetStoreId) return true
+  if (user.role === Role.SUPER_ADMIN) return true
+  if (entry.performedBy === user.userId) return true
+  return user.storeIds.includes(entry.targetStoreId)
+}
+
 /** Get paginated audit log */
 // @guarded-inline: system:* permission checked in the handler
 export const getAuditLog = query({
@@ -105,7 +134,6 @@ export const getAuditLog = query({
     }
 
     const numItems = Math.min(args.paginationOpts.numItems, 100)
-    const { cursor } = args.paginationOpts
 
     // Use the appropriate index depending on whether we filter by action
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,30 +149,29 @@ export const getAuditLog = query({
         .order("desc")
     }
 
-    // Bounded fetch: take one extra to determine if there's a next page
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results: any[] = await q.take(numItems + 1)
+    // Convex's own cursor rather than a hand-rolled one.
+    //
+    // This used to re-`take(numItems + 1)` from the top of the index on every
+    // call and hunt for the previous page's last `_id` inside that slice, so
+    // page two came back holding a single row and declaring itself done.
+    // Nothing noticed while the log held only the handful of system
+    // operations; now that every establishment change lands here, a journal
+    // that stops at row eleven is a journal nobody can read.
+    const result = await q.paginate({
+      cursor: args.paginationOpts.cursor,
+      numItems,
+    })
 
-    // If a cursor was provided, skip entries up to and including the cursor
-    let startIndex = 0
-    if (cursor) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cursorIndex = results.findIndex((r: any) => r._id === cursor)
-      startIndex = cursorIndex >= 0 ? cursorIndex + 1 : 0
-    }
-
-    const sliced = results.slice(startIndex)
-    const page = sliced.slice(0, numItems)
-    const hasMore = sliced.length > numItems
-    const nextCursor = hasMore
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? (page[page.length - 1] as any)?._id ?? null
-      : null
-
+    // Filtering after the page is drawn can hand back a short page — the
+    // cursor and `isDone` stay correct, so the reader keeps paging. Scoping
+    // before the read would need one index per reader.
     return {
-      page,
-      continueCursor: nextCursor,
-      isDone: !hasMore,
+      page: result.page.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (entry: any) => canReadAuditEntry(user, entry),
+      ),
+      continueCursor: result.continueCursor,
+      isDone: result.isDone,
     }
   },
 })
