@@ -9,6 +9,7 @@ import { Store } from "lucide-react"
 import Link from "next/link"
 import { useAdminApiStore } from "../stores/admin-api-store"
 import { adminRoutes } from "../config/admin-routes"
+import { resolveStoreSelection } from "./store-selection"
 
 const BYPASS_ROUTES = [adminRoutes.stores, adminRoutes.settings, adminRoutes.team]
 
@@ -18,13 +19,18 @@ interface StoreGuardProps {
 
 /**
  * Ensures a store is selected before rendering children.
- * Auto-selects the first store when none is selected.
+ * Auto-selects the first store when the persisted one is not in the list.
  *
- * The selected id is also checked against the list the server returns for this
- * account on every response: a persisted id the current user cannot reach - a
- * deleted store, or the previous user of this browser - is replaced rather than
- * handed to the pages below, which would query it and get an authorization
- * error.
+ * The list comes from `stores.list`, which is public and unscoped: it returns
+ * every establishment of this deployment, whoever is asking. So the check this
+ * guard performs is existence, not authorisation - it replaces an id that has
+ * left the table, such as a deleted store, and it cannot replace one the
+ * signed-in user is simply not allowed to open. Those pages still fail on the
+ * server, where `requireStoreAccess` reads `userProfiles.storeIds`.
+ *
+ * The claim this replaces - a list scoped "for this account" - is what issue
+ * #94 would make true. Until it lands, `resolveStoreSelection` carries the rule
+ * and the full account of what it does not promise.
  */
 export function StoreGuard({ children }: StoreGuardProps) {
   const pathname = usePathname()
@@ -35,22 +41,19 @@ export function StoreGuard({ children }: StoreGuardProps) {
   const storeId = useAdminStoreSelection((s) => s.storeId)
   const setStoreId = useAdminStoreSelection((s) => s.setStoreId)
 
-  const isReachable = !!storeId && !!stores?.some((s) => s._id === storeId)
+  const decision = resolveStoreSelection({ storeId, stores })
+  const replacementId = decision.status === "replace" ? decision.storeId : null
 
   useEffect(() => {
-    if (!stores || stores.length === 0) return
-    if (isReachable) return
-
-    const first = stores[0]
-    if (first) setStoreId(first._id)
-  }, [stores, isReachable, setStoreId])
+    if (replacementId) setStoreId(replacementId)
+  }, [replacementId, setStoreId])
 
   const shouldBypass = BYPASS_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   )
   if (shouldBypass) return <>{children}</>
 
-  if (stores === undefined) {
+  if (decision.status === "pending") {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />
@@ -58,7 +61,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
     )
   }
 
-  if (stores.length === 0) {
+  if (decision.status === "empty") {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center max-w-sm space-y-5">
@@ -80,7 +83,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
   }
 
   // While auto-selection is happening, show loading
-  if (!isReachable) {
+  if (decision.status === "replace") {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />
