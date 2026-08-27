@@ -11,6 +11,7 @@ import {
   getFieldDefinition,
 } from "@be-in-digital/cms"
 import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
+import { resolveCmsStoreId, type IdentifiedStore } from "./cms-store-id"
 import type { Id } from "@/convex/_generated/dataModel"
 
 export interface CmsFieldAccessor {
@@ -52,6 +53,10 @@ interface UseCmsPageOptions {
    * The admin layout passes its own selection instead: an owner editing Lyon
    * while a customer tab sits on Paris must see Lyon's branding, and the two
    * zones no longer share a selection.
+   *
+   * Either way the id is checked against this deployment before it is sent -
+   * see `resolveCmsStoreId`. Both selections are persisted in the browser, so
+   * both can name an establishment that is not here any more.
    */
   storeId?: string | null
 }
@@ -78,9 +83,16 @@ export function useCmsPage(
   const isPreviewParam = searchParams.get("preview") === "true"
   const mode = options?.mode ?? (isPreviewParam ? "preview" : "public")
   const storefrontStoreId = useStorefrontStoreSelection((s) => s.storeId)
-  const storeId = (options?.storeId ?? storefrontStoreId ?? undefined) as
-    | Id<"stores">
-    | undefined
+  // Every establishment of this deployment, so a persisted id can be vouched
+  // for before it reaches a query that would refuse it and take the page down
+  // with it. Convex de-duplicates this subscription with the one `useStoreId`
+  // already holds in the storefront shell, so it costs one query, not two.
+  const stores = useQuery(api.stores.list) as IdentifiedStore[] | undefined
+  const storeId = (resolveCmsStoreId({
+    requestedStoreId: options?.storeId,
+    persistedStoreId: storefrontStoreId,
+    stores,
+  }) ?? undefined) as Id<"stores"> | undefined
   const locale = useLanguageStore((s) => s.locale)
 
   // Choose query based on mode
