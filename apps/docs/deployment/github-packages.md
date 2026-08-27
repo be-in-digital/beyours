@@ -42,10 +42,24 @@ git push
 
 ### Automated Publishing
 
-When changes are merged to `main`, the GitHub Actions release workflow:
+When changes are merged to `main`, the release workflow publishes every package
+whose version on `main` is not yet in the registry. It does not decide those
+versions.
 
-1. Creates a "Version Packages" PR with bumped versions
-2. When that PR is merged, publishes all changed packages to GitHub Packages
+**Bumping the versions is a human step**, and deliberately so: this enterprise
+forbids GitHub Actions from creating pull requests, so nothing in CI can open
+the "Version Packages" PR that `changesets/action` used to.
+
+```bash
+# On a branch, once the changesets you want to release are on main
+pnpm version-packages   # applies the changesets: bumps versions, writes CHANGELOGs
+
+# Commit the result and open a normal pull request
+git commit -am "chore(release): version packages"
+```
+
+Merging that pull request publishes the packages, because their versions are
+then ahead of the registry.
 
 ### Manual Publishing
 
@@ -98,7 +112,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   packages: write
 
 jobs:
@@ -121,22 +134,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-      - name: Create Release Pull Request or Publish
-        uses: changesets/action@v1
-        with:
-          publish: pnpx changeset publish
-          title: "chore(release): version packages"
-          commit: "chore(release): version packages"
+      - name: Publish packages
+        run: pnpm exec changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push release tags
+        run: git push --tags
 ```
 
 ### Key Points
 
-- `GITHUB_TOKEN` is automatically provided by GitHub Actions
 - `NODE_AUTH_TOKEN` is used by `setup-node` for registry authentication
 - The `packages: write` permission is required for publishing
+- `contents: write` is required for the tags `changeset publish` writes
+- No `pull-requests` permission: the workflow opens none, and the enterprise
+  would refuse it if it tried
 
 ## Troubleshooting
 

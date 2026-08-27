@@ -12,8 +12,9 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     permissions:
+      # `contents` for the tags `changeset publish` writes. No `pull-requests`:
+      # this workflow does not open one, and cannot - see the publish step.
       contents: write
-      pull-requests: write
       packages: write
     steps:
       - name: Checkout code
@@ -48,14 +49,31 @@ jobs:
         # needs an application env — no reason to set that up here.
         run: pnpm build --filter='./packages/*'
 
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm release
-          version: pnpm version-packages
-          title: "chore(release): version packages"
-          commit: "chore(release): version packages"
+      # Publish only. Versioning is a human step, written up in
+      # apps/docs/deployment/github-packages.md.
+      #
+      # `changesets/action` opens a "version packages" pull request whenever a
+      # changeset is pending, and this enterprise forbids that outright:
+      #
+      #   The enterprise does not allow GitHub Actions to create or approve
+      #   pull requests
+      #
+      # It is an enterprise-level policy, so no repository setting can grant it.
+      # The job therefore failed on every push to main for as long as a
+      # changeset was waiting - and a red Release is indistinguishable from a
+      # publish that actually broke.
+      #
+      # `changeset publish` compares the versions on main against the registry
+      # and pushes whatever is missing, so a merged version bump releases
+      # itself. With nothing to do it prints "No unpublished projects to
+      # publish" and exits 0.
+      - name: Publish packages
+        run: pnpm exec changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # `changeset publish` tags each released package locally. The checkout
+      # carries no other tags, so this pushes only what it just made, and is a
+      # no-op when it published nothing.
+      - name: Push release tags
+        run: git push --tags
