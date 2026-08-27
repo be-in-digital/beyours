@@ -77,4 +77,27 @@ jobs:
         # `pnpm audit` runs but don't block PR merges.
         # --audit-level high → fails on `high` or `critical`, ignores
         # `low`/`moderate` noise.
+        #
+        # One advisory is silenced, in `pnpm.auditConfig.ignoreGhsas` at the root
+        # package.json: GHSA-qq9h-g4jm-xgf3 (better-auth, CVSS 8.3). Not because
+        # the risk is accepted — because the advisory's own preconditions are not
+        # met here. It requires the magic-link OR email-OTP plugin to be enabled;
+        # both apps configure `plugins: [convex({ authConfig })]` and nothing
+        # else, and sign-in is emailAndPassword. Without a passwordless flow the
+        # attack described has no first step. (The `magicLink` entry in
+        # packages/core/src/auth/config.ts is an email subject line, in a file the
+        # auth configs do not import.)
+        #
+        # It is silenced rather than fixed because it cannot be fixed today: the
+        # patched range is >=1.6.22, and 1.6.22 through 1.6.30 all fail
+        # type-check against @convex-dev/better-auth@0.12.5, the newest adapter
+        # published.
+        #
+        # Remove the entry when EITHER holds:
+        #   - a @convex-dev/better-auth release accepts better-auth >=1.6.22, or
+        #   - anyone enables the magic-link or email-OTP plugin — at which point
+        #     the advisory becomes real and this must go back to red.
+        #
+        # The entry is deliberately one GHSA. Verified narrow: with it in place,
+        # dropping --prod still exits 1 on the other 13 high advisories.
         run: pnpm audit --prod --audit-level high
