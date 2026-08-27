@@ -97,13 +97,23 @@ export const getSystemInfo = query({
  * the stores their profile actually lists. Without this the journal would be
  * the one screen where a client admin could read another establishment's
  * address and opening hours.
+ *
+ * Your own actions are always yours to read back, whatever the scope says.
+ * `stores.create` is the one mutation the store-scoped seam cannot guard —
+ * there is no store yet to check membership against — and nothing afterwards
+ * adds the new establishment to the creator's profile, so a client admin can
+ * end up outside the restaurant they just opened. Scoping alone would then hide
+ * their own creation from them: the journal would go silent on precisely the
+ * action it exists to record. Showing it back reveals nothing, since they are
+ * the one who did it.
  */
 function canReadAuditEntry(
-  user: { role: Role; storeIds: string[] },
-  entry: { targetStoreId?: string },
+  user: { userId: string; role: Role; storeIds: string[] },
+  entry: { performedBy: string; targetStoreId?: string },
 ): boolean {
   if (!entry.targetStoreId) return true
   if (user.role === Role.SUPER_ADMIN) return true
+  if (entry.performedBy === user.userId) return true
   return user.storeIds.includes(entry.targetStoreId)
 }
 

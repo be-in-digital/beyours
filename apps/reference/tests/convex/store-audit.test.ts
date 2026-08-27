@@ -400,6 +400,57 @@ describe("getAuditLog", () => {
     expect(seenBySuperAdmin.page).toHaveLength(3)
   })
 
+  test("an owner reads back the restaurant they just opened, even though the seam locks them out of it", async () => {
+    const t = newHarness()
+    const roma = await seedStore(t, "Pizzeria Roma")
+    const owner = await seedUser(t, "user_owner", "client_admin", [roma])
+
+    // `stores.create` cannot be store-scoped — there is no store yet — and
+    // nothing adds the new one to the creator's profile, so the rest of the
+    // admin surface refuses them on it.
+    const napoli = await owner.mutation(api.stores.create, {
+      name: "Pizzeria Napoli",
+      slug: "pizzeria-napoli",
+      address: AN_ADDRESS,
+    })
+    await expect(
+      owner.query(api.stores.getAdminById, { id: napoli })
+    ).rejects.toThrow(/do not have access/)
+
+    // The journal still owes them their own action.
+    const seen = await owner.query(api.system.getAuditLog, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    })
+    expect(seen.page).toHaveLength(1)
+    expect(seen.page[0]!.action).toBe("store_created")
+    expect(seen.page[0]!.targetStoreId).toBe(napoli)
+  })
+
+  test("reading back your own action does not open the rest of that establishment's history", async () => {
+    const t = newHarness()
+    const roma = await seedStore(t, "Pizzeria Roma")
+    const owner = await seedUser(t, "user_owner", "client_admin", [roma])
+    const superAdmin = await seedUser(t, "user_super", "super_admin", [])
+
+    const napoli = await owner.mutation(api.stores.create, {
+      name: "Pizzeria Napoli",
+      slug: "pizzeria-napoli",
+      address: AN_ADDRESS,
+    })
+    // Someone else then works on the establishment the owner cannot reach.
+    await superAdmin.mutation(api.stores.update, { id: napoli, name: "Napoli Centro" })
+    await superAdmin.mutation(api.stores.updateAddress, {
+      id: napoli,
+      address: { ...AN_ADDRESS, street: "9 via Toledo" },
+    })
+
+    const seen = await owner.query(api.system.getAuditLog, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    })
+    expect(seen.page.map((e) => e.action)).toEqual(["store_created"])
+    expect(seen.page.every((e) => e.performedBy === "user_owner")).toBe(true)
+  })
+
   test("paging walks the whole journal instead of stalling after page two", async () => {
     const t = newHarness()
     const storeId = await seedStore(t, "Pizzeria Roma")
