@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.2.0
+
+### Minor Changes
+
+- 285b579: Record establishment changes in the system audit log
+
+  `systemAuditLog` was only ever written by system operations, so a restaurant
+  could be created, renamed, moved, reconfigured or deleted and the journal stayed
+  empty. Every mutation in the stores module now appends an entry naming the
+  actor, the establishment, the operation, the timestamp and the before/after of
+  the fields the edit moved.
+  - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
+    an optional `targetStoreId`, and an index to read one establishment's history.
+  - The printer API key is redacted on both sides of a `printConfig` diff, and
+    create/delete snapshots use a field allowlist so the legacy `integrations`
+    blob never reaches the log.
+  - `system.getAuditLog` scopes establishment entries to the stores the reader has
+    access to, and pages with Convex's own cursor instead of arithmetic that
+    stalled after the second page.
+
+### Patch Changes
+
+- 9817b8d: Creating an establishment now makes its creator an administrator of it.
+
+  `stores.create` is the one mutation the store-scoped seam cannot guard — there
+  is no store yet to check membership against — and nothing added the new store to
+  the creator's profile. A client admin who opened a second location was refused
+  by the detail page and every edit, and `profileProvisioning` refused them their
+  own profile too, so only a super admin could let them back in.
+
+- Updated dependencies [285b579]
+  - @be-in-digital/convex-schema@2.2.0
+
 ## 2.1.0
 
 ### Minor Changes
