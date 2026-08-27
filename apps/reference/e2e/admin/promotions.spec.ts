@@ -8,6 +8,7 @@ import {
   getDialog,
 } from "../helpers/dialog.helpers"
 import { chooseOption } from "../helpers/filter.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 const PROMOTIONS_URL = "/dashboard/promotions"
 const SEARCH_PLACEHOLDER = "Rechercher une promotion..."
@@ -377,10 +378,9 @@ test.describe("Promotions Page", () => {
     await page.waitForTimeout(500)
     const items = listContainer.locator("label")
     const emptyText = listContainer.getByText("Aucun produit trouvé")
-    const count = await items.count()
-    if (count === 0) {
-      await expect(emptyText).toBeVisible()
-    }
+    // Asserting the empty message only when the list was empty meant a
+    // populated list was never checked at all. One assertion covers both.
+    await expect(items.first().or(emptyText)).toBeVisible()
   })
 
   test("should allow selecting and filtering categories", async ({ page }) => {
@@ -416,10 +416,9 @@ test.describe("Promotions Page", () => {
     await page.waitForTimeout(500)
     const items = listContainer.locator("label")
     const emptyText = listContainer.getByText("Aucune catégorie trouvée")
-    const count = await items.count()
-    if (count === 0) {
-      await expect(emptyText).toBeVisible()
-    }
+    // Asserting the empty message only when the list was empty meant a
+    // populated list was never checked at all. One assertion covers both.
+    await expect(items.first().or(emptyText)).toBeVisible()
   })
 
   // ──────────────────────────────────────────────────
@@ -483,7 +482,7 @@ test.describe("Promotions Page", () => {
     if (!tableExists) return
 
     const rows = page.locator("tbody tr")
-    const rowCount = await rows.count()
+    const rowCount = await countAfterLoad(rows)
     if (rowCount === 0) return
 
     // Row visible
@@ -529,7 +528,7 @@ test.describe("Promotions Page", () => {
     await waitForAdminPage(page)
 
     const rows = page.locator("tbody tr")
-    const rowCount = await rows.count().catch(() => 0)
+    const rowCount = await countAfterLoad(rows)
     if (rowCount === 0) return
 
     await rows.first().getByRole("button").last().click()

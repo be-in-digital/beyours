@@ -1,449 +1,438 @@
-# Plan de durcissement — `apps/reference`
+# Hardening plan — `apps/reference`
 
-Établi le 2026-08-20, à partir de l'audit du 2026-08-19 (branche
-`claude/referent-site-full-test-d4eea0`). Objectif : amener le référent à un état
-utilisable, vérifié et tenable — pas seulement corrigé une fois.
+Written on 2026-08-20, from the audit of 2026-08-19 (branch
+`claude/referent-site-full-test-d4eea0`). Goal: bring the reference app to a
+state that is usable, verified and maintainable — not merely fixed once.
 
-> **Une précision de vocabulaire, parce qu'elle change le plan.** « 100 % sécurisé »
-> n'est pas un état qu'on atteint et qu'on coche. Ce qu'on peut atteindre, et ce que
-> ce plan vise : **zéro défaut connu ouvert**, un **socle vérifié par des tests qui
-> échouent quand on casse quelque chose**, et des **garde-fous automatiques** qui
-> empêchent la même classe de défaut de revenir. Sans le troisième point, le même
-> audit se reproduit dans trois mois — c'est pourquoi les garde-fous sont des tickets
-> à part entière et non un « si on a le temps ».
+> **A point of vocabulary, because it changes the plan.** "100% secure" is not a
+> state you reach and tick off. What can be reached, and what this plan aims at:
+> **zero known open defect**, a **foundation covered by tests that go red when
+> something breaks**, and **automatic guardrails** that stop the same class of
+> defect coming back. Without the third, the same audit repeats in three months —
+> which is why the guardrails are tickets in their own right and not a "if we
+> have time".
 
 ---
 
-## 0. Journal d'avancement
+## 0. Progress journal
 
-Mis à jour à chaque ticket clos. Un ticket n'entre ici qu'une fois les cinq
-critères de la section 11 satisfaits.
+Updated as each ticket closes. A ticket only appears here once the five criteria
+of section 11 are met.
 
-| Ticket | État | Preuve |
+| Ticket | State | Evidence |
 | --- | --- | --- |
-| **S1-1** Remise recalculée côté serveur | ✅ **clos** | `promotionDiscount.ts` + 25 tests ; `discountAmount` retiré des args publics et de l'appel client |
-| **S1-2** Validation de la promotion (store, activité, fenêtre, plafonds, minimum) | ✅ **clos** | 10 tests d'intégration sur `create.handler` ; contournement du plafond par client refermé (voir revue ci-dessous) |
-| **S1-4** SumUp : référence + montant vérifiés | ✅ **clos** | `paymentSettlement.ts` + 22 tests ; câblé dans `verifyCheckout` |
-| **S1-5** PayPal : référence + montant vérifiés, sandbox explicite | ✅ **clos** | `readPayPalCapture` lit enfin `purchase_units[0]` ; heuristique sandbox remplacée par `PAYPAL_SANDBOX_MODE` |
-| **S1-6** Remboursement réel au lieu d'un `db.patch` | ✅ **clos** | `refundPolicy.ts` + 22 tests ; actions `internalRefund` Stripe/SumUp/PayPal ; enregistrement **après** confirmation du prestataire |
-| **S1-7** Les 4 routes post-paiement manquantes | ✅ **clos** | `/checkout/success`, `/checkout/cancel`, `/checkout/pay`, `/track/[token]` — vérifiées en HTTP réel : 404 → 200 |
-| **S1-8** `viewToken` rendu au client après commande | ✅ **clos** | La page de succès affiche « Suivre ma commande » avec le token retourné par la vérification |
-| **S1-9** Total affiché aligné sur le total facturé | ✅ **clos** | `orderTotals.ts` + 13 tests — une seule arithmétique pour le serveur et la vitrine ; ligne TVA visible |
-| **S1-10** Frais de livraison en mode pourcentage | ✅ **clos** | Table `deliveryQuotes` : le serveur lit le devis qu'il a émis. `uberDirectFee` retiré des arguments clients |
-| **S2-1** Seam d'autorisation déplacé dans le package | ✅ **clos** | Fabrique `createStoreFunctions` ; `apps/themes` a enfin un seam |
-| **S2-2** `authed*` migrés vers le seam store-scopé | ✅ **clos** (référent) | 69 → 11, les 11 restants justifiés. `themes` : passe séparée à prévoir |
-| **S2-4** Permission déclarée sur chaque fonction store-scopée | ✅ **clos** (référent) | **178/178** ; 2 ressources RBAC manquantes ajoutées |
-| **S2-8** `teamMembers` branché sur la chaîne d'auth | ✅ **clos** | Accepter une invitation provisionne enfin le profil |
-| **S2-10** Suite de tests d'autorisation | ✅ **clos** | 17 tests `convex-test` sur les vraies fonctions Convex, en mémoire |
-| **S2-11** Règle ESLint anti-régression | ✅ **clos** | 2 règles ; morsure vérifiée. Voir S2-12 ci-dessous |
-| **S2-12** Trier 20 modules jamais audités | ✅ **clos** | 58 exports triés ; **5 nouvelles failles** trouvées ; règle ESLint sans exemption |
-| **S2-9** Mutations d'équipe sécurisées | ✅ **clos** | `teamAccess.ts` + 23 tests ; les 2 actions d'invitation gardées |
-| **S2-3** Exports Convex non gardés classés | ✅ **clos** (2 apps) | référent 43 → 29, `themes` 37 → 24 ; les publics annotés `@public-by-design` |
-| **S2-5** `userProfiles.upsert` verrouillé | ✅ **clos** | `profileProvisioning.ts` + 20 tests — politique complète de qui provisionne quoi |
-| **S2-6** `userProfiles.getByUserId` supprimé | ✅ **clos** | `AdminAuthSync` routé vers `getMyProfile` dans les deux apps |
-| **S2-7** Amorçage du premier super-admin | ✅ **clos** | `claimFirstAdmin`, auto-refermante dès qu'un super-admin existe |
-| **S4-1** Rôles fantômes bloquant les réglages | ✅ **clos** | Garde basée sur `settings:write` ; 2 tests de régression dans `rbac.test.ts` |
-| **S0-1** Déploiement Convex de test + secrets CI | ⛔ **bloqué** | Nécessite les credentials du propriétaire du dépôt — hors de portée de l'agent |
-| **S0-9** *(nouveau)* Stabiliser les tests sensibles au temps de `packages/core` | 🔜 à faire | Voir ci-dessous |
+| **S1-1** Discount recomputed server-side | ✅ **closed** | `promotionDiscount.ts` + 25 tests; `discountAmount` removed from the public args and from the client call |
+| **S1-2** Promotion validation (store, active, window, caps, minimum) | ✅ **closed** | 10 integration tests on `create.handler`; the per-customer cap bypass closed (see review below) |
+| **S1-4** SumUp: reference and amount verified | ✅ **closed** | `paymentSettlement.ts` + 22 tests; wired into `verifyCheckout` |
+| **S1-5** PayPal: reference and amount verified, sandbox made explicit | ✅ **closed** | `readPayPalCapture` finally reads `purchase_units[0]`; the sandbox heuristic replaced by `PAYPAL_SANDBOX_MODE` |
+| **S1-6** A real refund instead of a `db.patch` | ✅ **closed** | `refundPolicy.ts` + 22 tests; `internalRefund` actions for Stripe/SumUp/PayPal; recorded **after** the provider confirms |
+| **S1-7** The 4 missing post-payment routes | ✅ **closed** | `/checkout/success`, `/checkout/cancel`, `/checkout/pay`, `/track/[token]` — verified over real HTTP: 404 → 200 |
+| **S1-8** `viewToken` returned to the client after an order | ✅ **closed** | The success page shows "Suivre ma commande" with the token the verification returned |
+| **S1-9** Displayed total aligned with the charged total | ✅ **closed** | `orderTotals.ts` + 13 tests — one arithmetic for the server and the storefront; VAT line visible |
+| **S1-10** Delivery fee in percentage mode | ✅ **closed** | `deliveryQuotes` table: the server reads the quote it issued. `uberDirectFee` removed from the client arguments |
+| **S2-1** Authorization seam moved into the package | ✅ **closed** | `createStoreFunctions` factory; `apps/themes` finally has a seam |
+| **S2-2** `authed*` migrated to the store-scoped seam | ✅ **closed** (reference) | 69 → 11, the remaining 11 justified. `themes`: a separate pass to schedule |
+| **S2-4** A permission declared on every store-scoped function | ✅ **closed** (reference) | **178/178**; 2 missing RBAC resources added |
+| **S2-8** `teamMembers` wired into the auth chain | ✅ **closed** | Accepting an invitation finally provisions the profile |
+| **S2-10** Authorization test suite | ✅ **closed** | 17 `convex-test` tests against the real Convex functions, in memory |
+| **S2-11** Anti-regression ESLint rule | ✅ **closed** | 2 rules; bite verified. See S2-12 below |
+| **S2-12** Sort the 20 never-audited modules | ✅ **closed** | 58 exports sorted; **5 new holes** found; ESLint rule with no exemption |
+| **S2-9** Team mutations secured | ✅ **closed** | `teamAccess.ts` + 23 tests; the 2 invitation actions guarded |
+| **S2-3** Unguarded Convex exports classified | ✅ **closed** (2 apps) | reference 43 → 29, `themes` 37 → 24; the public ones annotated `@public-by-design` |
+| **S2-5** `userProfiles.upsert` locked down | ✅ **closed** | `profileProvisioning.ts` + 20 tests — a complete policy of who provisions what |
+| **S2-6** `userProfiles.getByUserId` removed | ✅ **closed** | `AdminAuthSync` routed to `getMyProfile` in both apps |
+| **S2-7** Bootstrapping the first super-admin | ✅ **closed** | `claimFirstAdmin`, self-closing as soon as a super-admin exists |
+| **S4-1** Phantom roles blocking the settings | ✅ **closed** | Guard based on `settings:write`; 2 regression tests in `rbac.test.ts` |
+| **S0-1** Test Convex deployment + CI secrets | ⛔ **blocked** | Needs the repository owner's credentials — out of the agent's reach |
+| **S0-9** *(new)* Stabilise the time-sensitive tests in `packages/core` | 🔜 to do | See below |
 
-**Portée élargie sur S1-4/S1-5 — `apps/themes` était concerné.** Les fichiers
-`sumup.ts` et `paypal.ts` du livrable client étaient **strictement identiques**
-(`diff` vide) à ceux du référent, donc porteurs de la même faille. Corriger le
-banc d'essai en laissant la fraude au paiement dans ce qui est cloné chez chaque
-client aurait été l'inverse de l'objectif : le correctif a été appliqué aux deux.
-Le contrat de `orders.create` ayant changé, le checkout de `themes` a dû être
-aligné lui aussi — exactement le risque anticipé au registre (section 12), et
-attrapé par le type-check.
+**Scope widened on S1-4/S1-5 — `apps/themes` was affected too.** The `sumup.ts`
+and `paypal.ts` files in the client deliverable were **byte-for-byte identical**
+(`diff` empty) to the reference ones, and therefore carried the same hole.
+Fixing the test bench while leaving payment fraud in what gets cloned to every
+client would have been the opposite of the goal: the fix went into both. Since
+the `orders.create` contract changed, the `themes` checkout had to be aligned as
+well — exactly the risk anticipated in the register (section 12), and caught by
+the type-check.
 
-**S0-9 — un test instable détecté au passage.** Lors d'un `pnpm test` complet,
-`@be-in-digital/core` a rapporté `1 failed | 170 passed`, puis **190/190 sur
-trois exécutions suivantes**. Les suspects sont les tests sensibles au temps du
-même paquet : `ses.test.ts` (« splits into batches of 50 emails », 9,4 s) et
-`i18n.test.ts` (retry/backoff, 3,1 s). Un test instable est un défaut à part
-entière ici : il apprend à l'équipe à relancer une CI rouge au lieu de la lire,
-ce qui annule le bénéfice de tout ce plan. À traiter dans le Sprint 0 (injecter
-l'horloge plutôt que dormir, ou augmenter le budget de temps explicitement).
+**S0-9 — a flaky test spotted in passing.** During a full `pnpm test`,
+`@be-in-digital/core` reported `1 failed | 170 passed`, then **190/190 over the
+next three runs**. The suspects are the time-sensitive tests in that same
+package: `ses.test.ts` ("splits into batches of 50 emails", 9.4 s) and
+`i18n.test.ts` (retry/backoff, 3.1 s). A flaky test is a defect in its own right
+here: it teaches the team to re-run a red CI instead of reading it, which
+cancels out the benefit of this whole plan. To be handled in Sprint 0 (inject
+the clock rather than sleeping, or raise the time budget explicitly).
 
-**Preuve de morsure obtenue sur S1-1** (méthode du ticket S0-8) : la ligne
-vulnérable d'origine (`const discount = args.discountAmount ?? 0`) a été
-réintroduite temporairement, **7 tests sont passés au rouge** — dont
-« IGNORES a forged discountAmount smuggled by the client » — puis le correctif a
-été restauré. Les tests mordent réellement.
+**Bite proof obtained on S1-1** (the S0-8 ticket's method): the original
+vulnerable line (`const discount = args.discountAmount ?? 0`) was temporarily
+reintroduced, **7 tests went red** — including "IGNORES a forged discountAmount
+smuggled by the client" — then the fix was restored. The tests really do bite.
 
-**Preuve de morsure sur S1-4/S1-5** : les gardes de référence et de devise ont
-été neutralisées temporairement, **5 tests sont passés au rouge** — dont
-« refuses a payment made for a different order » — puis restaurées.
+**Bite proof on S1-4/S1-5**: the reference and currency guards were temporarily
+neutralised, **5 tests went red** — including "refuses a payment made for a
+different order" — then restored.
 
-**État des portes après ces cinq tickets** : `pnpm test` → **1 257 tests, 18/18
-tâches** ; `turbo run type-check` → propre sur `apps/reference`, `apps/themes` et
-les 10 packages ; `pnpm lint` → 0 erreur (71 warnings sur `reference`, 75 sur
-`themes`, inchangés).
+**State of the gates after those five tickets**: `pnpm test` → **1,257 tests,
+18/18 tasks**; `turbo run type-check` → clean on `apps/reference`, `apps/themes`
+and the 10 packages; `pnpm lint` → 0 errors (71 warnings on `reference`, 75 on
+`themes`, unchanged).
 
-> Piège d'outillage rencontré : `pnpm --filter <app> type-check` court-circuite
-> le `dependsOn: ["^build"]` de turbo et rapporte ~120 fausses erreurs contre le
-> `dist/` obsolète de `packages/restaurant`. Toujours passer par
-> `npx turbo run type-check --filter=…` pour un verdict fiable.
+> Tooling trap hit here: `pnpm --filter <app> type-check` short-circuits turbo's
+> `dependsOn: ["^build"]` and reports ~120 false errors against the stale `dist/`
+> of `packages/restaurant`. Always go through
+> `npx turbo run type-check --filter=…` for a verdict you can trust.
+### Control review of 20 August
 
-### Revue de contrôle du 20 août
+A full re-read of the 19 touched files before going further. One defect
+introduced by my own fixes was found and corrected:
 
-Relecture complète des 19 fichiers touchés avant de poursuivre. Un défaut
-introduit par mes propres correctifs a été trouvé et corrigé :
+- **`maxUsagePerCustomer` cap was bypassable.** My first version counted a
+  customer with no email as "having never used the promotion". But
+  `customerInfo.email` is optional: **omitting a single field was enough to
+  ignore the cap**. `resolvePromotionDiscount` now refuses a per-customer capped
+  promotion on an anonymous order (`customer_unidentified`), with 3 dedicated
+  tests. Ticket S1-2 was not really closed without this.
 
-- **Plafond `maxUsagePerCustomer` contournable.** Ma première version comptait un
-  client sans email comme « n'ayant jamais utilisé la promo ». Or
-  `customerInfo.email` est optionnel : **omettre un seul champ suffisait à
-  ignorer le plafond**. `resolvePromotionDiscount` refuse désormais une promotion
-  plafonnée par client sur une commande anonyme (`customer_unidentified`), avec
-  3 tests dédiés. Le ticket S1-2 n'était pas réellement clos sans cela.
+Points checked and judged correct:
 
-Points vérifiés et jugés corrects :
-
-| Vérification | Résultat |
+| Check | Result |
 | --- | --- |
-| Tous les appelants de `orders.create` | 2 storefronts (reference, themes) — les deux alignés. Les webhooks passent par `createFromWebhook`, chemin distinct et non impacté |
-| `discountAmount` résiduels | Tous légitimes : type d'affichage, chemin webhook partenaire (Uber signe ses propres montants), champ de schéma, valeur calculée serveur |
-| `apps/site` | Aucune dépendance moteur, backend Convex séparé, `discountAmount` absent de son `orders.ts` — hors d'atteinte |
-| Index `by_promotionId_customerEmail` | Existe bien (`tables/promotions.ts:91`) |
-| `hasPermission` sur rôle inconnu | Retourne `false` — échoue en refusant, donc le cast `as Role` est sûr |
-| Double comptage livraison offerte | Corrigé pendant l'implémentation : la remise vaut les frais, les frais restent sur la commande, soustraction unique |
-| Marqueurs de debug laissés | Aucun (`console.log`, `TODO`, `debugger`, résidus de preuve de morsure) |
-| Fichiers temporaires | Aucun résidu |
+| Every caller of `orders.create` | 2 storefronts (reference, themes) — both aligned. Webhooks go through `createFromWebhook`, a separate path and unaffected |
+| Remaining `discountAmount` | All legitimate: a display type, the partner webhook path (Uber signs its own amounts), a schema field, a server-computed value |
+| `apps/site` | No engine dependency, separate Convex backend, `discountAmount` absent from its `orders.ts` — out of reach |
+| `by_promotionId_customerEmail` index | Present (`tables/promotions.ts:91`) |
+| `hasPermission` on an unknown role | Returns `false` — fails closed, so the `as Role` cast is safe |
+| Free-delivery double counting | Fixed during implementation: the discount equals the fee, the fee stays on the order, subtracted once |
+| Leftover debug markers | None (`console.log`, `TODO`, `debugger`, bite-proof residue) |
+| Temporary files | No residue |
 
-**Portes rejouées sans cache après revue** : `turbo run test --force` → **18/18
-tâches, 1 260 tests** · `turbo run type-check --force` sur `reference`, `themes`
-et les 10 packages → **17/17** · `next build` sur `reference` → **compilé, 90
-pages** · lint → **0 erreur** partout (71 warnings reference, 75 themes, 2
-convex-functions, 4 core — tous dans des fichiers non touchés).
+**Gates replayed without cache after the review**: `turbo run test --force` →
+**18/18 tasks, 1,260 tests** · `turbo run type-check --force` on `reference`,
+`themes` and the 10 packages → **17/17** · `next build` on `reference` →
+**compiled, 90 pages** · lint → **0 errors** everywhere (71 warnings reference,
+75 themes, 2 convex-functions, 4 core — all in untouched files).
 
-**Preuves de morsure rejouées** : remise serveur → 8 tests au rouge sans le
-correctif ; règlement de paiement → 5 tests au rouge. Restauration vérifiée à
-356/356.
+**Bite proofs replayed**: server-side discount → 8 tests red without the fix;
+payment settlement → 5 tests red. Restoration verified at 356/356.
 
-> Échec préexistant sans rapport, constaté au build : `[sitemap] Failed to
-> generate sitemap` — l'erreur est capturée et le build continue ; le sitemap a
-> besoin d'un backend Convex.
+> Unrelated pre-existing failure, seen at build time: `[sitemap] Failed to
+> generate sitemap` — the error is caught and the build continues; the sitemap
+> needs a Convex backend.
 
-### S1-6 — remboursement réel (20 août)
+### S1-6 — a real refund (20 August)
 
-Le remboursement était un `ctx.db.patch` et rien d'autre : `refundedAmount` mis à
-jour, paiement et commande passés à « remboursé », **aucun appel prestataire**
-nulle part. Il acceptait en outre n'importe quel statut, y compris `failed`, et
-était exposé en `authedMutation` — tout compte authentifié pouvait « rembourser »
-le paiement de n'importe quel établissement.
+The refund was a `ctx.db.patch` and nothing else: `refundedAmount` updated,
+payment and order moved to "refunded", **no provider call** anywhere. It also
+accepted any status, `failed` included, and was exposed as an `authedMutation` —
+any authenticated account could "refund" any establishment's payment.
 
-Nouvelle chaîne, du plus pur au plus concret :
+The new chain, from purest to most concrete:
 
-1. `packages/convex-functions/src/refundPolicy.ts` — décisions pures, 22 tests.
-   `planRefund` valide statut, montant entier positif et solde restant ;
-   `routeRefund` décide *comment* le remboursement peut être exécuté.
-2. `defs.refund` → `defs.recordRefund` : n'écrit plus qu'**après coup**, avec
-   `externalRefundId`, `refundedAt` et `refundMethod` comme preuve, et
-   revalide contre le document fraîchement relu (course concurrente).
-3. `stripe.ts`, `sumup.ts`, `paypal.ts` : une `internalRefund` chacun, qui parle
-   au prestataire et rapporte ce qu'il a répondu.
-4. `payments.refundPayment` : action publique qui autorise
-   (`payments:refund` + accès à l'établissement), planifie, appelle le
-   prestataire, **puis seulement** enregistre.
+1. `packages/convex-functions/src/refundPolicy.ts` — pure decisions, 22 tests.
+   `planRefund` validates the status, a positive whole amount and the remaining
+   balance; `routeRefund` decides *how* the refund can be executed.
+2. `defs.refund` → `defs.recordRefund`: only writes **afterwards**, with
+   `externalRefundId`, `refundedAt` and `refundMethod` as evidence, and
+   revalidates against the freshly re-read document (concurrent race).
+3. `stripe.ts`, `sumup.ts`, `paypal.ts`: one `internalRefund` each, which talks
+   to the provider and reports what it answered.
+4. `payments.refundPayment`: the public action that authorizes
+   (`payments:refund` + access to the establishment), plans, calls the provider,
+   **and only then** records.
 
-Trois décisions à connaître :
+Three decisions worth knowing:
 
-- **Espèces** : aucun prestataire à appeler. Le remboursement est enregistré
-  comme `refundMethod: "manual"` — déclaration du personnel, jamais présentée
-  comme confirmée par une API. Le toast le dit explicitement.
-- **Square et paiements sans identifiant de transaction** : `routeRefund`
-  renvoie `unsupported` et l'action **refuse**, avec un message qui renvoie au
-  tableau de bord du prestataire. Refuser est le correctif : c'est précisément
-  la promesse creuse qu'on supprime.
-- **PayPal remboursait contre le mauvais identifiant.** `capturePayPalOrder`
-  stockait l'id de *commande* dans `externalId`, or un remboursement PayPal
-  s'émet contre une *capture*. `readPayPalCapture` extrait désormais le
-  `captureId` et c'est lui qui est stocké — sans quoi chaque remboursement
-  PayPal aurait échoué côté prestataire.
+- **Cash**: no provider to call. The refund is recorded as
+  `refundMethod: "manual"` — a declaration by the staff, never presented as
+  confirmed by an API. The toast says so explicitly.
+- **Square, and payments with no transaction id**: `routeRefund` returns
+  `unsupported` and the action **refuses**, with a message pointing at the
+  provider's own dashboard. Refusing is the fix: an empty promise is precisely
+  what is being removed.
+- **PayPal was refunding against the wrong id.** `capturePayPalOrder` stored the
+  *order* id in `externalId`, but a PayPal refund is issued against a *capture*.
+  `readPayPalCapture` now extracts the `captureId` and that is what gets stored —
+  without which every PayPal refund would have failed at the provider.
 
-Schéma : trois champs optionnels ajoutés à `payments` (`externalRefundId`,
-`refundedAt`, `refundMethod`) — aucune migration nécessaire.
+Schema: three optional fields added to `payments` (`externalRefundId`,
+`refundedAt`, `refundMethod`) — no migration needed.
 
-**Portée élargie à `apps/themes`**, même raisonnement que S1-4/S1-5 : le livrable
-client portait le même remboursement fictif. Les trois fichiers prestataires ont
-été resynchronisés (vérifiés identiques au `HEAD` du référent avant copie) et son
-`payments.ts` + `RefundDialog.tsx` alignés.
+**Scope widened to `apps/themes`**, same reasoning as S1-4/S1-5: the client
+deliverable carried the same fictitious refund. The three provider files were
+resynchronised (verified identical to the reference `HEAD` before copying) and
+its `payments.ts` and `RefundDialog.tsx` aligned.
 
-**Preuve de morsure** : gardes de statut et de routage neutralisées →
-**7 tests au rouge**, dont « refuses a refund on a failed payment » et
-« refuses a card payment with no stored transaction id ». Restauration
-vérifiée à 378/378.
+**Bite proof**: status and routing guards neutralised → **7 tests red**,
+including "refuses a refund on a failed payment" and "refuses a card payment
+with no stored transaction id". Restoration verified at 378/378.
 
-### S1-7 / S1-8 — les quatre routes post-paiement (20 août)
+### S1-7 / S1-8 — the four post-payment routes (20 August)
 
-Les quatre URL étaient émises par le checkout et n'existaient pas. Sondées en
-HTTP sur un serveur de production local : **404 avant, 200 après**.
+The four URLs were emitted by the checkout and did not exist. Probed over HTTP
+against a local production server: **404 before, 200 after**.
 
-| Route | Rôle |
+| Route | Role |
 | --- | --- |
-| `/checkout/success` | Fait confirmer le paiement par le prestataire (Stripe via `session_id`, PayPal via `token`, SumUp via `checkoutId`), vide le panier, remet un lien de suivi |
-| `/checkout/cancel` | Panier laissé intact — le client a annulé un paiement, pas sa commande. Propose de réessayer |
-| `/checkout/pay` | Hôte du widget carte SumUp, avec dégradation explicite si le SDK ne charge pas |
-| `/track/[token]` | Suivi public par token opaque, adossé à `getByTrackingToken` qui ne renvoie aucune donnée client |
+| `/checkout/success` | Has the provider confirm the payment (Stripe via `session_id`, PayPal via `token`, SumUp via `checkoutId`), empties the cart, hands back a tracking link |
+| `/checkout/cancel` | Cart left intact — the customer cancelled a payment, not their order. Offers to try again |
+| `/checkout/pay` | Host for the SumUp card widget, with an explicit degradation if the SDK does not load |
+| `/track/[token]` | Public tracking by opaque token, backed by `getByTrackingToken`, which returns no customer data |
 
-**Deux défauts trouvés en écrivant ces pages :**
+**Two defects found while writing these pages:**
 
-- **Le panier n'était jamais vidé après un paiement carte.** `clearCart()`
-  n'était appelé que dans la branche espèces (`checkout/page.tsx:316`) : après
-  un paiement Stripe ou PayPal, le client revenait avec son panier intact et
-  pouvait recommander la même chose. Le vidage se fait maintenant sur la page de
-  succès, **et seulement quand le paiement est confirmé** — un paiement
-  abandonné doit conserver le panier.
-- **Un lien de suivi mort pour les invités.** Ma première version proposait
-  « Suivre ma commande » vers `/order/[orderId]` même sans `viewToken`, alors
-  que cette page ne résout rien pour un visiteur sans compte. Le bouton n'est
-  affiché que si un token est disponible.
+- **The cart was never emptied after a card payment.** `clearCart()` was only
+  called in the cash branch (`checkout/page.tsx:316`): after a Stripe or PayPal
+  payment the customer came back with their cart intact and could order the same
+  thing again. Emptying now happens on the success page, **and only when the
+  payment is confirmed** — an abandoned payment must keep the cart.
+- **A dead tracking link for guests.** My first version offered "Suivre ma
+  commande" pointing at `/order/[orderId]` even without a `viewToken`, when that
+  page resolves nothing for a visitor with no account. The button is only shown
+  when a token is available.
 
-**Limite assumée sur `/checkout/pay`** : SumUp n'est pas configuré sur ce
-déploiement. La page suit le contrat publié du widget mais n'a pas été exercée
-contre un compte réel — d'où la revue dédiée des intégrations prestataires
-prévue sur une branche séparée.
+**Acknowledged limit on `/checkout/pay`**: SumUp is not configured on this
+deployment. The page follows the published widget contract but has not been
+exercised against a real account — hence the dedicated provider-integration
+review planned on a separate branch.
 
-**Portée élargie à `apps/themes`** : il émettait exactement les mêmes quatre URL
-et n'avait aucune des routes. Les quatre pages y ont été ajoutées à l'identique.
+**Scope widened to `apps/themes`**: it emitted exactly the same four URLs and
+had none of the routes. The four pages were added there identically.
 
-### S1-9 / S1-10 — le prix affiché et les frais de livraison (20 août)
+### S1-9 / S1-10 — the displayed price and the delivery fee (20 August)
 
-**S1-9.** La vitrine affichait `sous-total + livraison − remise` sous la mention
-« Taxes incluses », pendant que le serveur facturait `sous-total + TVA +
-livraison − remise`, TVA **ajoutée**. Sur un panier de 20 € à 10 % : 20 € à
-l'écran, 22 € débités.
+**S1-9.** The storefront displayed `subtotal + delivery − discount` under the
+words "Taxes incluses", while the server charged `subtotal + VAT + delivery −
+discount`, with VAT **added**. On a €20 basket at 10%: €20 on screen, €22
+charged.
 
-La cause n'est pas une erreur de calcul mais l'existence de **deux calculs**.
-`packages/convex-functions/src/orderTotals.ts` (13 tests) porte désormais
-l'arithmétique unique, appelée par le handler qui facture *et* par le
-récapitulatif qui affiche. Le récapitulatif montre une ligne « TVA (x %) » et le
-libellé du total dit la vérité (`TVA incluse` / `Hors taxes`).
-`resolveTaxRatePercent` respecte un taux magasin **explicitement à 0** — un
-restaurant non taxé est une configuration réelle, qu'un `??` aurait écrasée.
+The cause is not an arithmetic error but the existence of **two arithmetics**.
+`packages/convex-functions/src/orderTotals.ts` (13 tests) now carries the single
+one, called both by the handler that charges *and* by the summary that displays.
+The summary shows a "TVA (x %)" line and the total's label tells the truth
+(`TVA incluse` / `Hors taxes`). `resolveTaxRatePercent` respects a store rate
+**explicitly set to 0** — an untaxed restaurant is a real configuration, which a
+`??` would have overwritten.
 
-**S1-10.** Le ticket disait « envoyer `uberDirectFee` depuis le checkout, ou
-retirer le mode pourcentage ». Aucune des deux options n'était bonne : envoyer
-le montant depuis le navigateur aurait **recréé la faille de S1-1**, puisque le
-serveur facturait un pourcentage du nombre reçu — `uberDirectFee: 0` achetait la
-livraison gratuite.
+**S1-10.** The ticket said "send `uberDirectFee` from the checkout, or remove
+percentage mode". Neither was right: sending the amount from the browser would
+have **recreated the S1-1 hole**, since the server charged a percentage of the
+number it received — `uberDirectFee: 0` bought free delivery.
 
-Correctif retenu : nouvelle table **`deliveryQuotes`**. `getDeliveryQuote`
-enregistre le devis Uber qu'il vient d'obtenir ; `orders.create` reçoit
-uniquement l'`uberDirectEstimateId`, relit le devis stocké, **vérifie qu'il
-appartient au bon restaurant et qu'il n'a pas expiré**, puis applique le
-pourcentage. `uberDirectFee` a disparu des arguments publics, comme
-`discountAmount` avant lui.
+The fix chosen: a new **`deliveryQuotes`** table. `getDeliveryQuote` records the
+Uber quote it has just obtained; `orders.create` receives only the
+`uberDirectEstimateId`, re-reads the stored quote, **checks that it belongs to
+the right restaurant and has not expired**, then applies the percentage.
+`uberDirectFee` has disappeared from the public arguments, like `discountAmount`
+before it.
 
-Côté vitrine, le checkout demande le devis quand — et seulement quand — le mode
-le requiert, affiche les frais réels et remonte une erreur lisible sur une zone
-non desservie.
+On the storefront, the checkout requests a quote when — and only when — the mode
+requires it, shows the real fee, and surfaces a readable error for an
+unserviceable area.
 
-**Limite connue** : les adresses enregistrées ne portent pas de coordonnées
-(`checkout-form.tsx` ne les recopie pas dans `deliveryAddress`). En mode
-pourcentage, seule une adresse saisie via l'autocomplétion permet d'obtenir un
-devis. À traiter avec le modèle d'adresses, hors de ce ticket.
+**Known limit**: saved addresses carry no coordinates (`checkout-form.tsx` does
+not copy them into `deliveryAddress`). In percentage mode, only an address
+entered through autocomplete can produce a quote. To be handled with the address
+model, outside this ticket.
 
-> ⚠️ **Dette d'outillage à solder après S0-1.** Ajouter une table et un module
-> Convex exige un `convex codegen`, qui refuse de tourner sans déploiement
-> (`No CONVEX_DEPLOYMENT set`) — le blocage S0-1 lui-même. Les entrées
-> `deliveryQuotes` de `apps/*/convex/_generated/api.d.ts` ont donc été **écrites
-> à la main**, à leur place alphabétique exacte. `pnpm convex:codegen` doit être
-> relancé dès qu'un déploiement existe, et son résultat comparé : c'est du code
-> généré, il n'a pas vocation à être maintenu à la main.
+> ⚠️ **Tooling debt to settle once S0-1 is unblocked.** Adding a Convex table and
+> module requires a `convex codegen`, which refuses to run without a deployment
+> (`No CONVEX_DEPLOYMENT set`) — the S0-1 blocker itself. The `deliveryQuotes`
+> entries in `apps/*/convex/_generated/api.d.ts` were therefore **written by
+> hand**, at their exact alphabetical place. `pnpm convex:codegen` must be re-run
+> as soon as a deployment exists, and its output compared: this is generated
+> code, not meant to be maintained by hand.
 
-**Preuve de morsure** : TVA neutralisée dans `orderTotals.ts` → **7 tests au
-rouge**, dont « reproduces the mismatch the storefront used to display ».
-Restauration vérifiée à 391/391.
+**Bite proof**: VAT neutralised in `orderTotals.ts` → **7 tests red**, including
+"reproduces the mismatch the storefront used to display". Restoration verified at
+391/391.
 
 ---
 
-## Sprint 2 — cloisonnement multi-locataire (en cours)
+## Sprint 2 — multi-tenant isolation (in progress)
+### S2-5 / S2-6 / S2-7 — identity and roles (20 August)
 
-### S2-5 / S2-6 / S2-7 — identité et rôles (20 août)
+The audit's two blocking privilege escalations, plus the lock they made
+necessary.
 
-Les deux escalades de privilèges bloquantes de l'audit, plus le verrou qu'elles
-imposaient de poser.
+**S2-5.** `userProfiles.upsert` rejected exactly two string literals,
+`"super_admin"` and `"client_admin"`. Everything else went through — including
+`manager`, which carries `products:write`, `orders:read/write` and
+`customers:read` — on any `storeId` the caller chose. `stores.list` being public,
+the attack was three calls: sign up on the storefront, list the establishments,
+grant yourself `manager` on a competitor's. The symmetric variant was worse:
+rewrite the real owner's profile as `customer` with no establishment and lock
+them out of their own restaurant.
 
-**S2-5.** `userProfiles.upsert` ne rejetait que deux chaînes littérales,
-`"super_admin"` et `"client_admin"`. Tout le reste passait — dont `manager`, qui
-porte `products:write`, `orders:read/write` et `customers:read` — sur n'importe
-quel `storeId` choisi par l'appelant. `stores.list` étant public, l'attaque
-tenait en trois appels : s'inscrire sur la vitrine, lister les établissements,
-s'attribuer `manager` sur celui d'un concurrent. La variante symétrique était
-pire : réécrire le profil du vrai propriétaire en `customer` sans établissement
-pour l'éjecter de son propre restaurant.
+The whole policy now lives in
+`packages/convex-functions/src/profileProvisioning.ts` (20 tests):
 
-Toute la politique vit désormais dans
-`packages/convex-functions/src/profileProvisioning.ts` (20 tests) :
-
-| Acteur | Peut provisionner |
+| Actor | May provision |
 | --- | --- |
-| `super_admin` | Tout — sauf retirer son propre rôle de super-admin |
-| `client_admin` | Les rôles non-administratifs, **uniquement sur ses établissements**, sans permissions sur mesure |
-| Tous les autres | Rien |
+| `super_admin` | Anything — except removing their own super-admin role |
+| `client_admin` | Non-administrative roles, **only on their own establishments**, with no bespoke permissions |
+| Everyone else | Nothing |
 
-Deux garde-fous méritent d'être signalés. Le refus d'auto-rétrogradation évite
-qu'un déploiement se retrouve sans aucun administrateur. Et l'interdiction des
-listes de permissions sur mesure pour un `client_admin` ferme la porte de côté :
-une permission accordée nommément court-circuite entièrement la table des rôles.
+Two guardrails are worth naming. Refusing self-demotion stops a deployment ending
+up with no administrator at all. And forbidding bespoke permission lists for a
+`client_admin` closes the side door: a permission granted by name bypasses the
+role table entirely.
 
-**S2-6.** `getByUserId` était exporté en `query(defs.getByUserId)` — son cœur ne
-fait aucun contrôle d'identité, donc n'importe qui pouvait lire le rôle, les
-permissions et la liste d'établissements de n'importe quel utilisateur en
-devinant un identifiant. Son unique appelant, `AdminAuthSync`, lisait en réalité
-**son propre** profil : il est routé vers `getMyProfile`, et l'export public a
-disparu des deux apps.
+**S2-6.** `getByUserId` was exported as `query(defs.getByUserId)` — its core does
+no identity check, so anyone could read the role, permissions and establishment
+list of any user by guessing an id. Its only caller, `AdminAuthSync`, was in fact
+reading **its own** profile: it is routed to `getMyProfile`, and the public
+export is gone from both apps.
 
-**S2-7.** Verrouiller `upsert` créait un problème de poule et d'œuf : provisionner
-exige un super-admin, et un déploiement neuf n'en a aucun. `claimFirstAdmin`
-promeut l'appelant authentifié **si et seulement si** aucun super-admin n'existe
-— auto-refermante, donc non rejouable une fois le déploiement configuré.
+**S2-7.** Locking `upsert` created a chicken-and-egg problem: provisioning
+requires a super-admin, and a fresh deployment has none. `claimFirstAdmin`
+promotes the authenticated caller **if and only if** no super-admin exists —
+self-closing, and therefore not replayable once the deployment is configured.
 
-> Constat au passage : `upsert` n'avait **aucun appelant fonctionnel**. Le seul,
-> `scripts/seed-users.mts`, appelle Convex sans `setAuth` et échouait déjà en
-> silence (erreurs avalées). D'où l'ajout d'`internalUpsert`, réservé au chemin
-> serveur.
+> Noted in passing: `upsert` had **no working caller**. The only one,
+> `scripts/seed-users.mts`, calls Convex without `setAuth` and was already
+> failing silently (errors swallowed). Hence `internalUpsert`, reserved for the
+> server path.
 
-**Preuve de morsure** : gardes `not_permitted` et `store_not_owned` neutralisées
-→ **4 tests au rouge**, dont « refuses a customer promoting themselves to
-manager ». Restauration vérifiée à 411/411.
+**Bite proof**: the `not_permitted` and `store_not_owned` guards neutralised →
+**4 tests red**, including "refuses a customer promoting themselves to manager".
+Restoration verified at 411/411.
 
-### S2-3 — les 43 exports Convex non gardés (21 août)
+### S2-3 — the 43 unguarded Convex exports (21 August)
 
-**43 avant, 29 après** — et les 29 restants sont désormais *justifiés par écrit*,
-pas simplement laissés en l'état.
+**43 before, 29 after** — and the remaining 29 are now *justified in writing*,
+not merely left as they were.
 
-**Fermés (14 lectures + 11 écritures dans les mêmes fichiers) :**
+**Closed (14 reads + 11 writes in the same files):**
 
-| Fonction | Ce qui fuitait |
+| Function | What leaked |
 | --- | --- |
-| `games.list` | Le `winRatio` configuré par le propriétaire |
-| `gameQRCodes.list` | **Tous les codes QR** d'un établissement — de quoi jouer à distance sur toutes ses tables |
-| `prizes.list` | Catalogue des lots et stock restant |
-| `requiredActions.list` | Configuration du jeu |
-| `promotions.list` / `getById` | Toutes les promotions, inactives et expirées comprises, avec leurs compteurs |
-| `promotions.getCustomerUsageCount` | Sonde d'appartenance : « cette adresse a-t-elle utilisé cette promo ? » → passée en `internalQuery` |
-| `paymentConnections.getByProvider` / `getAll` | `merchantId`, prestataire et état de connexion → `authedQuery` + `payments:read` |
-| `orphanProducts.*` (2) | Plomberie d'intégration |
-| `externalProductMappings.*` (3) | Correspondances produits ↔ plateformes |
-| Écritures `prizes`, `gameQRCodes`, `orphanProducts`, `translations`, `externalProductMappings` | Tout compte authentifié pouvait écrire dans **n'importe quel** établissement |
+| `games.list` | The `winRatio` configured by the owner |
+| `gameQRCodes.list` | **Every QR code** of an establishment — enough to play remotely on all its tables |
+| `prizes.list` | Prize catalogue and remaining stock |
+| `requiredActions.list` | Game configuration |
+| `promotions.list` / `getById` | Every promotion, inactive and expired included, with their counters |
+| `promotions.getCustomerUsageCount` | A membership oracle: "has this address used this promotion?" → moved to `internalQuery` |
+| `paymentConnections.getByProvider` / `getAll` | `merchantId`, provider and connection state → `authedQuery` + `payments:read` |
+| `orphanProducts.*` (2) | Integration plumbing |
+| `externalProductMappings.*` (3) | Product ↔ platform mappings |
+| Writes in `prizes`, `gameQRCodes`, `orphanProducts`, `translations`, `externalProductMappings` | Any authenticated account could write into **any** establishment |
 
-**Le piège de ce ticket.** Trois de ces fonctions sont appelées côté serveur par
-`deliverooWebhook.processOrderWebhook`, un `internalAction` déclenché par le
-webhook — **sans identité utilisateur**. Les passer en `storeQuery` aurait
-rejeté Uber Eats et Deliveroo eux-mêmes et cassé la réception des commandes.
-`externalProductMappings` expose donc deux surfaces : les fonctions
-store-scopées pour l'admin, et des variantes `internal*` vers lesquelles les
-trois appelants serveur ont été repointés.
+**The trap in this ticket.** Three of these functions are called server-side by
+`deliverooWebhook.processOrderWebhook`, an `internalAction` triggered by the
+webhook — **with no user identity**. Moving them to `storeQuery` would have
+rejected Uber Eats and Deliveroo themselves and broken order reception.
+`externalProductMappings` therefore exposes two surfaces: the store-scoped
+functions for the admin, and `internal*` variants the three server callers were
+repointed to.
 
-**Les 29 restantes, annotées `@public-by-design` avec leur raison** (8 fichiers) :
-catalogue vitrine (`products`, `categories`, `menus`), sélecteur de langue
-(`languages`), parcours de jeu anonyme (`gamePlay`), accès par jeton
+**The 29 that remain, annotated `@public-by-design` with their reason** (8
+files): storefront catalogue (`products`, `categories`, `menus`), language picker
+(`languages`), anonymous game flow (`gamePlay`), token access
 (`orders.getByViewToken`, `kitchenTickets.getByTrackingToken`,
-`teamMembers.getByInvitationToken`), code promo saisi avant connexion
-(`promotions.getByCouponCode`, `listActiveAuto`), et traductions de contenu déjà
-public (`translations` — lectures publiques, **écritures fermées**).
+`teamMembers.getByInvitationToken`), a coupon code entered before signing in
+(`promotions.getByCouponCode`, `listActiveAuto`), and translations of already
+public content (`translations` — public reads, **writes closed**).
 
-Le marqueur `@public-by-design` est le crochet que lira la règle ESLint de S2-11.
+The `@public-by-design` marker is the hook the S2-11 ESLint rule will read.
 
-### S2-1 — le seam d'autorisation rejoint le moteur (21 août)
+### S2-1 — the authorization seam joins the engine (21 August)
 
-`convex/lib/storeFunctions.ts` n'existait que dans `apps/reference`. Le livrable
-cloné chez chaque client n'avait **aucun** seam : il réécrivait des gardes
-inline, fichier par fichier. La politique d'autorisation du moteur vivait donc
-dans son banc d'essai, et pas dans ce qui est vendu.
+`convex/lib/storeFunctions.ts` existed only in `apps/reference`. The deliverable
+cloned to every client had **no** seam: it rewrote inline guards, file by file.
+The engine's authorization policy therefore lived in its test bench, and not in
+what is sold.
 
-Le blocage était réel : le seam importe `../_generated/server` et
-`../_generated/dataModel`, propres à chaque app. Il ne pouvait pas être déplacé
-tel quel. Il est devenu une **fabrique** — `createStoreFunctions<QCtx, MCtx>({
-query, mutation })` — que chaque app instancie avec ses propres builders
-générés. Les types de contexte sont fixés par la fabrique, les constructeurs
-retournés restent génériques sur leurs arguments et leur sortie.
+The blocker was real: the seam imports `../_generated/server` and
+`../_generated/dataModel`, both app-specific. It could not be moved as it stood.
+It became a **factory** — `createStoreFunctions<QCtx, MCtx>({ query, mutation })`
+— which each app instantiates with its own generated builders. The context types
+are fixed by the factory; the returned constructors stay generic over their
+arguments and their output.
 
-| | Avant | Après |
+| | Before | After |
 | --- | --- | --- |
-| Implémentation | 164 lignes dans `apps/reference` | 194 lignes dans `packages/convex-functions` |
-| `apps/reference` | l'implémentation | instanciation de 21 lignes |
-| `apps/themes` | **rien** | instanciation de 21 lignes |
+| Implementation | 164 lines in `apps/reference` | 194 lines in `packages/convex-functions` |
+| `apps/reference` | the implementation | a 21-line instantiation |
+| `apps/themes` | **nothing** | a 21-line instantiation |
 
-Bénéfice immédiat : **les 23 fichiers qui importaient `./lib/storeFunctions` n'ont
-pas changé d'une ligne** — l'instanciation ré-exporte les mêmes noms. Et `themes`
-a pu recevoir S2-3 dans la foulée : **37 exports nus → 24**, avec les mêmes
-fermetures (lots, codes QR, promotions, connexions de paiement, correspondances
-produits, orphelins, traductions).
+Immediate benefit: **the 23 files importing `./lib/storeFunctions` did not change
+by a single line** — the instantiation re-exports the same names. And `themes`
+could take S2-3 right after: **37 bare exports → 24**, with the same closures
+(prizes, QR codes, promotions, payment connections, product mappings, orphans,
+translations).
 
-Un détail à ne pas rater au passage : `themes/deliverooWebhook.ts` appelait
-encore `api.externalProductMappings.getByExternal`, supprimée de la surface
-publique. Le type-check l'a attrapé ; le webhook a été repointé vers la variante
-interne, sans quoi la réception des commandes Deliveroo aurait cassé chez tous
-les clients.
+One detail not to miss along the way: `themes/deliverooWebhook.ts` was still
+calling `api.externalProductMappings.getByExternal`, removed from the public
+surface. The type-check caught it; the webhook was repointed to the internal
+variant, without which Deliveroo order reception would have broken for every
+client.
 
-### S2-2 — les gardes « auth seule » deviennent store-scopées (21 août)
+### S2-2 — the "auth only" guards become store-scoped (21 August)
 
-**69 usages d'`authedQuery`/`authedMutation` → 11**, et les 11 restants sont
-justifiés, pas oubliés.
+**69 uses of `authedQuery`/`authedMutation` → 11**, and the remaining 11 are
+justified, not forgotten.
 
-Migrés vers `storeQuery` / `storeMutation` : les 5 modules email (31 fonctions),
-`kitchenTickets` (10), `storeIntegrations` (5), `cms` (3), `payments` (3),
-`blog` (2). Motif uniforme : `create` porte un `storeId` et prend le résolveur
-par défaut ; tout le reste référence un document et passe par
+Migrated to `storeQuery` / `storeMutation`: the 5 email modules (31 functions),
+`kitchenTickets` (10), `storeIntegrations` (5), `cms` (3), `payments` (3), `blog`
+(2). Uniform pattern: `create` carries a `storeId` and takes the default
+resolver; everything else references a document and goes through
 `storeIdFromDocument`.
 
-**Le seam manquait un outil.** Plusieurs fonctions atteignent leur établissement
-par un champ qui n'est pas `id` — `orderId`, `articleId` — et c'est précisément
-pour ça qu'elles étaient restées en auth seule : le seam n'avait rien à leur
-offrir. `storeIdFromField(champ, message)` comble ce trou et débloque
+**The seam was missing a tool.** Several functions reach their establishment
+through a field that is not `id` — `orderId`, `articleId` — and that is precisely
+why they had stayed auth-only: the seam had nothing to offer them.
+`storeIdFromField(field, message)` fills that gap and unblocks
 `payments.getByOrder`, `kitchenTickets.getByOrder`, `blog.getAdminArticle`.
 
-**Trois découvertes en chemin :**
+**Three discoveries along the way:**
 
-1. **Une permission fantôme.** `emailCampaignActions` exige `marketing:write`,
-   mais ni la ressource `marketing` ni la permission n'existaient dans le RBAC.
-   `hasPermission` échouant en refusant, **seul un super-admin pouvait envoyer
-   une campagne** — le propriétaire du restaurant, jamais. Même classe de bug
-   que les rôles fantômes de S4-1. Ressource ajoutée, permissions accordées à
-   SUPER_ADMIN et CLIENT_ADMIN, 2 tests de régression.
+1. **A phantom permission.** `emailCampaignActions` requires `marketing:write`,
+   but neither the `marketing` resource nor the permission existed in the RBAC.
+   Since `hasPermission` fails closed, **only a super-admin could send a
+   campaign** — never the restaurant owner. Same class of bug as the phantom
+   roles in S4-1. Resource added, permissions granted to SUPER_ADMIN and
+   CLIENT_ADMIN, 2 regression tests.
 
-2. **Un IDOR sur l'historique client.** `orders.getByCustomer` acceptait un
-   `customerId` arbitraire et renvoyait toutes les commandes de cette personne —
-   nom, téléphone, adresse de livraison, articles — derrière un simple « êtes-vous
-   connecté ». **Aucun appelant** : `getMyOrders`, qui dérive l'identité de la
-   session, est ce qu'utilise la page compte. Export supprimé.
+2. **An IDOR on customer history.** `orders.getByCustomer` accepted an arbitrary
+   `customerId` and returned every order of that person — name, phone, delivery
+   address, items — behind a simple "are you signed in". **No callers**:
+   `getMyOrders`, which derives identity from the session, is what the account
+   page uses. Export removed.
 
-3. **Trois recherches inter-établissements.** `storeIntegrations.listByPlatformEnabled`,
-   `getBySiteId` et `getByBrandId` cherchent à travers *tous* les établissements —
-   c'est leur raison d'être : résoudre à quel restaurant appartient un événement
-   Uber Eats ou Deliveroo entrant. Elles ne peuvent pas être store-scopées, et
-   les webhooks qui les appellent n'ont pas d'identité. Passées en interne, avec
-   les trois appelants repointés. Leurs exports publics permettaient d'énumérer
-   tous les restaurants connectés.
+3. **Three cross-establishment lookups.**
+   `storeIntegrations.listByPlatformEnabled`, `getBySiteId` and `getByBrandId`
+   search across *every* establishment — that is their purpose: resolving which
+   restaurant an incoming Uber Eats or Deliveroo event belongs to. They cannot be
+   store-scoped, and the webhooks calling them have no identity. Moved to
+   internal, with the three callers repointed. Their public exports allowed
+   enumerating every connected restaurant.
 
-**Les 11 restants et pourquoi :**
+**The 11 that remain, and why:**
 
-| Fonction(s) | Raison |
+| Function(s) | Reason |
 | --- | --- |
-| `paymentConnections.getByProvider` / `getAll` | Données au niveau du déploiement, pas de l'établissement. Gardées par `payments:read` depuis S2-3 |
-| `stores.create` | Aucun établissement n'existe encore à qui rattacher la garde. Désormais protégée par `stores:write` — elle était en auth seule, donc tout client inscrit pouvait créer des restaurants |
-| `teamMembers` (8) | Périmètre de S2-8 / S2-9, traités ensemble avec le câblage de la chaîne d'authentification |
+| `paymentConnections.getByProvider` / `getAll` | Deployment-level data, not establishment-level. Guarded by `payments:read` since S2-3 |
+| `stores.create` | No establishment exists yet to attach the guard to. Now protected by `stores:write` — it was auth-only, so any signed-up customer could create restaurants |
+| `teamMembers` (8) | Scope of S2-8 / S2-9, handled together with the authentication chain wiring |
 
-> ⚠️ **`apps/themes` n'a pas reçu cette migration.** Ses 12 fichiers équivalents
-> divergent tous du référent — ils utilisent des gardes inline, et son
-> `orders.ts` est un vrai fork qui réimplémente le ticket cuisine. Copier à
-> l'aveugle risquerait de casser le template client d'une manière que le
-> type-check ne verrait pas. Le seam y est désormais disponible (S2-1) : la
-> migration de `themes` est une passe à part entière, fichier par fichier.
+> ⚠️ **`apps/themes` did not receive this migration.** Its 12 equivalent files all
+> diverge from the reference — they use inline guards, and its `orders.ts` is a
+> genuine fork that reimplements the kitchen ticket. Copying blindly would risk
+> breaking the client template in a way the type-check would not see. The seam is
+> now available there (S2-1): migrating `themes` is a pass of its own, file by
+> file.
 
-### S2-4 — une permission sur chaque fonction store-scopée (21 août)
+### S2-4 — a permission on every store-scoped function (21 August)
 
-Après S2-2, l'application comptait **178 fonctions store-scopées et 14
-permissions déclarées**. `storeQuery`/`storeMutation` sans `permission:` ne
-vérifie que *l'appartenance* à l'établissement : un compte `kitchen` rattaché au
-restaurant pouvait supprimer l'établissement, publier une page ou effacer un
-article.
+After S2-2, the application had **178 store-scoped functions and 14 declared
+permissions**. `storeQuery`/`storeMutation` without a `permission:` only checks
+*membership* of the establishment: a `kitchen` account attached to the
+restaurant could delete the establishment, publish a page or erase an article.
 
-**178 / 178** désormais. Correspondance retenue :
+**178 / 178** now. The mapping chosen:
 
-| Domaine | Permission |
+| Domain | Permission |
 | --- | --- |
 | `products`, `categories`, `orphanProducts`, `externalProductMappings` | `products:read/write/delete` |
 | `orders` | `orders:read/write/delete` |
@@ -451,7 +440,7 @@ article.
 | `stores` | `stores:read/write/delete` |
 | `menus` | `menus:read/write` |
 | `payments` | `payments:read` / `payments:refund` |
-| `promotions`, les 6 modules `email*` | `marketing:read/write` |
+| `promotions`, the 6 `email*` modules | `marketing:read/write` |
 | `cms`, `blog`, `cmsMedia` | `content:read/write/delete` |
 | `games`, `prizes`, `gameQRCodes`, `requiredActions`, `prizeRedemptions` | `games:read/write` |
 | `languages`, `translations` | `translations:read/write` |
@@ -459,610 +448,601 @@ article.
 | `contactMessages` | `customers:read/write` |
 | `teamMembers` | `team:read` |
 
-**Deux ressources RBAC manquaient.** `marketing` (découverte en S2-2 : la
-permission était exigée sans exister) et `content` — le CMS et le blog n'avaient
-aucune ressource à eux, ce qui explique en partie pourquoi personne n'avait posé
-de permission dessus. Les deux sont ajoutées à l'énumération `Resource` et
-accordées : lecture/écriture/suppression pour SUPER_ADMIN et CLIENT_ADMIN,
-lecture/écriture seulement pour MANAGER — un gérant rédige et publie, le
-propriétaire supprime.
+**Two RBAC resources were missing.** `marketing` (found in S2-2: the permission
+was required without existing) and `content` — the CMS and the blog had no
+resource of their own, which partly explains why nobody had put a permission on
+them. Both are added to the `Resource` enumeration and granted:
+read/write/delete for SUPER_ADMIN and CLIENT_ADMIN, read/write only for MANAGER —
+a manager writes and publishes, the owner deletes.
 
-**Vérification de la matrice obtenue** : 16 cas exécutés contre `hasPermission`,
-tous conformes. Le point qui comptait le plus — le rôle `kitchen` conserve
-`kitchen:read/write` et `orders:read`, donc le KDS reste opérable — et il n'a
-toujours ni `content:write`, ni `marketing:write`, ni `stores:delete`.
-5 tests de régression ajoutés.
+**Matrix verification obtained**: 16 cases run against `hasPermission`, all
+conforming. The point that mattered most — the `kitchen` role keeps
+`kitchen:read/write` and `orders:read`, so the KDS stays operable — and it still
+has neither `content:write`, nor `marketing:write`, nor `stores:delete`.
+5 regression tests added.
 
-> Même réserve que S2-2 : appliqué au référent seul. `apps/themes` a le seam
-> depuis S2-1 mais ses wrappers divergent et demandent une passe dédiée.
+> Same caveat as S2-2: applied to the reference app only. `apps/themes` has had
+> the seam since S2-1 but its wrappers diverge and need a dedicated pass.
 
-### S2-8 / S2-9 — l'équipe (21 août)
+### S2-8 / S2-9 — the team (21 August)
 
-**S2-8 — pourquoi l'écran équipe était décoratif.** `acceptInvitation` estampait
-`teamMembers.userId` et s'arrêtait là, alors que `getAuthUser` résout les droits
-exclusivement depuis `userProfiles` et ne lit **jamais** cette table. Un gérant
-invité avec un jeu complet de permissions acceptait… et ne recevait rien.
+**S2-8 — why the team screen was decorative.** `acceptInvitation` stamped
+`teamMembers.userId` and stopped there, while `getAuthUser` resolves rights
+exclusively from `userProfiles` and **never** reads that table. A manager invited
+with a full set of permissions accepted… and received nothing.
 
-Le correctif garde **une seule source d'autorité**, `userProfiles` :
-`teamMembers` reste le registre et la trace d'invitation, et accepter provisionne
-le profil que la chaîne d'autorisation consulte déjà. `invitationGrant` fait le
-pont — c'est la fonction qui manquait.
+The fix keeps **a single source of authority**, `userProfiles`: `teamMembers`
+stays the registry and the invitation trail, and accepting provisions the profile
+the authorization chain already consults. `invitationGrant` is the bridge — the
+function that was missing.
 
-Un choix explicite : une adhésion `allStores` ne produit **aucune** liste
-d'établissements. Énumérer tous les magasins élargirait silencieusement l'accès
-à chaque nouveau restaurant créé ; ces adhésions restent l'affaire d'un super
-administrateur, qui est aussi le seul à pouvoir les créer.
+One explicit choice: an `allStores` membership produces **no** establishment
+list. Enumerating every store would silently widen access to each newly created
+restaurant; those memberships remain a super-administrator's business, and they
+are also the only ones who can create them.
 
-**S2-9 — trois trous distincts.**
+**S2-9 — three separate holes.**
 
-1. **`acceptInvitation` n'avait aucune authentification** et prenait le `userId`
-   à lier comme simple argument. Un jeton d'invitation capté permettait donc
-   d'attacher **n'importe quel compte** au poste. L'appelant est désormais dérivé
-   de la session.
-2. **Toutes les mutations d'équipe étaient des `authedMutation`** — « êtes-vous
-   connecté » et rien d'autre. `assertCanManageMember` (23 tests) porte la règle :
-   seuls SUPER_ADMIN et CLIENT_ADMIN gèrent un registre, un CLIENT_ADMIN
-   uniquement sur ses propres établissements, et une adhésion `allStores` exige
-   un super administrateur. `update` vérifie le membre **tel qu'il est et tel
-   qu'il deviendrait**, sinon un propriétaire pourrait promouvoir un membre local
-   en accès chaîne.
-3. **Le vrai point d'entrée n'était pas gardé.** L'écran équipe n'appelle pas
-   `invite` mais l'action `teamMembersEmail.sendInvitationEmail`, qui atteint le
-   registre via `inviteInternal` et **contournait donc entièrement** la garde.
-   Elle ne vérifiait que « connecté » : n'importe quel compte pouvait s'inviter
-   `manager` sur n'importe quel établissement, ou en accès chaîne. Les deux
-   actions d'invitation passent maintenant par une requête interne qui applique
-   la même politique.
+1. **`acceptInvitation` had no authentication at all** and took the `userId` to
+   link as a plain argument. A captured invitation token therefore allowed
+   attaching **any account** to the post. The caller is now derived from the
+   session.
+2. **Every team mutation was an `authedMutation`** — "are you signed in" and
+   nothing else. `assertCanManageMember` (23 tests) carries the rule: only
+   SUPER_ADMIN and CLIENT_ADMIN manage a registry, a CLIENT_ADMIN only on their
+   own establishments, and an `allStores` membership requires a
+   super-administrator. `update` checks the member **as they are and as they
+   would become**, otherwise an owner could promote a local member to chain-wide
+   access.
+3. **The real entry point was not guarded.** The team screen does not call
+   `invite` but the `teamMembersEmail.sendInvitationEmail` action, which reaches
+   the registry through `inviteInternal` and therefore **bypassed the guard
+   entirely**. It only checked "signed in": any account could invite itself as
+   `manager` on any establishment, or chain-wide. Both invitation actions now go
+   through an internal query applying the same policy.
 
-**Deux IDOR fermés au passage.** `getByUser` acceptait un `userId` arbitraire et
-`getByEmail` un email arbitraire, tous deux en auth seule — de quoi lire le rôle,
-les permissions et les établissements de n'importe qui, ou sonder si une adresse
-appartient à une équipe. Le premier devient `getMyMemberships` (dérivé de la
-session), le second passe en `storeQuery` avec `team:read`.
+**Two IDORs closed in passing.** `getByUser` accepted an arbitrary `userId` and
+`getByEmail` an arbitrary email, both auth-only — enough to read anyone's role,
+permissions and establishments, or probe whether an address belongs to a team.
+The first becomes `getMyMemberships` (derived from the session), the second moves
+to `storeQuery` with `team:read`.
 
-> Constat : **aucune interface d'acceptation d'invitation n'existe**. Aucun
-> appelant d'`acceptInvitation` dans tout le dépôt, aucune route contenant
-> « invit ». Le mail part avec son lien, et rien ne le consomme. La chaîne est
-> désormais correcte de bout en bout côté serveur ; il manque la page.
+> Observation: **no invitation-acceptance interface exists**. No caller of
+> `acceptInvitation` anywhere in the repository, no route containing "invit". The
+> mail goes out with its link and nothing consumes it. The chain is now correct
+> end to end on the server; the page is missing.
 
-**Preuve de morsure** : gardes `not_permitted` et `chain_wide` neutralisées →
-**6 tests au rouge**. Restauration vérifiée à 434/434.
+**Bite proof**: the `not_permitted` and `chain_wide` guards neutralised → **6
+tests red**. Restoration verified at 434/434.
 
-**État final des `authed*` dans le référent : 3**, tous justifiés —
-`stores.create` (aucun établissement à qui se rattacher, gardé par
-`stores:write`) et les deux `paymentConnections` (niveau déploiement, gardés par
-`payments:read`).
+**Final state of `authed*` in the reference app: 3**, all justified —
+`stores.create` (no establishment to attach to, guarded by `stores:write`) and
+the two `paymentConnections` (deployment level, guarded by `payments:read`).
 
-### S2-10 / S2-11 — les garde-fous (21 août)
+### S2-10 / S2-11 — the guardrails (21 August)
 
-**S2-10 — 17 tests d'autorisation** (`apps/reference/tests/convex/`) qui exécutent
-les **vraies** fonctions Convex contre le **vrai** schéma, en mémoire, via
-`convex-test` (déjà utilisé par `apps/site`). Ils assertent ce qui doit être
-**refusé** :
+**S2-10 — 17 authorization tests** (`apps/reference/tests/convex/`) running the
+**real** Convex functions against the **real** schema, in memory, through
+`convex-test` (already used by `apps/site`). They assert what must be
+**refused**:
 
-- sans session : lecture et écriture store-scopées rejetées ;
-- inter-établissement : un propriétaire de A ne lit, n'écrit ni ne supprime chez B ;
-- rôle insuffisant : la cuisine ne supprime pas l'établissement, ne lit pas les
-  campagnes email, un serveur ne voit pas les taux de gain ;
-- escalade : un client ne se promeut pas `manager`, un propriétaire n'accorde pas
-  d'accès à un établissement tiers ni ne crée un autre admin ;
-- identité jamais en argument : `orders.getByCustomer` et
-  `userProfiles.getByUserId` ne doivent plus **exister**, ce que deux tests
-  vérifient explicitement.
+- with no session: store-scoped reads and writes rejected;
+- cross-establishment: an owner of A neither reads, writes nor deletes in B;
+- insufficient role: the kitchen does not delete the establishment, does not read
+  email campaigns, a waiter does not see win ratios;
+- escalation: a customer does not promote themselves to `manager`, an owner does
+  not grant access to a third-party establishment nor create another admin;
+- identity never as an argument: `orders.getByCustomer` and
+  `userProfiles.getByUserId` must no longer **exist**, which two tests check
+  explicitly.
 
-Trois tests miroirs vérifient l'inverse — le propriétaire passe, le super-admin
-traverse, **et la cuisine lit toujours son propre écran**. C'était le vrai risque
-de S2-4 : verrouiller la cuisine hors de l'outil qu'elle utilise.
+Three mirror tests check the opposite — the owner passes, the super-admin goes
+through, **and the kitchen still reads its own screen**. That was the real risk
+in S2-4: locking the kitchen out of the tool it uses.
 
-**S2-11 — deux règles ESLint** (`@be-in-digital/convex-functions/eslint/convex-auth`,
-déplacées le 21 août depuis `apps/reference/eslint-rules/`), appliquées à
-`convex/*.ts` :
+**S2-11 — two ESLint rules**
+(`@be-in-digital/convex-functions/eslint/convex-auth`, moved on 21 August from
+`apps/reference/eslint-rules/`), applied to `convex/*.ts`:
 
-| Règle | Interdit |
+| Rule | Forbids |
 | --- | --- |
-| `no-unguarded-convex-function` | `query(…)`, `mutation(…)`, `authedQuery(…)`, `authedMutation(…)` sans annotation |
-| `require-convex-permission` | `storeQuery`/`storeMutation` sans `permission:` |
+| `no-unguarded-convex-function` | `query(…)`, `mutation(…)`, `authedQuery(…)`, `authedMutation(…)` with no annotation |
+| `require-convex-permission` | `storeQuery`/`storeMutation` with no `permission:` |
 
-Deux échappatoires, **délibérément distinctes** : `@public-by-design` (joignable
-par tous — catalogue vitrine, accès par jeton) et `@guarded-inline` (autorisée,
-mais par une politique que le seam ne peut pas exprimer). Les confondre
-laisserait lire une mutation gardée comme « publique », soit exactement la
-confusion qui a produit ce sprint.
+Two escape hatches, **deliberately distinct**: `@public-by-design` (reachable by
+everyone — storefront catalogue, token access) and `@guarded-inline` (authorized,
+but by a policy the seam cannot express). Conflating them would let a guarded
+mutation read as "public", which is exactly the confusion that produced this
+sprint.
 
-> **Erreur commise et corrigée.** Mon premier script d'annotation a tamponné
-> `@public-by-design` sur 7 mutations de `teamMembers`, `categories.reorder` et
-> deux requêtes d'`orders` — toutes gardées en interne, aucune publique. C'est le
-> blanchiment que ce ticket est censé empêcher, produit par l'outil censé
-> l'empêcher. D'où la seconde annotation, et une reprise manuelle.
+> **A mistake made and corrected.** My first annotation script stamped
+> `@public-by-design` on 7 `teamMembers` mutations, on `categories.reorder` and on
+> two `orders` queries — all internally guarded, none public. That is the
+> whitewashing this ticket is meant to prevent, produced by the very tool meant
+> to prevent it. Hence the second annotation, and a manual pass.
 
-**Morsure vérifiée** : réintroduire `export const list = query(defs.list)` dans un
-fichier migré produit une erreur ESLint immédiate.
+**Bite verified**: reintroducing `export const list = query(defs.list)` in a
+migrated file produces an immediate ESLint error.
 
-### S2-12 — clos : 58 exports triés, 5 failles de plus (21 août)
+### S2-12 — closed: 58 exports sorted, 5 more holes (21 August)
 
-Chaque module a été **lu** avant d'être classé. Cinq défauts réels sont sortis de
-ce tri, dont trois que l'audit initial n'avait jamais vus :
+Every module was **read** before being classified. Five real defects came out of
+that sorting, three of which the initial audit had never seen:
 
-| Défaut | Ce qu'il permettait |
+| Defect | What it allowed |
 | --- | --- |
-| `cmsMedia.*` (4 fonctions) | Auth seule avec un `storeId` client : parcourir **et supprimer** la médiathèque d'un autre restaurant |
-| `emailEvents.listByCampaign` / `listBySubscriber` | Lire l'historique d'ouvertures et de clics d'un concurrent |
-| `blogAutoConfig.upsert` | Vérifiait le *forfait* de l'appelant, jamais son accès au `storeId` : un abonné pouvait activer l'auto-publication chez autrui, et `targetStoreIds` visait plusieurs établissements |
-| `seedKitchenOrders` / `cleanKitchenSeed` | Fixtures de démo déployées en prod : injecter de fausses commandes dans **n'importe quelle** cuisine |
-| `ownerEntitlements.upsert` | **Contournement de facturation** — voir ci-dessous |
-| `ownerEntitlements.getByOwnerId`, `paymentConnections.disconnect`, `uberEatsConnections.disconnect` | IDOR sur l'état d'abonnement ; couper le prestataire de paiement ou l'intégration Uber Eats depuis n'importe quel compte |
+| `cmsMedia.*` (4 functions) | Auth only with a client-supplied `storeId`: browsing **and deleting** another restaurant's media library |
+| `emailEvents.listByCampaign` / `listBySubscriber` | Reading a competitor's open and click history |
+| `blogAutoConfig.upsert` | Checked the caller's *plan*, never their access to the `storeId`: a subscriber could enable auto-publishing on someone else's, and `targetStoreIds` aimed at several establishments |
+| `seedKitchenOrders` / `cleanKitchenSeed` | Demo fixtures deployed to production: injecting fake orders into **any** kitchen |
+| `ownerEntitlements.upsert` | **Billing bypass** — see below |
+| `ownerEntitlements.getByOwnerId`, `paymentConnections.disconnect`, `uberEatsConnections.disconnect` | IDOR on subscription state; cutting off the payment provider or the Uber Eats integration from any account |
 
-**Le plus instructif : `ownerEntitlements.upsert`.** Sa garde disait « les
-utilisateurs ne peuvent modifier que **leurs propres** droits » — formulation qui
-sonne protectrice et fait exactement l'inverse. Les entitlements ouvrent des
-fonctionnalités payantes (autoBlog et ses plafonds) : laisser chacun écrire les
-siens permettait de s'attribuer un forfait non acheté. Le schéma le disait
-pourtant : « source de vérité : webhooks Stripe ; pour l'instant modifiable
-manuellement par un admin ». Réservé au super-admin, avec un chemin interne pour
-Stripe.
+**The most instructive: `ownerEntitlements.upsert`.** Its guard said "users may
+only modify **their own** entitlements" — wording that sounds protective and does
+exactly the opposite. Entitlements unlock paid features (autoBlog and its caps):
+letting everyone write their own allowed granting yourself a plan you had not
+bought. The schema said as much: "source of truth: Stripe webhooks; for now
+manually editable by an admin". Reserved to the super-admin, with an internal
+path for Stripe.
 
-**Classement final : 50 `@public-by-design`, 43 `@guarded-inline`**, chacun avec
-sa raison écrite. La liste d'exemption de `eslint.config.mjs` a été **supprimée** :
-les deux règles sont désormais en `error` sur `convex/*.ts` sans aucune
-échappatoire de fichier. Morsure revérifiée après suppression.
+**Final classification: 50 `@public-by-design`, 43 `@guarded-inline`**, each with
+its written reason. The exemption list in `eslint.config.mjs` was **deleted**:
+both rules are now `error` on `convex/*.ts` with no file-level escape hatch. Bite
+re-verified after the deletion.
 
-### Historique — ce que la règle avait révélé
+### History — what the rule had revealed
 
-Activer les règles a fait apparaître **~58 exports non gardés dans 20 modules que
-l'audit initial n'avait jamais énumérés** : `maintenance`, `system`, `cmsMedia`,
+Turning the rules on surfaced **~58 unguarded exports in 20 modules the initial
+audit had never enumerated**: `maintenance`, `system`, `cmsMedia`,
 `blogAutoConfig`, `ownerEntitlements`, `favorites`, `globalSettings`,
 `uberEatsConnections`, `seedKitchenOrders`, `emailEvents`, `blogAutoUsage`,
 `auth`, `prizeRedemptions`, `emailSubscribers`, `contactMessages`,
 `userProfiles`, `stores`, `paymentConnections`, `blog`, `cms`.
 
-Ils sont **listés dans `eslint.config.mjs` en `warn`, pas annotés**. Poser
-`@public-by-design` sur du code que personne n'a lu ferait passer une surface non
-revue pour une surface revue — pire que la dette visible. Chaque fichier doit
-recevoir le traitement de S2-3 ; la liste atteignant zéro est ce qui clôt S2-12.
+They are **listed in `eslint.config.mjs` as `warn`, not annotated**. Putting
+`@public-by-design` on code nobody has read would make an unreviewed surface look
+reviewed — worse than visible debt. Each file must get the S2-3 treatment; that
+list reaching zero is what closes S2-12.
 
-> Note d'outillage : `tests/` est exclu du `tsconfig` du référent, comme dans
-> `apps/site` — les suites `convex-test` s'appuient sur `import.meta.glob` de
-> Vite et sur les génériques du harnais. Elles restent vérifiées à l'exécution
-> par vitest.
+> Tooling note: `tests/` is excluded from the reference app's `tsconfig`, as in
+> `apps/site` — the `convex-test` suites rely on Vite's `import.meta.glob` and on
+> the harness generics. They stay checked at runtime by vitest.
 
-### Reste du Sprint 2
+### Rest of Sprint 2
 
-`S2-1` (déplacer le seam vers le package), `S2-2` (68 `authed*` à migrer),
-`S2-3` (44 exports nus à classer), `S2-4` (83 permissions manquantes),
-`S2-8`/`S2-9` (`teamMembers`), `S2-10` (suite `convex-test`), `S2-11` (règle
-ESLint anti-régression).
+`S2-1` (move the seam into the package), `S2-2` (68 `authed*` to migrate),
+`S2-3` (44 bare exports to classify), `S2-4` (83 missing permissions),
+`S2-8`/`S2-9` (`teamMembers`), `S2-10` (`convex-test` suite), `S2-11`
+(anti-regression ESLint rule).
 
-Note d'implémentation pour S2-1 : `convex/lib/storeFunctions.ts` importe
-`../_generated/server` et `../_generated/dataModel`, propres à chaque app. Il ne
-peut donc pas être déplacé tel quel — il doit devenir une **fabrique**
-(`createStoreFunctions({ query, mutation })`) que chaque app instancie avec ses
-propres builders générés.
+Implementation note for S2-1: `convex/lib/storeFunctions.ts` imports
+`../_generated/server` and `../_generated/dataModel`, both app-specific. It
+therefore cannot be moved as it stands — it has to become a **factory**
+(`createStoreFunctions({ query, mutation })`) that each app instantiates with its
+own generated builders.
 
-> Note : `@beyours/site` échoue au type-check sur `@calcom/embed-react`, déclaré
-> dans son `package.json` mais absent du `node_modules` de ce worktree. Défaut
-> préexistant, sans rapport avec ces tickets.
-
----
-
-## 1. La contrainte qui ordonne tout le reste
-
-Aujourd'hui, **la CI est incapable d'échouer** sur une régression fonctionnelle :
-
-- Dernier rapport Playwright : **510 tests, 0 passé, 510 *skipped***, rapport `ok: true`.
-- Trois verrous en série : `vars.CONVEX_E2E_ENABLED` absent → job non déclenché ;
-  `secrets.E2E_NEXT_PUBLIC_CONVEX_URL` absent → étape sautée ; projets `setup`/`admin`
-  non enregistrés sans backend réel → 33 specs sur 43 désactivées.
-- Le job de statut passe au vert quand le job est *skipped*.
-
-**Conséquence directe sur l'ordre des travaux** : tant que ce point n'est pas réglé,
-chaque correctif des sprints suivants est livré **non vérifié**, et rien n'empêche
-de le casser à nouveau la semaine d'après. Le Sprint 0 n'est donc pas une phase de
-confort : c'est une dépendance dure. Aucun ticket des sprints 1 à 6 ne doit être
-déclaré « fait » avant que la porte du Sprint 0 soit franchie.
-
-Second levier structurant : **les packages ont 50 fichiers de tests, l'app en a 2**
-(dont un couvre du code jamais appelé). La règle d'implémentation qui en découle est
-constante dans tout ce plan — **on corrige dans le package, on câble dans l'app**.
-Un correctif écrit dans `apps/reference/convex/` est un correctif non testé.
+> Note: `@beyours/site` fails the type-check on `@calcom/embed-react`, declared in
+> its `package.json` but absent from this worktree's `node_modules`. A
+> pre-existing defect, unrelated to these tickets.
 
 ---
 
-## 2. Forme réelle du chantier
+## 1. The constraint that orders everything else
 
-Le périmètre ne tient pas dans un sprint. Chiffrage honnête, en jours-développeur :
+Today, **CI is incapable of failing** on a functional regression:
+- Latest Playwright report: **510 tests, 0 passed, 510 *skipped***, report `ok: true`.
+- Three locks in series: `vars.CONVEX_E2E_ENABLED` missing → job not triggered;
+  `secrets.E2E_NEXT_PUBLIC_CONVEX_URL` missing → step skipped; `setup`/`admin`
+  projects not registered without a real backend → 33 specs out of 43 disabled.
+- The status job goes green when the job is *skipped*.
 
-| Sprint | Thème | Charge | Bloquant pour la prod |
+**Direct consequence for the order of work**: until this is settled, every fix in
+the following sprints ships **unverified**, and nothing stops it being broken
+again the week after. Sprint 0 is therefore not a comfort phase: it is a hard
+dependency. No ticket from sprints 1 to 6 should be declared "done" before the
+Sprint 0 gate is passed.
+
+Second structural lever: **the packages have 50 test files, the app has 2** (one
+of which covers code that is never called). The implementation rule that follows
+is constant throughout this plan — **fix in the package, wire in the app**. A fix
+written in `apps/reference/convex/` is an untested fix.
+
+---
+
+## 2. The real shape of the work
+
+The scope does not fit in one sprint. An honest estimate, in developer-days:
+
+| Sprint | Theme | Effort | Blocking for production |
 | --- | --- | --- | --- |
-| **S0** | Restaurer la capacité d'échouer | 3–4 j | Prérequis absolu |
-| **S1** | L'argent | 4–5 j | Oui |
-| **S2** | Cloisonnement multi-locataire | 6–8 j | Oui |
-| **S3** | Surface exposée | 4–5 j | Oui |
-| **S4** | Pannes silencieuses | 4–5 j | Oui |
-| **S5** | Vitrine et panier | 3–4 j | Oui |
-| **S6** | Architecture et propreté | 5–6 j | Non |
-| | **Total** | **29–37 j** | |
+| **S0** | Restore the ability to fail | 3–4 d | Absolute prerequisite |
+| **S1** | The money | 4–5 d | Yes |
+| **S2** | Multi-tenant isolation | 6–8 d | Yes |
+| **S3** | Exposed surface | 4–5 d | Yes |
+| **S4** | Silent failures | 4–5 d | Yes |
+| **S5** | Storefront and cart | 3–4 d | Yes |
+| **S6** | Architecture and cleanliness | 5–6 d | No |
+| | **Total** | **29–37 d** | |
 
-Soit **3 sprints de deux semaines à deux développeurs**, ou 6 à 7 semaines à un seul.
-S0 → S5 constituent le lot « prêt pour un premier client réel » ; S6 est de la dette
-technique à traiter juste après, pas avant.
+That is **3 two-week sprints with two developers**, or 6 to 7 weeks with one.
+S0 → S5 make up the "ready for a first real client" batch; S6 is technical debt
+to handle right after, not before.
 
-**Découpage recommandé en trois itérations :**
+**Recommended split into three iterations:**
 
-- **Itération 1** — S0 + S1 : la CI mord, et plus aucun euro ne fuit.
-- **Itération 2** — S2 + S3 : plus aucune donnée ne traverse la frontière d'un client.
-- **Itération 3** — S4 + S5, puis S6 : plus aucune fonctionnalité ne ment, puis on nettoie.
+- **Iteration 1** — S0 + S1: CI bites, and no more money leaks.
+- **Iteration 2** — S2 + S3: no data crosses a client's boundary any more.
+- **Iteration 3** — S4 + S5, then S6: no feature lies any more, then we clean up.
 
-**Porte de sortie entre chaque itération** (go / no-go) : la CI est verte *et* la
-preuve de morsure du Sprint 0 est rejouée (voir S0-8).
+**Exit gate between each iteration** (go / no-go): CI is green *and* the Sprint 0
+bite proof has been replayed (see S0-8).
 
 ---
 
-## 3. Sprint 0 — Restaurer la capacité d'échouer
+## 3. Sprint 0 — Restore the ability to fail
 
-**But** : à la fin du sprint, casser volontairement une assertion fait rougir la CI.
-Rien d'autre ne compte.
+**Goal**: by the end of the sprint, deliberately breaking an assertion turns CI
+red. Nothing else counts.
 
-| ID | Ticket | Où | Fait quand |
+| ID | Ticket | Where | Done when |
 | --- | --- | --- | --- |
-| **S0-1** | Provisionner un déploiement Convex dédié aux tests, poser `CONVEX_E2E_ENABLED=true` et les secrets `E2E_*` | GitHub repo settings, `.github/workflows/e2e.yml:14,17-28` | Le job `e2e` se déclenche sur une PR et exécute réellement Playwright |
-| **S0-2** | Supprimer le vert silencieux : le job échoue si la suite est sautée ou si `expected === 0` | `e2e.yml:64-72,100`, job `e2e-status` `:126-143` | Une PR avec 0 test exécuté est **rouge** |
-| **S0-3** | Réparer les specs écrites contre une interface périmée | `e2e/auth/sign-in.spec.ts:10,19,29`, `sign-up.spec.ts:80`, `storefront/public-pages.spec.ts:60,68,91,99,122,130`, `storefront-layout.spec.ts:18,28,52` | Ces specs passent contre l'UI réelle (français), sans adapter l'UI au test |
-| **S0-4** | Éliminer le motif `if (hasX) { …assertions… }` sans `else` — **80 occurrences sur 15 specs** ; remplacer par des fixtures semées ou de vrais `test.skip` visibles | `admin/store-detail.spec.ts` (17), `order-detail.spec.ts` (10), `inventory.spec.ts` (10), `kitchen.spec.ts` (7), `email-campaigns.spec.ts` (7), + 10 autres | Zéro assertion enfermée dans une condition sans `else` ; les tests sautés apparaissent *skipped*, pas *passed* |
-| **S0-5** | Resserrer le filtre d'erreurs console : retirer `/convex/i`, `/401/`, `/403/`, `/500 …/`, `/Internal Server Error/i`, `/Failed to fetch/i`, `/Module not found/i`, `/@be-in-digital/i` | `e2e/helpers/console.helpers.ts:7-32` | Les 13 tests « pas d'erreur console » détectent une panne backend simulée |
-| **S0-6** | Seed e2e déterministe : établissement, catalogue, commandes, tickets — de quoi rendre les 80 conditions de S0-4 inutiles | `apps/reference/scripts/seed-users.mts` (corriger l'absence de `setAuth`, qui fait échouer la création de profils en silence) + nouveau seed de données | Une base fraîche produit un jeu de données stable ; le script échoue bruyamment s'il n'a pas pu écrire |
-| **S0-7** | Installer `convex-test` dans `packages/convex-functions` (déjà utilisé en `^0.0.44` dans `apps/site`) et poser des seuils de couverture | `packages/convex-functions/package.json`, `vitest.config.ts` de l'app et du package | `pnpm test` échoue sous le seuil ; un premier test d'autorisation tourne |
-| **S0-8** | **Preuve de morsure** : casser volontairement une assertion, une garde d'auth et un calcul de total ; vérifier que la CI rougit à chaque fois ; documenter la manip | `tasks/` (annexe de ce document) | Trois rouges obtenus et documentés. **C'est la porte du sprint.** |
+| **S0-1** | Provision a Convex deployment dedicated to tests, set `CONVEX_E2E_ENABLED=true` and the `E2E_*` secrets | GitHub repo settings, `.github/workflows/e2e.yml:14,17-28` | The `e2e` job triggers on a PR and actually runs Playwright |
+| **S0-2** | Remove the silent green: the job fails if the suite is skipped or if `expected === 0` | `e2e.yml:64-72,100`, `e2e-status` job `:126-143` | A PR with 0 tests executed is **red** |
+| **S0-3** | Repair the specs written against a stale interface | `e2e/auth/sign-in.spec.ts:10,19,29`, `sign-up.spec.ts:80`, `storefront/public-pages.spec.ts:60,68,91,99,122,130`, `storefront-layout.spec.ts:18,28,52` | Those specs pass against the real (French) UI, without adapting the UI to the test |
+| **S0-4** | Eliminate the `if (hasX) { …assertions… }` pattern with no `else` — **80 occurrences across 15 specs**; replace with seeded fixtures or real, visible `test.skip` | `admin/store-detail.spec.ts` (17), `order-detail.spec.ts` (10), `inventory.spec.ts` (10), `kitchen.spec.ts` (7), `email-campaigns.spec.ts` (7), + 10 others | Zero assertions locked inside a condition with no `else`; skipped tests show as *skipped*, not *passed* |
+| **S0-5** | Tighten the console-error filter: drop `/convex/i`, `/401/`, `/403/`, `/500 …/`, `/Internal Server Error/i`, `/Failed to fetch/i`, `/Module not found/i`, `/@be-in-digital/i` | `e2e/helpers/console.helpers.ts:7-32` | The 13 "no console error" tests detect a simulated backend failure |
+| **S0-6** | Deterministic e2e seed: establishment, catalogue, orders, tickets — enough to make the 80 conditions of S0-4 unnecessary | `apps/reference/scripts/seed-users.mts` (fix the missing `setAuth`, which makes profile creation fail silently) + a new data seed | A fresh database produces a stable data set; the script fails loudly if it could not write |
+| **S0-7** | Install `convex-test` in `packages/convex-functions` (already used at `^0.0.44` in `apps/site`) and set coverage thresholds | `packages/convex-functions/package.json`, the app's and the package's `vitest.config.ts` | `pnpm test` fails below the threshold; a first authorization test runs |
+| **S0-8** | **Bite proof**: deliberately break an assertion, an auth guard and a total computation; verify CI goes red each time; document the procedure | `tasks/` (appendix to this document) | Three reds obtained and documented. **This is the sprint gate.** |
 
-> Sans S0-8, on n'a aucune preuve que la CI protège quoi que ce soit. Ce ticket n'est
-> pas une formalité : c'est le seul qui valide les sept autres.
+> Without S0-8, there is no evidence CI protects anything. This ticket is not a
+> formality: it is the only one that validates the other seven.
 
 ---
 
-## 4. Sprint 1 — L'argent
+## 4. Sprint 1 — The money
 
-**But** : plus aucun chemin ne permet de payer moins que dû, de valider un paiement
-qui n'a pas eu lieu, ou de perdre le client après le paiement.
+**Goal**: no path allows paying less than owed, validating a payment that never
+happened, or losing the customer after payment.
 
-| ID | Ticket | Défaut d'audit | Où |
+| ID | Ticket | Audit defect | Where |
 | --- | --- | --- | --- |
-| **S1-1** | Retirer `discountAmount` des arguments publics ; recalculer la remise côté serveur depuis `promotionId` | **B-02** — `discountAmount: 99999999` → total 0 €, ticket cuisine émis | `packages/convex-functions/src/orders.ts:202,291-292` ; exposition `apps/reference/convex/orders.ts:71` |
-| **S1-2** | Valider la promotion au moment du calcul : existence, activité, fenêtre de dates, plafond, usage par client | Même chemin : `usageCount` est incrémenté sans qu'aucune règle ne soit vérifiée | `packages/convex-functions/src/orders.ts:325-334` |
-| **S1-3** | Dériver `customerId` de `identity.subject` au lieu de l'accepter en `v.string()` | Une commande peut être attribuée à un autre client | `packages/convex-functions/src/orders.ts:163` |
-| **S1-4** | SumUp : comparer `checkout_reference` à `orderId` **et** `checkout.amount` à `order.total` ; rendre le `checkoutId` non rejouable | **B-03** — un paiement d'1 € valide une commande de 200 € | `apps/reference/convex/sumup.ts:108-183` (réf. lue l.141, jamais comparée) |
-| **S1-5** | PayPal : relire `reference_id` à la capture, vérifier le montant ; corriger la détection sandbox (`clientId.startsWith("A") === false` bascule des clés live en sandbox) | **B-03** (variante) + paiements jamais encaissés | `apps/reference/convex/paypal.ts:30-31,141-208` |
-| **S1-6** | Brancher un vrai appel de remboursement au prestataire — ou retirer le bouton de l'interface | **B-04** — la mutation ne fait qu'un `db.patch`, aucun appel PSP nulle part | `packages/convex-functions/src/payments.ts:109-137` |
-| **S1-7** | Écrire les quatre routes manquantes : `/checkout/success`, `/checkout/cancel`, `/checkout/pay`, `/track/[token]` | **B-01** — sondées en HTTP : 404 sur les quatre | `app/(storefront)/checkout/page.tsx:323,325,330,331,344,345` ; `order/[orderId]/page.tsx:138` |
-| **S1-8** | Retourner le `viewToken` au client après commande et l'afficher sur l'écran de confirmation | Un invité n'a aujourd'hui aucun moyen de retrouver sa commande | `packages/convex-functions/src/orders.ts:297,321,344` |
-| **S1-9** | Aligner le total affiché sur le total facturé (TVA) | Sous-total 20 € à 10 % : la page annonce « 20 € taxes incluses », Stripe débite 22 € | `components/storefront/order-summary.tsx:52,242` |
-| **S1-10** | Envoyer `uberDirectFee` / `uberDirectEstimateId` depuis le checkout, ou retirer le mode `percentage` | Toute commande en livraison échoue en mode pourcentage | `checkout/page.tsx:275-306` vs `orders.ts:279-281` |
+| **S1-1** | Remove `discountAmount` from the public arguments; recompute the discount server-side from `promotionId` | **B-02** — `discountAmount: 99999999` → total €0, kitchen ticket issued | `packages/convex-functions/src/orders.ts:202,291-292`; exposure at `apps/reference/convex/orders.ts:71` |
+| **S1-2** | Validate the promotion at computation time: existence, active state, date window, cap, per-customer usage | Same path: `usageCount` is incremented with no rule checked at all | `packages/convex-functions/src/orders.ts:325-334` |
+| **S1-3** | Derive `customerId` from `identity.subject` instead of accepting it as a `v.string()` | An order can be attributed to another customer | `packages/convex-functions/src/orders.ts:163` |
+| **S1-4** | SumUp: compare `checkout_reference` to `orderId` **and** `checkout.amount` to `order.total`; make the `checkoutId` non-replayable | **B-03** — a €1 payment validates a €200 order | `apps/reference/convex/sumup.ts:108-183` (reference read at l.141, never compared) |
+| **S1-5** | PayPal: re-read `reference_id` at capture, verify the amount; fix the sandbox detection (`clientId.startsWith("A") === false` switches live keys to sandbox) | **B-03** (variant) + payments never captured | `apps/reference/convex/paypal.ts:30-31,141-208` |
+| **S1-6** | Wire a real refund call to the provider — or remove the button from the UI | **B-04** — the mutation only does a `db.patch`, no PSP call anywhere | `packages/convex-functions/src/payments.ts:109-137` |
+| **S1-7** | Write the four missing routes: `/checkout/success`, `/checkout/cancel`, `/checkout/pay`, `/track/[token]` | **B-01** — probed over HTTP: 404 on all four | `app/(storefront)/checkout/page.tsx:323,325,330,331,344,345`; `order/[orderId]/page.tsx:138` |
+| **S1-8** | Return the `viewToken` to the client after an order and show it on the confirmation screen | A guest today has no way of finding their order again | `packages/convex-functions/src/orders.ts:297,321,344` |
+| **S1-9** | Align the displayed total with the charged total (VAT) | Subtotal €20 at 10%: the page says "€20 taxes included", Stripe charges €22 | `components/storefront/order-summary.tsx:52,242` |
+| **S1-10** | Send `uberDirectFee` / `uberDirectEstimateId` from the checkout, or remove `percentage` mode | Every delivery order fails in percentage mode | `checkout/page.tsx:275-306` vs `orders.ts:279-281` |
 
-**Tests exigés pour clore le sprint** (dans `packages/convex-functions/src/__tests__/`,
-à côté de `orders.test.ts` qui existe déjà) :
-remise forgée rejetée · promotion expirée rejetée · plafond d'usage respecté ·
-référence SumUp/PayPal non concordante rejetée · montant non concordant rejeté ·
-les quatre routes répondent 200 en e2e.
+**Tests required to close the sprint** (in
+`packages/convex-functions/src/__tests__/`, next to the existing
+`orders.test.ts`): forged discount rejected · expired promotion rejected · usage
+cap respected · mismatched SumUp/PayPal reference rejected · mismatched amount
+rejected · the four routes answer 200 in e2e.
 
 ---
 
-## 5. Sprint 2 — Cloisonnement multi-locataire
+## 5. Sprint 2 — Multi-tenant isolation
 
-**But** : aucune donnée d'un restaurant n'est lisible ou modifiable par un compte
-rattaché à un autre. C'est le sprint le plus lourd, et le plus mécanique.
+**Goal**: no restaurant's data is readable or modifiable by an account attached
+to another. This is the heaviest sprint, and the most mechanical.
 
-**Volume mesuré** : 68 usages de `authedQuery`/`authedMutation` sur 13 fichiers,
-44 fonctions exportées en `query(defs.X)` / `mutation(defs.X)` nus, et **83 des 102
-fonctions `storeQuery`/`storeMutation` ne déclarent aucune `permission:`**
-(19 seulement le font).
+**Measured volume**: 68 uses of `authedQuery`/`authedMutation` across 13 files,
+44 functions exported as bare `query(defs.X)` / `mutation(defs.X)`, and **83 of
+the 102 `storeQuery`/`storeMutation` functions declare no `permission:`** (only
+19 do).
 
-| ID | Ticket | Où | Fait quand |
+| ID | Ticket | Where | Done when |
 | --- | --- | --- | --- |
-| **S2-1** | Déplacer le seam d'autorisation vers `packages/convex-functions` pour que `apps/themes` en hérite | `apps/reference/convex/lib/storeFunctions.ts` (exemplaire unique dans tout le dépôt ; `apps/themes/convex/lib/` ne l'a pas) | Le livrable client applique la même politique que le banc d'essai |
-| **S2-2** | Migrer les 68 `authedQuery`/`authedMutation` vers `storeQuery`/`storeMutation` avec `storeIdFrom` | `blog.ts`, `cms.ts`, `emailSubscribers.ts`, `emailCampaigns.ts`, `emailSegments.ts`, `emailTemplates.ts`, `emailAutomations.ts`, `kitchenTickets.ts`, `orders.ts`, `payments.ts`, `storeIntegrations.ts`, `stores.ts`, `teamMembers.ts` | Zéro `authedMutation` restant sur une ressource rattachée à un établissement. Le helper `storeIdFromDocument` existe déjà (`storeFunctions.ts:115-125`) |
-| **S2-3** | Classer les 44 exports nus : marquer explicitement ceux qui sont **publics par intention** (catalogue vitrine), migrer les autres | `prizes.ts:4`, `gameQRCodes.ts:4`, `games.ts:5`, `requiredActions.ts:5`, `paymentConnections.ts:9,24`, `orphanProducts.ts:4-5`, `externalProductMappings.ts:4-6`, `translations.ts`, `cmsMedia.ts` | Chaque export public porte un commentaire justifiant son exposition ; les autres sont gardés |
-| **S2-4** | Déclarer `permission:` sur les 83 fonctions qui n'en ont pas | `stores`, `orders`, `promotions`, `languages`, `menus`, `cms`, `blog`, `teamMembers`, `kitchenTickets` | Un compte `kitchen` ne peut plus supprimer l'établissement ni publier une page. Modèle à répliquer : `convex/products.ts` (11/11) |
-| **S2-5** | Verrouiller `userProfiles.upsert` : forcer `userId = identity.subject`, sortir `role`, `storeIds` et `permissions` des arguments client | **B-05** — `manager` passe le garde ; `userId` et `storeIds` viennent du client | `apps/reference/convex/userProfiles.ts:26-48` ; `packages/convex-functions/src/userProfiles.ts:37-47` |
-| **S2-6** | Supprimer `userProfiles.getByUserId` au profit de `getMyProfile` (un seul appelant à router) | **B-06** — rôle et périmètre de n'importe qui, sans authentification | `convex/userProfiles.ts:6` ; appelant `components/admin/AdminAuthSync.tsx:20` |
-| **S2-7** | Créer un chemin d'amorçage du premier `super_admin` (aujourd'hui : poule/œuf, seul un `super_admin` peut en désigner un) | `convex/userProfiles.ts:34-43` | Un déploiement neuf peut désigner son premier administrateur sans accès direct à la base |
-| **S2-8** | Brancher `teamMembers` sur la chaîne d'authentification — ou retirer l'écran | L'auth lit `userProfiles` et ne consulte jamais `teamMembers` : un gérant invité avec 8 permissions n'obtient aucun droit | `packages/convex-functions/src/auth.ts:35-53`, `teamMembers.ts:224-229` |
-| **S2-9** | Sécuriser `teamMembers.create/update/acceptInvitation` (aujourd'hui `authedMutation`, ou sans auth du tout pour `acceptInvitation`) | Tout compte peut s'insérer `allStores: true, role: "manager"` | `convex/teamMembers.ts:53-58,73-88` |
-| **S2-10** | **Suite de tests d'autorisation** avec `convex-test` : pour chaque fonction gardée, un cas « utilisateur du store A rejeté sur le store B » et un cas « rôle insuffisant rejeté » | Nouveau `packages/convex-functions/src/__tests__/authorization.test.ts` | Chaque fonction gardée a son test négatif. C'est ce qui rend S2-2 à S2-4 vérifiables |
-| **S2-11** | **Garde-fou** : règle ESLint interdisant `query(defs.` / `mutation(defs.` nus et `authedMutation` dans `apps/*/convex/`, sauf annotation `// @public-by-design: <raison>` | `eslint.config.mjs` | Une PR qui réintroduit une fonction non gardée est rouge |
+| **S2-1** | Move the authorization seam to `packages/convex-functions` so `apps/themes` inherits it | `apps/reference/convex/lib/storeFunctions.ts` (the only copy in the whole repository; `apps/themes/convex/lib/` does not have it) | The client deliverable applies the same policy as the test bench |
+| **S2-2** | Migrate the 68 `authedQuery`/`authedMutation` to `storeQuery`/`storeMutation` with `storeIdFrom` | `blog.ts`, `cms.ts`, `emailSubscribers.ts`, `emailCampaigns.ts`, `emailSegments.ts`, `emailTemplates.ts`, `emailAutomations.ts`, `kitchenTickets.ts`, `orders.ts`, `payments.ts`, `storeIntegrations.ts`, `stores.ts`, `teamMembers.ts` | Zero `authedMutation` left on a resource attached to an establishment. The `storeIdFromDocument` helper already exists (`storeFunctions.ts:115-125`) |
+| **S2-3** | Classify the 44 bare exports: explicitly mark those that are **public by intent** (storefront catalogue), migrate the rest | `prizes.ts:4`, `gameQRCodes.ts:4`, `games.ts:5`, `requiredActions.ts:5`, `paymentConnections.ts:9,24`, `orphanProducts.ts:4-5`, `externalProductMappings.ts:4-6`, `translations.ts`, `cmsMedia.ts` | Every public export carries a comment justifying its exposure; the others are guarded |
+| **S2-4** | Declare `permission:` on the 83 functions that have none | `stores`, `orders`, `promotions`, `languages`, `menus`, `cms`, `blog`, `teamMembers`, `kitchenTickets` | A `kitchen` account can no longer delete the establishment nor publish a page. Model to replicate: `convex/products.ts` (11/11) |
+| **S2-5** | Lock `userProfiles.upsert`: force `userId = identity.subject`, take `role`, `storeIds` and `permissions` out of the client arguments | **B-05** — `manager` passes the guard; `userId` and `storeIds` come from the client | `apps/reference/convex/userProfiles.ts:26-48`; `packages/convex-functions/src/userProfiles.ts:37-47` |
+| **S2-6** | Remove `userProfiles.getByUserId` in favour of `getMyProfile` (a single caller to route) | **B-06** — anyone's role and scope, with no authentication | `convex/userProfiles.ts:6`; caller `components/admin/AdminAuthSync.tsx:20` |
+| **S2-7** | Create a bootstrap path for the first `super_admin` (today: chicken and egg, only a `super_admin` can appoint one) | `convex/userProfiles.ts:34-43` | A fresh deployment can appoint its first administrator without direct database access |
+| **S2-8** | Wire `teamMembers` into the authentication chain — or remove the screen | Auth reads `userProfiles` and never consults `teamMembers`: a manager invited with 8 permissions obtains no rights | `packages/convex-functions/src/auth.ts:35-53`, `teamMembers.ts:224-229` |
+| **S2-9** | Secure `teamMembers.create/update/acceptInvitation` (today `authedMutation`, or no auth at all for `acceptInvitation`) | Any account can insert itself as `allStores: true, role: "manager"` | `convex/teamMembers.ts:53-58,73-88` |
+| **S2-10** | **Authorization test suite** with `convex-test`: for each guarded function, a "user of store A rejected on store B" case and an "insufficient role rejected" case | New `packages/convex-functions/src/__tests__/authorization.test.ts` | Every guarded function has its negative test. This is what makes S2-2 to S2-4 verifiable |
+| **S2-11** | **Guardrail**: an ESLint rule forbidding bare `query(defs.` / `mutation(defs.` and `authedMutation` in `apps/*/convex/`, unless annotated `// @public-by-design: <reason>` | `eslint.config.mjs` | A PR reintroducing an unguarded function is red |
 
-> **Pourquoi S2-11 est un ticket et pas une bonne intention.** Les 112 sites à corriger
-> ne sont pas 112 erreurs indépendantes : c'est une seule habitude, répétée. Corriger
-> les sites sans corriger l'habitude garantit la réapparition.
+> **Why S2-11 is a ticket and not a good intention.** The 112 sites to fix are not
+> 112 independent mistakes: they are one habit, repeated. Fixing the sites without
+> fixing the habit guarantees the reappearance.
 
 ---
 
-## 6. Sprint 3 — Surface exposée
+## 6. Sprint 3 — Exposed surface
 
-| ID | Ticket | Défaut | Où |
+| ID | Ticket | Defect | Where |
 | --- | --- | --- | --- |
-| **S3-1** | Authentifier `api/files`, imposer une allowlist de préfixes, résoudre la clé via un enregistrement rattaché à l'établissement du demandeur | **B-07** — proxy S3 non authentifié sur tout le bucket ; seule protection `key.includes("..")`, inopérante sur S3 | `app/api/files/[...key]/route.ts:19-57` |
-| **S3-2** | Préfixer les clés d'upload par `storeId` | Tous les locataires écrivent dans le même préfixe | `app/api/upload/route.ts:104` |
-| **S3-3** | Vérifier réellement la signature SNS (téléchargement du certificat, chaîne canonique) et épingler le `TopicArn` | **B-08** — seule la *forme* de l'URL fournie par l'appelant est validée | `convex/emailHttpHandlers.ts:178-207` |
-| **S3-4** | Assainir les SVG côté serveur dans `api/upload` ; remplacer le sanitiseur à base d'expressions régulières par DOMPurify en mode SVG | XSS stocké sur l'origine de la boutique. `<svg/onload=…>` passe le filtre actuel, qui exige un espace avant `on` | `app/api/upload/route.ts:76-82`, `packages/cms/src/sanitize/svgSanitizer.ts:31-34` |
-| **S3-5** | Assainir le HTML riche **à l'écriture** et pas seulement à l'affichage | La seule barrière est un `DOMPurify` côté client, en aval | `packages/convex-functions/src/blog.ts:421-463` ; réutiliser `sanitizeContent` de `blogAutoGenerate.ts:307-321` |
-| **S3-6** | Ajouter une `Content-Security-Policy` | Absente ; les autres en-têtes sont bien posés | `next.config.ts:12-25` |
-| **S3-7** | Introduire une limitation de débit — **il n'en existe aucune dans toute l'application** — sur `api/contact`, `contactMessages.create`, `gamePlay.play`, `recordScan`, `translateUIStrings`, `api/upload`, et les tentatives de connexion | Relais d'inondation, drain de la clé OpenAI, parties illimitées | transverse |
-| **S3-8** | Scoper et plafonner `getPresignedUploadUrl` (aucun `requireStoreAccess`, aucune contrainte de taille sur l'URL présignée) | Écriture d'un objet de taille arbitraire par tout compte | `convex/storageUpload.ts:68-117` |
-| **S3-9** | Secret dédié pour `api/email/send` au lieu de réutiliser `BETTER_AUTH_SECRET` ; valider que `resetLink` appartient au domaine | La clé de signature des sessions sert de jeton d'API ; `resetLink` arbitraire = hameçonnage depuis un domaine vérifié | `app/api/email/send/route.ts:4`, `packages/core/src/aws/ses/route-handler.ts:21` |
-| **S3-10** | Valider les 6 routes API avec Zod, comme l'impose le `CLAUDE.md` | Zéro Zod aujourd'hui ; seule une regex manuelle dans `contact-service` | `app/api/**/route.ts` |
-| **S3-11** | Trancher l'incohérence de modèle : `storageUpload.ts:112` affirme que le bucket est public en lecture, `api/upload/route.ts:120` affirme l'inverse | L'une des deux hypothèses est fausse — donc l'une des deux protections est illusoire | — |
-| **S3-12** | Idempotence des webhooks : stocker `sequence_guid` / `event_id` pour rejeter les rejeux | Un payload signé capté est rejouable indéfiniment | `deliverooWebhookHandler.ts`, `uberEatsWebhook.ts` |
-| **S3-13** | Corriger l'attribution multi-locataire du webhook Uber Eats : en cas d'échec de `fetchOrder`, l'intégration retenue est `allIntegrations[0]` | La commande d'un restaurant atterrit chez un autre | `convex/uberEatsWebhook.ts:110-112` |
+| **S3-1** | Authenticate `api/files`, enforce a prefix allowlist, resolve the key through a record attached to the requester's establishment | **B-07** — unauthenticated S3 proxy over the whole bucket; the only protection is `key.includes("..")`, ineffective on S3 | `app/api/files/[...key]/route.ts:19-57` |
+| **S3-2** | Prefix upload keys with `storeId` | Every tenant writes into the same prefix | `app/api/upload/route.ts:104` |
+| **S3-3** | Really verify the SNS signature (certificate download, canonical string) and pin the `TopicArn` | **B-08** — only the *shape* of the caller-supplied URL is validated | `convex/emailHttpHandlers.ts:178-207` |
+| **S3-4** | Sanitise SVGs server-side in `api/upload`; replace the regex-based sanitiser with DOMPurify in SVG mode | Stored XSS on the shop's origin. `<svg/onload=…>` passes the current filter, which requires a space before `on` | `app/api/upload/route.ts:76-82`, `packages/cms/src/sanitize/svgSanitizer.ts:31-34` |
+| **S3-5** | Sanitise rich HTML **on write**, not only on display | The only barrier is a client-side `DOMPurify`, downstream | `packages/convex-functions/src/blog.ts:421-463`; reuse `sanitizeContent` from `blogAutoGenerate.ts:307-321` |
+| **S3-6** | Add a `Content-Security-Policy` | Absent; the other headers are correctly set | `next.config.ts:12-25` |
+| **S3-7** | Introduce rate limiting — **there is none anywhere in the application** — on `api/contact`, `contactMessages.create`, `gamePlay.play`, `recordScan`, `translateUIStrings`, `api/upload`, and sign-in attempts | Flood relay, OpenAI key drain, unlimited plays | cross-cutting |
+| **S3-8** | Scope and cap `getPresignedUploadUrl` (no `requireStoreAccess`, no size constraint on the presigned URL) | An object of arbitrary size written by any account | `convex/storageUpload.ts:68-117` |
+| **S3-9** | A dedicated secret for `api/email/send` instead of reusing `BETTER_AUTH_SECRET`; validate that `resetLink` belongs to the domain | The session signing key doubles as an API token; an arbitrary `resetLink` means phishing from a verified domain | `app/api/email/send/route.ts:4`, `packages/core/src/aws/ses/route-handler.ts:21` |
+| **S3-10** | Validate the 6 API routes with Zod, as `CLAUDE.md` requires | Zero Zod today; only a manual regex in `contact-service` | `app/api/**/route.ts` |
+| **S3-11** | Settle the model inconsistency: `storageUpload.ts:112` states the bucket is publicly readable, `api/upload/route.ts:120` states the opposite | One of the two assumptions is false — so one of the two protections is illusory | — |
+| **S3-12** | Webhook idempotency: store `sequence_guid` / `event_id` to reject replays | A captured signed payload is replayable indefinitely | `deliverooWebhookHandler.ts`, `uberEatsWebhook.ts` |
+| **S3-13** | Fix the Uber Eats webhook's multi-tenant attribution: when `fetchOrder` fails, the integration chosen is `allIntegrations[0]` | One restaurant's order lands in another's | `convex/uberEatsWebhook.ts:110-112` |
 
 ---
 
-## 7. Sprint 4 — Pannes silencieuses
+## 7. Sprint 4 — Silent failures
 
-**But** : plus aucune fonctionnalité n'affiche un succès qu'elle n'a pas produit.
-C'est la catégorie la plus dangereuse commercialement — le restaurateur découvre le
-problème par son client, jamais par un message d'erreur.
+**Goal**: no feature displays a success it did not produce. This is the most
+commercially dangerous category — the restaurateur finds out from their customer,
+never from an error message.
 
-| ID | Ticket | Symptôme | Où |
+| ID | Ticket | Symptom | Where |
 | --- | --- | --- | --- |
-| **S4-1** | Corriger les rôles fantômes `["owner", "admin", "super_admin"]` — ces deux-là n'existent pas au schéma | **B-09** — le propriétaire (`client_admin`) ne peut rien enregistrer dans les réglages | `convex/globalSettings.ts:42,63` vs `packages/convex-schema/src/tables/userProfiles.ts:10-18` |
-| **S4-2** | Réenregistrer `executeTranslation` et `batchChunk` en `internalAction` | `fetch` n'existe pas dans le runtime des mutations ; l'erreur est avalée et le job marqué `completed` | `convex/autoTranslate.ts:19,21` ; motif correct juste à côté dans `cmsAutoTranslate.ts:10` |
-| **S4-3** | Rendre `getForDisplay` accessible sans session (requête publique ou jeton d'écran opaque) | L'écran TV en salle n'a pas de session : il reste bloqué sur « Chargement ». La charge utile est déjà anonyme | `convex/kitchenTickets.ts:86-89` ; motif disponible : `getByTrackingToken` `:275-307` |
-| **S4-4** | Créer `convex/crons.ts` — **il n'en existe aucun** | Campagnes planifiées, autoBlog hebdomadaire/mensuel et `resetDailyQuota` ne se déclenchent jamais | nouveau fichier ; `emailCampaigns.ts:157-171`, `blogAutoConfig.ts:61` |
-| **S4-5** | Découper l'envoi de campagne en lots planifiés (aujourd'hui : boucle séquentielle avec pause de 100 ms dans une seule action) | 5 000 abonnés ≈ 8 min d'attente pure → dépassement, campagne bloquée en `sending`, aucune reprise, doublons au retry | `convex/emailCampaignActions.ts:122-183` |
-| **S4-6** | Envoyer réellement l'email de double opt-in | Le jeton et le statut `pending` sont créés, l'email n'est jamais construit ni envoyé ; l'inscrit reste `pending` à vie alors que l'UI dit « Vérifiez votre boîte mail ». **Obligation RGPD non tenue** | `packages/convex-functions/src/emailSubscribers.ts:140-161` ; le code sûr existe et est testé dans `packages/marketing/src/double-opt-in.ts` mais n'est appelé nulle part |
-| **S4-7** | Ajouter les en-têtes `List-Unsubscribe` et `List-Unsubscribe-Post` | Exigence Gmail/Yahoo depuis 2024 ; en GET simple, les scanners anti-spam désabonnent les destinataires en préchargeant le lien | `convex/emailCampaignActions.ts:135-159` |
-| **S4-8** | Asseoir le cooldown du jeu sur une identité serveur (IP ou cookie signé httpOnly) et non sur un UUID client | Le cooldown 24 h tombe avec `localStorage.clear()` → parties illimitées, stock de lots vidé en quelques secondes. Le champ `ipAddress` existe au schéma et n'est jamais écrit | `lib/game/fingerprint.ts:11-21`, `packages/convex-functions/src/gamePlay.ts:382,399-408` |
-| **S4-9** | Corriger le repli `"anonymous"` : tous les appareils en navigation privée partagent une seule ligne de cooldown | Le premier joueur bloque tous les suivants pendant 24 h | `lib/game/fingerprint.ts:24` |
-| **S4-10** | Exiger côté serveur que les actions requises soient couvertes avant `play` | `completedActions` est accepté tel quel : un appel direct saute tout l'écran d'actions | `packages/convex-functions/src/gamePlay.ts:364,432` |
-| **S4-11** | Codes de lot : passer à un tirage cryptographique et échouer explicitement sur collision (aujourd'hui `Math.random()` et insertion malgré la collision après 5 essais) | Un doublon masque définitivement un lot ; `findRedemptionByCode` utilise `.first()` | `packages/convex-functions/src/gamePlay.ts:27-33,537-541` |
-| **S4-12** | Impression cuisine : implémenter les trois fournisseurs cloud **ou** les retirer de la liste | `if (printConfig.provider !== "browser") return` — un restaurateur qui choisit Star/Epson/Sunmi voit ses tickets rester `pending` indéfiniment, sans erreur | `components/admin/kitchen/KitchenPrintTrigger.tsx:11,45` |
-| **S4-13** | Ne plus marquer un ticket imprimé sur `onafterprint` (qui se déclenche aussi à l'annulation) ; ajouter un verrou serveur contre la double impression | Faux positif d'impression ; deux écrans cuisine ouverts = double impression | `KitchenPrintTrigger.tsx:38,50,135` |
-| **S4-14** | Exposer une UI pour `stores.updatePrintConfig` | La mutation existe, aucune interface ne l'appelle : impossible d'activer l'impression | `convex/stores.ts:91` |
-| **S4-15** | Désactiver les boutons du KDS pendant la mutation | Double-clic sur « Accepter » = double acceptation côté partenaire | `components/admin/kitchen/TicketCard.tsx:83-139` |
-| **S4-16** | Borner `getByStore` et les requêtes du tableau de bord (`.collect()` non borné) | Tous les tickets depuis toujours chargés dans le navigateur de la cuisine ; le dashboard dépasse la limite de lecture Convex sur un restaurant actif | `packages/convex-functions/src/kitchenTickets.ts:21-30`, `orders.ts:21-30` |
-| **S4-17** | Ajouter des frontières d'erreur (`error.tsx`) — **il n'en existe aucune** | Une requête Convex qui lève remonte en écran d'erreur Next au lieu d'un 403 lisible | `apps/reference/app/` |
-| **S4-18** | Traiter le retour de Stripe Checkout côté abonnement : `replaceState(…, "/admin/subscription")` pointe vers une route inexistante | Après paiement, l'URL devient une 404 | `components/admin/subscription/SubscriptionPage.tsx:24` |
+| **S4-1** | Fix the phantom roles `["owner", "admin", "super_admin"]` — two of those do not exist in the schema | **B-09** — the owner (`client_admin`) cannot save anything in the settings | `convex/globalSettings.ts:42,63` vs `packages/convex-schema/src/tables/userProfiles.ts:10-18` |
+| **S4-2** | Re-register `executeTranslation` and `batchChunk` as `internalAction` | `fetch` does not exist in the mutation runtime; the error is swallowed and the job marked `completed` | `convex/autoTranslate.ts:19,21`; the correct pattern sits right next door in `cmsAutoTranslate.ts:10` |
+| **S4-3** | Make `getForDisplay` reachable without a session (public query or opaque screen token) | The in-room TV screen has no session: it stays stuck on "Chargement". The payload is already anonymous | `convex/kitchenTickets.ts:86-89`; pattern available: `getByTrackingToken` `:275-307` |
+| **S4-4** | Create `convex/crons.ts` — **there is none** | Scheduled campaigns, weekly/monthly autoBlog and `resetDailyQuota` never fire | new file; `emailCampaigns.ts:157-171`, `blogAutoConfig.ts:61` |
+| **S4-5** | Split campaign sending into scheduled batches (today: a sequential loop with a 100 ms pause inside a single action) | 5,000 subscribers ≈ 8 min of pure waiting → timeout, campaign stuck in `sending`, no resume, duplicates on retry | `convex/emailCampaignActions.ts:122-183` |
+| **S4-6** | Actually send the double opt-in email | The token and the `pending` status are created, the email is never built or sent; the subscriber stays `pending` forever while the UI says "Vérifiez votre boîte mail". **A GDPR obligation not met** | `packages/convex-functions/src/emailSubscribers.ts:140-161`; the safe code exists and is tested in `packages/marketing/src/double-opt-in.ts` but is called nowhere |
+| **S4-7** | Add the `List-Unsubscribe` and `List-Unsubscribe-Post` headers | A Gmail/Yahoo requirement since 2024; with a plain GET, anti-spam scanners unsubscribe recipients by prefetching the link | `convex/emailCampaignActions.ts:135-159` |
+| **S4-8** | Base the game cooldown on a server identity (IP or signed httpOnly cookie) rather than a client UUID | The 24 h cooldown falls to `localStorage.clear()` → unlimited plays, prize stock drained in seconds. The `ipAddress` field exists in the schema and is never written | `lib/game/fingerprint.ts:11-21`, `packages/convex-functions/src/gamePlay.ts:382,399-408` |
+| **S4-9** | Fix the `"anonymous"` fallback: every device in private browsing shares a single cooldown row | The first player blocks all the others for 24 h | `lib/game/fingerprint.ts:24` |
+| **S4-10** | Require server-side that the required actions are covered before `play` | `completedActions` is accepted as given: a direct call skips the whole actions screen | `packages/convex-functions/src/gamePlay.ts:364,432` |
+| **S4-11** | Prize codes: move to a cryptographic draw and fail explicitly on collision (today `Math.random()` and insertion despite the collision after 5 attempts) | A duplicate permanently hides a prize; `findRedemptionByCode` uses `.first()` | `packages/convex-functions/src/gamePlay.ts:27-33,537-541` |
+| **S4-12** | Kitchen printing: implement the three cloud providers **or** remove them from the list | `if (printConfig.provider !== "browser") return` — a restaurateur who picks Star/Epson/Sunmi sees their tickets stay `pending` indefinitely, with no error | `components/admin/kitchen/KitchenPrintTrigger.tsx:11,45` |
+| **S4-13** | Stop marking a ticket printed on `onafterprint` (which also fires on cancel); add a server lock against double printing | False print positive; two kitchen screens open = double printing | `KitchenPrintTrigger.tsx:38,50,135` |
+| **S4-14** | Expose a UI for `stores.updatePrintConfig` | The mutation exists, no interface calls it: printing cannot be enabled | `convex/stores.ts:91` |
+| **S4-15** | Disable the KDS buttons during the mutation | Double-clicking "Accepter" = double acceptance on the partner's side | `components/admin/kitchen/TicketCard.tsx:83-139` |
+| **S4-16** | Bound `getByStore` and the dashboard queries (unbounded `.collect()`) | Every ticket ever loaded into the kitchen's browser; the dashboard exceeds the Convex read limit on a busy restaurant | `packages/convex-functions/src/kitchenTickets.ts:21-30`, `orders.ts:21-30` |
+| **S4-17** | Add error boundaries (`error.tsx`) — **there are none** | A Convex query that throws surfaces as a Next error screen instead of a readable 403 | `apps/reference/app/` |
+| **S4-18** | Handle the Stripe Checkout return on the subscription side: `replaceState(…, "/admin/subscription")` points at a route that does not exist | After paying, the URL becomes a 404 | `components/admin/subscription/SubscriptionPage.tsx:24` |
 
 ---
 
-## 8. Sprint 5 — Vitrine et panier
+## 8. Sprint 5 — Storefront and cart
 
-| ID | Ticket | Symptôme | Où |
+| ID | Ticket | Symptom | Where |
 | --- | --- | --- | --- |
-| **S5-1** | Indexer `removeItem` / `updateQuantity` sur une ligne (`lineId`) et non sur `productId` | Deux tailles de la même pizza : modifier l'une modifie les deux, supprimer l'une supprime les deux | `packages/restaurant/src/stores/cart.ts:79-96` ; surfaces `cart/page.tsx:234,301,316,339`, `cart-sheet.tsx:238,305,319,343` |
-| **S5-2** | **Ajouter le test qui manque** : `cart.test.ts:49` crée bien deux lignes du même produit avec options différentes, mais n'en retire jamais une — exactement le cas qui casse | Le défaut S5-1 est passé sous un test existant | `packages/restaurant/src/__tests__/cart.test.ts` |
-| **S5-3** | Bloquer l'ajout au panier sans options obligatoires depuis les favoris | Un plat avec option obligatoire part en cuisine sans taille | `components/storefront/favorites-grid.tsx:62-74` |
-| **S5-4** | Supprimer le `productId` de repli fabriqué par `MealCard` | `"__fallback_…"` est rejeté par `v.id("products")` au checkout → **toute la commande échoue**, panier bloqué jusqu'à vidage | `components/website/meal-card.tsx:49`, `HomepageContent.tsx:44-47` |
-| **S5-5** | Cloisonner la page produit par établissement | Un lien partagé ajoute au panier un produit d'un autre restaurant ; la commande échoue au checkout | `app/(storefront)/product/[productId]/page.tsx:42-44`, `client.tsx:41` |
-| **S5-6** | Unifier les favoris sur Convex (deux systèmes déconnectés : localStorage sur l'accueil, Convex dans le compte) ; corriger le sélecteur zustand qui ne re-rend jamais | Un favori posé sur l'accueil n'apparaît jamais dans « Mes favoris » | `lib/stores/favorites-store.ts`, `lib/hooks/use-favorites.ts:15`, `components/website/favorite-button.tsx:26` |
-| **S5-7** | Rattacher les adresses enregistrées à l'utilisateur | Persistance localStorage globale : sur un poste partagé, B voit et sélectionne l'adresse personnelle de A | `lib/stores/addresses-store.ts:41-99` |
-| **S5-8** | Durcir la validation du checkout : téléphone et email requis en livraison, échec d'adresse explicite (aujourd'hui `return` sec, le bouton ne fait rien) | Livreur sans moyen de joindre le client ; commande envoyée en livraison sans adresse | `components/storefront/checkout-form.tsx:34-38,175-188` |
-| **S5-9** | Avertir avant de vider le panier au changement d'établissement | Panier perdu sans confirmation ni message | `packages/restaurant/src/stores/cart.ts:106-114` |
-| **S5-10** | **Décision produit** — Blog : brancher `listPublishedArticles` et créer `/blog/[slug]`, **ou** retirer la section | 6 articles codés en dur, aucune route d'article (tous les liens en 404), tout le pipeline éditorial (TipTap, publication, autoBlog, traduction) ne débouche sur rien | `app/(storefront)/blog/_components/BlogContent.tsx:18-73` |
-| **S5-11** | **Décision produit** — i18n vitrine : brancher `createTranslator`, **ou** retirer le sélecteur de langue | Le traducteur et 3 locales existent ; aucune page de la vitrine ne les appelle. Le sélecteur recharge la page et tout reste en français | `lib/i18n/index.ts`, `components/storefront/language-selector-dropdown.tsx` |
-| **S5-12** | Retirer la newsletter décorative du pied de page (affiche « Vous êtes inscrit » sans appel réseau) ou la brancher | Promesse fausse à l'utilisateur | `storefront-footer.tsx:29-34` |
-| **S5-13** | Corriger le décalage sous l'en-tête fixe sur les pages qui ne compensent pas | Titres masqués sur `/product/[productId]` et `/store-selector` | `storefront-shell.tsx:32` — traiter au niveau du `<main>` plutôt que page par page |
+| **S5-1** | Index `removeItem` / `updateQuantity` on a line (`lineId`) rather than on `productId` | Two sizes of the same pizza: editing one edits both, removing one removes both | `packages/restaurant/src/stores/cart.ts:79-96`; surfaces `cart/page.tsx:234,301,316,339`, `cart-sheet.tsx:238,305,319,343` |
+| **S5-2** | **Add the missing test**: `cart.test.ts:49` does create two lines of the same product with different options, but never removes one — exactly the case that breaks | Defect S5-1 slipped under an existing test | `packages/restaurant/src/__tests__/cart.test.ts` |
+| **S5-3** | Block adding to the cart without mandatory options from the favourites | A dish with a mandatory option goes to the kitchen with no size | `components/storefront/favorites-grid.tsx:62-74` |
+| **S5-4** | Remove the fallback `productId` fabricated by `MealCard` | `"__fallback_…"` is rejected by `v.id("products")` at checkout → **the whole order fails**, cart stuck until emptied | `components/website/meal-card.tsx:49`, `HomepageContent.tsx:44-47` |
+| **S5-5** | Scope the product page by establishment | A shared link adds a product from another restaurant to the cart; the order fails at checkout | `app/(storefront)/product/[productId]/page.tsx:42-44`, `client.tsx:41` |
+| **S5-6** | Unify favourites on Convex (two disconnected systems: localStorage on the homepage, Convex in the account); fix the zustand selector that never re-renders | A favourite set on the homepage never appears in "Mes favoris" | `lib/stores/favorites-store.ts`, `lib/hooks/use-favorites.ts:15`, `components/website/favorite-button.tsx:26` |
+| **S5-7** | Attach saved addresses to the user | Global localStorage persistence: on a shared machine, B sees and selects A's home address | `lib/stores/addresses-store.ts:41-99` |
+| **S5-8** | Harden checkout validation: phone and email required for delivery, explicit address failure (today a bare `return`, the button does nothing) | Courier with no way to reach the customer; delivery order sent with no address | `components/storefront/checkout-form.tsx:34-38,175-188` |
+| **S5-9** | Warn before emptying the cart on an establishment change | Cart lost with no confirmation and no message | `packages/restaurant/src/stores/cart.ts:106-114` |
+| **S5-10** | **Product decision** — Blog: wire `listPublishedArticles` and create `/blog/[slug]`, **or** remove the section | 6 hard-coded articles, no article route (every link 404s), the whole editorial pipeline (TipTap, publishing, autoBlog, translation) leading nowhere | `app/(storefront)/blog/_components/BlogContent.tsx:18-73` |
+| **S5-11** | **Product decision** — storefront i18n: wire `createTranslator`, **or** remove the language picker | The translator and 3 locales exist; no storefront page calls them. The picker reloads the page and everything stays in French | `lib/i18n/index.ts`, `components/storefront/language-selector-dropdown.tsx` |
+| **S5-12** | Remove the decorative newsletter from the footer (it shows "Vous êtes inscrit" with no network call) or wire it | A false promise to the user | `storefront-footer.tsx:29-34` |
+| **S5-13** | Fix the offset under the fixed header on pages that do not compensate | Headings hidden on `/product/[productId]` and `/store-selector` | `storefront-shell.tsx:32` — handle at the `<main>` level rather than page by page |
 
-> **S5-10 et S5-11 sont des décisions produit, pas techniques.** L'état actuel — une
-> fonctionnalité visible qui ne fait rien — est la pire des trois options. Retirer est
-> légitime et rapide ; brancher est légitime et coûte plus cher. Ne rien décider ne
-> l'est pas.
+> **S5-10 and S5-11 are product decisions, not technical ones.** The current state —
+> a visible feature that does nothing — is the worst of the three options. Removing
+> is legitimate and quick; wiring is legitimate and costs more. Deciding nothing is
+> not.
 
 ---
 
-## 9. Sprint 6 — Architecture et propreté
+## 9. Sprint 6 — Architecture and cleanliness
 
-Non bloquant pour la mise en production, à traiter immédiatement après.
+Not blocking for production, to be handled immediately after.
 
-| ID | Ticket | Ampleur | Note |
+| ID | Ticket | Size | Note |
 | --- | --- | --- | --- |
-| **S6-1** | Supprimer `lib/i18n.ts` — **en premier** | 91 lignes | Masque le dossier `lib/i18n/` (la résolution préfère le fichier), ce qui a déjà forcé un import de contournement en `@/lib/i18n/index`. Piège qui explosera au prochain import naïf |
-| **S6-2** | Supprimer le code mort prouvé (zéro import, barrels inclus dans la recherche) | ~2 000 lignes | `components/admin/categories/` (451), `components/ui/` breadcrumb+chart+input-group+popover+scroll-area (783), `components/examples/` (185), `lib/json-ld.tsx` (137), `lib/seo.ts` (90), `lib/stores/marketing-store.ts` (89), `LanguageSwitcher.tsx` (61), `lib/store-url.ts` + `resolve-default-store.ts` (85), `app/api/translate/route.ts` (6) |
-| **S6-3** | Faire de `packages/ui` la source unique des composants | 21 divergents, 0 identique | Deux design systems qui dérivent, dans l'app censée valider le design system. L'app consomme les deux : 109 imports locaux, 77 depuis le package |
-| **S6-4** | Supprimer le fork de `useAdminStoreId` | 36 usages | **Deux sources de vérité pour l'établissement courant**, synchronisées seulement par un effet de bord dans `store-guard.tsx:48`. Une désynchronisation donne un filtrage multi-locataire faux dans la moitié de l'admin |
-| **S6-5** | Supprimer `lib/admin/formatters.ts` (copie littérale, seuls les commentaires diffèrent) et `lib/admin/types.ts` (318 lignes redéclarant des types dérivés de Zod dans `packages/convex-schema`) | 400+ lignes | Le package les exporte déjà |
-| **S6-6** | Remonter la logique métier dans les packages | ~3 700 lignes | `imageToProduct.ts` (774, aucun jumeau), `blogAutoGenerate.ts` (622, jumeau existant non importé), webhooks et actions Deliveroo/Uber Eats/Uber Direct (~1 900, alors que `packages/integrations` existe avec ses tests). 56 % de `convex/` ne délègue rien |
-| **S6-7** | Migrer les 19 `goTo()` codés en dur du tour d'onboarding vers `adminRoutes`, puis remplacer les 37 stubs de redirection par `redirects()` dans `next.config.ts` | 190 lignes → une entrée de config | Les stubs ne survivent que pour rattraper ces 19 chemins ; ils violent la règle écrite dans `admin-routes.ts` lui-même |
-| **S6-8** | Créer `dashboard/games/settings` (elle existe dans `apps/themes`) ou supprimer `adminRoutes.gamesSettings` + le stub + la ligne du spec ; durcir l'assertion `status < 500` qui laisse passer un 404 | — | `e2e/admin/coming-soon.spec.ts:11,28` |
-| **S6-9** | Conditionner `address-test` hors production | 1 ligne | Fixture buildée en prod, hors `AuthGuard`, instanciant Google Maps avec la clé publique. Utilisée par une spec : conditionner, pas supprimer |
-| **S6-10** | Compléter ou supprimer les 6 barrels morts | — | `components/ui/index.ts` n'exporte que `button` sur 36 composants ; la règle « barrel files » du `CLAUDE.md` n'est respectée qu'en façade |
-| **S6-11** | Réduire le typage flou : 78 `: any`, 23 `as any`, 79 `eslint-disable no-explicit-any` | — | Prioriser `systemInternal.ts:84-111` (insertion sur table nommée dynamiquement, dans une fonction qui vide la table avant d'écrire). Laisser le cast de `storeFunctions.ts`, justifié et confiné. À noter : **zéro `@ts-ignore`** — la discipline de base est là |
-| **S6-12** | Arbitrer la documentation | — | Supprimer `DASHBOARD_IMPLEMENTATION.md` (décrit un dossier disparu et une lecture par cookies qui se fait en Zustand) et `SETUP_SUMMARY.md` (promeut un composant mort et un package supprimé). **Trancher** la contradiction entre `MISE_EN_PROD.md` et `README.md:6,125` : banc d'essai, ou application déployable ? |
-| **S6-13** | Aligner le `CLAUDE.md` sur la réalité | — | Il annonce « Vitest 80 %+ coverage » et un dossier `apps/reference/__tests__/` qui n'existe pas |
-| **S6-14** | Fusionner `hooks/` et `lib/hooks/`, les deux vivants | — | Convention incohérente |
-| **S6-15** | Découpler le démarrage des clés d'infrastructure | — | L'app refuse de démarrer sans `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` et `OPENAI_API_KEY`, y compris pour rendre la page d'accueil publique. Exiger ces clés à l'usage, pas au démarrage |
+| **S6-1** | Delete `lib/i18n.ts` — **first** | 91 lines | It shadows the `lib/i18n/` directory (resolution prefers the file), which has already forced a workaround import as `@/lib/i18n/index`. A trap that will go off at the next naive import |
+| **S6-2** | Delete the proven dead code (zero imports, barrels included in the search) | ~2,000 lines | `components/admin/categories/` (451), `components/ui/` breadcrumb+chart+input-group+popover+scroll-area (783), `components/examples/` (185), `lib/json-ld.tsx` (137), `lib/seo.ts` (90), `lib/stores/marketing-store.ts` (89), `LanguageSwitcher.tsx` (61), `lib/store-url.ts` + `resolve-default-store.ts` (85), `app/api/translate/route.ts` (6) |
+| **S6-3** | Make `packages/ui` the single source of components | 21 divergent, 0 identical | Two design systems drifting apart, inside the app that is supposed to validate the design system. The app consumes both: 109 local imports, 77 from the package |
+| **S6-4** | Remove the `useAdminStoreId` fork | 36 uses | **Two sources of truth for the current establishment**, synchronised only by a side effect in `store-guard.tsx:48`. A desynchronisation gives wrong multi-tenant filtering in half the admin |
+| **S6-5** | Delete `lib/admin/formatters.ts` (a literal copy, only the comments differ) and `lib/admin/types.ts` (318 lines redeclaring types derived from Zod in `packages/convex-schema`) | 400+ lines | The package already exports them |
+| **S6-6** | Move the business logic back into the packages | ~3,700 lines | `imageToProduct.ts` (774, no twin), `blogAutoGenerate.ts` (622, a twin exists but is not imported), Deliveroo/Uber Eats/Uber Direct webhooks and actions (~1,900, while `packages/integrations` exists with its tests). 56% of `convex/` delegates nothing |
+| **S6-7** | Migrate the 19 hard-coded `goTo()` calls in the onboarding tour to `adminRoutes`, then replace the 37 redirect stubs with `redirects()` in `next.config.ts` | 190 lines → one config entry | The stubs only survive to catch those 19 paths; they violate the rule written in `admin-routes.ts` itself |
+| **S6-8** | Create `dashboard/games/settings` (it exists in `apps/themes`) or delete `adminRoutes.gamesSettings` + the stub + the spec line; harden the `status < 500` assertion that lets a 404 through | — | `e2e/admin/coming-soon.spec.ts:11,28` |
+| **S6-9** | Gate `address-test` out of production | 1 line | A fixture built into production, outside `AuthGuard`, instantiating Google Maps with the public key. Used by a spec: gate it, do not delete it |
+| **S6-10** | Complete or delete the 6 dead barrels | — | `components/ui/index.ts` exports only `button` out of 36 components; the `CLAUDE.md` "barrel files" rule is respected in appearance only |
+| **S6-11** | Reduce loose typing: 78 `: any`, 23 `as any`, 79 `eslint-disable no-explicit-any` | — | Prioritise `systemInternal.ts:84-111` (insertion into a dynamically named table, in a function that empties the table before writing). Leave the `storeFunctions.ts` cast, justified and confined. Worth noting: **zero `@ts-ignore`** — the basic discipline is there |
+| **S6-12** | Arbitrate the documentation | — | Delete `DASHBOARD_IMPLEMENTATION.md` (it describes a directory that is gone and a cookie-based read that is done in Zustand) and `SETUP_SUMMARY.md` (it promotes a dead component and a deleted package). **Settle** the contradiction between `MISE_EN_PROD.md` and `README.md:6,125`: test bench, or deployable application? |
+| **S6-13** | Align `CLAUDE.md` with reality | — | It announces "Vitest 80%+ coverage" and an `apps/reference/__tests__/` directory that does not exist |
+| **S6-14** | Merge `hooks/` and `lib/hooks/`, both alive | — | Inconsistent convention |
+| **S6-15** | Decouple startup from infrastructure keys | — | The app refuses to boot without `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `OPENAI_API_KEY`, even to render the public homepage. Require those keys at use, not at boot |
 
 ---
 
-## 10. Garde-fous permanents
+## 10. Permanent guardrails
 
-Ce qui distingue ce plan d'une session de rattrapage. Chacun est un ticket réel,
-rattaché au sprint indiqué.
+What makes this a plan rather than a catch-up session. Each is a real ticket,
+attached to the sprint shown.
 
-| Garde-fou | Empêche | Sprint |
+| Guardrail | Prevents | Sprint |
 | --- | --- | --- |
-| La CI échoue si la suite e2e est sautée ou si `expected === 0` | Le retour du vert silencieux | S0-2 |
-| Filtre console restreint aux bruits réellement inoffensifs | Qu'une 500 ou un `Access denied` passe inaperçu | S0-5 |
-| Seuils de couverture sur `pnpm test` | L'érosion silencieuse des tests | S0-7 |
-| Règle ESLint : pas de `query(defs.` / `authedMutation` nus dans `apps/*/convex/` sans annotation justifiée | La réapparition de fonctions non gardées | S2-11 |
-| Test de registre : toute mutation `store*` déclare une `permission:` | Le retour du RBAC absent | S2-4 |
-| Suite `convex-test` : un test négatif par fonction gardée | Les régressions de cloisonnement | S2-10 |
-| Test qui résout toutes les cibles de `redirect()` et de `href` internes | Le retour des routes fantômes (les 4 routes de paiement en 404) | S1-7 |
-| Interdiction d'un second design system : lint sur les imports `@/components/ui/*` une fois S6-3 fait | La redivergence des composants | S6-3 |
+| CI fails if the e2e suite is skipped or if `expected === 0` | The return of the silent green | S0-2 |
+| Console filter restricted to genuinely harmless noise | A 500 or an `Access denied` going unnoticed | S0-5 |
+| Coverage thresholds on `pnpm test` | Silent test erosion | S0-7 |
+| ESLint rule: no bare `query(defs.` / `authedMutation` in `apps/*/convex/` without a justified annotation | Unguarded functions reappearing | S2-11 |
+| Registry test: every `store*` mutation declares a `permission:` | The return of absent RBAC | S2-4 |
+| `convex-test` suite: one negative test per guarded function | Isolation regressions | S2-10 |
+| A test resolving every `redirect()` target and internal `href` | The return of phantom routes (the 4 payment routes 404ing) | S1-7 |
+| Ban on a second design system: lint on `@/components/ui/*` imports once S6-3 is done | Components diverging again | S6-3 |
 
 ---
 
-## 11. Définition de « fini »
+## 11. Definition of "done"
 
-Un ticket n'est fini que si les cinq points sont vrais :
+A ticket is only done if all five points are true:
 
-1. Le correctif est écrit **dans le package** quand la logique y appartient, câblé dans l'app.
-2. Un test **échoue sans le correctif** et passe avec. Pour les tickets de sécurité,
-   c'est un test **négatif** (l'accès est refusé), pas seulement un test positif.
-3. `pnpm lint && pnpm type-check && pnpm test && pnpm test:e2e` passent — avec la
-   suite e2e **réellement exécutée**, pas sautée.
-4. Aucun nouveau `any`, aucun nouveau `eslint-disable`, aucune nouvelle route sans garde.
-5. Si le ticket retire une promesse de l'interface, l'interface est mise à jour dans
-   le même commit — pas de fonctionnalité visible qui ne fait rien.
+1. The fix is written **in the package** when the logic belongs there, wired in
+   the app.
+2. A test **fails without the fix** and passes with it. For security tickets, that
+   means a **negative** test (access is refused), not merely a positive one.
+3. `pnpm lint && pnpm type-check && pnpm test && pnpm test:e2e` pass — with the
+   e2e suite **actually executed**, not skipped.
+4. No new `any`, no new `eslint-disable`, no new unguarded route.
+5. If the ticket removes a promise from the interface, the interface is updated in
+   the same commit — no visible feature that does nothing.
 
-**Porte de mise en production** : S0 à S5 clos, plus une repasse de l'audit sur les
-9 défauts bloquants, plus la preuve de morsure (S0-8) rejouée sur la branche finale.
+**Production gate**: S0 to S5 closed, plus a re-pass of the audit over the 9
+blocking defects, plus the bite proof (S0-8) replayed on the final branch.
 
 ---
 
-## 12. Registre de risques
+## 12. Risk register
 
-| Risque | Probabilité | Impact | Parade |
+| Risk | Likelihood | Impact | Countermeasure |
 | --- | --- | --- | --- |
-| S2 déborde : 112 sites à migrer, dépendances croisées | Élevée | Décale toute l'itération 2 | Migrer fichier par fichier avec son test négatif ; livrer par lots mergeables plutôt qu'en une PR géante |
-| Réparer les specs (S0-3, S0-4) révèle des défauts encore inconnus | **Élevée** | Le périmètre grandit en cours de route | C'est attendu, pas subi : prévoir 20 % de marge sur l'itération 1. Une suite qui n'a jamais tourné cache forcément des choses |
-| Le déploiement Convex de test coûte ou tarde | Moyenne | Bloque tout le plan | Le lancer **avant** le début du sprint — c'est le seul prérequis d'infrastructure |
-| Les correctifs de S1 changent le contrat de `orders.create` | Moyenne | Casse `apps/themes` | Vérifier `apps/themes` à chaque changement de signature ; il consomme les mêmes packages |
-| Retirer blog/i18n (S5-10, S5-11) est perçu comme une régression | Moyenne | Débat en fin de sprint | Trancher **avant** l'itération 3, pas pendant |
-| S6-3 (design system unique) casse des écrans en silence | Moyenne | Régressions visuelles | Le faire après S0 : la suite e2e réparée devient le filet |
+| S2 overruns: 112 sites to migrate, cross-dependencies | High | Delays the whole of iteration 2 | Migrate file by file with its negative test; ship in mergeable batches rather than one giant PR |
+| Repairing the specs (S0-3, S0-4) reveals still-unknown defects | **High** | Scope grows mid-flight | This is expected, not suffered: budget 20% slack on iteration 1. A suite that has never run necessarily hides things |
+| The test Convex deployment costs money or is delayed | Medium | Blocks the whole plan | Start it **before** the sprint begins — it is the only infrastructure prerequisite |
+| The S1 fixes change the `orders.create` contract | Medium | Breaks `apps/themes` | Check `apps/themes` on every signature change; it consumes the same packages |
+| Removing blog/i18n (S5-10, S5-11) is read as a regression | Medium | An argument at the end of the sprint | Settle it **before** iteration 3, not during |
+| S6-3 (single design system) breaks screens silently | Medium | Visual regressions | Do it after S0: the repaired e2e suite becomes the net |
 
 ---
 
-## 13. Hors périmètre
+## 13. Out of scope
 
-À nommer explicitement pour éviter le glissement :
+Named explicitly to avoid drift:
 
-- Toute évolution fonctionnelle nouvelle.
-- La refonte du modèle de données ou du schéma Convex.
-- `apps/site` et `apps/themes`, sauf le point S2-1 (héritage du seam d'autorisation)
-  et les vérifications de non-régression.
-- Les performances, hors les deux `.collect()` non bornés de S4-16 qui sont des
-  pannes en devenir, pas des optimisations.
-- L'accessibilité : les specs `auth-a11y` / `admin-a11y` sont référencées dans
-  `playwright.config.ts:64,80` mais **n'existent pas sur disque**. À traiter dans un
-  lot dédié, après celui-ci.
-
+- Any new functional work.
+- Reworking the data model or the Convex schema.
+- `apps/site` and `apps/themes`, except point S2-1 (inheriting the authorization
+  seam) and non-regression checks.
+- Performance, apart from the two unbounded `.collect()` calls in S4-16, which are
+  failures in the making rather than optimisations.
+- Accessibility: the `auth-a11y` / `admin-a11y` specs are referenced in
+  `playwright.config.ts:64,80` but **do not exist on disk**. To be handled in a
+  dedicated batch, after this one.
 ---
 
-## Revue de contrôle du 21 août — trois escalades refermées
+## Control review of 21 August — three escalations closed
 
-Trois relecteurs indépendants ont passé le diff complet (130 fichiers) au
-crible. Ils ont trouvé des défauts **dans les correctifs eux-mêmes**. Les trois
-escalades de privilèges sont refermées ci-dessous ; le reste est listé en
-section « Reste à traiter ».
+Three independent reviewers went through the full diff (130 files). They found
+defects **in the fixes themselves**. The three privilege escalations are closed
+below; the rest is listed under "Still to handle".
 
-### E1 — Plafond global de promotion contournable
+### E1 — Global promotion cap bypassable
 
-`usageCount` n'était incrémenté que si un email était fourni. Une promotion
-`maxTotalUsage: 1` restait donc utilisable indéfiniment par des commandes
-anonymes : la remise s'appliquait, le compteur ne bougeait jamais. Le plafond
-*par client* avait été fermé, le plafond *global* non.
+`usageCount` was only incremented when an email was supplied. A promotion with
+`maxTotalUsage: 1` therefore stayed usable indefinitely through anonymous orders:
+the discount applied, the counter never moved. The *per-customer* cap had been
+closed, the *global* one had not.
 
-Le compteur avance maintenant dès qu'une promotion est appliquée ; seul le
-registre `promotionUsages`, qui est indexé par email, reste conditionné. Les
-emails sont normalisés en minuscules **des deux côtés** — sans quoi `A@b.com` et
-`a@b.com` étaient deux clients distincts.
+The counter now advances as soon as a promotion is applied; only the
+`promotionUsages` registry, which is indexed by email, stays conditional. Emails
+are lowercased **on both sides** — without which `A@b.com` and `a@b.com` were two
+different customers.
 
-### E2 — Un propriétaire pouvait éjecter le super-administrateur
+### E2 — An owner could lock out the super-administrator
 
-`assertCanAssignProfile` ne raisonnait que sur le rôle **demandé**. Or `upsert`
-écrase. Un `client_admin` écrivait donc
-`{ userId: <le super-admin>, role: "customer", storeIds: [] }` : rôle non
-administratif, aucun établissement étranger, toutes les vérifications
-passaient — et le déploiement se retrouvait sans administrateur.
+`assertCanAssignProfile` reasoned only about the **requested** role. But `upsert`
+overwrites. A `client_admin` could therefore write
+`{ userId: <the super-admin>, role: "customer", storeIds: [] }`: a
+non-administrative role, no foreign establishment, every check passing — and the
+deployment left with no administrator.
 
-La politique reçoit désormais le **profil existant** de la cible et refuse deux
-choses de plus : toucher à quelqu'un qui détient déjà un rôle d'administration,
-et réassigner un membre rattaché à un établissement qu'on n'administre pas
-(sinon on débauche le personnel d'un confrère).
+The policy now receives the target's **existing profile** and refuses two more
+things: touching someone who already holds an administrative role, and
+reassigning a member attached to an establishment you do not administer
+(otherwise you poach a competitor's staff).
 
-### E3 — Accepter une invitation écrasait le profil
+### E3 — Accepting an invitation overwrote the profile
 
-Trois conséquences réelles : inviter le super-administrateur en `kitchen` le
-rétrogradait dès qu'il cliquait ; un gérant invité dans un second restaurant
-perdait le premier ; et une adhésion « tous établissements » produisait une liste
-vide, donc le membre ne recevait **rien** tout en perdant ce qu'il avait — le bug
-de l'écran décoratif, recréé.
+Three real consequences: inviting the super-administrator as `kitchen` demoted
+them the moment they clicked; a manager invited to a second restaurant lost the
+first; and an "all establishments" membership produced an empty list, so the
+member received **nothing** while losing what they had — the decorative-screen
+bug, recreated.
 
-`invitationGrant` fusionne maintenant au lieu de remplacer : jamais de
-rétrogradation, jamais de perte d'établissement. Une invitation **ajoute** un
-lieu de travail, elle ne redéfinit pas la personne.
+`invitationGrant` now merges instead of replacing: never a demotion, never a lost
+establishment. An invitation **adds** a place of work, it does not redefine the
+person.
 
-### E3bis — La révocation, moitié manquante du pont
+### E3bis — Revocation, the bridge's missing half
 
-J'avais construit l'octroi sans la reprise. Retirer un membre supprimait la ligne
-`teamMembers` et laissait `userProfiles` intact : un employé licencié disparaissait
-de l'écran d'équipe en gardant `manager` sur le restaurant. `revocationEffect`
-retire l'établissement concerné et rend le rôle `customer` quand il n'en reste
-aucun — sans jamais rétrograder un administrateur, dont l'autorité ne vient pas
-du registre.
+I had built the grant without the take-back. Removing a member deleted the
+`teamMembers` row and left `userProfiles` intact: a dismissed employee vanished
+from the team screen while keeping `manager` on the restaurant.
+`revocationEffect` removes the establishment concerned and returns the role to
+`customer` when none is left — without ever demoting an administrator, whose
+authority does not come from the registry.
 
-### Aussi corrigé
+### Also fixed
 
-`globalSettings.get` ne retirait que 2 des 4 credentials Uber Direct :
-`customerId` et `apiKey` étaient servis à tout visiteur anonyme, alors que mon
-annotation `@public-by-design` affirmait le contraire. C'est exactement le
-blanchiment que la double annotation devait empêcher.
+`globalSettings.get` stripped only 2 of the 4 Uber Direct credentials:
+`customerId` and `apiKey` were served to any anonymous visitor, while my
+`@public-by-design` annotation claimed the opposite. That is exactly the
+whitewashing the double annotation was meant to prevent.
 
-**Preuves de morsure** : garde E2 neutralisée → 3 tests au rouge ; fusion E3
-désactivée → 3 tests au rouge. Restauration vérifiée à **448/448**.
+**Bite proofs**: E2 guard neutralised → 3 tests red; E3 merge disabled → 3 tests
+red. Restoration verified at **448/448**.
 
-### Reste à traiter (relecture du 21 août)
+### Still to handle (21 August review)
 
-| Sujet | Origine |
+| Subject | Origin |
 | --- | --- |
-| La règle ESLint ignore `action(…)` — ~56 actions publiques non couvertes, dont `kitchenTickets.acceptTicket/completeTicket/cancelTicket` pilotables par tout compte | mien |
-| `orders.updateStatus` sous `orders:write` : le rôle `delivery` ne peut plus faire avancer une commande | mien |
-| `payments.create` / `updateStatus` sous `payments:refund` — mauvais verbe | mien |
-| `MANAGER` privé de `marketing:*` alors que l'UI équipe le lui promet | arbitrage à trancher |
-| `client_admin` bloqué sur `orders.remove` et `contactMessages.updateStatus` | mien |
-| Page de succès : la branche sans référence prestataire déclare le paiement reçu et vide le panier sans rien vérifier (retour 3-D Secure SumUp) | mien |
-| `/track/[token]` inatteignable : le bouton pointe vers `/order/…`, qui plante pour un invité | mien |
-| Rechargement de la page de succès PayPal → `ORDER_ALREADY_CAPTURED` → écran d'échec sur une commande payée | mien |
-| Mode `percentage` : adresse enregistrée sans coordonnées = impasse silencieuse | mien |
-| Devis de livraison non lié à l'adresse commandée ni à usage unique | mien |
-| Remboursement : pas de verrou avant l'appel prestataire, `externalRefundId` scalaire écrasé par un second remboursement partiel | mien |
-| `claimFirstAdmin` : course ouverte sur un déploiement neuf | mien |
-| Sync menu Deliveroo/Uber Eats morte (`getByStorePlatform` store-scopée appelée par un planificateur) | **préexistant** |
-| `duplicateCatalog` garde la source au lieu de la cible | **préexistant** |
-| `uberEatsActions` (10 actions) et `getDeliveryQuote` sans garde | **préexistant** |
+| The ESLint rule ignores `action(…)` — ~56 public actions uncovered, including `kitchenTickets.acceptTicket/completeTicket/cancelTicket`, drivable from any account | mine |
+| `orders.updateStatus` under `orders:write`: the `delivery` role can no longer advance an order | mine |
+| `payments.create` / `updateStatus` under `payments:refund` — wrong verb | mine |
+| `MANAGER` denied `marketing:*` while the team UI promises it to them | a call to make |
+| `client_admin` blocked on `orders.remove` and `contactMessages.updateStatus` | mine |
+| Success page: the branch with no provider reference declares the payment received and empties the cart without checking anything (SumUp 3-D Secure return) | mine |
+| `/track/[token]` unreachable: the button points at `/order/…`, which breaks for a guest | mine |
+| Reloading the PayPal success page → `ORDER_ALREADY_CAPTURED` → a failure screen on a paid order | mine |
+| `percentage` mode: a saved address with no coordinates is a silent dead end | mine |
+| Delivery quote not tied to the ordered address nor single-use | mine |
+| Refund: no lock before the provider call, scalar `externalRefundId` overwritten by a second partial refund | mine |
+| `claimFirstAdmin`: an open race on a fresh deployment | mine |
+| Deliveroo/Uber Eats menu sync dead (store-scoped `getByStorePlatform` called by a scheduler) | **pre-existing** |
+| `duplicateCatalog` keeps the source instead of the target | **pre-existing** |
+| `uberEatsActions` (10 actions) and `getDeliveryQuote` unguarded | **pre-existing** |
 
 ---
+## `apps/themes` pass — step 1: the seam and the rule (21 August)
 
-## Passe `apps/themes` — étape 1 : le seam et la garde (21 août)
+The seam was **already** in place: `apps/themes/convex/lib/storeFunctions.ts` is
+identical to the reference one and instantiates the same package factory. Nothing
+to port on that side.
 
-Le seam était **déjà** en place : `apps/themes/convex/lib/storeFunctions.ts` est
-identique à celui de reference et instancie la même fabrique du paquet. Rien à
-porter de ce côté.
+The ESLint rule, on the other hand, existed only in `apps/reference`. It now
+lives in `packages/convex-functions/eslint/convex-auth.mjs`, next to the seam it
+protects, and both applications import it. A rule that existed only in the test
+bench would have let the client template — the one cloned to the restaurateur —
+drift back into exactly the habit it exists to stop.
 
-La règle ESLint, elle, n'existait que dans `apps/reference`. Elle vit maintenant
-dans `packages/convex-functions/eslint/convex-auth.mjs`, à côté du seam qu'elle
-protège, et les deux applications l'importent. Une règle qui n'aurait existé que
-dans le banc d'essai aurait laissé le gabarit client — celui qu'on clone chez le
-restaurateur — redériver vers exactement l'habitude qu'elle existe pour arrêter.
-
-**Ce que la règle a trouvé en arrivant dans `apps/themes` :**
+**What the rule found on arriving in `apps/themes`:**
 
 | | reference | themes |
 | --- | --- | --- |
 | `no-unguarded-convex-function` | 0 | **230** |
 | `require-convex-permission` | 0 | **29** |
-| | | **259 erreurs sur 38 fichiers** |
+| | | **259 errors across 38 files** |
 
-Reference reste à 0 erreur / 70 avertissements après le déplacement.
+Reference stays at 0 errors / 70 warnings after the move.
 
-### Ce que la mesure a révélé sur la dérive themes ↔ reference
+### What the measurement revealed about the themes ↔ reference drift
 
-`apps/themes/convex` ne porte **aucun** marqueur `PATCH BOILERPLATE` : c'est un
-miroir pur de `apps/reference/convex`, pas une variante. Sur 92 fichiers :
+`apps/themes/convex` carries **no** `PATCH BOILERPLATE` marker: it is a pure
+mirror of `apps/reference/convex`, not a variant. Of 92 files:
 
-- **47 identiques**
-- **45 divergents** — la divergence est le durcissement des sprints 1 et 2
-- **6 absents de themes** : `prizeRedemptions.ts`, `gamePlay.ts`,
+- **47 identical**
+- **45 divergent** — the divergence is the hardening from sprints 1 and 2
+- **6 absent from themes**: `prizeRedemptions.ts`, `gamePlay.ts`,
   `requiredActions.ts`, `gameEmail.ts`, `maintenance.ts`, `maintenanceEmail.ts`
 
-Ces six-là expliquent le plantage signalé en relecture : `GamesPage` appelle
-`api.prizeRedemptions.*`, module absent. **Tout le parcours jeu QR est mort dans
-le gabarit client** — pas seulement la page des lots.
+Those six explain the crash reported in review: `GamesPage` calls
+`api.prizeRedemptions.*`, a module that is not there. **The whole QR game flow is
+dead in the client template** — not just the prizes page.
 
-Comparaison des surfaces exportées, fichier par fichier : elles coïncident
-partout sauf six exports, et les six sont précisément les fuites que reference a
-fermées.
+Comparing the exported surfaces file by file: they coincide everywhere except six
+exports, and those six are precisely the leaks reference has closed.
 
-| Fichier | themes seul | reference seul |
+| File | themes only | reference only |
 | --- | --- | --- |
 | `orders.ts` | `getByCustomer` | — |
 | `teamMembers.ts` | `getByUser` | `getMyMemberships`, `internalAssertCanManage`, `internalAssertCanManageMember` |
@@ -1070,1652 +1050,1749 @@ fermées.
 | `storeIntegrations.ts` | `getByBrandId`, `getBySiteId`, `listByPlatformEnabled` | `internalGetByBrandId`, `internalGetBySiteId` |
 | `bidSubscription.ts` | — | `createMaintenanceCheckoutSession` |
 
-Conclusion opérationnelle : la suite n'est pas 38 corrections à la main mais un
-**alignement du miroir**, reference → themes, appelants compris. Reference a déjà
-mis à jour ses propres appelants (`deliverooWebhook`, `deliverooMenuSync`,
-`uberEatsMenuSync` pointent vers les versions internes), donc l'opération est
-cohérente d'un bloc. À vérifier avant de la lancer : les appelants hors `convex/`
-(`app/`, `components/`, `lib/`) qui référencent encore les noms publics
-supprimés.
+Operational conclusion: what follows is not 38 hand-written fixes but a **mirror
+alignment**, reference → themes, callers included. Reference has already updated
+its own callers (`deliverooWebhook`, `deliverooMenuSync`, `uberEatsMenuSync` point
+at the internal versions), so the operation is coherent as one block. To check
+before starting it: the callers outside `convex/` (`app/`, `components/`, `lib/`)
+that still reference the removed public names.
 
-### Étape 1 bis — vérification des appelants hors `convex/` (21 août)
+### Step 1b — checking the callers outside `convex/` (21 August)
 
-Avant d'aligner le miroir, il fallait s'assurer que les six exports que
-reference a supprimés ou rendus internes ne sont appelés nulle part ailleurs
-dans themes. Ils ne le sont pas :
+Before aligning the mirror, we had to be sure the six exports reference removed
+or made internal are called nowhere else in themes. They are not:
 
-| Zone balayée | Appelants de `getByCustomer`, `getByUser`, `getByOwnerId`, `getByBrandId`, `getBySiteId`, `listByPlatformEnabled` |
+| Area swept | Callers of `getByCustomer`, `getByUser`, `getByOwnerId`, `getByBrandId`, `getBySiteId`, `listByPlatformEnabled` |
 | --- | --- |
 | `apps/themes/{app,components,lib,hooks}` | 0 |
 | `packages/*` | 0 |
 
-Confrontation exhaustive : chaque `api.<module>.<fn>` du code applicatif de
-themes, vérifié contre la surface que `convex/` exposera après alignement.
-**Aucun appel ne casserait.** L'alignement du miroir `convex/` est sûr.
+Exhaustive confrontation: every `api.<module>.<fn>` in themes' application code,
+checked against the surface `convex/` will expose after alignment. **No call would
+break.** Aligning the `convex/` mirror is safe.
 
-#### Ce que la vérification a trouvé en plus
+#### What the check found on top
 
-Le premier balayage ne couvrait que `apps/themes` et n'a rien vu. C'était le
-mauvais périmètre : les pages admin de themes montent des composants venus de
-**`packages/admin`**, et c'est là que vivent les appels. Élargi au paquet :
+The first sweep only covered `apps/themes` and saw nothing. That was the wrong
+scope: themes' admin pages mount components coming from **`packages/admin`**, and
+that is where the calls live. Widened to the package:
 
-| Module appelé | Par | État dans themes |
+| Module called | By | State in themes |
 | --- | --- | --- |
 | `prizeRedemptions.getStats`, `.listPlays`, `.listRedemptions`, `.redeemByCode` | `games-page.tsx`, `winners-page.tsx` | **module absent** |
 | `requiredActions.list`, `.create`, `.update`, `.remove` | `actions-page.tsx` | **module absent** |
 
-themes route bien vers ces pages (`dashboard/games`, `games/winners`,
-`games/actions`). Elles plantent au rendu.
+themes does route to those pages (`dashboard/games`, `games/winners`,
+`games/actions`). They crash on render.
 
-**Pourquoi `tsc` ne le voit pas** : `app/(admin)/layout.tsx` injecte l'api via
-`setApi(api as unknown as Record<string, unknown>)`, et le store la stocke en
-`any`. Le typage est perdu à la frontière — la seule sanction est un
-`TypeError` au rendu. Une classe de panne que ni le typecheck ni le lint ne
-peuvent attraper, et que seul l'alignement ferme.
+**Why `tsc` does not see it**: `app/(admin)/layout.tsx` injects the api through
+`setApi(api as unknown as Record<string, unknown>)`, and the store holds it as
+`any`. The typing is lost at the boundary — the only sanction is a `TypeError` at
+render. A class of failure neither the typecheck nor the lint can catch, and that
+only the alignment closes.
 
-#### Ce que l'alignement de `convex/` ne réparera PAS
+#### What aligning `convex/` will NOT repair
 
-- **Le parcours jeu QR vitrine est un placeholder**, pas un bug. themes livre
-  un `GameContent.tsx` de 28 lignes affichant « Gamification flow will be
-  implemented here ». Manquent aussi les 10 composants de jeu, les 8 fichiers
-  `lib/game/` (roue, confettis, empreinte, sons) et toute la route
-  `/game/prize/[code]`. Le gabarit client vend une fonctionnalité qu'il
-  n'embarque pas.
+- **The storefront QR game flow is a placeholder**, not a bug. themes ships a
+  28-line `GameContent.tsx` displaying "Gamification flow will be implemented
+  here". Also missing: the 10 game components, the 8 `lib/game/` files (wheel,
+  confetti, fingerprint, sounds) and the whole `/game/prize/[code]` route. The
+  client template sells a feature it does not carry.
 
-#### Fausses pistes écartées (vérifiées, non défectueuses)
+#### False leads ruled out (checked, not defective)
 
-- `maintenance.ts` / `maintenanceEmail.ts` absents : **correct**. C'est le
-  verrou de mise à jour du moteur, et themes ne l'appelle nulle part.
-- `lib/services/contact-service.ts` absent : inutilisé dans themes.
-- Les routes Next `api/webhooks/{stripe,deliveroo/*}` propres à themes ne sont
-  pas un second chemin non gardé : ce sont des pierres tombales renvoyant
-  `410` vers l'endpoint Convex. Vérifié en lisant les trois fichiers.
+- `maintenance.ts` / `maintenanceEmail.ts` absent: **correct**. That is the engine
+  update lock, and themes calls it nowhere.
+- `lib/services/contact-service.ts` absent: unused in themes.
+- The Next routes `api/webhooks/{stripe,deliveroo/*}` specific to themes are not a
+  second unguarded path: they are tombstones returning `410` towards the Convex
+  endpoint. Verified by reading all three files.
 
-#### Réserve sur la portée
+#### A reservation about scope
 
-L'alignement en bloc se justifie pour `convex/` — les surfaces exportées
-coïncident et themes ne porte aucun `PATCH BOILERPLATE`. Il ne se justifie
-**pas** tel quel pour `app/` et `components/` : themes y possède 47 composants
-et 5 routes que reference n'a pas. Ces zones se traitent à la main, pas en bloc.
+Wholesale alignment is justified for `convex/` — the exported surfaces coincide
+and themes carries no `PATCH BOILERPLATE`. It is **not** justified as-is for
+`app/` and `components/`: themes has 47 components and 5 routes there that
+reference does not. Those areas are handled by hand, not in bulk.
 
-### Étape 2 — alignement du miroir `convex/` (21 août)
+### Step 2 — aligning the `convex/` mirror (21 August)
 
-50 fichiers alignés sur `apps/reference/convex`, dont les **6 modules absents**
+50 files aligned on `apps/reference/convex`, including the **6 absent modules**
 (`prizeRedemptions`, `requiredActions`, `gamePlay`, `gameEmail`, `maintenance`,
-`maintenanceEmail`), plus `_generated/api.d.ts` — le codegen Convex exige un
-déploiement configuré, mais `_generated/` ne contient rien de spécifique à un
-déploiement et les cinq fichiers ne divergeaient que des 12 lignes des modules
-manquants. Vérifié fichier par fichier avant transposition.
-
-| | avant | après |
+`maintenanceEmail`), plus `_generated/api.d.ts` — the Convex codegen requires a
+configured deployment, but `_generated/` contains nothing deployment-specific and
+the five files differed only by the 12 lines of the missing modules. Verified file
+by file before transposition.
+| | before | after |
 | --- | --- | --- |
-| erreurs de lint | 259 | **0** |
-| fonctions store-scopées | 29 | 189 |
-| dont sans `permission:` | 23 | **0** |
+| lint errors | 259 | **0** |
+| store-scoped functions | 29 | 189 |
+| of which without `permission:` | 23 | **0** |
 | annotations | 4 | 94 |
-| appels de `packages/admin` dans le vide | 8 | **0** |
-| fuites publiques (`getByUser`, `getByCustomer`, …) | 6 | **0** |
+| `packages/admin` calls into the void | 8 | **0** |
+| public leaks (`getByUser`, `getByCustomer`, …) | 6 | **0** |
 
-`pnpm build` passe, `tsc --noEmit` passe. Reference reste à 0 erreur,
-122 tests verts ; le paquet à 448/448.
+`pnpm build` passes, `tsc --noEmit` passes. Reference stays at 0 errors, 122
+tests green; the package at 448/448.
 
-**Preuve de morsure dans themes** : permission retirée de `prizes.ts` →
-`require-convex-permission` au rouge ; `storeQuery` dégradé en `query` →
-`no-unguarded-convex-function` au rouge. Fichier restauré à l'identique.
+**Bite proof in themes**: permission removed from `prizes.ts` →
+`require-convex-permission` red; `storeQuery` downgraded to `query` →
+`no-unguarded-convex-function` red. File restored identically.
 
-#### Deux divergences délibérées, conservées
+#### Two deliberate divergences, kept
 
-Le balayage préalable des 45 diffs a évité deux dégâts qu'un copier-coller en
-bloc aurait causés :
+Sweeping the 45 diffs beforehand avoided two kinds of damage a bulk copy-paste
+would have caused:
 
-- **`auth.ts`** — reference fait confiance à `localhost:3000-3003` parce que ses
-  espaces de travail se disputent les ports. Un site client tourne sur son
-  domaine et n'a aucune raison d'accepter une origine de développement. themes
-  garde sa liste stricte ; seule l'annotation a été portée. La raison est
-  inscrite dans le fichier pour qu'une future synchro ne la « corrige » pas.
-- **`http.ts`** — le commentaire de reference affirme que les routes Next
-  `/api/webhooks/*` ont été supprimées. C'est vrai chez elle, faux dans themes,
-  qui les garde comme pierres tombales `410`. Commentaire réécrit pour dire ce
-  qui est réellement vrai là où il se trouve.
+- **`auth.ts`** — reference trusts `localhost:3000-3003` because its workspaces
+  compete for ports. A client site runs on its own domain and has no reason to
+  accept a development origin. themes keeps its strict list; only the annotation
+  was ported. The reason is written into the file so a future sync does not
+  "correct" it.
+- **`http.ts`** — reference's comment claims the Next `/api/webhooks/*` routes
+  have been deleted. True there, false in themes, which keeps them as `410`
+  tombstones. Comment rewritten to say what is actually true where it sits.
 
-Deux fichiers divergent donc encore, et c'est voulu. Tout le reste est identique.
+Two files therefore still diverge, and that is intended. Everything else is
+identical.
 
-#### Ce qui reste ouvert sur themes
+#### What remains open on themes
 
-- Le parcours jeu QR **vitrine** reste un placeholder de 28 lignes : le backend
-  est là maintenant, l'interface non (10 composants, 8 fichiers `lib/game/`, la
-  route `/game/prize/[code]`). L'admin du jeu, lui, fonctionne.
-- `app/` et `components/` ne sont pas alignés et ne doivent pas l'être en bloc :
-  themes y possède 47 composants et 5 routes que reference n'a pas.
+- The **storefront** QR game flow is still a 28-line placeholder: the backend is
+  there now, the interface is not (10 components, 8 `lib/game/` files, the
+  `/game/prize/[code]` route). The game admin, for its part, works.
+- `app/` and `components/` are not aligned and must not be aligned wholesale:
+  themes has 47 components and 5 routes there that reference does not.
 
 ---
 
-## Relecture, point 1 — la règle ESLint était aveugle aux `action(…)` (21 août)
+## Review, point 1 — the ESLint rule was blind to `action(…)` (21 August)
 
-`BARE_BUILDERS` couvrait `query` et `mutation`, les deux constructeurs que
-l'audit avait pris en flagrant délit, et s'arrêtait là. Une action est pourtant
-tout aussi publiquement appelable. **56 actions** passaient donc à côté du
-garde-fou dans chaque application.
+`BARE_BUILDERS` covered `query` and `mutation`, the two builders the audit had
+caught red-handed, and stopped there. An action is just as publicly callable.
+**56 actions** were therefore slipping past the guardrail in each application.
 
-La règle les couvre désormais, avec un message distinct : conseiller
-`storeQuery` à une action serait absurde — elle n'a pas de `ctx.db`. Le message
-renvoie vers `ctx.runQuery(internal.…)` et `@guarded-inline`.
+The rule now covers them, with a distinct message: advising `storeQuery` to an
+action would be absurd — it has no `ctx.db`. The message points at
+`ctx.runQuery(internal.…)` and `@guarded-inline`.
 
-### Triage des 56 (reference)
+### Triaging the 56 (reference)
 
-Le classement par nom de fonction ne suffisait pas : `internalLoadForRefund`
-appelle `requireStorePermission` dans son corps, et mon premier balayage l'avait
-rangée en « aucune garde » ; à l'inverse `internalAssertCanManage` était bien
-une garde que je cherchais en minuscules. Il a fallu **résoudre chaque cible
-interne** et inspecter son corps.
+Classifying by function name was not enough: `internalLoadForRefund` calls
+`requireStorePermission` in its body, and my first sweep had filed it under "no
+guard"; conversely `internalAssertCanManage` really was a guard I was looking for
+in lowercase. Every internal target had to be **resolved** and its body
+inspected.
 
-| Verdict | Nombre | Traitement |
+| Verdict | Count | Treatment |
 | --- | --- | --- |
-| déjà correctement gardées | 14 | annotation `@guarded-inline` |
-| publiques par nature (paiement invité, devis de livraison) | 7 | `@public-by-design` motivée |
-| « connecté » seulement | 25 | garde réelle ajoutée |
-| rien du tout | 10 | garde réelle ajoutée |
+| already correctly guarded | 14 | `@guarded-inline` annotation |
+| public by nature (guest payment, delivery quote) | 7 | motivated `@public-by-design` |
+| "signed in" only | 25 | a real guard added |
+| nothing at all | 10 | a real guard added |
 
-### Les trous réels qui ont été fermés
+### The real holes that were closed
 
-- **Cuisine** (`acceptTicket`, `readyTicket`, `completeTicket`, `cancelTicket`) :
-  tout compte connecté pouvait accepter, avancer, terminer ou annuler un ticket
-  dans n'importe quel restaurant. Désormais `kitchen:write` sur la boutique du
-  ticket — vérifié par test que la cuisine garde l'accès au sien.
-- **`uberEatsActions`** (10 actions) : activer une intégration, réécrire un
-  article de menu, créer une promotion, marquer une commande prête. Le helper
-  local `requireAuth` ne vérifiait que la session ; il exige maintenant
-  `settings:write` par rôle. Ces actions manipulent des UUID Uber Eats, pas des
-  ids Convex : il n'y a pas de locataire sur lequel se rabattre.
-- **Synchro de menu** (Deliveroo ×2, Uber Eats ×1) : aucune garde.
-  → `products:write` sur la boutique synchronisée.
-- **OAuth prestataire** (`oauthConnect.generateOAuthUrl`,
-  `uberEatsOAuth.*`) : brancher un encaisseur de paiement ne demandait qu'un
-  compte. → `settings:write`.
-- **S3** (`getPresignedUploadUrl`, `getPresignedUrlForMedia`) : n'importe quel
-  compte obtenait une URL d'envoi. → `content:write`, et sur le média la garde
-  s'accroche à la boutique propriétaire.
-- **Import de catalogue** (Deliveroo, Uber Eats) et **traduction** :
-  → `products:write` / `translations:write` sur le `storeId` reçu.
+- **Kitchen** (`acceptTicket`, `readyTicket`, `completeTicket`, `cancelTicket`):
+  any signed-in account could accept, advance, complete or cancel a ticket in any
+  restaurant. Now `kitchen:write` on the ticket's store — with a test verifying
+  the kitchen keeps access to its own.
+- **`uberEatsActions`** (10 actions): enabling an integration, rewriting a menu
+  item, creating a promotion, marking an order ready. The local `requireAuth`
+  helper only checked the session; it now requires `settings:write` by role.
+  These actions manipulate Uber Eats UUIDs, not Convex ids: there is no tenant to
+  fall back on.
+- **Menu sync** (Deliveroo ×2, Uber Eats ×1): no guard at all.
+  → `products:write` on the synchronised store.
+- **Provider OAuth** (`oauthConnect.generateOAuthUrl`, `uberEatsOAuth.*`):
+  connecting a payment processor took nothing but an account. → `settings:write`.
+- **S3** (`getPresignedUploadUrl`, `getPresignedUrlForMedia`): any account
+  obtained an upload URL. → `content:write`, and on media the guard hangs off the
+  owning store.
+- **Catalogue import** (Deliveroo, Uber Eats) and **translation**:
+  → `products:write` / `translations:write` on the received `storeId`.
 
-### Un défaut réparé au passage
+### A defect repaired along the way
 
-`deliverooOrders.acceptOrder/rejectOrder/updatePrepStage` lisaient la commande
-via `api.orders.getById`, qui ne répond qu'au client propriétaire ou au porteur
-du jeton de suivi — **jamais au personnel**. Ces trois actions tombaient donc
-systématiquement sur « Order not found ». Vérifié sur `main` : préexistant, pas
-une régression du sprint. Elles lisent maintenant par le chemin interne et
-vérifient `orders:update_status` sur la boutique de la commande.
+`deliverooOrders.acceptOrder/rejectOrder/updatePrepStage` read the order through
+`api.orders.getById`, which only answers the owning customer or the bearer of the
+tracking token — **never staff**. Those three actions therefore always fell on
+"Order not found". Verified on `main`: pre-existing, not a regression from the
+sprint. They now read through the internal path and check
+`orders:update_status` on the order's store.
 
-### Nouvelle garde : `authHelpers.checkPermission`
+### A new guard: `authHelpers.checkPermission`
 
-`checkStorePermission` ne peut rien dire d'une opération sans boutique —
-brancher Stripe, démarrer un OAuth Uber Eats, demander une URL S3. Et « est
-connecté » n'est pas une réponse : ça inclut tout client ayant commandé une
-pizza une fois. La nouvelle garde vérifie la permission **par rôle**.
-`hasPermission` échoue fermé sur une chaîne inconnue, donc une faute de frappe
-refuse au lieu d'accorder — un test le fige.
+`checkStorePermission` can say nothing about an operation with no store —
+connecting Stripe, starting an Uber Eats OAuth, requesting an S3 URL. And "is
+signed in" is not an answer: that includes every customer who has ordered a pizza
+once. The new guard checks the permission **by role**. `hasPermission` fails
+closed on an unknown string, so a typo refuses instead of granting — a test
+freezes that.
 
-### Ce que la règle ne prouve PAS
+### What the rule does NOT prove
 
-Preuve de morsure en deux temps :
+Bite proof in two steps:
 
-1. Annotation retirée d'`acceptTicket` → règle au rouge. ✅
-2. `requireAuth` ramené à « connecté » en **gardant** les annotations →
-   **aucune erreur**. La règle lit la revendication, elle ne la vérifie pas.
+1. Annotation removed from `acceptTicket` → rule red. ✅
+2. `requireAuth` reduced to "signed in" while **keeping** the annotations →
+   **no error**. The rule reads the claim, it does not verify it.
 
-C'est une limite inhérente à une règle de lint, et la nommer vaut mieux que
-l'ignorer. Elle est comblée par **7 tests** sur les deux helpers par lesquels
-passent toutes les actions gardées : refus d'un client, refus d'un manager
-d'un autre établissement, refus de la cuisine sur un réglage global, acceptation
-du propriétaire, et refus sur permission inconnue. Garde neutralisée →
-3 tests au rouge ; restaurée → 129 verts.
+That is an inherent limit of a lint rule, and naming it beats ignoring it. It is
+filled by **7 tests** on the two helpers every guarded action passes through:
+refusing a customer, refusing a manager from another establishment, refusing the
+kitchen on a global setting, accepting the owner, and refusing on an unknown
+permission. Guard neutralised → 3 tests red; restored → 129 green.
 
-**Portes** : reference lint 0 erreur, type-check OK, 129 tests (contre 122).
-themes lint 0 erreur, typecheck OK, `pnpm build` OK. 29 fichiers reportés sur
-themes ; `auth.ts` et `http.ts` restent volontairement à l'écart.
+**Gates**: reference lint 0 errors, type-check OK, 129 tests (up from 122).
+themes lint 0 errors, typecheck OK, `pnpm build` OK. 29 files carried over to
+themes; `auth.ts` and `http.ts` deliberately left aside.
 
-## Relecture, point 2 — les permissions qui nommaient le mauvais verbe (21 août)
+## Review, point 2 — permissions that named the wrong verb (21 August)
 
-Quatre points d'appel refusaient quelqu'un que le produit place au centre.
+Four call sites refused someone the product puts at its centre.
 
-| Fonction | Avant | Après | Qui était refusé |
+| Function | Before | After | Who was refused |
 | --- | --- | --- | --- |
-| `orders.updateStatus` | `orders:write` | `orders:update_status` | la **cuisine** et la **livraison**, dont c'est tout le métier |
-| `payments.create` | `payments:refund` | `payments:write` | verbe faux : encaisser n'est pas rembourser |
-| `payments.updateStatus` | `payments:refund` | `payments:write` | idem |
-| `orders.remove` | `orders:delete` | inchangé | le **propriétaire**, à qui la table ne donnait pas `orders:delete` |
-| `contactMessages.updateStatus` | `customers:write` | inchangé | le **propriétaire**, à qui la table ne donnait pas `customers:write` |
+| `orders.updateStatus` | `orders:write` | `orders:update_status` | the **kitchen** and the **delivery** role, whose entire job it is |
+| `payments.create` | `payments:refund` | `payments:write` | wrong verb: taking money is not refunding it |
+| `payments.updateStatus` | `payments:refund` | `payments:write` | same |
+| `orders.remove` | `orders:delete` | unchanged | the **owner**, to whom the table did not grant `orders:delete` |
+| `contactMessages.updateStatus` | `customers:write` | unchanged | the **owner**, to whom the table did not grant `customers:write` |
 
-Deux des cinq ne se corrigent donc pas au point d'appel mais dans la table des
-rôles : le verbe y était juste, c'est le rôle qui ne l'avait pas. `client_admin`
-gagne `orders:delete`, `payments:write` et `customers:write` — un propriétaire
-qui peut supprimer un produit, un membre d'équipe et une page, mais pas une
-commande de son propre restaurant, c'était un oubli, pas une politique.
+Two of the five are therefore not fixed at the call site but in the table of
+roles: the verb was right there, it was the role that did not have it.
+`client_admin` gains `orders:delete`, `payments:write` and `customers:write` — an
+owner who can delete a product, a team member and a page, but not an order in
+their own restaurant, was an oversight, not a policy.
 
-`payments:write` est ajouté aux deux rôles qui détenaient déjà `payments:refund`,
-et à eux seuls : le verbe est réparé sans que l'accès effectif ne bouge. Élargir
-au manager ou au serveur serait une décision produit distincte, non prise ici.
+`payments:write` is added to the two roles that already held `payments:refund`,
+and to them alone: the verb is repaired without effective access moving.
+Widening it to the manager or the waiter would be a separate product decision,
+not taken here.
 
-### Le test qui ne prouvait rien
+### The test that proved nothing
 
-La première version de ces tests interrogeait `checkStorePermission` avec des
-**chaînes** de permission. Preuve de morsure : remettre `orders:write` sur
-`orders.updateStatus` les laissait **tous au vert**. Ils validaient la table des
-rôles et rien du point d'appel — une couverture qui se lit comme une garantie
-sans en être une.
+The first version of these tests queried `checkStorePermission` with permission
+**strings**. Bite proof: putting `orders:write` back on `orders.updateStatus`
+left them **all green**. They validated the role table and nothing about the call
+site — coverage that reads like a guarantee without being one.
 
-Réécrits pour appeler les vraies mutations avec un vrai document. Nouvelle
-preuve de morsure :
+Rewritten to call the real mutations with a real document. New bite proof:
 
-| Régression simulée | Effet |
+| Simulated regression | Effect |
 | --- | --- |
-| `orders:write` remis sur `updateStatus` | **2 tests au rouge** |
-| `orders:delete` retiré au `client_admin` | **1 test au rouge** |
-| restauration | 135 verts |
+| `orders:write` restored on `updateStatus` | **2 tests red** |
+| `orders:delete` removed from `client_admin` | **1 test red** |
+| restoration | 135 green |
 
-Un test intermédiaire a d'ailleurs échoué pour une bonne raison :
-`confirmed → out_for_delivery` n'est pas une transition légale. C'était le test
-qui était faux, pas le code ; le coursier enlève une commande **prête**.
+One intermediate test did fail for a good reason:
+`confirmed → out_for_delivery` is not a legal transition. It was the test that
+was wrong, not the code; the courier collects an order that is **ready**.
 
-**Portes** : reference 135 tests (contre 129), 0 erreur de lint, type-check OK.
-themes 0 erreur, typecheck OK. `packages/core` 195, `convex-functions` 448.
+**Gates**: reference 135 tests (up from 129), 0 lint errors, type-check OK.
+themes 0 errors, typecheck OK. `packages/core` 195, `convex-functions` 448.
 
-### Reste en suspens : le manager et le marketing
+### Still pending: the manager and marketing
 
-`DEFAULT_ROLE_PERMISSIONS` dans `packages/admin/src/pages/team/team-page.tsx`
-coche **tous** les modules pour un manager, « Jeux / Marketing » compris. La
-table RBAC ne lui donne ni `marketing:read` ni `marketing:write` ni
-`games:write`. L'écran promet, le serveur refuse.
+`DEFAULT_ROLE_PERMISSIONS` in `packages/admin/src/pages/team/team-page.tsx` ticks
+**every** module for a manager, "Jeux / Marketing" included. The RBAC table gives
+them neither `marketing:read` nor `marketing:write` nor `games:write`. The screen
+promises, the server refuses.
 
-Deux issues opposées — élargir le rôle, ou cesser de le promettre — et le choix
-est une décision produit, pas un correctif.
+Two opposite ways out — widen the role, or stop promising it — and the choice is a
+product decision, not a fix.
 
-**Arbitré le 21 août : élargir le manager.** `MANAGER` reçoit `marketing:read`,
-`marketing:write` et `games:write`. L'écran disait vrai, c'est la table qui
-avait tort. Un manager mène désormais campagnes et jeux du restaurant qu'il
-dirige — et rien de plus : quatre tests figent qu'il ne franchit pas la
-frontière d'établissement, et que le serveur n'a pas été élargi au passage.
+**Settled on 21 August: widen the manager.** `MANAGER` receives `marketing:read`,
+`marketing:write` and `games:write`. The screen was telling the truth; it was the
+table that was wrong. A manager now runs the campaigns and games of the
+restaurant they run — and nothing more: four tests freeze that they do not cross
+the establishment boundary, and that the server was not widened in passing.
 
-| Régression simulée | Effet |
+| Simulated regression | Effect |
 | --- | --- |
-| `marketing:write` et `games:write` retirés au manager | **2 tests au rouge** |
-| restauration | 139 verts |
+| `marketing:write` and `games:write` removed from the manager | **2 tests red** |
+| restoration | 139 green |
 
-Un de ces tests a d'abord échoué sur un argument manquant (`ruleOperator`) —
-mon test était incomplet, pas le code.
+One of those tests first failed on a missing argument (`ruleOperator`) — my test
+was incomplete, not the code.
 
 ---
 
-## Bloc paiement et suivi de commande (21 août) — 3 défauts sur 5
+## Payment and order-tracking block (21 August) — 3 defects out of 5
 
-### 1. La page de succès déclarait un paiement reçu sans rien vérifier
+### 1. The success page declared a payment received without checking anything
 
-La branche finale de `checkout/success/page.tsx` posait `state: "paid"` et
-vidait le panier. Son commentaire disait « a cash order, or a manual visit ».
-**Faux** : le comptant confirme sur `checkout/page.tsx` et n'atterrit jamais
-ici. Ce qui y atterrit, c'est un retour qui a perdu sa référence — le
-**3-D Secure SumUp** avant tout : `redirectUrl` vaut
-`…/checkout/success?orderId=…` sans `checkoutId`, et c'est ce lien que la banque
-utilise, en contournant le widget qui, lui, aurait ajouté la référence.
+The final branch of `checkout/success/page.tsx` set `state: "paid"` and emptied
+the cart. Its comment said "a cash order, or a manual visit". **False**: cash
+confirms on `checkout/page.tsx` and never lands here. What lands here is a return
+that has lost its reference — the **SumUp 3-D Secure** one above all:
+`redirectUrl` is `…/checkout/success?orderId=…` with no `checkoutId`, and that is
+the link the bank uses, bypassing the widget which would have added the
+reference.
 
-Une carte refusée obtenait donc un écran de confirmation.
+A declined card therefore got a confirmation screen.
 
-La branche interroge maintenant le serveur — nouvelle requête
-`orders.getPaymentState`, qui rend le statut, l'état et le numéro de commande,
-**et rien d'autre** : ni client, ni adresse, ni montant. Payé → confirmation et
-panier vidé. Sinon → écran « paiement en attente ». Sans `orderId` → lien
-incomplet, annoncé comme tel.
+The branch now asks the server — a new `orders.getPaymentState` query returning
+the status, the state and the order number, **and nothing else**: no customer, no
+address, no amount. Paid → confirmation and cart emptied. Otherwise → a "payment
+pending" screen. With no `orderId` → an incomplete link, announced as such.
 
-### 2. Recharger la page de confirmation PayPal cassait une commande payée
+### 2. Reloading the PayPal confirmation page broke a paid order
 
-`capturePayPalOrder` appelait PayPal **avant** de lire quoi que ce soit. Une
-capture ne se fait qu'une fois : au rechargement, PayPal renvoie
-`ORDER_ALREADY_CAPTURED`, l'action lève, et le client voit « Confirmation
-impossible » sur une commande bel et bien payée. Le garde-fou `hasRun` côté
-React ne protégeait que du re-rendu, jamais du rechargement.
+`capturePayPalOrder` called PayPal **before** reading anything. A capture happens
+only once: on reload, PayPal returns `ORDER_ALREADY_CAPTURED`, the action throws,
+and the customer sees "Confirmation impossible" on an order that is very much
+paid. The `hasRun` guard on the React side only protected against re-rendering,
+never against a reload.
 
-La commande est lue en premier ; si elle est déjà payée, l'action rend le
-résultat sans toucher au prestataire. L'idempotence appartient au serveur.
+The order is read first; if it is already paid, the action returns the result
+without touching the provider. Idempotency belongs to the server.
 
-Stripe et SumUp ne relisent qu'un statut — rejouables sans dommage. Vérifié.
+Stripe and SumUp only re-read a status — replayable without harm. Verified.
 
-### 3. Le remboursement : pas de verrou, et une preuve écrasée
+### 3. The refund: no lock, and evidence overwritten
 
-`recordRefund` revalidait contre un document frais, donc la base ne pouvait pas
-dépasser le solde. Ce qu'elle ne pouvait pas faire, c'est s'exécuter **avant**
-le prestataire : deux demandes simultanées lisaient toutes deux
-`refundedAmount: 0`, passaient toutes deux `planRefund`, et envoyaient toutes
-deux l'argent. La base restait cohérente, la caisse non.
+`recordRefund` revalidated against a fresh document, so the database could not
+exceed the balance. What it could not do is run **before** the provider: two
+simultaneous requests both read `refundedAmount: 0`, both passed `planRefund`,
+and both sent the money. The database stayed consistent, the till did not.
 
-Remplacé par un remboursement à deux temps — une mutation Convex étant une
-transaction, la réservation est le point de sérialisation :
+Replaced by a two-phase refund — a Convex mutation being a transaction, the
+reservation is the serialisation point:
 
-| Étape | Rôle |
+| Step | Role |
 | --- | --- |
-| `reserveRefund` | engage le montant **avant** l'appel prestataire |
-| `confirmRefund` | attache la référence prestataire **à ce remboursement-là** |
-| `releaseRefund` | rend le montant si le prestataire refuse |
+| `reserveRefund` | commits the amount **before** the provider call |
+| `confirmRefund` | attaches the provider reference **to that particular refund** |
+| `releaseRefund` | gives the amount back if the provider refuses |
 
-Et `externalRefundId`, champ scalaire, était écrasé par chaque remboursement
-partiel : le premier perdait sa preuve et devenait irréconciliable. Un tableau
-`refunds` conserve désormais chaque opération ; le scalaire pointe toujours vers
-le dernier, pour les écrans qui le lisent.
+And `externalRefundId`, a scalar field, was overwritten by every partial refund:
+the first lost its evidence and became irreconcilable. A `refunds` array now
+keeps every operation; the scalar still points at the last one, for the screens
+that read it.
 
-**Un bug que mes propres tests ont attrapé** : ma première version de
-`releaseRefund` reposait le statut à `completed` — que `REFUNDABLE_STATUSES`
-rejette. Libérer un remboursement échoué aurait rendu l'argent définitivement
-non remboursable, l'exact contraire du but. Corrigé en `succeeded`, et figé par
-un test dédié.
+**A bug my own tests caught**: my first version of `releaseRefund` set the status
+back to `completed` — which `REFUNDABLE_STATUSES` rejects. Releasing a failed
+refund would have made the money permanently unrefundable, the exact opposite of
+the goal. Fixed to `succeeded`, and frozen by a dedicated test.
 
-**Preuve de morsure** : statut de libération remis à `completed` → 2 tests au
-rouge ; restauration → 457 verts.
+**Bite proof**: release status set back to `completed` → 2 tests red;
+restoration → 457 green.
 
-**Portes** : `convex-functions` 457 (contre 448), `core` 195, reference 139
-tests / 0 erreur, themes 0 erreur, typechecks OK.
+**Gates**: `convex-functions` 457 (up from 448), `core` 195, reference 139 tests
+/ 0 errors, themes 0 errors, typechecks OK.
 
-### Reste du bloc
+### Rest of the block
 
-- `/track/[token]` inatteignable pour un invité : la page commande obtient le
-  jeton de suivi via `kitchenTickets.getByOrder`, désormais store-scopée sous
-  `kitchen:read` — un invité est refusé, donc le lien ne s'affiche jamais.
-- Devis de livraison non lié à l'adresse ni à usage unique ; mode `percentage`
-  avec adresse enregistrée = impasse silencieuse.
+- `/track/[token]` unreachable for a guest: the order page obtains the tracking
+  token through `kitchenTickets.getByOrder`, now store-scoped under
+  `kitchen:read` — a guest is refused, so the link never shows.
+- Delivery quote tied neither to the address nor to a single use; `percentage`
+  mode with a saved address is a silent dead end.
 
 ---
 
-## Audit des moyens de paiement (21 août) — constat, aucun correctif
+## Payment-method audit (21 August) — findings, no fixes
 
-Demandé en cours de bloc : les moyens de paiement sont-ils tous configurables,
-codés et testés ? Vérifié dans le code, sans accès à un compte.
+Requested mid-block: are all the payment methods configurable, coded and tested?
+Checked in the code, with no account access.
 
-### Ce que l'écran de réglages offre
+### What the settings screen offers
 
-Carte (`stripe` | `sumup`, avec Connecter/Déconnecter OAuth), PayPal (bascule +
-e-mail), Espèces (bascule, limitée au retrait/sur place et au client connecté).
-**Square est absent de l'écran.**
+Card (`stripe` | `sumup`, with OAuth Connect/Disconnect), PayPal (toggle +
+email), Cash (toggle, restricted to pickup/dine-in and to a signed-in customer).
+**Square is absent from the screen.**
 
-### Matrice prestataire × cycle de vie
+### Provider × lifecycle matrix
 
-| | Stripe | SumUp | PayPal | Square | Espèces |
+| | Stripe | SumUp | PayPal | Square | Cash |
 | --- | --- | --- | --- | --- | --- |
-| Écran de config | oui | oui | oui | **non** | oui |
-| Création d'encaissement | oui | oui | oui | **non** | oui |
-| Vérification au retour | oui | oui | oui | **non** | n/a |
-| Remboursement | oui | oui | oui | refus explicite | manuel |
-| Webhook | oui, signé | **non** | **non** | **non** | n/a |
-| Connexion OAuth | stockée mais **ignorée** | stockée et **utilisée** | **aucune** | **non** | n/a |
+| Config screen | yes | yes | yes | **no** | yes |
+| Charge creation | yes | yes | yes | **no** | yes |
+| Verification on return | yes | yes | yes | **no** | n/a |
+| Refund | yes | yes | yes | explicit refusal | manual |
+| Webhook | yes, signed | **no** | **no** | **no** | n/a |
+| OAuth connection | stored but **ignored** | stored and **used** | **none** | **no** | n/a |
 
-### Les cinq dettes
+### The five debts
 
-1. **La connexion Stripe est stockée puis ignorée.**
-   `/connect/stripe/callback` écrit un `paymentConnections` et l'écran affiche
-   « connecté », mais `stripe.ts` ne référence aucun compte connecté —
-   ni `stripeAccount`, ni `on_behalf_of`, ni `transfer_data`. L'encaissement
-   passe toujours par `STRIPE_SECRET_KEY`, la clé de la plateforme. Le
-   restaurateur croit encaisser sur son compte. SumUp, lui, lit et déchiffre
-   réellement le jeton du commerçant.
+1. **The Stripe connection is stored and then ignored.**
+   `/connect/stripe/callback` writes a `paymentConnections` row and the screen
+   shows "connected", but `stripe.ts` references no connected account — no
+   `stripeAccount`, no `on_behalf_of`, no `transfer_data`. Charging always goes
+   through `STRIPE_SECRET_KEY`, the platform's key. The restaurateur believes
+   they are being paid into their own account. SumUp, by contrast, really does
+   read and decrypt the merchant's token.
 
-2. **`paypalEmail` n'est jamais lu.** Le champ existe dans les réglages et le
-   schéma ; `paypal.ts` ne contient ni `payee` ni `email_address`. Le schéma
-   `paymentConnections` accepte `paypal` en commentant « merchant_id from
-   onboarding webhook » — ce webhook n'existe pas.
+2. **`paypalEmail` is never read.** The field exists in the settings and in the
+   schema; `paypal.ts` contains neither `payee` nor `email_address`. The
+   `paymentConnections` schema accepts `paypal` with a comment saying "merchant_id
+   from onboarding webhook" — that webhook does not exist.
 
-3. **Ni SumUp ni PayPal n'ont de webhook.** Seule la page de retour confirme le
-   paiement. Un client qui paie puis ferme son onglet laisse la commande en
-   `pending` indéfiniment. Stripe est le seul couvert, signature vérifiée.
+3. **Neither SumUp nor PayPal has a webhook.** Only the return page confirms the
+   payment. A customer who pays and then closes their tab leaves the order
+   `pending` indefinitely. Stripe is the only one covered, signature verified.
 
-4. **Square est un fantôme.** Présent dans le schéma `payments`, dans le type
-   `PaymentProvider`, dans un filtre de l'écran paiements, dans `CLAUDE.md` et
-   dans deux pages de doc (`SQUARE_ACCESS_TOKEN=`). Zéro ligne
-   d'implémentation, aucune variable d'environnement déclarée. Seul
-   `routeRefund` le traite honnêtement, en `unsupported`.
+4. **Square is a ghost.** Present in the `payments` schema, in the
+   `PaymentProvider` type, in a filter on the payments screen, in `CLAUDE.md` and
+   in two documentation pages (`SQUARE_ACCESS_TOKEN=`). Zero lines of
+   implementation, no environment variable declared. Only `routeRefund` treats it
+   honestly, as `unsupported`.
 
-5. **Le bouton « carte » n'est jamais conditionné.** PayPal et espèces sont
-   masqués si désactivés ; la carte s'affiche toujours, même sans prestataire
-   configuré. Le client remplit tout, valide, et reçoit
+5. **The "card" button is never gated.** PayPal and cash are hidden when
+   disabled; the card always shows, even with no provider configured. The
+   customer fills everything in, submits, and receives
    `STRIPE_SECRET_KEY is not configured`.
 
-### Couverture de tests
+### Test coverage
 
-44 tests couvrent la **logique** (règlement, anti-rejeu inter-commandes,
-montants, devises, remboursement à deux temps). Solide.
+44 tests cover the **logic** (settlement, cross-order replay prevention, amounts,
+currencies, two-phase refund). Solid.
 
-**Aucun test ne couvre les actions prestataire** — `createCheckoutSession`,
-`createPayPalOrder`, `createCheckout`, `verify*`, `internalRefund`. Aucun appel
-HTTP simulé. La logique pure est tenue, la couture avec les API ne l'est pas.
+**No test covers the provider actions** — `createCheckoutSession`,
+`createPayPalOrder`, `createCheckout`, `verify*`, `internalRefund`. No simulated
+HTTP call. The pure logic holds, the seam with the APIs does not.
 
-### Décision
+### Decision
 
-**Aucun correctif maintenant** (arbitré le 21 août). Les points 1 et 2 changent
-un flux d'argent et relèvent de la branche prestataires annoncée en début de
-sprint, bac à sable en main. Les points 3, 4 et 5 sont plus circonscrits et
-restent à planifier.
+**No fixes now** (settled 21 August). Points 1 and 2 change a money flow and
+belong to the provider branch announced at the start of the sprint, with a
+sandbox in hand. Points 3, 4 and 5 are more contained and remain to be scheduled.
 
-## Bloc paiement et suivi — les deux derniers (21 août)
+## Payment and tracking block — the last two (21 August)
 
-### 4. `/track/[token]` était injoignable — régression de mon propre durcissement
+### 4. `/track/[token]` was unreachable — a regression from my own hardening
 
-La page de confirmation lisait le jeton de suivi via
-`kitchenTickets.getByOrder`. Le sprint 2 l'a mise sous `kitchen:read` : correct,
-et ça a cassé la fonctionnalité pour les seules personnes qui en ont besoin. Un
-invité est refusé, le jeton revient `undefined`, le bouton « Suivre ma commande »
-ne s'affiche jamais. La route `/track/[token]` existait sans que rien ne puisse
-l'atteindre. **Rien n'a échoué bruyamment** — c'est ce qui rend ce genre de
-régression coûteux.
+The confirmation page read the tracking token through
+`kitchenTickets.getByOrder`. Sprint 2 put it under `kitchen:read`: correct, and it
+broke the feature for exactly the people who need it. A guest is refused, the
+token comes back `undefined`, the "Suivre ma commande" button never shows. The
+`/track/[token]` route existed with nothing able to reach it. **Nothing failed
+loudly** — which is what makes this kind of regression expensive.
 
-Le correctif n'est pas de rouvrir la requête cuisine mais de servir le jeton
-depuis le chemin de lecture de la commande, sous la règle qui la gouverne déjà :
-le jeton de vue émis à la commande, ou le client qui l'a passée
-(`orders.getTrackingToken`).
+The fix is not to reopen the kitchen query but to serve the token from the
+order's read path, under the rule that already governs it: the view token issued
+with the order, or the customer who placed it (`orders.getTrackingToken`).
 
-Même défaut sur les écrans « en attente » et « échec » de la page de succès :
-`settle()` recevait le jeton de vue et le jetait, puis `Actions` proposait
-`/order/…` sans jeton — une page vide pour un invité. Le jeton est transporté, et
-le bouton ne s'affiche que s'il est utilisable.
+Same defect on the "pending" and "failure" screens of the success page:
+`settle()` received the view token and threw it away, then `Actions` offered
+`/order/…` with no token — an empty page for a guest. The token is carried
+through, and the button only shows when it is usable.
 
-**Preuve de morsure** : contrôle de propriété neutralisé → 1 test au rouge.
+**Bite proof**: ownership check neutralised → 1 test red.
 
-### 5. Le devis de livraison n'était lié ni à l'adresse ni à un usage
+### 5. The delivery quote was tied neither to the address nor to a single use
 
-`orders.create` vérifiait l'existence, le restaurant et l'expiration. Deux trous
-restaient.
+`orders.create` checked existence, restaurant and expiry. Two holes remained.
 
-La table `deliveryQuotes` stocke `dropoffLatitude` / `dropoffLongitude` avec le
-commentaire « to detect a changed address » — **personne ne les lisait**. Un
-devis pris pour l'immeuble d'à côté payait une livraison à trente kilomètres. Et
-le devis était réutilisable indéfiniment : un seul devis bon marché payait toutes
-les livraisons futures.
+The `deliveryQuotes` table stores `dropoffLatitude` / `dropoffLongitude` with the
+comment "to detect a changed address" — **nobody read them**. A quote taken for
+the building next door paid for a delivery thirty kilometres away. And the quote
+was reusable indefinitely: one cheap quote paid for every future delivery.
 
-La règle est extraite en module pur `deliveryQuote` — comme `promotionDiscount`
-et `refundPolicy`, parce que chaque refus décide de ce que le client paie :
+The rule is extracted into a pure `deliveryQuote` module — like
+`promotionDiscount` and `refundPolicy`, because each refusal decides what the
+customer pays:
 
-| Refus | Cause |
+| Refusal | Cause |
 | --- | --- |
-| `missing` / `wrong_store` / `expired` | déjà couverts, désormais testés |
-| `already_used` | **nouveau** — `consumedByOrderId` marque le devis à la création |
-| `address_mismatch` | **nouveau** — tolérance de ~110 m, l'écart d'un géocodeur, pas d'une rue |
-| `address_not_located` | **nouveau** — et le message dit quoi faire |
+| `missing` / `wrong_store` / `expired` | already covered, now tested |
+| `already_used` | **new** — `consumedByOrderId` marks the quote at creation |
+| `address_mismatch` | **new** — a tolerance of ~110 m, the gap of a geocoder, not of a street |
+| `address_not_located` | **new** — and the message says what to do |
 
-Ce dernier refus est l'impasse signalée en relecture : une adresse enregistrée
-sans coordonnées produisait « un devis de livraison est requis », ce qui ne dit
-rien à un client qui vient justement d'en saisir une. Le message renvoie
-maintenant vers les suggestions d'adresse.
+That last refusal is the dead end reported in review: a saved address with no
+coordinates produced "a delivery quote is required", which says nothing to a
+customer who has just entered one. The message now points at the address
+suggestions.
 
-**Preuve de morsure** : tolérance de coordonnées rendue énorme → 2 tests au
-rouge ; usage unique neutralisé → 1 test au rouge.
+**Bite proof**: coordinate tolerance made enormous → 2 tests red; single use
+neutralised → 1 test red.
 
-**Portes** : `convex-functions` 473 (contre 457), `core` 195, reference 143
-tests / 0 erreur, themes 0 erreur, `pnpm build` OK, typechecks OK.
+**Gates**: `convex-functions` 473 (up from 457), `core` 195, reference 143 tests
+/ 0 errors, themes 0 errors, `pnpm build` OK, typechecks OK.
 
-**Le bloc paiement et suivi de commande est clos : 5 défauts sur 5.**
+**The payment and order-tracking block is closed: 5 defects out of 5.**
 
 ---
 
-## Les trois derniers points de la relecture (21 août)
+## The last three review points (21 August)
 
-### 1. Synchro de menu morte — et j'avais aggravé le cas
+### 1. Dead menu sync — and I had made it worse
 
-Le défaut signalé était réel : `syncStore` lisait l'intégration via
-`api.storeIntegrations.getByStorePlatform`, store-scopée, donc exigeant une
-session — que le balayage planifié n'a pas.
+The reported defect was real: `syncStore` read the integration through
+`api.storeIntegrations.getByStorePlatform`, store-scoped, and therefore requiring
+an
+session — which the scheduled sweep does not have.
 
-**Et j'avais empilé dessus.** Au bloc précédent j'ai posé
-`checkStorePermission` sur `syncStore` sans lire le commentaire situé trois
-lignes plus bas, qui disait exactement ceci :
+**And I had piled onto it.** In the previous block I put `checkStorePermission`
+on `syncStore` without reading the comment three lines below, which said exactly
+this:
 
 > `Note: No auth check here — syncStore is also scheduled by syncAllStores (no user context).`
 
-Le balayage appelait `api.*.syncStore` : ma garde l'aurait tué net.
+The sweep called `api.*.syncStore`: my guard would have killed it outright.
 
-Séparé en deux : `syncStore` reste l'action publique gardée et n'est plus qu'une
-coquille ; `internalSyncStore` porte le travail et n'est joignable ni depuis un
-navigateur ni sans identité. Le balayage l'appelle directement, et lit
-l'intégration par `internal.storeIntegrations.internalGetByStorePlatform`.
+Split in two: `syncStore` stays the guarded public action and is now only a
+shell; `internalSyncStore` carries the work and is reachable neither from a
+browser nor without an identity. The sweep calls it directly, and reads the
+integration through `internal.storeIntegrations.internalGetByStorePlatform`.
 
-**Un test structurel gèle l'invariant** : aucune `internalAction` ne doit
-appeler une fonction **gardée**. Il ne peut pas être comportemental — le
-planificateur n'est pas quelque chose que `convex-test` exécute — donc il est
-assuré contre la source.
+**A structural test freezes the invariant**: no `internalAction` may call a
+**guarded** function. It cannot be behavioural — the scheduler is not something
+`convex-test` runs — so it is asserted against the source.
 
-Sa première version interdisait tout `api.*` et a immédiatement dénoncé quatre
-cas. Trois étaient de faux positifs — `products.list`, `categories.list` et
-`stores.getById` sont publiques par conception, une synchro a le droit de lire
-le catalogue — et le quatrième était l'URL `https://api.sumup.com`. **La règle
-était trop stricte, pas le code.** Resserrée sur le vrai critère : la cible
-est-elle enveloppée dans `storeQuery` / `storeMutation` / `authed*`. Un second
-test vérifie que le détecteur reconnaît bien une fonction gardée, sans quoi
-l'assertion passerait en ne prouvant rien.
+Its first version forbade any `api.*` and immediately flagged four cases. Three
+were false positives — `products.list`, `categories.list` and `stores.getById`
+are public by design, a sync is allowed to read the catalogue — and the fourth
+was the URL `https://api.sumup.com`. **The rule was too strict, not the code.**
+Tightened onto the real criterion: is the target wrapped in `storeQuery` /
+`storeMutation` / `authed*`. A second test checks that the detector does
+recognise a guarded function, without which the assertion would pass while
+proving nothing.
 
-**Preuve de morsure** : balayage remis sur l'action gardée → 1 test au rouge.
+**Bite proof**: sweep pointed back at the guarded action → 1 test red.
 
-### 2. `duplicateCatalog` gardait la source, pas la cible
+### 2. `duplicateCatalog` guarded the source, not the target
 
-`storeIdFrom` pointait sur `sourceStoreId` — la moitié qu'on **lit**. Les
-produits et catégories, eux, atterrissaient dans `targetStoreId`. Un manager
-prouvait ses droits sur le restaurant lu, puis écrivait dans un restaurant qu'il
-n'administre pas.
+`storeIdFrom` pointed at `sourceStoreId` — the half being **read**. The products
+and categories landed in `targetStoreId`. A manager proved their rights on the
+restaurant being read, then wrote into a restaurant they do not administer.
 
-Le seam garde désormais la **cible** (`products:write`), et le handler vérifie
-la source en `products:read` — copier le catalogue d'un concurrent chez soi est
-l'abus symétrique, et il n'était pas couvert non plus.
+The seam now guards the **target** (`products:write`), and the handler checks the
+source with `products:read` — copying a competitor's catalogue into your own is
+the symmetric abuse, and it was not covered either.
 
-**Preuve de morsure** : seam remis sur la source → 1 test au rouge.
+**Bite proof**: seam pointed back at the source → 1 test red.
 
-### 3. `claimFirstAdmin` : le premier venu prenait le déploiement
+### 3. `claimFirstAdmin`: whoever arrived first took the deployment
 
-Le vrai risque n'était pas une course de données mais ceci : **l'inscription est
-ouverte sur la vitrine**, et la mutation n'exigeait qu'un compte authentifié.
-Sur un déploiement neuf, le premier inconnu à l'appeler devenait super
-administrateur. « Aucun appelant dans l'interface » ne protège personne : les
-noms de fonctions Convex se lisent dans le bundle client.
+The real risk was not a data race but this: **sign-up is open on the storefront**,
+and the mutation required nothing but an authenticated account. On a fresh
+deployment, the first stranger to call it became super-administrator. "No caller
+in the interface" protects nobody: Convex function names are readable in the
+client bundle.
 
-C'est un trou que j'ai introduit au sprint 2 en créant cette fonction.
+This is a hole I introduced in sprint 2 by creating that function.
 
-Elle exige maintenant un secret que seul le déployeur détient
-(`ADMIN_BOOTSTRAP_TOKEN`), comparé en temps constant. Et elle **échoue fermée** :
-variable non définie → personne ne passe. Une variable absente qui laisserait
-entrer recréerait le trou sur exactement les déploiements que personne n'a
-encore configurés.
+It now requires a secret only the deployer holds (`ADMIN_BOOTSTRAP_TOKEN`),
+compared in constant time. And it **fails closed**: variable undefined → nobody
+gets through. A missing variable that let people in would recreate the hole on
+exactly the deployments nobody has configured yet.
 
-**Preuve de morsure** : échec-fermé transformé en échec-ouvert → 2 tests au
-rouge.
+**Bite proof**: fail-closed turned into fail-open → 2 tests red.
 
-**Portes** : reference 153 tests (contre 143), 0 erreur, type-check OK ;
-`convex-functions` 473 ; `core` 195 ; themes 0 erreur, typecheck OK.
+**Gates**: reference 153 tests (up from 143), 0 errors, type-check OK;
+`convex-functions` 473; `core` 195; themes 0 errors, typecheck OK.
 
-**La liste de relecture est close.**
+**The review list is closed.**
 
 ---
 
-## S0-1 — préparer les tests e2e (21 août)
+## S0-1 — preparing the e2e tests (21 August)
 
-Déploiement Convex lié par l'utilisateur, `ADMIN_BOOTSTRAP_TOKEN` posé dessus.
-Le verrou local est levé : `hasRealBackend = true`, donc les projets `setup` et
-`admin` se déclarent enfin.
+Convex deployment linked by the user, `ADMIN_BOOTSTRAP_TOKEN` set on it. The
+local lock is lifted: `hasRealBackend = true`, so the `setup` and `admin` projects
+finally register.
 
-### Correction de mon propre énoncé
+### Correcting my own statement
 
-J'avais annoncé `CONVEX_E2E_ENABLED` comme le verrou. **Faux** : c'est une
-variable **GitHub Actions**. En local, le verrou est ailleurs, dans
-`playwright.config.ts` :
+I had announced `CONVEX_E2E_ENABLED` as the lock. **Wrong**: that is a **GitHub
+Actions** variable. Locally the lock is elsewhere, in `playwright.config.ts`:
 
 ```ts
 const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
 ```
 
-Sans URL réelle, les projets `setup` et `admin` ne sont **pas déclarés du tout**.
-Playwright annonce alors un succès sur la poignée de tests publics exécutés : il
-n'y a aucune ligne « skipped » pour un projet qui n'existe pas. Trois façons
-d'être vert en ne testant rien — la troisième étant le `::warning::` de CI quand
-un secret manque.
+With no real URL, the `setup` and `admin` projects are **not declared at all**.
+Playwright then announces success over the handful of public tests it ran: there
+is no "skipped" line for a project that does not exist. Three ways of being green
+while testing nothing — the third being CI's `::warning::` when a secret is
+missing.
 
-### Un défaut trouvé en préparant
+### A defect found while preparing
 
-`e2e/auth.setup.ts` codait le mot de passe **en dur** (`"julien"`), alors que
-`scripts/seed-users.mts` lit `SEED_PASSWORD`. Les deux ne coïncidaient pas : la
-connexion n'aurait réussi que sur une machine où la valeur semée valait
-justement `julien`. Le script de peuplement dit pourtant lui-même « never
-hardcode passwords ».
+`e2e/auth.setup.ts` hard-coded the password (`"julien"`), while
+`scripts/seed-users.mts` reads `SEED_PASSWORD`. The two did not coincide:
+sign-in would only have worked on a machine where the seeded value happened to be
+`julien`. The seeding script says so itself: "never hardcode passwords".
 
-Corrigé : les deux lisent `SEED_PASSWORD`, et le setup échoue immédiatement avec
-la raison si la variable est absente, plutôt que trente secondes plus tard sur un
-formulaire ayant refusé un mot de passe vide.
+Fixed: both read `SEED_PASSWORD`, and the setup fails immediately with the reason
+if the variable is absent, rather than thirty seconds later on a form that
+refused an empty password.
 
-### Un piège de `.gitignore`
+### A `.gitignore` trap
 
-`.env.e2e.example` était **ignoré** : la règle `.env*` ne comportait des
-exceptions que pour `.env.example` et `.env.production.example`. Le modèle aurait
-été invisible pour quiconque clone. L'exception couvre désormais tout
-`*.example`, et il est vérifié que `.env.local` reste bien ignoré.
+`.env.e2e.example` was **ignored**: the `.env*` rule only had exceptions for
+`.env.example` and `.env.production.example`. The template would have been
+invisible to anyone cloning. The exception now covers every `*.example`, and it is
+verified that `.env.local` is still ignored.
 
-### Livré
+### Delivered
 
-| Fichier | Contenu |
+| File | Content |
 | --- | --- |
-| `apps/{reference,themes}/e2e/README.md` | pourquoi la suite était inerte, la marche à suivre locale en 5 étapes, la liste des secrets CI |
-| `apps/{reference,themes}/.env.e2e.example` | les variables, **séparées** entre celles du déploiement Convex et celles du lanceur |
-| `e2e/auth.setup.ts` | mot de passe lu depuis l'environnement, échec explicite |
-| `.gitignore` | les modèles `*.example` cessent d'être ignorés |
+| `apps/{reference,themes}/e2e/README.md` | why the suite was inert, the local procedure in 5 steps, the list of CI secrets |
+| `apps/{reference,themes}/.env.e2e.example` | the variables, **separated** between those of the Convex deployment and those of the runner |
+| `e2e/auth.setup.ts` | password read from the environment, explicit failure |
+| `.gitignore` | `*.example` templates stop being ignored |
 
-La distinction la plus utile de ces deux documents : une variable lue par une
-**fonction Convex** doit être posée sur le déploiement (`npx convex env set`) —
-un `.env.local` ne lui est jamais visible. C'est ce qui a fait échouer la
-première tentative de pose du jeton d'amorçage.
+The most useful distinction in those two documents: a variable read by a **Convex
+function** must be set on the deployment (`npx convex env set`) — a `.env.local`
+is never visible to it. That is what made the first attempt at setting the
+bootstrap token fail.
 
-### Ce qui reste à faire, et qui vous revient
+### What remains, and belongs to you
 
-1. `npx convex env set BETTER_AUTH_SECRET …` et `ENCRYPTION_KEY` (64 hex) sur le
-   déploiement — seul `ADMIN_BOOTSTRAP_TOKEN` y est défini aujourd'hui.
-2. `export SEED_PASSWORD=…` puis `npx tsx scripts/seed-users.mts`.
-3. `pnpm test:e2e`, en vérifiant que l'en-tête nomme bien **trois** projets.
+1. `npx convex env set BETTER_AUTH_SECRET …` and `ENCRYPTION_KEY` (64 hex) on the
+   deployment — only `ADMIN_BOOTSTRAP_TOKEN` is defined there today.
+2. `export SEED_PASSWORD=…` then `npx tsx scripts/seed-users.mts`.
+3. `pnpm test:e2e`, checking that the header names **three** projects.
 
-**Et avant de croire un vert** : neutraliser une garde et vérifier que la suite
-rougit. Une suite qui n'a jamais échoué n'a jamais démontré qu'elle fonctionne —
-c'est précisément ainsi que ces 510 tests sont restés inertes pendant des mois
-en annonçant un succès.
+**And before believing a green**: neutralise a guard and check the suite goes
+red. A suite that has never failed has never demonstrated that it works — which is
+precisely how those 510 tests stayed inert for months while announcing success.
 
-## Exécution réelle de la suite e2e (21 août) — quatre défauts dans la chaîne d'amorçage
+## A real run of the e2e suite (21 August) — four defects in the bootstrap chain
 
-Enchaînement demandé de bout en bout : poser les secrets du déploiement, semer
-les comptes, lancer la suite. Chaque étape a révélé un défaut, tous invisibles
-tant que personne ne tentait l'opération.
+An end-to-end sequence requested: set the deployment secrets, seed
+the accounts, run the suite. Every step revealed a defect, all of them invisible
+while nobody attempted the operation.
 
-### 1. `api.d.ts` transposé à la main : confirmé exact
+### 1. `api.d.ts` transposed by hand: confirmed exact
 
-`npx convex dev --once` a régénéré le codegen. **Aucune différence** avec le
-fichier transposé depuis reference. La réserve posée lors de l'alignement du
-miroir est levée.
+`npx convex dev --once` regenerated the codegen. **No difference** with the file
+transposed from reference. The reservation raised during the mirror alignment is
+lifted.
 
-### 2. Le script de peuplement appelait une mutation publique sans session
+### 2. The seeding script called a public mutation with no session
 
-`seed-users.mts` créait les profils via `ConvexHttpClient` → `userProfiles.upsert`,
-qui exige depuis le sprint 2 un acteur autorisé. Résultat : `Not authenticated`
-sur les six comptes.
+`seed-users.mts` created the profiles through `ConvexHttpClient` →
+`userProfiles.upsert`, which since sprint 2 requires an authorized actor. Result:
+`Not authenticated` on all six accounts.
 
-Et il affichait **« Seeding complete! »** malgré tout. Les comptes existaient,
-aucun n'avait de rôle, et la suite e2e aurait échoué sur un écran admin pour une
-raison ne pointant nulle part vers ici.
+And it printed **"Seeding complete!"** regardless. The accounts existed, none of
+them had a role, and the e2e suite would have failed on an admin screen for a
+reason pointing nowhere near here.
 
-Corrigé : les profils passent par `userProfiles:internalUpsert`, exécuté par
-`npx convex run` — le CLI s'authentifie comme le déploiement, l'autorité
-correcte pour provisionner, et inatteignable depuis un navigateur. Le script
-sort désormais en code non nul si un profil manque.
+Fixed: profiles go through `userProfiles:internalUpsert`, run by `npx convex run`
+— the CLI authenticates as the deployment, the correct authority for
+provisioning, and unreachable from a browser. The script now exits non-zero if a
+profile is missing.
 
-### 3. Le peuplement n'était pas rejouable
+### 3. Seeding was not replayable
 
-Après un passage partiel, le script s'arrêtait sur « No users were created. They
-may already exist. Exiting. » — alors que l'étape des profils est indépendante.
-Aucun nombre de relances ne pouvait réparer l'état.
+After a partial run, the script stopped on "No users were created. They may
+already exist. Exiting." — while the profile step is independent. No number of
+re-runs could repair the state.
 
-Corrigé : un compte existant est rouvert par connexion pour récupérer son
-identifiant, et l'étape 2 est atteinte dans tous les cas.
+Fixed: an existing account is reopened by signing in to recover its id, and step
+2 is reached in every case.
 
-### 4. `requireEmailVerification: true` rendait les comptes semés inutilisables
+### 4. `requireEmailVerification: true` made the seeded accounts unusable
 
-Troisième raison pour laquelle la suite n'a jamais pu tourner : `auth.setup.ts`
-se connecte avec un compte que `seed-users.mts` crée sans boîte aux lettres où
-cliquer un lien. La connexion renvoyait `EMAIL_NOT_VERIFIED`.
+A third reason the suite could never run: `auth.setup.ts` signs in with an
+account `seed-users.mts` creates with no mailbox in which to click a link.
+Sign-in returned `EMAIL_NOT_VERIFIED`.
 
-La vérification devient optionnelle **à défaut fermé** :
+Verification becomes optional, **failing closed by default**:
 
 ```ts
 requireEmailVerification: process.env.AUTH_ALLOW_UNVERIFIED_EMAIL !== "true"
 ```
 
-Une variable absente ou mal orthographiée laisse la vérification active. À poser
-sur un déploiement de test uniquement, jamais sur celui d'un restaurant.
+A variable that is absent or misspelled leaves verification on. To be set on a
+test deployment only, never on a restaurant's.
 
-### Une erreur de ma part sur le diagnostic
+### A mistake of mine in the diagnosis
 
-Mon premier message d'échec accusait le mot de passe semé. La vraie cause était
-`EMAIL_NOT_VERIFIED`. Le message rapporte maintenant ce que le serveur a dit —
-une supposition dans un message d'erreur envoie son lecteur sur une fausse piste,
-ce qui est pire que pas de message du tout.
+My first failure message blamed the seeded password. The real cause was
+`EMAIL_NOT_VERIFIED`. The message now reports what the server said — a guess
+inside an error message sends its reader down a false trail, which is worse than
+no message at all.
 
-### État
+### State
 
-`Running 510 tests` avec les trois projets `setup`, `public` et `admin`
-déclarés : le verrou local est levé pour la première fois. Le binaire Chromium
-manquait également et a été installé.
+`Running 510 tests` with all three projects `setup`, `public` and `admin`
+declared: the local lock is lifted for the first time. The Chromium binary was
+also missing and has been installed.
 
-### Le `setup` e2e : diagnostic par capture réseau (22 août)
+### The e2e `setup`: diagnosis by network capture (22 August)
 
-183 échecs `admin` sur le premier run complet, tous dérivés d'une seule cause :
-`auth.setup.ts` n'obtenait pas de session.
+183 `admin` failures on the first full run, all derived from a single cause:
+`auth.setup.ts` was not obtaining a session.
 
-**La connexion n'était pas en cause.** Capture réseau d'un rejeu isolé :
+**Sign-in was not to blame.** Network capture of an isolated replay:
 
-| Requête | Réponse |
+| Request | Response |
 | --- | --- |
-| `POST /api/auth/sign-in/email` | **200**, jeton émis |
-| `GET /api/auth/get-session` | **200**, session valide |
-| `GET /api/auth/convex/token` | **200**, JWT Convex émis |
-| `GET /menu?_rsc=…` | `net::ERR_ABORTED` — préchargement annulé, sans conséquence |
+| `POST /api/auth/sign-in/email` | **200**, token issued |
+| `GET /api/auth/get-session` | **200**, valid session |
+| `GET /api/auth/convex/token` | **200**, Convex JWT issued |
+| `GET /menu?_rsc=…` | `net::ERR_ABORTED` — cancelled prefetch, of no consequence |
 
-Et après quinze secondes, l'URL était bien `http://localhost:3000/menu`.
+And after fifteen seconds, the URL was indeed `http://localhost:3000/menu`.
 
-**La cause réelle est arithmétique.** Le test dispose de **60 s** au total
-(`timeout` de `playwright.config.ts`), alors que ses étapes demandent
-60 + 30 + 30 + 30 + 60 = **210 s** d'attentes. Aucune de ces limites n'est
-atteignable : le test ne peut mourir qu'au bout de 60 s. Sur un serveur
-Turbopack froid, compiler `/sign-in` prend à lui seul une vingtaine de
-secondes, et `/menu` compile ensuite à la demande.
+**The real cause is arithmetic.** The test has **60 s** in total
+(`timeout` in `playwright.config.ts`), while its steps ask for
+60 + 30 + 30 + 30 + 60 = **210 s** of waiting. None of those limits is
+reachable: the test can only die at 60 s. On a cold Turbopack server, compiling
+`/sign-in` alone takes some twenty seconds, and `/menu` then compiles on demand.
 
-Corrigé : `setup.setTimeout(180_000)` donne à l'étape son propre budget, et
-l'attente `networkidle` posée après le clic est supprimée — Convex maintient un
-WebSocket ouvert, donc le réseau n'est jamais au repos sur cette application ;
-cette attente ne pouvait que consommer le budget avant de le céder au contrôle
-qui compte. La redirection **est** le signal.
+Fixed: `setup.setTimeout(180_000)` gives the step its own budget, and the
+`networkidle` wait placed after the click is removed — Convex keeps a WebSocket
+open, so the network is never idle on this application; that wait could only
+consume the budget before handing it to the check that matters. The redirect
+**is** the signal.
 
-**Vérifié** : `setup` passe en 11,2 s, l'état de session est écrit.
+**Verified**: `setup` passes in 11.2 s, the session state is written.
 
-### Le blocage suivant : le peuplement ne crée aucun restaurant
+### The next blocker: seeding creates no restaurant
 
-Échantillon `navigation` relancé avec une session valide : **17 échecs, 7
-succès**, tous les échecs identiques —
-`waiting for locator('[data-slot="sidebar"]')`.
+`navigation` sample re-run with a valid session: **17 failures, 7 passes**, every
+failure identical — `waiting for locator('[data-slot="sidebar"]')`.
 
-Vérification sur le déploiement : la table `stores` est **vide**, et tous les
-profils portent `storeIds: []`. `seed-users.mts` crée des comptes et rien
-d'autre. Les écrans admin n'ont aucun établissement à administrer, donc la barre
-latérale ne se monte pas.
+Checked on the deployment: the `stores` table is **empty**, and every profile
+carries `storeIds: []`. `seed-users.mts` creates accounts and nothing else. The
+admin screens have no establishment to administer, so the sidebar does not mount.
 
-Il manque une amorce d'établissement — et probablement des catégories et des
-produits pour les écrans de catalogue. C'est le prochain obstacle, et il est
-distinct de tout ce qui précède.
+An establishment seed is missing — and probably categories and products for the
+catalogue screens. That is the next obstacle, and it is distinct from everything
+before it.
 
-### L'amorce d'établissement — et ce qu'elle a mis au jour (22 août)
+### The establishment seed — and what it brought to light (22 August)
 
-`convex/seedFixture.ts`, mutation **interne** (inatteignable depuis un
-navigateur, appelée par `npx convex run`) et idempotente de bout en bout : un
-établissement « Chez Luigi (test) », trois catégories, cinq produits, et le
-rattachement de l'établissement à tous les profils dont le rôle travaille en
-restaurant. Les clients gardent une liste vide — c'est ce qu'est un client.
+`convex/seedFixture.ts`, an **internal** mutation (unreachable from a browser,
+called by `npx convex run`) and idempotent throughout: a "Chez Luigi (test)"
+establishment, three categories, five products, and the attachment of the
+establishment to every profile whose role works in a restaurant. Customers keep
+an empty list — that is what a customer is.
 
-Branchée en étape 3 de `seed-users.mts`, qui sort en code non nul si elle
-échoue : des comptes sans restaurant ne sont pas une amorce utilisable.
+Wired in as step 3 of `seed-users.mts`, which exits non-zero if it fails:
+accounts with no restaurant are not a usable seed.
 
-**L'amorce seule n'a rien réglé** — l'échantillon `navigation` est passé de
-17 à **20 échecs**. La capture directe de `/dashboard` a donné la vraie cause :
+**The seed alone fixed nothing** — the `navigation` sample went from 17 to **20
+failures**. A direct capture of `/dashboard` gave the real cause:
 
 ```
 PAGEERROR Could not find Convex client!
 `useQuery` must be used in the React component tree under `ConvexProvider`.
 ```
 
-Le provider existe pourtant bien dans `app/providers.tsx`.
+The provider is very much there, in `app/providers.tsx`.
 
-#### Deux copies de Convex dans le dépôt
+#### Two copies of Convex in the repository
 
-| Paquet | Déclare | Résolvait vers |
+| Package | Declares | Resolved to |
 | --- | --- | --- |
 | `apps/{reference,themes}`, `convex-schema`, `convex-functions` | `1.31.7` | 1.31.7 |
 | `apps/site` | `^1.34.0` | 1.44.0 |
-| **`packages/admin`** | **pair `>=1.0.0`** | **1.44.0** |
+| **`packages/admin`** | **peer `>=1.0.0`** | **1.44.0** |
 
-`packages/admin` déclarait Convex en dépendance de pair sans contrainte, et pnpm
-lui a donné la version la plus haute présente dans le dépôt — celle tirée par
-`apps/site`. Son `useQuery` venait donc de 1.44.0 pendant que l'application
-fournissait le contexte depuis 1.31.7. Deux instances, deux contextes React,
-aucun lien entre les deux : **toute l'interface d'administration plantait au
-rendu**, pour tout le monde, pas seulement en test.
+`packages/admin` declared Convex as an unconstrained peer dependency, and pnpm
+gave it the highest version present in the repository — the one pulled in by
+`apps/site`. Its `useQuery` therefore came from 1.44.0 while the application
+provided the context from 1.31.7. Two instances, two React contexts,
+no link between the two: **the entire admin interface crashed on render**, for
+everyone, not only in tests.
 
-Corrigé en épinglant `convex@1.31.7` en devDependency de `packages/admin`. Les
-deux résolvent désormais vers la même instance. `apps/site` n'est pas touché.
+Fixed by pinning `convex@1.31.7` as a devDependency of `packages/admin`. Both now
+resolve to the same instance. `apps/site` is untouched.
 
-**Effet mesuré** sur l'échantillon `navigation` : 20 échecs / 4 succès →
-**11 échecs / 13 succès**, et l'erreur `Could not find Convex client` a disparu.
+**Measured effect** on the `navigation` sample: 20 failures / 4 passes →
+**11 failures / 13 passes**, and the `Could not find Convex client` error is gone.
 
-#### Ce qui reste ouvert
+#### What remains open
 
-Les 11 échecs restants ne sont pas diagnostiqués. Ils échouent toujours sur
-`[data-slot="sidebar"]`, mais la cause n'est plus la même puisque la moitié des
-tests du même fichier passent désormais — compilation à la demande trop lente,
-ou écrans réellement incomplets. À reprendre.
+The 11 remaining failures are not diagnosed. They still fail on
+`[data-slot="sidebar"]`, but the cause is no longer the same since half the tests
+in the same file now pass — on-demand compilation too slow, or screens genuinely
+incomplete. To be picked up again.
 
-Ce que l'exécution réelle aura démontré : un typecheck, un lint et 821 tests
-unitaires verts n'empêchaient pas l'interface d'administration d'être
-entièrement cassée par une résolution de dépendance. Aucune analyse statique ne
-pouvait le voir.
+What the real run will have demonstrated: a typecheck, a lint and 821 green unit
+tests did not stop the admin interface being entirely broken by a dependency
+resolution. No static analysis could have seen it.
 
-### Les 11 échecs restants : diagnostic (22 août)
+### The 11 remaining failures: diagnosis (22 August)
 
-Trois causes distinctes, dont **une seule** est un défaut applicatif.
+Three distinct causes, of which **only one** is an application defect.
 
-#### 1. `StoreSelector` écrivait dans un store pendant son propre rendu
+#### 1. `StoreSelector` wrote to a store during its own render
 
 ```
 Cannot update a component (`StoreSelector`) while rendering a different
 component (`StoreSelector`).
 ```
 
-`setCurrentStore` était appelé dans le corps du rendu, lignes 22-26. C'est la
-variété qui peut boucler : l'écriture modifie le store auquel ce composant est
-lui-même abonné, ce qui programme un rendu, qui réécrit. Seule la comparaison
-d'identifiant arrêtait la seconde passe.
+`setCurrentStore` was called in the render body, lines 22-26. That is the variety
+that can loop: the write modifies the store this very component subscribes to,
+which schedules a render, which writes again. Only the id comparison stopped the
+second pass.
 
-`StoreGuard`, juste à côté, fait la même sélection correctement dans un
-`useEffect`. Corrigé de la même façon — et gardé ici, car `StoreGuard` se
-court-circuite sur les routes établissements, réglages et équipe, où le
-sélecteur reste pourtant à l'écran.
+`StoreGuard`, right next door, performs the same selection correctly in a
+`useEffect`. Fixed the same way — and kept here, because `StoreGuard`
+short-circuits itself on the stores, settings and team routes, where the selector
+is nonetheless still on screen.
 
-C'est la même classe d'erreur que j'avais commise moi-même sur
-`checkout/pay/page.tsx` plus tôt dans ce sprint.
+This is the same class of error I made myself on `checkout/pay/page.tsx` earlier
+in this sprint.
 
-#### 2. Le masque de la visite guidée avalait les clics
+#### 2. The guided tour's mask swallowed clicks
 
-`<div class="reactour__mask">` interceptait les clics sur la barre latérale :
-`sidebar.spec.ts` expirait en attendant un lien que le masque recouvrait. Sur un
-compte neuf, la visite s'ouvre seule.
+`<div class="reactour__mask">` intercepted clicks on the sidebar:
+`sidebar.spec.ts` timed out waiting for a link the mask covered. On a fresh
+account, the tour opens by itself.
 
-`auth.setup.ts` écrit désormais `bid-tour-<userId> = "done"` dans le
-`localStorage` avant d'enregistrer la session — exactement ce que fait un humain
-en fermant la visite une fois. La visite mérite son propre test ; elle ne doit
-pas casser silencieusement tous les autres.
+`auth.setup.ts` now writes `bid-tour-<userId> = "done"` into `localStorage` before
+saving the session — exactly what a human does by closing the tour once. The tour
+deserves its own test; it must not silently break all the others.
 
-#### 3. Un test écrit contre une interface qui n'existe plus
+#### 3. A test written against an interface that no longer exists
 
-`routing.spec.ts` attendait un titre « Connexion ». Le `h1` de cette page dit
-« Bon retour parmi nous », et `auth.setup.ts` — écrit par quelqu'un qui avait
-regardé la page — acceptait déjà l'un ou l'autre.
+`routing.spec.ts` expected a "Connexion" heading. That page's `h1` says "Bon
+retour parmi nous", and `auth.setup.ts` — written by someone who had looked at
+the page — already accepted either.
 
-#### 4. Tout le reste : la compilation à la demande
+#### 4. Everything else: on-demand compilation
 
-Le reste n'était pas des défauts. Mesure sans ambiguïté sur `routing.spec.ts` :
+The rest were not defects. An unambiguous measurement on `routing.spec.ts`:
 
-| Test | Serveur froid | Passe suivante |
+| Test | Cold server | Next pass |
 | --- | --- | --- |
-| redirection `/dashboard` | **échec à 18,2 s** | **succès en 4,6 s** |
-| redirection `/dashboard/products` | **échec à 18,2 s** | **succès en 4,7 s** |
-| redirection `/orders`, `/stores` | succès en 7,3 s | succès en 4,1 s |
+| `/dashboard` redirect | **failed at 18.2 s** | **passed in 4.6 s** |
+| `/dashboard/products` redirect | **failed at 18.2 s** | **passed in 4.7 s** |
+| `/orders`, `/stores` redirects | passed in 7.3 s | passed in 4.1 s |
 
-Turbopack compile chaque route au premier appel, et en développement cela coûte
-dix à vingt secondes — plus que la durée de vie accordée à la plupart de ces
-tests. Un `/dashboard` qui « refuse de rediriger un visiteur anonyme » se
-révélait rediriger en 4,6 s au run suivant. Aucune faille : la protection
-fonctionne.
+Turbopack compiles each route on first request, and in development that costs ten
+to twenty seconds — more than the lifetime granted to most of these tests. A
+`/dashboard` that "refuses to redirect an anonymous visitor" turned out to
+redirect in 4.6 s on the next run. No hole: the protection works.
 
-**Correctif structurel** : la CI construit déjà l'application avec `pnpm build`,
-mais `playwright.config.ts` relançait `pnpm dev` — donc elle recompilait page par
-page ce qu'elle venait de construire. Le serveur de test sert désormais la
-version construite sous CI (`E2E_USE_BUILD=true` pour l'obtenir en local).
+**Structural fix**: CI already builds the application with `pnpm build`, but
+`playwright.config.ts` was starting `pnpm dev` — so it recompiled page by page
+what it had just built. The test server now serves the build under CI
+(`E2E_USE_BUILD=true` to get the same locally).
 
-#### Résultat sur l'échantillon `navigation`
+#### Result on the `navigation` sample
 
-| Étape | Échecs / Succès |
+| Step | Failures / Passes |
 | --- | --- |
-| avant l'alignement de Convex | 20 / 4 |
-| après l'alignement de Convex | 11 / 13 |
-| après visite guidée + titre corrigés | 1 / 23 |
-| après `StoreSelector` | **0 sur un serveur chaud** |
+| before the Convex alignment | 20 / 4 |
+| after the Convex alignment | 11 / 13 |
+| after the tour and the heading were fixed | 1 / 23 |
+| after `StoreSelector` | **0 on a warm server** |
 
-Ce qui restait tenait entièrement au serveur de développement.
+What remained was entirely down to the development server.
 
-## La suite complète, sur la version construite (22 août)
+## The full suite, on the production build (22 August)
 
-**Premier chiffre réel jamais obtenu sur ces 510 tests.**
+**The first real number ever obtained on those 510 tests.**
 
 | | |
 | --- | --- |
-| réussis | **344** |
-| échecs | **107** |
-| ignorés | 7 |
-| non exécutés | 52 |
-| durée | 29,5 min |
+| passed | **344** |
+| failed | **107** |
+| skipped | 7 |
+| never run | 52 |
+| duration | 29.5 min |
 
-### Le serveur de production refusait de démarrer
+### The production server refused to start
 
-`instrumentation.ts` valide quatre variables au démarrage et `next start` meurt
-avant de servir la moindre requête : `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
-`AWS_SECRET_ACCESS_KEY`, `OPENAI_API_KEY`. Le serveur de développement s'en
-accommodait, donc rien ne le révélait tant qu'on ne visait pas un build.
+`instrumentation.ts` validates four variables at boot and `next start` dies
+before serving a single request: `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `OPENAI_API_KEY`. The development server tolerated their
+absence, so nothing revealed it while nobody targeted a build.
 
-**Je les avais documentées comme « optionnelles »** dans le modèle et le mode
-d'emploi écrits la veille. C'était faux. Les deux sont corrigés, avec la raison
-et des valeurs bouchons — aucun test n'atteint réellement S3, SES ou OpenAI.
+**I had documented them as "optional"** in the template and the runbook written
+the day before. That was wrong. Both are corrected, with the reason and
+placeholder values — no test actually reaches S3, SES or OpenAI.
 
-### Répartition des 107 échecs
+### Breakdown of the 107 failures
 
 | Signature | Occurrences |
 | --- | --- |
-| `expect(locator).toBeVisible()` / élément absent | 65 + 47 |
+| `expect(locator).toBeVisible()` / element absent | 65 + 47 |
 | `toHaveURL` | 17 |
-| clic expiré | 8 |
+| click timed out | 8 |
 | **`strict mode violation: locator('main') resolved to 2 elements`** | **7** |
-| `option 'Actif'` résolue à 2 éléments | 3 |
+| `option 'Actif'` resolved to 2 elements | 3 |
 
-### Un vrai défaut : deux `<main>` imbriqués
+### A real defect: two nested `<main>` elements
 
-`SidebarInset` (`packages/admin/src/ui/sidebar.tsx:307`) rend un `<main>`, et
-`app/(admin)/layout.tsx` en rendait un second à l'intérieur. Une page a
-exactement un repère `main` : les technologies d'assistance en annonçaient deux.
-Corrigé en `<div>` — c'est `SidebarInset` qui porte le repère.
+`SidebarInset` (`packages/admin/src/ui/sidebar.tsx:307`) renders a `<main>`, and
+`app/(admin)/layout.tsx` rendered a second one inside it. A page has exactly one
+`main` landmark: assistive technology was announcing two. Fixed to a `<div>` —
+`SidebarInset` is what carries the landmark.
 
-Sans la suite e2e, ce défaut serait resté invisible : ni le typecheck, ni le
-lint, ni un test unitaire ne regardent la structure du document rendu.
+Without the e2e suite, this defect would have stayed invisible: neither the
+typecheck, nor the lint, nor a unit test looks at the structure of the rendered
+document.
 
-### Des tests écrits contre une interface qui n'existe plus
+### Tests written against an interface that no longer exists
 
-Preuve sans appel — des libellés **anglais** attendus dans une application
-française :
+Conclusive evidence — **English** labels expected in a French application:
 
-| Attendu | Occurrences |
+| Expected | Occurrences |
 | --- | --- |
 | `heading "Shopping Cart"` | 4 |
 | `heading "Select Store"` | 4 |
 | `heading "Checkout"` | 4 |
 | `heading "Connexion"` | 5 |
 
-Ces spécifications datent d'avant la traduction de l'interface. Elles n'ont
-jamais pu passer, et personne ne l'a su parce que la suite n'a jamais tourné.
+Those specifications predate the interface translation. They have
+never been able to pass, and nobody knew because the suite never ran.
 
-### Ce que ce chiffre vaut, et ce qu'il ne vaut pas
+### What that number is worth, and what it is not
 
-344 tests qui passent, c'est un socle réel : la vitrine, l'authentification, la
-navigation admin, une large part des écrans de gestion répondent.
+344 passing tests is a real foundation: the storefront, authentication, admin
+navigation and a large part of the management screens respond.
 
-Les 107 échecs ne sont **pas** 107 défauts. À vue de nez, la majorité sont des
-sélecteurs périmés. Mais je ne l'ai pas établi test par test, et je ne
-présenterai pas une estimation comme un tri. Ce qui est établi : au moins un
-défaut applicatif réel (le double `main`), et trois autres corrigés en amont
-(`StoreSelector`, la double instance Convex, le masque de la visite guidée).
+The 107 failures are **not** 107 defects. At a glance, most look like stale
+selectors. But I have not established that test by test, and I will not present
+an estimate as a triage. What is established: at least one real application
+defect (the double `main`), and three others fixed upstream (`StoreSelector`, the
+duplicate Convex instance, the guided tour's mask).
 
-Les 52 non exécutés restent inexpliqués — aucun crash de worker dans le journal.
+The 52 never-run remain unexplained — no worker crash in the log.
 
-## Tri des 107 échecs et des 52 non exécutés (22 août)
+## Triaging the 107 failures and the 52 never run (22 August)
 
-### Les 52 non exécutés : résolu, et c'est un levier
+### The 52 never run: solved, and it is a lever
 
-Aucun mystère et aucun crash. Quatre fichiers déclarent
-`describe.configure({ mode: "serial" })` ; en mode série, le premier échec
-abandonne tout le reste du bloc.
+No mystery and no crash. Four files declare
+`describe.configure({ mode: "serial" })`; in serial mode, the first failure
+abandons the rest of the block.
 
-| Fichier | Exécutés | Abandonnés |
+| File | Run | Abandoned |
 | --- | --- | --- |
 | `team.spec.ts` | 1 | **17** |
 | `product-form.spec.ts` | 2 | **16** |
 | `games.spec.ts` | 3 | **11** |
 | `stores.spec.ts` | 10 | **8** |
-| | | **52** — le compte exact |
+| | | **52** — the exact count |
 
-**Quatre échecs empêchaient 52 tests de tourner.** C'est le meilleur rapport
-effort/effet de toute la suite.
+**Four failures were stopping 52 tests from running.** That is the best
+effort-to-effect ratio in the whole suite.
 
-### Répartition des 107
+### Breakdown of the 107
 
-| Cause | Nombre | Nature |
+| Cause | Count | Nature |
 | --- | --- | --- |
-| sélecteur ambigu (barre latérale + page) | 13 | test |
-| deux `<main>` imbriqués | 8 | **défaut applicatif** |
-| barre latérale absente | 7 | à creuser |
-| titre « Connexion » disparu | 6 | test périmé |
-| libellé **anglais** attendu | 6 | test périmé |
-| accents manquants dans l'interface | 1 (+17 en cascade) | **défaut applicatif** |
-| autocomplétion Google (clé absente) | 2 | environnement |
-| URL inattendue | 17 | à creuser |
-| divers (libellés renommés, dialogues) | 47 | mixte |
+| ambiguous selector (sidebar + page) | 13 | test |
+| two nested `<main>` | 8 | **application defect** |
+| sidebar absent | 7 | to dig into |
+| "Connexion" heading gone | 6 | stale test |
+| **English** label expected | 6 | stale test |
+| missing accents in the interface | 1 (+17 cascading) | **application defect** |
+| Google autocomplete (key absent) | 2 | environment |
+| unexpected URL | 17 | to dig into |
+| miscellaneous (renamed labels, dialogs) | 47 | mixed |
 
-### Deux défauts applicatifs confirmés et corrigés
+### Two application defects confirmed and fixed
 
-**1. Deux `<main>` imbriqués** — `SidebarInset` en rend un, le layout admin en
-rendait un second dedans. Une page a exactement un repère `main`.
+**1. Two nested `<main>`** — `SidebarInset` renders one, the admin layout
+rendered a second inside it. A page has exactly one `main` landmark.
 
-**2. Du français sans accents dans l'interface.** Le test `team.spec.ts`
-cherchait « Gestion de l'équipe » ; l'interface affichait « Gestion de
-l'equipe ». **Le test avait raison.** Le balayage a trouvé 53 segments répartis
-sur 12 fichiers de `packages/admin` : « Gerez les membres de votre equipe,
-leurs roles et permissions », « Veuillez selectionner un etablissement »,
-« Echec de l'apercu », « Base de donnees », « Parametres », « Categorie »…
+**2. Unaccented French in the interface.** The `team.spec.ts` test looked for
+"Gestion de l'équipe"; the interface displayed "Gestion de l'equipe". **The test
+was right.** The sweep found 53 segments across 12 files in `packages/admin`:
+"Gerez les membres de votre equipe, leurs roles et permissions", "Veuillez
+selectionner un etablissement", "Echec de l'apercu", "Base de donnees",
+"Parametres", "Categorie"…
 
-C'est un défaut de qualité visible par le restaurateur, dans un produit vendu
-en France. Aucun typecheck ni lint ne le voit.
+That is a quality defect visible to the restaurateur, in a product sold in
+France. No typecheck or lint sees it.
 
-### Mon script de correction a cassé deux choses
+### My correction script broke two things
 
-Il fallait le dire. Le remplacement automatique a touché ce qu'il ne devait pas :
+This needed saying. The automatic replacement touched what it should not have:
 
-| Dégât | Détection |
+| Damage | Detection |
 | --- | --- |
-| classe CSS `recharts-reference-line` → `recharts-référence-line` | relecture du diff |
-| identifiant `categories.length` → `catégories.length` | **typecheck** |
+| CSS class `recharts-reference-line` → `recharts-référence-line` | diff review |
+| identifier `categories.length` → `catégories.length` | **typecheck** |
 
-Les deux sont réparés, et les trois typechecks sont à zéro. La leçon tient en
-une ligne : un remplacement par expression régulière sur du code source doit
-être relu ligne à ligne, pas seulement compté. La première passe était en outre
-incomplète — elle ne voyait que le texte JSX tenant sur une seule ligne, et le
-sous-titre fautif s'étalait sur deux.
+Both are repaired, and the three typechecks are at zero. The lesson fits in one
+line: a regex replacement over source code must be re-read line by line, not
+merely counted. The first pass was also incomplete — it only saw JSX text fitting
+on a single line, and the offending subtitle spanned two.
 
-### Des tests écrits contre une interface qui n'existe plus
+### Tests written against an interface that no longer exists
 
-| Attendu par le test | Réalité |
+| Expected by the test | Reality |
 | --- | --- |
-| `heading "Shopping Cart"` | interface en français |
-| `heading "Select Store"` | idem |
-| `heading "Checkout"` | idem |
-| `heading "Connexion"` | « Bon retour parmi nous » |
-| `button "Créer un compte"` | « Créer mon compte » |
+| `heading "Shopping Cart"` | interface in French |
+| `heading "Select Store"` | same |
+| `heading "Checkout"` | same |
+| `heading "Connexion"` | "Bon retour parmi nous" |
+| `button "Créer un compte"` | "Créer mon compte" |
 
-Ces spécifications n'ont **jamais** pu passer. Personne ne l'a su parce que la
-suite n'a jamais tourné.
+Those specifications could **never** have passed. Nobody knew because the suite
+never ran.
 
-### Ce qui reste
+### What remains
 
-Les 17 « URL inattendue », les 7 « barre latérale absente » et une partie des 47
-« divers » ne sont pas triés. Certains sont sûrement des tests périmés de plus,
-d'autres peut-être de vrais défauts. Je ne les compte dans aucune des deux piles
-tant que je ne les ai pas ouverts.
+The 17 "unexpected URL", the 7 "sidebar absent" and part of the 47
+"miscellaneous" are not triaged. Some are surely more stale tests, others perhaps
+real defects. I count them in neither pile until I have opened them.
 
-### Effet mesuré sur les quatre fichiers `serial`
+### Measured effect on the four `serial` files
 
-| | Réussis | Échecs | Non exécutés |
+| | Passed | Failed | Never run |
 | --- | --- | --- | --- |
-| avant | 17 | 4 | 48 |
-| après | **22** | 4 | 43 |
+| before | 17 | 4 | 48 |
+| after | **22** | 4 | 43 |
 
-Chaque correctif déplace le bloqueur plus loin dans la chaîne : `games` est
-passé de la ligne 47 à 78, `product-form` de 23 à 58, `team` de 30 à 114. Le
-mode `serial` rend ce déblocage forcément itératif — on ne voit l'échec suivant
-qu'une fois le précédent levé.
+Each fix moves the blocker further down the chain: `games` went from line 47 to
+78, `product-form` from 23 to 58, `team` from 30 to 114. Serial mode makes this
+unblocking necessarily iterative — you only see the next failure once the
+previous one is lifted.
 
-C'est aussi ce qui rend ces quatre fichiers coûteux : 43 tests restent
-inaccessibles derrière 4 échecs. Une piste à trancher séparément — le mode
-`serial` est-il vraiment nécessaire ici, ou est-ce un héritage ? S'il tombe, les
-43 tests s'exécutent et échouent (ou passent) chacun pour leur propre raison,
-ce qui est bien plus informatif.
+That is also what makes those four files expensive: 43 tests stay unreachable
+behind 4 failures. A question to settle separately — is serial mode really
+necessary here, or is it an inheritance? If it falls, the 43 tests run and fail
+(or pass) each for their own reason, which is far more informative.
 
-## Le mode `serial` n'était pas nécessaire (22 août)
+## Serial mode was not necessary (22 August)
 
-Vérifié avant de toucher quoi que ce soit, sur les quatre fichiers concernés :
+Checked before touching anything, across the four files concerned:
 
-| Indice d'une vraie dépendance | Constat |
+| Sign of a real dependency | Finding |
 | --- | --- |
-| `beforeAll` | **aucun** dans les quatre |
-| variables partagées au niveau `describe` | **aucune** |
-| bouton de validation cliqué (Enregistrer, Créer, Confirmer, Supprimer…) | **aucun** |
-| navigation propre à chaque test | `beforeEach` partout |
+| `beforeAll` | **none** in the four |
+| variables shared at `describe` level | **none** |
+| a submit button clicked (Enregistrer, Créer, Confirmer, Supprimer…) | **none** |
+| navigation specific to each test | `beforeEach` everywhere |
 
-Aucun test n'écrit en base. Même ceux qui s'appellent « delete » se contentent
-d'ouvrir la confirmation puis d'annuler. Il n'y a donc **rien** qu'un test
-transmette au suivant.
+No test writes to the database. Even the ones called "delete" merely open the
+confirmation and then cancel. There is therefore **nothing** a test hands to the
+next.
 
-Et l'origine : `git log -S` fait remonter `mode: "serial"` à
-`1228afac chore: câbler le monorepo BeYours` — un commit de câblage global, sans
-un mot sur l'isolation des tests. Le mode n'a pas été choisi, il a été charrié.
+And the origin: `git log -S` traces `mode: "serial"` back to
+`1228afac chore: câbler le monorepo BeYours` — a global wiring commit, with not a
+word about test isolation. The mode was not chosen, it was carried along.
 
-### Effet du retrait
+### Effect of removing it
 
-| | Réussis | Échecs | Non exécutés |
+| | Passed | Failed | Never run |
 | --- | --- | --- | --- |
-| avec `serial` | 22 | 4 | **43** |
-| sans `serial` | **57** | 12 | **0** |
+| with `serial` | 22 | 4 | **43** |
+| without `serial` | **57** | 12 | **0** |
 
-**+35 tests au vert**, et les 43 qui étaient cachés s'exécutent enfin — chacun
-échouant ou passant pour sa propre raison. Douze échecs réels apparaissent, qui
-étaient jusque-là invisibles derrière quatre.
+**+35 tests green**, and the 43 that were hidden finally run — each failing or
+passing for its own reason. Twelve real failures appear, which until then were
+invisible behind four.
 
-C'est exactement le compromis à faire : douze diagnostics lisibles valent mieux
-que quatre diagnostics et cinquante-deux silences.
+That is exactly the trade to make: twelve readable diagnoses beat four diagnoses
+and fifty-two silences.
 
-### Les 12 restants
+### The 12 remaining
 
-| Fichier | Échecs |
+| File | Failures |
 | --- | --- |
-| `product-form.spec.ts` | 5 (champs du formulaire, onglets, gestion de stock) |
-| `team.spec.ts` | 3 (filtre par statut, dialogue d'invitation) |
+| `product-form.spec.ts` | 5 (form fields, tabs, stock management) |
+| `team.spec.ts` | 3 (status filter, invitation dialog) |
 | `games.spec.ts` | 2 (catalogue) |
-| `stores.spec.ts` | 2 (titre, champs du dialogue) |
+| `stores.spec.ts` | 2 (heading, dialog fields) |
 
-Non triés. Ils rejoignent les 17 « URL inattendue », les 7 « barre latérale
-absente » et une partie des 47 « divers » du bilan précédent.
+Not triaged. They join the 17 "unexpected URL", the 7 "sidebar absent" and part
+of the 47 "miscellaneous" from the previous tally.
 
-## Tri des échecs des quatre fichiers admin (22 août)
+## Triaging the failures in the four admin files (22 August)
 
-Point de départ : 22 réussis, 4 échecs, 43 non exécutés. **Arrivée : 64 réussis,
-5 échecs, 0 non exécuté.**
+Starting point: 22 passed, 4 failed, 43 never run. **Arrival: 64 passed, 5
+failed, 0 never run.**
 
-### Défauts applicatifs trouvés et corrigés
+### Application defects found and fixed
 
-| Défaut | Effet |
+| Defect | Effect |
 | --- | --- |
-| libellés d'un mot sans accent (`"Equipe"`, `"Parametres"`, `"Integrations"`, `>Role<`, `>Details<`) | 3 tests |
-| `Switch` annoncé comme case à cocher | accessibilité |
+| single-word labels with no accent (`"Equipe"`, `"Parametres"`, `"Integrations"`, `>Role<`, `>Details<`) | 3 tests |
+| `Switch` announced as a checkbox | accessibility |
 
-La première passe d'accents avait manqué ces libellés : mon expression exigeait
-une espace dans la chaîne pour ne viser que de la prose, ce qui excluait tout
-libellé d'un seul mot. Corrigé.
+The first accent pass had missed those labels: my expression required a space in
+the string so as to target prose only, which excluded every single-word label.
+Fixed.
 
-Le `Switch` de `packages/ui` est un `<input type="checkbox">` masqué. Il portait
-donc le rôle implicite `checkbox` alors qu'il *paraît* et *fonctionne* comme un
-interrupteur. `role="switch"` est un rôle valide pour cet input et décrit ce que
-l'utilisateur voit.
+`packages/ui`'s `Switch` is a hidden `<input type="checkbox">`. It therefore
+carried the implicit `checkbox` role while it *looks* and *behaves* like a
+switch. `role="switch"` is a valid role for that input and describes what the
+user sees.
 
-**Mais ce correctif n'a pas fait passer le test**, et il faut le dire : l'input
-est `sr-only`, donc Playwright ne le considérera jamais comme visible, quel que
-soit son rôle. Le test devait viser ce que l'utilisateur voit et clique — le
-libellé — comme le faisait déjà son voisin à la ligne 168.
+**But that fix did not make the test pass**, and this needs saying: the input is
+`sr-only`, so Playwright will never consider it visible, whatever its role. The
+test had to target what the user sees and clicks — the label — as its neighbour
+at line 168 already did.
 
-### Défauts de test corrigés
+### Test defects fixed
 
 | Test | Cause |
 | --- | --- |
-| `selectFilter` (helper partagé) | Radix rend chaque option deux fois — la stylée et une native cachée. Cadré sur le `listbox` ouvert. |
-| `Prix (EUR)` | le formulaire affiche `Prix (€)`, cette orthographe n'a jamais existé |
-| `Disponible à partir de` / `jusqu'à` | `.or()` de `getByText` et `getByLabel` sur le **même** libellé : deux correspondances |
-| état du commutateur de stock | `getAttribute("aria-checked")` sur un libellé rend toujours `null` — la branche était décorative, elle cliquait à chaque fois et tombait juste par hasard |
+| `selectFilter` (shared helper) | Radix renders every option twice — the styled one and a hidden native one. Scoped to the open `listbox`. |
+| `Prix (EUR)` | the form displays `Prix (€)`; that spelling never existed |
+| `Disponible à partir de` / `jusqu'à` | `.or()` of `getByText` and `getByLabel` on the **same** label: two matches |
+| stock switch state | `getAttribute("aria-checked")` on a label always returns `null` — the branch was decorative, it clicked every time and happened to be right |
 
-### Deux erreurs de ma part, à noter
+### Two mistakes of mine, worth noting
 
-1. J'ai corrigé « Disponible à partir de » et **laissé la ligne suivante**, qui
-   répétait le même motif avec « Disponible jusqu'à ». Vu à l'exécution suivante.
-2. J'ai présenté `role="switch"` comme le correctif du test alors qu'il ne l'est
-   pas. C'est un gain d'accessibilité réel, rien de plus.
+1. I fixed "Disponible à partir de" and **left the next line**, which repeated the
+   same pattern with "Disponible jusqu'à". Seen on the following run.
+2. I presented `role="switch"` as the fix for the test when it is not. It is a
+   real accessibility gain, nothing more.
 
-### Les 5 qui restent — non diagnostiqués
+### The 5 that remain — undiagnosed
 
-| Test | Ce qu'il attend | Constat |
+| Test | What it expects | Finding |
 | --- | --- | --- |
-| `games:88` | `getByText('Jeux', exact)` | le `h2` « Jeux » existe |
-| `games:96` | un `%` dans le dialogue | non vérifié |
-| `product-form:109` | un message de validation | non vérifié |
-| `product-form:312` | « Seuil de stock faible » | **la chaîne existe** (ligne 725), donc l'activation du suivi n'a pas pris |
-| `stores:168` | libellé `/Adresse/` dans le dialogue | **la chaîne existe** (ligne 337) ; la page a deux `DialogContent`, le test en ouvre peut-être un et cherche dans l'autre |
+| `games:88` | `getByText('Jeux', exact)` | the `h2` "Jeux" exists |
+| `games:96` | a `%` in the dialog | not checked |
+| `product-form:109` | a validation message | not checked |
+| `product-form:312` | "Seuil de stock faible" | **the string exists** (line 725), so enabling tracking did not take |
+| `stores:168` | an `/Adresse/` label in the dialog | **the string exists** (line 337); the page has two `DialogContent`, the test may open one and search the other |
 
-Ces cinq n'échouent pas sur un libellé périmé : le texte attendu est bien dans le
-code. Ils échouent sur l'accès au contenu. Je les laisse non triés plutôt que
-d'avancer une hypothèse comme un résultat.
+Those five do not fail on a stale label: the expected text is in the code. They
+fail on access to the content. I leave them untriaged rather than advance a
+hypothesis as a result.
 
-## Les 17 « URL inattendue » (22 août)
+## The 17 "unexpected URL" (22 August)
 
-**Un seul fichier, une seule cause.** Les 17 venaient tous de
-`store-detail.spec.ts`, tous avec le même écart : attendu
-`/dashboard/stores/<id>`, reçu `/dashboard/stores`.
+**One file, one cause.** All 17 came from `store-detail.spec.ts`, all with the
+same discrepancy: expected `/dashboard/stores/<id>`, received
+`/dashboard/stores`.
 
-### La cause : la ligne du tableau n'est pas cliquable
+### The cause: the table row is not clickable
 
-Le helper `navigateToFirstStore` clique `tbody tr` et attend une navigation.
-Or `TableRow` ne porte **aucun `onClick`** : la navigation vit dans un `<Link>`
-à l'intérieur de la cellule du nom. Cliquer au centre de la ligne tombe sur la
-cellule qui s'y trouve et ne va nulle part.
+The `navigateToFirstStore` helper clicks `tbody tr` and waits for a navigation.
+But `TableRow` carries **no `onClick`**: the navigation lives in a `<Link>` inside
+the name cell. Clicking the centre of the row lands on whichever cell is there and
+goes nowhere.
 
-L'interface n'a jamais offert le clic sur la ligne. C'est le test qui se
-trompait. Corrigé : il vise l'ancre.
+The interface never offered a row click. It was the test that was wrong. Fixed: it
+targets the anchor.
 
-**Effet : 17 échecs → 7.**
+**Effect: 17 failures → 7.**
 
-### Un test qui ne pouvait pas échouer
+### A test that could not fail
 
-`stores.spec.ts:274` — « should navigate to store detail on row click » —
-**passait**. Il compte les lignes à l'instant du `domcontentloaded`, avant que
-Convex n'ait répondu, trouve zéro, saute le `if (rowCount > 0)` et se déclare
-réussi sans avoir rien vérifié. Il contenait pourtant le même défaut que les 17
-autres.
+`stores.spec.ts:274` — "should navigate to store detail on row click" —
+**passed**. It counts the rows at the moment of `domcontentloaded`, before Convex
+has answered, finds zero, skips the `if (rowCount > 0)` and declares success
+without having checked anything. It nonetheless contained the same defect as the
+other 17.
 
-Réécrit pour attendre l'ancre puis exiger la navigation : il peut désormais
-échouer, ce qui est la moindre des choses pour un test.
+Rewritten to wait for the anchor and then require the navigation: it can now
+fail, which is the least one asks of a test.
 
-### Un défaut d'accessibilité trouvé au passage
+### An accessibility defect found in passing
 
-`getByLabel(/Adresse/)` échoue alors que le texte existe. `AddressAutocomplete`
-rend cinq `<label>` **sans `htmlFor`** et cinq `<input>` **sans `id`** : rien ne
-les associe. Un lecteur d'écran annonce cinq champs anonymes, et cliquer un
-libellé ne donne pas le focus.
+`getByLabel(/Adresse/)` fails although the text exists. `AddressAutocomplete`
+renders five `<label>` elements **with no `htmlFor`** and five `<input>` elements
+**with no `id`**: nothing associates them. A screen reader announces five
+anonymous fields, and clicking a label does not move focus.
 
-Câblé avec `React.useId()`, typecheck vert.
+Wired with `React.useId()`, typecheck green.
 
-**Mais je n'ai pas pu vérifier que ce correctif change le résultat des tests** :
-après reconstruction, le compte reste à 28 réussis / 8 échecs, et je ne retrouve
-pas le libellé « Adresse de l'établissement » dans la sortie de build que j'ai
-inspectée. Le correctif est juste sur le fond — un libellé doit pointer vers son
-champ — mais je ne le présente pas comme la résolution de ces tests.
+**But I could not verify that this fix changes the test result**: after rebuilding,
+the count stays at 28 passed / 8 failed, and I cannot find the label "Adresse de
+l'établissement" in the build output I inspected. The fix is right on the merits —
+a label must point at its field — but I do not present it as the resolution of
+those tests.
 
-### Reste sur ces deux fichiers : 8 échecs
+### Remaining on these two files: 8 failures
 
-Sept dans `store-detail` (contenus des onglets Horaires, Paramètres,
-Intégrations, plus « Adresse » sur Général) et un dans `stores` (champs du
-dialogue de création). Non diagnostiqués.
+Seven in `store-detail` (contents of the Horaires, Paramètres and Intégrations
+tabs, plus "Adresse" on Général) and one in `stores` (creation dialog fields).
+Undiagnosed.
 
-## Les 7 « barre latérale absente » (22 août)
+## The 7 "sidebar absent" (22 August)
 
-Tous dans `admin-responsive.spec.ts`, tous dans les blocs **mobile (375×667)**.
+All in `admin-responsive.spec.ts`, all in the **mobile (375×667)** blocks.
 
-### La cause : un helper écrit pour le bureau seulement
+### The cause: a helper written for desktop only
 
-Sur un écran étroit, la barre latérale vit dans un `Sheet` — un tiroir modal
-**fermé par défaut**. `[data-slot="sidebar"]` n'est donc pas dans le DOM tant que
-l'utilisateur n'a pas ouvert le tiroir. C'est le comportement voulu.
+On a narrow screen, the sidebar lives in a `Sheet` — a modal drawer **closed by
+default**. `[data-slot="sidebar"]` is therefore not in the DOM until the user has
+opened the drawer. That is the intended behaviour.
 
-`waitForAdminPage` attendait cette barre inconditionnellement : sur mobile,
-l'attente ne pouvait aboutir. Le helper choisit désormais son repère selon le
-viewport — le déclencheur du tiroir en dessous de 768 px, la barre au-dessus.
+`waitForAdminPage` waited for that sidebar unconditionally: on mobile, the wait
+could not succeed. The helper now picks its landmark according to the viewport —
+the drawer trigger below 768 px, the sidebar above.
 
-**Effet sur le fichier : 12 échecs → 3.**
+**Effect on the file: 12 failures → 3.**
 
-### Ce que ça a révélé : deux vrais défauts d'affichage
+### What that revealed: two real display defects
 
-Les tests mobiles s'exécutent enfin, et deux échouent sur **leur vraie
-assertion** — pas sur un locator :
+The mobile tests finally run, and two fail on **their real assertion** — not on a
+locator:
 
 ```
 expect(hasOverflow).toBe(false)   →   received: true
 ```
 
-| Page | À 375 px |
+| Page | At 375 px |
 | --- | --- |
-| `/dashboard` | **déborde horizontalement** |
-| `/dashboard/orders` | **déborde horizontalement** |
+| `/dashboard` | **overflows horizontally** |
+| `/dashboard/orders` | **overflows horizontally** |
 
-Un débordement horizontal sur téléphone, c'est une page qui glisse latéralement
-sous le doigt. Le test existait pour attraper exactement ça et ne l'a jamais pu :
-il mourait avant, sur la barre latérale.
+A horizontal overflow on a phone is a page that slides sideways under the
+finger. The test existed to catch exactly that and never could: it died earlier,
+on the sidebar.
 
-Je n'ai pas cherché l'élément fautif — c'est une investigation CSS distincte du
-tri.
+I did not look for the offending element — that is a CSS investigation distinct
+from the triage.
 
-### Le troisième restant
+### The third remaining
 
-`admin-responsive.spec.ts:156` (bureau) attend `[data-slot="card"]` sur
-`/dashboard` et ne le trouve pas. Non diagnostiqué ; l'hypothèse la plus simple
-est un tableau de bord vide faute de commandes, mais je ne l'ai pas vérifiée.
+`admin-responsive.spec.ts:156` (desktop) expects `[data-slot="card"]` on
+`/dashboard` and does not find it. Undiagnosed; the simplest hypothesis is an
+empty dashboard for want of orders, but I have not verified it.
 
-## Les deux débordements mobiles — corrigés (22 août)
+## The two mobile overflows — fixed (22 August)
 
-### Le coupable, trouvé par mesure
+### The culprit, found by measurement
 
-Un test de diagnostic listant les éléments dont le bord droit dépasse le
-viewport a donné la même réponse sur les deux pages :
+A diagnostic test listing every element whose right edge passed the viewport gave
+the same answer on both pages:
 
-| Page | `scrollWidth` | Élément fautif |
+| Page | `scrollWidth` | Offending element |
 | --- | --- | --- |
-| `/dashboard` | 382 (vp 375) | groupe droit de l'en-tête, largeur 219 |
-| `/dashboard/orders` | 388 (vp 375) | le même |
+| `/dashboard` | 382 (vp 375) | the header's right-hand group, width 219 |
+| `/dashboard/orders` | 388 (vp 375) | the same |
 
-L'en-tête admin est un `justify-between` entre deux groupes, et **aucun des deux
-ne pouvait rétrécir** : le groupe de droite portait `shrink-0`, celui de gauche
-n'avait pas `min-w-0` — un enfant flex refuse de descendre sous la largeur de son
-contenu tant qu'on ne le lui autorise pas explicitement.
+The admin header is a `justify-between` between two groups, and **neither could
+shrink**: the right group carried `shrink-0`, the left had no `min-w-0` — a flex
+child refuses to go below the width of its content until you explicitly allow it.
 
-### Le correctif
+### The fix
 
-- groupe de gauche : `min-w-0`, fil d'Ariane en `truncate` et `flex-nowrap` ;
-- groupe de droite : `shrink-0` conservé (ces contrôles doivent rester
-  utilisables), mais le nom d'établissement plafonné à `7.5rem` sous `sm`.
+- left group: `min-w-0`, breadcrumb with `truncate` and `flex-nowrap`;
+- right group: `shrink-0` kept (those controls must stay usable), but the
+  establishment name capped at `7.5rem` below `sm`.
 
-**Vérifié** : `scrollWidth` passe à 375 = viewport sur les deux pages. La bande
-d'onglets de `/dashboard/orders`, large de 790 px, reste large — mais elle est
-clippée par son conteneur et ne fait plus glisser la page, ce qui est le
-comportement attendu d'une barre d'onglets défilante.
+**Verified**: `scrollWidth` drops to 375 = viewport on both pages. The
+`/dashboard/orders` tab strip, 790 px wide, stays wide — but it is clipped by its
+container and no longer slides the page, which is the expected behaviour of a
+scrolling tab bar.
 
-**Fichier `admin-responsive.spec.ts` : 2 réussis / 12 échecs → 13 / 1.**
+**File `admin-responsive.spec.ts`: 2 passed / 12 failed → 13 / 1.**
 
-### Une incohérence du design system corrigée au passage
+### A design-system inconsistency fixed in passing
 
-`packages/ui`'s `Card` rendait un `<div>` nu, sans `data-slot="card"`, alors que
-toutes les autres primitives du système en portent un (`button`, `breadcrumb`,
-`sidebar`, `dialog`…). Aligné.
+`packages/ui`'s `Card` rendered a bare `<div>`, with no `data-slot="card"`, while
+every other primitive in the system carries one (`button`, `breadcrumb`,
+`sidebar`, `dialog`…). Aligned.
 
-**Ce correctif n'a pas fait passer le test qui le cherchait**, et il faut le
-dire : l'attribut est bien dans le build (vérifié), mais `/dashboard` n'affiche
-aucune carte — il rend « Veuillez sélectionner un restaurant ». Le `storeId`
-n'est pas résolu au moment du test. C'est un problème distinct, non résolu.
+**That fix did not make the test looking for it pass**, and this needs saying: the
+attribute is in the build (verified), but `/dashboard` shows no card at all — it
+renders "Veuillez sélectionner un restaurant". The `storeId` is not resolved at
+the time of the test. That is a separate, unresolved problem.
 
-### Reste sur ce fichier
+### Remaining on this file
 
-`admin-responsive.spec.ts:156` — le tableau de bord sans établissement
-sélectionné. À reprendre avec les autres cas de résolution d'établissement.
+`admin-responsive.spec.ts:156` — the dashboard with no establishment selected. To
+be picked up with the other store-resolution cases.
 
 
-## La résolution d'établissement, dans son ensemble (23 août)
+## Store resolution, as a whole (23 August)
 
-### L'état des lieux
+### The state of things
 
-« Quel établissement est actif » était rangé à cinq endroits et calculé par six
-composants.
+"Which establishment is active" was stored in five places and computed by six
+components.
 
-| Emplacement | Portée |
+| Location | Scope |
 | --- | --- |
-| `currentStore` (document entier, localStorage `beindigital-store`) | admin **et** boutique |
-| `adminApiStore.storeId` | mémoire, `packages/admin` |
-| `cartStore.storeId` | panier |
-| cookie `storeSlug` | themes |
-| slug d'URL résolu serveur | themes |
+| `currentStore` (whole document, localStorage `beindigital-store`) | admin **and** storefront |
+| `adminApiStore.storeId` | memory, `packages/admin` |
+| `cartStore.storeId` | cart |
+| `storeSlug` cookie | themes |
+| server-resolved URL slug | themes |
 
-Résolveurs : `StoreGuard` (premier de la liste), `StoreSelector` (le seul s'il
-n'y en a qu'un), `useStoreId` (le plus proche par géolocalisation), plus trois
-copies divergentes dans `apps/themes`.
+Resolvers: `StoreGuard` (first in the list), `StoreSelector` (the only one when
+there is one), `useStoreId` (nearest by geolocation), plus three divergent copies
+in `apps/themes`.
 
-### Le décalage d'un commit, démontré par lecture
+### The one-commit lag, demonstrated by reading
 
-`StoreGuard` recopiait `currentStore._id` dans `adminApiStore.storeId` depuis un
-effet. Or la page qu'il débloque est rendue **dans le commit même** où il la
-laisse passer — donc avant que l'effet n'écrive.
+`StoreGuard` copied `currentStore._id` into `adminApiStore.storeId` from an
+effect. But the page it releases is rendered **in the very commit** where it lets
+it through — that is, before the effect writes.
 
 ```
-commit 3 : currentStore posé → enfants rendus → miroir null → « Veuillez sélectionner un restaurant »
-commit 4 : effet → miroir posé → squelette, la requête part enfin
+commit 3: currentStore set → children rendered → mirror null → "Veuillez sélectionner un restaurant"
+commit 4: effect → mirror set → skeleton, the query finally goes out
 ```
 
-C'est ce que voyait `admin-responsive.spec.ts:156`. Ce n'était pas une
-hypothèse : c'est la sémantique des effets passifs de React.
+That is what `admin-responsive.spec.ts:156` was seeing. It was not a hypothesis:
+it is the semantics of React's passive effects.
 
-### Ce qui a été fait
+### What was done
 
-**Dériver au lieu de recopier.** Le miroir a disparu de `admin-api-store` ; les
-pages lisent la sélection elle-même. Le garde ne rend ses enfants que lorsque
-l'id est présent dans la liste renvoyée par le serveur pour ce compte — un id
-persisté pointant vers un établissement supprimé, ou hérité de l'utilisateur
-précédent de ce navigateur, est remplacé au lieu d'être transmis.
+**Derive instead of copy.** The mirror is gone from `admin-api-store`; the pages
+read the selection itself. The guard renders its children only when the id is
+present in the list the server returns for this account — a persisted id pointing
+at a deleted establishment, or inherited from this browser's previous user, is
+replaced rather than handed on.
 
-**Un seul `useAdminStoreId`.** Il en existait deux du même nom lisant deux
-sources : 36 fichiers dans `packages/admin`, 18 dans `apps/reference`,
-indiscernables au point d'appel. Celui de l'app réexporte maintenant celui du
-package.
+**A single `useAdminStoreId`.** There were two of the same name reading two
+sources: 36 files in `packages/admin`, 18 in `apps/reference`, indistinguishable
+at the call site. The app's one now re-exports the package's.
 
-**Ne persister que l'id.** Le document entier était figé dans localStorage et
-rien ne le rafraîchissait : un établissement renommé gardait son ancien nom, des
-horaires modifiés restaient faux côté visiteur. Le document vient de Convex.
-Effet de bord bienvenu : le risque d'écart d'hydratation disparaît, puisque tout
-ce qui en dérive attend désormais la même requête côté serveur et côté client.
+**Persist the id and nothing else.** The whole document was frozen in localStorage
+and nothing refreshed it: a renamed establishment kept its old name, changed
+opening hours stayed wrong on the visitor's side. The document comes from Convex.
+A welcome side effect: the hydration-mismatch risk disappears, since everything
+derived from it now waits on the same query on the server and on the client.
 
-**Deux clés au lieu d'une.** `beyours-admin-store` et
-`beyours-storefront-store`. Un visiteur laissant la géolocalisation choisir le
-restaurant le plus proche déplaçait le tableau de bord dans lequel le gérant
-travaillait. Les sélections existantes sont reprises depuis l'ancienne clé.
+**Two keys instead of one.** `beyours-admin-store` and
+`beyours-storefront-store`. A visitor letting geolocation pick the nearest
+restaurant moved the dashboard its manager was working in. Existing selections
+carry over from the old key.
 
-**Géolocalisation sur demande.** `useNearestStore` la réclamait au montage, sur
-chaque page boutique, y compris pour un restaurant mono-établissement où la
-réponse ne change rien. Elle est désormais demandée quand elle décide de quelque
-chose : plusieurs établissements, aucun choisi. Le panneau « Nos restaurants »,
-lui, l'active explicitement — c'est ce que le visiteur y cherche.
+**Geolocation on demand.** `useNearestStore` asked for it on mount, on every
+storefront page, including for a single-location restaurant where the answer
+changes nothing. It is now requested when it decides something: several
+establishments, none chosen. The "Nos restaurants" panel turns it on explicitly —
+that is what the visitor came there for.
 
-**Sélection effacée à la déconnexion.** `clearCurrentStore` existait et n'était
-appelé nulle part.
+**Selection cleared on sign-out.** `clearCurrentStore` existed and was called
+nowhere.
 
-**Treize écrans vides morts** — « Veuillez sélectionner un établissement » sous
-un garde qui rend ce cas inatteignable — remplacés par un `ResolvingStore`
-neutre. Les trois routes délibérément contournées (stores, settings, team)
-gardent un vrai message.
+**Thirteen dead empty screens** — "Veuillez sélectionner un établissement" beneath
+a guard that makes the case unreachable — replaced by a neutral `ResolvingStore`.
+The three deliberately bypassed routes (stores, settings, team) keep a real
+message.
 
-**Trois orphelins supprimés dans `apps/themes`** : `StoreGuard`, `StoreSelector`
-et `StoreProvider`, joignables seulement par des barils que personne n'importe —
-la mise en page admin de themes utilise déjà les composants du package. Le garde
-de themes portait encore le `setState` pendant le rendu corrigé côté package : il
-part avec le fichier.
+**Three orphans deleted in `apps/themes`**: `StoreGuard`, `StoreSelector` and
+`StoreProvider`, reachable only through barrels nobody imports —
+themes' admin layout already uses the package's components. themes' guard still
+carried the render-time `setState` fixed on the package side: it goes with the
+file.
 
-**Tranche morte retirée** : `stores`, `setStores`, `useStores`,
-`clearCurrentStore`, `useStoreHours`, `useIsStoreOpen` — zéro appelant, et un
-`useStores()` qui aurait silencieusement renvoyé `[]` au premier qui s'en serait
-servi.
+**Dead slice removed**: `stores`, `setStores`, `useStores`, `clearCurrentStore`,
+`useStoreHours`, `useIsStoreOpen` — zero callers, and a `useStores()` that would
+have silently returned `[]` to the first person who used it.
 
-### Ce qui a été écarté
+### What was ruled out
 
-Pas de duplication de `zustand` ni de `@be-in-digital/restaurant` : un seul
-exemplaire résolu, contrairement au cas Convex de la semaine dernière. Vérifié
-par `readlink` sur les trois emplacements.
+No duplication of `zustand` nor of `@be-in-digital/restaurant`: a single resolved
+copy, unlike last week's Convex case. Verified with `readlink` on all three
+locations.
 
-### Preuve par la morsure
+### Proof by bite
 
-Cinq tests dans `packages/restaurant/src/__tests__/store-selection.test.ts`.
-Deux morsures vérifiées, fichier restauré à l'identique ensuite :
+Five tests in `packages/restaurant/src/__tests__/store-selection.test.ts`. Two
+bites verified, file restored identically afterwards:
 
-| Neutralisation | Résultat |
+| Neutralisation | Result |
 | --- | --- |
-| clés admin et boutique confondues | 1 test rouge |
-| migration depuis l'ancienne clé retirée | 1 test rouge |
+| admin and storefront keys merged | 1 test red |
+| migration from the old key removed | 1 test red |
 
 ### Gates
 
-Typecheck 0 erreur sur `restaurant`, `admin`, `mcp-server`, `ui`, `reference`,
-`themes`. Lint reference : 0 erreur / 71 avertissements (inchangé). Tests
-unitaires : 153 + 89. `next build` de `apps/reference` : succès.
+Typecheck 0 errors on `restaurant`, `admin`, `mcp-server`, `ui`, `reference`,
+`themes`. Reference lint: 0 errors / 71 warnings (unchanged). Unit tests: 153 +
+89. `next build` of `apps/reference`: success.
 
-### Ce qui n'est pas vérifié
+### What is not verified
 
-`admin-responsive.spec.ts:156` n'a pas été rejoué — la pile e2e n'a pas été
-relancée. Le décalage d'un commit est supprimé de façon démontrable, mais
-l'affirmation « ce test passe maintenant » demande une exécution.
+`admin-responsive.spec.ts:156` was not replayed — the e2e stack was not
+restarted. The one-commit lag is demonstrably removed, but the claim "this test
+passes now" requires a run.
 
-Un compromis assumé : `useStoreId` ne renvoie plus l'id persisté immédiatement,
-il attend que `stores.list` confirme son existence. C'est un aller-retour Convex
-de plus avant la première requête du menu, contre la garantie de ne jamais
-interroger un établissement supprimé.
+An accepted trade-off: `useStoreId` no longer returns the persisted id
+immediately, it waits for `stores.list` to confirm it exists. That is one more
+Convex round trip before the menu's first query, against the guarantee of never
+querying a deleted establishment.
 
-## Vérification e2e de la consolidation (23 août)
+## E2E verification of the consolidation (23 August)
 
-### Deux obstacles avant le premier chiffre
+### Two obstacles before the first number
 
-`next start` refusait de démarrer : `instrumentation.ts` valide quatre
-variables au boot (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-`OPENAI_API_KEY`) et `.env.local` ne les a pas. `.env.e2e.example` dit depuis sa
-rédaction de copier le fichier vers `.env.e2e` — mais `playwright.config.ts` ne
-lisait que `.env.local`, donc suivre l'instruction ne changeait rien. La config
-lit maintenant les deux, `.env.e2e` d'abord, un export shell primant sur tout.
+`next start` refused to boot: `instrumentation.ts` validates four variables at
+startup (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`OPENAI_API_KEY`) and `.env.local` does not have them. `.env.e2e.example` has said
+since it was written to copy the file to `.env.e2e` — but `playwright.config.ts`
+only read `.env.local`, so following the instruction changed nothing. The config
+now reads both, `.env.e2e` first, with a shell export beating everything.
 
-`SEED_PASSWORD` n'est stocké nulle part : ni dans un fichier, ni dans les
-variables du déploiement Convex. Le projet `setup` échoue donc sur son
-assertion, et les 446 tests admin ne s'exécutent pas. **La moitié admin de cette
-vérification reste à faire** et demande la valeur employée au moment du seed.
+`SEED_PASSWORD` is stored nowhere: not in a file, not in the Convex deployment's
+variables. The `setup` project therefore fails on its assertion, and the 446
+admin tests do not run. **The admin half of this verification remains to be done**
+and needs the value used at seeding time.
 
-### Comparaison contre le commit d'avant
+### Comparison against the previous commit
 
-Projet `public`, version construite, `4437435` puis `HEAD`.
+`public` project, production build, `4437435` then `HEAD`.
 
-| | réussis | échecs |
+| | passed | failed |
 | --- | --- | --- |
-| avant (`4437435`) | 30 | 33 |
-| après consolidation | 29 | 34 |
-| après correctif géoloc | **35** | **28** |
+| before (`4437435`) | 30 | 33 |
+| after consolidation | 29 | 34 |
+| after the geolocation fix | **35** | **28** |
 
-La première mesure montrait **une régression**, à moi : `/store-selector`
-enregistrait « Permissions policy violation: Geolocation access has been
-blocked ».
+The first measurement showed **a regression**, and it was mine:
+`/store-selector` logged "Permissions policy violation: Geolocation access has
+been blocked".
 
-### La cause, en deux endroits
+### The cause, in two places
 
-Rendre la géolocalisation optionnelle n'avait pas suffi : deux appelants la
-réclamaient toujours au montage. Le résolveur, dès qu'il voyait plusieurs
-établissements sans sélection — c'est-à-dire à l'arrivée du visiteur. Et le
-panneau « Nos restaurants », qui vit dans l'en-tête de **toutes** les pages : le
-monter quelque part, c'est demander partout.
+Making geolocation optional had not been enough: two callers were still asking
+for it on mount. The resolver, as soon as it saw several establishments with no
+selection — that is, on the visitor's arrival. And the "Nos restaurants" panel,
+which lives in the header of **every** page: mounting it anywhere asks
+everywhere.
 
-Les deux utilisent maintenant `useGrantedLocation` : la position sert si le
-visiteur l'a accordée auparavant, et l'API n'est pas touchée sinon — pas de
-demande, et rien qu'une politique de permissions puisse rejeter. Le bouton
-« Localiser » du panneau reste pour qui veut l'accorder sur le moment ; sans
-position, le plus proche est simplement le premier.
+Both now use `useGrantedLocation`: the position is used if the visitor granted it
+earlier, and the API is not touched otherwise — no prompt, and nothing for a
+permissions policy to reject. The panel's "Localiser" button remains for anyone
+wanting to grant it on the spot; with no position, the nearest is simply the
+first.
 
-**Aucune régression, cinq tests réparés** — les vérifications d'erreurs console
-de menu, panier, paiement, suivi et mise en page boutique. Messages
-« geolocation blocked » sur l'ensemble du run : 20 → 0.
+**No regression, five tests repaired** — the console-error checks on menu, cart,
+checkout, tracking and the storefront layout. "Geolocation blocked" messages
+across the run: 20 → 0.
 
-### Les 28 échecs restants du projet public
+### The 28 remaining failures in the public project
 
-Antérieurs à ce travail, identiques au commit de référence. Deux exemples
-suffisent à donner le genre : un test attend le lien « Se connecter » quand
-l'en-tête affiche « Connexion », un autre attend « Powered by BeYours Engine »
-qui n'existe dans aucun fichier. Le renommage `3d6b93e` du 15 août a déplacé la
-copie sans que les tests suivent. À traiter comme un lot à part.
+Predating this work, identical to the reference commit. Two examples give the
+flavour: one test expects a "Se connecter" link when the header shows
+"Connexion", another expects "Powered by BeYours Engine", which exists in no
+file. The renaming in `3d6b93e` on 15 August moved the copy without the tests
+following. To be handled as a separate batch.
 
-## Les 28 échecs du projet public — traités (24 août)
+## The 28 public-project failures — handled (24 August)
 
-Projet `public`, version construite : **30 réussis / 33 échecs → 60 / 0**, plus
-trois ignorés explicites.
+`public` project, production build: **30 passed / 33 failed → 60 / 0**, plus
+three explicit skips.
 
-### Vingt-deux : des assertions restées en arrière
+### Twenty-two: assertions left behind
 
-Le renommage du 15 août (`3d6b93e`) a déplacé la copie, les tests ne l'ont pas
-suivie. Une boutique française interrogée sur « Shopping Cart », « Checkout » et
-« Select Store » ; une page de connexion dont le titre est « Bon retour parmi
-nous » cherchée sous « Connexion » ; un pied de page fouillé pour « Powered by
-BeYours Engine », qui n'existe dans aucun fichier. Les assertions nomment
-maintenant ce que les pages disent, sans changer ce que chaque test vérifie.
+The renaming of 15 August (`3d6b93e`) moved the copy, the tests did not follow. A
+French storefront asked about "Shopping Cart", "Checkout" and "Select Store"; a
+sign-in page whose heading is "Bon retour parmi nous" searched for under
+"Connexion"; a footer combed for "Powered by BeYours Engine", which exists in no
+file. The assertions now name what the pages say, without changing what each test
+verifies.
 
-Deux détails du même ordre : le mot de passe d'inscription exige huit caractères
-et non six, et l'espace réservé du champ est une rangée de points, pas une
-phrase.
+Two details of the same kind: the sign-up password requires eight characters, not
+six, and the field's placeholder is a row of dots, not a sentence.
 
-### Trois vrais défauts, trouvés par ces tests
+### Three real defects, found by those tests
 
-**`/imagery/hero-burger-v2.png` n'existe pas** — `public/imagery/` non plus.
-C'était le repli de l'accueil sans image de couverture et de **toute fiche
-produit sans photo** : ces pages réclamaient à l'optimiseur d'images un fichier
-absent et récoltaient un 400. C'est exactement ce que signalait depuis le début
-le test d'erreurs console de l'accueil. Les deux appels rendent désormais le
-cadre vide plutôt que de demander un fichier jamais versé.
+**`/imagery/hero-burger-v2.png` does not exist** — nor does `public/imagery/`. It
+was the fallback for a homepage with no hero image and for **every product
+without a photo**: those pages asked the image optimizer for a missing file and
+took a 400. That is exactly what the homepage console-error test had been
+reporting all along. Both call sites now render the frame empty rather than
+requesting a file that was never committed.
 
-**`useGooglePlacesAutocomplete` sort sur une clé vide** avant même de demander
-le script Maps. Or la spec d'autocomplétion intercepte cette requête pour y
-répondre par un mock : elle simulait un appel que le composant avait déjà
-renoncé à faire. La page de fixture fournit sa propre clé.
+**`useGooglePlacesAutocomplete` returns on an empty key** before it even requests
+the Maps script. But the autocomplete spec intercepts that request to answer with
+a mock: it was simulating a call the component had already decided not to make.
+The fixture page supplies its own key.
 
-**Le champ « Nom » de l'inscription n'avait pas de `type`.**
+**The sign-up "Nom" field had no `type`.**
 
-### Trois tests qui ne pouvaient pas dire la vérité
+### Three tests that could not tell the truth
 
-`sign-in.spec.ts` se connectait avec le littéral « julien » — la faute pour
-laquelle `auth.setup.ts` avait déjà été corrigé. Ils lisent `SEED_PASSWORD` et
-s'ignorent proprement quand il manque, au lieu d'échouer sur une variable
-absente en donnant l'air d'un formulaire cassé. Nouveau helper
-`e2e/helpers/credentials.helpers.ts`. L'un d'eux attendait aussi `networkidle`,
-que la WebSocket Convex interdit d'atteindre.
+`sign-in.spec.ts` signed in with the literal "julien" — the mistake
+`auth.setup.ts` had already been corrected for. They read `SEED_PASSWORD` and
+skip cleanly when it is missing, instead of failing on an absent variable and
+looking like a broken form. New helper `e2e/helpers/credentials.helpers.ts`. One
+of them also waited for `networkidle`, which the Convex WebSocket makes
+unreachable.
 
-### Trois tests mal écrits
+### Three badly written tests
 
-Deux chaînes de localisateurs finissaient par `.or(locator("body"))`, qui ne
-peut pas se résoudre à un élément unique — `body` correspond toujours, et le
-reste de la page aussi.
+Two locator chains ended in `.or(locator("body"))`, which cannot resolve to a
+single element — `body` always matches, and so does the rest of the page.
 
-Et `/checkout` avec une Box vide affiche son état vide, pas le formulaire de
-commande : c'est la page qui fonctionne. Atteindre « Finaliser Commande »
-suppose un panier garni, ce qui relève d'un test de parcours et non d'une
-vérification de rendu. Le test assertit maintenant ce que la page montre
-réellement, et le dit en commentaire.
+And `/checkout` with an empty Box shows its empty state, not the order form: that
+is the page working. Reaching "Finaliser Commande" assumes a full cart, which
+belongs to a flow test rather than a
+does-this-render check. The test now asserts what the page actually shows, and
+says so in a comment.
 
 ### Gates
 
-Typecheck 0 erreur sur les cinq paquets, lint 0 erreur / 71 avertissements,
-153 + 89 tests unitaires, `next build` vert.
+Typecheck 0 errors across the five packages, lint 0 errors / 71 warnings,
+153 + 89 unit tests, `next build` green.
 
-### Toujours en attente
+### Still waiting
 
-Les 446 tests admin, faute de `SEED_PASSWORD`.
+The 446 admin tests, for want of `SEED_PASSWORD`.
 
-## La suite entière, enfin exécutée (24 août)
+## The whole suite, finally run (24 August)
 
-446 tests admin bloqués depuis le début, faute de `SEED_PASSWORD`. L'adresse du
-compte propriétaire est devenue configurable (`SEED_ADMIN_EMAIL`), un compte neuf
-a été seedé, et la suite a tourné en entier.
+446 admin tests blocked from the start, for want of `SEED_PASSWORD`. The owner
+account's address became configurable (`SEED_ADMIN_EMAIL`), a fresh account was
+seeded, and the suite ran in full.
 
-| | dernier chiffre connu | après seed | après reconstruction de packages/ui |
+| | last known number | after seeding | after rebuilding packages/ui |
 | --- | --- | --- | --- |
-| réussis | 344 | 437 | **454** |
-| échecs | 107 | 65 | **49** |
-| ignorés | 7 | 7 | 7 |
-| non exécutés | **52** | 0 | **0** |
+| passed | 344 | 437 | **454** |
+| failed | 107 | 65 | **49** |
+| skipped | 7 | 7 | 7 |
+| never run | **52** | 0 | **0** |
 
-### Deux obstacles, tous deux introduits par moi
+### Two obstacles, both introduced by me
 
-**Le chargeur d'env cassait le seed.** `npx convex dev` écrit son déploiement
-suivi d'un commentaire :
+**The env loader was breaking the seed.** `npx convex dev` writes its deployment
+followed by a comment:
 
 ```
 CONVEX_DEPLOYMENT=dev:youthful-goose-352 # team: …, project: beyours-reference
 ```
 
-Prendre tout ce qui suit le `=` donnait au CLI Convex un nom de déploiement avec
-le commentaire collé, d'où « InvalidDeploymentName: Couldn't parse deployment
-name  beyours-reference » — une erreur qui ne désigne pas le fichier fautif. Les
-comptes d'authentification étaient créés, aucun profil ne l'était : l'état à
-moitié seedé contre lequel ce script avait déjà été durci une fois. Un seul
-`loadEnvFiles` (`e2e/load-env.ts`) sert désormais la config Playwright et le
-script de seed, et un commentaire en ligne demande une espace avant le `#`.
+Taking everything after the `=` handed the Convex CLI a deployment name with the
+comment glued on, hence "InvalidDeploymentName: Couldn't parse deployment name
+ beyours-reference" — an error that does not name the offending file. The auth
+accounts were created, none of the profiles were: the half-seeded state this
+script had already been hardened against once. A single `loadEnvFiles`
+(`e2e/load-env.ts`) now serves both the Playwright config and the seed script, and
+an inline comment requires a space before the `#`.
 
-**`data-slot="card"` n'avait jamais atteint l'application.** J'avais affirmé
-l'avoir vérifié dans le build ; c'était faux — ma vérification portait sur
-d'autres composants. `packages/ui` est consommé depuis `dist` et je n'avais pas
-reconstruit le paquet. Un `pnpm --filter @be-in-digital/ui build` a suffi, et
-**17 tests supplémentaires sont passés au vert**.
+**`data-slot="card"` had never reached the application.** I had claimed to have
+verified it in the build; that was false — my check covered other components.
+`packages/ui` is consumed from `dist` and I had not rebuilt the package. A
+`pnpm --filter @be-in-digital/ui build` was enough, and **17 more tests went
+green**.
 
-### Le test à l'origine de tout ce travail est vert
+### The test that started all this work is green
 
-`admin-responsive.spec.ts:156` — les tuiles du tableau de bord — passe, et le
-fichier entier avec (14/14). Une sonde confirme que la résolution d'établissement
-fonctionne : la page rend « Chez Luigi (test) », le nom du gérant et les quatre
-tuiles. Ce qui manquait à la fin n'était plus le `storeId` mais l'attribut du
-design system.
+`admin-responsive.spec.ts:156` — the dashboard tiles — passes, and the whole file
+with it (14/14). A probe confirms store resolution works: the page renders "Chez
+Luigi (test)", the manager's name and the four tiles. What was missing at the end
+was no longer the `storeId` but the design-system attribute.
 
-### Les 49 restants
+### The 49 remaining
 
-Concentrés dans le projet admin. Fichiers les plus touchés : `blog-articles` (7),
+Concentrated in the admin project. Most affected files: `blog-articles` (7),
 `store-detail` (6), `inventory` (5), `blog-auto-config` (5), `products` (4),
 `email-campaigns` (4).
 
-| Famille | Occurrences |
+| Family | Occurrences |
 | --- | --- |
-| élément introuvable | 18 |
-| violation du mode strict (locator résolvant à plusieurs éléments) | 15 |
-| clic en dépassement de délai | 6 |
+| element not found | 18 |
+| strict-mode violation (locator resolving to several elements) | 15 |
+| click timed out | 6 |
 
-Le profil ressemble beaucoup au lot public traité la veille : des assertions
-écrites contre une copie qui a bougé, mêlées à quelques vrais défauts. À traiter
-par lots, fichier par fichier.
+The profile looks a lot like the public batch handled the day before: assertions
+written against copy that has moved, mixed with a few real defects. To be handled
+in batches, file by file.
 
-## Les 49 échecs admin — traités, suite verte (24 août)
+## The 49 admin failures — handled, suite green (24 August)
 
-**Suite entière, version construite, un worker : 489 réussis, 0 échec,
-20 ignorés.** Sortie 0.
+**Whole suite, production build, one worker: 489 passed, 0 failed, 20 skipped.**
+Exit 0.
 
-| | avant ce sprint | après |
+| | before this sprint | after |
 | --- | --- | --- |
-| réussis | 344 | **489** |
-| échecs | 107 | **0** |
-| non exécutés | 52 | **0** |
-| ignorés | 7 | 20 |
+| passed | 344 | **489** |
+| failed | 107 | **0** |
+| never run | 52 | **0** |
+| skipped | 7 | 20 |
 
-### Cinq vrais défauts de l'application
+### Five real application defects
 
-**Le dialogue de promotion était inutilisable en 1280×720.** 1549 px de haut
-dans une fenêtre de 720 : en-tête coupé au-dessus de l'écran, boutons 341 px en
-dessous. Ni valider ni annuler.
+**The promotion dialog was unusable at 1280×720.** 1549 px tall in a 720 px
+window: header clipped above the screen, buttons 341 px below it. Neither submit
+nor cancel.
 
-La page demandait pourtant `max-h-[85vh]`. **La règle n'existait pas** : Tailwind
-scanne les fichiers de l'application et s'arrête là, donc toute classe utilisée
-uniquement dans `packages/ui` ou `packages/admin` figurait dans le balisage sans
-aucun CSS derrière — ce plafond, le `max-h-[60vh]` du formulaire défilant, le
-`min-h-[400px]` des gardes. Les deux applications déclarent désormais les deux
-paquets comme sources, et `DialogContent` porte son propre plafond avec
-défilement pour qu'aucun dialogue ne remette ses actions hors de portée.
+The page did ask for `max-h-[85vh]`. **The rule did not exist**: Tailwind scans
+the application's files and stops there, so every class used only in
+`packages/ui` or `packages/admin` appeared in the markup with no CSS behind it —
+that cap, the scrolling form's `max-h-[60vh]`, the guards' `min-h-[400px]`. Both
+applications now declare the two packages as sources, and `DialogContent` carries
+its own cap with scrolling so no dialog can put its actions out of reach.
 
-Mesuré : 1549 px → 544 px, `max-height: 612px`, `overflow-y: auto`, bouton de
-soumission à y=559.
+Measured: 1549 px → 544 px, `max-height: 612px`, `overflow-y: auto`, submit button
+at y=559.
 
-Les quatre autres : « temps reel » et « Aucun produit trouve » sans accents sur
-la page inventaire ; les dialogues de création et de génération d'article avec
-des `<label>` nus, donc des champs sans aucun nom accessible ; le bouton de
-connexion réduit à une icône pendant le chargement ; `adminRoutes.gamesSettings`
-pointant vers une route sans page.
+The other four: "temps reel" and "Aucun produit trouve" unaccented on the
+inventory page; the article creation and generation dialogs with bare `<label>`
+elements, so fields with no accessible name at all; the sign-in button reduced to
+an icon while loading; `adminRoutes.gamesSettings` pointing at a route with no
+page.
 
-### Quinze locators qui ne testaient rien
+### Fifteen locators that tested nothing
 
-Des chaînes `.or()` terminant par `body`, un mot de statut qui est aussi le badge
-de chaque ligne, une liste Radix dont chaque option est rendue deux fois. Un
-locator qui correspond à plusieurs éléments réels ne vérifie rien. `chooseOption`
-centralise le cadrage de la liste ouverte.
+`.or()` chains ending in `body`, a status word that is also the badge on every
+row, a Radix list whose every option is rendered twice. A locator matching several
+real elements verifies nothing. `chooseOption` centralises the scoping of the open
+list.
 
-### Sept tests qui vérifiaient un droit, pas une fonctionnalité
+### Seven tests that checked an entitlement, not a feature
 
-Auto Blog est verrouillé par l'abonnement et répond « Auto Blog non disponible ».
-« Nouvelle campagne » est désactivé tant qu'aucune adresse d'expéditeur n'existe
-— la page l'annonce par une bannière. Le dialogue de création d'article réclame
-une catégorie avant d'afficher son formulaire. Chacun reconnaît l'état et
-s'ignore avec son motif, au lieu d'attendre trente secondes sur un contrôle qui a
-raison de refuser.
+Auto Blog is gated by the subscription and answers "Auto Blog non disponible".
+"Nouvelle campagne" is disabled until a sender address exists — the page says so
+in a banner. The article creation dialog demands a category before showing its
+form. Each now recognises the state and skips with its reason, instead of waiting
+thirty seconds on a control that is right to refuse.
 
-### Un worker, pas deux
+### One worker, not two
 
-Deux workers se partageaient un seul serveur Next et un seul déploiement Convex.
-La contention sortait sous la forme de tests échouant sur « `[data-slot="sidebar"]`
-pas visible en 15 s » — la coquille admin n'avait simplement pas fini de rendre.
-Les tests perdants changeaient à chaque exécution, donc la suite signalait des
-défauts différents à chaque fois et aucun n'en était un. Preuve : les cinq mêmes
-fichiers donnent 76/76 à un worker. 22 minutes au lieu de 13, et reproductible.
+Two workers shared a single Next server and a single Convex deployment. The
+contention surfaced as tests failing on "`[data-slot="sidebar"]` not visible in
+15 s" — the admin shell simply had not finished rendering. Which tests lost
+changed from run to run, so the suite reported different defects each time and
+none of them were defects. Proof: the same five files give 76/76 with one worker.
+22 minutes instead of 13, and reproducible.
 
-### Une erreur de méthode, pour mémoire
+### A methodological mistake, for the record
 
-J'ai conclu trois fois que le correctif Tailwind ne marchait pas, en me fiant à
-des `grep` sur le CSS compilé dont les motifs traitaient `\[` comme une classe de
-caractères. C'est la mesure dans le navigateur qui a tranché. Sur une question
-« est-ce que ça s'applique », mesurer d'abord.
+I concluded three times that the Tailwind fix was not working, relying on `grep`
+over the compiled CSS with patterns that treated `\[` as a character class. It was
+the in-browser measurement that settled it. On a question of "does this apply",
+measure first.
 
-### Les 20 ignorés
+### The 20 skipped
 
-11 dans `email-campaigns` (pas d'adresse d'expéditeur configurée), 4 dans
-`blog-auto-config` et 4 dans `blog-articles` (Auto Blog hors abonnement), 1 dans
-`inventory` (aucun produit ne suit son stock). Tous portent un motif explicite.
-Configurer l'email et activer Auto Blog sur le compte de test les rendrait à la
-couverture.
+11 in `email-campaigns` (no sender address configured), 4 in `blog-auto-config`
+and 4 in `blog-articles` (Auto Blog outside the subscription), 1 in `inventory`
+(no product tracks its stock). All carry an explicit reason. Configuring email and
+enabling Auto Blog on the test account would return them to coverage.
 
 ### Gates
 
-Typecheck 0 erreur (reference, themes, ui, admin, restaurant), lint 0 erreur /
-71 avertissements, 153 + 89 tests unitaires, `next build` vert.
+Typecheck 0 errors (reference, themes, ui, admin, restaurant), lint 0 errors /
+71 warnings, 153 + 89 unit tests, `next build` green.
+
+## The test account, configured (24 August)
+
+Twenty tests were skipping on the account's state, not on the product. The
+fixture (`internalSeedFixture`, already an `internalMutation` and therefore
+unreachable from a browser) now puts the account in the state those tests
+describe:
+
+| Addition | What it unblocks |
+| --- | --- |
+| sender address | "Nouvelle campagne" stops being disabled |
+| Auto Blog on the owner accounts | the generator and its config page render their forms |
+| a blog category | the creation dialog shows its form instead of "create a category first" |
+| one product tracking its stock | the quantity column stops being a row of dashes |
+
+**Thirteen tests came back to coverage**: 20 skipped → 7.
+
+The address is `no-reply@chez-luigi.test`. The `.test` domain is reserved by RFC
+2606 and can never be delivered to: a run that started sending would fail loudly
+instead of reaching a real inbox.
+
+### The 7 that remain
+
+The campaign dropdown actions require a campaign in the table — which requires an
+email template and a dozen mandatory fields. That is test data, not
+configuration.
+
+### `subscription.spec.ts`, repaired in passing
+
+Three of its tests read `isVisible()`, a snapshot that **does not retry**, and
+therefore raced the rendering of the pricing cards: lost roughly one run in
+three, in two seconds. One combined `Promise.any` over three of those reads —
+that shape resolves as soon as the first answers, **including when it answers
+false**, since a fulfilled `false` is still a fulfilled promise.
+
+Two others asserted `expect(typeof x).toBe("boolean")`: a boolean is always a
+boolean, those tests could not fail. They now check what the pricing view shows.
+25/25 over three repeats.
+
+### A transient state cannot be waited for
+
+`sign-in:150` checks "Connexion en cours…". Against a local Convex the request
+completes in tens of milliseconds: the button had already returned to its normal
+label when the assertion looked, and waiting cannot help — you do not wait for a
+state that has already passed. The test was measuring backend latency. It now
+holds the response for two seconds. 42/42 over three repeats.
+
+### A misleading run, for the record
+
+One full run announced 5 failures on the storefront's most elementary elements —
+menu heading, brand link — and took **49.6 minutes instead of 20**. Replayed
+cleanly: 67/68 in 1.2 minutes. It was the machine. Reporting those five as they
+stood would have sent someone chasing ghosts. **A slow run is a run to replay
+before believing.**
+
+### Final state
+
+Whole suite, production build, one worker: **501 passed, 7 skipped**, 20.8
+minutes. The single failure of the last run (`subscription.spec.ts:6`, admin
+shell not rendered within 30 s) did not reproduce: 33/33 over four immediate
+repeats.
+
+One retry is now allowed locally (two in CI). This kind of hiccup appears roughly
+once per full run; Playwright then reports it as *flaky*, which keeps it visible
+instead of absorbing it silently.
+
+## Whole suite green, nothing skipped (24 August)
+
+**509 passed, 0 failed, 0 skipped.** Exit 0, 20.4 minutes, production build, one
+worker.
+
+The last seven skips came down to a campaign row's dropdown: with no campaign in
+the table, they excused themselves. The fixture now creates an email template and
+a **draft** campaign — a draft has never been sent and will not be by sitting in a
+table, so nothing in this fixture can put mail on the wire. The same reasoning as
+the `.test` address.
+
+The run confirmed idempotency in passing: `templateCreated: false`, a template
+already existed and was reused rather than duplicated.
+
+### The full journey
+
+| | start | finish |
+| --- | --- | --- |
+| passed | 344 | **509** |
+| failed | 107 | **0** |
+| never run | 52 | **0** |
+| skipped | 7 | **0** |
+
+## The guards that decided too early (24 August)
+
+**508 passed, 1 flaky, 0 skipped.** Exit 0, 22.7 minutes, machine load 2.21 at
+the start and 5.00 at the finish.
+
+The suite total moved between 504 and 509 from run to run without a line of code
+changing. The cause: seven campaign-dropdown tests opened with
+
+```
+const hasTable = await table.isVisible({ timeout: 5_000 }).catch(() => false)
+test.skip(!hasTable, "No campaigns in table to test")
+```
+
+Two defects stacked. `isVisible()` is a **one-shot read that does not retry**,
+unlike `expect().toBeVisible()`, which polls until its deadline. And five seconds
+is less than the Convex query needs on a busy machine. The check therefore landed
+on a page that was still empty, concluded there was no campaign, and the test
+excused itself — three in one run, three others in the next.
+
+Both guards now wait for the page to settle on one of its two real shapes — a
+table or "Aucune campagne", the amber banner or an enabled button — before
+deciding. **A skipped test now means what it says.**
+
+The `skipIfEmailUnconfigured` helper, written the day before, carried the same
+weakness: page not yet rendered, guard concluding "configured", test going on to
+click a disabled button. Fixed the same way.
+
+Sweep done: no guard of that shape left in the suite. The other 62 `isVisible()`
+calls are conditional branches **inside** tests — they steer an optional path
+rather than deciding whether a test runs. A different shape, left alone.
+
+### The remaining flaky
+
+`inventory:26`, on `[data-slot="sidebar"]` not found within 30 s — the admin
+shell that did not render, unrelated to the test's subject. Roughly once in five
+hundred; the retry covers it and Playwright reports it as *flaky*, so it stays
+visible.
+
+### Sprint summary
+
+| | start | finish |
+| --- | --- | --- |
+| passed | 344 | **508** |
+| failed | 107 | **0** |
+| never run | 52 | **0** |
+| skipped | 7 | **0** |
+| exit | 1 | **0** |

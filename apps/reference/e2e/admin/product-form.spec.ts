@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 import { waitForAdminPage } from "../helpers/navigation.helpers"
+import { countAfterLoad } from "../helpers/list.helpers"
 
 test.describe("Product Form", () => {
   // Not serial.
@@ -286,7 +287,7 @@ test.describe("Product Form", () => {
         .getByPlaceholder(/nom de l'option|taille|sauce/i)
         .or(page.getByLabel(/nom de l'option/i))
 
-      const countBefore = await optionNameInputs.count()
+      const countBefore = await countAfterLoad(optionNameInputs)
 
       if (countBefore > 0 && (await removeButton.first().isVisible())) {
         await removeButton.first().click()
@@ -294,7 +295,7 @@ test.describe("Product Form", () => {
         // Wait for removal animation
         await page.waitForTimeout(500)
 
-        const countAfter = await optionNameInputs.count()
+        const countAfter = await countAfterLoad(optionNameInputs)
         expect(countAfter).toBeLessThan(countBefore)
       }
     })
