@@ -26,13 +26,13 @@ const FOREIGN_STORE_ID = "j91b7c3d5e7f9g1h3j5k7m9n1p3q5r7s"
 test.describe("Stale store selection", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(
-      ([key, storeId]) => {
+      ({ key, storeId }: { key: string; storeId: string }) => {
         window.localStorage.setItem(
           key,
           JSON.stringify({ state: { storeId }, version: 0 }),
         )
       },
-      [SELECTION_KEY, FOREIGN_STORE_ID],
+      { key: SELECTION_KEY, storeId: FOREIGN_STORE_ID },
     )
   })
 
