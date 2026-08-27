@@ -32,7 +32,12 @@ import {
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import type { AuditEntry } from "./types"
-import { formatTimestamp, formatActionLabel } from "./helpers"
+import {
+  AUDIT_ACTION_LABELS,
+  formatActionLabel,
+  formatAuditDetails,
+  formatTimestamp,
+} from "./helpers"
 
 // ─── Section: Audit Log ──────────────────────────────────────────────────────
 
@@ -92,15 +97,11 @@ export function AuditLogSection() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les actions</SelectItem>
-              <SelectItem value="backup_export">Export backup</SelectItem>
-              <SelectItem value="backup_import">Import backup</SelectItem>
-              <SelectItem value="backup_import_dryrun">Import (aperçu)</SelectItem>
-              <SelectItem value="migration_run">Migration</SelectItem>
-              <SelectItem value="version_check">Verification version</SelectItem>
-              <SelectItem value="lock_force_release">Deverrouillage</SelectItem>
-              <SelectItem value="maintenance_contract_set">Contrat maintenance</SelectItem>
-              <SelectItem value="migration_request_created">Demande de migration</SelectItem>
-              <SelectItem value="migration_request_status_changed">Migration (statut)</SelectItem>
+              {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -153,7 +154,7 @@ export function AuditLogSection() {
                         {formatTimestamp(entry.performedAt)}
                       </TableCell>
                       <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
-                        {entry.errorMessage ?? entry.details ?? "—"}
+                        {formatAuditDetails(entry)}
                       </TableCell>
                     </TableRow>
                   ))}
