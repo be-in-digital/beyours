@@ -2,13 +2,15 @@ import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 
 test.describe("Coming Soon Pages", () => {
+  // /dashboard/games/settings is not in this list: the route has no page and
+  // answers 404. It was declared in `adminRoutes` and linked from nowhere, so
+  // the constant has been removed rather than the 404 tolerated here.
   const comingSoonPages = [
     "/dashboard/customers",
     "/dashboard/games/catalog",
     "/dashboard/games/qr-codes",
     "/dashboard/games/actions",
     "/dashboard/games/winners",
-    "/dashboard/games/settings",
     "/dashboard/email",
     "/dashboard/email/campaigns",
     "/dashboard/content/pages",

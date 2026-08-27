@@ -32,11 +32,11 @@ test.describe("Image to Product", () => {
       await waitForAdminPage(page)
     })
 
-    test('should display "Creer depuis une image" heading', async ({
+    test('should display "Créer depuis une image" heading', async ({
       page,
     }) => {
       await expect(
-        page.locator("h1", { hasText: "Creer depuis une image" })
+        page.locator("h1", { hasText: "Créer depuis une image" })
       ).toBeVisible({ timeout: 15_000 })
     })
 
@@ -112,7 +112,7 @@ test.describe("Image to Product", () => {
         timeout: 30_000,
       })
       await expect(
-        page.locator("h1", { hasText: "Creer depuis une image" })
+        page.locator("h1", { hasText: "Créer depuis une image" })
       ).toBeVisible({ timeout: 15_000 })
     })
   })
@@ -132,7 +132,7 @@ test.describe("Image to Product", () => {
 
     test("should display the upload card with title", async ({ page }) => {
       await expect(
-        page.getByText("Creer depuis une image").first()
+        page.getByText("Créer depuis une image").first()
       ).toBeVisible({ timeout: 15_000 })
 
       await expect(

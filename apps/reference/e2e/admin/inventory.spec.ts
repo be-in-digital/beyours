@@ -24,21 +24,14 @@ test.describe("Inventory Page", () => {
     })
 
     test("should display 4 status summary cards", async ({ page }) => {
-      await expect(
-        page.getByText("En stock")
-      ).toBeVisible({ timeout: 15_000 })
-
-      await expect(
-        page.getByText("Stock faible")
-      ).toBeVisible()
-
-      await expect(
-        page.getByText("Rupture")
-      ).toBeVisible()
-
-      await expect(
-        page.getByText("Non suivi")
-      ).toBeVisible()
+      // `.first()` on each: these words are also the status badge of every
+      // product row below, so "Non suivi" alone matched once per product and
+      // strict mode refused to choose. The summary tiles come first in the DOM.
+      for (const label of ["En stock", "Stock faible", "Rupture", "Non suivi"]) {
+        await expect(
+          page.getByText(label, { exact: true }).first()
+        ).toBeVisible({ timeout: 15_000 })
+      }
     })
 
     test("should display search input", async ({ page }) => {
@@ -211,13 +204,18 @@ test.describe("Inventory Page", () => {
         const rowCount = await rows.count()
 
         if (rowCount > 0) {
-          // Look for +/- buttons in the first row
-          const firstRow = rows.first()
-          const buttons = firstRow.getByRole("button")
-          const buttonCount = await buttons.count()
+          // Only a product that tracks its stock gets the editor — an untracked
+          // one shows a dash. Asserting on the first row regardless found zero
+          // buttons and read as a missing feature.
+          const tracked = rows.filter({ hasNot: page.getByText("Non suivi") })
+          const trackedCount = await tracked.count()
+          test.skip(
+            trackedCount === 0,
+            "no product in this store tracks its stock"
+          )
 
-          // Should have at least 2 buttons for +/- quantity
-          expect(buttonCount).toBeGreaterThanOrEqual(2)
+          const buttons = tracked.first().getByRole("button")
+          expect(await buttons.count()).toBeGreaterThanOrEqual(2)
         }
       }
     })
@@ -263,7 +261,10 @@ test.describe("Inventory Page", () => {
         const rowCount = await rows.count()
 
         if (rowCount > 0) {
-          const trackingHeader = page.getByText("Suivi", { exact: false })
+          // The column header, not the "Non suivi" badge repeated on each row.
+          const trackingHeader = page
+            .locator("thead")
+            .getByText("Suivi", { exact: true })
           await expect(trackingHeader).toBeVisible()
         }
       }

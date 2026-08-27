@@ -64,11 +64,19 @@ test.describe("Dashboard Page", () => {
     })
 
     test("should display order breakdown section", async ({ page }) => {
-      // Order breakdown shows categories like Livraison, À emporter, Sur place
+      // The section is always there; its slices are not. With no orders the
+      // chart renders "Aucune donnée", so asserting only on Livraison /
+      // À emporter / Sur place made this a test about the seed data rather
+      // than about the dashboard.
+      await expect(
+        page.getByText("Par type de commande")
+      ).toBeVisible({ timeout: 15_000 })
+
       const breakdownSection = page
         .getByText("Livraison")
         .or(page.getByText("À emporter"))
         .or(page.getByText("Sur place"))
+        .or(page.getByText("Aucune donnée"))
 
       await expect(breakdownSection.first()).toBeVisible({ timeout: 15_000 })
     })

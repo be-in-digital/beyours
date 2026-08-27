@@ -115,8 +115,11 @@ export function CreateArticleDialog({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Titre</label>
+              <label className="text-sm font-medium" htmlFor="article-title">
+                Titre
+              </label>
               <Input
+                id="article-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Titre de l'article"
@@ -127,13 +130,15 @@ export function CreateArticleDialog({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Categorie</label>
+              <label className="text-sm font-medium" htmlFor="article-category">
+                Categorie
+              </label>
               <Select
                 value={categoryId}
                 onValueChange={setCategoryId}
                 disabled={isCreating}
               >
-                <SelectTrigger>
+                <SelectTrigger id="article-category">
                   <SelectValue placeholder="Choisir une categorie" />
                 </SelectTrigger>
                 <SelectContent>

@@ -283,7 +283,7 @@ export function InventoryPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Inventaire</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gérez le stock de vos produits en temps reel
+            Gérez le stock de vos produits en temps réel
           </p>
         </div>
 
@@ -351,7 +351,7 @@ export function InventoryPage() {
           </div>
         ) : totalItems === 0 ? (
           <div className="text-center py-12 border border-border/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">Aucun produit trouve</p>
+            <p className="text-sm text-muted-foreground">Aucun produit trouvé</p>
             {(searchQuery || statusFilter !== "all") && (
               <Button variant="ghost" size="sm" className="mt-3" onClick={clearFilters}>
                 Reinitialiser les filtres

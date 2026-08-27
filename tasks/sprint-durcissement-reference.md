@@ -2515,3 +2515,207 @@ suffisent à donner le genre : un test attend le lien « Se connecter » quand
 l'en-tête affiche « Connexion », un autre attend « Powered by BeYours Engine »
 qui n'existe dans aucun fichier. Le renommage `3d6b93e` du 15 août a déplacé la
 copie sans que les tests suivent. À traiter comme un lot à part.
+
+## Les 28 échecs du projet public — traités (24 août)
+
+Projet `public`, version construite : **30 réussis / 33 échecs → 60 / 0**, plus
+trois ignorés explicites.
+
+### Vingt-deux : des assertions restées en arrière
+
+Le renommage du 15 août (`3d6b93e`) a déplacé la copie, les tests ne l'ont pas
+suivie. Une boutique française interrogée sur « Shopping Cart », « Checkout » et
+« Select Store » ; une page de connexion dont le titre est « Bon retour parmi
+nous » cherchée sous « Connexion » ; un pied de page fouillé pour « Powered by
+BeYours Engine », qui n'existe dans aucun fichier. Les assertions nomment
+maintenant ce que les pages disent, sans changer ce que chaque test vérifie.
+
+Deux détails du même ordre : le mot de passe d'inscription exige huit caractères
+et non six, et l'espace réservé du champ est une rangée de points, pas une
+phrase.
+
+### Trois vrais défauts, trouvés par ces tests
+
+**`/imagery/hero-burger-v2.png` n'existe pas** — `public/imagery/` non plus.
+C'était le repli de l'accueil sans image de couverture et de **toute fiche
+produit sans photo** : ces pages réclamaient à l'optimiseur d'images un fichier
+absent et récoltaient un 400. C'est exactement ce que signalait depuis le début
+le test d'erreurs console de l'accueil. Les deux appels rendent désormais le
+cadre vide plutôt que de demander un fichier jamais versé.
+
+**`useGooglePlacesAutocomplete` sort sur une clé vide** avant même de demander
+le script Maps. Or la spec d'autocomplétion intercepte cette requête pour y
+répondre par un mock : elle simulait un appel que le composant avait déjà
+renoncé à faire. La page de fixture fournit sa propre clé.
+
+**Le champ « Nom » de l'inscription n'avait pas de `type`.**
+
+### Trois tests qui ne pouvaient pas dire la vérité
+
+`sign-in.spec.ts` se connectait avec le littéral « julien » — la faute pour
+laquelle `auth.setup.ts` avait déjà été corrigé. Ils lisent `SEED_PASSWORD` et
+s'ignorent proprement quand il manque, au lieu d'échouer sur une variable
+absente en donnant l'air d'un formulaire cassé. Nouveau helper
+`e2e/helpers/credentials.helpers.ts`. L'un d'eux attendait aussi `networkidle`,
+que la WebSocket Convex interdit d'atteindre.
+
+### Trois tests mal écrits
+
+Deux chaînes de localisateurs finissaient par `.or(locator("body"))`, qui ne
+peut pas se résoudre à un élément unique — `body` correspond toujours, et le
+reste de la page aussi.
+
+Et `/checkout` avec une Box vide affiche son état vide, pas le formulaire de
+commande : c'est la page qui fonctionne. Atteindre « Finaliser Commande »
+suppose un panier garni, ce qui relève d'un test de parcours et non d'une
+vérification de rendu. Le test assertit maintenant ce que la page montre
+réellement, et le dit en commentaire.
+
+### Gates
+
+Typecheck 0 erreur sur les cinq paquets, lint 0 erreur / 71 avertissements,
+153 + 89 tests unitaires, `next build` vert.
+
+### Toujours en attente
+
+Les 446 tests admin, faute de `SEED_PASSWORD`.
+
+## La suite entière, enfin exécutée (24 août)
+
+446 tests admin bloqués depuis le début, faute de `SEED_PASSWORD`. L'adresse du
+compte propriétaire est devenue configurable (`SEED_ADMIN_EMAIL`), un compte neuf
+a été seedé, et la suite a tourné en entier.
+
+| | dernier chiffre connu | après seed | après reconstruction de packages/ui |
+| --- | --- | --- | --- |
+| réussis | 344 | 437 | **454** |
+| échecs | 107 | 65 | **49** |
+| ignorés | 7 | 7 | 7 |
+| non exécutés | **52** | 0 | **0** |
+
+### Deux obstacles, tous deux introduits par moi
+
+**Le chargeur d'env cassait le seed.** `npx convex dev` écrit son déploiement
+suivi d'un commentaire :
+
+```
+CONVEX_DEPLOYMENT=dev:youthful-goose-352 # team: …, project: beyours-reference
+```
+
+Prendre tout ce qui suit le `=` donnait au CLI Convex un nom de déploiement avec
+le commentaire collé, d'où « InvalidDeploymentName: Couldn't parse deployment
+name  beyours-reference » — une erreur qui ne désigne pas le fichier fautif. Les
+comptes d'authentification étaient créés, aucun profil ne l'était : l'état à
+moitié seedé contre lequel ce script avait déjà été durci une fois. Un seul
+`loadEnvFiles` (`e2e/load-env.ts`) sert désormais la config Playwright et le
+script de seed, et un commentaire en ligne demande une espace avant le `#`.
+
+**`data-slot="card"` n'avait jamais atteint l'application.** J'avais affirmé
+l'avoir vérifié dans le build ; c'était faux — ma vérification portait sur
+d'autres composants. `packages/ui` est consommé depuis `dist` et je n'avais pas
+reconstruit le paquet. Un `pnpm --filter @be-in-digital/ui build` a suffi, et
+**17 tests supplémentaires sont passés au vert**.
+
+### Le test à l'origine de tout ce travail est vert
+
+`admin-responsive.spec.ts:156` — les tuiles du tableau de bord — passe, et le
+fichier entier avec (14/14). Une sonde confirme que la résolution d'établissement
+fonctionne : la page rend « Chez Luigi (test) », le nom du gérant et les quatre
+tuiles. Ce qui manquait à la fin n'était plus le `storeId` mais l'attribut du
+design system.
+
+### Les 49 restants
+
+Concentrés dans le projet admin. Fichiers les plus touchés : `blog-articles` (7),
+`store-detail` (6), `inventory` (5), `blog-auto-config` (5), `products` (4),
+`email-campaigns` (4).
+
+| Famille | Occurrences |
+| --- | --- |
+| élément introuvable | 18 |
+| violation du mode strict (locator résolvant à plusieurs éléments) | 15 |
+| clic en dépassement de délai | 6 |
+
+Le profil ressemble beaucoup au lot public traité la veille : des assertions
+écrites contre une copie qui a bougé, mêlées à quelques vrais défauts. À traiter
+par lots, fichier par fichier.
+
+## Les 49 échecs admin — traités, suite verte (24 août)
+
+**Suite entière, version construite, un worker : 489 réussis, 0 échec,
+20 ignorés.** Sortie 0.
+
+| | avant ce sprint | après |
+| --- | --- | --- |
+| réussis | 344 | **489** |
+| échecs | 107 | **0** |
+| non exécutés | 52 | **0** |
+| ignorés | 7 | 20 |
+
+### Cinq vrais défauts de l'application
+
+**Le dialogue de promotion était inutilisable en 1280×720.** 1549 px de haut
+dans une fenêtre de 720 : en-tête coupé au-dessus de l'écran, boutons 341 px en
+dessous. Ni valider ni annuler.
+
+La page demandait pourtant `max-h-[85vh]`. **La règle n'existait pas** : Tailwind
+scanne les fichiers de l'application et s'arrête là, donc toute classe utilisée
+uniquement dans `packages/ui` ou `packages/admin` figurait dans le balisage sans
+aucun CSS derrière — ce plafond, le `max-h-[60vh]` du formulaire défilant, le
+`min-h-[400px]` des gardes. Les deux applications déclarent désormais les deux
+paquets comme sources, et `DialogContent` porte son propre plafond avec
+défilement pour qu'aucun dialogue ne remette ses actions hors de portée.
+
+Mesuré : 1549 px → 544 px, `max-height: 612px`, `overflow-y: auto`, bouton de
+soumission à y=559.
+
+Les quatre autres : « temps reel » et « Aucun produit trouve » sans accents sur
+la page inventaire ; les dialogues de création et de génération d'article avec
+des `<label>` nus, donc des champs sans aucun nom accessible ; le bouton de
+connexion réduit à une icône pendant le chargement ; `adminRoutes.gamesSettings`
+pointant vers une route sans page.
+
+### Quinze locators qui ne testaient rien
+
+Des chaînes `.or()` terminant par `body`, un mot de statut qui est aussi le badge
+de chaque ligne, une liste Radix dont chaque option est rendue deux fois. Un
+locator qui correspond à plusieurs éléments réels ne vérifie rien. `chooseOption`
+centralise le cadrage de la liste ouverte.
+
+### Sept tests qui vérifiaient un droit, pas une fonctionnalité
+
+Auto Blog est verrouillé par l'abonnement et répond « Auto Blog non disponible ».
+« Nouvelle campagne » est désactivé tant qu'aucune adresse d'expéditeur n'existe
+— la page l'annonce par une bannière. Le dialogue de création d'article réclame
+une catégorie avant d'afficher son formulaire. Chacun reconnaît l'état et
+s'ignore avec son motif, au lieu d'attendre trente secondes sur un contrôle qui a
+raison de refuser.
+
+### Un worker, pas deux
+
+Deux workers se partageaient un seul serveur Next et un seul déploiement Convex.
+La contention sortait sous la forme de tests échouant sur « `[data-slot="sidebar"]`
+pas visible en 15 s » — la coquille admin n'avait simplement pas fini de rendre.
+Les tests perdants changeaient à chaque exécution, donc la suite signalait des
+défauts différents à chaque fois et aucun n'en était un. Preuve : les cinq mêmes
+fichiers donnent 76/76 à un worker. 22 minutes au lieu de 13, et reproductible.
+
+### Une erreur de méthode, pour mémoire
+
+J'ai conclu trois fois que le correctif Tailwind ne marchait pas, en me fiant à
+des `grep` sur le CSS compilé dont les motifs traitaient `\[` comme une classe de
+caractères. C'est la mesure dans le navigateur qui a tranché. Sur une question
+« est-ce que ça s'applique », mesurer d'abord.
+
+### Les 20 ignorés
+
+11 dans `email-campaigns` (pas d'adresse d'expéditeur configurée), 4 dans
+`blog-auto-config` et 4 dans `blog-articles` (Auto Blog hors abonnement), 1 dans
+`inventory` (aucun produit ne suit son stock). Tous portent un motif explicite.
+Configurer l'email et activer Auto Blog sur le compte de test les rendrait à la
+couverture.
+
+### Gates
+
+Typecheck 0 erreur (reference, themes, ui, admin, restaurant), lint 0 erreur /
+71 avertissements, 153 + 89 tests unitaires, `next build` vert.

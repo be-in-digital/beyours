@@ -1,32 +1,7 @@
 import { defineConfig, devices } from "@playwright/test"
-import { readFileSync, existsSync } from "node:fs"
-import { resolve } from "node:path"
+import { loadEnvFiles } from "./e2e/load-env"
 
-// Load the env files so NEXT_PUBLIC_* and the suite's own variables reach both
-// the test files and the server started below.
-//
-// `.env.e2e` comes first and `.env.local` fills the gaps; a value already
-// exported in the shell beats both. `.env.e2e.example` has told readers to
-// "copy to .env.e2e" since it was written, while this file read only
-// `.env.local` - so following the instructions changed nothing, and a
-// production server refused to boot on the four variables
-// `instrumentation.ts` demands.
-for (const fileName of [".env.e2e", ".env.local"]) {
-  const envPath = resolve(__dirname, fileName)
-  if (!existsSync(envPath)) continue
-
-  for (const line of readFileSync(envPath, "utf-8").split("\n")) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith("#")) continue
-    const eqIdx = trimmed.indexOf("=")
-    if (eqIdx === -1) continue
-    const key = trimmed.slice(0, eqIdx)
-    const value = trimmed.slice(eqIdx + 1)
-    if (!process.env[key]) {
-      process.env[key] = value
-    }
-  }
-}
+loadEnvFiles(__dirname, [".env.e2e", ".env.local"])
 
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
@@ -39,7 +14,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 2,
+  // One worker, everywhere.
+  //
+  // Two workers share a single Next server and a single Convex deployment, and
+  // the contention shows up as tests failing on "[data-slot=\"sidebar\"] not
+  // visible in 15s" — the admin shell simply had not rendered yet. Which tests
+  // lost that race changed from run to run, so the suite reported different
+  // defects each time and none of them were defects. The same five files that
+  // failed under two workers passed 76/76 under one.
+  workers: 1,
   reporter: "html",
   timeout: 60_000,
   expect: {

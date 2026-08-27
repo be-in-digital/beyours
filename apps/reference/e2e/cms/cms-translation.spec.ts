@@ -54,8 +54,11 @@ test.describe("CMS Translation", () => {
 
       await waitForAdminPage(page)
 
+      // "Traduire", not "Traduire tout": the first /traduire/i match is the
+      // page-wide bulk action in the toolbar, which does not open the per-field
+      // drawer this test is about.
       const translateButton = page
-        .getByRole("button", { name: /traduire/i })
+        .getByRole("button", { name: "Traduire", exact: true })
         .first()
 
       if (await translateButton.isVisible()) {
@@ -78,8 +81,11 @@ test.describe("CMS Translation", () => {
 
       await waitForAdminPage(page)
 
+      // "Traduire", not "Traduire tout": the first /traduire/i match is the
+      // page-wide bulk action in the toolbar, which does not open the per-field
+      // drawer this test is about.
       const translateButton = page
-        .getByRole("button", { name: /traduire/i })
+        .getByRole("button", { name: "Traduire", exact: true })
         .first()
 
       if (await translateButton.isVisible()) {

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
+import { chooseOption } from "../helpers/filter.helpers"
 
 const STORES_URL = "/dashboard/stores"
 const SEARCH_PLACEHOLDER = "Rechercher par nom, ville..."
@@ -112,7 +113,7 @@ test.describe("Stores Page", () => {
       await statusFilter.click()
 
       // Select "Ouvert" option
-      await page.getByRole("option", { name: "Ouvert" }).click()
+      await chooseOption(page, "Ouvert")
 
       // Wait for filter to apply
       await page.waitForTimeout(1_000)

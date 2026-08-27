@@ -1,9 +1,27 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 
 const STORES_URL = "/dashboard/stores"
 
 const TABS = ["Général", "Horaires", "Paramètres", "Intégrations"] as const
+
+/**
+ * Opens the Horaires tab and switches it to per-establishment hours.
+ *
+ * The tab opens on "use the global hours", where the panel is read-only — and
+ * renders nothing at all when no global hours have been configured. The
+ * per-day editor, the shortcut buttons and the time inputs all live in the
+ * custom mode, so a test about them has to ask for it the way a user would.
+ */
+async function openCustomHours(page: Page) {
+  await page.getByRole("tab", { name: "Horaires" }).click()
+
+  const useGlobal = page.locator("#useGlobalHours")
+  await expect(useGlobal).toBeAttached({ timeout: 15_000 })
+  if (await useGlobal.isChecked()) {
+    await useGlobal.click({ force: true })
+  }
+}
 
 const DAYS_OF_WEEK = [
   "Lundi",
@@ -138,11 +156,13 @@ test.describe("Store Detail Page", () => {
       const hasStore = await navigateToFirstStore(page)
 
       if (hasStore) {
-        await page.getByRole("tab", { name: "Horaires" }).click()
+        await openCustomHours(page)
 
         // All 7 days should be visible
         for (const day of DAYS_OF_WEEK) {
-          await expect(page.getByText(day)).toBeVisible({ timeout: 15_000 })
+          await expect(page.getByText(day).first()).toBeVisible({
+            timeout: 15_000,
+          })
         }
       }
     })
@@ -153,7 +173,7 @@ test.describe("Store Detail Page", () => {
       const hasStore = await navigateToFirstStore(page)
 
       if (hasStore) {
-        await page.getByRole("tab", { name: "Horaires" }).click()
+        await openCustomHours(page)
 
         // Check that there are time input fields (open/close)
         const timeInputs = page.locator('input[type="time"]')
@@ -173,7 +193,7 @@ test.describe("Store Detail Page", () => {
       const hasStore = await navigateToFirstStore(page)
 
       if (hasStore) {
-        await page.getByRole("tab", { name: "Horaires" }).click()
+        await openCustomHours(page)
 
         // Check for shortcut buttons
         await expect(
@@ -221,8 +241,12 @@ test.describe("Store Detail Page", () => {
           "Click & Collect",
         ]
 
+        // Scoped to the tab panel: these words also appear in the sidebar and
+        // in the store summary above, so an unscoped match hits several real
+        // elements and strict mode refuses to choose.
+        const panel = page.getByRole("tabpanel")
         for (const service of serviceTypes) {
-          await expect(page.getByText(service)).toBeVisible({
+          await expect(panel.getByText(service).first()).toBeVisible({
             timeout: 15_000,
           })
         }
@@ -267,9 +291,9 @@ test.describe("Store Detail Page", () => {
       if (hasStore) {
         await page.getByRole("tab", { name: "Intégrations" }).click()
 
-        await expect(page.getByText("Uber Eats")).toBeVisible({
-          timeout: 15_000,
-        })
+        await expect(
+          page.getByRole("tabpanel").getByText("Uber Eats").first()
+        ).toBeVisible({ timeout: 15_000 })
       }
     })
 
@@ -279,7 +303,9 @@ test.describe("Store Detail Page", () => {
       if (hasStore) {
         await page.getByRole("tab", { name: "Intégrations" }).click()
 
-        await expect(page.getByText("Deliveroo")).toBeVisible({
+        await expect(
+          page.getByRole("tabpanel").getByText("Deliveroo").first()
+        ).toBeVisible({
           timeout: 15_000,
         })
       }
