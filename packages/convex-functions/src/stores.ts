@@ -5,13 +5,38 @@
  */
 
 import { v } from "convex/values"
+import { isPublishedStore } from "@be-in-digital/convex-schema"
 
 // === QUERIES ===
 
 /**
- * List all stores
+ * The establishments a visitor may order from.
+ *
+ * Drafts are removed here, not in the storefront, because this query is the
+ * only thing standing between `stores.create` — which opens every new
+ * establishment in `draft` — and a "Commander ici" button. Every storefront
+ * surface reads this list: the selector page, the header dropdown, the
+ * automatic selection, the sitemap. Filtering in any one of them leaves the
+ * other three wrong.
+ *
+ * The admin needs the drafts, and asks `listAll` for them.
  */
 export const list = {
+  args: {},
+  handler: async (ctx: any) => {
+    const stores = await ctx.db.query("stores").collect()
+    return stores.filter(isPublishedStore)
+  },
+}
+
+/**
+ * Every establishment, drafts included — the administration view.
+ *
+ * This is the list an owner manages: a draft has to be visible to whoever is
+ * about to publish it. The app wrappers gate it on `requireStaff`; nothing
+ * customer-facing may call it.
+ */
+export const listAll = {
   args: {},
   handler: async (ctx: any) => {
     return await ctx.db.query("stores").collect()

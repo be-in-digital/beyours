@@ -119,7 +119,7 @@ export function TeamPage() {
     storeId ? { storeId } : "skip"
   )
 
-  const stores = useQuery(api?.stores?.list ?? ("skip" as any))
+  const stores = useQuery(api?.stores?.listAll ?? ("skip" as any))
 
   // Actions & Mutations
   const sendInvitation = useAction(api?.teamMembersEmail?.sendInvitationEmail)

@@ -9,7 +9,7 @@
 
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
-import { canTransitionOrderStatus } from "@be-in-digital/convex-schema"
+import { canTransitionOrderStatus, isPublishedStore } from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 import {
@@ -218,6 +218,7 @@ interface CreateOrderArgs {
 }
 
 interface StoreDoc {
+  status?: string
   settings?: { taxRate?: number }
 }
 
@@ -289,6 +290,15 @@ export const create = {
     // Get store and global settings for tax rate and delivery config
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
     if (!store) throw new Error("Store not found")
+
+    // A draft establishment is not a storefront. Keeping drafts out of
+    // `stores.list` is how one stops being *reachable*; this is what stops one
+    // being *ordered from* — a tab left open before the owner unpublished it, a
+    // store id persisted in localStorage, or a direct call all skip the list.
+    // The kitchen behind a draft is not waiting for tickets.
+    if (!isPublishedStore(store)) {
+      throw new Error("This store is not open for orders")
+    }
 
     // Re-fetch each product from DB — never trust client prices
     const verifiedItems: OrderItemInput[] = []

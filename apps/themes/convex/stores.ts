@@ -2,8 +2,8 @@ import { query, internalQuery } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import * as defs from "@be-in-digital/convex-functions/stores";
-import { storeQuery, storeMutation, authedMutation } from "./lib/storeFunctions";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
+import { storeQuery, storeMutation, authedQuery, authedMutation } from "./lib/storeFunctions";
+import { getAuthUser, requireStaff } from "@be-in-digital/convex-functions/auth";
 import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
 
 // === Queries (public for storefront) ===
@@ -23,6 +23,28 @@ export const list = query({
   args: defs.list.args,
   handler: async (ctx) => {
     const stores = await defs.list.handler(ctx);
+    return stores.map(stripSensitiveStoreData);
+  },
+});
+
+/**
+ * The administration list: every establishment, drafts included.
+ *
+ * It cannot go through `storeQuery` — the list spans every store, so there is
+ * no single store to scope to — so the gate is checked inline, the way `create`
+ * does it. `requireStaff` rather than `stores:read`: the kitchen and delivery
+ * roles do not hold that permission and still render behind `StoreGuard`,
+ * which is built from this list.
+ *
+ * `printConfig.apiKey` is stripped here as it is on the public queries. The one
+ * read that returns it is `getAdminById`, behind `stores:read`.
+ */
+// @guarded-inline: staff-only checked in the handler; the list spans every store
+export const listAll = authedQuery({
+  args: defs.listAll.args,
+  handler: async (ctx) => {
+    await requireStaff(ctx);
+    const stores = await defs.listAll.handler(ctx);
     return stores.map(stripSensitiveStoreData);
   },
 });

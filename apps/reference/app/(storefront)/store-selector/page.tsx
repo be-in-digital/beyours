@@ -14,6 +14,9 @@ import type { StoreDoc } from "@be-in-digital/restaurant"
 
 export default function StoreSelectorPage() {
   const router = useRouter()
+  // The published list. A draft establishment is not in it, so nothing on
+  // this page can offer one a "Commander ici" button — the rule is the
+  // server's, and this page simply renders what it is given.
   const stores = useQuery(api.stores.list)
   const setStoreId = useStorefrontStoreSelection((s) => s.setStoreId)
   const setCartStoreId = useCartStore((s) => s.setStoreId)
@@ -63,7 +66,7 @@ export default function StoreSelectorPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <h2 className="font-bold text-lg">{store.name}</h2>
-                  <StoreStatusBadge status={(store.status === "draft" ? "closed" : store.status) as StoreStatus} />
+                  <StoreStatusBadge status={store.status as StoreStatus} />
                 </div>
 
                 {store.address && (
