@@ -3,6 +3,7 @@ import { Role } from "@be-in-digital/core/auth/rbac"
 import {
   assertCanAssignProfile,
   canClaimFirstAdmin,
+  creatorAdministersNewStore,
   ProvisioningRejectedError,
   type ProvisioningActor,
   type ProvisioningTarget,
@@ -242,5 +243,26 @@ describe("canClaimFirstAdmin", () => {
   it("closes as soon as one exists", () => {
     expect(canClaimFirstAdmin({ existingSuperAdminCount: 1 })).toBe(false)
     expect(canClaimFirstAdmin({ existingSuperAdminCount: 7 })).toBe(false)
+  })
+})
+
+describe("creatorAdministersNewStore", () => {
+  it("grants the establishment to the owner who created it", () => {
+    expect(creatorAdministersNewStore(Role.CLIENT_ADMIN)).toBe(true)
+  })
+
+  it("leaves a super admin's profile alone", () => {
+    // requireStoreAccess already waves them through every store, and the
+    // mutation cannot know which owner a store created on someone's behalf is
+    // meant for.
+    expect(creatorAdministersNewStore(Role.SUPER_ADMIN)).toBe(false)
+  })
+
+  it("grants nothing to a role that could not have created a store anyway", () => {
+    // Only super admin and client admin hold `stores:write`, but the predicate
+    // fails closed rather than trusting that to stay true.
+    for (const role of [Role.MANAGER, Role.KITCHEN, Role.WAITER, Role.DELIVERY, Role.CUSTOMER]) {
+      expect(creatorAdministersNewStore(role)).toBe(false)
+    }
   })
 })

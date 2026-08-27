@@ -171,6 +171,47 @@ export function assertCanAssignProfile(params: {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Creating an establishment                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Does creating an establishment make its creator an administrator of it?
+ *
+ * `stores.create` is the one mutation the store-scoped seam cannot guard: at
+ * the time of the call there is no store to check membership against, so it
+ * runs on a bare `stores:write`. Nothing then added the new establishment to
+ * the creator's profile, and the rules above forbid a client admin from writing
+ * any administrative profile — their own included, which
+ * `assertCanAssignProfile` rejects as `cannot_touch_admin` before the storeIds
+ * rules are ever reached. An owner who opened a second location was locked out
+ * of it and could not let themselves back in; only a super admin could. (#117)
+ *
+ * A super admin is left alone, for two reasons worth keeping straight. The
+ * mutation cannot know which owner a store created on someone's behalf is meant
+ * for, so any membership it invented would be a guess written into an
+ * access-control field. And every guard exempts a super admin BEFORE it reads
+ * `storeIds` — `requireStoreAccess`, `assertCanManageMember`, the branch above
+ * — so the invariant is not "empty means global", it is that the field is never
+ * consulted for them at all. Populating it would break nothing today and would
+ * leave behind data that means nothing while reading like it means something;
+ * the next person to write a guard is the one who would pay. Not writing it
+ * keeps "never consulted" and "never populated" saying the same thing.
+ *
+ * THIS IS THE ONLY SELF-GRANT THE PROVISIONING MODEL ALLOWS, and it is narrow
+ * by construction rather than by good intentions: the store id comes from the
+ * insert that just happened and never from the caller, the target is always the
+ * caller's own profile, and the role is untouched. It hands back exactly what
+ * creating the establishment already implied — nothing the caller could not
+ * have had by calling `stores.create` again.
+ *
+ * The write lives in `grantCreatedStoreAccess` (./auth); this stays pure so the
+ * rule can be read and tested without a database, like everything else here.
+ */
+export function creatorAdministersNewStore(role: Role): boolean {
+  return role === Role.CLIENT_ADMIN
+}
+
 /**
  * Whether the authenticated caller may claim the first super-admin seat.
  *

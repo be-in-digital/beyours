@@ -400,55 +400,36 @@ describe("getAuditLog", () => {
     expect(seenBySuperAdmin.page).toHaveLength(3)
   })
 
-  test("an owner reads back the restaurant they just opened, even though the seam locks them out of it", async () => {
+  test("an owner removed from a restaurant stops seeing their own past entries on it", async () => {
     const t = newHarness()
     const roma = await seedStore(t, "Pizzeria Roma")
-    const owner = await seedUser(t, "user_owner", "client_admin", [roma])
+    const marie = await seedUser(t, "marie", "client_admin", [roma])
+    const root = await seedUser(t, "root", "super_admin", [])
 
-    // `stores.create` cannot be store-scoped — there is no store yet — and
-    // nothing adds the new one to the creator's profile, so the rest of the
-    // admin surface refuses them on it.
-    const napoli = await owner.mutation(api.stores.create, {
-      name: "Pizzeria Napoli",
-      slug: "pizzeria-napoli",
-      address: AN_ADDRESS,
-    })
-    await expect(
-      owner.query(api.stores.getAdminById, { id: napoli })
-    ).rejects.toThrow(/do not have access/)
+    await marie.mutation(api.stores.update, { id: roma, name: "Roma Trastevere" })
 
-    // The journal still owes them their own action.
-    const seen = await owner.query(api.system.getAuditLog, {
+    const whileAdministering = await marie.query(api.system.getAuditLog, {
       paginationOpts: { cursor: null, numItems: 10 },
     })
-    expect(seen.page).toHaveLength(1)
-    expect(seen.page[0]!.action).toBe("store_created")
-    expect(seen.page[0]!.targetStoreId).toBe(napoli)
-  })
+    expect(whileAdministering.page).toHaveLength(1)
 
-  test("reading back your own action does not open the rest of that establishment's history", async () => {
-    const t = newHarness()
-    const roma = await seedStore(t, "Pizzeria Roma")
-    const owner = await seedUser(t, "user_owner", "client_admin", [roma])
-    const superAdmin = await seedUser(t, "user_super", "super_admin", [])
-
-    const napoli = await owner.mutation(api.stores.create, {
-      name: "Pizzeria Napoli",
-      slug: "pizzeria-napoli",
-      address: AN_ADDRESS,
-    })
-    // Someone else then works on the establishment the owner cannot reach.
-    await superAdmin.mutation(api.stores.update, { id: napoli, name: "Napoli Centro" })
-    await superAdmin.mutation(api.stores.updateAddress, {
-      id: napoli,
-      address: { ...AN_ADDRESS, street: "9 via Toledo" },
+    // The one route that can still strip a client admin of a store: a super
+    // admin rewriting the profile. Team revocation leaves admin roles alone,
+    // and #117 means creating a store grants it rather than withholding it.
+    await root.mutation(api.userProfiles.upsert, {
+      userId: "marie",
+      role: "client_admin",
+      storeIds: [],
+      permissions: [],
     })
 
-    const seen = await owner.query(api.system.getAuditLog, {
+    // The journal follows the access, not the authorship. Someone deliberately
+    // removed from a restaurant is exactly who scoping is for — recorded here
+    // as a decision rather than left to be inferred from a missing test.
+    const afterRemoval = await marie.query(api.system.getAuditLog, {
       paginationOpts: { cursor: null, numItems: 10 },
     })
-    expect(seen.page.map((e) => e.action)).toEqual(["store_created"])
-    expect(seen.page.every((e) => e.performedBy === "user_owner")).toBe(true)
+    expect(afterRemoval.page).toHaveLength(0)
   })
 
   test("paging walks the whole journal instead of stalling after page two", async () => {

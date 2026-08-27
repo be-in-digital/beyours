@@ -6,6 +6,7 @@
  */
 
 import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
+import { creatorAdministersNewStore } from "./profileProvisioning"
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -124,4 +125,51 @@ export async function requireStaff(ctx: any): Promise<AuthUser> {
   }
 
   return user
+}
+
+/* ------------------------------------------------------------------ */
+/* grantCreatedStoreAccess                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Make the creator of an establishment an administrator of it.
+ *
+ * Call it from inside `stores.create`, with the id the insert just returned.
+ * `creatorAdministersNewStore` (./profileProvisioning) holds the rule and the
+ * reasoning; this only carries it out.
+ *
+ * It resolves the caller softly rather than through `getAuthUser`, which throws
+ * on a missing session or profile. `stores.create` is reachable from seeds,
+ * imports and restores that legitimately run without one, and refusing to
+ * create the establishment because nobody could be granted it would be a
+ * strictly worse failure than creating it unassigned.
+ *
+ * Returns whether the profile was changed, which is what the tests assert on.
+ */
+export async function grantCreatedStoreAccess(
+  ctx: any,
+  storeId: string,
+): Promise<boolean> {
+  const identity = await ctx.auth?.getUserIdentity?.()
+  if (!identity?.subject) return false
+
+  const profile = await ctx.db
+    .query("userProfiles")
+    .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
+    .unique()
+  if (!profile) return false
+
+  const role = Object.values(Role).includes(profile.role as Role)
+    ? (profile.role as Role)
+    : Role.CUSTOMER
+  if (!creatorAdministersNewStore(role)) return false
+
+  const storeIds: string[] = profile.storeIds ?? []
+  if (storeIds.includes(storeId)) return false
+
+  await ctx.db.patch(profile._id, {
+    storeIds: [...storeIds, storeId],
+    updatedAt: Date.now(),
+  })
+  return true
 }
