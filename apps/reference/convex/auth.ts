@@ -15,7 +15,19 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      // Verification stays REQUIRED unless a deployment explicitly opts out.
+      //
+      // The e2e suite signs in as a seeded account, and `seed-users.mts` has no
+      // mailbox to click a link in — so with verification always on, the suite
+      // could never have authenticated at all. That is one of the reasons its
+      // 510 tests had never run.
+      //
+      // Fail-closed on purpose: the flag must be SET to "true" to relax
+      // anything, so an unset or mistyped variable keeps verification on. Set
+      // it on a test deployment only — never on one a restaurant is served
+      // from.
+      requireEmailVerification:
+        process.env.AUTH_ALLOW_UNVERIFIED_EMAIL !== "true",
       minPasswordLength: 12,
       sendResetPassword: async ({ user, url }) => {
         const siteUrl = process.env.SITE_URL;

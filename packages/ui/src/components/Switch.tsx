@@ -42,6 +42,12 @@ const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
         <input
           id={switchId}
           type="checkbox"
+          // The control looks like a switch and behaves like one, but a bare
+          // checkbox input is announced as "case à cocher". `switch` is a valid
+          // role for a checkbox input and says what the user actually sees; the
+          // checked state still comes from the native element, so there is no
+          // `aria-checked` to keep in sync.
+          role="switch"
           ref={ref}
           className="sr-only"
           checked={isControlled ? checked : undefined}

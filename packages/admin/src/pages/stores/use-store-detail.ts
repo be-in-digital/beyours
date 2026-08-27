@@ -338,7 +338,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
 
       toast.success("Integration Uber Eats verifiee et enregistree")
     } catch (error) {
-      toast.error("Echec de la validation Uber Eats")
+      toast.error("Échec de la validation Uber Eats")
       console.error(error)
     } finally {
       setIsValidatingUberEats(false)
@@ -390,7 +390,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
 
       toast.success("Integration Deliveroo verifiee et enregistree")
     } catch (error) {
-      toast.error("Echec de la validation Deliveroo")
+      toast.error("Échec de la validation Deliveroo")
       console.error(error)
     } finally {
       setIsValidatingDeliveroo(false)

@@ -265,7 +265,7 @@ export function InventoryPage() {
   const handleToggleAutoDisable = async (productId: string, enabled: boolean) => {
     try {
       await updateAutoDisable({ id: productId, autoDisableWhenEmpty: enabled })
-      toast.success(enabled ? "Desactivation automatique activee" : "Desactivation automatique desactivee")
+      toast.success(enabled ? "Désactivation automatique activée" : "Désactivation automatique désactivée")
     } catch {
       toast.error("Erreur lors de la mise a jour")
     }
@@ -275,7 +275,7 @@ export function InventoryPage() {
     return (
       <div className="flex items-center justify-center h-[400px]">
         <p className="text-sm text-muted-foreground">
-          Veuillez selectionner un etablissement pour afficher l'inventaire
+          Veuillez sélectionner un établissement pour afficher l'inventaire
         </p>
       </div>
     )
@@ -290,7 +290,7 @@ export function InventoryPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Inventaire</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gerez le stock de vos produits en temps reel
+            Gérez le stock de vos produits en temps reel
           </p>
         </div>
 
@@ -376,7 +376,7 @@ export function InventoryPage() {
                     <TableHead>Statut</TableHead>
                     <TableHead>Quantite</TableHead>
                     <TableHead>Seuil alerte</TableHead>
-                    <TableHead>Auto-desactivation</TableHead>
+                    <TableHead>Auto-désactivation</TableHead>
                     <TableHead>Suivi</TableHead>
                   </TableRow>
                 </TableHeader>

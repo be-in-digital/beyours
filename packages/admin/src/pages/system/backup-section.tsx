@@ -62,7 +62,7 @@ export function BackupSection() {
       URL.revokeObjectURL(url)
       toast.success("Backup exporte avec succes")
     } catch {
-      toast.error("Echec de l'export")
+      toast.error("Échec de l'export")
     } finally {
       setExporting(false)
     }
@@ -111,7 +111,7 @@ export function BackupSection() {
         toast.error(
           error instanceof SyntaxError
             ? "Fichier JSON invalide"
-            : "Echec de l'apercu"
+            : "Échec de l'aperçu"
         )
       } finally {
         setImporting(false)
@@ -151,7 +151,7 @@ export function BackupSection() {
             Sauvegarde & Restauration
           </CardTitle>
           <CardDescription>
-            Exportez ou importez vos donnees. Les images S3 ne sont pas incluses — seules les references/URLs sont sauvegardees.
+            Exportez ou importez vos données. Les images S3 ne sont pas incluses — seules les references/URLs sont sauvegardees.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -185,7 +185,7 @@ export function BackupSection() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            L'import effectue d'abord un apercu (dry run) avant toute modification.
+            L'import effectue d'abord un aperçu (dry run) avant toute modification.
           </p>
         </CardContent>
       </Card>
@@ -196,7 +196,7 @@ export function BackupSection() {
           <DialogHeader>
             <DialogTitle>Confirmer l'import</DialogTitle>
             <DialogDescription>
-              Ceci va remplacer toutes les donnees existantes. Cette action est irreversible.
+              Ceci va remplacer toutes les données existantes. Cette action est irreversible.
             </DialogDescription>
           </DialogHeader>
 

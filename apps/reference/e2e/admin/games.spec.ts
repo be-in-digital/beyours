@@ -16,7 +16,17 @@ import {
  */
 
 test.describe("Gamification", () => {
-  test.describe.configure({ mode: "serial" })
+  // Not serial.
+  //
+  // These tests share nothing: no `beforeAll`, no describe-scope variables, and
+  // not one of them submits a form — the delete tests open the confirmation and
+  // cancel it. Each re-navigates in its own `beforeEach`.
+  //
+  // Serial mode arrived in a bulk monorepo-wiring commit, unexplained, and cost
+  // far more than it gave: the first failure abandons the whole block, so four
+  // failures were hiding 52 tests across these four files. Independent tests
+  // each fail for their own reason, which is the only kind of failure worth
+  // reading.
 
   test.describe("Overview", () => {
     test.beforeEach(async ({ page }) => {
@@ -45,12 +55,20 @@ test.describe("Gamification", () => {
     })
 
     test("should link to the four setup surfaces", async ({ page }) => {
+      // Scoped to the page content: the sidebar links to these same four
+      // routes, so an unscoped lookup matches twice and Playwright refuses.
+      // This is the first test in a `serial` block, so its failure took
+      // eleven others with it.
+      const content = page.locator('[data-tour="main-content"]')
+
       await expect(
-        page.getByRole("link", { name: /Jeux & Lots/ })
+        content.getByRole("link", { name: /Jeux & Lots/ })
       ).toBeVisible({ timeout: 15_000 })
-      await expect(page.getByRole("link", { name: /Codes QR/ })).toBeVisible()
-      await expect(page.getByRole("link", { name: /Actions requises/ })).toBeVisible()
-      await expect(page.getByRole("link", { name: /Gagnants/ })).toBeVisible()
+      await expect(content.getByRole("link", { name: /Codes QR/ })).toBeVisible()
+      await expect(
+        content.getByRole("link", { name: /Actions requises/ })
+      ).toBeVisible()
+      await expect(content.getByRole("link", { name: /Gagnants/ })).toBeVisible()
     })
 
     test("should show latest plays section", async ({ page }) => {

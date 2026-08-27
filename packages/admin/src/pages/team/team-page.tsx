@@ -84,9 +84,9 @@ const PERMISSION_MODULES = [
   { id: "orders", label: "Commandes" },
   { id: "products", label: "Produits / Menu" },
   { id: "kitchen", label: "Cuisine (KDS)" },
-  { id: "team", label: "Equipe" },
-  { id: "settings", label: "Parametres" },
-  { id: "integrations", label: "Integrations" },
+  { id: "team", label: "Équipe" },
+  { id: "settings", label: "Paramètres" },
+  { id: "integrations", label: "Intégrations" },
   { id: "marketing", label: "Jeux / Marketing" },
 ] as const
 
@@ -165,7 +165,7 @@ export function TeamPage() {
       await toggleActive({ id })
       toast.success("Statut mis a jour")
     } catch {
-      toast.error("Echec de la mise a jour")
+      toast.error("Échec de la mise a jour")
     }
   }
 
@@ -176,7 +176,7 @@ export function TeamPage() {
       toast.success("Membre supprime")
       setDeleteMember(null)
     } catch {
-      toast.error("Echec de la suppression")
+      toast.error("Échec de la suppression")
     }
   }
 
@@ -188,7 +188,7 @@ export function TeamPage() {
       })
       toast.success(`Invitation renvoyee a ${member.email}`)
     } catch {
-      toast.error("Echec du renvoi de l'invitation")
+      toast.error("Échec du renvoi de l'invitation")
     }
   }
 
@@ -200,8 +200,8 @@ export function TeamPage() {
           <EmptyMedia variant="icon">
             <UserIcon />
           </EmptyMedia>
-          <EmptyTitle>Aucun etablissement selectionne</EmptyTitle>
-          <EmptyDescription>Veuillez selectionner un etablissement pour gerer l'equipe</EmptyDescription>
+          <EmptyTitle>Aucun établissement selectionne</EmptyTitle>
+          <EmptyDescription>Veuillez sélectionner un établissement pour gérer l'équipe</EmptyDescription>
         </EmptyHeader>
       </Empty>
     )
@@ -216,9 +216,9 @@ export function TeamPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Gestion de l'equipe</h1>
+          <h1 className="text-2xl font-semibold">Gestion de l'équipe</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Gerez les membres de votre equipe, leurs roles et permissions
+            Gérez les membres de votre équipe, leurs rôles et permissions
           </p>
         </div>
         <Button size="sm" onClick={() => setIsInviteOpen(true)}>
@@ -251,7 +251,7 @@ export function TeamPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les roles</SelectItem>
+            <SelectItem value="all">Tous les rôles</SelectItem>
             {ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>
                 {r.label}
@@ -282,7 +282,7 @@ export function TeamPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Membre</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Rôle</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="hidden md:table-cell">Perimetre</TableHead>
                 <TableHead className="hidden md:table-cell">Date d'ajout</TableHead>
@@ -516,7 +516,7 @@ function InviteDialog({
       resetForm()
       onOpenChange(false)
     } catch (error: any) {
-      toast.error(error?.message ?? "Echec de l'envoi de l'invitation")
+      toast.error(error?.message ?? "Échec de l'envoi de l'invitation")
     } finally {
       setIsSending(false)
     }
@@ -573,7 +573,7 @@ function InviteDialog({
 
           {/* Role */}
           <div className="space-y-2">
-            <Label htmlFor="invite-role">Role</Label>
+            <Label htmlFor="invite-role">Rôle</Label>
             <Select value={role} onValueChange={(v) => handleRoleChange(v as Role)}>
               <SelectTrigger id="invite-role">
                 <SelectValue />
@@ -591,7 +591,7 @@ function InviteDialog({
           {/* All Stores toggle */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Tous les etablissements</Label>
+              <Label className="text-sm font-medium">Tous les établissements</Label>
               <p className="text-xs text-muted-foreground">
                 Acces a l'ensemble de la chaine
               </p>
@@ -605,7 +605,7 @@ function InviteDialog({
           {/* Store selector (hidden when allStores) */}
           {!allStores && stores && stores.length > 1 && (
             <div className="space-y-2">
-              <Label>Etablissement</Label>
+              <Label>Établissement</Label>
               <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
                 <SelectTrigger>
                   <SelectValue />
@@ -703,7 +703,7 @@ function EditDialog({
       toast.success("Membre mis a jour")
       onOpenChange(false)
     } catch {
-      toast.error("Echec de la mise a jour")
+      toast.error("Échec de la mise a jour")
     } finally {
       setIsSaving(false)
     }
@@ -722,7 +722,7 @@ function EditDialog({
         <div className="space-y-4">
           {/* Role */}
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>Rôle</Label>
             <Select value={role} onValueChange={(v) => handleRoleChange(v as Role)}>
               <SelectTrigger>
                 <SelectValue />
@@ -740,7 +740,7 @@ function EditDialog({
           {/* All Stores toggle */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="space-y-0.5">
-              <Label className="text-sm font-medium">Tous les etablissements</Label>
+              <Label className="text-sm font-medium">Tous les établissements</Label>
               <p className="text-xs text-muted-foreground">
                 Acces a l'ensemble de la chaine
               </p>
@@ -754,7 +754,7 @@ function EditDialog({
           {/* Store selector */}
           {!allStores && stores && stores.length > 1 && (
             <div className="space-y-2">
-              <Label>Etablissement</Label>
+              <Label>Établissement</Label>
               <Select value={selectedStoreId} onValueChange={setSelectedStoreId}>
                 <SelectTrigger>
                   <SelectValue />

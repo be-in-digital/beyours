@@ -153,7 +153,7 @@ export function ProductsPage() {
             <Button variant="outline" asChild>
               <Link href={adminRoutes.fromImage}>
                 <ImagePlus className="mr-2 h-4 w-4" />
-                Creer depuis image
+                Créer depuis image
               </Link>
             </Button>
             <Button asChild>

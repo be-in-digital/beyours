@@ -63,7 +63,7 @@ export function UpdatesSection({
         toast.success("Vous etes a jour")
       }
     } catch {
-      toast.error("Echec de la verification")
+      toast.error("Échec de la verification")
     } finally {
       setChecking(false)
     }
@@ -76,7 +76,7 @@ export function UpdatesSection({
       await syncVersion({ version: APP_VERSION })
       toast.success("Version synchronisee en base")
     } catch {
-      toast.error("Echec de la synchronisation")
+      toast.error("Échec de la synchronisation")
     } finally {
       setSyncing(false)
     }

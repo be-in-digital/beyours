@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { useStoreStore, type StoreDoc } from "@be-in-digital/restaurant"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@be-in-digital/ui"
@@ -19,11 +20,23 @@ export function StoreSelector() {
   const currentStore = useStoreStore((state) => state.currentStore)
   const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
 
-  // Auto-select when only one store exists
+  // Auto-select when only one store exists.
+  //
+  // This used to run in the render body, which React reports as "Cannot update
+  // a component while rendering a different component" — a setState during
+  // render, and the kind that can loop: the write changes the store this very
+  // component subscribes to, which schedules another render, which writes
+  // again. It survived only because the id comparison stopped the second pass.
+  //
+  // `StoreGuard` performs the same selection correctly, in an effect. This is
+  // the same fix, kept here because `StoreGuard` bypasses itself on the stores,
+  // settings and team routes — where the selector is still on screen.
   const singleStore = stores?.length === 1 ? stores[0] : null
-  if (singleStore && currentStore?._id !== singleStore._id) {
-    setCurrentStore(singleStore)
-  }
+  useEffect(() => {
+    if (singleStore && currentStore?._id !== singleStore._id) {
+      setCurrentStore(singleStore)
+    }
+  }, [singleStore, currentStore, setCurrentStore])
 
   if (stores === undefined) {
     return <div className="h-8 rounded-md bg-muted/40 animate-pulse" />

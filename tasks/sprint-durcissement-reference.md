@@ -1626,3 +1626,721 @@ rouge.
 
 **La liste de relecture est close.**
 
+---
+
+## S0-1 — préparer les tests e2e (21 août)
+
+Déploiement Convex lié par l'utilisateur, `ADMIN_BOOTSTRAP_TOKEN` posé dessus.
+Le verrou local est levé : `hasRealBackend = true`, donc les projets `setup` et
+`admin` se déclarent enfin.
+
+### Correction de mon propre énoncé
+
+J'avais annoncé `CONVEX_E2E_ENABLED` comme le verrou. **Faux** : c'est une
+variable **GitHub Actions**. En local, le verrou est ailleurs, dans
+`playwright.config.ts` :
+
+```ts
+const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
+```
+
+Sans URL réelle, les projets `setup` et `admin` ne sont **pas déclarés du tout**.
+Playwright annonce alors un succès sur la poignée de tests publics exécutés : il
+n'y a aucune ligne « skipped » pour un projet qui n'existe pas. Trois façons
+d'être vert en ne testant rien — la troisième étant le `::warning::` de CI quand
+un secret manque.
+
+### Un défaut trouvé en préparant
+
+`e2e/auth.setup.ts` codait le mot de passe **en dur** (`"julien"`), alors que
+`scripts/seed-users.mts` lit `SEED_PASSWORD`. Les deux ne coïncidaient pas : la
+connexion n'aurait réussi que sur une machine où la valeur semée valait
+justement `julien`. Le script de peuplement dit pourtant lui-même « never
+hardcode passwords ».
+
+Corrigé : les deux lisent `SEED_PASSWORD`, et le setup échoue immédiatement avec
+la raison si la variable est absente, plutôt que trente secondes plus tard sur un
+formulaire ayant refusé un mot de passe vide.
+
+### Un piège de `.gitignore`
+
+`.env.e2e.example` était **ignoré** : la règle `.env*` ne comportait des
+exceptions que pour `.env.example` et `.env.production.example`. Le modèle aurait
+été invisible pour quiconque clone. L'exception couvre désormais tout
+`*.example`, et il est vérifié que `.env.local` reste bien ignoré.
+
+### Livré
+
+| Fichier | Contenu |
+| --- | --- |
+| `apps/{reference,themes}/e2e/README.md` | pourquoi la suite était inerte, la marche à suivre locale en 5 étapes, la liste des secrets CI |
+| `apps/{reference,themes}/.env.e2e.example` | les variables, **séparées** entre celles du déploiement Convex et celles du lanceur |
+| `e2e/auth.setup.ts` | mot de passe lu depuis l'environnement, échec explicite |
+| `.gitignore` | les modèles `*.example` cessent d'être ignorés |
+
+La distinction la plus utile de ces deux documents : une variable lue par une
+**fonction Convex** doit être posée sur le déploiement (`npx convex env set`) —
+un `.env.local` ne lui est jamais visible. C'est ce qui a fait échouer la
+première tentative de pose du jeton d'amorçage.
+
+### Ce qui reste à faire, et qui vous revient
+
+1. `npx convex env set BETTER_AUTH_SECRET …` et `ENCRYPTION_KEY` (64 hex) sur le
+   déploiement — seul `ADMIN_BOOTSTRAP_TOKEN` y est défini aujourd'hui.
+2. `export SEED_PASSWORD=…` puis `npx tsx scripts/seed-users.mts`.
+3. `pnpm test:e2e`, en vérifiant que l'en-tête nomme bien **trois** projets.
+
+**Et avant de croire un vert** : neutraliser une garde et vérifier que la suite
+rougit. Une suite qui n'a jamais échoué n'a jamais démontré qu'elle fonctionne —
+c'est précisément ainsi que ces 510 tests sont restés inertes pendant des mois
+en annonçant un succès.
+
+## Exécution réelle de la suite e2e (21 août) — quatre défauts dans la chaîne d'amorçage
+
+Enchaînement demandé de bout en bout : poser les secrets du déploiement, semer
+les comptes, lancer la suite. Chaque étape a révélé un défaut, tous invisibles
+tant que personne ne tentait l'opération.
+
+### 1. `api.d.ts` transposé à la main : confirmé exact
+
+`npx convex dev --once` a régénéré le codegen. **Aucune différence** avec le
+fichier transposé depuis reference. La réserve posée lors de l'alignement du
+miroir est levée.
+
+### 2. Le script de peuplement appelait une mutation publique sans session
+
+`seed-users.mts` créait les profils via `ConvexHttpClient` → `userProfiles.upsert`,
+qui exige depuis le sprint 2 un acteur autorisé. Résultat : `Not authenticated`
+sur les six comptes.
+
+Et il affichait **« Seeding complete! »** malgré tout. Les comptes existaient,
+aucun n'avait de rôle, et la suite e2e aurait échoué sur un écran admin pour une
+raison ne pointant nulle part vers ici.
+
+Corrigé : les profils passent par `userProfiles:internalUpsert`, exécuté par
+`npx convex run` — le CLI s'authentifie comme le déploiement, l'autorité
+correcte pour provisionner, et inatteignable depuis un navigateur. Le script
+sort désormais en code non nul si un profil manque.
+
+### 3. Le peuplement n'était pas rejouable
+
+Après un passage partiel, le script s'arrêtait sur « No users were created. They
+may already exist. Exiting. » — alors que l'étape des profils est indépendante.
+Aucun nombre de relances ne pouvait réparer l'état.
+
+Corrigé : un compte existant est rouvert par connexion pour récupérer son
+identifiant, et l'étape 2 est atteinte dans tous les cas.
+
+### 4. `requireEmailVerification: true` rendait les comptes semés inutilisables
+
+Troisième raison pour laquelle la suite n'a jamais pu tourner : `auth.setup.ts`
+se connecte avec un compte que `seed-users.mts` crée sans boîte aux lettres où
+cliquer un lien. La connexion renvoyait `EMAIL_NOT_VERIFIED`.
+
+La vérification devient optionnelle **à défaut fermé** :
+
+```ts
+requireEmailVerification: process.env.AUTH_ALLOW_UNVERIFIED_EMAIL !== "true"
+```
+
+Une variable absente ou mal orthographiée laisse la vérification active. À poser
+sur un déploiement de test uniquement, jamais sur celui d'un restaurant.
+
+### Une erreur de ma part sur le diagnostic
+
+Mon premier message d'échec accusait le mot de passe semé. La vraie cause était
+`EMAIL_NOT_VERIFIED`. Le message rapporte maintenant ce que le serveur a dit —
+une supposition dans un message d'erreur envoie son lecteur sur une fausse piste,
+ce qui est pire que pas de message du tout.
+
+### État
+
+`Running 510 tests` avec les trois projets `setup`, `public` et `admin`
+déclarés : le verrou local est levé pour la première fois. Le binaire Chromium
+manquait également et a été installé.
+
+### Le `setup` e2e : diagnostic par capture réseau (22 août)
+
+183 échecs `admin` sur le premier run complet, tous dérivés d'une seule cause :
+`auth.setup.ts` n'obtenait pas de session.
+
+**La connexion n'était pas en cause.** Capture réseau d'un rejeu isolé :
+
+| Requête | Réponse |
+| --- | --- |
+| `POST /api/auth/sign-in/email` | **200**, jeton émis |
+| `GET /api/auth/get-session` | **200**, session valide |
+| `GET /api/auth/convex/token` | **200**, JWT Convex émis |
+| `GET /menu?_rsc=…` | `net::ERR_ABORTED` — préchargement annulé, sans conséquence |
+
+Et après quinze secondes, l'URL était bien `http://localhost:3000/menu`.
+
+**La cause réelle est arithmétique.** Le test dispose de **60 s** au total
+(`timeout` de `playwright.config.ts`), alors que ses étapes demandent
+60 + 30 + 30 + 30 + 60 = **210 s** d'attentes. Aucune de ces limites n'est
+atteignable : le test ne peut mourir qu'au bout de 60 s. Sur un serveur
+Turbopack froid, compiler `/sign-in` prend à lui seul une vingtaine de
+secondes, et `/menu` compile ensuite à la demande.
+
+Corrigé : `setup.setTimeout(180_000)` donne à l'étape son propre budget, et
+l'attente `networkidle` posée après le clic est supprimée — Convex maintient un
+WebSocket ouvert, donc le réseau n'est jamais au repos sur cette application ;
+cette attente ne pouvait que consommer le budget avant de le céder au contrôle
+qui compte. La redirection **est** le signal.
+
+**Vérifié** : `setup` passe en 11,2 s, l'état de session est écrit.
+
+### Le blocage suivant : le peuplement ne crée aucun restaurant
+
+Échantillon `navigation` relancé avec une session valide : **17 échecs, 7
+succès**, tous les échecs identiques —
+`waiting for locator('[data-slot="sidebar"]')`.
+
+Vérification sur le déploiement : la table `stores` est **vide**, et tous les
+profils portent `storeIds: []`. `seed-users.mts` crée des comptes et rien
+d'autre. Les écrans admin n'ont aucun établissement à administrer, donc la barre
+latérale ne se monte pas.
+
+Il manque une amorce d'établissement — et probablement des catégories et des
+produits pour les écrans de catalogue. C'est le prochain obstacle, et il est
+distinct de tout ce qui précède.
+
+### L'amorce d'établissement — et ce qu'elle a mis au jour (22 août)
+
+`convex/seedFixture.ts`, mutation **interne** (inatteignable depuis un
+navigateur, appelée par `npx convex run`) et idempotente de bout en bout : un
+établissement « Chez Luigi (test) », trois catégories, cinq produits, et le
+rattachement de l'établissement à tous les profils dont le rôle travaille en
+restaurant. Les clients gardent une liste vide — c'est ce qu'est un client.
+
+Branchée en étape 3 de `seed-users.mts`, qui sort en code non nul si elle
+échoue : des comptes sans restaurant ne sont pas une amorce utilisable.
+
+**L'amorce seule n'a rien réglé** — l'échantillon `navigation` est passé de
+17 à **20 échecs**. La capture directe de `/dashboard` a donné la vraie cause :
+
+```
+PAGEERROR Could not find Convex client!
+`useQuery` must be used in the React component tree under `ConvexProvider`.
+```
+
+Le provider existe pourtant bien dans `app/providers.tsx`.
+
+#### Deux copies de Convex dans le dépôt
+
+| Paquet | Déclare | Résolvait vers |
+| --- | --- | --- |
+| `apps/{reference,themes}`, `convex-schema`, `convex-functions` | `1.31.7` | 1.31.7 |
+| `apps/site` | `^1.34.0` | 1.44.0 |
+| **`packages/admin`** | **pair `>=1.0.0`** | **1.44.0** |
+
+`packages/admin` déclarait Convex en dépendance de pair sans contrainte, et pnpm
+lui a donné la version la plus haute présente dans le dépôt — celle tirée par
+`apps/site`. Son `useQuery` venait donc de 1.44.0 pendant que l'application
+fournissait le contexte depuis 1.31.7. Deux instances, deux contextes React,
+aucun lien entre les deux : **toute l'interface d'administration plantait au
+rendu**, pour tout le monde, pas seulement en test.
+
+Corrigé en épinglant `convex@1.31.7` en devDependency de `packages/admin`. Les
+deux résolvent désormais vers la même instance. `apps/site` n'est pas touché.
+
+**Effet mesuré** sur l'échantillon `navigation` : 20 échecs / 4 succès →
+**11 échecs / 13 succès**, et l'erreur `Could not find Convex client` a disparu.
+
+#### Ce qui reste ouvert
+
+Les 11 échecs restants ne sont pas diagnostiqués. Ils échouent toujours sur
+`[data-slot="sidebar"]`, mais la cause n'est plus la même puisque la moitié des
+tests du même fichier passent désormais — compilation à la demande trop lente,
+ou écrans réellement incomplets. À reprendre.
+
+Ce que l'exécution réelle aura démontré : un typecheck, un lint et 821 tests
+unitaires verts n'empêchaient pas l'interface d'administration d'être
+entièrement cassée par une résolution de dépendance. Aucune analyse statique ne
+pouvait le voir.
+
+### Les 11 échecs restants : diagnostic (22 août)
+
+Trois causes distinctes, dont **une seule** est un défaut applicatif.
+
+#### 1. `StoreSelector` écrivait dans un store pendant son propre rendu
+
+```
+Cannot update a component (`StoreSelector`) while rendering a different
+component (`StoreSelector`).
+```
+
+`setCurrentStore` était appelé dans le corps du rendu, lignes 22-26. C'est la
+variété qui peut boucler : l'écriture modifie le store auquel ce composant est
+lui-même abonné, ce qui programme un rendu, qui réécrit. Seule la comparaison
+d'identifiant arrêtait la seconde passe.
+
+`StoreGuard`, juste à côté, fait la même sélection correctement dans un
+`useEffect`. Corrigé de la même façon — et gardé ici, car `StoreGuard` se
+court-circuite sur les routes établissements, réglages et équipe, où le
+sélecteur reste pourtant à l'écran.
+
+C'est la même classe d'erreur que j'avais commise moi-même sur
+`checkout/pay/page.tsx` plus tôt dans ce sprint.
+
+#### 2. Le masque de la visite guidée avalait les clics
+
+`<div class="reactour__mask">` interceptait les clics sur la barre latérale :
+`sidebar.spec.ts` expirait en attendant un lien que le masque recouvrait. Sur un
+compte neuf, la visite s'ouvre seule.
+
+`auth.setup.ts` écrit désormais `bid-tour-<userId> = "done"` dans le
+`localStorage` avant d'enregistrer la session — exactement ce que fait un humain
+en fermant la visite une fois. La visite mérite son propre test ; elle ne doit
+pas casser silencieusement tous les autres.
+
+#### 3. Un test écrit contre une interface qui n'existe plus
+
+`routing.spec.ts` attendait un titre « Connexion ». Le `h1` de cette page dit
+« Bon retour parmi nous », et `auth.setup.ts` — écrit par quelqu'un qui avait
+regardé la page — acceptait déjà l'un ou l'autre.
+
+#### 4. Tout le reste : la compilation à la demande
+
+Le reste n'était pas des défauts. Mesure sans ambiguïté sur `routing.spec.ts` :
+
+| Test | Serveur froid | Passe suivante |
+| --- | --- | --- |
+| redirection `/dashboard` | **échec à 18,2 s** | **succès en 4,6 s** |
+| redirection `/dashboard/products` | **échec à 18,2 s** | **succès en 4,7 s** |
+| redirection `/orders`, `/stores` | succès en 7,3 s | succès en 4,1 s |
+
+Turbopack compile chaque route au premier appel, et en développement cela coûte
+dix à vingt secondes — plus que la durée de vie accordée à la plupart de ces
+tests. Un `/dashboard` qui « refuse de rediriger un visiteur anonyme » se
+révélait rediriger en 4,6 s au run suivant. Aucune faille : la protection
+fonctionne.
+
+**Correctif structurel** : la CI construit déjà l'application avec `pnpm build`,
+mais `playwright.config.ts` relançait `pnpm dev` — donc elle recompilait page par
+page ce qu'elle venait de construire. Le serveur de test sert désormais la
+version construite sous CI (`E2E_USE_BUILD=true` pour l'obtenir en local).
+
+#### Résultat sur l'échantillon `navigation`
+
+| Étape | Échecs / Succès |
+| --- | --- |
+| avant l'alignement de Convex | 20 / 4 |
+| après l'alignement de Convex | 11 / 13 |
+| après visite guidée + titre corrigés | 1 / 23 |
+| après `StoreSelector` | **0 sur un serveur chaud** |
+
+Ce qui restait tenait entièrement au serveur de développement.
+
+## La suite complète, sur la version construite (22 août)
+
+**Premier chiffre réel jamais obtenu sur ces 510 tests.**
+
+| | |
+| --- | --- |
+| réussis | **344** |
+| échecs | **107** |
+| ignorés | 7 |
+| non exécutés | 52 |
+| durée | 29,5 min |
+
+### Le serveur de production refusait de démarrer
+
+`instrumentation.ts` valide quatre variables au démarrage et `next start` meurt
+avant de servir la moindre requête : `AWS_REGION`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `OPENAI_API_KEY`. Le serveur de développement s'en
+accommodait, donc rien ne le révélait tant qu'on ne visait pas un build.
+
+**Je les avais documentées comme « optionnelles »** dans le modèle et le mode
+d'emploi écrits la veille. C'était faux. Les deux sont corrigés, avec la raison
+et des valeurs bouchons — aucun test n'atteint réellement S3, SES ou OpenAI.
+
+### Répartition des 107 échecs
+
+| Signature | Occurrences |
+| --- | --- |
+| `expect(locator).toBeVisible()` / élément absent | 65 + 47 |
+| `toHaveURL` | 17 |
+| clic expiré | 8 |
+| **`strict mode violation: locator('main') resolved to 2 elements`** | **7** |
+| `option 'Actif'` résolue à 2 éléments | 3 |
+
+### Un vrai défaut : deux `<main>` imbriqués
+
+`SidebarInset` (`packages/admin/src/ui/sidebar.tsx:307`) rend un `<main>`, et
+`app/(admin)/layout.tsx` en rendait un second à l'intérieur. Une page a
+exactement un repère `main` : les technologies d'assistance en annonçaient deux.
+Corrigé en `<div>` — c'est `SidebarInset` qui porte le repère.
+
+Sans la suite e2e, ce défaut serait resté invisible : ni le typecheck, ni le
+lint, ni un test unitaire ne regardent la structure du document rendu.
+
+### Des tests écrits contre une interface qui n'existe plus
+
+Preuve sans appel — des libellés **anglais** attendus dans une application
+française :
+
+| Attendu | Occurrences |
+| --- | --- |
+| `heading "Shopping Cart"` | 4 |
+| `heading "Select Store"` | 4 |
+| `heading "Checkout"` | 4 |
+| `heading "Connexion"` | 5 |
+
+Ces spécifications datent d'avant la traduction de l'interface. Elles n'ont
+jamais pu passer, et personne ne l'a su parce que la suite n'a jamais tourné.
+
+### Ce que ce chiffre vaut, et ce qu'il ne vaut pas
+
+344 tests qui passent, c'est un socle réel : la vitrine, l'authentification, la
+navigation admin, une large part des écrans de gestion répondent.
+
+Les 107 échecs ne sont **pas** 107 défauts. À vue de nez, la majorité sont des
+sélecteurs périmés. Mais je ne l'ai pas établi test par test, et je ne
+présenterai pas une estimation comme un tri. Ce qui est établi : au moins un
+défaut applicatif réel (le double `main`), et trois autres corrigés en amont
+(`StoreSelector`, la double instance Convex, le masque de la visite guidée).
+
+Les 52 non exécutés restent inexpliqués — aucun crash de worker dans le journal.
+
+## Tri des 107 échecs et des 52 non exécutés (22 août)
+
+### Les 52 non exécutés : résolu, et c'est un levier
+
+Aucun mystère et aucun crash. Quatre fichiers déclarent
+`describe.configure({ mode: "serial" })` ; en mode série, le premier échec
+abandonne tout le reste du bloc.
+
+| Fichier | Exécutés | Abandonnés |
+| --- | --- | --- |
+| `team.spec.ts` | 1 | **17** |
+| `product-form.spec.ts` | 2 | **16** |
+| `games.spec.ts` | 3 | **11** |
+| `stores.spec.ts` | 10 | **8** |
+| | | **52** — le compte exact |
+
+**Quatre échecs empêchaient 52 tests de tourner.** C'est le meilleur rapport
+effort/effet de toute la suite.
+
+### Répartition des 107
+
+| Cause | Nombre | Nature |
+| --- | --- | --- |
+| sélecteur ambigu (barre latérale + page) | 13 | test |
+| deux `<main>` imbriqués | 8 | **défaut applicatif** |
+| barre latérale absente | 7 | à creuser |
+| titre « Connexion » disparu | 6 | test périmé |
+| libellé **anglais** attendu | 6 | test périmé |
+| accents manquants dans l'interface | 1 (+17 en cascade) | **défaut applicatif** |
+| autocomplétion Google (clé absente) | 2 | environnement |
+| URL inattendue | 17 | à creuser |
+| divers (libellés renommés, dialogues) | 47 | mixte |
+
+### Deux défauts applicatifs confirmés et corrigés
+
+**1. Deux `<main>` imbriqués** — `SidebarInset` en rend un, le layout admin en
+rendait un second dedans. Une page a exactement un repère `main`.
+
+**2. Du français sans accents dans l'interface.** Le test `team.spec.ts`
+cherchait « Gestion de l'équipe » ; l'interface affichait « Gestion de
+l'equipe ». **Le test avait raison.** Le balayage a trouvé 53 segments répartis
+sur 12 fichiers de `packages/admin` : « Gerez les membres de votre equipe,
+leurs roles et permissions », « Veuillez selectionner un etablissement »,
+« Echec de l'apercu », « Base de donnees », « Parametres », « Categorie »…
+
+C'est un défaut de qualité visible par le restaurateur, dans un produit vendu
+en France. Aucun typecheck ni lint ne le voit.
+
+### Mon script de correction a cassé deux choses
+
+Il fallait le dire. Le remplacement automatique a touché ce qu'il ne devait pas :
+
+| Dégât | Détection |
+| --- | --- |
+| classe CSS `recharts-reference-line` → `recharts-référence-line` | relecture du diff |
+| identifiant `categories.length` → `catégories.length` | **typecheck** |
+
+Les deux sont réparés, et les trois typechecks sont à zéro. La leçon tient en
+une ligne : un remplacement par expression régulière sur du code source doit
+être relu ligne à ligne, pas seulement compté. La première passe était en outre
+incomplète — elle ne voyait que le texte JSX tenant sur une seule ligne, et le
+sous-titre fautif s'étalait sur deux.
+
+### Des tests écrits contre une interface qui n'existe plus
+
+| Attendu par le test | Réalité |
+| --- | --- |
+| `heading "Shopping Cart"` | interface en français |
+| `heading "Select Store"` | idem |
+| `heading "Checkout"` | idem |
+| `heading "Connexion"` | « Bon retour parmi nous » |
+| `button "Créer un compte"` | « Créer mon compte » |
+
+Ces spécifications n'ont **jamais** pu passer. Personne ne l'a su parce que la
+suite n'a jamais tourné.
+
+### Ce qui reste
+
+Les 17 « URL inattendue », les 7 « barre latérale absente » et une partie des 47
+« divers » ne sont pas triés. Certains sont sûrement des tests périmés de plus,
+d'autres peut-être de vrais défauts. Je ne les compte dans aucune des deux piles
+tant que je ne les ai pas ouverts.
+
+### Effet mesuré sur les quatre fichiers `serial`
+
+| | Réussis | Échecs | Non exécutés |
+| --- | --- | --- | --- |
+| avant | 17 | 4 | 48 |
+| après | **22** | 4 | 43 |
+
+Chaque correctif déplace le bloqueur plus loin dans la chaîne : `games` est
+passé de la ligne 47 à 78, `product-form` de 23 à 58, `team` de 30 à 114. Le
+mode `serial` rend ce déblocage forcément itératif — on ne voit l'échec suivant
+qu'une fois le précédent levé.
+
+C'est aussi ce qui rend ces quatre fichiers coûteux : 43 tests restent
+inaccessibles derrière 4 échecs. Une piste à trancher séparément — le mode
+`serial` est-il vraiment nécessaire ici, ou est-ce un héritage ? S'il tombe, les
+43 tests s'exécutent et échouent (ou passent) chacun pour leur propre raison,
+ce qui est bien plus informatif.
+
+## Le mode `serial` n'était pas nécessaire (22 août)
+
+Vérifié avant de toucher quoi que ce soit, sur les quatre fichiers concernés :
+
+| Indice d'une vraie dépendance | Constat |
+| --- | --- |
+| `beforeAll` | **aucun** dans les quatre |
+| variables partagées au niveau `describe` | **aucune** |
+| bouton de validation cliqué (Enregistrer, Créer, Confirmer, Supprimer…) | **aucun** |
+| navigation propre à chaque test | `beforeEach` partout |
+
+Aucun test n'écrit en base. Même ceux qui s'appellent « delete » se contentent
+d'ouvrir la confirmation puis d'annuler. Il n'y a donc **rien** qu'un test
+transmette au suivant.
+
+Et l'origine : `git log -S` fait remonter `mode: "serial"` à
+`1228afac chore: câbler le monorepo BeYours` — un commit de câblage global, sans
+un mot sur l'isolation des tests. Le mode n'a pas été choisi, il a été charrié.
+
+### Effet du retrait
+
+| | Réussis | Échecs | Non exécutés |
+| --- | --- | --- | --- |
+| avec `serial` | 22 | 4 | **43** |
+| sans `serial` | **57** | 12 | **0** |
+
+**+35 tests au vert**, et les 43 qui étaient cachés s'exécutent enfin — chacun
+échouant ou passant pour sa propre raison. Douze échecs réels apparaissent, qui
+étaient jusque-là invisibles derrière quatre.
+
+C'est exactement le compromis à faire : douze diagnostics lisibles valent mieux
+que quatre diagnostics et cinquante-deux silences.
+
+### Les 12 restants
+
+| Fichier | Échecs |
+| --- | --- |
+| `product-form.spec.ts` | 5 (champs du formulaire, onglets, gestion de stock) |
+| `team.spec.ts` | 3 (filtre par statut, dialogue d'invitation) |
+| `games.spec.ts` | 2 (catalogue) |
+| `stores.spec.ts` | 2 (titre, champs du dialogue) |
+
+Non triés. Ils rejoignent les 17 « URL inattendue », les 7 « barre latérale
+absente » et une partie des 47 « divers » du bilan précédent.
+
+## Tri des échecs des quatre fichiers admin (22 août)
+
+Point de départ : 22 réussis, 4 échecs, 43 non exécutés. **Arrivée : 64 réussis,
+5 échecs, 0 non exécuté.**
+
+### Défauts applicatifs trouvés et corrigés
+
+| Défaut | Effet |
+| --- | --- |
+| libellés d'un mot sans accent (`"Equipe"`, `"Parametres"`, `"Integrations"`, `>Role<`, `>Details<`) | 3 tests |
+| `Switch` annoncé comme case à cocher | accessibilité |
+
+La première passe d'accents avait manqué ces libellés : mon expression exigeait
+une espace dans la chaîne pour ne viser que de la prose, ce qui excluait tout
+libellé d'un seul mot. Corrigé.
+
+Le `Switch` de `packages/ui` est un `<input type="checkbox">` masqué. Il portait
+donc le rôle implicite `checkbox` alors qu'il *paraît* et *fonctionne* comme un
+interrupteur. `role="switch"` est un rôle valide pour cet input et décrit ce que
+l'utilisateur voit.
+
+**Mais ce correctif n'a pas fait passer le test**, et il faut le dire : l'input
+est `sr-only`, donc Playwright ne le considérera jamais comme visible, quel que
+soit son rôle. Le test devait viser ce que l'utilisateur voit et clique — le
+libellé — comme le faisait déjà son voisin à la ligne 168.
+
+### Défauts de test corrigés
+
+| Test | Cause |
+| --- | --- |
+| `selectFilter` (helper partagé) | Radix rend chaque option deux fois — la stylée et une native cachée. Cadré sur le `listbox` ouvert. |
+| `Prix (EUR)` | le formulaire affiche `Prix (€)`, cette orthographe n'a jamais existé |
+| `Disponible à partir de` / `jusqu'à` | `.or()` de `getByText` et `getByLabel` sur le **même** libellé : deux correspondances |
+| état du commutateur de stock | `getAttribute("aria-checked")` sur un libellé rend toujours `null` — la branche était décorative, elle cliquait à chaque fois et tombait juste par hasard |
+
+### Deux erreurs de ma part, à noter
+
+1. J'ai corrigé « Disponible à partir de » et **laissé la ligne suivante**, qui
+   répétait le même motif avec « Disponible jusqu'à ». Vu à l'exécution suivante.
+2. J'ai présenté `role="switch"` comme le correctif du test alors qu'il ne l'est
+   pas. C'est un gain d'accessibilité réel, rien de plus.
+
+### Les 5 qui restent — non diagnostiqués
+
+| Test | Ce qu'il attend | Constat |
+| --- | --- | --- |
+| `games:88` | `getByText('Jeux', exact)` | le `h2` « Jeux » existe |
+| `games:96` | un `%` dans le dialogue | non vérifié |
+| `product-form:109` | un message de validation | non vérifié |
+| `product-form:312` | « Seuil de stock faible » | **la chaîne existe** (ligne 725), donc l'activation du suivi n'a pas pris |
+| `stores:168` | libellé `/Adresse/` dans le dialogue | **la chaîne existe** (ligne 337) ; la page a deux `DialogContent`, le test en ouvre peut-être un et cherche dans l'autre |
+
+Ces cinq n'échouent pas sur un libellé périmé : le texte attendu est bien dans le
+code. Ils échouent sur l'accès au contenu. Je les laisse non triés plutôt que
+d'avancer une hypothèse comme un résultat.
+
+## Les 17 « URL inattendue » (22 août)
+
+**Un seul fichier, une seule cause.** Les 17 venaient tous de
+`store-detail.spec.ts`, tous avec le même écart : attendu
+`/dashboard/stores/<id>`, reçu `/dashboard/stores`.
+
+### La cause : la ligne du tableau n'est pas cliquable
+
+Le helper `navigateToFirstStore` clique `tbody tr` et attend une navigation.
+Or `TableRow` ne porte **aucun `onClick`** : la navigation vit dans un `<Link>`
+à l'intérieur de la cellule du nom. Cliquer au centre de la ligne tombe sur la
+cellule qui s'y trouve et ne va nulle part.
+
+L'interface n'a jamais offert le clic sur la ligne. C'est le test qui se
+trompait. Corrigé : il vise l'ancre.
+
+**Effet : 17 échecs → 7.**
+
+### Un test qui ne pouvait pas échouer
+
+`stores.spec.ts:274` — « should navigate to store detail on row click » —
+**passait**. Il compte les lignes à l'instant du `domcontentloaded`, avant que
+Convex n'ait répondu, trouve zéro, saute le `if (rowCount > 0)` et se déclare
+réussi sans avoir rien vérifié. Il contenait pourtant le même défaut que les 17
+autres.
+
+Réécrit pour attendre l'ancre puis exiger la navigation : il peut désormais
+échouer, ce qui est la moindre des choses pour un test.
+
+### Un défaut d'accessibilité trouvé au passage
+
+`getByLabel(/Adresse/)` échoue alors que le texte existe. `AddressAutocomplete`
+rend cinq `<label>` **sans `htmlFor`** et cinq `<input>` **sans `id`** : rien ne
+les associe. Un lecteur d'écran annonce cinq champs anonymes, et cliquer un
+libellé ne donne pas le focus.
+
+Câblé avec `React.useId()`, typecheck vert.
+
+**Mais je n'ai pas pu vérifier que ce correctif change le résultat des tests** :
+après reconstruction, le compte reste à 28 réussis / 8 échecs, et je ne retrouve
+pas le libellé « Adresse de l'établissement » dans la sortie de build que j'ai
+inspectée. Le correctif est juste sur le fond — un libellé doit pointer vers son
+champ — mais je ne le présente pas comme la résolution de ces tests.
+
+### Reste sur ces deux fichiers : 8 échecs
+
+Sept dans `store-detail` (contenus des onglets Horaires, Paramètres,
+Intégrations, plus « Adresse » sur Général) et un dans `stores` (champs du
+dialogue de création). Non diagnostiqués.
+
+## Les 7 « barre latérale absente » (22 août)
+
+Tous dans `admin-responsive.spec.ts`, tous dans les blocs **mobile (375×667)**.
+
+### La cause : un helper écrit pour le bureau seulement
+
+Sur un écran étroit, la barre latérale vit dans un `Sheet` — un tiroir modal
+**fermé par défaut**. `[data-slot="sidebar"]` n'est donc pas dans le DOM tant que
+l'utilisateur n'a pas ouvert le tiroir. C'est le comportement voulu.
+
+`waitForAdminPage` attendait cette barre inconditionnellement : sur mobile,
+l'attente ne pouvait aboutir. Le helper choisit désormais son repère selon le
+viewport — le déclencheur du tiroir en dessous de 768 px, la barre au-dessus.
+
+**Effet sur le fichier : 12 échecs → 3.**
+
+### Ce que ça a révélé : deux vrais défauts d'affichage
+
+Les tests mobiles s'exécutent enfin, et deux échouent sur **leur vraie
+assertion** — pas sur un locator :
+
+```
+expect(hasOverflow).toBe(false)   →   received: true
+```
+
+| Page | À 375 px |
+| --- | --- |
+| `/dashboard` | **déborde horizontalement** |
+| `/dashboard/orders` | **déborde horizontalement** |
+
+Un débordement horizontal sur téléphone, c'est une page qui glisse latéralement
+sous le doigt. Le test existait pour attraper exactement ça et ne l'a jamais pu :
+il mourait avant, sur la barre latérale.
+
+Je n'ai pas cherché l'élément fautif — c'est une investigation CSS distincte du
+tri.
+
+### Le troisième restant
+
+`admin-responsive.spec.ts:156` (bureau) attend `[data-slot="card"]` sur
+`/dashboard` et ne le trouve pas. Non diagnostiqué ; l'hypothèse la plus simple
+est un tableau de bord vide faute de commandes, mais je ne l'ai pas vérifiée.
+
+## Les deux débordements mobiles — corrigés (22 août)
+
+### Le coupable, trouvé par mesure
+
+Un test de diagnostic listant les éléments dont le bord droit dépasse le
+viewport a donné la même réponse sur les deux pages :
+
+| Page | `scrollWidth` | Élément fautif |
+| --- | --- | --- |
+| `/dashboard` | 382 (vp 375) | groupe droit de l'en-tête, largeur 219 |
+| `/dashboard/orders` | 388 (vp 375) | le même |
+
+L'en-tête admin est un `justify-between` entre deux groupes, et **aucun des deux
+ne pouvait rétrécir** : le groupe de droite portait `shrink-0`, celui de gauche
+n'avait pas `min-w-0` — un enfant flex refuse de descendre sous la largeur de son
+contenu tant qu'on ne le lui autorise pas explicitement.
+
+### Le correctif
+
+- groupe de gauche : `min-w-0`, fil d'Ariane en `truncate` et `flex-nowrap` ;
+- groupe de droite : `shrink-0` conservé (ces contrôles doivent rester
+  utilisables), mais le nom d'établissement plafonné à `7.5rem` sous `sm`.
+
+**Vérifié** : `scrollWidth` passe à 375 = viewport sur les deux pages. La bande
+d'onglets de `/dashboard/orders`, large de 790 px, reste large — mais elle est
+clippée par son conteneur et ne fait plus glisser la page, ce qui est le
+comportement attendu d'une barre d'onglets défilante.
+
+**Fichier `admin-responsive.spec.ts` : 2 réussis / 12 échecs → 13 / 1.**
+
+### Une incohérence du design system corrigée au passage
+
+`packages/ui`'s `Card` rendait un `<div>` nu, sans `data-slot="card"`, alors que
+toutes les autres primitives du système en portent un (`button`, `breadcrumb`,
+`sidebar`, `dialog`…). Aligné.
+
+**Ce correctif n'a pas fait passer le test qui le cherchait**, et il faut le
+dire : l'attribut est bien dans le build (vérifié), mais `/dashboard` n'affiche
+aucune carte — il rend « Veuillez sélectionner un restaurant ». Le `storeId`
+n'est pas résolu au moment du test. C'est un problème distinct, non résolu.
+
+### Reste sur ce fichier
+
+`admin-responsive.spec.ts:156` — le tableau de bord sans établissement
+sélectionné. À reprendre avec les autres cas de résolution d'établissement.
+
