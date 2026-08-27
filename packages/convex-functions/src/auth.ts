@@ -99,3 +99,29 @@ export async function requireStorePermission(
 
   return user
 }
+
+/* ------------------------------------------------------------------ */
+/* requireStaff                                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Verify the caller belongs in the administration at all.
+ *
+ * A few admin reads span every establishment and so have no store to scope to —
+ * the list `StoreGuard` and the sidebar selector are built from, for one. The
+ * admin's `AuthGuard` only checks that somebody is signed in, so
+ * "authenticated" on its own would let any customer account read them.
+ *
+ * The gate is deliberately not `stores:read`: the kitchen and delivery roles do
+ * not hold that permission and still have to reach the KDS, which renders
+ * behind `StoreGuard`. Every role but `customer` has a dashboard to look at.
+ */
+export async function requireStaff(ctx: any): Promise<AuthUser> {
+  const user = await getAuthUser(ctx)
+
+  if (user.role === Role.CUSTOMER) {
+    throw new Error("Access denied: staff only")
+  }
+
+  return user
+}

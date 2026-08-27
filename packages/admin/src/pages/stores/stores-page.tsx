@@ -100,7 +100,7 @@ export function StoresPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [storeToDelete, setStoreToDelete] = useState<string | null>(null)
 
-  const stores = useQuery(api.stores.list, {})
+  const stores = useQuery(api.stores.listAll, {})
   const createStore = useMutation(api.stores.create)
   const updateStore = useMutation(api.stores.update)
   const removeStore = useMutation(api.stores.remove)

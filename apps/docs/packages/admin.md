@@ -184,7 +184,8 @@ import { StoreSelector } from "@be-in-digital/admin";
 
 ### StoreGuard
 
-Protects dashboard routes by requiring a selected store. Auto-selects when only one store exists.
+Protects dashboard routes by requiring a selected store. When the persisted selection is
+missing from the list `stores.list` returns, it selects the first establishment instead.
 
 ```tsx
 import { StoreGuard } from "@be-in-digital/admin";
@@ -193,6 +194,11 @@ import { StoreGuard } from "@be-in-digital/admin";
 ```
 
 Bypass routes (no guard): `/dashboard/stores`, `/dashboard/settings`, `/dashboard/team`.
+
+It is not an authorisation boundary. `stores.list` is public and returns every
+establishment of the deployment, so the guard checks that the selected one exists, not
+that the signed-in user may open it. Pages are gated per store on the server by
+`requireStoreAccess`, against `userProfiles.storeIds`.
 
 ## Store Management
 
