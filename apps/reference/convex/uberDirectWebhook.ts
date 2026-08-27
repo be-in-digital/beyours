@@ -75,7 +75,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     }
 
     const result = await ctx.runMutation(
-      internal.uberDirect.applyDeliveryStatus,
+      internal.uberDirectInternal.applyDeliveryStatus,
       { deliveryId, status }
     );
 
