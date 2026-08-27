@@ -43,10 +43,10 @@ export default function CheckoutPage() {
   const { addresses } = useAddresses(!!session?.user)
 
   const createOrder = useMutation(api.orders.create)
-  const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
   const createStripeSession = useAction(api.stripe.createCheckoutSession)
   const createSumUpCheckout = useAction(api.sumup.createCheckout)
   const createPayPalOrder = useAction(api.paypal.createPayPalOrder)
+  const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
   const store = useQuery(
     api.stores.getById,
     storeId ? { id: storeId as Id<"stores"> } : "skip"
@@ -333,18 +333,23 @@ export default function CheckoutPage() {
     setFormEmail(data.email ?? "")
 
     try {
-      // 1. Price the courier before creating the order.
+      // 1. Settle the courier quote before creating the order.
       //
-      // Only percentage mode needs it: the server derives the customer's fee
-      // from the real Uber cost, and refuses to create the order without it.
-      // Fixed mode prices from settings and never calls Uber.
-      let uberQuote: { estimateId: string; fee: number } | undefined
-      const needsQuote =
+      // Prefer the quote already in state: it is the one the displayed fee was
+      // computed from, and the server charges from whichever quote the id points
+      // at. Asking Uber again here can come back at a different price, and the
+      // customer would pay a fee they were never shown.
+      //
+      // A saved address can still reach this point with nothing in state — it
+      // fills the form without going through the autocomplete, so the effect
+      // above never fires. That is the case this quote covers.
+      let orderQuote = uberQuote ?? undefined
+      const needsOrderQuote =
         orderType === "delivery" &&
         globalSettings?.delivery?.feeMode === "percentage" &&
         globalSettings?.integrations?.uberDirect?.enabled === true
 
-      if (needsQuote) {
+      if (needsOrderQuote && !orderQuote) {
         const coords = data.deliveryAddress
         if (
           typeof coords?.latitude !== "number" ||
@@ -367,18 +372,14 @@ export default function CheckoutPage() {
             dropoffLongitude: coords.longitude,
             dropoffAddress: `${coords.street}, ${coords.postalCode} ${coords.city}`,
           })
-          uberQuote = { estimateId: quote.estimateId, fee: quote.fee }
+          orderQuote = { estimateId: quote.estimateId, fee: quote.fee }
         } catch (err) {
           const message = err instanceof Error ? err.message : ""
-          if (message.includes("UNDELIVERABLE_ZONE")) {
-            toast.error(
-              "Cette adresse est hors de notre zone de livraison. Essayez le retrait sur place."
-            )
-          } else {
-            toast.error(
-              "Impossible de calculer les frais de livraison pour le moment. Réessayez dans un instant."
-            )
-          }
+          toast.error(
+            message.includes("UNDELIVERABLE_ZONE")
+              ? "Cette adresse est hors de notre zone de livraison. Essayez le retrait sur place."
+              : "Impossible de calculer les frais de livraison pour le moment. Réessayez dans un instant."
+          )
           setIsSubmitting(false)
           return
         }
@@ -419,7 +420,7 @@ export default function CheckoutPage() {
         deliveryAddress:
           orderType === "delivery" ? data.deliveryAddress : undefined,
         // Only the id: the server reads the fee from the quote it stored.
-        uberDirectEstimateId: uberQuote?.estimateId,
+        uberDirectEstimateId: orderQuote?.estimateId,
       })
 
       const origin = window.location.origin

@@ -320,6 +320,8 @@ export default function CheckoutPage() {
       city: string
       postalCode: string
       country: string
+      latitude?: number
+      longitude?: number
     }
   }) => {
     if (!isOpen) {
@@ -331,7 +333,59 @@ export default function CheckoutPage() {
     setFormEmail(data.email ?? "")
 
     try {
-      // 1. Create order with paymentStatus "pending"
+      // 1. Settle the courier quote before creating the order.
+      //
+      // Prefer the quote already in state: it is the one the displayed fee was
+      // computed from, and the server charges from whichever quote the id points
+      // at. Asking Uber again here can come back at a different price, and the
+      // customer would pay a fee they were never shown.
+      //
+      // A saved address can still reach this point with nothing in state — it
+      // fills the form without going through the autocomplete, so the effect
+      // above never fires. That is the case this quote covers.
+      let orderQuote = uberQuote ?? undefined
+      const needsOrderQuote =
+        orderType === "delivery" &&
+        globalSettings?.delivery?.feeMode === "percentage" &&
+        globalSettings?.integrations?.uberDirect?.enabled === true
+
+      if (needsOrderQuote && !orderQuote) {
+        const coords = data.deliveryAddress
+        if (
+          typeof coords?.latitude !== "number" ||
+          typeof coords?.longitude !== "number"
+        ) {
+          // Addresses saved before we started quoting carry no coordinates.
+          // Asking again beats geocoding blind and dispatching a courier to
+          // the wrong street.
+          toast.error(
+            "Merci de resaisir votre adresse dans le champ de recherche : nous en avons besoin pour calculer les frais de livraison."
+          )
+          setIsSubmitting(false)
+          return
+        }
+
+        try {
+          const quote = await getDeliveryQuote({
+            storeId: storeId as Id<"stores">,
+            dropoffLatitude: coords.latitude,
+            dropoffLongitude: coords.longitude,
+            dropoffAddress: `${coords.street}, ${coords.postalCode} ${coords.city}`,
+          })
+          orderQuote = { estimateId: quote.estimateId, fee: quote.fee }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : ""
+          toast.error(
+            message.includes("UNDELIVERABLE_ZONE")
+              ? "Cette adresse est hors de notre zone de livraison. Essayez le retrait sur place."
+              : "Impossible de calculer les frais de livraison pour le moment. Réessayez dans un instant."
+          )
+          setIsSubmitting(false)
+          return
+        }
+      }
+
+      // 2. Create order with paymentStatus "pending"
       const orderId = await createOrder({
         storeId: storeId as Id<"stores">,
         customerId: session?.user?.id,
@@ -366,12 +420,12 @@ export default function CheckoutPage() {
         deliveryAddress:
           orderType === "delivery" ? data.deliveryAddress : undefined,
         // Only the id: the server reads the fee from the quote it stored.
-        uberDirectEstimateId: uberQuote?.estimateId,
+        uberDirectEstimateId: orderQuote?.estimateId,
       })
 
       const origin = window.location.origin
 
-      // 2. Route based on payment method
+      // 3. Route based on payment method
       if (data.paymentMethod === "cash") {
         // Cash: immediate confirmation
         setLastOrderId(orderId)
