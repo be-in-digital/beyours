@@ -45,6 +45,8 @@ function getAppUrl(): string {
 // createCheckoutSession — action auth
 // ============================================================================
 
+// @guarded-inline: the owner is identity.subject, so a caller can only ever
+// buy a subscription for their own account
 export const createCheckoutSession = action({
   args: {
     plan: v.union(
@@ -122,6 +124,7 @@ export const createCheckoutSession = action({
 // createPortalSession — action auth
 // ============================================================================
 
+// @guarded-inline: the internal owner lookup resolves and checks the caller
 export const createPortalSession = action({
   args: {},
   handler: async (ctx) => {
@@ -161,6 +164,7 @@ export const createPortalSession = action({
  * tagged `bidProduct: "maintenance"` and lands on `maintenanceContracts`
  * (via webhook), never on `ownerEntitlements`.
  */
+// @guarded-inline: resolves the caller with getAuthUser and checks the owner
 export const createMaintenanceCheckoutSession = action({
   args: {},
   handler: async (ctx) => {

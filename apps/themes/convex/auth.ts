@@ -40,6 +40,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         });
       },
     },
+    // DIVERGENCE DÉLIBÉRÉE vis-à-vis d'apps/reference — ne pas aligner.
+    // Le banc d'essai fait confiance à localhost:3000-3003 parce que ses
+    // espaces de travail se disputent les ports. Un site client n'a aucune
+    // raison d'accepter une origine de développement : il tourne sur son
+    // domaine. Élargir cette liste ici, c'est l'élargir chez le restaurateur.
     trustedOrigins: process.env.SITE_URL
       ? [process.env.SITE_URL, "http://localhost:3000"]
       : ["http://localhost:3000"],
@@ -48,6 +53,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 };
 
 // Query to get the currently authenticated user
+// @guarded-inline: returns the caller's own session user
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {

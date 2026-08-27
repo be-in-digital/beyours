@@ -127,6 +127,9 @@ async function callEstimatesEndpoint(
  * Get a delivery quote from Uber Direct.
  * Returns the estimated fee and delivery time for a given dropoff location.
  */
+// @public-by-design: the checkout page asks for a delivery quote before the
+// guest has paid or signed in. NOTE: the quote is not yet bound to the address
+// it was priced for, nor single-use — tracked separately on the review list.
 export const getDeliveryQuote = action({
   args: {
     storeId: v.id("stores"),
@@ -224,9 +227,24 @@ export const getDeliveryQuote = action({
       throw new Error(`UBER_API_ERROR (${estimateResponse.status}): ${text}`);
     }
 
-    return parseEstimateResponse(
+    const quote = parseEstimateResponse(
       (await estimateResponse.json()) as UberEstimateResponse
     );
+
+    // Persist the quote. `orders.create` reads the fee from here rather than
+    // from a client argument, so a browser cannot dictate its own delivery
+    // charge in percentage fee mode.
+    await ctx.runMutation(internal.deliveryQuotes.internalRecord, {
+      estimateId: quote.estimateId,
+      storeId: args.storeId,
+      fee: quote.fee,
+      currency: quote.currency,
+      dropoffLatitude: args.dropoffLatitude,
+      dropoffLongitude: args.dropoffLongitude,
+      expiresAt: quote.expiresAt,
+    });
+
+    return quote;
   },
 });
 
@@ -320,6 +338,7 @@ async function callUber(
  * Idempotent on the order: an order that already carries a delivery id returns
  * it untouched rather than booking a second courier.
  */
+// @guarded-inline: checks orders:update_status on the order's store below
 export const createDelivery = action({
   args: {
     orderId: v.id("orders"),
@@ -339,6 +358,14 @@ export const createDelivery = action({
     if (!order) {
       throw new Error("ORDER_NOT_FOUND");
     }
+
+    // Booking a courier spends the restaurant's money, and cancelling one stops
+    // a delivery that is under way. Both need the same authority as advancing
+    // the order itself — without this, any caller could do either on any order.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: order.storeId,
+      permission: "orders:update_status",
+    });
 
     // Booking twice costs two couriers and two fees.
     if (order.uberDirectDeliveryId) {
@@ -429,6 +456,7 @@ export const createDelivery = action({
  * not always go together — a restaurant may cancel a courier to deliver the
  * order itself.
  */
+// @guarded-inline: checks orders:update_status on the order's store below
 export const cancelDelivery = action({
   args: { orderId: v.id("orders") },
   handler: async (ctx, args): Promise<{ cancelled: boolean }> => {
@@ -438,6 +466,15 @@ export const cancelDelivery = action({
     if (!order) {
       throw new Error("ORDER_NOT_FOUND");
     }
+
+    // Booking a courier spends the restaurant's money, and cancelling one stops
+    // a delivery that is under way. Both need the same authority as advancing
+    // the order itself — without this, any caller could do either on any order.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: order.storeId,
+      permission: "orders:update_status",
+    });
+
     if (!order.uberDirectDeliveryId) {
       throw new Error("NO_DELIVERY: This order has no Uber Direct delivery");
     }

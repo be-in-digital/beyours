@@ -393,4 +393,67 @@ describe('Real-world usage scenarios', () => {
     expect(hasPermission(Role.CUSTOMER, 'products:write')).toBe(false);
     expect(hasPermission(Role.CUSTOMER, 'orders:write')).toBe(false);
   });
+
+  // Regression guard: `globalSettings.upsert` gated on a hardcoded
+  // ["owner", "admin", "super_admin"] list. Neither "owner" nor "admin" is a
+  // real role, so the restaurant owner — a client_admin — was refused on every
+  // save and the whole settings page was dead. The guard now checks
+  // 'settings:write'; these tests pin the roles that must keep holding it.
+  it('the restaurant owner can save global settings', () => {
+    expect(hasPermission(Role.CLIENT_ADMIN, 'settings:read')).toBe(true);
+    expect(hasPermission(Role.CLIENT_ADMIN, 'settings:write')).toBe(true);
+    expect(hasPermission(Role.SUPER_ADMIN, 'settings:write')).toBe(true);
+  });
+
+  // Regression guard: `emailCampaignActions` required 'marketing:write', but
+  // no `marketing` resource existed in this table. `hasPermission` fails closed
+  // on an unknown permission, so every role except SUPER_ADMIN — which bypasses
+  // the table entirely — was refused. The restaurant owner could not send a
+  // single campaign, and nothing said why.
+  it('the restaurant owner can run email marketing', () => {
+    expect(hasPermission(Role.CLIENT_ADMIN, 'marketing:read')).toBe(true);
+    expect(hasPermission(Role.CLIENT_ADMIN, 'marketing:write')).toBe(true);
+    expect(hasPermission(Role.SUPER_ADMIN, 'marketing:write')).toBe(true);
+  });
+
+  // `content:*` was added when every CMS and blog wrapper finally declared a
+  // permission. A manager writes and publishes; only the owner deletes.
+  it('a manager can write content but not delete it', () => {
+    expect(hasPermission(Role.MANAGER, 'content:read')).toBe(true);
+    expect(hasPermission(Role.MANAGER, 'content:write')).toBe(true);
+    expect(hasPermission(Role.MANAGER, 'content:delete')).toBe(false);
+  });
+
+  it('the owner can delete content', () => {
+    expect(hasPermission(Role.CLIENT_ADMIN, 'content:delete')).toBe(true);
+  });
+
+  it('kitchen staff can run the kitchen display and nothing else', () => {
+    // The KDS wrappers now demand `kitchen:write`; this pins that the role
+    // which actually uses them still holds it.
+    expect(hasPermission(Role.KITCHEN, 'kitchen:read')).toBe(true);
+    expect(hasPermission(Role.KITCHEN, 'kitchen:write')).toBe(true);
+    expect(hasPermission(Role.KITCHEN, 'orders:read')).toBe(true);
+    expect(hasPermission(Role.KITCHEN, 'content:write')).toBe(false);
+    expect(hasPermission(Role.KITCHEN, 'marketing:write')).toBe(false);
+    expect(hasPermission(Role.KITCHEN, 'stores:delete')).toBe(false);
+  });
+
+  it('kitchen and waiting staff cannot run email marketing', () => {
+    for (const role of [Role.KITCHEN, Role.WAITER, Role.DELIVERY, Role.CUSTOMER]) {
+      expect(hasPermission(role, 'marketing:write')).toBe(false);
+    }
+  });
+
+  it('nobody below the owner can save global settings', () => {
+    for (const role of [
+      Role.MANAGER,
+      Role.KITCHEN,
+      Role.WAITER,
+      Role.DELIVERY,
+      Role.CUSTOMER,
+    ]) {
+      expect(hasPermission(role, 'settings:write')).toBe(false);
+    }
+  });
 });

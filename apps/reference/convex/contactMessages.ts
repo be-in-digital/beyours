@@ -1,10 +1,11 @@
 import { mutation } from "./_generated/server"
 import * as defs from "@be-in-digital/convex-functions/contactMessages"
-import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions"
+import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (admin, auth-protected) ===
 
 export const list = storeQuery({
+  permission: "customers:read",
   args: defs.list.args,
   handler: (ctx, args) => defs.list.handler(ctx, args),
 })
@@ -14,6 +15,7 @@ export const list = storeQuery({
 /**
  * Public mutation — allows unauthenticated storefront visitors to submit a contact message.
  */
+// @public-by-design: the contact form is filled in by visitors (rate limiting tracked as S3-7)
 export const create = mutation({
   args: defs.create.args,
   handler: async (ctx, args) => {
@@ -25,6 +27,7 @@ export const create = mutation({
  * Admin mutation — update message status (read, archived).
  */
 export const updateStatus = storeMutation({
+  permission: "customers:write",
   args: defs.updateStatus.args,
   storeIdFrom: storeIdFromDocument("Message not found"),
   handler: (ctx, args) => defs.updateStatus.handler(ctx, args),

@@ -37,6 +37,7 @@ function buildPublicUrl(key: string): string {
   return base ? `${base}/${key}` : `https://${bucketName}.s3.${region}.amazonaws.com/${key}`
 }
 
+// @guarded-inline: checks content:write on the store owning the media
 export const confirmUpload = action({
   args: {
     mediaId: v.id("cmsMedia"),
@@ -51,6 +52,14 @@ export const confirmUpload = action({
       { mediaId: args.mediaId },
     )
     if (!media) throw new Error("Media not found")
+
+    // The media record carries the restaurant it belongs to. Without this, any
+    // logged-in account could confirm or re-presign an upload for any store's
+    // media library.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: media.storeId,
+      permission: "content:write",
+    })
 
     // Idempotent: already ready → no-op
     if (media.status === "ready") {

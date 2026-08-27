@@ -5,6 +5,7 @@
  */
 
 import { v } from "convex/values"
+import { planRefund } from "./refundPolicy"
 
 // === QUERIES ===
 
@@ -104,46 +105,83 @@ export const updateStatus = {
 }
 
 /**
- * Refund a payment and sync paymentStatus on the linked order
+ * Fetch a single payment. Used by the refund action, which runs in an action
+ * context and therefore cannot touch the database directly.
  */
-export const refund = {
+export const getById = {
+  args: { id: v.id("payments") },
+  handler: async (ctx: any, args: { id: string }) => {
+    return await ctx.db.get(args.id)
+  },
+}
+
+/**
+ * RECORD a refund that has already happened.
+ *
+ * This does NOT move money. It used to be the whole of "refund": a database
+ * patch with no provider call anywhere, so the admin read "remboursé" while the
+ * customer was never paid back. Money is moved by the `refundPayment` action,
+ * which calls the provider first and only then calls this to write down the
+ * outcome — with the provider's refund id as proof.
+ *
+ * `refundMethod: "manual"` is the one case with no provider confirmation: cash
+ * handed back at the counter, recorded on the staff's word and labelled as such.
+ */
+export const recordRefund = {
   args: {
     id: v.id("payments"),
     amount: v.number(),
     reason: v.optional(v.string()),
+    externalRefundId: v.optional(v.string()),
+    refundMethod: v.union(v.literal("api"), v.literal("manual")),
   },
-  handler: async (ctx: any, args: { id: string; amount: number; reason?: string }) => {
+  handler: async (
+    ctx: any,
+    args: {
+      id: string
+      amount: number
+      reason?: string
+      externalRefundId?: string
+      refundMethod: "api" | "manual"
+    }
+  ) => {
     const payment = await ctx.db.get(args.id)
     if (!payment) throw new Error("Payment not found")
-    if (args.amount <= 0) throw new Error("Refund amount must be positive")
 
-    const currentRefunded = (payment.refundedAmount as number | undefined) ?? 0
-    const paymentAmount = payment.amount as number
-    const newRefundedAmount = currentRefunded + args.amount
-    if (newRefundedAmount > paymentAmount) {
-      throw new Error("Refund amount exceeds remaining payment balance")
-    }
-
-    // Determine new payment status
-    const isFullRefund = newRefundedAmount >= paymentAmount
-    const newPaymentStatus = isFullRefund ? "refunded" : "partially_refunded"
-
-    // Update payment record
-    await ctx.db.patch(args.id, {
-      refundedAmount: newRefundedAmount,
-      refundReason: args.reason,
-      status: newPaymentStatus,
-      updatedAt: Date.now(),
+    // Re-validate against the freshly read document. The action validated too,
+    // but a concurrent refund may have landed since — this is the write that
+    // must not be allowed to overshoot the balance.
+    const plan = planRefund({
+      payment: {
+        provider: payment.provider,
+        status: payment.status,
+        amount: payment.amount,
+        refundedAmount: payment.refundedAmount,
+        externalId: payment.externalId,
+      },
+      amount: args.amount,
     })
 
-    // Sync paymentStatus on the linked order
+    const now = Date.now()
+
+    await ctx.db.patch(args.id, {
+      refundedAmount: plan.refundedAmount,
+      refundReason: args.reason,
+      status: plan.paymentStatus,
+      externalRefundId: args.externalRefundId,
+      refundedAt: now,
+      refundMethod: args.refundMethod,
+      updatedAt: now,
+    })
+
     const orderId = payment.orderId as string
     if (orderId) {
-      const orderPaymentStatus = isFullRefund ? "refunded" : "partially_refunded"
       await ctx.db.patch(orderId, {
-        paymentStatus: orderPaymentStatus,
-        updatedAt: Date.now(),
+        paymentStatus: plan.orderPaymentStatus,
+        updatedAt: now,
       })
     }
+
+    return plan
   },
 }

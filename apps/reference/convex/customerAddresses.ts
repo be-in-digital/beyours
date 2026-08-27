@@ -22,6 +22,7 @@ const addressFields = {
 };
 
 /** The signed-in customer's addresses, default first. Empty for guests. */
+// @guarded-inline: returns only the caller's own addresses
 export const myAddresses = query({
   args: {},
   handler: async (ctx) => {
@@ -31,6 +32,7 @@ export const myAddresses = query({
   },
 });
 
+// @guarded-inline: writes an address owned by the caller
 export const addAddress = mutation({
   args: addressFields,
   handler: async (ctx, args) => {
@@ -40,6 +42,7 @@ export const addAddress = mutation({
   },
 });
 
+// @guarded-inline: the package definition rejects an address the caller does not own (FORBIDDEN)
 export const updateAddress = mutation({
   args: { addressId: v.id("customerAddresses"), ...addressFields },
   handler: async (ctx, args) => {
@@ -49,6 +52,7 @@ export const updateAddress = mutation({
   },
 });
 
+// @guarded-inline: the package definition rejects an address the caller does not own (FORBIDDEN)
 export const removeAddress = mutation({
   args: { addressId: v.id("customerAddresses") },
   handler: async (ctx, args) => {
@@ -58,6 +62,7 @@ export const removeAddress = mutation({
   },
 });
 
+// @guarded-inline: the package definition rejects an address the caller does not own (FORBIDDEN)
 export const setDefaultAddress = mutation({
   args: { addressId: v.id("customerAddresses") },
   handler: async (ctx, args) => {
@@ -68,6 +73,7 @@ export const setDefaultAddress = mutation({
 });
 
 /** One-shot import of what the customer had saved in their browser. */
+// @guarded-inline: imports into the caller's own account only
 export const importLocalAddresses = mutation({
   args: {
     addresses: v.array(

@@ -66,6 +66,7 @@ function isLockActive(lock: { expiresAt: number } | undefined | null): boolean {
 // ─── Queries ────────────────────────────────────────────────────────────────────
 
 /** Get system info: version snapshot, lock status, migrations, last backup */
+// @guarded-inline: system:* permission checked in the handler
 export const getSystemInfo = query({
   args: {},
   handler: async (ctx) => {
@@ -88,6 +89,7 @@ export const getSystemInfo = query({
 })
 
 /** Get paginated audit log */
+// @guarded-inline: system:* permission checked in the handler
 export const getAuditLog = query({
   args: {
     paginationOpts: v.object({
@@ -256,6 +258,7 @@ export const _addAppliedMigration = internalMutation({
 // ─── Mutations ──────────────────────────────────────────────────────────────────
 
 /** Force release system lock (owner/admin only) */
+// @guarded-inline: system:* permission checked in the handler
 export const forceReleaseLock = mutation({
   args: {},
   handler: async (ctx) => {
@@ -277,6 +280,7 @@ export const forceReleaseLock = mutation({
 })
 
 /** Sync runtime version to DB snapshot */
+// @guarded-inline: system:* permission checked in the handler
 export const syncVersion = mutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {
@@ -299,6 +303,7 @@ export const syncVersion = mutation({
  * then the entitled version is resolved against `coveredUntil`. Releases
  * published after the end of coverage are reported as locked.
  */
+// @guarded-inline: getAuthUser + hasPermission on system:*
 export const checkForUpdates = action({
   args: { currentVersion: v.string() },
   handler: async (ctx, args): Promise<UpdateCheckResult> => {
@@ -381,6 +386,7 @@ export const checkForUpdates = action({
 })
 
 /** Export a full backup as JSON */
+// @guarded-inline: getAuthUser + hasPermission on system:backup
 export const exportBackup = action({
   args: {},
   handler: async (ctx) => {
@@ -464,6 +470,7 @@ export const exportBackup = action({
 })
 
 /** Import backup — dry run mode by default */
+// @guarded-inline: getAuthUser + hasPermission on system:restore
 export const importBackup = action({
   args: {
     manifest: v.any(),
@@ -592,6 +599,7 @@ export const importBackup = action({
 })
 
 /** Run pending migrations */
+// @guarded-inline: getAuthUser + hasPermission on system:migrate
 export const runMigrations = action({
   args: {},
   handler: async (ctx) => {

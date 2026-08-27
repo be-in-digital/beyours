@@ -29,9 +29,17 @@ import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
  * 9. Call pushMenu() from integrations package
  * 10. Update menuSyncStatus to "success" or "error"
  */
+// @guarded-inline: checks products:write on the store being synced
 export const syncStore = action({
   args: { storeId: v.id("stores") },
   handler: async (ctx, args) => {
+    // Pushing a menu to a delivery platform is a write on the restaurant's
+    // catalogue. Nothing checked the caller at all before.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: args.storeId,
+      permission: "products:write",
+    });
+
     // Note: No auth check here — syncStore is also scheduled by syncAllStores (no user context).
     // Protection: syncAllStores is an internalAction, and direct calls only trigger a harmless menu push.
 
@@ -138,7 +146,7 @@ export const syncAllStores = internalAction({
   handler: async (ctx) => {
     // Query all enabled Uber Eats integrations
     const allIntegrations = await ctx.runQuery(
-      api.storeIntegrations.listByPlatformEnabled,
+      internal.storeIntegrations.internalListByPlatformEnabled,
       { platform: "uberEats" }
     ) as StoreIntegrationRecord[];
 

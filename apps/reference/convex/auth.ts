@@ -54,6 +54,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 };
 
 // Query to get the currently authenticated user
+// @guarded-inline: returns the caller's own session user
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {

@@ -330,6 +330,7 @@ function sanitizeContent(html: string): string {
  * 2. For each keyword: Unsplash (priority) → GPT Image (fallback)
  * 3. Inject images, sanitize HTML, save draft
  */
+// @guarded-inline: runs _checkAccess, which enforces the store quota and rights
 export const generateArticle = action({
   args: {
     storeId: v.id("stores"),

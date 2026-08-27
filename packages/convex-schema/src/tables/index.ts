@@ -13,6 +13,7 @@ export { paymentsTable } from "./payments"
 export { paymentConnectionsTable } from "./paymentConnections"
 export { uberEatsConnectionsTable } from "./uberEatsConnections"
 export { oauthStatesTable } from "./oauthStates"
+export { deliveryQuotesTable } from "./deliveryQuotes"
 export { languagesTable, translationsTable, translationJobsTable } from "./i18n"
 export {
   gameQRCodesTable,

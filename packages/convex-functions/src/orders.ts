@@ -12,6 +12,11 @@ import type { OrderStatus } from "@be-in-digital/convex-schema"
 import { canTransitionOrderStatus } from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
+import {
+  resolvePromotionDiscount,
+  type PromotionForDiscount,
+} from "./promotionDiscount"
+import { computeOrderTotals, resolveTaxRatePercent } from "./orderTotals"
 
 // === QUERIES ===
 
@@ -134,9 +139,7 @@ interface CreateOrderArgs {
   notes?: string
   paymentMethod?: string
   promotionId?: string
-  discountAmount?: number
   uberDirectEstimateId?: string
-  uberDirectFee?: number
 }
 
 interface StoreDoc {
@@ -198,10 +201,12 @@ export const create = {
     })),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    // NOTE: there is deliberately no `discountAmount` argument. The discount is
+    // recomputed server-side from `promotionId` — see resolvePromotionDiscount.
     promotionId: v.optional(v.id("promotions")),
-    discountAmount: v.optional(v.number()),
+    // NOTE: there is deliberately no `uberDirectFee` argument. In percentage
+    // mode the fee is read from the stored quote this id refers to.
     uberDirectEstimateId: v.optional(v.string()),
-    uberDirectFee: v.optional(v.number()),
   },
   handler: async (ctx: any, args: CreateOrderArgs) => {
     const now = Date.now()
@@ -260,7 +265,10 @@ export const create = {
     const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
     const deliveryConfig = globalSettings?.delivery
 
-    const taxRate = (store.settings?.taxRate ?? globalSettings?.taxRate ?? 0) / 100
+    const taxRatePercent = resolveTaxRatePercent({
+      storeTaxRate: store.settings?.taxRate,
+      globalTaxRate: globalSettings?.taxRate,
+    })
 
     // Calculate delivery fee based on fee mode
     let deliveryFee = 0
@@ -276,20 +284,95 @@ export const create = {
       } else if (feeMode === "fixed") {
         deliveryFee = deliveryConfig.fee ?? 0
       } else if (feeMode === "percentage") {
-        if (!args.uberDirectFee) {
-          throw new Error("uberDirectFee is required when delivery fee mode is percentage")
+        // The Uber Direct fee used to arrive as a client argument, and a
+        // percentage of whatever number was sent became the delivery charge —
+        // `uberDirectFee: 0` bought free delivery. The client now sends only
+        // the estimate id and the fee is read from the quote we issued.
+        if (!args.uberDirectEstimateId) {
+          throw new Error(
+            "Un devis de livraison est requis : veuillez confirmer votre adresse."
+          )
         }
+
+        const quote = await ctx.db
+          .query("deliveryQuotes")
+          .withIndex("by_estimateId", (q: any) =>
+            q.eq("estimateId", args.uberDirectEstimateId)
+          )
+          .first()
+
+        if (!quote) {
+          throw new Error("Devis de livraison introuvable : recalculez les frais.")
+        }
+        if (quote.storeId !== args.storeId) {
+          throw new Error("Ce devis de livraison concerne un autre restaurant.")
+        }
+        if (quote.expiresAt <= now) {
+          throw new Error("Le devis de livraison a expiré : recalculez les frais.")
+        }
+
         const percentage = deliveryConfig.percentage ?? 100
-        deliveryFee = Math.round(args.uberDirectFee * percentage / 100)
+        deliveryFee = Math.round((quote.fee * percentage) / 100)
         if (deliveryConfig.maxFee !== undefined && deliveryFee > deliveryConfig.maxFee) {
           deliveryFee = deliveryConfig.maxFee
         }
       }
     }
 
-    const taxAmount = Math.round(subtotal * taxRate)
-    const discount = args.discountAmount ?? 0
-    const total = Math.max(0, subtotal + taxAmount + deliveryFee - discount)
+    const taxAmount = computeOrderTotals({ subtotal, taxRatePercent }).taxAmount
+
+    // Recompute the discount from the stored promotion. The client never gets a
+    // say: it used to pass `discountAmount`, which was applied verbatim and let
+    // a forged value produce a 0 € order that still reached the kitchen.
+    let discount = 0
+    if (args.promotionId) {
+      const promotion = (await ctx.db.get(args.promotionId)) as
+        | PromotionForDiscount
+        | null
+      if (!promotion) throw new Error("Promotion not found")
+
+      // Per-customer caps are keyed on email. `resolvePromotionDiscount`
+      // refuses a capped promotion on an anonymous order rather than let the
+      // cap be bypassed by omitting the field.
+      let customerUsageCount = 0
+      if (args.customerInfo.email && promotion.maxUsagePerCustomer !== undefined) {
+        const usages = await ctx.db
+          .query("promotionUsages")
+          .withIndex("by_promotionId_customerEmail", (q: any) =>
+            q
+              .eq("promotionId", args.promotionId)
+              // Normalised the same way it is written below: without this,
+              // `A@b.com` and `a@b.com` are two different customers and the
+              // per-customer cap is bypassed by changing the case.
+              .eq("customerEmail", args.customerInfo.email!.trim().toLowerCase())
+          )
+          .collect()
+        customerUsageCount = usages.length
+      }
+
+      const resolved = resolvePromotionDiscount({
+        promotion,
+        storeId: args.storeId,
+        subtotal,
+        deliveryFee,
+        taxAmount,
+        now,
+        customerUsageCount,
+        customerIdentified: Boolean(args.customerInfo.email),
+      })
+      // For a free-delivery promotion the resolver returns the fee as the
+      // discount. The fee stays on the order so the customer still sees the
+      // "Livraison 4,90 € / Offerte −4,90 €" pair; zeroing it here as well
+      // would subtract it twice.
+      discount = resolved.discount
+    }
+
+    const { total } = computeOrderTotals({
+      subtotal,
+      taxRatePercent,
+      deliveryFee,
+      discount,
+    })
 
     const orderNumber = generateOrderNumber()
 
@@ -309,7 +392,6 @@ export const create = {
       deliveryFee: args.type === "delivery" && deliveryFee > 0 ? deliveryFee : undefined,
       deliveryFeeMode: args.type === "delivery" ? deliveryFeeMode : undefined,
       uberDirectEstimateId: args.uberDirectEstimateId,
-      uberDirectFee: args.uberDirectFee,
       promotionId: args.promotionId,
       discountAmount: discount > 0 ? discount : undefined,
       total,
@@ -323,21 +405,32 @@ export const create = {
       updatedAt: now,
     })
 
-    // Increment promotion usage if a promotion was applied
-    if (args.promotionId && args.customerInfo.email) {
+    // Count the use as soon as a promotion was applied.
+    //
+    // This whole block used to sit behind `&& args.customerInfo.email`, so an
+    // anonymous order got the discount without ever moving the counter: a
+    // promotion capped at `maxTotalUsage: 1` stayed redeemable forever. The
+    // per-customer cap was closed by refusing anonymous orders, but the GLOBAL
+    // cap was not — the counter simply never advanced.
+    if (args.promotionId) {
       const promo = await ctx.db.get(args.promotionId)
       if (promo) {
         await ctx.db.patch(args.promotionId, {
           usageCount: (promo.usageCount ?? 0) + 1,
           updatedAt: now,
         })
-        await ctx.db.insert("promotionUsages", {
-          storeId: args.storeId,
-          promotionId: args.promotionId,
-          customerEmail: args.customerInfo.email,
-          orderId,
-          usedAt: now,
-        })
+
+        // The per-customer ledger is keyed on email, so it only exists for an
+        // identified customer. The global counter above does not depend on it.
+        if (args.customerInfo.email) {
+          await ctx.db.insert("promotionUsages", {
+            storeId: args.storeId,
+            promotionId: args.promotionId,
+            customerEmail: args.customerInfo.email.trim().toLowerCase(),
+            orderId,
+            usedAt: now,
+          })
+        }
       }
     }
 

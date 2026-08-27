@@ -4,6 +4,7 @@ import { storeQuery, storeMutation } from "./lib/storeFunctions";
 // === Queries (auth-protected — contains fromEmail/replyToEmail) ===
 
 export const get = storeQuery({
+  permission: "marketing:read",
   args: defs.get.args,
   handler: (ctx, args) => defs.get.handler(ctx, args),
 });
@@ -11,6 +12,7 @@ export const get = storeQuery({
 // === Mutations (auth-protected) ===
 
 export const upsert = storeMutation({
+  permission: "marketing:write",
   args: defs.upsert.args,
   handler: (ctx, args) => defs.upsert.handler(ctx, args),
 });

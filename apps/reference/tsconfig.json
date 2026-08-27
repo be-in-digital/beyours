@@ -18,5 +18,7 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "convex"]
+  // `tests/` holds convex-test suites that rely on Vite's `import.meta.glob`
+  // and the harness's own generics — same arrangement as apps/site.
+  "exclude": ["node_modules", "convex", "tests"]
 }

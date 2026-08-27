@@ -1,8 +1,10 @@
 "use node"
 
 import { action } from "./_generated/server"
+import { internal } from "./_generated/api"
 import { v } from "convex/values"
 
+// @guarded-inline: checks content:write by role — no store to scope against
 export const generateAltText = action({
   args: {
     imageUrl: v.string(),
@@ -10,6 +12,12 @@ export const generateAltText = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+
+    // Deployment-wide operation with no store to scope against. "Logged in"
+    // included every customer account, so the check is by role.
+    await ctx.runQuery(internal.authHelpers.checkPermission, {
+      permission: "content:write",
+    });
 
     const apiKey = process.env.OPENAI_API_KEY
     if (!apiKey) throw new Error("OPENAI_API_KEY not configured")

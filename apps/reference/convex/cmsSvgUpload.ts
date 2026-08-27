@@ -32,6 +32,7 @@ function buildPublicUrl(key: string): string {
   return base ? `${base}/${key}` : `https://${bucketName}.s3.${region}.amazonaws.com/${key}`
 }
 
+// @guarded-inline: checks content:write on the storeId it is given
 export const uploadSvg = action({
   args: {
     storeId: v.id("stores"),
@@ -42,6 +43,14 @@ export const uploadSvg = action({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error("Not authenticated")
+
+    // Being logged in was the whole check: any customer account of any
+    // restaurant reached this. The storeId is an argument, so it has to be
+    // matched against what the caller may actually do there.
+    await ctx.runQuery(internal.authHelpers.checkStorePermission, {
+      storeId: args.storeId,
+      permission: "content:write",
+    });
 
     // Verify media record exists and belongs to the store
     const media = await ctx.runQuery(

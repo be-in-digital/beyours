@@ -55,6 +55,8 @@ export enum Resource {
   DELIVERIES = 'deliveries',
   TABLES = 'tables',
   MENUS = 'menus',
+  MARKETING = 'marketing',
+  CONTENT = 'content',
   SYSTEM = 'system',
 }
 
@@ -109,6 +111,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'analytics:read',
     'analytics:view_all',
     'payments:read',
+    'payments:write',
     'payments:refund',
     'translations:read',
     'translations:write',
@@ -116,6 +119,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'games:write',
     'customers:read',
     'customers:write',
+    'marketing:read',
+    'marketing:write',
+    'content:read',
+    'content:write',
+    'content:delete',
     'deliveries:read',
     'deliveries:write',
     'tables:read',
@@ -138,6 +146,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'orders:read',
     'orders:write',
     'orders:update_status',
+    // An owner may delete a product, a team member and a page, but could not
+    // delete an order in their own restaurant. The gap was an oversight, not a
+    // policy.
+    'orders:delete',
     'kitchen:read',
     'kitchen:write',
     'team:read',
@@ -147,12 +159,21 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'settings:write',
     'analytics:read',
     'payments:read',
+    'payments:write',
     'payments:refund',
     'translations:read',
     'translations:write',
     'games:read',
     'games:write',
     'customers:read',
+    // Marking a contact message handled needs this. Without it the owner could
+    // read their own customers but never act on them.
+    'customers:write',
+    'marketing:read',
+    'marketing:write',
+    'content:read',
+    'content:write',
+    'content:delete',
     'deliveries:read',
     'deliveries:write',
     'tables:read',
@@ -181,7 +202,17 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'payments:read',
     'translations:read',
     'games:read',
+    // The team screen has always offered a manager the "Jeux / Marketing"
+    // module by default, while the role table withheld it — the screen
+    // promised and the server refused. Resolved in favour of the screen: a
+    // manager runs the restaurant day to day, campaigns and in-store games
+    // included.
+    'games:write',
+    'marketing:read',
+    'marketing:write',
     'customers:read',
+    'content:read',
+    'content:write',
     'deliveries:read',
     'deliveries:write',
     'tables:read',
