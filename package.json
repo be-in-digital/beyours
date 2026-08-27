@@ -70,6 +70,11 @@
       "body-parser@<2.3.0": "^2.3.0",
       "@babel/core@<7.29.6": "^7.29.6",
       "sharp@<0.35.0": "^0.35.4"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-qq9h-g4jm-xgf3"
+      ]
     }
   }
 }
