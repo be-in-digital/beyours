@@ -1,4 +1,5 @@
 import { query, mutation, internalMutation } from "./_generated/server";
+import { v } from "convex/values";
 import * as defs from "@be-in-digital/convex-functions/userProfiles";
 import { getAuthUser } from "@be-in-digital/convex-functions/auth";
 import {
@@ -6,6 +7,22 @@ import {
   canClaimFirstAdmin,
 } from "@be-in-digital/convex-functions/profileProvisioning";
 import { Role } from "@be-in-digital/core/auth/rbac";
+
+
+/**
+ * Compare two secrets without leaking their length or content through timing.
+ *
+ * A plain `===` returns on the first differing byte, which is enough to
+ * recover a token one character at a time.
+ */
+function timingSafeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
 
 // === Queries ===
 //
@@ -80,16 +97,35 @@ export const upsert = mutation({
  * Claim the first super-admin seat on a deployment that has none.
  *
  * Provisioning requires a super admin, and a fresh deployment starts without
- * one — previously there was no way to appoint the first administrator short of
- * editing the database directly. The claim is self-closing: once a super admin
- * exists this always throws, so it cannot be replayed.
+ * one — there would otherwise be no way to appoint the first administrator
+ * short of editing the database by hand.
+ *
+ * "Self-closing" was not enough. Sign-up is open on the storefront, so on a
+ * fresh deployment the first authenticated caller took the whole thing — and
+ * that need not be the restaurateur. Convex function names are discoverable
+ * from the client bundle; "nothing in the UI calls it" protects no one.
+ *
+ * So the claim now also demands a secret only whoever deployed the backend
+ * holds. It FAILS CLOSED: with `ADMIN_BOOTSTRAP_TOKEN` unset there is no way
+ * in at all, because an unset variable that waved everyone through would
+ * recreate the hole on precisely the deployments nobody has configured yet.
  */
 // @guarded-inline: session-derived, or policy-checked in the handler
 export const claimFirstAdmin = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { bootstrapToken: v.string() },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
+
+    const expected = process.env.ADMIN_BOOTSTRAP_TOKEN;
+    if (!expected) {
+      throw new Error(
+        "L'amorçage administrateur n'est pas configuré sur ce déploiement."
+      );
+    }
+    if (!timingSafeEqualString(args.bootstrapToken, expected)) {
+      throw new Error("Jeton d'amorçage invalide.");
+    }
 
     const superAdmins = await ctx.db
       .query("userProfiles")

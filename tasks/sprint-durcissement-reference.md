@@ -1344,3 +1344,285 @@ frontière d'établissement, et que le serveur n'a pas été élargi au passage.
 
 Un de ces tests a d'abord échoué sur un argument manquant (`ruleOperator`) —
 mon test était incomplet, pas le code.
+
+---
+
+## Bloc paiement et suivi de commande (21 août) — 3 défauts sur 5
+
+### 1. La page de succès déclarait un paiement reçu sans rien vérifier
+
+La branche finale de `checkout/success/page.tsx` posait `state: "paid"` et
+vidait le panier. Son commentaire disait « a cash order, or a manual visit ».
+**Faux** : le comptant confirme sur `checkout/page.tsx` et n'atterrit jamais
+ici. Ce qui y atterrit, c'est un retour qui a perdu sa référence — le
+**3-D Secure SumUp** avant tout : `redirectUrl` vaut
+`…/checkout/success?orderId=…` sans `checkoutId`, et c'est ce lien que la banque
+utilise, en contournant le widget qui, lui, aurait ajouté la référence.
+
+Une carte refusée obtenait donc un écran de confirmation.
+
+La branche interroge maintenant le serveur — nouvelle requête
+`orders.getPaymentState`, qui rend le statut, l'état et le numéro de commande,
+**et rien d'autre** : ni client, ni adresse, ni montant. Payé → confirmation et
+panier vidé. Sinon → écran « paiement en attente ». Sans `orderId` → lien
+incomplet, annoncé comme tel.
+
+### 2. Recharger la page de confirmation PayPal cassait une commande payée
+
+`capturePayPalOrder` appelait PayPal **avant** de lire quoi que ce soit. Une
+capture ne se fait qu'une fois : au rechargement, PayPal renvoie
+`ORDER_ALREADY_CAPTURED`, l'action lève, et le client voit « Confirmation
+impossible » sur une commande bel et bien payée. Le garde-fou `hasRun` côté
+React ne protégeait que du re-rendu, jamais du rechargement.
+
+La commande est lue en premier ; si elle est déjà payée, l'action rend le
+résultat sans toucher au prestataire. L'idempotence appartient au serveur.
+
+Stripe et SumUp ne relisent qu'un statut — rejouables sans dommage. Vérifié.
+
+### 3. Le remboursement : pas de verrou, et une preuve écrasée
+
+`recordRefund` revalidait contre un document frais, donc la base ne pouvait pas
+dépasser le solde. Ce qu'elle ne pouvait pas faire, c'est s'exécuter **avant**
+le prestataire : deux demandes simultanées lisaient toutes deux
+`refundedAmount: 0`, passaient toutes deux `planRefund`, et envoyaient toutes
+deux l'argent. La base restait cohérente, la caisse non.
+
+Remplacé par un remboursement à deux temps — une mutation Convex étant une
+transaction, la réservation est le point de sérialisation :
+
+| Étape | Rôle |
+| --- | --- |
+| `reserveRefund` | engage le montant **avant** l'appel prestataire |
+| `confirmRefund` | attache la référence prestataire **à ce remboursement-là** |
+| `releaseRefund` | rend le montant si le prestataire refuse |
+
+Et `externalRefundId`, champ scalaire, était écrasé par chaque remboursement
+partiel : le premier perdait sa preuve et devenait irréconciliable. Un tableau
+`refunds` conserve désormais chaque opération ; le scalaire pointe toujours vers
+le dernier, pour les écrans qui le lisent.
+
+**Un bug que mes propres tests ont attrapé** : ma première version de
+`releaseRefund` reposait le statut à `completed` — que `REFUNDABLE_STATUSES`
+rejette. Libérer un remboursement échoué aurait rendu l'argent définitivement
+non remboursable, l'exact contraire du but. Corrigé en `succeeded`, et figé par
+un test dédié.
+
+**Preuve de morsure** : statut de libération remis à `completed` → 2 tests au
+rouge ; restauration → 457 verts.
+
+**Portes** : `convex-functions` 457 (contre 448), `core` 195, reference 139
+tests / 0 erreur, themes 0 erreur, typechecks OK.
+
+### Reste du bloc
+
+- `/track/[token]` inatteignable pour un invité : la page commande obtient le
+  jeton de suivi via `kitchenTickets.getByOrder`, désormais store-scopée sous
+  `kitchen:read` — un invité est refusé, donc le lien ne s'affiche jamais.
+- Devis de livraison non lié à l'adresse ni à usage unique ; mode `percentage`
+  avec adresse enregistrée = impasse silencieuse.
+
+---
+
+## Audit des moyens de paiement (21 août) — constat, aucun correctif
+
+Demandé en cours de bloc : les moyens de paiement sont-ils tous configurables,
+codés et testés ? Vérifié dans le code, sans accès à un compte.
+
+### Ce que l'écran de réglages offre
+
+Carte (`stripe` | `sumup`, avec Connecter/Déconnecter OAuth), PayPal (bascule +
+e-mail), Espèces (bascule, limitée au retrait/sur place et au client connecté).
+**Square est absent de l'écran.**
+
+### Matrice prestataire × cycle de vie
+
+| | Stripe | SumUp | PayPal | Square | Espèces |
+| --- | --- | --- | --- | --- | --- |
+| Écran de config | oui | oui | oui | **non** | oui |
+| Création d'encaissement | oui | oui | oui | **non** | oui |
+| Vérification au retour | oui | oui | oui | **non** | n/a |
+| Remboursement | oui | oui | oui | refus explicite | manuel |
+| Webhook | oui, signé | **non** | **non** | **non** | n/a |
+| Connexion OAuth | stockée mais **ignorée** | stockée et **utilisée** | **aucune** | **non** | n/a |
+
+### Les cinq dettes
+
+1. **La connexion Stripe est stockée puis ignorée.**
+   `/connect/stripe/callback` écrit un `paymentConnections` et l'écran affiche
+   « connecté », mais `stripe.ts` ne référence aucun compte connecté —
+   ni `stripeAccount`, ni `on_behalf_of`, ni `transfer_data`. L'encaissement
+   passe toujours par `STRIPE_SECRET_KEY`, la clé de la plateforme. Le
+   restaurateur croit encaisser sur son compte. SumUp, lui, lit et déchiffre
+   réellement le jeton du commerçant.
+
+2. **`paypalEmail` n'est jamais lu.** Le champ existe dans les réglages et le
+   schéma ; `paypal.ts` ne contient ni `payee` ni `email_address`. Le schéma
+   `paymentConnections` accepte `paypal` en commentant « merchant_id from
+   onboarding webhook » — ce webhook n'existe pas.
+
+3. **Ni SumUp ni PayPal n'ont de webhook.** Seule la page de retour confirme le
+   paiement. Un client qui paie puis ferme son onglet laisse la commande en
+   `pending` indéfiniment. Stripe est le seul couvert, signature vérifiée.
+
+4. **Square est un fantôme.** Présent dans le schéma `payments`, dans le type
+   `PaymentProvider`, dans un filtre de l'écran paiements, dans `CLAUDE.md` et
+   dans deux pages de doc (`SQUARE_ACCESS_TOKEN=`). Zéro ligne
+   d'implémentation, aucune variable d'environnement déclarée. Seul
+   `routeRefund` le traite honnêtement, en `unsupported`.
+
+5. **Le bouton « carte » n'est jamais conditionné.** PayPal et espèces sont
+   masqués si désactivés ; la carte s'affiche toujours, même sans prestataire
+   configuré. Le client remplit tout, valide, et reçoit
+   `STRIPE_SECRET_KEY is not configured`.
+
+### Couverture de tests
+
+44 tests couvrent la **logique** (règlement, anti-rejeu inter-commandes,
+montants, devises, remboursement à deux temps). Solide.
+
+**Aucun test ne couvre les actions prestataire** — `createCheckoutSession`,
+`createPayPalOrder`, `createCheckout`, `verify*`, `internalRefund`. Aucun appel
+HTTP simulé. La logique pure est tenue, la couture avec les API ne l'est pas.
+
+### Décision
+
+**Aucun correctif maintenant** (arbitré le 21 août). Les points 1 et 2 changent
+un flux d'argent et relèvent de la branche prestataires annoncée en début de
+sprint, bac à sable en main. Les points 3, 4 et 5 sont plus circonscrits et
+restent à planifier.
+
+## Bloc paiement et suivi — les deux derniers (21 août)
+
+### 4. `/track/[token]` était injoignable — régression de mon propre durcissement
+
+La page de confirmation lisait le jeton de suivi via
+`kitchenTickets.getByOrder`. Le sprint 2 l'a mise sous `kitchen:read` : correct,
+et ça a cassé la fonctionnalité pour les seules personnes qui en ont besoin. Un
+invité est refusé, le jeton revient `undefined`, le bouton « Suivre ma commande »
+ne s'affiche jamais. La route `/track/[token]` existait sans que rien ne puisse
+l'atteindre. **Rien n'a échoué bruyamment** — c'est ce qui rend ce genre de
+régression coûteux.
+
+Le correctif n'est pas de rouvrir la requête cuisine mais de servir le jeton
+depuis le chemin de lecture de la commande, sous la règle qui la gouverne déjà :
+le jeton de vue émis à la commande, ou le client qui l'a passée
+(`orders.getTrackingToken`).
+
+Même défaut sur les écrans « en attente » et « échec » de la page de succès :
+`settle()` recevait le jeton de vue et le jetait, puis `Actions` proposait
+`/order/…` sans jeton — une page vide pour un invité. Le jeton est transporté, et
+le bouton ne s'affiche que s'il est utilisable.
+
+**Preuve de morsure** : contrôle de propriété neutralisé → 1 test au rouge.
+
+### 5. Le devis de livraison n'était lié ni à l'adresse ni à un usage
+
+`orders.create` vérifiait l'existence, le restaurant et l'expiration. Deux trous
+restaient.
+
+La table `deliveryQuotes` stocke `dropoffLatitude` / `dropoffLongitude` avec le
+commentaire « to detect a changed address » — **personne ne les lisait**. Un
+devis pris pour l'immeuble d'à côté payait une livraison à trente kilomètres. Et
+le devis était réutilisable indéfiniment : un seul devis bon marché payait toutes
+les livraisons futures.
+
+La règle est extraite en module pur `deliveryQuote` — comme `promotionDiscount`
+et `refundPolicy`, parce que chaque refus décide de ce que le client paie :
+
+| Refus | Cause |
+| --- | --- |
+| `missing` / `wrong_store` / `expired` | déjà couverts, désormais testés |
+| `already_used` | **nouveau** — `consumedByOrderId` marque le devis à la création |
+| `address_mismatch` | **nouveau** — tolérance de ~110 m, l'écart d'un géocodeur, pas d'une rue |
+| `address_not_located` | **nouveau** — et le message dit quoi faire |
+
+Ce dernier refus est l'impasse signalée en relecture : une adresse enregistrée
+sans coordonnées produisait « un devis de livraison est requis », ce qui ne dit
+rien à un client qui vient justement d'en saisir une. Le message renvoie
+maintenant vers les suggestions d'adresse.
+
+**Preuve de morsure** : tolérance de coordonnées rendue énorme → 2 tests au
+rouge ; usage unique neutralisé → 1 test au rouge.
+
+**Portes** : `convex-functions` 473 (contre 457), `core` 195, reference 143
+tests / 0 erreur, themes 0 erreur, `pnpm build` OK, typechecks OK.
+
+**Le bloc paiement et suivi de commande est clos : 5 défauts sur 5.**
+
+---
+
+## Les trois derniers points de la relecture (21 août)
+
+### 1. Synchro de menu morte — et j'avais aggravé le cas
+
+Le défaut signalé était réel : `syncStore` lisait l'intégration via
+`api.storeIntegrations.getByStorePlatform`, store-scopée, donc exigeant une
+session — que le balayage planifié n'a pas.
+
+**Et j'avais empilé dessus.** Au bloc précédent j'ai posé
+`checkStorePermission` sur `syncStore` sans lire le commentaire situé trois
+lignes plus bas, qui disait exactement ceci :
+
+> `Note: No auth check here — syncStore is also scheduled by syncAllStores (no user context).`
+
+Le balayage appelait `api.*.syncStore` : ma garde l'aurait tué net.
+
+Séparé en deux : `syncStore` reste l'action publique gardée et n'est plus qu'une
+coquille ; `internalSyncStore` porte le travail et n'est joignable ni depuis un
+navigateur ni sans identité. Le balayage l'appelle directement, et lit
+l'intégration par `internal.storeIntegrations.internalGetByStorePlatform`.
+
+**Un test structurel gèle l'invariant** : aucune `internalAction` ne doit
+appeler une fonction **gardée**. Il ne peut pas être comportemental — le
+planificateur n'est pas quelque chose que `convex-test` exécute — donc il est
+assuré contre la source.
+
+Sa première version interdisait tout `api.*` et a immédiatement dénoncé quatre
+cas. Trois étaient de faux positifs — `products.list`, `categories.list` et
+`stores.getById` sont publiques par conception, une synchro a le droit de lire
+le catalogue — et le quatrième était l'URL `https://api.sumup.com`. **La règle
+était trop stricte, pas le code.** Resserrée sur le vrai critère : la cible
+est-elle enveloppée dans `storeQuery` / `storeMutation` / `authed*`. Un second
+test vérifie que le détecteur reconnaît bien une fonction gardée, sans quoi
+l'assertion passerait en ne prouvant rien.
+
+**Preuve de morsure** : balayage remis sur l'action gardée → 1 test au rouge.
+
+### 2. `duplicateCatalog` gardait la source, pas la cible
+
+`storeIdFrom` pointait sur `sourceStoreId` — la moitié qu'on **lit**. Les
+produits et catégories, eux, atterrissaient dans `targetStoreId`. Un manager
+prouvait ses droits sur le restaurant lu, puis écrivait dans un restaurant qu'il
+n'administre pas.
+
+Le seam garde désormais la **cible** (`products:write`), et le handler vérifie
+la source en `products:read` — copier le catalogue d'un concurrent chez soi est
+l'abus symétrique, et il n'était pas couvert non plus.
+
+**Preuve de morsure** : seam remis sur la source → 1 test au rouge.
+
+### 3. `claimFirstAdmin` : le premier venu prenait le déploiement
+
+Le vrai risque n'était pas une course de données mais ceci : **l'inscription est
+ouverte sur la vitrine**, et la mutation n'exigeait qu'un compte authentifié.
+Sur un déploiement neuf, le premier inconnu à l'appeler devenait super
+administrateur. « Aucun appelant dans l'interface » ne protège personne : les
+noms de fonctions Convex se lisent dans le bundle client.
+
+C'est un trou que j'ai introduit au sprint 2 en créant cette fonction.
+
+Elle exige maintenant un secret que seul le déployeur détient
+(`ADMIN_BOOTSTRAP_TOKEN`), comparé en temps constant. Et elle **échoue fermée** :
+variable non définie → personne ne passe. Une variable absente qui laisserait
+entrer recréerait le trou sur exactement les déploiements que personne n'a
+encore configurés.
+
+**Preuve de morsure** : échec-fermé transformé en échec-ouvert → 2 tests au
+rouge.
+
+**Portes** : reference 153 tests (contre 143), 0 erreur, type-check OK ;
+`convex-functions` 473 ; `core` 195 ; themes 0 erreur, typecheck OK.
+
+**La liste de relecture est close.**
+

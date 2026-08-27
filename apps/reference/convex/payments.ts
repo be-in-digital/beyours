@@ -74,6 +74,9 @@ export const internalLoadForRefund = internalQuery({
 
 /** Write down a refund the provider has already confirmed. */
 export const internalRecordRefund = internalMutation(defs.recordRefund);
+export const internalReserveRefund = internalMutation(defs.reserveRefund);
+export const internalConfirmRefund = internalMutation(defs.confirmRefund);
+export const internalReleaseRefund = internalMutation(defs.releaseRefund);
 
 /**
  * Refund a payment: authorise, call the provider, then record the outcome.
@@ -114,43 +117,64 @@ export const refundPayment = action({
       throw new Error(route.reason);
     }
 
+    // Commit the amount FIRST, inside a transaction. The provider call used to
+    // come first, so two refunds arriving together both saw an untouched
+    // balance and both sent money back. Reserving here is the serialisation
+    // point: the second caller reads the first's committed amount and is
+    // refused before anything leaves the account.
+    const reservation: { plan: { refundedAmount: number; isFullRefund: boolean }; index: number } =
+      await ctx.runMutation(internal.payments.internalReserveRefund, {
+        id: args.id,
+        amount: plan.amount,
+        reason: args.reason,
+        refundMethod: route.kind === "api" ? "api" : "manual",
+      });
+
     let externalRefundId: string | undefined;
 
     if (route.kind === "api") {
-      const result: { refundId: string } =
-        route.provider === "stripe"
-          ? await ctx.runAction(internal.stripe.internalRefund, {
-              externalId: route.externalId,
-              amount: plan.amount,
-              reason: args.reason,
-            })
-          : route.provider === "sumup"
-            ? await ctx.runAction(internal.sumup.internalRefund, {
+      try {
+        const result: { refundId: string } =
+          route.provider === "stripe"
+            ? await ctx.runAction(internal.stripe.internalRefund, {
                 externalId: route.externalId,
                 amount: plan.amount,
+                reason: args.reason,
               })
-            : await ctx.runAction(internal.paypal.internalRefund, {
-                captureId: route.externalId,
-                amount: plan.amount,
-                currency: payment.currency ?? "EUR",
-              });
+            : route.provider === "sumup"
+              ? await ctx.runAction(internal.sumup.internalRefund, {
+                  externalId: route.externalId,
+                  amount: plan.amount,
+                })
+              : await ctx.runAction(internal.paypal.internalRefund, {
+                  captureId: route.externalId,
+                  amount: plan.amount,
+                  currency: payment.currency ?? "EUR",
+                });
 
-      externalRefundId = result.refundId;
+        externalRefundId = result.refundId;
+      } catch (error) {
+        // The provider refused: give the amount back, or the restaurant could
+        // never retry — the balance would claim the money was already returned.
+        await ctx.runMutation(internal.payments.internalReleaseRefund, {
+          id: args.id,
+          index: reservation.index,
+        });
+        throw error;
+      }
     }
 
-    // Reached only once the provider confirmed — or for a cash refund, which
-    // is explicitly recorded as declared rather than confirmed.
-    const recorded = await ctx.runMutation(internal.payments.internalRecordRefund, {
+    // Record the provider's reference against THIS refund. A scalar field was
+    // overwritten by each partial refund, leaving the earlier one with no proof.
+    await ctx.runMutation(internal.payments.internalConfirmRefund, {
       id: args.id,
-      amount: plan.amount,
-      reason: args.reason,
+      index: reservation.index,
       externalRefundId,
-      refundMethod: route.kind === "api" ? "api" : "manual",
     });
 
     return {
-      refundedAmount: recorded.refundedAmount,
-      isFullRefund: recorded.isFullRefund,
+      refundedAmount: reservation.plan.refundedAmount,
+      isFullRefund: reservation.plan.isFullRefund,
     };
   },
 });

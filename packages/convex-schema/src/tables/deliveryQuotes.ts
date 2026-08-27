@@ -25,6 +25,14 @@ export const deliveryQuotesTable = defineTable({
   dropoffLongitude: v.number(),
   /** Uber's own expiry for the quote, in ms. */
   expiresAt: v.number(),
+  /**
+   * The order this quote paid for, once it has been used.
+   *
+   * A quote was reusable: the same estimate id could price an unlimited number
+   * of orders, and nothing tied it to the address it was issued for. One cheap
+   * quote for a nearby street bought delivery anywhere, indefinitely.
+   */
+  consumedByOrderId: v.optional(v.id("orders")),
   createdAt: v.number(),
 })
   .index("by_estimateId", ["estimateId"])

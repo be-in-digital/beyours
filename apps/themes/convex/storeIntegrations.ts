@@ -9,6 +9,13 @@ export const internalListByPlatformEnabled = internalQuery({
   handler: async (ctx, args) => defs.listByPlatformEnabled.handler(ctx, args),
 });
 
+// Same, for the scheduled menu sync. `getByStorePlatform` below is store-scoped
+// and needs a session; the scheduler has none, so the nightly push died on it.
+export const internalGetByStorePlatform = internalQuery({
+  args: defs.getByStorePlatform.args,
+  handler: async (ctx, args) => defs.getByStorePlatform.handler(ctx, args),
+});
+
 // === Queries (auth-protected where applicable) ===
 
 export const listByStore = storeQuery({

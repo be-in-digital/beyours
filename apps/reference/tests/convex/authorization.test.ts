@@ -630,3 +630,203 @@ describe("manager runs the restaurant", () => {
   })
 })
 
+/**
+ * The guest's route to their own order.
+ *
+ * Sprint 2 put `kitchenTickets.getByOrder` behind `kitchen:read` — correct, and
+ * it silently broke live tracking, because the confirmation page read the
+ * tracking token from there. The guest was refused, the token came back
+ * undefined, and the button never rendered: `/track/[token]` existed with
+ * nothing able to reach it. Nothing failed loudly. These tests make that
+ * failure loud.
+ */
+describe("a guest can reach their own order", () => {
+  test("the view token yields the tracking token", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    await t.run((ctx) => ctx.db.patch(orderId, { viewToken: "vt-secret" }))
+    await t.run((ctx) =>
+      ctx.db.insert("kitchenTickets", {
+        storeId,
+        orderId,
+        orderNumber: "ORD-2026-0001",
+        status: "pending" as const,
+        priority: "normal" as const,
+        items: [],
+        source: "website" as const,
+        orderType: "delivery" as const,
+        trackingToken: "track-abc",
+        printStatus: "not_required" as const,
+        printAttempts: 0,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const token = await t.query(api.orders.getTrackingToken, {
+      orderId,
+      viewToken: "vt-secret",
+    })
+    expect(token).toBe("track-abc")
+  })
+
+  test("a wrong view token yields nothing", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+    await t.run((ctx) => ctx.db.patch(orderId, { viewToken: "vt-secret" }))
+    await t.run((ctx) =>
+      ctx.db.insert("kitchenTickets", {
+        storeId,
+        orderId,
+        orderNumber: "ORD-2026-0001",
+        status: "pending" as const,
+        priority: "normal" as const,
+        items: [],
+        source: "website" as const,
+        orderType: "delivery" as const,
+        trackingToken: "track-abc",
+        printStatus: "not_required" as const,
+        printAttempts: 0,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const token = await t.query(api.orders.getTrackingToken, {
+      orderId,
+      viewToken: "vt-guessed",
+    })
+    expect(token).toBeNull()
+  })
+
+  test("no token and no session yields nothing", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+
+    const token = await t.query(api.orders.getTrackingToken, { orderId })
+    expect(token).toBeNull()
+  })
+
+  test("the payment state is readable, and says only what it should", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const orderId = await seedOrder(t, storeId)
+
+    const state = await t.query(api.orders.getPaymentState, { orderId })
+    expect(state).toEqual({
+      paymentStatus: "paid",
+      status: "confirmed",
+      orderNumber: "ORD-2026-0001",
+    })
+    // No customer, no address, no amount — the page never needed them.
+    expect(Object.keys(state ?? {})).toHaveLength(3)
+  })
+})
+
+describe("copying a catalogue", () => {
+  test("a manager cannot write into a restaurant they do not administer", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Chez Luigi")
+    const theirs = await seedStore(t, "Chez Marco")
+    const asManager = await seedUser(t, "user:m1", "manager", [mine])
+
+    // The seam used to scope to the SOURCE, so proving rights over the store
+    // being read was enough to write into any other.
+    await expect(
+      asManager.mutation(api.products.duplicateCatalog, {
+        sourceStoreId: mine,
+        targetStoreId: theirs,
+      })
+    ).rejects.toThrow()
+  })
+
+  test("a manager cannot copy a catalogue they may not read", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Chez Luigi")
+    const theirs = await seedStore(t, "Chez Marco")
+    const asManager = await seedUser(t, "user:m1", "manager", [mine])
+
+    await expect(
+      asManager.mutation(api.products.duplicateCatalog, {
+        sourceStoreId: theirs,
+        targetStoreId: mine,
+      })
+    ).rejects.toThrow()
+  })
+
+  test("an owner of both may still copy between them", async () => {
+    const t = newHarness()
+    const a = await seedStore(t, "Chez Luigi")
+    const b = await seedStore(t, "Luigi Bis")
+    const asAdmin = await seedUser(t, "user:a1", "client_admin", [a, b])
+
+    await expect(
+      asAdmin.mutation(api.products.duplicateCatalog, {
+        sourceStoreId: a,
+        targetStoreId: b,
+      })
+    ).resolves.not.toThrow()
+  })
+})
+
+describe("claiming the first admin seat", () => {
+  test("an authenticated stranger cannot claim it without the bootstrap secret", async () => {
+    const t = newHarness()
+    const asCustomer = await seedUser(t, "user:mallory", "customer", [])
+
+    // Sign-up is open on the storefront. "Self-closing once a super admin
+    // exists" meant the first stranger through the door took the deployment.
+    await expect(
+      asCustomer.mutation(api.userProfiles.claimFirstAdmin, {
+        bootstrapToken: "guess",
+      })
+    ).rejects.toThrow()
+  })
+
+  test("an unset bootstrap secret refuses everyone rather than letting anyone in", async () => {
+    const previous = process.env.ADMIN_BOOTSTRAP_TOKEN
+    delete process.env.ADMIN_BOOTSTRAP_TOKEN
+    try {
+      const t = newHarness()
+      const asCustomer = await seedUser(t, "user:mallory", "customer", [])
+
+      await expect(
+        asCustomer.mutation(api.userProfiles.claimFirstAdmin, {
+          bootstrapToken: "",
+        })
+      ).rejects.toThrow()
+    } finally {
+      if (previous !== undefined) process.env.ADMIN_BOOTSTRAP_TOKEN = previous
+    }
+  })
+
+  test("the holder of the secret claims the seat, once", async () => {
+    const previous = process.env.ADMIN_BOOTSTRAP_TOKEN
+    process.env.ADMIN_BOOTSTRAP_TOKEN = "s3cr3t-bootstrap"
+    try {
+      const t = newHarness()
+      const asOwner = await seedUser(t, "user:owner", "customer", [])
+
+      await expect(
+        asOwner.mutation(api.userProfiles.claimFirstAdmin, {
+          bootstrapToken: "s3cr3t-bootstrap",
+        })
+      ).resolves.not.toThrow()
+
+      // Self-closing: even with the secret, the second claim finds an admin.
+      const asSecond = await seedUser(t, "user:second", "customer", [])
+      await expect(
+        asSecond.mutation(api.userProfiles.claimFirstAdmin, {
+          bootstrapToken: "s3cr3t-bootstrap",
+        })
+      ).rejects.toThrow()
+    } finally {
+      if (previous === undefined) delete process.env.ADMIN_BOOTSTRAP_TOKEN
+      else process.env.ADMIN_BOOTSTRAP_TOKEN = previous
+    }
+  })
+})
+

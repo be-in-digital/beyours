@@ -44,13 +44,15 @@ function OrderConfirmationContent() {
     viewToken,
   })
 
-  // Get kitchen ticket to retrieve tracking token
-  const kitchenTickets = useQuery(
-    api.kitchenTickets.getByOrder,
-    orderId ? { orderId: orderId as Id<"orders"> } : "skip"
-  )
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query result shape
-  const trackingToken = (kitchenTickets as any)?.[0]?.trackingToken as string | undefined
+  // The tracking token used to come from `kitchenTickets.getByOrder`, which is
+  // guarded by `kitchen:read` — so a guest was refused and the "Suivre ma
+  // commande" button never appeared for the only people who needed it. It now
+  // comes from the order's own read path, under the same rule as the order
+  // itself: the view token, or the customer who placed it.
+  const trackingToken = useQuery(
+    api.orders.getTrackingToken,
+    orderId ? { orderId: orderId as Id<"orders">, viewToken } : "skip"
+  ) ?? undefined
 
   // Loading
   if (order === undefined) {

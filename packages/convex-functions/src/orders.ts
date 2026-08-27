@@ -16,6 +16,7 @@ import {
   resolvePromotionDiscount,
   type PromotionForDiscount,
 } from "./promotionDiscount"
+import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
 import { computeOrderTotals, resolveTaxRatePercent } from "./orderTotals"
 
 // === QUERIES ===
@@ -89,6 +90,80 @@ export const getByStatus = {
 /**
  * Get orders by view token (public access for order confirmation page)
  */
+/**
+ * The payment state of one order, and nothing else.
+ *
+ * The post-payment landing page has an orderId and, on some return paths, no
+ * provider reference at all — SumUp's 3-D Secure sends the browser straight to
+ * the redirect URL, bypassing the widget callback that would have carried the
+ * checkout id. The page used to treat that case as success: it announced
+ * "votre paiement a bien été reçu" and emptied the basket without asking
+ * anyone. A refused card produced a confirmation screen.
+ *
+ * This is the smallest honest answer to "what actually happened": the stored
+ * status, the order number, and nothing that identifies a customer. The order
+ * id is an opaque Convex id the caller already holds.
+ */
+/**
+ * The live-tracking token for an order, to whoever can already see the order.
+ *
+ * The confirmation page fetched this from `kitchenTickets.getByOrder`, which
+ * sprint 2 correctly put behind `kitchen:read`. Correct, and it broke the
+ * feature for the only people who need it: a guest is refused, the token comes
+ * back undefined, and the "Suivre ma commande" button never renders. The
+ * `/track/[token]` route existed with nothing able to reach it.
+ *
+ * The fix is not to reopen the kitchen query but to serve the token from the
+ * order's own read path, under the same rule that already governs the order:
+ * the view token issued at checkout, or the customer who placed it.
+ */
+export const getTrackingToken = {
+  args: {
+    orderId: v.id("orders"),
+    viewToken: v.optional(v.string()),
+  },
+  handler: async (
+    ctx: any,
+    args: { orderId: string; viewToken?: string }
+  ) => {
+    const order = await ctx.db.get(args.orderId)
+    if (!order) return null
+
+    const byToken =
+      args.viewToken !== undefined && order.viewToken === args.viewToken
+
+    let byOwner = false
+    if (!byToken) {
+      const identity = await ctx.auth.getUserIdentity()
+      byOwner = Boolean(identity && order.customerId === identity.subject)
+    }
+
+    if (!byToken && !byOwner) return null
+
+    const ticket = await ctx.db
+      .query("kitchenTickets")
+      .withIndex("by_orderId", (q: any) => q.eq("orderId", args.orderId))
+      .first()
+
+    return ticket?.trackingToken ?? null
+  },
+}
+
+export const getPaymentState = {
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx: any, args: { orderId: string }) => {
+    const order = await ctx.db.get(args.orderId)
+    if (!order) return null
+    return {
+      paymentStatus: order.paymentStatus as string,
+      status: order.status as string,
+      orderNumber: order.orderNumber as string,
+    }
+  },
+}
+
 export const getByViewToken = {
   args: {
     orderId: v.id("orders"),
@@ -271,6 +346,9 @@ export const create = {
     })
 
     // Calculate delivery fee based on fee mode
+    // Set once a quote has been validated, so it can be stamped consumed after
+    // the order exists.
+    let consumedQuoteId: any = undefined
     let deliveryFee = 0
     let deliveryFeeMode: "fixed" | "percentage" | undefined = undefined
 
@@ -301,21 +379,22 @@ export const create = {
           )
           .first()
 
-        if (!quote) {
-          throw new Error("Devis de livraison introuvable : recalculez les frais.")
-        }
-        if (quote.storeId !== args.storeId) {
-          throw new Error("Ce devis de livraison concerne un autre restaurant.")
-        }
-        if (quote.expiresAt <= now) {
-          throw new Error("Le devis de livraison a expiré : recalculez les frais.")
-        }
+        // Existence, tenant, expiry, single use and the bond to the address
+        // the quote priced — all of it lives in `deliveryQuote`, pure and
+        // tested, because each refusal decides what the customer is charged.
+        assertQuoteApplies({
+          quote,
+          storeId: args.storeId,
+          dropoff: args.deliveryAddress,
+          now,
+        })
+        consumedQuoteId = quote._id
 
-        const percentage = deliveryConfig.percentage ?? 100
-        deliveryFee = Math.round((quote.fee * percentage) / 100)
-        if (deliveryConfig.maxFee !== undefined && deliveryFee > deliveryConfig.maxFee) {
-          deliveryFee = deliveryConfig.maxFee
-        }
+        deliveryFee = quotedDeliveryFee({
+          quote,
+          percentage: deliveryConfig.percentage ?? 100,
+          maxFee: deliveryConfig.maxFee,
+        })
       }
     }
 
@@ -412,6 +491,12 @@ export const create = {
     // promotion capped at `maxTotalUsage: 1` stayed redeemable forever. The
     // per-customer cap was closed by refusing anonymous orders, but the GLOBAL
     // cap was not — the counter simply never advanced.
+    // Burn the delivery quote. One quote, one order: it used to be reusable
+    // forever, so a single cheap estimate could pay for every future delivery.
+    if (consumedQuoteId) {
+      await ctx.db.patch(consumedQuoteId, { consumedByOrderId: orderId })
+    }
+
     if (args.promotionId) {
       const promo = await ctx.db.get(args.promotionId)
       if (promo) {
