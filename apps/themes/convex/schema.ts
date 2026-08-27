@@ -71,7 +71,7 @@ import {
   maintenanceContractsTable,
   platformReleasesTable,
   migrationRequestsTable,
-} from "@be-in-digital/convex-schema";
+} from "@be-in-digital/convex-schema/tables";
 
 /**
  * BeYours Engine - App Schema
@@ -79,7 +79,10 @@ import {
  * Auth tables (user, session, account, verification, jwks) are managed
  * by the Better Auth component and are NOT defined here.
  *
- * Business tables are imported from @be-in-digital/convex-schema.
+ * Business tables come from @be-in-digital/convex-schema/tables, the subpath
+ * rather than the package root. The root also re-exports the zod validators,
+ * and Convex evaluates a schema module under a one-second budget: pulling zod
+ * into that graph has been enough to blow it and fail the push.
  */
 export default defineSchema({
   userProfiles: userProfilesTable,

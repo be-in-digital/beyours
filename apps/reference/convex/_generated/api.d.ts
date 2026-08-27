@@ -96,6 +96,7 @@ import type * as teamMembers from "../teamMembers.js";
 import type * as teamMembersEmail from "../teamMembersEmail.js";
 import type * as translations from "../translations.js";
 import type * as uberDirect from "../uberDirect.js";
+import type * as uberDirectInternal from "../uberDirectInternal.js";
 import type * as uberEatsActions from "../uberEatsActions.js";
 import type * as uberEatsConnections from "../uberEatsConnections.js";
 import type * as uberEatsImport from "../uberEatsImport.js";
@@ -203,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   teamMembersEmail: typeof teamMembersEmail;
   translations: typeof translations;
   uberDirect: typeof uberDirect;
+  uberDirectInternal: typeof uberDirectInternal;
   uberEatsActions: typeof uberEatsActions;
   uberEatsConnections: typeof uberEatsConnections;
   uberEatsImport: typeof uberEatsImport;
