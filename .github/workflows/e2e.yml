@@ -14,7 +14,7 @@ jobs:
     if: vars.CONVEX_E2E_ENABLED == 'true'
     env:
       # Site-level (dedicated Convex test deployment)
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL || 'https://placeholder.convex.cloud' }}
+      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL }}
       CONVEX_SITE_URL: ${{ secrets.E2E_CONVEX_SITE_URL || 'https://placeholder.convex.site' }}
       CONVEX_DEPLOYMENT: ${{ secrets.E2E_CONVEX_DEPLOYMENT }}
       BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
@@ -28,6 +28,19 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.E2E_AWS_SECRET_ACCESS_KEY || 'placeholder' }}
       OPENAI_API_KEY: ${{ secrets.E2E_OPENAI_API_KEY || 'sk-placeholder' }}
     steps:
+      # Before anything is installed or built: if this job is running at all,
+      # the flag says E2E is wanted, and E2E without a backend cannot happen.
+      # Discovering that after `pnpm build` used to cost five minutes and end
+      # in a green check.
+      - name: Require a backend to test against
+        run: |
+          if [ -z "$NEXT_PUBLIC_CONVEX_URL" ]; then
+            echo "::error::CONVEX_E2E_ENABLED is true but E2E_NEXT_PUBLIC_CONVEX_URL is unset."
+            echo "Playwright cannot run without a deployment to point at."
+            echo "Set the E2E_* secrets, or unset CONVEX_E2E_ENABLED to skip E2E honestly."
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -61,18 +74,7 @@ jobs:
         # commercial site or the client template here.
         run: pnpm build --filter=@beyours/reference...
 
-      - name: Check E2E secrets configured
-        id: check-secrets
-        run: |
-          if [ "${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL }}" = "" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::E2E secrets not configured. Skipping Playwright tests. See _project/ENVIRONMENT_VARIABLES.md for setup instructions."
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Seed test users
-        if: steps.check-secrets.outputs.configured == 'true'
         working-directory: apps/reference
         run: |
           # Start dev server in background for seeding
@@ -97,17 +99,12 @@ jobs:
           wait $DEV_PID 2>/dev/null || true
 
       - name: Run Playwright tests
-        if: steps.check-secrets.outputs.configured == 'true'
         run: pnpm test:e2e --filter=@beyours/reference
         env:
           CI: true
 
-      - name: Skip notice
-        if: steps.check-secrets.outputs.configured != 'true'
-        run: echo "::notice::E2E tests skipped - configure GitHub secrets to enable. See _project/ENVIRONMENT_VARIABLES.md"
-
       - name: Upload Playwright report
-        if: always() && steps.check-secrets.outputs.configured == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -115,14 +112,19 @@ jobs:
           retention-days: 7
 
       - name: Upload test results
-        if: failure() && steps.check-secrets.outputs.configured == 'true'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: apps/reference/test-results/
           retention-days: 7
 
-  # Always-passing job so branch protection rules don't block PRs
+  # Reports what the E2E job actually did.
+  #
+  # It still passes when E2E is switched off, so branch protection does not
+  # block a PR over a suite the repository has not enabled - but only then. Any
+  # other outcome that is not a real pass fails: a run that produced no test
+  # result is not a pass, and saying so was the whole problem.
   e2e-status:
     name: E2E Status
     runs-on: ubuntu-latest
@@ -133,11 +135,18 @@ jobs:
         env:
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          if [ "$E2E_RESULT" = "skipped" ]; then
-            echo "E2E tests skipped — set CONVEX_E2E_ENABLED=true in repo vars to enable"
-          elif [ "$E2E_RESULT" = "failure" ]; then
-            echo "E2E tests failed"
-            exit 1
-          else
-            echo "E2E tests passed"
-          fi
+          case "$E2E_RESULT" in
+            skipped)
+              echo "E2E tests skipped — set CONVEX_E2E_ENABLED=true in repo vars to enable"
+              ;;
+            success)
+              echo "E2E tests passed"
+              ;;
+            *)
+              # failure, cancelled, or whatever a future runner reports. None of
+              # them mean the suite passed. `cancelled` used to land in the same
+              # branch as success and be announced as one.
+              echo "::error::E2E tests did not pass (job result: $E2E_RESULT)"
+              exit 1
+              ;;
+          esac
