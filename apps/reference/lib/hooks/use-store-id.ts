@@ -24,6 +24,11 @@ import {
  * earlier the nearest store wins; otherwise the first one does. Asking on
  * arrival - which is what this used to do on every storefront page - puts a
  * permission prompt in front of someone who came to read a menu.
+ *
+ * Every candidate here comes from `stores.list`, which returns only published
+ * establishments. That is what keeps the automatic selection off a draft: this
+ * hook picks blind, so a draft in the list would be picked like any other, and
+ * the visitor would land on a restaurant nobody has opened yet.
  */
 export function useStoreId(): {
   storeId: string | null

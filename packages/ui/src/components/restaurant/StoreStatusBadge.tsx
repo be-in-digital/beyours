@@ -26,11 +26,25 @@ const statusConfig: Record<
   },
 }
 
+/**
+ * An unrecognised status renders as closed rather than throwing.
+ *
+ * The prop type only admits the three published statuses, but the value comes
+ * out of a database: a `draft` establishment, or a status added to the schema
+ * later, reaches this component as a string TypeScript never saw. Reading
+ * `.className` off the resulting `undefined` took down the whole storefront —
+ * a blank page, not a wrong badge.
+ *
+ * Closed is the safe reading of "we do not know what this is": it is the one
+ * that does not tell a customer the place is taking orders.
+ */
+const UNKNOWN_STATUS_CONFIG = statusConfig.closed
+
 const StoreStatusBadge: React.FC<StoreStatusBadgeProps> = ({
   status,
   className,
 }) => {
-  const config = statusConfig[status]
+  const config = statusConfig[status] ?? UNKNOWN_STATUS_CONFIG
 
   return (
     <Badge className={`${config.className} ${className || ""}`}>

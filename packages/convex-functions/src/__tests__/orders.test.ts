@@ -169,7 +169,10 @@ describe("createWithTicket", () => {
     const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
     let counter = 0
     const docs: Record<string, Record<string, unknown>> = {
-      "stores:1": { _id: "stores:1", name: "Pizza Bobigny" },
+      // `status` is not decoration: `create` refuses an establishment that is
+      // not published, so a fixture without one is a store nobody can order
+      // from.
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: "open" },
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
@@ -361,13 +364,16 @@ import { create } from "../orders"
 describe("create — promotion handling", () => {
   const NOW_ISH = Date.now()
 
-  function createPricingCtx(promotion?: Record<string, unknown>) {
+  function createPricingCtx(
+    promotion?: Record<string, unknown>,
+    storeStatus: string | undefined = "open"
+  ) {
     const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
     const patched: Array<{ id: string; updates: Record<string, unknown> }> = []
     let counter = 0
 
     const docs: Record<string, Record<string, unknown>> = {
-      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", settings: { taxRate: 10 } },
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: storeStatus, settings: { taxRate: 10 } },
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
@@ -560,5 +566,127 @@ describe("create — promotion handling", () => {
     expect(patched.find((p) => p.id === "promotions:1")?.updates.usageCount).toBe(1)
     const usage = inserted.find((entry) => entry.table === "promotionUsages")
     expect(usage?.doc.customerEmail).toBe("nadia@example.com")
+  })
+})
+
+// ============================================================================
+// create — the establishment has to be published
+// ============================================================================
+
+/**
+ * A draft establishment must not take an order.
+ *
+ * `stores.create` opens every new establishment in `draft`, and the storefront
+ * listed those beside the real ones with an active "Commander ici" button.
+ * Keeping drafts out of `stores.list` is what stops one being *reached*; this
+ * is what stops one being *ordered from*. A list is only a list: a tab left
+ * open from before the owner unpublished the place, a store id sitting in
+ * localStorage, or a direct call all arrive here without reading it.
+ */
+describe("create — the establishment has to be published", () => {
+  function ctxForStore(store: Record<string, unknown> | null) {
+    const docs: Record<string, Record<string, unknown>> = {
+      "products:1": {
+        _id: "products:1",
+        storeId: "stores:1",
+        name: "Pizza",
+        price: 1200,
+        options: [],
+      },
+      ...(store ? { "stores:1": { _id: "stores:1", ...store } } : {}),
+    }
+    const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
+    let counter = 0
+    return {
+      inserted,
+      ctx: {
+        db: {
+          insert: vi.fn(async (table: string, doc: Record<string, unknown>) => {
+            const id = `${table}:${++counter}`
+            docs[id] = { _id: id, ...doc }
+            inserted.push({ table, doc })
+            return id
+          }),
+          get: vi.fn(async (id: string) => docs[id] ?? null),
+          patch: vi.fn(async () => undefined),
+          query: vi.fn(() => {
+            const chain = {
+              withIndex: () => chain,
+              order: () => chain,
+              first: async () => null,
+              take: async () => [],
+              collect: async () => [],
+            }
+            return chain
+          }),
+        },
+      },
+    }
+  }
+
+  const args = {
+    storeId: "stores:1",
+    customerInfo: { name: "Nadia" },
+    items: [
+      {
+        productId: "products:1",
+        productName: "Pizza",
+        quantity: 1,
+        unitPrice: 1200,
+        subtotal: 1200,
+        selectedOptions: [],
+      },
+    ],
+    type: "pickup" as const,
+  }
+
+  it("refuses a draft establishment", async () => {
+    const { ctx } = ctxForStore({ name: "Pizza Chantier", status: "draft" })
+
+    await expect(create.handler(ctx, args as never)).rejects.toThrow(
+      /not open for orders/
+    )
+  })
+
+  it("writes nothing when it refuses", async () => {
+    // A half-written order is worse than no order: the kitchen ticket is
+    // created in the same transaction, and a ticket for a restaurant nobody
+    // opened is a ticket nobody reads.
+    const { ctx, inserted } = ctxForStore({ status: "draft" })
+
+    await expect(create.handler(ctx, args as never)).rejects.toThrow()
+    expect(inserted).toEqual([])
+  })
+
+  it.each(["open", "closed", "temporarily_unavailable"])(
+    "accepts a %s establishment",
+    async (status) => {
+      // `closed` and `temporarily_unavailable` are states of a published
+      // restaurant — outside its hours, or paused for the evening. Whether to
+      // offer ordering then is the storefront's call, not this guard's.
+      const { ctx } = ctxForStore({ status })
+
+      await expect(create.handler(ctx, args as never)).resolves.toMatch(
+        /^orders:/
+      )
+    }
+  )
+
+  it("refuses an establishment whose status it does not recognise", async () => {
+    // Legacy or corrupt data must keep a location out of the storefront, not
+    // wave it through. The rule is an allow-list for exactly this reason.
+    const { ctx } = ctxForStore({ name: "Pizza Legacy" })
+
+    await expect(create.handler(ctx, args as never)).rejects.toThrow(
+      /not open for orders/
+    )
+  })
+
+  it("still reports a missing establishment as missing", async () => {
+    const { ctx } = ctxForStore(null)
+
+    await expect(create.handler(ctx, args as never)).rejects.toThrow(
+      /Store not found/
+    )
   })
 })
