@@ -78,3 +78,6 @@ dist/
 # Changesets
 # .changeset/*.md files must be committed for changesets to work
 .gstack/
+
+# Local working note: ClickUp ticket state, stale within hours
+tasks/clickup-tickets-a-fermer.md
