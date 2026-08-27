@@ -98,6 +98,7 @@ The formatted report shows:
 | Variable | Validation | Description |
 |----------|------------|-------------|
 | `AWS_S3_BUCKET_NAME` | `string` | Restaurant's S3 bucket |
+| `AWS_S3_PUBLIC_BASE_URL` | *not yet validated* | CDN origin serving the public S3 prefixes, no trailing slash. Required -- see [S3 Bucket Access Policy](./s3-bucket-policy.md) |
 | `AWS_SES_FROM_EMAIL` | `email` | Sender email |
 | `AWS_SES_FROM_NAME` | `string` | Sender name |
 | `AWS_SES_REPLY_TO_EMAIL` | `email` | Reply-to email |
