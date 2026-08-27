@@ -15,12 +15,16 @@ import {
   SidebarUserMenu,
   StoreGuard,
   useAdminApiStore,
+  useAdminStoreId,
   OnboardingTourProvider,
   ReplayTourButton,
 } from "@be-in-digital/admin"
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
-  const cms = useCmsPage("storefront-layout")
+  // The branding shown in the admin follows the establishment being
+  // administered, not the one a customer tab happens to be browsing.
+  const adminStoreId = useAdminStoreId()
+  const cms = useCmsPage("storefront-layout", { storeId: adminStoreId })
   const logoUrl = cms.block("branding").field("logo").mediaUrl
   const brandName = cms.block("branding").field("brandName").text ?? undefined
 

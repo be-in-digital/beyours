@@ -22,6 +22,7 @@ import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { cn } from "../../lib/utils"
+import { ResolvingStore } from "../../components/resolving-store"
 
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
@@ -120,19 +121,7 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
     }
   }
 
-  if (!storeId) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <PaletteIcon />
-          </EmptyMedia>
-          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>Veuillez sélectionner un établissement pour gérer le design</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (store === undefined) {
     return <LoadingState />

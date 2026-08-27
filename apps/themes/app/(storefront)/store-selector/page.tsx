@@ -9,17 +9,17 @@ import { Button } from "@be-in-digital/ui/components"
 import { Skeleton, Empty, EmptyHeader, EmptyTitle } from "@be-in-digital/ui/components"
 import { StoreStatusBadge } from "@be-in-digital/ui/restaurant"
 import type { StoreStatus } from "@be-in-digital/ui/restaurant"
-import { useStoreStore, useCartStore } from "@be-in-digital/restaurant"
+import { useStorefrontStoreSelection, useCartStore } from "@be-in-digital/restaurant"
 import type { StoreDoc } from "@be-in-digital/restaurant"
 
 export default function StoreSelectorPage() {
   const router = useRouter()
   const stores = useQuery(api.stores.list)
-  const setCurrentStore = useStoreStore((s) => s.setCurrentStore)
+  const setStoreId = useStorefrontStoreSelection((s) => s.setStoreId)
   const setCartStoreId = useCartStore((s) => s.setStoreId)
 
   const handleSelect = (store: StoreDoc) => {
-    setCurrentStore(store)
+    setStoreId(store._id)
     setCartStoreId(store._id)
     router.push("/menu")
   }

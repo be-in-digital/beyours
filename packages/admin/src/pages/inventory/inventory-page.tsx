@@ -42,6 +42,7 @@ import {
   PaginationPrevious,
   ButtonGroup,
 } from "@be-in-digital/ui"
+import { ResolvingStore } from "../../components/resolving-store"
 
 const PAGE_SIZE = 25
 
@@ -271,15 +272,7 @@ export function InventoryPage() {
     }
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">
-          Veuillez sélectionner un établissement pour afficher l'inventaire
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   const paginationStart = totalItems > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0
   const paginationEnd = Math.min(safePage * PAGE_SIZE, totalItems)

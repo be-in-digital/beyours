@@ -2344,3 +2344,174 @@ n'est pas résolu au moment du test. C'est un problème distinct, non résolu.
 `admin-responsive.spec.ts:156` — le tableau de bord sans établissement
 sélectionné. À reprendre avec les autres cas de résolution d'établissement.
 
+
+## La résolution d'établissement, dans son ensemble (23 août)
+
+### L'état des lieux
+
+« Quel établissement est actif » était rangé à cinq endroits et calculé par six
+composants.
+
+| Emplacement | Portée |
+| --- | --- |
+| `currentStore` (document entier, localStorage `beindigital-store`) | admin **et** boutique |
+| `adminApiStore.storeId` | mémoire, `packages/admin` |
+| `cartStore.storeId` | panier |
+| cookie `storeSlug` | themes |
+| slug d'URL résolu serveur | themes |
+
+Résolveurs : `StoreGuard` (premier de la liste), `StoreSelector` (le seul s'il
+n'y en a qu'un), `useStoreId` (le plus proche par géolocalisation), plus trois
+copies divergentes dans `apps/themes`.
+
+### Le décalage d'un commit, démontré par lecture
+
+`StoreGuard` recopiait `currentStore._id` dans `adminApiStore.storeId` depuis un
+effet. Or la page qu'il débloque est rendue **dans le commit même** où il la
+laisse passer — donc avant que l'effet n'écrive.
+
+```
+commit 3 : currentStore posé → enfants rendus → miroir null → « Veuillez sélectionner un restaurant »
+commit 4 : effet → miroir posé → squelette, la requête part enfin
+```
+
+C'est ce que voyait `admin-responsive.spec.ts:156`. Ce n'était pas une
+hypothèse : c'est la sémantique des effets passifs de React.
+
+### Ce qui a été fait
+
+**Dériver au lieu de recopier.** Le miroir a disparu de `admin-api-store` ; les
+pages lisent la sélection elle-même. Le garde ne rend ses enfants que lorsque
+l'id est présent dans la liste renvoyée par le serveur pour ce compte — un id
+persisté pointant vers un établissement supprimé, ou hérité de l'utilisateur
+précédent de ce navigateur, est remplacé au lieu d'être transmis.
+
+**Un seul `useAdminStoreId`.** Il en existait deux du même nom lisant deux
+sources : 36 fichiers dans `packages/admin`, 18 dans `apps/reference`,
+indiscernables au point d'appel. Celui de l'app réexporte maintenant celui du
+package.
+
+**Ne persister que l'id.** Le document entier était figé dans localStorage et
+rien ne le rafraîchissait : un établissement renommé gardait son ancien nom, des
+horaires modifiés restaient faux côté visiteur. Le document vient de Convex.
+Effet de bord bienvenu : le risque d'écart d'hydratation disparaît, puisque tout
+ce qui en dérive attend désormais la même requête côté serveur et côté client.
+
+**Deux clés au lieu d'une.** `beyours-admin-store` et
+`beyours-storefront-store`. Un visiteur laissant la géolocalisation choisir le
+restaurant le plus proche déplaçait le tableau de bord dans lequel le gérant
+travaillait. Les sélections existantes sont reprises depuis l'ancienne clé.
+
+**Géolocalisation sur demande.** `useNearestStore` la réclamait au montage, sur
+chaque page boutique, y compris pour un restaurant mono-établissement où la
+réponse ne change rien. Elle est désormais demandée quand elle décide de quelque
+chose : plusieurs établissements, aucun choisi. Le panneau « Nos restaurants »,
+lui, l'active explicitement — c'est ce que le visiteur y cherche.
+
+**Sélection effacée à la déconnexion.** `clearCurrentStore` existait et n'était
+appelé nulle part.
+
+**Treize écrans vides morts** — « Veuillez sélectionner un établissement » sous
+un garde qui rend ce cas inatteignable — remplacés par un `ResolvingStore`
+neutre. Les trois routes délibérément contournées (stores, settings, team)
+gardent un vrai message.
+
+**Trois orphelins supprimés dans `apps/themes`** : `StoreGuard`, `StoreSelector`
+et `StoreProvider`, joignables seulement par des barils que personne n'importe —
+la mise en page admin de themes utilise déjà les composants du package. Le garde
+de themes portait encore le `setState` pendant le rendu corrigé côté package : il
+part avec le fichier.
+
+**Tranche morte retirée** : `stores`, `setStores`, `useStores`,
+`clearCurrentStore`, `useStoreHours`, `useIsStoreOpen` — zéro appelant, et un
+`useStores()` qui aurait silencieusement renvoyé `[]` au premier qui s'en serait
+servi.
+
+### Ce qui a été écarté
+
+Pas de duplication de `zustand` ni de `@be-in-digital/restaurant` : un seul
+exemplaire résolu, contrairement au cas Convex de la semaine dernière. Vérifié
+par `readlink` sur les trois emplacements.
+
+### Preuve par la morsure
+
+Cinq tests dans `packages/restaurant/src/__tests__/store-selection.test.ts`.
+Deux morsures vérifiées, fichier restauré à l'identique ensuite :
+
+| Neutralisation | Résultat |
+| --- | --- |
+| clés admin et boutique confondues | 1 test rouge |
+| migration depuis l'ancienne clé retirée | 1 test rouge |
+
+### Gates
+
+Typecheck 0 erreur sur `restaurant`, `admin`, `mcp-server`, `ui`, `reference`,
+`themes`. Lint reference : 0 erreur / 71 avertissements (inchangé). Tests
+unitaires : 153 + 89. `next build` de `apps/reference` : succès.
+
+### Ce qui n'est pas vérifié
+
+`admin-responsive.spec.ts:156` n'a pas été rejoué — la pile e2e n'a pas été
+relancée. Le décalage d'un commit est supprimé de façon démontrable, mais
+l'affirmation « ce test passe maintenant » demande une exécution.
+
+Un compromis assumé : `useStoreId` ne renvoie plus l'id persisté immédiatement,
+il attend que `stores.list` confirme son existence. C'est un aller-retour Convex
+de plus avant la première requête du menu, contre la garantie de ne jamais
+interroger un établissement supprimé.
+
+## Vérification e2e de la consolidation (23 août)
+
+### Deux obstacles avant le premier chiffre
+
+`next start` refusait de démarrer : `instrumentation.ts` valide quatre
+variables au boot (`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`OPENAI_API_KEY`) et `.env.local` ne les a pas. `.env.e2e.example` dit depuis sa
+rédaction de copier le fichier vers `.env.e2e` — mais `playwright.config.ts` ne
+lisait que `.env.local`, donc suivre l'instruction ne changeait rien. La config
+lit maintenant les deux, `.env.e2e` d'abord, un export shell primant sur tout.
+
+`SEED_PASSWORD` n'est stocké nulle part : ni dans un fichier, ni dans les
+variables du déploiement Convex. Le projet `setup` échoue donc sur son
+assertion, et les 446 tests admin ne s'exécutent pas. **La moitié admin de cette
+vérification reste à faire** et demande la valeur employée au moment du seed.
+
+### Comparaison contre le commit d'avant
+
+Projet `public`, version construite, `4437435` puis `HEAD`.
+
+| | réussis | échecs |
+| --- | --- | --- |
+| avant (`4437435`) | 30 | 33 |
+| après consolidation | 29 | 34 |
+| après correctif géoloc | **35** | **28** |
+
+La première mesure montrait **une régression**, à moi : `/store-selector`
+enregistrait « Permissions policy violation: Geolocation access has been
+blocked ».
+
+### La cause, en deux endroits
+
+Rendre la géolocalisation optionnelle n'avait pas suffi : deux appelants la
+réclamaient toujours au montage. Le résolveur, dès qu'il voyait plusieurs
+établissements sans sélection — c'est-à-dire à l'arrivée du visiteur. Et le
+panneau « Nos restaurants », qui vit dans l'en-tête de **toutes** les pages : le
+monter quelque part, c'est demander partout.
+
+Les deux utilisent maintenant `useGrantedLocation` : la position sert si le
+visiteur l'a accordée auparavant, et l'API n'est pas touchée sinon — pas de
+demande, et rien qu'une politique de permissions puisse rejeter. Le bouton
+« Localiser » du panneau reste pour qui veut l'accorder sur le moment ; sans
+position, le plus proche est simplement le premier.
+
+**Aucune régression, cinq tests réparés** — les vérifications d'erreurs console
+de menu, panier, paiement, suivi et mise en page boutique. Messages
+« geolocation blocked » sur l'ensemble du run : 20 → 0.
+
+### Les 28 échecs restants du projet public
+
+Antérieurs à ce travail, identiques au commit de référence. Deux exemples
+suffisent à donner le genre : un test attend le lien « Se connecter » quand
+l'en-tête affiche « Connexion », un autre attend « Powered by BeYours Engine »
+qui n'existe dans aucun fichier. Le renommage `3d6b93e` du 15 août a déplacé la
+copie sans que les tests suivent. À traiter comme un lot à part.

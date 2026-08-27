@@ -30,7 +30,13 @@ export type { AdminAuthStore } from "./stores/admin-auth-store"
 export { useAdminApiStore } from "./stores/admin-api-store"
 
 // Hooks
-export { useAdminStoreId, useAdminApi, useDebounce } from "./hooks/admin-hooks"
+export {
+  useAdminStoreId,
+  useAdminStore,
+  useSelectAdminStore,
+  useAdminApi,
+  useDebounce,
+} from "./hooks/admin-hooks"
 
 // Config
 export { adminRoutes } from "./config/admin-routes"

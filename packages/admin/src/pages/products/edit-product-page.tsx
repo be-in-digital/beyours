@@ -11,6 +11,7 @@ import { eurosToCents, centsToEuros } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
 import { Button } from "@be-in-digital/ui"
+import { ResolvingStore } from "../../components/resolving-store"
 
 interface EditProductPageProps {
   params: Promise<{ productId: string }>
@@ -94,15 +95,7 @@ export function EditProductPage({ params }: EditProductPageProps) {
     }
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">
-          Please select a store to edit a product
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (!product || !categories) {
     return (

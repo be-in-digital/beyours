@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { usePathname } from "next/navigation"
-import { useStoreStore, type StoreDoc } from "@be-in-digital/restaurant"
+import { useAdminStoreSelection, type StoreDoc } from "@be-in-digital/restaurant"
 import { Button } from "@be-in-digital/ui"
 import { Store } from "lucide-react"
 import Link from "next/link"
@@ -19,34 +19,31 @@ interface StoreGuardProps {
 /**
  * Ensures a store is selected before rendering children.
  * Auto-selects the first store when none is selected.
+ *
+ * The selected id is also checked against the list the server returns for this
+ * account on every response: a persisted id the current user cannot reach - a
+ * deleted store, or the previous user of this browser - is replaced rather than
+ * handed to the pages below, which would query it and get an authorization
+ * error.
  */
 export function StoreGuard({ children }: StoreGuardProps) {
   const pathname = usePathname()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex API is injected dynamically at runtime
   const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
-  const setStoreId = useAdminApiStore((s) => s.setStoreId)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Convex query ref is dynamic
   const stores = useQuery(api?.stores?.list ?? ("skip" as any)) as StoreDoc[] | undefined
-  const currentStore = useStoreStore((state) => state.currentStore)
-  const setCurrentStore = useStoreStore((state) => state.setCurrentStore)
+  const storeId = useAdminStoreSelection((s) => s.storeId)
+  const setStoreId = useAdminStoreSelection((s) => s.setStoreId)
 
-  // Auto-select first store if none selected or if persisted store no longer exists
+  const isReachable = !!storeId && !!stores?.some((s) => s._id === storeId)
+
   useEffect(() => {
     if (!stores || stores.length === 0) return
+    if (isReachable) return
 
-    const needsSelection = !currentStore
-      || !stores.some((s) => s._id === currentStore._id)
-
-    if (needsSelection && stores[0]) {
-      setCurrentStore(stores[0])
-    }
-  }, [stores, currentStore, setCurrentStore])
-
-  // Sync currentStore._id to adminApiStore.storeId for all admin pages
-  useEffect(() => {
-    const id = currentStore?._id ?? null
-    setStoreId(id)
-  }, [currentStore, setStoreId])
+    const first = stores[0]
+    if (first) setStoreId(first._id)
+  }, [stores, isReachable, setStoreId])
 
   const shouldBypass = BYPASS_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
@@ -83,7 +80,7 @@ export function StoreGuard({ children }: StoreGuardProps) {
   }
 
   // While auto-selection is happening, show loading
-  if (!currentStore) {
+  if (!isReachable) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />

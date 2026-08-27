@@ -1,7 +1,7 @@
 "use client"
 
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
-import { useStoreStore } from "@be-in-digital/restaurant"
+import { useAdminStore } from "../../hooks/admin-hooks"
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -21,7 +21,7 @@ function getFormattedDate(): string {
 
 export function DashboardHeader() {
   const user = useAdminAuthStore((s) => s.user)
-  const currentStore = useStoreStore((s) => s.currentStore)
+  const currentStore = useAdminStore()
 
   const firstName = user?.name?.split(" ")[0] ?? ""
 

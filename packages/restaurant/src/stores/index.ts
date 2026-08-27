@@ -3,7 +3,12 @@
  */
 
 export { useCartStore } from './cart'
-export { useStoreStore } from './store'
+export {
+  useAdminStoreSelection,
+  useStorefrontStoreSelection,
+  ADMIN_SELECTION_KEY,
+  STOREFRONT_SELECTION_KEY,
+} from './store'
 export { useUIStore } from './ui'
 export { useLanguageStore } from './language'
 
@@ -11,7 +16,11 @@ export { useLanguageStore } from './language'
 // `export const cart = useCartStore` gets TS4023/TS2742, the inferred type
 // referencing names it cannot reach.
 export type { CartState, CartActions, CartStore } from './cart'
-export type { StoreState, StoreActions, StoreStore } from './store'
+export type {
+  StoreSelectionState,
+  StoreSelectionActions,
+  StoreSelection,
+} from './store'
 export type { UIState, UIActions, UIStore } from './ui'
 export type {
   Language,

@@ -52,6 +52,7 @@ import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { formatShortDate, formatPrice } from "../../lib/formatters"
 import { PromotionForm } from "./promotion-form"
+import { ResolvingStore } from "../../components/resolving-store"
 
 type DiscountType = "percentage" | "fixed_amount" | "free_product" | "free_delivery" | "bogo"
 type TriggerMode = "coupon" | "auto"
@@ -230,19 +231,7 @@ export function PromotionsPage() {
     }
   }
 
-  if (!storeId) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <TagIcon />
-          </EmptyMedia>
-          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>Veuillez sélectionner un établissement pour gérer les promotions</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (promotions === undefined) {
     return <LoadingState />

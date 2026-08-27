@@ -11,6 +11,7 @@ import { eurosToCents } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
 import { Button } from "@be-in-digital/ui"
+import { ResolvingStore } from "../../components/resolving-store"
 
 export function NewProductPage() {
   const router = useRouter()
@@ -84,15 +85,7 @@ export function NewProductPage() {
     }
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">
-          Veuillez sélectionner un établissement pour créer un produit
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (!categories) {
     return (

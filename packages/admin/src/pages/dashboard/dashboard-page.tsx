@@ -8,20 +8,13 @@ import { RecentOrdersTable } from "./recent-orders-table"
 import { QuickActions } from "./quick-actions"
 import { DashboardSkeleton } from "./dashboard-skeleton"
 import { useDashboardStats } from "./use-dashboard-stats"
+import { ResolvingStore } from "../../components/resolving-store"
 
 /** Rendering only — the state lives behind useDashboardStats. */
 export function DashboardPage() {
   const { storeId, stats, orders } = useDashboardStats()
 
-  if (!storeId) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          Veuillez sélectionner un restaurant pour afficher le tableau de bord.
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   if (!stats) return <DashboardSkeleton />
 

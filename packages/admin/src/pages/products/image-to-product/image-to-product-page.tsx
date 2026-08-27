@@ -19,6 +19,7 @@ import { ImageUploadStep } from "./image-upload-step"
 import { AnalysisLoading } from "./analysis-loading"
 import { SuggestionsReview } from "./suggestions-review"
 import { NEW_CATEGORY_PREFIX } from "./category-mapper"
+import { ResolvingStore } from "../../../components/resolving-store"
 
 type Step = "upload" | "analyzing" | "review"
 
@@ -187,15 +188,7 @@ export function ImageToProductPage() {
     setResult(null)
   }
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">
-          Veuillez sélectionner un établissement
-        </p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   return (
     <div className="space-y-4">

@@ -31,6 +31,7 @@ import type {
   PaymentProvider,
   BadgeVariant,
 } from "../../lib/types"
+import { ResolvingStore } from "../../components/resolving-store"
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
   pending: { label: "En attente", variant: "secondary" },
@@ -82,13 +83,7 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
     return filtered
   }, [payments, statusFilter, providerFilter])
 
-  if (!storeId) {
-    return (
-      <div className="flex items-center justify-center h-[400px]">
-        <p className="text-sm text-muted-foreground">Veuillez sélectionner un établissement</p>
-      </div>
-    )
-  }
+  if (!storeId) return <ResolvingStore />
 
   return (
     <div className="space-y-6">
