@@ -37,7 +37,54 @@ function createMockDb(records: Record<string, any> = {}) {
     delete: vi.fn(async (id: string) => {
       delete store[id]
     }),
+    // Enough of the query builder for `grantCreatedStoreAccess` to find a
+    // profile: rows belong to the table their id is prefixed with, and
+    // `withIndex` is honoured as the equalities it declares.
+    query: (table: string) => {
+      const rows = Object.entries(store)
+        .filter(([id]) => id.startsWith(`${table}:`))
+        .map(([id, doc]) => ({ ...doc, _id: id }))
+      return {
+        withIndex: (_index: string, constrain?: (q: any) => unknown) => {
+          const equalities: Record<string, unknown> = {}
+          const q = {
+            eq: (field: string, value: unknown) => {
+              equalities[field] = value
+              return q
+            },
+          }
+          constrain?.(q)
+          const matched = rows.filter((row) =>
+            Object.entries(equalities).every(
+              ([field, value]) => (row as any)[field] === value
+            )
+          )
+          return {
+            unique: async () => matched[0] ?? null,
+            first: async () => matched[0] ?? null,
+            collect: async () => matched,
+          }
+        },
+        collect: async () => rows,
+      }
+    },
     inserted,
+  }
+}
+
+/** A `client_admin` profile, the role that administers what it creates. */
+function ownerProfile(userId: string, storeIds: string[] = []) {
+  return {
+    "userProfiles:owner": {
+      userId,
+      role: "client_admin",
+      storeIds,
+      permissions: [],
+      language: "fr",
+      twoFactorEnabled: false,
+      createdAt: 1,
+      updatedAt: 1,
+    },
   }
 }
 
@@ -93,7 +140,7 @@ describe("create", () => {
   }
 
   it("inserts the store and returns its id", async () => {
-    const db = createMockDb()
+    const db = createMockDb(ownerProfile("user_42"))
     const id = await create.handler(createCtx(db, "user_42"), ARGS)
 
     expect(id).toBe("stores:1")
@@ -105,7 +152,7 @@ describe("create", () => {
   })
 
   it("records who created which establishment", async () => {
-    const db = createMockDb()
+    const db = createMockDb(ownerProfile("user_42"))
     await create.handler(createCtx(db, "user_42"), ARGS)
 
     const entry = soleAuditEntry(db)
@@ -119,6 +166,41 @@ describe("create", () => {
       slug: "pizzeria-roma",
       status: "draft",
     })
+  })
+
+  it("makes the owner an administrator of what they just created", async () => {
+    const db = createMockDb(ownerProfile("user_42", ["stores:existing"]))
+
+    const id = await create.handler(createCtx(db, "user_42"), ARGS)
+
+    expect(db.patch).toHaveBeenCalledWith("userProfiles:owner", expect.objectContaining({
+      storeIds: ["stores:existing", id],
+    }))
+  })
+
+  it("leaves the role alone while granting the store", async () => {
+    const db = createMockDb(ownerProfile("user_42"))
+
+    await create.handler(createCtx(db, "user_42"), ARGS)
+
+    const patched = db.patch.mock.calls.find((c) => c[0] === "userProfiles:owner")
+    expect(patched?.[1]).not.toHaveProperty("role")
+  })
+
+  it("grants nothing when the creator has no session", async () => {
+    const db = createMockDb(ownerProfile("user_42"))
+
+    await create.handler(createCtx(db), ARGS)
+
+    expect(db.patch).not.toHaveBeenCalled()
+  })
+
+  it("grants nothing when the caller has no profile", async () => {
+    const db = createMockDb()
+
+    await create.handler(createCtx(db, "user_ghost"), ARGS)
+
+    expect(db.patch).not.toHaveBeenCalled()
   })
 })
 

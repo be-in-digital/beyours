@@ -10,6 +10,7 @@
 
 import { v } from "convex/values"
 import { isPublishedStore } from "@be-in-digital/convex-schema"
+import { grantCreatedStoreAccess } from "./auth"
 import {
   STORE_AUDIT_ACTIONS,
   STORE_AUDIT_OPERATIONS,
@@ -130,6 +131,12 @@ export const create = {
       createdAt: now,
       updatedAt: now,
     })
+
+    // The creator administers what they just created (#117). `stores.create`
+    // is the one mutation the store-scoped seam cannot guard — there is no
+    // store yet to check membership against — so without this an owner opening
+    // a second location is refused by every screen that shows it to them.
+    await grantCreatedStoreAccess(ctx, storeId)
 
     // Snapshot the stored document rather than the arguments, so the entry
     // records what the establishment actually became, defaults included.

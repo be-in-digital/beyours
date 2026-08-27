@@ -98,22 +98,26 @@ export const getSystemInfo = query({
  * the one screen where a client admin could read another establishment's
  * address and opening hours.
  *
- * Your own actions are always yours to read back, whatever the scope says.
- * `stores.create` is the one mutation the store-scoped seam cannot guard —
- * there is no store yet to check membership against — and nothing afterwards
- * adds the new establishment to the creator's profile, so a client admin can
- * end up outside the restaurant they just opened. Scoping alone would then hide
- * their own creation from them: the journal would go silent on precisely the
- * action it exists to record. Showing it back reveals nothing, since they are
- * the one who did it.
+ * Membership is enough to keep the journal honest about your own work, which
+ * was not always true. `stores.create` could hand a client admin a restaurant
+ * they were not a member of, so scoping alone hid their own creation from them
+ * and the journal read as "nothing happened". That gap was patched here with a
+ * second rule — an entry you performed stays visible whatever the scope says —
+ * and then closed at its source in #117: creating an establishment now makes
+ * you its administrator, so the second rule is gone and one rule decides again.
+ *
+ * One path can still put your own entry on a store you no longer administer: a
+ * super admin rewriting your profile and dropping the store. Team revocation
+ * cannot do it — `revocationEffect` returns an admin's profile untouched — so
+ * that removal is always deliberate, and the scoped answer is the wanted one.
+ * Being removed from a restaurant is exactly what scoping is for.
  */
 function canReadAuditEntry(
-  user: { userId: string; role: Role; storeIds: string[] },
-  entry: { performedBy: string; targetStoreId?: string },
+  user: { role: Role; storeIds: string[] },
+  entry: { targetStoreId?: string },
 ): boolean {
   if (!entry.targetStoreId) return true
   if (user.role === Role.SUPER_ADMIN) return true
-  if (entry.performedBy === user.userId) return true
   return user.storeIds.includes(entry.targetStoreId)
 }
 
