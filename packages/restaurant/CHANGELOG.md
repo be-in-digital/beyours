@@ -1,5 +1,29 @@
 # @be-in-digital/restaurant
 
+## 2.0.3
+
+### Patch Changes
+
+- 83f6af9: Enforce the order status machine in `updateStatus`.
+
+  The mutation wrote whatever status it was handed. Nothing stopped an order going from `pending` straight to `completed`, or a cancelled order being revived — the transition table existed but only the storefront services consulted it, as advice.
+
+  Three layers each carried their own opinion and they had drifted. The admin UI offered "Envoyer en livraison" on a ready order while the services table forbade `ready -> out_for_delivery`. The table is now single and lives in `@be-in-digital/convex-schema` (`ORDER_STATUS_TRANSITIONS`, `canTransitionOrderStatus`, `getNextOrderStatuses`); the services and the mutation both read it, and `ready -> out_for_delivery` is allowed, matching the button that already existed.
+
+  **Behaviour change:** `updateStatus` now throws `Invalid order status transition: <from> -> <to>` instead of writing. Replaying the current status is an idempotent no-op rather than an error, so webhook retries and double-clicked buttons stay harmless. `updateFromWebhook` is deliberately left unguarded — Uber Eats and Deliveroo are authoritative for the orders they own.
+
+  The cancellation window stops at `confirmed`, matching what Deliveroo permits: an order already being prepared, ready, or with a rider can no longer be cancelled internally.
+
+- c1af162: Ship the `./stores`, `./services` and `./hooks` subpaths the package already declared. The build only bundled `src/index.ts`, so those three `exports` entries pointed at files that never existed — in the workspace and in the published tarball alike. Any consumer following the documented import paths (`import { useCartStore } from '@be-in-digital/restaurant/stores'`) hit a resolution error.
+
+  The store state and action types (`CartState`, `CartActions`, `CartStore`, and their `Store`/`UI`/`Language` counterparts) are now exported too. They were internal, which made the inferred store types unnameable: `export const cart = useCartStore` failed with TS4023 in a consumer.
+
+  Code splitting is enabled so the Zustand stores stay singletons across entry points — importing `useCartStore` from the root and from `./stores` returns the same store, not two carts.
+
+- Updated dependencies [5eec48d]
+- Updated dependencies [83f6af9]
+  - @be-in-digital/convex-schema@2.1.0
+
 ## 2.0.2
 
 ### Patch Changes
