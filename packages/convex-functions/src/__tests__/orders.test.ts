@@ -373,7 +373,7 @@ describe("create — promotion handling", () => {
     let counter = 0
 
     const docs: Record<string, Record<string, unknown>> = {
-      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: storeStatus, settings: { taxRate: 10 } },
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: storeStatus },
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
@@ -399,11 +399,16 @@ describe("create — promotion handling", () => {
           Object.assign(docs[id] ?? {}, updates)
           patched.push({ id, updates })
         }),
-        query: vi.fn(() => {
+        // The tax rate is read from `globalSettings`, the row the settings
+        // page writes. It used to be read from `store.settings.taxRate` — a
+        // legacy column no mutation declares, so the only value it could ever
+        // have held came from the create payload Convex rejected (#125).
+        query: vi.fn((table: string) => {
           const chain = {
             withIndex: () => chain,
             order: () => chain,
-            first: async () => null,
+            first: async () =>
+              table === "globalSettings" ? { taxRate: 10 } : null,
             take: async () => [],
             collect: async () => [],
           }

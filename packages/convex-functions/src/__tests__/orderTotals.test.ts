@@ -2,28 +2,23 @@ import { describe, it, expect } from "vitest"
 import { resolveTaxRatePercent, computeOrderTotals } from "../orderTotals"
 
 describe("resolveTaxRatePercent", () => {
-  it("prefers the store rate over the global one", () => {
-    expect(resolveTaxRatePercent({ storeTaxRate: 5, globalTaxRate: 20 })).toBe(5)
-  })
-
-  it("honours an explicit zero on the store — a tax-free store is a real case", () => {
-    // `?? ` would have fallen through to the global rate here and taxed a store
-    // that is configured not to be taxed.
-    expect(resolveTaxRatePercent({ storeTaxRate: 0, globalTaxRate: 20 })).toBe(0)
-  })
-
-  it("falls back to the global rate when the store has none", () => {
+  it("uses the global rate", () => {
     expect(resolveTaxRatePercent({ globalTaxRate: 20 })).toBe(20)
-    expect(resolveTaxRatePercent({ storeTaxRate: null, globalTaxRate: 20 })).toBe(20)
+  })
+
+  it("honours an explicit zero — a tax-free establishment is a real case", () => {
+    // `?? ` would have fallen through to 0 anyway here, but the point stands:
+    // a configured zero is a value, not a missing one.
+    expect(resolveTaxRatePercent({ globalTaxRate: 0 })).toBe(0)
   })
 
   it("falls back to zero when nothing is configured", () => {
     expect(resolveTaxRatePercent({})).toBe(0)
-    expect(resolveTaxRatePercent({ storeTaxRate: null, globalTaxRate: null })).toBe(0)
+    expect(resolveTaxRatePercent({ globalTaxRate: null })).toBe(0)
   })
 
   it("ignores a non-finite rate rather than producing NaN totals", () => {
-    expect(resolveTaxRatePercent({ storeTaxRate: Number.NaN, globalTaxRate: 20 })).toBe(20)
+    expect(resolveTaxRatePercent({ globalTaxRate: Number.NaN })).toBe(0)
   })
 })
 
