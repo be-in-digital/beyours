@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.2
+
+### Patch Changes
+
+- Updated dependencies [3178b2d]
+- Updated dependencies [e13cd4e]
+  - @be-in-digital/core@2.2.0
+
 ## 2.2.1
 
 ### Patch Changes

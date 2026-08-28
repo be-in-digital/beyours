@@ -1,5 +1,85 @@
 # @be-in-digital/core
 
+## 2.2.0
+
+### Minor Changes
+
+- 3178b2d: Harden `POST /api/email/send` so the body cannot choose where a link points.
+
+  This route sends from the restaurant's SES-verified domain, so anything it will
+  put in front of a recipient is signed by the client's own brand. Three things
+  were wrong with that:
+  - **Links came from the request body, unchecked.** `resetLink` and
+    `dashboardLink` were validated by `z.string().url()`, which is as happy with
+    `https://evil.example/harvest` as with the real thing. Verified against the
+    pre-fix handler: it returned 200 and the attacker's host was in the rendered
+    "Reset my password" button. Both links are now required to share an origin
+    with `linkOrigin` (normally `SITE_URL`), falling back to the request's own
+    origin when the config omits it.
+  - **An unusable secret weakened the route instead of closing it.**
+    `timingSafeEqual` over two EMPTY buffers returns `true`, so a secret of `''`
+    matched an empty token. A secret under `MIN_EMAIL_API_SECRET_BYTES` (32) now
+    disables the route: every request gets 503 and a log naming what to set,
+    rather than an authentication check that can be satisfied by nothing. The
+    comparison also digests both operands first, so it no longer returns early on
+    a length mismatch — which leaked the secret's length.
+  - **The mail relay shared the session-signing key.** `EMAIL_API_SECRET` is now
+    read and declared, with `BETTER_AUTH_SECRET` kept as a transitional fallback
+    on both the route and the caller so existing deployments keep sending. Set it
+    on the Next env _and_ the Convex deployment — they are two halves of one
+    handshake.
+
+  `EmailRouteConfig` gains an optional `linkOrigin`. Callers that pass nothing
+  keep working and get the request-origin behaviour.
+
+- e13cd4e: Sentry is wired, and every client site reports to its own project.
+
+  `NEXT_PUBLIC_SENTRY_DSN` was in the schema and in both `.env.example` files.
+  `@sentry/nextjs` was in no `package.json`, `packages/core` exported a
+  `createSentryConfig()` nothing called, and no app had an error boundary. An
+  operator filled the DSN in, saw no error, and believed monitoring was live — so
+  a Saturday-night checkout failure was seen by nobody. Shipping the variable
+  without the integration buys the confidence without the coverage.
+
+  New `@be-in-digital/core/sentry` resolves the `Sentry.init` options for the
+  three runtimes:
+  - `resolveSentryOptions(runtime, env?)` returns `null` when the DSN is unset,
+    empty, or is not a DSN — a project-page URL pasted instead of the client key
+    passes the schema's `.url()` and is refused here, with a warning naming the
+    variable. Every call site skips `Sentry.init` on `null`, so a deployment
+    without a Sentry project pays nothing: no transport, no breadcrumb buffer.
+  - `environment` resolves `NEXT_PUBLIC_SENTRY_ENVIRONMENT` → `VERCEL_ENV` →
+    `NODE_ENV`, which keeps a client's preview deploys out of its production
+    issues with no configuration on Vercel.
+  - `tracesSampleRate` defaults to **0.1 in production**, 1.0 elsewhere. At 1.0 a
+    busy restaurant spends its free-tier quota on traces and Sentry drops the
+    overflow, so a 100% rate records _less_ than 10%. Override per client with
+    `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`.
+  - `sendDefaultPii` is `false` and not configurable. That flag is not enough on
+    its own: verified against a live SDK, a server event still carried
+    `cookie: session=…` and `authorization: Bearer …` in `request.headers`, since
+    the flag governs IP and user attribution rather than headers. So
+    `scrubSentryEvent` runs as both `beforeSend` and `beforeSendTransaction` —
+    headers filtered to an allowlist, `request.cookies` emptied, and sensitive
+    query values redacted out of `request.url` and `request.query_string`
+    (`/reset-password?token=…` is a live password reset; `/order/<id>?token=…`
+    opens one customer's order).
+  - Events carry a `site` tag (the host of `NEXT_PUBLIC_SITE_URL`) and a
+    `runtime` tag, so two deployments sharing a DSN by accident stay
+    distinguishable instead of merging.
+
+  The module has no imports — not even `@sentry/nextjs` — so the browser bundle,
+  the edge runtime and Convex actions can all read it, and it is unit-tested
+  without a process environment. It replaces the unused `createSentryConfig`,
+  `defaultSentryConfig` and `SentryConfig` exports, which had no call site
+  anywhere in the workspace.
+
+  Four variables are newly declared, and `SENTRY_ORG` / `SENTRY_PROJECT` /
+  `SENTRY_AUTH_TOKEN` become a `SITE_FEATURE_GROUPS` entry: half a source-map
+  upload uploads nothing and leaves every production stack trace minified. The
+  DSN is deliberately **not** in that group — a DSN on its own is a complete,
+  working configuration.
+
 ## 2.1.0
 
 ### Minor Changes
