@@ -114,6 +114,8 @@ export const send = action({
     // 4. Send emails
     const sesClient = createSESClient();
     const siteUrl = process.env.CONVEX_SITE_URL ?? "";
+    // Media stored without a CDN is a path on the storefront, not on Convex.
+    const appUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
     const fromAddress = config.senderName
       ? `${config.senderName} <${config.fromEmail}>`
       : config.fromEmail;
@@ -131,7 +133,9 @@ export const send = action({
           unsubscribeText: config.unsubscribeText ?? "Se désabonner",
         };
 
-        const html = renderTemplateToEmailHtml(template.blocks, branding);
+        const html = renderTemplateToEmailHtml(template.blocks, branding, undefined, {
+          siteUrl: appUrl,
+        });
 
         const command = new SendEmailCommand({
           FromEmailAddress: fromAddress,
@@ -234,6 +238,8 @@ export const sendTest = action({
     if (!config) throw new Error("Configuration email introuvable");
 
     const siteUrl = process.env.CONVEX_SITE_URL ?? "";
+    // Media stored without a CDN is a path on the storefront, not on Convex.
+    const appUrl = process.env.SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
     const branding = {
       ...config.branding,
       senderName: config.senderName,
@@ -241,7 +247,9 @@ export const sendTest = action({
       unsubscribeText: config.unsubscribeText ?? "Se désabonner",
     };
 
-    const html = renderTemplateToEmailHtml(template.blocks, branding);
+    const html = renderTemplateToEmailHtml(template.blocks, branding, undefined, {
+      siteUrl: appUrl,
+    });
 
     const sesClient = createSESClient();
     const fromAddress = config.senderName

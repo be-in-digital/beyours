@@ -27,7 +27,8 @@
       "import": "./dist/env/index.mjs",
       "require": "./dist/env/index.js"
     },
-    "./auth/rbac": "./src/auth/rbac.ts"
+    "./auth/rbac": "./src/auth/rbac.ts",
+    "./aws/media-url": "./src/aws/media-url.ts"
   },
   "scripts": {
     "build": "tsup",

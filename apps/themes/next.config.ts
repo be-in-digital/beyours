@@ -13,6 +13,27 @@ const contentSecurityPolicy = buildContentSecurityPolicy({
   isDevelopment: process.env.NODE_ENV !== "production",
 });
 
+/**
+ * The S3 bucket is private, so its hostname is never in `remotePatterns`:
+ * uploaded media is served same-origin by `/api/files`. A site that puts a CDN
+ * in front of the bucket declares it once, in `AWS_S3_PUBLIC_BASE_URL`.
+ * See `apps/docs/deployment/s3-bucket-policy.md`.
+ */
+function cdnPattern() {
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL?.trim();
+  if (!base) return [];
+
+  try {
+    const { protocol, hostname } = new URL(base);
+    return [{ protocol: protocol.replace(":", "") as "http" | "https", hostname }];
+  } catch {
+    throw new Error(
+      `AWS_S3_PUBLIC_BASE_URL is not a valid URL: ${base}. ` +
+        "Expected the CDN origin, e.g. https://cdn.example.com",
+    );
+  }
+}
+
 // engine-link mode (pnpm engine:link): the @be-in-digital/* packages are
 // symlinks to a local clone outside the project. Turbopack rejects files
 // outside the root — so we widen the tracing root to the common ancestor
@@ -70,10 +91,13 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    remotePatterns: siteConfig.images.remoteHosts.map((hostname) => ({
-      protocol: "https" as const,
-      hostname,
-    })),
+    remotePatterns: [
+      ...siteConfig.images.remoteHosts.map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
+      })),
+      ...cdnPattern(),
+    ],
   },
 };
 

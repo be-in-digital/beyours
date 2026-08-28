@@ -4,6 +4,7 @@
 export {
   escapeHtml,
   sanitizeUrl,
+  absolutiseUrls,
   renderBlockToEmailHtml,
   renderTemplateToEmailHtml,
   renderTextBlock,

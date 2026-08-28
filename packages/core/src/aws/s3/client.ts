@@ -21,6 +21,7 @@
 
 import { randomUUID } from 'crypto'
 import { type S3Config, MAX_FILE_SIZES } from '../types'
+import { buildMediaUrl } from '../media-url'
 import type {
   S3Operations,
   UploadOptions,
@@ -112,7 +113,7 @@ export function createS3Service(
   config: S3Config,
   client: S3Operations
 ): S3Service {
-  const { bucketName, publicBaseUrl } = config
+  const { publicBaseUrl } = config
 
   /**
    * Generates a unique S3 key
@@ -128,13 +129,12 @@ export function createS3Service(
   }
 
   /**
-   * Builds the public URL
+   * Builds the URL the browser should request for a stored object.
+   * The bucket is private: this is either the CDN in front of it, or the
+   * app's own `/api/files` proxy. See `aws/media-url`.
    */
   function buildPublicUrl(key: string): string {
-    if (publicBaseUrl) {
-      return `${publicBaseUrl}/${key}`
-    }
-    return `https://${bucketName}.s3.${config.region}.amazonaws.com/${key}`
+    return buildMediaUrl(key, publicBaseUrl)
   }
 
   /**

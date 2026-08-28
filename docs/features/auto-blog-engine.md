@@ -1569,7 +1569,7 @@ All routes are under the `(admin)` route group and require authentication.
 | `AWS_ACCESS_KEY_ID` | Yes | AWS IAM access key for S3 uploads |
 | `AWS_SECRET_ACCESS_KEY` | Yes | AWS IAM secret key for S3 uploads |
 | `AWS_S3_BUCKET_NAME` | Yes | S3 bucket name for media storage |
-| `AWS_S3_PUBLIC_BASE_URL` | No | Custom public URL for S3 assets (e.g., CloudFront). Falls back to `https://{bucket}.s3.{region}.amazonaws.com` |
+| `AWS_S3_PUBLIC_BASE_URL` | No | CDN fronting the (private) bucket, e.g. CloudFront. Unset: media is served by the app's `/api/files` proxy. See [S3 bucket policy](../../apps/docs/deployment/s3-bucket-policy.md) |
 
 ---
 

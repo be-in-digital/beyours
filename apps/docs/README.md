@@ -9,7 +9,7 @@ Welcome to the official documentation for the **BeYours Engine** — a premium N
 | [Getting Started](./getting-started/introduction.md) | Introduction, installation, and first steps |
 | [Packages](./packages/) | Detailed docs for each of the 10 packages |
 | [Guides](./guides/) | Feature-specific implementation guides |
-| [Deployment](./deployment/) | GitHub Packages, Vercel, and environment setup |
+| [Deployment](./deployment/) | GitHub Packages, Vercel, S3 bucket policy, and environment setup |
 | [API Reference](./api-reference/) | Convex API and REST endpoint documentation |
 
 ## Packages Overview

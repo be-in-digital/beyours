@@ -56,8 +56,12 @@ export const siteEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: opt(z.string().url()),
   ADMIN_URL: opt(z.string().url()),
 
-  // AWS S3 (per-restaurant bucket)
+  // AWS S3 (per-restaurant bucket). The bucket is private — see
+  // apps/docs/deployment/s3-bucket-policy.md. Set AWS_S3_PUBLIC_BASE_URL to
+  // the CDN that fronts it (CloudFront with an origin access control); leave
+  // it unset and media is served by the app's own /api/files proxy.
   AWS_S3_BUCKET_NAME: opt(z.string().min(1)),
+  AWS_S3_PUBLIC_BASE_URL: opt(z.string().url()),
 
   // AWS SES (per-restaurant sending domain)
   AWS_SES_FROM_EMAIL: opt(z.string().email()),
