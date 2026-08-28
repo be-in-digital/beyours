@@ -11,7 +11,7 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 |   AWS Account    OpenAI     Uber Eats Partner   Deliveroo Partner  |
 |   (S3, SES)     (GPT-3.5)   (App Credentials)  (App Credentials)  |
 |                                                                   |
-|   10 "package" variables shared by all sites                       |
+|   11 "package" variables shared by all sites                       |
 +-------------------------------------------------------------------+
         |                    |                    |
         v                    v                    v
@@ -26,7 +26,7 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 |  Sentry DSN      | |  Sentry DSN      | |  Sentry DSN      |
 |  Google Maps key | |  Google Maps key | |  Google Maps key  |
 |                  | |                  | |                  |
-|  25+ variables   | |  25+ variables   | |  25+ variables   |
+|  41 variables    | |  41 variables    | |  41 variables    |
 |  "site"-specific | |  "site"-specific | |  "site"-specific |
 +------------------+ +------------------+ +------------------+
 ```
@@ -35,7 +35,7 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 
 ## Package vs Site separation
 
-### Package variables (BeYours infra - 10 vars)
+### Package variables (BeYours infra - 11 vars)
 
 These are the credentials BeYours manages, shared across every deployed restaurant.
 
@@ -48,6 +48,7 @@ These are the credentials BeYours manages, shared across every deployed restaura
 | `UBER_EATS_CLIENT_ID` | no | Client ID of the Uber Eats partner app |
 | `UBER_EATS_CLIENT_SECRET` | no | Uber Eats client secret |
 | `UBER_EATS_WEBHOOK_SECRET` | no | Secret used to verify Uber Eats webhooks |
+| `UBER_DIRECT_WEBHOOK_SECRET` | no | Secret used to verify Uber Direct courier webhooks. Falls back to `UBER_EATS_WEBHOOK_SECRET`, then to `UBER_EATS_CLIENT_SECRET`; with none of the three set the webhook answers 503 |
 | `DELIVEROO_CLIENT_ID` | no | Client ID of the Deliveroo partner app |
 | `DELIVEROO_CLIENT_SECRET` | no | Deliveroo client secret |
 | `DELIVEROO_WEBHOOK_SECRET` | no | Secret used to verify Deliveroo webhooks |
@@ -55,39 +56,92 @@ These are the credentials BeYours manages, shared across every deployed restaura
 > **Why are Uber Eats / Deliveroo "package" level?**
 > BeYours is a **partner app** on these platforms. The API credentials are BeYours', not the restaurant's. The restaurant only supplies its own identifiers (brandId, siteId) to link its account.
 
-### Site variables (per restaurant - 25+ vars)
+### Site variables (per restaurant - 41 vars)
 
-Each deployed restaurant supplies its own values.
+Each deployed restaurant supplies its own values. They fall into **three tiers**,
+defined in `packages/core/src/env/schemas.ts`:
 
-| Category | Variable | Required | Description |
+| Tier | Schema | Meaning |
+|---|---|---|
+| **required** | `siteEnvRequiredSchema` | The 7 variables a deployment cannot boot without. An **empty value no longer passes**: these are declared without the `opt()` helper, so `''` fails exactly like a missing key. A `.env` copied from the template and left unfilled now fails at startup instead of in front of the restaurant owner. |
+| **optional** | `siteEnvOptionalSchema` | Unset (or empty) means the matching feature is off. Format is still checked when a value IS present. |
+| **feature-gated** | `SITE_FEATURE_GROUPS` | All-or-nothing groups. Setting **one** variable of a group makes the whole group required. |
+
+#### Required (7) - the deployment does not boot without them
+
+Each of these used to be optional, and each one used to fail *silently* in
+production rather than at deploy time.
+
+| Category | Variable | Silent failure it used to cause |
+|---|---|---|
+| **Convex** | `NEXT_PUBLIC_CONVEX_URL` | No backend - every query hangs |
+| | `CONVEX_SITE_URL` | Webhook and OAuth callback URLs point nowhere |
+| **Auth** | `SITE_URL` | Password reset returns early, the mail is never sent |
+| | `BETTER_AUTH_SECRET` | Same early return; sessions unsignable. **Now min 32 chars** (was min 1) |
+| | `ENCRYPTION_KEY` | OAuth tokens cannot be stored at rest (64 hex chars) |
+| **AWS S3** | `AWS_S3_BUCKET_NAME` | No upload target - the `/api/files` proxy reads from it too |
+| **AWS SES** | `AWS_SES_FROM_EMAIL` | No transactional mail leaves the deployment |
+
+> `AWS_S3_PUBLIC_BASE_URL` is **not** required, though the sales-readiness audit
+> listed it. Since the private-bucket decision it names an optional CDN, and
+> unset means media is served by the app's own `/api/files` proxy - a supported
+> configuration. See `apps/docs/deployment/s3-bucket-policy.md`.
+
+#### Feature-gated groups - all or nothing
+
+Half a payment provider is worse than none: the admin offers the method, the
+customer picks it, and the charge fails at the till. Once **any** variable in a
+group is set, the whole group is required.
+
+| Feature | Variables |
+|---|---|
+| Stripe (restaurant payments) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| PayPal (restaurant payments) | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` |
+| SumUp (restaurant payments) | `SUMUP_CLIENT_ID`, `SUMUP_CLIENT_SECRET` |
+| BeYours billing (maintenance renewal) | `STRIPE_BID_SECRET_KEY`, `STRIPE_BID_WEBHOOK_SECRET`, `BID_APP_URL` |
+
+> `STRIPE_PUBLISHABLE_KEY` is deliberately **absent** from the Stripe group: no
+> line of the product reads it today, so demanding it would gate a deploy on a
+> value nothing consumes.
+
+#### Optional (34)
+
+| Category | Variable | Tier | Description |
 |---|---|---|---|
-| **Convex** | `CONVEX_DEPLOYMENT` | no | Convex deployment ID |
-| | `NEXT_PUBLIC_CONVEX_URL` | yes | Public URL of the Convex instance |
-| | `CONVEX_SITE_URL` | no | Convex site URL (for webhooks) |
-| **Auth** | `BETTER_AUTH_SECRET` | yes | Unique secret for authentication |
-| | `BETTER_AUTH_URL` | no | URL of the auth service |
-| | `SITE_URL` | no | Site URL (trusted origins) |
-| | `ENCRYPTION_KEY` | no | AES-256-GCM key (64 hex chars) |
-| **App** | `NEXT_PUBLIC_APP_URL` | no | Public URL of the app |
-| | `ADMIN_URL` | no | Admin redirect URL |
-| **AWS S3** | `AWS_S3_BUCKET_NAME` | no | S3 bucket owned by the restaurant |
-| **AWS SES** | `AWS_SES_FROM_EMAIL` | no | Restaurant sender email |
-| | `AWS_SES_FROM_NAME` | no | Sender name |
-| | `AWS_SES_REPLY_TO_EMAIL` | no | Reply-to address |
-| | `AWS_SES_CONFIGURATION_SET` | no | SES Configuration Set |
-| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | no | Sentry DSN owned by the client |
-| **Maps** | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | no | Google Maps key owned by the client |
-| **Stripe** | `STRIPE_SECRET_KEY` | no | Secret key (`sk_` prefix) |
-| | `STRIPE_PUBLISHABLE_KEY` | no | Public key (`pk_` prefix) |
-| | `STRIPE_WEBHOOK_SECRET` | no | Webhook secret (`whsec_` prefix) |
-| **PayPal** | `PAYPAL_CLIENT_ID` | no | Restaurant's PayPal client ID |
-| | `PAYPAL_CLIENT_SECRET` | no | PayPal client secret |
-| **SumUp** | `SUMUP_CLIENT_ID` | no | Restaurant's SumUp client ID |
-| | `SUMUP_CLIENT_SECRET` | no | SumUp client secret |
-| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | no | Sandbox mode (`true`/`false`) |
-| **Deliveroo** | `DELIVEROO_BRAND_ID` | no | Restaurant's Deliveroo brand ID |
-| | `DELIVEROO_SITE_ID` | no | Restaurant's Deliveroo site ID |
-| | `DELIVEROO_IS_SANDBOX` | no | Sandbox mode (`true`/`false`) |
+| **Convex** | `CONVEX_DEPLOYMENT` | optional | Convex deployment ID |
+| | `NEXT_PUBLIC_CONVEX_SITE_URL` | optional | Client-side twin of `CONVEX_SITE_URL`; must stay on the same subdomain |
+| **Auth** | `BETTER_AUTH_URL` | optional | URL of the auth service |
+| | `AUTH_ALLOW_UNVERIFIED_EMAIL` | optional | Relaxes email verification. **Fails closed**: only the exact value `"true"` relaxes anything. Test deployments only |
+| | `ADMIN_BOOTSTRAP_TOKEN` | optional | Claims the FIRST super-admin seat on a fresh deployment. **Fails closed**: unset refuses everyone. Set it on the Convex deployment |
+| **App** | `NEXT_PUBLIC_APP_URL` | optional | Public URL of the app; fallback for team invitation links |
+| | `NEXT_PUBLIC_SITE_URL` | optional | Canonical public URL for SEO metadata and the sitemap |
+| | `ADMIN_URL` | optional | Admin redirect URL after OAuth (defaults to `http://localhost:3000`) |
+| **AWS S3** | `AWS_S3_PUBLIC_BASE_URL` | optional | Origin of a CDN fronting the private bucket. Unset, media is served by the app's own `/api/files` proxy |
+| **AWS SES** | `AWS_SES_FROM_NAME` | optional | Sender name |
+| | `AWS_SES_REPLY_TO_EMAIL` | optional | Reply-to address |
+| | `AWS_SES_CONFIGURATION_SET` | optional | SES Configuration Set |
+| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | optional | Sentry DSN owned by the client |
+| **Maps** | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | optional | Google Maps key owned by the client |
+| **Stripe** | `STRIPE_SECRET_KEY` | feature | Secret key (`sk_` prefix) |
+| | `STRIPE_PUBLISHABLE_KEY` | optional | Public key (`pk_` prefix); declared for the setup wizard, no runtime read yet |
+| | `STRIPE_WEBHOOK_SECRET` | feature | Webhook secret (`whsec_` prefix) |
+| **PayPal** | `PAYPAL_CLIENT_ID` | feature | Restaurant's PayPal client ID |
+| | `PAYPAL_CLIENT_SECRET` | feature | PayPal client secret |
+| | `PAYPAL_SANDBOX_MODE` | optional | **Unset defaults to PRODUCTION.** Keep `"true"` for sandbox |
+| **SumUp** | `SUMUP_CLIENT_ID` | feature | Restaurant's SumUp client ID |
+| | `SUMUP_CLIENT_SECRET` | feature | SumUp client secret |
+| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | optional | Sandbox mode (`true`/`false`); unset defaults to PRODUCTION |
+| **Deliveroo** | `DELIVEROO_BRAND_ID` | optional | Restaurant's Deliveroo brand ID (e2e fixture; a live deployment reads it from its stored connection) |
+| | `DELIVEROO_SITE_ID` | optional | Restaurant's Deliveroo site ID (same) |
+| | `DELIVEROO_IS_SANDBOX` | optional | Sandbox mode (`true`/`false`); unset defaults to PRODUCTION |
+| **CMS media** | `UNSPLASH_ACCESS_KEY` | optional | Unsplash key for the CMS media picker |
+| **BeYours billing** | `STRIPE_BID_SECRET_KEY` | feature | Stripe key of the BeYours account (not the restaurant's). Lives on the **Convex** deployment |
+| | `STRIPE_BID_WEBHOOK_SECRET` | feature | Verifies the renewal webhook |
+| | `STRIPE_BID_PRICE_MAINTENANCE` | optional | Price of the annual maintenance renewal. Unset, "Renouveler en ligne" is refused |
+| | `BID_APP_URL` | feature | Absolute app URL for checkout redirects and customer-email links |
+| | `BID_NOTIFY_EMAIL` | optional | Alerted via SES on a site migration request. Unset, the request reaches nobody - the one genuinely silent failure left |
+| **Contact** | `CONTACT_EMAIL` | optional | Public contact address surfaced in the app |
+| | `NEXT_PUBLIC_BID_SUPPORT_EMAIL` | optional | Mailto shown in the renewal CTA; unset shows a neutral message instead of a link |
 
 ---
 
@@ -101,35 +155,84 @@ The schemas are defined in `packages/core/src/env/schemas.ts` and exported via:
 
 ```
 packages/core/src/env/
-  schemas.ts    -- packageEnvSchema + siteEnvSchema (Zod)
+  schemas.ts    -- packageEnvSchema
+                   siteEnvRequiredSchema   (strict, boot only)
+                   siteEnvOptionalSchema   (+ SITE_FEATURE_GROUPS refinement)
+                   siteEnvSchema           (lenient reader, runtime)
   getters.ts    -- getPackageEnv() + getSiteEnv() (lazy, memoized)
+                   validateAllEnv() + formatEnvReport()
   index.ts      -- barrel file
   __tests__/
     schemas.test.ts
     getters.test.ts
+    validate-all-env.test.ts
 ```
+
+### Two readers, on purpose
+
+The same variables are checked by **two different schemas**, and the difference
+is deliberate.
+
+| | `validateAllEnv()` | `getSiteEnv()` |
+|---|---|---|
+| Schema | `siteEnvRequiredSchema` + `siteEnvOptionalSchema` + `packageEnvSchema` | `siteEnvSchema` (lenient) |
+| When | Once, at startup (`instrumentation.ts`) | On every read, anywhere |
+| Missing required var | Reported; production boot fails | Returns `undefined` |
+| Throws | Never - returns `{ ok, missing }` | Only on a malformed value |
+
+**Why the reader stays lenient.** `getSiteEnv()` parses the whole of
+`process.env`, and it runs inside Convex actions, where the deployment holds its
+own subset of the variables (`ENCRYPTION_KEY` yes,
+`NEXT_PUBLIC_CONVEX_URL` no). Every validator in the reader is a way for an
+unrelated code path - a Stripe charge, a kitchen ticket - to throw on a variable
+it never reads. Throwing there would turn a boot-time configuration problem into
+a failed customer order.
+
+So **format is enforced once, at boot; the reader only asks "is there something
+there"**. A handful of fields are relaxed in the reader beyond that (see
+`READER_RELAXED` in `schemas.ts`): the ones this tier split newly declared, plus
+`BETTER_AUTH_SECRET`, whose floor rose from 1 to 32. Nothing already deployed
+sees a check tighten at runtime.
 
 ### Getters
 
 ```typescript
 import { getPackageEnv, getSiteEnv } from '@be-in-digital/core/env'
 
-// BeYours platform variables
+// BeYours platform variables - strict, throws on a missing required var
 const pkg = getPackageEnv()
 pkg.AWS_REGION           // string (guaranteed)
-pkg.UBER_EATS_CLIENT_ID // string | undefined (optional)
+pkg.UBER_EATS_CLIENT_ID  // string | undefined (optional)
 
-// Restaurant-specific variables
+// Restaurant-specific variables - lenient, every field possibly undefined
 const site = getSiteEnv()
-site.BETTER_AUTH_SECRET  // string (guaranteed)
-site.STRIPE_SECRET_KEY   // string | undefined (optional)
+site.BETTER_AUTH_SECRET  // string | undefined
+site.STRIPE_SECRET_KEY   // string | undefined
 ```
 
 **Behavior:**
 - First call: validates `process.env` against the Zod schema
 - Later calls: return the cached result (memoized)
-- Throws `ZodError` if a required variable is missing or invalid
+- `getPackageEnv()` throws `ZodError` if a required platform var is missing
+- `getSiteEnv()` returns `undefined` for anything unset - whether the deployment
+  was allowed to boot at all is decided by `validateAllEnv()`, not here
 - `_resetEnvCache()` available for tests
+
+### Startup validation
+
+```typescript
+import { validateAllEnv, formatEnvReport } from '@be-in-digital/core/env'
+
+const { ok, missing } = validateAllEnv()
+if (!ok) console.error(formatEnvReport(missing))
+```
+
+`validateAllEnv()` never throws. It returns every problem it found, each tagged
+with an `EnvTier` - `'package'`, `'site'` or `'feature'` - and `formatEnvReport()`
+groups them under those three headings for the boot log. A variable that is
+absent reads as `non définie` rather than Zod's "expected string, received
+undefined"; a value that IS set but malformed keeps its Zod message, so the
+operator can tell the two apart.
 
 ### Validation flow
 
@@ -137,31 +240,56 @@ site.STRIPE_SECRET_KEY   // string | undefined (optional)
                            Startup
                              |
                              v
-                   +-------------------+
-                   | instrumentation.ts |  <-- Next.js startup hook
-                   |                   |
-                   | getPackageEnv()   |  -- Validates the 10 package vars
-                   | getSiteEnv()     |  -- Validates the 25+ site vars
-                   +-------------------+
+                   +---------------------+
+                   | instrumentation.ts  |  <-- Next.js startup hook
+                   |                     |
+                   | validateAllEnv()    |  -- 11 package + 7 required
+                   |                     |     + 34 optional + feature groups
+                   +---------------------+
                              |
                     OK?      |     FAIL?
-                   +----+    |    +----+
-                   |    v    |    v    |
-                   | Continue|  dev: warn |
-                   |  app   |  prod: crash|
-                   +--------+-----------+
+                   +----+    |    +----------------+
+                   |    v    |    v                |
+                   | Continue|  formatEnvReport()  |
+                   |  app    |  dev: warn          |
+                   |         |  prod: crash        |
+                   +---------+---------------------+
 
         Runtime (Convex actions, API routes)
                              |
                              v
-                   +-------------------+
-                   | getPackageEnv()   |  -- Cache hit (already validated)
-                   | getSiteEnv()     |  -- Cache hit (already validated)
-                   +-------------------+
+                   +---------------------+
+                   | getPackageEnv()     |  -- strict, cached
+                   | getSiteEnv()        |  -- LENIENT, cached
+                   +---------------------+
                              |
                              v
-                   Type-safe access to variables
+                   Type-safe access; site fields possibly undefined
 ```
+
+### apps/site validates itself, separately
+
+`apps/site` (the commercial site, beyours.fr) depends on **none** of the engine
+packages, so it does not use `@be-in-digital/core/env` at all. It has its own
+dependency-free validator:
+
+| | Engine apps | `apps/site` |
+|---|---|---|
+| Validator | `@be-in-digital/core/env` `validateAllEnv()` | `apps/site/lib/env.ts` `validateSiteEnv()` |
+| Report | `formatEnvReport()` | `formatSiteEnvReport()` |
+| Tiers | `'package' \| 'site' \| 'feature'` | `'required' \| 'format' \| 'feature'` |
+| Dependencies | zod | none |
+| Called from | `instrumentation.ts` | `apps/site/instrumentation.ts` |
+
+It follows the same shape - required tier, format-checked-when-present tier,
+all-or-nothing groups - over a different variable surface, and it can only see
+the **Next.js** process env. The Stripe keys, the AWS credentials, the email
+provider and the four maintenance Price IDs live on the **Convex** deployment,
+which that code never runs in, so they are checked when present and never
+demanded. Its two all-or-nothing groups are Stripe (`STRIPE_SECRET_KEY` +
+`STRIPE_WEBHOOK_SECRET`) and the four `STRIPE_PRICE_*` maintenance prices -
+`convex/stripe.ts` throws mid-checkout when one of those is missing, which
+debits a customer who is then never provisioned.
 
 ---
 
@@ -204,23 +332,39 @@ Six reference files for onboarding:
 
 > On every deployment, the `.env.local` file in `apps/reference/` or `apps/themes/` holds **every** variable (package + site), since the Node.js process needs both at runtime.
 
-> `apps/site` does **not** follow the package/site split: it depends on none of the engine packages and has its own variable surface. `packages/core` is a library — nothing loads a `.env` there at runtime; the 10 platform variables are read from the host process env.
+> `apps/site` does **not** follow the package/site split: it depends on none of the engine packages and has its own variable surface, validated by `apps/site/lib/env.ts` (see *apps/site validates itself, separately* above). `packages/core` is a library — nothing loads a `.env` there at runtime; the 11 platform variables are read from the host process env.
 
 ---
 
 ## Adding a new environment variable
 
 1. **Pick the level**: package (BeYours infra) or site (per restaurant)
-2. **Add it to the schema** in `packages/core/src/env/schemas.ts`
-   - Use `.optional()` if the variable is not required for every deployment
-   - Add Zod validations (`.url()`, `.email()`, `.startsWith()`, `.regex()`)
-3. **Update the matching `.env.example`**
-4. **Rebuild the package**: `pnpm --filter @be-in-digital/core build`
-5. **Use the getter** in the consuming code:
+2. **Pick the tier**, and be strict about it:
+   - `siteRequiredShape` — only if the deployment genuinely cannot serve a
+     correct page without it. Declare it **without** the `opt()` helper, so an
+     empty value fails too. Adding one here breaks the boot of every existing
+     deployment that lacks it, which is the point — but check first.
+   - `siteOptionalShape` — everything else. Wrap it in `opt()`.
+   - `SITE_FEATURE_GROUPS` — if it only makes sense alongside others, and half
+     the group configured would fail in front of a customer.
+3. **Add it to the schema** in `packages/core/src/env/schemas.ts` with its Zod
+   validations (`.url()`, `.email()`, `.startsWith()`, `.regex()`)
+4. **Consider `READER_RELAXED`.** Any validator you add is one more way for an
+   unrelated code path to throw at runtime, on a deployment that already exists
+   and never reads this variable. Newly declared variables belong in that set
+   unless you have a reason otherwise.
+5. **Update the matching `.env.example`** — including
+   `apps/themes/.env.convex.example` if the variable is read from a Convex
+   action, which is easy to miss and is where the gaps have historically been
+6. **Rebuild the package**: `pnpm --filter @be-in-digital/core build`
+7. **Use the getter** in the consuming code:
    ```typescript
    const pkg = getPackageEnv()  // or getSiteEnv()
    const maVar = pkg.MA_NOUVELLE_VAR
    ```
+
+> Variables consumed by `apps/site` go in `apps/site/lib/env.ts` instead — that
+> app shares no schema with the engine.
 
 ---
 
@@ -251,19 +395,31 @@ openssl rand -hex 32
 |  |   DELIVEROO_*         optional     |  |
 |  +------------------------------------+  |
 |  +------------------------------------+  |
-|  | siteEnvSchema (Zod)                |  |
-|  |   NEXT_PUBLIC_CONVEX  required     |  |
-|  |   BETTER_AUTH_SECRET  required     |  |
-|  |   ENCRYPTION_KEY      optional     |  |
-|  |   STRIPE_*            optional     |  |
-|  |   PAYPAL_*            optional     |  |
-|  |   SUMUP_*             optional     |  |
-|  |   AWS_S3_BUCKET_NAME  optional     |  |
-|  |   AWS_SES_FROM_*      optional     |  |
-|  |   SENTRY_DSN          optional     |  |
-|  |   GOOGLE_MAPS_KEY     optional     |  |
-|  |   DELIVEROO_BRAND_ID  optional     |  |
-|  |   UBER_EATS_SANDBOX   optional     |  |
+|  | siteEnvRequiredSchema  (BOOT ONLY) |  |
+|  |   NEXT_PUBLIC_CONVEX_URL  required |  |
+|  |   CONVEX_SITE_URL         required |  |
+|  |   SITE_URL                required |  |
+|  |   BETTER_AUTH_SECRET      required |  |
+|  |   ENCRYPTION_KEY          required |  |
+|  |   AWS_S3_BUCKET_NAME      required |  |
+|  |   AWS_SES_FROM_EMAIL      required |  |
+|  |   (no opt(): '' fails too)         |  |
+|  +------------------------------------+  |
+|  +------------------------------------+  |
+|  | siteEnvOptionalSchema  (BOOT ONLY) |  |
+|  |   STRIPE_* PAYPAL_* SUMUP_*        |  |
+|  |   STRIPE_BID_* BID_*               |  |
+|  |   ADMIN_BOOTSTRAP_TOKEN            |  |
+|  |   AUTH_ALLOW_UNVERIFIED_EMAIL      |  |
+|  |   SENTRY_DSN GOOGLE_MAPS_KEY ...   |  |
+|  |   + SITE_FEATURE_GROUPS refinement |  |
+|  |     (all-or-nothing per provider)  |  |
+|  +------------------------------------+  |
+|  +------------------------------------+  |
+|  | siteEnvSchema  (RUNTIME READER)    |  |
+|  |   every field optional, on purpose |  |
+|  |   -> never throws on a var this    |  |
+|  |      deployment does not hold      |  |
 |  +------------------------------------+  |
 |                                          |
 |  getters.ts                              |
@@ -271,6 +427,8 @@ openssl rand -hex 32
 |  | getPackageEnv() -> PackageEnv      |  |
 |  | getSiteEnv()    -> SiteEnv         |  |
 |  |   (lazy parse + memoize)           |  |
+|  | validateAllEnv() -> { ok, missing }|  |
+|  |   (boot; package|site|feature)     |  |
 |  +------------------------------------+  |
 +==========================================+
           |                    |
@@ -312,22 +470,40 @@ process.env
     |       |                            validate, kitchenTickets
     |       +-- UBER_EATS_CLIENT_SECRET> (same files)
     |       +-- UBER_EATS_WEBHOOK_SEC > uberEatsWebhook
+    |       +-- UBER_DIRECT_WEBHOOK_SEC> uberDirectWebhook (falls back to
+    |       |                            UBER_EATS_WEBHOOK_SECRET, then to
+    |       |                            UBER_EATS_CLIENT_SECRET)
     |       +-- DELIVEROO_CLIENT_ID ---> deliverooWebhookHandler, webhook,
     |       |                            import, menuSync, orders, validate,
     |       |                            kitchenTickets
     |       +-- DELIVEROO_CLIENT_SECRET> (same files)
     |       +-- DELIVEROO_WEBHOOK_SEC -> deliverooWebhookHandler
     |
-    +-- siteEnvSchema.parse() --> SiteEnv (cached)
+    +-- siteEnvSchema.parse() --> SiteEnv (cached, every field optional)
+            |   (boot-time enforcement: siteEnvRequiredSchema
+            |    + siteEnvOptionalSchema, via validateAllEnv)
             |
             +-- NEXT_PUBLIC_CONVEX_URL -> providers.tsx (build inline)
-            +-- CONVEX_SITE_URL -------> oauthConnect, oauthCallbackHandlers
+            +-- CONVEX_SITE_URL -------> oauthConnect, oauthCallbackHandlers,
+            |                            uberEatsOAuth (throws when unset)
             +-- BETTER_AUTH_SECRET ----> auth.ts (direct process.env)
             +-- SITE_URL --------------> auth.ts, teamMembersEmail
             +-- ENCRYPTION_KEY -------> oauthConnect (encrypt)
-            +-- ADMIN_URL ------------> oauthCallbackHandlers
+            +-- AUTH_ALLOW_UNVERIFIED_> auth.ts (fails closed; test only)
+            +-- ADMIN_BOOTSTRAP_TOKEN -> userProfiles.claimFirstAdmin
+            |                            (fails closed; refuses everyone)
+            +-- ADMIN_URL ------------> oauthCallbackHandlers, uberEatsOAuth
+            +-- NEXT_PUBLIC_APP_URL ---> teamMembersEmail (invite links)
             +-- AWS_S3_BUCKET_NAME ----> S3 uploads (via config param)
+            +-- AWS_S3_PUBLIC_BASE_URL> cmsMediaProcess, cmsSvgUpload,
+            |                            cmsMediaConfirmUpload, imageToProduct,
+            |                            blogAutoGenerate, blogImageGenerate
             +-- AWS_SES_FROM_EMAIL ----> SES adapter, teamMembersEmail
+            +-- STRIPE_BID_* ---------> bidSubscription (throws when unset)
+            +-- BID_APP_URL ----------> bidSubscription, maintenanceEmail,
+            |                            gameEmail
+            +-- BID_NOTIFY_EMAIL -----> maintenanceEmail (logs and moves on)
+            +-- NEXT_PUBLIC_BID_SUPPORT> packages/admin constants (renewal CTA)
             +-- STRIPE_SECRET_KEY -----> oauthConnect, oauthCallbackHandlers
             +-- STRIPE_PUBLISHABLE_KEY> client-side (build inline)
             +-- STRIPE_WEBHOOK_SECRET -> webhook handler (future)

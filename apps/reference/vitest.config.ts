@@ -4,7 +4,9 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     // Same `@/*` alias the app and tsconfig use, so route handlers can be
-    // imported under test without rewriting their imports.
+    // imported under test without rewriting their imports. Needed once a
+    // tested module imports a *value* that way: type-only imports erase
+    // before Vitest ever resolves them.
     alias: {
       '@': fileURLToPath(new URL('.', import.meta.url)),
     },

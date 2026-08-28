@@ -136,3 +136,66 @@ describe("GET /api/files/:key", () => {
     expect((await get("cms/x.webp")).status).toBe(500)
   })
 })
+
+/**
+ * The framing half (P0-27).
+ *
+ * These assert the route actually wires `buildFileResponseHeaders` in. The
+ * pure function is covered in `lib/services/__tests__/file-serving.test.ts`;
+ * what a unit test of it cannot show is that the response really carries what
+ * it decided — which is the seam the stored-XSS report went through.
+ */
+describe("GET /api/files/:key — what the response is allowed to become", () => {
+  it("serves a stored SVG as an attachment, not as a document", async () => {
+    // The report's payload, still in the bucket: uploaded before the fix, and
+    // never re-uploaded. The framing has to hold on the way out.
+    send.mockResolvedValue(
+      s3Object(
+        `<svg xmlns="http://www.w3.org/2000/svg"><script>fetch('/api/auth/get-session')</script></svg>`,
+        "image/svg+xml"
+      )
+    )
+
+    const response = await get("cms/trap.svg")
+
+    expect(response.headers.get("Content-Disposition")).toBe("attachment")
+    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff")
+    expect(response.headers.get("Content-Security-Policy")).toContain("sandbox")
+  })
+
+  it("keeps image/svg+xml so an SVG logo still draws in <img>", async () => {
+    send.mockResolvedValue(s3Object("<svg/>", "image/svg+xml"))
+
+    expect((await get("branding/logo.svg")).headers.get("Content-Type")).toBe(
+      "image/svg+xml"
+    )
+  })
+
+  it("serves a photo inline", async () => {
+    send.mockResolvedValue(s3Object("bytes", "image/png"))
+
+    const response = await get("products/photo.png")
+
+    expect(response.headers.get("Content-Disposition")).toBe("inline")
+    expect(response.headers.get("Content-Type")).toBe("image/png")
+  })
+
+  it("attaches a type nobody thought about, rather than rendering it", async () => {
+    send.mockResolvedValue(s3Object("<h1>hi</h1>", "text/html"))
+
+    expect((await get("cms/x.html")).headers.get("Content-Disposition")).toBe(
+      "attachment"
+    )
+  })
+
+  it("puts a policy that cannot script or fetch on every response", async () => {
+    for (const type of ["image/png", "image/svg+xml", "application/pdf"]) {
+      send.mockResolvedValue(s3Object("bytes", type))
+
+      const csp = (await get("cms/x")).headers.get("Content-Security-Policy")
+
+      expect(csp).toContain("default-src 'none'")
+      expect(csp).not.toContain("allow-scripts")
+    }
+  })
+})
