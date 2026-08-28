@@ -338,16 +338,24 @@ not published, they are deployed.
 | Workflow | What it does |
 | --- | --- |
 | `ci.yml` | lint · type-check · test · build, on PRs and pushes to `main` |
-| `e2e.yml` | Playwright on the reference app, if the `E2E_*` secrets exist |
+| `e2e.yml` | Playwright on the reference app, **only** when the repository variable `CONVEX_E2E_ENABLED` is `true` — it is not set, so the suite has never run |
 | `release.yml` | changesets — version PR, then publication |
 | `publish-mirror.yml` | Pushes `apps/themes` to the distribution mirror |
 | `security.yml` | gitleaks over full history + `pnpm audit`, plus a daily run |
 
-⚠️ **The GitHub Actions minutes on the Free plan (2,000/month for private
-repositories) are exhausted** — the quota was exceeded in July and August 2026.
-Jobs fail within seconds without running a single step, so a red cross on a PR
-says nothing about the code. Verify locally (`pnpm lint`, `pnpm type-check`,
-`pnpm test`, `pnpm build`) until the monthly reset or a raised spending limit.
+**Nothing here is blocking.** `main` has no branch protection, so a red check
+does not stop a merge. Switching E2E on and making the checks required is
+`tasks/ci-required-checks-runbook.md` — repository settings the owner has to
+apply, in the order that file gives.
+
+⚠️ **A job that fails in ~3 seconds having run zero steps is a billing block,
+not a defect.** The Free plan's 2,000 Actions minutes ran out in July and again
+on 27–28 August 2026; every workflow on every branch dies at once with "recent
+account payments have failed or your spending limit needs to be increased", and
+`gh api …/actions/jobs/<id>` shows `steps: []`. Check that signature before
+debugging code that is fine. Once billing is settled, `gh run rerun <id>` is
+enough — do not push an empty commit. In the meantime verify locally:
+`pnpm lint`, `pnpm type-check`, `pnpm test`, `pnpm build`.
 
 ---
 
