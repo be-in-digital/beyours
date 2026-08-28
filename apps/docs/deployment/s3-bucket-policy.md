@@ -238,8 +238,15 @@ permanently. That is not recoverable by setting the variable later.
 
 ## Bugs this decision exposes
 
-These are consequences of the policy never having been written down. They belong
-to #158, and this document lists them so that issue has a checklist.
+These are consequences of the policy never having been written down. They were
+the checklist for #158, which has since implemented this decision — items 1, 2,
+4, 5, 7, 8 and 9 are fixed. They are kept here because they say what the rule is
+for, and because items 3 and 6 are still open.
+
+Item 3 (two URL shapes in one database) is unresolved by design: URLs already
+persisted keep their old shape, and only a data migration changes that. Item 6
+(`users/` and `avatars/` naming) is left alone deliberately — both are private,
+and renaming a prefix would strand the objects already under it.
 
 1. **Three divergent folder allowlists**, none matching the bucket policy:
 

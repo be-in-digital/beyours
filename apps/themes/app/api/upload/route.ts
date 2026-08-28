@@ -6,11 +6,15 @@ import {
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
+  S3_FOLDERS,
+  isPublicS3Key,
   type S3Folder,
 } from "@/lib/aws"
 import { isAuthenticated } from "@/lib/convex"
 
-const VALID_FOLDERS = new Set<S3Folder>(["products", "branding", "stores", "cms", "users"])
+// The canonical list lives in @be-in-digital/core/aws/prefixes; see
+// apps/docs/deployment/s3-bucket-policy.md.
+const VALID_FOLDERS = new Set<S3Folder>(S3_FOLDERS)
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -34,7 +38,8 @@ function getS3Client() {
 /**
  * POST /api/upload
  * Accepts multipart form data, uploads file server-side to S3.
- * No CORS config needed on the S3 bucket.
+ * This route needs no bucket CORS, but the presigned-PUT flow in
+ * convex/storageUpload.ts does — the bucket is configured for both.
  *
  * Form fields:
  * - file: File
@@ -117,8 +122,12 @@ export async function POST(request: Request) {
       })
     )
 
-    // Return a proxy URL since the S3 bucket is not publicly accessible
-    const publicUrl = `/api/files/${key}`
+    // Public prefixes are served from the CDN origin; private ones are
+    // readable only through the authenticated proxy.
+    const base = process.env.AWS_S3_PUBLIC_BASE_URL?.replace(/\/+$/, "")
+    const publicUrl = isPublicS3Key(key) && base
+      ? `${base}/${key}`
+      : `/api/files/${key}`
 
     return NextResponse.json({
       key,

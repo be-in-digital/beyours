@@ -32,7 +32,11 @@ export const siteConfig = {
   images: {
     /**
      * Remote hosts allowed for next/image.
-     * Add the client's S3 bucket and any CDN in use here.
+     *
+     * Replace the S3 wildcard with the host of this client's
+     * AWS_S3_PUBLIC_BASE_URL. next/image fetches these hosts server-side and
+     * unauthenticated, so naming every bucket in the region is wider than it
+     * needs to be. See apps/docs/deployment/s3-bucket-policy.md.
      */
     remoteHosts: [
       "images.unsplash.com",

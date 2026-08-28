@@ -10,6 +10,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { Id } from "./_generated/dataModel";
+import { isPublicS3Key } from "@be-in-digital/core/aws/prefixes";
 
 // ── S3 helpers ───────────────────────────────────────────────────────
 
@@ -23,10 +24,20 @@ function createS3Client() {
   });
 }
 
-function buildPublicUrl(key: string) {
-  const bucket = process.env.AWS_S3_BUCKET_NAME!;
+function buildPublicUrl(key: string): string {
+  // Private prefixes are excluded from the bucket policy, so they are read
+  // only through the authenticated proxy. See
+  // apps/docs/deployment/s3-bucket-policy.md.
+  if (!isPublicS3Key(key)) {
+    return `/api/files/${key}`;
+  }
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  if (base) {
+    return `${base}/${key}`;
+  }
+  const bucketName = process.env.AWS_S3_BUCKET_NAME!;
   const region = process.env.AWS_REGION ?? "eu-west-3";
-  return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
 }
 
 async function downloadAndUpload(

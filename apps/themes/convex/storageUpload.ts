@@ -6,20 +6,17 @@ import { v } from "convex/values";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getExtensionFromMimeType } from "@be-in-digital/cms";
+import {
+  S3_FOLDERS,
+  isPublicS3Key,
+  type S3Folder as CoreS3Folder,
+} from "@be-in-digital/core/aws/prefixes";
 
-const ALLOWED_FOLDERS = [
-  "products",
-  "branding",
-  "stores",
-  "cms",
-  "email",
-  "avatars",
-  "blogs",
-  "blog-auto",
-  "storefront",
-  "categories",
-] as const;
-type S3Folder = (typeof ALLOWED_FOLDERS)[number];
+// Folder names and their public/private visibility are defined once, in
+// @be-in-digital/core/aws/prefixes, and recorded in
+// apps/docs/deployment/s3-bucket-policy.md. Do not redeclare them here.
+const ALLOWED_FOLDERS = S3_FOLDERS;
+type S3Folder = CoreS3Folder;
 
 const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   products: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
@@ -39,6 +36,7 @@ const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   "blog-auto": ["image/png", "image/webp"],
   storefront: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
   categories: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  users: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
 };
 
 function createS3Client() {
@@ -51,7 +49,27 @@ function createS3Client() {
   });
 }
 
-function buildPublicUrl(bucketName: string, region: string, key: string) {
+/**
+ * The URL an uploaded object should be addressed by.
+ *
+ * Private prefixes never receive a direct S3 URL: they are excluded from the
+ * bucket policy, so only the authenticated proxy can read them.
+ */
+function buildAssetUrl(key: string): string {
+  if (!isPublicS3Key(key)) {
+    return `/api/files/${key}`;
+  }
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL?.replace(/\/+$/, "");
+  if (base) {
+    return `${base}/${key}`;
+  }
+  console.warn(
+    "AWS_S3_PUBLIC_BASE_URL is unset; falling back to the raw S3 origin. " +
+      "This URL is persisted and cannot be changed by setting the variable later. " +
+      "See apps/docs/deployment/s3-bucket-policy.md.",
+  );
+  const bucketName = process.env.AWS_S3_BUCKET_NAME!;
+  const region = process.env.AWS_REGION ?? "eu-west-3";
   return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
 }
 
@@ -116,9 +134,7 @@ export const getPresignedUploadUrl = action({
     });
     const uploadUrl = await getSignedUrl(client, putCommand, { expiresIn: 900 });
 
-    // Public URL (bucket policy allows public reads)
-    const region = process.env.AWS_REGION ?? "eu-west-3";
-    const publicUrl = buildPublicUrl(bucketName, region, key);
+    const publicUrl = buildAssetUrl(key);
 
     return { uploadUrl, key, publicUrl };
   },

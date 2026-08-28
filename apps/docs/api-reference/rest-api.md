@@ -61,14 +61,15 @@ Upload files to AWS S3.
 | Field | Type | Description |
 |-------|------|-------------|
 | `file` | `File` | The file to upload |
-| `folder` | `string` | S3 folder (`products`, `branding`, `stores`, `cms`) |
+| `folder` | `string` | S3 folder -- any name in `S3_FOLDERS` (`@be-in-digital/core/aws/prefixes`) |
 
 **Response:**
 
 ```json
 {
-  "url": "https://s3.eu-west-1.amazonaws.com/bucket/products/image.jpg",
-  "key": "products/image.jpg"
+  "key": "products/image.jpg",
+  "publicUrl": "https://cdn.example.com/products/image.jpg",
+  "size": 51234
 }
 ```
 

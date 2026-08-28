@@ -138,7 +138,11 @@ aws s3api put-bucket-cors \
   }'
 log_success "CORS configured"
 
-# Bucket policy: allow public reads on asset folders
+# Bucket policy: allow public reads on the asset prefixes only.
+# The list must match PUBLIC_S3_FOLDERS in @be-in-digital/core/aws/prefixes.
+# avatars/ and users/ are deliberately absent: they hold customer uploads and
+# are read only through the authenticated /api/files proxy.
+# See apps/docs/deployment/s3-bucket-policy.md.
 log_info "Setting bucket policy for public reads..."
 aws s3api put-bucket-policy \
   --bucket "$BUCKET_NAME" \
@@ -150,10 +154,14 @@ aws s3api put-bucket-policy \
       \"Principal\": \"*\",
       \"Action\": \"s3:GetObject\",
       \"Resource\": [
-        \"arn:aws:s3:::${BUCKET_NAME}/cms/*\",
         \"arn:aws:s3:::${BUCKET_NAME}/products/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/categories/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/cms/*\",
         \"arn:aws:s3:::${BUCKET_NAME}/branding/*\",
         \"arn:aws:s3:::${BUCKET_NAME}/stores/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/storefront/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/blogs/*\",
+        \"arn:aws:s3:::${BUCKET_NAME}/blog-auto/*\",
         \"arn:aws:s3:::${BUCKET_NAME}/email/*\"
       ]
     }]

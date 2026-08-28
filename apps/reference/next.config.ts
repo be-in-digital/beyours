@@ -1,5 +1,26 @@
 import type { NextConfig } from "next";
 
+/**
+ * Host serving the public S3 prefixes, derived from AWS_S3_PUBLIC_BASE_URL.
+ *
+ * next/image fetches these hosts server-side and unauthenticated, so the list
+ * must name the CDN origin rather than every bucket in the region. When the
+ * variable is unset the previous wildcard is kept so an unconfigured
+ * deployment still renders — that state is what the env validation in
+ * @be-in-digital/core rejects in production.
+ *
+ * See apps/docs/deployment/s3-bucket-policy.md.
+ */
+function publicAssetHosts(): string[] {
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL;
+  if (!base) return ["**.s3.eu-west-3.amazonaws.com"];
+  try {
+    return [new URL(base).hostname];
+  } catch {
+    return ["**.s3.eu-west-3.amazonaws.com"];
+  }
+}
+
 const nextConfig: NextConfig = {
   // App TypeScript errors fail the build (production safety). Convex backend
   // files are type-checked separately (`npx convex deploy`) and are already
@@ -33,10 +54,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "i.pravatar.cc",
       },
-      {
-        protocol: "https",
-        hostname: "**.s3.eu-west-3.amazonaws.com",
-      },
+      ...publicAssetHosts().map((hostname) => ({
+        protocol: "https" as const,
+        hostname,
+      })),
     ],
   },
 };

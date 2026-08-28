@@ -33,6 +33,10 @@ export type {
 export {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
+  PUBLIC_S3_FOLDERS,
+  PRIVATE_S3_FOLDERS,
+  S3_FOLDERS,
+  isPublicS3Key,
 } from '@be-in-digital/core'
 
 // ============================================================================

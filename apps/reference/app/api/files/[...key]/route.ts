@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
+import { isPublicS3Key, S3_FOLDERS } from "@/lib/aws"
+import { isAuthenticated } from "@/lib/convex"
 
 function getS3Client() {
   return new S3Client({
@@ -13,8 +15,21 @@ function getS3Client() {
 
 /**
  * GET /api/files/:folder/:filename
- * Proxies S3 objects so the bucket doesn't need public access.
- * Responses are cached for 1 year (immutable assets with UUID names).
+ *
+ * Reads an S3 object with server credentials. Access follows the prefix
+ * allowlist in `apps/docs/deployment/s3-bucket-policy.md`:
+ *
+ * - Public prefixes are marketing assets. They are readable anonymously here
+ *   as well as through the CDN, so this route adds no exposure. Prefer the CDN
+ *   URL; this path exists for links already stored in the database.
+ * - Private prefixes hold what a customer uploads about themselves. They are
+ *   excluded from the bucket policy, so this route is their only read path and
+ *   it requires an authenticated session.
+ * - An unrecognised prefix is refused. Adding a folder without classifying it
+ *   cannot silently expose it.
+ *
+ * Responses are cached for 1 year (immutable assets with UUID names); private
+ * objects are marked private so no shared cache retains them.
  */
 export async function GET(
   _request: Request,
@@ -23,8 +38,36 @@ export async function GET(
   const { key: segments } = await params
   const key = segments.join("/")
 
-  if (!key || key.includes("..")) {
+  if (!key || key.includes("..") || key.startsWith("/")) {
     return NextResponse.json({ error: "Invalid key" }, { status: 400 })
+  }
+
+  const folder = segments[0] ?? ""
+  if (!(S3_FOLDERS as readonly string[]).includes(folder)) {
+    return NextResponse.json({ error: "File not found" }, { status: 404 })
+  }
+
+  const isPublic = isPublicS3Key(key)
+
+  if (!isPublic) {
+    let authenticated = false
+    try {
+      authenticated = await isAuthenticated()
+    } catch (error) {
+      // A misconfigured or unreachable auth backend must deny the read, not
+      // surface the object. Fail closed.
+      console.error("S3 proxy auth check failed:", error)
+      return NextResponse.json(
+        { error: "Authentification indisponible" },
+        { status: 503 }
+      )
+    }
+    if (!authenticated) {
+      return NextResponse.json(
+        { error: "Authentification requise" },
+        { status: 401 }
+      )
+    }
   }
 
   const bucketName = process.env.AWS_S3_BUCKET_NAME
@@ -51,7 +94,9 @@ export async function GET(
       status: 200,
       headers: {
         "Content-Type": response.ContentType ?? "application/octet-stream",
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": isPublic
+          ? "public, max-age=31536000, immutable"
+          : "private, max-age=31536000, immutable",
         "Content-Length": String(bytes.length),
       },
     })

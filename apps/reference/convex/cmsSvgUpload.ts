@@ -13,6 +13,8 @@ import { v } from "convex/values"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { sanitizeSvg } from "@be-in-digital/cms"
 
+import { isPublicS3Key } from "@be-in-digital/core/aws/prefixes"
+
 const MAX_SVG_SIZE = 1 * 1024 * 1024 // 1MB
 
 function createS3Client() {
@@ -26,10 +28,19 @@ function createS3Client() {
 }
 
 function buildPublicUrl(key: string): string {
+  // Private prefixes are excluded from the bucket policy, so they are read
+  // only through the authenticated proxy. See
+  // apps/docs/deployment/s3-bucket-policy.md.
+  if (!isPublicS3Key(key)) {
+    return `/api/files/${key}`
+  }
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL?.replace(/\/+$/, "")
+  if (base) {
+    return `${base}/${key}`
+  }
   const bucketName = process.env.AWS_S3_BUCKET_NAME!
   const region = process.env.AWS_REGION ?? "eu-west-3"
-  const base = process.env.AWS_S3_PUBLIC_BASE_URL
-  return base ? `${base}/${key}` : `https://${bucketName}.s3.${region}.amazonaws.com/${key}`
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`
 }
 
 // @guarded-inline: checks content:write on the storeId it is given

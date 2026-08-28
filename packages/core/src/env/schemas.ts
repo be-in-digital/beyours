@@ -58,6 +58,10 @@ export const siteEnvSchema = z.object({
 
   // AWS S3 (per-restaurant bucket)
   AWS_S3_BUCKET_NAME: opt(z.string().min(1)),
+  // Origin serving the public S3 prefixes. Required whenever a bucket is
+  // configured — see the refinement below and
+  // apps/docs/deployment/s3-bucket-policy.md.
+  AWS_S3_PUBLIC_BASE_URL: opt(z.string().url()),
 
   // AWS SES (per-restaurant sending domain)
   AWS_SES_FROM_EMAIL: opt(z.string().email()),
@@ -93,6 +97,20 @@ export const siteEnvSchema = z.object({
   DELIVEROO_BRAND_ID: opt(z.string().min(1)),
   DELIVEROO_SITE_ID: opt(z.string().min(1)),
   DELIVEROO_IS_SANDBOX: opt(z.enum(['true', 'false'])),
+}).superRefine((env, ctx) => {
+  // A configured bucket without a public base URL silently persists raw
+  // `https://<bucket>.s3.<region>.amazonaws.com/...` URLs into the database.
+  // Those are permanent, so setting the variable later does not repair them —
+  // which is why this is caught at startup rather than at upload time.
+  if (env.AWS_S3_BUCKET_NAME && !env.AWS_S3_PUBLIC_BASE_URL) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['AWS_S3_PUBLIC_BASE_URL'],
+      message:
+        'Required when AWS_S3_BUCKET_NAME is set: public asset URLs are persisted, ' +
+        'so the origin must be explicit. See apps/docs/deployment/s3-bucket-policy.md.',
+    })
+  }
 })
 
 export type PackageEnv = z.infer<typeof packageEnvSchema>
