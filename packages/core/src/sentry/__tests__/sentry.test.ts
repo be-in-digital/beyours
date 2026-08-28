@@ -304,3 +304,24 @@ describe('scrubSentryEvent', () => {
     expect(options?.beforeSendTransaction).toBe(scrubSentryEvent)
   })
 })
+
+describe('scrubSentryEvent — url edge cases', () => {
+  it('keeps everything after a second question mark', () => {
+    const event = scrubSentryEvent({
+      request: { url: 'https://napoli.fr/order/1?token=SECRET&next=/a?b=2' },
+    })
+    expect(event.request?.url).toBe('https://napoli.fr/order/1?token=[Filtered]&next=/a?b=2')
+  })
+
+  it('handles a trailing question mark with no query', () => {
+    expect(scrubSentryEvent({ request: { url: 'https://napoli.fr/menu?' } }).request?.url).toBe(
+      'https://napoli.fr/menu?',
+    )
+  })
+
+  it('leaves a valueless parameter alone', () => {
+    expect(
+      scrubSentryEvent({ request: { url: 'https://napoli.fr/menu?debug&token=X' } }).request?.url,
+    ).toBe('https://napoli.fr/menu?debug&token=[Filtered]')
+  })
+})

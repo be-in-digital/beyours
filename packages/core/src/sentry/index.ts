@@ -278,8 +278,13 @@ export function scrubSentryEvent<T extends SentryScrubbableEvent>(event: T): T {
   }
 
   if (request.url) {
-    const [path, query] = request.url.split('?')
-    if (query !== undefined) request.url = `${path}?${redactQueryString(query)}`
+    // indexOf, not split: a second '?' is a legal character inside a query
+    // value, and splitting on every one of them would truncate the URL.
+    const mark = request.url.indexOf('?')
+    if (mark !== -1) {
+      request.url =
+        request.url.slice(0, mark + 1) + redactQueryString(request.url.slice(mark + 1))
+    }
   }
 
   return event
