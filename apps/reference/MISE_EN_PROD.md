@@ -9,10 +9,21 @@ accounts, legal and decisions — not code.
 
 ## 1. Infrastructure & deployments
 
-- [ ] **Create the PRODUCTION Convex deployment** (`npx convex deploy` from
-  `apps/reference`). Right now everything runs on the dev deployment
-  `dev:reliable-parrot-452` (team momoseck8, project beindigital-engine).
-- [ ] **Copy the env vars over to the prod Convex deployment** (`npx convex env set` for
+- [x] **The PRODUCTION Convex deployment exists: `robust-elephant-263`.**
+  Confirmed in the dashboard on 2026-08-28. Project `beindigital-engine` holds
+  exactly two deployments: `production` (`robust-elephant-263`) and
+  `dev/mamadou-seck` (`reliable-parrot-452`). This checklist previously said the
+  production deployment still had to be created — it had been created on
+  2026-03-03 and never recorded outside `tasks/production-checklist.md`. Nothing
+  to do here beyond the env-var work below.
+- [ ] **Know which deployment your checkout targets before running anything.**
+  `--prod` resolves through the local `CONVEX_DEPLOYMENT`, and this app has been
+  linked to a **second, stray project** as well: `beyours-reference`, holding
+  `dev:youthful-goose-352` (appeared 2026-08-27). It shares no env vars with
+  either deployment above, so a variable set "on dev" may simply be on the other
+  one. Run `npx convex env list` and read what it prints. Full inventory:
+  [README → Convex deployments](../../README.md#convex-deployments).
+- [ ] **Copy the env vars over to `robust-elephant-263`** (`npx convex env set` for
   every key from dev, using the LIVE values, not the test ones) — see the sections below
   for the ones that change.
 - [ ] **`BID_APP_URL` and `SITE_URL`** on the prod deployment = the restaurant's real
