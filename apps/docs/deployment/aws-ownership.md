@@ -71,10 +71,9 @@ Also to accept:
 - **Onboarding gains an account-creation step**, and creating an AWS account is
   a credential action: the client does it, or it is created on an address the
   client controls.
-- **Existing clients are on the old model.** Any site already provisioned holds
-  the fleet-wide keys and stores its media in the shared bucket. Moving them is
-  a migration, not a config change, and it is the only way those deployments
-  stop carrying credentials to other clients' data.
+
+The ordering this forces on an onboarding is the subject of
+[`client-aws-onboarding-runbook.md`](../../../tasks/client-aws-onboarding-runbook.md).
 
 ## What is still owed
 
@@ -104,6 +103,11 @@ one-click, and the migration workflow's `domain` scope is where that surfaces.
 
 ## Related
 
+- [`client-aws-onboarding-runbook.md`](../../../tasks/client-aws-onboarding-runbook.md)
+  — **the setup procedure. Start it on day one**: it ends in an AWS review queue
+  that nothing can hurry, and until it clears the client emails nobody
+- [`client-offboarding-runbook.md`](../../../tasks/client-offboarding-runbook.md)
+  — the other end of the same lifecycle
 - [`sentry.md`](./sentry.md) — the same rule, already implemented
 - [`s3-bucket-policy.md`](./s3-bucket-policy.md) — the bucket is **private**, and
   since #198 `setup-aws.sh` enforces that instead of contradicting it

@@ -94,6 +94,7 @@ Stated plainly, so nobody reads the tick as a guarantee:
 
 ---
 
-*Related: [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) (one AWS
+*Related: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md)
+(the other end of the lifecycle), [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) (one AWS
 account per client), issue #199 (this gap), #200 (per-client AWS), #181 (licence
 keys).*
