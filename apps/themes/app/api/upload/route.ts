@@ -19,7 +19,19 @@ import {
 import { sanitizeSvg } from "@be-in-digital/cms/sanitize"
 import { isInlineSafeContentType } from "@/lib/services/file-serving"
 
-const VALID_FOLDERS = new Set<S3Folder>(["products", "branding", "stores", "cms", "users"])
+// Deliberately narrower than the shared folder list.
+// upload-authorization treats any folder outside EDITORIAL_FOLDERS as
+// self-service, needing no `content:write`, so widening this set would let any
+// signed-in customer publish into editorial folders such as `storefront/`,
+// `blogs/` or `email/`. Those are written by the presigned Convex flow, which
+// is authorised separately.
+const VALID_FOLDERS = new Set<S3Folder>([
+  "products",
+  "branding",
+  "stores",
+  "cms",
+  "users",
+])
 
 const SVG_CONTENT_TYPE = "image/svg+xml"
 

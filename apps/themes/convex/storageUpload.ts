@@ -7,20 +7,16 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getExtensionFromMimeType } from "@be-in-digital/cms";
 import { buildMediaUrl } from "@be-in-digital/core/aws/media-url";
+import {
+  S3_FOLDERS,
+  type S3Folder as CoreS3Folder,
+} from "@be-in-digital/core/aws/folders";
 
-const ALLOWED_FOLDERS = [
-  "products",
-  "branding",
-  "stores",
-  "cms",
-  "email",
-  "avatars",
-  "blogs",
-  "blog-auto",
-  "storefront",
-  "categories",
-] as const;
-type S3Folder = (typeof ALLOWED_FOLDERS)[number];
+// The folder list is defined once, in @be-in-digital/core/aws/folders, and is
+// what /api/files will serve. Redeclaring it here is how category, blog and
+// storefront uploads ended up with URLs that 404.
+const ALLOWED_FOLDERS = S3_FOLDERS;
+type S3Folder = CoreS3Folder;
 
 const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   products: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
@@ -40,6 +36,7 @@ const ALLOWED_MIME_TYPES: Record<S3Folder, string[]> = {
   "blog-auto": ["image/png", "image/webp"],
   storefront: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"],
   categories: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+  users: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
 };
 
 function createS3Client() {
