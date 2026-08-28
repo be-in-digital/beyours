@@ -129,7 +129,7 @@ they serve the commercial site and the fleet, not one restaurant.
 - [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
-- [ ] AWS: **one account per client** (`aws-ownership.md`) — per-client S3 bucket, and one SES sandbox exit **per account**, started early
+- [ ] AWS: **one account per client** — follow [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md), and **start it on day one**: the SES sandbox exit is one AWS review per account and gates every customer email
 - [ ] Stripe live (both flows), gated on the invoicing/VAT work
 - [ ] PayPal / SumUp / Square, if the offer includes them
 - [ ] Uber Eats — confirm ownership of the existing prod app
