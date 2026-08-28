@@ -12,7 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit && tsc --noEmit -p convex/tsconfig.json",
     "seed": "convex run saSeed:run",
     "seed:reset": "convex run saSeed:reset '{\"confirm\":true}'",
     "test": "vitest run",
