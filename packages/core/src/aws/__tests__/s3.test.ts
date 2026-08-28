@@ -228,15 +228,15 @@ describe('S3 Service', () => {
       expect(url).toBe('https://cdn.example.com/products/test.jpg')
     })
 
-    it('returns the default S3 URL when publicBaseUrl is missing', async () => {
+    it('falls back to the in-app proxy when no CDN fronts the bucket', async () => {
+      // Never the direct S3 endpoint: the bucket grants no anonymous read.
       const configWithoutCDN = { ...mockConfig, publicBaseUrl: undefined }
       const service = createS3Service(configWithoutCDN, mockClient)
 
       const url = service.getPublicUrl('products/test.jpg')
 
-      expect(url).toBe(
-        'https://test-bucket.s3.eu-west-1.amazonaws.com/products/test.jpg'
-      )
+      expect(url).toBe('/api/files/products/test.jpg')
+      expect(url).not.toContain('amazonaws.com')
     })
   })
 

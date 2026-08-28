@@ -26,7 +26,6 @@ jobs:
       # or SES, so placeholders are enough — they only have to be present and
       # well-formed.
       AWS_S3_BUCKET_NAME: ${{ secrets.E2E_AWS_S3_BUCKET_NAME || 'placeholder-bucket' }}
-      AWS_S3_PUBLIC_BASE_URL: ${{ secrets.E2E_AWS_S3_PUBLIC_BASE_URL || 'https://placeholder-bucket.s3.eu-west-3.amazonaws.com' }}
       AWS_SES_FROM_EMAIL: ${{ secrets.E2E_AWS_SES_FROM_EMAIL || 'e2e@placeholder.invalid' }}
       # Throwaway password for seeded E2E test accounts (never used in production)
       SEED_PASSWORD: ${{ secrets.E2E_SEED_PASSWORD || 'ci-seed-password-not-for-prod' }}

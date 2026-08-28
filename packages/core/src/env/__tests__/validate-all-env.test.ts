@@ -8,7 +8,7 @@ const VALID_PACKAGE_ENV = {
   OPENAI_API_KEY: 'sk-test123456',
 }
 
-/** The eight a restaurant deployment cannot boot without. */
+/** The seven a restaurant deployment cannot boot without. */
 const VALID_SITE_ENV = {
   NEXT_PUBLIC_CONVEX_URL: 'https://test.convex.cloud',
   CONVEX_SITE_URL: 'https://test.convex.site',
@@ -16,7 +16,6 @@ const VALID_SITE_ENV = {
   BETTER_AUTH_SECRET: 'x'.repeat(32),
   ENCRYPTION_KEY: 'a'.repeat(64),
   AWS_S3_BUCKET_NAME: 'resto-bucket',
-  AWS_S3_PUBLIC_BASE_URL: 'https://cdn.example.com',
   AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
 }
 

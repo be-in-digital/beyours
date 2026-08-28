@@ -37,6 +37,56 @@ export function sanitizeUrl(url: string): string {
   return ""
 }
 
+/**
+ * Fields across the block union that hold a URL. Only these are absolutised —
+ * rewriting every string that happens to start with "/" would mangle body copy.
+ */
+const URL_FIELDS = new Set([
+  "url",
+  "linkUrl",
+  "imageUrl",
+  "thumbnailUrl",
+  "videoUrl",
+  "avatarUrl",
+  "logoUrl",
+  "buttonUrl",
+  "mapUrl",
+  "unsubscribeUrl",
+])
+
+/**
+ * Rewrites root-relative URLs against the site's own origin.
+ *
+ * A mail client has no origin to resolve `/api/files/cms/…` against, and
+ * `sanitizeUrl` drops anything that is not absolute — so a relative media URL
+ * does not render as a broken image, it silently disappears. Uploaded media is
+ * relative whenever no CDN fronts the (private) bucket, which is the default,
+ * so every campaign would otherwise go out with its images missing.
+ *
+ * Recurses through arrays and nested blocks (`columns[].blocks[]`).
+ */
+export function absolutiseUrls<T>(value: T, siteUrl?: string): T {
+  const origin = siteUrl?.trim().replace(/\/+$/, "")
+  if (!origin) return value
+
+  const walk = (node: unknown, key?: string): unknown => {
+    if (typeof node === "string") {
+      return key && URL_FIELDS.has(key) && node.startsWith("/")
+        ? `${origin}${node}`
+        : node
+    }
+    if (Array.isArray(node)) return node.map((item) => walk(item, key))
+    if (node && typeof node === "object") {
+      return Object.fromEntries(
+        Object.entries(node).map(([k, v]) => [k, walk(v, k)])
+      )
+    }
+    return node
+  }
+
+  return walk(value) as T
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface EmailBranding {
@@ -947,10 +997,17 @@ export function renderBlockToEmailHtml(
  */
 export function renderTemplateToEmailHtml(
   blocks: EmailBlock[],
-  branding: EmailBranding,
-  productData?: ProductData[]
+  brandingInput: EmailBranding,
+  productDataInput?: ProductData[],
+  options?: { siteUrl?: string }
 ): string {
-  const bodyContent = blocks
+  // Media uploaded without a CDN in front of the bucket is stored as a
+  // root-relative `/api/files/…` path. Nothing resolves that inside an inbox.
+  const siteUrl = options?.siteUrl
+  const branding = absolutiseUrls(brandingInput, siteUrl)
+  const productData = absolutiseUrls(productDataInput, siteUrl)
+
+  const bodyContent = absolutiseUrls(blocks, siteUrl)
     .map((block) => renderBlockToEmailHtml(block, productData))
     .join("")
 

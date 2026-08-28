@@ -63,11 +63,11 @@ defined in `packages/core/src/env/schemas.ts`:
 
 | Tier | Schema | Meaning |
 |---|---|---|
-| **required** | `siteEnvRequiredSchema` | The 8 variables a deployment cannot boot without. An **empty value no longer passes**: these are declared without the `opt()` helper, so `''` fails exactly like a missing key. A `.env` copied from the template and left unfilled now fails at startup instead of in front of the restaurant owner. |
+| **required** | `siteEnvRequiredSchema` | The 7 variables a deployment cannot boot without. An **empty value no longer passes**: these are declared without the `opt()` helper, so `''` fails exactly like a missing key. A `.env` copied from the template and left unfilled now fails at startup instead of in front of the restaurant owner. |
 | **optional** | `siteEnvOptionalSchema` | Unset (or empty) means the matching feature is off. Format is still checked when a value IS present. |
 | **feature-gated** | `SITE_FEATURE_GROUPS` | All-or-nothing groups. Setting **one** variable of a group makes the whole group required. |
 
-#### Required (8) - the deployment does not boot without them
+#### Required (7) - the deployment does not boot without them
 
 Each of these used to be optional, and each one used to fail *silently* in
 production rather than at deploy time.
@@ -79,9 +79,13 @@ production rather than at deploy time.
 | **Auth** | `SITE_URL` | Password reset returns early, the mail is never sent |
 | | `BETTER_AUTH_SECRET` | Same early return; sessions unsignable. **Now min 32 chars** (was min 1) |
 | | `ENCRYPTION_KEY` | OAuth tokens cannot be stored at rest (64 hex chars) |
-| **AWS S3** | `AWS_S3_BUCKET_NAME` | No upload target |
-| | `AWS_S3_PUBLIC_BASE_URL` | Asset links fall back to the direct bucket URL - every image 403s on a private bucket |
+| **AWS S3** | `AWS_S3_BUCKET_NAME` | No upload target - the `/api/files` proxy reads from it too |
 | **AWS SES** | `AWS_SES_FROM_EMAIL` | No transactional mail leaves the deployment |
+
+> `AWS_S3_PUBLIC_BASE_URL` is **not** required, though the sales-readiness audit
+> listed it. Since the private-bucket decision it names an optional CDN, and
+> unset means media is served by the app's own `/api/files` proxy - a supported
+> configuration. See `apps/docs/deployment/s3-bucket-policy.md`.
 
 #### Feature-gated groups - all or nothing
 
@@ -100,7 +104,7 @@ group is set, the whole group is required.
 > line of the product reads it today, so demanding it would gate a deploy on a
 > value nothing consumes.
 
-#### Optional (33)
+#### Optional (34)
 
 | Category | Variable | Tier | Description |
 |---|---|---|---|
@@ -112,6 +116,7 @@ group is set, the whole group is required.
 | **App** | `NEXT_PUBLIC_APP_URL` | optional | Public URL of the app; fallback for team invitation links |
 | | `NEXT_PUBLIC_SITE_URL` | optional | Canonical public URL for SEO metadata and the sitemap |
 | | `ADMIN_URL` | optional | Admin redirect URL after OAuth (defaults to `http://localhost:3000`) |
+| **AWS S3** | `AWS_S3_PUBLIC_BASE_URL` | optional | Origin of a CDN fronting the private bucket. Unset, media is served by the app's own `/api/files` proxy |
 | **AWS SES** | `AWS_SES_FROM_NAME` | optional | Sender name |
 | | `AWS_SES_REPLY_TO_EMAIL` | optional | Reply-to address |
 | | `AWS_SES_CONFIGURATION_SET` | optional | SES Configuration Set |
@@ -177,7 +182,7 @@ is deliberate.
 
 **Why the reader stays lenient.** `getSiteEnv()` parses the whole of
 `process.env`, and it runs inside Convex actions, where the deployment holds its
-own subset of the variables (`AWS_S3_PUBLIC_BASE_URL` yes,
+own subset of the variables (`ENCRYPTION_KEY` yes,
 `NEXT_PUBLIC_CONVEX_URL` no). Every validator in the reader is a way for an
 unrelated code path - a Stripe charge, a kitchen ticket - to throw on a variable
 it never reads. Throwing there would turn a boot-time configuration problem into
@@ -238,8 +243,8 @@ operator can tell the two apart.
                    +---------------------+
                    | instrumentation.ts  |  <-- Next.js startup hook
                    |                     |
-                   | validateAllEnv()    |  -- 11 package + 8 required
-                   |                     |     + 33 optional + feature groups
+                   | validateAllEnv()    |  -- 11 package + 7 required
+                   |                     |     + 34 optional + feature groups
                    +---------------------+
                              |
                     OK?      |     FAIL?
@@ -397,7 +402,6 @@ openssl rand -hex 32
 |  |   BETTER_AUTH_SECRET      required |  |
 |  |   ENCRYPTION_KEY          required |  |
 |  |   AWS_S3_BUCKET_NAME      required |  |
-|  |   AWS_S3_PUBLIC_BASE_URL  required |  |
 |  |   AWS_SES_FROM_EMAIL      required |  |
 |  |   (no opt(): '' fails too)         |  |
 |  +------------------------------------+  |

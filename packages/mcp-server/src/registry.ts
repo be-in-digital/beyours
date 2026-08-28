@@ -642,14 +642,14 @@ export const packages: PackageInfo[] = [
       {
         name: "siteEnvRequiredSchema",
         type: "validator",
-        description: "Strict Zod schema for the 8 site vars a restaurant deployment cannot boot without (NEXT_PUBLIC_CONVEX_URL, CONVEX_SITE_URL, SITE_URL, BETTER_AUTH_SECRET min 32 chars, ENCRYPTION_KEY, AWS_S3_BUCKET_NAME, AWS_S3_PUBLIC_BASE_URL, AWS_SES_FROM_EMAIL). Declared without the optional-empty helper, so an empty value fails like a missing one. Used by validateAllEnv() at startup, never by the runtime getters.",
+        description: "Strict Zod schema for the 7 site vars a restaurant deployment cannot boot without (NEXT_PUBLIC_CONVEX_URL, CONVEX_SITE_URL, SITE_URL, BETTER_AUTH_SECRET min 32 chars, ENCRYPTION_KEY, AWS_S3_BUCKET_NAME, AWS_SES_FROM_EMAIL). Declared without the optional-empty helper, so an empty value fails like a missing one. Used by validateAllEnv() at startup, never by the runtime getters.",
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation", "zod", "startup"],
       },
       {
         name: "siteEnvOptionalSchema",
         type: "validator",
-        description: "Zod schema for the 33 optional site vars, refined with the SITE_FEATURE_GROUPS all-or-nothing rules. Used by validateAllEnv() at startup, never by the runtime getters.",
+        description: "Zod schema for the 34 optional site vars, refined with the SITE_FEATURE_GROUPS all-or-nothing rules. Used by validateAllEnv() at startup, never by the runtime getters.",
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation", "zod", "startup"],
       },
@@ -689,7 +689,7 @@ export const packages: PackageInfo[] = [
       {
         name: "validateAllEnv",
         type: "function",
-        description: "Validate every tier without throwing: the 11 package vars, the 8 required site vars, and the optional site vars including the SITE_FEATURE_GROUPS all-or-nothing rules. Returns { ok, missing } with each problem tagged by EnvTier.",
+        description: "Validate every tier without throwing: the 11 package vars, the 7 required site vars, and the optional site vars including the SITE_FEATURE_GROUPS all-or-nothing rules. Returns { ok, missing } with each problem tagged by EnvTier.",
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation", "startup"],
         returnType: "{ ok: boolean; missing: EnvProblem[] } where EnvProblem = { name: string; message: string; tier: 'package' | 'site' | 'feature' }",

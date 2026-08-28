@@ -142,7 +142,6 @@ describe('siteEnvRequiredSchema', () => {
     BETTER_AUTH_SECRET: 'x'.repeat(32),
     ENCRYPTION_KEY: 'a'.repeat(64),
     AWS_S3_BUCKET_NAME: 'resto-bucket',
-    AWS_S3_PUBLIC_BASE_URL: 'https://cdn.example.com',
     AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
   }
 
@@ -175,12 +174,10 @@ describe('siteEnvRequiredSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects AWS_S3_PUBLIC_BASE_URL that is not a URL', () => {
-    const result = siteEnvRequiredSchema.safeParse({
-      ...VALID,
-      AWS_S3_PUBLIC_BASE_URL: 'cdn.example.com',
-    })
-    expect(result.success).toBe(false)
+  // Since the private-bucket decision (#185) an unset CDN base means "serve
+  // media through the app's own proxy", which is a supported deployment.
+  it('boots with no AWS_S3_PUBLIC_BASE_URL at all', () => {
+    expect(siteEnvRequiredSchema.safeParse(VALID).success).toBe(true)
   })
 })
 

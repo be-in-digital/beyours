@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getExtensionFromMimeType } from "@be-in-digital/cms";
+import { buildMediaUrl } from "@be-in-digital/core/aws/media-url";
 
 const ALLOWED_FOLDERS = [
   "products",
@@ -51,8 +52,12 @@ function createS3Client() {
   });
 }
 
-function buildPublicUrl(bucketName: string, region: string, key: string) {
-  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+/**
+ * The bucket is private: a key becomes either a CDN URL or a path on this
+ * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ */
+function buildPublicUrl(key: string): string {
+  return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)
 }
 
 /**
@@ -116,9 +121,9 @@ export const getPresignedUploadUrl = action({
     });
     const uploadUrl = await getSignedUrl(client, putCommand, { expiresIn: 900 });
 
-    // Public URL (bucket policy allows public reads)
-    const region = process.env.AWS_REGION ?? "eu-west-3";
-    const publicUrl = buildPublicUrl(bucketName, region, key);
+    // Where the browser will read it back from. The bucket grants no
+    // anonymous read, so this is the CDN or this app's /api/files proxy.
+    const publicUrl = buildPublicUrl(key);
 
     return { uploadUrl, key, publicUrl };
   },

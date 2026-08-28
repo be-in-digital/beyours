@@ -42,7 +42,7 @@ export const packageEnvSchema = z.object({
 })
 
 /**
- * The eight variables a restaurant deployment cannot run without.
+ * The seven variables a restaurant deployment cannot run without.
  *
  * Each one, left unset, used to surface as a feature quietly not working in
  * front of the restaurant owner rather than as a failed deploy:
@@ -55,8 +55,13 @@ export const packageEnvSchema = z.object({
  * | BETTER_AUTH_SECRET       | same early return; sessions unsignable          |
  * | ENCRYPTION_KEY           | OAuth tokens cannot be stored at rest           |
  * | AWS_S3_BUCKET_NAME       | no upload target                                |
- * | AWS_S3_PUBLIC_BASE_URL   | every image 403s on a private bucket            |
  * | AWS_SES_FROM_EMAIL       | no transactional mail leaves the deployment     |
+ *
+ * `AWS_S3_PUBLIC_BASE_URL` is NOT among them, though the audit that prompted
+ * this listed it: since the private-bucket decision it names an optional CDN,
+ * and unset means the app serves media through its own /api/files proxy — a
+ * supported configuration, not a broken one. Requiring it would force a CDN on
+ * every fresh deployment.
  *
  * These are declared WITHOUT `opt()` on purpose: `z.string().min(1)`,
  * `.url()` and `.email()` all reject `''`, so a `.env` copied from the
@@ -81,9 +86,10 @@ const siteRequiredShape = {
       'Must be a 64-character hex string (32 bytes) — generate with: openssl rand -hex 32'
     ),
 
-  // AWS S3 (per-restaurant bucket)
+  // AWS S3 (per-restaurant bucket). Required even though the bucket is
+  // private: the app's own /api/files proxy reads from it, so without a bucket
+  // there is nowhere to upload to and nothing to serve.
   AWS_S3_BUCKET_NAME: z.string().min(1),
-  AWS_S3_PUBLIC_BASE_URL: z.string().url(),
 
   // AWS SES (per-restaurant sending domain)
   AWS_SES_FROM_EMAIL: z.string().email(),
@@ -108,6 +114,13 @@ const siteOptionalShape = {
   // Claims the FIRST super-admin seat on a fresh deployment. Also fails
   // closed: unset refuses everyone. Set it on the CONVEX deployment.
   ADMIN_BOOTSTRAP_TOKEN: opt(z.string().min(1)),
+
+  // AWS S3 media URLs. The bucket is private — see
+  // apps/docs/deployment/s3-bucket-policy.md. Set this to the CDN that fronts
+  // it (CloudFront with an origin access control); leave it unset and media is
+  // served by the app's own /api/files proxy. Optional on purpose: a fresh
+  // deployment renders its own images with no CDN and no DNS.
+  AWS_S3_PUBLIC_BASE_URL: opt(z.string().url()),
 
   // App URLs
   NEXT_PUBLIC_APP_URL: opt(z.string().url()),
@@ -288,7 +301,7 @@ const readerShape = Object.fromEntries(
  *
  * This is what `getSiteEnv()` parses, and it stays permissive on purpose. The
  * getters run inside Convex actions, where the deployment holds its own subset
- * of the variables (`AWS_S3_PUBLIC_BASE_URL` yes, `NEXT_PUBLIC_CONVEX_URL` no).
+ * of the variables (`ENCRYPTION_KEY` yes, `NEXT_PUBLIC_CONVEX_URL` no).
  * Throwing there would turn a boot-time configuration problem into a failed
  * customer order. Boot-time enforcement belongs to the two schemas above.
  */
