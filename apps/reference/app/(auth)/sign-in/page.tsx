@@ -1,16 +1,32 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { authClient } from "@/lib/auth-client"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
 import { Mail, Lock, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button, Input, Label } from "@be-in-digital/ui/components"
 
-export default function SignInPage() {
+/**
+ * Where to land after authenticating.
+ *
+ * Read from `?redirect=`, and deliberately restricted to a path on this site:
+ * an absolute URL here would turn either auth page into an open redirect, and
+ * these are exactly the two pages a phishing link wants to borrow. A protocol-
+ * relative `//evil.example` is a URL to a browser and a path to a naive check,
+ * so it is refused as well.
+ */
+function safeRedirect(raw: string | null): string {
+  if (!raw) return "/menu"
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/menu"
+  return raw
+}
+
+function SignInForm() {
   const router = useRouter()
+  const redirectTo = safeRedirect(useSearchParams().get("redirect"))
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -42,7 +58,7 @@ export default function SignInPage() {
         }
       } else {
         toast.success("Connexion réussie !")
-        router.push("/menu")
+        router.push(redirectTo)
       }
     } catch {
       toast.error("Une erreur inattendue est survenue")
@@ -195,13 +211,43 @@ export default function SignInPage() {
         <p className="text-center mt-12 text-zinc-500 font-medium">
           Pas encore de compte ?{" "}
           <Link
-            href="/sign-up"
+            href={`/sign-up?redirect=${encodeURIComponent(redirectTo)}`}
             className="text-[#0D5C3F] font-black hover:underline underline-offset-4"
           >
             Créer un compte
           </Link>
         </p>
       </motion.div>
+    </div>
+  )
+}
+
+
+/**
+ * `useSearchParams` forces this tree to render on the client, and Next refuses
+ * to prerender the route without a boundary to fall back to. The skeleton is
+ * the page's own frame, so the transition is a fill rather than a flash.
+ */
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <SignInForm />
+    </Suspense>
+  )
+}
+
+/** The page frame, shown while the client half of the route hydrates. */
+function AuthPageFallback() {
+  return (
+    <div className="min-h-screen bg-[#FDFCF6] flex items-center justify-center px-6">
+      <div className="w-full max-w-xl rounded-[3rem] border border-zinc-100 bg-white p-12 shadow-2xl shadow-emerald-950/5">
+        <div className="h-6 w-40 animate-pulse rounded-full bg-zinc-100" />
+        <div className="mt-8 space-y-4">
+          <div className="h-14 animate-pulse rounded-2xl bg-zinc-50" />
+          <div className="h-14 animate-pulse rounded-2xl bg-zinc-50" />
+          <div className="h-16 animate-pulse rounded-2xl bg-zinc-100" />
+        </div>
+      </div>
     </div>
   )
 }
