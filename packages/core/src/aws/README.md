@@ -143,7 +143,9 @@ await fetch(presigned.uploadUrl, {
 #### Other operations
 
 ```typescript
-// Public URL
+// URL the browser should request. The bucket is private, so this is the CDN
+// when `publicBaseUrl` is set, and the app's `/api/files` proxy otherwise —
+// never the direct S3 endpoint. See aws/media-url.
 const url = s3Service.getPublicUrl('products/abc123.jpg')
 
 // Presigned download URL
@@ -397,11 +399,15 @@ pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
 
 ### S3
 
-1. **Always validate the MIME type** before upload (done automatically)
-2. **Use unique filenames** (UUID by default)
-3. **Set up CloudFront** for `publicBaseUrl`
-4. **Enable CORS** on the bucket for direct uploads
-5. **Define a lifecycle policy** to clean up old files
+1. **Keep the bucket private** — block all public access, grant `s3:GetObject`
+   to the deployment's IAM user only. See
+   [S3 bucket policy](../../../../apps/docs/deployment/s3-bucket-policy.md)
+2. **Always validate the MIME type** before upload (done automatically)
+3. **Use unique filenames** (UUID by default)
+4. **Set up CloudFront** with an origin access control, and point
+   `publicBaseUrl` at it — the bucket stays closed to the public internet
+5. **Enable CORS** on the bucket for direct uploads (`PUT` only)
+6. **Define a lifecycle policy** to clean up old files
 
 ### SES
 

@@ -12,6 +12,7 @@ import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import { sanitizeSvg } from "@be-in-digital/cms"
+import { buildMediaUrl } from "@be-in-digital/core/aws/media-url"
 
 const MAX_SVG_SIZE = 1 * 1024 * 1024 // 1MB
 
@@ -25,11 +26,12 @@ function createS3Client() {
   })
 }
 
+/**
+ * The bucket is private: a key becomes either a CDN URL or a path on this
+ * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ */
 function buildPublicUrl(key: string): string {
-  const bucketName = process.env.AWS_S3_BUCKET_NAME!
-  const region = process.env.AWS_REGION ?? "eu-west-3"
-  const base = process.env.AWS_S3_PUBLIC_BASE_URL
-  return base ? `${base}/${key}` : `https://${bucketName}.s3.${region}.amazonaws.com/${key}`
+  return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)
 }
 
 // @guarded-inline: checks content:write on the storeId it is given

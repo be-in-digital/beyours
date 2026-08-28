@@ -1,6 +1,14 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  resolve: {
+    // Same `@/*` alias the app and tsconfig use, so route handlers can be
+    // imported under test without rewriting their imports.
+    alias: {
+      '@': fileURLToPath(new URL('.', import.meta.url)),
+    },
+  },
   test: {
     globals: true,
     // The convex-test suites compile the whole `convex/` module graph on their

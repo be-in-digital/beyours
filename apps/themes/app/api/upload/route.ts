@@ -6,6 +6,7 @@ import {
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
+  buildMediaUrl,
   type S3Folder,
 } from "@/lib/aws"
 import { isAuthenticated } from "@/lib/convex"
@@ -117,8 +118,9 @@ export async function POST(request: Request) {
       })
     )
 
-    // Return a proxy URL since the S3 bucket is not publicly accessible
-    const publicUrl = `/api/files/${key}`
+    // The bucket grants no anonymous read: this is the CDN when one fronts
+    // it, and this app's own /api/files proxy otherwise.
+    const publicUrl = buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)
 
     return NextResponse.json({
       key,

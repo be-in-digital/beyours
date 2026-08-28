@@ -97,7 +97,8 @@ The formatted report shows:
 
 | Variable | Validation | Description |
 |----------|------------|-------------|
-| `AWS_S3_BUCKET_NAME` | `string` | Restaurant's S3 bucket |
+| `AWS_S3_BUCKET_NAME` | `string` | Restaurant's S3 bucket (private — see [S3 bucket policy](./s3-bucket-policy.md)) |
+| `AWS_S3_PUBLIC_BASE_URL` | `url` | CDN fronting the bucket. Unset: media is served by `/api/files` |
 | `AWS_SES_FROM_EMAIL` | `email` | Sender email |
 | `AWS_SES_FROM_NAME` | `string` | Sender name |
 | `AWS_SES_REPLY_TO_EMAIL` | `email` | Reply-to email |
