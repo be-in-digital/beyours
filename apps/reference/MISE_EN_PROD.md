@@ -140,8 +140,13 @@ accounts, legal and decisions — not code.
 1. **P0** — The dashboard crashed for every new user (onboarding tour mounted outside the
    SidebarProvider): fixed (`useOptionalSidebar`).
 2. **P0** — Duplicate copies of `convex` (1.34.1 in packages/admin vs 1.31.7 in the app)
-   caused `useQuery` without a provider: pnpm override `"convex": "1.31.7"` added at the
-   root.
+   caused `useQuery` without a provider — two copies mean two React contexts. Fixed at
+   the time by pinning `convex` as an explicit devDependency of `packages/admin`; the
+   root pnpm override this line used to describe was never the shipped fix, and no such
+   override exists. **Superseded**: every manifest now declares the same exact `convex`,
+   which removes the mis-resolution rather than out-voting it. The unconstrained
+   `convex: ">=1.0.0"` peer in `packages/admin` — the actual root cause — is still
+   there.
 3. **P0** — Nonsensical "Commandes actives : 97" metric: bounded to 24h and renamed
    "À traiter (24h)".
 4. **P0** — KDS timers showing "2237h 47m": capped at "+24h".

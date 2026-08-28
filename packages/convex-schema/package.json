@@ -29,7 +29,7 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "1.31.7",
+    "convex": "1.44.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
