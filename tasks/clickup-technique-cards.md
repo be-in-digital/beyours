@@ -578,10 +578,17 @@ désactivation qui coupe la boutique et le produit ensemble
 (`tasks/convex-spending-cap-runbook.md` §1 et §3).
 
 ## Ce qui reste — du ménage, pas un blocage
-- **Supprimer le projet `beyours-reference` ?** Il ne contient qu'un déploiement de
-  dev parasite (`youthful-goose-352`, 2026-08-27) dont rien ne dépend, et il
-  consomme les mêmes ressources incluses que la prod. Le supprimer retire au
-  passage une façon de pointer un checkout sur le mauvais backend.
+- **Supprimer le projet `beyours-reference`** — décidé le 2026-08-28. Il ne
+  contient qu'un déploiement de dev parasite (`youthful-goose-352`) dont rien ne
+  dépend, et consomme les mêmes ressources incluses que la prod. **Action au
+  dashboard, réservée au propriétaire de la team** : supprimer un projet supprime
+  ses déploiements et leurs données. Vérifier avant qu'aucun checkout local n'y
+  est encore relié (`npx convex env list` depuis `apps/reference`).
+
+  La cause est corrigée : sans `CONVEX_DEPLOYMENT`, `npx convex dev` propose de
+  créer un projet et suggère un nom dérivé du package (`@beyours/reference` →
+  `beyours-reference`). `apps/reference/.env.example` dit maintenant de choisir
+  `beindigital-engine`.
 - **Le projet de `capable-crocodile-720`** n'a jamais été consigné (c'est le dev de
   `apps/site`, donc `wedilybird` attendu — non vérifié).
 

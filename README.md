@@ -467,11 +467,18 @@ Two consequences:
 
 #### Still open
 
-- **Should `beyours-reference` be retired?** It is on `momoseck8`, so it is not a
-  runaway bill — but it is a second engine project holding one stray dev
-  deployment (`youthful-goose-352`) that nothing depends on, drawing against the
-  same included resources as production. Deleting it removes a way to point a
-  checkout at the wrong backend. Housekeeping, not urgent.
+- **Delete the `beyours-reference` project** — decided 2026-08-28. It holds one
+  stray dev deployment (`youthful-goose-352`) that nothing depends on, and draws
+  against the same included resources as production. This is a dashboard action
+  for the team owner: <https://dashboard.convex.dev> → project → Settings →
+  Delete. Deleting a project deletes its deployments and their data, so confirm
+  nobody's local checkout is still linked to it first (`npx convex env list` from
+  `apps/reference` prints the deployment it resolves).
+
+  The cause is fixed: with no `CONVEX_DEPLOYMENT` set, `npx convex dev` offers to
+  create a new project and proposes a name derived from the package —
+  `@beyours/reference` → `beyours-reference`. `apps/reference/.env.example` now
+  says to pick the existing `beindigital-engine` instead.
 - **`capable-crocodile-720`'s project** has never been recorded anywhere.
 
 ### Rolling back

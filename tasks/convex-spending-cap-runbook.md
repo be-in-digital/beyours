@@ -123,11 +123,14 @@ Dashboard, as the owner of team `momoseck8`. Roughly ten minutes.
    `beindigital-engine`, `beyours-reference`). Anything *else* on the team shares
    the threshold too and is not written down anywhere — add it to §2.
 
-   While you are there: **`beyours-reference` is a candidate for deletion.** It
-   holds one stray dev deployment (`youthful-goose-352`, created 2026-08-27) that
-   nothing depends on, and it draws against the same included resources as
-   production. Removing it also removes a way to point a checkout at the wrong
-   backend. Housekeeping, not urgent.
+   While you are there: **delete the `beyours-reference` project** — decided
+   2026-08-28. It holds one stray dev deployment (`youthful-goose-352`, created
+   2026-08-27) that nothing depends on, and draws against the same included
+   resources as production. Deleting a project deletes its deployments and their
+   data, so check first that no local checkout still resolves to it
+   (`npx convex env list` from `apps/reference`). The cause is fixed in
+   `apps/reference/.env.example`; §2 of this file stays accurate once the project
+   is gone, minus that row.
 
 4. **If the plan is Free** — there is no cap to set. Check current usage
    against the included amounts instead (1M function calls, 0.5 GB database,
