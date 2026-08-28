@@ -49,7 +49,7 @@ one). Decide per service which brand owns it before creating duplicates.
 | **GitHub** | org `be-in-digital`, private Packages `@be-in-digital/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
 | **Convex** | backend, 1 deployment per client + `apps/site` | `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SITE_URL` | See §0. |
 | **Vercel** | `beyours.fr` + 1 project per client | — | |
-| **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — so it is one request per client, and AWS's review is not instant. Sequence it early in onboarding, or the restaurant opens with silent email. |
+| **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — one request per client, reviewed by hand, and **already refused once** on the BeYours account. Sequence it early: a refusal leaves a client site unable to email at all, since only `apps/site` has a Resend fallback. Check where a request stands with `DOMAIN=<domain> pnpm ses:check`. Procedure: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md). |
 | **Domain / DNS** | `beyours.fr` | — | Also carries the SES / Resend domain-verification records. |
 
 ## 2. Payments
@@ -78,7 +78,7 @@ one). Decide per service which brand owns it before creating duplicates.
 |---|---|---|
 | **Yousign** | electronic signature of the affiliate contracts | — (see `PROCESS_DE_VENTE.md`) |
 | **Calendly** | demo booking, linked from `/checkout/success` | `CALENDLY_URL` |
-| **Resend** | fallback email provider if the SES sandbox exit is refused | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
+| **Resend** | email provider for the commercial site — the SES sandbox exit **was refused**, so this is the plan of record for `beyours.fr`, not a contingency. Implemented in `apps/site/convex/email/providers.ts`; client sites cannot use it | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 
 ## 5. Content & AI
 
@@ -109,15 +109,13 @@ Per `_project/ENVIRONMENT_VARIABLES.md`, credentials split in two:
   `developers@beyours.fr` — they belong to the client and follow the client if
   they leave.
 
-> **AWS moved from package level to site level on 2026-08-28** — decided, and
-> **not yet implemented**. The code still holds `AWS_ACCESS_KEY_ID` /
-> `AWS_SECRET_ACCESS_KEY` in the shared `packageEnvSchema`
-> (`packages/core/src/env/schemas.ts:21-23`), and `setup-aws.sh` still provisions
-> one fleet-wide bucket. This list states the target, not today's reality — read
+> **AWS moved from package level to site level on 2026-08-28**, and the code
+> follows: the credentials are site variables, and `setup-aws.sh` provisions per
+> client (`SITE_SLUG=<slug> DOMAIN=<domain>`). Read
 > [`apps/docs/deployment/aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)
-> before provisioning anything. Earlier versions of this section claimed both at
-> once: AWS shared *and* "its S3 bucket, its SES sender" per client. That
-> contradiction is what this note settles.
+> before provisioning. Two things it does **not** do: clients already on the
+> shared bucket still have to be migrated, and SES production access is granted
+> per account, so each new client needs its own request — start it early.
 
 Unsplash, Yousign, Calendly, Resend, Vercel and GitHub are BeYours-level too:
 they serve the commercial site and the fleet, not one restaurant.
@@ -131,7 +129,7 @@ they serve the commercial site and the fleet, not one restaurant.
 - [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
-- [ ] AWS: **one account per client** (`aws-ownership.md`) — per-client S3 bucket, and one SES sandbox exit **per account**, started early
+- [ ] AWS: **one account per client** — follow [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md), and **start it on day one**: the SES sandbox exit is one AWS review per account and gates every customer email
 - [ ] Stripe live (both flows), gated on the invoicing/VAT work
 - [ ] PayPal / SumUp / Square, if the offer includes them
 - [ ] Uber Eats — confirm ownership of the existing prod app

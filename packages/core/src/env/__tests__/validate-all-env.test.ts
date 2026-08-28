@@ -2,19 +2,19 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { validateAllEnv, formatEnvReport, _resetEnvCache } from '../getters'
 
 const VALID_PACKAGE_ENV = {
-  AWS_REGION: 'eu-west-1',
-  AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
-  AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
   OPENAI_API_KEY: 'sk-test123456',
 }
 
-/** The seven a restaurant deployment cannot boot without. */
+/** The ten a restaurant deployment cannot boot without. */
 const VALID_SITE_ENV = {
   NEXT_PUBLIC_CONVEX_URL: 'https://test.convex.cloud',
   CONVEX_SITE_URL: 'https://test.convex.site',
   SITE_URL: 'https://resto.example.com',
   BETTER_AUTH_SECRET: 'x'.repeat(32),
   ENCRYPTION_KEY: 'a'.repeat(64),
+  AWS_REGION: 'eu-west-1',
+  AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+  AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
   AWS_S3_BUCKET_NAME: 'resto-bucket',
   AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
 }
@@ -97,11 +97,15 @@ describe('validateAllEnv', () => {
     expect(missing.some((m) => m.name === 'BETTER_AUTH_SECRET')).toBe(true)
   })
 
-  it('returns missing package vars when AWS_REGION is absent', () => {
+  it('reports a missing AWS_REGION against the SITE tier, not the package one', () => {
     setEnv({ ...VALID_ENV, AWS_REGION: undefined })
     const { ok, missing } = validateAllEnv()
     expect(ok).toBe(false)
-    expect(missing.some((m) => m.name === 'AWS_REGION' && m.tier === 'package')).toBe(true)
+    // Still fatal at boot — only the tier changed (2026-08-28, one AWS
+    // account per client). Reporting it as 'package' would send an operator
+    // looking in the fleet's credentials instead of their own.
+    expect(missing.some((m) => m.name === 'AWS_REGION' && m.tier === 'site')).toBe(true)
+    expect(missing.some((m) => m.tier === 'package')).toBe(false)
   })
 
   it('returns missing for OPENAI_API_KEY with wrong prefix', () => {

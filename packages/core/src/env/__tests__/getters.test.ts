@@ -1,11 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { getPackageEnv, getSiteEnv, _resetEnvCache } from '../getters'
 
+// AWS moved to the site tier on 2026-08-28 — one account per client.
+// See apps/docs/deployment/aws-ownership.md.
 const VALID_PACKAGE_ENV = {
+  OPENAI_API_KEY: 'sk-test123456',
+}
+
+const AWS_ENV = {
   AWS_REGION: 'eu-west-1',
   AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
   AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-  OPENAI_API_KEY: 'sk-test123456',
 }
 
 const VALID_SITE_ENV = {
@@ -29,8 +34,24 @@ describe('getPackageEnv', () => {
   it('returns validated env when all required vars are set', () => {
     Object.assign(process.env, VALID_PACKAGE_ENV)
     const env = getPackageEnv()
-    expect(env.AWS_REGION).toBe('eu-west-1')
-    expect(env.AWS_ACCESS_KEY_ID).toBe('AKIAIOSFODNN7EXAMPLE')
+    expect(env.OPENAI_API_KEY).toBe('sk-test123456')
+  })
+
+  it('does not carry the AWS credentials — they belong to the client', () => {
+    Object.assign(process.env, VALID_PACKAGE_ENV, AWS_ENV)
+    const env = getPackageEnv()
+    // A regression back to the package tier would put a fleet-wide key in
+    // every deployment again, which is what #199 and #200 are about.
+    expect(env).not.toHaveProperty('AWS_REGION')
+    expect(env).not.toHaveProperty('AWS_ACCESS_KEY_ID')
+    expect(env).not.toHaveProperty('AWS_SECRET_ACCESS_KEY')
+  })
+
+  it('reads the AWS credentials off the site tier instead', () => {
+    Object.assign(process.env, VALID_PACKAGE_ENV, AWS_ENV)
+    const site = getSiteEnv()
+    expect(site.AWS_REGION).toBe('eu-west-1')
+    expect(site.AWS_ACCESS_KEY_ID).toBe('AKIAIOSFODNN7EXAMPLE')
   })
 
   it('returns memoized result on subsequent calls', () => {
@@ -49,11 +70,11 @@ describe('getPackageEnv', () => {
     const first = getPackageEnv()
 
     _resetEnvCache()
-    process.env.AWS_REGION = 'us-east-1'
+    process.env.OPENAI_API_KEY = 'sk-rotated'
     const second = getPackageEnv()
 
-    expect(first.AWS_REGION).toBe('eu-west-1')
-    expect(second.AWS_REGION).toBe('us-east-1')
+    expect(first.OPENAI_API_KEY).toBe('sk-test123456')
+    expect(second.OPENAI_API_KEY).toBe('sk-rotated')
   })
 })
 

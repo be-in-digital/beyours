@@ -340,8 +340,19 @@ depuis Stripe renvoie `200`.
 
 **Priorité : high**
 
-> ⛔ **Bloqué par la fiche 15** : on ne sait pas encore quel déploiement Convex est la prod.
-> Le checklist dit `robust-elephant-263`, qui n'apparaît nulle part ailleurs dans le repo.
+> ✅ **Débloqué par la fiche 15.** Le déploiement cible est **`robust-elephant-263`**
+> — la **production** du projet `beindigital-engine`, confirmée au dashboard le
+> 2026-08-28 (même projet que `reliable-parrot-452`, qui en est le dev perso
+> `dev/mamadou-seck`). Le nom n'était consigné que dans un seul fichier, d'où le
+> doute ; il était juste.
+>
+> Deux points de vigilance avant de lancer les commandes :
+> - `--prod` passe par le `CONVEX_DEPLOYMENT` local, et `apps/reference` a aussi
+>   été relié à un projet parasite (`beyours-reference`). Lancer
+>   `pnpx convex env list --prod` **d'abord** et vérifier qu'il affiche bien
+>   `robust-elephant-263`.
+> - `BID_APP_URL` n'est pas une URL Convex : c'est la base des redirections
+>   Stripe, donc une page publique (voir la fiche 15).
 
 ## Variables à remplacer
 
@@ -484,34 +495,102 @@ Relevés dans l'audit, hors périmètre P0/P1 :
 
 ---
 
-# 15. ❓ Infra — Clarifier quel déploiement Convex est la prod
+# 15. ✅ Infra — Clarifier quel déploiement Convex est la prod
 
-**Priorité : normal** · **Bloquant pour la fiche 10**
+**Priorité : normal** · **Fiche 10 débloquée**
 
-## Le problème
-Trois identifiants circulent sans qu'on sache lequel fait quoi.
+## Ce qui a été produit
+Un inventaire app → déploiement → projet → team dans le **README**, section
+« Convex deployments » : les **six** noms qui circulent, pas trois. Les documents
+qui se contredisaient ont été corrigés (`tasks/production-checklist.md`,
+`apps/reference/MISE_EN_PROD.md`, `apps/site/.env.production.example`,
+`tasks/convex-spending-cap-runbook.md` §2).
 
-| Déploiement | Cité dans | Rôle annoncé |
-|---|---|---|
-| `robust-elephant-263` | `tasks/production-checklist.md` **uniquement** | « prod » pour la facturation Stripe BID |
-| `fearless-poodle-133` | `apps/site/MISE_EN_PROD.md`, `.env.production.example`, `scripts/check-prod-bundle.mjs` | Convex de prod du site commercial |
-| `reliable-parrot-452` | runbooks Uber Eats, `e2e/deliveroo/test-config.ts` | déploiement de **dev** / app de test |
+| Déploiement | App | Rôle | Projet |
+|---|---|---|---|
+| `fearless-poodle-133` | `apps/site` | **prod** (beyours.fr) | `wedilybird` |
+| `capable-crocodile-720` | `apps/site` | dev | non consigné |
+| `reliable-parrot-452` | `apps/reference` | dev **perso** (`dev/mamadou-seck`) | `beindigital-engine` |
+| `youthful-goose-352` | `apps/reference` | dev parasite | `beyours-reference` |
+| `robust-elephant-263` | `apps/reference` | **prod** du moteur (dont facturation BID) | `beindigital-engine` |
+| `happy-otter-123` | `apps/site` | mort (bug #6) | — |
 
-## L'indice qui dérange
-`apps/reference/MISE_EN_PROD.md:12` dit encore *« Create the PRODUCTION Convex
-deployment »* et *« Right now everything runs on the dev deployment »*. La prod du
-moteur n'existe peut-être pas encore.
+## Les fausses contradictions, levées
+- **Trois noms de projet ≠ trois noms pour un projet.** `wedilybird`,
+  `beindigital-engine` et `beyours-reference` sont trois projets Convex distincts.
+  Rien n'était contradictoire ; aucun fichier ne l'avait jamais écrit.
+- **Les « deux prod » ne se contredisaient pas.** `check-prod-bundle.mjs` garde le
+  *bundle navigateur* de beyours.fr (`apps/site`). Les variables `STRIPE_BID_*`
+  vont sur le backend du **moteur** : `apps/site/convex/` ne contient aucun
+  fichier `bid*` et ne lit aucun `STRIPE_BID_*` (vérifié). Deux apps, deux
+  artefacts.
 
-## À produire
-Une correspondance app → déploiement, écrite noir sur blanc, et les documents corrigés.
+## Les vraies trouvailles
+- **`apps/reference` traîne un projet Convex parasite.** Son dev légitime est
+  `reliable-parrot-452` (dev perso, projet `beindigital-engine`) ;
+  `youthful-goose-352` vit dans un **autre** projet, `beyours-reference`, apparu
+  le 2026-08-27 (#79) — signature d'un `npx convex dev` sans `CONVEX_DEPLOYMENT`,
+  qui crée un projet neuf au lieu de rejoindre l'existant. Aucune variable d'env
+  partagée : un `convex env set` sur l'un laisse l'autre intact.
+- **Un `200` sur `/version` ne prouve pas la propriété.** Les cinq déploiements
+  vivants renvoient le **même** build stamp (`20260824T183734Z-bd777bce25d6`),
+  dont deux à coup sûr dans des projets différents : `/version` est servi par la
+  plateforme. C'est pourquoi les rôles du tableau viennent du dashboard et non de
+  la sonde — le `200` de `robust-elephant-263` ne prouvait rien, c'est le
+  dashboard qui a tranché.
+- **`BID_APP_URL` était du mauvais *type* de valeur**, pas juste du dev au lieu de
+  la prod : c'est la base des URLs de redirection Stripe (`bidSubscription.ts:38`),
+  donc une page — pas un host `.convex.site` qui ne sert que des HTTP actions.
+- **Le repli e2e est retiré.** `apps/reference/e2e/deliveroo/test-config.ts` et son
+  jumeau dans `apps/themes` ne retombent plus sur `reliable-parrot-452` :
+  `sendWebhook()` refuse une cible vide. Au passage : la copie `apps/themes` n'a
+  **aucune** garde `hasWebhookTarget` (dormant — Vitest y exclut tout `e2e/`) ;
+  noté dans le fichier.
 
-## Décision déjà prise
-Le projet Convex **reste** sur la team `momoseck8` / projet `wedilybird`. Pas de transfert.
-Vigilance qui subsiste : le plafond de dépenses s'applique par **team** — trop bas, il
-coupe tous les projets de la team, prod comprise.
+## Tranché au dashboard (2026-08-28)
+**`robust-elephant-263` est bien à nous : c'est la production du projet
+`beindigital-engine`**, le même projet dont `reliable-parrot-452` est le dev
+perso (`dev/mamadou-seck`). Le projet ne contient que ces deux déploiements.
+Conséquences :
+- `tasks/production-checklist.md` avait raison depuis le début ; c'est
+  `apps/reference/MISE_EN_PROD.md` §1 qui était périmé (« créer le déploiement de
+  PROD » : c'était fait depuis le 2026-03-03, jamais coché). Corrigé.
+- La **fiche 10 est débloquée** : cible `robust-elephant-263`, via `--prod` depuis
+  `apps/reference`.
+- La prod du moteur est **dans le rayon de souffle** du plafond de dépenses de la
+  team : un seuil franchi coupe aussi la facturation Stripe BID.
 
-## Critère de fin
-Un tableau app → déploiement dans le README ou `MISE_EN_PROD.md`, et la fiche 10 débloquée.
+## Rayon de souffle : bouclé
+Confirmé par le propriétaire de la team le 2026-08-28 : **`beyours-reference` est
+aussi sur `momoseck8`**. Donc les cinq déploiements vivants, trois projets, sont
+sur **une seule team** — et le seuil de désactivation du plafond de dépenses est
+le seul bouton capable de tout couper d'un coup :
+
+| Si le seuil saute | Ce qui s'arrête |
+|---|---|
+| `fearless-poodle-133` | beyours.fr — le site où les prospects achètent |
+| `robust-elephant-263` | les restaurants clients **et** la facturation Stripe BID |
+| les trois déploiements de dev | toute l'équipe, au même instant |
+
+Pas de seconde team en filet, aucun projet isolé. Conséquence directe pour
+LAUNCH-07 : privilégier un **seuil d'alerte qu'on lit** plutôt qu'un seuil de
+désactivation qui coupe la boutique et le produit ensemble
+(`tasks/convex-spending-cap-runbook.md` §1 et §3).
+
+## Ce qui reste — du ménage, pas un blocage
+- **Supprimer le projet `beyours-reference`** — décidé le 2026-08-28. Il ne
+  contient qu'un déploiement de dev parasite (`youthful-goose-352`) dont rien ne
+  dépend, et consomme les mêmes ressources incluses que la prod. **Action au
+  dashboard, réservée au propriétaire de la team** : supprimer un projet supprime
+  ses déploiements et leurs données. Vérifier avant qu'aucun checkout local n'y
+  est encore relié (`npx convex env list` depuis `apps/reference`).
+
+  La cause est corrigée : sans `CONVEX_DEPLOYMENT`, `npx convex dev` propose de
+  créer un projet et suggère un nom dérivé du package (`@beyours/reference` →
+  `beyours-reference`). `apps/reference/.env.example` dit maintenant de choisir
+  `beindigital-engine`.
+- **Le projet de `capable-crocodile-720`** n'a jamais été consigné (c'est le dev de
+  `apps/site`, donc `wedilybird` attendu — non vérifié).
 
 ---
 

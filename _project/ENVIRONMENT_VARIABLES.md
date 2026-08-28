@@ -8,10 +8,10 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 +-------------------------------------------------------------------+
 |                    BeYours (Platform)                          |
 |                                                                   |
-|   AWS Account    OpenAI     Uber Eats Partner   Deliveroo Partner  |
-|   (S3, SES)     (GPT-3.5)   (App Credentials)  (App Credentials)  |
+|        OpenAI          Uber Eats Partner    Deliveroo Partner     |
+|       (GPT-3.5)         (App Credentials)    (App Credentials)    |
 |                                                                   |
-|   11 "package" variables shared by all sites                       |
+|   8 "package" variables shared by all sites                        |
 +-------------------------------------------------------------------+
         |                    |                    |
         v                    v                    v
@@ -20,13 +20,14 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 |                  | |                  | |                  |
 |  Convex instance | |  Convex instance | |  Convex instance |
 |  Auth secret     | |  Auth secret     | |  Auth secret     |
+|  AWS account     | |  AWS account     | |  AWS account     |
 |  S3 bucket       | |  S3 bucket       | |  S3 bucket       |
 |  SES domain      | |  SES domain      | |  SES domain      |
 |  Stripe account  | |  PayPal account  | |  SumUp account   |
 |  Sentry DSN      | |  Sentry DSN      | |  Sentry DSN      |
 |  Google Maps key | |  Google Maps key | |  Google Maps key  |
 |                  | |                  | |                  |
-|  41 variables    | |  41 variables    | |  41 variables    |
+|  44 variables    | |  44 variables    | |  44 variables    |
 |  "site"-specific | |  "site"-specific | |  "site"-specific |
 +------------------+ +------------------+ +------------------+
 ```
@@ -35,24 +36,19 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 
 ## Package vs Site separation
 
-### Package variables (BeYours infra - 11 vars)
+### Package variables (BeYours infra - 8 vars)
 
 These are the credentials BeYours manages, shared across every deployed restaurant.
 
-> ⚠️ **The three `AWS_*` rows below are on their way out of this tier.** It was
-> decided on 2026-08-28 that every client gets its **own AWS account**
-> ([`apps/docs/deployment/aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)),
-> which makes them site variables. The table still describes today's code — they
-> remain in `packageEnvSchema`, and `apps/themes/scripts/env.mjs:66` copies the
-> same fleet-wide key into every client's Convex deployment, so any client
-> backend can currently reach every other client's media. Do not read the rows
-> below as the intended design.
+> **AWS is not here any more.** It moved to the site tier on 2026-08-28 —
+> every client owns its AWS account, so its bucket and its sender follow it if
+> it leaves ([`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)).
+> `AWS_REGION`, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are listed with
+> the required site variables below. They stayed required — only the tier
+> changed.
 
 | Variable | Required | Description |
 |---|---|---|
-| `AWS_REGION` | yes | AWS region of the BeYours account |
-| `AWS_ACCESS_KEY_ID` | yes | BeYours IAM access key |
-| `AWS_SECRET_ACCESS_KEY` | yes | BeYours IAM secret |
 | `OPENAI_API_KEY` | yes | OpenAI API key (`sk-` prefix) for GPT translations |
 | `UBER_EATS_CLIENT_ID` | no | Client ID of the Uber Eats partner app |
 | `UBER_EATS_CLIENT_SECRET` | no | Uber Eats client secret |
@@ -65,18 +61,18 @@ These are the credentials BeYours manages, shared across every deployed restaura
 > **Why are Uber Eats / Deliveroo "package" level?**
 > BeYours is a **partner app** on these platforms. The API credentials are BeYours', not the restaurant's. The restaurant only supplies its own identifiers (brandId, siteId) to link its account.
 
-### Site variables (per restaurant - 41 vars)
+### Site variables (per restaurant - 44 vars)
 
 Each deployed restaurant supplies its own values. They fall into **three tiers**,
 defined in `packages/core/src/env/schemas.ts`:
 
 | Tier | Schema | Meaning |
 |---|---|---|
-| **required** | `siteEnvRequiredSchema` | The 7 variables a deployment cannot boot without. An **empty value no longer passes**: these are declared without the `opt()` helper, so `''` fails exactly like a missing key. A `.env` copied from the template and left unfilled now fails at startup instead of in front of the restaurant owner. |
+| **required** | `siteEnvRequiredSchema` | The 10 variables a deployment cannot boot without. An **empty value no longer passes**: these are declared without the `opt()` helper, so `''` fails exactly like a missing key. A `.env` copied from the template and left unfilled now fails at startup instead of in front of the restaurant owner. |
 | **optional** | `siteEnvOptionalSchema` | Unset (or empty) means the matching feature is off. Format is still checked when a value IS present. |
 | **feature-gated** | `SITE_FEATURE_GROUPS` | All-or-nothing groups. Setting **one** variable of a group makes the whole group required. |
 
-#### Required (7) - the deployment does not boot without them
+#### Required (10) - the deployment does not boot without them
 
 Each of these used to be optional, and each one used to fail *silently* in
 production rather than at deploy time.
@@ -88,6 +84,9 @@ production rather than at deploy time.
 | **Auth** | `SITE_URL` | Password reset returns early, the mail is never sent |
 | | `BETTER_AUTH_SECRET` | Same early return; sessions unsignable. **Now min 32 chars** (was min 1) |
 | | `ENCRYPTION_KEY` | OAuth tokens cannot be stored at rest (64 hex chars) |
+| **AWS** | `AWS_REGION` | Nothing reaches S3 or SES. Site-level since 2026-08-28 — the restaurant's own account |
+| | `AWS_ACCESS_KEY_ID` | Same. Was a fleet-wide key shipped to every deployment |
+| | `AWS_SECRET_ACCESS_KEY` | Same |
 | **AWS S3** | `AWS_S3_BUCKET_NAME` | No upload target - the `/api/files` proxy reads from it too |
 | **AWS SES** | `AWS_SES_FROM_EMAIL` | No transactional mail leaves the deployment |
 
