@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useMutation } from "convex/react"
-import { MoreVertical, Edit, Trash2, Eye, EyeOff, Link2 } from "lucide-react"
+import { MoreVertical, Edit, Trash2, Eye, EyeOff, Link2, ArrowUp, ArrowDown } from "lucide-react"
 import { toast } from "sonner"
 import { useState } from "react"
 import { useAdminApi } from "../../hooks/admin-hooks"
@@ -55,9 +55,23 @@ interface Category {
 interface ProductsTableProps {
   products: Product[]
   categories: Category[]
+  /** Swap a product with its neighbour in the store's own order. */
+  onMove?: (productId: string, direction: "up" | "down") => void
+  /** A filtered list is not the store's order, so it cannot be reordered. */
+  reorderDisabled?: boolean
+  /** Ends of the *whole* catalogue, not of the page being displayed. */
+  firstProductId?: string
+  lastProductId?: string
 }
 
-export function ProductsTable({ products, categories }: ProductsTableProps) {
+export function ProductsTable({
+  products,
+  categories,
+  onMove,
+  reorderDisabled = false,
+  firstProductId,
+  lastProductId,
+}: ProductsTableProps) {
   const api = useAdminApi() as any
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<string | null>(null)
@@ -128,6 +142,7 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              {onMove && <TableHead className="w-[64px]">Ordre</TableHead>}
               <TableHead className="w-[80px]">Image</TableHead>
               <TableHead>Nom</TableHead>
               <TableHead>Catégorie</TableHead>
@@ -141,13 +156,55 @@ export function ProductsTable({ products, categories }: ProductsTableProps) {
           <TableBody>
             {products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
+                <TableCell colSpan={onMove ? 9 : 8} className="text-center py-8">
                   <p className="text-sm text-muted-foreground">Aucun produit à afficher</p>
                 </TableCell>
               </TableRow>
             ) : (
               products.map((product) => (
                 <TableRow key={product._id}>
+                  {/* Display order */}
+                  {onMove && (
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          disabled={
+                            reorderDisabled || product._id === firstProductId
+                          }
+                          title={
+                            reorderDisabled
+                              ? "Retirez les filtres pour réordonner la carte"
+                              : "Monter dans la carte"
+                          }
+                          aria-label={`Monter ${product.name}`}
+                          onClick={() => onMove(product._id, "up")}
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          disabled={
+                            reorderDisabled || product._id === lastProductId
+                          }
+                          title={
+                            reorderDisabled
+                              ? "Retirez les filtres pour réordonner la carte"
+                              : "Descendre dans la carte"
+                          }
+                          aria-label={`Descendre ${product.name}`}
+                          onClick={() => onMove(product._id, "down")}
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+
                   {/* Image */}
                   <TableCell>
                     <div className="relative w-12 h-12 rounded-md overflow-hidden bg-muted">

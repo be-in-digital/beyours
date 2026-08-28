@@ -112,6 +112,57 @@ function validateMenuSections(
   }
 }
 
+/**
+ * Every product and category a menu points at must belong to the menu's own
+ * establishment.
+ *
+ * Nothing checked it. A combo could be built from another restaurant's
+ * products — priced from their catalogue, sold from ours, and cooked by a
+ * kitchen that has never heard of the dish. Ids of both kinds are public: the
+ * catalogue *is* the storefront.
+ */
+async function assertSectionsInStore(
+  ctx: any,
+  storeId: string,
+  sections: Array<{
+    label: string
+    productId?: string
+    productIds?: string[]
+    categoryId?: string
+  }>
+): Promise<void> {
+  for (const section of sections) {
+    const productIds = [
+      ...(section.productId ? [section.productId] : []),
+      ...(section.productIds ?? []),
+    ]
+
+    for (const productId of productIds) {
+      const product = await ctx.db.get(productId)
+      if (!product) {
+        throw new Error(`Section "${section.label}": product not found`)
+      }
+      if (product.storeId !== storeId) {
+        throw new Error(
+          `Section "${section.label}": "${product.name}" belongs to another store`
+        )
+      }
+    }
+
+    if (section.categoryId) {
+      const category = await ctx.db.get(section.categoryId)
+      if (!category) {
+        throw new Error(`Section "${section.label}": category not found`)
+      }
+      if (category.storeId !== storeId) {
+        throw new Error(
+          `Section "${section.label}": "${category.name}" belongs to another store`
+        )
+      }
+    }
+  }
+}
+
 // === QUERIES ===
 
 /**
@@ -160,6 +211,7 @@ export const create = {
   handler: async (ctx: any, args: any) => {
     if (args.price < 0) throw new Error("Price cannot be negative")
     validateMenuSections(args.sections)
+    await assertSectionsInStore(ctx, args.storeId, args.sections)
     const now = Date.now()
     return await ctx.db.insert("menus", {
       ...args,
@@ -193,6 +245,9 @@ export const update = {
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Menu not found")
+    if (fields.sections !== undefined) {
+      await assertSectionsInStore(ctx, existing.storeId, fields.sections)
+    }
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
 }
