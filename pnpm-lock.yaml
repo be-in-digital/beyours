@@ -723,6 +723,9 @@ importers:
       '@reactour/tour':
         specifier: ^3.8.0
         version: 3.8.0(react@19.2.4)
+      '@types/qrcode':
+        specifier: ^1.5.6
+        version: 1.5.6
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -772,9 +775,6 @@ importers:
         specifier: ^5.0.12
         version: 5.0.14(@types/react@19.2.14)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
-      '@types/qrcode':
-        specifier: ^1.5.6
-        version: 1.5.6
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.14
