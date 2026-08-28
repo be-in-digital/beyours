@@ -117,6 +117,7 @@ export default function DeploymentDetailPage() {
     days: 30,
   });
   const updateStatus = useMutation(api.saFleet.updateStatus);
+  const recordAccessRevoked = useMutation(api.saFleet.recordAccessRevoked);
 
   const [pending, setPending] = React.useState(false);
 
@@ -157,6 +158,23 @@ export default function DeploymentDetailPage() {
       setPending(false);
     }
   }
+
+  async function onConfirmRevoked() {
+    setPending(true);
+    try {
+      await recordAccessRevoked({ deploymentId: id });
+      toast.success("Accès marqués comme révoqués.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  /* "Sorti" is a label; it revokes nothing. While the revocation is
+     outstanding, say so rather than letting the badge read as done. */
+  const revocationPending =
+    deployment.offboardedAt != null && deployment.accessRevokedAt == null;
 
   const salesSeries =
     sales?.series.map((p) => ({
@@ -225,6 +243,40 @@ export default function DeploymentDetailPage() {
           </Dropdown>
         </div>
       </div>
+
+      {revocationPending && (
+        <Card className="border-danger-border bg-danger-soft p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex gap-3">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Accès non révoqués
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Ce déploiement est marqué sorti, mais rien ne lui a été
+                  retiré : il conserve les identifiants reçus au provisioning,
+                  dont les clés AWS. Suivez{" "}
+                  <span className="font-mono text-xs">
+                    tasks/client-offboarding-runbook.md
+                  </span>{" "}
+                  avant de cocher.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={onConfirmRevoked}
+              className="shrink-0"
+            >
+              <ShieldCheck className="size-4" />
+              J&apos;ai révoqué les accès
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
