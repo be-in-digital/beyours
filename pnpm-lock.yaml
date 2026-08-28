@@ -818,13 +818,13 @@ importers:
       '@be-in-digital/core':
         specifier: workspace:*
         version: link:../core
-      convex:
-        specifier: 1.44.0
-        version: 1.44.0(react@19.2.4)
     devDependencies:
       '@types/node':
         specifier: ^20.19.39
         version: 20.19.39
+      convex:
+        specifier: 1.44.0
+        version: 1.44.0(react@19.2.4)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -834,13 +834,13 @@ importers:
 
   packages/convex-schema:
     dependencies:
-      convex:
-        specifier: 1.44.0
-        version: 1.44.0(react@19.2.4)
       zod:
         specifier: ^4.0.0
         version: 4.3.6
     devDependencies:
+      convex:
+        specifier: 1.44.0
+        version: 1.44.0(react@19.2.4)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
