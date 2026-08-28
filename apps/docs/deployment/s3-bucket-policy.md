@@ -40,6 +40,11 @@ S3 endpoint form is gone, and nothing should reintroduce it.
 granting `s3:GetObject` to `*`. The deployment's IAM user needs
 `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::<bucket>/*`.
 
+`scripts/setup-aws.sh` does this for you, and since #198 it also **removes** a
+public-read policy left by an earlier run of itself. It only deletes a policy
+that grants to `*` with `Effect: Allow` — a CloudFront origin access control, or
+a `Deny` on insecure transport, is recognised and left alone.
+
 CORS is only needed for the presigned-`PUT` upload path (the CMS media
 library), and only for `PUT`:
 
