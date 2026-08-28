@@ -8,7 +8,7 @@ import type { SESOperations } from './types'
 import type { AWSConfig, SESConfig } from '../types'
 import { createSESService } from './client'
 import type { SESService } from './client'
-import { getPackageEnv, getSiteEnv } from '../../env'
+import { getSiteEnv } from '../../env'
 
 /**
  * Creates SES operations using AWS SDK v3
@@ -83,7 +83,6 @@ export function createSESv2Operations(config: AWSConfig): SESOperations {
  * @throws {Error} If required environment variables are missing
  */
 export function getSESConfig(): SESConfig {
-  const pkg = getPackageEnv()
   const site = getSiteEnv()
 
   const fromEmail = site.AWS_SES_FROM_EMAIL
@@ -91,10 +90,30 @@ export function getSESConfig(): SESConfig {
     throw new Error('AWS_SES_FROM_EMAIL is required for SES')
   }
 
+  // The credentials are the restaurant's own since 2026-08-28. The reader is
+  // deliberately lenient — it never throws for a missing value — so the three
+  // are `string | undefined` here even though the boot-time schema requires
+  // them. Name the missing one rather than handing `undefined` to the SDK,
+  // which fails later with a signature error that says nothing.
+  const { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = site
+  const missing = (
+    [
+      ['AWS_REGION', AWS_REGION],
+      ['AWS_ACCESS_KEY_ID', AWS_ACCESS_KEY_ID],
+      ['AWS_SECRET_ACCESS_KEY', AWS_SECRET_ACCESS_KEY],
+    ] as const
+  )
+    .filter(([, value]) => !value)
+    .map(([name]) => name)
+
+  if (missing.length > 0) {
+    throw new Error(`${missing.join(', ')} ${missing.length > 1 ? 'are' : 'is'} required for SES`)
+  }
+
   return {
-    region: pkg.AWS_REGION,
-    accessKeyId: pkg.AWS_ACCESS_KEY_ID,
-    secretAccessKey: pkg.AWS_SECRET_ACCESS_KEY,
+    region: AWS_REGION!,
+    accessKeyId: AWS_ACCESS_KEY_ID!,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY!,
     fromEmail,
     fromName: site.AWS_SES_FROM_NAME,
     replyToEmail: site.AWS_SES_REPLY_TO_EMAIL,

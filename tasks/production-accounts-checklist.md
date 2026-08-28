@@ -109,15 +109,13 @@ Per `_project/ENVIRONMENT_VARIABLES.md`, credentials split in two:
   `developers@beyours.fr` — they belong to the client and follow the client if
   they leave.
 
-> **AWS moved from package level to site level on 2026-08-28** — decided, and
-> **not yet implemented**. The code still holds `AWS_ACCESS_KEY_ID` /
-> `AWS_SECRET_ACCESS_KEY` in the shared `packageEnvSchema`
-> (`packages/core/src/env/schemas.ts:21-23`), and `setup-aws.sh` still provisions
-> one fleet-wide bucket. This list states the target, not today's reality — read
+> **AWS moved from package level to site level on 2026-08-28**, and the code
+> follows: the credentials are site variables, and `setup-aws.sh` provisions per
+> client (`SITE_SLUG=<slug> DOMAIN=<domain>`). Read
 > [`apps/docs/deployment/aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)
-> before provisioning anything. Earlier versions of this section claimed both at
-> once: AWS shared *and* "its S3 bucket, its SES sender" per client. That
-> contradiction is what this note settles.
+> before provisioning. Two things it does **not** do: clients already on the
+> shared bucket still have to be migrated, and SES production access is granted
+> per account, so each new client needs its own request — start it early.
 
 Unsplash, Yousign, Calendly, Resend, Vercel and GitHub are BeYours-level too:
 they serve the commercial site and the fleet, not one restaurant.
