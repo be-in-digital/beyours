@@ -13,11 +13,11 @@ name: Publish mirror
 # on beyours-boilerplate. Without it the job stops cleanly — GITHUB_TOKEN is
 # scoped to the current repository and cannot push elsewhere.
 #
-# The pnpm version is read from `apps/themes/package.json` rather than pinned
-# here. The script runs `pnpm install` inside the mirror clone, whose
-# `packageManager` field is a copy of that same file — so pinning a different
-# version made pnpm try to switch itself mid-run, fail, and hang. See the note
-# on the version step below.
+# The pnpm version comes from `apps/themes/package.json` rather than being
+# pinned here. The script runs `pnpm install` inside the mirror clone, whose
+# `packageManager` field is a copy of that same file — so installing a
+# different version made pnpm try to switch itself mid-run, fail, and hang.
+# See the note on the pnpm step below.
 
 on:
   push:
@@ -72,25 +72,23 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      # The lockfile is generated inside the mirror clone, and that clone
-      # declares `packageManager` copied from apps/themes. pnpm honours that
-      # field by switching itself to the named version — so any pnpm installed
-      # here other than the declared one is the wrong one. Reading it from the
-      # source of truth is what keeps the two from drifting again.
-      - name: Read the pnpm version the mirror declares
-        id: pnpm-version
-        run: |
-          version="$(node -p "require('./apps/themes/package.json').packageManager?.split('@')[1] ?? ''")"
-          if [ -z "$version" ]; then
-            echo "::error::apps/themes/package.json has no packageManager field, so the mirror's pnpm version cannot be determined."
-            exit 1
-          fi
-          echo "The mirror declares pnpm@$version"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
+      # Deliberately apps/themes and not the repository root.
+      #
+      # The lockfile this job writes is the *mirror's*, generated inside the
+      # mirror clone — and that clone's `packageManager` is a copy of
+      # apps/themes'. pnpm honours that field by switching itself to the version
+      # it names, so installing the root's pnpm here (10.4.1, against the
+      # mirror's 10.28.1) meant pnpm tried to switch mid-run, failed, and hung.
+      #
+      # Reading the same file the mirror inherits from is what keeps the two
+      # from drifting apart again: bump apps/themes and this follows.
+      #
+      # Note there is no `version:` input alongside this. The action refuses
+      # both at once — "Multiple versions of pnpm specified" — because the
+      # root package.json also names one.
       - uses: pnpm/action-setup@v4
         with:
-          version: ${{ steps.pnpm-version.outputs.version }}
+          package_json_file: apps/themes/package.json
 
       - uses: actions/setup-node@v4
         with:
