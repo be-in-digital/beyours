@@ -25,7 +25,7 @@ projects make that structural rather than a matter of discipline.
 
 ## What is wired
 
-Both `apps/reference` and `apps/themes` carry the same five files. `apps/themes`
+Both `apps/reference` and `apps/themes` carry the same six files, byte for byte. `apps/themes`
 is the one that matters — it is mirrored to `beyours-boilerplate` and cloned
 per client, so every client site gets this by construction.
 
