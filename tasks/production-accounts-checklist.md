@@ -49,7 +49,7 @@ one). Decide per service which brand owns it before creating duplicates.
 | **GitHub** | org `be-in-digital`, private Packages `@be-in-digital/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
 | **Convex** | backend, 1 deployment per client + `apps/site` | `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SITE_URL` | See §0. |
 | **Vercel** | `beyours.fr` + 1 project per client | — | |
-| **AWS** | S3 (uploads) + SES (transactional email) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3): a production-access request is mandatory to mail real customers. |
+| **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — so it is one request per client, and AWS's review is not instant. Sequence it early in onboarding, or the restaurant opens with silent email. |
 | **Domain / DNS** | `beyours.fr` | — | Also carries the SES / Resend domain-verification records. |
 
 ## 2. Payments
@@ -100,13 +100,24 @@ one). Decide per service which brand owns it before creating duplicates.
 
 Per `_project/ENVIRONMENT_VARIABLES.md`, credentials split in two:
 
-- **Package level — BeYours owns them, shared across every client:** AWS, OpenAI,
+- **Package level — BeYours owns them, shared across every client:** OpenAI,
   Uber Eats, Deliveroo. These are the ones that must sit under
   `developers@beyours.fr`.
 - **Site level — the restaurant owns them, one per client:** its Convex instance,
-  its Stripe/PayPal/SumUp account, its S3 bucket, its SES sender, its Sentry DSN,
-  its Google Maps key. Do **not** create these under `developers@beyours.fr` —
-  they belong to the client and follow the client if they leave.
+  its **AWS account** (S3 bucket + SES sender), its Stripe/PayPal/SumUp account,
+  its Sentry project, its Google Maps key. Do **not** create these under
+  `developers@beyours.fr` — they belong to the client and follow the client if
+  they leave.
+
+> **AWS moved from package level to site level on 2026-08-28** — decided, and
+> **not yet implemented**. The code still holds `AWS_ACCESS_KEY_ID` /
+> `AWS_SECRET_ACCESS_KEY` in the shared `packageEnvSchema`
+> (`packages/core/src/env/schemas.ts:21-23`), and `setup-aws.sh` still provisions
+> one fleet-wide bucket. This list states the target, not today's reality — read
+> [`apps/docs/deployment/aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)
+> before provisioning anything. Earlier versions of this section claimed both at
+> once: AWS shared *and* "its S3 bucket, its SES sender" per client. That
+> contradiction is what this note settles.
 
 Unsplash, Yousign, Calendly, Resend, Vercel and GitHub are BeYours-level too:
 they serve the commercial site and the fleet, not one restaurant.
@@ -120,7 +131,7 @@ they serve the commercial site and the fleet, not one restaurant.
 - [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
-- [ ] AWS account; SES out of sandbox (eu-west-3); S3 bucket
+- [ ] AWS: **one account per client** (`aws-ownership.md`) — per-client S3 bucket, and one SES sandbox exit **per account**, started early
 - [ ] Stripe live (both flows), gated on the invoicing/VAT work
 - [ ] PayPal / SumUp / Square, if the offer includes them
 - [ ] Uber Eats — confirm ownership of the existing prod app
