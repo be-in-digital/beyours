@@ -113,6 +113,7 @@ group is set, the whole group is required.
 | | `NEXT_PUBLIC_CONVEX_SITE_URL` | optional | Client-side twin of `CONVEX_SITE_URL`; must stay on the same subdomain |
 | **Auth** | `BETTER_AUTH_URL` | optional | URL of the auth service |
 | | `AUTH_ALLOW_UNVERIFIED_EMAIL` | optional | Relaxes email verification. **Fails closed**: only the exact value `"true"` relaxes anything. Test deployments only |
+| | `EMAIL_API_SECRET` | optional | Dedicated credential for `POST /api/email/send`, min 32 chars. Set it on **both** the Next env and the Convex deployment. Unset, both sides fall back to `BETTER_AUTH_SECRET` |
 | | `ADMIN_BOOTSTRAP_TOKEN` | optional | Claims the FIRST super-admin seat on a fresh deployment. **Fails closed**: unset refuses everyone. Set it on the Convex deployment |
 | **App** | `NEXT_PUBLIC_APP_URL` | optional | Public URL of the app; fallback for team invitation links |
 | | `NEXT_PUBLIC_SITE_URL` | optional | Canonical public URL for SEO metadata and the sitemap |

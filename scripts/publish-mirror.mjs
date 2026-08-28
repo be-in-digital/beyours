@@ -18,10 +18,14 @@
  *      the client side. → dropped.
  *   4. The package name is `@beyours/themes`, scoped to the monorepo.
  *      → `beyours-boilerplate`.
+ *   5. `packageManager` is honoured on the mirror and ignored here — inside a
+ *      workspace only the root's counts. It must therefore name the pnpm this
+ *      job actually has. → taken from the monorepo root.
  *
- * None of those four is theoretical: the first sync, done by hand on
- * 2026-08-16, missed all of them and left the mirror uninstallable for twenty
- * minutes.
+ * None of those five is theoretical: the first sync, done by hand on
+ * 2026-08-16, missed the first four and left the mirror uninstallable for
+ * twenty minutes. The fifth stopped the mirror dead for the twelve days after
+ * that — see `mirrorPackageManager`.
  *
  * Versions come from the REGISTRY, not from packages/*\/package.json: only the
  * registry says what a client can actually install. A package whose changeset
@@ -115,9 +119,39 @@ function resolveVersions(deps) {
 // 2. package.json transformation
 // ---------------------------------------------------------------------------
 
+/**
+ * Which pnpm the mirror should declare.
+ *
+ * Inside this workspace `apps/themes/package.json`'s `packageManager` is inert:
+ * pnpm reads the root's. On the mirror — a standalone repository — it is the
+ * one that counts, and pnpm will try to SWITCH to it.
+ *
+ * That is what broke the sync. `apps/themes` carried `pnpm@10.28.1`, inherited
+ * from the subtree it was imported as and never noticed, while every workflow
+ * installs the root's `10.4.1`. Told to switch, pnpm failed with
+ * `spawnSync ... ENOENT` and then hung instead of exiting; the job was killed
+ * as `cancelled`, which is neither a pass nor a failure, so nothing raised a
+ * hand. The mirror last moved on 2026-08-16 and no one was told.
+ *
+ * Reading the root keeps the two in lockstep whatever version CI installs.
+ */
+function mirrorPackageManager() {
+  const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"))
+  const declared = root.packageManager
+
+  if (!declared) {
+    fail(
+      "the monorepo root declares no packageManager — the mirror needs one, " +
+        "otherwise pnpm picks its own and the lockfile stops being reproducible."
+    )
+  }
+  return declared
+}
+
 function mirrorPackageJson(sourcePkgPath, versions) {
   const pkg = JSON.parse(readFileSync(sourcePkgPath, "utf8"))
   pkg.name = MIRROR_PKG_NAME
+  pkg.packageManager = mirrorPackageManager()
   for (const [dep, range] of Object.entries(versions)) {
     pkg.dependencies[dep] = range
   }

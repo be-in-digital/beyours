@@ -26,7 +26,10 @@ accounts, legal and decisions — not code.
   (`convex/auth.ts` reads `SITE_URL` — check you can still sign in after deploying).
 - [ ] **Convex spending cap**: check the team's spending cap — a cap set too low
   **shuts down EVERY project in the team** (already happened once). Set an alert rather
-  than a tight cap.
+  than a tight cap. Full procedure, blast radius and sign-off:
+  `tasks/convex-spending-cap-runbook.md`. Note that whether a cap exists at all
+  depends on the plan — on Free there is nothing to set, and the ceiling is the
+  included resources instead.
 
 ## 2. Emails (AWS SES)
 
