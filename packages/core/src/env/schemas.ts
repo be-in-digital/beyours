@@ -114,6 +114,14 @@ const siteOptionalShape = {
   // Claims the FIRST super-admin seat on a fresh deployment. Also fails
   // closed: unset refuses everyone. Set it on the CONVEX deployment.
   ADMIN_BOOTSTRAP_TOKEN: opt(z.string().min(1)),
+  // Dedicated credential for POST /api/email/send, separating the mail relay
+  // from the session-signing key. Optional only while deployments migrate:
+  // unset, the route falls back to BETTER_AUTH_SECRET. Set it on BOTH the
+  // Next.js env and the Convex deployment — the route authenticates with it
+  // and convex/auth.ts presents it.
+  EMAIL_API_SECRET: opt(
+    z.string().min(32, 'Must be at least 32 characters — generate with: openssl rand -base64 32')
+  ),
 
   // AWS S3 media URLs. The bucket is private — see
   // apps/docs/deployment/s3-bucket-policy.md. Set this to the CDN that fronts
@@ -267,6 +275,7 @@ export const siteEnvOptionalSchema = z
  */
 const READER_RELAXED = new Set<string>([
   'BETTER_AUTH_SECRET',
+  'EMAIL_API_SECRET',
   'AWS_S3_PUBLIC_BASE_URL',
   'NEXT_PUBLIC_CONVEX_SITE_URL',
   'AUTH_ALLOW_UNVERIFIED_EMAIL',
