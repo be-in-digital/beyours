@@ -7,7 +7,6 @@ import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
   buildMediaUrl,
-  S3_FOLDERS,
   type S3Folder,
 } from "@/lib/aws"
 import { isAuthenticated, fetchAuthQuery } from "@/lib/convex"
@@ -20,9 +19,19 @@ import {
 import { sanitizeSvg } from "@be-in-digital/cms/sanitize"
 import { isInlineSafeContentType } from "@/lib/services/file-serving"
 
-// Derived from the canonical list so this route cannot drift from what
-// /api/files will serve. See apps/docs/deployment/s3-bucket-policy.md.
-const VALID_FOLDERS = new Set<S3Folder>(S3_FOLDERS)
+// Deliberately narrower than the shared folder list.
+// upload-authorization treats any folder outside EDITORIAL_FOLDERS as
+// self-service, needing no `content:write`, so widening this set would let any
+// signed-in customer publish into editorial folders such as `storefront/`,
+// `blogs/` or `email/`. Those are written by the presigned Convex flow, which
+// is authorised separately.
+const VALID_FOLDERS = new Set<S3Folder>([
+  "products",
+  "branding",
+  "stores",
+  "cms",
+  "users",
+])
 
 const SVG_CONTENT_TYPE = "image/svg+xml"
 
