@@ -173,11 +173,14 @@ describe("createWithTicket", () => {
       // not published, so a fixture without one is a store nobody can order
       // from.
       "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: "open" },
+      // `isActive` is not decoration either: `create` refuses a dish the owner
+      // switched off, so a fixture without one is a product nobody can order.
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
         name: "Pizza",
         price: 1200,
+        isActive: true,
         options: [
           {
             id: "opt1",
@@ -379,6 +382,7 @@ describe("create — promotion handling", () => {
         storeId: "stores:1",
         name: "Pizza",
         price: 10_000,
+        isActive: true,
         options: [],
       },
       // Copied, not referenced: `patch` mutates in place, and a shared literal
@@ -596,6 +600,7 @@ describe("create — the establishment has to be published", () => {
         storeId: "stores:1",
         name: "Pizza",
         price: 1200,
+        isActive: true,
         options: [],
       },
       ...(store ? { "stores:1": { _id: "stores:1", ...store } } : {}),
