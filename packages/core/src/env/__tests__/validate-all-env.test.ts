@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { validateAllEnv, formatEnvReport, _resetEnvCache } from '../getters'
 
 const VALID_PACKAGE_ENV = {
@@ -6,6 +6,28 @@ const VALID_PACKAGE_ENV = {
   AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
   AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
   OPENAI_API_KEY: 'sk-test123456',
+}
+
+/** The eight a restaurant deployment cannot boot without. */
+const VALID_SITE_ENV = {
+  NEXT_PUBLIC_CONVEX_URL: 'https://test.convex.cloud',
+  CONVEX_SITE_URL: 'https://test.convex.site',
+  SITE_URL: 'https://resto.example.com',
+  BETTER_AUTH_SECRET: 'x'.repeat(32),
+  ENCRYPTION_KEY: 'a'.repeat(64),
+  AWS_S3_BUCKET_NAME: 'resto-bucket',
+  AWS_S3_PUBLIC_BASE_URL: 'https://cdn.example.com',
+  AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
+}
+
+const VALID_ENV = { ...VALID_PACKAGE_ENV, ...VALID_SITE_ENV }
+
+/** Env is process-wide; every test starts from a clean slate. */
+function setEnv(vars: Record<string, string | undefined>): void {
+  for (const key of Object.keys(process.env)) delete process.env[key]
+  for (const [key, value] of Object.entries(vars)) {
+    if (value !== undefined) process.env[key] = value
+  }
 }
 
 describe('validateAllEnv', () => {
@@ -21,58 +43,167 @@ describe('validateAllEnv', () => {
     _resetEnvCache()
   })
 
-  it('returns ok=true when all required package vars are set', () => {
-    Object.assign(process.env, VALID_PACKAGE_ENV)
+  it('returns ok=true when every required var is set', () => {
+    setEnv(VALID_ENV)
     const { ok, missing } = validateAllEnv()
     expect(ok).toBe(true)
     expect(missing).toHaveLength(0)
   })
 
-  it('returns missing package vars when AWS_REGION is absent', () => {
-    Object.assign(process.env, {
+  // The bug this schema split exists to fix: a deployment with only the four
+  // BeYours platform vars used to boot printing "validated successfully", then
+  // fail at the restaurant one feature at a time.
+  it('refuses a deployment carrying only the package vars', () => {
+    setEnv(VALID_PACKAGE_ENV)
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+
+    for (const name of Object.keys(VALID_SITE_ENV)) {
+      expect(missing.some((m) => m.name === name && m.tier === 'site')).toBe(true)
+    }
+  })
+
+  it('refuses a .env.example copied and left unfilled', () => {
+    setEnv({
       ...VALID_PACKAGE_ENV,
-      AWS_REGION: undefined,
+      ...Object.fromEntries(Object.keys(VALID_SITE_ENV).map((name) => [name, ''])),
     })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+    expect(missing.filter((m) => m.tier === 'site')).toHaveLength(
+      Object.keys(VALID_SITE_ENV).length
+    )
+  })
+
+  it('reports an unset variable as "non définie", not as a type error', () => {
+    setEnv({ ...VALID_ENV, AWS_S3_BUCKET_NAME: undefined })
+    const { missing } = validateAllEnv()
+    expect(missing.find((m) => m.name === 'AWS_S3_BUCKET_NAME')?.message).toBe(
+      'non définie'
+    )
+  })
+
+  it('keeps the format hint for a variable that IS set but malformed', () => {
+    setEnv({ ...VALID_ENV, ENCRYPTION_KEY: 'too-short' })
+    const { missing } = validateAllEnv()
+    expect(missing.find((m) => m.name === 'ENCRYPTION_KEY')?.message).toContain(
+      'openssl rand -hex 32'
+    )
+  })
+
+  it('rejects a BETTER_AUTH_SECRET under 32 characters', () => {
+    setEnv({ ...VALID_ENV, BETTER_AUTH_SECRET: 'short' })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+    expect(missing.some((m) => m.name === 'BETTER_AUTH_SECRET')).toBe(true)
+  })
+
+  it('returns missing package vars when AWS_REGION is absent', () => {
+    setEnv({ ...VALID_ENV, AWS_REGION: undefined })
     const { ok, missing } = validateAllEnv()
     expect(ok).toBe(false)
     expect(missing.some((m) => m.name === 'AWS_REGION' && m.tier === 'package')).toBe(true)
   })
 
   it('returns missing for OPENAI_API_KEY with wrong prefix', () => {
-    Object.assign(process.env, {
-      ...VALID_PACKAGE_ENV,
-      OPENAI_API_KEY: 'bad-key',
-    })
+    setEnv({ ...VALID_ENV, OPENAI_API_KEY: 'bad-key' })
     const { ok, missing } = validateAllEnv()
     expect(ok).toBe(false)
-    expect(missing.some((m) => m.name === 'OPENAI_API_KEY' && m.tier === 'package')).toBe(true)
+    expect(missing.some((m) => m.name === 'OPENAI_API_KEY' && m.tier === 'package')).toBe(
+      true
+    )
   })
 
-  it('reports site-level errors when invalid URL is provided', () => {
-    Object.assign(process.env, {
-      ...VALID_PACKAGE_ENV,
-      NEXT_PUBLIC_CONVEX_URL: 'not-a-url',
-    })
+  it('reports site-level errors when an invalid URL is provided', () => {
+    setEnv({ ...VALID_ENV, NEXT_PUBLIC_CONVEX_URL: 'not-a-url' })
     const { ok, missing } = validateAllEnv()
     expect(ok).toBe(false)
-    expect(missing.some((m) => m.name === 'NEXT_PUBLIC_CONVEX_URL' && m.tier === 'site')).toBe(true)
+    expect(
+      missing.some((m) => m.name === 'NEXT_PUBLIC_CONVEX_URL' && m.tier === 'site')
+    ).toBe(true)
   })
 
-  it('ignores empty optional strings (treated as undefined)', () => {
-    Object.assign(process.env, {
-      ...VALID_PACKAGE_ENV,
-      STRIPE_SECRET_KEY: '',
-      DELIVEROO_CLIENT_ID: '',
+  it('ignores empty strings on genuinely optional vars', () => {
+    setEnv({ ...VALID_ENV, NEXT_PUBLIC_SENTRY_DSN: '', AWS_SES_FROM_NAME: '' })
+    expect(validateAllEnv().ok).toBe(true)
+  })
+})
+
+describe('validateAllEnv — feature groups', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    _resetEnvCache()
+    process.env = { ...originalEnv }
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+    _resetEnvCache()
+  })
+
+  it('accepts a feature left entirely unconfigured', () => {
+    setEnv(VALID_ENV)
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  it('accepts a feature configured in full', () => {
+    setEnv({
+      ...VALID_ENV,
+      STRIPE_SECRET_KEY: 'sk_test_123',
+      STRIPE_PUBLISHABLE_KEY: 'pk_test_123',
+      STRIPE_WEBHOOK_SECRET: 'whsec_123',
     })
-    const { ok } = validateAllEnv()
-    expect(ok).toBe(true)
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  // Half a payment provider is worse than none: the admin offers the method,
+  // the customer picks it, and the charge fails at the till.
+  it('rejects a half-configured Stripe and names the gap', () => {
+    setEnv({ ...VALID_ENV, STRIPE_SECRET_KEY: 'sk_test_123' })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+
+    const webhook = missing.find((m) => m.name === 'STRIPE_WEBHOOK_SECRET')
+    expect(webhook?.tier).toBe('feature')
+    expect(webhook?.message).toContain('Stripe')
+    expect(webhook?.message).toContain('STRIPE_SECRET_KEY')
+  })
+
+  it('rejects a PayPal client id with no secret', () => {
+    setEnv({ ...VALID_ENV, PAYPAL_CLIENT_ID: 'paypal-id' })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+    expect(
+      missing.some((m) => m.name === 'PAYPAL_CLIENT_SECRET' && m.tier === 'feature')
+    ).toBe(true)
+  })
+
+  it('leaves the e2e-only Deliveroo ids ungrouped', () => {
+    setEnv({ ...VALID_ENV, DELIVEROO_BRAND_ID: 'brand-1' })
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  // Nothing reads the publishable key, so it must not gate a Stripe deploy.
+  it('does not demand STRIPE_PUBLISHABLE_KEY alongside a configured Stripe', () => {
+    setEnv({
+      ...VALID_ENV,
+      STRIPE_SECRET_KEY: 'sk_test_123',
+      STRIPE_WEBHOOK_SECRET: 'whsec_123',
+    })
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  it('does not fire on an empty string, which means unconfigured', () => {
+    setEnv({ ...VALID_ENV, SUMUP_CLIENT_ID: '', SUMUP_CLIENT_SECRET: '' })
+    expect(validateAllEnv().ok).toBe(true)
   })
 })
 
 describe('formatEnvReport', () => {
   it('formats package-level missing vars', () => {
     const report = formatEnvReport([
-      { name: 'AWS_REGION', message: 'Required', tier: 'package' },
+      { name: 'AWS_REGION', message: 'non définie', tier: 'package' },
     ])
     expect(report).toContain('AWS_REGION')
     expect(report).toContain('Package-level')
@@ -87,19 +218,29 @@ describe('formatEnvReport', () => {
     expect(report).toContain('Site-level')
   })
 
-  it('formats both tiers together', () => {
+  it('gives half-configured features their own section', () => {
     const report = formatEnvReport([
-      { name: 'AWS_REGION', message: 'Required', tier: 'package' },
-      { name: 'STRIPE_SECRET_KEY', message: 'Invalid', tier: 'site' },
+      { name: 'STRIPE_WEBHOOK_SECRET', message: 'Required once Stripe…', tier: 'feature' },
+    ])
+    expect(report).toContain('STRIPE_WEBHOOK_SECRET')
+    expect(report).toContain('à moitié')
+  })
+
+  it('formats every tier together', () => {
+    const report = formatEnvReport([
+      { name: 'AWS_REGION', message: 'non définie', tier: 'package' },
+      { name: 'SITE_URL', message: 'non définie', tier: 'site' },
+      { name: 'STRIPE_WEBHOOK_SECRET', message: 'Required once…', tier: 'feature' },
     ])
     expect(report).toContain('Package-level')
     expect(report).toContain('Site-level')
-    expect(report).toContain('2 variable(s)')
+    expect(report).toContain('à moitié')
+    expect(report).toContain('3 variable(s)')
   })
 
-  it('includes .env.example hint', () => {
+  it('includes the .env.example hint', () => {
     const report = formatEnvReport([
-      { name: 'AWS_REGION', message: 'Required', tier: 'package' },
+      { name: 'AWS_REGION', message: 'non définie', tier: 'package' },
     ])
     expect(report).toContain('.env.example')
     expect(report).toContain('.env.local')

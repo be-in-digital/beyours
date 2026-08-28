@@ -19,7 +19,15 @@ jobs:
       CONVEX_DEPLOYMENT: ${{ secrets.E2E_CONVEX_DEPLOYMENT }}
       BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
       BETTER_AUTH_URL: http://localhost:3000
+      SITE_URL: http://localhost:3000
       ENCRYPTION_KEY: ${{ secrets.E2E_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
+      # The suite runs `pnpm start`, so instrumentation.ts enforces the full
+      # required set and refuses to serve without it. Nothing here reaches S3
+      # or SES, so placeholders are enough — they only have to be present and
+      # well-formed.
+      AWS_S3_BUCKET_NAME: ${{ secrets.E2E_AWS_S3_BUCKET_NAME || 'placeholder-bucket' }}
+      AWS_S3_PUBLIC_BASE_URL: ${{ secrets.E2E_AWS_S3_PUBLIC_BASE_URL || 'https://placeholder-bucket.s3.eu-west-3.amazonaws.com' }}
+      AWS_SES_FROM_EMAIL: ${{ secrets.E2E_AWS_SES_FROM_EMAIL || 'e2e@placeholder.invalid' }}
       # Throwaway password for seeded E2E test accounts (never used in production)
       SEED_PASSWORD: ${{ secrets.E2E_SEED_PASSWORD || 'ci-seed-password-not-for-prod' }}
       # Package-level (BeInDigital infrastructure)
