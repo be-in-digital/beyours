@@ -8,9 +8,16 @@
 
 ## Why this card exists
 
-`main` has **no branch protection at all** (`GET /repos/…/branches/main/protection`
-answered `404 Branch not protected` on 2026-08-28). Every workflow runs, nothing
-they report is binding, and anything can be merged over a red check.
+When this card was written, `main` had **no branch protection at all**
+(`GET /repos/…/branches/main/protection` answered `404 Branch not protected`).
+Every workflow ran, nothing they reported was binding, and anything could be
+merged over a red check.
+
+> **Status: §6 is done, §3–§5 are not.** Protection was applied later the same
+> day, 2026-08-28, with this card's own PR (#202): the four `ci.yml` checks are
+> required and *require branches to be up to date* is on. Everything about the
+> E2E half below is still outstanding — the suite has never run. What §6 records
+> now is what was applied, not what to do next.
 
 The E2E suite is the sharper half of the problem. It is gated on a repository
 variable that has never been set:
@@ -233,22 +240,39 @@ live there.
 
 ---
 
-## 6. Turn protection on — repo admin only
+## 6. Turn protection on — repo admin only · ✅ DONE 2026-08-28
 
-Settings → Branches → Add branch ruleset (or classic branch protection) on
-`main`:
+Settings → Branches → branch protection on `main`. What is **applied today**:
 
-- **Require a pull request before merging** — 1 approval.
-- **Require status checks to pass** → *Require branches to be up to date*, then
-  add exactly the strings from §2 that you decided on in §5. Start with:
-  `Lint`, `Type Check`, `Test`, `Build`.
-- Add `Gitleaks (secret scan)` and `pnpm audit (deps vulnerabilities)` if you
-  want the security workflow blocking too — check first that both pass on a
-  current PR, since `pnpm audit` can turn red on a new advisory in a dependency
-  nobody touched.
-- Leave **Do not allow bypassing** off until the checks have been stable for a
-  week. Turning it on before that means an admin cannot merge a fix for the
-  thing that broke CI.
+| Setting | Applied | Note |
+|---|---|---|
+| Required checks | `Lint`, `Type Check`, `Test`, `Build` | the four `ci.yml` job names from §2 |
+| Require branches to be up to date (`strict`) | **on** | the setting you will feel daily — see below |
+| Required approving reviews | **0** | a pull request is required; an approval is not |
+| Do not allow bypassing (`enforce_admins`) | **off** | deliberate, see below |
+| Force pushes / deletions on `main` | blocked | |
+
+Three choices worth not "fixing" without a reason:
+
+- **`E2E Status` is not required.** §5 measured the `public` project at 59
+  passed / 6 failed. Requiring a red check teaches the team that required checks
+  are advisory. Add it once the suite has been green across consecutive PRs —
+  and add `E2E Status`, never `E2E Tests`, for the reason §2 gives.
+- **`Gitleaks` and `pnpm audit` are not required.** A new advisory in a
+  dependency nobody touched would block unrelated merges.
+- **Bypass is left on.** Turning it off before the checks have been stable for a
+  week means an admin cannot merge the fix for the thing that broke CI.
+
+**`strict: true` is the setting that costs time.** A pull request that is green
+but behind `main` cannot merge until it is rebased, and on an active day that
+can happen more than once per PR — it happened to #202 itself, and again to
+[#203](https://github.com/be-in-digital/beyours/pull/203), which needed two
+rebases. That is the intended trade (nothing reaches `main` untested against
+`main`), but if it becomes the bottleneck it is one call to relax:
+
+```bash
+gh api -X PATCH repos/be-in-digital/beyours/branches/main/protection/required_status_checks -f strict=false
+```
 
 Verify from the outside:
 
@@ -256,8 +280,9 @@ Verify from the outside:
 gh api repos/be-in-digital/beyours/branches/main/protection --jq '.required_status_checks.contexts'
 ```
 
-While `main` is unprotected this returns `404 Branch not protected` — that 404
-*is* the current state, not an error in the command.
+Today this prints `["Lint","Type Check","Test","Build"]`. A `404 Branch not
+protected` would mean protection has been removed, not that the command is
+wrong.
 
 ---
 
@@ -265,7 +290,7 @@ While `main` is unprotected this returns `404 Branch not protected` — that 404
 
 | | Detected today? |
 |---|---|
-| Lint / type / unit-test / build regression | **Yes** — `ci.yml`, on every PR. Not *blocking* until §6 is done. |
+| Lint / type / unit-test / build regression | **Yes** — `ci.yml`, on every PR, and **blocking** since 2026-08-28 (§6). |
 | A committed secret | **Yes** — `security.yml`, but see `rotation-deliveroo` history: a green scan says nothing about what is already in the history |
 | A functional regression in a user journey | **No.** The E2E suite has never run. That is what §3–§5 change. |
 | **The Convex backend failing to compile** | **No.** `apps/*/tsconfig.json` excludes `convex/`, `next build` does not touch it, and no workflow runs `convex deploy` or `convex codegen` — TECH-12, first box. |
@@ -284,9 +309,9 @@ While `main` is unprotected this returns `404 Branch not protected` — that 404
 - [ ] `E2E_NEXT_PUBLIC_CONVEX_URL` set; `E2E_CONVEX_DEPLOY_KEY` set
 - [ ] A pull request has been observed where `E2E Tests` **ran**, the seed reported `=== Seeding complete! ===`, and Playwright executed a non-zero number of tests
 - [ ] The pass/fail split of that run is written down, and §5's branch chosen from it
-- [ ] `main` requires `Lint`, `Type Check`, `Test`, `Build`
+- [x] `main` requires `Lint`, `Type Check`, `Test`, `Build` — applied 2026-08-28
 - [ ] `E2E Status` required — **only** once the suite has been green on consecutive PRs
-- [ ] `gh api …/branches/main/protection` returns the intended context list
+- [x] `gh api …/branches/main/protection` returns the intended context list
 
 ---
 

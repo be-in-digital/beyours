@@ -343,10 +343,18 @@ not published, they are deployed.
 | `publish-mirror.yml` | Pushes `apps/themes` to the distribution mirror |
 | `security.yml` | gitleaks over full history + `pnpm audit`, plus a daily run |
 
-**Nothing here is blocking.** `main` has no branch protection, so a red check
-does not stop a merge. Switching E2E on and making the checks required is
-`tasks/ci-required-checks-runbook.md` — repository settings the owner has to
-apply, in the order that file gives.
+**Four checks block a merge.** `main` requires `Lint`, `Type Check`, `Test` and
+`Build` — the four job names from `ci.yml` — with *require branches to be up to
+date* on. That last setting is the one that surprises: a pull request whose
+checks are all green is still blocked while it sits behind `main`, and on a busy
+day you may rebase more than once. No approving review is required, and admins
+can still bypass.
+
+Deliberately **not** required: `E2E Status` (the suite has never run to
+completion, and a red required check teaches the team that required checks are
+advisory), and the two `security.yml` checks (a new advisory in an untouched
+dependency would block unrelated merges). Switching E2E on, and the reasoning
+behind each of those choices, is `tasks/ci-required-checks-runbook.md` §5–§6.
 
 ⚠️ **A job that fails in ~3 seconds having run zero steps is a billing block,
 not a defect.** The Free plan's 2,000 Actions minutes ran out in July and again

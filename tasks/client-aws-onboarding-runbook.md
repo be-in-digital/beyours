@@ -41,11 +41,36 @@ sandbox is not a soft-launch mode:
 | Rate | **1 message per second** |
 
 A restaurant in the sandbox takes orders and confirms none of them. No password
-reset, no winning ticket, no order confirmation. And nothing errors visibly —
-the mail is simply refused at SES.
+reset, no winning ticket, no order confirmation.
+
+**And nothing tells you.** Every sending path swallows the rejection: it is
+`console.error`'d into the Convex logs and the caller gets `{ sent: false }`,
+which nobody reads. `teamMembersEmail.ts` goes further and still returns
+`success: true`. A campaign where every single send was refused is still marked
+`sent`. So the sandbox does not look like a problem from the outside — which is
+the whole reason this runbook makes you check the account directly rather than
+wait to notice.
 
 Sources: [Request production access](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html),
 [SES FAQ](https://aws.amazon.com/ses/faqs/). Checked 2026-08-28.
+
+### And it can be refused
+
+Treat approval as likely, not certain. **It has already been refused once** on
+the BeYours account — `apps/site/MISE_EN_PROD.md` records it, and the commercial
+site's answer was to switch to Resend, which `convex/email/providers.ts`
+supports through `EMAIL_PROVIDER=resend`.
+
+**A client site has no such escape hatch.** `EMAIL_PROVIDER` exists only in
+`apps/site`; the engine builds an `SESv2Client` directly in every sending path
+(`gameEmail.ts`, `maintenanceEmail.ts`, `emailCampaignActions.ts`, and the
+rest). So a restaurant whose request AWS refuses cannot send at all — there is
+nothing to fall back to.
+
+Two things follow. File the request **early**, so a refusal leaves time to
+appeal with a better-argued use case rather than discovering it on go-live day.
+And answer their questions concretely, because a vague answer is what gets a
+request refused in the first place.
 
 ## Step 1 — the client's AWS account
 
@@ -94,13 +119,19 @@ The script prints the records. Add them at the client's DNS provider:
 - **MAIL FROM** on `mail.<domain>` — the MX and SPF records SES asks for, needed
   for alignment
 
-Then poll until it flips to `SUCCESS`:
+Then poll until DKIM reads `SUCCESS`:
 
 ```bash
-aws sesv2 get-email-identity --email-identity chez-mario.fr --region eu-west-3 --query 'DkimAttributes.Status'
+DOMAIN=chez-mario.fr pnpm ses:check
 ```
 
-Do not move on while this says `PENDING`. Requesting production access against
+It reports the identity **and** the account: DKIM status, whether production
+access is granted, whether sending is enabled, the reputation status, and the
+24-hour quota. Exit `0` means this account can email real customers; `1` names
+what blocks it; `2` means it could not tell — no credentials, wrong region, or
+missing `ses:GetAccount`. Treat `2` as unknown, never as ready.
+
+Do not move on while DKIM says `PENDING`. Requesting production access against
 an unverified domain is what turns a one-day approval into a week.
 
 ## Step 4 — request production access
@@ -119,6 +150,16 @@ triggers the follow-up round that costs the extra days.
 **Record the date you filed it.** It is the only number that tells you whether
 the go-live date still holds.
 
+Then stop guessing where it stands — `pnpm ses:check` reads the review status
+straight off the account, with the AWS support case id when there is one:
+
+```
+[INFO]  Review of your request: PENDING  (support case 175012345600001)
+```
+
+No review on file means the request was never actually submitted. That happens,
+and it is worth catching on day two rather than on go-live day.
+
 ## Step 5 — wire the deployment
 
 ```bash
@@ -136,9 +177,11 @@ client's own, and they are required — a deployment does not boot without them.
   exercises the presigned PUT, the CORS rule and the `/api/files` proxy in one
   go. A CORS failure here means the origin: re-run step 2 with `SITE_ORIGIN`
   set to the client's real domain.
-- Send a real password reset **to an address outside the verified set**. In the
-  sandbox it will not arrive — which is exactly the check. It arriving is what
-  proves production access landed.
+- `DOMAIN=<domain> pnpm ses:check` must exit `0`. That is the go-live gate: it
+  is the only thing that distinguishes "we asked" from "AWS granted it".
+- Then send a real password reset **to an address outside the verified set**.
+  In the sandbox it will not arrive — which is exactly the check. It arriving
+  is what proves the whole chain works, not just the account flag.
 
 ## What blocks what
 
@@ -164,6 +207,14 @@ client's own, and they are required — a deployment does not boot without them.
 - **Assuming the bucket is public.** It is private by design. Media reaches the
   browser through `/api/files`, or a CDN with an origin access control — see
   [`s3-bucket-policy.md`](../apps/docs/deployment/s3-bucket-policy.md).
+- **Leaving `AWS_SES_FROM_EMAIL` unset on the Convex deployment.** Three engine
+  senders fall back to a hardcoded `noreply@beindigital.fr`
+  (`gameEmail.ts:23`, `maintenanceEmail.ts:35`, `teamMembersEmail.ts:27`). That
+  identity does not exist in the client's own account, so the send fails — and,
+  per the point above, fails silently. The variable is required at boot, but
+  Convex actions read `process.env` directly, so the guarantee stops at the Next
+  process. `pnpm env:check` covers the file; only `pnpm convex:env` puts it
+  where those senders look.
 
 ## Sign-off
 
@@ -172,6 +223,6 @@ client's own, and they are required — a deployment does not boot without them.
 - [ ] DKIM CNAMEs and MAIL FROM records published
 - [ ] `DkimAttributes.Status` reads `SUCCESS`
 - [ ] **SES production access requested — date filed: ____________**
-- [ ] SES production access **granted**
+- [ ] SES production access **granted** — `DOMAIN=<domain> pnpm ses:check` exits `0`
 - [ ] `pnpm env:check` clean, `env:sync` + `convex:env` done
 - [ ] Media upload renders; password reset reaches an unverified address
