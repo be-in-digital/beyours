@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1
+
+### Patch Changes
+
+- Updated dependencies [3a25d85]
+- Updated dependencies [7e727ff]
+- Updated dependencies [5837a81]
+  - @be-in-digital/core@2.1.0
+  - @be-in-digital/cms@3.0.0
+
 ## 2.2.0
 
 ### Minor Changes

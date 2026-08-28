@@ -1,5 +1,14 @@
 # @be-in-digital/admin
 
+## 5.0.0
+
+### Patch Changes
+
+- Updated dependencies [3a25d85]
+- Updated dependencies [7e727ff]
+  - @be-in-digital/core@2.1.0
+  - @be-in-digital/convex-functions@2.2.1
+
 ## 4.0.0
 
 ### Minor Changes
