@@ -237,11 +237,70 @@ export const updateStatus = mutation({
       if (!dep.goLiveAt) patch.goLiveAt = Date.now();
       if (dep.health === "unknown") patch.health = "healthy";
     }
+    /* Marking a client gone revokes nothing on its own — the deployment keeps
+       the credentials it was provisioned with. Stamp the date so the console
+       can show that revocation is still outstanding, rather than letting the
+       "Sorti" badge read as done. See tasks/client-offboarding-runbook.md. */
+    if (args.status === "offboarded" && !dep.offboardedAt) {
+      patch.offboardedAt = Date.now();
+    }
+    /* Coming back out of offboarding drops both stamps: they describe the
+       current departure, not a past one. */
+    if (dep.status === "offboarded" && args.status !== "offboarded") {
+      patch.offboardedAt = undefined;
+      patch.accessRevokedAt = undefined;
+    }
     await ctx.db.patch(args.deploymentId, patch);
     await recordSaActivity(ctx, {
       kind: "deployment",
       action: "deployment.status",
       summary: `« ${dep.name} » → ${args.status}`,
+      actorName: `${admin.firstName ?? "Admin"}`,
+      customerEmail: dep.customerEmail,
+      deploymentId: dep._id,
+    });
+    if (args.status === "offboarded" && !dep.accessRevokedAt) {
+      await recordSaActivity(ctx, {
+        kind: "system",
+        action: "deployment.revocation_pending",
+        summary:
+          `« ${dep.name} » est sorti, mais ses accès ne sont pas encore ` +
+          `révoqués (clés AWS, GitHub, Convex, licence).`,
+        actorName: `${admin.firstName ?? "Admin"}`,
+        customerEmail: dep.customerEmail,
+        deploymentId: dep._id,
+      });
+    }
+  },
+});
+
+/* Records that the revocation steps in tasks/client-offboarding-runbook.md have
+   been carried out. It cannot verify them — revoking an IAM key or a GitHub
+   invitation happens outside this backend — so this is an attestation by an
+   admin, not a measurement. Its value is that an unticked deployment stays
+   visibly unfinished instead of disappearing behind a status badge. */
+export const recordAccessRevoked = mutation({
+  args: { deploymentId: v.id("saDeployments") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const dep = await ctx.db.get(args.deploymentId);
+    if (!dep) throw new Error("Déploiement introuvable.");
+    if (dep.status !== "offboarded") {
+      throw new Error(
+        "Seul un déploiement sorti peut voir ses accès marqués révoqués.",
+      );
+    }
+    if (dep.accessRevokedAt) return;
+
+    const now = Date.now();
+    await ctx.db.patch(args.deploymentId, {
+      accessRevokedAt: now,
+      updatedAt: now,
+    });
+    await recordSaActivity(ctx, {
+      kind: "system",
+      action: "deployment.access_revoked",
+      summary: `Accès de « ${dep.name} » déclarés révoqués.`,
       actorName: `${admin.firstName ?? "Admin"}`,
       customerEmail: dep.customerEmail,
       deploymentId: dep._id,

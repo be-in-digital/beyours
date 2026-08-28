@@ -29,7 +29,48 @@
     },
     "test:e2e": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      // The e2e job is the one task whose command spawns a *server*, and strict
+      // mode strips everything below before Playwright ever starts it.
+      //
+      // `.github/workflows/e2e.yml` sets all of these in the job environment,
+      // and CI calls `pnpm test:e2e` from the root — so they travel through
+      // turbo, which dropped them. `next start` then failed its own env check
+      // ("10 environment variable(s) missing or invalid"), the web server never
+      // came up, and the run died on the 120 s webServer timeout with zero
+      // tests executed. Every local run went through `cd apps/reference`
+      // instead, which is why nothing ever caught it.
+      //
+      // passThroughEnv, not env: this task is uncached, so there is no key for
+      // these to belong to.
+      "passThroughEnv": [
+        "CI",
+        "E2E_USE_BUILD",
+        // The suite: which account to sign in as, and with what password.
+        "SEED_ADMIN_EMAIL",
+        "SEED_PASSWORD",
+        // The required tier of `packages/core/src/env/schemas.ts`, which
+        // instrumentation.ts enforces at startup and refuses to serve without.
+        "NEXT_PUBLIC_CONVEX_URL",
+        "CONVEX_SITE_URL",
+        "CONVEX_DEPLOYMENT",
+        "SITE_URL",
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "ENCRYPTION_KEY",
+        "AWS_S3_BUCKET_NAME",
+        "AWS_SES_FROM_EMAIL",
+        "AWS_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "OPENAI_API_KEY",
+        // Read by the Deliveroo suites, which skip themselves when unset.
+        "DELIVEROO_CLIENT_ID",
+        "DELIVEROO_CLIENT_SECRET",
+        "DELIVEROO_WEBHOOK_SECRET",
+        "DELIVEROO_SITE_ID",
+        "DELIVEROO_BRAND_ID"
+      ]
     },
     "clean": {
       "cache": false

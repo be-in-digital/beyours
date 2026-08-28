@@ -369,6 +369,17 @@ export default defineSchema({
        Optional: sites provisioned before the gate existed have none, and are
        treated as unregistered — allowed through, and listed as such. */
     licenseKey: v.optional(v.string()),
+    /* ── Offboarding ──
+       `status: "offboarded"` is a label; it revokes nothing. The deployment
+       keeps whatever credentials were pushed into it at provisioning — today
+       that includes the fleet-wide AWS keys (`apps/themes/scripts/env.mjs`).
+       These two stamps exist so the console can tell "we marked them gone"
+       apart from "they can no longer reach anything", which are not the same
+       day. `accessRevokedAt` is set by `saFleet.recordAccessRevoked` once the
+       steps in `tasks/client-offboarding-runbook.md` have actually been done.
+       Both are cleared if the deployment comes back out of `offboarded`. */
+    offboardedAt: v.optional(v.number()),
+    accessRevokedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),

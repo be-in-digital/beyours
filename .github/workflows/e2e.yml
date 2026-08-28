@@ -17,6 +17,11 @@ jobs:
       NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL }}
       CONVEX_SITE_URL: ${{ secrets.E2E_CONVEX_SITE_URL || 'https://placeholder.convex.site' }}
       CONVEX_DEPLOYMENT: ${{ secrets.E2E_CONVEX_DEPLOYMENT }}
+      # Steps 2 and 3 of the seed shell out to `npx convex run`, which has no
+      # logged-in CLI session on a runner. Without a deploy key the accounts get
+      # created and then have no role and no restaurant — which reads as an
+      # admin screen that will not load, 400 tests later.
+      CONVEX_DEPLOY_KEY: ${{ secrets.E2E_CONVEX_DEPLOY_KEY }}
       BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
       BETTER_AUTH_URL: http://localhost:3000
       SITE_URL: http://localhost:3000
@@ -84,26 +89,40 @@ jobs:
       - name: Seed test users
         working-directory: apps/reference
         run: |
-          # Start dev server in background for seeding
-          pnpm dev &
-          DEV_PID=$!
+          set -euo pipefail
 
-          # Wait for server to be ready
-          echo "Waiting for dev server..."
+          # `pnpm start`, not `pnpm dev`: the build the previous step produced is
+          # right there, and a dev server would recompile every route on demand
+          # — including /api/auth/sign-up/email, on the seed's first request,
+          # after the readiness poll below has already declared the server up.
+          # It also runs the same NODE_ENV as the suite will.
+          pnpm start &
+          SERVER_PID=$!
+
+          echo "Waiting for the server..."
           for i in $(seq 1 60); do
             if curl -s http://localhost:3000 > /dev/null 2>&1; then
-              echo "Dev server ready after ${i}s"
+              echo "Server ready after ${i}s"
               break
             fi
             sleep 1
           done
 
-          # Run seed (idempotent - skips existing users)
-          npx tsx scripts/seed-users.mts || true
+          # No `|| true`. The seed is idempotent — it signs existing accounts in
+          # rather than failing on them — so the only thing that trailing `|| true`
+          # ever hid was a seed that could not run at all. It hid exactly that:
+          # `tsx` was in no package.json, so the command was never found, and the
+          # suite went on to test an empty database.
+          seed_status=0
+          npx tsx scripts/seed-users.mts || seed_status=$?
 
-          # Stop dev server
-          kill $DEV_PID 2>/dev/null || true
-          wait $DEV_PID 2>/dev/null || true
+          kill $SERVER_PID 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          if [ "$seed_status" -ne 0 ]; then
+            echo "::error::Seeding failed (exit $seed_status). The admin suite signs in as a seeded account, so running it now would report defects that are only missing fixtures."
+            exit "$seed_status"
+          fi
 
       - name: Run Playwright tests
         run: pnpm test:e2e --filter=@beyours/reference

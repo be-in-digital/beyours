@@ -88,7 +88,7 @@ one-click, and the migration workflow's `domain` scope is where that surfaces.
 ## Related
 
 - [`sentry.md`](./sentry.md) — the same rule, already implemented
-- [`s3-bucket-policy.md`](./s3-bucket-policy.md) — the bucket is **private**; note
-  that `setup-aws.sh` currently attaches a public-read policy, contradicting it
+- [`s3-bucket-policy.md`](./s3-bucket-policy.md) — the bucket is **private**, and
+  since #198 `setup-aws.sh` enforces that instead of contradicting it
 - `tasks/production-accounts-checklist.md` — the ownership table
 - `tasks/convex-spending-cap-runbook.md` — the per-team billing blast radius

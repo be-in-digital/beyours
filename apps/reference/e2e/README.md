@@ -19,11 +19,22 @@ all. Playwright then reports success on the handful of public tests it did run �
 there is no "skipped" line for a project that was never declared.
 
 **In CI**, `.github/workflows/e2e.yml` is gated on `vars.CONVEX_E2E_ENABLED ==
-'true'`, and then again on `secrets.E2E_NEXT_PUBLIC_CONVEX_URL` being non-empty.
-A missing secret produces a `::warning::`, not a failure.
+'true'`. The variable has never been set, so the job has never run. (The second
+gate is gone: a missing `E2E_NEXT_PUBLIC_CONVEX_URL` now fails the job outright,
+before checkout.)
 
 Three ways to be green while testing nothing. Anyone reading a passing PR would
 reasonably conclude the suite ran.
+
+**And a third, found in August 2026 when the flag was finally exercised.** CI
+calls `pnpm test:e2e` from the *root*, so the task runs through Turbo — which
+runs in `envMode: "strict"` and deletes every variable a task has not declared.
+`turbo.json` declared none for `test:e2e`, so `SEED_PASSWORD`,
+`BETTER_AUTH_SECRET` and the rest never reached the runner: `next start` failed
+its own env check and the run died on the 120 s `webServer` timeout, 0 tests
+executed. Every local run went through `cd apps/reference` and never saw it.
+The task now carries a `passThroughEnv` list — keep it in step with anything new
+the suite or the server reads.
 
 ## Running them locally
 
@@ -104,8 +115,9 @@ result as a pass.
 
 ## Enabling CI
 
-Set the repository **variable** `CONVEX_E2E_ENABLED` to `true`, and these
-**secrets**. Point them at a deployment dedicated to CI, never the one a client
+`tasks/ci-required-checks-runbook.md` is the full procedure, including the
+branch-protection half and the order to do it in. The short version: set the
+repository **variable** `CONVEX_E2E_ENABLED` to `true`, and these **secrets**. Point them at a deployment dedicated to CI, never the one a client
 is served from:
 
 | Secret | What it is |
@@ -113,6 +125,7 @@ is served from:
 | `E2E_NEXT_PUBLIC_CONVEX_URL` | `https://<deployment>.convex.cloud` — also the switch that turns the admin tests on |
 | `E2E_CONVEX_SITE_URL` | `https://<deployment>.convex.site` (HTTP routes) |
 | `E2E_CONVEX_DEPLOYMENT` | the deployment name |
+| `E2E_CONVEX_DEPLOY_KEY` | a deploy key for it — steps 2 and 3 of the seed call `npx convex run`, and a runner has no logged-in CLI. Without it the accounts exist with no role and no restaurant, and every admin spec fails on an empty screen |
 | `E2E_BETTER_AUTH_SECRET` | session signing key |
 | `E2E_ENCRYPTION_KEY` | 64 hex characters |
 | `E2E_SEED_PASSWORD` | the throwaway password from step 3 |
