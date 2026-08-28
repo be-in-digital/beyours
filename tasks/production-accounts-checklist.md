@@ -49,7 +49,7 @@ one). Decide per service which brand owns it before creating duplicates.
 | **GitHub** | org `be-in-digital`, private Packages `@be-in-digital/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
 | **Convex** | backend, 1 deployment per client + `apps/site` | `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SITE_URL` | See §0. |
 | **Vercel** | `beyours.fr` + 1 project per client | — | |
-| **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — so it is one request per client, and AWS's review is not instant. Sequence it early in onboarding, or the restaurant opens with silent email. |
+| **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — one request per client, reviewed by hand, and **already refused once** on the BeYours account. Sequence it early: a refusal leaves a client site unable to email at all, since only `apps/site` has a Resend fallback. Check where a request stands with `DOMAIN=<domain> pnpm ses:check`. Procedure: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md). |
 | **Domain / DNS** | `beyours.fr` | — | Also carries the SES / Resend domain-verification records. |
 
 ## 2. Payments
@@ -78,7 +78,7 @@ one). Decide per service which brand owns it before creating duplicates.
 |---|---|---|
 | **Yousign** | electronic signature of the affiliate contracts | — (see `PROCESS_DE_VENTE.md`) |
 | **Calendly** | demo booking, linked from `/checkout/success` | `CALENDLY_URL` |
-| **Resend** | fallback email provider if the SES sandbox exit is refused | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
+| **Resend** | email provider for the commercial site — the SES sandbox exit **was refused**, so this is the plan of record for `beyours.fr`, not a contingency. Implemented in `apps/site/convex/email/providers.ts`; client sites cannot use it | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` |
 
 ## 5. Content & AI
 
