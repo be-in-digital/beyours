@@ -18,6 +18,7 @@ import {
 } from "./promotionDiscount"
 import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
 import { computeOrderTotals, resolveTaxRatePercent } from "./orderTotals"
+import { verifyOrderLine } from "./orderLine"
 
 // === QUERIES ===
 
@@ -224,6 +225,7 @@ interface StoreDoc {
 
 interface GlobalSettingsDoc {
   taxRate?: number
+  timezone?: string
   delivery?: {
     feeMode?: "fixed" | "percentage"
     fee?: number
@@ -300,6 +302,11 @@ export const create = {
       throw new Error("This store is not open for orders")
     }
 
+    // Read once, before the items: the serving window of a dish is a question
+    // about the clock in the kitchen, and that clock is a global setting.
+    const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
+    const deliveryConfig = globalSettings?.delivery
+
     // Re-fetch each product from DB — never trust client prices
     const verifiedItems: OrderItemInput[] = []
     for (const item of args.items) {
@@ -313,32 +320,24 @@ export const create = {
         throw new Error(`Product ${item.productId} does not belong to store ${args.storeId}`)
       }
 
-      // Resolve selected options from DB product data
-      const resolvedOptions: OrderItemInput["selectedOptions"] = []
-      for (const sel of item.selectedOptions) {
-        const option = product.options?.find((o: any) => o.id === sel.optionId || o.name === sel.optionName)
-        if (!option) continue
-        const choice = option.choices?.find((c: any) => c.id === sel.choiceId || c.name === sel.choiceName)
-        resolvedOptions.push({
-          optionId: option.id,
-          optionName: option.name,
-          choiceId: choice?.id,
-          choiceName: choice?.name ?? sel.choiceName,
-          priceModifier: choice?.priceModifier ?? 0,
-        })
-      }
-
-      const optionsTotal = resolvedOptions.reduce((sum: number, o: any) => sum + o.priceModifier, 0)
-      const serverUnitPrice = product.price
-      const serverSubtotal = (serverUnitPrice + optionsTotal) * item.quantity
+      // Availability, quantity, options and price all resolve in `orderLine`,
+      // pure and tested, because each refusal is the difference between an
+      // order the kitchen can cook and one it cannot.
+      const line = verifyOrderLine({
+        product,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions,
+        now,
+        timezone: globalSettings?.timezone,
+      })
 
       verifiedItems.push({
         productId: item.productId,
         productName: product.name,
-        quantity: item.quantity,
-        unitPrice: serverUnitPrice,
-        selectedOptions: resolvedOptions,
-        subtotal: serverSubtotal,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        selectedOptions: line.selectedOptions,
+        subtotal: line.subtotal,
         notes: item.notes,
         externalId: item.externalId,
       })
@@ -346,9 +345,6 @@ export const create = {
 
     // Calculate subtotal from server-verified items
     const subtotal = verifiedItems.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
-
-    const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
-    const deliveryConfig = globalSettings?.delivery
 
     const taxRatePercent = resolveTaxRatePercent({
       globalTaxRate: globalSettings?.taxRate,
