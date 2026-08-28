@@ -15,6 +15,8 @@ export default function SignInPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  /** Set when the server refused because the address is not confirmed yet. */
+  const [unverified, setUnverified] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,7 +29,17 @@ export default function SignInPage() {
       })
 
       if (result.error) {
-        toast.error(result.error.message ?? "Échec de la connexion")
+        // A 403 EMAIL_NOT_VERIFIED is not a wrong password, and telling
+        // somebody their credentials failed when the account is simply
+        // unconfirmed sends them to reset a password that was never the
+        // problem. The server has just re-sent the link (`sendOnSignIn`), so
+        // say where to look.
+        if (result.error.code === "EMAIL_NOT_VERIFIED") {
+          setUnverified(true)
+          toast.error("Confirmez votre adresse email pour vous connecter")
+        } else {
+          toast.error(result.error.message ?? "Échec de la connexion")
+        }
       } else {
         toast.success("Connexion réussie !")
         router.push("/menu")
@@ -136,6 +148,18 @@ export default function SignInPage() {
                   </button>
                 </div>
               </div>
+
+              {unverified && (
+                <div
+                  data-testid="unverified-notice"
+                  role="status"
+                  className="rounded-2xl border border-orange-200 bg-orange-50 px-5 py-4 text-sm text-orange-900"
+                >
+                  Cette adresse n&apos;est pas encore confirmée. Nous venons de
+                  vous renvoyer le lien de confirmation — vérifiez votre boîte
+                  mail, et vos spams.
+                </div>
+              )}
 
               {/* Submit */}
               <div className="space-y-4 pt-2">

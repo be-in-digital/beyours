@@ -344,11 +344,82 @@ Nous avons hâte de vous voir !
 }
 
 /**
+ * Data for the email verification template
+ */
+export interface VerifyEmailData {
+  verifyLink: string
+  userName: string
+}
+
+/**
+ * Email verification template
+ *
+ * Sent on sign-up, and again on any sign-in attempt made before the address is
+ * confirmed. Without it `requireEmailVerification` mints a token nobody ever
+ * receives, and the account can never be signed in to.
+ */
+export const verifyEmailTemplate: EmailTemplate<VerifyEmailData> = {
+  name: 'verifyEmail',
+  subject: () => 'Confirmez votre adresse email',
+  html: (data) => `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: #0D5C3F; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background: #f9f9f9; }
+          .button { display: inline-block; padding: 12px 24px; background: #0D5C3F; color: white; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+          .fallback { word-break: break-all; font-size: 12px; color: #666; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Confirmez votre adresse</h1>
+          </div>
+          <div class="content">
+            <p>Bonjour ${data.userName},</p>
+            <p>Il reste une étape : confirmez cette adresse pour activer votre compte.</p>
+
+            <a href="${data.verifyLink}" class="button">Confirmer mon adresse</a>
+
+            <p class="fallback">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>${data.verifyLink}</p>
+
+            <p>Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
+          </div>
+          <div class="footer">
+            <p>Ce lien est à usage unique.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `,
+  text: (data) => `
+Confirmez votre adresse email
+
+Bonjour ${data.userName},
+
+Il reste une étape : confirmez cette adresse pour activer votre compte.
+
+${data.verifyLink}
+
+Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.
+
+Ce lien est à usage unique.
+  `.trim(),
+}
+
+/**
  * Map of every available template
  */
 export const sesEmailTemplates = {
   orderConfirmation: orderConfirmationTemplate,
   passwordReset: passwordResetTemplate,
+  verifyEmail: verifyEmailTemplate,
   welcome: welcomeTemplate,
   prizeWon: prizeWonTemplate,
 } as const

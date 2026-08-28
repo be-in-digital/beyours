@@ -5,8 +5,8 @@
 
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
-import { passwordResetTemplate, welcomeTemplate } from './templates'
-import type { SESPasswordResetData, WelcomeData } from './templates'
+import { passwordResetTemplate, verifyEmailTemplate, welcomeTemplate } from './templates'
+import type { SESPasswordResetData, VerifyEmailData, WelcomeData } from './templates'
 import { getSESService } from './adapter'
 
 /**
@@ -31,7 +31,37 @@ const emailRequestSchema = z.discriminatedUnion('type', [
       dashboardLink: z.string().url(),
     }),
   }),
+  z.object({
+    type: z.literal('verifyEmail'),
+    to: z.string().email(),
+    data: z.object({
+      verifyLink: z.string().url(),
+      userName: z.string(),
+    }),
+  }),
 ])
+
+type EmailRequest = z.infer<typeof emailRequestSchema>
+
+/**
+ * The one link a given email type puts in front of the recipient.
+ *
+ * Written as an exhaustive switch rather than a ternary chain so that adding a
+ * fourth arm to the union above fails to compile until its link is named here.
+ * The previous form — `type === 'passwordReset' ? a : b` — would have quietly
+ * read `undefined` for any new type, and `isSameOrigin(undefined)` returns
+ * false, so a working template would have looked like an attack.
+ */
+function linkOf(request: EmailRequest): string {
+  switch (request.type) {
+    case 'passwordReset':
+      return request.data.resetLink
+    case 'welcome':
+      return request.data.dashboardLink
+    case 'verifyEmail':
+      return request.data.verifyLink
+  }
+}
 
 /** A secret shorter than this is treated as absent. */
 export const MIN_EMAIL_API_SECRET_BYTES = 32
@@ -156,7 +186,7 @@ export function createEmailRouteHandler(config: EmailRouteConfig) {
       // password" button goes, and the mail still arrives signed by the
       // restaurant's own domain.
       const linkOrigin = config.linkOrigin ?? new URL(req.url).origin
-      const link = type === 'passwordReset' ? data.resetLink : data.dashboardLink
+      const link = linkOf(parsed.data)
 
       if (!isSameOrigin(link, linkOrigin)) {
         console.error(
@@ -185,6 +215,13 @@ export function createEmailRouteHandler(config: EmailRouteConfig) {
           subject = welcomeTemplate.subject(templateData)
           html = welcomeTemplate.html(templateData)
           text = welcomeTemplate.text(templateData)
+          break
+        }
+        case 'verifyEmail': {
+          const templateData = data as VerifyEmailData
+          subject = verifyEmailTemplate.subject(templateData)
+          html = verifyEmailTemplate.html(templateData)
+          text = verifyEmailTemplate.text(templateData)
           break
         }
       }

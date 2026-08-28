@@ -16,6 +16,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MailCheck,
 } from "lucide-react"
 import { Button, Input, Label } from "@be-in-digital/ui/components"
 
@@ -27,6 +28,30 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  /**
+   * The address the account was created for, once sign-up returned WITHOUT a
+   * session. Better Auth only hands back a token when the address needs no
+   * verification; when `requireEmailVerification` is on it answers
+   * `{ token: null }` and mails a link instead. This page used to read that as
+   * success and route to `/menu` — signed out, with nothing to show for it.
+   */
+  const [awaitingVerification, setAwaitingVerification] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+
+  const handleResend = async () => {
+    if (!awaitingVerification) return
+    setResending(true)
+    const { error } = await authClient.sendVerificationEmail({
+      email: awaitingVerification,
+      callbackURL: "/menu",
+    })
+    setResending(false)
+    if (error) {
+      toast.error(error.message ?? "Impossible de renvoyer l'email")
+      return
+    }
+    toast.success("Email renvoyé")
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,10 +73,18 @@ export default function SignUpPage() {
         name,
         email,
         password,
+        // Where the link in the verification email lands once the address is
+        // confirmed. Auto-sign-in runs first, so the visitor arrives signed in.
+        callbackURL: "/menu",
       })
 
       if (result.error) {
         toast.error(result.error.message ?? "Échec de la création du compte")
+      } else if (result.data?.token == null) {
+        // Account created, no session: the deployment requires verification.
+        // Say so, and stay on this page — routing to /menu here is what made
+        // sign-up a dead end.
+        setAwaitingVerification(email)
       } else {
         toast.success("Compte créé avec succès !")
         router.push("/menu")
@@ -95,6 +128,53 @@ export default function SignUpPage() {
 
         {/* Form card */}
         <div className="bg-white rounded-[3rem] shadow-2xl shadow-emerald-950/5 border border-zinc-100 overflow-hidden">
+          {awaitingVerification ? (
+            <div
+              className="p-8 md:p-12 text-center space-y-6"
+              data-testid="verification-pending"
+            >
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
+                <MailCheck className="h-8 w-8 text-[#0D5C3F]" />
+              </div>
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black tracking-tight text-zinc-800">
+                  Vérifiez votre boîte mail
+                </h2>
+                <p className="text-zinc-500 font-medium leading-relaxed">
+                  Nous avons envoyé un lien de confirmation à{" "}
+                  <span className="font-black text-zinc-800">{awaitingVerification}</span>.
+                  Cliquez dessus pour activer votre compte — vous serez connecté
+                  automatiquement.
+                </p>
+                <p className="text-sm text-zinc-400">
+                  Le lien expire dans une heure. Pensez à regarder vos spams.
+                </p>
+              </div>
+              <div className="space-y-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="w-full h-14 rounded-2xl bg-[#0D5C3F] hover:bg-[#0A412D] text-white font-black uppercase tracking-widest text-xs disabled:opacity-60"
+                >
+                  {resending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="sr-only">Envoi en cours...</span>
+                    </>
+                  ) : (
+                    "Renvoyer l'email"
+                  )}
+                </Button>
+                <Link
+                  href="/sign-in"
+                  className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-600"
+                >
+                  Retour à la connexion
+                </Link>
+              </div>
+            </div>
+          ) : (
           <div className="p-8 md:p-12">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Name */}
@@ -218,6 +298,7 @@ export default function SignUpPage() {
               </div>
             </form>
           </div>
+          )}
         </div>
 
         {/* Footer link */}

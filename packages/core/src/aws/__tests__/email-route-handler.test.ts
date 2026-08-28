@@ -193,3 +193,61 @@ describe('request validation still applies', () => {
     expect(res.status).toBe(400)
   })
 })
+
+// #131: the verification mail had no arm here at all, so `createAuth` had
+// nowhere to send one — sign-up minted a token, sent nothing, and the account
+// could never be signed in to.
+describe('verifyEmail', () => {
+  const handler = createEmailRouteHandler({ secret: SECRET, linkOrigin: ORIGIN })
+
+  const verifyEmail = (verifyLink: string) => ({
+    type: 'verifyEmail',
+    to: 'owner@resto.example.com',
+    data: { verifyLink, userName: 'Owner' },
+  })
+
+  it('sends a verification mail carrying the link', async () => {
+    const link = `${ORIGIN}/api/auth/verify-email?token=abc&callbackURL=%2Fmenu`
+    const res = await handler.POST(request(verifyEmail(link), { token: SECRET }))
+
+    expect(res.status).toBe(200)
+    expect(sendEmail).toHaveBeenCalledOnce()
+
+    const sent = sendEmail.mock.calls[0][0]
+    expect(sent.to).toBe('owner@resto.example.com')
+    expect(sent.subject).toContain('Confirmez')
+    expect(sent.html).toContain(link)
+    expect(sent.text).toContain(link)
+  })
+
+  it('refuses a verification link outside the deployment origin', async () => {
+    const res = await handler.POST(
+      request(verifyEmail('https://evil.example/api/auth/verify-email?token=abc'), {
+        token: SECRET,
+      })
+    )
+    expect(res.status).toBe(400)
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('still requires the secret', async () => {
+    const res = await handler.POST(
+      request(verifyEmail(`${ORIGIN}/api/auth/verify-email?token=abc`), {
+        token: 'b'.repeat(MIN_EMAIL_API_SECRET_BYTES),
+      })
+    )
+    expect(res.status).toBe(401)
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it('rejects a body missing the link', async () => {
+    const res = await handler.POST(
+      request(
+        { type: 'verifyEmail', to: 'owner@resto.example.com', data: { userName: 'Owner' } },
+        { token: SECRET }
+      )
+    )
+    expect(res.status).toBe(400)
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+})
