@@ -1,41 +1,82 @@
 /**
  * SVG Sanitizer
  *
- * Removes potentially dangerous elements from SVG content:
- * - <script> elements
- * - Event handler attributes (onclick, onload, etc.)
- * - javascript: URIs in href/xlink:href
+ * An uploaded SVG is not an image, it is a document. It can carry `<script>`,
+ * event-handler attributes and `javascript:` URIs, and they run on whatever
+ * origin serves the file. This strips everything that can execute and returns
+ * markup that only draws.
+ *
+ * The work is delegated to DOMPurify, which parses the markup and walks the
+ * resulting tree. The previous implementation matched patterns against the raw
+ * string, and a string cannot be asked what a parser would see:
+ *
+ *  - `<svg/onload="…">` has no whitespace before the handler, so the
+ *    `/\s+on\w+/` pattern never matched it;
+ *  - `&#106;avascript:` only spells `javascript:` after entity decoding, which
+ *    happens in the parser, not in the regex;
+ *  - `<set attributeName="href" to="javascript:…">` never writes the URI into
+ *    an attribute the pattern looked at — it assigns `href` at animation time.
+ *
+ * All three were returned unchanged, and all three are covered by tests now.
  *
  * Pure function, max 1MB input.
  */
 
+import DOMPurify from "isomorphic-dompurify"
+
 const MAX_SVG_SIZE = 1 * 1024 * 1024 // 1MB
 
-const DANGEROUS_ELEMENTS = [
-  "script",
-  "iframe",
-  "object",
-  "embed",
-  "applet",
-  "form",
-  "input",
-  "textarea",
-  "button",
-  "select",
-  "foreignObject",
-  "math",
-  "annotation-xml",
-  "base",
-]
+/**
+ * DOMPurify's SVG profiles: drawing elements, plus the filter primitives a real
+ * logo uses (`<feGaussianBlur>` and friends). Everything outside them — `<script>`,
+ * `<foreignObject>`, `<iframe>`, every `on*` handler, every scripting URI — is
+ * dropped by the library rather than by a pattern maintained here.
+ */
+const SANITIZE_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+} as const
 
-const EVENT_HANDLER_PATTERN = /\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*)/gi
-
-const JAVASCRIPT_URI_PATTERN =
-  /(href|xlink:href)\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi
+/** Wrapper nodes the parser creates and DOMPurify then discards. Not findings. */
+const PARSER_WRAPPER_NODES = new Set(["HTML", "HEAD", "BODY"])
 
 export interface SanitizeResult {
   sanitized: string
   removedElements: string[]
+}
+
+/**
+ * Names of what DOMPurify dropped, in the shape this module has always
+ * reported: `<tag>` for an element, the bare name for an attribute.
+ */
+function describeRemovals(): string[] {
+  return DOMPurify.removed.flatMap((entry) => {
+    const removed = entry as { element?: Node; attribute?: Attr | null }
+
+    if (removed.attribute) {
+      return [removed.attribute.name]
+    }
+
+    const nodeName = removed.element?.nodeName
+    if (!nodeName || PARSER_WRAPPER_NODES.has(nodeName.toUpperCase())) {
+      return []
+    }
+
+    return [`<${nodeName.toLowerCase()}>`]
+  })
+}
+
+/**
+ * Drop anything the parser left before the root `<svg>`.
+ *
+ * A hostile `<!DOCTYPE svg [ … ]>` internal subset survives as an inert text
+ * node ahead of the root. It cannot execute, but it does make the stored file
+ * malformed XML, and a browser then refuses to draw it — so a sanitized logo
+ * would silently stop rendering. Exporter DOCTYPEs (Illustrator's, for one) are
+ * already consumed by the parser and never reach this.
+ */
+function stripPreamble(markup: string): string {
+  const rootStart = markup.indexOf("<svg")
+  return rootStart > 0 ? markup.slice(rootStart) : markup
 }
 
 export function sanitizeSvg(svg: string): SanitizeResult {
@@ -45,40 +86,11 @@ export function sanitizeSvg(svg: string): SanitizeResult {
     )
   }
 
-  const removedElements: string[] = []
-  let result = svg
+  const sanitized = DOMPurify.sanitize(svg, SANITIZE_CONFIG)
 
-  // Remove dangerous elements and their content
-  for (const tag of DANGEROUS_ELEMENTS) {
-    const regex = new RegExp(
-      `<${tag}[^>]*>[\\s\\S]*?<\\/${tag}>|<${tag}[^>]*\\/?>`,
-      "gi",
-    )
-    const matches = result.match(regex)
-    if (matches) {
-      for (const match of matches) {
-        removedElements.push(`<${tag}>`)
-      }
-      result = result.replace(regex, "")
-    }
+  // Read straight after the call: `DOMPurify.removed` is reset by the next one.
+  return {
+    sanitized: stripPreamble(sanitized),
+    removedElements: describeRemovals(),
   }
-
-  // Remove event handler attributes
-  const eventMatches = result.match(EVENT_HANDLER_PATTERN)
-  if (eventMatches) {
-    for (const match of eventMatches) {
-      const attrName = match.trim().split("=")[0]?.trim() ?? match.trim()
-      removedElements.push(attrName)
-    }
-    result = result.replace(EVENT_HANDLER_PATTERN, "")
-  }
-
-  // Remove javascript: URIs
-  const jsUriMatches = result.match(JAVASCRIPT_URI_PATTERN)
-  if (jsUriMatches) {
-    removedElements.push("javascript: URI")
-    result = result.replace(JAVASCRIPT_URI_PATTERN, 'href=""')
-  }
-
-  return { sanitized: result, removedElements }
 }

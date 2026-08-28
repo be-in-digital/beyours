@@ -20,6 +20,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./sanitize": {
+      "types": "./dist/sanitize/svgSanitizer.d.ts",
+      "import": "./dist/sanitize/svgSanitizer.mjs",
+      "require": "./dist/sanitize/svgSanitizer.js"
     }
   },
   "scripts": {
@@ -30,6 +35,9 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "isomorphic-dompurify": "^3.7.1"
   },
   "devDependencies": {
     "tsup": "^8.5.1",

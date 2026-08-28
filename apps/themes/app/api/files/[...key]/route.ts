@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
+import { buildFileResponseHeaders } from "@/lib/services/file-serving"
 
 function getS3Client() {
   return new S3Client({
@@ -47,13 +48,15 @@ export async function GET(
 
     const bytes = await response.Body.transformToByteArray()
 
+    // The stored ContentType is attacker-influenced — it comes from the
+    // multipart header of whoever uploaded the object — so it decides how the
+    // response is framed, never whether it may become a document.
     return new NextResponse(Buffer.from(bytes) as unknown as BodyInit, {
       status: 200,
-      headers: {
-        "Content-Type": response.ContentType ?? "application/octet-stream",
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Length": String(bytes.length),
-      },
+      headers: buildFileResponseHeaders({
+        contentType: response.ContentType,
+        contentLength: bytes.length,
+      }),
     })
   } catch (error: unknown) {
     const code = (error as { name?: string })?.name

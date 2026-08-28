@@ -3,7 +3,8 @@
 /**
  * CMS SVG Upload Action
  *
- * Receives SVG string, sanitizes it, uploads to S3.
+ * Receives an SVG string, refuses it if it carries active content, and uploads
+ * it to S3 as a download rather than as a document.
  * Runs in Node.js environment for S3 SDK access.
  */
 
@@ -11,7 +12,7 @@ import { action } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
-import { sanitizeSvg } from "@be-in-digital/cms"
+import { inspectSvgForActiveContent } from "@be-in-digital/cms"
 
 const MAX_SVG_SIZE = 1 * 1024 * 1024 // 1MB
 
@@ -65,8 +66,15 @@ export const uploadSvg = action({
       throw new Error("Le fichier SVG dépasse la taille maximale de 1MB")
     }
 
-    // Sanitize
-    const { sanitized, removedElements } = sanitizeSvg(args.svgContent)
+    // Refuse rather than scrub. The scrubber this replaces returned
+    // `<svg/onload=…>` and `&#106;avascript:` unchanged and reported nothing
+    // removed, so the caller stored an active document believing it was clean.
+    const report = inspectSvgForActiveContent(args.svgContent)
+    if (report.active) {
+      throw new Error(
+        `Ce SVG contient du contenu actif et a été refusé : ${report.reasons.join(", ")}.`,
+      )
+    }
 
     // Canonical S3 key derived from mediaId
     const key = `cms/${args.mediaId}/source.svg`
@@ -79,8 +87,13 @@ export const uploadSvg = action({
       new PutObjectCommand({
         Bucket: bucketName,
         Key: key,
-        Body: sanitized,
+        Body: args.svgContent,
         ContentType: "image/svg+xml",
+        // The object is served straight from the bucket, not through
+        // /api/files, so its inertness has to travel with it. A browser
+        // downloads this instead of opening it as a document; <img> still
+        // draws it, which is the only way the CMS and storefront use it.
+        ContentDisposition: "attachment",
       }),
     )
 
@@ -93,8 +106,7 @@ export const uploadSvg = action({
     })
 
     return {
-      sanitizedElements: removedElements,
-      size: sanitized.length,
+      size: args.svgContent.length,
     }
   },
 })

@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
+
+const contentSecurityPolicy = buildContentSecurityPolicy({
+  isDevelopment: process.env.NODE_ENV !== "production",
+});
 
 const nextConfig: NextConfig = {
   // App TypeScript errors fail the build (production safety). Convex backend
@@ -11,6 +16,15 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@convex-dev/better-auth"],
   async headers() {
     return [
+      // /api/files serves user-supplied bytes and answers with its own, far
+      // stricter policy (`default-src 'none'; sandbox`). It is excluded here so
+      // that policy is the only one on those responses.
+      {
+        source: '/((?!api/files/).*)',
+        headers: [
+          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
