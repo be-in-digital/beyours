@@ -39,6 +39,15 @@ BeYours Engine environment variables are split into **two distinct levels**, mir
 
 These are the credentials BeYours manages, shared across every deployed restaurant.
 
+> ⚠️ **The three `AWS_*` rows below are on their way out of this tier.** It was
+> decided on 2026-08-28 that every client gets its **own AWS account**
+> ([`apps/docs/deployment/aws-ownership.md`](../apps/docs/deployment/aws-ownership.md)),
+> which makes them site variables. The table still describes today's code — they
+> remain in `packageEnvSchema`, and `apps/themes/scripts/env.mjs:66` copies the
+> same fleet-wide key into every client's Convex deployment, so any client
+> backend can currently reach every other client's media. Do not read the rows
+> below as the intended design.
+
 | Variable | Required | Description |
 |---|---|---|
 | `AWS_REGION` | yes | AWS region of the BeYours account |
