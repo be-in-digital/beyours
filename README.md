@@ -385,6 +385,15 @@ before this table, three documents disagreed about which one was production and
 no single file listed them all. Confirmed against the Convex dashboard on
 2026-08-28.
 
+> **This table describes the account production still runs on.** A dedicated
+> company account (team `be-yours`) was created on 2026-08-28 with three clean
+> projects — `beyours-commercial-site`, `beyours-engine-reference`,
+> `beyours-client-template` — whose deployments are provisioned and verified but
+> **serve no traffic yet**. Nothing below has been touched. The move, its
+> ordering, and what it abandons are in
+> [`tasks/convex-account-cutover-runbook.md`](tasks/convex-account-cutover-runbook.md);
+> rewrite this table when it lands.
+
 | Deployment | App | Role | Convex project | Team | `/version` | Recorded in |
 | --- | --- | --- | --- | --- | --- | --- |
 | `fearless-poodle-133` | `apps/site` | **production** (beyours.fr) | `wedilybird` | `momoseck8` | `200` | [`.env.production.example:38`](apps/site/.env.production.example), [`check-prod-bundle.mjs:26`](apps/site/scripts/check-prod-bundle.mjs) |
