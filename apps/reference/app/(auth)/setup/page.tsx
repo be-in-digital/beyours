@@ -10,6 +10,7 @@ import { KeyRound, Loader2, ShieldCheck, ArrowRight, AlertTriangle } from "lucid
 import { Button, Input, Label } from "@be-in-digital/ui/components"
 import { api } from "@/convex/_generated/api"
 import { authClient } from "@/lib/auth-client"
+import { convexErrorMessage } from "@/lib/convex-error"
 
 /** The refusals `claimFirstAdmin` can return, in the operator's language. */
 const BOOTSTRAP_ERRORS: Record<string, string> = {
@@ -18,23 +19,6 @@ const BOOTSTRAP_ERRORS: Record<string, string> = {
     "L'amorçage n'est pas configuré sur ce déploiement. Posez ADMIN_BOOTSTRAP_TOKEN sur le backend Convex.",
   bootstrap_token_invalid: "Jeton d'amorçage invalide.",
   bootstrap_already_claimed: "Un administrateur a déjà été désigné.",
-}
-
-function bootstrapErrorMessage(error: unknown): string {
-  const data = (error as { data?: unknown })?.data
-  const code =
-    typeof data === "object" && data !== null && "code" in data
-      ? String((data as { code: unknown }).code)
-      : null
-
-  if (code && BOOTSTRAP_ERRORS[code]) return BOOTSTRAP_ERRORS[code]
-
-  // A ConvexError we do not recognise still carries its own message; anything
-  // else has already been redacted, so say something true instead of guessing.
-  if (typeof data === "object" && data !== null && "message" in data) {
-    return String((data as { message: unknown }).message)
-  }
-  return "L'attribution a échoué. Réessayez ou consultez les journaux Convex."
 }
 
 /**
@@ -75,7 +59,13 @@ export default function SetupPage() {
       // Reading a `code` rather than sniffing the message is the difference
       // between "jeton invalide" and a guess: both refusals mention
       // "amorçage", so a substring test got the reason wrong.
-      toast.error(bootstrapErrorMessage(error))
+      toast.error(
+        convexErrorMessage(
+          error,
+          BOOTSTRAP_ERRORS,
+          "L'attribution a échoué. Réessayez ou consultez les journaux Convex."
+        )
+      )
     } finally {
       setClaiming(false)
     }

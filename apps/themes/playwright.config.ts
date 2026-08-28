@@ -24,6 +24,22 @@ const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 // In CI with placeholder URLs we only run the "public" project.
 const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
 
+/**
+ * Which port this run talks to.
+ *
+ * Hardcoded 3000 everywhere, this suite could not be pointed at a second dev
+ * server — and in a worktree there usually is one, because the sibling
+ * checkout already holds 3000. Playwright then tried to START its own on the
+ * occupied port, `next dev` refused with "Another next dev server is already
+ * running", and the run died before a single test executed.
+ *
+ * `E2E_PORT` moves the whole rig — the base URL, the server Playwright starts,
+ * and the URL it waits on — so two branches can be verified at once without
+ * either one seeing the other's app.
+ */
+const PORT = process.env.E2E_PORT ?? "3000"
+const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -36,7 +52,7 @@ export default defineConfig({
     timeout: 15_000,
   },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",
@@ -101,9 +117,9 @@ export default defineConfig({
     // recompile page by page. `E2E_USE_BUILD=true` gets the same locally.
     command:
       process.env.CI || process.env.E2E_USE_BUILD === "true"
-        ? "pnpm start"
-        : "pnpm dev",
-    url: "http://localhost:3000",
+        ? `pnpm start --port ${PORT}`
+        : `pnpm dev --port ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: Object.fromEntries(
