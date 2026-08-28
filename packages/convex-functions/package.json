@@ -92,7 +92,7 @@
     "@be-in-digital/cms": "workspace:*",
     "@be-in-digital/convex-schema": "workspace:*",
     "@be-in-digital/core": "workspace:*",
-    "convex": "1.31.7"
+    "convex": "1.44.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
