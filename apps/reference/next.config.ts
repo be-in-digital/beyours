@@ -1,5 +1,27 @@
 import type { NextConfig } from "next";
 
+/**
+ * The S3 bucket is private, so its hostname is deliberately absent here:
+ * uploaded media is served same-origin by `/api/files`, which needs no
+ * `remotePatterns` entry. A deployment that puts a CDN in front of the bucket
+ * declares it once, in `AWS_S3_PUBLIC_BASE_URL`, and it is allowed from there.
+ * See `apps/docs/deployment/s3-bucket-policy.md`.
+ */
+function cdnPattern() {
+  const base = process.env.AWS_S3_PUBLIC_BASE_URL?.trim();
+  if (!base) return [];
+
+  try {
+    const { protocol, hostname } = new URL(base);
+    return [{ protocol: protocol.replace(":", "") as "http" | "https", hostname }];
+  } catch {
+    throw new Error(
+      `AWS_S3_PUBLIC_BASE_URL is not a valid URL: ${base}. ` +
+        "Expected the CDN origin, e.g. https://cdn.example.com",
+    );
+  }
+}
+
 const nextConfig: NextConfig = {
   // App TypeScript errors fail the build (production safety). Convex backend
   // files are type-checked separately (`npx convex deploy`) and are already
@@ -33,10 +55,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "i.pravatar.cc",
       },
-      {
-        protocol: "https",
-        hostname: "**.s3.eu-west-3.amazonaws.com",
-      },
+      ...cdnPattern(),
     ],
   },
 };
