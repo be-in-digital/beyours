@@ -68,6 +68,14 @@ vercel env add STRIPE_WEBHOOK_SECRET
 # Translation
 vercel env add OPENAI_API_KEY
 
+# Monitoring — one Sentry project per client. NEXT_PUBLIC_ means it is baked in
+# at build time: adding it after a deploy changes nothing until the next build.
+vercel env add NEXT_PUBLIC_SENTRY_DSN
+# Source maps, all three or none (see deployment/sentry.md)
+vercel env add SENTRY_ORG
+vercel env add SENTRY_PROJECT
+vercel env add SENTRY_AUTH_TOKEN
+
 # GitHub Packages
 vercel env add GITHUB_TOKEN
 ```

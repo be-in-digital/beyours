@@ -99,6 +99,7 @@ group is set, the whole group is required.
 | PayPal (restaurant payments) | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` |
 | SumUp (restaurant payments) | `SUMUP_CLIENT_ID`, `SUMUP_CLIENT_SECRET` |
 | BeYours billing (maintenance renewal) | `STRIPE_BID_SECRET_KEY`, `STRIPE_BID_WEBHOOK_SECRET`, `BID_APP_URL` |
+| Sentry source maps (readable stack traces) | `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` |
 
 > `STRIPE_PUBLISHABLE_KEY` is deliberately **absent** from the Stripe group: no
 > line of the product reads it today, so demanding it would gate a deploy on a
@@ -120,7 +121,13 @@ group is set, the whole group is required.
 | **AWS SES** | `AWS_SES_FROM_NAME` | optional | Sender name |
 | | `AWS_SES_REPLY_TO_EMAIL` | optional | Reply-to address |
 | | `AWS_SES_CONFIGURATION_SET` | optional | SES Configuration Set |
-| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | optional | Sentry DSN owned by the client |
+| **Monitoring** | `NEXT_PUBLIC_SENTRY_DSN` | optional | Sentry DSN owned by the client — **one Sentry project per client**. Unset, Sentry never initialises. See [`apps/docs/deployment/sentry.md`](../apps/docs/deployment/sentry.md) |
+| | `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | optional | Overrides the environment events are filed under. Unset, `VERCEL_ENV` keeps preview deploys out of the production issue list |
+| | `NEXT_PUBLIC_SENTRY_RELEASE` | optional | Pins the release. Unset, the git commit sha of the deployment is used |
+| | `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | optional | 0 to 1. Defaults to **0.1 in production** — 1.0 spends a busy restaurant's quota on traces and Sentry then drops the errors |
+| | `SENTRY_ORG` | feature | Sentry org slug, read at build time |
+| | `SENTRY_PROJECT` | feature | Sentry project slug, read at build time |
+| | `SENTRY_AUTH_TOKEN` | feature | Build-host secret with `project:releases`. Never a `NEXT_PUBLIC_` variable |
 | **Maps** | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | optional | Google Maps key owned by the client |
 | **Stripe** | `STRIPE_SECRET_KEY` | feature | Secret key (`sk_` prefix) |
 | | `STRIPE_PUBLISHABLE_KEY` | optional | Public key (`pk_` prefix); declared for the setup wizard, no runtime read yet |
@@ -411,7 +418,7 @@ openssl rand -hex 32
 |  |   STRIPE_BID_* BID_*               |  |
 |  |   ADMIN_BOOTSTRAP_TOKEN            |  |
 |  |   AUTH_ALLOW_UNVERIFIED_EMAIL      |  |
-|  |   SENTRY_DSN GOOGLE_MAPS_KEY ...   |  |
+|  |   SENTRY_* GOOGLE_MAPS_KEY ...     |  |
 |  |   + SITE_FEATURE_GROUPS refinement |  |
 |  |     (all-or-nothing per provider)  |  |
 |  +------------------------------------+  |
@@ -513,6 +520,9 @@ process.env
             +-- DELIVEROO_BRAND_ID ----> DB (storeIntegrations)
             +-- DELIVEROO_SITE_ID -----> DB (storeIntegrations)
             +-- DELIVEROO_IS_SANDBOX --> all the Deliveroo files
-            +-- SENTRY_DSN -----------> sentry config (via param)
+            +-- SENTRY_DSN -----------> resolveSentryOptions -> Sentry.init
+            |                          (browser + server + edge; null = off)
+            +-- SENTRY_ORG/PROJECT/ --> withSentryConfig (build: source maps)
+            |   AUTH_TOKEN
             +-- GOOGLE_MAPS_KEY ------> address autocomplete (build inline)
 ```

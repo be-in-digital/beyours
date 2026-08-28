@@ -197,6 +197,49 @@ describe('validateAllEnv — feature groups', () => {
     setEnv({ ...VALID_ENV, SUMUP_CLIENT_ID: '', SUMUP_CLIENT_SECRET: '' })
     expect(validateAllEnv().ok).toBe(true)
   })
+
+  // A DSN on its own is a complete Sentry setup: errors arrive, only the stack
+  // traces stay minified. Demanding the upload trio here would gate every
+  // client site on a build-host secret most of them will never have.
+  it('accepts a Sentry DSN with no source-map upload configured', () => {
+    setEnv({ ...VALID_ENV, NEXT_PUBLIC_SENTRY_DSN: 'https://k@o1.ingest.de.sentry.io/2' })
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  it('rejects half a source-map upload and names the gap', () => {
+    setEnv({ ...VALID_ENV, SENTRY_ORG: 'beyours' })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+
+    const token = missing.find((m) => m.name === 'SENTRY_AUTH_TOKEN')
+    expect(token?.tier).toBe('feature')
+    expect(token?.message).toContain('Sentry')
+    expect(token?.message).toContain('SENTRY_ORG')
+    expect(missing.some((m) => m.name === 'SENTRY_PROJECT' && m.tier === 'feature')).toBe(true)
+  })
+
+  it('accepts a source-map upload configured in full', () => {
+    setEnv({
+      ...VALID_ENV,
+      NEXT_PUBLIC_SENTRY_DSN: 'https://k@o1.ingest.de.sentry.io/2',
+      SENTRY_ORG: 'beyours',
+      SENTRY_PROJECT: 'pizzeria-napoli',
+      SENTRY_AUTH_TOKEN: 'sntrys_token',
+    })
+    expect(validateAllEnv().ok).toBe(true)
+  })
+
+  it('rejects a traces sample rate that is not a rate', () => {
+    setEnv({ ...VALID_ENV, NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: '50%' })
+    const { ok, missing } = validateAllEnv()
+    expect(ok).toBe(false)
+    expect(missing.some((m) => m.name === 'NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE')).toBe(true)
+  })
+
+  it('accepts a traces sample rate inside 0..1', () => {
+    setEnv({ ...VALID_ENV, NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: '0.25' })
+    expect(validateAllEnv().ok).toBe(true)
+  })
 })
 
 describe('formatEnvReport', () => {

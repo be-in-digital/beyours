@@ -626,11 +626,18 @@ export const packages: PackageInfo[] = [
         tags: ["aws", "ses", "email"],
       },
       {
-        name: "createSentryConfig",
+        name: "resolveSentryOptions",
         type: "function",
-        description: "Create Sentry configuration for error tracking",
-        importPath: "@be-in-digital/core",
-        tags: ["monitoring", "sentry"],
+        description: "Builds the Sentry.init options for one runtime ('browser' | 'server' | 'edge') from the environment, or returns null when NEXT_PUBLIC_SENTRY_DSN is unset or is not a DSN — in which case the app must skip Sentry.init entirely. One Sentry project per client: the DSN is the isolation. Import-free, so the browser bundle, the edge runtime and Convex can all read it. See apps/docs/deployment/sentry.md.",
+        importPath: "@be-in-digital/core/sentry",
+        tags: ["monitoring", "sentry", "env"],
+      },
+      {
+        name: "isSentryDsn",
+        type: "function",
+        description: "True when a string is a Sentry DSN (https://<key>@<host>/<projectId>). The env schema only checks that the DSN is a URL, so a project-page URL pasted by mistake is caught here instead of silently disabling reporting.",
+        importPath: "@be-in-digital/core/sentry",
+        tags: ["monitoring", "sentry", "validation"],
       },
       {
         name: "packageEnvSchema",
