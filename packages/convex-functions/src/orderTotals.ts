@@ -14,22 +14,26 @@
  */
 
 export interface TaxRateSources {
-  /** `store.settings.taxRate`, a percentage such as 10. */
-  storeTaxRate?: number | null
-  /** `globalSettings.taxRate`, the fallback percentage. */
+  /** `globalSettings.taxRate`, a percentage such as 20. */
   globalTaxRate?: number | null
 }
 
 /**
  * Resolve the applicable tax rate, as a percentage.
  *
- * The store overrides the global setting — including when it is explicitly 0,
- * which is a real configuration (tax-free store), not a missing value.
+ * There used to be a per-store override read from `store.settings.taxRate`.
+ * That column is legacy: no mutation declares it, so the only value it could
+ * ever hold came from the create dialog's undeclared `settings` block — the
+ * one Convex rejected, which is why no establishment could be created at all.
+ * The override was therefore never anything but `undefined`, and every order
+ * already fell through to the global rate.
+ *
+ * Zero is a real configuration (a tax-free establishment), not a missing
+ * value, so it is returned rather than treated as absent. A genuine per-store
+ * rate belongs in a declared argument with an editor behind it, not in a
+ * column nothing writes.
  */
 export function resolveTaxRatePercent(sources: TaxRateSources): number {
-  const store = sources.storeTaxRate
-  if (typeof store === "number" && Number.isFinite(store)) return store
-
   const global = sources.globalTaxRate
   if (typeof global === "number" && Number.isFinite(global)) return global
 

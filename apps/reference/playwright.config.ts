@@ -5,6 +5,17 @@ loadEnvFiles(__dirname, [".env.e2e", ".env.local"])
 
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
+/**
+ * The port the suite drives, and the port the server it starts listens on.
+ *
+ * Two runs on one machine used to fight over 3000: the second reused the first
+ * one's server (`reuseExistingServer`) and drove a build of somebody else's
+ * branch. `E2E_PORT` gives a run its own. `BETTER_AUTH_URL` and `SITE_URL` have
+ * to agree with it — sign-in posts to the origin they name.
+ */
+const PORT = Number(process.env.E2E_PORT ?? 3000)
+const BASE_URL = `http://localhost:${PORT}`
+
 // Admin/setup projects require a real Convex backend (not placeholder URLs).
 // In CI with placeholder URLs we only run the "public" project.
 const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
@@ -37,7 +48,7 @@ export default defineConfig({
     timeout: 15_000,
   },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: BASE_URL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "on-first-retry",
@@ -102,9 +113,9 @@ export default defineConfig({
     // recompile page by page. `E2E_USE_BUILD=true` gets the same locally.
     command:
       process.env.CI || process.env.E2E_USE_BUILD === "true"
-        ? "pnpm start"
-        : "pnpm dev",
-    url: "http://localhost:3000",
+        ? `pnpm start --port ${PORT}`
+        : `pnpm dev --port ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: Object.fromEntries(

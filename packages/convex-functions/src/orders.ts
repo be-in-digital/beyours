@@ -351,7 +351,6 @@ export const create = {
     const deliveryConfig = globalSettings?.delivery
 
     const taxRatePercent = resolveTaxRatePercent({
-      storeTaxRate: store.settings?.taxRate,
       globalTaxRate: globalSettings?.taxRate,
     })
 
