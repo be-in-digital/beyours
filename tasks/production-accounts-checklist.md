@@ -31,6 +31,11 @@ Two consequences to live with, since they do not go away by themselves:
 > backend depends on an account that is not `developers@beyours.fr`. Make sure at
 > least one other person can reach it.
 
+Both are procedure, not code: **`convex-spending-cap-runbook.md`** carries the
+steps, the blast radius, and the sign-off. Read it before ticking the Convex line
+in the checklist below — in particular, whether a cap even exists to set depends
+on the team's plan, and a limit of `$0` is a tripwire rather than a safety.
+
 **Two brands, two addresses.** BeYours is the product, BeInDigital is the agency.
 Some existing accounts are on `hello@beindigital.fr` (the ClickUp workspace, for
 one). Decide per service which brand owns it before creating duplicates.
@@ -112,7 +117,7 @@ they serve the commercial site and the fleet, not one restaurant.
 
 - [ ] `developers@beyours.fr` mailbox exists and is monitored
 - [ ] Decide BeYours vs BeInDigital ownership per service (§0)
-- [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account
+- [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
 - [ ] AWS account; SES out of sandbox (eu-west-3); S3 bucket
