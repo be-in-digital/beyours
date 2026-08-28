@@ -65,6 +65,23 @@ if (SEED_PASSWORD.length < MIN_PASSWORD_LENGTH) {
  */
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "test.owner@beindigital.fr"
 
+/**
+ * Better Auth refuses any state-changing request whose `Origin` is missing.
+ *
+ * Node's `fetch` sends none — a browser always does — so every call here came
+ * back `403 MISSING_OR_NULL_ORIGIN` and the script ended on "No account could
+ * be created or opened. Nothing to seed." The CI step runs it with `|| true`,
+ * so the run continued to Playwright against an empty database and the failure
+ * surfaced 400 tests later as an admin screen that would not load.
+ *
+ * `BASE_URL` is what a browser would send, and `convex/auth.ts` lists it in
+ * `trustedOrigins` (through `SITE_URL`, plus the localhost range).
+ */
+const AUTH_HEADERS = {
+  "Content-Type": "application/json",
+  Origin: BASE_URL,
+} as const
+
 type UserRole =
   | "client_admin"
   | "manager"
@@ -130,7 +147,7 @@ async function signUpUser(
   try {
     const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: AUTH_HEADERS,
       body: JSON.stringify({
         name: user.name,
         email: user.email,
@@ -178,7 +195,7 @@ async function signInUser(
   try {
     const res = await fetch(`${BASE_URL}/api/auth/sign-in/email`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: AUTH_HEADERS,
       body: JSON.stringify({ email: user.email, password: user.password }),
     })
 
