@@ -8,8 +8,25 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
+  # `changeset publish` used to run on a bare package build: no lint, no
+  # type-check, no tests, no app build. A failing test did not stop publication
+  # to GitHub Packages, nor the mirror to `beyours-boilerplate` that follows it.
+  # Reusing ci.yml rather than restating its four jobs here — a copy would drift
+  # from the checks branch protection actually requires.
+  #
+  # The cost is that CI runs twice on a push to main: once from its own trigger,
+  # once through this call. That is deliberate. The alternative, keying off
+  # `workflow_run`, would make this workflow publish and tag from a SHA it has
+  # to reconstruct from the event, and this is not the workflow to be clever in.
+  verify:
+    name: Verify
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   release:
     name: Release
+    needs: [verify]
     runs-on: ubuntu-latest
     permissions:
       # `contents` for the tags `changeset publish` writes. No `pull-requests`:

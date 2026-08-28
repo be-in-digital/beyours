@@ -7,6 +7,11 @@ on:
   pull_request:
     branches:
       - main
+  # Callable so `release.yml` can gate publication on these four jobs. Adding
+  # this changes nothing for the push and pull_request runs above — in
+  # particular the job names stay `Lint` / `Type Check` / `Test` / `Build`,
+  # which is what branch protection requires by name.
+  workflow_call:
 
 jobs:
   lint:
