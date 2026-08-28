@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { packageEnvSchema, siteEnvSchema } from '../schemas'
+import {
+  packageEnvSchema,
+  siteEnvSchema,
+  siteEnvRequiredSchema,
+  siteEnvOptionalSchema,
+  SITE_FEATURE_GROUPS,
+} from '../schemas'
 
 describe('packageEnvSchema', () => {
   const validPackageEnv = {
@@ -125,5 +131,134 @@ describe('siteEnvSchema', () => {
       CONVEX_SITE_URL: 'not-a-url',
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe('siteEnvRequiredSchema', () => {
+  const VALID = {
+    NEXT_PUBLIC_CONVEX_URL: 'https://test.convex.cloud',
+    CONVEX_SITE_URL: 'https://test.convex.site',
+    SITE_URL: 'https://resto.example.com',
+    BETTER_AUTH_SECRET: 'x'.repeat(32),
+    ENCRYPTION_KEY: 'a'.repeat(64),
+    AWS_S3_BUCKET_NAME: 'resto-bucket',
+    AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
+  }
+
+  it('accepts a fully configured deployment', () => {
+    expect(siteEnvRequiredSchema.safeParse(VALID).success).toBe(true)
+  })
+
+  it('rejects an empty object', () => {
+    expect(siteEnvRequiredSchema.safeParse({}).success).toBe(false)
+  })
+
+  // The whole point of the split: `opt()` mapped '' to undefined, so a template
+  // copied and left unfilled validated clean.
+  it.each(Object.keys(VALID))('rejects %s left as an empty string', (name) => {
+    const result = siteEnvRequiredSchema.safeParse({ ...VALID, [name]: '' })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.some((i) => i.path[0] === name)).toBe(true)
+  })
+
+  it.each(Object.keys(VALID))('rejects %s when absent', (name) => {
+    const { [name]: _dropped, ...rest } = VALID
+    expect(siteEnvRequiredSchema.safeParse(rest).success).toBe(false)
+  })
+
+  it('rejects a BETTER_AUTH_SECRET shorter than 32 characters', () => {
+    const result = siteEnvRequiredSchema.safeParse({
+      ...VALID,
+      BETTER_AUTH_SECRET: 'x'.repeat(31),
+    })
+    expect(result.success).toBe(false)
+  })
+
+  // Since the private-bucket decision (#185) an unset CDN base means "serve
+  // media through the app's own proxy", which is a supported deployment.
+  it('boots with no AWS_S3_PUBLIC_BASE_URL at all', () => {
+    expect(siteEnvRequiredSchema.safeParse(VALID).success).toBe(true)
+  })
+})
+
+describe('siteEnvOptionalSchema', () => {
+  it('accepts an empty object', () => {
+    expect(siteEnvOptionalSchema.safeParse({}).success).toBe(true)
+  })
+
+  it('declares every variable the runtime reads', () => {
+    const declared = Object.keys(siteEnvOptionalSchema._def.shape)
+    for (const name of [
+      'AWS_S3_PUBLIC_BASE_URL' in {} ? '' : 'ADMIN_BOOTSTRAP_TOKEN',
+      'NEXT_PUBLIC_SITE_URL',
+      'BID_APP_URL',
+      'UNSPLASH_ACCESS_KEY',
+      'AUTH_ALLOW_UNVERIFIED_EMAIL',
+      'NEXT_PUBLIC_CONVEX_SITE_URL',
+      'CONTACT_EMAIL',
+      'BID_NOTIFY_EMAIL',
+      'STRIPE_BID_SECRET_KEY',
+      'STRIPE_BID_WEBHOOK_SECRET',
+      'STRIPE_BID_PRICE_MAINTENANCE',
+    ]) {
+      expect(declared).toContain(name)
+    }
+  })
+
+  it('rejects an unknown AUTH_ALLOW_UNVERIFIED_EMAIL value', () => {
+    expect(
+      siteEnvOptionalSchema.safeParse({ AUTH_ALLOW_UNVERIFIED_EMAIL: 'yes' }).success
+    ).toBe(false)
+  })
+
+  it('holds every feature group to all-or-nothing', () => {
+    for (const { vars } of SITE_FEATURE_GROUPS) {
+      const [first, ...rest] = vars
+      expect(rest.length).toBeGreaterThan(0)
+
+      const partial = siteEnvOptionalSchema.safeParse({ [first]: placeholderFor(first) })
+      expect(partial.success).toBe(false)
+
+      const full = siteEnvOptionalSchema.safeParse(
+        Object.fromEntries(vars.map((v) => [v, placeholderFor(v)]))
+      )
+      expect(full.success).toBe(true)
+    }
+  })
+})
+
+/** A value each feature-group variable will actually accept. */
+function placeholderFor(name: string): string {
+  if (name.endsWith('_WEBHOOK_SECRET')) return 'whsec_test'
+  if (name.startsWith('STRIPE_') && name.endsWith('_SECRET_KEY')) return 'sk_test'
+  if (name === 'STRIPE_SECRET_KEY') return 'sk_test'
+  if (name === 'STRIPE_PUBLISHABLE_KEY') return 'pk_test'
+  if (name.endsWith('_URL')) return 'https://app.example.com'
+  if (name.endsWith('_EMAIL')) return 'ops@example.com'
+  return 'value'
+}
+
+// The reader and the boot tiers are two contracts over one variable set. If a
+// variable is added to boot and forgotten in the reader, `getSiteEnv()` silently
+// stops returning it — the exact class of silent failure this split exists to end.
+describe('siteEnvSchema (reader)', () => {
+  it('covers every variable both boot tiers declare', () => {
+    const reader = Object.keys(siteEnvSchema._def.shape)
+    const boot = [
+      ...Object.keys(siteEnvRequiredSchema._def.shape),
+      ...Object.keys(siteEnvOptionalSchema._def.shape),
+    ]
+    for (const name of boot) expect(reader).toContain(name)
+    expect(reader).toHaveLength(boot.length)
+  })
+
+  it('never throws on a value the strict tier would reject', () => {
+    const result = siteEnvSchema.safeParse({
+      BETTER_AUTH_SECRET: 'short',
+      AWS_S3_PUBLIC_BASE_URL: 'cdn.example.com',
+      BID_APP_URL: 'not-a-url',
+      CONTACT_EMAIL: 'not-an-email',
+    })
+    expect(result.success).toBe(true)
   })
 })

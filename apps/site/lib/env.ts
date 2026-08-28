@@ -1,0 +1,226 @@
+/**
+ * Boot-time environment validation for apps/site (beyours.fr).
+ *
+ * This app depends on none of the engine packages, so it does not share
+ * `@be-in-digital/core/env` — it has its own surface and its own rules here.
+ * Dependency-free on purpose: no zod, nothing new in the bundle.
+ *
+ * ── What this can and cannot see ────────────────────────────────────────────
+ * Only the NEXT.JS process env. The Stripe keys, the AWS credentials, the
+ * e-mail provider and the four maintenance Price IDs live on the CONVEX
+ * deployment (`npx convex env set …`), which this code never runs in. So they
+ * are checked when present — true in local dev, where `.env.local` holds
+ * everything — and never demanded. Only what the Next server genuinely needs
+ * to serve a correct page is required.
+ */
+
+export type EnvTier = 'required' | 'format' | 'feature'
+
+export interface EnvProblem {
+  name: string
+  message: string
+  tier: EnvTier
+}
+
+/** The fallback in components/convex-provider.tsx. Reaching it means no backend. */
+const PLACEHOLDER_CONVEX_URL = 'https://placeholder.convex.cloud'
+
+type Check = (value: string) => string | null
+
+const isUrl: Check = (v) => {
+  try {
+    const { protocol } = new URL(v)
+    return protocol === 'http:' || protocol === 'https:' ? null : 'doit être une URL http(s)'
+  } catch {
+    return 'doit être une URL absolue (https://…)'
+  }
+}
+
+const isEmail: Check = (v) => (/^[^@\s]+@[^@\s.]+\.[^@\s]+$/.test(v) ? null : 'doit être une adresse e-mail')
+
+const isBool: Check = (v) => (v === 'true' || v === 'false' ? null : 'doit valoir "true" ou "false"')
+
+const startsWith =
+  (prefix: string): Check =>
+  (v) =>
+    v.startsWith(prefix) ? null : `doit commencer par "${prefix}"`
+
+const isOneOf =
+  (...allowed: string[]): Check =>
+  (v) =>
+    allowed.includes(v) ? null : `doit valoir ${allowed.map((a) => `"${a}"`).join(' ou ')}`
+
+/**
+ * What the Next server cannot serve a correct page without.
+ *
+ * Both have a fallback at their read site, and that is the problem: unset,
+ * `NEXT_PUBLIC_CONVEX_URL` silently points the whole site at a placeholder
+ * deployment, and `NEXT_PUBLIC_SITE_URL` gets beyours.fr baked into a preview
+ * or staging build's canonical links and e-mail logos.
+ */
+const REQUIRED: { name: string; check: Check }[] = [
+  {
+    name: 'NEXT_PUBLIC_CONVEX_URL',
+    check: (v) =>
+      v === PLACEHOLDER_CONVEX_URL
+        ? 'vaut encore le placeholder — aucun backend ne répondra'
+        : isUrl(v),
+  },
+  { name: 'NEXT_PUBLIC_SITE_URL', check: isUrl },
+]
+
+/** Checked only when set — most of these are Convex-side in production. */
+const OPTIONAL: { name: string; check: Check }[] = [
+  { name: 'NEXT_PUBLIC_CONVEX_SITE_URL', check: isUrl },
+  { name: 'CONVEX_SITE_URL', check: isUrl },
+  { name: 'SITE_URL', check: isUrl },
+  { name: 'NEXT_PUBLIC_TVA_ENABLED', check: isBool },
+  { name: 'STRIPE_TAX_ENABLED', check: isBool },
+  { name: 'STRIPE_SECRET_KEY', check: startsWith('sk_') },
+  { name: 'STRIPE_WEBHOOK_SECRET', check: startsWith('whsec_') },
+  { name: 'STRIPE_FOUNDERS_COUPON_ID', check: () => null },
+  { name: 'EMAIL_PROVIDER', check: isOneOf('ses', 'resend') },
+  { name: 'EMAIL_FROM', check: isEmail },
+  { name: 'RESEND_FROM_EMAIL', check: isEmail },
+  { name: 'AWS_SES_FROM_EMAIL', check: isEmail },
+  { name: 'CONTACT_EMAIL', check: isEmail },
+  { name: 'BID_NOTIFY_EMAIL', check: isEmail },
+  { name: 'BOOKING_URL', check: isUrl },
+  { name: 'CALENDLY_URL', check: isUrl },
+  { name: 'LIVE_URL', check: isUrl },
+]
+
+/** The four maintenance Price IDs. `convex/stripe.ts` throws on any one missing. */
+const MAINTENANCE_PRICES = [
+  'STRIPE_PRICE_ESSENTIELLE_MONTHLY',
+  'STRIPE_PRICE_ESSENTIELLE_YEARLY',
+  'STRIPE_PRICE_PREMIUM_MONTHLY',
+  'STRIPE_PRICE_PREMIUM_YEARLY',
+]
+
+/** All-or-nothing groups: half of one of these is worse than none of it. */
+const FEATURE_GROUPS: { feature: string; vars: string[] }[] = [
+  {
+    feature: 'Stripe',
+    vars: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
+  },
+  {
+    // A sale that reaches checkout with one of these unset is debited and
+    // never provisioned — convex/stripe.ts throws mid-session.
+    feature: 'Prix de maintenance Stripe',
+    vars: MAINTENANCE_PRICES,
+  },
+]
+
+const isSet = (v: unknown): v is string => typeof v === 'string' && v !== ''
+
+/**
+ * Validate the Next process env. Never throws — the caller decides.
+ */
+export function validateSiteEnv(
+  source: Record<string, string | undefined> = process.env
+): { ok: boolean; problems: EnvProblem[] } {
+  const problems: EnvProblem[] = []
+
+  for (const { name, check } of REQUIRED) {
+    const value = source[name]
+    if (!isSet(value)) {
+      problems.push({ name, message: 'non définie', tier: 'required' })
+      continue
+    }
+    const failure = check(value)
+    if (failure) problems.push({ name, message: failure, tier: 'required' })
+  }
+
+  for (const { name, check } of OPTIONAL) {
+    const value = source[name]
+    if (!isSet(value)) continue
+    const failure = check(value)
+    if (failure) problems.push({ name, message: failure, tier: 'format' })
+  }
+
+  for (const { feature, vars } of FEATURE_GROUPS) {
+    const set = vars.filter((name) => isSet(source[name]))
+    if (set.length === 0 || set.length === vars.length) continue
+
+    for (const name of vars) {
+      if (isSet(source[name])) continue
+      problems.push({
+        name,
+        message: `requise dès que ${feature} est configuré (${set.length}/${vars.length} déjà posée(s))`,
+        tier: 'feature',
+      })
+    }
+  }
+
+  // The storefront reads NEXT_PUBLIC_TVA_ENABLED and Stripe reads
+  // STRIPE_TAX_ENABLED; disagreeing means displayed prices and charged prices
+  // part ways. Only comparable where both are visible — in production
+  // STRIPE_TAX_ENABLED lives on Convex, so a one-sided env is not an error.
+  const tva = source.NEXT_PUBLIC_TVA_ENABLED
+  const stripeTax = source.STRIPE_TAX_ENABLED
+  if (isSet(tva) && isSet(stripeTax) && tva !== stripeTax) {
+    problems.push({
+      name: 'STRIPE_TAX_ENABLED',
+      message: `vaut "${stripeTax}" alors que NEXT_PUBLIC_TVA_ENABLED vaut "${tva}" — les deux vont ensemble`,
+      tier: 'feature',
+    })
+  }
+
+  const emailProvider = source.EMAIL_PROVIDER
+  if (emailProvider === 'resend' && !isSet(source.RESEND_API_KEY)) {
+    problems.push({
+      name: 'RESEND_API_KEY',
+      message: 'requise avec EMAIL_PROVIDER="resend"',
+      tier: 'feature',
+    })
+  }
+  if (emailProvider === 'ses') {
+    for (const name of ['AWS_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']) {
+      if (!isSet(source[name])) {
+        problems.push({
+          name,
+          message: 'requise avec EMAIL_PROVIDER="ses"',
+          tier: 'feature',
+        })
+      }
+    }
+  }
+
+  return { ok: problems.length === 0, problems }
+}
+
+const SECTIONS: { tier: EnvTier; title: string }[] = [
+  { tier: 'required', title: '── Requises (serveur Next) ──' },
+  { tier: 'format', title: '── Format invalide ──' },
+  { tier: 'feature', title: '── Fonctionnalité configurée à moitié ──' },
+]
+
+/** Format the problems for the boot log. */
+export function formatSiteEnvReport(problems: EnvProblem[]): string {
+  const lines = [
+    '',
+    '╔══════════════════════════════════════════════════════════════╗',
+    "║   apps/site — VARIABLES D'ENVIRONNEMENT À CORRIGER          ║",
+    '╚══════════════════════════════════════════════════════════════╝',
+    '',
+  ]
+
+  for (const { tier, title } of SECTIONS) {
+    const vars = problems.filter((p) => p.tier === tier)
+    if (vars.length === 0) continue
+
+    lines.push(`  ${title}`)
+    for (const p of vars) lines.push(`    ✗ ${p.name}: ${p.message}`)
+    lines.push('')
+  }
+
+  lines.push(`  Total: ${problems.length} variable(s) à corriger`)
+  lines.push('  → Voir apps/site/.env.example (et .env.production.example pour la prod).')
+  lines.push(
+    '  → Les clés Stripe / AWS / e-mail vivent sur le déploiement CONVEX, pas sur Vercel.'
+  )
+  lines.push('')
+
+  return lines.join('\n')
+}
