@@ -142,8 +142,41 @@ const siteOptionalShape = {
   AWS_SES_REPLY_TO_EMAIL: opt(z.string().email()),
   AWS_SES_CONFIGURATION_SET: opt(z.string().min(1)),
 
-  // Monitoring (DSN per client)
+  // Monitoring — one Sentry PROJECT per client, so a restaurant's errors, its
+  // quota and its retention stay its own. See apps/docs/deployment/sentry.md.
+  //
+  // The DSN is the isolation. It is validated as a URL rather than as a DSN on
+  // purpose: tightening a variable deployments already carry would turn a wrong
+  // value into a refused boot. The shape is checked in `sentry/`, which
+  // disables reporting and says so instead.
   NEXT_PUBLIC_SENTRY_DSN: opt(z.string().url()),
+  // Overrides the environment events are filed under. Unset, `VERCEL_ENV`
+  // already keeps a client's preview deploys out of its production issues.
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: opt(z.string().min(1)),
+  // Pins the release. Unset, `VERCEL_GIT_COMMIT_SHA` is used — it must match
+  // what the source maps were uploaded under or stack traces stay minified.
+  NEXT_PUBLIC_SENTRY_RELEASE: opt(z.string().min(1)),
+  // 0 to 1. Defaults to 0.1 in production: tracing every transaction spends a
+  // restaurant's free-tier quota on a Saturday night, and Sentry then drops the
+  // errors that mattered.
+  // Kept a string rather than coerced: READER_RELAXED re-declares every newly
+  // added field as a string, and a number here would make `SiteEnv` disagree
+  // with what `getSiteEnv()` actually returns.
+  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: opt(
+    z
+      .string()
+      .refine(
+        (v) => Number.isFinite(Number(v)) && Number(v) >= 0 && Number(v) <= 1,
+        'attendu : un nombre entre 0 et 1',
+      ),
+  ),
+
+  // Sentry source-map upload (build time) — all three or none, see
+  // SITE_FEATURE_GROUPS. The token is a secret and belongs on the build host,
+  // never in a NEXT_PUBLIC_ variable.
+  SENTRY_ORG: opt(z.string().min(1)),
+  SENTRY_PROJECT: opt(z.string().min(1)),
+  SENTRY_AUTH_TOKEN: opt(z.string().min(1)),
 
   // Maps (key per client)
   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: opt(z.string().min(1)),
@@ -221,6 +254,14 @@ export const SITE_FEATURE_GROUPS: {
     feature: 'BeYours billing (maintenance renewal)',
     vars: ['STRIPE_BID_SECRET_KEY', 'STRIPE_BID_WEBHOOK_SECRET', 'BID_APP_URL'],
   },
+  {
+    // Half of this uploads nothing, and the deployment reports errors as
+    // minified stack traces — `a.b is not a function` at `page-4f2c.js:1`,
+    // against a build nobody can reproduce. The DSN is deliberately NOT in the
+    // group: a DSN on its own is a complete, working configuration.
+    feature: 'Sentry source maps (readable stack traces)',
+    vars: ['SENTRY_ORG', 'SENTRY_PROJECT', 'SENTRY_AUTH_TOKEN'],
+  },
 ]
 
 /** Adds "you configured half of X" issues to whichever schema carries it. */
@@ -289,6 +330,12 @@ const READER_RELAXED = new Set<string>([
   'BID_NOTIFY_EMAIL',
   'CONTACT_EMAIL',
   'NEXT_PUBLIC_BID_SUPPORT_EMAIL',
+  'NEXT_PUBLIC_SENTRY_ENVIRONMENT',
+  'NEXT_PUBLIC_SENTRY_RELEASE',
+  'NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE',
+  'SENTRY_ORG',
+  'SENTRY_PROJECT',
+  'SENTRY_AUTH_TOKEN',
 ])
 
 const readerShape = Object.fromEntries(

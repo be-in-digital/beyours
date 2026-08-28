@@ -27,6 +27,11 @@
       "import": "./dist/env/index.mjs",
       "require": "./dist/env/index.js"
     },
+    "./sentry": {
+      "types": "./dist/sentry/index.d.ts",
+      "import": "./dist/sentry/index.mjs",
+      "require": "./dist/sentry/index.js"
+    },
     "./auth/rbac": "./src/auth/rbac.ts",
     "./aws/media-url": "./src/aws/media-url.ts",
     "./aws/folders": "./src/aws/folders.ts"

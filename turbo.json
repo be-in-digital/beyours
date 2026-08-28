@@ -4,6 +4,13 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      // Turbo strips undeclared variables from a task's environment.
+      // NEXT_PUBLIC_* reaches the Next builds through framework inference;
+      // these three do not, and withSentryConfig reads them at build time to
+      // upload source maps. Declaring them also puts them in the cache key, so
+      // a build made without an auth token is not reused for one made with it.
+      "env": ["SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_AUTH_TOKEN"],
+      "passThroughEnv": ["CI"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "dev": {

@@ -120,8 +120,16 @@ The formatted report shows:
 
 | Variable | Validation | Description |
 |----------|------------|-------------|
-| `NEXT_PUBLIC_SENTRY_DSN` | `url` | Sentry DSN |
+| `NEXT_PUBLIC_SENTRY_DSN` | `url` | Sentry DSN — one project per client. Unset, Sentry never initialises |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | `string` | Environment override; falls back to `VERCEL_ENV`, then `NODE_ENV` |
+| `NEXT_PUBLIC_SENTRY_RELEASE` | `string` | Release override; falls back to `VERCEL_GIT_COMMIT_SHA` |
+| `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | `0` to `1` | Defaults to 0.1 in production |
+| `SENTRY_ORG` | `string` | Source-map upload — build time, all three or none |
+| `SENTRY_PROJECT` | `string` | Source-map upload — build time |
+| `SENTRY_AUTH_TOKEN` | `string` | Source-map upload — build-host secret |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `string` | Google Maps API key |
+
+Full procedure for a new client: [`sentry.md`](./sentry.md).
 
 ### Integrations (Site-Level)
 

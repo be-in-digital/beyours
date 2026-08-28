@@ -1,0 +1,165 @@
+# Sentry — one project per client
+
+> **Decision: every client site reports to its own Sentry project.** A
+> restaurant's errors, its event quota and its retention are its own, and they
+> follow it if it leaves — the same rule that already governs its Convex
+> deployment, its S3 bucket and its Stripe account.
+
+## Why this had to be settled
+
+The variable shipped for months without the integration behind it.
+`NEXT_PUBLIC_SENTRY_DSN` was in the schema and in both `.env.example` files,
+`packages/core` exported a `createSentryConfig()` nothing called, and
+`@sentry/nextjs` was in no `package.json`. An operator filled the DSN in, saw
+no error, and believed monitoring was live. A Saturday-night checkout failure
+was seen by nobody.
+
+Shipping the variable without the integration is worse than shipping neither:
+it buys the confidence without the coverage.
+
+The other half of the decision is isolation. One shared project across the
+fleet would mean one client's traffic spending the quota that swallows another
+client's checkout error, one retention window for everyone, and a support
+engineer reading two restaurants' customer data in one issue stream. Per-client
+projects make that structural rather than a matter of discipline.
+
+## What is wired
+
+Both `apps/reference` and `apps/themes` carry the same six files, byte for byte. `apps/themes`
+is the one that matters — it is mirrored to `beyours-boilerplate` and cloned
+per client, so every client site gets this by construction.
+
+| File | Role |
+|---|---|
+| `instrumentation-client.ts` | browser `Sentry.init` + App Router navigation tracing |
+| `sentry.server.config.ts` | Node runtime `Sentry.init` |
+| `sentry.edge.config.ts` | edge runtime `Sentry.init` |
+| `instrumentation.ts` | imports the two above, and exports `onRequestError` |
+| `app/error.tsx`, `app/global-error.tsx` | capture React render errors, and apologise in French |
+
+The options all three runtimes use come from one place:
+[`@be-in-digital/core/sentry`](../../../packages/core/src/sentry/index.ts). It
+has no imports — not even `@sentry/nextjs` — so the browser bundle, the edge
+runtime and Convex actions can all read it, and it can be unit-tested without a
+network or a process environment.
+
+### With no DSN, nothing happens
+
+`resolveSentryOptions()` returns `null` when `NEXT_PUBLIC_SENTRY_DSN` is unset
+or empty, and every call site skips `Sentry.init` entirely — no transport, no
+breadcrumb buffer, no `beforeSend`. That is the normal state of local
+development, of every CI build, and of a client site whose Sentry project has
+not been created yet. It has to cost nothing, and it does.
+
+A DSN that is set but is *not* a DSN — the project page URL pasted instead of
+the client key — is refused with a named warning on the console rather than
+silently ignored.
+
+## Creating the project for a new client
+
+Do this once per client, after `beyours create` and before the first production
+deploy.
+
+1. **Create the Sentry project.** Platform **Next.js**, name it after the client
+   (`pizzeria-napoli`). Create it **under the client's own Sentry account** — not
+   under `developers@beyours.fr`. Per
+   [`tasks/production-accounts-checklist.md`](../../../tasks/production-accounts-checklist.md),
+   Sentry is site-level: it belongs to the restaurant and follows it.
+2. **Copy the DSN** into the site's `.env.local` as `NEXT_PUBLIC_SENTRY_DSN`,
+   or answer the `Sentry (monitoring)` prompt in `pnpm env:setup`.
+3. **Set it on the host too.** The DSN is a `NEXT_PUBLIC_` variable, so it is
+   baked in at build time — adding it to Vercel *after* a deploy does nothing
+   until the next build.
+4. **Optionally enable source maps** — see below. Without them, production stack
+   traces point at minified chunks.
+5. **Verify.** Deploy, then hit the deployment's `/api/…` with a deliberate
+   failure or trigger a client error, and confirm the event appears in the
+   project within a minute.
+
+`pnpm env:check` will tell you whether the variables are consistent, not whether
+Sentry received anything. Only step 5 does that.
+
+## Source maps
+
+Three variables, read at **build** time, all or none:
+
+| Variable | Value |
+|---|---|
+| `SENTRY_ORG` | the org slug |
+| `SENTRY_PROJECT` | the project slug |
+| `SENTRY_AUTH_TOKEN` | an org auth token with `project:releases` |
+
+Half of them uploads nothing, so `SITE_FEATURE_GROUPS` refuses the boot and
+names the gap. Set none and the upload is switched off cleanly: no maps are
+generated, and no build warns about a token it does not have.
+
+`SENTRY_AUTH_TOKEN` is a secret. It belongs on the build host — a Vercel
+environment variable or a CI secret — never in a `NEXT_PUBLIC_` variable and
+never in the repository.
+
+## The two axes that keep events apart
+
+**Which client** is the project, decided by the DSN.
+
+**Which deployment** is `environment`, resolved in this order:
+
+1. `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, when set
+2. `VERCEL_ENV` — `production` / `preview` / `development`
+3. `NODE_ENV`
+
+On Vercel this works with no configuration: a client's preview deploys file
+their errors under `preview`, out of the production issue list. Everywhere else,
+set `NEXT_PUBLIC_SENTRY_ENVIRONMENT` explicitly.
+
+> **Caveat.** The browser cannot read `VERCEL_ENV`. It reads
+> `NEXT_PUBLIC_VERCEL_ENV`, which Vercel only exposes while *Automatically
+> expose System Environment Variables* is on — the default. If a project turns
+> it off, set `NEXT_PUBLIC_SENTRY_ENVIRONMENT` or client-side errors from
+> preview deploys will be filed under `production`.
+
+Every event also carries a `site` tag, taken from the host in
+`NEXT_PUBLIC_SITE_URL`, and a `runtime` tag (`browser` / `server` / `edge`).
+The `site` tag is redundant while one client means one project — and that is
+the point: the day a DSN is copied into a second site, the issue stream stays
+attributable instead of quietly merging two restaurants.
+
+## Volume and privacy
+
+`tracesSampleRate` defaults to **0.1 in production** and 1.0 everywhere else.
+Tracing every transaction is what a demo does; a restaurant on a Saturday night
+would spend its free-tier quota on traces, and Sentry drops the overflow — so a
+100% rate ends up recording *less* than 10%. Raise or lower it per client with
+`NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`.
+
+`sendDefaultPii` is **false** and is not configurable here: no IP address and
+no user identity on any event.
+
+That flag alone is not enough, and assuming it was would have shipped a leak.
+Verified against a live SDK, an event from a failing route carried
+`cookie: session=…` and `authorization: Bearer …` in `request.headers`
+regardless — `sendDefaultPii` governs IP and user attribution, not headers. So
+`scrubSentryEvent` runs as both `beforeSend` and `beforeSendTransaction`:
+
+- **Headers are filtered to an allowlist** — `host`, `user-agent`, `accept`,
+  `accept-language`, `content-type`, `content-length`. An allowlist, because a
+  denylist has to anticipate every header that ever carries a credential.
+- **`request.cookies` is emptied**; Sentry parses it separately and the header
+  allowlist never sees it.
+- **Sensitive query values are redacted** in `request.url` and
+  `request.query_string`. This product puts real credentials there:
+  `/reset-password?token=…` is a live password reset, and `/order/<id>?token=…`
+  opens one customer's order to whoever holds the link.
+
+A transaction carries the same `request` block as an error, which is why both
+hooks are wired — filtering only errors would leak the same cookie on the next
+traced request.
+
+## Not included
+
+- **Session Replay.** It records the DOM — a checkout form included — and adds
+  weight to a mobile-first storefront. Worth having, worth deciding on its own.
+- **`apps/site`.** The commercial site depends on none of the engine packages
+  and has its own env validator; it is BeYours-level, not client-level, and
+  needs its own decision.
+- **Convex.** Backend functions run outside Next and report nothing here. The
+  DSN is deliberately absent from `.env.convex.example`.

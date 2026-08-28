@@ -91,7 +91,7 @@ one). Decide per service which brand owns it before creating duplicates.
 
 | Service | Used for | Env vars |
 |---|---|---|
-| **Sentry** | error tracking | `NEXT_PUBLIC_SENTRY_DSN` |
+| **Sentry** | error tracking — **one project per client**, under the client's own account | `NEXT_PUBLIC_SENTRY_DSN`, and optionally `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` for source maps |
 | **Google Cloud** (Maps Platform) | address autocomplete | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` |
 
 ---
@@ -128,5 +128,5 @@ they serve the commercial site and the fleet, not one restaurant.
 - [ ] Uber Direct
 - [ ] Yousign · Calendly · Resend
 - [ ] OpenAI · Unsplash
-- [ ] Sentry · Google Maps Platform
+- [ ] Sentry (1 projet par client — [`apps/docs/deployment/sentry.md`](../apps/docs/deployment/sentry.md)) · Google Maps Platform
 - [ ] Every credential stored in the secret store, never in the repo
