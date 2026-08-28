@@ -56,31 +56,52 @@ Checked 2026-08-28.
 ## 2. Blast radius — what goes down together
 
 Every Convex deployment on team `momoseck8` shares one bill and one disable
-threshold. Measured from outside on **2026-08-28**, unauthenticated
-`GET /version`:
+threshold — and as of 2026-08-28 that is **every deployment this repository
+knows about**, production included. Measured from outside on 2026-08-28,
+unauthenticated `GET /version`:
 
 | Deployment | Role, per the repo | `/version` | Source of the role claim |
 |---|---|---|---|
-| `fearless-poodle-133` | **prod** — `apps/site` (beyours.fr) | `200` live | `apps/site/.env.production.example:25`, `check-prod-bundle.mjs:26` |
-| `reliable-parrot-452` | **dev** — engine (`apps/reference`) | `200` live | `apps/reference/MISE_EN_PROD.md:14` |
-| `robust-elephant-263` | claimed **prod** — Stripe BID billing | `200` live | `tasks/production-checklist.md:7` |
+| `fearless-poodle-133` | **prod** — `apps/site` (beyours.fr) | `200` | `apps/site/.env.production.example:38`, `check-prod-bundle.mjs:26` |
+| `capable-crocodile-720` | **dev** — `apps/site` | `200` | `apps/site/.env.production.example:28` |
+| `reliable-parrot-452` | **dev**, personal (`dev/mamadou-seck`) — engine | `200` | dashboard, 2026-08-28 |
+| `youthful-goose-352` | **stray dev** — project `beyours-reference` | `200` | dashboard + owner, 2026-08-28 |
+| `robust-elephant-263` | **prod** — engine (`apps/reference`), project `beindigital-engine` | `200` | dashboard, 2026-08-28 |
 | `happy-otter-123` | **dead** — caused bug #6 | `404` | `check-prod-bundle.mjs:30` |
 
-Two things this measurement settles, and one it does not:
+The full inventory, with the app and project columns, is in
+[README → Convex deployments](../README.md#convex-deployments) — card 15 settled
+it. What that resolution means *for this card*:
 
-- `robust-elephant-263` **exists and answers.** `clickup-technique-cards.md:344`
-  records it as appearing nowhere outside one checklist and therefore
-  unverifiable. It is real.
+- **A `200` is not proof of ownership**, so it cannot be used to draw the blast
+  radius. Every live deployment above returns the *identical* build stamp
+  (`20260824T183734Z-bd777bce25d6`), including two that are definitively in
+  different projects. `/version` is served by the platform, not by your
+  functions: it proves a live Convex backend answers on that subdomain, and
+  nothing about whose it is. This is why the roles above come from the dashboard
+  and not from the probe.
+- **`robust-elephant-263` is ours, and it is production.** The dashboard shows
+  project `beindigital-engine` holding exactly two deployments: `production`
+  (`robust-elephant-263`) and `dev/mamadou-seck` (`reliable-parrot-452`). It had
+  been created on 2026-03-03 and recorded in exactly one file, which is what made
+  it look unverifiable. **The engine's production backend is inside this blast
+  radius** — a tripped disable threshold takes Stripe BID billing down with it.
 - `happy-otter-123` is confirmed gone — the blocklist in `check-prod-bundle.mjs`
   is still earning its place.
-- **Team membership cannot be read from outside.** That these three deployments
-  are all on `momoseck8` is what the repo claims, not something `/version`
-  proves. Confirm it in the dashboard while you are there (step 3 below) — it is
-  the whole blast radius, so it is worth being certain about.
+- **The blast radius is now fully drawn, and it contains everything.** Confirmed
+  by the team owner on 2026-08-28: `beyours-reference` is on `momoseck8` too. All
+  five live deployments — three projects — sit on this one team, so this card's
+  threshold is the single control that can silence the whole business:
 
-> The deployment inventory is contradictory elsewhere in the repo — three
-> documents disagree about which deployment is production, and about the project
-> name. That is card 15's job, not this one. Do not resolve it here.
+  | If the disable threshold trips | What stops |
+  |---|---|
+  | `fearless-poodle-133` | beyours.fr — the site prospects buy from |
+  | `robust-elephant-263` | client restaurants **and** Stripe BID billing |
+  | the three dev deployments | every developer, at the same moment |
+
+  There is no second team acting as a backstop, and no project isolated from the
+  rest. **Prefer a warning threshold you will read over a disable threshold that
+  takes the shop and the product down together.**
 
 ---
 
@@ -97,9 +118,16 @@ Dashboard, as the owner of team `momoseck8`. Roughly ten minutes.
    read** over a disable threshold that silences the product: an email is
    recoverable, a disabled production backend is a customer-facing outage.
 
-3. **Confirm the blast radius.** On the same team, list its projects and
-   confirm the three live deployments in §2 belong to it. Anything else on that
-   team shares the threshold too — write it down.
+3. **Look for anything §2 does not list.** The five live deployments are
+   confirmed on this team, across three projects (`wedilybird`,
+   `beindigital-engine`, `beyours-reference`). Anything *else* on the team shares
+   the threshold too and is not written down anywhere — add it to §2.
+
+   While you are there: **`beyours-reference` is a candidate for deletion.** It
+   holds one stray dev deployment (`youthful-goose-352`, created 2026-08-27) that
+   nothing depends on, and it draws against the same included resources as
+   production. Removing it also removes a way to point a checkout at the wrong
+   backend. Housekeeping, not urgent.
 
 4. **If the plan is Free** — there is no cap to set. Check current usage
    against the included amounts instead (1M function calls, 0.5 GB database,

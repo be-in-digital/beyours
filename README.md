@@ -370,6 +370,110 @@ Convex is pushed separately, from the app directory: `npx convex deploy`. Each
 client has **their own Convex deployment** — data isolation is structural, not
 enforced in application code.
 
+### Convex deployments
+
+The authoritative inventory. Six deployment names circulate in this repository;
+before this table, three documents disagreed about which one was production and
+no single file listed them all. Confirmed against the Convex dashboard on
+2026-08-28.
+
+| Deployment | App | Role | Convex project | Team | `/version` | Recorded in |
+| --- | --- | --- | --- | --- | --- | --- |
+| `fearless-poodle-133` | `apps/site` | **production** (beyours.fr) | `wedilybird` | `momoseck8` | `200` | [`.env.production.example:38`](apps/site/.env.production.example), [`check-prod-bundle.mjs:26`](apps/site/scripts/check-prod-bundle.mjs) |
+| `capable-crocodile-720` | `apps/site` | dev | *unrecorded* | *unrecorded* | `200` | [`.env.production.example:28`](apps/site/.env.production.example) |
+| `reliable-parrot-452` | `apps/reference` | dev — **personal** (`dev/mamadou-seck`) | `beindigital-engine` | `momoseck8` | `200` | dashboard; [`MISE_EN_PROD.md:15`](apps/reference/MISE_EN_PROD.md) |
+| `youthful-goose-352` | `apps/reference` | stray dev | `beyours-reference` | `momoseck8` | `200` | [`e2e/load-env.ts:13`](apps/reference/e2e/load-env.ts) |
+| `robust-elephant-263` | `apps/reference` | **production** — the engine, incl. Stripe BID billing | `beindigital-engine` | `momoseck8` | `200` | dashboard; [`production-checklist.md:14`](tasks/production-checklist.md) |
+| `happy-otter-123` | `apps/site` | **dead** — caused bug #6 | — | — | `404` | [`check-prod-bundle.mjs:30`](apps/site/scripts/check-prod-bundle.mjs) |
+
+`/version` measured 2026-08-28, unauthenticated `GET https://<name>.convex.cloud/version`.
+**Every live deployment is on team `momoseck8`** — confirmed for
+`beyours-reference` by the team owner on 2026-08-28, and the repository's
+long-standing claim for the other two projects. The `beindigital-engine` project
+membership is dashboard-confirmed. `capable-crocodile-720` is the one cell nobody
+has ever written down; it is `apps/site`'s dev deployment, so `wedilybird` is the
+expectation, not a verified fact.
+
+**Three project names, three projects — not three names for one.** `wedilybird`,
+`beindigital-engine` and `beyours-reference` are separate Convex projects. Nothing
+was contradictory about them; no file had ever said they were distinct.
+
+**The engine's production deployment already exists: `robust-elephant-263`.**
+Project `beindigital-engine` holds exactly two deployments — `production`
+(`robust-elephant-263`) and `dev/mamadou-seck` (`reliable-parrot-452`). So
+`tasks/production-checklist.md` was right all along, and
+`apps/reference/MISE_EN_PROD.md` §1 was the stale document: its "create the
+PRODUCTION Convex deployment" step had been done and never ticked off. The
+deployment nobody could corroborate was simply the one nobody had written down
+twice.
+
+**`reliable-parrot-452` is one developer's personal sandbox**, not a shared dev
+backend — Convex names those `dev/<user>`, and this one is `dev/mamadou-seck`.
+Worth knowing before pointing anything at it: it is not a team environment, and
+the e2e Deliveroo suites used to default to it (fixed, see
+`apps/reference/e2e/deliveroo/test-config.ts`).
+
+**`youthful-goose-352` is not in this project.** `beindigital-engine` contains
+only the two deployments above, so the `beyours-reference` project is genuinely
+separate — the signature of an `npx convex dev` run on 2026-08-27 (#79) with no
+`CONVEX_DEPLOYMENT` set, which creates a fresh project rather than joining the
+existing one. It shares no env vars with either deployment above. It *is* on team
+`momoseck8`, so it consumes the same included resources as production without
+anything depending on it.
+
+**Both production backends share one disable threshold.** `fearless-poodle-133`
+(beyours.fr — the site prospects buy from) and `robust-elephant-263` (the engine
+— client restaurants, plus Stripe BID billing) are different projects but the
+same team, and Convex spending caps apply **per team**. One threshold crossed
+takes down the shop and the product together. That is the single most important
+line in this table; the procedure is in the
+[spending-cap runbook](tasks/convex-spending-cap-runbook.md).
+
+#### What a `200` does and does not prove
+
+All five live deployments answer with the **identical** build stamp
+(`20260824T183734Z-bd777bce25d6`) — including `fearless-poodle-133` and
+`reliable-parrot-452`, which are definitively in different projects. `/version`
+is served by the platform, not by your functions, so:
+
+- A `404` is a definite red: the name resolves to nothing.
+- A `200` proves only that *some* live Convex backend answers on that subdomain.
+  It does **not** prove the deployment is ours, which team it is on, which
+  project it belongs to, or that its functions are working.
+
+So the probe never filled in the Team and Convex project columns above — the
+dashboard did. Where a cell still reads *unrecorded*, it is because nobody has
+looked yet, not because a `200` was taken as an answer.
+
+#### Settled: `robust-elephant-263` is ours
+
+Confirmed in the Convex dashboard on 2026-08-28. It is the **production
+deployment of project `beindigital-engine`** — the same project whose dev
+deployment is `reliable-parrot-452`. The name was introduced on 2026-03-03 in
+`3ba27b3`, the commit that added the Stripe BID subscription system, and then
+never written down a second time, which is why nothing in the repository could
+corroborate it.
+
+Two consequences:
+
+- [`apps/reference/MISE_EN_PROD.md`](apps/reference/MISE_EN_PROD.md) §1 no longer
+  asks you to create a production deployment. It exists; the remaining work there
+  is copying env vars onto it with live values.
+- [Card 10](tasks/clickup-technique-cards.md) (the nine live Stripe BID
+  variables) has its target: `robust-elephant-263`, reached with `--prod` from
+  `apps/reference`. Run `pnpx convex env list --prod` first and read what it
+  prints — `--prod` resolves through the local `CONVEX_DEPLOYMENT`, and a
+  checkout linked to `beyours-reference` would silently aim at the wrong project.
+
+#### Still open
+
+- **Should `beyours-reference` be retired?** It is on `momoseck8`, so it is not a
+  runaway bill — but it is a second engine project holding one stray dev
+  deployment (`youthful-goose-352`) that nothing depends on, drawing against the
+  same included resources as production. Deleting it removes a way to point a
+  checkout at the wrong backend. Housekeeping, not urgent.
+- **`capable-crocodile-720`'s project** has never been recorded anywhere.
+
 ### Rolling back
 
 The project was reconnected to this repository on 2026-08-16; it previously

@@ -10,7 +10,11 @@ import crypto from "node:crypto";
 // ============================================================================
 
 export const config = {
-  CONVEX_SITE_URL: process.env.CONVEX_SITE_URL || "https://reliable-parrot-452.convex.site",
+  // No fallback on purpose. This used to default to a real dev deployment
+  // (reliable-parrot-452), so an unconfigured run posted signed Deliveroo
+  // webhooks at a backend nobody had asked for. Unset now means unset, and
+  // sendWebhook() refuses rather than picking a target for you.
+  CONVEX_SITE_URL: process.env.CONVEX_SITE_URL || "",
   WEBHOOK_SECRET: process.env.DELIVEROO_WEBHOOK_SECRET || process.env.DELIVEROO_CLIENT_SECRET || "",
   CLIENT_ID: process.env.DELIVEROO_CLIENT_ID || "",
   CLIENT_SECRET: process.env.DELIVEROO_CLIENT_SECRET || "",
@@ -29,9 +33,12 @@ export const config = {
 /**
  * Whether a webhook target is configured.
  *
- * CONVEX_SITE_URL is read from the environment directly, never through
- * `config`: the fallback there is a real deployment, and defaulting to it
- * would make every CI run fire signed payloads at a backend nobody asked for.
+ * CONVEX_SITE_URL is read from the environment directly rather than through
+ * `config`, so this stays honest even if a default is ever reintroduced there.
+ * It used to be one: `config.CONVEX_SITE_URL` fell back to a real dev
+ * deployment, which would have made an unconfigured run fire signed payloads at
+ * a backend nobody asked for. The fallback is gone and `sendWebhook()` now
+ * refuses an empty target, so this gate and that guard agree.
  */
 export const hasWebhookTarget = Boolean(
   process.env.CONVEX_SITE_URL &&
@@ -62,6 +69,13 @@ export function createSignature(payload: string, secret: string): string {
  * Send webhook to Convex HTTP endpoint
  */
 export async function sendWebhook(payload: unknown, path?: string): Promise<Response> {
+  if (!config.CONVEX_SITE_URL) {
+    throw new Error(
+      "CONVEX_SITE_URL is not set: refusing to send a signed Deliveroo webhook " +
+        "with no explicit target. Set it to the deployment you mean to hit.",
+    );
+  }
+
   const payloadString = JSON.stringify(payload);
   const signingSecret = config.WEBHOOK_SECRET || config.CLIENT_SECRET;
   const signature = createSignature(payloadString, signingSecret);
