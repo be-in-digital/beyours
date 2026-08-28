@@ -189,22 +189,47 @@ Order matters. A required check that has never passed once locks the repository.
      the failure this whole card exists to remove.
 3. Download the `playwright-report` artifact and read the pass/fail split.
 
-**Then decide, from that number, which of the two paths to take:**
+**Expect red, and plan for it.** The `public` project was run end to end on
+2026-08-28 against a seeded backend, with `CI=true` so the retry and server
+settings match the job's:
+
+```
+6 failed
+  address-autocomplete.spec.ts:147  standalone: typing shows suggestions and clicking one fills all fields
+  address-autocomplete.spec.ts:182  dialog: clicking a suggestion does NOT close the dialog
+  auth/sign-in.spec.ts:100          should attempt redirect on successful login
+  storefront/stale-store-selection.spec.ts:39  renders the storefront rather than blanking on it
+  storefront/stale-store-selection.spec.ts:69  recovers onto a store the deployment does have
+  storefront/tracking.spec.ts:36    should eventually display invalid token message
+59 passed (8.4m)
+```
+
+That is the *easy* project — 65 of 503 tests, the ones that need no login. The
+failures are the S0-3 family (specs written against a UI that has moved on: the
+tracking page no longer renders "Commande introuvable") plus two that want a
+Google Maps key the workflow does not set. `admin` — 437 tests behind
+`auth.setup.ts` — has not been measured, and S0-4's 80 conditional assertions
+live there.
+
+**So take the second path:**
 
 - **The suite is green** → add `E2E Status` to the required list in step 6.
-- **The suite is red** — the likely outcome on a first run, because S0-3/4/5 are
-  open and 35 P0 defects are still open against this app → **do not make
-  `E2E Status` required yet.** Make the four `CI` checks required now (they pass
-  today), leave `CONVEX_E2E_ENABLED=true` so the suite runs and is visible on
-  every PR, and add `E2E Status` to the required list once it has been green
-  across a few consecutive PRs. A red required check that everybody learns to
-  override teaches the team that required checks are advisory.
+- **The suite is red — measured, today** → **do not make `E2E Status` required
+  yet.** Make the four `CI` checks required now (they pass; verified on #202),
+  leave `CONVEX_E2E_ENABLED=true` so the suite runs and is visible on every PR,
+  and add `E2E Status` once it has been green across a few consecutive PRs. A
+  red required check that everybody learns to override teaches the team that
+  required checks are advisory.
 
-> The `e2e` job has `timeout-minutes: 30` (`e2e.yml:12`) and Playwright runs
-> `workers: 1` (`playwright.config.ts:38`) with 2 retries in CI. Roughly 500
-> tests through one worker may not fit. If the job dies on the timeout, raise it
-> — `e2e-status` correctly reports a cancelled job as a failure, so a timeout
-> will block merges rather than pass quietly.
+> **The 30-minute job timeout will not be enough.** `e2e.yml:12` sets
+> `timeout-minutes: 30`, and Playwright runs `workers: 1`
+> (`playwright.config.ts:38`) with 2 retries in CI — deliberately, both are
+> documented in that file as fixes for real flakiness. 65 tests took **8.4
+> minutes** in the measurement above. 503 will not fit. Raise the timeout when
+> you switch the flag on, or split the projects across jobs. `e2e-status`
+> correctly reports a cancelled job as a failure, so a timeout blocks merges
+> rather than passing quietly — which is the right behaviour and also means you
+> will notice immediately.
 
 ---
 
