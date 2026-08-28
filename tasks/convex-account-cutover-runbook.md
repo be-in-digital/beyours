@@ -103,6 +103,13 @@ gain the old name at the same time, exactly as it holds `happy-otter-123`.
 
 ### 3. Webhooks and origins
 
+> The full inventory — every URL a third party holds on us, which host it is on,
+> and which secret verifies it — is
+> [`webhook-migration-checklist.md`](./webhook-migration-checklist.md). The
+> summary below is not complete: it omits Uber Direct, the SNS re-subscription
+> for SES bounces, SumUp's OAuth return, and the `licenseApi` host baked into
+> every client site. Work from the checklist, not from here.
+
 - **Stripe** — recreate the endpoints against the new `.convex.site` host, for
   both flows (`STRIPE_WEBHOOK_SECRET` and `STRIPE_BID_WEBHOOK_SECRET`). A
   webhook secret is per endpoint; the old ones will not verify.
