@@ -131,7 +131,60 @@ function mirrorPackageJson(sourcePkgPath, versions) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. Sync
+// 3. Lockfile
+// ---------------------------------------------------------------------------
+
+/** Long enough for a cold install, short enough that a hang is not a workday. */
+const LOCKFILE_TIMEOUT_MS = 10 * 60 * 1000
+
+/**
+ * Write the mirror's lockfile with the pnpm the mirror asks for.
+ *
+ * The clone's `package.json` carries a `packageManager` field, copied from
+ * `apps/themes`, and pnpm honours it by switching itself to that version. When
+ * that switch cannot be completed pnpm does not fail — it prints
+ * `Failed to switch pnpm to vX` and then **hangs**, holding the job until the
+ * runner's own limit. The mirror went twelve days without a sync that way, and
+ * the workflow had no timeout to notice.
+ *
+ * The workflow now installs exactly the version named here, so no switch is
+ * attempted. This ceiling exists for the day that stops being true: a mismatch
+ * should fail in ten minutes with a message naming the two versions, not hang.
+ */
+function updateLockfile(clone) {
+  const declared =
+    JSON.parse(readFileSync(join(clone, "package.json"), "utf8")).packageManager ?? "(none)"
+
+  try {
+    run("pnpm", ["install", "--lockfile-only", "--ignore-scripts"], {
+      cwd: clone,
+      stdio: "inherit",
+      timeout: LOCKFILE_TIMEOUT_MS,
+    })
+  } catch (error) {
+    const timedOut = error?.code === "ETIMEDOUT" || error?.signal === "SIGTERM"
+    if (!timedOut) throw error
+
+    const running = (() => {
+      try {
+        return run("pnpm", ["--version"])
+      } catch {
+        return "unknown"
+      }
+    })()
+
+    fail(
+      `pnpm install did not finish within ${LOCKFILE_TIMEOUT_MS / 60_000} minutes.\n` +
+        `  the mirror declares: ${declared}\n` +
+        `  this job is running: pnpm@${running}\n` +
+        `  When these differ, pnpm tries to switch itself and hangs if it cannot. ` +
+        `The workflow reads the version from apps/themes/package.json — check that step.`,
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Sync
 // ---------------------------------------------------------------------------
 
 if (!existsSync(SOURCE)) fail(`source not found: ${SOURCE}`)
@@ -171,7 +224,7 @@ try {
   }
 
   log("→ updating the lockfile")
-  run("pnpm", ["install", "--lockfile-only", "--ignore-scripts"], { cwd: clone, stdio: "inherit" })
+  updateLockfile(clone)
 
   const status = run("git", ["status", "--porcelain"], { cwd: clone })
   if (!status) {

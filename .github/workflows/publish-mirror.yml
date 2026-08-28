@@ -12,6 +12,12 @@ name: Publish mirror
 # Required secret: MIRROR_PUSH_TOKEN, a fine-grained PAT with `contents: write`
 # on beyours-boilerplate. Without it the job stops cleanly — GITHUB_TOKEN is
 # scoped to the current repository and cannot push elsewhere.
+#
+# The pnpm version is read from `apps/themes/package.json` rather than pinned
+# here. The script runs `pnpm install` inside the mirror clone, whose
+# `packageManager` field is a copy of that same file — so pinning a different
+# version made pnpm try to switch itself mid-run, fail, and hang. See the note
+# on the version step below.
 
 on:
   push:
@@ -28,12 +34,24 @@ on:
         type: boolean
         default: false
 
-concurrency: publish-mirror
+concurrency:
+  group: publish-mirror
+  # The script rebuilds the mirror in full from the current commit, so a newer
+  # run always produces the wanted result and an older one is redundant. Two
+  # triggers fire on a merge that both touches apps/themes and releases, and
+  # without this they queued behind each other and cancelled each other by
+  # turns. It also means a stuck run cannot hold the group: the next trigger
+  # ends it.
+  cancel-in-progress: true
 
 jobs:
   publish:
     name: Sync the mirror
     runs-on: ubuntu-latest
+    # A sync takes about two minutes. Without a ceiling the pnpm hang described
+    # below held a runner for fifty minutes, and would have held it for six
+    # hours — the whole time blocking every later sync.
+    timeout-minutes: 15
     # On workflow_run, do nothing if the Release failed.
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     permissions:
@@ -54,9 +72,25 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # The lockfile is generated inside the mirror clone, and that clone
+      # declares `packageManager` copied from apps/themes. pnpm honours that
+      # field by switching itself to the named version — so any pnpm installed
+      # here other than the declared one is the wrong one. Reading it from the
+      # source of truth is what keeps the two from drifting again.
+      - name: Read the pnpm version the mirror declares
+        id: pnpm-version
+        run: |
+          version="$(node -p "require('./apps/themes/package.json').packageManager?.split('@')[1] ?? ''")"
+          if [ -z "$version" ]; then
+            echo "::error::apps/themes/package.json has no packageManager field, so the mirror's pnpm version cannot be determined."
+            exit 1
+          fi
+          echo "The mirror declares pnpm@$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 10.4.1
+          version: ${{ steps.pnpm-version.outputs.version }}
 
       - uses: actions/setup-node@v4
         with:
