@@ -682,7 +682,7 @@ export const packages: PackageInfo[] = [
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation"],
         returnType: "PackageEnv",
-        example: "const { AWS_REGION, OPENAI_API_KEY } = getPackageEnv()",
+        example: "const { OPENAI_API_KEY } = getPackageEnv()",
       },
       {
         name: "getSiteEnv",
@@ -696,7 +696,7 @@ export const packages: PackageInfo[] = [
       {
         name: "validateAllEnv",
         type: "function",
-        description: "Validate every tier without throwing: the 11 package vars, the 7 required site vars, and the optional site vars including the SITE_FEATURE_GROUPS all-or-nothing rules. Returns { ok, missing } with each problem tagged by EnvTier.",
+        description: "Validate every tier without throwing: the 8 package vars, the 10 required site vars (AWS credentials among them since 2026-08-28 — one AWS account per client), and the optional site vars including the SITE_FEATURE_GROUPS all-or-nothing rules. Returns { ok, missing } with each problem tagged by EnvTier.",
         importPath: "@be-in-digital/core/env",
         tags: ["env", "validation", "startup"],
         returnType: "{ ok: boolean; missing: EnvProblem[] } where EnvProblem = { name: string; message: string; tier: 'package' | 'site' | 'feature' }",

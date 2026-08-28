@@ -9,9 +9,6 @@ import {
 
 describe('packageEnvSchema', () => {
   const validPackageEnv = {
-    AWS_REGION: 'eu-west-1',
-    AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
-    AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
     OPENAI_API_KEY: 'sk-test123456',
   }
 
@@ -33,10 +30,14 @@ describe('packageEnvSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('rejects missing AWS_REGION', () => {
-    const { AWS_REGION: _, ...rest } = validPackageEnv
-    const result = packageEnvSchema.safeParse(rest)
-    expect(result.success).toBe(false)
+  // AWS moved to the site tier on 2026-08-28 (one account per client, see
+  // apps/docs/deployment/aws-ownership.md). The package tier must no longer
+  // demand it — nor quietly accept it back.
+  it('does not declare the AWS credentials at all', () => {
+    const shape = Object.keys(packageEnvSchema.shape)
+    expect(shape).not.toContain('AWS_REGION')
+    expect(shape).not.toContain('AWS_ACCESS_KEY_ID')
+    expect(shape).not.toContain('AWS_SECRET_ACCESS_KEY')
   })
 
   it('rejects missing OPENAI_API_KEY', () => {
@@ -141,9 +142,27 @@ describe('siteEnvRequiredSchema', () => {
     SITE_URL: 'https://resto.example.com',
     BETTER_AUTH_SECRET: 'x'.repeat(32),
     ENCRYPTION_KEY: 'a'.repeat(64),
+    AWS_REGION: 'eu-west-1',
+    AWS_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+    AWS_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
     AWS_S3_BUCKET_NAME: 'resto-bucket',
     AWS_SES_FROM_EMAIL: 'noreply@resto.example.com',
   }
+
+  it('requires the AWS credentials, now that the client owns them', () => {
+    const shape = Object.keys(siteEnvRequiredSchema.shape)
+    expect(shape).toContain('AWS_REGION')
+    expect(shape).toContain('AWS_ACCESS_KEY_ID')
+    expect(shape).toContain('AWS_SECRET_ACCESS_KEY')
+  })
+
+  it('rejects an empty AWS key, like every other required var', () => {
+    // The whole point of declaring these without opt(): a template copied and
+    // left unfilled arrives as '' and must fail here, not at the restaurant.
+    expect(
+      siteEnvRequiredSchema.safeParse({ ...VALID, AWS_ACCESS_KEY_ID: '' }).success
+    ).toBe(false)
+  })
 
   it('accepts a fully configured deployment', () => {
     expect(siteEnvRequiredSchema.safeParse(VALID).success).toBe(true)

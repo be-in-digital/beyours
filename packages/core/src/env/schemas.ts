@@ -17,10 +17,9 @@ const opt = <T extends z.ZodType>(schema: T) =>
  * Owned by BeYours's AWS/API accounts.
  */
 export const packageEnvSchema = z.object({
-  // AWS (BeYours account)
-  AWS_REGION: z.string().min(1),
-  AWS_ACCESS_KEY_ID: z.string().min(1),
-  AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  // AWS used to live here, as one fleet-wide account. It is a SITE variable
+  // now — every client owns its AWS account, so its bucket and its sender go
+  // with it when it leaves. See apps/docs/deployment/aws-ownership.md.
 
   // OpenAI (BeYours pays for translations)
   OPENAI_API_KEY: z.string().startsWith('sk-'),
@@ -85,6 +84,17 @@ const siteRequiredShape = {
       /^[0-9a-fA-F]{64}$/,
       'Must be a 64-character hex string (32 bytes) — generate with: openssl rand -hex 32'
     ),
+
+  // AWS credentials, for the restaurant's OWN account. They were package-level
+  // — one fleet-wide key shipped to every deployment — until 2026-08-28, which
+  // meant any client's backend could reach every other client's media, and an
+  // offboarded one kept working credentials. One account per client makes that
+  // structural: see apps/docs/deployment/aws-ownership.md.
+  // Still required, and still without `opt()`: the tier changed, not whether a
+  // deployment can boot without them.
+  AWS_REGION: z.string().min(1),
+  AWS_ACCESS_KEY_ID: z.string().min(1),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1),
 
   // AWS S3 (per-restaurant bucket). Required even though the bucket is
   // private: the app's own /api/files proxy reads from it, so without a bucket

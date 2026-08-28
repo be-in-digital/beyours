@@ -5,9 +5,10 @@
 > follow it if it leaves — the same rule that already governs its Convex
 > deployment, its Sentry project and its Stripe account.
 
-Decided 2026-08-28. This page records the decision and, honestly, how far the
-code still is from it. **Nothing here is implemented yet** — read
-"What contradicts this today" before assuming any of it is live.
+Decided 2026-08-28, and implemented the same day. The credentials are site
+variables, and `setup-aws.sh` provisions one client at a time. What is **not**
+done is the migration of clients already on the shared bucket — see
+"What is still owed" at the bottom.
 
 ## Why this had to be settled
 
@@ -18,35 +19,38 @@ complète vers le serveur et l'équipe de votre choix"
 `packages/convex-functions/src/maintenance.ts:38-45` accepts migration scopes
 `["code", "database", "assets", "domain", "emails"]`.
 
-Two of those five cannot be honoured today. The client's media sit in a bucket
-BeYours owns, its mail leaves through an SES identity BeYours owns, and the
+Two of those five were not deliverable. The client's media sat in a bucket
+BeYours owned, its mail left through an SES identity BeYours owned, and the
 backup export is explicit that it does not carry the objects:
 `packages/admin/src/pages/system/backup-section.tsx:154` — *"Les images S3 ne
 sont pas incluses — seules les references/URLs sont sauvegardees."* So `assets`
-and `emails` are promises the infrastructure cannot keep.
+and `emails` are promises the infrastructure could not keep.
 
-**And isolation is not currently structural.**
-`apps/themes/scripts/env.mjs:66-68` copies `AWS_ACCESS_KEY_ID` and
-`AWS_SECRET_ACCESS_KEY` into *every* client's Convex deployment. Those are the
-fleet-wide root credentials for the shared bucket. Any one client's backend can
-therefore reach every other client's media, and an offboarded deployment keeps
-working credentials that nothing rotates. Per-account ownership makes that a
+**And isolation was not structural.** `apps/themes/scripts/env.mjs` copies the
+AWS credentials into *every* client's Convex deployment. While those were one
+fleet-wide key, any client's backend could reach every other client's media,
+and an offboarded deployment kept working credentials that nothing rotated
+(#199). The copy is still there and is now correct: each client's deployment
+receives its own account's key. Per-account ownership makes the isolation a
 property of the architecture rather than a matter of discipline — the same
 argument that settled Sentry in [`sentry.md`](./sentry.md).
 
-## What contradicts this today
+## What changed
 
-Every row is the current state of `main`, verified. None of it has been changed
-by this decision — that is the work it creates.
-
-| Where | Today | Required by the decision |
+| Where | Before | Now |
 |---|---|---|
-| `packages/core/src/env/schemas.ts:21-23` | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` sit in **`packageEnvSchema`** — the shared tier | They move to the **site** tier, one set per client |
-| `_project/ENVIRONMENT_VARIABLES.md:40-46` | documents them as *"the BeYours account"*, *"BeYours IAM access key"*, "shared across every deployed restaurant" | rewritten as per-client |
-| `apps/themes/scripts/setup-aws.sh:38-42` | hardcodes `BUCKET_NAME="beindigital-engine-assets"`, `IAM_USER="beindigital-engine-app"`, `DOMAIN="beindigital.fr"`, and takes **no arguments** | parameterised per client, run against the client's own account |
-| same script, folders | shared prefixes `products/ branding/ stores/ cms/ blog/` — **no per-client namespacing** | irrelevant once the bucket itself is per client |
-| `apps/reference/scripts/setup-aws.sh` | a near-duplicate that differs only in the IAM policy name (`BeYoursEnginePolicy` vs `BeInDigitalEnginePolicy`), creating a second policy on the same shared user | one script, or an explicit reason for two |
-| SES sandbox | one exit for the whole fleet, which is what issue #177 assumes | **one exit per client account** — see the cost below |
+| `packages/core/src/env/schemas.ts` | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` in **`packageEnvSchema`** | in the **required site** shape. Still required, still without `opt()` — only the tier changed |
+| `packages/core/src/aws/ses/adapter.ts` | `getSESConfig()` read them off `getPackageEnv()` | reads them off `getSiteEnv()`, and names the missing one instead of handing `undefined` to the SDK |
+| `setup-aws.sh` (both copies) | hardcoded one bucket, one IAM user, one SES identity; **no arguments** | `SITE_SLUG=<slug> DOMAIN=<domain>` names every resource for that client. With no `SITE_SLUG` it keeps the legacy fleet-wide names, because those designate resources that already exist |
+| `setup-aws.sh` preflight | used whatever AWS profile was default, silently | prints the account, refuses on `EXPECTED_ACCOUNT_ID` mismatch, and says which mode it is in |
+| SES configuration set | hardcoded `beindigital-engine` | `$SES_CONFIG_SET`, per client |
+| `.env.example` (themes, reference) | AWS under *"BeYours platform credentials (shared infra)"* | under the per-restaurant section, with its bucket and sender |
+
+The IAM policy name still differs between the two copies (`BeInDigitalEnginePolicy`
+in themes, `BeYoursEnginePolicy` in reference) in **legacy mode only**. Both name
+policies that may already exist in the shared account, so reconciling them means
+renaming an AWS resource, not editing a string. Per-client mode derives one name
+from the slug and the question does not arise.
 
 ## The cost, stated plainly
 
@@ -71,6 +75,19 @@ Also to accept:
   the fleet-wide keys and stores its media in the shared bucket. Moving them is
   a migration, not a config change, and it is the only way those deployments
   stop carrying credentials to other clients' data.
+
+## What is still owed
+
+The decision is implemented for **new** clients. Two things it does not do:
+
+- **Existing clients are still on the shared model.** Any site provisioned
+  before this holds the fleet-wide key and stores its media in the shared
+  bucket. Moving one means copying its S3 objects into its own bucket, creating
+  and verifying its SES identity, re-pointing stored URLs, and rotating the
+  shared key afterwards — a migration, not a config change. Until that is done
+  those deployments still carry credentials to other clients' data (#199).
+- **SES production access is per account**, so each new client needs its own
+  request. Nothing in the tooling can do that for you.
 
 ## What stays shared
 
