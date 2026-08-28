@@ -87,9 +87,17 @@ Worth knowing before writing code that touches media:
 - **Email needs absolute URLs.** With no CDN, media is stored as a
   root-relative path that no mail client can resolve. `renderTemplateToEmailHtml`
   takes a `siteUrl` and rewrites those paths — see `absolutiseUrls`.
-- **`/api/files` only serves the folders the product uploads to**
-  (`products`, `branding`, `stores`, `cms`, `email`, `users`). Anything else in
-  the bucket is not reachable through the app.
+- **`/api/files` only serves the folders the product uploads to.** That list is
+  defined once, in
+  [`@be-in-digital/core/aws/folders`](../../../packages/core/src/aws/folders.ts),
+  and every upload path derives its allowlist from it. Anything else in the
+  bucket is not reachable through the app.
+
+  Keep it that way. The proxy is the only read path, so a folder that an upload
+  accepts but this list omits yields a URL that 404s — the object is written and
+  then unreachable. That is what happened to `categories`, `blogs`, `blog-auto`,
+  `storefront` and `avatars`, which `convex/storageUpload.ts` accepted while the
+  proxy refused them.
 
 ## Related
 

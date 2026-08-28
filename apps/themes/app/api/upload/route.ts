@@ -7,11 +7,14 @@ import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZES,
   buildMediaUrl,
+  S3_FOLDERS,
   type S3Folder,
 } from "@/lib/aws"
 import { isAuthenticated } from "@/lib/convex"
 
-const VALID_FOLDERS = new Set<S3Folder>(["products", "branding", "stores", "cms", "users"])
+// Derived from the canonical list so this route cannot drift from what
+// /api/files will serve. See apps/docs/deployment/s3-bucket-policy.md.
+const VALID_FOLDERS = new Set<S3Folder>(S3_FOLDERS)
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
