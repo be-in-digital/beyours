@@ -405,6 +405,14 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                     <span>{formatPrice(order.deliveryFee)}</span>
                   </div>
                 )}
+                {/* The discount was stored on the order and rendered nowhere:
+                    neither view added up to the total below. */}
+                {order.discountAmount !== undefined && order.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Réduction</span>
+                    <span className="text-emerald-600">-{formatPrice(order.discountAmount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-base font-semibold border-t border-border/50 pt-2">
                   <span>Total</span>
                   <span>{formatPrice(order.total)}</span>

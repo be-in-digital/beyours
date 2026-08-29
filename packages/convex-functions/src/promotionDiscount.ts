@@ -11,9 +11,13 @@
  * ticket to the kitchen. The server now recomputes the discount from the stored
  * promotion and ignores whatever the client believes it is owed.
  *
- * The storefront keeps its own copy of this arithmetic for *display* only. When
- * the two disagree, this one wins.
+ * The storefront runs this same function for *display*. It used to keep its own
+ * copy of the arithmetic, and the two disagreed in both directions: a
+ * free-delivery coupon showed 26,90 € on screen and charged 22,00 €, and a
+ * −50 € coupon on a 22 € basket promised 50 € off. One implementation now.
  */
+
+import { isWithinWindow } from "./timeWindow"
 
 export type PromotionDiscountType =
   | "percentage"
@@ -21,6 +25,19 @@ export type PromotionDiscountType =
   | "free_product"
   | "free_delivery"
   | "bogo"
+
+/** What a promotion applies to. */
+export type PromotionScope = "order" | "product" | "category"
+
+/** The happy hour a promotion runs in, if any. */
+export interface PromotionSchedule {
+  /** 0 = Sunday … 6 = Saturday */
+  activeDays: number[]
+  /** "17:00" */
+  activeTimeFrom: string
+  /** "19:00" */
+  activeTimeTo: string
+}
 
 /** The subset of a promotion document this resolver needs. */
 export interface PromotionForDiscount {
@@ -36,6 +53,19 @@ export interface PromotionForDiscount {
   maxTotalUsage?: number
   maxUsagePerCustomer?: number
   usageCount: number
+  /** Defaults to "order" — the whole basket — when absent. */
+  scope?: PromotionScope
+  targetProductIds?: string[]
+  targetCategoryIds?: string[]
+  scheduling?: PromotionSchedule
+}
+
+/** One verified line of the order, enough to decide whether a promotion reaches it. */
+export interface DiscountableLine {
+  productId?: string
+  categoryId?: string
+  /** Line total in cents, as the server verified it. */
+  subtotal: number
 }
 
 export interface PromotionDiscountParams {
@@ -46,8 +76,6 @@ export interface PromotionDiscountParams {
   subtotal: number
   /** Server-computed delivery fee, in cents. */
   deliveryFee: number
-  /** Server-computed tax, in cents. Used only to cap the discount. */
-  taxAmount: number
   /** Evaluation instant, in ms. Injected so the function stays pure. */
   now: number
   /** How many times this customer already used this promotion. */
@@ -58,17 +86,27 @@ export interface PromotionDiscountParams {
    * a one-field bypass. Anonymous orders are refused for capped promotions.
    */
   customerIdentified?: boolean
+  /**
+   * The order's lines. Required for a promotion scoped to products or
+   * categories: without them the discount would fall on the whole basket, which
+   * is what "−20 % on pizzas" did to eight drinks.
+   */
+  items?: DiscountableLine[]
+  /** The restaurant's timezone, for a promotion that only runs at certain hours. */
+  timezone?: string
 }
 
 export type PromotionRejectionReason =
   | "wrong_store"
   | "inactive"
+  | "not_scheduled"
   | "not_started"
   | "expired"
   | "total_usage_exceeded"
   | "customer_usage_exceeded"
   | "customer_unidentified"
   | "minimum_not_met"
+  | "no_eligible_items"
   | "not_applicable"
 
 /** Thrown when a promotion cannot legally apply to the order. */
@@ -90,6 +128,36 @@ export interface PromotionDiscountResult {
 }
 
 /**
+ * The part of the basket a promotion applies to.
+ *
+ * An order-scoped promotion — the default, and what every promotion behaved as
+ * — reaches the whole subtotal. A scoped one reaches only the lines it names,
+ * and reaches nothing when the caller passed no lines: a caller that cannot say
+ * what is in the basket cannot be allowed to discount it by product.
+ */
+function resolveEligibleSubtotal(
+  promotion: PromotionForDiscount,
+  subtotal: number,
+  items?: DiscountableLine[]
+): number {
+  const scope = promotion.scope ?? "order"
+  if (scope === "order") return subtotal
+  if (!items) return 0
+
+  const targets = new Set(
+    scope === "product"
+      ? promotion.targetProductIds ?? []
+      : promotion.targetCategoryIds ?? []
+  )
+  if (targets.size === 0) return 0
+
+  return items.reduce((sum, item) => {
+    const key = scope === "product" ? item.productId : item.categoryId
+    return key !== undefined && targets.has(key) ? sum + item.subtotal : sum
+  }, 0)
+}
+
+/**
  * Resolve the discount a promotion grants, or throw `PromotionRejectedError`.
  *
  * Rejection is deliberate rather than a silent 0: a customer who typed a valid
@@ -99,7 +167,7 @@ export interface PromotionDiscountResult {
 export function resolvePromotionDiscount(
   params: PromotionDiscountParams
 ): PromotionDiscountResult {
-  const { promotion, storeId, subtotal, deliveryFee, taxAmount, now } = params
+  const { promotion, storeId, subtotal, deliveryFee, now } = params
 
   // Tenant boundary first: a promotion belongs to exactly one store.
   if (promotion.storeId !== storeId) {
@@ -122,6 +190,26 @@ export function resolvePromotionDiscount(
 
   if (now > promotion.endDate) {
     throw new PromotionRejectedError("expired", "Ce code promo a expiré.")
+  }
+
+  // Happy hour. The three fields were rendered in the promotions table and read
+  // by nothing: a "Mon–Fri 17:00–19:00" discount applied on Sunday at 21:00.
+  // Read on the restaurant's clock — the server's is UTC.
+  if (
+    !isWithinWindow(
+      promotion.scheduling && {
+        days: promotion.scheduling.activeDays,
+        from: promotion.scheduling.activeTimeFrom,
+        until: promotion.scheduling.activeTimeTo,
+      },
+      now,
+      params.timezone
+    )
+  ) {
+    throw new PromotionRejectedError(
+      "not_scheduled",
+      "Ce code promo ne s'applique pas à cette heure-ci."
+    )
   }
 
   if (
@@ -163,7 +251,24 @@ export function resolvePromotionDiscount(
     )
   }
 
-  const preDiscountTotal = subtotal + taxAmount + deliveryFee
+  // What the promotion actually reaches. `scope`, `targetProductIds` and
+  // `targetCategoryIds` are collected by the form, stored, and were read by no
+  // pricing code: "−20 % on pizzas" over one pizza (12 €) and eight drinks
+  // (24 €) took 7,20 € off instead of 2,40 €.
+  const eligibleSubtotal = resolveEligibleSubtotal(promotion, subtotal, params.items)
+
+  // Only a *scoped* promotion can miss: an order-scoped one over an empty
+  // basket is simply worth nothing, and says so through the clamp below.
+  if ((promotion.scope ?? "order") !== "order" && eligibleSubtotal <= 0) {
+    throw new PromotionRejectedError(
+      "no_eligible_items",
+      "Ce code promo ne s'applique à aucun article de votre commande."
+    )
+  }
+
+  // What the customer actually owes. Since #127 the tax is *inside* the
+  // subtotal, so adding it here would let a discount exceed the order.
+  const preDiscountTotal = subtotal + deliveryFee
   let discount = 0
   let freeDelivery = false
 
@@ -176,7 +281,7 @@ export function resolvePromotionDiscount(
           "Ce code promo ne s'applique pas à votre commande."
         )
       }
-      discount = Math.round((subtotal * rate) / 100)
+      discount = Math.round((eligibleSubtotal * rate) / 100)
       if (
         promotion.maxDiscountAmount !== undefined &&
         discount > promotion.maxDiscountAmount
@@ -193,6 +298,12 @@ export function resolvePromotionDiscount(
           "not_applicable",
           "Ce code promo ne s'applique pas à votre commande."
         )
+      }
+      // A *scoped* fixed discount cannot exceed what it applies to: −5 € on the
+      // desserts of a basket holding 3 € of dessert is 3 €. An order-scoped one
+      // keeps the whole-order cap applied at the end.
+      if ((promotion.scope ?? "order") !== "order" && discount > eligibleSubtotal) {
+        discount = eligibleSubtotal
       }
       break
     }
