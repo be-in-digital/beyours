@@ -362,3 +362,68 @@ export function invitationModules(
 
   return Array.from(new Set([...existingModules, ...invitedModules]))
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Sweeping stale invitations                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How long an expired invitation is kept before the row is deleted.
+ *
+ * Not zero: the roster is also a record of who was invited and never came, and
+ * an owner should be able to see that for a while. Not forever either — a dead
+ * invitation is a name and an email address sitting in a table for no further
+ * purpose.
+ */
+export const INVITATION_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+
+/** What the sweep should do with one roster row. */
+export type InvitationSweepVerdict = "expire" | "purge" | "keep"
+
+/**
+ * Decide the fate of one invitation.
+ *
+ * Two separate jobs, deliberately, because they protect different things.
+ *
+ * EXPIRE closes a security hole. `assertInvitationAcceptable` already refuses a
+ * link past its lifetime, so nothing can be accepted with one — but the token
+ * stays in the row, and a row that still holds a token is a row a leak can
+ * still be about. Marking it expired is what lets the caller clear the token.
+ *
+ * PURGE is hygiene, and applies only to invitations nobody ever accepted: a row
+ * carrying a `userId` is a real member of the team, and the sweep must never
+ * remove one however old the original invitation was. That is the mistake this
+ * function exists to make impossible.
+ */
+export function sweepInvitation(
+  member: Pick<TeamMemberRecord, "invitationStatus" | "invitedAt"> & {
+    userId?: string
+  },
+  now: number,
+  retentionMs: number = INVITATION_RETENTION_MS
+): InvitationSweepVerdict {
+  // Someone holds this position. Whatever the invitation once said, this is a
+  // member now.
+  if (member.userId) return "keep"
+
+  const invitedAt = member.invitedAt
+
+  if (member.invitationStatus === "pending") {
+    if (invitedAt === undefined) return "keep"
+    return now - invitedAt > INVITATION_LIFETIME_MS ? "expire" : "keep"
+  }
+
+  if (member.invitationStatus === "expired") {
+    // No `invitedAt` to age against: keep it rather than delete a row whose
+    // age cannot be established.
+    if (invitedAt === undefined) return "keep"
+    return now - invitedAt > INVITATION_LIFETIME_MS + retentionMs
+      ? "purge"
+      : "keep"
+  }
+
+  // "accepted" without a userId should not happen; keeping it is the answer
+  // that loses nothing if it does.
+  return "keep"
+}

@@ -8,6 +8,8 @@ import {
   profileAllowsPermission,
   revocationEffect,
   INVITATION_LIFETIME_MS,
+  INVITATION_RETENTION_MS,
+  sweepInvitation,
   TeamAccessError,
   type TeamActor,
 } from "../teamAccess"
@@ -401,5 +403,77 @@ describe("invitationModules", () => {
 
   test("does not duplicate a module both sides selected", () => {
     expect(invitationModules(["orders"], ["orders"])).toEqual(["orders"])
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Sweeping stale invitations                                          */
+/* ------------------------------------------------------------------ */
+
+describe("sweepInvitation", () => {
+  const NOW_MS = 1_800_000_000_000
+  const beyondLifetime = NOW_MS - INVITATION_LIFETIME_MS - 1
+  const withinLifetime = NOW_MS - 1_000
+
+  test("a live invitation is left alone", () => {
+    expect(
+      sweepInvitation(
+        { invitationStatus: "pending", invitedAt: withinLifetime },
+        NOW_MS
+      )
+    ).toBe("keep")
+  })
+
+  test("a pending invitation past its lifetime is expired", () => {
+    // Nothing swept this table, so such a row kept `pending` — and kept its
+    // TOKEN — forever.
+    expect(
+      sweepInvitation(
+        { invitationStatus: "pending", invitedAt: beyondLifetime },
+        NOW_MS
+      )
+    ).toBe("expire")
+  })
+
+  test("an expired invitation is purged only after the retention window", () => {
+    const justExpired = { invitationStatus: "expired" as const, invitedAt: beyondLifetime }
+    expect(sweepInvitation(justExpired, NOW_MS)).toBe("keep")
+
+    const longDead = {
+      invitationStatus: "expired" as const,
+      invitedAt: NOW_MS - INVITATION_LIFETIME_MS - INVITATION_RETENTION_MS - 1,
+    }
+    expect(sweepInvitation(longDead, NOW_MS)).toBe("purge")
+  })
+
+  test("NEVER touches a row somebody holds, however old", () => {
+    // The mistake this function exists to make impossible: a row carrying a
+    // userId is a member of the team, not an invitation.
+    const ancient = NOW_MS - INVITATION_LIFETIME_MS - INVITATION_RETENTION_MS - 1
+
+    for (const status of ["pending", "expired", "accepted"] as const) {
+      expect(
+        sweepInvitation(
+          { invitationStatus: status, invitedAt: ancient, userId: "user:yanis" },
+          NOW_MS
+        )
+      ).toBe("keep")
+    }
+  })
+
+  test("keeps a row whose age cannot be established", () => {
+    // No `invitedAt` means no basis to age it against; deleting on a guess is
+    // worse than keeping one stale row.
+    expect(sweepInvitation({ invitationStatus: "pending" }, NOW_MS)).toBe("keep")
+    expect(sweepInvitation({ invitationStatus: "expired" }, NOW_MS)).toBe("keep")
+  })
+
+  test("keeps an accepted row with no userId rather than guessing", () => {
+    expect(
+      sweepInvitation(
+        { invitationStatus: "accepted", invitedAt: beyondLifetime },
+        NOW_MS
+      )
+    ).toBe("keep")
   })
 })

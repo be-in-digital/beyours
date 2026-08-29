@@ -34,6 +34,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   store_created: "Établissement créé",
   store_updated: "Établissement modifié",
   store_deleted: "Établissement supprimé",
+  access_granted: "Accès accordé",
+  access_changed: "Accès modifié",
+  access_revoked: "Accès retiré",
 }
 
 export function formatActionLabel(action: string): string {

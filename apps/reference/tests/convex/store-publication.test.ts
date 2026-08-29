@@ -225,8 +225,11 @@ describe("stores.listAll", () => {
   test("returns the drafts to the owner who has to publish them", async () => {
     const t = newHarness()
     const draft = await seedStore(t, "Pizza Draft", "draft")
-    await seedStore(t, "Pizza Open", "open")
-    const asOwner = await seedUser(t, "user:a", "client_admin", [draft])
+    const open = await seedStore(t, "Pizza Open", "open")
+    // Both stores are granted to this owner: the point of the test is that a
+    // DRAFT is visible to whoever is about to publish it, not that an admin
+    // sees establishments they were never given (see #94 below).
+    const asOwner = await seedUser(t, "user:a", "client_admin", [draft, open])
 
     const stores = await asOwner.query(api.stores.listAll, {})
 
@@ -242,6 +245,56 @@ describe("stores.listAll", () => {
     const asKitchen = await seedUser(t, "user:k", "kitchen", [storeId])
 
     await expect(asKitchen.query(api.stores.listAll, {})).resolves.toHaveLength(1)
+  })
+
+  // #94: staff-only was ALL this checked. Membership was never applied, so an
+  // employee of one restaurant could enumerate every other restaurant its
+  // owner runs — name, address, phone, email, hours, delivery radius.
+  test("does not show a member the establishments they were never given", async () => {
+    const t = newHarness()
+    const mine = await seedStore(t, "Pizza Mine", "open")
+    await seedStore(t, "Pizza Theirs", "open")
+    const asKitchen = await seedUser(t, "user:k", "kitchen", [mine])
+
+    const stores = await asKitchen.query(api.stores.listAll, {})
+
+    expect(stores.map((s) => s.name)).toEqual(["Pizza Mine"])
+  })
+
+  test("does not widen for a client admin either", async () => {
+    // The chain owner's remit is the establishments on their profile, which is
+    // the same list `requireStoreAccess` and `assertCanManageMember` read.
+    const t = newHarness()
+    const mine = await seedStore(t, "Pizza Mine", "open")
+    await seedStore(t, "Pizza Theirs", "draft")
+    const asAdmin = await seedUser(t, "user:a", "client_admin", [mine])
+
+    await expect(asAdmin.query(api.stores.listAll, {})).resolves.toHaveLength(1)
+  })
+
+  test("a super admin still sees the whole chain", async () => {
+    // Their remit IS the chain — and on a fresh deployment the first
+    // administrator holds no store at all, so scoping them to `storeIds` would
+    // leave the back office empty for the one account meant to set it up.
+    const t = newHarness()
+    await seedStore(t, "Pizza A", "open")
+    await seedStore(t, "Pizza B", "draft")
+    const asSuper = await seedUser(t, "user:s", "super_admin", [])
+
+    await expect(asSuper.query(api.stores.listAll, {})).resolves.toHaveLength(2)
+  })
+
+  test("survives a profile naming an establishment that has been deleted", async () => {
+    // One stale id must not blank the whole administration.
+    const t = newHarness()
+    const kept = await seedStore(t, "Pizza Kept", "open")
+    const removed = await seedStore(t, "Pizza Removed", "open")
+    const asManager = await seedUser(t, "user:m", "manager", [kept, removed])
+    await t.run((ctx) => ctx.db.delete(removed))
+
+    const stores = await asManager.query(api.stores.listAll, {})
+
+    expect(stores.map((s) => s.name)).toEqual(["Pizza Kept"])
   })
 
   test("does not hand out the printer API key", async () => {

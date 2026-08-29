@@ -24,6 +24,7 @@
     "./stores": "./src/stores.ts",
     "./backupRemap": "./src/backupRemap.ts",
     "./storeAudit": "./src/storeAudit.ts",
+    "./accessAudit": "./src/accessAudit.ts",
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
     "./orders": "./src/orders.ts",

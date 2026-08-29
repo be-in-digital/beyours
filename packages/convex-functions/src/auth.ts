@@ -219,6 +219,34 @@ export async function isStaff(ctx: any): Promise<boolean> {
 }
 
 /* ------------------------------------------------------------------ */
+/* seesEveryStore                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Is this role's remit the whole chain, rather than a list of establishments?
+ *
+ * Only the super admin's is. Everyone else — the client admin included — sees
+ * the establishments named on their own profile, which is the same list every
+ * other guard already reads (`requireStoreAccess`, `assertCanManageMember`).
+ *
+ * WHY THIS EXISTS (#94): the administration list was gated on `requireStaff`
+ * alone, so ANY staff role got the name, address, phone, email, opening hours
+ * and delivery radius of every establishment of the chain — a kitchen account
+ * in one restaurant could enumerate the others. The deployment model is one
+ * Convex instance per client, so this was never a cross-client leak; it was an
+ * employee of one restaurant reading their employer's others.
+ *
+ * A client admin holding an EMPTY store list therefore now sees nothing, where
+ * before they saw everything. That is the intended reading — they administer
+ * nothing yet — and the admin already has a screen for it: "Aucun
+ * établissement / Créez votre premier établissement". Creating one grants it to
+ * them (`grantCreatedStoreAccess`), and a super admin can hand over more.
+ */
+export function seesEveryStore(role: Role): boolean {
+  return role === Role.SUPER_ADMIN
+}
+
+/* ------------------------------------------------------------------ */
 /* grantCreatedStoreAccess                                             */
 /* ------------------------------------------------------------------ */
 

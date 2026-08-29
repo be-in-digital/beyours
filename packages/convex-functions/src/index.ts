@@ -8,6 +8,7 @@
 export * as stores from "./stores"
 export * as backupRemap from "./backupRemap"
 export * as storeAudit from "./storeAudit"
+export * as accessAudit from "./accessAudit"
 export * as globalSettings from "./globalSettings"
 export * as storeIntegrations from "./storeIntegrations"
 export * as products from "./products"
