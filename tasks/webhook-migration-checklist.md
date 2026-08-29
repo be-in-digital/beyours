@@ -41,6 +41,19 @@ site's two are singular.
 | Service | Path | Verified with |
 |---|---|---|
 | **Stripe — BeYours commercial account** | `/webhooks/stripe` | `STRIPE_WEBHOOK_SECRET`, hand-rolled HMAC with a 5-minute tolerance (`http.ts:24-58`) |
+
+The 8 events this route actually switches on — register these and no others:
+`checkout.session.completed`, `invoice.payment_succeeded`,
+`invoice.payment_failed`, `customer.subscription.updated`,
+`customer.subscription.deleted`, `account.updated`, `charge.refunded`,
+`charge.dispute.created`.
+
+> **Inventory drift found while doing this.** The Stripe account already carried
+> an endpoint at `https://hallowed-schnauzer-20.convex.site/webhooks/stripe`
+> ("Convex dev — test mode", same 8 events, enabled). `hallowed-schnauzer-20` is
+> a **seventh** Convex deployment, in none of the six rows of
+> [README → Convex deployments](../README.md#convex-deployments). Someone's dev
+> backend. Harmless, but it means the inventory is not closed.
 | *(not a webhook)* licence check | `/maintenance/status` | query string `?key=` |
 
 > **`STRIPE_WEBHOOK_SECRET` names two different endpoints on two different
@@ -152,7 +165,7 @@ Found while compiling this. Worth correcting alongside the migration.
 
 ## Sign-off
 
-- [ ] Commercial site: Stripe endpoint recreated, its own `STRIPE_WEBHOOK_SECRET` updated
+- [x] **Commercial site: Stripe endpoint created 2026-08-29** — `we_1U9akpA63ZMDexsmVWHwZShf`, on account **Be Yours · sandbox** (`acct_1TzapYA63ZMDexsm`), test mode, the 8 events below, pointing at `dusty-nightingale-945`. `STRIPE_WEBHOOK_SECRET` pushed to that deployment. Verified: a signed `checkout.session.completed` left `pending_webhooks=0`, and an unsigned POST answers `400 Missing stripe-signature header` — the route is live and verifying. **Still owed on that deployment: `STRIPE_SECRET_KEY`**, which `convex/stripe.ts` and `convex/stripeConnect.ts` need; without it the signature check passes and the handler then fails.
 - [ ] Decision recorded on `/maintenance/status`: rewrite each client's sentinel, or keep the old deployment answering
 - [ ] Per client — Uber Eats, Uber Direct, Deliveroo ×3, Stripe, Stripe BID
 - [ ] Per client — the four `/connect/*` redirect URIs, Uber's checked for a trailing slash
