@@ -72,10 +72,20 @@ export interface CartItem {
   lineId: string
   productId: string
   name: string
-  price: number // in cents
+  price: number // in cents, tax included
   quantity: number
   options: CartSelectedOption[]
   imageUrl?: string
+  /**
+   * The product's own VAT rate, e.g. 10.
+   *
+   * Carried so the summary can declare the same tax the receipt will: a basket
+   * mixing food at 10 % and alcohol at 20 % has no single rate, and a page that
+   * guessed one would print a figure the order contradicts. Absent on a line
+   * added before this field existed, or by a card with no product behind it —
+   * the deployment-wide rate applies then.
+   */
+  taxRate?: number
 }
 
 /**

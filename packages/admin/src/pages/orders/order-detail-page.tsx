@@ -395,7 +395,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                 </div>
                 {order.taxAmount > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">TVA</span>
+                    <span className="text-muted-foreground">dont TVA</span>
                     <span>{formatPrice(order.taxAmount)}</span>
                   </div>
                 )}

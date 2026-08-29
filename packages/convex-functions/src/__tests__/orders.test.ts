@@ -383,6 +383,9 @@ describe("create — promotion handling", () => {
         name: "Pizza",
         price: 10_000,
         isActive: true,
+        // The product's own rate, deliberately different from the global 10 %
+        // below: the order path reads the product's, and read neither before.
+        taxRate: 20,
         options: [],
       },
       // Copied, not referenced: `patch` mutates in place, and a shared literal
@@ -455,13 +458,15 @@ describe("create — promotion handling", () => {
     usageCount: 0,
   }
 
-  it("charges subtotal + tax when no promotion is applied", async () => {
+  it("charges the price on the menu, with the tax taken out of it", async () => {
     const { ctx, inserted } = createPricingCtx()
     await create.handler(ctx, baseArgs as never)
 
     const order = orderFrom(inserted)
-    // 10 000 + 10% tax = 11 000
-    expect(order?.total).toBe(11_000)
+    // 100,00 € on the menu is 100,00 € charged. The VAT is the share of it
+    // owed at the product's own 20 %, not 20 % added on top.
+    expect(order?.total).toBe(10_000)
+    expect(order?.taxAmount).toBe(1_667)
     expect(order?.discountAmount).toBeUndefined()
   })
 
@@ -475,7 +480,7 @@ describe("create — promotion handling", () => {
     )
 
     const order = orderFrom(inserted)
-    expect(order?.total).toBe(11_000)
+    expect(order?.total).toBe(10_000)
     expect(order?.discountAmount).toBeUndefined()
   })
 
@@ -487,9 +492,9 @@ describe("create — promotion handling", () => {
     )
 
     const order = orderFrom(inserted)
-    // 10% of the 10 000 subtotal = 1 000 off 11 000
+    // 10 % of the 10 000 subtotal = 1 000 off the 10 000 charged
     expect(order?.discountAmount).toBe(1_000)
-    expect(order?.total).toBe(10_000)
+    expect(order?.total).toBe(9_000)
   })
 
   it("uses the stored promotion even when the client forges a bigger one", async () => {
@@ -505,7 +510,7 @@ describe("create — promotion handling", () => {
 
     const order = orderFrom(inserted)
     expect(order?.discountAmount).toBe(1_000)
-    expect(order?.total).toBe(10_000)
+    expect(order?.total).toBe(9_000)
   })
 
   it("rejects a promotion belonging to another store", async () => {
