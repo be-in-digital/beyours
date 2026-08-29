@@ -30,6 +30,20 @@ set -euo pipefail
 # ============================================================================
 
 # ── Configuration ────────────────────────────────────────────────────────────
+#
+# ⚠️ THE `beindigital-*` NAMES BELOW ARE AWS RESOURCES, NOT BRANDING.
+#
+# They designate infrastructure that already exists in the account: an S3
+# bucket (globally unique name), an IAM user, an IAM policy and an SES
+# configuration set. Renaming them here does not rename anything in AWS — it
+# makes the script provision a second, parallel, empty set, and points new
+# clients at a bucket that holds none of the existing media. Sending mail with
+# a configuration set that does not exist fails outright.
+#
+# This happened on 2026-08-16: the BeYours rename swept `beindigital-engine`
+# into `beyours-engine` across the repository and caught these five along the
+# way. Renaming them requires renaming the AWS resources first — which, for an
+# S3 bucket, means creating a new one and copying the objects over.
 
 # ── Per-client mode ──
 # One AWS account per client (apps/docs/deployment/aws-ownership.md). Give a
@@ -64,7 +78,7 @@ else
   BUCKET_NAME="beindigital-engine-assets"
   IAM_USER="beindigital-engine-app"
   SES_CONFIG_SET="beindigital-engine"
-  POLICY_NAME="BeYoursEnginePolicy"
+  POLICY_NAME="BeInDigitalEnginePolicy"
 fi
 
 # Colors for output
