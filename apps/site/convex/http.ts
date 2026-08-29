@@ -61,15 +61,27 @@ async function verifyStripeSignature(
 interface StripeEvent {
   id: string;
   type: string;
+  /** Present only on Connect-scoped events: the connected account that
+      triggered it. Absent on our own account's events. */
+  account?: string;
   data: {
     object: Record<string, unknown>;
   };
 }
 
-http.route({
-  path: "/webhooks/stripe",
-  method: "POST",
-  handler: httpAction(async (ctx, req) => {
+/**
+ * Stripe splits webhooks into two scopes, and an endpoint belongs to exactly
+ * one. Events about OUR account (a customer paying us) arrive on an
+ * account-scoped endpoint; events about CONNECTED accounts — our affiliates,
+ * who are `express` accounts — arrive only on a Connect-scoped one
+ * (`connect: true` at creation). See https://docs.stripe.com/connect/webhooks.
+ *
+ * Each endpoint signs with its own secret, so one route cannot serve both: the
+ * signature of the other scope would never verify. Hence two routes sharing one
+ * body, each reading the secret of the endpoint that feeds it.
+ */
+const stripeWebhookHandler = (secretEnvVar: string) =>
+  httpAction(async (ctx, req) => {
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
 
@@ -77,9 +89,9 @@ http.route({
       return new Response("Missing stripe-signature header", { status: 400 });
     }
 
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const webhookSecret = process.env[secretEnvVar];
     if (!webhookSecret) {
-      console.error("STRIPE_WEBHOOK_SECRET not configured");
+      console.error(`${secretEnvVar} not configured`);
       return new Response("Webhook secret not configured", { status: 500 });
     }
 
@@ -126,6 +138,12 @@ http.route({
         case "account.updated":
           await handleAccountUpdated(ctx, event);
           break;
+        case "account.application.deauthorized":
+          await handleAccountDeauthorized(ctx, event);
+          break;
+        case "payout.failed":
+          await handlePayoutFailed(ctx, event);
+          break;
         case "charge.refunded":
           await handleChargeReversal(ctx, event, "Remboursement du client");
           break;
@@ -149,7 +167,20 @@ http.route({
     }
 
     return new Response("OK", { status: 200 });
-  }),
+  });
+
+/** Our own account: payments, subscriptions, disputes. */
+http.route({
+  path: "/webhooks/stripe",
+  method: "POST",
+  handler: stripeWebhookHandler("STRIPE_WEBHOOK_SECRET"),
+});
+
+/** Connected accounts: the affiliates' `express` accounts. */
+http.route({
+  path: "/webhooks/stripe-connect",
+  method: "POST",
+  handler: stripeWebhookHandler("STRIPE_CONNECT_WEBHOOK_SECRET"),
 });
 
 /* ── 1. checkout.session.completed ── */
@@ -565,6 +596,84 @@ async function handleAccountUpdated(
       stripeConnectStatus: newStatus as "not_started" | "pending" | "active" | "disabled",
     });
     console.log(`Stripe Connect status updated for ${accountId}: ${newStatus}`);
+  }
+}
+
+/* ── 6b. account.application.deauthorized (Stripe Connect) ── */
+
+/**
+ * The affiliate disconnected their Stripe account from our platform. We keep the
+ * row — their history and unpaid commissions matter — but nothing can be paid
+ * out any more, so the gate `referrals.ts` reads has to close.
+ */
+async function handleAccountDeauthorized(
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  event: StripeEvent,
+) {
+  // On Connect events the account id is top-level; `data.object` is the
+  // application that was deauthorized, not the account.
+  const accountId = event.account;
+  if (!accountId) {
+    console.error("account.application.deauthorized carried no account id");
+    return;
+  }
+
+  const affiliate = await ctx.runQuery(
+    internal.affiliateUsers.getByStripeAccountId,
+    { stripeConnectAccountId: accountId },
+  );
+  if (!affiliate) {
+    console.log(`No affiliate found for Stripe account ${accountId}`);
+    return;
+  }
+
+  if (affiliate.stripeConnectStatus !== "disabled") {
+    await ctx.runMutation(internal.affiliateUsers.updateStripeConnectStatus, {
+      affiliateUserId: affiliate._id,
+      stripeConnectStatus: "disabled",
+    });
+    console.log(`Affiliate ${accountId} deauthorized the platform: disabled`);
+  }
+}
+
+/* ── 6c. payout.failed (Stripe Connect) ── */
+
+/**
+ * A payout to the affiliate bounced. Stripe disables the external account it
+ * used, and no payout — automatic or manual — can go through until the
+ * affiliate fixes their bank details. Paying again before that just fails
+ * again, so close the gate rather than retrying into a wall.
+ */
+async function handlePayoutFailed(
+  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
+  event: StripeEvent,
+) {
+  const accountId = event.account;
+  if (!accountId) {
+    console.error("payout.failed carried no account id");
+    return;
+  }
+
+  const affiliate = await ctx.runQuery(
+    internal.affiliateUsers.getByStripeAccountId,
+    { stripeConnectAccountId: accountId },
+  );
+  if (!affiliate) {
+    console.log(`No affiliate found for Stripe account ${accountId}`);
+    return;
+  }
+
+  const payout = event.data.object;
+  console.error(
+    `Payout ${payout.id as string} failed for affiliate ${accountId}: ` +
+      `${(payout.failure_message as string) ?? (payout.failure_code as string) ?? "no reason given"}`,
+  );
+
+  if (affiliate.stripeConnectStatus !== "disabled") {
+    await ctx.runMutation(internal.affiliateUsers.updateStripeConnectStatus, {
+      affiliateUserId: affiliate._id,
+      stripeConnectStatus: "disabled",
+    });
   }
 }
 

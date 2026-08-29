@@ -78,6 +78,8 @@ const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'STRIPE_TAX_ENABLED', check: isBool },
   { name: 'STRIPE_SECRET_KEY', check: startsWith('sk_') },
   { name: 'STRIPE_WEBHOOK_SECRET', check: startsWith('whsec_') },
+  // Connect-scoped endpoint: its own endpoint, so its own secret.
+  { name: 'STRIPE_CONNECT_WEBHOOK_SECRET', check: startsWith('whsec_') },
   { name: 'STRIPE_FOUNDERS_COUPON_ID', check: () => null },
   { name: 'EMAIL_PROVIDER', check: isOneOf('ses', 'resend') },
   { name: 'EMAIL_FROM', check: isEmail },
