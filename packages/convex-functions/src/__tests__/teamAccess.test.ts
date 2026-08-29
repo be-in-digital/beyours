@@ -1,9 +1,11 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, test, expect } from "vitest"
 import { Role } from "@be-in-digital/core/auth/rbac"
 import {
   assertCanManageMember,
   assertInvitationAcceptable,
   invitationGrant,
+  invitationModules,
+  profileAllowsPermission,
   revocationEffect,
   INVITATION_LIFETIME_MS,
   TeamAccessError,
@@ -296,5 +298,108 @@ describe("revocationEffect", () => {
       })
       expect([Role.SUPER_ADMIN, Role.CLIENT_ADMIN]).not.toContain(role)
     }
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Module permissions                                                  */
+/* ------------------------------------------------------------------ */
+
+describe("profileAllowsPermission", () => {
+  test("an empty list means unrestricted, not locked out", () => {
+    // Every profile in every existing deployment carries `permissions: []`.
+    // Reading that as "nothing allowed" would have shut out every member on
+    // the day this shipped.
+    expect(
+      profileAllowsPermission({ role: Role.WAITER, permissions: [] }, "settings:write")
+    ).toBe(true)
+    expect(
+      profileAllowsPermission({ role: Role.WAITER }, "settings:write")
+    ).toBe(true)
+  })
+
+  test("a selected module allows its resources", () => {
+    const profile = { role: Role.WAITER, permissions: ["orders"] }
+
+    expect(profileAllowsPermission(profile, "orders:read")).toBe(true)
+    expect(profileAllowsPermission(profile, "orders:update_status")).toBe(true)
+    expect(profileAllowsPermission(profile, "customers:read")).toBe(true)
+  })
+
+  test("an unselected module refuses its resources — the whole point", () => {
+    const profile = { role: Role.MANAGER, permissions: ["orders", "kitchen"] }
+
+    // The owner unticked "Paramètres" and "Équipe" in the invite dialog. Until
+    // now that changed nothing whatsoever.
+    expect(profileAllowsPermission(profile, "settings:write")).toBe(false)
+    expect(profileAllowsPermission(profile, "team:write")).toBe(false)
+    expect(profileAllowsPermission(profile, "products:write")).toBe(false)
+  })
+
+  test("a resource reachable from two modules needs only one of them", () => {
+    // `stores` is read from both the dashboard and the settings screen.
+    expect(
+      profileAllowsPermission({ role: Role.MANAGER, permissions: ["dashboard"] }, "stores:read")
+    ).toBe(true)
+    expect(
+      profileAllowsPermission({ role: Role.MANAGER, permissions: ["settings"] }, "stores:read")
+    ).toBe(true)
+    expect(
+      profileAllowsPermission({ role: Role.MANAGER, permissions: ["kitchen"] }, "stores:read")
+    ).toBe(false)
+  })
+
+  test.each([Role.SUPER_ADMIN, Role.CLIENT_ADMIN])(
+    "%s is never narrowed by a module list",
+    (role) => {
+      // Their authority does not come from the roster, and a stray list on an
+      // owner's profile must not be able to shut them out of their own
+      // restaurant.
+      expect(
+        profileAllowsPermission({ role, permissions: ["kitchen"] }, "settings:write")
+      ).toBe(true)
+    }
+  )
+
+  test("a resource no checkbox covers stays allowed", () => {
+    // The owner was never shown a box for it, so they cannot have meant to
+    // deny it — refusing would invent a restriction nobody asked for.
+    expect(
+      profileAllowsPermission(
+        { role: Role.MANAGER, permissions: ["kitchen"] },
+        "unmapped_resource:read"
+      )
+    ).toBe(true)
+  })
+})
+
+describe("invitationModules", () => {
+  test("a first invitation carries its own selection", () => {
+    expect(invitationModules(["orders", "kitchen"], undefined)).toEqual([
+      "orders",
+      "kitchen",
+    ])
+  })
+
+  test("an unrestricted invitation leaves the member unrestricted", () => {
+    expect(invitationModules([], ["orders"])).toEqual([])
+    expect(invitationModules(undefined, ["orders"])).toEqual([])
+  })
+
+  test("an unrestricted profile stays unrestricted", () => {
+    // Intersecting "everything" with a narrower set would silently demote a
+    // manager the first time they were invited somewhere as a waiter.
+    expect(invitationModules(["orders"], [])).toEqual([])
+  })
+
+  test("a second restaurant adds modules rather than shrinking them", () => {
+    expect(invitationModules(["kitchen"], ["orders"]).sort()).toEqual([
+      "kitchen",
+      "orders",
+    ])
+  })
+
+  test("does not duplicate a module both sides selected", () => {
+    expect(invitationModules(["orders"], ["orders"])).toEqual(["orders"])
   })
 })

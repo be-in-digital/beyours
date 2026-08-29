@@ -1,0 +1,443 @@
+// @vitest-environment edge-runtime
+/// <reference types="vite/client" />
+
+/**
+ * The invitation, from the link to the rights it promises.
+ *
+ * `/invite/<token>` did not exist, so nothing had ever called `acceptInvitation`
+ * from outside Convex and nothing tested what the invitee sees on the way. Two
+ * halves are covered here:
+ *
+ * - `getInvitationPreview`, which the page renders. It has to ANSWER rather than
+ *   throw — "no such invitation", "expired" and "already accepted" are three
+ *   different pieces of copy, and a redacted exception cannot tell them apart.
+ * - `acceptInvitation`, which is the only thing that writes `userProfiles` — the
+ *   record the authorisation chain actually reads. Until it runs, a roster row
+ *   grants nothing at all.
+ */
+
+import { convexTest } from "convex-test"
+import { describe, expect, test } from "vitest"
+import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
+import schema from "../../convex/schema"
+import { convexErrorCode } from "../../lib/convex-error"
+
+const modules = import.meta.glob("../../convex/**/*.ts")
+
+/**
+ * The refusal code, read the way the UI reads it.
+ *
+ * `convex-test` hands `ConvexError.data` back as a JSON STRING where the
+ * browser client hands back an object. Asserting on the raw shape here would
+ * pin the harness's form and prove nothing about the screen, so the tests go
+ * through the same reader the pages use.
+ */
+async function refusalCode(promise: Promise<unknown>): Promise<string | null> {
+  try {
+    await promise
+    return null
+  } catch (error) {
+    return convexErrorCode(error)
+  }
+}
+
+const NOW = 1_700_000_000_000
+const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000
+
+function newHarness() {
+  return convexTest(schema, modules)
+}
+
+async function seedStore(t: ReturnType<typeof convexTest>, name: string) {
+  return t.run((ctx) =>
+    ctx.db.insert("stores", {
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, "-"),
+      address: {
+        street: "1 rue de la Paix",
+        city: "Paris",
+        postalCode: "75002",
+        country: "France",
+      },
+      hours: [],
+      status: "open" as const,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  )
+}
+
+/** A roster row exactly as `invite` writes it. */
+async function seedInvitation(
+  t: ReturnType<typeof convexTest>,
+  overrides: {
+    storeId?: Id<"stores">
+    allStores?: boolean
+    token?: string
+    status?: "pending" | "accepted" | "expired"
+    invitedAt?: number
+    role?: "manager" | "kitchen" | "waiter" | "delivery"
+    permissions?: string[]
+  } = {}
+) {
+  return t.run((ctx) =>
+    ctx.db.insert("teamMembers", {
+      storeId: overrides.storeId,
+      allStores: overrides.allStores ?? false,
+      name: "Yanis Moreau",
+      email: "yanis@resto.example",
+      role: overrides.role ?? "manager",
+      permissions: overrides.permissions ?? ["dashboard", "orders"],
+      invitationStatus: overrides.status ?? "pending",
+      invitationToken: overrides.token ?? "tok-1",
+      invitedAt: overrides.invitedAt ?? Date.now(),
+      isActive: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  )
+}
+
+// ============================================================================
+// What the page renders before anyone is signed in
+// ============================================================================
+
+describe("getInvitationPreview", () => {
+  test("names the restaurant and the role, so the invitee knows what they accept", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-preview", role: "manager" })
+
+    const preview = await t.query(api.teamMembers.getInvitationPreview, {
+      token: "tok-preview",
+    })
+
+    expect(preview.status).toBe("pending")
+    expect(preview).toMatchObject({
+      role: "manager",
+      allStores: false,
+      storeName: "Chez Luigi",
+      email: "yanis@resto.example",
+    })
+  })
+
+  test("answers not_found for an unknown token instead of throwing", async () => {
+    const t = newHarness()
+
+    // The route used to 404. Answering is what lets the page say something
+    // useful about a link that was already used.
+    await expect(
+      t.query(api.teamMembers.getInvitationPreview, { token: "nope" })
+    ).resolves.toEqual({ status: "not_found" })
+  })
+
+  test("reports an invitation past its lifetime as expired", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    // Still `pending` in the table: expiry is stamped on the acceptance
+    // attempt, not by a sweeper, so the preview has to apply the rule itself.
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-old",
+      invitedAt: Date.now() - EIGHT_DAYS_MS,
+    })
+
+    const preview = await t.query(api.teamMembers.getInvitationPreview, {
+      token: "tok-old",
+    })
+
+    expect(preview.status).toBe("invitation_expired")
+  })
+
+  test("reports an already-accepted invitation distinctly from an expired one", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-used", status: "accepted" })
+
+    const preview = await t.query(api.teamMembers.getInvitationPreview, {
+      token: "tok-used",
+    })
+
+    expect(preview.status).toBe("invitation_not_pending")
+  })
+
+  test("says 'all establishments' for a chain-wide invitation, which has no store", async () => {
+    const t = newHarness()
+    await seedInvitation(t, { allStores: true, token: "tok-chain" })
+
+    const preview = await t.query(api.teamMembers.getInvitationPreview, {
+      token: "tok-chain",
+    })
+
+    expect(preview).toMatchObject({ status: "pending", allStores: true, storeName: null })
+  })
+})
+
+// ============================================================================
+// Acceptance, and the profile it must write
+// ============================================================================
+
+describe("acceptInvitation", () => {
+  test("provisions the userProfiles record the authorisation chain reads", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-accept", role: "manager" })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-accept" })
+
+    const profile = await t.run((ctx) =>
+      ctx.db
+        .query("userProfiles")
+        .withIndex("by_userId", (q) => q.eq("userId", "user-yanis"))
+        .first()
+    )
+
+    // Without this row the roster grants nothing: `getAuthUser` never reads
+    // `teamMembers`.
+    expect(profile).toMatchObject({ role: "manager", storeIds: [storeId] })
+  })
+
+  test("consumes the token, so the link cannot be replayed", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-once" })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-once" })
+
+    await expect(
+      t.query(api.teamMembers.getInvitationPreview, { token: "tok-once" })
+    ).resolves.toEqual({ status: "not_found" })
+  })
+
+  test("marks the roster row accepted and binds it to the caller", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, { storeId, token: "tok-bind" })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-bind" })
+
+    const member = await t.run((ctx) => ctx.db.get(memberId))
+    expect(member).toMatchObject({
+      invitationStatus: "accepted",
+      userId: "user-yanis",
+    })
+  })
+
+  test("refuses an anonymous caller, with a reason the page can read", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-anon" })
+
+    // ConvexError `data`, not a message: Convex redacts a thrown message in
+    // production and the invite page would show "Server Error" for all four
+    // refusals.
+    expect(
+      await refusalCode(
+        t.mutation(api.teamMembers.acceptInvitation, { token: "tok-anon" })
+      )
+    ).toBe("not_authenticated")
+  })
+
+  test("refuses an unknown token by code", async () => {
+    const t = newHarness()
+
+    expect(
+      await refusalCode(
+        t
+          .withIdentity({ subject: "user-yanis" })
+          .mutation(api.teamMembers.acceptInvitation, { token: "ghost" })
+      )
+    ).toBe("not_found")
+  })
+
+  test("refuses an expired invitation by code", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, {
+      storeId,
+      token: "tok-stale",
+      invitedAt: Date.now() - EIGHT_DAYS_MS,
+    })
+
+    expect(
+      await refusalCode(
+        t
+          .withIdentity({ subject: "user-yanis" })
+          .mutation(api.teamMembers.acceptInvitation, { token: "tok-stale" })
+      )
+    ).toBe("invitation_expired")
+
+    // The row is still `pending`, and that is correct rather than a leak: a
+    // mutation is a transaction, so a write on the refusal path is rolled back
+    // by the refusal itself. The code used to attempt exactly that. Expiry is
+    // a rule about `invitedAt`, applied on read.
+    const member = await t.run((ctx) => ctx.db.get(memberId))
+    expect(member?.invitationStatus).toBe("pending")
+    await expect(
+      t.query(api.teamMembers.getInvitationPreview, { token: "tok-stale" })
+    ).resolves.toEqual({ status: "invitation_expired" })
+  })
+
+  test("refuses a second acceptance by code", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-twice", status: "accepted" })
+
+    expect(
+      await refusalCode(
+        t
+          .withIdentity({ subject: "user-yanis" })
+          .mutation(api.teamMembers.acceptInvitation, { token: "tok-twice" })
+      )
+    ).toBe("invitation_not_pending")
+  })
+
+  test("adds a second restaurant rather than replacing the first", async () => {
+    const t = newHarness()
+    const luigi = await seedStore(t, "Chez Luigi")
+    const marco = await seedStore(t, "Chez Marco")
+
+    await t.run((ctx) =>
+      ctx.db.insert("userProfiles", {
+        userId: "user-yanis",
+        role: "manager",
+        storeIds: [luigi],
+        permissions: [],
+        language: "fr",
+        twoFactorEnabled: false,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+    await seedInvitation(t, { storeId: marco, token: "tok-second", role: "waiter" })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-second" })
+
+    const profile = await t.run((ctx) =>
+      ctx.db
+        .query("userProfiles")
+        .withIndex("by_userId", (q) => q.eq("userId", "user-yanis"))
+        .first()
+    )
+
+    // An invitation adds a workplace; it does not demote the person or make
+    // them lose the restaurant they already worked in.
+    expect(profile?.role).toBe("manager")
+    expect(profile?.storeIds).toEqual([luigi, marco])
+  })
+})
+
+// ============================================================================
+// The module checkboxes, from the dialog to the refusal
+// ============================================================================
+
+describe("module permissions", () => {
+  test("an accepted invitation writes the modules it was created with", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-modules",
+      role: "manager",
+      permissions: ["orders", "kitchen"],
+    })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-modules" })
+
+    const profile = await t.run((ctx) =>
+      ctx.db
+        .query("userProfiles")
+        .withIndex("by_userId", (q) => q.eq("userId", "user-yanis"))
+        .first()
+    )
+
+    // Acceptance used to write `existingProfile?.permissions ?? []` — i.e.
+    // nothing — and the dialog's eight checkboxes died here.
+    expect(profile?.permissions?.sort()).toEqual(["kitchen", "orders"])
+  })
+
+  test("a module the owner unticked is refused, not merely hidden", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-narrow",
+      role: "manager",
+      permissions: ["orders", "kitchen"],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-narrow" })
+
+    // A manager's ROLE carries products:write. The owner did not tick
+    // "Produits / Menu", and until now that changed nothing at all.
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).rejects.toThrow(/module_denied/)
+  })
+
+  test("a module the owner did tick still works", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-wide",
+      role: "manager",
+      permissions: ["orders", "kitchen", "products"],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-wide" })
+
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).resolves.toBeDefined()
+  })
+
+  test("a member invited with no restriction keeps their whole role", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-open",
+      role: "manager",
+      permissions: [],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-open" })
+
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).resolves.toBeDefined()
+  })
+})

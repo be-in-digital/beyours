@@ -83,8 +83,26 @@ The formatted report shows:
 |----------|------------|-------------|
 | `BETTER_AUTH_SECRET` | `string` | Auth secret |
 | `BETTER_AUTH_URL` | `url` | Auth service URL |
-| `SITE_URL` | `url` | Site origin for trusted origins |
+| `SITE_URL` | `url` | Site origin for trusted origins, and where Convex posts transactional mail |
 | `ENCRYPTION_KEY` | `64-char hex` | AES-256-GCM encryption key |
+| `EMAIL_API_SECRET` | `string, ≥32` | Bearer token for `POST /api/email/send`. Set on **both** sides |
+| `ADMIN_BOOTSTRAP_TOKEN` | `string` | Claims the first super-admin seat. Set on the **Convex** deployment |
+| `AUTH_ALLOW_UNVERIFIED_EMAIL` | `'true' \| 'false'` | Relaxes email verification. Test deployments only |
+
+**`SITE_URL`, `BETTER_AUTH_SECRET`/`EMAIL_API_SECRET` and `ADMIN_BOOTSTRAP_TOKEN`
+live on the Convex deployment too**, not only in `.env.local`: a Convex function
+does not read the Next.js environment. Without the first two, no verification or
+password-reset mail can leave the deployment — sign-up mints a token and sends
+nothing, and the account can never be signed in to. Without the third, no first
+administrator can be appointed.
+
+```bash
+npx convex env set SITE_URL              https://<client-domain>
+npx convex env set BETTER_AUTH_SECRET    "$(openssl rand -base64 32)"
+npx convex env set ADMIN_BOOTSTRAP_TOKEN "$(openssl rand -base64 32)"
+```
+
+Full procedure: [`first-administrator.md`](./first-administrator.md).
 
 ### App URLs
 
@@ -127,7 +145,13 @@ The formatted report shows:
 | `SENTRY_ORG` | `string` | Source-map upload — build time, all three or none |
 | `SENTRY_PROJECT` | `string` | Source-map upload — build time |
 | `SENTRY_AUTH_TOKEN` | `string` | Source-map upload — build-host secret |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `string` | Google Maps API key |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `string` | Google Maps API key — **must** be restricted by HTTP referrer |
+
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` ships in the browser bundle by design; what
+keeps it from being reused elsewhere is the referrer restriction on Google's
+side, not secrecy. Unrestricted, it bills the client's account for traffic they
+never served. Procedure:
+[`first-administrator.md`](./first-administrator.md#part-2--restrict-next_public_google_maps_api_key).
 
 Full procedure for a new client: [`sentry.md`](./sentry.md).
 

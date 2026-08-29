@@ -42,7 +42,7 @@ import type {
   RegisteredQuery,
   UserIdentity,
 } from "convex/server"
-import { requireStoreAccess, requireStorePermission } from "./auth"
+import { denied, requireStoreAccess, requireStorePermission } from "./auth"
 import type { Permission } from "@be-in-digital/core"
 
 /**
@@ -98,7 +98,7 @@ async function authorize<Ctx extends SeamQueryCtx>(
   }
 ): Promise<UserIdentity> {
   const identity = await ctx.auth.getUserIdentity()
-  if (!identity) throw new Error("Not authenticated")
+  if (!identity) throw denied("not_authenticated", "Not authenticated : connectez-vous pour continuer.")
 
   const storeId = spec.storeIdFrom
     ? await spec.storeIdFrom(ctx, args as never)
@@ -163,7 +163,11 @@ export function createStoreFunctions<
       args: spec.args,
       handler: async (ctx: any, args: any) => {
         const identity = await ctx.auth.getUserIdentity()
-        if (!identity) throw new Error("Not authenticated")
+        if (!identity)
+          throw denied(
+            "not_authenticated",
+            "Not authenticated : connectez-vous pour continuer."
+          )
         return spec.handler(ctx, args, identity)
       },
     }) as RegisteredQuery<"public", ObjectType<Args>, Promise<Output>>
@@ -177,7 +181,11 @@ export function createStoreFunctions<
       args: spec.args,
       handler: async (ctx: any, args: any) => {
         const identity = await ctx.auth.getUserIdentity()
-        if (!identity) throw new Error("Not authenticated")
+        if (!identity)
+          throw denied(
+            "not_authenticated",
+            "Not authenticated : connectez-vous pour continuer."
+          )
         return spec.handler(ctx, args, identity)
       },
     }) as RegisteredMutation<"public", ObjectType<Args>, Promise<Output>>

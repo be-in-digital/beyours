@@ -159,12 +159,15 @@ describe("the grant does not become an escalation", () => {
     })
 
     expect(await storeIdsOf(t, "marie")).toEqual([roma, mine])
+    // Asserted on the refusal CODE, not on its prose: the guards throw
+    // `ConvexError` now, so the message is a French sentence a screen can show
+    // and the code is the part that must not drift.
     await expect(
       marie.query(api.stores.getAdminById, { id: theirs })
-    ).rejects.toThrow(/do not have access/)
+    ).rejects.toThrow(/store_not_granted/)
     await expect(
       marie.mutation(api.stores.update, { id: theirs, name: "Volée" })
-    ).rejects.toThrow(/do not have access/)
+    ).rejects.toThrow(/store_not_granted/)
   })
 
   test("it does not change the creator's role", async () => {
