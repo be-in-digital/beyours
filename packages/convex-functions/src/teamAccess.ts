@@ -242,3 +242,123 @@ export function revocationEffect(params: {
     storeIds: remaining,
   }
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Module permissions                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The eight checkboxes the invite dialog shows.
+ *
+ * They were stored on `teamMembers.permissions` and read by NOTHING:
+ * `invitationGrant` did not carry them across, acceptance wrote
+ * `existingProfile?.permissions ?? []`, and `hasPermission` is role-only. An
+ * owner who unticked "Paramètres" for a waiter restricted nothing — the waiter
+ * had settings access or not entirely according to their role, exactly as
+ * before. The dialog was a promise the backend never heard.
+ */
+export type ModuleId =
+  | "dashboard"
+  | "orders"
+  | "products"
+  | "kitchen"
+  | "team"
+  | "settings"
+  | "integrations"
+  | "marketing"
+
+/**
+ * Which modules cover a resource.
+ *
+ * A resource may belong to several modules — `stores` is reachable from both
+ * the dashboard and the settings screen — and holding ANY covering module is
+ * enough, because that is what the owner sees when they tick a box.
+ */
+const RESOURCE_MODULES: Record<string, ModuleId[]> = {
+  analytics: ["dashboard"],
+  stores: ["dashboard", "settings"],
+  orders: ["orders"],
+  customers: ["orders"],
+  deliveries: ["orders"],
+  tables: ["orders"],
+  products: ["products"],
+  menus: ["products"],
+  translations: ["products"],
+  kitchen: ["kitchen"],
+  team: ["team"],
+  settings: ["settings"],
+  system: ["settings"],
+  payments: ["integrations"],
+  games: ["marketing"],
+  marketing: ["marketing"],
+  content: ["marketing"],
+}
+
+/** Roles whose authority does not come from the roster, so modules never bind them. */
+const MODULE_EXEMPT_ROLES: ReadonlySet<Role> = new Set([
+  Role.SUPER_ADMIN,
+  Role.CLIENT_ADMIN,
+])
+
+/**
+ * Does this profile's module selection allow `permission`?
+ *
+ * Runs AFTER the role check, never instead of it: modules can only narrow what
+ * a role already grants. Three rules, each deliberate:
+ *
+ * - An EMPTY list means unrestricted. Every profile in every existing
+ *   deployment has `permissions: []`, and reading that as "nothing allowed"
+ *   would lock out every member the day this shipped.
+ * - An admin is exempt. Their authority is not the roster's to narrow, and a
+ *   stray list on an owner's profile must not be able to shut them out of
+ *   their own restaurant.
+ * - A resource NO module covers is allowed. The owner was never shown a
+ *   checkbox for it, so they cannot have meant to deny it — refusing here
+ *   would invent a restriction nobody asked for.
+ */
+export function profileAllowsPermission(
+  profile: { role: Role; permissions?: string[] },
+  permission: string
+): boolean {
+  const modules = profile.permissions ?? []
+  if (modules.length === 0) return true
+  if (MODULE_EXEMPT_ROLES.has(profile.role)) return true
+
+  // `noUncheckedIndexedAccess` is on in the apps that consume this: both the
+  // split and the lookup can be undefined, and neither is a reason to refuse.
+  const resource = permission.split(":")[0] ?? ""
+  const covering: ModuleId[] = RESOURCE_MODULES[resource] ?? []
+  if (covering.length === 0) return true
+
+  return covering.some((module: ModuleId) => modules.includes(module))
+}
+
+/**
+ * The module set an accepted invitation should write.
+ *
+ * Union with what the profile already holds, for the same reason
+ * `invitationGrant` never lowers a role: a second restaurant must not shrink
+ * the access someone has in the first. The consequence is worth stating —
+ * `userProfiles.permissions` is per ACCOUNT, not per store, so a member
+ * restricted in one restaurant and unrestricted in another ends up
+ * unrestricted. Narrowing that means moving the column onto the membership,
+ * which is a schema change and separate work.
+ *
+ * Either side being unrestricted keeps the result unrestricted: intersecting
+ * "everything" with a narrower set would silently demote a manager the first
+ * time they were invited somewhere as a waiter.
+ */
+export function invitationModules(
+  invited: string[] | undefined,
+  existing: string[] | undefined
+): string[] {
+  const invitedModules = invited ?? []
+  const existingModules = existing ?? []
+
+  if (invitedModules.length === 0) return []
+  if (existing === undefined) return Array.from(new Set(invitedModules))
+  if (existingModules.length === 0) return []
+
+  return Array.from(new Set([...existingModules, ...invitedModules]))
+}

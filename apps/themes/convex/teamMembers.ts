@@ -8,6 +8,7 @@ import {
   assertCanManageMember,
   assertInvitationAcceptable,
   invitationGrant,
+  invitationModules,
   revocationEffect,
   TeamAccessError,
 } from "@be-in-digital/convex-functions/teamAccess";
@@ -361,11 +362,19 @@ export const acceptInvitation = mutation({
         : null
     );
 
+    // The module checkboxes finally cross the bridge. They were collected by
+    // the invite dialog, written to `teamMembers.permissions`, and then dropped
+    // here — acceptance kept whatever the profile already had, which for a new
+    // member was nothing, i.e. unrestricted. `requireStorePermission` reads
+    // this list now, so an unticked module is a refusal rather than decoration.
     return profileDefs.upsert.handler(ctx, {
       userId: identity.subject,
       role: grant.role,
       storeIds: grant.storeIds,
-      permissions: existingProfile?.permissions ?? [],
+      permissions: invitationModules(
+        member.permissions,
+        existingProfile?.permissions
+      ),
     });
   },
 });

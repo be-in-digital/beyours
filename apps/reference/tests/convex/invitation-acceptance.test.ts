@@ -335,3 +335,109 @@ describe("acceptInvitation", () => {
     expect(profile?.storeIds).toEqual([luigi, marco])
   })
 })
+
+// ============================================================================
+// The module checkboxes, from the dialog to the refusal
+// ============================================================================
+
+describe("module permissions", () => {
+  test("an accepted invitation writes the modules it was created with", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-modules",
+      role: "manager",
+      permissions: ["orders", "kitchen"],
+    })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-modules" })
+
+    const profile = await t.run((ctx) =>
+      ctx.db
+        .query("userProfiles")
+        .withIndex("by_userId", (q) => q.eq("userId", "user-yanis"))
+        .first()
+    )
+
+    // Acceptance used to write `existingProfile?.permissions ?? []` — i.e.
+    // nothing — and the dialog's eight checkboxes died here.
+    expect(profile?.permissions?.sort()).toEqual(["kitchen", "orders"])
+  })
+
+  test("a module the owner unticked is refused, not merely hidden", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-narrow",
+      role: "manager",
+      permissions: ["orders", "kitchen"],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-narrow" })
+
+    // A manager's ROLE carries products:write. The owner did not tick
+    // "Produits / Menu", and until now that changed nothing at all.
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).rejects.toThrow(/module_denied/)
+  })
+
+  test("a module the owner did tick still works", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-wide",
+      role: "manager",
+      permissions: ["orders", "kitchen", "products"],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-wide" })
+
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).resolves.toBeDefined()
+  })
+
+  test("a member invited with no restriction keeps their whole role", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-open",
+      role: "manager",
+      permissions: [],
+    })
+
+    const asMember = t.withIdentity({ subject: "user-yanis" })
+    await asMember.mutation(api.teamMembers.acceptInvitation, { token: "tok-open" })
+
+    await expect(
+      asMember.mutation(api.categories.create, {
+        storeId,
+        name: "Entrées",
+        slug: "entrees",
+        sortOrder: 1,
+        isActive: true,
+      })
+    ).resolves.toBeDefined()
+  })
+})

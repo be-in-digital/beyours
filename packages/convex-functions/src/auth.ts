@@ -5,8 +5,10 @@
  * Call these from app-level mutation/query wrappers to enforce permissions.
  */
 
+import { ConvexError } from "convex/values"
 import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
 import { creatorAdministersNewStore } from "./profileProvisioning"
+import { profileAllowsPermission } from "./teamAccess"
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -17,6 +19,47 @@ interface AuthUser {
   role: Role
   storeIds: string[]
   profileId: string
+  /**
+   * Module ids from the invite dialog's checkboxes. Empty means unrestricted —
+   * see `profileAllowsPermission`, which owns the rule.
+   */
+  permissions: string[]
+}
+
+/* ------------------------------------------------------------------ */
+/* Denials                                                             */
+/* ------------------------------------------------------------------ */
+
+/** Why a call was refused. The UI switches on these. */
+export type DenialCode =
+  | "not_authenticated"
+  | "no_profile"
+  | "store_not_granted"
+  | "permission_denied"
+  | "module_denied"
+  | "staff_only"
+
+/**
+ * Refuse, in a way the person on the other end can act on.
+ *
+ * `ConvexError` appeared NOWHERE in this repository, and every guard here threw
+ * a plain `Error`. Convex redacts those in production — the browser receives
+ * "Server Error" — while the UI dutifully rendered `error.message`. So a
+ * kitchen account opening the settings screen, an owner whose profile was never
+ * provisioned, and a genuine backend fault all produced the same two words.
+ * Every authorisation answer looked like a bug in the product.
+ *
+ * `data` survives the redaction. The `message` stays in French because it is
+ * shown as-is when a screen has no copy of its own; the `code` is what a screen
+ * switches on. `details` carries the machine-readable specifics for logs — it
+ * is deliberately not sentence material.
+ */
+export function denied(
+  code: DenialCode,
+  message: string,
+  details?: Record<string, string>
+): ConvexError<{ code: DenialCode; message: string } & Record<string, string>> {
+  return new ConvexError({ code, message, ...(details ?? {}) })
 }
 
 /* ------------------------------------------------------------------ */
@@ -30,7 +73,7 @@ interface AuthUser {
 export async function getAuthUser(ctx: any): Promise<AuthUser> {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) {
-    throw new Error("Not authenticated")
+    throw denied("not_authenticated", "Not authenticated : connectez-vous pour continuer.")
   }
 
   const profile = await ctx.db
@@ -39,7 +82,13 @@ export async function getAuthUser(ctx: any): Promise<AuthUser> {
     .unique()
 
   if (!profile) {
-    throw new Error("User profile not found")
+    // Not a fault: it is the state of every account on a deployment whose first
+    // administrator was never appointed. `/setup` is the way out, and the UI
+    // can only say so if it can tell this apart from a crash.
+    throw denied(
+      "no_profile",
+      "User profile not found : aucun rôle n'est attribué à ce compte."
+    )
   }
 
   const role = Object.values(Role).includes(profile.role as Role)
@@ -51,6 +100,7 @@ export async function getAuthUser(ctx: any): Promise<AuthUser> {
     role,
     storeIds: profile.storeIds ?? [],
     profileId: profile._id as string,
+    permissions: profile.permissions ?? [],
   }
 }
 
@@ -71,7 +121,11 @@ export async function requireStoreAccess(
   if (user.role === Role.SUPER_ADMIN) return user
 
   if (!user.storeIds.includes(storeId)) {
-    throw new Error("Access denied: you do not have access to this store")
+    throw denied(
+      "store_not_granted",
+      "Access denied : vous n'avez pas accès à cet établissement.",
+      { storeId }
+    )
   }
 
   return user
@@ -93,8 +147,23 @@ export async function requireStorePermission(
   const user = await requireStoreAccess(ctx, storeId)
 
   if (!hasPermission(user.role, permission)) {
-    throw new Error(
-      `Access denied: role "${user.role}" lacks permission "${permission}"`,
+    throw denied(
+      "permission_denied",
+      `Access denied : votre rôle ne permet pas cette action (lacks permission ${permission}).`,
+      { role: user.role, permission }
+    )
+  }
+
+  // The second gate, and the one that was missing entirely. The invite dialog
+  // offers eight module checkboxes, stores them, and until now nothing read
+  // them: an owner who unticked "Paramètres" for a waiter restricted nothing.
+  // Modules can only NARROW what the role already granted, never widen it,
+  // which is why this runs after the check above and not instead of it.
+  if (!profileAllowsPermission({ role: user.role, permissions: user.permissions }, permission)) {
+    throw denied(
+      "module_denied",
+      `Access denied : ce module ne vous a pas été accordé (${permission}).`,
+      { permission }
     )
   }
 
@@ -121,7 +190,10 @@ export async function requireStaff(ctx: any): Promise<AuthUser> {
   const user = await getAuthUser(ctx)
 
   if (user.role === Role.CUSTOMER) {
-    throw new Error("Access denied: staff only")
+    throw denied(
+      "staff_only",
+      "Access denied : cet espace est réservé à l'équipe."
+    )
   }
 
   return user
