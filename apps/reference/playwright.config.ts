@@ -3,22 +3,6 @@ import { loadEnvFiles } from "./e2e/load-env"
 
 loadEnvFiles(__dirname, [".env.e2e", ".env.local"])
 
-/**
- * Which port this run talks to.
- *
- * Hardcoded 3000 everywhere, this suite could not be pointed at a second dev
- * server — and in a worktree there usually is one, because the sibling
- * checkout already holds 3000. Playwright then tried to START its own on the
- * occupied port, `next dev` refused with "Another next dev server is already
- * running", and the run died before a single test executed.
- *
- * `E2E_PORT` moves the whole rig — the base URL, the server Playwright starts,
- * and the URL it waits on — so two branches can be verified at once without
- * either one seeing the other's app.
- */
-const PORT = process.env.E2E_PORT ?? "3000"
-const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
-
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
 /**

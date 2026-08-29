@@ -25,20 +25,16 @@ const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")
 
 /**
- * Which port this run talks to.
+ * The port the suite drives, and the port the server it starts listens on.
  *
- * Hardcoded 3000 everywhere, this suite could not be pointed at a second dev
- * server — and in a worktree there usually is one, because the sibling
- * checkout already holds 3000. Playwright then tried to START its own on the
- * occupied port, `next dev` refused with "Another next dev server is already
- * running", and the run died before a single test executed.
- *
- * `E2E_PORT` moves the whole rig — the base URL, the server Playwright starts,
- * and the URL it waits on — so two branches can be verified at once without
- * either one seeing the other's app.
+ * Hardcoded 3000, this suite could not be pointed anywhere else: in a worktree
+ * the sibling checkout already holds that port, so Playwright either reused a
+ * server built from somebody else's branch or died on "Another next dev server
+ * is already running" before a single test ran. Same shape as
+ * `apps/reference/playwright.config.ts`, deliberately.
  */
-const PORT = process.env.E2E_PORT ?? "3000"
-const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
+const PORT = Number(process.env.E2E_PORT ?? 3000)
+const BASE_URL = `http://localhost:${PORT}`
 
 export default defineConfig({
   testDir: "./e2e",
