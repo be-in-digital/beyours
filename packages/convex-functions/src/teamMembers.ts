@@ -116,18 +116,6 @@ export const getByEmail = {
 /**
  * Find team member by invitation token
  */
-export const getByInvitationToken = {
-  args: { token: v.string() },
-  handler: async (ctx: any, args: any) => {
-    return await ctx.db
-      .query("teamMembers")
-      .withIndex("by_invitationToken", (q: any) =>
-        q.eq("invitationToken", args.token)
-      )
-      .first()
-  },
-}
-
 // === MUTATIONS ===
 
 /**

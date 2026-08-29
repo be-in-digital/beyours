@@ -18,7 +18,7 @@
 
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
-import { api } from "../../convex/_generated/api"
+import { api, internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 import { convexErrorCode } from "../../lib/convex-error"
@@ -439,5 +439,251 @@ describe("module permissions", () => {
         isActive: true,
       })
     ).resolves.toBeDefined()
+  })
+})
+
+/** A profile with `role` over `storeIds`, and a client bound to it. */
+async function seedProfile(
+  t: ReturnType<typeof convexTest>,
+  subject: string,
+  role: string,
+  storeIds: Id<"stores">[]
+) {
+  await t.run((ctx) =>
+    ctx.db.insert("userProfiles", {
+      userId: subject,
+      role,
+      storeIds,
+      permissions: [],
+      language: "fr",
+      twoFactorEnabled: false,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  )
+  return t.withIdentity({ subject })
+}
+
+// ============================================================================
+// The audit trail, and the sweep
+// ============================================================================
+
+/** Every access entry in the log, newest last. */
+async function accessEntries(t: ReturnType<typeof convexTest>) {
+  return t.run(async (ctx) => {
+    const rows = await ctx.db.query("systemAuditLog").collect()
+    return rows
+      .filter((r) => String(r.action).startsWith("access_"))
+      .map((r) => ({
+        action: r.action,
+        performedBy: r.performedBy,
+        targetUserId: r.targetUserId,
+        details: JSON.parse(String(r.details)),
+      }))
+  })
+}
+
+describe("access audit", () => {
+  test("accepting an invitation is recorded, with who and what", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-audit", role: "manager" })
+
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-audit" })
+
+    const entries = await accessEntries(t)
+
+    // `userProfiles` is where every guard resolves rights from, and nothing
+    // recorded a change to it until now.
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      action: "access_granted",
+      performedBy: "user-yanis",
+      targetUserId: "user-yanis",
+    })
+    expect(entries[0]?.details).toMatchObject({
+      operation: "invitation_accepted",
+      resulting: { role: "manager", storeCount: 1 },
+    })
+  })
+
+  test("a dismissal is recorded as a revocation, not a change", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, { storeId, token: "tok-rev", role: "manager" })
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-rev" })
+
+    // An owner who administers this store takes the position away.
+    await t.run((ctx) =>
+      ctx.db.insert("userProfiles", {
+        userId: "user-owner",
+        role: "client_admin",
+        storeIds: [storeId],
+        permissions: [],
+        language: "fr",
+        twoFactorEnabled: false,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+    await t
+      .withIdentity({ subject: "user-owner" })
+      .mutation(api.teamMembers.remove, { id: memberId })
+
+    const entries = await accessEntries(t)
+    const revocation = entries.at(-1)
+
+    // The entry an owner comes looking for months later.
+    expect(revocation).toMatchObject({
+      action: "access_revoked",
+      performedBy: "user-owner",
+      targetUserId: "user-yanis",
+    })
+    expect(revocation?.details).toMatchObject({ operation: "membership_revoked" })
+  })
+
+  test("claiming the first administrator seat is recorded", async () => {
+    const t = newHarness()
+    const previous = process.env.ADMIN_BOOTSTRAP_TOKEN
+    process.env.ADMIN_BOOTSTRAP_TOKEN = "s3cr3t-bootstrap"
+    try {
+      await t
+        .withIdentity({ subject: "user-founder" })
+        .mutation(api.userProfiles.claimFirstAdmin, {
+          bootstrapToken: "s3cr3t-bootstrap",
+        })
+    } finally {
+      if (previous === undefined) delete process.env.ADMIN_BOOTSTRAP_TOKEN
+      else process.env.ADMIN_BOOTSTRAP_TOKEN = previous
+    }
+
+    const entries = await accessEntries(t)
+
+    // The most consequential change a deployment ever sees, and the one nobody
+    // is around to witness.
+    expect(entries).toHaveLength(1)
+    expect(entries[0]).toMatchObject({
+      action: "access_granted",
+      targetUserId: "user-founder",
+    })
+    expect(entries[0]?.details).toMatchObject({
+      operation: "bootstrap",
+      resulting: { role: "super_admin" },
+    })
+  })
+
+  test("the rights history of an account is super-admin only", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, { storeId, token: "tok-read", role: "manager" })
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-read" })
+
+    const asAdmin = await seedProfile(t, "user-owner", "client_admin", [storeId])
+    const asSuper = await seedProfile(t, "user-root", "super_admin", [])
+
+    // An access entry names a PERSON, so there is no store to scope it by. The
+    // journal's "no target means everyone" rule would otherwise have handed a
+    // client admin the rights history of every account on the deployment.
+    const seenByAdmin = await asAdmin.query(api.system.getAuditLog, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    })
+    expect(seenByAdmin.page.filter((e) => e.targetUserId)).toHaveLength(0)
+
+    const seenBySuper = await asSuper.query(api.system.getAuditLog, {
+      paginationOpts: { cursor: null, numItems: 10 },
+    })
+    expect(seenBySuper.page.filter((e) => e.targetUserId)).toHaveLength(1)
+  })
+})
+
+describe("sweepInvitations", () => {
+  test("expires a stale invitation and takes its token with it", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, {
+      storeId,
+      token: "tok-stale-sweep",
+      invitedAt: Date.now() - EIGHT_DAYS_MS,
+    })
+
+    await t.mutation(internal.teamMembers.sweepInvitations, {})
+
+    const member = await t.run((ctx) => ctx.db.get(memberId))
+    expect(member?.invitationStatus).toBe("expired")
+    // The point of the sweep: a dead link stops resolving at all.
+    expect(member?.invitationToken).toBeUndefined()
+    await expect(
+      t.query(api.teamMembers.getInvitationPreview, { token: "tok-stale-sweep" })
+    ).resolves.toEqual({ status: "not_found" })
+  })
+
+  test("leaves a live invitation alone", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, { storeId, token: "tok-live" })
+
+    await t.mutation(internal.teamMembers.sweepInvitations, {})
+
+    const member = await t.run((ctx) => ctx.db.get(memberId))
+    expect(member?.invitationStatus).toBe("pending")
+    expect(member?.invitationToken).toBe("tok-live")
+  })
+
+  test("never removes somebody who accepted, however old the invitation", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, { storeId, token: "tok-member" })
+    await t
+      .withIdentity({ subject: "user-yanis" })
+      .mutation(api.teamMembers.acceptInvitation, { token: "tok-member" })
+    // Accepted while live, then aged well past every window: this is the row
+    // the sweep must not touch.
+    await t.run((ctx) =>
+      ctx.db.patch(memberId, { invitedAt: Date.now() - 120 * 24 * 60 * 60 * 1000 })
+    )
+
+    await t.mutation(internal.teamMembers.sweepInvitations, {})
+
+    // A row carrying a userId is a member of the team, not an invitation.
+    const member = await t.run((ctx) => ctx.db.get(memberId))
+    expect(member).not.toBeNull()
+    expect(member?.invitationStatus).toBe("accepted")
+  })
+
+  test("purges an invitation nobody ever accepted, long after it died", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    const memberId = await seedInvitation(t, {
+      storeId,
+      token: "tok-ancient",
+      status: "expired",
+      invitedAt: Date.now() - 90 * 24 * 60 * 60 * 1000,
+    })
+
+    await t.mutation(internal.teamMembers.sweepInvitations, {})
+
+    // The table stops accumulating the name and email of people who never came.
+    expect(await t.run((ctx) => ctx.db.get(memberId))).toBeNull()
+  })
+
+  test("reports what it did, so a silent sweep is distinguishable from an idle one", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Chez Luigi")
+    await seedInvitation(t, {
+      storeId,
+      token: "tok-a",
+      invitedAt: Date.now() - EIGHT_DAYS_MS,
+    })
+    await seedInvitation(t, { storeId, token: "tok-b" })
+
+    await expect(
+      t.mutation(internal.teamMembers.sweepInvitations, {})
+    ).resolves.toEqual({ expired: 1, purged: 0 })
   })
 })
