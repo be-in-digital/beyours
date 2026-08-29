@@ -51,27 +51,56 @@ export const createAccountLink = action({
         { affiliateUserId: affiliate._id },
       );
 
+      // Accounts v2. Stripe refuses `accounts.create` (v1) on Connect
+      // integrations set up from 2025 onward, so this is not a preference.
+      //
+      // `dashboard: "express"` is what replaces v1's `type: "express"`, and it
+      // *requires* both responsibilities to be "application" — Stripe rejects
+      // the pair otherwise. The transfers capability moved from
+      // `capabilities.transfers` to
+      // `configuration.recipient.capabilities.stripe_balance.stripe_transfers`,
+      // which is the one that lets `transfers.create` reach this account.
+      //
+      // `include` is not optional in practice: without it Stripe returns null
+      // for `configuration`, `identity` and `requirements` whatever their real
+      // values, so the status read below would see nothing.
       let account;
       try {
-        account = await stripe.accounts.create({
-          type: "express",
-          country: "FR",
-          email: email ?? undefined,
-          capabilities: {
-            transfers: { requested: true },
+        account = await stripe.v2.core.accounts.create({
+          contact_email: email ?? undefined,
+          display_name:
+            [affiliate.firstName, affiliate.lastName].filter(Boolean).join(" ") ||
+            undefined,
+          dashboard: "express",
+          identity: {
+            country: "fr",
+            entity_type: "individual",
+            // v2 renames these: first_name → given_name, last_name → surname.
+            individual: {
+              ...(affiliate.firstName ? { given_name: affiliate.firstName } : {}),
+              ...(affiliate.lastName ? { surname: affiliate.lastName } : {}),
+              ...(email ? { email } : {}),
+            },
           },
-          business_type: "individual",
-          individual: {
-            ...(affiliate.firstName ? { first_name: affiliate.firstName } : {}),
-            ...(affiliate.lastName ? { last_name: affiliate.lastName } : {}),
-            ...(email ? { email } : {}),
+          configuration: {
+            recipient: {
+              capabilities: {
+                stripe_balance: { stripe_transfers: { requested: true } },
+              },
+            },
           },
-          business_profile: {
-            url: "https://beyours.fr",
+          defaults: {
+            currency: "eur",
+            locales: ["fr-FR"],
+            responsibilities: {
+              fees_collector: "application",
+              losses_collector: "application",
+            },
           },
           metadata: {
             affiliateUserId: String(affiliate._id),
           },
+          include: ["configuration.recipient", "identity", "requirements"],
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -95,11 +124,20 @@ export const createAccountLink = action({
       );
     }
 
-    const accountLink = await stripe.accountLinks.create({
+    // v2 account links are a different resource from `stripe.accountLinks`, and
+    // the URLs moved inside `use_case.account_onboarding`. `configurations`
+    // names which part of the account is being onboarded — "recipient", since
+    // affiliates only ever receive transfers.
+    const accountLink = await stripe.v2.core.accountLinks.create({
       account: accountId,
-      type: "account_onboarding",
-      return_url: args.returnUrl,
-      refresh_url: args.refreshUrl,
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["recipient"],
+          refresh_url: args.refreshUrl,
+          return_url: args.returnUrl,
+        },
+      },
     });
 
     return { url: accountLink.url, testMode: false };
@@ -129,6 +167,14 @@ export const checkAccountStatus = action({
       };
     }
 
+    // Deliberately the v1 endpoint, on a v2 account. Stripe returns v2 data in
+    // the v1 object shape, and it was checked against a real v2 account:
+    // `payouts_enabled`, `details_submitted` and `capabilities.transfers` all
+    // come back populated. Two reasons to keep it rather than read
+    // `configuration.recipient.capabilities.stripe_balance.stripe_transfers`:
+    // the `account.updated` webhook in http.ts receives this same v1 shape, so
+    // one rule derives the status in both places instead of two that can drift;
+    // and the same call carries `individual`, used for the profile sync below.
     const account = await stripe.accounts.retrieve(
       affiliate.stripeConnectAccountId,
     );
