@@ -54,12 +54,6 @@ export const storesTable = defineTable({
 
   themeId: v.optional(v.string()),
 
-  // Order confirmation: auto (straight to kitchen) or manual (staff validates first)
-  orderConfirmation: v.optional(v.union(
-    v.literal("auto"),
-    v.literal("manual")
-  )), // default: "manual"
-
   // Global order mode for all sources (website, Uber Eats, Deliveroo)
   // Per-platform override in storeIntegrations.orderMode takes priority
   orderMode: v.optional(v.union(
@@ -87,13 +81,11 @@ export const storesTable = defineTable({
     enabled: v.boolean(),
   })),
 
-  // Display screen configuration (customer-facing TV)
-  displayConfig: v.optional(v.object({
-    autoDismissEnabled: v.boolean(),
-    autoDismissMinutes: v.number(),
-  })),
-
-  // Sound alerts configuration for KDS
+  // Sound alerts configuration for KDS.
+  //
+  // Read by `KitchenContent` -> `KitchenSoundManager` in both apps: it decides
+  // which alerts sound and how loudly. No editor writes it yet, so every
+  // deployment runs on the component's fallbacks.
   soundConfig: v.optional(v.object({
     newTicket: v.object({ enabled: v.boolean(), volume: v.number() }),
     overdue: v.object({ enabled: v.boolean(), volume: v.number() }),
@@ -105,6 +97,19 @@ export const storesTable = defineTable({
 
   // Legacy fields (kept for backward compatibility with existing data)
   // Will be removed after data migration
+  //
+  // `orderConfirmation` and `displayConfig` joined them: both had a mutation
+  // and an audit entry, and nothing anywhere read the stored value. The only
+  // screens that wrote them lived in `apps/themes/components/admin/settings/`,
+  // a folder no route rendered. `orderConfirmation: "manual"` in particular
+  // promised that staff would validate an order before the kitchen saw it, and
+  // no code made that true — a promise the product could not keep.
+  //
+  // They stay declared, and optional, because documents already hold them: a
+  // stored field absent from the schema fails validation on the next write to
+  // that document. Nothing writes them now.
+  orderConfirmation: v.optional(v.any()),
+  displayConfig: v.optional(v.any()),
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),
   settings: v.optional(v.any()),

@@ -4,9 +4,7 @@ import {
   remove,
   update,
   updateAddress,
-  updateDisplayConfig,
   updateHours,
-  updateOrderConfirmation,
   updatePrintConfig,
   updateSoundConfig,
 } from "../stores"
@@ -389,54 +387,6 @@ describe("updatePrintConfig", () => {
 })
 
 // ---------------------------------------------------------------------------
-// updateDisplayConfig
-// ---------------------------------------------------------------------------
-
-describe("updateDisplayConfig", () => {
-  it("should throw if store not found", async () => {
-    const db = createMockDb()
-    await expect(
-      updateDisplayConfig.handler(createCtx(db), { id: "stores:missing", displayConfig: undefined })
-    ).rejects.toThrow("Store not found")
-  })
-
-  it("should patch displayConfig on existing store", async () => {
-    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
-    const config = { autoDismissEnabled: true, autoDismissMinutes: 10 }
-
-    await updateDisplayConfig.handler(createCtx(db), { id: "stores:1", displayConfig: config })
-
-    expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
-      displayConfig: config,
-      updatedAt: expect.any(Number),
-    }))
-  })
-
-  it("should set updatedAt timestamp", async () => {
-    const before = Date.now()
-    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
-
-    await updateDisplayConfig.handler(createCtx(db), {
-      id: "stores:1",
-      displayConfig: { autoDismissEnabled: false, autoDismissMinutes: 0 },
-    })
-
-    const updatedAt = db.patch.mock.calls[0]![1].updatedAt
-    expect(updatedAt).toBeGreaterThanOrEqual(before)
-    expect(updatedAt).toBeLessThanOrEqual(Date.now())
-  })
-
-  it("records the settings change", async () => {
-    const db = createMockDb({ "stores:1": { ...A_STORE } })
-    await updateDisplayConfig.handler(createCtx(db, "user_42"), {
-      id: "stores:1",
-      displayConfig: { autoDismissEnabled: true, autoDismissMinutes: 10 },
-    })
-    expect(soleAuditEntry(db).details.operation).toBe("updateDisplayConfig")
-  })
-})
-
-// ---------------------------------------------------------------------------
 // updateSoundConfig
 // ---------------------------------------------------------------------------
 
@@ -460,49 +410,6 @@ describe("updateSoundConfig", () => {
 
     expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
       soundConfig: config,
-    }))
-  })
-})
-
-// ---------------------------------------------------------------------------
-// updateOrderConfirmation
-// ---------------------------------------------------------------------------
-
-describe("updateOrderConfirmation", () => {
-  it("should throw if store not found", async () => {
-    const db = createMockDb()
-    await expect(
-      updateOrderConfirmation.handler(createCtx(db), {
-        id: "stores:missing",
-        orderConfirmation: "auto",
-      })
-    ).rejects.toThrow("Store not found")
-  })
-
-  it("should set orderConfirmation to auto", async () => {
-    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
-
-    await updateOrderConfirmation.handler(createCtx(db), {
-      id: "stores:1",
-      orderConfirmation: "auto",
-    })
-
-    expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
-      orderConfirmation: "auto",
-      updatedAt: expect.any(Number),
-    }))
-  })
-
-  it("should set orderConfirmation to manual", async () => {
-    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
-
-    await updateOrderConfirmation.handler(createCtx(db), {
-      id: "stores:1",
-      orderConfirmation: "manual",
-    })
-
-    expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
-      orderConfirmation: "manual",
     }))
   })
 })

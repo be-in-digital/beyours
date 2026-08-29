@@ -11,6 +11,7 @@ import { useStoreDetail } from "./use-store-detail"
 import { StoreGeneralTab } from "./store-general-tab"
 import { StoreHoursTab } from "./store-hours-tab"
 import { StoreSettingsTab } from "./store-settings-tab"
+import { StoreKitchenTab } from "./store-kitchen-tab"
 import { StoreIntegrationsTab } from "./store-integrations-tab"
 
 export function StoreDetailPage({ params }: { params: Promise<{ storeId: string }> }) {
@@ -102,6 +103,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     handleSetAllWeekdays,
     handleSetAllDays,
     handleUpdateSettings,
+    soundConfig,
+    setSoundConfig,
+    handleUpdateSounds,
     handleSaveUberEats,
     handleSaveDeliveroo,
     handleRemoveUberEats,
@@ -170,6 +174,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="hours">Horaires</TabsTrigger>
           <TabsTrigger value="settings">Paramètres</TabsTrigger>
+          <TabsTrigger value="kitchen">Cuisine</TabsTrigger>
           <TabsTrigger value="integrations">Intégrations</TabsTrigger>
         </TabsList>
 
@@ -243,6 +248,15 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             globalDeliveryFee={globalDeliveryFee}
             globalDeliveryFree={globalDeliveryFree}
             handleUpdateSettings={handleUpdateSettings}
+          />
+        </TabsContent>
+
+        {/* KITCHEN TAB */}
+        <TabsContent value="kitchen" className="space-y-6">
+          <StoreKitchenTab
+            soundConfig={soundConfig}
+            setSoundConfig={setSoundConfig}
+            handleUpdateSounds={handleUpdateSounds}
           />
         </TabsContent>
 

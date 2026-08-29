@@ -52,6 +52,21 @@ export {
   centsToEuros,
 } from "./lib/formatters"
 export { ADMIN_PAGE_SIZE, APP_VERSION } from "./lib/constants"
+// The kitchen display's alert catalogue, shared with the editor that writes it
+// so the two cannot drift.
+export {
+  KITCHEN_ALERTS,
+  DEFAULT_SOUND_CONFIG,
+  resolveSoundConfig,
+  clampVolume,
+  playAlertBeep,
+} from "./lib/kitchen-alerts"
+export type {
+  KitchenAlert,
+  KitchenAlertKey,
+  KitchenAlertSetting,
+  KitchenSoundConfig,
+} from "./lib/kitchen-alerts"
 
 // Sidebar UI primitives (for layout composition)
 export {
