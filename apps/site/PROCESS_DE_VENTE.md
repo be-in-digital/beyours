@@ -40,7 +40,9 @@ targets: 3-5 customers at 90 days, 25-40 at 12 months.
 ### 3. Proposal
 **Who**: sales · **Tool**: the `/tarifs` page + a quote
 
-- Prices ex-VAT (franchise en base, no VAT today — see MISE_EN_PROD.md).
+- Prices ex-VAT; 20 % VAT is added at checkout (régime réel — see
+  MISE_EN_PROD.md). Restaurants recover it, so the net cost to them is the
+  ex-VAT figure quoted here.
 - Set the maintenance frame: 1st year included in the build, then
   1 000 €/year (Essentielle) or 2 000 €/year (Premium), payable monthly.
 - Levers: founders offer (in exchange for a case study + a testimonial + the

@@ -21,8 +21,9 @@
  *  - amount = the scale in force on the order date (not a hard-coded « 500 € »),
  *    never revised downwards for sales already attributed;
  *  - anti-potestativity (good faith + dated objective criteria);
- *  - VAT: flat amount inclusive of tax (optimal under franchise en base, see
- *    company.ts VAT);
+ *  - VAT: flat amount inclusive of tax — art. 3.5 settles the APPORTEUR's VAT,
+ *    whatever their own status, and is unaffected by the company's regime
+ *    (régime réel, see company.ts VAT);
  *  - 12-month non-circumvention, France territoriality + withholding under art.
  *    182 B, art. 11 with no tacit acceptance (express re-signature required),
  *    jurisdiction split between merchants and others.

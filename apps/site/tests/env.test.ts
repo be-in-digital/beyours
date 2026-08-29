@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { validateSiteEnv, formatSiteEnvReport } from "../lib/env";
+import { VAT } from "../lib/legal/company";
+
+/** What the regime in force requires of both charging flags. */
+const CHARGING = String(VAT.regime === "reel");
+const NOT_CHARGING = String(VAT.regime !== "reel");
 
 /** The minimum the Next server needs to serve a correct page. */
 const VALID = {
@@ -80,8 +85,11 @@ describe("validateSiteEnv — format of Convex-side vars", () => {
         STRIPE_WEBHOOK_SECRET: "whsec_1",
         CONTACT_EMAIL: "contact@beyours.fr",
         BOOKING_URL: "https://bookself.app/beyours/lancement",
-        NEXT_PUBLIC_TVA_ENABLED: "false",
-        STRIPE_TAX_ENABLED: "false",
+        // Well-formed AND consistent with the declared regime — this case is
+        // about the format checks, and the regime cross-check would otherwise
+        // fire on an unrelated assertion.
+        NEXT_PUBLIC_TVA_ENABLED: CHARGING,
+        STRIPE_TAX_ENABLED: CHARGING,
       }).ok
     ).toBe(true);
   });
@@ -148,12 +156,14 @@ describe("validateSiteEnv — feature groups", () => {
     ).toBe(true);
   });
 
-  // .env.example: "On switching, set BOTH of these to true — they go together."
+  // Both flags are measured against VAT.regime, not against each other: a
+  // deployment where they agree and are both wrong is exactly the state that
+  // issues wrong invoices (#174).
   it("rejects a TVA flag that disagrees with the Stripe tax flag", () => {
     const { ok, problems } = validateSiteEnv({
       ...VALID,
-      NEXT_PUBLIC_TVA_ENABLED: "true",
-      STRIPE_TAX_ENABLED: "false",
+      NEXT_PUBLIC_TVA_ENABLED: CHARGING,
+      STRIPE_TAX_ENABLED: NOT_CHARGING,
     });
     expect(ok).toBe(false);
     expect(problems.find((p) => p.name === "STRIPE_TAX_ENABLED")?.message).toContain(
@@ -161,10 +171,48 @@ describe("validateSiteEnv — feature groups", () => {
     );
   });
 
+  // The replay: this is the shipped configuration issue #174 reports —
+  // VAT.regime = "reel" while the charging flags say nothing is collected.
+  // Both flags agreed with each other, so the old flag-versus-flag check
+  // stayed silent and the deployment booted.
+  it("refuses a deployment whose flags contradict the declared regime", () => {
+    const { ok, problems } = validateSiteEnv({
+      ...VALID,
+      NEXT_PUBLIC_TVA_ENABLED: NOT_CHARGING,
+      STRIPE_TAX_ENABLED: NOT_CHARGING,
+    });
+    expect(ok).toBe(false);
+    expect(problems.map((p) => p.name).sort()).toEqual([
+      "NEXT_PUBLIC_TVA_ENABLED",
+      "STRIPE_TAX_ENABLED",
+    ]);
+  });
+
+  it("names the regime and the file that declares it", () => {
+    const { problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_TAX_ENABLED: NOT_CHARGING,
+    });
+    const message = problems.find((p) => p.name === "STRIPE_TAX_ENABLED")?.message;
+    expect(message).toContain("VAT.regime");
+    expect(message).toContain("lib/legal/company.ts");
+  });
+
+  // The mirror. A check that refused every value would pass the three above.
+  it("accepts flags that agree with the declared regime", () => {
+    expect(
+      validateSiteEnv({
+        ...VALID,
+        NEXT_PUBLIC_TVA_ENABLED: CHARGING,
+        STRIPE_TAX_ENABLED: CHARGING,
+      }).ok
+    ).toBe(true);
+  });
+
   // In production STRIPE_TAX_ENABLED lives on Convex, so a one-sided Next env
   // is normal and must not be reported.
   it("stays quiet when only the client-side TVA flag is visible", () => {
-    expect(validateSiteEnv({ ...VALID, NEXT_PUBLIC_TVA_ENABLED: "true" }).ok).toBe(true);
+    expect(validateSiteEnv({ ...VALID, NEXT_PUBLIC_TVA_ENABLED: CHARGING }).ok).toBe(true);
   });
 });
 

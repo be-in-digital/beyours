@@ -97,14 +97,17 @@ function getStripeOrTestMode(operation: string): Stripe | null {
 }
 
 /* ── Stripe Tax ──
-   Off by default: the company is under franchise en base (art. 293 B of the
-   French tax code), no VAT is charged and behaviour stays identical.
-   The day it becomes VAT-liable (company on the régime réel):
-   1. enable Stripe Tax in the dashboard (registered address, FR registration),
-   2. switch the maintenance Prices to tax_behavior=exclusive (dashboard),
-   3. set STRIPE_TAX_ENABLED=true here (Convex env) and
-      NEXT_PUBLIC_TVA_ENABLED=true on the Next side (see lib/payment-providers.ts).
-   The amounts sent stay pre-tax; Stripe adds French VAT (20 %). */
+   The company is on the régime réel (VAT.regime in lib/legal/company.ts), so
+   this must be "true" in the Convex env, together with NEXT_PUBLIC_TVA_ENABLED
+   on the Next side. What that requires in Stripe:
+   1. Stripe Tax enabled in the dashboard (registered address, FR registration),
+   2. the maintenance Prices on tax_behavior=exclusive (dashboard),
+   3. STRIPE_TAX_ENABLED=true here and NEXT_PUBLIC_TVA_ENABLED=true on the Next
+      side (see lib/payment-providers.ts).
+   The amounts sent stay pre-tax; Stripe adds French VAT (20 %).
+
+   Left off while the regime says otherwise, the sale is refused below rather
+   than invoiced wrongly. */
 function stripeTaxEnabled(): boolean {
   return process.env.STRIPE_TAX_ENABLED === "true";
 }
@@ -134,6 +137,28 @@ export const createCheckoutSession = action({
     /* Refuses before anything exists — the order is created 80 lines below, so
        a deployment without a key leaves no half-sale behind. */
     const stripe = getStripeOrTestMode("ouvrir une session de paiement");
+
+    /* ── VAT configuration ──
+       Second, behind the missing-key refusal: whether this deployment is wired
+       to take money at all is the blunter question, and answering it first
+       keeps that error unambiguous (#252). Everything between here and the
+       order insert only reads, so this still refuses before an order, a coupon
+       or a session exists anywhere — which is the invariant that matters.
+
+       This used to log and carry on, because which of the two to align was a
+       fiscal decision rather than an engineering one. It has been made (#174):
+       régime réel, Stripe Tax on. What is left is a misconfiguration, and an
+       invoice is a legal document — a refused sale can be retried once the env
+       is right, an invoice stating a VAT position the company does not hold
+       cannot be taken back.
+
+       It also sat *after* the early return for the keyless path, so the one
+       branch that marks an order paid without Stripe never checked at all.
+
+       `validateSiteEnv` refuses the deployment for the same reason, so this
+       only fires if the Convex env drifts from the regime afterwards. */
+    const vatProblem = vatConfigurationProblem(stripeTaxEnabled());
+    if (vatProblem) throw new Error(`[TVA] ${vatProblem}`);
 
     // ── Provisioning guardrail (payment fix) ──
     // NEVER open a checkout session for a plan whose maintenance subscription
@@ -322,10 +347,6 @@ export const createCheckoutSession = action({
       args.billingPeriod === "monthly" ? "premier mois" : "première année";
 
     const taxOn = stripeTaxEnabled();
-    /* Not fatal: which of the two to align is a fiscal decision, not ours.
-       But an invoice issued in the meantime is wrong, so it has to be seen. */
-    const vatProblem = vatConfigurationProblem(taxOn);
-    if (vatProblem) console.error(`[TVA] ${vatProblem}`);
     const taxBehavior = taxOn
       ? { tax_behavior: "exclusive" as const }
       : {};

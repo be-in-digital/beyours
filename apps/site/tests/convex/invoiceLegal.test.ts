@@ -140,8 +140,13 @@ describe("vatConfigurationProblem", () => {
     expect(vatConfigurationProblem(VAT.regime === "reel")).toBeNull();
   });
 
-  test("names the decision it is waiting on", () => {
+  /* The decision was made in #174, so this text stopped being a question and
+     became an instruction: it is what an operator reads when a deployment or a
+     sale is turned away, and it has to name the flags to set. */
+  test("names what to fix rather than what to decide", () => {
     const problem = vatConfigurationProblem(VAT.regime !== "reel");
-    expect(problem).toContain("869eprr1e");
+    expect(problem).toContain("STRIPE_TAX_ENABLED");
+    expect(problem).toContain("NEXT_PUBLIC_TVA_ENABLED");
+    expect(problem).toContain("lib/legal/company.ts");
   });
 });
