@@ -12,6 +12,13 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // The convex-test suites compile the whole `convex/` module graph on their
+    // first call, and with a hundred-odd files sharing the machine that first
+    // call runs well past the 5s default — the suite then reports a timeout as
+    // a failed authorisation check, which is a lie about what broke. The tests
+    // themselves finish in milliseconds once the graph is warm; this ceiling is
+    // for the cold start. Same value, same reason, as `apps/reference`.
+    testTimeout: 30_000,
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
