@@ -85,6 +85,19 @@ The 8 events this route actually switches on — register these and no others:
 | **Uber Eats** — OAuth return | `/connect/uber-eats/callback` | CSRF `state` |
 | **SumUp** — OAuth return | `/connect/sumup/callback` | OAuth `code` exchange |
 | **Stripe Connect** — return | `/connect/stripe/callback` | status re-checked via `GET /v1/accounts/{id}` |
+
+> ⚠️ **`account.updated` for affiliates is on the wrong scope — #230.** Affiliates
+> are `express` **connected accounts** (`stripeConnect.ts:56`), and Stripe
+> delivers their `account.updated` only to a **Connect-scoped** endpoint
+> (`connect: true`). The endpoint created in #225 is account-scoped, so the event
+> sits in its list and never fires for an affiliate.
+> Not silently fatal: `stripeConnect.checkAccountStatus` pulls
+> `accounts.retrieve()` when the affiliate opens their dashboard, so onboarding
+> completion is picked up. What is lost is the push — a later restriction or
+> payout block is not learned until somebody looks, which is backwards for a
+> payout gate.
+> **Not fixable from a dashboard**: a second endpoint on the same URL carries a
+> second `whsec_`, and `http.ts:80-91` verifies against one secret only.
 | **Stripe Connect** — refresh | `/connect/stripe/refresh` | — |
 | *(links already sent)* unsubscribe | `/email/unsubscribe` | — |
 | *(links already sent)* double opt-in | `/email/confirm` | token |
