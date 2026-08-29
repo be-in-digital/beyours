@@ -60,7 +60,7 @@ export function BackupSection() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      toast.success("Backup exporte avec succes")
+      toast.success("Backup exporté avec succès")
     } catch {
       toast.error("Échec de l'export")
     } finally {
@@ -196,7 +196,7 @@ export function BackupSection() {
           <DialogHeader>
             <DialogTitle>Confirmer l'import</DialogTitle>
             <DialogDescription>
-              Ceci va remplacer toutes les données existantes. Cette action est irreversible.
+              Ceci va remplacer toutes les données existantes. Cette action est irréversible.
             </DialogDescription>
           </DialogHeader>
 

@@ -87,7 +87,7 @@ export function SystemInfoSection({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardDescription>Verrou systeme</CardDescription>
+          <CardDescription>Verrou système</CardDescription>
           <CardTitle className="text-2xl">
             {info.isLockActive ? (
               <span className="flex items-center gap-2 text-amber-500">

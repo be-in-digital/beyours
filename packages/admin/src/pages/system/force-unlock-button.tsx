@@ -36,7 +36,7 @@ export function ForceUnlockButton({ info }: { info: SystemInfo }) {
     setReleasing(true)
     try {
       await forceRelease({})
-      toast.success("Verrou systeme libere")
+      toast.success("Verrou système libéré")
       setConfirmUnlockOpen(false)
     } catch {
       toast.error("Échec du deverrouillage")
@@ -62,7 +62,7 @@ export function ForceUnlockButton({ info }: { info: SystemInfo }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmer le deverrouillage</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action va forcer la liberation du verrou systeme. Si une operation est en cours, elle pourrait etre corrompue. Etes-vous sur de vouloir continuer ?
+              Cette action va forcer la libération du verrou système. Si une opération est en cours, elle pourrait être corrompue. Êtes-vous sûr de vouloir continuer ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -220,11 +220,11 @@ export const _acquireSystemLock = internalMutation({
   },
   handler: async (ctx, args) => {
     const settings = await getSettings(ctx)
-    if (!settings) throw new Error("Parametres globaux introuvables")
+    if (!settings) throw new Error("Paramètres globaux introuvables")
 
     if (isLockActive(settings.systemLock)) {
       throw new Error(
-        `Systeme verrouille par "${settings.systemLock!.lockedBy}" ` +
+        `Système verrouillé par "${settings.systemLock!.lockedBy}" ` +
         `pour "${settings.systemLock!.operation}". ` +
         `Expire a ${new Date(settings.systemLock!.expiresAt).toLocaleString()}`
       )
@@ -254,7 +254,7 @@ export const _syncAppVersion = internalMutation({
   args: { version: v.string() },
   handler: async (ctx, args) => {
     const settings = await getSettings(ctx)
-    if (!settings) throw new Error("Parametres globaux introuvables")
+    if (!settings) throw new Error("Paramètres globaux introuvables")
     await ctx.db.patch(settings._id, {
       deployedAppVersion: args.version,
       updatedAt: Date.now(),
@@ -266,7 +266,7 @@ export const _setLastBackupAt = internalMutation({
   args: {},
   handler: async (ctx) => {
     const settings = await getSettings(ctx)
-    if (!settings) throw new Error("Parametres globaux introuvables")
+    if (!settings) throw new Error("Paramètres globaux introuvables")
     await ctx.db.patch(settings._id, {
       lastBackupAt: Date.now(),
       updatedAt: Date.now(),
@@ -303,7 +303,7 @@ export const forceReleaseLock = mutation({
   handler: async (ctx) => {
     const user = await requireSystemPermission(ctx, PERM_SYSTEM_RESTORE)
     const settings = await getSettings(ctx)
-    if (!settings) throw new Error("Parametres globaux introuvables")
+    if (!settings) throw new Error("Paramètres globaux introuvables")
 
     await ctx.db.patch(settings._id, { systemLock: undefined })
     // Note: writing directly to systemAuditLog here is intentional —
@@ -325,7 +325,7 @@ export const syncVersion = mutation({
   handler: async (ctx, args) => {
     await requireSystemPermission(ctx, PERM_SYSTEM_READ)
     const settings = await getSettings(ctx)
-    if (!settings) throw new Error("Parametres globaux introuvables")
+    if (!settings) throw new Error("Paramètres globaux introuvables")
 
     await ctx.db.patch(settings._id, {
       deployedAppVersion: args.version,
@@ -535,7 +535,7 @@ export const importBackup = action({
 
     // Validate data structure
     if (typeof data !== "object" || data === null) {
-      throw new Error("Donnees de backup invalides")
+      throw new Error("Données de backup invalides")
     }
     for (const table of manifest.tables) {
       if (data[table] !== undefined && !Array.isArray(data[table])) {
@@ -561,7 +561,7 @@ export const importBackup = action({
         dryRun: true,
         summary,
         totalRows: Object.values(summary).reduce((a, b) => a + b, 0),
-        message: "Mode apercu — aucune donnee modifiee. ATTENTION : l'import reel n'est pas atomique — en cas d'echec, certaines tables pourraient etre partiellement modifiees.",
+        message: "Mode aperçu — aucune donnée modifiée. ATTENTION : l'import reel n'est pas atomique — en cas d'échec, certaines tables pourraient être partiellement modifiées.",
       }
     }
 
@@ -651,9 +651,9 @@ export const importBackup = action({
         // history. Those tables keep pointing at ids the restore replaced, and
         // no import can repair them.
         message:
-          "Import termine. Commandes, paiements, tickets de cuisine et membres d equipe ne sont ni exportes ni importes : leurs references aux etablissements restaures ne sont pas retablies." +
+          "Import terminé. Commandes, paiements, tickets de cuisine et membres d'équipe ne sont ni exportés ni importés : leurs références aux établissements restaurés ne sont pas rétablies." +
           (profiles.dropped > 0
-            ? ` ${profiles.dropped} acces a un etablissement absent de la sauvegarde ont ete retires des profils.`
+            ? ` ${profiles.dropped} accès à un établissement absent de la sauvegarde ont été retirés des profils.`
             : ""),
       }
     } catch (error) {

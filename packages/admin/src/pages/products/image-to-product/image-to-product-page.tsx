@@ -79,7 +79,7 @@ export function ImageToProductPage() {
       const imgCount = analyzeResult.processingCost.imagesGenerated ?? 0
       toast.success(
         `${count} produit(s) detecte(s)` +
-          (imgCount > 0 ? ` — ${imgCount} image(s) generee(s)` : "") +
+          (imgCount > 0 ? ` — ${imgCount} image(s) générée(s)` : "") +
           (analyzeResult.processingCost.imageUpscaled && imgCount === 0
             ? " — image amelioree"
             : "")
@@ -97,7 +97,7 @@ export function ImageToProductPage() {
     cancelledRef.current = true
     setStep("upload")
     setResult(null)
-    toast.info("Analyse annulee")
+    toast.info("Analyse annulée")
   }
 
   const handleConfirm = async (selected: ProductSuggestion[]) => {
@@ -129,7 +129,7 @@ export function ImageToProductPage() {
       }
 
       if (newCategoryNames.size > 0) {
-        toast.info(`${newCategoryNames.size} categorie(s) creee(s)`)
+        toast.info(`${newCategoryNames.size} catégorie(s) créée(s)`)
       }
 
       // 3. Create products, resolving new category IDs
@@ -137,7 +137,7 @@ export function ImageToProductPage() {
         let categoryId = suggestion.matchedCategoryId
         if (!categoryId) {
           toast.error(
-            `"${suggestion.name.value}" : veuillez choisir une categorie`
+            `"${suggestion.name.value}" : veuillez choisir une catégorie`
           )
           continue
         }
@@ -147,7 +147,7 @@ export function ImageToProductPage() {
           const catName = categoryId.slice(NEW_CATEGORY_PREFIX.length)
           const realId = categoryMap.get(catName)
           if (!realId) {
-            toast.error(`Echec de creation de la categorie "${catName}"`)
+            toast.error(`Échec de création de la catégorie "${catName}"`)
             continue
           }
           categoryId = realId
@@ -172,11 +172,11 @@ export function ImageToProductPage() {
       }
 
       if (created > 0) {
-        toast.success(`${created} produit(s) cree(s) avec succes`)
+        toast.success(`${created} produit(s) créé(s) avec succès`)
         router.push(adminRoutes.products)
       }
     } catch (error) {
-      toast.error("Erreur lors de la creation des produits")
+      toast.error("Erreur lors de la création des produits")
       console.error(error)
     } finally {
       setIsCreating(false)

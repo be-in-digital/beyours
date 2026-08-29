@@ -226,7 +226,7 @@ export const upsertFromStripe = {
 
     // No existing record — create new (should be rare, attachStripeCustomerId usually runs first)
     if (!args.ownerId) {
-      throw new Error("Impossible de creer un entitlement sans ownerId")
+      throw new Error("Impossible de créer un entitlement sans ownerId")
     }
 
     return await ctx.db.insert("ownerEntitlements", {

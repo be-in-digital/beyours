@@ -195,7 +195,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {daysRemaining} jours de couverture restants. Toutes les mises a
-              jour publiees pendant cette periode sont incluses.
+              jour publiées pendant cette période sont incluses.
             </p>
             {contract?.autoRenew && <BillingPortalButton />}
           </div>
@@ -206,7 +206,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
             <p className="text-sm">
               Votre maintenance expire dans <strong>{daysRemaining} jour{daysRemaining > 1 ? "s" : ""}</strong>{" "}
               (le {formatDate(contract.coveredUntil)}). Passe cette date, votre
-              site restera fige sur la derniere version couverte et ne recevra
+              site restera figé sur la dernière version couverte et ne recevra
               plus les nouvelles mises a jour.
             </p>
             <RenewalCta />
@@ -218,7 +218,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
             <p className="text-sm">
               Votre maintenance est terminee depuis le{" "}
               <strong>{formatDate(contract.coveredUntil)}</strong>. Votre site
-              reste fige sur la derniere version couverte
+              reste figé sur la dernière version couverte
               {entitlement.entitledVersion && (
                 <>
                   {" "}(<span className="font-mono">{entitlement.entitledVersion}</span>)
@@ -234,7 +234,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
                 </>
               )}
               . Renouvelez pour recevoir a nouveau les mises a jour, ou
-              demandez la migration de votre site vers l'hebergeur et l'equipe
+              demandez la migration de votre site vers l'hébergeur et l'équipe
               de votre choix.
             </p>
             <RenewalCta />
@@ -334,7 +334,7 @@ function MigrationRequestForm({
 
       <div className="space-y-2">
         <Label htmlFor="migration-provider">
-          Serveur / hebergeur de destination *
+          Serveur / hébergeur de destination *
         </Label>
         <Input
           id="migration-provider"
@@ -402,7 +402,7 @@ function MigrationRequestForm({
         <Label htmlFor="migration-notes">Precisions</Label>
         <Textarea
           id="migration-notes"
-          placeholder="Contraintes, acces, contexte..."
+          placeholder="Contraintes, accès, contexte..."
           value={notes}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
           rows={3}
@@ -438,7 +438,7 @@ function OpenMigrationRequestView({
     setCancelling(true)
     try {
       await cancelRequest({ requestId: request._id })
-      toast.success("Demande de migration annulee")
+      toast.success("Demande de migration annulée")
       setConfirmCancelOpen(false)
     } catch (err) {
       toast.error(
@@ -527,7 +527,7 @@ function OpenMigrationRequestView({
           <AlertDialogHeader>
             <AlertDialogTitle>Annuler la demande de migration ?</AlertDialogTitle>
             <AlertDialogDescription>
-              La demande en cours sera annulee. Vous pourrez en créer une
+              La demande en cours sera annulée. Vous pourrez en créer une
               nouvelle a tout moment.
             </AlertDialogDescription>
           </AlertDialogHeader>

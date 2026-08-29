@@ -60,10 +60,10 @@ export function UpdatesSection({
           "Une version plus recente existe mais n'est pas couverte par votre maintenance"
         )
       } else {
-        toast.success("Vous etes a jour")
+        toast.success("Vous êtes à jour")
       }
     } catch {
-      toast.error("Échec de la verification")
+      toast.error("Échec de la vérification")
     } finally {
       setChecking(false)
     }
@@ -92,8 +92,8 @@ export function UpdatesSection({
           Mises a jour
         </CardTitle>
         <CardDescription>
-          Les mises a jour publiees pendant votre periode de maintenance sont
-          incluses. Celles publiees apres la fin de couverture restent
+          Les mises à jour publiées pendant votre période de maintenance sont
+          incluses. Celles publiées après la fin de couverture restent
           verrouillees jusqu'au renouvellement.
         </CardDescription>
       </CardHeader>
@@ -142,8 +142,8 @@ export function UpdatesSection({
                 <p className="text-sm text-amber-500 flex items-center gap-1">
                   <AlertTriangleIcon className="h-3 w-3" />
                   {updateResult.coveredUntil
-                    ? `Version publiee apres la fin de votre maintenance (${formatDate(updateResult.coveredUntil)}).`
-                    : "Aucun contrat de maintenance actif : les mises a jour ne sont pas accessibles."}
+                    ? `Version publiée après la fin de votre maintenance (${formatDate(updateResult.coveredUntil)}).`
+                    : "Aucun contrat de maintenance actif : les mises à jour ne sont pas accessibles."}
                 </p>
                 <RenewalCta />
               </div>
@@ -151,7 +151,7 @@ export function UpdatesSection({
             {updateResult.registryError && (
               <p className="text-xs text-muted-foreground">
                 Registre npm inaccessible ({updateResult.registryError}) —
-                resultat base sur le catalogue local.
+                résultat basé sur le catalogue local.
               </p>
             )}
           </div>
