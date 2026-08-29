@@ -24,7 +24,7 @@ import {
 import { Input, Label, Textarea } from "@be-in-digital/ui"
 import { OrderStatusActions } from "./order-status-actions"
 import { UberDirectPanel } from "./uber-direct-panel"
-import { ArrowLeft, RotateCcw } from "lucide-react"
+import { ArrowLeft, RotateCcw, Banknote } from "lucide-react"
 import { Button } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -285,6 +285,34 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
   ) ?? payments?.[0]
 
   // Check if refund is possible
+  /**
+   * Cash was offered at checkout and never recorded: no `payments` row was ever
+   * written for it, so the order stayed "en attente" for ever and the "Espèces"
+   * filter on the payments page could never match. Somebody at the counter has
+   * to say the notes arrived.
+   */
+  const markCashPaid = useMutation(api?.orders?.markCashPaid ?? ("skip" as never))
+  const [isMarkingCashPaid, setIsMarkingCashPaid] = useState(false)
+
+  const canMarkCashPaid =
+    order?.paymentMethod === "cash" &&
+    order?.paymentStatus === "pending" &&
+    order?.status !== "cancelled"
+
+  const handleMarkCashPaid = async () => {
+    if (!order) return
+    setIsMarkingCashPaid(true)
+    try {
+      await markCashPaid({ orderId: order._id })
+      toast.success("Paiement en espèces enregistré")
+    } catch (error) {
+      toast.error("Échec de l'enregistrement du paiement")
+      console.error(error)
+    } finally {
+      setIsMarkingCashPaid(false)
+    }
+  }
+
   const canRefund = primaryPayment
     ? primaryPayment.status === "succeeded" &&
       primaryPayment.provider !== "cash" &&
@@ -507,6 +535,18 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Informations de paiement
               </CardTitle>
+              {canMarkCashPaid && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={isMarkingCashPaid}
+                  onClick={handleMarkCashPaid}
+                >
+                  <Banknote className="mr-1.5 h-3 w-3" />
+                  Encaisser en espèces
+                </Button>
+              )}
               {canRefund && primaryPayment && (
                 <Button
                   variant="outline"

@@ -117,6 +117,16 @@ export const ordersTable = defineTable({
   cancelledAt: v.optional(v.number()),
   cancellationReason: v.optional(v.string()),
   viewToken: v.optional(v.string()), // Token for public order confirmation access
+  /**
+   * One checkout attempt, as the browser identifies it.
+   *
+   * The checkout re-enables its button in `finally` while the redirect to the
+   * payment provider is still in flight, and the cart survives a Back
+   * navigation — so a second click produced a second order, a second kitchen
+   * ticket and a second promotion usage. Replaying the same key returns the
+   * order that already exists.
+   */
+  idempotencyKey: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -128,3 +138,4 @@ export const ordersTable = defineTable({
   .index("by_source", ["source"])
   .index("by_external_order", ["externalOrderId"])
   .index("by_uberDirectDeliveryId", ["uberDirectDeliveryId"])
+  .index("by_storeId_idempotencyKey", ["storeId", "idempotencyKey"])
