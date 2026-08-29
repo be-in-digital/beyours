@@ -21,6 +21,17 @@ const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`
 
 const ADMIN_STORAGE_STATE = "e2e/.auth/admin.json"
 
+/**
+ * The port the suite drives, and the port the server it starts listens on.
+ *
+ * Two runs on one machine used to fight over 3000: the second reused the first
+ * one's server (`reuseExistingServer`) and drove a build of somebody else's
+ * branch. `E2E_PORT` gives a run its own. `BETTER_AUTH_URL` and `SITE_URL` have
+ * to agree with it — sign-in posts to the origin they name.
+ */
+const PORT = Number(process.env.E2E_PORT ?? 3000)
+const BASE_URL = `http://localhost:${PORT}`
+
 // Admin/setup projects require a real Convex backend (not placeholder URLs).
 // In CI with placeholder URLs we only run the "public" project.
 const hasRealBackend = !process.env.NEXT_PUBLIC_CONVEX_URL?.includes("placeholder")

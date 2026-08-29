@@ -335,7 +335,7 @@ export function MenuFormDialog({ open, onOpenChange, menu }: MenuFormDialogProps
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Prix (€) *</Label>
+              <Label className="text-xs">Prix TTC (€) *</Label>
               <Input
                 type="number"
                 step="0.01"

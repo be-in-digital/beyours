@@ -29,11 +29,14 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "convex": "1.44.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "convex": "1.44.0"
+  },
+  "peerDependencies": {
+    "convex": "^1.44.0"
   }
 }

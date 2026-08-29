@@ -53,9 +53,12 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
 
 - [ ] 🔴 **[config] YouSign in prod**: a production `YOUSIGN_API_KEY` (today it
   defaults to the sandbox `api-sandbox.yousign.app/v3`).
-- [ ] 🔴 **[build] Verify the YouSign webhook signature**: `convex/http.ts:476`
-  carries a `TODO` — the webhook is not verified. Implement HMAC verification +
-  `YOUSIGN_WEBHOOK_SECRET`. It is a security hole until this is done.
+- [x] ~~**[build] Verify the YouSign webhook signature**~~ — **moot.** There is
+  no YouSign webhook: `convex/http.ts` registers two routes, `/webhooks/stripe`
+  and `/maintenance/status`, and neither is YouSign. Signing moved in-app
+  (`convex/affiliateSignature.ts`); only vestigial schema fields remain. This
+  line asked for HMAC verification of a route that does not exist, and carried a
+  red "security hole" label while doing so.
 - [ ] 🟠 **[decision] Customer contract**: YouSign signing is wired for the
   **introducers**. Decide whether the **customer engagement** (build + maintenance)
   goes through a signed contract before go-live, and wire the same flow if it does.

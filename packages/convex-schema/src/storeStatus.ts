@@ -48,3 +48,23 @@ export function isPublishedStore(
   if (!store?.status) return false
   return (PUBLISHED_STORE_STATUSES as readonly string[]).includes(store.status)
 }
+
+/**
+ * Whether an establishment may take an order right now.
+ *
+ * Narrower than `isPublishedStore` on purpose, and this is the distinction that
+ * was missing. `closed` and `temporarily_unavailable` keep a restaurant listed
+ * and its menu readable — that is what publication buys — but they are the two
+ * ways an owner says "not tonight" from the dashboard, and `orders.create`
+ * honoured neither. The storefront disabled the buttons; the mutation took the
+ * order anyway, and a tab left open, a cart restored from localStorage or a
+ * direct call reached it with no page in between.
+ *
+ * Hours are a separate question, answered by `isStoreOpen` in the storefront.
+ * This is only about the status the owner set by hand.
+ */
+export function isOrderableStore(
+  store: { status?: string | null } | null | undefined
+): boolean {
+  return store?.status === "open"
+}

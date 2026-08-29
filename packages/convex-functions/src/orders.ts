@@ -9,7 +9,13 @@
 
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
-import { canTransitionOrderStatus, isPublishedStore } from "@be-in-digital/convex-schema"
+import {
+  canTransitionOrderStatus,
+  isOrderTypeOffered,
+  isOrderableStore,
+  isPublishedStore,
+  resolveStoreServices,
+} from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 import {
@@ -17,7 +23,12 @@ import {
   type PromotionForDiscount,
 } from "./promotionDiscount"
 import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
-import { computeOrderTotals, resolveTaxRatePercent } from "./orderTotals"
+import {
+  computeOrderTotals,
+  resolveTaxRatePercent,
+  type TaxedLine,
+} from "./orderTotals"
+import { verifyOrderLine } from "./orderLine"
 
 // === QUERIES ===
 
@@ -220,10 +231,27 @@ interface CreateOrderArgs {
 interface StoreDoc {
   status?: string
   settings?: { taxRate?: number }
+  /** Per-store service switches, when the owner has customised them. */
+  overrides?: {
+    services?: {
+      dineIn?: boolean
+      takeaway?: boolean
+      delivery?: boolean
+      clickAndCollect?: boolean
+    }
+  }
 }
 
 interface GlobalSettingsDoc {
   taxRate?: number
+  timezone?: string
+  /** The deployment-wide service switches, written by the settings page. */
+  services?: {
+    dineIn?: boolean
+    takeaway?: boolean
+    delivery?: boolean
+    clickAndCollect?: boolean
+  }
   delivery?: {
     feeMode?: "fixed" | "percentage"
     fee?: number
@@ -300,8 +328,40 @@ export const create = {
       throw new Error("This store is not open for orders")
     }
 
+    // `closed` and `temporarily_unavailable` are the two ways an owner says
+    // "not tonight" from the dashboard. They keep the restaurant listed and its
+    // menu readable — that is what publication buys — and the storefront
+    // already greys out every button. Only the browser did: the mutation took
+    // the order, and a stale tab, a cart restored from localStorage or a direct
+    // call reached it with no page in between.
+    if (!isOrderableStore(store)) {
+      throw new Error("This store is not accepting orders right now")
+    }
+
+    // Read once, before the items: the serving window of a dish is a question
+    // about the clock in the kitchen, and that clock is a global setting. So is
+    // the fallback VAT rate, for a product that predates the per-product one.
+    const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
+    const deliveryConfig = globalSettings?.delivery
+
+    // The four service switches were enforced nowhere. The selector treated an
+    // absent store override as "offer everything", and this mutation never
+    // looked at `args.type`, so a restaurant that does not deliver took
+    // delivery orders — including from a cart whose type was persisted before
+    // the owner turned the service off.
+    if (!isOrderTypeOffered(args.type, resolveStoreServices(store, globalSettings))) {
+      throw new Error(`This store does not offer ${args.type} orders`)
+    }
+
+    const taxRatePercent = resolveTaxRatePercent({
+      globalTaxRate: globalSettings?.taxRate,
+    })
+
     // Re-fetch each product from DB — never trust client prices
     const verifiedItems: OrderItemInput[] = []
+    // Each line's own VAT rate, kept beside the line it belongs to: a basket
+    // mixing food at 10 % and alcohol at 20 % has no single rate.
+    const taxedLines: TaxedLine[] = []
     for (const item of args.items) {
       if (!item.productId) {
         throw new Error("productId is required for each item")
@@ -313,47 +373,40 @@ export const create = {
         throw new Error(`Product ${item.productId} does not belong to store ${args.storeId}`)
       }
 
-      // Resolve selected options from DB product data
-      const resolvedOptions: OrderItemInput["selectedOptions"] = []
-      for (const sel of item.selectedOptions) {
-        const option = product.options?.find((o: any) => o.id === sel.optionId || o.name === sel.optionName)
-        if (!option) continue
-        const choice = option.choices?.find((c: any) => c.id === sel.choiceId || c.name === sel.choiceName)
-        resolvedOptions.push({
-          optionId: option.id,
-          optionName: option.name,
-          choiceId: choice?.id,
-          choiceName: choice?.name ?? sel.choiceName,
-          priceModifier: choice?.priceModifier ?? 0,
-        })
-      }
-
-      const optionsTotal = resolvedOptions.reduce((sum: number, o: any) => sum + o.priceModifier, 0)
-      const serverUnitPrice = product.price
-      const serverSubtotal = (serverUnitPrice + optionsTotal) * item.quantity
+      // Availability, quantity, options and price all resolve in `orderLine`,
+      // pure and tested, because each refusal is the difference between an
+      // order the kitchen can cook and one it cannot.
+      const line = verifyOrderLine({
+        product,
+        quantity: item.quantity,
+        selectedOptions: item.selectedOptions,
+        now,
+        timezone: globalSettings?.timezone,
+      })
 
       verifiedItems.push({
         productId: item.productId,
         productName: product.name,
-        quantity: item.quantity,
-        unitPrice: serverUnitPrice,
-        selectedOptions: resolvedOptions,
-        subtotal: serverSubtotal,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        selectedOptions: line.selectedOptions,
+        subtotal: line.subtotal,
         notes: item.notes,
         externalId: item.externalId,
+      })
+
+      taxedLines.push({
+        subtotal: line.subtotal,
+        // `products.taxRate` is required at creation and has never been read by
+        // the order path. A product predating the field falls back to the rate
+        // configured for the whole deployment.
+        taxRatePercent:
+          typeof product.taxRate === "number" ? product.taxRate : taxRatePercent,
       })
     }
 
     // Calculate subtotal from server-verified items
     const subtotal = verifiedItems.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
-
-    const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
-    const deliveryConfig = globalSettings?.delivery
-
-    const taxRatePercent = resolveTaxRatePercent({
-      storeTaxRate: store.settings?.taxRate,
-      globalTaxRate: globalSettings?.taxRate,
-    })
 
     // Calculate delivery fee based on fee mode
     // Set once a quote has been validated, so it can be stamped consumed after
@@ -408,7 +461,14 @@ export const create = {
       }
     }
 
-    const taxAmount = computeOrderTotals({ subtotal, taxRatePercent }).taxAmount
+    // The tax is *inside* the subtotal, so it is known before the discount and
+    // does not move the total. It is computed here because the promotion
+    // resolver is told what the order is worth, tax included.
+    const taxAmount = computeOrderTotals({
+      subtotal,
+      taxRatePercent,
+      lines: taxedLines,
+    }).taxAmount
 
     // Recompute the discount from the stored promotion. The client never gets a
     // say: it used to pass `discountAmount`, which was applied verbatim and let
@@ -459,6 +519,7 @@ export const create = {
     const { total } = computeOrderTotals({
       subtotal,
       taxRatePercent,
+      lines: taxedLines,
       deliveryFee,
       discount,
     })

@@ -31,6 +31,7 @@
     "./paymentSettlement": "./src/paymentSettlement.ts",
     "./refundPolicy": "./src/refundPolicy.ts",
     "./orderTotals": "./src/orderTotals.ts",
+    "./orderLine": "./src/orderLine.ts",
     "./deliveryQuote": "./src/deliveryQuote.ts",
     "./profileProvisioning": "./src/profileProvisioning.ts",
     "./storeFunctions": "./src/storeFunctions.ts",
@@ -91,12 +92,15 @@
   "dependencies": {
     "@be-in-digital/cms": "workspace:*",
     "@be-in-digital/convex-schema": "workspace:*",
-    "@be-in-digital/core": "workspace:*",
-    "convex": "1.44.0"
+    "@be-in-digital/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "convex": "1.44.0"
+  },
+  "peerDependencies": {
+    "convex": "^1.44.0"
   }
 }

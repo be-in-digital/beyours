@@ -43,6 +43,7 @@ import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { slugify } from "../../lib/formatters"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { buildStoreCreateArgs } from "./store-create-args"
 import { StoresTable } from "./stores-table"
 import { StoresPagination } from "./stores-pagination"
 
@@ -218,33 +219,10 @@ export function StoresPage() {
     }
 
     try {
-      const slug = slugify(name)
-      await createStore({
-        name,
-        slug,
-        description: description || undefined,
-        address: {
-          street: address.street,
-          city: address.city,
-          postalCode: address.postalCode,
-          country: address.country,
-          latitude: address.latitude,
-          longitude: address.longitude,
-        },
-        phone: phone || undefined,
-        email: email || undefined,
-        settings: {
-          currency: "EUR",
-          timezone: "Europe/Paris",
-          deliveryEnabled: true,
-          pickupEnabled: true,
-          dineInEnabled: true,
-          minimumOrderAmount: 1000,
-          deliveryFee: 300,
-          deliveryRadius: 5000,
-          taxRate: 10,
-        },
-      })
+      // `buildStoreCreateArgs` is the payload, and it is the only payload —
+      // see the note there on the undeclared `settings` object that made every
+      // creation throw (#125).
+      await createStore(buildStoreCreateArgs({ name, description, address, phone, email }))
       toast.success("Établissement créé avec succès", {
         description: "L'établissement est en brouillon. Configurez ses paramètres puis passez-le en \"Ouvert\" pour l'activer.",
         duration: 8000,

@@ -173,11 +173,14 @@ describe("createWithTicket", () => {
       // not published, so a fixture without one is a store nobody can order
       // from.
       "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: "open" },
+      // `isActive` is not decoration either: `create` refuses a dish the owner
+      // switched off, so a fixture without one is a product nobody can order.
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
         name: "Pizza",
         price: 1200,
+        isActive: true,
         options: [
           {
             id: "opt1",
@@ -373,12 +376,16 @@ describe("create — promotion handling", () => {
     let counter = 0
 
     const docs: Record<string, Record<string, unknown>> = {
-      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: storeStatus, settings: { taxRate: 10 } },
+      "stores:1": { _id: "stores:1", name: "Pizza Bobigny", status: storeStatus },
       "products:1": {
         _id: "products:1",
         storeId: "stores:1",
         name: "Pizza",
         price: 10_000,
+        isActive: true,
+        // The product's own rate, deliberately different from the global 10 %
+        // below: the order path reads the product's, and read neither before.
+        taxRate: 20,
         options: [],
       },
       // Copied, not referenced: `patch` mutates in place, and a shared literal
@@ -399,11 +406,16 @@ describe("create — promotion handling", () => {
           Object.assign(docs[id] ?? {}, updates)
           patched.push({ id, updates })
         }),
-        query: vi.fn(() => {
+        // The tax rate is read from `globalSettings`, the row the settings
+        // page writes. It used to be read from `store.settings.taxRate` — a
+        // legacy column no mutation declares, so the only value it could ever
+        // have held came from the create payload Convex rejected (#125).
+        query: vi.fn((table: string) => {
           const chain = {
             withIndex: () => chain,
             order: () => chain,
-            first: async () => null,
+            first: async () =>
+              table === "globalSettings" ? { taxRate: 10 } : null,
             take: async () => [],
             collect: async () => [],
           }
@@ -446,13 +458,15 @@ describe("create — promotion handling", () => {
     usageCount: 0,
   }
 
-  it("charges subtotal + tax when no promotion is applied", async () => {
+  it("charges the price on the menu, with the tax taken out of it", async () => {
     const { ctx, inserted } = createPricingCtx()
     await create.handler(ctx, baseArgs as never)
 
     const order = orderFrom(inserted)
-    // 10 000 + 10% tax = 11 000
-    expect(order?.total).toBe(11_000)
+    // 100,00 € on the menu is 100,00 € charged. The VAT is the share of it
+    // owed at the product's own 20 %, not 20 % added on top.
+    expect(order?.total).toBe(10_000)
+    expect(order?.taxAmount).toBe(1_667)
     expect(order?.discountAmount).toBeUndefined()
   })
 
@@ -466,7 +480,7 @@ describe("create — promotion handling", () => {
     )
 
     const order = orderFrom(inserted)
-    expect(order?.total).toBe(11_000)
+    expect(order?.total).toBe(10_000)
     expect(order?.discountAmount).toBeUndefined()
   })
 
@@ -478,9 +492,9 @@ describe("create — promotion handling", () => {
     )
 
     const order = orderFrom(inserted)
-    // 10% of the 10 000 subtotal = 1 000 off 11 000
+    // 10 % of the 10 000 subtotal = 1 000 off the 10 000 charged
     expect(order?.discountAmount).toBe(1_000)
-    expect(order?.total).toBe(10_000)
+    expect(order?.total).toBe(9_000)
   })
 
   it("uses the stored promotion even when the client forges a bigger one", async () => {
@@ -496,7 +510,7 @@ describe("create — promotion handling", () => {
 
     const order = orderFrom(inserted)
     expect(order?.discountAmount).toBe(1_000)
-    expect(order?.total).toBe(10_000)
+    expect(order?.total).toBe(9_000)
   })
 
   it("rejects a promotion belonging to another store", async () => {
@@ -591,6 +605,7 @@ describe("create — the establishment has to be published", () => {
         storeId: "stores:1",
         name: "Pizza",
         price: 1200,
+        isActive: true,
         options: [],
       },
       ...(store ? { "stores:1": { _id: "stores:1", ...store } } : {}),
@@ -658,17 +673,27 @@ describe("create — the establishment has to be published", () => {
     expect(inserted).toEqual([])
   })
 
-  it.each(["open", "closed", "temporarily_unavailable"])(
-    "accepts a %s establishment",
-    async (status) => {
-      // `closed` and `temporarily_unavailable` are states of a published
-      // restaurant — outside its hours, or paused for the evening. Whether to
-      // offer ordering then is the storefront's call, not this guard's.
-      const { ctx } = ctxForStore({ status })
+  it("accepts an open establishment", async () => {
+    const { ctx } = ctxForStore({ status: "open" })
 
-      await expect(create.handler(ctx, args as never)).resolves.toMatch(
-        /^orders:/
+    await expect(create.handler(ctx, args as never)).resolves.toMatch(/^orders:/)
+  })
+
+  it.each(["closed", "temporarily_unavailable"])(
+    "refuses a %s establishment",
+    async (status) => {
+      // These two used to be accepted, on the reading that whether to offer
+      // ordering while closed is the storefront's call. It is not: they are the
+      // two ways an owner says "not tonight" from the dashboard, the storefront
+      // already greys out every button on them, and only the browser did (#224).
+      // They stay *published* — listed, with a readable menu — which is the
+      // wider rule `isPublishedStore` still carries.
+      const { ctx, inserted } = ctxForStore({ status })
+
+      await expect(create.handler(ctx, args as never)).rejects.toThrow(
+        /not accepting orders/
       )
+      expect(inserted).toEqual([])
     }
   )
 

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isStoreOpen,
+  resolveStoreHours,
   getNextOpenTime,
   formatStoreAddress,
   getStoreDistance,
@@ -52,6 +53,269 @@ describe('Store Service', () => {
       const result = isStoreOpen(hours, sunday)
 
       expect(result.isOpen).toBe(false)
+    })
+  })
+
+  // ==========================================================================
+  // Services that cross midnight (#126)
+  //
+  // The comparison was `now >= open && now < close` on "HH:mm" strings, with no
+  // wrap, so an evening restaurant read as closed all evening. The boolean
+  // disables add-to-cart everywhere and blocks checkout, so the shipped
+  // `fast-food-minuit` vertical and the food trucks could not sell anything.
+  //
+  // 2024-01-05 is a Friday, 2024-01-06 a Saturday.
+  // ==========================================================================
+
+  describe('isStoreOpen — a service that runs past midnight', () => {
+    const eveningService: BusinessHours[] = [
+      { day: 5, open: '18:00', close: '02:00', isClosed: false }, // Friday
+      { day: 6, open: '18:00', close: '02:00', isClosed: false }, // Saturday
+    ]
+
+    it('is open at 23:00, before midnight', () => {
+      // `"23:00" < "02:00"` is false. This read as closed.
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'))
+
+      expect(result.isOpen).toBe(true)
+      expect(result.currentPeriod).toEqual({ open: '18:00', close: '02:00' })
+    })
+
+    it('is open at 01:00, after midnight', () => {
+      // `"01:00" >= "18:00"` is false. This read as closed too — and Saturday's
+      // own row cannot answer for it: Saturday opens at 18:00. The service
+      // still running belongs to Friday.
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'))
+
+      expect(result.isOpen).toBe(true)
+      expect(result.currentPeriod).toEqual({ open: '18:00', close: '02:00' })
+    })
+
+    it('is closed at 03:00, once the night is over', () => {
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T03:00:00'))
+
+      expect(result.isOpen).toBe(false)
+    })
+
+    it('is closed at 10:00, between two services', () => {
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'))
+
+      expect(result.isOpen).toBe(false)
+    })
+
+    it('closes tomorrow, not today', () => {
+      // 23:00 Friday closes at 02:00 *Saturday*. Reported on the wrong day, the
+      // banner counts down to a moment eighteen hours in the past.
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'))
+
+      expect(result.nextChange?.getDay()).toBe(6)
+      expect(result.nextChange?.getHours()).toBe(2)
+    })
+
+    it('reports the close time on the day it happens, past midnight', () => {
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'))
+
+      expect(result.nextChange?.getDay()).toBe(6)
+      expect(result.nextChange?.getHours()).toBe(2)
+    })
+
+    it('opens later today when asked between services', () => {
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'))
+
+      expect(result.nextChange?.getDay()).toBe(5)
+      expect(result.nextChange?.getHours()).toBe(18)
+    })
+
+    it('stays shut on a night the day before was closed', () => {
+      // 01:00 Saturday with Friday closed: nothing is running. Reading the
+      // previous day is what makes this answerable at all — Saturday's row
+      // alone would say "closed", by accident rather than on purpose.
+      const fridayClosed: BusinessHours[] = [
+        { day: 5, open: '18:00', close: '02:00', isClosed: true },
+        { day: 6, open: '18:00', close: '02:00', isClosed: false },
+      ]
+
+      expect(isStoreOpen(fridayClosed, new Date('2024-01-06T01:00:00')).isOpen).toBe(false)
+    })
+
+    it('serves the tail of Saturday night on Sunday morning', () => {
+      // The week wraps: Saturday is day 6, Sunday is day 0.
+      const result = isStoreOpen(eveningService, new Date('2024-01-07T01:00:00'))
+
+      expect(result.isOpen).toBe(true)
+    })
+  })
+
+  describe('isStoreOpen — a service that ends at midnight', () => {
+    // `"00:00"` sorts before every other time, so `09:00–00:00` read as closed
+    // all day long, at every hour.
+    const untilMidnight: BusinessHours[] = [
+      { day: 1, open: '09:00', close: '00:00', isClosed: false }, // Monday
+    ]
+
+    it('is open at 12:00', () => {
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T12:00:00')).isOpen).toBe(true)
+    })
+
+    it('is open at 23:59', () => {
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T23:59:00')).isOpen).toBe(true)
+    })
+
+    it('is closed at 08:00, before it opens', () => {
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T08:00:00')).isOpen).toBe(false)
+    })
+
+    it('is closed on Tuesday at 00:30 — midnight is the end, not an overrun', () => {
+      // Monday closes *at* midnight. There is no tail to serve on Tuesday.
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-02T00:30:00')).isOpen).toBe(false)
+    })
+  })
+
+  describe('isStoreOpen — the editors must keep accepting what they accept', () => {
+    // Both hours editors are plain `<input type="time">` with no `close > open`
+    // check. Typing 02:00 into a close field is legitimate and has to keep
+    // working; the reading is what was wrong, not the writing.
+    it('treats open === close as a 24-hour day, the way 00:00–00:00 always read', () => {
+      const allDay: BusinessHours[] = [
+        { day: 1, open: '00:00', close: '00:00', isClosed: false },
+      ]
+
+      expect(isStoreOpen(allDay, new Date('2024-01-01T03:00:00')).isOpen).toBe(true)
+      expect(isStoreOpen(allDay, new Date('2024-01-01T15:00:00')).isOpen).toBe(true)
+    })
+
+    it('still honours isClosed, whatever the two times say', () => {
+      const shut: BusinessHours[] = [
+        { day: 1, open: '18:00', close: '02:00', isClosed: true },
+      ]
+
+      expect(isStoreOpen(shut, new Date('2024-01-01T23:00:00')).isOpen).toBe(false)
+    })
+  })
+
+  // ==========================================================================
+  // The establishment's clock, not the visitor's (#169)
+  //
+  // `globalSettings.timezone` was written by the settings page and read by
+  // nothing: open/closed came from `now.getDay()` and `now.getHours()`, i.e.
+  // the browser. A customer abroad saw the wrong answer, and any visitor could
+  // change it by changing their system clock.
+  // ==========================================================================
+
+  describe('isStoreOpen — the establishment\'s time zone', () => {
+    const parisLunch: BusinessHours[] = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day,
+      open: '12:00',
+      close: '14:00',
+      isClosed: false,
+    }))
+
+    it('is open when it is 12:30 in Paris, whatever the visitor\'s clock says', () => {
+      // 10:30 UTC is 12:30 in Paris (CEST) and 06:30 in Montréal.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      expect(isStoreOpen(parisLunch, instant, 'Europe/Paris').isOpen).toBe(true)
+      expect(isStoreOpen(parisLunch, instant, 'America/Montreal').isOpen).toBe(false)
+    })
+
+    it('is closed when it is 22:00 in Paris, however early it is elsewhere', () => {
+      const instant = new Date('2026-08-28T20:00:00Z') // 22:00 Paris, 16:00 Montréal
+
+      expect(isStoreOpen(parisLunch, instant, 'Europe/Paris').isOpen).toBe(false)
+    })
+
+    it('reads the weekday in the zone, not on the visitor\'s calendar', () => {
+      // 2026-08-28 16:00 UTC is 01:00 on Saturday in Tokyo and 18:00 on Friday
+      // in Paris. The day of the week is not a property of the instant.
+      const saturdayNights: BusinessHours[] = [
+        { day: 6, open: '00:30', close: '06:00', isClosed: false },
+      ]
+      const instant = new Date('2026-08-28T16:00:00Z')
+
+      expect(isStoreOpen(saturdayNights, instant, 'Asia/Tokyo').isOpen).toBe(true)
+      expect(isStoreOpen(saturdayNights, instant, 'Europe/Paris').isOpen).toBe(false)
+    })
+
+    it('returns nextChange as a real instant, not a wall clock', () => {
+      // Open at 12:30 Paris, closing at 14:00 Paris = 12:00 UTC.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      const result = isStoreOpen(parisLunch, instant, 'Europe/Paris')
+
+      expect(result.nextChange?.toISOString()).toBe('2026-08-28T12:00:00.000Z')
+    })
+
+    it('falls back to the visitor\'s clock when the zone is unknown', () => {
+      // A settings row can hold anything, and `Intl` throws on a name it does
+      // not know. An unusable zone must not take the storefront down.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      expect(() => isStoreOpen(parisLunch, instant, 'Not/AZone')).not.toThrow()
+    })
+
+    it('behaves exactly as before when no zone is given', () => {
+      const monday = new Date('2024-01-01T12:00:00')
+      const hours: BusinessHours[] = [
+        { day: 1, open: '09:00', close: '18:00', isClosed: false },
+      ]
+
+      expect(isStoreOpen(hours, monday).isOpen).toBe(true)
+    })
+  })
+
+  // ==========================================================================
+  // "Use global hours" (#169)
+  // ==========================================================================
+
+  describe('resolveStoreHours', () => {
+    const globalHours: BusinessHours[] = [
+      { day: 1, open: '18:00', close: '02:00', isClosed: false },
+    ]
+    const storeHours: BusinessHours[] = [
+      { day: 1, open: '09:00', close: '22:00', isClosed: false },
+    ]
+
+    it('follows the global hours when the flag is on', () => {
+      // The flag was written by the dashboard and read by nobody: the
+      // storefront took `store.hours`, which for a new establishment is the
+      // hard-coded 09:00–22:00 `stores.create` seeds.
+      const hours = resolveStoreHours(
+        { hours: storeHours, useGlobalHours: true },
+        { hours: globalHours }
+      )
+
+      expect(hours).toEqual(globalHours)
+    })
+
+    it('keeps the establishment\'s own hours when the flag is off', () => {
+      const hours = resolveStoreHours(
+        { hours: storeHours, useGlobalHours: false },
+        { hours: globalHours }
+      )
+
+      expect(hours).toEqual(storeHours)
+    })
+
+    it('falls back to the establishment when there are no global hours', () => {
+      // A deployment whose settings row has never been saved. Following an
+      // empty week would close every location.
+      expect(
+        resolveStoreHours({ hours: storeHours, useGlobalHours: true }, { hours: [] })
+      ).toEqual(storeHours)
+      expect(
+        resolveStoreHours({ hours: storeHours, useGlobalHours: true }, null)
+      ).toEqual(storeHours)
+    })
+
+    it('treats a store without the flag as having its own hours', () => {
+      // Rows written before the flag existed. Absent is not "follow global".
+      expect(
+        resolveStoreHours({ hours: storeHours }, { hours: globalHours })
+      ).toEqual(storeHours)
+    })
+
+    it('returns nothing for no store', () => {
+      expect(resolveStoreHours(null, { hours: globalHours })).toEqual([])
     })
   })
 

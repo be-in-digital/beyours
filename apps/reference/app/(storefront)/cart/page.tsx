@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -33,6 +34,7 @@ import type { OrderType } from "@be-in-digital/restaurant"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { OrderTypeSelector } from "@/components/storefront/order-type-selector"
+import { isOrderTypeOffered, ORDER_TYPES } from "@be-in-digital/convex-schema"
 
 export default function CartPage() {
   const router = useRouter()
@@ -50,6 +52,17 @@ export default function CartPage() {
 
   const subtotal = getSubtotal()
   const itemCount = getItemCount()
+
+  // The cart's order type is persisted, so it outlives the owner switching a
+  // service off: a basket built when the restaurant delivered still said
+  // "delivery" the next day, and `orders.create` now refuses it. Move the
+  // selection to something the restaurant actually offers rather than let the
+  // customer reach checkout and be turned away there.
+  useEffect(() => {
+    if (!services || isOrderTypeOffered(orderType, services)) return
+    const fallback = ORDER_TYPES.find((type) => isOrderTypeOffered(type, services))
+    if (fallback) setOrderType(fallback)
+  }, [services, orderType, setOrderType])
 
   if (items.length === 0) {
     return (
@@ -162,17 +175,23 @@ export default function CartPage() {
             {/* Items */}
             <div className="space-y-4">
               <TooltipProvider delayDuration={300}>
-                {items.map((item, idx) => {
+                {items.map((item) => {
                   const optionsTotal = item.options.reduce(
                     (s, o) => s + o.priceModifier,
                     0
                   )
                   const unitPrice = item.price + optionsTotal
                   const lineTotal = unitPrice * item.quantity
+                  // Two lines of one dish differ only by their options, so the
+                  // options are what an icon-only button has to say out loud.
+                  const lineLabel = item.options.length
+                    ? `${item.name} (${item.options.map((o) => o.choice).join(", ")})`
+                    : item.name
 
                   return (
                     <div
-                      key={`${item.productId}-${item.options.map((o) => o.choice).join("-")}-${idx}`}
+                      key={item.lineId}
+                      data-line-id={item.lineId}
                       className="group flex gap-4 rounded-[2rem] border border-zinc-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-lg hover:shadow-zinc-100/50 md:gap-6 md:p-6"
                     >
                       {/* Image */}
@@ -231,7 +250,7 @@ export default function CartPage() {
                                   </AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() =>
-                                      removeItem(item.productId)
+                                      removeItem(item.lineId)
                                     }
                                     className="h-14 rounded-2xl bg-rose-500 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-rose-500/20 hover:bg-rose-600"
                                   >
@@ -270,7 +289,10 @@ export default function CartPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <AlertDialogTrigger asChild>
-                                      <button className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-all hover:bg-white hover:text-rose-500 hover:shadow-sm">
+                                      <button
+                                        aria-label={`Retirer ${lineLabel}`}
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-all hover:bg-white hover:text-rose-500 hover:shadow-sm"
+                                      >
                                         <Minus className="h-3 w-3" />
                                       </button>
                                     </AlertDialogTrigger>
@@ -298,7 +320,7 @@ export default function CartPage() {
                                     </AlertDialogCancel>
                                     <AlertDialogAction
                                       onClick={() =>
-                                        updateQuantity(item.productId, 0)
+                                        updateQuantity(item.lineId, 0)
                                       }
                                       className="h-14 rounded-2xl bg-rose-500 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-rose-500/20 hover:bg-rose-600"
                                     >
@@ -313,10 +335,11 @@ export default function CartPage() {
                                   <button
                                     onClick={() =>
                                       updateQuantity(
-                                        item.productId,
+                                        item.lineId,
                                         item.quantity - 1
                                       )
                                     }
+                                    aria-label={`Diminuer la quantité de ${lineLabel}`}
                                     className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-all hover:bg-white hover:text-zinc-600 hover:shadow-sm"
                                   >
                                     <Minus className="h-3 w-3" />
@@ -337,10 +360,11 @@ export default function CartPage() {
                                 <button
                                   onClick={() =>
                                     updateQuantity(
-                                      item.productId,
+                                      item.lineId,
                                       item.quantity + 1
                                     )
                                   }
+                                  aria-label={`Augmenter la quantité de ${lineLabel}`}
                                   className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-all hover:bg-white hover:text-zinc-600 hover:shadow-sm"
                                 >
                                   <Plus className="h-3 w-3" />

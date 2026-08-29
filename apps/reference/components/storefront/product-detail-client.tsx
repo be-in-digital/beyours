@@ -28,7 +28,7 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, storeId }: ProductDetailClientProps) {
-  const addItem = useCartStore((s: { addItem: (item: import("@be-in-digital/restaurant").CartItem) => void }) => s.addItem)
+  const addItem = useCartStore((s: { addItem: (item: import("@be-in-digital/restaurant").NewCartItem) => void }) => s.addItem)
   const cartStoreId = useCartStore((s: { storeId: string | null }) => s.storeId)
   const { isFavorite, toggleFavorite } = useFavorites()
   const { isOpen } = useStoreStatus(storeId)
@@ -101,6 +101,7 @@ export function ProductDetailClient({ product, storeId }: ProductDetailClientPro
       productId: product._id,
       name: product.name,
       price: product.price,
+      taxRate: product.taxRate,
       quantity,
       options: cartOptions,
       imageUrl: product.images?.[0],
