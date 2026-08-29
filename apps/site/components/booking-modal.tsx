@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Cal, { getCalApi } from "@calcom/embed-react";
 import { useBookingModal, type BookingVariant } from "@/lib/store";
+import { BOOKING_ORIGIN } from "@/lib/site-config";
 
 // Booking runs on bookself.app (Cal.com), under the BeYours brand. The old
 // link pointed at calendly.com/hello-beindigital — the agency, on a site that
@@ -10,8 +11,9 @@ import { useBookingModal, type BookingVariant } from "@/lib/store";
 //   decouverte : public, prospects with questions
 //   lancement  : post-purchase kickoff, linked from /checkout/success only
 // Self-hosted Cal.com instance, so both the origin and the embed script have to
-// be pointed at it explicitly.
-const CAL_ORIGIN = "https://bookself.app";
+// be pointed at it explicitly. The origin comes from lib/site-config because
+// the CSP in next.config.ts has to allow the very same one.
+const CAL_ORIGIN = BOOKING_ORIGIN;
 const CAL_EMBED_JS = `${CAL_ORIGIN}/embed/embed.js`;
 
 const BOOKING_LINKS: Record<BookingVariant, string> = {
