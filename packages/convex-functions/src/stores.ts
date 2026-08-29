@@ -60,6 +60,31 @@ export const listAll = {
 }
 
 /**
+ * The establishments named by `ids`, in creation order.
+ *
+ * The scoped counterpart of `listAll`. It reads the rows it was asked for
+ * rather than collecting the table and filtering afterwards — a member of one
+ * restaurant should not cause a scan of every restaurant to answer a question
+ * about theirs.
+ *
+ * A missing id is dropped rather than refused: a profile can name a store that
+ * has since been deleted, and one stale entry must not blank the whole admin.
+ * Sorted by creation time so the order matches what `listAll` returns, which is
+ * what the selector's "first store" fallback depends on.
+ */
+export const listByIds = {
+  args: { ids: v.array(v.id("stores")) },
+  handler: async (ctx: any, args: any) => {
+    const stores = await Promise.all(
+      args.ids.map((id: any) => ctx.db.get(id))
+    )
+    return stores
+      .filter((store: any) => store !== null)
+      .sort((a: any, b: any) => a._creationTime - b._creationTime)
+  },
+}
+
+/**
  * Get store by ID
  */
 export const getById = {
