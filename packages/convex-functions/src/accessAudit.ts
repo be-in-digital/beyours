@@ -45,6 +45,8 @@ export const ACCESS_AUDIT_OPERATIONS = {
   invitationAccepted: "invitation_accepted",
   /** A membership deactivated or removed from the roster. */
   membershipRevoked: "membership_revoked",
+  /** An existing membership edited on the team screen. */
+  membershipUpdated: "membership_updated",
 } as const
 
 export type AccessAuditOperation =

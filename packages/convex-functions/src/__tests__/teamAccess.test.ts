@@ -5,6 +5,7 @@ import {
   assertInvitationAcceptable,
   invitationGrant,
   invitationModules,
+  membershipUpdateEffect,
   profileAllowsPermission,
   revocationEffect,
   INVITATION_LIFETIME_MS,
@@ -475,5 +476,149 @@ describe("sweepInvitation", () => {
         NOW_MS
       )
     ).toBe("keep")
+  })
+})
+
+
+// ============================================================================
+// Editing a membership that has already been accepted
+// ============================================================================
+
+describe("membershipUpdateEffect", () => {
+  const base = {
+    role: "manager" as const,
+    storeId: STORE_A,
+    allStores: false,
+    permissions: [] as string[],
+    isActive: true,
+  }
+
+  /** The common case: one membership, one establishment, nothing else. */
+  function edit(
+    profile: { role: Role; storeIds: string[]; permissions?: string[] },
+    after: Partial<typeof base>,
+    others: (typeof base)[] = []
+  ) {
+    return membershipUpdateEffect({
+      profile,
+      before: { storeId: STORE_A, allStores: false },
+      after: { ...base, ...after },
+      others,
+    })
+  }
+
+  it("narrows the modules to exactly what is left ticked", () => {
+    // Not a union with what the profile held: the whole defect was that
+    // unticking a box changed nothing, and merging keeps it that way.
+    expect(
+      edit(
+        { role: Role.MANAGER, storeIds: [STORE_A], permissions: ["dashboard", "orders", "products"] },
+        { permissions: ["dashboard", "orders"] }
+      )
+    ).toEqual({
+      role: Role.MANAGER,
+      storeIds: [STORE_A],
+      permissions: ["dashboard", "orders"],
+    })
+  })
+
+  it("reads an emptied list as unrestricted, never as nothing allowed", () => {
+    expect(
+      edit(
+        { role: Role.MANAGER, storeIds: [STORE_A], permissions: ["orders"] },
+        { permissions: [] }
+      )
+    ).toEqual({ role: Role.MANAGER, storeIds: [STORE_A], permissions: [] })
+  })
+
+  it("follows a demotion", () => {
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A] }, { role: "waiter" })
+    ).toEqual({ role: Role.WAITER, storeIds: [STORE_A], permissions: [] })
+  })
+
+  it("keeps the highest role the person still holds elsewhere", () => {
+    // Manager in Lyon, demoted to waiter in Paris. The profile carries one
+    // role, so Paris must not be able to spend Lyon's. The modules are narrowed
+    // at the same time purely so the result is not a no-op — a `null` here
+    // would prove the role survived too, but says nothing about which rule
+    // produced it.
+    expect(
+      edit(
+        {
+          role: Role.MANAGER,
+          storeIds: [STORE_A, STORE_B],
+          permissions: ["dashboard", "orders", "products"],
+        },
+        { role: "waiter", permissions: ["dashboard", "orders"] },
+        [{ ...base, storeId: STORE_B, permissions: ["dashboard", "orders"] }]
+      )
+    ).toEqual({
+      role: Role.MANAGER,
+      storeIds: [STORE_A, STORE_B],
+      permissions: ["dashboard", "orders"],
+    })
+  })
+
+  it("moves the establishment rather than adding to it", () => {
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A] }, { storeId: STORE_B })
+    ).toEqual({ role: Role.MANAGER, storeIds: [STORE_B], permissions: [] })
+  })
+
+  it("leaves a store alone when another active membership still covers it", () => {
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A] }, { storeId: STORE_B }, [
+        { ...base, storeId: STORE_A },
+      ])
+    ).toEqual({
+      role: Role.MANAGER,
+      storeIds: [STORE_A, STORE_B],
+      permissions: [],
+    })
+  })
+
+  it("keeps establishments the roster never granted", () => {
+    // STORE_B came from somewhere else — a direct profile assignment. Rebuilding
+    // the list from memberships alone would confiscate it.
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A, STORE_B] }, { storeId: "stores:c" })
+    ).toEqual({
+      role: Role.MANAGER,
+      storeIds: [STORE_B, "stores:c"],
+      permissions: [],
+    })
+  })
+
+  it("drops to customer when the last position is deactivated", () => {
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A] }, { isActive: false })
+    ).toEqual({ role: Role.CUSTOMER, storeIds: [], permissions: [] })
+  })
+
+  it("narrows nothing when a membership is widened to the whole chain", () => {
+    // `allStores` has no representation in `userProfiles` — the gap is stated
+    // on `invitationGrant`. Dropping someone to `customer` because we cannot
+    // express their PROMOTION would be worse than the gap itself.
+    expect(
+      edit({ role: Role.MANAGER, storeIds: [STORE_A] }, { allStores: true, storeId: undefined })
+    ).toBeNull()
+  })
+
+  it("leaves an admin's profile alone", () => {
+    for (const role of [Role.SUPER_ADMIN, Role.CLIENT_ADMIN]) {
+      expect(
+        edit({ role, storeIds: [STORE_A] }, { role: "delivery", permissions: ["orders"] })
+      ).toBeNull()
+    }
+  })
+
+  it("reports nothing to do when nothing moved", () => {
+    expect(
+      edit(
+        { role: Role.MANAGER, storeIds: [STORE_A], permissions: ["orders"] },
+        { permissions: ["orders"] }
+      )
+    ).toBeNull()
   })
 })
