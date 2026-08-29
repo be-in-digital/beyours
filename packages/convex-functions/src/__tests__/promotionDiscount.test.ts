@@ -31,7 +31,6 @@ function resolve(
     storeId: "stores:1",
     subtotal: 10_000,
     deliveryFee: 0,
-    taxAmount: 0,
     now: NOW,
     ...over,
   })
@@ -144,7 +143,6 @@ describe("percentage discounts", () => {
   it("applies the rate to the subtotal only, not to tax or delivery", () => {
     const result = resolve(promo({ discountValue: 10 }), {
       subtotal: 10_000,
-      taxAmount: 1_000,
       deliveryFee: 500,
     })
     expect(result.discount).toBe(1_000)
@@ -221,7 +219,9 @@ describe("discount can never exceed the order", () => {
       promo({ discountType: "fixed_amount", discountValue: 99_999_999 }),
       { subtotal: 10_000, taxAmount: 1_000, deliveryFee: 500 }
     )
-    expect(result.discount).toBe(11_500)
+    // Goods plus delivery. Since #127 the tax is *inside* the subtotal, so
+    // adding it to the cap would let a discount exceed what is owed.
+    expect(result.discount).toBe(10_500)
   })
 
   it("never returns a negative discount", () => {
@@ -243,7 +243,6 @@ describe("discount can never exceed the order", () => {
       storeId: "stores:1",
       subtotal: 10_000,
       deliveryFee: 0,
-      taxAmount: 0,
       now: NOW,
       discountAmount: 99_999_999,
     } as never)
@@ -252,3 +251,154 @@ describe("discount can never exceed the order", () => {
     expect(smuggled.discount).toBe(1_000)
   })
 })
+
+/**
+ * Everything a promotion is configured with and nothing read it.
+ */
+describe("what a promotion actually reaches", () => {
+  const pizza = { productId: "products:pizza", categoryId: "categories:pizzas", subtotal: 1_200 }
+  const drinks = { productId: "products:cola", categoryId: "categories:drinks", subtotal: 2_400 }
+
+  it("discounts only the products it names", () => {
+    // The reported case: −20 % on pizzas over 1 pizza (12 €) and 8 drinks
+    // (24 €) took 7,20 € off instead of 2,40 €.
+    const result = resolve(
+      promo({
+        discountType: "percentage",
+        discountValue: 20,
+        scope: "product",
+        targetProductIds: ["products:pizza"],
+      }),
+      { subtotal: 3_600, items: [pizza, drinks] }
+    )
+    expect(result.discount).toBe(240)
+  })
+
+  it("discounts only the categories it names", () => {
+    const result = resolve(
+      promo({
+        discountType: "percentage",
+        discountValue: 50,
+        scope: "category",
+        targetCategoryIds: ["categories:drinks"],
+      }),
+      { subtotal: 3_600, items: [pizza, drinks] }
+    )
+    expect(result.discount).toBe(1_200)
+  })
+
+  it("still discounts the whole basket when scoped to the order", () => {
+    const result = resolve(
+      promo({ discountType: "percentage", discountValue: 20, scope: "order" }),
+      { subtotal: 3_600, items: [pizza, drinks] }
+    )
+    expect(result.discount).toBe(720)
+  })
+
+  it("refuses when the basket holds none of what it names", () => {
+    expect(
+      rejection(() =>
+        resolve(
+          promo({
+            scope: "product",
+            targetProductIds: ["products:dessert"],
+          }),
+          { subtotal: 3_600, items: [pizza, drinks] }
+        )
+      ).reason
+    ).toBe("no_eligible_items")
+  })
+
+  it("refuses a scoped promotion when the caller cannot say what is in the basket", () => {
+    // Without the lines, discounting by product would fall on the whole
+    // basket — which is the bug, not a fallback.
+    expect(
+      rejection(() =>
+        resolve(
+          promo({ scope: "product", targetProductIds: ["products:pizza"] }),
+          { subtotal: 3_600 }
+        )
+      ).reason
+    ).toBe("no_eligible_items")
+  })
+
+  it("caps a scoped fixed amount at what it applies to", () => {
+    const result = resolve(
+      promo({
+        discountType: "fixed_amount",
+        discountValue: 5_000,
+        scope: "category",
+        targetCategoryIds: ["categories:drinks"],
+      }),
+      { subtotal: 3_600, items: [pizza, drinks] }
+    )
+    expect(result.discount).toBe(2_400)
+  })
+})
+
+describe("happy hour", () => {
+  // Tuesday 3 July 2029, 12:00 UTC — 14:00 in Paris.
+  const NOON_UTC = Date.UTC(2029, 6, 3, 12, 0, 0)
+  const happyHour = {
+    activeDays: [1, 2, 3, 4, 5],
+    activeTimeFrom: "17:00",
+    activeTimeTo: "19:00",
+  }
+
+  /** Valid all summer, so only the hours decide. */
+  const running = (scheduling?: typeof happyHour) =>
+    promo({
+      scheduling,
+      startDate: Date.UTC(2029, 5, 1),
+      endDate: Date.UTC(2029, 7, 31),
+    })
+
+  it("refuses outside its hours", () => {
+    expect(
+      rejection(() =>
+        resolve(running(happyHour), {
+          now: NOON_UTC,
+          timezone: "Europe/Paris",
+        })
+      ).reason
+    ).toBe("not_scheduled")
+  })
+
+  it("applies inside them", () => {
+    // 16:00 UTC is 18:00 in Paris in July.
+    const result = resolve(running(happyHour), {
+      now: Date.UTC(2029, 6, 3, 16, 0, 0),
+      timezone: "Europe/Paris",
+    })
+    expect(result.discount).toBe(1_000)
+  })
+
+  it("is read on the restaurant's clock, not the server's", () => {
+    // 16:00 is inside 17:00–19:00 nowhere but in a timezone ahead of UTC. On
+    // the server's own clock this promotion would be refused.
+    const at16UTC = Date.UTC(2029, 6, 3, 16, 0, 0)
+    expect(
+      rejection(() =>
+        resolve(running(happyHour), { now: at16UTC, timezone: "UTC" })
+      ).reason
+    ).toBe("not_scheduled")
+  })
+
+  it("refuses on a day it does not run", () => {
+    // 1 July 2029 is a Sunday, at 18:00 Paris.
+    expect(
+      rejection(() =>
+        resolve(running(happyHour), {
+          now: Date.UTC(2029, 6, 1, 16, 0, 0),
+          timezone: "Europe/Paris",
+        })
+      ).reason
+    ).toBe("not_scheduled")
+  })
+
+  it("applies at any hour when no schedule is configured", () => {
+    const result = resolve(running(), { now: NOON_UTC, timezone: "Europe/Paris" })
+    expect(result.discount).toBe(1_000)
+  })
+})
+

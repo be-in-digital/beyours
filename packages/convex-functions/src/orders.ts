@@ -20,6 +20,8 @@ import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 import {
   resolvePromotionDiscount,
+  PromotionRejectedError,
+  type DiscountableLine,
   type PromotionForDiscount,
 } from "./promotionDiscount"
 import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
@@ -362,6 +364,9 @@ export const create = {
     // Each line's own VAT rate, kept beside the line it belongs to: a basket
     // mixing food at 10 % and alcohol at 20 % has no single rate.
     const taxedLines: TaxedLine[] = []
+    // The same lines, seen by the promotion resolver: a discount scoped to a
+    // product or a category has to know what is in the basket.
+    const discountableLines: DiscountableLine[] = []
     for (const item of args.items) {
       if (!item.productId) {
         throw new Error("productId is required for each item")
@@ -393,6 +398,12 @@ export const create = {
         subtotal: line.subtotal,
         notes: item.notes,
         externalId: item.externalId,
+      })
+
+      discountableLines.push({
+        productId: item.productId,
+        categoryId: product.categoryId,
+        subtotal: line.subtotal,
       })
 
       taxedLines.push({
@@ -474,6 +485,9 @@ export const create = {
     // say: it used to pass `discountAmount`, which was applied verbatim and let
     // a forged value produce a 0 € order that still reached the kitchen.
     let discount = 0
+    // Which promotion the order ends up carrying: the coupon the customer
+    // typed, or the automatic offer that applied on its own.
+    let appliedPromotionId: string | undefined = undefined
     if (args.promotionId) {
       const promotion = (await ctx.db.get(args.promotionId)) as
         | PromotionForDiscount
@@ -504,16 +518,58 @@ export const create = {
         storeId: args.storeId,
         subtotal,
         deliveryFee,
-        taxAmount,
         now,
         customerUsageCount,
         customerIdentified: Boolean(args.customerInfo.email),
+        items: discountableLines,
+        timezone: globalSettings?.timezone,
       })
       // For a free-delivery promotion the resolver returns the fee as the
       // discount. The fee stays on the order so the customer still sees the
       // "Livraison 4,90 € / Offerte −4,90 €" pair; zeroing it here as well
       // would subtract it twice.
       discount = resolved.discount
+      appliedPromotionId = args.promotionId
+    } else {
+      // No coupon: an automatic offer may still apply. `promotions.listActiveAuto`
+      // was public, complete, and called by nobody — an owner who configured an
+      // "offre automatique" got a promotion that never applied to anything.
+      //
+      // One promotion per order. A typed coupon is the customer's explicit
+      // choice and wins outright; otherwise the automatic offer worth the most
+      // applies, and the ones that do not fit are passed over in silence —
+      // nobody asked for them by name, so there is nobody to explain a refusal
+      // to.
+      const autoPromotions = (await ctx.db
+        .query("promotions")
+        .withIndex("by_storeId_triggerMode", (q: any) =>
+          q.eq("storeId", args.storeId).eq("triggerMode", "auto")
+        )
+        .collect()) as PromotionForDiscount[]
+
+      for (const promotion of autoPromotions) {
+        try {
+          const resolved = resolvePromotionDiscount({
+            promotion,
+            storeId: args.storeId,
+            subtotal,
+            deliveryFee,
+            now,
+            // An automatic offer capped per customer would need an identity the
+            // customer never gave: the resolver refuses it, and the catch below
+            // passes over it.
+            customerIdentified: Boolean(args.customerInfo.email),
+            items: discountableLines,
+            timezone: globalSettings?.timezone,
+          })
+          if (resolved.discount > discount) {
+            discount = resolved.discount
+            appliedPromotionId = promotion._id
+          }
+        } catch (error) {
+          if (!(error instanceof PromotionRejectedError)) throw error
+        }
+      }
     }
 
     const { total } = computeOrderTotals({
@@ -542,7 +598,9 @@ export const create = {
       deliveryFee: args.type === "delivery" && deliveryFee > 0 ? deliveryFee : undefined,
       deliveryFeeMode: args.type === "delivery" ? deliveryFeeMode : undefined,
       uberDirectEstimateId: args.uberDirectEstimateId,
-      promotionId: args.promotionId,
+      // The promotion that actually applied — the coupon, or the automatic
+      // offer that won on its own.
+      promotionId: appliedPromotionId as any,
       discountAmount: discount > 0 ? discount : undefined,
       total,
       deliveryAddress: args.deliveryAddress,
@@ -568,10 +626,10 @@ export const create = {
       await ctx.db.patch(consumedQuoteId, { consumedByOrderId: orderId })
     }
 
-    if (args.promotionId) {
-      const promo = await ctx.db.get(args.promotionId)
+    if (appliedPromotionId) {
+      const promo = await ctx.db.get(appliedPromotionId)
       if (promo) {
-        await ctx.db.patch(args.promotionId, {
+        await ctx.db.patch(appliedPromotionId, {
           usageCount: (promo.usageCount ?? 0) + 1,
           updatedAt: now,
         })
@@ -581,7 +639,7 @@ export const create = {
         if (args.customerInfo.email) {
           await ctx.db.insert("promotionUsages", {
             storeId: args.storeId,
-            promotionId: args.promotionId,
+            promotionId: appliedPromotionId as any,
             customerEmail: args.customerInfo.email.trim().toLowerCase(),
             orderId,
             usedAt: now,

@@ -32,6 +32,8 @@
     "./refundPolicy": "./src/refundPolicy.ts",
     "./orderTotals": "./src/orderTotals.ts",
     "./orderLine": "./src/orderLine.ts",
+    "./promotionDiscount": "./src/promotionDiscount.ts",
+    "./timeWindow": "./src/timeWindow.ts",
     "./deliveryQuote": "./src/deliveryQuote.ts",
     "./profileProvisioning": "./src/profileProvisioning.ts",
     "./storeFunctions": "./src/storeFunctions.ts",

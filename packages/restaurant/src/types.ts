@@ -86,6 +86,14 @@ export interface CartItem {
    * the deployment-wide rate applies then.
    */
   taxRate?: number
+  /**
+   * The product's category.
+   *
+   * Carried for the same reason as the rate: a promotion scoped to a category
+   * has to be resolvable on the client too, or the summary shows a discount the
+   * order will not grant. Absent on a line added before this field.
+   */
+  categoryId?: string
 }
 
 /**
