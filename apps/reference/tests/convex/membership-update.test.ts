@@ -126,8 +126,11 @@ function profileOf(t: ReturnType<typeof convexTest>, subject: string) {
   )
 }
 
+/** A harness bound to one identity, which is what every probe here acts through. */
+type TestClient = ReturnType<ReturnType<typeof convexTest>["withIdentity"]>
+
 /** The manager-only action the module tests already lean on. */
-function createCategory(client: any, storeId: Id<"stores">, name = "Entrées") {
+function createCategory(client: TestClient, storeId: Id<"stores">, name = "Entrées") {
   return client.mutation(api.categories.create, {
     storeId,
     name,
