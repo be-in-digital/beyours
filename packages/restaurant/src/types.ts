@@ -58,6 +58,18 @@ export type {
  * Cart item with product information and selected options
  */
 export interface CartItem {
+  /**
+   * Identity of a *line*, not of a product.
+   *
+   * One pizza with extra cheese and one plain are two lines of the same
+   * product. Everything that acts on a line — the bin, the +/− buttons, the
+   * React key — has to name the line; keyed on `productId`, "+" on one raised
+   * both and the bin emptied both.
+   *
+   * Derived from the product and its chosen options, so it survives a reload:
+   * see `cartLineId` in `services/cart`.
+   */
+  lineId: string
   productId: string
   name: string
   price: number // in cents
@@ -65,6 +77,14 @@ export interface CartItem {
   options: CartSelectedOption[]
   imageUrl?: string
 }
+
+/**
+ * What a caller hands to `addItem`.
+ *
+ * The line's identity is the store's to assign — a caller that invented one
+ * could split a line that should merge, or merge two that should not.
+ */
+export type NewCartItem = Omit<CartItem, 'lineId'>
 
 /**
  * Selected option in cart (simplified from OrderItem options)

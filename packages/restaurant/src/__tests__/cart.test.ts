@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useCartStore } from '../stores/cart'
-import type { CartItem } from '../types'
+import { useCartStore, migrateCartState, CART_STORAGE_VERSION } from '../stores/cart'
+import type { NewCartItem } from '../types'
 
 describe('Cart Store', () => {
   beforeEach(() => {
@@ -14,7 +14,7 @@ describe('Cart Store', () => {
 
   describe('addItem', () => {
     it('should add new item to cart', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -26,11 +26,13 @@ describe('Cart Store', () => {
 
       const state = useCartStore.getState()
       expect(state.items).toHaveLength(1)
-      expect(state.items[0]).toEqual(item)
+      // The store adds the one field a caller does not supply: the line's own
+      // identity.
+      expect(state.items[0]).toEqual({ ...item, lineId: 'p1' })
     })
 
     it('should increment quantity for same item', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -47,7 +49,7 @@ describe('Cart Store', () => {
     })
 
     it('should add separate items for same product with different options', () => {
-      const item1: CartItem = {
+      const item1: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -55,7 +57,7 @@ describe('Cart Store', () => {
         options: [{ name: 'Size', choice: 'Large', priceModifier: 200 }],
       }
 
-      const item2: CartItem = {
+      const item2: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -73,7 +75,7 @@ describe('Cart Store', () => {
 
   describe('removeItem', () => {
     it('should remove item from cart', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -91,7 +93,7 @@ describe('Cart Store', () => {
 
   describe('updateQuantity', () => {
     it('should update item quantity', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -107,7 +109,7 @@ describe('Cart Store', () => {
     })
 
     it('should remove item when quantity is 0', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -123,9 +125,92 @@ describe('Cart Store', () => {
     })
   })
 
+  /**
+   * The bug this store was rewritten for.
+   *
+   * One pizza with extra cheese and one plain are two lines. Keyed on the
+   * product id, "+" on the second raised both and the total silently doubled
+   * before checkout; the bin on either emptied both.
+   */
+  describe('two configurations of one dish', () => {
+    const withCheese: NewCartItem = {
+      productId: 'p1',
+      name: 'Pizza',
+      price: 1200,
+      quantity: 1,
+      options: [{ name: 'Supplément', choice: 'Extra fromage', priceModifier: 150 }],
+    }
+
+    const plain: NewCartItem = {
+      productId: 'p1',
+      name: 'Pizza',
+      price: 1200,
+      quantity: 1,
+      options: [],
+    }
+
+    beforeEach(() => {
+      useCartStore.getState().addItem(withCheese)
+      useCartStore.getState().addItem(plain)
+    })
+
+    it('keeps them as two lines with distinct ids', () => {
+      const { items } = useCartStore.getState()
+      expect(items).toHaveLength(2)
+      expect(items[0]!.lineId).not.toBe(items[1]!.lineId)
+    })
+
+    it('raises the quantity of one line only', () => {
+      const { items } = useCartStore.getState()
+      useCartStore.getState().updateQuantity(items[1]!.lineId, 2)
+
+      const after = useCartStore.getState()
+      expect(after.items.map((i) => i.quantity)).toEqual([1, 2])
+      expect(after.getItemCount()).toBe(3)
+    })
+
+    it('removes one line and leaves the other', () => {
+      const { items } = useCartStore.getState()
+      useCartStore.getState().removeItem(items[0]!.lineId)
+
+      const after = useCartStore.getState()
+      expect(after.items).toHaveLength(1)
+      expect(after.items[0]!.options).toEqual([])
+    })
+
+    it('merges a third add of an existing configuration', () => {
+      useCartStore.getState().addItem(withCheese)
+
+      const after = useCartStore.getState()
+      expect(after.items).toHaveLength(2)
+      expect(after.items[0]!.quantity).toBe(2)
+    })
+
+    it('does not split a line over the order the options were ticked in', () => {
+      useCartStore.getState().clearCart()
+      const twoOptions: NewCartItem = {
+        ...withCheese,
+        options: [
+          { name: 'Taille', choice: 'Grande', priceModifier: 300 },
+          { name: 'Supplément', choice: 'Extra fromage', priceModifier: 150 },
+        ],
+      }
+      const sameReversed: NewCartItem = {
+        ...twoOptions,
+        options: [...twoOptions.options].reverse(),
+      }
+
+      useCartStore.getState().addItem(twoOptions)
+      useCartStore.getState().addItem(sameReversed)
+
+      expect(useCartStore.getState().items).toHaveLength(1)
+      expect(useCartStore.getState().items[0]!.quantity).toBe(2)
+    })
+  })
+
   describe('clearCart', () => {
     it('should clear all items and reset state', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -162,7 +247,7 @@ describe('Cart Store', () => {
 
   describe('getSubtotal', () => {
     it('should calculate subtotal correctly', () => {
-      const item1: CartItem = {
+      const item1: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -170,7 +255,7 @@ describe('Cart Store', () => {
         options: [],
       }
 
-      const item2: CartItem = {
+      const item2: NewCartItem = {
         productId: 'p2',
         name: 'Fries',
         price: 500,
@@ -189,7 +274,7 @@ describe('Cart Store', () => {
 
   describe('getTax', () => {
     it('should calculate tax correctly', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -220,7 +305,7 @@ describe('Cart Store', () => {
 
   describe('getTotal', () => {
     it('should calculate total correctly for pickup', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -237,7 +322,7 @@ describe('Cart Store', () => {
     })
 
     it('should calculate total correctly for delivery', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -256,7 +341,7 @@ describe('Cart Store', () => {
 
   describe('getItemCount', () => {
     it('should return total item count', () => {
-      const item1: CartItem = {
+      const item1: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -264,7 +349,7 @@ describe('Cart Store', () => {
         options: [],
       }
 
-      const item2: CartItem = {
+      const item2: NewCartItem = {
         productId: 'p2',
         name: 'Fries',
         price: 500,
@@ -282,7 +367,7 @@ describe('Cart Store', () => {
 
   describe('getSummary', () => {
     it('should return complete cart summary', () => {
-      const item: CartItem = {
+      const item: NewCartItem = {
         productId: 'p1',
         name: 'Burger',
         price: 1000,
@@ -302,6 +387,47 @@ describe('Cart Store', () => {
         total: 2900,
         itemCount: 2,
       })
+    })
+  })
+
+  /**
+   * A cart written before this change is still in a customer's browser. Left
+   * alone, every line would rehydrate with `lineId: undefined` — and undefined
+   * matches every other line, which is the bug this replaces.
+   */
+  describe('a cart persisted by an older build', () => {
+    const legacy = {
+      orderType: 'pickup' as const,
+      storeId: 'store_1',
+      items: [
+        {
+          productId: 'p1',
+          name: 'Pizza',
+          price: 1200,
+          quantity: 1,
+          options: [{ name: 'Supplément', choice: 'Extra fromage', priceModifier: 150 }],
+        },
+        {
+          productId: 'p1',
+          name: 'Pizza',
+          price: 1200,
+          quantity: 1,
+          options: [],
+        },
+      ],
+    }
+
+    it('gets an identity for every line on rehydration', () => {
+      const migrated = migrateCartState(legacy, 0)
+
+      const ids = migrated.items.map((i) => i.lineId)
+      expect(ids.every(Boolean)).toBe(true)
+      expect(new Set(ids).size).toBe(2)
+    })
+
+    it('leaves a cart already at the current version alone', () => {
+      const current = migrateCartState(legacy, CART_STORAGE_VERSION)
+      expect(current).toBe(legacy)
     })
   })
 })
