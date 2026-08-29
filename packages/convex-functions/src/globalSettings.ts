@@ -79,9 +79,19 @@ export const upsert = {
     if (existing) {
       const updates: Record<string, unknown> = { updatedAt: Date.now() }
       for (const [key, value] of Object.entries(args)) {
-        if (value !== undefined) {
-          updates[key] = value
+        if (value === undefined) continue
+        // `integrations` is patched platform by platform, not as one blob.
+        //
+        // `ctx.db.patch` replaces a whole object field, so a caller sending
+        // only `{ uberDirect }` erased the Uber Eats and Deliveroo settings
+        // beside it — a tab saving its own section took out the others. Each
+        // platform is still replaced whole, so clearing a field inside one
+        // works: absent means "not this tab's business", not "keep this".
+        if (key === "integrations" && existing.integrations) {
+          updates.integrations = { ...existing.integrations, ...(value as object) }
+          continue
         }
+        updates[key] = value
       }
       await ctx.db.patch(existing._id, updates)
       return existing._id

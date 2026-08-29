@@ -63,6 +63,9 @@ function createMockDb(records: Record<string, any> = {}) {
             unique: async () => matched[0] ?? null,
             first: async () => matched[0] ?? null,
             collect: async () => matched,
+            // `remove` sweeps the store's dependants through indexed `take`
+            // calls before deleting the row (#169).
+            take: async (limit: number) => matched.slice(0, limit),
           }
         },
         collect: async () => rows,

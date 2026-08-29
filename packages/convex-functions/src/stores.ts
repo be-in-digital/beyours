@@ -12,6 +12,10 @@ import { v } from "convex/values"
 import { isPublishedStore } from "@be-in-digital/convex-schema"
 import { grantCreatedStoreAccess } from "./auth"
 import {
+  deleteStoreDependents,
+  detachStoreFromProfiles,
+} from "./storeCascade"
+import {
   STORE_AUDIT_ACTIONS,
   STORE_AUDIT_OPERATIONS,
   prepareStoreFieldUpdate,
@@ -378,7 +382,20 @@ export const updateTrendingMode = {
 }
 
 /**
- * Delete a store
+ * Delete a store, and everything that belonged to it.
+ *
+ * This used to delete the store row alone. Forty-two `storeId` columns across
+ * twenty tables were left pointing at a document that no longer existed, and
+ * the id stayed in `userProfiles.storeIds` — `v.id("stores")` validates how an
+ * id is encoded, not that it resolves, so nothing ever complained. The bulk
+ * delete did it to N establishments at once (#169).
+ *
+ * A mutation is one transaction with a bounded budget, and an established
+ * restaurant has more orders than that. So the sweep is a loop: this call
+ * clears one batch and reports whether there is more, and the app wrapper
+ * schedules `purgeStoreData` until there is not. The store row goes first, in
+ * this transaction, because that is what makes the establishment disappear from
+ * every screen — the rest is carried away behind it.
  */
 export const remove = {
   args: { id: v.id("stores") },
@@ -393,7 +410,28 @@ export const remove = {
       storeName: existing.name as string,
       snapshot: snapshotStore(existing),
     }
+
+    const { hasMore } = await deleteStoreDependents(ctx, args.id)
+    await detachStoreFromProfiles(ctx, args.id)
     await ctx.db.delete(args.id)
     await recordStoreAudit(ctx, audit)
+
+    return { hasMore }
+  },
+}
+
+/**
+ * Carry away what one transaction could not.
+ *
+ * Called only by the scheduler, from the wrapper around `remove` and from
+ * itself, until `hasMore` is false. The store row is already gone by then;
+ * `args.storeId` is a dangling id on purpose, and the sweep is by index, so it
+ * finds exactly the rows that were left.
+ */
+export const purgeStoreData = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const { deleted, hasMore } = await deleteStoreDependents(ctx, args.storeId)
+    return { deleted, hasMore }
   },
 }
