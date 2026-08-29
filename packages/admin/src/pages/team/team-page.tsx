@@ -58,6 +58,7 @@ import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { resolveStoreSelection } from "../../components/store-selection"
 
 // === TYPES & CONSTANTS ===
 
@@ -114,12 +115,29 @@ export function TeamPage() {
   const [search, setSearch] = useState("")
 
   // Data
+  const stores = useQuery(api?.stores?.listAll ?? ("skip" as any))
+
+  /**
+   * The persisted selection, but only once this deployment has confirmed it
+   * exists.
+   *
+   * The id lives in localStorage, and localStorage outlives the deployment that
+   * issued it. `teamMembers.list` declares `storeId: v.id("stores")`, which
+   * refuses an id belonging to another deployment — and Convex raises that out
+   * of `useQuery` during render, taking the page down rather than degrading it.
+   *
+   * This is the same shape as #119, and `/dashboard/team` is one of
+   * `StoreGuard`'s `BYPASS_ROUTES`, so the guard renders this page before it has
+   * settled the selection. It still repairs it — its effect runs on bypassed
+   * routes too — but a render happens first, and one render is all it took.
+   */
+  const selection = resolveStoreSelection({ storeId, stores: stores as any[] })
+  const verifiedStoreId = selection.status === "selected" ? storeId : null
+
   const teamMembers = useQuery(
     api?.teamMembers?.list,
-    storeId ? { storeId } : "skip"
+    verifiedStoreId ? { storeId: verifiedStoreId } : "skip"
   )
-
-  const stores = useQuery(api?.stores?.listAll ?? ("skip" as any))
 
   // Actions & Mutations
   const sendInvitation = useAction(api?.teamMembersEmail?.sendInvitationEmail)
@@ -130,8 +148,8 @@ export function TeamPage() {
 
   // Get current store name
   const currentStore = useMemo(
-    () => (stores as any[])?.find((s: any) => s._id === storeId),
-    [stores, storeId]
+    () => (stores as any[])?.find((s: any) => s._id === verifiedStoreId),
+    [stores, verifiedStoreId]
   )
 
   // Filtered members
@@ -192,8 +210,16 @@ export function TeamPage() {
     }
   }
 
+  // The list has not arrived, or `StoreGuard` is about to replace a selection
+  // this deployment does not have. Either way there is nothing to ask for yet,
+  // and saying "no establishment selected" here would be wrong on the next
+  // render.
+  if (selection.status === "pending" || selection.status === "replace") {
+    return <LoadingState />
+  }
+
   // No store selected
-  if (!storeId) {
+  if (!verifiedStoreId) {
     return (
       <Empty>
         <EmptyHeader>
@@ -389,7 +415,7 @@ export function TeamPage() {
       <InviteDialog
         open={isInviteOpen}
         onOpenChange={setIsInviteOpen}
-        storeId={storeId}
+        storeId={verifiedStoreId}
         storeName={currentStore?.name ?? "Restaurant"}
         stores={stores as any[] | undefined}
         sendInvitation={sendInvitation}

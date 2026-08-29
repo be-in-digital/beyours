@@ -127,6 +127,25 @@ export async function requireStaff(ctx: any): Promise<AuthUser> {
   return user
 }
 
+/**
+ * The same question, asked without demanding an answer.
+ *
+ * `requireStaff` throws, which is right for a query that belongs to the
+ * administration. It is wrong for a query the storefront and the administration
+ * *share* — `stores.getById` is read by an anonymous visitor's checkout page and
+ * by the KDS, and it has to answer both without refusing either. Being a
+ * customer, or nobody at all, is a legitimate answer here rather than an error.
+ */
+export async function isStaff(ctx: any): Promise<boolean> {
+  try {
+    const user = await getAuthUser(ctx)
+    return user.role !== Role.CUSTOMER
+  } catch {
+    // Not signed in, or signed in with no profile yet. Neither is staff.
+    return false
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* grantCreatedStoreAccess                                             */
 /* ------------------------------------------------------------------ */
