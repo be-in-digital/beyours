@@ -6,6 +6,35 @@
 
 import { v } from "convex/values"
 
+import { effectiveDeliveryFeeMode } from "./deliveryQuote"
+
+/**
+ * Percentage delivery pricing bills a share of an Uber Direct quote. Stored
+ * without the integration, it leaves the shop unable to take a delivery order
+ * at all: `orders.create` asks for an estimate id the storefront has no way to
+ * obtain, and every delivery customer is turned away with "un devis de
+ * livraison est requis".
+ *
+ * The settings page already refuses to offer the mode while Uber Direct is
+ * off. This closes the other door — the one an owner walks through by
+ * configuring percentage mode and then switching the integration off, which
+ * leaves the mode behind with nothing to price it.
+ *
+ * Coerced, not refused: an owner switching Uber Direct off must be able to
+ * switch it off. What survives is the mode the shop can still honour.
+ */
+function honourableDelivery(
+  delivery: { feeMode?: string } | undefined,
+  integrations: { uberDirect?: { enabled?: boolean } } | undefined
+) {
+  if (!delivery || delivery.feeMode !== "percentage") return delivery
+  const mode = effectiveDeliveryFeeMode({
+    feeMode: delivery.feeMode,
+    uberDirectEnabled: integrations?.uberDirect?.enabled,
+  })
+  return mode === "percentage" ? delivery : { ...delivery, feeMode: "fixed" }
+}
+
 // === QUERIES ===
 
 /**
@@ -93,6 +122,23 @@ export const upsert = {
         }
         updates[key] = value
       }
+      // Read back what this write actually leaves behind — `delivery` is
+      // replaced whole, `integrations` merged above — so turning Uber Direct
+      // off in the integrations tab drops the orphaned percentage mode with it,
+      // even though that save never mentioned delivery.
+      const writtenDelivery = (updates.delivery ?? existing.delivery) as
+        | { feeMode?: string }
+        | undefined
+      const resolvedDelivery = honourableDelivery(
+        writtenDelivery,
+        (updates.integrations ?? existing.integrations) as
+          | { uberDirect?: { enabled?: boolean } }
+          | undefined
+      )
+      // A new object only comes back when the mode was actually dropped, so an
+      // unrelated save leaves `delivery` untouched instead of rewriting it.
+      if (resolvedDelivery !== writtenDelivery) updates.delivery = resolvedDelivery
+
       await ctx.db.patch(existing._id, updates)
       return existing._id
     }
@@ -117,7 +163,10 @@ export const upsert = {
         { day: 5, open: "09:00", close: "23:00", isClosed: false },
         { day: 6, open: "09:00", close: "23:00", isClosed: false },
       ],
-      delivery: args.delivery ?? { feeMode: "fixed", radius: 10, fee: 350, freeAbove: 3000 },
+      delivery: honourableDelivery(
+        args.delivery ?? { feeMode: "fixed", radius: 10, fee: 350, freeAbove: 3000 },
+        args.integrations
+      ),
       payments: args.payments ?? { cardProvider: "stripe", paypal: false, cash: false },
       integrations: args.integrations ?? {},
       updatedAt: Date.now(),

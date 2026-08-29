@@ -24,7 +24,11 @@ import {
   type DiscountableLine,
   type PromotionForDiscount,
 } from "./promotionDiscount"
-import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
+import {
+  assertQuoteApplies,
+  effectiveDeliveryFeeMode,
+  quotedDeliveryFee,
+} from "./deliveryQuote"
 import { assertMeetsMinimum, assertWithinDeliveryRadius } from "./deliveryZone"
 import {
   computeOrderTotals,
@@ -266,6 +270,10 @@ interface GlobalSettingsDoc {
     freeAbove?: number
     radius?: number
   }
+  /** Percentage delivery pricing is only honoured while Uber Direct can quote. */
+  integrations?: {
+    uberDirect?: { enabled?: boolean }
+  }
 }
 
 /**
@@ -464,7 +472,13 @@ export const create = {
     let deliveryFeeMode: "fixed" | "percentage" | undefined = undefined
 
     if (args.type === "delivery" && deliveryConfig) {
-      const feeMode = deliveryConfig.feeMode ?? "fixed"
+      // Not `deliveryConfig.feeMode` directly: percentage mode without Uber
+      // Direct has no quote to bill a share of, and asking for an estimate id
+      // the storefront cannot obtain refused every delivery order at that shop.
+      const feeMode = effectiveDeliveryFeeMode({
+        feeMode: deliveryConfig.feeMode,
+        uberDirectEnabled: globalSettings?.integrations?.uberDirect?.enabled,
+      })
       deliveryFeeMode = feeMode
 
       const freeAbove = deliveryConfig.freeAbove

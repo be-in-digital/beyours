@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { useState, useEffect } from "react"
 import { type AddressValue } from "@be-in-digital/ui"
 import { calculateDeliveryFee } from "@be-in-digital/convex-functions/deliveryFee"
+import { effectiveDeliveryFeeMode } from "@be-in-digital/convex-functions/deliveryQuote"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
@@ -113,7 +114,17 @@ export function useSettingsForm() {
       setDeliveryRadius(settings.delivery.radius?.toString() || "")
       setDeliveryFee(settings.delivery.fee ? centsToEuros(settings.delivery.fee).toString() : "")
       setFreeAbove(settings.delivery.freeAbove ? centsToEuros(settings.delivery.freeAbove).toString() : "")
-      setFeeMode((settings.delivery as any).feeMode ?? "fixed")
+      // The mode in force, not the one on record. A deployment configured
+      // for percentage pricing before Uber Direct was switched off still
+      // stores "percentage", and showing it selected — next to a button
+      // disabled for exactly that reason — told the owner their shop was
+      // billing a share of a quote nobody was asking for.
+      setFeeMode(
+        effectiveDeliveryFeeMode({
+          feeMode: (settings.delivery as any).feeMode,
+          uberDirectEnabled: settings.integrations?.uberDirect?.enabled,
+        })
+      )
       setDeliveryPercentage((settings.delivery as any).percentage?.toString() ?? "")
       setDeliveryMaxFee((settings.delivery as any).maxFee ? centsToEuros((settings.delivery as any).maxFee).toString() : "")
 
