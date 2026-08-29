@@ -385,7 +385,7 @@ export function ProductForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="priceEuros" className="text-sm">
-                Prix (€) <span className="text-destructive">*</span>
+                Prix TTC (€) <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="priceEuros"
@@ -403,7 +403,7 @@ export function ProductForm({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="compareAtPriceEuros" className="text-sm">Prix barré (€)</Label>
+              <Label htmlFor="compareAtPriceEuros" className="text-sm">Prix barré TTC (€)</Label>
               <Input
                 id="compareAtPriceEuros"
                 type="number"
@@ -533,6 +533,10 @@ export function ProductForm({
                 placeholder="20"
                 className="h-9"
               />
+              <p className="text-xs text-muted-foreground">
+                Le prix saisi est celui que le client paie. Ce taux sert à en
+                extraire la TVA, pas à l&apos;ajouter.
+              </p>
               {errors.taxRate && (
                 <p className="text-xs text-destructive">
                   {errors.taxRate.message}

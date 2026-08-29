@@ -17,7 +17,11 @@ import {
   type PromotionForDiscount,
 } from "./promotionDiscount"
 import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
-import { computeOrderTotals, resolveTaxRatePercent } from "./orderTotals"
+import {
+  computeOrderTotals,
+  resolveTaxRatePercent,
+  type TaxedLine,
+} from "./orderTotals"
 import { verifyOrderLine } from "./orderLine"
 
 // === QUERIES ===
@@ -303,12 +307,20 @@ export const create = {
     }
 
     // Read once, before the items: the serving window of a dish is a question
-    // about the clock in the kitchen, and that clock is a global setting.
+    // about the clock in the kitchen, and that clock is a global setting. So is
+    // the fallback VAT rate, for a product that predates the per-product one.
     const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
     const deliveryConfig = globalSettings?.delivery
 
+    const taxRatePercent = resolveTaxRatePercent({
+      globalTaxRate: globalSettings?.taxRate,
+    })
+
     // Re-fetch each product from DB — never trust client prices
     const verifiedItems: OrderItemInput[] = []
+    // Each line's own VAT rate, kept beside the line it belongs to: a basket
+    // mixing food at 10 % and alcohol at 20 % has no single rate.
+    const taxedLines: TaxedLine[] = []
     for (const item of args.items) {
       if (!item.productId) {
         throw new Error("productId is required for each item")
@@ -341,14 +353,19 @@ export const create = {
         notes: item.notes,
         externalId: item.externalId,
       })
+
+      taxedLines.push({
+        subtotal: line.subtotal,
+        // `products.taxRate` is required at creation and has never been read by
+        // the order path. A product predating the field falls back to the rate
+        // configured for the whole deployment.
+        taxRatePercent:
+          typeof product.taxRate === "number" ? product.taxRate : taxRatePercent,
+      })
     }
 
     // Calculate subtotal from server-verified items
     const subtotal = verifiedItems.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
-
-    const taxRatePercent = resolveTaxRatePercent({
-      globalTaxRate: globalSettings?.taxRate,
-    })
 
     // Calculate delivery fee based on fee mode
     // Set once a quote has been validated, so it can be stamped consumed after
@@ -403,7 +420,14 @@ export const create = {
       }
     }
 
-    const taxAmount = computeOrderTotals({ subtotal, taxRatePercent }).taxAmount
+    // The tax is *inside* the subtotal, so it is known before the discount and
+    // does not move the total. It is computed here because the promotion
+    // resolver is told what the order is worth, tax included.
+    const taxAmount = computeOrderTotals({
+      subtotal,
+      taxRatePercent,
+      lines: taxedLines,
+    }).taxAmount
 
     // Recompute the discount from the stored promotion. The client never gets a
     // say: it used to pass `discountAmount`, which was applied verbatim and let
@@ -454,6 +478,7 @@ export const create = {
     const { total } = computeOrderTotals({
       subtotal,
       taxRatePercent,
+      lines: taxedLines,
       deliveryFee,
       discount,
     })
