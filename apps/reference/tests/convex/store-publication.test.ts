@@ -315,16 +315,29 @@ describe("orders.create", () => {
     expect(order?.status).toBe("pending")
   })
 
-  test("still takes an order for a closed establishment", async () => {
-    // A closed restaurant is published: it takes orders for later, and the
-    // storefront is what decides whether to offer that. `draft` is the only
-    // status this guard is about.
-    const t = newHarness()
-    const storeId = await seedStore(t, "Pizza Closed", "closed")
-    const productId = await seedProduct(t, storeId)
+  test.each(["closed", "temporarily_unavailable"] as const)(
+    "refuses a %s establishment, though it stays published",
+    async (status) => {
+      // This used to pass an order through, on the reading that a closed
+      // restaurant is published and so takes orders for later. It does not:
+      // "Fermé" and "Indisponible" are the two ways an owner says "not
+      // tonight" from the dashboard, and the storefront already greys out
+      // every button on them. Only the browser did — a stale tab, a cart
+      // restored from localStorage or a direct call reached the mutation with
+      // no page in between (#224).
+      //
+      // Publication is still the wider rule: both statuses keep the restaurant
+      // listed and its menu readable. That is asserted in `stores.list` above.
+      const t = newHarness()
+      const storeId = await seedStore(t, "Pizza Closed", status)
+      const productId = await seedProduct(t, storeId)
 
-    await expect(
-      t.mutation(api.orders.create, orderArgs(storeId, productId))
-    ).resolves.toBeDefined()
-  })
+      await expect(
+        t.mutation(api.orders.create, orderArgs(storeId, productId))
+      ).rejects.toThrow(/not accepting orders/)
+
+      const written = await t.run((ctx) => ctx.db.query("orders").collect())
+      expect(written).toEqual([])
+    }
+  )
 })

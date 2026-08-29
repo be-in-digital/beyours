@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
-import { PUBLISHED_STORE_STATUSES, isPublishedStore } from "../storeStatus"
+import {
+  PUBLISHED_STORE_STATUSES,
+  isOrderableStore,
+  isPublishedStore,
+} from "../storeStatus"
 
 /**
  * The rule that decides whether an establishment is a storefront.
@@ -50,5 +54,36 @@ describe("isPublishedStore", () => {
     ["an undefined store", undefined],
   ])("refuses %s", (_label, store) => {
     expect(isPublishedStore(store)).toBe(false)
+  })
+})
+
+/**
+ * The narrower rule: published means listed and readable, orderable means the
+ * kitchen is taking orders. `orders.create` checked only the first, so an owner
+ * who set "Fermé" or "Indisponible" in the dashboard still received orders —
+ * the storefront greyed out the buttons and nothing else stopped anyone.
+ */
+describe("isOrderableStore", () => {
+  it("accepts an open establishment", () => {
+    expect(isOrderableStore({ status: "open" })).toBe(true)
+  })
+
+  it.each(["closed", "temporarily_unavailable"])(
+    "refuses a %s establishment, though it stays published",
+    (status) => {
+      expect(isPublishedStore({ status })).toBe(true)
+      expect(isOrderableStore({ status })).toBe(false)
+    }
+  )
+
+  it("refuses a draft", () => {
+    expect(isOrderableStore({ status: "draft" })).toBe(false)
+  })
+
+  it("refuses anything without a recognised status", () => {
+    expect(isOrderableStore(null)).toBe(false)
+    expect(isOrderableStore(undefined)).toBe(false)
+    expect(isOrderableStore({})).toBe(false)
+    expect(isOrderableStore({ status: "" })).toBe(false)
   })
 })

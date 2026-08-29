@@ -9,7 +9,13 @@
 
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
-import { canTransitionOrderStatus, isPublishedStore } from "@be-in-digital/convex-schema"
+import {
+  canTransitionOrderStatus,
+  isOrderTypeOffered,
+  isOrderableStore,
+  isPublishedStore,
+  resolveStoreServices,
+} from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import { generateOrderNumber } from "./helpers"
 import {
@@ -225,11 +231,27 @@ interface CreateOrderArgs {
 interface StoreDoc {
   status?: string
   settings?: { taxRate?: number }
+  /** Per-store service switches, when the owner has customised them. */
+  overrides?: {
+    services?: {
+      dineIn?: boolean
+      takeaway?: boolean
+      delivery?: boolean
+      clickAndCollect?: boolean
+    }
+  }
 }
 
 interface GlobalSettingsDoc {
   taxRate?: number
   timezone?: string
+  /** The deployment-wide service switches, written by the settings page. */
+  services?: {
+    dineIn?: boolean
+    takeaway?: boolean
+    delivery?: boolean
+    clickAndCollect?: boolean
+  }
   delivery?: {
     feeMode?: "fixed" | "percentage"
     fee?: number
@@ -306,11 +328,30 @@ export const create = {
       throw new Error("This store is not open for orders")
     }
 
+    // `closed` and `temporarily_unavailable` are the two ways an owner says
+    // "not tonight" from the dashboard. They keep the restaurant listed and its
+    // menu readable — that is what publication buys — and the storefront
+    // already greys out every button. Only the browser did: the mutation took
+    // the order, and a stale tab, a cart restored from localStorage or a direct
+    // call reached it with no page in between.
+    if (!isOrderableStore(store)) {
+      throw new Error("This store is not accepting orders right now")
+    }
+
     // Read once, before the items: the serving window of a dish is a question
     // about the clock in the kitchen, and that clock is a global setting. So is
     // the fallback VAT rate, for a product that predates the per-product one.
     const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
     const deliveryConfig = globalSettings?.delivery
+
+    // The four service switches were enforced nowhere. The selector treated an
+    // absent store override as "offer everything", and this mutation never
+    // looked at `args.type`, so a restaurant that does not deliver took
+    // delivery orders — including from a cart whose type was persisted before
+    // the owner turned the service off.
+    if (!isOrderTypeOffered(args.type, resolveStoreServices(store, globalSettings))) {
+      throw new Error(`This store does not offer ${args.type} orders`)
+    }
 
     const taxRatePercent = resolveTaxRatePercent({
       globalTaxRate: globalSettings?.taxRate,

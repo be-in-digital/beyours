@@ -19,5 +19,9 @@ export * from "./orderStatus"
 // Store publication rule — shared by stores.list, orders.create and the storefront
 export * from "./storeStatus"
 
+// Which services an establishment offers — shared by orders.create and the
+// storefront's order-type selector
+export * from "./storeServices"
+
 // Typed data model (type-only): SchemaDataModel, Doc<>, SchemaQueryCtx…
 export * from "./dataModel"
