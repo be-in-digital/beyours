@@ -7,6 +7,13 @@ import { type AddressValue } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
 import type { DayHours, StoreOverrides, StoreIntegration } from "./store-detail-types"
+import {
+  DEFAULT_SOUND_CONFIG,
+  KITCHEN_ALERTS,
+  clampVolume,
+  resolveSoundConfig,
+  type KitchenSoundConfig,
+} from "../../lib/kitchen-alerts"
 
 export function useStoreDetail({ params }: { params: Promise<{ storeId: string }> }) {
   const { storeId } = use(params)
@@ -19,6 +26,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const updateAddressMutation = useMutation(api.stores.updateAddress)
   const updateHours = useMutation(api.stores.updateHours)
   const updateOverrides = useMutation(api.stores.updateOverrides)
+  const updateSoundConfig = useMutation(api.stores.updateSoundConfig)
   const upsertIntegration = useMutation(api.storeIntegrations.upsert)
   const removeIntegration = useMutation(api.storeIntegrations.remove)
 
@@ -35,6 +43,10 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     postalCode: "",
     country: "France",
   })
+
+  // Kitchen tab state
+  const [soundConfig, setSoundConfig] =
+    useState<KitchenSoundConfig>(DEFAULT_SOUND_CONFIG)
 
   // Hours tab state
   const [useGlobalHours, setUseGlobalHours] = useState(true)
@@ -99,6 +111,11 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         longitude: store.address.longitude,
       })
     }
+
+    // An establishment that has never been configured shows the display's own
+    // fallbacks, so the form opens on what the kitchen is currently hearing
+    // rather than on zeroes.
+    setSoundConfig(resolveSoundConfig(store.soundConfig as never))
 
     setUseGlobalHours(store.useGlobalHours ?? true)
 
@@ -221,6 +238,27 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       toast.success("Horaires mis à jour avec succès")
     } catch (error) {
       toast.error("Échec de la mise à jour des horaires")
+      console.error(error)
+    }
+  }
+
+  const handleUpdateSounds = async () => {
+    try {
+      // Clamped here as well as in the slider: the value reaches the schema
+      // through a mutation anyone with `stores:write` can call, and a volume
+      // outside 0–100 is a gain the display would clamp silently.
+      const payload = {} as KitchenSoundConfig
+      for (const { key } of KITCHEN_ALERTS) {
+        payload[key] = {
+          enabled: soundConfig[key].enabled,
+          volume: clampVolume(soundConfig[key].volume),
+        }
+      }
+
+      await updateSoundConfig({ id: storeId as string, soundConfig: payload })
+      toast.success("Alertes sonores mises à jour")
+    } catch (error) {
+      toast.error("Échec de la mise à jour des alertes")
       console.error(error)
     }
   }
@@ -567,6 +605,9 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     setStatus,
     address,
     setAddress,
+    soundConfig,
+    setSoundConfig,
+    handleUpdateSounds,
     useGlobalHours,
     setUseGlobalHours,
     hours,
