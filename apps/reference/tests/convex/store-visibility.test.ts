@@ -2,7 +2,7 @@
 /// <reference types="vite/client" />
 
 /**
- * A draft establishment is not readable by the storefront (#224).
+ * A draft establishment is not readable by the storefront (#224, #169).
  *
  * `stores.list` drops drafts — that is what keeps an unpublished restaurant out
  * of the selector, the header dropdown and the sitemap. `stores.getById` walked
@@ -16,6 +16,12 @@
  * to publish drafts, and the KDS reads its own establishment. `kitchen` and
  * `delivery` do not hold `stores:read`, so `getAdminById` is not an option for
  * them. So the rule is by *caller*, not by query.
+ *
+ * Closing `getById` left the same document reachable by its other name.
+ * `getBySlug` had no filter at all, and a slug is the guessable half of the
+ * pair — it is the restaurant's name. The rule belongs to the establishment,
+ * not to the query that happens to find it, so both doors now apply it and the
+ * last describe block here holds them to the same answer.
  */
 
 import { convexTest } from "convex-test"
@@ -41,6 +47,8 @@ function newHarness() {
   return convexTest(schema, modules)
 }
 
+const slugOf = (name: string) => name.toLowerCase().replace(/\s+/g, "-")
+
 async function seedStore(
   t: ReturnType<typeof convexTest>,
   name: string,
@@ -49,7 +57,7 @@ async function seedStore(
   return t.run((ctx) =>
     ctx.db.insert("stores", {
       name,
-      slug: name.toLowerCase().replace(/\s+/g, "-"),
+      slug: slugOf(name),
       address: {
         street: "12 rue Oberkampf",
         city: "Paris",
@@ -61,6 +69,12 @@ async function seedStore(
       hours: [],
       status,
       orderMode: "manual" as const,
+      // The commercial terms an owner sets while the place is still a draft.
+      overrides: {
+        minimumOrderAmount: 25,
+        deliveryRadius: 8,
+        deliveryFee: 3.5,
+      },
       createdAt: NOW,
       updatedAt: NOW,
     })
@@ -189,6 +203,168 @@ describe("stores.getById — a published establishment", () => {
     const store = await t.query(api.stores.getById, { id: storeId })
     expect(store?.printConfig).toBeDefined()
     expect(store?.printConfig).not.toHaveProperty("apiKey")
+  })
+})
+
+describe("stores.getBySlug — a draft", () => {
+  // The slug is the half of the pair nobody has to guess: it is built from the
+  // restaurant's name. Closing `getById` and leaving this open moved the leak
+  // rather than fixing it.
+  test("is not handed to an anonymous visitor", async () => {
+    const t = newHarness()
+    await seedStore(t, "Pizza Draft", "draft")
+
+    expect(
+      await t.query(api.stores.getBySlug, { slug: slugOf("Pizza Draft") })
+    ).toBeNull()
+  })
+
+  test("is not handed to a signed-in customer", async () => {
+    const t = newHarness()
+    await seedStore(t, "Pizza Draft", "draft")
+    const asCustomer = await seedUser(t, "camille", "customer")
+
+    expect(
+      await asCustomer.query(api.stores.getBySlug, {
+        slug: slugOf("Pizza Draft"),
+      })
+    ).toBeNull()
+  })
+
+  test("leaks no address, contact, order mode or overrides with it", async () => {
+    // The four the audit named, asserted one by one so a stripped object —
+    // an answer rather than nothing — cannot pass.
+    const t = newHarness()
+    await seedStore(t, "Pizza Draft", "draft")
+
+    const store = await t.query(api.stores.getBySlug, {
+      slug: slugOf("Pizza Draft"),
+    })
+
+    expect(store?.address).toBeUndefined()
+    expect(store?.phone).toBeUndefined()
+    expect(store?.email).toBeUndefined()
+    expect(store?.orderMode).toBeUndefined()
+    expect(store?.overrides).toBeUndefined()
+  })
+
+  test("is still handed to the owner who has to publish it", async () => {
+    const t = newHarness()
+    const draft = await seedStore(t, "Pizza Draft", "draft")
+    const asOwner = await seedUser(t, "marie", "client_admin", [draft])
+
+    const store = await asOwner.query(api.stores.getBySlug, {
+      slug: slugOf("Pizza Draft"),
+    })
+    expect(store?.name).toBe("Pizza Draft")
+  })
+
+  test("is still handed to a kitchen role", async () => {
+    const t = newHarness()
+    const draft = await seedStore(t, "Pizza Draft", "draft")
+    const asKitchen = await seedUser(t, "pierre", "kitchen", [draft])
+
+    const store = await asKitchen.query(api.stores.getBySlug, {
+      slug: slugOf("Pizza Draft"),
+    })
+    expect(store?.name).toBe("Pizza Draft")
+  })
+
+  test("answers null for a slug no establishment carries", async () => {
+    // The absent case and the refused case are the same answer, so knowing
+    // whether a draft exists under a guessed name is not a thing this query
+    // tells you either.
+    const t = newHarness()
+    await seedStore(t, "Pizza Draft", "draft")
+
+    expect(
+      await t.query(api.stores.getBySlug, { slug: "pizza-nonexistent" })
+    ).toBeNull()
+  })
+})
+
+describe("stores.getBySlug — a published establishment", () => {
+  test.each(["open", "closed", "temporarily_unavailable"] as const)(
+    "stays readable by an anonymous visitor when %s",
+    async (status) => {
+      // What the change must not break: `generateCmsMetadata` renders the
+      // storefront's title and description from this query, server-side and
+      // without an identity.
+      const t = newHarness()
+      await seedStore(t, "Pizza Open", status)
+
+      const store = await t.query(api.stores.getBySlug, {
+        slug: slugOf("Pizza Open"),
+      })
+      expect(store?.name).toBe("Pizza Open")
+      expect(store?.address.city).toBe("Paris")
+    }
+  )
+
+  test("still hides the printer API key from an anonymous visitor", async () => {
+    const t = newHarness()
+    await t.run((ctx) =>
+      ctx.db.insert("stores", {
+        name: "Pizza Open",
+        slug: "pizza-open",
+        address: {
+          street: "12 rue Oberkampf",
+          city: "Paris",
+          postalCode: "75011",
+          country: "France",
+        },
+        hours: [],
+        status: "open" as const,
+        printConfig: {
+          provider: "star_cloud" as const,
+          apiKey: "sk-printer-secret",
+          triggers: ["confirmed" as const],
+          paperSize: "80mm" as const,
+          enabled: true,
+        },
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const store = await t.query(api.stores.getBySlug, { slug: "pizza-open" })
+    expect(store?.printConfig).toBeDefined()
+    expect(store?.printConfig).not.toHaveProperty("apiKey")
+  })
+})
+
+describe("the two doors to one establishment", () => {
+  // The decision this file exists to hold: visibility belongs to the
+  // establishment, not to the query that finds it. Written as an agreement
+  // between the two rather than twice over, so a rule added to one and not the
+  // other fails here whatever that rule turns out to be.
+  test.each(["draft", "open", "closed", "temporarily_unavailable"] as const)(
+    "agree for an anonymous visitor when %s",
+    async (status) => {
+      const t = newHarness()
+      const storeId = await seedStore(t, "Pizza Deux Portes", status)
+
+      const byId = await t.query(api.stores.getById, { id: storeId })
+      const bySlug = await t.query(api.stores.getBySlug, {
+        slug: slugOf("Pizza Deux Portes"),
+      })
+
+      expect(bySlug).toEqual(byId)
+    }
+  )
+
+  test("agree for the owner on a draft", async () => {
+    const t = newHarness()
+    const draft = await seedStore(t, "Pizza Deux Portes", "draft")
+    const asOwner = await seedUser(t, "marie", "client_admin", [draft])
+
+    const byId = await asOwner.query(api.stores.getById, { id: draft })
+    const bySlug = await asOwner.query(api.stores.getBySlug, {
+      slug: slugOf("Pizza Deux Portes"),
+    })
+
+    expect(bySlug).toEqual(byId)
+    expect(byId?.name).toBe("Pizza Deux Portes")
   })
 })
 
