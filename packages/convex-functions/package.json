@@ -22,6 +22,7 @@
     "./globalSettings": "./src/globalSettings.ts",
     "./storeIntegrations": "./src/storeIntegrations.ts",
     "./stores": "./src/stores.ts",
+    "./backupRemap": "./src/backupRemap.ts",
     "./storeAudit": "./src/storeAudit.ts",
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
