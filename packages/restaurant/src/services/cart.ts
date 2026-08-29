@@ -5,7 +5,7 @@
  * No side effects, no store mutations - operates on data only
  */
 
-import type { CartItem, CartSummary } from '../types'
+import type { CartItem, CartSummary, NewCartItem } from '../types'
 
 /**
  * Validation result
@@ -81,26 +81,37 @@ export const mergeCartItems = (existing: CartItem[], newItem: CartItem): CartIte
 }
 
 /**
- * Helper: Check if two items are the same (product + options)
+ * The identity of a cart line: a product plus the options chosen with it.
+ *
+ * One pizza with extra cheese and one plain are two lines of one product, and
+ * everything acting on a line has to be able to name it. Derived rather than
+ * generated, so it is the same value before and after a reload — a random id
+ * stored in localStorage would break the moment a cart is rehydrated by a
+ * build that did not write it.
+ *
+ * Options are sorted, so the order the customer ticked them in does not create
+ * a second line. The separators are control characters no option name carries,
+ * so "Taille: L" plus "Sauce: —" cannot collide with a single option called
+ * something that happens to contain the separator.
  */
-export const isSameItem = (a: CartItem, b: CartItem): boolean => {
-  if (a.productId !== b.productId) return false
-  if (a.options.length !== b.options.length) return false
-
-  // Sort and compare options
-  const aOptions = [...a.options].sort((x, y) => x.name.localeCompare(y.name))
-  const bOptions = [...b.options].sort((x, y) => x.name.localeCompare(y.name))
-
-  return aOptions.every((opt, i) => {
-    const bOpt = bOptions[i]
-    if (!bOpt) return false
-    return (
-      opt.name === bOpt.name &&
-      opt.choice === bOpt.choice &&
-      opt.priceModifier === bOpt.priceModifier
-    )
-  })
+export const cartLineId = (item: NewCartItem): string => {
+  const options = item.options
+    .map((option) => `${option.name}\u001f${option.choice}`)
+    .sort()
+    .join('\u001e')
+  return options ? `${item.productId}\u001d${options}` : item.productId
 }
+
+/**
+ * Helper: Check if two items are the same (product + options)
+ *
+ * One definition of "same line", shared with `cartLineId`. `priceModifier` is
+ * deliberately not compared: two identical choices whose price the owner
+ * changed between two visits are the same dish, and the price the customer
+ * actually pays is recomputed from the product server-side anyway.
+ */
+export const isSameItem = (a: NewCartItem, b: NewCartItem): boolean =>
+  cartLineId(a) === cartLineId(b)
 
 /**
  * Helper: Calculate item total price

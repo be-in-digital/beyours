@@ -7,8 +7,8 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { CartItem, CartSummary, OrderType } from '../types'
-import { isSameItem, getItemTotal } from '../services/cart'
+import type { CartItem, CartSummary, NewCartItem, OrderType } from '../types'
+import { cartLineId, getItemTotal } from '../services/cart'
 
 /**
  * Cart store state
@@ -23,9 +23,11 @@ export interface CartState {
  * Cart store actions
  */
 export interface CartActions {
-  addItem: (item: CartItem) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addItem: (item: NewCartItem) => void
+  /** Takes a line id, not a product id — see `CartItem.lineId`. */
+  removeItem: (lineId: string) => void
+  /** Takes a line id, not a product id — see `CartItem.lineId`. */
+  updateQuantity: (lineId: string, quantity: number) => void
   clearCart: () => void
   setOrderType: (type: OrderType) => void
   setStoreId: (storeId: string) => void
@@ -42,6 +44,27 @@ export interface CartActions {
  */
 export type CartStore = CartState & CartActions
 
+/** Bumped when the persisted shape changes; see `migrateCartState`. */
+export const CART_STORAGE_VERSION = 1
+
+/**
+ * Bring a cart written by an older build up to the current shape.
+ *
+ * A cart persisted before lines had an identity is still sitting in a
+ * customer's browser. Rehydrating it untouched would leave every `lineId`
+ * undefined — and undefined matches every other line, which is the exact bug
+ * this replaces. The id is derived from the line's own contents, so it is
+ * simply recomputed.
+ */
+export function migrateCartState(persisted: unknown, version: number): CartState {
+  const state = persisted as CartState
+  if (version >= CART_STORAGE_VERSION || !state?.items) return state
+  return {
+    ...state,
+    items: state.items.map((item) => ({ ...item, lineId: cartLineId(item) })),
+  }
+}
+
 /**
  * Cart store with persistence
  */
@@ -55,8 +78,12 @@ export const useCartStore = create<CartStore>()(
 
       // Actions
       addItem: (newItem) => {
+        // The line's identity is assigned here and nowhere else: a caller that
+        // invented one could split a line that should merge.
+        const lineId = cartLineId(newItem)
+
         set((state) => {
-          const existingIndex = state.items.findIndex((item) => isSameItem(item, newItem))
+          const existingIndex = state.items.findIndex((item) => item.lineId === lineId)
 
           if (existingIndex >= 0) {
             // Item exists, increment quantity
@@ -71,26 +98,26 @@ export const useCartStore = create<CartStore>()(
             return { items: updatedItems }
           } else {
             // New item, add to cart
-            return { items: [...state.items, newItem] }
+            return { items: [...state.items, { ...newItem, lineId }] }
           }
         })
       },
 
-      removeItem: (productId) => {
+      removeItem: (lineId) => {
         set((state) => ({
-          items: state.items.filter((item) => item.productId !== productId),
+          items: state.items.filter((item) => item.lineId !== lineId),
         }))
       },
 
-      updateQuantity: (productId, quantity) => {
+      updateQuantity: (lineId, quantity) => {
         if (quantity <= 0) {
-          get().removeItem(productId)
+          get().removeItem(lineId)
           return
         }
 
         set((state) => ({
           items: state.items.map((item) =>
-            item.productId === productId ? { ...item, quantity } : item
+            item.lineId === lineId ? { ...item, quantity } : item
           ),
         }))
       },
@@ -153,6 +180,12 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'beindigital-cart', // localStorage key
+      // A cart written before lines had an identity is still sitting in a
+      // customer's browser. Rehydrating it without one would leave every
+      // `lineId` undefined, which matches every other line — the exact bug
+      // this replaces. The id is derived, so it can simply be recomputed.
+      version: CART_STORAGE_VERSION,
+      migrate: migrateCartState,
     }
   )
 )
