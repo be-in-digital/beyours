@@ -148,12 +148,19 @@ export function UpdatesSection({
                 <RenewalCta />
               </div>
             )}
-            {updateResult.registryError && (
+            {updateResult.registryError ? (
               <p className="text-xs text-muted-foreground">
-                Registre npm inaccessible ({updateResult.registryError}) —
+                Registre indisponible ({updateResult.registryError}) —
                 résultat basé sur le catalogue local.
               </p>
-            )}
+            ) : updateResult.registryConfigured === false ? (
+              // Not an error: nothing was asked. Saying "registre inaccessible"
+              // here blamed a registry no deployment had ever pointed at.
+              <p className="text-xs text-muted-foreground">
+                Aucun canal de mise à jour configuré — résultat basé sur le
+                catalogue local.
+              </p>
+            ) : null}
           </div>
         )}
 

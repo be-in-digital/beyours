@@ -32,6 +32,13 @@ interface UpdateCheckResult {
   maintenanceStatus: maintenanceDefs.MaintenanceStatus
   coveredUntil: number | null
   registryError: string | null
+  /**
+   * Whether a release feed is configured at all. False means no lookup was
+   * attempted, which is a different thing from one that was attempted and
+   * failed — and the screen has to say so, or it accuses a registry that was
+   * never asked.
+   */
+  registryConfigured: boolean
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -353,32 +360,49 @@ export const checkForUpdates = action({
 
     let registryError: string | null = null
 
-    // 1. Sync the release catalog from the npm registry (best effort —
-    //    a registry outage must not hide already-known releases)
-    try {
-      const res = await fetch(
-        // TODO(beyours): no package named @be-in-digital/restaurant-theme is published
-        // by this repo (see packages/*). This request 404s, so the release catalog
-        // silently stays empty. Point it at the real engine package before relying
-        // on the maintenance / update feature.
-        "https://registry.npmjs.org/@be-in-digital/restaurant-theme",
-        { headers: { Accept: "application/json" } }
-      )
+    // 1. Sync the release catalog from the release feed (best effort — an
+    //    outage must not hide already-known releases).
+    //
+    //    This used to fetch `registry.npmjs.org/@be-in-digital/restaurant-theme`
+    //    unconditionally. No package by that name is published anywhere, and the
+    //    engine's ten packages go to npm.pkg.github.com as `restricted`, not to
+    //    npmjs — so the request was a guaranteed 404 and every owner who opened
+    //    this screen was told "Registre npm inaccessible (HTTP 404)", for ever.
+    //    There is no correct public URL to substitute: which feed a deployment
+    //    reads, and with what credentials, is a deployment decision.
+    //
+    //    So it is configuration now. Unset means no feed, which the screen
+    //    reports as unconfigured rather than as a registry that let us down.
+    const packumentUrl = process.env.ENGINE_RELEASE_PACKUMENT_URL?.trim()
+    const registryConfigured = Boolean(packumentUrl)
 
-      if (res.ok) {
-        const data = await res.json()
-        const releases = maintenanceDefs.parseNpmTimeMap(data.time)
-        if (releases.length > 0) {
-          await ctx.runMutation(internal.maintenance._upsertReleases, {
-            releases,
-            source: "npm",
-          })
+    if (packumentUrl) {
+      try {
+        // A private registry (GitHub Packages, a proxy) needs a token. Kept
+        // optional: a public or unauthenticated feed needs no header.
+        const token = process.env.ENGINE_RELEASE_REGISTRY_TOKEN?.trim()
+        const res = await fetch(packumentUrl, {
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          const releases = maintenanceDefs.parseNpmTimeMap(data.time)
+          if (releases.length > 0) {
+            await ctx.runMutation(internal.maintenance._upsertReleases, {
+              releases,
+              source: "npm",
+            })
+          }
+        } else {
+          registryError = `Registre indisponible (HTTP ${res.status})`
         }
-      } else {
-        registryError = `Registre npm indisponible (HTTP ${res.status})`
+      } catch (error) {
+        registryError = error instanceof Error ? error.message : String(error)
       }
-    } catch (error) {
-      registryError = error instanceof Error ? error.message : String(error)
     }
 
     // 2. Resolve entitlement from the stored catalog + contract
@@ -404,6 +428,7 @@ export const checkForUpdates = action({
       maintenanceStatus: entitlement.maintenanceStatus,
       coveredUntil: contract?.coveredUntil ?? null,
       registryError,
+      registryConfigured,
     }
 
     await ctx.runMutation(internal.system._recordAuditEntry, {

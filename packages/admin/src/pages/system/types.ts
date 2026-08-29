@@ -36,6 +36,8 @@ export interface UpdateCheckResult {
   maintenanceStatus: MaintenanceStatus
   coveredUntil: number | null
   registryError: string | null
+  /** False when no release feed is configured — no lookup was attempted. */
+  registryConfigured?: boolean
 }
 
 export type MaintenanceStatus = "none" | "active" | "expiring_soon" | "expired"
