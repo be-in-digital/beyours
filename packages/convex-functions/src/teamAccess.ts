@@ -167,14 +167,7 @@ export function invitationGrant(
    */
   existing?: { role: Role; storeIds: string[] } | null
 ): InvitationGrant {
-  const invitedRole: Role =
-    member.role === "manager"
-      ? Role.MANAGER
-      : member.role === "kitchen"
-        ? Role.KITCHEN
-        : member.role === "waiter"
-          ? Role.WAITER
-          : Role.DELIVERY
+  const invitedRole: Role = teamRoleToProfileRole(member.role)
 
   const invitedStoreIds =
     !member.allStores && member.storeId ? [member.storeId] : []
@@ -190,6 +183,27 @@ export function invitationGrant(
   return {
     role: keepsHigherRole ? existing.role : invitedRole,
     storeIds: Array.from(new Set([...existing.storeIds, ...invitedStoreIds])),
+  }
+}
+
+/**
+ * The `userProfiles` role a roster role stands for.
+ *
+ * The roster speaks in four job titles; the profile speaks in `Role`. Both
+ * `invitationGrant` and `membershipUpdateEffect` need the same translation, and
+ * having it in one place is what keeps an edit from meaning something different
+ * than the invitation that preceded it.
+ */
+export function teamRoleToProfileRole(role: TeamRole): Role {
+  switch (role) {
+    case "manager":
+      return Role.MANAGER
+    case "kitchen":
+      return Role.KITCHEN
+    case "waiter":
+      return Role.WAITER
+    case "delivery":
+      return Role.DELIVERY
   }
 }
 
@@ -426,4 +440,161 @@ export function sweepInvitation(
   // "accepted" without a userId should not happen; keeping it is the answer
   // that loses nothing if it does.
   return "keep"
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Editing a membership after it has been accepted                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * One roster row, reduced to what the profile projection depends on.
+ */
+export interface MembershipProjection {
+  role: TeamRole
+  /** Absent when `allStores` is true. */
+  storeId?: string
+  allStores: boolean
+  /** The module checkboxes. Empty or absent means unrestricted. */
+  permissions?: string[]
+  isActive: boolean
+}
+
+/** The profile fields a roster edit can move. */
+export interface ProfileProjection {
+  role: Role
+  storeIds: string[]
+  permissions?: string[]
+}
+
+function coveredStore(
+  membership: Pick<MembershipProjection, "storeId" | "allStores">
+): string | undefined {
+  return !membership.allStores && membership.storeId
+    ? membership.storeId
+    : undefined
+}
+
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  const seen = new Set(a)
+  return b.every((x) => seen.has(x))
+}
+
+/**
+ * What a profile must become when an existing membership is EDITED.
+ *
+ * The third side of a bridge that had only two. `acceptInvitation` provisions
+ * the profile and `revocationEffect` takes it back, but `update` — the "Modifier
+ * le membre" dialog, the one an owner actually uses day to day — patched the
+ * roster row and stopped there. Every guard resolves rights from `userProfiles`
+ * and none of them reads `teamMembers`, so unticking "Produits" for a waiter,
+ * demoting a manager, or moving someone to another restaurant all changed the
+ * team screen and nothing else. The owner believed they were restricting; they
+ * were restricting nothing.
+ *
+ * Returns `null` when the profile should be left alone — either because the
+ * roster has no authority over it, or because nothing actually moved. A no-op
+ * patch would bump `updatedAt` and an audit trail full of empty entries is one
+ * nobody reads.
+ *
+ * WHAT IS DELIBERATE HERE:
+ *
+ * - **Admins are untouchable from the roster.** Same rule, same reason, as
+ *   `revocationEffect`: their authority does not come from the team screen, and
+ *   a client admin editing a row on their own store must not be able to demote
+ *   the super admin who happens to appear on it.
+ *
+ * - **Establishments move by delta, not by recompute.** A profile can hold
+ *   stores granted outside the roster entirely, and rebuilding the list from
+ *   the memberships alone would quietly confiscate those. Only the store THIS
+ *   membership used to cover is dropped, and only when no other active
+ *   membership still covers it.
+ *
+ * - **Modules ARE recomputed.** They have to be: the whole defect is that
+ *   unticking a box changed nothing, and any rule that merges the new list into
+ *   the old one keeps it that way. Unrestricted stays absorbing, exactly as in
+ *   `invitationModules` — a member left open in one restaurant is open, because
+ *   `userProfiles.permissions` is per ACCOUNT and cannot say otherwise. The
+ *   consequence, stated rather than hidden: the roster OWNS the module list, so
+ *   modules written straight onto a profile through `userProfiles.upsert` —
+ *   which no screen currently calls — are superseded by the next roster edit.
+ *
+ * - **The role is the highest one still held.** Someone can be a manager in
+ *   Lyon and a waiter in Paris; the profile carries a single role, so an edit in
+ *   Paris must not cost them Lyon.
+ *
+ * - **Widening to chain-wide narrows nothing.** `allStores` has no
+ *   representation in `userProfiles` — `invitationGrant` says so and refuses to
+ *   enumerate stores for it — so a membership that becomes chain-wide keeps the
+ *   store list it had. The gap is real and stated; dropping the person to
+ *   `customer` because we cannot express their promotion would be worse than
+ *   leaving them where they were.
+ */
+export function membershipUpdateEffect(params: {
+  profile: ProfileProjection
+  /** The edited membership as it stood before the patch. */
+  before: Pick<MembershipProjection, "storeId" | "allStores">
+  /** The edited membership as it stands after the patch. */
+  after: MembershipProjection
+  /** The same person's OTHER roster rows, in their current state. */
+  others: readonly MembershipProjection[]
+}): { role: Role; storeIds: string[]; permissions: string[] } | null {
+  const { profile, before, after, others } = params
+
+  if (profile.role === Role.SUPER_ADMIN || profile.role === Role.CLIENT_ADMIN) {
+    return null
+  }
+
+  const otherActive = others.filter((m) => m.isActive)
+  const active = after.isActive ? [after, ...otherActive] : otherActive
+
+  // --- establishments ------------------------------------------------
+  const dropped = coveredStore(before)
+  const gained = after.isActive ? coveredStore(after) : undefined
+  const heldElsewhere =
+    dropped !== undefined &&
+    otherActive.some((m) => coveredStore(m) === dropped)
+  const widenedToChain = after.isActive && after.allStores
+
+  let storeIds = profile.storeIds
+  if (
+    dropped !== undefined &&
+    dropped !== gained &&
+    !heldElsewhere &&
+    !widenedToChain
+  ) {
+    storeIds = storeIds.filter((id) => id !== dropped)
+  }
+  if (gained !== undefined && !storeIds.includes(gained)) {
+    storeIds = [...storeIds, gained]
+  }
+
+  // --- role ----------------------------------------------------------
+  const rosterRole = active.length
+    ? active
+        .map((m) => teamRoleToProfileRole(m.role))
+        .reduce((best, r) => (ROLE_RANK[best] >= ROLE_RANK[r] ? best : r))
+    : null
+
+  // A staff role with nowhere to exercise it is not a role. This is the tail of
+  // `revocationEffect`, reached when the last membership is deactivated.
+  const hasSomewhere = storeIds.length > 0 || active.some((m) => m.allStores)
+  const role: Role = !hasSomewhere
+    ? Role.CUSTOMER
+    : (rosterRole ?? profile.role)
+
+  // --- modules -------------------------------------------------------
+  const lists = active.map((m) => m.permissions ?? [])
+  const permissions =
+    lists.length === 0 || lists.some((l) => l.length === 0)
+      ? []
+      : Array.from(new Set(lists.flat()))
+
+  const unchanged =
+    role === profile.role &&
+    sameSet(storeIds, profile.storeIds) &&
+    sameSet(permissions, profile.permissions ?? [])
+
+  return unchanged ? null : { role, storeIds, permissions }
 }
