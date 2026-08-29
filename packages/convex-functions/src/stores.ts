@@ -291,26 +291,17 @@ export const updatePrintConfig = {
 }
 
 /**
- * Update store display configuration
- */
-export const updateDisplayConfig = {
-  args: {
-    id: v.id("stores"),
-    displayConfig: v.optional(v.object({
-      autoDismissEnabled: v.boolean(),
-      autoDismissMinutes: v.number(),
-    })),
-  },
-  handler: async (ctx: any, args: any) => {
-    const existing = await requireStore(ctx, args.id)
-    const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateDisplayConfig, { displayConfig: args.displayConfig })
-    await ctx.db.patch(args.id, { displayConfig: args.displayConfig, updatedAt: Date.now() })
-    await recordStoreAudit(ctx, audit)
-  },
-}
-
-/**
  * Update store sound configuration
+ *
+ * The one of the three kitchen-display settings that is read: `KitchenContent`
+ * hands `soundConfig` to `KitchenSoundManager`, in both apps, and it decides
+ * which alerts sound and how loudly. `orderConfirmation` and `displayConfig`
+ * sat beside it with nothing reading them and were removed; this one was kept
+ * for exactly that reason.
+ *
+ * It has no editor. The KDS falls back to `{ enabled: true, volume: 80..100 }`
+ * for every alert, so the feature works and is not configurable — a gap worth
+ * closing, and not the same thing as dead code.
  */
 export const updateSoundConfig = {
   args: {
@@ -325,22 +316,6 @@ export const updateSoundConfig = {
     const existing = await requireStore(ctx, args.id)
     const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateSoundConfig, { soundConfig: args.soundConfig })
     await ctx.db.patch(args.id, { soundConfig: args.soundConfig, updatedAt: Date.now() })
-    await recordStoreAudit(ctx, audit)
-  },
-}
-
-/**
- * Update store order confirmation mode
- */
-export const updateOrderConfirmation = {
-  args: {
-    id: v.id("stores"),
-    orderConfirmation: v.union(v.literal("auto"), v.literal("manual")),
-  },
-  handler: async (ctx: any, args: any) => {
-    const existing = await requireStore(ctx, args.id)
-    const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateOrderConfirmation, { orderConfirmation: args.orderConfirmation })
-    await ctx.db.patch(args.id, { orderConfirmation: args.orderConfirmation, updatedAt: Date.now() })
     await recordStoreAudit(ctx, audit)
   },
 }
