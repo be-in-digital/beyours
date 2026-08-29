@@ -6,6 +6,7 @@
 
 // Re-export all function modules
 export * as stores from "./stores"
+export * as backupRemap from "./backupRemap"
 export * as storeAudit from "./storeAudit"
 export * as globalSettings from "./globalSettings"
 export * as storeIntegrations from "./storeIntegrations"
