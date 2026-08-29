@@ -673,17 +673,27 @@ describe("create — the establishment has to be published", () => {
     expect(inserted).toEqual([])
   })
 
-  it.each(["open", "closed", "temporarily_unavailable"])(
-    "accepts a %s establishment",
-    async (status) => {
-      // `closed` and `temporarily_unavailable` are states of a published
-      // restaurant — outside its hours, or paused for the evening. Whether to
-      // offer ordering then is the storefront's call, not this guard's.
-      const { ctx } = ctxForStore({ status })
+  it("accepts an open establishment", async () => {
+    const { ctx } = ctxForStore({ status: "open" })
 
-      await expect(create.handler(ctx, args as never)).resolves.toMatch(
-        /^orders:/
+    await expect(create.handler(ctx, args as never)).resolves.toMatch(/^orders:/)
+  })
+
+  it.each(["closed", "temporarily_unavailable"])(
+    "refuses a %s establishment",
+    async (status) => {
+      // These two used to be accepted, on the reading that whether to offer
+      // ordering while closed is the storefront's call. It is not: they are the
+      // two ways an owner says "not tonight" from the dashboard, the storefront
+      // already greys out every button on them, and only the browser did (#224).
+      // They stay *published* — listed, with a readable menu — which is the
+      // wider rule `isPublishedStore` still carries.
+      const { ctx, inserted } = ctxForStore({ status })
+
+      await expect(create.handler(ctx, args as never)).rejects.toThrow(
+        /not accepting orders/
       )
+      expect(inserted).toEqual([])
     }
   )
 
