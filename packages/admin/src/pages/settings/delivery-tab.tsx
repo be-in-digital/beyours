@@ -92,16 +92,29 @@ export function DeliveryTab({
               </div>
             </button>
 
+            {/* Percentage mode bills a share of an Uber Direct quote. Without
+                the integration there is no quote to bill a share of, and the
+                checkout refuses every delivery order with "un devis de
+                livraison est requis" — which the customer cannot satisfy. The
+                option is offered only when it can work. */}
             <button
               type="button"
+              disabled={!uberDirectEnabled}
+              title={
+                uberDirectEnabled
+                  ? undefined
+                  : "Activez Uber Direct pour facturer un pourcentage du coût réel"
+              }
               onClick={() => {
                 setFeeMode("percentage")
                 setSimulationResult(null)
               }}
               className={`flex items-center gap-3 border rounded-lg px-4 py-3 text-left transition-colors ${
-                feeMode === "percentage"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "border-border/50 hover:border-border"
+                !uberDirectEnabled
+                  ? "cursor-not-allowed border-border/50 opacity-50"
+                  : feeMode === "percentage"
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "border-border/50 hover:border-border"
               }`}
             >
               <div className={`h-3 w-3 rounded-full border-2 ${
@@ -111,7 +124,11 @@ export function DeliveryTab({
               }`} />
               <div>
                 <div className="text-sm font-medium">Pourcentage Uber Direct</div>
-                <div className="text-xs text-muted-foreground">Calculé sur le coût réel de la livraison</div>
+                <div className="text-xs text-muted-foreground">
+                  {uberDirectEnabled
+                    ? "Calculé sur le coût réel de la livraison"
+                    : "Nécessite l'intégration Uber Direct"}
+                </div>
               </div>
             </button>
           </div>

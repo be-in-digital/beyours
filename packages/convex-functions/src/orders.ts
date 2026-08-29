@@ -25,6 +25,7 @@ import {
   type PromotionForDiscount,
 } from "./promotionDiscount"
 import { assertQuoteApplies, quotedDeliveryFee } from "./deliveryQuote"
+import { assertMeetsMinimum, assertWithinDeliveryRadius } from "./deliveryZone"
 import {
   computeOrderTotals,
   resolveTaxRatePercent,
@@ -211,6 +212,7 @@ interface OrderItemInput {
 
 interface CreateOrderArgs {
   storeId: string
+  idempotencyKey?: string
   customerId?: string
   customerInfo: { name: string; email?: string; phone?: string }
   items: OrderItemInput[]
@@ -232,6 +234,7 @@ interface CreateOrderArgs {
 
 interface StoreDoc {
   status?: string
+  address?: { latitude?: number; longitude?: number }
   settings?: { taxRate?: number }
   /** Per-store service switches, when the owner has customised them. */
   overrides?: {
@@ -247,6 +250,7 @@ interface StoreDoc {
 interface GlobalSettingsDoc {
   taxRate?: number
   timezone?: string
+  minimumOrderAmount?: number
   /** The deployment-wide service switches, written by the settings page. */
   services?: {
     dineIn?: boolean
@@ -260,6 +264,7 @@ interface GlobalSettingsDoc {
     percentage?: number
     maxFee?: number
     freeAbove?: number
+    radius?: number
   }
 }
 
@@ -313,9 +318,27 @@ export const create = {
     // NOTE: there is deliberately no `uberDirectFee` argument. In percentage
     // mode the fee is read from the stored quote this id refers to.
     uberDirectEstimateId: v.optional(v.string()),
+    // One checkout attempt, as the browser identifies it. See the handler.
+    idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx: any, args: CreateOrderArgs) => {
     const now = Date.now()
+
+    // A second click on "Payer" used to buy a second dinner. The button
+    // re-enables in `finally` while the redirect to the payment provider is
+    // still in flight, and the cart survives a Back navigation: two orders, two
+    // kitchen tickets, two promotion usages. The webhook path has had a dedup
+    // key since the beginning (`createFromWebhook`); the customer's own path
+    // had none.
+    if (args.idempotencyKey) {
+      const existing = await ctx.db
+        .query("orders")
+        .withIndex("by_storeId_idempotencyKey", (q: any) =>
+          q.eq("storeId", args.storeId).eq("idempotencyKey", args.idempotencyKey)
+        )
+        .first()
+      if (existing) return existing._id
+    }
 
     // Get store and global settings for tax rate and delivery config
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
@@ -418,6 +441,20 @@ export const create = {
 
     // Calculate subtotal from server-verified items
     const subtotal = verifiedItems.reduce((sum: number, item: OrderItemInput) => sum + item.subtotal, 0)
+
+    // Two settings the dashboard writes and nothing read.
+    assertMeetsMinimum({
+      subtotal,
+      minimumOrderAmount: globalSettings?.minimumOrderAmount,
+    })
+
+    if (args.type === "delivery") {
+      assertWithinDeliveryRadius({
+        radiusKm: globalSettings?.delivery?.radius,
+        store: store.address,
+        dropoff: args.deliveryAddress,
+      })
+    }
 
     // Calculate delivery fee based on fee mode
     // Set once a quote has been validated, so it can be stamped consumed after
@@ -609,6 +646,7 @@ export const create = {
       source: "website",
       notes: args.notes,
       viewToken,
+      idempotencyKey: args.idempotencyKey,
       createdAt: now,
       updatedAt: now,
     })
@@ -649,6 +687,57 @@ export const create = {
     }
 
     return orderId
+  },
+}
+
+/**
+ * Record that a cash order was paid, at the counter or at the door.
+ *
+ * Cash was offered at checkout, accepted, and then unreachable: nothing ever
+ * wrote a `payments` row for it, so the "Espèces" filter on the payments page
+ * could never match, the order stayed `paymentStatus: "pending"` for ever, and
+ * there was nothing to reconcile a till against. `internalUpdatePaymentStatus`
+ * exists but is reachable only from the provider actions — no card provider
+ * takes cash.
+ *
+ * Staff-side by definition: somebody has to have taken the notes.
+ */
+export const markCashPaid = {
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx: any, args: { orderId: string }) => {
+    const order = await ctx.db.get(args.orderId)
+    if (!order) throw new Error("Order not found")
+
+    if (order.paymentStatus === "paid") {
+      // Two members of staff pressing the same button is not a second payment.
+      return null
+    }
+    if (order.paymentStatus === "refunded" || order.paymentStatus === "partially_refunded") {
+      throw new Error("Cette commande a déjà été remboursée.")
+    }
+
+    const now = Date.now()
+    const globalSettings = await ctx.db.query("globalSettings").first()
+
+    const paymentId = await ctx.db.insert("payments", {
+      orderId: args.orderId,
+      storeId: order.storeId,
+      amount: order.total,
+      currency: globalSettings?.currency ?? "EUR",
+      provider: "cash" as const,
+      status: "succeeded" as const,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    await ctx.db.patch(args.orderId, {
+      paymentStatus: "paid",
+      updatedAt: now,
+    })
+
+    return paymentId
   },
 }
 
@@ -725,6 +814,26 @@ export const updateStatus = {
     }
 
     await ctx.db.patch(args.id, updates)
+
+    // A cancelled order used to leave its ticket live: the kitchen kept cooking
+    // it on the display, and `/track/[token]` kept saying "en préparation" —
+    // the page's own cancelled branch was unreachable from a cancellation. The
+    // sync was one-way, ticket → order, and never the other.
+    if (args.status === "cancelled") {
+      const tickets = await ctx.db
+        .query("kitchenTickets")
+        .withIndex("by_orderId", (q: any) => q.eq("orderId", args.id))
+        .collect()
+
+      for (const ticket of tickets) {
+        if (ticket.status !== "cancelled" && ticket.status !== "completed") {
+          await ctx.db.patch(ticket._id as string, {
+            status: "cancelled",
+            updatedAt: now,
+          })
+        }
+      }
+    }
   },
 }
 
@@ -989,6 +1098,15 @@ export const createWithTicket = {
 
     const order = await ctx.db.get(orderId)
     if (!order) throw new Error("Order creation failed")
+
+    // A replayed checkout returns the order that already exists, so the ticket
+    // for it already exists too. Asking first is what keeps the kitchen from
+    // plating the same dinner twice.
+    const existingTicket = await ctx.db
+      .query("kitchenTickets")
+      .withIndex("by_orderId", (q: any) => q.eq("orderId", orderId))
+      .first()
+    if (existingTicket) return orderId
 
     await kitchenTicketCreate.handler(ctx, {
       storeId: order.storeId,
