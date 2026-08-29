@@ -5,6 +5,7 @@
  */
 
 import { v } from "convex/values"
+import { requireStorePermission } from "./auth"
 
 // === QUERIES ===
 
@@ -225,6 +226,27 @@ export const setTrendingProducts = {
 // === MUTATIONS ===
 
 /**
+ * Refuse a category that belongs to another establishment.
+ *
+ * A category id is public — `categories.list` is the storefront menu — and
+ * nothing checked that the one being assigned belonged to the same restaurant.
+ * A product filed under someone else's category is invisible in its own admin
+ * (the name resolves to "Inconnu"), unreachable from its own menu, and it
+ * leaks the fact that the other establishment has that category at all.
+ */
+async function assertCategoryInStore(
+  ctx: any,
+  categoryId: string,
+  storeId: string
+): Promise<void> {
+  const category = await ctx.db.get(categoryId)
+  if (!category) throw new Error("Category not found")
+  if (category.storeId !== storeId) {
+    throw new Error("Category belongs to another store")
+  }
+}
+
+/**
  * Create a new product
  */
 export const create = {
@@ -291,6 +313,7 @@ export const create = {
   },
   handler: async (ctx: any, args: any) => {
     if (args.price < 0) throw new Error("Price cannot be negative")
+    await assertCategoryInStore(ctx, args.categoryId, args.storeId)
     const now = Date.now()
     return await ctx.db.insert("products", {
       ...args,
@@ -369,6 +392,9 @@ export const update = {
     const { id, ...fields } = args
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Product not found")
+    if (fields.categoryId !== undefined) {
+      await assertCategoryInStore(ctx, fields.categoryId, existing.storeId)
+    }
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
 }
@@ -500,6 +526,39 @@ export const toggleStatus = {
 }
 
 /**
+ * Reorder the products of one store.
+ *
+ * `sortOrder` is what the storefront's default sort — "Recommandé" — reads
+ * after featured products (`sortProducts` in `@be-in-digital/restaurant`). The
+ * column existed, the form schema declared it, and nothing rendered an input
+ * or a reorder control: every product kept the 0 the creation form sent, so
+ * the owner's menu was ordered by nothing at all.
+ *
+ * Takes the store explicitly and refuses any id outside it, rather than
+ * inferring the store from the first product — the ids arrive from a client.
+ */
+export const reorder = {
+  args: {
+    storeId: v.id("stores"),
+    ids: v.array(v.id("products")),
+  },
+  handler: async (ctx: any, args: any) => {
+    for (const id of args.ids) {
+      const product = await ctx.db.get(id)
+      if (!product) throw new Error(`Product not found: ${id}`)
+      if (product.storeId !== args.storeId) {
+        throw new Error("All products must belong to the same store")
+      }
+    }
+
+    const now = Date.now()
+    for (let i = 0; i < args.ids.length; i++) {
+      await ctx.db.patch(args.ids[i], { sortOrder: i, updatedAt: now })
+    }
+  },
+}
+
+/**
  * Delete a product
  */
 export const remove = {
@@ -541,14 +600,20 @@ export const duplicateCatalog = {
     // 2. Create categories in target store, building an old→new ID mapping
     const categoryIdMap = new Map<string, string>();
     for (const cat of sourceCategories) {
+      // `image` is not a column and `createdAt`/`updatedAt` are required: this
+      // insert threw on every store that had a single category, and the test
+      // that covered it only ever copied an empty catalogue.
+      const catNow = Date.now();
       const newCatId = await ctx.db.insert("categories", {
         storeId: args.targetStoreId,
         name: cat.name,
         slug: cat.slug,
         description: cat.description,
-        image: cat.image,
+        imageUrl: cat.imageUrl,
         sortOrder: cat.sortOrder,
         isActive: cat.isActive,
+        createdAt: catNow,
+        updatedAt: catNow,
       });
       categoryIdMap.set(cat._id, newCatId);
     }
@@ -649,6 +714,13 @@ export const updateWithPropagation = {
     const product = await ctx.db.get(args.productId);
     if (!product) throw new Error("Product not found");
 
+    // The same guard `update` has carried since the beginning. This path
+    // skipped it, so the one mutation that writes a price into several stores
+    // at once was also the one that accepted a negative one.
+    if (args.updates.price !== undefined && args.updates.price < 0) {
+      throw new Error("Price cannot be negative");
+    }
+
     const updates = { ...args.updates, updatedAt: Date.now() };
 
     // Apply updates to the current product
@@ -682,7 +754,24 @@ export const updateWithPropagation = {
       allRelated = allRelated.filter((p: any) => targetSet.has(p.storeId));
     }
 
-    // 4. Build the propagated patch — strip store-specific overrides so that
+    // 4. The caller proved rights over the store of the *named* product, and
+    // the wrapper's guard stops there. Every twin below lives in a different
+    // establishment, and this handler was writing names, prices and
+    // availability into all of them. A manager of one location could reprice a
+    // sister restaurant they do not administer — the mutation is public, and
+    // product ids are public via `products.list`.
+    //
+    // Each target store is checked once, and a store out of reach refuses the
+    // whole propagation rather than being skipped: a caller who asked to
+    // propagate must not be told "updated: 3" while two were silently dropped.
+    const targetStoreIds = new Set<string>(
+      allRelated.map((p: any) => p.storeId)
+    );
+    for (const storeId of targetStoreIds) {
+      await requireStorePermission(ctx, storeId, "products:write");
+    }
+
+    // 5. Build the propagated patch — strip store-specific overrides so that
     // each store keeps its own platform pricing configuration intact.
     const propagatedUpdates = { ...updates };
     delete propagatedUpdates.platformOverrides;

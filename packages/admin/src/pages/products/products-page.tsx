@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { Plus, Grid3x3, List, X, ShoppingBag, ImagePlus } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
+import { toast } from "sonner"
 import { adminRoutes } from "../../config/admin-routes"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
@@ -77,9 +78,22 @@ export function ProductsPage() {
     storeId ? { storeId } : "skip"
   )
 
+  const reorderProducts = useMutation(api?.products?.reorder)
+
+  // The catalogue in the order the storefront serves it: `sortOrder` first —
+  // what "Recommandé" reads — then the name, so two products left at 0 do not
+  // swap places between renders.
+  const orderedProducts = useMemo(() => {
+    if (!products) return undefined
+    return [...products].sort(
+      (a: any, b: any) =>
+        (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.name.localeCompare(b.name)
+    )
+  }, [products])
+
   // Filter products
   const filteredProducts = useMemo(() => {
-    return products?.filter((product: any) => {
+    return orderedProducts?.filter((product: any) => {
       if (debouncedSearch) {
         const searchLower = debouncedSearch.toLowerCase()
         const matchesSearch =
@@ -96,7 +110,7 @@ export function ProductsPage() {
       }
       return true
     })
-  }, [products, debouncedSearch, categoryFilter, statusFilter, sourceFilter])
+  }, [orderedProducts, debouncedSearch, categoryFilter, statusFilter, sourceFilter])
 
   // Pagination
   const totalItems = filteredProducts?.length ?? 0
@@ -117,6 +131,38 @@ export function ProductsPage() {
   const activeFilterCount = [categoryFilter, statusFilter, sourceFilter].filter(
     (f) => f !== "all"
   ).length
+
+  // Reordering rewrites the whole store's order, so it only makes sense while
+  // the list on screen IS that order: with a filter on, "move up" would swap
+  // with a row the owner cannot see.
+  const isFilteredView =
+    Boolean(debouncedSearch) ||
+    categoryFilter !== "all" ||
+    statusFilter !== "all" ||
+    sourceFilter !== "all"
+
+  const handleMove = async (productId: string, direction: "up" | "down") => {
+    if (!orderedProducts || !storeId) return
+
+    const index = orderedProducts.findIndex((p: any) => p._id === productId)
+    const target = direction === "up" ? index - 1 : index + 1
+    if (index < 0 || target < 0 || target >= orderedProducts.length) return
+
+    const ids = orderedProducts.map((p: any) => p._id)
+    const moved = ids[index]
+    const displaced = ids[target]
+    if (!moved || !displaced) return
+    ids[index] = displaced
+    ids[target] = moved
+
+    try {
+      await reorderProducts({ storeId, ids })
+      toast.success("Ordre mis à jour avec succès")
+    } catch (error) {
+      toast.error("Échec du réordonnancement des produits")
+      console.error(error)
+    }
+  }
 
   const clearFilters = () => {
     setCategoryFilter("all")
@@ -291,6 +337,12 @@ export function ProductsPage() {
                 <ProductsTable
                   products={paginatedProducts}
                   categories={categories || []}
+                  onMove={handleMove}
+                  reorderDisabled={isFilteredView}
+                  firstProductId={orderedProducts?.[0]?._id}
+                  lastProductId={
+                    orderedProducts?.[orderedProducts.length - 1]?._id
+                  }
                 />
 
                 {/* Pagination */}

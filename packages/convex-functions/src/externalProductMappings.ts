@@ -80,12 +80,28 @@ export const upsert = {
     externalName?: string
     externalPrice?: number
   }) => {
+    // The caller proved rights over `args.storeId`, and the lookup below keys
+    // on the product alone. Product ids are public — `products.list` is the
+    // storefront — so a mapping in another restaurant could be overwritten by
+    // naming its product and one's own store: their dish then points at the
+    // caller's Uber Eats item, and every order for it lands in the wrong
+    // kitchen. The tenancy of both ends is checked before anything is written.
+    const product = await ctx.db.get(args.internalProductId)
+    if (!product) throw new Error("Product not found")
+    if (product.storeId !== args.storeId) {
+      throw new Error("Product belongs to another store")
+    }
+
     const existing = await ctx.db
       .query("externalProductMappings")
       .withIndex("by_internal", (q: any) =>
         q.eq("internalProductId", args.internalProductId).eq("platform", args.platform)
       )
       .unique()
+
+    if (existing && existing.storeId !== args.storeId) {
+      throw new Error("Mapping belongs to another store")
+    }
 
     const now = Date.now()
     if (existing) {

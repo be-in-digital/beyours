@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -40,6 +40,22 @@ export function CategoriesPage() {
     api?.categories?.list,
     storeId ? { storeId } : "skip"
   )
+
+  // How many products each category holds. The deletion refuses while that
+  // number is not zero, and an owner should read it before the click rather
+  // than in a toast afterwards.
+  const products = useQuery(
+    api?.products?.list,
+    storeId ? { storeId } : "skip"
+  )
+
+  const productCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const product of products ?? []) {
+      counts.set(product.categoryId, (counts.get(product.categoryId) ?? 0) + 1)
+    }
+    return counts
+  }, [products])
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<any | null>(null)
@@ -100,6 +116,8 @@ export function CategoriesPage() {
       console.error(error)
     }
   }
+
+  const deletingCount = deletingId ? productCounts.get(deletingId) ?? 0 : 0
 
   if (!storeId) return <ResolvingStore />
 
@@ -163,6 +181,10 @@ export function CategoriesPage() {
                       <CardTitle className="text-sm font-medium">{category.name}</CardTitle>
                       <Badge variant={category.isActive ? "default" : "secondary"} className="text-xs">
                         {category.isActive ? "Actif" : "Inactif"}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {productCounts.get(category._id) ?? 0} produit
+                        {(productCounts.get(category._id) ?? 0) > 1 ? "s" : ""}
                       </Badge>
                     </div>
                     {category.description && (
@@ -244,15 +266,30 @@ export function CategoriesPage() {
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deletingCount > 0 ? "Catégorie non vide" : "Êtes-vous sûr ?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action est irréversible. La catégorie sera définitivement supprimée.
-              Les produits de cette catégorie ne seront pas supprimés, mais perdront leur assignation de catégorie.
+              {deletingCount > 0 ? (
+                <>
+                  Cette catégorie contient {deletingCount} produit
+                  {deletingCount > 1 ? "s" : ""}. Déplacez-{deletingCount > 1 ? "les" : "le"} dans
+                  une autre catégorie avant de la supprimer : sans catégorie, un produit
+                  reste commandable sans être classé nulle part.
+                </>
+              ) : (
+                <>
+                  Cette action est irréversible. La catégorie sera définitivement
+                  supprimée.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Supprimer</AlertDialogAction>
+            {deletingCount === 0 && (
+              <AlertDialogAction onClick={handleDelete}>Supprimer</AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

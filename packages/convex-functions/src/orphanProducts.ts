@@ -82,6 +82,19 @@ export const match = {
     matchedProductId: v.id("products"),
   },
   handler: async (ctx: any, args: { id: string; matchedProductId: string }) => {
+    const orphan = await ctx.db.get(args.id)
+    if (!orphan) throw new Error("Orphan product not found")
+
+    // The guard above this handler scopes to the orphan's store; the product
+    // being matched was never checked. Pointing a platform item at another
+    // restaurant's product sends that restaurant's orders — and their price —
+    // into this kitchen.
+    const product = await ctx.db.get(args.matchedProductId)
+    if (!product) throw new Error("Product not found")
+    if (product.storeId !== orphan.storeId) {
+      throw new Error("Product belongs to another store")
+    }
+
     await ctx.db.patch(args.id, {
       status: "matched" as const,
       matchedProductId: args.matchedProductId,

@@ -32,6 +32,19 @@ import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
 const optionalNumber = (schema: z.ZodNumber) =>
   schema.optional().or(z.nan().transform(() => undefined))
 
+/**
+ * A number the server requires.
+ *
+ * `valueAsNumber` yields NaN for an empty input, and `optionalNumber` turned
+ * that into `undefined` — which the Convex validator refuses, because the
+ * column is `v.number()`. Clearing the VAT field therefore failed the whole
+ * save under a generic "Échec de la mise à jour du produit" toast, with no
+ * indication of which field was at fault. NaN is a missing value, and it is
+ * reported here, on the field.
+ */
+const requiredNumber = (schema: z.ZodNumber, message: string) =>
+  z.union([schema, z.nan()]).refine((value) => !Number.isNaN(value), { message })
+
 const productFormSchema = z.object({
   categoryId: z.string().min(1, "Category is required"),
   name: z.string().min(1, "Name is required").max(200),
@@ -39,7 +52,10 @@ const productFormSchema = z.object({
   description: z.string().max(2000).optional(),
   priceEuros: z.number().min(0, "Price must be positive"),
   compareAtPriceEuros: optionalNumber(z.number().min(0)),
-  taxRate: optionalNumber(z.number().min(0).max(100)),
+  taxRate: requiredNumber(
+    z.number().min(0, "Le taux de TVA ne peut pas être négatif").max(100, "Le taux de TVA ne peut pas dépasser 100 %"),
+    "Le taux de TVA est requis"
+  ),
   preparationTime: optionalNumber(z.number().int().min(1).max(240)),
   sku: z.string().max(50).optional(),
   images: z.array(z.string()).optional(),
@@ -508,7 +524,7 @@ export function ProductForm({
           {/* Tax Rate & Prep Time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="taxRate" className="text-sm">Taux de TVA (%)</Label>
+              <Label htmlFor="taxRate" className="text-sm">Taux de TVA (%) *</Label>
               <Input
                 id="taxRate"
                 type="number"
@@ -517,6 +533,11 @@ export function ProductForm({
                 placeholder="20"
                 className="h-9"
               />
+              {errors.taxRate && (
+                <p className="text-xs text-destructive">
+                  {errors.taxRate.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -540,6 +561,29 @@ export function ProductForm({
               placeholder="PRODUCT-001"
               className="h-9"
             />
+          </div>
+
+          {/* Display order */}
+          <div className="space-y-1.5">
+            <Label htmlFor="sortOrder" className="text-sm">Ordre d&apos;affichage</Label>
+            <Input
+              id="sortOrder"
+              type="number"
+              min={0}
+              {...register("sortOrder", { valueAsNumber: true })}
+              placeholder="0"
+              className="h-9"
+            />
+            <p className="text-xs text-muted-foreground">
+              Position du produit dans la carte, du plus petit au plus grand. Les
+              produits en vedette restent en tête. Les flèches de la liste des
+              produits font la même chose.
+            </p>
+            {errors.sortOrder && (
+              <p className="text-xs text-destructive">
+                {errors.sortOrder.message}
+              </p>
+            )}
           </div>
 
           {/* Status toggles */}

@@ -133,11 +133,39 @@ export const reorder = {
 }
 
 /**
- * Delete a category
+ * Delete a category.
+ *
+ * A bare delete used to leave every product of that category pointing at a row
+ * that no longer exists. The admin promised the opposite — "les produits
+ * perdront leur assignation de catégorie" — and could not deliver it:
+ * `categoryId` is a required column, so there is no unassigned state to fall
+ * back to. What actually happened is that the products kept a dead id, stayed
+ * orderable under "Tout" on the storefront, and rendered as "Inconnu" in the
+ * admin, with no filter that could find them again.
+ *
+ * So the deletion refuses while the category still holds products, and says
+ * how many. Moving them is the owner's decision — a cascade would delete a
+ * menu they spent an afternoon writing, on a click meant to tidy up.
  */
 export const remove = {
   args: { id: v.id("categories") },
   handler: async (ctx: any, args: any) => {
+    const category = await ctx.db.get(args.id)
+    if (!category) throw new Error("Category not found")
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_storeId_categoryId", (q: any) =>
+        q.eq("storeId", category.storeId).eq("categoryId", args.id)
+      )
+      .collect()
+
+    if (products.length > 0) {
+      throw new Error(
+        `Cette catégorie contient ${products.length} produit${products.length > 1 ? "s" : ""}. Déplacez-les dans une autre catégorie avant de la supprimer.`
+      )
+    }
+
     await ctx.db.delete(args.id)
   },
 }
