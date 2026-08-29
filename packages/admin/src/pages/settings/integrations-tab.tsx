@@ -37,6 +37,14 @@ interface IntegrationsTabProps {
   isValidatingIntegrations: boolean
 }
 
+/**
+ * The three platform switches carry an id and an `aria-label`.
+ *
+ * They had neither: the control is a `sr-only` checkbox behind a styled label,
+ * so with nothing naming it a screen reader announced three anonymous check
+ * boxes, and nothing in a test could tell them apart. The "Activé"/"Désactivé"
+ * text beside each one is a state readout, not a label.
+ */
 export function IntegrationsTab({
   uberDirectEnabled,
   setUberDirectEnabled,
@@ -85,6 +93,8 @@ export function IntegrationsTab({
                 {uberDirectEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch
+                id="uberDirectEnabled"
+                aria-label="Activer Uber Direct"
                 checked={uberDirectEnabled}
                 onCheckedChange={setUberDirectEnabled}
               />
@@ -159,6 +169,8 @@ export function IntegrationsTab({
                 {uberEatsEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch
+                id="uberEatsEnabled"
+                aria-label="Activer Uber Eats"
                 checked={uberEatsEnabled}
                 onCheckedChange={setUberEatsEnabled}
               />
@@ -204,6 +216,8 @@ export function IntegrationsTab({
                 {deliverooEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch
+                id="deliverooEnabled"
+                aria-label="Activer Deliveroo"
                 checked={deliverooEnabled}
                 onCheckedChange={setDeliverooEnabled}
               />

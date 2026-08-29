@@ -13,7 +13,20 @@ import type { PaymentConnection } from "./settings-types"
 export function useSettingsForm() {
   const api = useAdminApiStore((s) => s.api)
   const adminStoreId = useAdminStoreId()
-  const settings = useQuery(api.globalSettings.get)
+  /**
+   * `getAdmin`, not `get` — the form has to load what it is going to save.
+   *
+   * `get` is the public storefront query, and it strips the Uber Direct
+   * credentials (`customerId`, `clientId`, `clientSecret`, `apiKey`). The
+   * Integrations tab initialised its fields from that stripped object, so they
+   * came up empty, and saving patched the empty values over the stored ones:
+   * opening the tab and pressing Enregistrer deleted the credentials (#169).
+   *
+   * The Paramètres entry is already gated on `settings:read` in `nav-config`,
+   * which is exactly the permission `getAdmin` checks — anyone who can reach
+   * this page can read it.
+   */
+  const settings = useQuery(api.globalSettings.getAdmin)
   const updateSettings = useMutation(api.globalSettings.upsert)
 
   // General tab state

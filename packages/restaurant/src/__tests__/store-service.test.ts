@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   isStoreOpen,
+  resolveStoreHours,
   getNextOpenTime,
   formatStoreAddress,
   getStoreDistance,
@@ -189,6 +190,132 @@ describe('Store Service', () => {
       ]
 
       expect(isStoreOpen(shut, new Date('2024-01-01T23:00:00')).isOpen).toBe(false)
+    })
+  })
+
+  // ==========================================================================
+  // The establishment's clock, not the visitor's (#169)
+  //
+  // `globalSettings.timezone` was written by the settings page and read by
+  // nothing: open/closed came from `now.getDay()` and `now.getHours()`, i.e.
+  // the browser. A customer abroad saw the wrong answer, and any visitor could
+  // change it by changing their system clock.
+  // ==========================================================================
+
+  describe('isStoreOpen — the establishment\'s time zone', () => {
+    const parisLunch: BusinessHours[] = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      day,
+      open: '12:00',
+      close: '14:00',
+      isClosed: false,
+    }))
+
+    it('is open when it is 12:30 in Paris, whatever the visitor\'s clock says', () => {
+      // 10:30 UTC is 12:30 in Paris (CEST) and 06:30 in Montréal.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      expect(isStoreOpen(parisLunch, instant, 'Europe/Paris').isOpen).toBe(true)
+      expect(isStoreOpen(parisLunch, instant, 'America/Montreal').isOpen).toBe(false)
+    })
+
+    it('is closed when it is 22:00 in Paris, however early it is elsewhere', () => {
+      const instant = new Date('2026-08-28T20:00:00Z') // 22:00 Paris, 16:00 Montréal
+
+      expect(isStoreOpen(parisLunch, instant, 'Europe/Paris').isOpen).toBe(false)
+    })
+
+    it('reads the weekday in the zone, not on the visitor\'s calendar', () => {
+      // 2026-08-28 16:00 UTC is 01:00 on Saturday in Tokyo and 18:00 on Friday
+      // in Paris. The day of the week is not a property of the instant.
+      const saturdayNights: BusinessHours[] = [
+        { day: 6, open: '00:30', close: '06:00', isClosed: false },
+      ]
+      const instant = new Date('2026-08-28T16:00:00Z')
+
+      expect(isStoreOpen(saturdayNights, instant, 'Asia/Tokyo').isOpen).toBe(true)
+      expect(isStoreOpen(saturdayNights, instant, 'Europe/Paris').isOpen).toBe(false)
+    })
+
+    it('returns nextChange as a real instant, not a wall clock', () => {
+      // Open at 12:30 Paris, closing at 14:00 Paris = 12:00 UTC.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      const result = isStoreOpen(parisLunch, instant, 'Europe/Paris')
+
+      expect(result.nextChange?.toISOString()).toBe('2026-08-28T12:00:00.000Z')
+    })
+
+    it('falls back to the visitor\'s clock when the zone is unknown', () => {
+      // A settings row can hold anything, and `Intl` throws on a name it does
+      // not know. An unusable zone must not take the storefront down.
+      const instant = new Date('2026-08-28T10:30:00Z')
+
+      expect(() => isStoreOpen(parisLunch, instant, 'Not/AZone')).not.toThrow()
+    })
+
+    it('behaves exactly as before when no zone is given', () => {
+      const monday = new Date('2024-01-01T12:00:00')
+      const hours: BusinessHours[] = [
+        { day: 1, open: '09:00', close: '18:00', isClosed: false },
+      ]
+
+      expect(isStoreOpen(hours, monday).isOpen).toBe(true)
+    })
+  })
+
+  // ==========================================================================
+  // "Use global hours" (#169)
+  // ==========================================================================
+
+  describe('resolveStoreHours', () => {
+    const globalHours: BusinessHours[] = [
+      { day: 1, open: '18:00', close: '02:00', isClosed: false },
+    ]
+    const storeHours: BusinessHours[] = [
+      { day: 1, open: '09:00', close: '22:00', isClosed: false },
+    ]
+
+    it('follows the global hours when the flag is on', () => {
+      // The flag was written by the dashboard and read by nobody: the
+      // storefront took `store.hours`, which for a new establishment is the
+      // hard-coded 09:00–22:00 `stores.create` seeds.
+      const hours = resolveStoreHours(
+        { hours: storeHours, useGlobalHours: true },
+        { hours: globalHours }
+      )
+
+      expect(hours).toEqual(globalHours)
+    })
+
+    it('keeps the establishment\'s own hours when the flag is off', () => {
+      const hours = resolveStoreHours(
+        { hours: storeHours, useGlobalHours: false },
+        { hours: globalHours }
+      )
+
+      expect(hours).toEqual(storeHours)
+    })
+
+    it('falls back to the establishment when there are no global hours', () => {
+      // A deployment whose settings row has never been saved. Following an
+      // empty week would close every location.
+      expect(
+        resolveStoreHours({ hours: storeHours, useGlobalHours: true }, { hours: [] })
+      ).toEqual(storeHours)
+      expect(
+        resolveStoreHours({ hours: storeHours, useGlobalHours: true }, null)
+      ).toEqual(storeHours)
+    })
+
+    it('treats a store without the flag as having its own hours', () => {
+      // Rows written before the flag existed. Absent is not "follow global".
+      expect(
+        resolveStoreHours({ hours: storeHours }, { hours: globalHours })
+      ).toEqual(storeHours)
+    })
+
+    it('returns nothing for no store', () => {
+      expect(resolveStoreHours(null, { hours: globalHours })).toEqual([])
     })
   })
 
