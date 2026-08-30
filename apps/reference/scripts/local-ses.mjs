@@ -11,7 +11,7 @@
 import { createServer } from "node:http"
 import { writeFileSync } from "node:fs"
 
-const PORT = 3282
+const PORT = 3292
 const OUT = process.argv[2] ?? "/tmp/sent-mail.json"
 
 /** Every message the backend tried to send, in order. */
@@ -36,12 +36,16 @@ createServer((req, res) => {
     try {
       const payload = JSON.parse(body)
       const headers = payload.Content?.Simple?.Headers ?? []
+      const html = payload.Content?.Simple?.Body?.Html?.Data ?? ""
       sent.push({
         to: payload.Destination?.ToAddresses ?? [],
         from: payload.FromEmailAddress,
         subject: payload.Content?.Simple?.Subject?.Data,
         headers: Object.fromEntries(headers.map((h) => [h.Name, h.Value])),
         configurationSet: payload.ConfigurationSetName,
+        // Kept so a probe can follow what the recipient would click. The
+        // verification and unsubscribe journeys are only checkable this way.
+        links: [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]),
         at: sent.length,
       })
       writeFileSync(OUT, JSON.stringify(sent, null, 2))
