@@ -17,6 +17,10 @@ import {
   resolveStoreServices,
 } from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
+import {
+  reverseMetadataIncremental,
+  updateMetadataIncremental,
+} from "./emailSubscribers"
 import { generateOrderNumber } from "./helpers"
 import {
   resolvePromotionDiscount,
@@ -848,7 +852,68 @@ export const updateStatus = {
         }
       }
     }
+
+    // Carry the order through to the marketing side.
+    //
+    // `updateMetadataIncremental` was written for exactly this and had no
+    // caller anywhere — so `totalOrders`, `totalSpent` and `lastOrderAt` were
+    // never written, and a segment built on order history matched nobody. The
+    // owner could save "clients ayant dépensé plus de 100 €", attach it to a
+    // campaign and send to zero people, with no error to explain it.
+    //
+    // Here rather than in an app wrapper, for the same reason
+    // `createWithTicket` puts the kitchen ticket here: every path into a status
+    // change goes through this handler — the admin, the Deliveroo webhooks, the
+    // payment confirmation, the schedulers — and a rule that lives in one
+    // caller is a rule the other four skip.
+    //
+    // Counted on entering `confirmed`, which the state machine allows exactly
+    // once and only from `pending`, so no retry double-counts. Given back on
+    // `confirmed -> cancelled`, which it also allows.
+    await syncSubscriberOrderMetadata(ctx, order, from, to, now)
   },
+}
+
+/**
+ * Update the subscriber's denormalised order history for a status change.
+ *
+ * Silent when the customer left no email, or is not a subscriber — the lookup
+ * inside `updateMetadataIncremental` already skips a non-subscriber, and this
+ * must never create one: an order is a purchase, not consent to be marketed to.
+ * `source: "order"` exists in the schema for that decision; taking it is not
+ * this function's to make.
+ */
+async function syncSubscriberOrderMetadata(
+  ctx: any,
+  order: any,
+  from: OrderStatus,
+  to: OrderStatus,
+  now: number
+): Promise<void> {
+  const email = order.customerInfo?.email
+  if (!email) return
+
+  if (to === "confirmed") {
+    await updateMetadataIncremental.handler(ctx, {
+      storeId: order.storeId,
+      email,
+      orderAmount: order.total,
+      orderType: order.type,
+      productIds: (order.items ?? [])
+        .map((item: { productId?: string }) => item.productId)
+        .filter((id: string | undefined): id is string => Boolean(id)),
+      orderedAt: now,
+    })
+    return
+  }
+
+  if (from === "confirmed" && to === "cancelled") {
+    await reverseMetadataIncremental.handler(ctx, {
+      storeId: order.storeId,
+      email,
+      orderAmount: order.total,
+    })
+  }
 }
 
 /**
