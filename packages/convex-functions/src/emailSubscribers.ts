@@ -137,11 +137,7 @@ export const create = {
     if (existing) throw new Error("Cet email est déjà inscrit")
 
     const now = Date.now()
-    // Generate double opt-in token (random hex string)
-    const tokenBytes = Array.from({ length: 32 }, () =>
-      Math.floor(Math.random() * 256).toString(16).padStart(2, "0")
-    ).join("")
-    const expiresAt = now + 48 * 60 * 60 * 1000 // 48h
+    const { token: tokenBytes, expiresAt } = doubleOptInCredential()
 
     // Manual source = admin added, skip double opt-in
     const isManual = args.source === "manual"
@@ -279,6 +275,30 @@ export const removeTag = {
   },
 }
 
+/** A double opt-in token stops being a formality after 48 hours. */
+const DOUBLE_OPT_IN_TTL_MS = 48 * 60 * 60 * 1000
+
+/**
+ * Mint a confirmation token that is actually a credential.
+ *
+ * This used to be 32 bytes of `Math.random()`. `Math.random()` is a PRNG, not a
+ * CSPRNG — V8 runs xorshift128+, whose internal state is recoverable from a
+ * modest run of outputs — so the token confirming "yes, this address consented"
+ * was predictable by anyone who could sample the generator. Under a double
+ * opt-in scheme the token IS the consent record; a guessable one means the
+ * database can assert that someone opted in when they never did, which is the
+ * single thing the whole mechanism exists to prevent.
+ *
+ * `generateDoubleOptInToken()` in `@be-in-digital/marketing` already does this
+ * correctly and is deliberately NOT imported: `convex-functions` does not
+ * depend on that package, and adding a whole workspace dependency — with the
+ * publish-ordering it drags behind it — to reach two lines of `crypto` would
+ * cost more than it saves. Both spellings must stay `randomUUID`.
+ */
+function doubleOptInCredential(now: number = Date.now()) {
+  return { token: crypto.randomUUID(), expiresAt: now + DOUBLE_OPT_IN_TTL_MS }
+}
+
 export const importBatch = {
   args: {
     storeId: v.id("stores"),
@@ -288,11 +308,11 @@ export const importBatch = {
         firstName: v.optional(v.string()),
         lastName: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
-        doubleOptInToken: v.string(),
-        doubleOptInExpiresAt: v.number(),
       })
     ),
-    consentSource: v.string(),
+    // Optional, with a default. It was required, and the one caller — the CSV
+    // dialog — never sent it, which is half of why every import failed.
+    consentSource: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
@@ -312,6 +332,8 @@ export const importBatch = {
         continue
       }
 
+      const credential = doubleOptInCredential(now)
+
       await ctx.db.insert("emailSubscribers", {
         storeId: args.storeId,
         email,
@@ -321,9 +343,14 @@ export const importBatch = {
         source: "import",
         tags: sub.tags ?? [],
         consentAt: now,
-        consentSource: args.consentSource,
-        doubleOptInToken: sub.doubleOptInToken,
-        doubleOptInExpiresAt: sub.doubleOptInExpiresAt,
+        consentSource: args.consentSource ?? "csv import",
+        // Minted here, never accepted from the caller. A confirmation token
+        // supplied by whoever is doing the importing is not a confirmation of
+        // anything: it lets the importer pre-compute the link that marks their
+        // own list as having consented. One per row, so a leaked token is one
+        // address rather than the whole import.
+        doubleOptInToken: credential.token,
+        doubleOptInExpiresAt: credential.expiresAt,
         bounceCount: 0,
         metadata: {
           totalOrders: 0,

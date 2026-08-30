@@ -68,23 +68,36 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
     setStep("importing")
 
     try {
+      // Exactly the fields the validator declares, and nothing else. This sent
+      // `source` and `storeId` inside each row as well, which a Convex object
+      // validator rejects outright — so every import of every CSV failed on
+      // argument validation before a single row was read.
+      //
+      // It also used to mint a `doubleOptInToken` per row here. It no longer
+      // can: the confirmation token is the consent record, and the side doing
+      // the importing is the last one that should be choosing it.
       const subscribers = parseResult.subscribers.map((s) => ({
         email: s.email,
         firstName: s.firstName,
         lastName: s.lastName,
         tags: s.tags ?? [],
-        source: "import" as const,
-        storeId,
       }))
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await importMutation({ storeId, subscribers }) as any
-      setImportResult({
-        imported: result?.imported ?? parseResult.validRows,
-        skipped: result?.skipped ?? 0,
-      })
+      const result = await importMutation({
+        storeId,
+        subscribers,
+        consentSource: `CSV import — ${fileName || "fichier"}`,
+      }) as any
+
+      // `importBatch` returns `{ inserted, skipped }`. Reading `imported` gave
+      // `undefined`, so the fallback ran and the dialog reported the number of
+      // rows in the FILE as the number imported — the count would have looked
+      // right even when every row was skipped as a duplicate.
+      const inserted = result?.inserted ?? 0
+      setImportResult({ imported: inserted, skipped: result?.skipped ?? 0 })
       setStep("done")
-      toast.success(`${result?.imported ?? parseResult.validRows} abonnés importés`)
+      toast.success(`${inserted} abonnés importés`)
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erreur inconnue"
       toast.error(`Échec de l'import : ${message}`)
