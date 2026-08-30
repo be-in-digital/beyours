@@ -5,6 +5,7 @@
  */
 
 import { v } from "convex/values"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
 // === QUERIES ===
 
@@ -43,6 +44,23 @@ export const create = {
     message: v.string(),
   },
   handler: async (ctx: any, args: any) => {
+    // Anyone can call this — a storefront visitor has no session — and until
+    // now nothing bounded it. `message` was an unbounded string, so one request
+    // could store a megabyte and a loop could fill the restaurant's inbox.
+    assertFieldLengths({
+      name: args.name,
+      email: args.email,
+      phone: args.phone,
+      subject: args.subject,
+      message: args.message,
+    })
+
+    // Two windows, because neither is enough alone: the per-address one stops
+    // the double-submit and the naive script, and is dodged by changing the
+    // address; the per-restaurant one cannot be dodged and bounds the flood.
+    await consumeRateLimit(ctx, "contactPerEmail", args.email)
+    await consumeRateLimit(ctx, "contactPerStore", args.storeId)
+
     return await ctx.db.insert("contactMessages", {
       storeId: args.storeId,
       name: args.name,

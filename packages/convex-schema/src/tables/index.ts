@@ -91,3 +91,4 @@ export {
   cmsMaintenanceTable,
   cmsAccountTable,
 } from "./cms"
+export { rateLimitsTable } from "./rateLimits"

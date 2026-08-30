@@ -20,18 +20,27 @@ import { beforeEach, describe, expect, it } from "vitest"
 import { create, importBatch } from "../emailSubscribers"
 
 /** The parts of a Convex ctx these two handlers touch. */
+/**
+ * A ctx that knows which table a row was written to.
+ *
+ * It used to keep one undifferentiated list, which was fine until `create`
+ * started consuming a rate limit: the limiter's own row landed first and every
+ * assertion about "the subscriber" was reading it instead.
+ */
 function fakeCtx(existingEmails: string[] = []) {
-  const inserted: Record<string, unknown>[] = []
+  const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
   return {
     inserted,
+    rows: (table: string) =>
+      inserted.filter((r) => r.table === table).map((r) => r.doc),
     db: {
-      insert: async (_table: string, doc: Record<string, unknown>) => {
-        inserted.push(doc)
+      insert: async (table: string, doc: Record<string, unknown>) => {
+        inserted.push({ table, doc })
         return `row_${inserted.length}`
       },
-      query: () => ({
+      patch: async () => undefined,
+      query: (table: string) => ({
         withIndex: (_name: string, fn: (q: unknown) => unknown) => {
-          // The index callback is `q.eq("storeId", …).eq("email", email)`.
           let captured = ""
           const q = {
             eq: (field: string, value: unknown) => {
@@ -41,8 +50,12 @@ function fakeCtx(existingEmails: string[] = []) {
           }
           fn(q)
           return {
-            first: async () =>
-              existingEmails.includes(captured) ? { _id: "existing" } : null,
+            first: async () => {
+              // No counter exists in these fixtures, so every call opens a
+              // fresh window and the limiter never interferes.
+              if (table === "rateLimits") return null
+              return existingEmails.includes(captured) ? { _id: "existing" } : null
+            },
           }
         },
       }),
@@ -54,7 +67,7 @@ const STORE = "stores:a"
 
 /** Convex ids are opaque; the tests only care about the token fields. */
 const rows = (ctx: ReturnType<typeof fakeCtx>) =>
-  ctx.inserted as Array<Record<string, string | number | undefined>>
+  ctx.rows("emailSubscribers") as Array<Record<string, string | number | undefined>>
 
 describe("create", () => {
   it("mints a confirmation token that is not guessable", async () => {
