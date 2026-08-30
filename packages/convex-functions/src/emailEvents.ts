@@ -97,6 +97,44 @@ export const alreadySentTo = {
   },
 }
 
+/**
+ * How many campaign emails each of these subscribers received since `since`.
+ *
+ * What `maxEmailsPerWeek` needs, and it counts what was actually SENT rather
+ * than a stored tally that could drift — the same source `alreadySentTo` reads,
+ * so the two answers cannot disagree about what went out.
+ *
+ * Asked once per batch, like the idempotency check, rather than once per
+ * subscriber.
+ */
+export const sentCountsSince = {
+  args: {
+    subscriberIds: v.array(v.id("emailSubscribers")),
+    since: v.number(),
+  },
+  handler: async (
+    ctx: any,
+    args: any
+  ): Promise<Array<{ subscriberId: string; count: number }>> => {
+    const counts: Array<{ subscriberId: string; count: number }> = []
+    for (const subscriberId of args.subscriberIds) {
+      const events = await ctx.db
+        .query("emailEvents")
+        .withIndex("by_subscriberId", (q: any) =>
+          q.eq("subscriberId", subscriberId)
+        )
+        .collect()
+      counts.push({
+        subscriberId,
+        count: events.filter(
+          (e: any) => e.type === "sent" && e.occurredAt >= args.since
+        ).length,
+      })
+    }
+    return counts
+  },
+}
+
 export const create = {
   args: {
     storeId: v.id("stores"),
