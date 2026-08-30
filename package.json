@@ -7,6 +7,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "check:accents": "node scripts/check-french-accents.mjs",
+    "check:divergence": "node scripts/check-app-divergence.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",

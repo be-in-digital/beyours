@@ -8,9 +8,28 @@ made or a fix that only landed on one side.
 This note exists so the next person can tell those two apart without re-deriving
 the whole comparison. **Before "fixing" a divergence, look for it here.**
 
+Since 2026-08-30 this note is also enforced. `scripts/check-app-divergence.mjs`
+runs in CI inside the required `Lint` job and fails on any shared file that
+differs without being listed, and on any file under `e2e/` or `convex/` that
+exists in one app and not the other. Adding a divergence therefore means adding
+a row to `ALLOWED` in that script *and* explaining it here and in the file
+itself — three deliberate acts, which is the point.
+
+The note came first and caught nothing: ten PRs after it was written, #256 added
+`getByIdInternal` to the bench only, and `sendBatch` on a client deployment
+called a Convex function that did not exist. `tsc` did not catch it, the tests
+did not, review did not. It was found by hand, ten PRs late. That is what the
+guard is for.
+
 ---
 
 ## How to reproduce the comparison
+
+```bash
+pnpm check:divergence
+```
+
+Or by hand, which is what the script automates:
 
 ```bash
 diff -rq apps/reference apps/themes | grep '^Files '
