@@ -84,3 +84,36 @@ send is an SES call plus two mutation round-trips plus a 100 ms pace; under load
 that can exceed a poll interval, and two equal readings mean nothing. An earlier
 version of these scripts reported "7 of 12 sent" while all 12 were in flight —
 the database said 12, and it was right.
+
+## The sign-up journey
+
+`verify-signup-journey.mjs` covers the HTTP half of chantier 01's closing
+condition — sign-up, the verification email leaving, and an unverified account
+being refused. The rest is a browser: follow the link from the captured mail,
+then check that an account without rights lands on `/menu` and one with them
+reaches the dashboard.
+
+It needs the Next app as well as the backend and the stand-in, because sign-up
+and sign-in are Better Auth routes the app proxies to Convex.
+
+### Three URL variables must agree, or no email is ever sent
+
+`BETTER_AUTH_URL` (read in `lib/convex.ts`, defaulting to
+`http://localhost:3000`), `SITE_URL`, and the origin the app is actually served
+on have to be the same string.
+
+They are compared, not merely used. `packages/core`'s email route refuses any
+message whose links fall outside `SITE_URL` — it sends from the restaurant's
+SES-verified domain, so a caller-chosen link would be phishing under the
+client's brand. If Better Auth mints a verification link on a different origin
+than `SITE_URL`, that guard refuses it and **the email silently never arrives**;
+the only trace is one line in the Convex log:
+
+```
+[auth] "verifyEmail" to … was refused with 400
+[email/send] Refused a verifyEmail link outside <SITE_URL>
+```
+
+`http://localhost:3300` and `http://127.0.0.1:3300` are **different origins**.
+Mixing them is enough to trigger this, and it is the easiest way to lose an
+afternoon here.
