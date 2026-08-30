@@ -77,6 +77,10 @@ const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'NEXT_PUBLIC_TVA_ENABLED', check: isBool },
   { name: 'STRIPE_TAX_ENABLED', check: isBool },
   { name: 'STRIPE_SECRET_KEY', check: startsWith('sk_') },
+  /* Turns the no-payment checkout path on. Only "true" enables it; anything
+     else refuses the sale rather than completing it for free — see
+     convex/stripeMode.ts. Never set on a deployment that sells. */
+  { name: 'BEYOURS_TEST_CHECKOUT', check: isBool },
   { name: 'STRIPE_WEBHOOK_SECRET', check: startsWith('whsec_') },
   // Connect-scoped endpoint: its own endpoint, so its own secret.
   { name: 'STRIPE_CONNECT_WEBHOOK_SECRET', check: startsWith('whsec_') },

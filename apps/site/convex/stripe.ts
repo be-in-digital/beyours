@@ -7,6 +7,7 @@ import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
+import { resolveStripeAccess } from "./stripeMode";
 import {
   invoiceLegalSettings,
   vatConfigurationProblem,
@@ -83,10 +84,16 @@ function resolveCreationProductId(plan: string): string | null {
    lib/legal/company.ts. They used to be two hard-coded strings here, pointing
    at a file path that no longer existed. */
 
-function getStripe(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  return new Stripe(key);
+/**
+ * Stripe for a path that moves money, or `null` on the deliberate test path.
+ *
+ * `null` now means one thing only — this deployment asked for the no-payment
+ * path by name. An unconfigured deployment throws instead of selling for free.
+ * See ./stripeMode.
+ */
+function getStripeOrTestMode(operation: string): Stripe | null {
+  const access = resolveStripeAccess(operation);
+  return access.mode === "test" ? null : new Stripe(access.secretKey);
 }
 
 /* ── Stripe Tax ──
@@ -124,7 +131,9 @@ export const createCheckoutSession = action({
     discountPercent: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
-    const stripe = getStripe();
+    /* Refuses before anything exists — the order is created 80 lines below, so
+       a deployment without a key leaves no half-sale behind. */
+    const stripe = getStripeOrTestMode("ouvrir une session de paiement");
 
     // ── Provisioning guardrail (payment fix) ──
     // NEVER open a checkout session for a plan whose maintenance subscription
@@ -419,7 +428,7 @@ export const createSubscription = internalAction({
     buyerType: v.union(v.literal("business"), v.literal("personal")),
   },
   handler: async (ctx, args): Promise<void> => {
-    const stripe = getStripe();
+    const stripe = getStripeOrTestMode("créer l'abonnement de maintenance");
     if (!stripe) {
       console.log("[TEST MODE] Skipping subscription creation");
       return;

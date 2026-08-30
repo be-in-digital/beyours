@@ -4,11 +4,28 @@ import Stripe from "stripe";
 import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { resolveStripeAccess } from "./stripeMode";
 
+/**
+ * Stripe when a key is configured, `null` when there is none.
+ *
+ * For the two reads below that legitimately degrade without Stripe. Anything
+ * that moves money or writes a Stripe-derived state uses
+ * `getStripeOrTestMode` instead, which refuses an unconfigured deployment.
+ */
 function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   return new Stripe(key);
+}
+
+/**
+ * Stripe for a path that moves money, or `null` on the deliberate test path.
+ * See ./stripeMode.
+ */
+function getStripeOrTestMode(operation: string): Stripe | null {
+  const access = resolveStripeAccess(operation);
+  return access.mode === "test" ? null : new Stripe(access.secretKey);
 }
 
 /* ── Onboarding: create an Express account + Account Link ── */
@@ -28,7 +45,10 @@ export const createAccountLink = action({
     );
     if (!affiliate) throw new Error("Profil apporteur introuvable");
 
-    const stripe = getStripe();
+    /* This branch writes `active` and a fabricated `acct_test_…` onto a real
+       affiliate. Without a key that state was indistinguishable from a
+       completed onboarding, and payouts read it. */
+    const stripe = getStripeOrTestMode("connecter un compte Stripe apporteur");
 
     // Test mode: fake an active Stripe Connect account
     if (!stripe) {
@@ -159,6 +179,8 @@ export const checkAccountStatus = action({
       return { status: "not_started", payoutsEnabled: false };
     }
 
+    /* A read, and the one place `getStripe` is still right: with no key it
+       reports the stored status rather than refusing. Nothing is written. */
     const stripe = getStripe();
     if (!stripe) {
       return {
@@ -233,7 +255,7 @@ export const checkAccountStatus = action({
 export const processPayouts = internalAction({
   args: {},
   handler: async (ctx) => {
-    const stripe = getStripe();
+    const stripe = getStripeOrTestMode("verser les commissions dues");
     if (!stripe) {
       console.log("[TEST MODE] Skipping payout processing");
       return;
@@ -325,6 +347,8 @@ export const reverseReferralCommission = internalAction({
 
     // Already paid out: try to pull the funds back from the connected account.
     if (referral.status === "paid" && referral.stripeTransferId) {
+      /* `getStripe` again: the no-key path here already writes an explicit
+         "recover manually" note rather than pretending the reversal happened. */
       const stripe = getStripe();
       let adminNote = "Commission reprise avant traitement.";
       if (stripe) {
