@@ -65,6 +65,31 @@ export const list = {
   },
 }
 
+/**
+ * One page of the audience a campaign should reach.
+ *
+ * `list` collects every active subscriber in one go, which is what made sending
+ * a campaign a single unbounded loop. Paginating moves the boundary into the
+ * database, so a batch reads what it is about to send and nothing more, and the
+ * cursor it returns is what lets the next batch pick up exactly where this one
+ * stopped.
+ */
+export const pageForSending = {
+  args: {
+    storeId: v.id("stores"),
+    cursor: v.union(v.string(), v.null()),
+    numItems: v.number(),
+  },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId_status", (q: any) =>
+        q.eq("storeId", args.storeId).eq("status", "active")
+      )
+      .paginate({ cursor: args.cursor, numItems: args.numItems })
+  },
+}
+
 export const getById = {
   args: {
     id: v.id("emailSubscribers"),
