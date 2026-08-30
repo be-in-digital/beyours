@@ -396,6 +396,60 @@ export const importBatch = {
 
 // === INTERNAL (called by post-order scheduler) ===
 
+/**
+ * Take back what a confirmed order added, when that order is cancelled.
+ *
+ * The counterpart of `updateMetadataIncremental`, and the reason the pair is
+ * needed at all: an order can be cancelled AFTER it is confirmed — the state
+ * machine allows `confirmed -> cancelled`, deliberately, for the window before
+ * the kitchen starts. Counting the money at confirmation and never giving it
+ * back would put revenue in `totalSpent` that the restaurant never took, in the
+ * one field an owner segments on.
+ *
+ * Only the numbers are reversed. `lastOrderAt`, `favoriteProducts` and
+ * `orderTypes` are merged values with no record of which order contributed
+ * what, so un-merging them is not possible without a per-order history — and
+ * inventing one to undo a rare cancellation would cost more than it is worth.
+ * The consequence, stated rather than hidden: a customer whose only order was
+ * cancelled keeps a `lastOrderAt` and may keep a favourite product. Their
+ * `totalOrders` and `totalSpent` are correct, which is what the money
+ * questions are asked of.
+ */
+export const reverseMetadataIncremental = {
+  args: {
+    storeId: v.id("stores"),
+    email: v.string(),
+    orderAmount: v.number(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const subscriber = await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId_email", (q: any) =>
+        q.eq("storeId", args.storeId).eq("email", args.email.toLowerCase())
+      )
+      .first()
+
+    if (!subscriber) return
+
+    const meta = subscriber.metadata
+    // Never below zero: a cancellation whose confirmation was never counted —
+    // an order from before this path existed — must not drive the totals
+    // negative.
+    const newTotal = Math.max(0, meta.totalOrders - 1)
+    const newSpent = Math.max(0, meta.totalSpent - args.orderAmount)
+
+    await ctx.db.patch(subscriber._id, {
+      metadata: {
+        ...meta,
+        totalOrders: newTotal,
+        totalSpent: newSpent,
+        averageOrderValue: newTotal > 0 ? Math.round(newSpent / newTotal) : 0,
+      },
+      updatedAt: Date.now(),
+    })
+  },
+}
+
 export const updateMetadataIncremental = {
   args: {
     storeId: v.id("stores"),
