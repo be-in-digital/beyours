@@ -107,27 +107,37 @@ export function invoiceLegalSettings(buyerType: "business" | "personal"): {
 }
 
 /**
- * Flags a configuration that would issue a wrong invoice, without blocking the
- * sale: a company on the régime réel that charges no VAT is billing something
- * it owes the state anyway. Returns the problem to report, or null.
+ * Flags a configuration that would issue a wrong invoice: a company on the
+ * régime réel that charges no VAT is billing something it owes the state
+ * anyway. Returns the problem to report, or null.
  *
- * Deliberately not fatal — which of the two to align is a fiscal decision, not
- * an engineering one (ClickUp 869eprr1e).
+ * Fatal at both ends since the regime was settled (#174). `validateSiteEnv`
+ * refuses a deployment whose flags contradict it, and `createCheckoutSession`
+ * refuses the sale — an invoice is a legal document, and one stating a VAT
+ * position the company does not hold cannot be taken back, while a refused
+ * sale can be retried once the env is right.
+ *
+ * The wording says what to fix, not what to decide: the decision is made, and
+ * this text is what an operator reads when a deploy or a sale is turned away.
  */
 export function vatConfigurationProblem(taxCharged: boolean): string | null {
   if (VAT.regime === "reel" && !taxCharged) {
     return (
-      "Régime réel déclaré (lib/legal/company.ts) mais TVA non facturée " +
-      "(STRIPE_TAX_ENABLED absent) : les factures émises sont incohérentes et " +
-      "la TVA reste due. Activer Stripe Tax + NEXT_PUBLIC_TVA_ENABLED, ou " +
-      "repasser VAT.regime en « franchise ». Voir ClickUp 869eprr1e."
+      "Régime réel déclaré (VAT.regime, lib/legal/company.ts) mais TVA non " +
+      "facturée : la TVA reste due et les factures émises seraient " +
+      "incohérentes. Activer Stripe Tax sur le compte Stripe " +
+      "(tax_behavior=exclusive sur les Prices), puis poser " +
+      "STRIPE_TAX_ENABLED=true côté Convex et NEXT_PUBLIC_TVA_ENABLED=true " +
+      "côté Next — les deux vont ensemble. Voir apps/site/MISE_EN_PROD.md."
     );
   }
   if (VAT.regime === "franchise" && taxCharged) {
     return (
-      "Franchise en base déclarée (lib/legal/company.ts) mais TVA facturée " +
-      "par Stripe : la facture porte une TVA que l'entreprise n'a pas à " +
-      "collecter. Voir ClickUp 869eprr1e."
+      "Franchise en base déclarée (VAT.regime, lib/legal/company.ts) mais TVA " +
+      "facturée par Stripe : la facture porterait une TVA que l'entreprise " +
+      "n'a pas à collecter. Poser STRIPE_TAX_ENABLED=false côté Convex et " +
+      "NEXT_PUBLIC_TVA_ENABLED=false côté Next, ou corriger VAT.regime si le " +
+      "régime a changé. Voir apps/site/MISE_EN_PROD.md."
     );
   }
   return null;

@@ -52,6 +52,33 @@ export class QuoteRejectedError extends Error {
 }
 
 /**
+ * The fee mode a shop can actually honour right now.
+ *
+ * Percentage mode bills a share of an Uber Direct quote. With the integration
+ * switched off there is no quote to bill a share of: the storefront sends no
+ * estimate id, and `orders.create` refuses the order with "un devis de
+ * livraison est requis" — a condition the customer has no way to satisfy. The
+ * shop stops taking delivery orders and the settings page shows nothing wrong.
+ *
+ * Nobody chose that state on purpose. The settings page only ever offers the
+ * percentage option while Uber Direct is on, so the state is reached the other
+ * way round: a shop configures percentage mode, then turns the integration off.
+ * One click, no warning, and delivery is dead.
+ *
+ * Falling back to the fixed fee keeps the shop selling on the terms it can
+ * still honour. The storefront and the server must reach the same answer or
+ * the fee shown is not the fee charged, so both read it here.
+ */
+export function effectiveDeliveryFeeMode(params: {
+  feeMode: string | null | undefined
+  uberDirectEnabled: boolean | null | undefined
+}): "fixed" | "percentage" {
+  return params.feeMode === "percentage" && params.uberDirectEnabled === true
+    ? "percentage"
+    : "fixed"
+}
+
+/**
  * How far the ordered address may sit from the one the quote was priced for.
  *
  * ~110 m at this latitude. Geocoders disagree by a few metres on the same

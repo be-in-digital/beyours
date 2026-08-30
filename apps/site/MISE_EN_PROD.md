@@ -41,10 +41,19 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
   (build vs maintenance), date, customer details. Generate it when the
   `invoice.payment_succeeded` webhook arrives (the `invoicePdfUrl` field
   currently stores the Stripe PDF — replace it with our own).
-- [ ] 🔴 **[decision] VAT**: stay under **franchise en base** (art. 293 B, VAT at 0,
-  current state) OR switch to the standard regime. If switching: enable Stripe Tax
-  (dashboard + registration), `tax_behavior=exclusive` on the Prices, `STRIPE_TAX_ENABLED=true`
-  (Convex) and `NEXT_PUBLIC_TVA_ENABLED=true` (Next). The code is already ready for that flip.
+- [x] 🔴 **[decision] VAT**: settled — **régime réel**, VAT at 20 % (#174).
+  `VAT.regime = "reel"` in `lib/legal/company.ts` is the single source of truth,
+  and every customer-facing mention (pricing footnote, CGV, legal notice,
+  invoice) is read from it.
+- [ ] 🔴 **[account] Turn Stripe Tax on before the first sale**: enable Stripe Tax
+  in the dashboard (registered address, FR registration), set
+  `tax_behavior=exclusive` on the four maintenance Prices, then
+  `STRIPE_TAX_ENABLED=true` (Convex env) and `NEXT_PUBLIC_TVA_ENABLED=true`
+  (Next env). Until both are set, the site refuses to boot in production
+  (`validateSiteEnv`) and `createCheckoutSession` refuses the sale — deliberately:
+  an invoice stating a VAT position the company does not hold cannot be taken
+  back, while a refused sale can be retried. Dashboard-only, so it cannot be
+  done from the code.
 - [ ] 🟠 **[build] E-invoicing 2026-2027**: get ahead of the Plateforme Agréée
   requirement (the pluggable adapter already exists on the web-agency side; plan
   the same one here before 09/2027).

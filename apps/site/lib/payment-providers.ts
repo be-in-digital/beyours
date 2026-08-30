@@ -62,12 +62,21 @@ export function getInstallmentAmount(
 }
 
 /* ── VAT ── */
-/* Every price (planPrices, pricing-data) is quoted excluding tax.
-   While the company is under franchise en base (art. 293 B of the French tax
-   code) the flag stays off: no VAT is added and the checkout displays the legal
-   mention. The day it becomes VAT-liable (company on the régime réel), set
-   NEXT_PUBLIC_TVA_ENABLED=true on the Next side AND STRIPE_TAX_ENABLED=true on
-   the Convex side (see convex/stripe.ts) — the two go together. */
+/* Every price (planPrices, pricing-data) is quoted excluding tax — the right
+   B2B convention here, since restaurants recover the VAT.
+
+   The company is on the régime réel (VAT.regime in lib/legal/company.ts), so
+   this flag belongs at "true", together with STRIPE_TAX_ENABLED on the Convex
+   side (see convex/stripe.ts). The two go together and both are measured
+   against the regime, not against each other: `validateSiteEnv` refuses a
+   deployment where they disagree with it, and `createCheckoutSession` refuses
+   the sale rather than issue an invoice stating a VAT position the company
+   does not hold.
+
+   This flag decides what is CHARGED and displayed as a total. What the site
+   CLAIMS about the regime — the pricing footnote, the CGV, the legal notice,
+   the invoice — is read from VAT.regime instead, because that is a legal fact
+   and not a deployment toggle. */
 
 export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
 export const TVA_RATE_PERCENT = 20;

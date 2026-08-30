@@ -89,11 +89,21 @@ export const COMPANY: CompanyInfo = {
  * mention must NOT be added there. That function follows `regime` below, so the
  * two can no longer contradict each other.
  *
+ * `regime` below is the ONLY place the tax position is decided. Every mention
+ * the customer sees is read from it — the pricing footnote
+ * (`components/pricing/pricing-plans.tsx`), the terms of sale, the legal
+ * notice, and the invoice through `vatMention()`. The pricing footnote used to
+ * be keyed on the charging flag instead, so /tarifs claimed the 293 B
+ * franchise while /cgv claimed the régime réel on the same site (#174).
+ *
  * Two flags gate the actual charging, and they go together: display and
  * checkout totals follow `NEXT_PUBLIC_TVA_ENABLED` (Next side, see
  * `lib/payment-providers.ts`), Stripe follows `STRIPE_TAX_ENABLED` (Convex
- * side, see `convex/stripe.ts`). Setting one without the other means the site
- * quotes a total it does not collect, or the reverse.
+ * side, see `convex/stripe.ts`). Neither decides anything — both are measured
+ * against `regime`, because agreeing with each other and being wrong together
+ * is the state that issues wrong invoices. A deployment where either
+ * contradicts the regime is refused by `validateSiteEnv` (`lib/env.ts`), and a
+ * sale that reaches Stripe anyway is refused by `createCheckoutSession`.
  *
  * Every price in the app is quoted excluding tax, which is the right B2B
  * convention here — restaurants recover the VAT. Switching regime therefore

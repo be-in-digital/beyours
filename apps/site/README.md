@@ -103,9 +103,13 @@ already signed against that text**.
 That is why the August 2026 BeYours rename swept the whole repository **except
 this directory**.
 
-VAT: French *franchise en base*, article 293 B of the CGI. No VAT charged; the
-notice is read from `VAT.mention`. There is a ceiling (~€37,500 of revenue) — a
-single large deal can cross it and trigger a retroactive switch to standard VAT.
+VAT: **régime réel**, 20 % (art. 278 of the CGI), settled in #174.
+`VAT.regime` in `lib/legal/company.ts` is the single source of truth, and every
+customer-facing mention is read from it — the pricing footnote, the terms of
+sale, the legal notice and the invoice. Charging is gated by
+`NEXT_PUBLIC_TVA_ENABLED` (Next) and `STRIPE_TAX_ENABLED` (Convex); both are
+checked against the regime, so a deployment where they disagree with it is
+refused at boot and a sale that reaches Stripe anyway is refused outright.
 
 ---
 

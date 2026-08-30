@@ -14,6 +14,8 @@
  * to serve a correct page is required.
  */
 
+import { VAT } from './legal/company'
+
 export type EnvTier = 'required' | 'format' | 'feature'
 
 export interface EnvProblem {
@@ -160,15 +162,30 @@ export function validateSiteEnv(
   }
 
   // The storefront reads NEXT_PUBLIC_TVA_ENABLED and Stripe reads
-  // STRIPE_TAX_ENABLED; disagreeing means displayed prices and charged prices
-  // part ways. Only comparable where both are visible — in production
-  // STRIPE_TAX_ENABLED lives on Convex, so a one-sided env is not an error.
-  const tva = source.NEXT_PUBLIC_TVA_ENABLED
-  const stripeTax = source.STRIPE_TAX_ENABLED
-  if (isSet(tva) && isSet(stripeTax) && tva !== stripeTax) {
+  // STRIPE_TAX_ENABLED, but neither of them decides anything: the regime
+  // declared in lib/legal/company.ts does. Both flags are measured against it
+  // rather than against each other, because agreeing with each other and being
+  // wrong together is exactly the state this is here to catch — a company on
+  // the régime réel charging no VAT still owes it, and every invoice it issues
+  // in the meantime is wrong.
+  //
+  // Checked only where visible: in production STRIPE_TAX_ENABLED lives on the
+  // Convex deployment, so a one-sided Next env is normal, not an error.
+  const chargingExpected = VAT.regime === 'reel'
+  const expected = String(chargingExpected)
+  const regimeLabel = chargingExpected
+    ? 'régime réel (TVA due)'
+    : 'franchise en base (art. 293 B du CGI)'
+
+  for (const name of ['NEXT_PUBLIC_TVA_ENABLED', 'STRIPE_TAX_ENABLED']) {
+    const value = source[name]
+    if (!isSet(value) || value === expected) continue
     problems.push({
-      name: 'STRIPE_TAX_ENABLED',
-      message: `vaut "${stripeTax}" alors que NEXT_PUBLIC_TVA_ENABLED vaut "${tva}" — les deux vont ensemble`,
+      name,
+      message:
+        `vaut "${value}" alors que VAT.regime déclare ${regimeLabel} ` +
+        `(lib/legal/company.ts) — les factures émises seraient incohérentes ; ` +
+        `attendu "${expected}", et les deux drapeaux vont ensemble`,
       tier: 'feature',
     })
   }

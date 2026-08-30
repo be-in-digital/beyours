@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
+import { VAT } from "../../lib/legal/company";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
@@ -38,6 +39,11 @@ beforeEach(() => {
   // Whatever the machine running the suite happens to export.
   vi.stubEnv("STRIPE_SECRET_KEY", "");
   vi.stubEnv(TEST_CHECKOUT_ENV, "");
+  // Pinned for the same reason, and because the checkout gained a second
+  // refusal (#174): a sale is turned away when this flag contradicts the
+  // declared VAT regime. These cases are about the Stripe key, so the tax
+  // configuration is set to the one the regime requires and kept out of the way.
+  vi.stubEnv("STRIPE_TAX_ENABLED", String(VAT.regime === "reel"));
 });
 
 afterEach(() => {

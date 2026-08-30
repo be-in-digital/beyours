@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   assertQuoteApplies,
+  effectiveDeliveryFeeMode,
   quotedDeliveryFee,
   QuoteRejectedError,
   QUOTE_COORD_TOLERANCE,
@@ -207,5 +208,42 @@ describe("quotedDeliveryFee", () => {
     expect(
       quotedDeliveryFee({ quote: { fee: 400 }, percentage: 100, maxFee: 500 })
     ).toBe(400)
+  })
+})
+
+describe("effectiveDeliveryFeeMode", () => {
+  it("keeps percentage when Uber Direct can price it", () => {
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: "percentage", uberDirectEnabled: true })
+    ).toBe("percentage")
+  })
+
+  it("drops percentage to fixed when Uber Direct is off", () => {
+    // The state that closed a shop's delivery: nothing to bill a share of, so
+    // `orders.create` demanded an estimate id the storefront could not obtain.
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: "percentage", uberDirectEnabled: false })
+    ).toBe("fixed")
+  })
+
+  it("drops percentage to fixed when the integration was never configured", () => {
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: "percentage", uberDirectEnabled: undefined })
+    ).toBe("fixed")
+  })
+
+  it("leaves fixed alone, Uber Direct on or off", () => {
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: "fixed", uberDirectEnabled: true })
+    ).toBe("fixed")
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: "fixed", uberDirectEnabled: false })
+    ).toBe("fixed")
+  })
+
+  it("treats an unset mode as fixed, which is what the order path assumed", () => {
+    expect(
+      effectiveDeliveryFeeMode({ feeMode: undefined, uberDirectEnabled: true })
+    ).toBe("fixed")
   })
 })

@@ -9,7 +9,8 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { plans, formatPrice, type BillingPeriod } from "./pricing-data";
-import { FOUNDERS_OFFER, TVA_ENABLED } from "@/lib/payment-providers";
+import { FOUNDERS_OFFER } from "@/lib/payment-providers";
+import { VAT } from "@/lib/legal/company";
 import { useBookingModal, useDevMode } from "@/lib/store";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 
@@ -61,9 +62,18 @@ const footnotes = [
     ),
   },
   {
-    label: TVA_ENABLED
-      ? "Prix HT · TVA 20 % ajoutée au paiement, récupérable par votre établissement"
-      : "TVA non applicable, art. 293 B du CGI",
+    /* Read from VAT.regime, not from the NEXT_PUBLIC_TVA_ENABLED charging flag.
+       This sentence is a claim about the company's tax position, and it was
+       keyed on a deployment toggle: with the flag off under the régime réel,
+       /tarifs told visitors "TVA non applicable, art. 293 B" while /cgv and
+       the legal notice — which do read VAT.regime — told them the opposite on
+       the same site. The regime is a legal fact; whether the checkout charges
+       is a configuration, and validateSiteEnv now refuses a deployment where
+       the two disagree. */
+    label:
+      VAT.regime === "reel"
+        ? "Prix HT · TVA 20 % ajoutée au paiement, récupérable par votre établissement"
+        : "TVA non applicable, art. 293 B du CGI",
     icon: (
       <svg {...footnoteIconProps}>
         <path
