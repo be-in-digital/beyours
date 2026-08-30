@@ -394,6 +394,17 @@ export const emailCampaignsTable = defineTable({
   sentAt: v.optional(v.number()),
   completedAt: v.optional(v.number()),
 
+  /**
+   * Where the send has got to, as a Convex pagination cursor.
+   *
+   * Sending used to be one synchronous loop from the browser over the whole
+   * list, so there was nowhere to record progress and nothing to resume from:
+   * around 3,000 subscribers the action hit the Convex time limit, the campaign
+   * stayed at `sending` forever, and the only way out was "Relancer", which
+   * started again from the first subscriber.
+   */
+  sendCursor: v.optional(v.string()),
+
   // A/B testing
   abTestEnabled: v.boolean(),
   variants: v.optional(
@@ -510,6 +521,11 @@ export const emailEventsTable = defineTable({
   .index("by_campaignId", ["campaignId"])
   .index("by_subscriberId", ["subscriberId"])
   .index("by_storeId_type", ["storeId", "type"])
+  // "Has this campaign already reached this subscriber?" — the question that
+  // makes a resumed send idempotent. Answering it from `by_campaignId` would
+  // read every event the campaign has produced, once per subscriber, which is
+  // quadratic on the exact campaigns that need resuming.
+  .index("by_campaignId_subscriberId", ["campaignId", "subscriberId"])
 
 /**
  * Email config table

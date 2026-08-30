@@ -192,9 +192,17 @@ export function EmailCampaignsPage() {
   const handleSend = async (campaign: Campaign) => {
     setSendingId(campaign._id)
     try {
-      toast.info("Envoi en cours...")
-      const result = await sendAction({ campaignId: campaign._id })
-      toast.success(`Campagne envoyée (${result?.sent ?? 0}/${result?.total ?? 0} emails)`)
+      // The action starts the send and returns; the work happens in scheduled
+      // batches. It used to run the whole list inline and report a count, which
+      // is what made a large campaign time out mid-flight. Announcing "envoyée"
+      // with `result.sent` would now be false twice over — nothing has been
+      // sent yet, and the number would be zero.
+      await sendAction({ campaignId: campaign._id })
+      toast.success(
+        campaign.status === "paused"
+          ? "Envoi repris. Les abonnés déjà servis ne le seront pas deux fois."
+          : "Envoi démarré. La progression apparaît dans les statistiques."
+      )
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erreur inconnue"
       toast.error(`Échec de l'envoi : ${message}`)

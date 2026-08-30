@@ -235,6 +235,46 @@ export const markSent = {
   },
 }
 
+/** Record how far the send has got, so the next batch resumes there. */
+export const saveSendCursor = {
+  args: {
+    id: v.id("emailCampaigns"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  handler: async (ctx: any, args: any) => {
+    await ctx.db.patch(args.id, {
+      sendCursor: args.cursor ?? undefined,
+      updatedAt: Date.now(),
+    })
+  },
+}
+
+/**
+ * The campaigns whose scheduled time has arrived.
+ *
+ * `schedule` set `status: "scheduled"` and `scheduledAt`, the wizard offered a
+ * date and time picker, and nothing anywhere ever looked at either: a scheduled
+ * campaign sat at `scheduled` for good, and the only way to send was the manual
+ * menu item.
+ *
+ * Store-scoped queries cannot serve this — the sweep runs for the deployment,
+ * not for one restaurant — so it walks `by_storeId_status` per store. The caller
+ * is a cron with no identity; see `crons.ts`.
+ */
+export const dueForSending = {
+  args: { now: v.number() },
+  handler: async (ctx: any, args: any) => {
+    const scheduled = await ctx.db
+      .query("emailCampaigns")
+      .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+      .collect()
+
+    return scheduled
+      .filter((c: any) => c.scheduledAt !== undefined && c.scheduledAt <= args.now)
+      .map((c: any) => c._id)
+  },
+}
+
 // === INTERNAL ===
 
 /**

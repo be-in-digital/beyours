@@ -65,6 +65,38 @@ export const listBySubscriber = {
 
 // === INTERNAL MUTATIONS (called by SES webhook only) ===
 
+/**
+ * Which of these subscribers has this campaign already reached?
+ *
+ * The guarantee that makes a resumed send safe. A cursor alone is not enough:
+ * "Relancer" after a pause used to restart at the first subscriber, and even a
+ * correct cursor cannot survive a batch that is retried after a transient
+ * failure. Asking the events table what actually went out is the only answer
+ * that holds however the send was interrupted.
+ *
+ * One index lookup per subscriber in the page, asked once per batch rather than
+ * once per send, so the cost is a single round-trip for a batch of any size.
+ */
+export const alreadySentTo = {
+  args: {
+    campaignId: v.id("emailCampaigns"),
+    subscriberIds: v.array(v.id("emailSubscribers")),
+  },
+  handler: async (ctx: any, args: any): Promise<string[]> => {
+    const reached: string[] = []
+    for (const subscriberId of args.subscriberIds) {
+      const events = await ctx.db
+        .query("emailEvents")
+        .withIndex("by_campaignId_subscriberId", (q: any) =>
+          q.eq("campaignId", args.campaignId).eq("subscriberId", subscriberId)
+        )
+        .collect()
+      if (events.some((e: any) => e.type === "sent")) reached.push(subscriberId)
+    }
+    return reached
+  },
+}
+
 export const create = {
   args: {
     storeId: v.id("stores"),
