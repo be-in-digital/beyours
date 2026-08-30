@@ -500,7 +500,7 @@ export const createMigrationRequest = {
     const open = await getOpenMigrationRequest.handler(ctx)
     if (open) {
       throw new Error(
-        "Une demande de migration est deja en cours. Annulez-la avant d'en creer une nouvelle.",
+        "Une demande de migration est déjà en cours. Annulez-la avant d'en créer une nouvelle.",
       )
     }
 

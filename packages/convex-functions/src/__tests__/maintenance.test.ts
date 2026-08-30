@@ -515,7 +515,7 @@ describe("createMigrationRequest handler", () => {
     await createMigrationRequest.handler(ctx, validArgs)
     await expect(
       createMigrationRequest.handler(ctx, validArgs)
-    ).rejects.toThrow(/deja en cours/)
+    ).rejects.toThrow(/déjà en cours/)
   })
 
   it("allows a new request after the previous one is closed", async () => {

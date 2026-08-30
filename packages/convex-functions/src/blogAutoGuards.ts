@@ -355,7 +355,7 @@ export function validateConfigAgainstPlan(
 
       // Non-empty
       if (config.preferredWeekdays.length === 0) {
-        throw new Error("Veuillez selectionner au moins un jour de la semaine.")
+        throw new Error("Veuillez sélectionner au moins un jour de la semaine.")
       }
 
       // Bounds: each day ∈ [0..6]
@@ -387,7 +387,7 @@ export function validateConfigAgainstPlan(
 
       // Non-empty
       if (config.preferredMonthDays.length === 0) {
-        throw new Error("Veuillez selectionner au moins un jour du mois.")
+        throw new Error("Veuillez sélectionner au moins un jour du mois.")
       }
 
       // Bounds: each day ∈ [1..28]

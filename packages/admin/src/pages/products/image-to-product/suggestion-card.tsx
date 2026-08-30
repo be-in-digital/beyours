@@ -165,7 +165,7 @@ export function SuggestionCard({
           onClick={() => setExpanded(!expanded)}
           className="text-xs text-primary hover:underline"
         >
-          {expanded ? "Masquer les details" : "Afficher ingredients & allergenes"}
+          {expanded ? "Masquer les détails" : "Afficher ingrédients & allergènes"}
         </button>
 
         {expanded && (

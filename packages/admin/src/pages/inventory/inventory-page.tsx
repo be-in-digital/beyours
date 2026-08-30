@@ -257,7 +257,7 @@ export function InventoryPage() {
   const handleToggleTracking = async (productId: string, tracked: boolean) => {
     try {
       await toggleStockTracking({ id: productId, tracked })
-      toast.success(tracked ? "Suivi de stock active" : "Suivi de stock desactive")
+      toast.success(tracked ? "Suivi de stock active" : "Suivi de stock désactivé")
     } catch {
       toast.error("Erreur lors de la mise a jour du suivi")
     }

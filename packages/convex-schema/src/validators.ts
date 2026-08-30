@@ -75,19 +75,19 @@ export const updateGlobalSettingsSchema = createGlobalSettingsSchema.partial()
  * Validates new store creation with configuration
  */
 export const createStoreSchema = z.object({
-  name: z.string().min(1, "Le nom est requis").max(200, "Le nom ne peut pas depasser 200 caracteres"),
+  name: z.string().min(1, "Le nom est requis").max(200, "Le nom ne peut pas dépasser 200 caractères"),
   slug: z.string()
     .min(1, "Le slug est requis")
-    .max(100, "Le slug ne peut pas depasser 100 caracteres")
+    .max(100, "Le slug ne peut pas dépasser 100 caractères")
     .regex(/^[a-z0-9-]+$/, "Le slug ne peut contenir que des lettres minuscules, chiffres et tirets"),
-  description: z.string().max(1000, "La description ne peut pas depasser 1000 caracteres").optional(),
+  description: z.string().max(1000, "La description ne peut pas dépasser 1000 caractères").optional(),
   address: z.object({
     street: z.string().min(1, "La rue est requise"),
     city: z.string().min(1, "La ville est requise"),
     postalCode: z.string().min(1, "Le code postal est requis"),
     country: z.string()
-      .min(2, "Le code pays doit contenir 2 caracteres")
-      .max(2, "Le code pays doit contenir 2 caracteres")
+      .min(2, "Le code pays doit contenir 2 caractères")
+      .max(2, "Le code pays doit contenir 2 caractères")
       .toUpperCase(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
@@ -165,12 +165,12 @@ export const updateStoreIntegrationSchema = createStoreIntegrationSchema.partial
  */
 export const createCategorySchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
-  name: z.string().min(1, "Le nom est requis").max(100, "Le nom ne peut pas depasser 100 caracteres"),
+  name: z.string().min(1, "Le nom est requis").max(100, "Le nom ne peut pas dépasser 100 caractères"),
   slug: z.string()
     .min(1, "Le slug est requis")
-    .max(100, "Le slug ne peut pas depasser 100 caracteres")
+    .max(100, "Le slug ne peut pas dépasser 100 caractères")
     .regex(/^[a-z0-9-]+$/, "Le slug ne peut contenir que des lettres minuscules, chiffres et tirets"),
-  description: z.string().max(500, "La description ne peut pas depasser 500 caracteres").optional(),
+  description: z.string().max(500, "La description ne peut pas dépasser 500 caractères").optional(),
   imageUrl: z.string().url("URL d'image invalide").optional(),
   sortOrder: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
@@ -215,18 +215,18 @@ export const productSourceEnum = z.enum(["manual", "uber_eats", "deliveroo", "ai
  */
 export const createProductSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
-  categoryId: z.string().min(1, "L'ID de la categorie est requis"),
-  name: z.string().min(1, "Le nom est requis").max(200, "Le nom ne peut pas depasser 200 caracteres"),
+  categoryId: z.string().min(1, "L'ID de la catégorie est requis"),
+  name: z.string().min(1, "Le nom est requis").max(200, "Le nom ne peut pas dépasser 200 caractères"),
   slug: z.string()
     .min(1, "Le slug est requis")
-    .max(100, "Le slug ne peut pas depasser 100 caracteres")
+    .max(100, "Le slug ne peut pas dépasser 100 caractères")
     .regex(/^[a-z0-9-]+$/, "Le slug ne peut contenir que des lettres minuscules, chiffres et tirets"),
-  description: z.string().max(2000, "La description ne peut pas depasser 2000 caracteres").optional(),
+  description: z.string().max(2000, "La description ne peut pas dépasser 2000 caractères").optional(),
   price: z.number().int().min(0, "Le prix doit etre positif"), // in cents
   compareAtPrice: z.number().int().min(0).optional(),
   taxRate: z.number().min(0, "Le taux de TVA doit etre positif").max(100, "Le taux de TVA ne peut pas depasser 100").default(0),
   preparationTime: z.number().int().min(1, "Le temps de preparation doit etre au moins 1 minute").max(240, "Le temps de preparation ne peut pas depasser 4 heures").optional(),
-  sku: z.string().max(50, "Le SKU ne peut pas depasser 50 caracteres").optional(),
+  sku: z.string().max(50, "Le SKU ne peut pas dépasser 50 caractères").optional(),
   images: z.array(z.string().url("URL d'image invalide")).max(10, "Maximum 10 images").default([]),
   options: z.array(z.object({
     id: z.string().min(1),
@@ -494,8 +494,8 @@ export const refundPaymentSchema = z.object({
 export const createLanguageSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   code: z.string()
-    .min(2, "Le code langue doit contenir au moins 2 caracteres")
-    .max(5, "Le code langue ne peut pas depasser 5 caracteres")
+    .min(2, "Le code langue doit contenir au moins 2 caractères")
+    .max(5, "Le code langue ne peut pas dépasser 5 caractères")
     .toLowerCase(),
   name: z.string().min(1, "Le nom de la langue est requis"),
   nativeName: z.string().min(1, "Le nom natif est requis"),
@@ -823,7 +823,7 @@ export const stripeSubscriptionStatusEnum = z.enum([
  * Upsert Owner Entitlements Schema
  */
 export const upsertOwnerEntitlementsSchema = z.object({
-  ownerId: z.string().min(1, "L'ID du proprietaire est requis"),
+  ownerId: z.string().min(1, "L'ID du propriétaire est requis"),
   autoBlog: z.object({
     enabled: z.boolean(),
     plan: autoBlogPlanEnum.optional(),

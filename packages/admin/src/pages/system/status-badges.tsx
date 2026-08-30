@@ -36,7 +36,7 @@ export function MaintenanceStatusBadge({ status }: { status: MaintenanceStatus }
     return (
       <Badge variant="secondary" className="bg-amber-500/10 text-amber-500">
         <AlertTriangleIcon className="h-3 w-3 mr-1" />
-        Expire bientot
+        Expire bientôt
       </Badge>
     )
   }
@@ -44,7 +44,7 @@ export function MaintenanceStatusBadge({ status }: { status: MaintenanceStatus }
     return (
       <Badge variant="secondary" className="bg-red-500/10 text-red-500">
         <XCircleIcon className="h-3 w-3 mr-1" />
-        Maintenance expiree
+        Maintenance expirée
       </Badge>
     )
   }

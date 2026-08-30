@@ -48,3 +48,14 @@ export const SOCIAL_LINKS = {
  */
 export const SITE_WHATSAPP_URL =
   "https://api.whatsapp.com/send/?phone=33768715445&text=Bonjour%2C+j%27ai+une+question+sur+Beyours&type=phone_number&app_absent=0";
+
+/**
+ * Origin of the self-hosted Cal.com instance behind the booking modal.
+ *
+ * It lives here rather than in `components/booking-modal.tsx` because two
+ * places have to agree on it: the embed loads its script and iframe from this
+ * origin, and the Content-Security-Policy in `next.config.ts` has to allow that
+ * same origin. Written twice, a move of the Cal instance would update one of
+ * them and break booking with a CSP violation.
+ */
+export const BOOKING_ORIGIN = "https://bookself.app";

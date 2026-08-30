@@ -82,7 +82,7 @@ export function AuditLogSection() {
               Journal d'activite
             </CardTitle>
             <CardDescription>
-              Historique des operations systeme
+              Historique des opérations système
             </CardDescription>
           </div>
           <Select

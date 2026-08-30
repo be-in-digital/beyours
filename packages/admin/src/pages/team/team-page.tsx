@@ -204,7 +204,7 @@ export function TeamPage() {
         memberId: member._id,
         storeName: currentStore?.name ?? "Restaurant",
       })
-      toast.success(`Invitation renvoyee a ${member.email}`)
+      toast.success(`Invitation renvoyée à ${member.email}`)
     } catch {
       toast.error("Échec du renvoi de l'invitation")
     }
@@ -226,7 +226,7 @@ export function TeamPage() {
           <EmptyMedia variant="icon">
             <UserIcon />
           </EmptyMedia>
-          <EmptyTitle>Aucun établissement selectionne</EmptyTitle>
+          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
           <EmptyDescription>Veuillez sélectionner un établissement pour gérer l'équipe</EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -438,7 +438,7 @@ export function TeamPage() {
         onOpenChange={(open) => !open && setDeleteMember(null)}
         onConfirm={handleRemove}
         title="Supprimer le membre"
-        description={`Etes-vous sur de vouloir supprimer ${deleteMember?.name ?? "ce membre"} de l'equipe ? Cette action est irreversible.`}
+        description={`Êtes-vous sûr de vouloir supprimer ${deleteMember?.name ?? "ce membre"} de l'équipe ? Cette action est irréversible.`}
       />
     </div>
   )
@@ -535,9 +535,9 @@ function InviteDialog({
         storeName,
       })
       if (result?.emailSent === false) {
-        toast.warning(`Membre ajoute mais l'email n'a pas pu etre envoye a ${email}`)
+        toast.warning(`Membre ajouté mais l'email n'a pas pu être envoyé à ${email}`)
       } else {
-        toast.success(`Invitation envoyee a ${email}`)
+        toast.success(`Invitation envoyée à ${email}`)
       }
       resetForm()
       onOpenChange(false)
@@ -569,7 +569,7 @@ function InviteDialog({
         <DialogHeader>
           <DialogTitle>Inviter un membre</DialogTitle>
           <DialogDescription>
-            Un email d'invitation sera envoye au nouveau membre
+            Un email d'invitation sera envoyé au nouveau membre
           </DialogDescription>
         </DialogHeader>
 

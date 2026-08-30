@@ -39,14 +39,23 @@ describe("generateDoubleOptInToken", () => {
 })
 
 describe("isDoubleOptInValid", () => {
-  const future = Date.now() + 60_000
-  const past = Date.now() - 60_000
+  // Read the clock inside each test, not once while the file is being
+  // collected. `isDoubleOptInValid` is `Date.now() <= expiresAt`, so a fixed
+  // `Date.now() + 60_000` is a bet that this file starts executing within a
+  // minute of being collected. That holds on a developer's machine and stops
+  // holding on a loaded runner, where the whole suite is competing for a
+  // couple of cores — and when it lapses, exactly one test flips: the one
+  // asserting a valid token is accepted. The three below it assert `false`
+  // for other reasons and keep passing, so the failure arrives as a single
+  // red test with no obvious cause.
+  const future = () => Date.now() + 60_000
+  const past = () => Date.now() - 60_000
 
   it("returns true for a pending subscriber with a valid token", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInToken: "abc-123",
-      doubleOptInExpiresAt: future,
+      doubleOptInExpiresAt: future(),
     }
     expect(isDoubleOptInValid(subscriber)).toBe(true)
   })
@@ -55,7 +64,7 @@ describe("isDoubleOptInValid", () => {
     const subscriber: SubscriberForOptIn = {
       status: "active",
       doubleOptInToken: "abc-123",
-      doubleOptInExpiresAt: future,
+      doubleOptInExpiresAt: future(),
     }
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })
@@ -63,7 +72,7 @@ describe("isDoubleOptInValid", () => {
   it("returns false when the token is missing", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
-      doubleOptInExpiresAt: future,
+      doubleOptInExpiresAt: future(),
     }
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })
@@ -80,7 +89,7 @@ describe("isDoubleOptInValid", () => {
     const subscriber: SubscriberForOptIn = {
       status: "pending",
       doubleOptInToken: "abc-123",
-      doubleOptInExpiresAt: past,
+      doubleOptInExpiresAt: past(),
     }
     expect(isDoubleOptInValid(subscriber)).toBe(false)
   })

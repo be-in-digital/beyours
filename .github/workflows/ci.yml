@@ -46,6 +46,13 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
+      # Folded into Lint rather than given its own job on purpose: `Lint` is
+      # already one of the four contexts branch protection requires by name, so
+      # this becomes blocking without anyone having to touch repository
+      # settings. See scripts/check-french-accents.mjs for what it checks.
+      - name: Check French accents
+        run: pnpm check:accents
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
