@@ -1,5 +1,270 @@
 # Changelog
 
+## 3.0.0
+
+### Major Changes
+
+- 7ae8072: `convex` moves from a hard dependency to a peer dependency.
+
+  **Breaking: consumers must declare `convex` themselves**, at `^1.44.0`. Every
+  consumer already does — both apps and the boilerplate are on 1.44.0 — so nothing
+  in the fleet has to change today. It is still a change to the contract, hence
+  the major.
+
+  Both packages ship raw TypeScript (`main: ./src/index.ts`, `files: ["src"]`, no
+  build step), so the consumer's compiler reads their source, which imports
+  `convex/server` and `convex/values`. That is the definition of a peer: the
+  consumer supplies the copy, and there must be exactly one. As a hard dependency
+  at an exact version it was the opposite — the package brought its own.
+
+  Measured on the real tarball rather than argued, with a consumer on convex
+  1.42.0:
+
+  |                                                       | Result                                                                                                                                  |
+  | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+  | **Before** — `dependencies: { convex: "1.44.0" }`     | installs quietly, **two copies**: the consumer's `convex@1.42.0` and a nested `@be-in-digital/convex-schema/node_modules/convex@1.44.0` |
+  | **After** — `peerDependencies: { convex: "^1.44.0" }` | npm **refuses**: `npm error peer convex@"^1.44.0" from @be-in-digital/convex-schema@2.2.0`                                              |
+  | **After**, consumer on 1.44.0                         | installs, exactly one copy                                                                                                              |
+
+  Two copies of `convex/values` means two sets of validators, which is the same
+  class of failure as the two React contexts that once crashed the admin — quieter,
+  because there is no provider to notice the mismatch.
+
+  One limit worth stating: inside this monorepo the change has no effect. Workspace
+  links resolve `convex` from each package's own `devDependencies`, so
+  `packages/convex-schema` keeps using its local copy whatever a sibling declares.
+  The guard is real where the packages are installed from the registry, which is
+  every client site.
+
+### Minor Changes
+
+- a561c61: One `convex` version across the monorepo: 1.44.0.
+
+  Six manifests declared three different things — `1.31.7` exact in the engine,
+  the template and three packages, `^1.34.0` floating in `apps/site`, and a
+  `>=1.0.0` peer in `packages/admin`. pnpm installed **two copies**, and
+  `apps/site` was the only workspace on the newer one.
+
+  The 1.31.7 pin was not a compatibility constraint. It was an incident fix: the
+  unconstrained peer in `packages/admin` let pnpm resolve `convex` to the highest
+  version in the repo while the app provided context from the lower one, so
+  `useQuery` found no provider and the admin crashed on render for every user.
+  Pinning `convex` as an explicit devDependency of `packages/admin` out-voted the
+  resolution. Declaring the same exact version everywhere removes it instead —
+  there is no second copy left to pick.
+
+  `convex-schema` and `convex-functions` carry `convex` as a real dependency, so
+  consumers inherit this bump.
+
+  Nothing in the 1.31.7 → 1.44.0 range is breaking: no removed runtime API, no
+  change to `ctx.auth`, and the same `node >= 18` floor. Two consequences did
+  need handling. Convex 1.35.0 flipped codegen for components from static
+  expansion to a `ComponentApi` reference, which is why `_generated/api.d.ts` in
+  the engine and the template loses ~1980 lines each; `components.betterAuth` is
+  still exported under the same name, now typed by better-auth's own package. And
+  `_generated/server.d.ts` gains a typed `env` for `CONVEX_CLOUD_URL` and
+  `CONVEX_SITE_URL`. The new default was accepted rather than opted out of with
+  `legacyComponentApi`.
+
+  The remaining hazard is untouched and deliberate: `packages/admin` still peers
+  on `convex: ">=1.0.0"`. A permissive peer is right for a library, and with every
+  manifest agreeing it cannot mis-resolve — but it is what made the original
+  incident possible, and it will again if the versions ever diverge.
+
+- 213eb1d: Restoring a backup no longer detaches the whole database from its stores.
+
+  `importTable` deletes a table and re-inserts its rows without their `_id` —
+  Convex will not let an insert choose one. So `stores` came back under **new**
+  ids while the products, menus, CMS pages and promotions restored after them came
+  back carrying the **old** `storeId`. Nothing objected: `v.id("stores")`
+  validates how an id is encoded, not that it resolves, so the inserts succeeded
+  and the deployment came up with every catalogue detached from its establishment.
+  `userProfiles.storeIds` still named stores that no longer existed, so the owner
+  who ran the restore was locked out of every screen. Silently, and irreversibly.
+
+  The import now records `old id → new id` for every row it inserts and carries
+  that map forward table by table, rewriting every id it recognises — including
+  inside arrays and nested objects, so `targetProductIds` and a CMS block's
+  embedded ids are reached as readily as a top-level `storeId`. The existing
+  dependency order is what makes it work: a reference can only be rewritten once
+  its target has been inserted.
+
+  `userProfiles` is not in the backup — it holds identities, not restaurant data —
+  so its `storeIds` are rewritten in place afterwards. Ids the map does not know
+  are dropped, because after the import those establishments do not exist, and
+  keeping them would put back the dangling reference this removes.
+
+  The restore reports what it remapped, and says plainly that orders, payments,
+  kitchen tickets and team members are neither exported nor imported, so their
+  references are not repaired. It does **not** try to count them: telling a
+  reference from an ordinary string needs a way to recognise a Convex id, and
+  there is none that holds across deployments. A count that reports zero for
+  exactly the case it exists to catch is worse than a plain statement of what a
+  backup carries.
+
+- aa2880f: Four multi-store defects, all of them settings written by the dashboard and
+  read by nobody — or data written and never cleaned up.
+
+  **Deleting an establishment takes its data with it.** `stores.remove` deleted
+  the store row alone. Forty-two `storeId` columns across twenty tables were left
+  pointing at a document that no longer existed, and the id stayed in
+  `userProfiles.storeIds`. Nothing complained: `v.id("stores")` validates how an
+  id is encoded, not that it resolves. The sweep is batched and resumable — one
+  mutation is one transaction, and an established restaurant has more orders than
+  a transaction may touch — so `remove` clears one batch and the app wrapper
+  schedules `purgeStoreData` until there is nothing left. `favorites` gained a
+  `by_storeId` index: both of its compound indexes start with `userId`, so it was
+  the one table that could not be swept by store.
+
+  **"Horaires globaux" governs the storefront.** `useGlobalHours` was written by
+  the dashboard and read by nothing — `use-store-status` took `store.hours`
+  unconditionally, so an owner who edited the global week and left every location
+  on the flag changed nothing a visitor could see. `resolveStoreHours` resolves it
+  on read rather than copying on write, so editing the global hours reaches every
+  location that follows them without a migration.
+
+  **Opening hours are the restaurant's, not the visitor's.**
+  `globalSettings.timezone` was written and never read: open/closed came from
+  `now.getDay()` and `now.getHours()`, the browser's clock. A customer abroad got
+  the wrong answer, and anyone could change it by changing their system clock.
+  `isStoreOpen` and `getNextOpenTime` take an optional IANA zone; without one they
+  behave exactly as before, and an unknown zone name falls back to the visitor's
+  clock rather than throwing.
+
+  **Saving the Integrations tab keeps the Uber Direct credentials.** The settings
+  form read `globalSettings.get` — the public storefront query, which strips
+  `customerId`, `clientId` and `clientSecret` — so the fields came up empty and
+  saving patched the empty values over the stored ones. It reads `getAdmin` now,
+  the query behind the same `settings:read` the Paramètres page already requires.
+  `upsert` also merges `integrations` platform by platform, so a tab saving its
+  own section no longer takes out the others; each platform is still replaced
+  whole, so disconnecting one remains possible.
+
+  The three integration switches gained an id and an `aria-label`. They had
+  neither, so a screen reader announced three anonymous check boxes.
+
+- 629e88e: An order is refused when the restaurant is not taking any, and when it is not
+  the kind the restaurant runs.
+
+  **"Fermé" and "Indisponible" now mean it.** `orders.create` checked
+  `isPublishedStore` alone, and both statuses are _published_ — that is what keeps
+  a paused restaurant listed with a readable menu. The storefront greyed out every
+  button on them and nothing else did, so a tab left open, a cart restored from
+  localStorage or a direct call took the order anyway. `isOrderableStore` is the
+  narrower rule, next to `isPublishedStore` where the wider one already lived.
+
+  This reverses a decision the suite documented — _"a closed restaurant is
+  published: it takes orders for later, and the storefront is what decides whether
+  to offer that."_ It does not hold: `closed` and `temporarily_unavailable` are set
+  by hand from the dashboard, and the two screens that offer ordering already
+  refuse on them. Pre-orders for a named later date are a feature nobody has built;
+  until someone does, the status means what the owner meant.
+
+  **The four service switches are enforced.** `globalSettings.services` was written
+  by the settings page and read nowhere that mattered. The storefront took
+  `store.overrides.services` — `undefined` on every establishment that has not
+  customised it — and the selector read `undefined` as "offer everything", so a
+  restaurant that does not deliver still showed Livraison. `orders.create` never
+  looked at `args.type` at all.
+
+  `resolveStoreServices` puts the store override first, the global switches next,
+  and everything-on last, so a deployment whose settings row has never been saved
+  keeps working. `ORDER_TYPE_SERVICE` is the one map the selector filters on and
+  the mutation validates against — the button a customer can press and the order
+  the server accepts can no longer disagree. `clickAndCollect` is deliberately
+  unmapped: three order types, four switches, and folding it into `takeaway` would
+  make that switch mean two things.
+
+- 74de4e9: `orderConfirmation` and `displayConfig` are gone; `soundConfig` stays.
+
+  The audit listed three store settings as dead — "mutations and audit entries
+  wired, with no reader or writer". Two of the three were, and the reason they
+  looked wired is worth recording: the only screens that wrote them lived in
+  `apps/themes/components/admin/settings/`, a folder no route renders. Both apps
+  route `/dashboard/settings` and `/dashboard/stores/[id]` to `@be-in-digital/admin`,
+  so those six components had been orphaned and left behind. The folder is deleted.
+
+  `orderConfirmation` was the worse of the two. `"manual"` promised that staff
+  would validate an order before the kitchen saw it, and nothing implemented it:
+  `createWithTicket` sends every order straight through. A setting nobody reads is
+  dead code; a setting that promises a workflow the product does not have is a
+  false promise to the restaurant owner. It is withdrawn rather than left offered.
+
+  The two fields stay declared in the schema, optional, alongside `branding` and
+  the other legacy columns — a stored field absent from the schema fails
+  validation on the next write to that document, so removing them outright would
+  break the establishments that already hold one. Nothing writes them now.
+
+  `soundConfig` is **not** dead and is kept: `KitchenContent` hands it to
+  `KitchenSoundManager` in both apps, on the routed kitchen display, and it decides
+  which alerts sound and how loudly. Deleting it would have silenced a working
+  feature. It has no editor — the KDS runs on the component's fallbacks — which is
+  a gap worth closing and not the same thing.
+
+- 526717a: Two ways a store id reached somewhere it should not have.
+
+  **A stale admin selection no longer takes `/dashboard/team` down.** The persisted
+  id is a bare string in localStorage, and localStorage outlives the deployment
+  that issued it. `teamMembers.list` declares `storeId: v.id("stores")`, which
+  refuses an id from another deployment, and Convex raises that out of `useQuery`
+  during render — so the page went blank rather than degrading. `/dashboard/team`
+  is one of `StoreGuard`'s `BYPASS_ROUTES`, so it renders before the guard has
+  settled the selection; the guard does repair it, but a render happens first, and
+  one render was all it took. The page now checks the id against
+  `stores.listAll` before sending it, through the same `resolveStoreSelection` the
+  guard uses. This is the shape #119 fixed for the storefront and not here.
+
+  **A draft establishment is no longer readable by the storefront.**
+  `stores.getById` is public — checkout, the contact page and the open/closed
+  banner all need it before anyone signs in — and it returned drafts to anyone who
+  had an id: address, contact details, `orderMode`, `overrides`. `stores.list`
+  filters drafts out; a direct read walked past that.
+
+  Closing the query was not an option: it is also the administration's read. The
+  store detail page exists to publish drafts, and the KDS reads its own
+  establishment while holding a role (`kitchen`, `delivery`) that does not have
+  `stores:read`, so `getAdminById` is shut to it. The rule is therefore by caller —
+  staff see drafts, everyone else gets `null` — using a new non-throwing `isStaff`
+  beside `requireStaff`, because a query the storefront shares has to be able to
+  answer "not staff" without raising.
+
+- 889dddb: Creating an establishment from the dashboard works.
+
+  It never did. `stores.create` declares six arguments; the create dialog sent a
+  seventh — a `settings` object with currency, timezone, service toggles, fees and
+  a tax rate. Convex refuses an undeclared argument rather than dropping it, so
+  every attempt threw an `ArgumentValidationError` and the dialog showed nothing
+  but "Échec de la création de l'établissement". On a product billed per store,
+  the only establishments that could exist were the ones `seedFixture` wrote.
+
+  The payload now lives in `buildStoreCreateArgs` instead of inside the React
+  handler, because a payload written inline is invisible to the test suite. The
+  unit tests call handlers directly, past the validator, and saw nothing;
+  `store-create-args.test.ts` reads the argument names off the validator itself
+  and compares.
+
+  `resolveTaxRatePercent` loses its `storeTaxRate` source. It read
+  `store.settings.taxRate` — a legacy column no mutation declares, so the only
+  value it could ever have held came from the payload Convex was rejecting. Every
+  order already fell through to `globalSettings.taxRate`; the rate is now read
+  from there and nowhere else. A genuine per-store rate belongs in a declared
+  argument with an editor behind it.
+
+  `E2E_PORT` gives a Playwright run its own port. Two runs on one machine used to
+  share 3000, and `reuseExistingServer` let the second drive the first one's
+  build.
+
+### Patch Changes
+
+- Updated dependencies [a561c61]
+- Updated dependencies [ebdda7e]
+- Updated dependencies [7ae8072]
+- Updated dependencies [aa2880f]
+- Updated dependencies [629e88e]
+- Updated dependencies [74de4e9]
+  - @be-in-digital/convex-schema@3.0.0
+  - @be-in-digital/core@2.3.0
+
 ## 2.2.2
 
 ### Patch Changes

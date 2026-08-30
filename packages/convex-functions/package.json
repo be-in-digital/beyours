@@ -1,6 +1,6 @@
 {
   "name": "@be-in-digital/convex-functions",
-  "version": "2.2.2",
+  "version": "3.0.0",
   "publishConfig": {
     "access": "restricted"
   },
