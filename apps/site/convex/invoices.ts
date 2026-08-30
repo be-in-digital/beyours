@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 const planValidator = v.union(v.literal("essentielle"), v.literal("premium"));
 const statusValidator = v.union(
@@ -81,16 +81,12 @@ export const getByStripeInvoiceId = internalQuery({
   },
 });
 
-/* ── Public queries (espace client) ── */
+/* ── No public read here, on purpose ──
+   `getByEmail` took an arbitrary email and returned up to 50 invoices with
+   their `invoicePdfUrl` and `hostedInvoiceUrl` — a customer's whole billing
+   history, and the PDFs themselves, to anyone who knew their address. The
+   deployment URL ships in the browser bundle, so "public query" means public.
+   It was written for a customer area that does not exist and had no caller.
 
-export const getByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("invoices")
-      .withIndex("by_customerEmail", (q) =>
-        q.eq("customerEmail", args.email),
-      )
-      .take(50);
-  },
-});
+   The client area, when it arrives, derives the email from the authenticated
+   session — never from an argument. */
