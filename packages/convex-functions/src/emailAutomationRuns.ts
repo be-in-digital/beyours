@@ -10,11 +10,18 @@
 
 import { v } from "convex/values"
 
-/** The step ids this automation has already sent to this subscriber. */
+/**
+ * The step ids this automation has already sent to this subscriber.
+ *
+ * Scoped to one firing when `occurrenceKey` is given: a post-order thank-you
+ * asks "which steps have gone out FOR THIS ORDER", not "ever", or the second
+ * order would be met with a sequence that considers itself finished.
+ */
 export const stepsSentTo = {
   args: {
     automationId: v.id("emailAutomations"),
     subscriberId: v.id("emailSubscribers"),
+    occurrenceKey: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any): Promise<string[]> => {
     const runs = await ctx.db
@@ -24,7 +31,11 @@ export const stepsSentTo = {
       )
       .collect()
     return runs
-      .filter((r: any) => r.subscriberId === args.subscriberId)
+      .filter(
+        (r: any) =>
+          r.subscriberId === args.subscriberId &&
+          r.occurrenceKey === args.occurrenceKey
+      )
       .map((r: any) => r.stepId)
   },
 }
@@ -43,6 +54,7 @@ export const record = {
     subscriberId: v.id("emailSubscribers"),
     storeId: v.id("stores"),
     stepId: v.string(),
+    occurrenceKey: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any) => {
     // Guard against the race the index exists for: two dispatches of the same
@@ -55,6 +67,7 @@ export const record = {
           .eq("automationId", args.automationId)
           .eq("subscriberId", args.subscriberId)
           .eq("stepId", args.stepId)
+          .eq("occurrenceKey", args.occurrenceKey)
       )
       .first()
     if (existing) return existing._id
@@ -64,6 +77,7 @@ export const record = {
       subscriberId: args.subscriberId,
       storeId: args.storeId,
       stepId: args.stepId,
+      occurrenceKey: args.occurrenceKey,
       sentAt: Date.now(),
     })
   },

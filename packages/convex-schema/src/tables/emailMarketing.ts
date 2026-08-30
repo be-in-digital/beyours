@@ -473,6 +473,16 @@ export const emailAutomationsTable = defineTable({
     })
   ),
 
+  /**
+   * For the `inactive` trigger: how long without ordering counts as lapsed.
+   *
+   * Optional, because no screen sets it — there is no automation editor in the
+   * product at all, only the five toggles in the email settings. Whoever
+   * creates the automation through the API can choose; otherwise
+   * `DEFAULT_INACTIVE_AFTER_DAYS` applies.
+   */
+  inactiveAfterDays: v.optional(v.number()),
+
   // Same shape as campaign stats
   stats: campaignStatsValidator,
 
@@ -506,6 +516,17 @@ export const emailAutomationRunsTable = defineTable({
   /** The `steps[].id` this row records. */
   stepId: v.string(),
 
+  /**
+   * Which firing of the automation this was.
+   *
+   * Absent for a sequence that happens once per person — a welcome. Present
+   * where the same automation must be able to run again: the order's id for a
+   * post-order thank-you, and the date of the order someone lapsed after for a
+   * win-back. Without it, keying on the step alone would send a thank-you for a
+   * customer's first order and never again.
+   */
+  occurrenceKey: v.optional(v.string()),
+
   sentAt: v.number(),
 })
   .index("by_automationId", ["automationId"])
@@ -513,8 +534,13 @@ export const emailAutomationRunsTable = defineTable({
   // Deleting a store purges by this — see STORE_SCOPED_TABLES.
   .index("by_storeId", ["storeId"])
   // The idempotency question, answered with one lookup: has this step of this
-  // automation already reached this subscriber?
-  .index("by_automation_subscriber_step", ["automationId", "subscriberId", "stepId"])
+  // automation already reached this subscriber, for this firing?
+  .index("by_automation_subscriber_step", [
+    "automationId",
+    "subscriberId",
+    "stepId",
+    "occurrenceKey",
+  ])
 
 /**
  * Email events table
