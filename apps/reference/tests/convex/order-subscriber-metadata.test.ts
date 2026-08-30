@@ -18,7 +18,7 @@
 
 import { convexTest } from "convex-test"
 import { buildSegmentFilter } from "@be-in-digital/marketing"
-import { describe, expect, test } from "vitest"
+import { afterEach, describe, expect, test } from "vitest"
 import { internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
@@ -29,8 +29,39 @@ const NOW = 1_700_000_000_000
 const EMAIL = "yanis@resto.example"
 
 function newHarness() {
-  return convexTest(schema, modules)
+  const t = convexTest(schema, modules)
+  harnesses.push(t)
+  return t
 }
+
+const harnesses: ReturnType<typeof convexTest>[] = []
+
+/**
+ * Cancel whatever the test left on the scheduler.
+ *
+ * Mutations here queue work through `ctx.scheduler.runAfter`. A test finishes
+ * in milliseconds and leaves it pending; whatever fires it next writes against
+ * a transaction that closed, and because nothing awaits it that arrives as an
+ * unhandled rejection — every assertion green and the run still exiting 1,
+ * blaming whichever file happened to be running.
+ *
+ * Cancel rather than run: several of these hand off to actions, and an action
+ * has no transaction for convex-test to record its completion in.
+ */
+afterEach(async () => {
+  for (const t of harnesses) {
+    await t.run(async (ctx) => {
+      const pending = await ctx.db.system.query("_scheduled_functions").collect()
+      for (const job of pending) {
+        if (job.state.kind === "pending" || job.state.kind === "inProgress") {
+          await ctx.scheduler.cancel(job._id)
+        }
+      }
+    })
+  }
+  harnesses.length = 0
+})
+
 
 async function seedStore(t: ReturnType<typeof convexTest>) {
   return t.run((ctx) =>

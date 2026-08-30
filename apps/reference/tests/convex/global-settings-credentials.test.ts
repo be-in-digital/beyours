@@ -62,7 +62,14 @@ afterEach(async () => {
   for (const t of harnesses) {
     await t.run(async (ctx) => {
       const pending = await ctx.db.system.query("_scheduled_functions").collect()
-      for (const job of pending) await ctx.scheduler.cancel(job._id)
+      for (const job of pending) {
+        // Only what is still outstanding: cancelling a job that already
+        // finished is not a no-op. Same guard as `cancelScheduled` in
+        // campaign-send.test.ts, which reached this from the other direction.
+        if (job.state.kind === "pending" || job.state.kind === "inProgress") {
+          await ctx.scheduler.cancel(job._id)
+        }
+      }
     })
   }
   harnesses.length = 0
