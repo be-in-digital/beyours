@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+/**
+ * Guards `apps/reference` and `apps/themes` against undocumented divergence.
+ *
+ * The two apps are near-identical twins: the bench is where an engine feature
+ * is proven, the template is what a client is sold. Every file that differs is
+ * therefore either a decision someone made — and then it belongs in
+ * `tasks/reference-themes-divergence.md` and in a comment in the file — or a
+ * fix that landed on one side only, which is a defect in whichever side missed
+ * it.
+ *
+ * The pass of 2026-08-29 found 70 shared files differing and reduced them to
+ * 19. Ten PRs later there were 20 again: #256 added `getByIdInternal` to the
+ * bench and not to the template, and `sendBatch` on a client deployment called
+ * a Convex function that did not exist. Nothing caught it — not `tsc`, not the
+ * test suite, not review. It was found by hand, by accident, ten PRs late.
+ *
+ * A note is a map. This is the barrier. Two checks:
+ *
+ *   `twins`  — a shared file that differs must be on ALLOWED below.
+ *   `parity` — under `e2e/` and `convex/`, a file may not exist on one side
+ *              only. That is how the template ended up missing nine whole
+ *              suites while its own CI stayed green, and it is the shape a
+ *              missing Convex function takes before it becomes a 500 on a
+ *              client's site.
+ *
+ * Not covered, deliberately: a brand-new one-sided file under `app/`,
+ * `components/` or `lib/`. Both apps legitimately hold a few dozen of those —
+ * the bench owns the gamification screens, the template owns its own admin
+ * components and its `scripts/` — and an allowlist that large would rot faster
+ * than it caught anything. `e2e/` and `convex/` are exactly at parity today,
+ * which is what makes enforcing them free.
+ *
+ * Usage:  node scripts/check-app-divergence.mjs   (also: pnpm check:divergence)
+ */
+
+import fs from "node:fs"
+import path from "node:path"
+import { fileURLToPath } from "node:url"
+
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
+const REFERENCE = path.join(ROOT, "apps/reference")
+const THEMES = path.join(ROOT, "apps/themes")
+
+const SKIP_DIRS = new Set([
+  "node_modules", ".next", ".turbo", "dist", "_generated", ".git",
+  "playwright-report", "test-results", ".auth",
+])
+
+// Files each app is supposed to own outright. Matched on basename, because
+// every one of them is per-app by nature wherever it sits — `convex/tsconfig.json`
+// is as app-specific as the root one.
+const CONFIG = new Set([
+  ".gitignore", ".npmrc", "README.md", "CHANGELOG.md",
+  "package.json", "tsconfig.json", "tsconfig.tsbuildinfo", "vercel.json",
+  "next.config.ts", "playwright.config.ts", "eslint.config.mjs", "vitest.config.ts",
+])
+const CONFIG_PATTERN = /^\.env(\..+)?\.example$/
+
+/**
+ * Divergences that are decisions, not drift.
+ *
+ * Every entry must also carry its reason as a comment in the file itself, so
+ * the explanation survives being read without this list. `tasks/reference-themes-divergence.md`
+ * holds the long form. Adding a row here is a deliberate act: it means "the two
+ * apps should differ here, and here is why".
+ */
+const ALLOWED = [
+  { file: "convex/auth.ts", reason: "the bench trusts localhost:3000-3003; a client site must not" },
+  { file: "convex/http.ts", reason: "the template keeps /api/webhooks/* as 410 tombstones for integrators" },
+  { file: "app/layout.tsx", reason: "metadata, fonts and theme come from the template's client zone" },
+  { file: "components/admin/index.ts", reason: "the template's barrel exports its own local components" },
+
+  // Gamification is not part of what a client buys today. The template shows
+  // ComingSoon where the bench renders the real screens.
+  { file: "app/(admin)/dashboard/games/actions/page.tsx", reason: "gamification stubbed in the template" },
+  { file: "app/(admin)/dashboard/games/catalog/page.tsx", reason: "gamification stubbed in the template" },
+  { file: "app/(admin)/dashboard/games/qr-codes/page.tsx", reason: "gamification stubbed in the template" },
+  { file: "app/(admin)/dashboard/games/winners/page.tsx", reason: "gamification stubbed in the template" },
+  { file: "app/(admin)/games/settings/page.tsx", reason: "redirect target differs; the route exists only in the template" },
+  { file: "app/game/[qrCodeId]/_components/GameContent.tsx", reason: "the player flow is a placeholder in the template" },
+  { file: "e2e/admin/coming-soon.spec.ts", reason: "asserts the one extra route the template keeps" },
+
+  // Comments that name their own app. These will differ forever, correctly.
+  { file: "lib/auth-client.ts", reason: "comment names its own app" },
+  { file: "lib/i18n.ts", reason: "comment names its own app" },
+  { file: "lib/rbac.ts", reason: "comment names its own app" },
+  { file: "lib/stores/addresses-store.ts", reason: "comment wording" },
+  { file: "lib/stores/favorites-store.ts", reason: "comment wording" },
+  { file: "components/storefront/user-menu.tsx", reason: "comment wording" },
+]
+
+const allowed = new Set(ALLOWED.map((a) => a.file))
+
+function walk(dir, base = dir, out = []) {
+  if (!fs.existsSync(dir)) return out
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (SKIP_DIRS.has(e.name)) continue
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) walk(p, base, out)
+    else out.push(path.relative(base, p))
+  }
+  return out
+}
+
+const isConfig = (rel) => {
+  const name = path.basename(rel)
+  return CONFIG.has(name) || CONFIG_PATTERN.test(name)
+}
+
+/* ── Check 1: a shared file that differs must be a documented decision ───── */
+
+function checkTwins() {
+  const failures = []
+  for (const rel of walk(REFERENCE)) {
+    if (isConfig(rel) || allowed.has(rel)) continue
+    const themePath = path.join(THEMES, rel)
+    if (!fs.existsSync(themePath)) continue // one-sided; see checkE2eParity
+    const a = fs.readFileSync(path.join(REFERENCE, rel))
+    const b = fs.readFileSync(themePath)
+    if (!a.equals(b)) failures.push(rel)
+  }
+  return failures
+}
+
+/* ── Check 2: neither app may hold a file the other lacks, in e2e or convex ─ */
+
+const PARITY_DIRS = ["e2e", "convex"]
+
+function checkParity() {
+  const failures = []
+  for (const dir of PARITY_DIRS) {
+    const inRef = new Set(walk(path.join(REFERENCE, dir)))
+    const inThemes = new Set(walk(path.join(THEMES, dir)))
+    for (const rel of inRef) {
+      if (!isConfig(rel) && !inThemes.has(rel)) {
+        failures.push({ rel: `${dir}/${rel}`, missingFrom: "apps/themes" })
+      }
+    }
+    for (const rel of inThemes) {
+      if (!isConfig(rel) && !inRef.has(rel)) {
+        failures.push({ rel: `${dir}/${rel}`, missingFrom: "apps/reference" })
+      }
+    }
+  }
+  return failures
+}
+
+/* ── Report ─────────────────────────────────────────────────────────────── */
+
+const twins = checkTwins()
+const parity = checkParity()
+const SELF = path.relative(ROOT, fileURLToPath(import.meta.url))
+
+if (twins.length) {
+  console.error(`\n✗ ${twins.length} shared file(s) differ between the two apps without being documented.\n`)
+  for (const f of twins) {
+    console.error(`    ${f}`)
+    console.error(`      diff apps/reference/${f} apps/themes/${f}`)
+  }
+  console.error(`\n  A fix that lands on one side only is a defect on the other. Port it.`)
+  console.error(`  If the difference is deliberate, say why in the file itself, add a row`)
+  console.error(`  to ALLOWED in ${SELF}, and record it in`)
+  console.error(`  tasks/reference-themes-divergence.md.`)
+}
+
+if (parity.length) {
+  console.error(`\n✗ ${parity.length} file(s) exist in one app and not the other.\n`)
+  for (const f of parity) console.error(`    ${f.rel}  — missing from ${f.missingFrom}`)
+  console.error(`\n  The two suites prove the same product, and the two backends serve it.`)
+  console.error(`  A spec that runs against the bench and not the template leaves the`)
+  console.error(`  shippable side unproven; a Convex function present on one side only`)
+  console.error(`  fails at runtime the first time something calls it.`)
+}
+
+if (twins.length || parity.length) {
+  console.error(`\nApp divergence check failed.\n`)
+  process.exit(1)
+}
+
+console.log(
+  `App divergence check passed: ${ALLOWED.length} documented divergences, no new ones, ` +
+    `${PARITY_DIRS.join(" and ")} at parity.`
+)
