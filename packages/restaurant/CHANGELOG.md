@@ -1,5 +1,83 @@
 # @be-in-digital/restaurant
 
+## 2.1.0
+
+### Minor Changes
+
+- aa2880f: Four multi-store defects, all of them settings written by the dashboard and
+  read by nobody — or data written and never cleaned up.
+
+  **Deleting an establishment takes its data with it.** `stores.remove` deleted
+  the store row alone. Forty-two `storeId` columns across twenty tables were left
+  pointing at a document that no longer existed, and the id stayed in
+  `userProfiles.storeIds`. Nothing complained: `v.id("stores")` validates how an
+  id is encoded, not that it resolves. The sweep is batched and resumable — one
+  mutation is one transaction, and an established restaurant has more orders than
+  a transaction may touch — so `remove` clears one batch and the app wrapper
+  schedules `purgeStoreData` until there is nothing left. `favorites` gained a
+  `by_storeId` index: both of its compound indexes start with `userId`, so it was
+  the one table that could not be swept by store.
+
+  **"Horaires globaux" governs the storefront.** `useGlobalHours` was written by
+  the dashboard and read by nothing — `use-store-status` took `store.hours`
+  unconditionally, so an owner who edited the global week and left every location
+  on the flag changed nothing a visitor could see. `resolveStoreHours` resolves it
+  on read rather than copying on write, so editing the global hours reaches every
+  location that follows them without a migration.
+
+  **Opening hours are the restaurant's, not the visitor's.**
+  `globalSettings.timezone` was written and never read: open/closed came from
+  `now.getDay()` and `now.getHours()`, the browser's clock. A customer abroad got
+  the wrong answer, and anyone could change it by changing their system clock.
+  `isStoreOpen` and `getNextOpenTime` take an optional IANA zone; without one they
+  behave exactly as before, and an unknown zone name falls back to the visitor's
+  clock rather than throwing.
+
+  **Saving the Integrations tab keeps the Uber Direct credentials.** The settings
+  form read `globalSettings.get` — the public storefront query, which strips
+  `customerId`, `clientId` and `clientSecret` — so the fields came up empty and
+  saving patched the empty values over the stored ones. It reads `getAdmin` now,
+  the query behind the same `settings:read` the Paramètres page already requires.
+  `upsert` also merges `integrations` platform by platform, so a tab saving its
+  own section no longer takes out the others; each platform is still replaced
+  whole, so disconnecting one remains possible.
+
+  The three integration switches gained an id and an `aria-label`. They had
+  neither, so a screen reader announced three anonymous check boxes.
+
+- e7c6f36: A service that crosses midnight is open.
+
+  `isStoreOpen` compared `"HH:mm"` strings with no wrap: `now >= open && now <
+close`. For an 18:00–02:00 restaurant that is false at 23:00 (`"23:00" <
+"02:00"`) and false at 01:00 (`"01:00" >= "18:00"`), so it read as closed all
+  evening, every evening. `09:00–00:00` read as closed at every hour of the day.
+  The boolean disables add-to-cart on every product card and blocks checkout, so
+  the shipped `fast-food-minuit` vertical and the food-truck templates could not
+  take a single order.
+
+  `close <= open` now means the service ends on the next calendar day, and the
+  _previous_ day's row is read first: at 01:00 on Saturday the service still
+  running was declared on Friday. Saturday's own row cannot answer for it —
+  Saturday opens at 18:00, and Saturday may be closed altogether.
+
+  `nextChange` follows: a service that opened at 18:00 closes at 02:00 tomorrow,
+  not at 02:00 today.
+
+  Neither hours editor gained a `close > open` check. Typing 02:00 into a closing
+  field is a legitimate thing for an owner to do; the reading was wrong, not the
+  writing.
+
+### Patch Changes
+
+- Updated dependencies [a561c61]
+- Updated dependencies [ebdda7e]
+- Updated dependencies [7ae8072]
+- Updated dependencies [aa2880f]
+- Updated dependencies [629e88e]
+- Updated dependencies [74de4e9]
+  - @be-in-digital/convex-schema@3.0.0
+  - @be-in-digital/core@2.3.0
+
 ## 2.0.3
 
 ### Patch Changes
