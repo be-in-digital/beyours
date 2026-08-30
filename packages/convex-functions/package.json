@@ -26,6 +26,8 @@
     "./storeAudit": "./src/storeAudit.ts",
     "./snsSignature": "./src/snsSignature.ts",
     "./accessAudit": "./src/accessAudit.ts",
+    "./automationDispatch": "./src/automationDispatch.ts",
+    "./emailAutomationRuns": "./src/emailAutomationRuns.ts",
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
     "./orders": "./src/orders.ts",

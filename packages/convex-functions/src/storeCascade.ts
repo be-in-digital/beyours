@@ -66,6 +66,7 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "emailCampaigns", index: "by_storeId" },
   { table: "emailSegments", index: "by_storeId" },
   { table: "emailAutomations", index: "by_storeId" },
+  { table: "emailAutomationRuns", index: "by_storeId" },
   { table: "emailEvents", index: "by_storeId_type" },
   { table: "emailConfig", index: "by_storeId" },
   // Content

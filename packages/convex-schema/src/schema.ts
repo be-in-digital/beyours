@@ -38,6 +38,7 @@ import {
   emailCampaignsTable,
   emailSegmentsTable,
   emailAutomationsTable,
+  emailAutomationRunsTable,
   emailEventsTable,
   emailConfigTable,
   cmsPagesTable,
@@ -121,6 +122,7 @@ export default defineSchema({
   emailCampaigns: emailCampaignsTable,
   emailSegments: emailSegmentsTable,
   emailAutomations: emailAutomationsTable,
+  emailAutomationRuns: emailAutomationRunsTable,
   emailEvents: emailEventsTable,
   emailConfig: emailConfigTable,
   // CMS block-based system

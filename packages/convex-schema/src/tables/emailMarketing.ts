@@ -484,6 +484,39 @@ export const emailAutomationsTable = defineTable({
   .index("by_storeId_status", ["storeId", "status"])
 
 /**
+ * Email automation runs table
+ *
+ * One row per (automation, subscriber, step) that has actually been sent.
+ *
+ * WHY THIS EXISTS: an automation fires from an event and then keeps firing on a
+ * delay, so its steps outlive the thing that triggered them. Without a record
+ * of what has already gone out, a retried step, a second confirmation, or a
+ * redeployed schedule all mail the same person the same message again — and an
+ * automation is the one place where that happens silently, to one subscriber at
+ * a time, with nobody watching a progress bar.
+ *
+ * It is also the only trace an owner has of why a given customer received a
+ * given automated email.
+ */
+export const emailAutomationRunsTable = defineTable({
+  automationId: v.id("emailAutomations"),
+  subscriberId: v.id("emailSubscribers"),
+  storeId: v.id("stores"),
+
+  /** The `steps[].id` this row records. */
+  stepId: v.string(),
+
+  sentAt: v.number(),
+})
+  .index("by_automationId", ["automationId"])
+  .index("by_subscriberId", ["subscriberId"])
+  // Deleting a store purges by this — see STORE_SCOPED_TABLES.
+  .index("by_storeId", ["storeId"])
+  // The idempotency question, answered with one lookup: has this step of this
+  // automation already reached this subscriber?
+  .index("by_automation_subscriber_step", ["automationId", "subscriberId", "stepId"])
+
+/**
  * Email events table
  * Granular event tracking — used for subscriber timelines and debug only.
  * Never aggregated for dashboard analytics (use campaign.stats instead).
