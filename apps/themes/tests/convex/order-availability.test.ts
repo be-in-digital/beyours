@@ -30,8 +30,35 @@ const modules = import.meta.glob("../../convex/**/*.ts")
 const NOON_UTC = Date.UTC(2029, 6, 3, 12, 0, 0)
 
 function newHarness() {
-  return convexTest(schema, modules)
+  const t = convexTest(schema, modules)
+  harnesses.push(t)
+  return t
 }
+
+const harnesses: ReturnType<typeof convexTest>[] = []
+
+/**
+ * End each test with an empty scheduler queue.
+ *
+ * Product, menu and store mutations queue work with `ctx.scheduler.runAfter`
+ * — the Uber Eats and Deliveroo menu syncs sit at a 5s delay. A test finishes
+ * in milliseconds and leaves them pending; whatever fires them next writes
+ * against a transaction that closed, and vitest surfaces that as an unhandled
+ * rejection. The run then reports every test green and still exits 1, with
+ * nothing naming the file that queued the work — it is attributed to whichever
+ * file happened to be running. Draining here is what makes the suite's exit
+ * code mean what it says.
+ */
+afterEach(async () => {
+  vi.useFakeTimers()
+  try {
+    for (const t of harnesses) await t.finishAllScheduledFunctions(vi.runAllTimers)
+  } finally {
+    vi.useRealTimers()
+    harnesses.length = 0
+  }
+})
+
 
 type ProductOverrides = {
   isActive?: boolean
