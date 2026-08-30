@@ -11,7 +11,12 @@ import { handleWebhook as deliverooWebhook } from "./deliverooWebhookHandler";
 import { handleWebhook as stripePaymentWebhook } from "./stripeWebhook";
 import { stripeCallback, stripeRefresh, sumupCallback } from "./oauthCallbackHandlers";
 import { uberEatsConnectCallback } from "./uberEatsOAuthHttp";
-import { handleUnsubscribe, handleConfirmOptIn, handleSesWebhook } from "./emailHttpHandlers";
+import {
+  handleUnsubscribe,
+  handleUnsubscribePost,
+  handleConfirmOptIn,
+  handleSesWebhook,
+} from "./emailHttpHandlers";
 import { handleWebhook as bidStripeWebhook } from "./bidStripeWebhook";
 
 const http = httpRouter();
@@ -87,6 +92,14 @@ http.route({
   path: "/email/unsubscribe",
   method: "GET",
   handler: handleUnsubscribe,
+});
+
+// The half that actually unsubscribes. Separate from GET because link scanners
+// fetch GETs in delivered mail, and because RFC 8058 one-click is a POST.
+http.route({
+  path: "/email/unsubscribe",
+  method: "POST",
+  handler: handleUnsubscribePost,
 });
 
 // Email double opt-in confirmation
