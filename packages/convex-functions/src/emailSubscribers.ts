@@ -5,6 +5,7 @@
  */
 
 import { v } from "convex/values"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
 const statusValidator = v.union(
   v.literal("pending"),
@@ -160,6 +161,17 @@ export const create = {
       )
       .first()
     if (existing) throw new Error("Cet email est déjà inscrit")
+
+    assertFieldLengths({
+      email: args.email,
+      name: args.firstName,
+    })
+
+    // Public by necessity — a storefront visitor has no session — so the same
+    // two windows the contact form uses apply here. Re-subscribing is normal;
+    // doing it five times an hour is a script.
+    await consumeRateLimit(ctx, "subscribePerEmail", email)
+    await consumeRateLimit(ctx, "subscribePerStore", args.storeId)
 
     const now = Date.now()
     const { token: tokenBytes, expiresAt } = doubleOptInCredential()

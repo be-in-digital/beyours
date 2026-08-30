@@ -27,6 +27,7 @@
     "./snsSignature": "./src/snsSignature.ts",
     "./accessAudit": "./src/accessAudit.ts",
     "./automationDispatch": "./src/automationDispatch.ts",
+    "./rateLimit": "./src/rateLimit.ts",
     "./emailAutomationRuns": "./src/emailAutomationRuns.ts",
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
