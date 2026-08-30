@@ -264,7 +264,7 @@ export function GenerateArticleDialog({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Languages className="h-4 w-4 text-muted-foreground" />
-                  <label className="text-sm font-medium">
+                  <label className="text-sm font-medium" htmlFor="generate-auto-translate">
                     Traduire automatiquement
                   </label>
                   {!accessStatus.entitlements?.autoBlog?.allowMultiLanguage && (
@@ -274,6 +274,7 @@ export function GenerateArticleDialog({
                   )}
                 </div>
                 <Switch
+                  id="generate-auto-translate"
                   checked={autoTranslate}
                   onCheckedChange={setAutoTranslate}
                   disabled={
@@ -302,7 +303,8 @@ export function GenerateArticleDialog({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Catégorie</label>
+                {/* Heads a block that swaps between two controls, so it names neither. */}
+                <p className="text-sm font-medium">Catégorie</p>
                 {!showNewCategory && (
                   <Button
                     type="button"

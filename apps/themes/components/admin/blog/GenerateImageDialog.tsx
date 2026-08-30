@@ -114,8 +114,11 @@ export function GenerateImageDialog({
 
           {/* Prompt input */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Prompt</label>
+            <label className="text-sm font-medium" htmlFor="generate-image-prompt">
+              Prompt
+            </label>
             <Textarea
+              id="generate-image-prompt"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Décrivez l'image souhaitée..."
@@ -149,7 +152,8 @@ export function GenerateImageDialog({
           {/* Preview */}
           {generatedImage && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Aperçu</label>
+              {/* Heads an image, not a control. */}
+              <p className="text-sm font-medium">Aperçu</p>
               <div className="relative rounded-lg border overflow-hidden bg-muted">
                 <img
                   src={generatedImage.url}

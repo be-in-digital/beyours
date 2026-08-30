@@ -705,8 +705,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
         {/* Tab: Contenu */}
         <TabsContent value="content" className="space-y-4 mt-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Titre</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-title">
+              Titre
+            </label>
             <Input
+              id="article-editor-title"
               value={localDraft.title}
               onChange={(e) => handleDraftChange("title", e.target.value)}
               placeholder="Titre de l'article"
@@ -714,8 +717,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Slug</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-slug">
+              Slug
+            </label>
             <Input
+              id="article-editor-slug"
               value={localDraft.slug}
               onChange={(e) => handleSlugChange(e.target.value)}
               placeholder="url-de-l-article"
@@ -726,8 +732,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Extrait</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-excerpt">
+              Extrait
+            </label>
             <Textarea
+              id="article-editor-excerpt"
               value={localDraft.excerpt}
               onChange={(e) => handleDraftChange("excerpt", e.target.value)}
               placeholder="Resume court de l'article (affiche dans les listes)"
@@ -740,7 +749,8 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Contenu</label>
+            {/* Heads a rich text editor, which htmlFor cannot target. */}
+            <p className="text-sm font-medium">Contenu</p>
             <BlogRichTextEditor
               value={localDraft.content}
               onChange={(html) => handleDraftChange("content", html)}
@@ -753,7 +763,8 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
         <TabsContent value="media" className="space-y-6 mt-4">
           {/* Cover Image */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Image de couverture</label>
+            {/* Heads an upload block, not a control. */}
+            <p className="text-sm font-medium">Image de couverture</p>
             {coverImageUrl ? (
               <div className="relative rounded-md border overflow-hidden max-w-md">
                 <img
@@ -782,10 +793,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
 
           {localDraft.coverImageId && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">
+              <label className="text-sm font-medium" htmlFor="article-editor-cover-alt">
                 Texte alternatif (alt)
               </label>
               <Input
+                id="article-editor-cover-alt"
                 value={localDraft.coverImageAlt ?? ""}
                 onChange={(e) =>
                   handleDraftChange("coverImageAlt", e.target.value)
@@ -797,9 +809,10 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
 
           {/* OG Image */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            {/* Heads an upload block, not a control. */}
+            <p className="text-sm font-medium">
               Image Open Graph (partage reseaux sociaux)
-            </label>
+            </p>
             {ogImageUrl ? (
               <div className="relative rounded-md border overflow-hidden max-w-md">
                 <img
@@ -834,8 +847,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </p>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Meta titre</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-meta-title">
+              Meta titre
+            </label>
             <Input
+              id="article-editor-meta-title"
               value={localDraft.metaTitle ?? ""}
               onChange={(e) => handleDraftChange("metaTitle", e.target.value)}
               placeholder={localDraft.title || "Titre pour les moteurs de recherche"}
@@ -843,8 +859,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Meta description</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-meta-description">
+              Meta description
+            </label>
             <Textarea
+              id="article-editor-meta-description"
               value={localDraft.metaDescription ?? ""}
               onChange={(e) =>
                 handleDraftChange("metaDescription", e.target.value)
@@ -863,13 +882,15 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
         <TabsContent value="tags" className="space-y-6 mt-4">
           {/* Category */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Catégorie</label>
+            <label className="text-sm font-medium" htmlFor="article-editor-category">
+              Catégorie
+            </label>
             {categories && categories.length > 0 ? (
               <Select
                 value={localCategoryId}
                 onValueChange={handleCategoryChange}
               >
-                <SelectTrigger>
+                <SelectTrigger id="article-editor-category">
                   <SelectValue placeholder="Choisir une catégorie" />
                 </SelectTrigger>
                 <SelectContent>
@@ -890,7 +911,8 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
 
           {/* Tags */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Tags</label>
+            {/* Heads the selected-tag chips and the picker below them. */}
+            <p className="text-sm font-medium">Tags</p>
 
             {/* Selected tags */}
             <div className="flex flex-wrap gap-1.5">
@@ -1127,8 +1149,11 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date et heure</label>
+              <label className="text-sm font-medium" htmlFor="article-editor-schedule">
+                Date et heure
+              </label>
               <input
+                id="article-editor-schedule"
                 type="datetime-local"
                 value={scheduleDate}
                 onChange={(e) => setScheduleDate(e.target.value)}

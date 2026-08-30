@@ -180,20 +180,44 @@ both directions.
 
 ## Left open, deliberately
 
-- **`<label>` without `htmlFor`, ~26 sites** in `BlogArticleEditor`,
-  `GenerateImageDialog`, `address-autocomplete`, `ContactContent`,
-  `order-summary`. Audited across the whole template after porting the two the
-  brief named: the remaining ones are **identical in both apps**, so they are a
-  standing accessibility debt, not drift. Fixing them in the template alone would
-  manufacture the very divergence this pass removed. Fix them in both, in a
-  change of their own. (`components/admin/payments/PaymentsContent.tsx` was the
-  exception — template-only code, so its two filter labels were wired here.)
+- ~~`<label>` without `htmlFor`~~ — **done**, see below.
 - **The English storefront strings** are not a divergence: `/cart`, `/checkout`
   and `/store-selector` render French in both apps. Only the template's *stale
   specs* said otherwise, and they have been replaced.
 - **`e2e/README.md`** stays per-app: each documents its own CI. The one factual
   gap — the missing `E2E_CONVEX_DEPLOY_KEY` row, without which seeded accounts
   get no role and every admin spec fails on an empty screen — was added.
+
+---
+
+## The label debt, closed in both apps
+
+Separate from the drift, and done second so the two passes stay readable in the
+history. 26 `<label>` elements named nothing: they were siblings of their field
+rather than bound to it, so clicking them focused nothing and assistive
+technology announced the control unlabelled. Identical in both apps, so both
+were changed identically — the six files involved are byte-for-byte twins before
+and after.
+
+**20 wired** with `htmlFor`/`id`, because each sat over exactly one control:
+the five contact-form fields; the four address fields (via `useId()`, since the
+component can appear twice on a page for billing and delivery); the promo code;
+the image prompt; the auto-translate switch; and eight fields in
+`BlogArticleEditor` (title, slug, excerpt, cover alt, meta title, meta
+description, category, schedule).
+
+**6 changed to `<p>`**, because they headed something no `htmlFor` can target —
+a rich text editor, two upload blocks, a tag-chip group, an image preview, and a
+block that swaps between two different controls. A `<label>` bound to nothing is
+invalid, and saying so in the markup beats leaving it to be "fixed" later by
+adding an attribute that would point at the wrong thing. Each carries a one-line
+comment saying which case it is.
+
+The audit is repeatable — this should print nothing, in either app:
+
+```bash
+grep -rn '<label' app components | grep -v htmlFor
+```
 
 ---
 
