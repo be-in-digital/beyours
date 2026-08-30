@@ -17,7 +17,7 @@
  */
 
 import { convexTest } from "convex-test"
-import { afterEach, describe, expect, test, vi } from "vitest"
+import { afterEach, describe, expect, test } from "vitest"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
@@ -49,32 +49,31 @@ function newHarness() {
 const harnesses: ReturnType<typeof convexTest>[] = []
 
 /**
- * End each test with an empty scheduler queue.
+ * Cancel whatever the test left on the scheduler.
  *
- * Product, menu and store mutations queue work with `ctx.scheduler.runAfter`
- * — the Uber Eats and Deliveroo menu syncs sit at a 5s delay. A test finishes
- * in milliseconds and leaves them pending; whatever fires them next writes
- * against a transaction that closed, and vitest surfaces that as an unhandled
- * rejection. The run then reports every test green and still exits 1, with
- * nothing naming the file that queued the work — it is attributed to whichever
- * file happened to be running. Draining here is what makes the suite's exit
- * code mean what it says.
+ * Product, menu and store mutations queue work through `ctx.scheduler.runAfter`
+ * — `scheduleMenuSync` puts the Uber Eats and Deliveroo syncs at a 5s delay on
+ * every catalogue write. A test finishes in milliseconds and leaves them
+ * pending; whatever fires them next writes against a transaction that closed,
+ * and because nothing awaits it that arrives as an unhandled rejection. The run
+ * then reports every test green and still exits 1, blaming whichever file
+ * happened to be running rather than the one that queued the work.
+ *
+ * Cancel rather than run. `syncAllStores` is an `internalAction`, and running
+ * one here is the disease, not the cure: convex-test patches its
+ * `_scheduled_functions` row on completion, an action has no transaction to
+ * patch it in, and the failure comes straight back. Finishing the queue with
+ * `finishAllScheduledFunctions` was tried first and made it worse — ten
+ * rejections in a run where leaving the jobs alone produced two.
  */
 afterEach(async () => {
-  vi.useFakeTimers()
-  try {
-    for (const t of harnesses) {
-      await t.finishAllScheduledFunctions(vi.runAllTimers)
-      // The loop above empties the queue; this waits for anything still in
-      // flight to settle. Restoring real timers with a job mid-execution puts
-      // its write back on the far side of a closed transaction, which is the
-      // failure this hook exists to prevent.
-      await t.finishInProgressScheduledFunctions()
-    }
-  } finally {
-    vi.useRealTimers()
-    harnesses.length = 0
+  for (const t of harnesses) {
+    await t.run(async (ctx) => {
+      const pending = await ctx.db.system.query("_scheduled_functions").collect()
+      for (const job of pending) await ctx.scheduler.cancel(job._id)
+    })
   }
+  harnesses.length = 0
 })
 
 
