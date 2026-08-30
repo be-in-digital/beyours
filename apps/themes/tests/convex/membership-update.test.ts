@@ -50,7 +50,14 @@ const harnesses: ReturnType<typeof convexTest>[] = []
 afterEach(async () => {
   vi.useFakeTimers()
   try {
-    for (const t of harnesses) await t.finishAllScheduledFunctions(vi.runAllTimers)
+    for (const t of harnesses) {
+      await t.finishAllScheduledFunctions(vi.runAllTimers)
+      // The loop above empties the queue; this waits for anything still in
+      // flight to settle. Restoring real timers with a job mid-execution puts
+      // its write back on the far side of a closed transaction, which is the
+      // failure this hook exists to prevent.
+      await t.finishInProgressScheduledFunctions()
+    }
   } finally {
     vi.useRealTimers()
     harnesses.length = 0
