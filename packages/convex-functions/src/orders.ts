@@ -870,7 +870,7 @@ export const updateStatus = {
     // Counted on entering `confirmed`, which the state machine allows exactly
     // once and only from `pending`, so no retry double-counts. Given back on
     // `confirmed -> cancelled`, which it also allows.
-    await syncSubscriberOrderMetadata(ctx, order, from, to, now)
+    return await syncSubscriberOrderMetadata(ctx, order, from, to, now)
   },
 }
 
@@ -889,9 +889,9 @@ async function syncSubscriberOrderMetadata(
   from: OrderStatus,
   to: OrderStatus,
   now: number
-): Promise<void> {
+): Promise<PostOrderDispatch | undefined> {
   const email = order.customerInfo?.email
-  if (!email) return
+  if (!email) return undefined
 
   if (to === "confirmed") {
     await updateMetadataIncremental.handler(ctx, {
@@ -904,7 +904,25 @@ async function syncSubscriberOrderMetadata(
         .filter((id: string | undefined): id is string => Boolean(id)),
       orderedAt: now,
     })
-    return
+
+    // Who the post-order automation should reach, if anyone. Returned rather
+    // than scheduled here: this package has no `_generated`, so a shared
+    // handler cannot name a function to schedule. The app wrapper does that —
+    // the same split `confirmDoubleOptIn` uses.
+    const subscriber = await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId_email", (q: any) =>
+        q.eq("storeId", order.storeId).eq("email", email.toLowerCase())
+      )
+      .first()
+
+    return subscriber
+      ? {
+          storeId: order.storeId as string,
+          subscriberId: subscriber._id as string,
+          orderId: String(order._id),
+        }
+      : undefined
   }
 
   if (from === "confirmed" && to === "cancelled") {
@@ -914,6 +932,15 @@ async function syncSubscriberOrderMetadata(
       orderAmount: order.total,
     })
   }
+
+  return undefined
+}
+
+/** Whom a confirmed order should start a post-order automation for. */
+export interface PostOrderDispatch {
+  storeId: string
+  subscriberId: string
+  orderId: string
 }
 
 /**

@@ -61,25 +61,43 @@ export const TRIGGER_READINESS: Record<
       "no record carries a date of birth — not emailSubscribers, not userProfiles",
   },
 
-  inactive: {
-    ready: false,
-    missing:
-      "depends on emailSubscribers.metadata.lastOrderAt, which only " +
-      "`updateMetadataIncremental` writes and nothing calls",
-  },
-
-  post_order: {
-    ready: false,
-    missing:
-      "no order path notifies the marketing side; " +
-      "`updateMetadataIncremental` exists for exactly this and has no caller",
-  },
+  // Both of these waited on the same thing: `updateMetadataIncremental` had no
+  // caller, so `lastOrderAt` was never written and no order path reached the
+  // marketing side at all. That was fixed separately; these are the triggers it
+  // was blocking.
+  inactive: { ready: true },
+  post_order: { ready: true },
 
   abandoned_cart: {
     ready: false,
     missing: "carts live in the browser's Zustand store and are never persisted",
   },
 }
+
+/**
+ * The settings toggle that governs each trigger.
+ *
+ * Five switches in the email settings screen, and until now not one of them was
+ * read anywhere: an owner turning "Post-commande" off changed a stored boolean
+ * and nothing else. Dispatch consults them now, so the switch means what it
+ * says.
+ */
+export const TRIGGER_TOGGLE: Record<AutomationTrigger, string> = {
+  welcome: "welcomeEnabled",
+  birthday: "birthdayEnabled",
+  inactive: "inactiveEnabled",
+  post_order: "postOrderEnabled",
+  abandoned_cart: "abandonedCartEnabled",
+}
+
+/**
+ * How long without ordering counts as lapsed, when the automation does not say.
+ *
+ * Ninety days is a quarter: long enough that a monthly regular is never called
+ * inactive, short enough that the message still lands while they remember the
+ * restaurant.
+ */
+export const DEFAULT_INACTIVE_AFTER_DAYS = 90
 
 /** Triggers that can actually reach a subscriber today. */
 export function readyTriggers(): AutomationTrigger[] {
@@ -96,11 +114,66 @@ export function readyTriggers(): AutomationTrigger[] {
  * should not be started only to stall silently at its first step.
  */
 export function canDispatch(
-  automation: Pick<AutomationRecord, "trigger" | "status" | "steps">
+  automation: Pick<AutomationRecord, "trigger" | "status" | "steps">,
+  /**
+   * `emailConfig.automationSettings`. Omitted, every toggle is treated as on —
+   * which is what a caller with no config in hand should assume rather than
+   * silently refusing everything.
+   */
+  settings?: Record<string, boolean> | null
 ): boolean {
   if (automation.status !== "active") return false
   if (!TRIGGER_READINESS[automation.trigger]?.ready) return false
-  return automation.steps.length > 0
+  if (automation.steps.length === 0) return false
+
+  if (settings) {
+    const toggle = TRIGGER_TOGGLE[automation.trigger]
+    if (settings[toggle] === false) return false
+  }
+
+  return true
+}
+
+/**
+ * Has this subscriber gone quiet for long enough?
+ *
+ * Someone who has never ordered is NOT inactive. "Come back, we miss you" to a
+ * person who has never been is the kind of message that gets a sender reported,
+ * and `lastOrderAt` being absent is exactly that case.
+ */
+export function isLapsed(
+  subscriber: { metadata?: { lastOrderAt?: number } },
+  afterDays: number,
+  now: number
+): boolean {
+  const last = subscriber.metadata?.lastOrderAt
+  if (last === undefined) return false
+  return now - last >= afterDays * 24 * 60 * 60 * 1000
+}
+
+/**
+ * What distinguishes one firing of an automation from the next.
+ *
+ * The run record is keyed by step, which is right for a sequence that happens
+ * once — a welcome. It is wrong for the two triggers wired here:
+ *
+ * - a thank-you must follow EVERY order, so the order's id is the occurrence;
+ * - a win-back should be sendable again if the customer returns and lapses a
+ *   second time, so the date of the order they lapsed after is the occurrence.
+ *   While they stay away that value does not move, so the sequence does not
+ *   repeat; when they order again it changes, and a later lapse is a new one.
+ */
+export function occurrenceFor(
+  trigger: AutomationTrigger,
+  context: { orderId?: string; lastOrderAt?: number }
+): string | undefined {
+  if (trigger === "post_order") return context.orderId
+  if (trigger === "inactive") {
+    return context.lastOrderAt === undefined
+      ? undefined
+      : `lapsed-${context.lastOrderAt}`
+  }
+  return undefined
 }
 
 /**

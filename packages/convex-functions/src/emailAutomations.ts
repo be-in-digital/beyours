@@ -69,6 +69,24 @@ export const listActive = {
   },
 }
 
+/**
+ * Every active automation on one trigger, across the whole deployment.
+ *
+ * The store-scoped `listActive` cannot serve the nightly win-back sweep: it
+ * runs for the deployment, not for one restaurant, and a cron has no store to
+ * scope by. Filtered rather than indexed because a deployment holds a handful
+ * of automations, not a table worth scanning.
+ */
+export const listActiveByTrigger = {
+  args: { trigger: v.string() },
+  handler: async (ctx: any, args: any) => {
+    const all = await ctx.db.query("emailAutomations").collect()
+    return all.filter(
+      (a: any) => a.status === "active" && a.trigger === args.trigger
+    )
+  },
+}
+
 // === MUTATIONS ===
 
 export const create = {
