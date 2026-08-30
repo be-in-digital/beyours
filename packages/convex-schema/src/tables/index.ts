@@ -35,6 +35,7 @@ export {
   emailCampaignsTable,
   emailSegmentsTable,
   emailAutomationsTable,
+  emailAutomationRunsTable,
   emailEventsTable,
   emailConfigTable,
 } from "./emailMarketing"
