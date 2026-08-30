@@ -94,12 +94,11 @@ export const getByStripeSessionId = internalQuery({
   },
 });
 
-export const get = query({
-  args: { orderId: v.id("orders") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.orderId);
-  },
-});
+/* ── No public `get` here, on purpose ──
+   It returned `ctx.db.get(orderId)` — the whole document: email, name, phone,
+   restaurant, city, SIRET, `amountCents`, `stripeSessionId` — to anyone holding
+   or guessing an id, which travels in a URL. It had no caller; the rule it
+   broke is stated six lines below, on the query that replaced it. */
 
 /* ── Checkout success gate ──
    Answers one question for /checkout/success: may this visitor be shown the

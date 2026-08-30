@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { internalMutation, internalQuery, query } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 
 const planValidator = v.union(v.literal("essentielle"), v.literal("premium"));
 const billingPeriodValidator = v.union(
@@ -84,16 +84,7 @@ export const getByOrderId = internalQuery({
   },
 });
 
-/* ── Public queries (espace client) ── */
-
-export const getByEmail = query({
-  args: { email: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("subscriptions")
-      .withIndex("by_customerEmail", (q) =>
-        q.eq("customerEmail", args.email),
-      )
-      .take(10);
-  },
-});
+/* ── No public read here, on purpose ──
+   `getByEmail` returned a customer's plan, status and Stripe ids for any email
+   passed in. Same shape as the invoices one it sat beside, same absent caller.
+   See ./invoices for the rule the client area follows instead. */
