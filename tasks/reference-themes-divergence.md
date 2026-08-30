@@ -221,6 +221,38 @@ grep -rn '<label' app components | grep -v htmlFor
 
 ---
 
+## Drift that hid from this comparison
+
+Two blind spots, both found after the pass and both now closed.
+
+**A byte-identical file is invisible to `diff -rq`, even when it is dead on one
+side.** `components/admin/categories/` was the same in both apps, so the
+comparison printed nothing about it — while being reachable from nothing in the
+bench and rendered by `products/ProductsContent.tsx` in the template. #260
+removed it from the bench, and it now shows as a template-only directory
+alongside `dashboard/`, `design/`, `games/`, `orders/`, `payments/`,
+`products/`, `stores/` and `team/`. If you are hunting dead code rather than
+divergence, `diff -rq` is the wrong tool; check reachability instead.
+
+**`internal.*` was not type-checked at all.** Four files per app carried
+`const internal = _internal as any` under the comment "Email modules not yet in
+codegen — will resolve after `convex dev` regenerates types". Codegen had long
+since caught up; the workaround outlived its reason and turned the whole Convex
+internal API into `any`. A probe calling
+`internal.emailCampaigns.thisNameCannotPossiblyExist` compiled without a
+murmur, in both apps.
+
+That is how #256 shipped `getByIdInternal` to the bench and not to the
+template, with CI green, while `apps/themes/convex/emailCampaignActions.ts`
+called it — `sendBatch` would have failed at runtime on a client deployment,
+mid-campaign. Removing the casts surfaced it immediately, plus a second latent
+bug in both apps: a plain `string` passed where `Id<"emailTemplates">` was
+required.
+
+The lesson for this note: a divergence in a Convex internal function reference
+used to be invisible to every check in the repo. It no longer is — the type
+checker catches it, so it does not need hand-auditing here.
+
 ## Verification
 
 ```bash
