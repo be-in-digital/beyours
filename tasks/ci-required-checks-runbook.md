@@ -19,17 +19,22 @@ merged over a red check.
 > E2E half below is still outstanding — the suite has never run. What §6 records
 > now is what was applied, not what to do next.
 
-The E2E suite is the sharper half of the problem. It is gated on a repository
-variable that has never been set:
+The E2E suite was the sharper half of the problem. It was gated on a repository
+variable that had never been set:
 
 ```yaml
-# .github/workflows/e2e.yml:14
+# .github/workflows/e2e.yml:14 — REMOVED 2026-08-31
 if: vars.CONVEX_E2E_ENABLED == 'true'
 ```
 
-`gh variable list` returns nothing, so the `e2e` job has **never once run**.
+`gh variable list` returned nothing, so the `e2e` job had **never once run**.
 `tasks/sprint-durcissement-reference.md:634` records the consequence: *510 tests,
-0 passed, 510 skipped*, report `ok: true`.
+0 passed, 510 skipped*, report `ok: true`. The last eight CI runs before the fix
+finished in 7-11 seconds and were all green.
+
+**Resolved 2026-08-31.** The gate is gone and the job provisions its own Convex
+backend, so there is no variable to set and no secret to place — see section 3.
+Section 4 is what is genuinely still outstanding, and it is short.
 
 ---
 
@@ -46,6 +51,10 @@ three lived.
 | 1 | `turbo.json` declared no `env`/`passThroughEnv` on `test:e2e`, and Turbo 2 defaults to `envMode: "strict"` — it deletes undeclared variables from a task's environment | `next start` failed its own check with *"10 environment variable(s) missing or invalid"*, the web server never came up, and the run died on Playwright's 120 s `webServer` timeout with **0 tests executed** | `turbo.json` — `passThroughEnv` on `test:e2e` |
 | 2 | `tsx` was in no `package.json` in this repo (only `apps/themes`), so `npx tsx scripts/seed-users.mts` could not resolve. The step ended in `\|\| true` | Nothing. The seed never ran, the suite tested an empty database, and the failure surfaced ~400 tests later as admin screens that would not load | `apps/reference/package.json` — `tsx` devDependency; `e2e.yml` — the `\|\| true` removed |
 | 3 | The seed's `fetch` sent no `Origin` header. Better Auth rejects every state-changing request without one | `403 MISSING_OR_NULL_ORIGIN` on all six accounts → *"No account could be created or opened. Nothing to seed."* | `scripts/seed-users.mts` — sends `Origin: BASE_URL` |
+| 4 | The job was gated on `vars.CONVEX_E2E_ENABLED == 'true'`, a variable nobody had created, and `E2E Status` treated `skipped` as a pass | Eight consecutive CI runs finished in **7-11 seconds**, all green, having executed no test at all | `e2e.yml` — the gate removed, the job provisions its own backend; `E2E Status` now fails on anything that is not `success` |
+| 5 | `hasRealBackend` was `!url?.includes("placeholder")`, which is `!undefined` — **true** — when the variable is unset | The opposite of what its own comment claimed: an unconfigured run declared it had a backend | `playwright.config.ts` (both apps) — unset is now false, and it says so on stderr |
+| 6 | When `hasRealBackend` is false the `setup` and `admin` projects are spread *out of* the projects array. A project that is never declared is not reported as skipped — it is absent | 43 of 56 spec files vanished from the run **and from the report**, and Playwright exited 0 over the remainder | `scripts/assert-e2e-ran.mjs`, run after the suite: it fails unless `setup`, `public` and `admin` each report tests |
+| 7 | The production CSP is `connect-src 'self' https: wss:`, which blocks `ws://127.0.0.1` — so a suite running against a local backend could never open the Convex socket | Every admin screen sat on a loading skeleton until the 30 s timeout; read as a broken product, was a blocked WebSocket | `lib/security/content-security-policy.ts` (both apps) — the configured Convex origin is admitted **only** when it is a loopback address |
 
 All three were reproduced and then re-verified against a real Convex backend
 (an anonymous local deployment with the functions pushed), running the exact
@@ -106,80 +115,78 @@ including `cancelled` (`e2e.yml:154-178`).
 four `CI` checks and the two `Security` ones, and no E2E signal at all.
 
 ---
+## 3. The test deployment — no longer anyone's to provision
 
-## 3. Provision the test deployment — owner only
+**Sections 3 and 4 of this runbook used to ask the account owner for a Convex
+project and twelve `E2E_*` secrets. Neither is needed any more, and nothing here
+is waiting on an owner.**
 
-Never point this at a deployment a client is served from. The seed creates
-accounts and the suite writes orders, products and team members.
+`e2e.yml` starts its own Convex backend on the runner: it downloads the same
+`convex-local-backend` binary the Convex CLI uses for a local deployment, mints
+an instance secret and an admin key with `openssl` and `keygen`, runs it on
+127.0.0.1:3310, and pushes `apps/reference/convex/` to it with
+`convex deploy`. No account, no login, no secret, and nothing that can be left
+unset by mistake. The runner is destroyed afterwards.
 
-1. **Create a Convex project dedicated to CI**, on the same team.
-   `apps/themes/docs/SETUP-CI.md:55-57` and `apps/reference/e2e/README.md:108-109`
-   both say the same thing; this is the deployment every `E2E_*` secret below
-   points at.
+That was the whole reason the suite never ran. The job was gated on
+`vars.CONVEX_E2E_ENABLED == 'true'`; the variable was never created, because
+creating it meant first provisioning a deployment and twelve secrets. The gate
+is gone — the job now runs on every pull request.
 
-2. **Push the functions to it.** Nothing in CI does this — no workflow runs
-   `convex deploy` — so the deployment serves whatever was last pushed by hand.
-   Push once now, and re-push whenever `apps/reference/convex/` changes, until
-   TECH-12's `convex deploy` job exists.
+Verified end to end on 2026-08-31, against exactly this setup:
 
-   ```bash
-   cd apps/reference && npx convex deploy
-   ```
+| Step | Result |
+|---|---|
+| `convex deploy` to the local backend | all tables, indexes and the Better Auth component installed, exit 0 |
+| `pnpm build --filter=@beyours/reference...` | 7/7 tasks, real output |
+| `npx tsx scripts/seed-users.mts` | 6 accounts, 6 profiles, restaurant fixture, exit 0 |
+| `auth.setup.ts` | signs in, saves storage state |
+| `public` project | 74 tests executed, 64 passed |
+| `admin` project (Dashboard) | 34 of 36 passed |
 
-3. **Set the deployment's own environment.** A Convex function does not see the
-   workflow's `env:` block. Values here are throwaway and belong to the test
-   deployment alone:
+### Pinning the backend
 
-   ```bash
-   npx convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
-   npx convex env set ENCRYPTION_KEY     "$(openssl rand -hex 32)"
-   npx convex env set SITE_URL           http://localhost:3000
-   ```
+`CONVEX_BACKEND_VERSION` in `e2e.yml` names a
+[convex-backend release](https://github.com/get-convex/convex-backend/releases).
+It is pinned, not `latest`, so the suite fails when the product changes and not
+when the backend does overnight. Bump it deliberately, and keep it roughly in
+step with the `convex` version in `apps/reference/package.json`.
 
-   `BETTER_AUTH_SECRET` must be the **same value** as the `E2E_BETTER_AUTH_SECRET`
-   secret in step 4 — sessions are signed on one side and read on the other.
+### If you ever do want a hosted deployment
 
-4. **If sign-in comes back `EMAIL_NOT_VERIFIED`**, seeded accounts have no
-   mailbox to confirm from: `npx convex env set AUTH_ALLOW_UNVERIFIED_EMAIL true`
-   **on this deployment only**, never on a client's. The seed script says so
-   itself when it hits that path (`scripts/seed-users.mts:192-197`).
+Nothing above stops you. Point `NEXT_PUBLIC_CONVEX_URL`,
+`NEXT_PUBLIC_CONVEX_SITE_URL` and `CONVEX_SITE_URL` at it in the
+*Write the suite's environment* step, drop the *Start a Convex backend* and
+*Deploy Convex functions* steps, and supply `CONVEX_DEPLOY_KEY`. Never point it
+at a deployment a client is served from: the seed creates accounts and the suite
+writes orders, products and team members.
 
 ---
 
-## 4. Set the variable and the secrets — owner only
+## 4. What is still outstanding — owner and admin only
 
-Settings → Secrets and variables → Actions.
+Two things, and neither blocks the suite from running.
 
-**Variable** (the *Variables* tab, not Secrets):
+1. **Add `E2E Status` to the required checks.** Protection currently requires
+   `Lint`, `Type Check`, `Test`, `Build` (section 6). `E2E Status` was left out
+   deliberately, because a check that is red for reasons nobody intends teaches
+   the team that a required check is advisory. Section 5 is the procedure: watch
+   it stay green across several pull requests first, then add it.
 
-| Name | Value |
-|---|---|
-| `CONVEX_E2E_ENABLED` | `true` |
+   It is `E2E Status`, never `E2E Tests`. A gated job reports
+   `conclusion=skipped`, which GitHub counts as satisfied.
 
-**Secrets.** Only the first has no fallback — `e2e.yml:47-54` fails the job
-immediately when it is empty, rather than testing nothing quietly:
+   ```bash
+   gh api -X PATCH repos/be-in-digital/beyours/branches/main/protection/required_status_checks \
+     -f 'contexts[]=Lint' -f 'contexts[]=Type Check' -f 'contexts[]=Test' \
+     -f 'contexts[]=Build' -f 'contexts[]=E2E Status'
+   ```
 
-| Secret | Contents | Fallback if unset |
-|---|---|---|
-| `E2E_NEXT_PUBLIC_CONVEX_URL` | `https://<deployment>.convex.cloud` | **none — required** |
-| `E2E_CONVEX_SITE_URL` | `https://<deployment>.convex.site` | `https://placeholder.convex.site` |
-| `E2E_CONVEX_DEPLOYMENT` | the deployment name | empty |
-| `E2E_CONVEX_DEPLOY_KEY` | a deploy key for that deployment | empty — **see below** |
-| `E2E_BETTER_AUTH_SECRET` | the same value as step 3 | a 40-char placeholder |
-| `E2E_ENCRYPTION_KEY` | `openssl rand -hex 32` | a valid 64-hex placeholder |
-| `E2E_SEED_PASSWORD` | ≥ 12 chars, throwaway | `ci-seed-password-not-for-prod` |
-| `E2E_AWS_*`, `E2E_OPENAI_API_KEY` | — | placeholders; **leave unset** |
-
-`E2E_CONVEX_DEPLOY_KEY` is the one to get right. Steps 2 and 3 of the seed shell
-out to `npx convex run`, and a runner has no logged-in CLI session. Without it
-the six accounts are created and then have **no role and no restaurant** —
-sign-in succeeds, `auth.setup.ts` saves a storage state, and every admin spec
-fails on an empty screen for a reason that points nowhere near the seed.
-
-The AWS and OpenAI placeholders are deliberate: nothing in today's suite reaches
-S3, SES or OpenAI, and the schema only requires the variables to be *present and
-well-formed* (`packages/core/src/env/schemas.ts:19-96`). Setting real credentials
-here would put production keys on a test runner for no test.
+2. **Read the Convex spending cap** (`#178`). A cap set too low disables every
+   project on the team, production included. The procedure is
+   `tasks/convex-spending-cap-runbook.md`; reading the current value needs the
+   Convex console and belongs to the account owner. Nothing in this repository
+   can observe it.
 
 ---
 
