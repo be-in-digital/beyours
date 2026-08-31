@@ -9,7 +9,7 @@ const LOADING_STATES = [
   { text: "Amelioration de l'image" },
   { text: "Analyse par l'IA (Vision GPT-4o)" },
   { text: "Enrichissement des descriptions" },
-  { text: "Generation des images produits" },
+  { text: "Génération des images produits" },
   { text: "Categorisation automatique" },
   { text: "Finalisation des suggestions" },
 ]

@@ -185,7 +185,7 @@ export function BackupSection() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            L'import effectue d'abord un aperçu (dry run) avant toute modification.
+            L'import effectué d'abord un aperçu (dry run) avant toute modification.
           </p>
         </CardContent>
       </Card>

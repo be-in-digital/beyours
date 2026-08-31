@@ -447,7 +447,7 @@ export function InventoryPage() {
                         {/* Auto-disable toggle */}
                         <TableCell>
                           {!isUntracked ? (
-                            <div title="Desactive automatiquement le produit quand le stock atteint 0, et le reactive quand le stock remonte.">
+                            <div title="Désactive automatiquement le produit quand le stock atteint 0, et le réactive quand le stock remonte.">
                               <Switch
                                 checked={product.stock?.autoDisableWhenEmpty ?? false}
                                 onCheckedChange={(checked) =>

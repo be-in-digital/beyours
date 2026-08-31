@@ -62,7 +62,7 @@ export function SystemInfoSection({
           {overview?.contract ? (
             <p className="text-xs text-muted-foreground">
               {overview.status === "expired"
-                ? `Terminee le ${formatDate(overview.contract.coveredUntil)}`
+                ? `Terminée le ${formatDate(overview.contract.coveredUntil)}`
                 : `Couverte jusqu'au ${formatDate(overview.contract.coveredUntil)}`}
             </p>
           ) : (
@@ -107,7 +107,7 @@ export function SystemInfoSection({
               {!info.isLockActive && " (expire)"}
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Aucune operation en cours</p>
+            <p className="text-xs text-muted-foreground">Aucune opération en cours</p>
           )}
         </CardContent>
       </Card>

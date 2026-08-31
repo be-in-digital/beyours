@@ -374,7 +374,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         prepTime: parsedPrepTime,
       })
 
-      toast.success("Integration Uber Eats verifiee et enregistree")
+      toast.success("Intégration Uber Eats vérifiée et enregistrée")
     } catch (error) {
       toast.error("Échec de la validation Uber Eats")
       console.error(error)
@@ -426,7 +426,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         brandId: deliverooBrandId || undefined,
       })
 
-      toast.success("Integration Deliveroo verifiee et enregistree")
+      toast.success("Intégration Deliveroo vérifiée et enregistrée")
     } catch (error) {
       toast.error("Échec de la validation Deliveroo")
       console.error(error)

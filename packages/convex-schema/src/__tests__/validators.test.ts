@@ -199,7 +199,7 @@ describe('Product Validators', () => {
     const product = {
       storeId: 'store123',
       categoryId: 'cat123',
-      name: 'Salade Cesar',
+      name: 'Salade César',
       slug: 'salade-cesar',
       price: 950,
       source: 'deliveroo',

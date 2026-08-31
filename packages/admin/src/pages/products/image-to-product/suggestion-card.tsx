@@ -48,7 +48,7 @@ export function SuggestionCard({
 
   const priceDisplay = suggestion.price.value !== null
     ? `${(suggestion.price.value / 100).toFixed(2)} EUR`
-    : "Non detecte"
+    : "Non détecté"
 
   return (
     <Card className={`transition-colors ${selected ? "border-primary/50" : "border-border/50 opacity-75"}`}>
@@ -185,7 +185,7 @@ export function SuggestionCard({
                     value: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean),
                   })
                 }
-                placeholder="Separes par des virgules"
+                placeholder="Séparés par des virgules"
                 className="h-7 text-xs"
                 disabled={!selected}
               />
@@ -206,7 +206,7 @@ export function SuggestionCard({
                     value: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean),
                   })
                 }
-                placeholder="Separes par des virgules"
+                placeholder="Séparés par des virgules"
                 className="h-7 text-xs"
                 disabled={!selected}
               />

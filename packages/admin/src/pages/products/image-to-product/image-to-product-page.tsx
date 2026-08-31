@@ -78,7 +78,7 @@ export function ImageToProductPage() {
       const count = analyzeResult.suggestions.length
       const imgCount = analyzeResult.processingCost.imagesGenerated ?? 0
       toast.success(
-        `${count} produit(s) detecte(s)` +
+        `${count} produit(s) détecté(s)` +
           (imgCount > 0 ? ` — ${imgCount} image(s) générée(s)` : "") +
           (analyzeResult.processingCost.imageUpscaled && imgCount === 0
             ? " — image amelioree"

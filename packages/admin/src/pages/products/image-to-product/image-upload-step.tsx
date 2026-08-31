@@ -50,7 +50,7 @@ export function ImageUploadStep({
           accept="image/jpeg,image/png,image/webp"
           maxSizeMB={15}
           label="Photo du plat ou du menu"
-          placeholder="Deposez une image ici ou cliquez pour parcourir"
+          placeholder="Déposez une image ici ou cliquez pour parcourir"
         />
 
         {/* Mode selection */}
