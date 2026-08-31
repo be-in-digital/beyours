@@ -164,6 +164,19 @@ jobs:
           # tier at startup and refuses to serve without it.
           echo "Wrote apps/reference/.env.local ($(grep -c . apps/reference/.env.local) values)"
 
+      - name: Build application
+        # The e2e suite targets the reference app: no need to build the
+        # commercial site or the client template here.
+        #
+        # Before the Convex deploy, not after. `convex deploy` bundles
+        # apps/reference/convex, which imports @be-in-digital/cms and friends,
+        # and those are workspace packages consumed from `dist` — which does not
+        # exist until this step builds them. A fresh runner has never built
+        # them, so deploying first fails with "Could not resolve
+        # @be-in-digital/cms ... ./dist/index.mjs was not found". Every local
+        # run had a dist lying around from an earlier build and never saw it.
+        run: pnpm build --filter=@beyours/reference...
+
       - name: Deploy Convex functions
         working-directory: apps/reference
         run: |
@@ -175,11 +188,6 @@ jobs:
           # admin test fails on an empty session.
           npx convex env set AUTH_ALLOW_UNVERIFIED_EMAIL true
           npx convex env set SITE_URL http://localhost:3000
-
-      - name: Build application
-        # The e2e suite targets the reference app: no need to build the
-        # commercial site or the client template here.
-        run: pnpm build --filter=@beyours/reference...
 
       - name: Seed test users
         working-directory: apps/reference
