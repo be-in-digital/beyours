@@ -20,6 +20,11 @@ BeYours uses a two-tier environment variable system:
 | **Package-level** | Shared across all restaurant deployments | BeYours platform team |
 | **Site-level** | Unique per restaurant deployment | Restaurant owner / deployer |
 
+Package-level values are identical on every client deployment, so they have one
+source rather than one copy per client:
+[`infisical.md`](./infisical.md). Site-level values stay in each client's own
+`.env.local` / `.env.convex`.
+
 ## Startup Validation
 
 All env vars are validated at app startup using Zod schemas. The validation runs in `instrumentation.ts`:
