@@ -199,6 +199,9 @@ jobs:
           # — including /api/auth/sign-up/email, on the seed's first request,
           # after the readiness poll below has already declared the server up.
           # It also runs the same NODE_ENV as the suite will.
+          # Job control on, so the background job becomes its own process group
+          # leader and the whole tree can be killed by group below.
+          set -m
           pnpm start &
           SERVER_PID=$!
 
@@ -219,25 +222,33 @@ jobs:
           seed_status=0
           npx tsx scripts/seed-users.mts || seed_status=$?
 
-          kill $SERVER_PID 2>/dev/null || true
-          wait $SERVER_PID 2>/dev/null || true
-
           # `pnpm start` is a wrapper: the process actually holding :3000 is the
-          # `next start` it spawned, and killing the wrapper leaves it running.
+          # `next start` it spawned, and killing the wrapper leaves it serving.
           # Playwright then refuses to bring up its own web server with
           # "http://localhost:3000 is already used" and the whole suite reports
-          # zero tests. Free the port properly and prove it is free.
-          for _ in $(seq 1 15); do
-            pids="$(lsof -ti tcp:3000 2>/dev/null || true)"
-            [ -z "$pids" ] && break
-            kill -9 $pids 2>/dev/null || true
+          # zero tests — which is what happened here twice.
+          #
+          # Kill the process group, and use curl rather than lsof to decide
+          # whether it worked: lsof is not guaranteed on a runner, and
+          # `if lsof ...` on a missing binary exits 127, which reads as "port is
+          # free" and silently passes. curl answers the only question that
+          # matters — is anything still serving on 3000 — and needs nothing
+          # installed.
+          kill -- "-$SERVER_PID" 2>/dev/null || kill "$SERVER_PID" 2>/dev/null || true
+          wait $SERVER_PID 2>/dev/null || true
+
+          for _ in $(seq 1 20); do
+            curl -s --max-time 2 http://localhost:3000 > /dev/null 2>&1 || break
+            pkill -f "next start" 2>/dev/null || true
+            pkill -f "next-server" 2>/dev/null || true
             sleep 1
           done
 
-          if lsof -ti tcp:3000 > /dev/null 2>&1; then
-            echo "::error::Port 3000 is still held after the seed. Playwright cannot start its server."
+          if curl -s --max-time 2 http://localhost:3000 > /dev/null 2>&1; then
+            echo "::error::Something is still serving on port 3000 after the seed. Playwright cannot start its own server, and the run would report zero tests."
             exit 1
           fi
+          echo "Port 3000 is free."
 
           if [ "$seed_status" -ne 0 ]; then
             echo "::error::Seeding failed (exit $seed_status). The admin suite signs in as a seeded account, so running it now would report defects that are only missing fixtures."
