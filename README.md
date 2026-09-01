@@ -393,8 +393,8 @@ the site served traffic throughout.
 
 | Deployment | App | Role | Convex project |
 | --- | --- | --- | --- |
-| `famous-wildcat-229` | `apps/site` | **production** — beyours.fr | `beindigital-restaurant` |
-| `hallowed-schnauzer-20` | `apps/site` | dev (`dev/mamadou-seck`) | `beindigital-restaurant` |
+| `famous-wildcat-229` | `apps/site` | **production** — beyours.fr | `beyours-commercial-site` |
+| `hallowed-schnauzer-20` | `apps/site` | dev (`dev/mamadou-seck`) | `beyours-commercial-site` |
 | `optimistic-swordfish-937` | `apps/reference` | **production** — the engine, incl. Stripe BID billing | `beyours-engine-reference` |
 | `dusty-nightingale-945` | — | **empty and unused** — see below | `beyours-commercial-site` |
 | `zany-barracuda-114` | `apps/themes` | production slot — **never deployed** | `beyours-client-template` |
@@ -410,6 +410,28 @@ the site served traffic throughout.
 | `youthful-goose-352` | stray dev | `200` |
 | `happy-otter-123` | dead — caused bug #6 | `404` |
 
+#### One name, three systems — and only one of them was renamed
+
+The Convex project that holds `famous-wildcat-229` was called
+`beindigital-restaurant` until 2026-09-01, when it was renamed to
+**`beyours-commercial-site`** (name and slug) after the empty project of that
+name was deleted. Renaming a Convex project does not touch its deployments:
+`famous-wildcat-229` is still `famous-wildcat-229`, the URLs are unchanged, and
+nothing was re-wired. It was safe to change the slug too because the project had
+no deploy keys, production or preview — the dashboard warns that a slug change
+invalidates any key in use.
+
+`beindigital-restaurant` still exists, and means two other things:
+
+| Where | What it is |
+| --- | --- |
+| GitHub | the repository, `be-in-digital/beindigital-restaurant` |
+| Vercel | the project that builds `apps/site` |
+| ~~Convex~~ | **renamed** — now `beyours-commercial-site` |
+
+So a search for that name will keep returning hits. They are not stale; they are
+about the other two systems.
+
 #### How each row was established
 
 - **Measured 2026-09-01.** Every `/version`: unauthenticated
@@ -418,9 +440,9 @@ the site served traffic throughout.
   `momoseck8` rows: the CLI logged into `be-yours` is **refused** on each, which
   is what "still on the other account" means here.
 - **The transfer, verified twice.** The dashboard lists
-  `beindigital-restaurant` under `be-yours`, and the same CLI that was refused
+  the transferred project under `be-yours`, and the same CLI that was refused
   `famous-wildcat-229` an hour earlier now reads its 27 environment variables.
-- **`beindigital-restaurant` and `hallowed-schnauzer-20` had never been written
+- **The site's project and `hallowed-schnauzer-20` had never been written
   down anywhere.** The site's real backend was found by reading the served
   production bundle, not by reading this repository.
 
