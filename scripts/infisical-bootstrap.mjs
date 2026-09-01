@@ -112,7 +112,14 @@ const flag = (name, fallback) => {
 
 const ENV = flag("env", "dev")
 const ONLY = flag("scope")
-const PROJECT_ID = process.env.INFISICAL_PROJECT_ID
+/**
+ * The BeYours platform project. Not a secret — it identifies a project, it does
+ * not open one; reading anything still needs a session or a machine identity.
+ * Committed so that `pnpm dev` reaches the store after `infisical login` alone,
+ * with nothing to remember. Override with INFISICAL_PROJECT_ID.
+ */
+const DEFAULT_PROJECT_ID = "da164dca-75e2-4646-b302-5b2274b2b285"
+const PROJECT_ID = process.env.INFISICAL_PROJECT_ID || DEFAULT_PROJECT_ID
 
 const scopeNames = ONLY ? [ONLY] : Object.keys(SCOPES)
 for (const name of scopeNames) {
@@ -146,16 +153,23 @@ function expectedKeys(name) {
 
 /* ── talking to Infisical ────────────────────────────────────────────────── */
 
+/** CLI present, project id set, and a session that can actually read. */
+function storeReachable() {
+  if (!PROJECT_ID) return false
+  try {
+    execFileSync("infisical", ["--version"], { stdio: "ignore" })
+  } catch {
+    return false
+  }
+  return storedKeys("/").error !== "auth"
+}
+
 function requireCli() {
   try {
     execFileSync("infisical", ["--version"], { stdio: "ignore" })
   } catch {
     console.error("The Infisical CLI is not on PATH.")
     console.error("  brew install infisical/get-cli/infisical")
-    process.exit(1)
-  }
-  if (!PROJECT_ID) {
-    console.error("Set INFISICAL_PROJECT_ID (see apps/docs/deployment/infisical.md).")
     process.exit(1)
   }
 }
@@ -635,6 +649,24 @@ function cmdSeed() {
  * wins. Same contract as the CI jobs, deliberately: one rule to remember.
  */
 function cmdRun() {
+  const optional = argv.includes("--optional")
+  // `--optional` is what lets an app's own `dev` script go through the store by
+  // default. Without it, a missing CLI or an unset project id would stop a
+  // developer from working at all, and the wiring would have to be opt-in —
+  // which means forgettable, which is the failure it exists to prevent.
+  if (optional && !storeReachable()) {
+    const sep0 = argv.indexOf("--")
+    const cmd0 = sep0 === -1 ? [] : argv.slice(sep0 + 1)
+    console.log("[env] Infisical unavailable — running without the store.")
+    console.log("[env] Install the CLI and set INFISICAL_PROJECT_ID to use it;")
+    console.log("[env] see apps/docs/deployment/infisical.md.")
+    try {
+      execFileSync(cmd0[0], cmd0.slice(1), { stdio: "inherit", env: process.env })
+    } catch (e) {
+      process.exitCode = e.status ?? 1
+    }
+    return
+  }
   requireCli()
   const sep = argv.indexOf("--")
   const command = sep === -1 ? [] : argv.slice(sep + 1)

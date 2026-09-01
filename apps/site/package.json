@@ -7,7 +7,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "node ../../scripts/infisical-bootstrap.mjs run --scope=site --optional -- next dev",
+    "dev:plain": "next dev",
     "dev:backend": "convex dev",
     "build": "next build",
     "start": "next start",

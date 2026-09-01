@@ -168,14 +168,25 @@ are wired differently because they are different problems.
 ### Local development — done
 
 ```bash
-export INFISICAL_PROJECT_ID=<the project id>
-infisical login              # once, per machine
+infisical login              # once, per machine. That is the whole setup.
 
-pnpm dev:site:env            # /platform + /site, injected
-pnpm dev:reference:env
-pnpm dev:themes:env
-pnpm dev:demo:env            # the shared demo instance
+pnpm dev:site                # goes through the store, automatically
+pnpm dev:reference
 ```
+
+**`dev` is wired, not offered.** `apps/site` and `apps/reference` route their own
+`dev` script through the store, so there is nothing to remember and nothing to
+type differently. An opt-in command is a command someone forgets, which is the
+failure this exists to prevent.
+
+It degrades rather than blocks: no CLI, or no session, and the app starts anyway
+after printing why the store was skipped. `pnpm dev:plain` skips it deliberately.
+The project id is committed as a default — it names a project, it does not open
+one, and reading still needs a session.
+
+**`apps/themes` is deliberately not wired.** That app is cloned into a client's
+repository, and a client has no Infisical. Its `dev` stays plain; the agency uses
+`pnpm dev:themes:env` and `pnpm dev:demo:env` when it wants the store.
 
 `run` loads `/platform` first and the scope's folder second, so a scope value
 beats the shared one — the same order the CI jobs use, on purpose: one rule to
