@@ -123,6 +123,11 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    env:
+      # See the same guard in e2e.yml: a step's `if:` cannot read `secrets`,
+      # a job's `env:` can, and `if:` can read `env`. So the Infisical steps
+      # skip themselves when the credentials are not there yet.
+      HAS_INFISICAL: ${{ secrets.INFISICAL_CLIENT_ID != '' && secrets.INFISICAL_CLIENT_SECRET != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -149,6 +154,36 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-build-
 
+      # The only CI consumer of the store. `e2e.yml` deliberately is not one:
+      # since #276 it starts its own Convex backend on the runner and reads no
+      # secret at all, which is a better answer than provisioning one.
+      #
+      # What this can change is narrow by construction: turbo.json declares only
+      # SENTRY_ORG / SENTRY_PROJECT / SENTRY_AUTH_TOKEN in the build task's
+      # `env`, so those three — plus NEXT_PUBLIC_*, through framework inference
+      # — are all that can reach the build. Everything else is stripped by turbo
+      # before `next build` sees it.
+      #
+      # Two gates and `continue-on-error`, because `Build` is a REQUIRED check
+      # on main and what the store adds here is source maps: an enhancement the
+      # build compiles perfectly without. An Infisical outage, a rotated
+      # identity or a typo in a variable must not become "nobody can merge".
+      - name: Load the shared credentials from Infisical
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        continue-on-error: true
+        uses: Infisical/secrets-action@6cd3f7c0e4cc0d2395ee4ef414eb6eeb5d3e73db # v1.0.17
+        with:
+          method: universal
+          client-id: ${{ secrets.INFISICAL_CLIENT_ID }}
+          client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+          project-slug: beyours-platform-4mu-x
+          env-slug: ${{ vars.INFISICAL_ENV || 'prod' }}
+          secret-path: /platform
+          export-type: env
+
+      # These two are STEP-level env, which outranks $GITHUB_ENV. That is what
+      # keeps a real Convex URL from the store out of this compile-check build,
+      # where it would be inlined into the bundle.
       - name: Build packages
         env:
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud

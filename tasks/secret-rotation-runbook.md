@@ -74,6 +74,15 @@ General order for **any** secret: **regenerate → propagate everywhere → re-v
    # Local: apps/reference/.env.local and apps/themes/.env.local (never committed)
    #        plus apps/themes/.env.convex if the value is applied via `pnpm convex:env`
    ```
+
+   > Once the platform store of
+   > [`apps/docs/deployment/infisical.md`](../apps/docs/deployment/infisical.md)
+   > exists, step 2 shrinks to: change the value **once** in Infisical, then run
+   > `bash scripts/setup-convex-env.sh --infisical [--prod]` in each client repo.
+   > The list of deployments is still yours to keep — Infisical pushes nothing on
+   > its own, and it has no Convex sync. What disappears is the retyping, and the
+   > risk that two stores end up holding different values.
+
 3. **Re-verify**: send a signed test webhook (see audit option 3: webhook simulator) → must answer `200`; a badly signed payload → `401`.
 4. **Revoke** the old secret in the portal once traffic is healthy.
 
