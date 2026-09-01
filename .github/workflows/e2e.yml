@@ -222,6 +222,23 @@ jobs:
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
 
+          # `pnpm start` is a wrapper: the process actually holding :3000 is the
+          # `next start` it spawned, and killing the wrapper leaves it running.
+          # Playwright then refuses to bring up its own web server with
+          # "http://localhost:3000 is already used" and the whole suite reports
+          # zero tests. Free the port properly and prove it is free.
+          for _ in $(seq 1 15); do
+            pids="$(lsof -ti tcp:3000 2>/dev/null || true)"
+            [ -z "$pids" ] && break
+            kill -9 $pids 2>/dev/null || true
+            sleep 1
+          done
+
+          if lsof -ti tcp:3000 > /dev/null 2>&1; then
+            echo "::error::Port 3000 is still held after the seed. Playwright cannot start its server."
+            exit 1
+          fi
+
           if [ "$seed_status" -ne 0 ]; then
             echo "::error::Seeding failed (exit $seed_status). The admin suite signs in as a seeded account, so running it now would report defects that are only missing fixtures."
             exit "$seed_status"

@@ -85,8 +85,9 @@ for (const project of REQUIRED) {
   const counts = byProject.get(project)
   if (!counts) {
     problems.push(
-      `project "${project}" reported nothing — it was not declared. ` +
-        `That is the hasRealBackend spread: no backend, no project, no report, green run.`
+      `project "${project}" reported nothing. Either it was never declared — the ` +
+        `hasRealBackend spread, so no backend means no project, no report and a ` +
+        `green run — or the run died before reaching it, which the step log will say.`
     )
   } else if (counts.ran === 0) {
     problems.push(`project "${project}" declared ${counts.skipped} test(s) and ran none of them`)
