@@ -7,7 +7,7 @@
 > inchangés, seule la team propriétaire a bougé.
 >
 > Ce que ce fichier peut encore affirmer à tort : beyours.fr tourne sur
-> **`famous-wildcat-229`** (projet `beindigital-restaurant`), jamais sur
+> **`famous-wildcat-229`** (projet `beyours-commercial-site`), jamais sur
 > `fearless-poodle-133` ; le moteur tourne sur **`optimistic-swordfish-937`**,
 > plus sur `robust-elephant-263`. `dusty-nightingale-945` est un projet vide et
 > inutilisé.

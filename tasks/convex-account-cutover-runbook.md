@@ -7,7 +7,7 @@
 > data are unchanged — only the owning team moved.
 >
 > What this file may still get wrong: beyours.fr runs on **`famous-wildcat-229`**
-> (project `beindigital-restaurant`), never on `fearless-poodle-133`; the engine
+> (project `beyours-commercial-site`), never on `fearless-poodle-133`; the engine
 > runs on **`optimistic-swordfish-937`**, no longer on `robust-elephant-263`.
 > `dusty-nightingale-945` is an empty, unused project.
 >

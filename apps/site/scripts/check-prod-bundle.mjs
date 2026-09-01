@@ -23,7 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Le seul déploiement Convex autorisé en prod
-// (team `be-yours` / projet `beindigital-restaurant`, transféré depuis
+// (team `be-yours` / projet `beyours-commercial-site`, transféré depuis
 // `momoseck8` le 2026-09-01 — le déploiement n'a pas bougé, seule la team
 // propriétaire a changé, ce qui est tout l'intérêt d'un transfert).
 const ALLOWED_CONVEX_SUBDOMAIN = "famous-wildcat-229";
