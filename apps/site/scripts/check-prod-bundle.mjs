@@ -22,12 +22,14 @@
 // No dependencies: Node >= 18 (global fetch). Tested on Node 20.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// The only Convex deployment allowed in prod (team momoseck8 / project wedilybird).
-const ALLOWED_CONVEX_SUBDOMAIN = "fearless-poodle-133";
+// Le seul déploiement Convex autorisé en prod
+// (team `be-yours` / projet `beyours-commercial-site`).
+const ALLOWED_CONVEX_SUBDOMAIN = "dusty-nightingale-945";
 
-// Subdomains known to have broken production (so we can print a clearer message).
-// The failure rule is « subdomain != ALLOWED » either way.
-const HARD_BLOCKLIST = ["happy-otter-123"];
+// Sous-domaines connus pour avoir cassé la prod : sert à imprimer un message
+// plus clair, jamais à décider. Voir `findConfiguredHosts` ci-dessous pour
+// pourquoi la présence d'un nom ne prouve rien.
+const KNOWN_BAD = ["happy-otter-123", "famous-wildcat-229"];
 
 const DEFAULT_URL = "https://beyours.fr";
 const REQ_TIMEOUT_MS = 15000;
@@ -68,7 +70,28 @@ function extractScriptUrls(html, baseUrl) {
   return [...urls];
 }
 
+// Le host réellement CONFIGURÉ par le bundle : l'argument passé au client
+// Convex. C'est la seule occurrence qui décide de quelque chose.
+//
+// Chercher n'importe quel `*.convex.cloud` dans les chunks ne marche pas, et
+// c'est ce que ce script faisait. La librairie embarque elle-même
+// `happy-otter-123.convex.cloud` comme URL d'exemple dans son message d'erreur
+// (`convex/dist/react.bundle.js` : « ConvexReactClient requires a URL like
+// … »), donc TOUT bundle contenant le client React déclenchait la blocklist et
+// ce script ne pouvait plus passer. Mesuré sur le bundle de prod le 2026-09-01.
+function findConfiguredHosts(text) {
+  const found = new Set();
+  const re =
+    /Convex(?:React|Http)Client\(\s*["'`]https?:\/\/([a-z0-9-]+)\.convex\.(cloud|site)/gi;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    found.add(`${m[1].toLowerCase()}.convex.${m[2].toLowerCase()}`);
+  }
+  return found;
+}
+
 // Tous les hosts *.convex.cloud / *.convex.site présents dans un texte.
+// Informatif seulement : un nom peut venir d'une chaîne de la librairie.
 function findConvexHosts(text) {
   const found = new Set();
   const re = /\b([a-z0-9-]+)\.convex\.(cloud|site)\b/gi;
@@ -123,11 +146,23 @@ async function main() {
   };
 
   // Le HTML lui-même (scripts inline / payload RSC) + chaque chunk.
+  const configured = new Map();
+  const recordConfigured = (hosts, source) => {
+    for (const h of hosts) {
+      if (!configured.has(h)) configured.set(h, new Set());
+      configured.get(h).add(source);
+    }
+  };
+
   record(findConvexHosts(page.text), "(HTML)");
+  recordConfigured(findConfiguredHosts(page.text), "(HTML)");
   await mapLimit(scriptUrls, CHUNK_CONCURRENCY, async (url) => {
     try {
       const chunk = await fetchText(url);
-      if (chunk.ok) record(findConvexHosts(chunk.text), url);
+      if (chunk.ok) {
+        record(findConvexHosts(chunk.text), url);
+        recordConfigured(findConfiguredHosts(chunk.text), url);
+      }
     } catch {
       console.warn(`[check-prod-bundle] ! chunk illisible, ignoré : ${url}`);
     }
@@ -146,7 +181,8 @@ async function main() {
   for (const [host, sources] of found) {
     const ok = subdomainOf(host) === ALLOWED_CONVEX_SUBDOMAIN;
     const tags = [];
-    if (HARD_BLOCKLIST.includes(subdomainOf(host))) tags.push("URL morte connue");
+    if (!configured.has(host)) tags.push("simple mention, non configuré");
+    if (KNOWN_BAD.includes(subdomainOf(host))) tags.push("nom connu comme problématique");
     if (subdomainOf(host) === "placeholder")
       tags.push("fallback = NEXT_PUBLIC_CONVEX_URL absente au build");
     const srcList = [...sources].slice(0, 2).join(", ");
@@ -157,14 +193,29 @@ async function main() {
     );
   }
 
-  const forbidden = [...found.keys()].filter(
+  // Le verdict ne porte QUE sur les hosts configurés. Une simple mention est
+  // imprimée plus haut et ne fait rien échouer.
+  if (configured.size === 0) {
+    console.error(
+      "\n✖ Aucun client Convex configuré trouvé dans le bundle servi.\n" +
+        "  Le bundle mentionne des hosts, mais aucun `new ConvexReactClient(\"https://…\")`.\n" +
+        "  Suspect : chunks non téléchargés, ou build sans NEXT_PUBLIC_CONVEX_URL.\n" +
+        "  Vérification NON concluante.",
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `\nClient(s) Convex réellement configuré(s) : ${[...configured.keys()].join(", ")}`,
+  );
+
+  const forbidden = [...configured.keys()].filter(
     (h) => subdomainOf(h) !== ALLOWED_CONVEX_SUBDOMAIN,
   );
 
   if (forbidden.length > 0) {
     console.error(
-      `\n✖ ÉCHEC : URL(s) Convex interdite(s) dans le bundle de prod : ` +
-        forbidden.join(", "),
+      `\n✖ ÉCHEC : le bundle de prod est câblé sur : ` + forbidden.join(", "),
     );
     console.error(
       "  → Le build servi n'est PAS câblé sur le bon déploiement.\n" +
