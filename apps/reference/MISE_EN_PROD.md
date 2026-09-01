@@ -1,5 +1,20 @@
 # Production go-live — reference (engine)
 
+> **⚠️ Superseded in part, 2026-09-01 — Convex deployments.** This file names
+> deployments whose roles have changed. The cutover to the dedicated account
+> completed, and the site's project was **transferred** (not migrated) from team
+> `momoseck8` to `be-yours`, so the deployment, its URLs, its env vars and its
+> data are unchanged — only the owning team moved.
+>
+> What this file may still get wrong: beyours.fr runs on **`famous-wildcat-229`**
+> (project `beindigital-restaurant`), never on `fearless-poodle-133`; the engine
+> runs on **`optimistic-swordfish-937`**, no longer on `robust-elephant-263`.
+> `dusty-nightingale-945` is an empty, unused project.
+>
+> The measured inventory is in the README, section **Convex deployments**. The
+> reasoning below is kept as the record of what was done at the time.
+
+
 Checklist of everything **you** still have to do before officially going live.
 Status as of 18 July 2026: the code is ready (type-check 18/18, tests green, game flow
 QA'd end to end, dashboard audited and fixed). Everything below is configuration,

@@ -1,5 +1,20 @@
 # Runbook — Cutover to the dedicated Convex account
 
+> **⚠️ Superseded in part, 2026-09-01 — Convex deployments.** This file names
+> deployments whose roles have changed. The cutover to the dedicated account
+> completed, and the site's project was **transferred** (not migrated) from team
+> `momoseck8` to `be-yours`, so the deployment, its URLs, its env vars and its
+> data are unchanged — only the owning team moved.
+>
+> What this file may still get wrong: beyours.fr runs on **`famous-wildcat-229`**
+> (project `beindigital-restaurant`), never on `fearless-poodle-133`; the engine
+> runs on **`optimistic-swordfish-937`**, no longer on `robust-elephant-263`.
+> `dusty-nightingale-945` is an empty, unused project.
+>
+> The measured inventory is in the README, section **Convex deployments**. The
+> reasoning below is kept as the record of what was done at the time.
+
+
 > Three clean projects now exist on the company account. Production still runs
 > on the old personal one. This file is what closes that gap, in the order that
 > does not break the site. It contains **no credential**.
@@ -64,7 +79,13 @@ down rather than moving it.
 ### 1. Environment variables — before anything points at the new backends
 
 Both new deployments have **no environment variables at all**. Confirmed:
-`npx convex env list` answers "No environment variables set" on each. A
+`npx convex env list` answers "No environment variables set" on each.
+
+> **No longer true, measured 2026-09-01.** `optimistic-swordfish-937` now
+> carries environment variables and serves as the engine's production;
+> `dusty-nightingale-945` carries six and serves nothing. And this step lost its
+> purpose along the way: the site's backend reached the new account by
+> **transfer**, which carries its env vars with it, so there was nothing to push. A
 deployment without them does not merely degrade — `instrumentation.ts` refuses
 to boot in production, and the auth layer returns 500 without `CONVEX_SITE_URL`.
 

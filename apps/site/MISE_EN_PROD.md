@@ -1,5 +1,20 @@
 # Production launch — Be in Digital Restauration (sales site)
 
+> **⚠️ Superseded in part, 2026-09-01 — Convex deployments.** This file names
+> deployments whose roles have changed. The cutover to the dedicated account
+> completed, and the site's project was **transferred** (not migrated) from team
+> `momoseck8` to `be-yours`, so the deployment, its URLs, its env vars and its
+> data are unchanged — only the owning team moved.
+>
+> What this file may still get wrong: beyours.fr runs on **`famous-wildcat-229`**
+> (project `beindigital-restaurant`), never on `fearless-poodle-133`; the engine
+> runs on **`optimistic-swordfish-937`**, no longer on `robust-elephant-263`.
+> `dusty-nightingale-945` is an empty, unused project.
+>
+> The measured inventory is in the README, section **Convex deployments**. The
+> reasoning below is kept as the record of what was done at the time.
+
+
 What is left to do before we can **really sell and take money** on `web-restaurant`
 (the site that commercializes the product). Its counterpart on the delivered
 product side is `apps/reference/MISE_EN_PROD.md` — do not confuse the two.

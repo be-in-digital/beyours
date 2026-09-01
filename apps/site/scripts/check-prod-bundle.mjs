@@ -23,13 +23,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Le seul déploiement Convex autorisé en prod
-// (team `be-yours` / projet `beyours-commercial-site`).
-const ALLOWED_CONVEX_SUBDOMAIN = "dusty-nightingale-945";
+// (team `be-yours` / projet `beindigital-restaurant`, transféré depuis
+// `momoseck8` le 2026-09-01 — le déploiement n'a pas bougé, seule la team
+// propriétaire a changé, ce qui est tout l'intérêt d'un transfert).
+const ALLOWED_CONVEX_SUBDOMAIN = "famous-wildcat-229";
 
 // Sous-domaines connus pour avoir cassé la prod : sert à imprimer un message
 // plus clair, jamais à décider. Voir `findConfiguredHosts` ci-dessous pour
 // pourquoi la présence d'un nom ne prouve rien.
-const KNOWN_BAD = ["happy-otter-123", "famous-wildcat-229"];
+const KNOWN_BAD = ["happy-otter-123"];
 
 const DEFAULT_URL = "https://beyours.fr";
 const REQ_TIMEOUT_MS = 15000;
