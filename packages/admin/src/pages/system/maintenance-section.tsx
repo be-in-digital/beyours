@@ -170,7 +170,7 @@ function ContractCard({ overview }: { overview: MaintenanceOverview }) {
         {contract ? (
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs text-muted-foreground">Debut de couverture</p>
+              <p className="text-xs text-muted-foreground">Début de couverture</p>
               <p className="text-sm font-medium">{formatDate(contract.startedAt)}</p>
             </div>
             <div>
@@ -349,7 +349,7 @@ function MigrationRequestForm({
           <Label htmlFor="migration-team">Équipe repreneuse</Label>
           <Input
             id="migration-team"
-            placeholder="Agence ou developpeur qui reprend le site"
+            placeholder="Agence ou développeur qui reprend le site"
             value={targetTeam}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTargetTeam(e.target.value)}
           />
@@ -388,7 +388,7 @@ function MigrationRequestForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="migration-date">Date souhaitee</Label>
+          <Label htmlFor="migration-date">Date souhaitée</Label>
           <Input
             id="migration-date"
             type="date"
@@ -490,7 +490,7 @@ function OpenMigrationRequestView({
         )}
         {request.preferredDate && (
           <div>
-            <p className="text-xs text-muted-foreground">Date souhaitee</p>
+            <p className="text-xs text-muted-foreground">Date souhaitée</p>
             <p className="text-sm font-medium">{formatDate(request.preferredDate)}</p>
           </div>
         )}

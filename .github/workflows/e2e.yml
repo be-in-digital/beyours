@@ -9,50 +9,30 @@ jobs:
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Skip E2E when no real Convex backend is configured
-    if: vars.CONVEX_E2E_ENABLED == 'true'
-    env:
-      # Site-level (dedicated Convex test deployment)
-      NEXT_PUBLIC_CONVEX_URL: ${{ secrets.E2E_NEXT_PUBLIC_CONVEX_URL }}
-      CONVEX_SITE_URL: ${{ secrets.E2E_CONVEX_SITE_URL || 'https://placeholder.convex.site' }}
-      CONVEX_DEPLOYMENT: ${{ secrets.E2E_CONVEX_DEPLOYMENT }}
-      # Steps 2 and 3 of the seed shell out to `npx convex run`, which has no
-      # logged-in CLI session on a runner. Without a deploy key the accounts get
-      # created and then have no role and no restaurant — which reads as an
-      # admin screen that will not load, 400 tests later.
-      CONVEX_DEPLOY_KEY: ${{ secrets.E2E_CONVEX_DEPLOY_KEY }}
-      BETTER_AUTH_SECRET: ${{ secrets.E2E_BETTER_AUTH_SECRET || 'ci-placeholder-secret-not-for-production' }}
-      BETTER_AUTH_URL: http://localhost:3000
-      SITE_URL: http://localhost:3000
-      ENCRYPTION_KEY: ${{ secrets.E2E_ENCRYPTION_KEY || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' }}
-      # The suite runs `pnpm start`, so instrumentation.ts enforces the full
-      # required set and refuses to serve without it. Nothing here reaches S3
-      # or SES, so placeholders are enough — they only have to be present and
-      # well-formed.
-      AWS_S3_BUCKET_NAME: ${{ secrets.E2E_AWS_S3_BUCKET_NAME || 'placeholder-bucket' }}
-      AWS_SES_FROM_EMAIL: ${{ secrets.E2E_AWS_SES_FROM_EMAIL || 'e2e@placeholder.invalid' }}
-      # Throwaway password for seeded E2E test accounts (never used in production)
-      SEED_PASSWORD: ${{ secrets.E2E_SEED_PASSWORD || 'ci-seed-password-not-for-prod' }}
-      # Package-level (BeInDigital infrastructure)
-      AWS_REGION: ${{ secrets.E2E_AWS_REGION || 'eu-west-3' }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.E2E_AWS_ACCESS_KEY_ID || 'placeholder' }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.E2E_AWS_SECRET_ACCESS_KEY || 'placeholder' }}
-      OPENAI_API_KEY: ${{ secrets.E2E_OPENAI_API_KEY || 'sk-placeholder' }}
-    steps:
-      # Before anything is installed or built: if this job is running at all,
-      # the flag says E2E is wanted, and E2E without a backend cannot happen.
-      # Discovering that after `pnpm build` used to cost five minutes and end
-      # in a green check.
-      - name: Require a backend to test against
-        run: |
-          if [ -z "$NEXT_PUBLIC_CONVEX_URL" ]; then
-            echo "::error::CONVEX_E2E_ENABLED is true but E2E_NEXT_PUBLIC_CONVEX_URL is unset."
-            echo "Playwright cannot run without a deployment to point at."
-            echo "Set the E2E_* secrets, or unset CONVEX_E2E_ENABLED to skip E2E honestly."
-            exit 1
-          fi
+    # 65 tests took 8.4 min at one worker; the full suite is ~510. 30 minutes
+    # cancelled the run, and a cancelled run is not a passing one.
+    timeout-minutes: 60
 
+    env:
+      # ── The backend under test ────────────────────────────────────────────
+      #
+      # This job used to be gated on `vars.CONVEX_E2E_ENABLED == 'true'` with a
+      # set of E2E_* secrets pointing at a hosted Convex deployment. Neither the
+      # variable nor the secrets were ever created, so the job was skipped on
+      # every run since it was written, and `E2E Status` reported that skip as
+      # success. Eight consecutive CI runs finished in 7-11 seconds and were
+      # believed.
+      #
+      # So the deployment is no longer somebody's to provision: the job starts
+      # its own Convex backend on the runner, from the published binary, with no
+      # account and no secrets. Nothing here is privileged, and nothing here can
+      # be left unset by mistake.
+      CONVEX_BACKEND_VERSION: precompiled-2026-08-25-7cce8fb
+      CONVEX_PORT: "3310"
+      CONVEX_SITE_PORT: "3311"
+      CONVEX_INSTANCE: beyours-e2e
+
+    steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -73,18 +53,141 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm --filter @beyours/reference exec playwright install --with-deps chromium
 
-      - name: Restore Turbo cache
+      - name: Cache the Convex backend binary
         uses: actions/cache@v4
         with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-e2e-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-e2e-
+          path: ~/.cache/convex-e2e
+          key: convex-backend-${{ env.CONVEX_BACKEND_VERSION }}
+
+      - name: Start a Convex backend
+        run: |
+          set -euo pipefail
+
+          BIN_DIR="$HOME/.cache/convex-e2e"
+          BIN="$BIN_DIR/convex-local-backend"
+
+          if [ ! -x "$BIN" ]; then
+            mkdir -p "$BIN_DIR"
+            # Same artifact the Convex CLI downloads for a local deployment.
+            # Pinned rather than "latest": the suite should fail because the
+            # product changed, never because the backend did overnight.
+            URL="https://github.com/get-convex/convex-backend/releases/download/${CONVEX_BACKEND_VERSION}/convex-local-backend-x86_64-unknown-linux-gnu.zip"
+            echo "Downloading $URL"
+            curl -fsSL --retry 3 -o /tmp/convex-backend.zip "$URL"
+            unzip -q -o /tmp/convex-backend.zip -d "$BIN_DIR"
+            chmod +x "$BIN"
+          fi
+
+          STATE="$HOME/convex-e2e-state"
+          mkdir -p "$STATE/storage"
+
+          SECRET="$(openssl rand -hex 32)"
+          ADMIN_KEY="$("$BIN" keygen admin-key \
+            --instance-name "$CONVEX_INSTANCE" --instance-secret "$SECRET" | tail -1)"
+
+          cd "$STATE"
+          nohup "$BIN" \
+            --port "$CONVEX_PORT" --site-proxy-port "$CONVEX_SITE_PORT" \
+            --instance-name "$CONVEX_INSTANCE" --instance-secret "$SECRET" \
+            --local-storage storage backend.sqlite3 \
+            > "$HOME/convex-backend.log" 2>&1 &
+
+          for i in $(seq 1 60); do
+            if curl -sf "http://127.0.0.1:${CONVEX_PORT}/version" > /dev/null 2>&1; then
+              echo "Backend up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+          if ! curl -sf "http://127.0.0.1:${CONVEX_PORT}/version" > /dev/null 2>&1; then
+            echo "::error::The Convex backend never came up. Log follows."
+            cat "$HOME/convex-backend.log"
+            exit 1
+          fi
+
+          # Consumed by every later step. Never printed: it is an admin key, and
+          # it is worth exactly one ephemeral runner.
+          echo "::add-mask::$ADMIN_KEY"
+          echo "CONVEX_SELF_HOSTED_URL=http://127.0.0.1:${CONVEX_PORT}" >> "$GITHUB_ENV"
+          echo "CONVEX_SELF_HOSTED_ADMIN_KEY=$ADMIN_KEY" >> "$GITHUB_ENV"
+
+      - name: Write the suite's environment
+        run: |
+          set -euo pipefail
+
+          # .env.local, and written to a file rather than exported into the job.
+          #
+          # A file, because `pnpm test:e2e` runs through Turborepo, whose strict
+          # env mode drops every variable not named in turbo.json's
+          # passThroughEnv — and the web server it spawns refuses to serve
+          # without the required tier.
+          #
+          # .env.local specifically, because four different consumers have to
+          # agree and it is the only name all four read: `next build` bakes
+          # NEXT_PUBLIC_CONVEX_URL into the client bundle and into the CSP from
+          # it, `next start` reads it at runtime, and playwright.config.ts and
+          # scripts/seed-users.mts both load it through loadEnvFiles. Writing
+          # .env.e2e instead builds an app with no backend URL, which serves the
+          # global error boundary on every route and fails the auth setup with
+          # "element(s) not found" — measured, not guessed.
+          #
+          # CONVEX_DEPLOYMENT is deliberately absent: the Convex CLI refuses to
+          # run when it is set alongside CONVEX_SELF_HOSTED_URL.
+          cat > apps/reference/.env.local <<EOF
+          NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:${CONVEX_PORT}
+          NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:${CONVEX_SITE_PORT}
+          CONVEX_SITE_URL=http://127.0.0.1:${CONVEX_SITE_PORT}
+          BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+          BETTER_AUTH_URL=http://localhost:3000
+          ENCRYPTION_KEY=$(openssl rand -hex 32)
+          EMAIL_API_SECRET=e2e-email-api-secret-not-for-production
+          SITE_URL=http://localhost:3000
+          NEXT_PUBLIC_SITE_URL=http://localhost:3000
+          NEXT_PUBLIC_APP_URL=http://localhost:3000
+          ADMIN_URL=http://localhost:3000
+          AUTH_ALLOW_UNVERIFIED_EMAIL=true
+          AWS_REGION=eu-west-3
+          AWS_ACCESS_KEY_ID=placeholder
+          AWS_SECRET_ACCESS_KEY=placeholder
+          AWS_S3_BUCKET_NAME=placeholder-bucket
+          AWS_SES_FROM_EMAIL=e2e@placeholder.invalid
+          AWS_SES_FROM_NAME="BeYours E2E"
+          AWS_SES_REPLY_TO_EMAIL=e2e@placeholder.invalid
+          OPENAI_API_KEY=sk-placeholder
+          SEED_ADMIN_EMAIL=test.owner@beindigital.fr
+          SEED_PASSWORD=e2e-seed-password-not-for-production
+          EOF
+
+          # Nothing above reaches S3, SES or OpenAI. They only have to be
+          # present and well-formed: instrumentation.ts validates the required
+          # tier at startup and refuses to serve without it.
+          echo "Wrote apps/reference/.env.local ($(grep -c . apps/reference/.env.local) values)"
 
       - name: Build application
         # The e2e suite targets the reference app: no need to build the
         # commercial site or the client template here.
+        #
+        # Before the Convex deploy, not after. `convex deploy` bundles
+        # apps/reference/convex, which imports @be-in-digital/cms and friends,
+        # and those are workspace packages consumed from `dist` — which does not
+        # exist until this step builds them. A fresh runner has never built
+        # them, so deploying first fails with "Could not resolve
+        # @be-in-digital/cms ... ./dist/index.mjs was not found". Every local
+        # run had a dist lying around from an earlier build and never saw it.
         run: pnpm build --filter=@beyours/reference...
+
+      - name: Deploy Convex functions
+        working-directory: apps/reference
+        run: |
+          set -euo pipefail
+          npx convex deploy -y --typecheck disable
+
+          # Read by Convex functions, so they live on the deployment and not in
+          # the env file above. Without the first, sign-in answers 403 and every
+          # admin test fails on an empty session.
+          npx convex env set AUTH_ALLOW_UNVERIFIED_EMAIL true
+          npx convex env set SITE_URL http://localhost:3000
 
       - name: Seed test users
         working-directory: apps/reference
@@ -96,6 +199,9 @@ jobs:
           # — including /api/auth/sign-up/email, on the seed's first request,
           # after the readiness poll below has already declared the server up.
           # It also runs the same NODE_ENV as the suite will.
+          # Job control on, so the background job becomes its own process group
+          # leader and the whole tree can be killed by group below.
+          set -m
           pnpm start &
           SERVER_PID=$!
 
@@ -116,8 +222,33 @@ jobs:
           seed_status=0
           npx tsx scripts/seed-users.mts || seed_status=$?
 
-          kill $SERVER_PID 2>/dev/null || true
+          # `pnpm start` is a wrapper: the process actually holding :3000 is the
+          # `next start` it spawned, and killing the wrapper leaves it serving.
+          # Playwright then refuses to bring up its own web server with
+          # "http://localhost:3000 is already used" and the whole suite reports
+          # zero tests — which is what happened here twice.
+          #
+          # Kill the process group, and use curl rather than lsof to decide
+          # whether it worked: lsof is not guaranteed on a runner, and
+          # `if lsof ...` on a missing binary exits 127, which reads as "port is
+          # free" and silently passes. curl answers the only question that
+          # matters — is anything still serving on 3000 — and needs nothing
+          # installed.
+          kill -- "-$SERVER_PID" 2>/dev/null || kill "$SERVER_PID" 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
+
+          for _ in $(seq 1 20); do
+            curl -s --max-time 2 http://localhost:3000 > /dev/null 2>&1 || break
+            pkill -f "next start" 2>/dev/null || true
+            pkill -f "next-server" 2>/dev/null || true
+            sleep 1
+          done
+
+          if curl -s --max-time 2 http://localhost:3000 > /dev/null 2>&1; then
+            echo "::error::Something is still serving on port 3000 after the seed. Playwright cannot start its own server, and the run would report zero tests."
+            exit 1
+          fi
+          echo "Port 3000 is free."
 
           if [ "$seed_status" -ne 0 ]; then
             echo "::error::Seeding failed (exit $seed_status). The admin suite signs in as a seeded account, so running it now would report defects that are only missing fixtures."
@@ -128,6 +259,25 @@ jobs:
         run: pnpm test:e2e --filter=@beyours/reference
         env:
           CI: true
+
+      - name: Prove the suite actually ran
+        # Playwright exits 0 when it has nothing to run, and this config can end
+        # up with nothing to run without saying so: `setup` and `admin` are
+        # spread out of the projects array when NEXT_PUBLIC_CONVEX_URL looks
+        # like a placeholder, which removes 43 of 56 spec files from the run AND
+        # from the report. A green tick over an empty run is the failure this
+        # whole job exists to stop, so it is asserted rather than assumed.
+        #
+        # The floor is 100 against a suite of roughly 510: high enough that the
+        # public project alone (74) cannot satisfy it, low enough that tests
+        # self-skipping on thin fixtures do not turn a real pass red. The
+        # per-project check is the stricter half — a project that reports
+        # nothing at all is the elision above, and it fails whatever the count.
+        if: always()
+        run: |
+          node scripts/assert-e2e-ran.mjs \
+            apps/reference/playwright-report/report.json \
+            --min 100 --projects setup,public,admin
 
       - name: Upload Playwright report
         if: always()
@@ -145,12 +295,17 @@ jobs:
           path: apps/reference/test-results/
           retention-days: 7
 
+      - name: Convex backend log
+        if: failure()
+        run: tail -100 "$HOME/convex-backend.log" || true
+
   # Reports what the E2E job actually did.
   #
-  # It still passes when E2E is switched off, so branch protection does not
-  # block a PR over a suite the repository has not enabled - but only then. Any
-  # other outcome that is not a real pass fails: a run that produced no test
-  # result is not a pass, and saying so was the whole problem.
+  # Every outcome that is not a real pass fails here. `skipped` used to be
+  # excused, because the suite was switched off by default and branch protection
+  # should not block a PR over a suite the repository had not enabled — but the
+  # suite is no longer switched off, so a skip now means the job did not run
+  # when it should have, and that is a failure like any other.
   e2e-status:
     name: E2E Status
     runs-on: ubuntu-latest
@@ -161,18 +316,12 @@ jobs:
         env:
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          case "$E2E_RESULT" in
-            skipped)
-              echo "E2E tests skipped — set CONVEX_E2E_ENABLED=true in repo vars to enable"
-              ;;
-            success)
-              echo "E2E tests passed"
-              ;;
-            *)
-              # failure, cancelled, or whatever a future runner reports. None of
-              # them mean the suite passed. `cancelled` used to land in the same
-              # branch as success and be announced as one.
-              echo "::error::E2E tests did not pass (job result: $E2E_RESULT)"
-              exit 1
-              ;;
-          esac
+          if [ "$E2E_RESULT" = "success" ]; then
+            echo "E2E tests passed"
+            exit 0
+          fi
+          # failure, cancelled, skipped, or whatever a future runner reports.
+          # None of them mean the suite passed. `cancelled` used to land in the
+          # same branch as success and be announced as one.
+          echo "::error::E2E tests did not pass (job result: $E2E_RESULT)"
+          exit 1

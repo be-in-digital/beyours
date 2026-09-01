@@ -137,7 +137,7 @@ export function SuggestionsReview({
             <Check className="h-3.5 w-3.5 mr-1.5" />
             {isCreating
               ? "Creation..."
-              : `Creer ${selectedIds.size} produit(s)`}
+              : `Créer ${selectedIds.size} produit(s)`}
           </Button>
         </div>
       </div>
@@ -174,7 +174,7 @@ export function SuggestionsReview({
             <Check className="h-3.5 w-3.5 mr-1.5" />
             {isCreating
               ? "Creation..."
-              : `Creer ${selectedIds.size} produit(s)`}
+              : `Créer ${selectedIds.size} produit(s)`}
           </Button>
         </div>
       )}

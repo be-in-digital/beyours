@@ -164,7 +164,7 @@ export async function checkImageGenerationAccess(
   if (monthlyImageQuota <= 0) {
     return {
       allowed: false,
-      reason: "Generation d'images non disponible avec votre plan",
+      reason: "Génération d'images non disponible avec votre plan",
       remainingImageQuota: 0,
     }
   }
@@ -233,7 +233,7 @@ export async function checkImageToProductAccess(
   if (!itp || !itp.enabled) {
     return {
       allowed: false,
-      reason: "La fonctionnalite Image vers Produit n'est pas incluse dans votre plan",
+      reason: "La fonctionnalité Image vers Produit n'est pas incluse dans votre plan",
       remainingAnalysisQuota: 0,
     }
   }
@@ -323,7 +323,7 @@ export function validateConfigAgainstPlan(
     config.themes.length > ab.maxTopics
   ) {
     throw new Error(
-      `Votre plan ${ab.plan} est limite a ${ab.maxTopics} thematique(s). Passez au plan superieur pour en ajouter davantage.`
+      `Votre plan ${ab.plan} est limite a ${ab.maxTopics} thematique(s). Passez au plan supérieur pour en ajouter davantage.`
     )
   }
 
@@ -349,7 +349,7 @@ export function validateConfigAgainstPlan(
       // Exclusivity: monthly days must not be provided
       if (config.preferredMonthDays && config.preferredMonthDays.length > 0) {
         throw new Error(
-          "En mode hebdomadaire, les jours du mois ne doivent pas etre renseignes."
+          "En mode hebdomadaire, les jours du mois ne doivent pas être renseignés."
         )
       }
 
@@ -365,7 +365,7 @@ export function validateConfigAgainstPlan(
 
       // Unique
       if (new Set(config.preferredWeekdays).size !== config.preferredWeekdays.length) {
-        throw new Error("Les jours de la semaine doivent etre uniques.")
+        throw new Error("Les jours de la semaine doivent être uniques.")
       }
 
       // Max count
@@ -381,7 +381,7 @@ export function validateConfigAgainstPlan(
       // Exclusivity: weekly days must not be provided
       if (config.preferredWeekdays && config.preferredWeekdays.length > 0) {
         throw new Error(
-          "En mode mensuel, les jours de la semaine ne doivent pas etre renseignes."
+          "En mode mensuel, les jours de la semaine ne doivent pas être renseignés."
         )
       }
 
@@ -397,7 +397,7 @@ export function validateConfigAgainstPlan(
 
       // Unique
       if (new Set(config.preferredMonthDays).size !== config.preferredMonthDays.length) {
-        throw new Error("Les jours du mois doivent etre uniques.")
+        throw new Error("Les jours du mois doivent être uniques.")
       }
 
       // Max count

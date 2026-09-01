@@ -494,7 +494,7 @@ export const createMigrationRequest = {
       throw new Error("L'email de contact est requis")
     }
     if (args.scope.length === 0) {
-      throw new Error("Selectionnez au moins un element a migrer")
+      throw new Error("Sélectionnez au moins un élément à migrer")
     }
 
     const open = await getOpenMigrationRequest.handler(ctx)

@@ -534,7 +534,7 @@ describe("createMigrationRequest handler", () => {
     const ctx = makeFakeCtx()
     await expect(
       createMigrationRequest.handler(ctx, { ...validArgs, scope: [] })
-    ).rejects.toThrow(/au moins un element/)
+    ).rejects.toThrow(/au moins un élément à migrer/)
   })
 
   it("rejects a blank target provider", async () => {

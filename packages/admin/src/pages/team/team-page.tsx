@@ -191,7 +191,7 @@ export function TeamPage() {
     if (!deleteMember) return
     try {
       await removeMember({ id: deleteMember._id })
-      toast.success("Membre supprime")
+      toast.success("Membre supprimé")
       setDeleteMember(null)
     } catch {
       toast.error("Échec de la suppression")

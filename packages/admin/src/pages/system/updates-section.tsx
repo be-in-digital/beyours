@@ -57,7 +57,7 @@ export function UpdatesSection({
         )
       } else if (result.hasUpdate) {
         toast.warning(
-          "Une version plus recente existe mais n'est pas couverte par votre maintenance"
+          "Une version plus récente existe mais n'est pas couverte par votre maintenance"
         )
       } else {
         toast.success("Vous êtes à jour")
@@ -170,7 +170,7 @@ export function UpdatesSection({
               <TableHeader>
                 <TableRow>
                   <TableHead>Version</TableHead>
-                  <TableHead>Publiee le</TableHead>
+                  <TableHead>Publiée le</TableHead>
                   <TableHead>Acces</TableHead>
                 </TableRow>
               </TableHeader>

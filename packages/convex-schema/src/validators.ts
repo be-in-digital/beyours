@@ -18,14 +18,14 @@ import { z } from "zod"
 export const createGlobalSettingsSchema = z.object({
   currency: z.string().default("EUR"),
   timezone: z.string().default("Europe/Paris"),
-  taxRate: z.number().min(0).max(100, "Le taux de taxe doit etre entre 0 et 100").default(20),
+  taxRate: z.number().min(0).max(100, "Le taux de taxe doit être entre 0 et 100").default(20),
   services: z.object({
     dineIn: z.boolean().default(false),
     takeaway: z.boolean().default(true),
     delivery: z.boolean().default(false),
     clickAndCollect: z.boolean().default(false),
   }).default({ dineIn: false, takeaway: true, delivery: false, clickAndCollect: false }),
-  minimumOrderAmount: z.number().min(0, "Le montant minimum doit etre positif").optional(),
+  minimumOrderAmount: z.number().min(0, "Le montant minimum doit être positif").optional(),
   hours: z.array(z.object({
     day: z.number().min(0).max(6),
     open: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format horaire invalide (HH:mm)"),
@@ -34,11 +34,11 @@ export const createGlobalSettingsSchema = z.object({
   })).default([]),
   delivery: z.object({
     feeMode: z.enum(["fixed", "percentage"]).optional().default("fixed"),
-    fee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
+    fee: z.number().min(0, "Les frais de livraison doivent être positifs").optional(),
     percentage: z.number().min(1).max(100).optional(),
-    maxFee: z.number().min(0, "Le plafond doit etre positif").optional(),
-    freeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
-    radius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
+    maxFee: z.number().min(0, "Le plafond doit être positif").optional(),
+    freeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit être positif").optional(),
+    radius: z.number().min(0, "Le rayon de livraison doit être positif").optional(),
   }).default({ feeMode: "fixed" }),
   integrations: z.object({
     uberDirect: z.object({
@@ -108,10 +108,10 @@ export const createStoreSchema = z.object({
       delivery: z.boolean(),
       clickAndCollect: z.boolean(),
     }).optional(),
-    minimumOrderAmount: z.number().min(0, "Le montant minimum doit etre positif").optional(),
-    deliveryRadius: z.number().min(0, "Le rayon de livraison doit etre positif").optional(),
-    deliveryFee: z.number().min(0, "Les frais de livraison doivent etre positifs").optional(),
-    deliveryFreeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit etre positif").optional(),
+    minimumOrderAmount: z.number().min(0, "Le montant minimum doit être positif").optional(),
+    deliveryRadius: z.number().min(0, "Le rayon de livraison doit être positif").optional(),
+    deliveryFee: z.number().min(0, "Les frais de livraison doivent être positifs").optional(),
+    deliveryFreeAbove: z.number().min(0, "Le montant minimum pour livraison gratuite doit être positif").optional(),
   }).optional(),
   themeId: z.string().optional(),
 })
@@ -222,10 +222,10 @@ export const createProductSchema = z.object({
     .max(100, "Le slug ne peut pas dépasser 100 caractères")
     .regex(/^[a-z0-9-]+$/, "Le slug ne peut contenir que des lettres minuscules, chiffres et tirets"),
   description: z.string().max(2000, "La description ne peut pas dépasser 2000 caractères").optional(),
-  price: z.number().int().min(0, "Le prix doit etre positif"), // in cents
+  price: z.number().int().min(0, "Le prix doit être positif"), // in cents
   compareAtPrice: z.number().int().min(0).optional(),
-  taxRate: z.number().min(0, "Le taux de TVA doit etre positif").max(100, "Le taux de TVA ne peut pas depasser 100").default(0),
-  preparationTime: z.number().int().min(1, "Le temps de preparation doit etre au moins 1 minute").max(240, "Le temps de preparation ne peut pas depasser 4 heures").optional(),
+  taxRate: z.number().min(0, "Le taux de TVA doit être positif").max(100, "Le taux de TVA ne peut pas dépasser 100").default(0),
+  preparationTime: z.number().int().min(1, "Le temps de préparation doit être au moins 1 minute").max(240, "Le temps de préparation ne peut pas dépasser 4 heures").optional(),
   sku: z.string().max(50, "Le SKU ne peut pas dépasser 50 caractères").optional(),
   images: z.array(z.string().url("URL d'image invalide")).max(10, "Maximum 10 images").default([]),
   options: z.array(z.object({
@@ -261,7 +261,7 @@ export const createProductSchema = z.object({
     availableUntil: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     availableDays: z.array(z.number().min(0).max(6)).optional(),
   }).optional(),
-  spiceLevel: z.number().int().min(0).max(5, "Le niveau de piquant doit etre entre 0 et 5").optional(),
+  spiceLevel: z.number().int().min(0).max(5, "Le niveau de piquant doit être entre 0 et 5").optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().min(0).default(0),
@@ -284,7 +284,7 @@ export const updateProductSchema = createProductSchema.partial().required({ stor
  */
 export const updateProductStockSchema = z.object({
   productId: z.string().min(1),
-  quantity: z.number().int().min(0, "La quantite doit etre positive"),
+  quantity: z.number().int().min(0, "La quantité doit être positive"),
 })
 
 // ============================================================================
@@ -298,7 +298,7 @@ export const createMenuSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   name: z.string().min(1, "Le nom est requis").max(200),
   description: z.string().max(1000).optional(),
-  price: z.number().int().min(0, "Le prix doit etre positif"),
+  price: z.number().int().min(0, "Le prix doit être positif"),
   imageUrl: z.string().url().optional(),
   productIds: z.array(z.string().min(1)).min(1, "Au moins un produit est requis"),
   platformVisibility: z.object({
@@ -335,7 +335,7 @@ export const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1),
     productName: z.string().min(1),
-    quantity: z.number().int().min(1, "La quantite doit etre au moins 1"),
+    quantity: z.number().int().min(1, "La quantité doit être au moins 1"),
     unitPrice: z.number().int().min(0),
     selectedOptions: z.array(z.object({
       optionId: z.string(),
@@ -462,7 +462,7 @@ export const updatePrinterSettingsSchema = createPrinterSettingsSchema.partial()
 export const createPaymentSchema = z.object({
   orderId: z.string().min(1, "L'ID de la commande est requis"),
   storeId: z.string().min(1, "L'ID du magasin est requis"),
-  amount: z.number().int().min(1, "Le montant doit etre positif"),
+  amount: z.number().int().min(1, "Le montant doit être positif"),
   currency: z.string().length(3).toUpperCase().default("EUR"),
   provider: z.enum(["stripe", "sumup", "paypal", "square", "cash"], {
     error: "Fournisseur de paiement invalide",
@@ -649,8 +649,8 @@ export const createGameSchema = z.object({
   name: z.string().min(1),
   description: z.string().max(1000).optional(),
   winRatio: z.number()
-    .min(0, "Le taux de gain doit etre entre 0 et 100")
-    .max(100, "Le taux de gain doit etre entre 0 et 100"),
+    .min(0, "Le taux de gain doit être entre 0 et 100")
+    .max(100, "Le taux de gain doit être entre 0 et 100"),
   isActive: z.boolean().default(true),
 })
 
@@ -689,7 +689,7 @@ export const playGameSchema = z.object({
   playerEmail: z.string().email("Email invalide"),
   playerName: z.string().min(1, "Le nom est requis"),
   playerPhone: z.string().optional(),
-  completedActions: z.array(z.string()).min(1, "Au moins une action doit etre completee"),
+  completedActions: z.array(z.string()).min(1, "Au moins une action doit être completee"),
 })
 
 /**
@@ -840,7 +840,7 @@ export const upsertOwnerEntitlementsSchema = z.object({
 export const upsertBlogAutoConfigSchema = z.object({
   storeId: z.string().min(1, "L'ID du magasin est requis"),
   isEnabled: z.boolean(),
-  themes: z.array(z.string().min(1)).min(1, "Au moins un theme est requis"),
+  themes: z.array(z.string().min(1)).min(1, "Au moins un thème est requis"),
   frequency: z.enum(["weekly", "monthly"]),
   preferredWeekdays: z.array(z.number().int().min(0).max(6)).optional(),
   preferredMonthDays: z.array(z.number().int().min(1).max(28)).optional(),
