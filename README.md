@@ -380,55 +380,96 @@ enforced in application code.
 
 ### Convex deployments
 
-The authoritative inventory. Six deployment names circulate in this repository;
-before this table, three documents disagreed about which one was production and
-no single file listed them all. Confirmed against the Convex dashboard on
-2026-08-28.
+The authoritative inventory. Nine deployment names circulate in this repository
+and in the two accounts behind it. Re-measured 2026-09-01, after the cutover to
+the dedicated company account.
 
-> **This table describes the account production still runs on.** A dedicated
-> company account (team `be-yours`) was created on 2026-08-28 with three clean
-> projects — `beyours-commercial-site`, `beyours-engine-reference`,
-> `beyours-client-template` — whose deployments are provisioned and verified but
-> **serve no traffic yet**. Nothing below has been touched. The move, its
-> ordering, and what it abandons are in
-> [`tasks/convex-account-cutover-runbook.md`](tasks/convex-account-cutover-runbook.md);
-> rewrite this table when it lands.
+**The cutover has happened.** Production now runs on team `be-yours`, not on
+`momoseck8`. The previous version of this table described the old account as
+current and the new one as "provisioned but serving no traffic"; that is no
+longer true, and the note telling you to rewrite this table when the move landed
+is what you are reading.
 
-| Deployment | App | Role | Convex project | Team | `/version` | Recorded in |
-| --- | --- | --- | --- | --- | --- | --- |
-| `fearless-poodle-133` | `apps/site` | **production** (beyours.fr) | `wedilybird` | `momoseck8` | `200` | [`.env.production.example:38`](apps/site/.env.production.example), [`check-prod-bundle.mjs:26`](apps/site/scripts/check-prod-bundle.mjs) |
-| `capable-crocodile-720` | `apps/site` | dev | *unrecorded* | *unrecorded* | `200` | [`.env.production.example:28`](apps/site/.env.production.example) |
-| `reliable-parrot-452` | `apps/reference` | dev — **personal** (`dev/mamadou-seck`) | `beindigital-engine` | `momoseck8` | `200` | dashboard; [`MISE_EN_PROD.md:15`](apps/reference/MISE_EN_PROD.md) |
-| `youthful-goose-352` | `apps/reference` | stray dev | `beyours-reference` | `momoseck8` | `200` | [`e2e/load-env.ts:13`](apps/reference/e2e/load-env.ts) |
-| `robust-elephant-263` | `apps/reference` | **production** — the engine, incl. Stripe BID billing | `beindigital-engine` | `momoseck8` | `200` | dashboard; [`production-checklist.md:14`](tasks/production-checklist.md) |
-| `happy-otter-123` | `apps/site` | **dead** — caused bug #6 | — | — | `404` | [`check-prod-bundle.mjs:30`](apps/site/scripts/check-prod-bundle.mjs) |
+| Deployment | App | Role | Convex project | Team | `/version` |
+| --- | --- | --- | --- | --- | --- |
+| `optimistic-swordfish-937` | `apps/reference` | **production** — the engine, incl. Stripe BID billing | `beyours-engine-reference` | `be-yours` | `200` |
+| `famous-wildcat-229` | `apps/site` | **what beyours.fr actually runs on** — unidentified | *unknown* | not `be-yours` | `200` |
+| `dusty-nightingale-945` | `apps/site` | `beyours-commercial-site` production — **not what beyours.fr serves** | `beyours-commercial-site` | `be-yours` | `200` |
+| `zany-barracuda-114` | `apps/themes` | production slot — **never deployed** | `beyours-client-template` | `be-yours` | `200` |
+| `robust-elephant-263` | `apps/reference` | **former** production of the engine | `beindigital-engine` | `momoseck8` | `200` |
+| `fearless-poodle-133` | `apps/site` | **former** production (beyours.fr) | `wedilybird` | `momoseck8` | `200` |
+| `capable-crocodile-720` | `apps/site` | dev, old account | *unrecorded* | `momoseck8` | `200` |
+| `reliable-parrot-452` | `apps/reference` | dev — **personal** (`dev/mamadou-seck`) | `beindigital-engine` | `momoseck8` | `200` |
+| `youthful-goose-352` | `apps/reference` | stray dev, old account | `beyours-reference` | `momoseck8` | `200` |
+| `happy-otter-123` | `apps/site` | **dead** — caused bug #6 | — | — | `404` |
 
-`/version` measured 2026-08-28, unauthenticated `GET https://<name>.convex.cloud/version`.
-**Every live deployment is on team `momoseck8`** — confirmed for
-`beyours-reference` by the team owner on 2026-08-28, and the repository's
-long-standing claim for the other two projects. The `beindigital-engine` project
-membership is dashboard-confirmed. `capable-crocodile-720` is the one cell nobody
-has ever written down; it is `apps/site`'s dev deployment, so `wedilybird` is the
-expectation, not a verified fact.
+#### What was measured, and what was reported
 
-**Three project names, three projects — not three names for one.** `wedilybird`,
-`beindigital-engine` and `beyours-reference` are separate Convex projects. Nothing
-was contradictory about them; no file had ever said they were distinct.
+The distinction this table has always kept, kept again:
 
-**The engine's production deployment already exists: `robust-elephant-263`.**
-Project `beindigital-engine` holds exactly two deployments — `production`
-(`robust-elephant-263`) and `dev/mamadou-seck` (`reliable-parrot-452`). So
-`tasks/production-checklist.md` was right all along, and
-`apps/reference/MISE_EN_PROD.md` §1 was the stale document: its "create the
-PRODUCTION Convex deployment" step had been done and never ticked off. The
-deployment nobody could corroborate was simply the one nobody had written down
-twice.
+- **Measured 2026-09-01.** Every `/version` cell: unauthenticated
+  `GET https://<name>.convex.cloud/version`. The three `be-yours` rows —
+  project, team, production role, deployment name — read off the Convex
+  dashboard, along with "Deployed 4 days ago" for the engine, "3 days ago" for
+  the site, and **"Never deployed"** for `zany-barracuda-114`.
+- **Measured, and worth knowing:** the CLI logged into `be-yours` can read the
+  first three and **cannot read any of the other six**. If you need a value off
+  an old deployment, you need that account or a deploy key for it.
+- **Reported, not measured:** that `robust-elephant-263` is no longer the
+  engine's production. Stated by the repository owner on 2026-09-01. Nothing
+  observable distinguishes a retired deployment from a live one — all six old
+  names still answer `200`, and they still consume the old team's included
+  resources.
 
-**`reliable-parrot-452` is one developer's personal sandbox**, not a shared dev
-backend — Convex names those `dev/<user>`, and this one is `dev/mamadou-seck`.
-Worth knowing before pointing anything at it: it is not a team environment, and
-the e2e Deliveroo suites used to default to it (fixed, see
-`apps/reference/e2e/deliveroo/test-config.ts`).
+#### The site's production backend is not what any document says
+
+Measured 2026-09-01 by fetching the live bundle. `beyours.fr` serves a chunk
+containing, literally:
+
+```js
+new n.ConvexReactClient("https://famous-wildcat-229.convex.cloud")
+```
+
+That name appears **nowhere in this repository**, and the CLI logged into
+`be-yours` is refused access to it — so it is not on the new account either. It
+answers `200`. Whatever it is, it is the backend the commercial site has been
+talking to, and no file here has ever named it.
+
+Two consequences worth stating separately:
+
+- Every document that calls `fearless-poodle-133` the site's production is
+  wrong, and has been for at least as long as this bundle has been served.
+- `dusty-nightingale-945` is the `be-yours` project's production deployment and
+  has functions deployed, but **it is not what the live site uses**. The site's
+  half of the cutover has not landed, whatever the project list suggests.
+
+#### `check-prod-bundle.mjs` fails for a reason that is not a real defect
+
+The same measurement exposed a bug in the guard itself. Its `HARD_BLOCKLIST`
+contains `happy-otter-123`, and that exact string ships inside
+`convex/dist/react.bundle.js` — the client library uses it as the example URL in
+its own error message:
+
+```
+`ConvexReactClient requires a URL like 'https://happy-otter-123.convex.cloud', received …`
+```
+
+So **any** bundle containing the Convex React client trips the blocklist,
+forever, on a script whose non-zero exit is documented as "block / roll back".
+The fix is to match what the bundle *configures* — the argument to
+`new ConvexReactClient(...)` — rather than any occurrence of a hostname.
+
+#### Two things this leaves open
+
+**The old deployments are still up.** Six names, five of them answering `200`,
+none of them serving anything anyone has said they still use. Decommissioning
+them is [`tasks/convex-account-cutover-runbook.md`](tasks/convex-account-cutover-runbook.md)
+§4, and it is not done.
+
+**`zany-barracuda-114` has never been deployed.** The client template's
+production slot exists and answers `200` because Convex provisions the backend
+before anything is pushed to it. A client site pointed at it today would find no
+functions.
 
 **`youthful-goose-352` is not in this project.** `beindigital-engine` contains
 only the two deployments above, so the `beyours-reference` project is genuinely
