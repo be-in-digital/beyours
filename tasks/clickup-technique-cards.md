@@ -1,5 +1,21 @@
 # Liste ClickUp « Technique » — fiches détaillées
 
+> **⚠️ Partiellement périmé, 2026-09-01 — déploiements Convex.** Ce fichier
+> nomme des déploiements dont le rôle a changé. La bascule vers le compte dédié
+> est terminée, et le projet du site a été **transféré** (pas migré) de la team
+> `momoseck8` vers `be-yours` : déploiement, URLs, variables et données
+> inchangés, seule la team propriétaire a bougé.
+>
+> Ce que ce fichier peut encore affirmer à tort : beyours.fr tourne sur
+> **`famous-wildcat-229`** (projet `beindigital-restaurant`), jamais sur
+> `fearless-poodle-133` ; le moteur tourne sur **`optimistic-swordfish-937`**,
+> plus sur `robust-elephant-263`. `dusty-nightingale-945` est un projet vide et
+> inutilisé.
+>
+> L'inventaire mesuré est dans le README, section **Convex deployments**. Ce qui
+> suit est conservé comme trace de ce qui a été fait à l'époque.
+
+
 Contenu des 17 tâches du dossier `beyours` → liste `Technique`.
 Chaque fiche se veut exécutable sans contexte extérieur : chemins réels, code réel,
 commandes copiables, critère de fin.
