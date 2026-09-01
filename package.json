@@ -20,7 +20,14 @@
     "prepare": "husky",
     "dev:site": "pnpm --filter @beyours/site dev",
     "dev:reference": "pnpm --filter @beyours/reference dev",
-    "dev:themes": "pnpm --filter @beyours/themes dev"
+    "dev:themes": "pnpm --filter @beyours/themes dev",
+    "env:check": "node scripts/infisical-bootstrap.mjs check",
+    "env:plan": "node scripts/infisical-bootstrap.mjs plan",
+    "env:seed": "node scripts/infisical-bootstrap.mjs seed",
+    "dev:site:env": "node scripts/infisical-bootstrap.mjs run --scope=site -- pnpm dev:site",
+    "dev:reference:env": "node scripts/infisical-bootstrap.mjs run --scope=reference -- pnpm dev:reference",
+    "dev:themes:env": "node scripts/infisical-bootstrap.mjs run --scope=themes -- pnpm dev:themes",
+    "dev:demo:env": "node scripts/infisical-bootstrap.mjs run --scope=demo -- pnpm dev:themes"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",

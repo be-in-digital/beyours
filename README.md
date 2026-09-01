@@ -397,7 +397,7 @@ the site served traffic throughout.
 | `hallowed-schnauzer-20` | `apps/site` | dev (`dev/mamadou-seck`) | `beyours-commercial-site` |
 | `optimistic-swordfish-937` | `apps/reference` | **production** — the engine, incl. Stripe BID billing | `beyours-engine-reference` |
 | `dusty-nightingale-945` | — | **empty and unused** — see below | `beyours-commercial-site` |
-| `zany-barracuda-114` | `apps/themes` | production slot — **never deployed** | `beyours-client-template` |
+| `zany-barracuda-114` | `apps/themes` | **the shared demo backend** — one for every template's demo; not yet deployed | `beyours-client-template` |
 
 #### Still on `momoseck8` — none of it serves anything
 
@@ -454,10 +454,16 @@ all**. The site never moved onto it and no longer needs to. Deleting
 `beyours-commercial-site` is the tidy-up; keeping it is a second empty project
 someone will mistake for production one day.
 
-**`zany-barracuda-114` has never been deployed.** The client template's
-production slot answers `200` because Convex provisions a backend before
-anything is pushed to it. A client site pointed at it today would find no
-functions.
+**`zany-barracuda-114` is the shared demo backend, and has not been deployed to
+yet.** Decided 2026-09-01: every template's demo — the sites a prospect browses
+to try a design — points at this one deployment, because a backend per design
+would be a deployment per colour scheme. It answers `200` because Convex
+provisions a backend before anything is pushed to it, so it holds no functions
+until the template is deployed there.
+
+A theme that is **sold** still gets its own repository and its own Convex
+deployment. That is unchanged, and it is what keeps client data isolation
+structural instead of a filter someone has to remember.
 
 **The six old deployments are still up.** Five answer `200` and serve nothing.
 Decommissioning them is

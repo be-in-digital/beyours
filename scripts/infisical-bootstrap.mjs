@@ -20,6 +20,8 @@
  *   node scripts/infisical-bootstrap.mjs plan     [--scope=reference]
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-convex=<name> [--apply]
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-file=<dotenv> [--apply]
+ *   node scripts/infisical-bootstrap.mjs seed     --env=dev [--scope=site] [--apply]
+ *   node scripts/infisical-bootstrap.mjs run      --scope=site -- pnpm dev:site
  *   node scripts/infisical-bootstrap.mjs scopes
  *
  * Requires the Infisical CLI and INFISICAL_PROJECT_ID (see
@@ -30,6 +32,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
+import crypto from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
@@ -68,6 +71,15 @@ const SCOPES = {
     label: "apps/reference — the engine bench, what CI builds and e2e-tests",
     specs: ["apps/reference/.env.example"],
   },
+  demo: {
+    path: "/demo",
+    label: "the shared demo instance — one backend for every template's demo",
+    // Same variable surface as any themes instance: a demo IS a themes
+    // deployment, it just happens to be the only one BeYours runs itself.
+    // Separate from /themes on purpose — /themes holds the DEFAULTS a client
+    // clone starts from, this holds one running environment's real values.
+    specs: ["apps/themes/.env.example", "apps/themes/.env.convex.example"],
+  },
   themes: {
     path: "/themes",
     label: "apps/themes — template defaults, Next side + Convex side",
@@ -100,7 +112,14 @@ const flag = (name, fallback) => {
 
 const ENV = flag("env", "dev")
 const ONLY = flag("scope")
-const PROJECT_ID = process.env.INFISICAL_PROJECT_ID
+/**
+ * The BeYours platform project. Not a secret — it identifies a project, it does
+ * not open one; reading anything still needs a session or a machine identity.
+ * Committed so that `pnpm dev` reaches the store after `infisical login` alone,
+ * with nothing to remember. Override with INFISICAL_PROJECT_ID.
+ */
+const DEFAULT_PROJECT_ID = "da164dca-75e2-4646-b302-5b2274b2b285"
+const PROJECT_ID = process.env.INFISICAL_PROJECT_ID || DEFAULT_PROJECT_ID
 
 const scopeNames = ONLY ? [ONLY] : Object.keys(SCOPES)
 for (const name of scopeNames) {
@@ -134,16 +153,23 @@ function expectedKeys(name) {
 
 /* ── talking to Infisical ────────────────────────────────────────────────── */
 
+/** CLI present, project id set, and a session that can actually read. */
+function storeReachable() {
+  if (!PROJECT_ID) return false
+  try {
+    execFileSync("infisical", ["--version"], { stdio: "ignore" })
+  } catch {
+    return false
+  }
+  return storedKeys("/").error !== "auth"
+}
+
 function requireCli() {
   try {
     execFileSync("infisical", ["--version"], { stdio: "ignore" })
   } catch {
     console.error("The Infisical CLI is not on PATH.")
     console.error("  brew install infisical/get-cli/infisical")
-    process.exit(1)
-  }
-  if (!PROJECT_ID) {
-    console.error("Set INFISICAL_PROJECT_ID (see apps/docs/deployment/infisical.md).")
     process.exit(1)
   }
 }
@@ -497,13 +523,197 @@ function cmdMigrate() {
   console.log(`\nVerify: node scripts/infisical-bootstrap.mjs check --env=${ENV}\n`)
 }
 
+
+/* ── seed: the values the templates already decided ──────────────────────── */
+
+/**
+ * A committed value that is a stand-in, not a decision. Storing one is worse
+ * than storing nothing: `check` counts it, so the folder reports as filled on
+ * the strength of a value nobody chose.
+ */
+const IS_PLACEHOLDER = /your-|VOTRE|placeholder|\.\.\.|changeme|xxx/i
+
+/**
+ * Secrets the templates tell you to generate rather than obtain. The commands
+ * are the ones written next to each key in the .env.example files.
+ */
+const GENERATORS = {
+  BETTER_AUTH_SECRET: () => crypto.randomBytes(32).toString("base64"),
+  EMAIL_API_SECRET: () => crypto.randomBytes(32).toString("base64"),
+  ADMIN_BOOTSTRAP_TOKEN: () => crypto.randomBytes(32).toString("base64"),
+  ENCRYPTION_KEY: () => crypto.randomBytes(32).toString("hex"),
+  SEED_PASSWORD: () => `seed-${crypto.randomBytes(9).toString("base64url")}`,
+}
+
+/** KEY=VALUE pairs from a spec, with the value kept verbatim. */
+function specPairs(rel) {
+  const file = path.join(ROOT, rel)
+  if (!fs.existsSync(file)) return []
+  const out = []
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+    if (m) out.push([m[1], m[2].trim()])
+  }
+  return out
+}
+
+/**
+ * Fills an environment with what the repository has already decided: the real
+ * values committed in the .env.example files, and the secrets those files tell
+ * you to generate.
+ *
+ * REFUSED ON prod, and the reason is not squeamishness. Most committed values
+ * in the engine's templates are `http://localhost:3000` — right for a developer,
+ * actively wrong on a production folder, and indistinguishable from a real
+ * answer once stored. Production gets real values or nothing.
+ */
+function cmdSeed() {
+  requireCli()
+  const apply = argv.includes("--apply")
+
+  // On prod, committed defaults are refused and generated secrets are not.
+  // The danger was never randomness: it is that most committed values in the
+  // engine's templates are `http://localhost:3000`, right for a developer and
+  // wrong on a production folder, and indistinguishable from a real answer once
+  // stored. A generated secret has the opposite property — it is only ever
+  // correct where nothing holds one yet, and `seed` never overwrites.
+  const defaultsAllowed = ENV !== "prod"
+  if (!defaultsAllowed) {
+    console.log("\nprod: committed defaults are skipped (they are localhost URLs).")
+    console.log("Generated secrets are still filled — but only where the folder has none.")
+  }
+
+  for (const name of scopeNames) {
+    const scope = SCOPES[name]
+    const { keys: have = [] } = storedKeys(scope.path)
+    const seen = new Set()
+    const take = [], generate = [], skip = []
+    for (const spec of scope.specs) {
+      for (const [k, v] of specPairs(spec)) {
+        if (seen.has(k)) continue
+        seen.add(k)
+        if (have.includes(k)) { skip.push(k); continue }
+        if (GENERATORS[k]) generate.push(k)
+        else if (!defaultsAllowed) continue
+        else if (!v || IS_PLACEHOLDER.test(v)) continue
+        else take.push([k, v])
+      }
+    }
+    console.log(`\n${scope.path}  (${ENV})`)
+    console.log(`  committed values: ${take.length}   generated secrets: ${generate.length}` +
+      (skip.length ? `   already there, untouched: ${skip.length}` : ""))
+    for (const [k, v] of take) console.log(`    ${k}=${v}`)
+    for (const k of generate) console.log(`    ${k}=<generated>`)
+
+    if (!apply || (!take.length && !generate.length)) continue
+    const lines = [
+      ...take.map(([k, v]) => `${k}=${v}`),
+      ...generate.map((k) => `${k}=${GENERATORS[k]()}`),
+    ]
+    const prev = process.umask(0o077)
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "inf-")), "env")
+    process.umask(prev)
+    try {
+      fs.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 0o600 })
+      execFileSync(
+        "infisical",
+        ["secrets", "set", `--file=${tmp}`, `--projectId=${PROJECT_ID}`, `--env=${ENV}`, `--path=${scope.path}`],
+        { stdio: ["ignore", "ignore", "pipe"], env: { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" } },
+      )
+      console.log(`  pushed ${lines.length}`)
+    } catch (e) {
+      console.error(`  FAILED: ${String(e.stderr ?? e.message).trim().split("\n").pop()}`)
+      process.exitCode = 1
+    } finally {
+      fs.rmSync(path.dirname(tmp), { recursive: true, force: true })
+    }
+  }
+  if (!apply) console.log("\nDry run. Re-run with --apply to push.\n")
+}
+
+
+/* ── run: the store as the environment of a local command ────────────────── */
+
+/**
+ * Runs a command with a folder's secrets in its environment.
+ *
+ * This is what makes the store the source for local development rather than a
+ * place secrets are also kept. `infisical run` injects and the command never
+ * sees a file, so there is no `.env.local` to drift, to leak, or to forget to
+ * update after a rotation.
+ *
+ *   node scripts/infisical-bootstrap.mjs run --scope=site -- pnpm dev:site
+ *
+ * Two folders are loaded, in order: /platform first — the credentials BeYours
+ * owns and every app shares — then the scope's own, so a scope-specific value
+ * wins. Same contract as the CI jobs, deliberately: one rule to remember.
+ */
+function cmdRun() {
+  const optional = argv.includes("--optional")
+  // `--optional` is what lets an app's own `dev` script go through the store by
+  // default. Without it, a missing CLI or an unset project id would stop a
+  // developer from working at all, and the wiring would have to be opt-in —
+  // which means forgettable, which is the failure it exists to prevent.
+  if (optional && !storeReachable()) {
+    const sep0 = argv.indexOf("--")
+    const cmd0 = sep0 === -1 ? [] : argv.slice(sep0 + 1)
+    console.log("[env] Infisical unavailable — running without the store.")
+    console.log("[env] Install the CLI and set INFISICAL_PROJECT_ID to use it;")
+    console.log("[env] see apps/docs/deployment/infisical.md.")
+    try {
+      execFileSync(cmd0[0], cmd0.slice(1), { stdio: "inherit", env: process.env })
+    } catch (e) {
+      process.exitCode = e.status ?? 1
+    }
+    return
+  }
+  requireCli()
+  const sep = argv.indexOf("--")
+  const command = sep === -1 ? [] : argv.slice(sep + 1)
+  if (!ONLY || !command.length) {
+    console.error("Usage: run --scope=<name> [--env=dev] -- <command...>")
+    process.exit(2)
+  }
+  const scope = SCOPES[ONLY]
+  // `infisical run` takes one path, so /platform is exported first and passed
+  // through the environment; the scope's own folder then overrides it.
+  let shared = ""
+  try {
+    shared = execFileSync(
+      "infisical",
+      ["export", "--format=dotenv", `--projectId=${PROJECT_ID}`, `--env=${ENV}`, "--path=/platform"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" } },
+    )
+  } catch { /* /platform empty or unreadable: the scope alone still works */ }
+
+  const inherited = { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" }
+  for (const line of shared.split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+    if (m) inherited[m[1]] = m[2].replace(/^["']|["']$/g, "")
+  }
+
+  console.log(`${scope.path} (${ENV}) → ${command.join(" ")}`)
+  try {
+    execFileSync(
+      "infisical",
+      ["run", `--projectId=${PROJECT_ID}`, `--env=${ENV}`, `--path=${scope.path}`, "--", ...command],
+      { stdio: "inherit", env: inherited },
+    )
+  } catch (e) {
+    process.exitCode = e.status ?? 1
+  }
+}
+
 switch (command) {
   case "folders": cmdFolders(); break
   case "check": cmdCheck(); break
   case "plan": cmdPlan(); break
   case "migrate": cmdMigrate(); break
+  case "seed": cmdSeed(); break
+  case "run": cmdRun(); break
   case "scopes": cmdScopes(); break
   default:
-    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate> [--env=dev] [--scope=name]")
+    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed|run> [--env=dev] [--scope=name]")
     process.exit(2)
 }
