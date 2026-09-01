@@ -18,7 +18,8 @@
  *   node scripts/infisical-bootstrap.mjs folders  --env=dev
  *   node scripts/infisical-bootstrap.mjs check    --env=dev [--scope=reference]
  *   node scripts/infisical-bootstrap.mjs plan     [--scope=reference]
- *   node scripts/infisical-bootstrap.mjs migrate  --scope=ci --from-convex=<name> [--apply]
+ *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-convex=<name> [--apply]
+ *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-file=<dotenv> [--apply]
  *   node scripts/infisical-bootstrap.mjs scopes
  *
  * Requires the Infisical CLI and INFISICAL_PROJECT_ID (see
@@ -365,17 +366,30 @@ const CONVEX_DIR = {
 function cmdMigrate() {
   requireCli()
   const source = flag("from-convex")
+  const fromFile = flag("from-file")
   const apply = argv.includes("--apply")
-  if (!ONLY || !source) {
-    console.error("migrate needs --scope=<name> and --from-convex=<deployment|prod>")
+  if (!ONLY || (!source && !fromFile)) {
+    console.error(
+      "migrate needs --scope=<name> and one of --from-convex=<deployment|prod> / --from-file=<dotenv>",
+    )
     process.exit(2)
   }
   const target = SCOPES[ONLY]
   const dir = path.join(ROOT, flag("dir", CONVEX_DIR[ONLY] ?? "apps/reference"))
 
-  // Pull. The output holds values; it is parsed and never printed.
+  // Pull. Whatever the source, the payload holds values: it is parsed and never
+  // printed. `--from-file` exists for the halves Convex does not hold — the
+  // Next side of an app lives on Vercel, so `vercel env pull` writes a dotenv
+  // and this reads it, routing and filtering it exactly like a deployment.
   let raw
-  try {
+  if (fromFile) {
+    const abs = path.isAbsolute(fromFile) ? fromFile : path.join(process.cwd(), fromFile)
+    if (!fs.existsSync(abs)) {
+      console.error(`\nNo such file: ${abs}`)
+      process.exit(1)
+    }
+    raw = fs.readFileSync(abs, "utf8")
+  } else try {
     // `--deployment-name`, not `--deployment`: `convex env --help` advertises
     // the latter on the parent command, and `convex env list` rejects it.
     // Checked against convex 1.x on 2026-09-01 — read `convex env list --help`,
@@ -436,7 +450,7 @@ function cmdMigrate() {
     else unknown.push(key)
   }
 
-  console.log(`\nRead ${pairs.length} variables from ${source}. Routing:`)
+  console.log(`\nRead ${pairs.length} variables from ${source ?? fromFile}. Routing:`)
   for (const [dest, list] of buckets) {
     console.log(`\n  ${dest}  (${list.length})`)
     for (const [k] of list) console.log(`    ${k}`)
