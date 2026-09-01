@@ -67,13 +67,33 @@ Created on 2026-09-01 — four folders, in **each** of the three environments (`
 | `/platform` | BeYours' own credentials, identical everywhere | 12 | `packages/core/.env.example` + the BID block |
 | `/site` | `apps/site`, the commercial site | 29 | `apps/site/.env.example` |
 | `/reference` | `apps/reference`, the bench CI builds and e2e-tests | 62 | `apps/reference/.env.example` |
-| `/themes` | `apps/themes`, template defaults, Next + Convex sides | 66 | its two `.env*.example` |
+| `/themes` | `apps/themes`, the **defaults a client clone starts from** | 66 | its two `.env*.example` |
+| `/demo` | the **one running demo instance**, shared by every template's demo | 66 | the same two |
 
 There was a fifth folder, `/ci`, holding the names GitHub Actions read. It is
 gone: since [#276](https://github.com/be-in-digital/beyours/pull/276) the e2e job
 starts its own Convex backend on the runner and reads **no secret at all**, so
 there was nothing left for that folder to hold. Provisioning nothing beats
 provisioning well.
+
+### `/themes` and `/demo` are not the same thing
+
+They carry the same 66 variable names and mean opposite things.
+
+`/themes` holds **defaults**: what a client's cloned repository starts from
+before anyone fills it in. Nothing runs on those values.
+
+`/demo` holds **one real environment**. Every template's demo — the sites a
+prospect browses to try a design before buying — points at a single Convex
+backend, `zany-barracuda-114`, in project `beyours-client-template`. One
+deployment for all the demos, because a backend per design would be a deployment
+per colour scheme.
+
+**This changes nothing about the clients.** A theme that is sold still gets its
+own repository and its own Convex deployment, and that is what makes data
+isolation structural rather than a filter someone has to remember. See the
+README, and `tasks/client-offboarding-runbook.md` for what per-client ownership
+buys at the other end of the relationship.
 
 ### Loading the values
 

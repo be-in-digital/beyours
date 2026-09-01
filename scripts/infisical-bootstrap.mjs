@@ -70,6 +70,15 @@ const SCOPES = {
     label: "apps/reference — the engine bench, what CI builds and e2e-tests",
     specs: ["apps/reference/.env.example"],
   },
+  demo: {
+    path: "/demo",
+    label: "the shared demo instance — one backend for every template's demo",
+    // Same variable surface as any themes instance: a demo IS a themes
+    // deployment, it just happens to be the only one BeYours runs itself.
+    // Separate from /themes on purpose — /themes holds the DEFAULTS a client
+    // clone starts from, this holds one running environment's real values.
+    specs: ["apps/themes/.env.example", "apps/themes/.env.convex.example"],
+  },
   themes: {
     path: "/themes",
     label: "apps/themes — template defaults, Next side + Convex side",
@@ -546,12 +555,17 @@ function specPairs(rel) {
 function cmdSeed() {
   requireCli()
   const apply = argv.includes("--apply")
-  if (ENV === "prod") {
-    console.error("\nseed refuses to write to prod.")
-    console.error("  Most committed defaults are localhost URLs — correct for a developer,")
-    console.error("  wrong for production, and impossible to tell apart once stored.")
-    console.error("  Fill prod from the deployments (`migrate`) and the provider portals.")
-    process.exit(2)
+
+  // On prod, committed defaults are refused and generated secrets are not.
+  // The danger was never randomness: it is that most committed values in the
+  // engine's templates are `http://localhost:3000`, right for a developer and
+  // wrong on a production folder, and indistinguishable from a real answer once
+  // stored. A generated secret has the opposite property — it is only ever
+  // correct where nothing holds one yet, and `seed` never overwrites.
+  const defaultsAllowed = ENV !== "prod"
+  if (!defaultsAllowed) {
+    console.log("\nprod: committed defaults are skipped (they are localhost URLs).")
+    console.log("Generated secrets are still filled — but only where the folder has none.")
   }
 
   for (const name of scopeNames) {
@@ -565,6 +579,7 @@ function cmdSeed() {
         seen.add(k)
         if (have.includes(k)) { skip.push(k); continue }
         if (GENERATORS[k]) generate.push(k)
+        else if (!defaultsAllowed) continue
         else if (!v || IS_PLACEHOLDER.test(v)) continue
         else take.push([k, v])
       }
