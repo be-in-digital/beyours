@@ -202,26 +202,60 @@ it is lost the moment someone re-creates the file "just to be safe".
 since #276 it starts its own Convex backend and needs no secret at all, which is
 better than supplying one. See **Builds** below.
 
-### Vercel — needs one authorization only a human can give
+### Vercel — one API token, then a sync
 
 Vercel builds do not run the Infisical CLI, and `NEXT_PUBLIC_*` must be real
 Vercel environment variables at build time or Next has nothing to inline. So the
-mechanism is Infisical's **Vercel secret sync**, which pushes a folder into the
-project's environment:
+mechanism is a **secret sync**, which pushes a folder into the project's
+environment. It needs an API token, which is why nobody's tooling can do it for
+you.
 
-1. Infisical → **Integrations** → **Vercel** → authorize the connection.
-   This is an OAuth grant against the Vercel account; it is not something this
-   repository or its tooling can do for you.
-2. Create a sync: source `/site`, environment `prod` → destination the Vercel
-   project `beyours`, environment Production.
-3. Repeat per app if others gain a Vercel project.
+**1. Create the token, on Vercel.** Profile icon → *Account Settings* →
+**API Tokens** → **Create**. Name it `Infisical`, scope it to the
+`be-in-digital` team, and copy it — it is shown once.
 
-> ⚠️ **A sync does not rebuild.** Changing a `NEXT_PUBLIC_*` still requires a
-> **rebuild without cache** — a plain redeploy reuses the build cache and does
-> not re-inline the new value. That is bug #6, and the store does not repeal it.
-> After any sync that touches a `NEXT_PUBLIC_*`, rebuild without cache and then
+> Do not set an expiry unless you plan to rotate it. An expired token stops the
+> sync silently: Vercel keeps serving the last values it received, so nothing
+> looks broken until a secret changes and does not arrive.
+
+**2. Create the connection, in Infisical.** *Integrations* → **App Connections**
+→ **+ Add Connection** → Vercel. Paste the token, name it `vercel`.
+
+**3. Create the sync.** *Project* → *Integrations* → **Secret Syncs** →
+**Add Sync** → Vercel.
+
+| Field | Value |
+|---|---|
+| Environment | `prod` |
+| Secret Path | `/site` |
+| Vercel Connection | the one from step 2 |
+| Vercel App | `beyours` |
+| Vercel App Environment | `production` |
+| Initial Sync Behavior | **overwrite destination** — the store is the source, or it is not |
+| Auto-Sync Enabled | on |
+| Disable Secret Deletion | **on**, at least at first: a key removed from `/site` will not silently vanish from a live site |
+| Name | `site-prod` |
+
+Repeat per app that gains a Vercel project. The Free plan allows 10 syncs, so
+this is not where the budget goes — identities are.
+
+> ⚠️ **A sync does not rebuild.** Changing a `NEXT_PUBLIC_*` still needs a
+> **rebuild without cache**: a plain redeploy reuses the build cache and does not
+> re-inline the new value. That is bug #6, and a good secret store does not
+> repeal it. After any sync touching a `NEXT_PUBLIC_*`, rebuild without cache and
 > verify what is actually served:
-> `node apps/site/scripts/check-prod-bundle.mjs https://beyours.fr`
+>
+> ```bash
+> node apps/site/scripts/check-prod-bundle.mjs https://beyours.fr
+> ```
+
+**Before you turn auto-sync on**, check the folder can answer. Syncing `/site`
+while it is missing keys will remove nothing (deletion is disabled above) but
+will not supply them either:
+
+```bash
+pnpm env:check --env=prod --scope=site
+```
 
 ### What has to be true first
 
