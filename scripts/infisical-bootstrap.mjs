@@ -20,6 +20,7 @@
  *   node scripts/infisical-bootstrap.mjs plan     [--scope=reference]
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-convex=<name> [--apply]
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-file=<dotenv> [--apply]
+ *   node scripts/infisical-bootstrap.mjs seed     --env=dev [--scope=site] [--apply]
  *   node scripts/infisical-bootstrap.mjs scopes
  *
  * Requires the Infisical CLI and INFISICAL_PROJECT_ID (see
@@ -30,6 +31,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
+import crypto from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
@@ -497,13 +499,116 @@ function cmdMigrate() {
   console.log(`\nVerify: node scripts/infisical-bootstrap.mjs check --env=${ENV}\n`)
 }
 
+
+/* ── seed: the values the templates already decided ──────────────────────── */
+
+/**
+ * A committed value that is a stand-in, not a decision. Storing one is worse
+ * than storing nothing: `check` counts it, so the folder reports as filled on
+ * the strength of a value nobody chose.
+ */
+const IS_PLACEHOLDER = /your-|VOTRE|placeholder|\.\.\.|changeme|xxx/i
+
+/**
+ * Secrets the templates tell you to generate rather than obtain. The commands
+ * are the ones written next to each key in the .env.example files.
+ */
+const GENERATORS = {
+  BETTER_AUTH_SECRET: () => crypto.randomBytes(32).toString("base64"),
+  EMAIL_API_SECRET: () => crypto.randomBytes(32).toString("base64"),
+  ADMIN_BOOTSTRAP_TOKEN: () => crypto.randomBytes(32).toString("base64"),
+  ENCRYPTION_KEY: () => crypto.randomBytes(32).toString("hex"),
+  SEED_PASSWORD: () => `seed-${crypto.randomBytes(9).toString("base64url")}`,
+}
+
+/** KEY=VALUE pairs from a spec, with the value kept verbatim. */
+function specPairs(rel) {
+  const file = path.join(ROOT, rel)
+  if (!fs.existsSync(file)) return []
+  const out = []
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+    if (m) out.push([m[1], m[2].trim()])
+  }
+  return out
+}
+
+/**
+ * Fills an environment with what the repository has already decided: the real
+ * values committed in the .env.example files, and the secrets those files tell
+ * you to generate.
+ *
+ * REFUSED ON prod, and the reason is not squeamishness. Most committed values
+ * in the engine's templates are `http://localhost:3000` — right for a developer,
+ * actively wrong on a production folder, and indistinguishable from a real
+ * answer once stored. Production gets real values or nothing.
+ */
+function cmdSeed() {
+  requireCli()
+  const apply = argv.includes("--apply")
+  if (ENV === "prod") {
+    console.error("\nseed refuses to write to prod.")
+    console.error("  Most committed defaults are localhost URLs — correct for a developer,")
+    console.error("  wrong for production, and impossible to tell apart once stored.")
+    console.error("  Fill prod from the deployments (`migrate`) and the provider portals.")
+    process.exit(2)
+  }
+
+  for (const name of scopeNames) {
+    const scope = SCOPES[name]
+    const { keys: have = [] } = storedKeys(scope.path)
+    const seen = new Set()
+    const take = [], generate = [], skip = []
+    for (const spec of scope.specs) {
+      for (const [k, v] of specPairs(spec)) {
+        if (seen.has(k)) continue
+        seen.add(k)
+        if (have.includes(k)) { skip.push(k); continue }
+        if (GENERATORS[k]) generate.push(k)
+        else if (!v || IS_PLACEHOLDER.test(v)) continue
+        else take.push([k, v])
+      }
+    }
+    console.log(`\n${scope.path}  (${ENV})`)
+    console.log(`  committed values: ${take.length}   generated secrets: ${generate.length}` +
+      (skip.length ? `   already there, untouched: ${skip.length}` : ""))
+    for (const [k, v] of take) console.log(`    ${k}=${v}`)
+    for (const k of generate) console.log(`    ${k}=<generated>`)
+
+    if (!apply || (!take.length && !generate.length)) continue
+    const lines = [
+      ...take.map(([k, v]) => `${k}=${v}`),
+      ...generate.map((k) => `${k}=${GENERATORS[k]()}`),
+    ]
+    const prev = process.umask(0o077)
+    const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "inf-")), "env")
+    process.umask(prev)
+    try {
+      fs.writeFileSync(tmp, lines.join("\n") + "\n", { mode: 0o600 })
+      execFileSync(
+        "infisical",
+        ["secrets", "set", `--file=${tmp}`, `--projectId=${PROJECT_ID}`, `--env=${ENV}`, `--path=${scope.path}`],
+        { stdio: ["ignore", "ignore", "pipe"], env: { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" } },
+      )
+      console.log(`  pushed ${lines.length}`)
+    } catch (e) {
+      console.error(`  FAILED: ${String(e.stderr ?? e.message).trim().split("\n").pop()}`)
+      process.exitCode = 1
+    } finally {
+      fs.rmSync(path.dirname(tmp), { recursive: true, force: true })
+    }
+  }
+  if (!apply) console.log("\nDry run. Re-run with --apply to push.\n")
+}
+
 switch (command) {
   case "folders": cmdFolders(); break
   case "check": cmdCheck(); break
   case "plan": cmdPlan(); break
   case "migrate": cmdMigrate(); break
+  case "seed": cmdSeed(); break
   case "scopes": cmdScopes(); break
   default:
-    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate> [--env=dev] [--scope=name]")
+    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed> [--env=dev] [--scope=name]")
     process.exit(2)
 }
