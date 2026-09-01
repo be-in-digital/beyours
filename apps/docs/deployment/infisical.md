@@ -159,6 +159,68 @@ That client secret is the one credential that unlocks all the others. It belongs
 in the ops password manager and in GitHub Secrets — never in a repo, never in a
 `.env` that gets copied into a client's clone.
 
+## Using the store — the three consumers
+
+The point is not to keep secrets somewhere tidy. It is that every place the
+environment is needed reads from the same one. Three places need it, and they
+are wired differently because they are different problems.
+
+### Local development — done
+
+```bash
+export INFISICAL_PROJECT_ID=<the project id>
+infisical login              # once, per machine
+
+pnpm dev:site:env            # /platform + /site, injected
+pnpm dev:reference:env
+pnpm dev:themes:env
+pnpm dev:demo:env            # the shared demo instance
+```
+
+`run` loads `/platform` first and the scope's folder second, so a scope value
+beats the shared one — the same order the CI jobs use, on purpose: one rule to
+remember rather than two.
+
+Nothing is written to disk. There is no `.env.local` to drift out of date, to
+leak into a commit, or to forget after a rotation. That is the whole benefit, and
+it is lost the moment someone re-creates the file "just to be safe".
+
+### GitHub Actions — done for what CI needs
+
+`ci.yml`'s build job reads `/platform`. `e2e.yml` deliberately reads nothing:
+since #276 it starts its own Convex backend and needs no secret at all, which is
+better than supplying one. See **Builds** below.
+
+### Vercel — needs one authorization only a human can give
+
+Vercel builds do not run the Infisical CLI, and `NEXT_PUBLIC_*` must be real
+Vercel environment variables at build time or Next has nothing to inline. So the
+mechanism is Infisical's **Vercel secret sync**, which pushes a folder into the
+project's environment:
+
+1. Infisical → **Integrations** → **Vercel** → authorize the connection.
+   This is an OAuth grant against the Vercel account; it is not something this
+   repository or its tooling can do for you.
+2. Create a sync: source `/site`, environment `prod` → destination the Vercel
+   project `beyours`, environment Production.
+3. Repeat per app if others gain a Vercel project.
+
+> ⚠️ **A sync does not rebuild.** Changing a `NEXT_PUBLIC_*` still requires a
+> **rebuild without cache** — a plain redeploy reuses the build cache and does
+> not re-inline the new value. That is bug #6, and the store does not repeal it.
+> After any sync that touches a `NEXT_PUBLIC_*`, rebuild without cache and then
+> verify what is actually served:
+> `node apps/site/scripts/check-prod-bundle.mjs https://beyours.fr`
+
+### What has to be true first
+
+A store that cannot answer is worse than no store: point a consumer at an empty
+folder and it gets placeholders or nothing. Check before switching anything over:
+
+```bash
+pnpm env:check --env=prod
+```
+
 ## Builds
 
 One CI job reads the store, and it is not the one you would expect.

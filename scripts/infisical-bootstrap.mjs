@@ -21,6 +21,7 @@
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-convex=<name> [--apply]
  *   node scripts/infisical-bootstrap.mjs migrate  --scope=site --from-file=<dotenv> [--apply]
  *   node scripts/infisical-bootstrap.mjs seed     --env=dev [--scope=site] [--apply]
+ *   node scripts/infisical-bootstrap.mjs run      --scope=site -- pnpm dev:site
  *   node scripts/infisical-bootstrap.mjs scopes
  *
  * Requires the Infisical CLI and INFISICAL_PROJECT_ID (see
@@ -616,14 +617,71 @@ function cmdSeed() {
   if (!apply) console.log("\nDry run. Re-run with --apply to push.\n")
 }
 
+
+/* ── run: the store as the environment of a local command ────────────────── */
+
+/**
+ * Runs a command with a folder's secrets in its environment.
+ *
+ * This is what makes the store the source for local development rather than a
+ * place secrets are also kept. `infisical run` injects and the command never
+ * sees a file, so there is no `.env.local` to drift, to leak, or to forget to
+ * update after a rotation.
+ *
+ *   node scripts/infisical-bootstrap.mjs run --scope=site -- pnpm dev:site
+ *
+ * Two folders are loaded, in order: /platform first — the credentials BeYours
+ * owns and every app shares — then the scope's own, so a scope-specific value
+ * wins. Same contract as the CI jobs, deliberately: one rule to remember.
+ */
+function cmdRun() {
+  requireCli()
+  const sep = argv.indexOf("--")
+  const command = sep === -1 ? [] : argv.slice(sep + 1)
+  if (!ONLY || !command.length) {
+    console.error("Usage: run --scope=<name> [--env=dev] -- <command...>")
+    process.exit(2)
+  }
+  const scope = SCOPES[ONLY]
+  // `infisical run` takes one path, so /platform is exported first and passed
+  // through the environment; the scope's own folder then overrides it.
+  let shared = ""
+  try {
+    shared = execFileSync(
+      "infisical",
+      ["export", "--format=dotenv", `--projectId=${PROJECT_ID}`, `--env=${ENV}`, "--path=/platform"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" } },
+    )
+  } catch { /* /platform empty or unreadable: the scope alone still works */ }
+
+  const inherited = { ...process.env, INFISICAL_DISABLE_UPDATE_CHECK: "true" }
+  for (const line of shared.split("\n")) {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/)
+    if (m) inherited[m[1]] = m[2].replace(/^["']|["']$/g, "")
+  }
+
+  console.log(`${scope.path} (${ENV}) → ${command.join(" ")}`)
+  try {
+    execFileSync(
+      "infisical",
+      ["run", `--projectId=${PROJECT_ID}`, `--env=${ENV}`, `--path=${scope.path}`, "--", ...command],
+      { stdio: "inherit", env: inherited },
+    )
+  } catch (e) {
+    process.exitCode = e.status ?? 1
+  }
+}
+
 switch (command) {
   case "folders": cmdFolders(); break
   case "check": cmdCheck(); break
   case "plan": cmdPlan(); break
   case "migrate": cmdMigrate(); break
   case "seed": cmdSeed(); break
+  case "run": cmdRun(); break
   case "scopes": cmdScopes(); break
   default:
-    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed> [--env=dev] [--scope=name]")
+    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed|run> [--env=dev] [--scope=name]")
     process.exit(2)
 }
