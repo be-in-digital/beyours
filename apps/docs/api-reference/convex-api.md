@@ -8,6 +8,7 @@
 - [Products](#products)
 - [Orders](#orders)
 - [Kitchen](#kitchen)
+- [Team](#team)
 - [Games & Gamification](#games--gamification)
 - [Languages & Translations](#languages--translations)
 - [Email Campaigns](#email-campaigns)
@@ -165,6 +166,106 @@ await updateTicketStatus({
 ```typescript
 await reprintTicket({ ticketId });
 ```
+
+## Team
+
+Roster and invitations. Reads are store-scoped and need `team:read`; writes run
+through `requireCanManage`, which also reserves chain-wide members
+(`allStores: true`) to a super administrator.
+
+### `api.teamMembers.list`
+
+The members of a store, plus the chain-wide members who cover it too.
+
+```typescript
+const members = useQuery(api.teamMembers.list, { storeId });
+```
+
+### `api.teamMembers.getByRole`
+
+The members of a store holding one role.
+
+### `api.teamMembers.getMyMemberships`
+
+The caller's own memberships. Takes no argument: the account comes from the
+session, never from the caller.
+
+```typescript
+const mine = useQuery(api.teamMembers.getMyMemberships, {});
+```
+
+### `api.teamMembers.getInvitationPreview`
+
+What `/invite/[token]` renders before anyone signs in, and the only
+unauthenticated function here: the token is the credential and the invitee has
+no session yet. It answers rather than throws, because the page shows different
+copy for `not_found`, `invitation_expired`, `invitation_not_pending` and
+`pending`.
+
+```typescript
+const invitation = useQuery(api.teamMembers.getInvitationPreview, { token });
+```
+
+### `api.teamMembersEmail.sendInvitationEmail`
+
+Invite somebody. This action is the only way a roster row is created: it mints
+the invitation token server-side with `randomUUID()`, writes the pending member
+through an internal mutation, and sends the email carrying the link.
+
+```typescript
+const sendInvitation = useAction(api.teamMembersEmail.sendInvitationEmail);
+await sendInvitation({
+  storeId,
+  allStores: false,
+  name: "Yanis Moreau",
+  email: "yanis@resto.example",
+  role: "manager",
+  permissions: ["dashboard", "orders"],
+  storeName: "Chez Luigi",
+});
+```
+
+There is deliberately no public `teamMembers.invite` mutation. One existed, took
+`invitationToken` as an argument and had no caller, which let anyone able to
+manage the roster create a member under a token of their own choosing and skip
+the email entirely. Removed in
+[#275](https://github.com/be-in-digital/beyours/issues/275), along with
+`resendInvitation`. Use the actions.
+
+### `api.teamMembersEmail.resendInvitationEmail`
+
+Send a pending invitation again under a freshly minted token. The previous link
+stops resolving.
+
+### `api.teamMembers.acceptInvitation`
+
+Accept an invitation and receive the rights it promised. The token is the only
+argument; the account bound is the caller's, from the session.
+
+Acceptance is what provisions `userProfiles`, the record every authorisation
+guard reads. Until it runs, a roster row grants nothing.
+
+```typescript
+const accept = useMutation(api.teamMembers.acceptInvitation);
+await accept({ token });
+```
+
+### `api.teamMembers.update`
+
+Change a member's role, modules or store. Carries through to `userProfiles`, so
+restricting somebody on the team screen actually restricts them.
+
+### `api.teamMembers.toggleActive`
+
+Enable or disable a member. Disabling revokes the profile access with it.
+
+### `api.teamMembers.remove`
+
+Remove a member, revoking their profile access first.
+
+> `teamMembers.create` and `teamMembers.getByEmail` are still exported and have
+> no caller. Do not build on them:
+> [#281](https://github.com/be-in-digital/beyours/issues/281) removes them.
 
 ## Games & Gamification
 
