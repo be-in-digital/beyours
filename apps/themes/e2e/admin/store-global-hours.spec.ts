@@ -89,11 +89,30 @@ async function setStoreHours(
   })
 
   if (followGlobal) {
+    const toast = page.getByText("Horaires mis à jour avec succès")
+
+    // Let the first toast clear before saving again.
+    //
+    // It is still on screen here — measured, not assumed — so waiting for it a
+    // second time was satisfied by that same one and returned before this save
+    // had landed. The establishment then reached the storefront still on its
+    // own hours, and the test read a working feature as broken. It only bites
+    // on a runner slow enough to lose the race, which is why this file was
+    // flaky in CI and green on a laptop. It dismisses itself in about five
+    // seconds.
+    await expect(toast).toBeHidden({ timeout: 30_000 })
+
     await globalSwitch.setChecked(true, { force: true })
     await page.getByRole("button", { name: "Enregistrer les horaires" }).click()
-    await expect(page.getByText("Horaires mis à jour avec succès")).toBeVisible({
-      timeout: 20_000,
-    })
+    await expect(toast).toBeVisible({ timeout: 20_000 })
+
+    // And read the flag back, since the toast says the request was accepted
+    // rather than that the storefront will now see it.
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.getByRole("tab", { name: "Horaires" }).click()
+    await expect(
+      page.getByRole("switch", { name: "Horaires globaux" })
+    ).toBeChecked({ timeout: 20_000 })
   }
 }
 
