@@ -655,6 +655,13 @@ service par service pour éviter les doublons.
 - `@auth/core` 0.37.4 → **0.41.3** (critique GHSA-xmf8-cvqr-rfgj, CVSS 7.5). Impossible
   seul : `@convex-dev/auth@0.0.91` exigeait le peer `^0.37.0`. Bump couplé vers **0.0.95**.
 - **Lot A** : 15 overrides transitifs → **111 avis ramenés à 43**. Build vérifié 10/10.
+- **`browserslist` `<4.28.7` → `^4.28.7`** (GHSA-73wf-gq98-2v4g, GHSA-c83g-rgw3-j3cx).
+  Même diagnostic que le lot A : le lockfile figeait 4.28.2 alors que ses deux seuls
+  parents déclarent `^4.24.0` et `>= 4.21.0`. **Le critère de fin ci-dessous est
+  atteint** — `pnpm audit --prod --audit-level high` sort en 0. Les cinq lignes
+  « Reste » n'ont pas été re-vérifiées à cette occasion : le gate passe au vert parce
+  que ce qui restait est soit corrigé ailleurs, soit silencié avec sa raison dans
+  `security.yml`.
 
 ## Reste, une PR par ligne
 
