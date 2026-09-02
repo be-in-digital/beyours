@@ -96,6 +96,7 @@ export {
 export { KitchenPage } from "./pages/kitchen"
 export { CategoriesPage } from "./pages/categories"
 export { LanguagesPage } from "./pages/languages"
+export { MessagesPage } from "./pages/messages"
 export { DesignPage } from "./pages/design"
 export { PaymentsPage } from "./pages/payments"
 export { PromotionsPage } from "./pages/promotions"
