@@ -23,23 +23,28 @@ const STORES_URL = "/dashboard/stores"
 const SEEDED_STORE = "Chez Luigi (test)"
 
 /**
- * The three moments, written as instants rather than as wall-clock strings.
+ * 2026-08-28 is a Friday; the 29th a Saturday. The offset is not decoration.
  *
- * `use-store-status` asks `isStoreOpen` on the establishment's clock, which is
- * the timezone on the global settings — Europe/Paris for the seeded data. A
- * bare `new Date("2026-08-29T01:00:00")` means 01:00 in whatever zone the
- * RUNNER sits in, and the two agree only on a machine already on Paris time. On
- * a UTC runner that same string is 03:00 in Paris, an hour past closing, so the
- * storefront correctly answered "fermé" and the suite read a working fix as a
- * broken one. 2026-08-28 is a Friday, the 29th a Saturday, and August is CEST,
- * so Paris is UTC+2.
+ * These are the RESTAURANT's hours, and `use-store-status` resolves them
+ * against `globalSettings.timezone`, which defaults to `Europe/Paris`
+ * (`packages/convex-functions/src/globalSettings.ts:148`). Written without an
+ * offset, `new Date("2026-08-29T01:00:00")` is parsed on whatever clock the
+ * test PROCESS keeps, so the instant handed to `page.clock` differs by machine:
+ * 01:00 in Paris on a French laptop, 01:00 UTC on a CI runner, which the app
+ * then reads as 03:00 in Paris. Past the 02:00 close, and Saturday's own
+ * service does not start until 18:00, so the storefront answered "closed" and
+ * the two 01:00 tests failed on CI while passing everywhere they were written.
+ *
+ * Fixing only those two would have left the other two green for the wrong
+ * reason: on a UTC runner `FRIDAY_23H` was exercising 01:00 in Paris and
+ * `FRIDAY_10H` was exercising 12:00. All three are pinned, so every machine
+ * sends the same instant and the names mean what they say.
+ *
+ * +02:00 is CEST, which is the offset in force on both these August dates.
  */
-/** 23:00 Paris, Friday. */
-const FRIDAY_23H = new Date("2026-08-28T21:00:00Z")
-/** 01:00 Paris, Saturday — the hour Friday's service is still running. */
-const SATURDAY_01H = new Date("2026-08-28T23:00:00Z")
-/** 10:00 Paris, Friday — between two services. */
-const FRIDAY_10H = new Date("2026-08-28T08:00:00Z")
+const FRIDAY_23H = new Date("2026-08-28T23:00:00+02:00")
+const SATURDAY_01H = new Date("2026-08-29T01:00:00+02:00")
+const FRIDAY_10H = new Date("2026-08-28T10:00:00+02:00")
 
 const CLOSED_BANNER = "Restaurant actuellement fermé"
 

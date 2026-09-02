@@ -59,12 +59,16 @@ test.describe("Sign In Page", () => {
         name: "Créer un compte",
       })
       await expect(createAccountLink).toBeVisible()
-      // The link carries the post-auth destination across, so it is
-      // `/sign-up?redirect=...` and never the bare path. Assert the page it
-      // points at and let the query string vary: `safeRedirect` defaults it to
-      // /menu, and pinning that here would break this test the day the default
-      // moves, over a link that still goes exactly where it should.
-      await expect(createAccountLink).toHaveAttribute("href", /^\/sign-up(\?|$)/)
+      // Not the bare path. The link carries the destination across the switch
+      // between the two auth pages, so somebody who arrived at
+      // `/sign-in?redirect=/checkout` and decides to register still lands on
+      // the checkout afterwards. With no incoming parameter `safeRedirect`
+      // supplies `/menu`, so the query is always there. Asserting `/sign-up`
+      // alone pinned the state of this page before that existed.
+      await expect(createAccountLink).toHaveAttribute(
+        "href",
+        /^\/sign-up\?redirect=/
+      )
     })
   })
 

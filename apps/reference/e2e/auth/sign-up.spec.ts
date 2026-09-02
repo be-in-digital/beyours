@@ -50,9 +50,8 @@ test.describe("Sign Up Page", () => {
 
       const signInLink = page.getByRole("link", { name: "Se connecter" })
       await expect(signInLink).toBeVisible()
-      // Same as the create-account link on /sign-in: the destination rides
-      // along in `?redirect=`, so match the page and not the query string.
-      await expect(signInLink).toHaveAttribute("href", /^\/sign-in(\?|$)/)
+      // The mirror of the link on the sign-in page; same reason for the query.
+      await expect(signInLink).toHaveAttribute("href", /^\/sign-in\?redirect=/)
     })
   })
 
