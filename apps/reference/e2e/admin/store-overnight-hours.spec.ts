@@ -22,10 +22,24 @@ import { test, expect } from "@playwright/test"
 const STORES_URL = "/dashboard/stores"
 const SEEDED_STORE = "Chez Luigi (test)"
 
-/** 2026-08-28 is a Friday; the 29th a Saturday. */
-const FRIDAY_23H = new Date("2026-08-28T23:00:00")
-const SATURDAY_01H = new Date("2026-08-29T01:00:00")
-const FRIDAY_10H = new Date("2026-08-28T10:00:00")
+/**
+ * The three moments, written as instants rather than as wall-clock strings.
+ *
+ * `use-store-status` asks `isStoreOpen` on the establishment's clock, which is
+ * the timezone on the global settings — Europe/Paris for the seeded data. A
+ * bare `new Date("2026-08-29T01:00:00")` means 01:00 in whatever zone the
+ * RUNNER sits in, and the two agree only on a machine already on Paris time. On
+ * a UTC runner that same string is 03:00 in Paris, an hour past closing, so the
+ * storefront correctly answered "fermé" and the suite read a working fix as a
+ * broken one. 2026-08-28 is a Friday, the 29th a Saturday, and August is CEST,
+ * so Paris is UTC+2.
+ */
+/** 23:00 Paris, Friday. */
+const FRIDAY_23H = new Date("2026-08-28T21:00:00Z")
+/** 01:00 Paris, Saturday — the hour Friday's service is still running. */
+const SATURDAY_01H = new Date("2026-08-28T23:00:00Z")
+/** 10:00 Paris, Friday — between two services. */
+const FRIDAY_10H = new Date("2026-08-28T08:00:00Z")
 
 const CLOSED_BANNER = "Restaurant actuellement fermé"
 

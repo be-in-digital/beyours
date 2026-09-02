@@ -86,7 +86,10 @@ test.describe("Product Form", () => {
 
       // Price field
       await expect(
-        page.getByLabel(/Prix \(€\)/)  // le formulaire affiche « Prix (€) », jamais « Prix (EUR) »
+        // The field is labelled "Prix TTC (€)", tax included. Anchored, because
+        // "Prix barré TTC (€)" sits in the same tab and an unanchored /Prix.*\(€\)/
+        // matches both, which is a strict-mode violation rather than a check.
+        page.getByLabel(/^Prix TTC \(€\)/)
       ).toBeVisible()
     })
 

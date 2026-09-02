@@ -240,8 +240,11 @@ test.describe("Image to Product", () => {
       const preview = page.locator('img[alt="Aperçu"]')
       const error = page.locator(".text-destructive")
 
+      // `.first()`: `.text-destructive` also marks the required-field asterisks
+      // already on the page, so the union resolves to more than one element and
+      // strict mode refuses it. Any one of the three appearing is the signal.
       await expect(
-        uploadingState.or(preview).or(error)
+        uploadingState.or(preview).or(error).first()
       ).toBeVisible({ timeout: 15_000 })
     })
   })
