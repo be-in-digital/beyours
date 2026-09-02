@@ -80,8 +80,22 @@ function loopbackConvexSources(convexUrl?: string): string[] {
 }
 
 /**
- * The hosts the Maps JS API serves its own code from: the entry point, and the
- * bundle it pulls in once it is running.
+ * Where the Places autocomplete loads its code from.
+ *
+ * `useGooglePlacesAutocomplete` appends a `<script>` for
+ * `maps.googleapis.com/maps/api/js`, and that loader then fetches its own
+ * chunks from `maps.gstatic.com`. Neither was listed, so `script-src 'self'`
+ * refused both and the address field silently offered no suggestions — in every
+ * production build, not only under test. The browser blocks the tag before the
+ * request leaves, which is why the e2e suite's mock of the Google endpoint
+ * never intercepted anything and read as "element(s) not found".
+ *
+ * Two origins and no wildcard: `*.googleapis.com` would also admit every other
+ * Google API host, which this application does not load script from.
+ *
+ * Nothing else needs widening. `img-src` already allows `https:` for the
+ * dropdown's sprites, `style-src` carries `'unsafe-inline'` for the styles the
+ * widget injects, and `connect-src` allows `https:` for its own requests.
  */
 const GOOGLE_MAPS_SCRIPT_SOURCES = [
   "https://maps.googleapis.com",
@@ -98,21 +112,6 @@ export function buildContentSecurityPolicy(options: {
     // 'unsafe-eval' is the dev server's: React Refresh and the Turbopack
     // runtime evaluate modules. A production build does not, so it is not
     // granted there.
-    // Google Maps is admitted by name because the storefront loads it by name.
-    //
-    // `useGooglePlacesAutocomplete` injects a <script> from
-    // maps.googleapis.com, and a policy of `'self' 'unsafe-inline'` refused it:
-    // the browser blocked the load, `window.google` stayed undefined, and the
-    // address field on checkout silently stopped suggesting anything. Nobody
-    // saw it because the e2e test that covers it was among the several hundred
-    // that never ran.
-    //
-    // Not gated on `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. `/address-test` falls
-    // back to a fixture key so the suite can intercept the request, so a build
-    // without the variable still injects the tag; a policy that dropped the
-    // hosts there would refuse the very thing the test exists to exercise.
-    // Neither host serves user-supplied content, which is what makes naming
-    // them cheap.
     "script-src": options.isDevelopment
       ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", ...GOOGLE_MAPS_SCRIPT_SOURCES]
       : ["'self'", "'unsafe-inline'", ...GOOGLE_MAPS_SCRIPT_SOURCES],
