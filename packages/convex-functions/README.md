@@ -28,6 +28,9 @@ packages/convex-functions/src/
 └── index.ts           # Package exports
 ```
 
+Ten of the 74 files in `src/`, shown for shape. `index.ts` is the barrel that
+exports them all; `src/` is the list.
+
 ## Usage
 
 ### In Convex Functions (App)
