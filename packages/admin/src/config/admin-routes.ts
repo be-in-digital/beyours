@@ -19,6 +19,7 @@ export const adminRoutes = {
   categories: "/dashboard/categories",
   customers: "/dashboard/customers",
   inventory: "/dashboard/inventory",
+  messages: "/dashboard/messages",
 
   // ─── Marketing ──────────────────────────────────────────────────────────────
   promotions: "/dashboard/promotions",

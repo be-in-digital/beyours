@@ -6,6 +6,7 @@ import {
   Gamepad2,
   Globe,
   Image,
+  Inbox,
   LayoutDashboard,
   LayoutList,
   Mail,
@@ -25,12 +26,22 @@ import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
+/**
+ * A live count the sidebar renders next to an entry.
+ *
+ * One value today. It is named rather than passed as a number because the
+ * count is a subscription — the sidebar has to run the query itself, and
+ * `navGroups` is plain data.
+ */
+export type NavBadge = "unreadMessages"
+
 /** Standard navigation item (no children) */
 export interface NavItem {
   label: string
   href: string
   icon: LucideIcon
   requiredPermission?: Permission
+  badge?: NavBadge
 }
 
 /** Sub-menu item displayed inside a collapsible section */
@@ -107,6 +118,13 @@ export const navGroups: NavGroup[] = [
         href: adminRoutes.inventory,
         icon: Warehouse,
         requiredPermission: "products:read",
+      },
+      {
+        label: "Messages",
+        href: adminRoutes.messages,
+        icon: Inbox,
+        requiredPermission: "customers:read",
+        badge: "unreadMessages",
       },
     ],
   },

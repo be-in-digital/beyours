@@ -27,6 +27,7 @@ import {
   CollapsibleTrigger,
 } from "../ui/collapsible"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
+import { UnreadMessagesBadge } from "./unread-messages-badge"
 import {
   navGroups,
   isCollapsible,
@@ -122,6 +123,9 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
                             <span>{entry.label}</span>
                           </Link>
                         </SidebarMenuButton>
+                        {entry.badge === "unreadMessages" ? (
+                          <UnreadMessagesBadge />
+                        ) : null}
                       </SidebarMenuItem>
                     )
                   })}
