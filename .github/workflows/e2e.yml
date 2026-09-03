@@ -339,6 +339,7 @@ jobs:
         # opens is produced.
         run: >
           pnpm test:e2e --filter=@beyours/reference --
+          --project=public
           --shard=${{ matrix.shard }}/4 --reporter=blob
         env:
           CI: true
