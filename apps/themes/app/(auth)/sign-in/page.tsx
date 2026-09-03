@@ -92,7 +92,7 @@ function SignInForm() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-black text-zinc-800 tracking-tighter leading-[0.9] italic">
-            Bon retour <br />
+            Content de vous revoir <br />
             <span className="text-orange-500 not-italic">parmi nous</span>
           </h1>
         </div>
