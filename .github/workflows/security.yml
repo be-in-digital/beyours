@@ -99,5 +99,5 @@ jobs:
         #     the advisory becomes real and this must go back to red.
         #
         # The entry is deliberately one GHSA. Verified narrow: with it in place,
-        # dropping --prod still exits 1 on the other 13 high advisories.
+        # dropping --prod still exits 1 on the other 11 high advisories.
         run: pnpm audit --prod --audit-level high
