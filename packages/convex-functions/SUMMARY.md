@@ -1,5 +1,10 @@
 # Summary - Convex Functions Package
 
+> **Snapshot of the 0.1.0 delivery, 14 February 2026. Not the current state.**
+> The package is at 3.0.0 and holds 74 modules; every count and line total below
+> describes the ten it shipped with. Read `README.md` for how the package is
+> used, and `src/` for what it now contains.
+
 ## Overview
 
 Shared package containing **all the Convex backend functions** for BeYours Engine.
