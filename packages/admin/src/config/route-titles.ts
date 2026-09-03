@@ -6,6 +6,7 @@ export const titles: Record<string, string> = {
   orders: "Commandes",
   products: "Menu & Produits",
   customers: "Clients",
+  messages: "Messages",
   inventory: "Inventaire",
   promotions: "Promotions",
   games: "Gamification",
