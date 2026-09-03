@@ -167,20 +167,13 @@ writes orders, products and team members.
 
 Two things, and neither blocks the suite from running.
 
-1. **Add `E2E Status` to the required checks.** Protection currently requires
-   `Lint`, `Type Check`, `Test`, `Build` (section 6). `E2E Status` was left out
-   deliberately, because a check that is red for reasons nobody intends teaches
-   the team that a required check is advisory. Section 5 is the procedure: watch
-   it stay green across several pull requests first, then add it.
-
-   It is `E2E Status`, never `E2E Tests`. A gated job reports
-   `conclusion=skipped`, which GitHub counts as satisfied.
-
-   ```bash
-   gh api -X PATCH repos/be-in-digital/beyours/branches/main/protection/required_status_checks \
-     -f 'contexts[]=Lint' -f 'contexts[]=Type Check' -f 'contexts[]=Test' \
-     -f 'contexts[]=Build' -f 'contexts[]=E2E Status'
-   ```
+1. ~~**Add `E2E Status` to the required checks.**~~ **Done 2026-09-03.** The
+   condition this section set — green across consecutive pull requests — was met
+   once the last two failures were fixed: #297 closed them, and the suite ran
+   536 passed / 0 failed on #297 and again on #292 before the check was made
+   required. It is `E2E Status`, never `E2E Tests`, for the reason §2 gives.
+   Section 6 records what the protection looks like now, which is no longer a
+   branch protection at all.
 
 2. **Read the Convex spending cap** (`#178`). A cap set too low disables every
    project on the team, production included. The procedure is
@@ -247,49 +240,77 @@ live there.
 
 ---
 
-## 6. Turn protection on — repo admin only · ✅ DONE 2026-08-28
+## 6. Protection on `main` — repo admin only · ✅ ruleset since 2026-09-03
 
-Settings → Branches → branch protection on `main`. What is **applied today**:
+**`main` is protected by a ruleset, not by a branch protection.** The classic
+protection created on 2026-08-28 was deleted on 2026-09-03 and replaced, because
+the merge queue below is not expressible in the classic model — its payload has
+no field for it.
 
-| Setting | Applied | Note |
+Ruleset `main`, id `22177735`, target `~DEFAULT_BRANCH`, enforcement `active`:
+
+| Rule | Applied | Note |
 |---|---|---|
-| Required checks | `Lint`, `Type Check`, `Test`, `Build` | the four `ci.yml` job names from §2 |
-| Require branches to be up to date (`strict`) | **on** | the setting you will feel daily — see below |
-| Required approving reviews | **0** | a pull request is required; an approval is not |
-| Do not allow bypassing (`enforce_admins`) | **off** | deliberate, see below |
-| Force pushes / deletions on `main` | blocked | |
+| `required_status_checks` | `Lint`, `Type Check`, `Test`, `Build`, `E2E Status` | the four `ci.yml` names from §2, plus the E2E gate |
+| `strict_required_status_checks_policy` | **false** | the queue tests the merged state; see below |
+| `pull_request` | 0 approving reviews | a pull request is required; an approval is not |
+| `merge_queue` | `SQUASH`, `ALLGREEN`, batches 1→5, 60 min timeout | see below |
+| `deletion`, `non_fast_forward` | blocked | force pushes and deletions on `main` |
+| `bypass_actors` | `RepositoryRole 5` (admin), mode `always` | the old `enforce_admins: false` |
 
-Three choices worth not "fixing" without a reason:
+**`GET /branches/main/protection` now answers `404 Branch not protected`, and
+that is correct.** That endpoint only knows the classic model. It is not
+evidence that protection was removed — this file used to say it was, and that
+sentence was true until the day it wasn't. Read the rules where they now live:
 
-- **`E2E Status` is not required.** §5 measured the `public` project at 59
-  passed / 6 failed. Requiring a red check teaches the team that required checks
-  are advisory. Add it once the suite has been green across consecutive PRs —
-  and add `E2E Status`, never `E2E Tests`, for the reason §2 gives.
+```bash
+gh api repos/be-in-digital/beyours/rules/branches/main --jq '.[].type'
+gh api repos/be-in-digital/beyours/branches/main --jq '.protected'   # true
+gh api repos/be-in-digital/beyours/rulesets/22177735 --jq '.rules[].type'
+```
+
+**The merge queue is what replaced `strict: true`.** Requiring branches to be up
+to date meant a batch merged strictly in series: merge, the next PR goes stale,
+update it, twenty minutes of E2E, merge, repeat. Three pull requests cost an hour
+on 2026-09-03, and none of that hour tested anything a run had not already seen.
+The queue builds the prospective merged state of the batch and asks the same
+jobs about it, which is what makes "up to date" unnecessary rather than merely
+tedious. `ALLGREEN` means a batch lands only if the whole group is green, never
+on the head alone.
+
+Its prerequisite is in the workflows, and the order is not optional: `ci.yml` and
+`e2e.yml` answer on `merge_group` (added in #299) **before** the queue was
+enabled. A queue whose required checks never fire is a queue that never merges,
+and every pull request parks behind it.
+
+**`gh pr merge` now queues instead of merging.** The button reads *Merge when
+ready*. Any script that calls `gh pr merge` and then asserts `state == MERGED` a
+few seconds later is wrong under a queue — use `--auto` and follow the queue.
+
+Two choices worth not "fixing" without a reason:
+
 - **`Gitleaks` and `pnpm audit` are not required.** A new advisory in a
-  dependency nobody touched would block unrelated merges.
+  dependency nobody touched would block unrelated merges. It happened twice on
+  2026-09-02 alone. The nightly `security.yml` run is where that belongs, and
+  since #299 it prints the exact override line and opens an issue.
 - **Bypass is left on.** Turning it off before the checks have been stable for a
   week means an admin cannot merge the fix for the thing that broke CI.
 
-**`strict: true` is the setting that costs time.** A pull request that is green
-but behind `main` cannot merge until it is rebased, and on an active day that
-can happen more than once per PR — it happened to #202 itself, and again to
-[#203](https://github.com/be-in-digital/beyours/pull/203), which needed two
-rebases. That is the intended trade (nothing reaches `main` untested against
-`main`), but if it becomes the bottleneck it is one call to relax:
+<details>
+<summary>What the classic protection held, 2026-08-28 → 2026-09-03</summary>
 
-```bash
-gh api -X PATCH repos/be-in-digital/beyours/branches/main/protection/required_status_checks -f strict=false
+```
+contexts: ["Lint", "Type Check", "Test", "Build"]   # "E2E Status" added 2026-09-03
+strict: true                       # required branches to be up to date
+enforce_admins: false
+required_approving_review_count: 0
+allow_force_pushes: false, allow_deletions: false
 ```
 
-Verify from the outside:
+`strict: true` was the setting that cost time — #202 and #203 each needed
+rebases — and it was the intended trade until the queue made it redundant.
 
-```bash
-gh api repos/be-in-digital/beyours/branches/main/protection --jq '.required_status_checks.contexts'
-```
-
-Today this prints `["Lint","Type Check","Test","Build"]`. A `404 Branch not
-protected` would mean protection has been removed, not that the command is
-wrong.
+</details>
 
 ---
 
