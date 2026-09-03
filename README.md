@@ -338,23 +338,31 @@ not published, they are deployed.
 | Workflow | What it does |
 | --- | --- |
 | `ci.yml` | lint · type-check · test · build, on PRs and pushes to `main` |
-| `e2e.yml` | Playwright on the reference app, **only** when the repository variable `CONVEX_E2E_ENABLED` is `true` — it is not set, so the suite has never run |
+| `e2e.yml` | Playwright on the reference app, in four shards, on PRs · pushes to `main` · the merge queue. No gate and no `E2E_*` secrets: the job starts its own Convex backend. ~536 tests, 16-19 min |
 | `release.yml` | changesets — version PR, then publication |
 | `publish-mirror.yml` | Pushes `apps/themes` to the distribution mirror |
 | `security.yml` | gitleaks over full history + `pnpm audit`, plus a daily run |
 
-**Four checks block a merge.** `main` requires `Lint`, `Type Check`, `Test` and
-`Build` — the four job names from `ci.yml` — with *require branches to be up to
-date* on. That last setting is the one that surprises: a pull request whose
-checks are all green is still blocked while it sits behind `main`, and on a busy
-day you may rebase more than once. No approving review is required, and admins
-can still bypass.
+**Five checks block a merge.** `main` requires `Lint`, `Type Check`, `Test` and
+`Build` — the four job names from `ci.yml` — plus `E2E Status` from `e2e.yml`.
+Since 3 September 2026 the protection is a **ruleset**, not classic branch
+protection, so `GET /branches/main/protection` answers `404 Branch not protected`
+while the branch is very much protected; read the rules at
+`/rules/branches/main`. No approving review is required, and admins can bypass.
 
-Deliberately **not** required: `E2E Status` (the suite has never run to
-completion, and a red required check teaches the team that required checks are
-advisory), and the two `security.yml` checks (a new advisory in an untouched
-dependency would block unrelated merges). Switching E2E on, and the reasoning
-behind each of those choices, is `tasks/ci-required-checks-runbook.md` §5–§6.
+*Require branches to be up to date* is **off**. A merge queue builds the
+prospective merged state and runs these same checks against it, which is the
+same guarantee without asking every author to rebase behind every merge.
+
+The required E2E check is `E2E Status`, never `E2E Tests`. `E2E Status` is a
+one-step aggregate over the four shards and the report job, and it fails on
+anything that is not a real pass — `failure`, `cancelled` and `skipped` alike.
+Requiring a *shard* instead would be the old trap: a job that does not run
+reports `skipped`, and GitHub counts a skip as satisfied.
+
+Deliberately **not** required: the two `security.yml` checks — a new advisory in
+an untouched dependency would block unrelated merges. The reasoning behind each
+choice is `tasks/ci-required-checks-runbook.md` §5–§6.
 
 ⚠️ **A job that fails in ~3 seconds having run zero steps is a billing block,
 not a defect.** The Free plan's 2,000 Actions minutes ran out in July and again
