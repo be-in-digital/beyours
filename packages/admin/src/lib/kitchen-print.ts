@@ -190,7 +190,7 @@ export const PRINT_TRIGGERS: readonly PrintTriggerOption[] = [
     key: "ready",
     label: "Quand la commande est prête",
     description:
-      "Un second ticket au moment où la cuisine annonce la commande — pour le passe ou pour le livreur.",
+      "Un second ticket quand le plat est prêt à partir — pour le passe ou pour le livreur.",
   },
   {
     key: "reprint",
