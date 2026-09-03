@@ -59,15 +59,21 @@ export function verdict(byProject, min, required) {
   if (totalRan < min) {
     problems.push(`only ${totalRan} test(s) actually ran; at least ${min} were expected`)
   }
-  for (const project of required) {
-    const counts = byProject.get(project)
+  for (const { name, min: floor } of required) {
+    const counts = byProject.get(name)
     if (!counts) {
       problems.push(
-        `project "${project}" reported nothing — it was not declared. ` +
+        `project "${name}" reported nothing — it was not declared. ` +
           `That is the hasRealBackend spread: no backend, no project, no report, green run.`
       )
     } else if (counts.ran === 0) {
-      problems.push(`project "${project}" declared ${counts.skipped} test(s) and ran none of them`)
+      problems.push(`project "${name}" declared ${counts.skipped} test(s) and ran none of them`)
+    } else if (counts.ran < floor) {
+      problems.push(
+        `project "${name}" ran ${counts.ran} test(s); at least ${floor} were expected. ` +
+          `A quarter of this suite is one shard, so a count this low usually means a ` +
+          `shard's blob never reached the merge rather than that tests were removed.`
+      )
     }
   }
   return problems
@@ -113,7 +119,22 @@ export function parseArgs(argv) {
       }
       out.min = n
     } else if (name === "--projects") {
-      const list = value.split(",").map((s) => s.trim()).filter(Boolean)
+      // `name` or `name:min`. A bare name means "at least one test", which is
+      // what this flag used to mean everywhere.
+      const list = []
+      for (const item of value.split(",").map((s) => s.trim()).filter(Boolean)) {
+        const [pname, pmin] = item.split(":")
+        if (!pname) throw new Error(`--projects entry "${item}" has no project name`)
+        if (pmin === undefined) {
+          list.push({ name: pname, min: 1 })
+          continue
+        }
+        const n = Number(pmin)
+        if (!Number.isInteger(n) || n < 1) {
+          throw new Error(`--projects entry "${item}" needs a whole floor of 1 or more`)
+        }
+        list.push({ name: pname, min: n })
+      }
       if (list.length === 0) throw new Error("--projects needs at least one project name")
       out.projects = list
     } else {
@@ -159,8 +180,15 @@ const SELF_TEST = [
     expect: "reject",
   },
   {
+    // Measured on run 33750984671: setup 4, public 75, admin 463. Losing one
+    // shard of four takes admin to roughly 347, which must not pass.
+    name: "a project that lost a shard's worth of tests is not a pass",
+    report: synth({ setup: { ran: 4 }, public: { ran: 56 }, admin: { ran: 347 } }),
+    expect: "reject",
+  },
+  {
     name: "a real run passes",
-    report: synth({ setup: { ran: 16 }, public: { ran: 400 }, admin: { ran: 120 } }),
+    report: synth({ setup: { ran: 4 }, public: { ran: 75 }, admin: { ran: 463 } }),
     expect: "accept",
   },
 ]
@@ -186,8 +214,12 @@ function synth(projects) {
 const SELF_TEST_ARGS = [
   { argv: ["r.json", "--min", "100"], expect: { min: 100 } },
   { argv: ["r.json", "--min=100"], expect: { min: 100 } },
-  { argv: ["r.json", "--projects", "a,b"], expect: { projects: ["a", "b"] } },
-  { argv: ["r.json", "--projects=a,b"], expect: { projects: ["a", "b"] } },
+  { argv: ["r.json", "--projects", "a,b"], expect: { projects: [{ name: "a", min: 1 }, { name: "b", min: 1 }] } },
+  { argv: ["r.json", "--projects=a,b"], expect: { projects: [{ name: "a", min: 1 }, { name: "b", min: 1 }] } },
+  { argv: ["r.json", "--projects=a:60,b"], expect: { projects: [{ name: "a", min: 60 }, { name: "b", min: 1 }] } },
+  { argv: ["r.json", "--projects=a:0"], expect: "throw" },
+  { argv: ["r.json", "--projects=a:x"], expect: "throw" },
+  { argv: ["r.json", "--projects=:60"], expect: "throw" },
   { argv: ["r.json", "--min"], expect: "throw" },
   { argv: ["r.json", "--min", "--projects", "a"], expect: "throw" },
   { argv: ["r.json", "--min", "abc"], expect: "throw" },
@@ -222,7 +254,11 @@ function selfTestArgs() {
 function selfTest() {
   const broken = selfTestArgs()
   for (const c of SELF_TEST) {
-    const problems = verdict(tally(c.report), 100, ["setup", "public", "admin"])
+    const problems = verdict(tally(c.report), 100, [
+      { name: "setup", min: 1 },
+      { name: "public", min: 60 },
+      { name: "admin", min: 350 },
+    ])
     const accepted = problems.length === 0
     if (accepted !== (c.expect === "accept")) {
       broken.push(

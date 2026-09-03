@@ -8,10 +8,12 @@ on:
   #
   # A pull_request run tests `refs/pull/N/merge` — the base merged with the
   # head — which equals what lands only while the branch is up to date and the
-  # merge is a squash. Both held on 03/09/2026, so main's tree had in fact been
-  # exercised; neither is guaranteed. `strict: true` keeps branches current
-  # today and could be relaxed tomorrow, and a merge that resolves anything at
-  # all produces a tree no run has seen.
+  # merge is a squash. Neither is guaranteed, and as of 03/09/2026 neither is
+  # even configured: the ruleset sets `strict_required_status_checks_policy:
+  # false`, so branches are not required to be current, and `merge`, `squash`
+  # and `rebase` are all permitted. What restores the guarantee is the merge
+  # queue, which builds the prospective merged state and runs these same checks
+  # against it — hence the `merge_group:` trigger below.
   #
   # So the suite now also runs on what was actually pushed. It gates nothing —
   # `E2E Status` is required on pull requests, and by the time this fires the
@@ -421,15 +423,23 @@ jobs:
         # from the report. A green tick over an empty run is the failure this
         # whole job exists to stop, so it is asserted rather than assumed.
         #
-        # The floor is 100 against a suite of roughly 540: high enough that the
-        # public project alone (74) cannot satisfy it, low enough that tests
-        # self-skipping on thin fixtures do not turn a real pass red. The
-        # per-project check is the stricter half — a project that reports
-        # nothing at all is the elision above, and it fails whatever the count.
+        # Floors per project, not one global number.
+        #
+        # A single `--min 100` against a 542-test suite was measured to accept
+        # 442 of them going missing: replaying this job over one shard's blob
+        # instead of four gave 135 tests, all three projects present, exit 0.
+        # Four shards means a quarter of the suite is one artifact, and
+        # `upload-artifact` treats "no files found" as a warning, so "some of
+        # the run is missing" is the shape a real failure takes here.
+        #
+        # Measured on run 33750984671: setup 4, public 75, admin 463 — 542. The
+        # floors sit below that with room for the ~62 tests that can legitimately
+        # self-skip on thin fixtures (9 did on that run), and above what any
+        # three shards can produce, so losing one blob fails.
         run: |
           node scripts/assert-e2e-ran.mjs \
             apps/reference/merged-report.json \
-            --min 100 --projects setup,public,admin
+            --min 400 --projects setup:1,public:60,admin:380
 
       - name: Upload the merged report
         if: always()

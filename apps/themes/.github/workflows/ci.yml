@@ -365,6 +365,14 @@ jobs:
         # NEXT_PUBLIC_CONVEX_URL is unset or a placeholder — they are not
         # skipped, they are never declared — and every test that signs in can
         # self-skip when SEED_PASSWORD is empty.
+        #
+        # The floor is deliberately loose. Upstream this same assertion carries
+        # per-project floors derived from a measured run; this suite has never
+        # completed once, so there is no measurement to derive them from, and a
+        # floor guessed too high would redden every pull request on day one.
+        # After the first green run, read the "Playwright executed" table in the
+        # log and tighten this to `--min <~75% of total>
+        # --projects setup:1,public:<~80%>,admin:<~80%>`.
         if: always()
         run: |
           node scripts/assert-e2e-ran.mjs playwright-report/report.json \
