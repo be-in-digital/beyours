@@ -14,10 +14,26 @@ jobs:
   # Reusing ci.yml rather than restating its four jobs here — a copy would drift
   # from the checks branch protection actually requires.
   #
-  # The cost is that CI runs twice on a push to main: once from its own trigger,
-  # once through this call. That is deliberate. The alternative, keying off
-  # `workflow_run`, would make this workflow publish and tag from a SHA it has
-  # to reconstruct from the event, and this is not the workflow to be clever in.
+  # ⚠️ It has drifted anyway, and not through a copied job list. This call
+  # covers `Lint`, `Type Check`, `Test` and `Build` — measured on run
+  # 33761018116, where `verify` expanded to exactly those four. On 03/09/2026
+  # `E2E Status` was added to ruleset 22177735, so branch protection now
+  # requires **five** checks and this chain gates on four of them. `E2E Status`
+  # lives in e2e.yml, which the release chain never calls, so a red or
+  # still-running E2E suite does not stop a publish. Measured on the same
+  # commit: Release finished 6m45s before the suite reported.
+  #
+  # Nothing has shipped over a red E2E — the merge queue keeps main green in
+  # the normal case, and that run published nothing because the pull request
+  # carried no changeset. It is a structural gap, and it is open: #308 holds
+  # the options and the trade-offs. Do not read the paragraph above as saying
+  # this chain gates on everything branch protection does. It does not.
+  #
+  # The cost of the call is that CI runs twice on a push to main: once from its
+  # own trigger, once through this one. That is deliberate. The alternative,
+  # keying off `workflow_run`, would make this workflow publish and tag from a
+  # SHA it has to reconstruct from the event, and this is not the workflow to
+  # be clever in.
   verify:
     name: Verify
     permissions:
