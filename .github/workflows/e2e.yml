@@ -42,11 +42,30 @@ concurrency:
 
 jobs:
   e2e:
-    name: E2E Tests
+    name: E2E Tests (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # 65 tests took 8.4 min at one worker; the full suite is ~510. 30 minutes
-    # cancelled the run, and a cancelled run is not a passing one.
-    timeout-minutes: 60
+    # Four shards, each with its own Convex backend and its own Next server.
+    #
+    # The suite is 541 tests at one worker — 16 minutes of Playwright inside a
+    # 20-minute job, and `strict`-serialised merges meant a batch of three paid
+    # that three times over. One worker is not negotiable: two of them share a
+    # single server and a single deployment, and the contention shows up as
+    # tests failing on a shell that had not rendered. Sharding buys the
+    # parallelism that a second worker cannot, because each shard is a whole
+    # machine — separate server, separate backend, separate database.
+    #
+    # `fail-fast: false` on purpose: one shard failing must not cancel the other
+    # three, or the report says nothing about two thirds of the suite. The
+    # sharded run is also *more* isolated than the single one it replaces — the
+    # cross-file state that `order-service-types` and `store-global-hours` share
+    # today lands on two different backends.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    # ~8 minutes a shard. 30 leaves room for a slow runner without letting a
+    # hung one hold the queue for an hour.
+    timeout-minutes: 30
 
     env:
       # ── The backend under test ────────────────────────────────────────────
@@ -291,9 +310,88 @@ jobs:
           fi
 
       - name: Run Playwright tests
-        run: pnpm test:e2e --filter=@beyours/reference
+        # `--` hands the rest to Playwright through Turbo, which is verified:
+        # `-- --list --shard=2/4` reports 138 tests in 11 files.
+        #
+        # `blob` rather than html+json: a shard's own report describes a quarter
+        # of the suite, and the assertion below needs the whole of it. The blobs
+        # are merged in `e2e-report`, which is also where the report a human
+        # opens is produced.
+        run: >
+          pnpm test:e2e --filter=@beyours/reference --
+          --shard=${{ matrix.shard }}/4 --reporter=blob
         env:
           CI: true
+
+      - name: Upload this shard's blob report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: apps/reference/blob-report/
+          retention-days: 1
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.shard }}
+          path: apps/reference/test-results/
+          retention-days: 7
+
+      - name: Convex backend log
+        if: failure()
+        run: tail -100 "$HOME/convex-backend.log" || true
+
+  # One report out of four shards, and the assertion that the run happened.
+  #
+  # `assert-e2e-ran.mjs` demands `setup`, `public` and `admin` in one report and
+  # a floor of 100 tests. Neither holds for a quarter of the suite: a shard can
+  # legitimately contain no `public` test at all, and would fail an assertion it
+  # never had any way to satisfy. Run against the merged report it means exactly
+  # what it meant before sharding, which is the point of merging.
+  #
+  # `always()`, because a failed shard is precisely when the report is worth
+  # having.
+  e2e-report:
+    name: E2E Report
+    runs-on: ubuntu-latest
+    needs: [e2e]
+    if: always()
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Collect every shard's blob
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          merge-multiple: true
+          path: apps/reference/all-blob-reports
+
+      - name: Merge them into one report
+        working-directory: apps/reference
+        # The JSON lands outside `playwright-report/`: the html reporter owns
+        # that directory and empties it, and the assertion needs a file that
+        # survives being written next to it.
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged-report.json
+        run: npx playwright merge-reports --reporter html,json ./all-blob-reports
 
       - name: Prove the suite actually ran
         # Playwright exits 0 when it has nothing to run, and this config can end
@@ -303,36 +401,23 @@ jobs:
         # from the report. A green tick over an empty run is the failure this
         # whole job exists to stop, so it is asserted rather than assumed.
         #
-        # The floor is 100 against a suite of roughly 510: high enough that the
+        # The floor is 100 against a suite of roughly 540: high enough that the
         # public project alone (74) cannot satisfy it, low enough that tests
         # self-skipping on thin fixtures do not turn a real pass red. The
         # per-project check is the stricter half — a project that reports
         # nothing at all is the elision above, and it fails whatever the count.
-        if: always()
         run: |
           node scripts/assert-e2e-ran.mjs \
-            apps/reference/playwright-report/report.json \
+            apps/reference/merged-report.json \
             --min 100 --projects setup,public,admin
 
-      - name: Upload Playwright report
+      - name: Upload the merged report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: apps/reference/playwright-report/
           retention-days: 7
-
-      - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: apps/reference/test-results/
-          retention-days: 7
-
-      - name: Convex backend log
-        if: failure()
-        run: tail -100 "$HOME/convex-backend.log" || true
 
   # Reports what the E2E job actually did.
   #
@@ -344,16 +429,25 @@ jobs:
   e2e-status:
     name: E2E Status
     runs-on: ubuntu-latest
-    needs: [e2e]
+    needs: [e2e, e2e-report]
     if: always()
     steps:
       - name: Check E2E result
         env:
+          # A matrix result is the aggregate: `success` only when all four
+          # shards succeeded.
           E2E_RESULT: ${{ needs.e2e.result }}
+          # And the report job carries the assertion that the run was real, so a
+          # gate that ignored it would go green over an empty suite again.
+          REPORT_RESULT: ${{ needs.e2e-report.result }}
         run: |
-          if [ "$E2E_RESULT" = "success" ]; then
+          if [ "$E2E_RESULT" = "success" ] && [ "$REPORT_RESULT" = "success" ]; then
             echo "E2E tests passed"
             exit 0
+          fi
+          if [ "$E2E_RESULT" = "success" ]; then
+            echo "::error::The shards passed but the report did not (job result: $REPORT_RESULT)"
+            exit 1
           fi
           # failure, cancelled, skipped, or whatever a future runner reports.
           # None of them mean the suite passed. `cancelled` used to land in the
