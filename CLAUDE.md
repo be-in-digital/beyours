@@ -321,6 +321,41 @@ When working on tasks:
 8. **State**: Zustand for client, Convex for server
 9. **Run tests** before commit: `pnpm test && pnpm test:e2e`
 10. **NEVER mention "Claude Code"** in commit messages (no `Co-Authored-By: Claude`, and no reference to Claude at all)
+11. **English only on GitHub and Git** — see below
+
+---
+
+## 🌐 Language rule — English on GitHub, French for customers
+
+**Everything that lands on GitHub or in Git is written in English.** No exceptions
+by default:
+
+- commit messages and branch names
+- issue titles **and** issue bodies, labels, milestones
+- pull request titles, descriptions, and review comments
+- repository documentation (`README`, `CLAUDE.md`, `docs/`, `tasks/`, ADRs)
+- code comments, test names, error strings thrown by engine code
+
+**Why:** the repository is a shared engineering artefact. It is read by tooling, by
+contributors who may not read French, and by anyone we later hand a client repo to.
+The code itself is already English — the prose around it should not be the exception.
+
+**The exception — French stays French when it is the product.** Do not translate:
+
+- customer-facing copy: storefront strings, CMS content, email templates, the
+  commercial site, `apps/site` marketing copy
+- legal and contractual text: CGV, mentions légales, RGPD notices, contracts,
+  invoices — French is a legal requirement here, not a habit
+- French domain terms quoted inside an English sentence, when translating them
+  would lose precision: *établissement*, *apporteur d'affaires*, *fondateurs*,
+  *régime de TVA*, *Prêt Boost*, SIRET. Quote them, don't invent an English word.
+- fixtures, seeds and test data that mimic real French restaurant content
+
+**Outside the repo, French is the default:** conversation with the team, ClickUp
+tasks and comments, and internal notes.
+
+Never rewrite history on `main` to apply this rule — commits already merged stay as
+they are.
 
 ---
 

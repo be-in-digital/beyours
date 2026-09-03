@@ -1,0 +1,57 @@
+P0-01	125	P0-01 · Creating an establishment is rejected by the Convex validator
+P0-02	126	P0-02 · Any service crossing midnight reads as closed all evening
+P0-03	127	P0-03 · VAT is added on top of the displayed price — every customer is overcharged
+P0-04	128	P0-04 · Cancelling a paid order fakes the refund, and blocks the real one
+P0-05	129	P0-05 · The engine's refund button calls a function that no longer exists
+P0-06	130	P0-06 · Creating a game QR code fails every time
+P0-07	131	P0-07 · Sign-up is a dead end
+P0-08	132	P0-08 · The team invitation links to a route that does not exist
+P0-09	133	P0-09 · `orders.create` enforces no availability at all
+P0-10	134	P0-10 · Deliveroo orders never reach the kitchen
+P0-11	135	P0-11 · Uber Eats special instructions and allergies are dropped before the kitchen
+P0-12	136	P0-12 · The kitchen ticket is created and printed before payment
+P0-13	137	P0-13 · The KDS query is unbounded — the kitchen screen will go dark
+P0-14	138	P0-14 · Uber cancellation and scheduled-order webhooks match names Uber never sends
+P0-15	139	P0-15 · An unfetchable Uber order is assigned to an arbitrary store
+P0-16	140	P0-16 · `auto_accept` marks the order confirmed without accepting it on Uber
+P0-17	141	P0-17 · CSV subscriber import fails 100% of the time
+P0-18	142	P0-18 · The double opt-in email is never sent by any code path
+P0-19	143	P0-19 · Scheduled campaigns never send
+P0-20	144	P0-20 · "Relancer" re-sends the campaign from the first subscriber
+P0-21	145	P0-21 · Permanent bounces are retried twice before suppression
+P0-22	146	P0-22 · The SES Configuration Set is hard-coded
+P0-23	147	P0-23 · Catalogue GPT translation is dead — three independent blockers
+P0-24	148	P0-24 · Switching language changes nothing the customer can read
+P0-25	149	P0-25 · The public blog is hard-coded demo content
+P0-26	150	P0-26 · The Auto Blog has no scheduler
+P0-27	151	P0-27 · Any customer account can store an XSS payload on the site's own origin
+P0-28	152	P0-28 · `/contact` white-screens on every visit
+P0-29	153	P0-29 · The cart conflates option variants of the same dish
+P0-30	154	P0-30 · `apps/site` — customer billing data is publicly readable
+P0-31	155	P0-31 · `apps/site` — with no Stripe key, everything is sold for free
+P0-32	156	P0-32 · The environment fail-fast validates nothing a client must configure
+P0-33	157	P0-33 · An empty `BETTER_AUTH_SECRET` opens an email relay
+P0-34	158	P0-34 · Two contradictory S3 bucket policies in the same product
+P0-35	159	P0-35 · Gamification is absent from the product being sold
+TECH-01	160	TECH-01 · Promotions and discounts — four sold features, none applied
+TECH-02	161	TECH-02 · Orders — lifecycle, idempotence and cash
+TECH-03	162	TECH-03 · Payments — binding, deduplication and OAuth
+TECH-04	163	TECH-04 · Delivery integrations — money, statuses and volume
+TECH-05	164	TECH-05 · Kitchen — stations, locks and print reliability
+TECH-06	165	TECH-06 · Catalogue — cross-store scope and dead fields
+TECH-07	166	TECH-07 · Email marketing — compliance, throughput and automations
+TECH-08	167	TECH-08 · CMS and media library — quotas, scope and rendering
+TECH-09	168	TECH-09 · Storefront — SEO, accessibility and the buying path
+TECH-10	169	TECH-10 · Multi-store — cascade, timezone and dead settings
+TECH-11	170	TECH-11 · Authentication — sessions, errors and permissions
+TECH-12	171	TECH-12 · Delivery chain — CI, tests and template parity
+LANCEMENT-01	172	LAUNCH-01 · Rotate the exposed Deliveroo secret — **urgent**
+LANCEMENT-02	173	LAUNCH-02 · Create the founders coupon and the 4 maintenance prices in Stripe — **urgent**
+LANCEMENT-03	174	LAUNCH-03 · Settle the VAT regime — **urgent**
+LANCEMENT-04	175	LAUNCH-04 · Settle four sold-but-absent features
+LANCEMENT-05	176	LAUNCH-05 · Settle the S3 bucket policy
+LANCEMENT-06	177	LAUNCH-06 · Move AWS SES out of the sandbox
+LANCEMENT-07	178	LAUNCH-07 · Check the Convex spending cap
+LANCEMENT-08	179	LAUNCH-08 · Make CI blocking and switch E2E on
+LANCEMENT-09	180	LAUNCH-09 · Restrict the Google Maps key and provision the bootstrap token
+LANCEMENT-10	181	LAUNCH-10 · Register every client site's licence key
