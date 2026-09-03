@@ -21,14 +21,22 @@
 
 ## Why this card exists
 
-Production stays on team `momoseck8` — decided 2026-08-16, recorded in
-`production-accounts-checklist.md` §0. Two consequences do not go away by
-themselves:
+Production *used to* stay on team `momoseck8` — decided 2026-08-16, recorded in
+`production-accounts-checklist.md` §0. **That decision was reversed on
+2026-09-01**: the project was transferred to team `be-yours`, so production now
+runs on `famous-wildcat-229` (beyours.fr) and `optimistic-swordfish-937` (the
+engine), both on `be-yours`. What remains on `momoseck8` — `robust-elephant-263`,
+`fearless-poodle-133`, `capable-crocodile-720`, `reliable-parrot-452`,
+`youthful-goose-352` — serves nothing.
+
+The card's two reasons survive the move; only the team they point at changed:
 
 1. **Convex spending caps apply per team, not per project.** One threshold
-   crossed takes down *every* project on the team, production included.
-2. **Account recovery runs through that team's owner**, who is not
-   `developers@beyours.fr`. If that person is unreachable, so is the backend.
+   crossed takes down *every* project on the team, production included. The cap
+   that can now take production down is **`be-yours`'s**, not `momoseck8`'s.
+2. **Account recovery runs through that team's owner.** This is the half the
+   transfer improved: the owner of `be-yours` is the dedicated account, not a
+   personal one. It still needs a second reachable Admin.
 
 ---
 
@@ -122,7 +130,14 @@ it. What that resolution means *for this card*:
 
 ## 3. The check
 
-Dashboard, as the owner of team `momoseck8`. Roughly ten minutes.
+Dashboard, as the owner of team **`be-yours`** — that is the team production
+runs on. Roughly ten minutes.
+
+> Read `be-yours` **first and always**. Reading `momoseck8` instead is the
+> failure this card is about wearing a different hat: its cap can no longer take
+> production down, so a healthy threshold there proves nothing. Check
+> `momoseck8` second, and only to confirm nothing production depends on has
+> drifted back onto it.
 
 1. **Read the plan.** <https://dashboard.convex.dev/team/settings/billing> →
    note which tier the team is on. This selects which row of §1 applies.

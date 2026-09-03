@@ -29,22 +29,27 @@ the six `.env.example` templates) plus `apps/site/MISE_EN_PROD.md` and
 
 ## 0. Two problems to settle first
 
-**Production stays on its current Convex team — decided 2026-08-16.**
-`apps/site/.env.production.example` records the prod deployment as
-`fearless-poodle-133`, on **team `momoseck8` / project `wedilybird`**. That reads
-as a personal account rather than a company one, and moving it was considered.
-**The decision is to leave it where it is** — do not transfer, and do not rebuild
-it elsewhere. Treat this section as closed unless the owner reopens it.
+**Settled — and then reversed.** On 2026-08-16 the decision was to leave
+production on team `momoseck8` / project `wedilybird` and not move it. **On
+2026-09-01 it was moved anyway**, by *transfer* rather than migration, so URLs,
+env vars and data are unchanged and only the owning team differs.
 
-Two consequences to live with, since they do not go away by themselves:
+Current state, measured on 2026-09-01: production runs on team **`be-yours`** —
+`famous-wildcat-229` (beyours.fr) and `optimistic-swordfish-937` (the engine).
+What is left on `momoseck8` serves nothing. The paragraph above is kept because
+`.env.production.example` and several older documents still name
+`fearless-poodle-133`, and someone will find them.
 
-> ⚠️ **Convex spending caps apply per team.** A cap set too low on `momoseck8`
-> disables **every project on that team**, production included. Whoever owns that
-> team has to keep the cap funded, and know that they do.
+One consequence survives the move, pointing at a different team; the other is
+largely resolved by it:
 
-> ⚠️ **Account recovery runs through that team's owner.** Access to the production
-> backend depends on an account that is not `developers@beyours.fr`. Make sure at
-> least one other person can reach it.
+> ⚠️ **Convex spending caps apply per team.** A cap set too low on **`be-yours`**
+> disables every project on that team, production included. That is now the team
+> to keep funded. A healthy cap on `momoseck8` proves nothing about production.
+
+> ✅ **Account recovery** was the reason for the move. The owner of `be-yours` is
+> the dedicated account, not a personal one. Still ensure a second Admin — not a
+> Developer, who cannot raise the limit — can reach it.
 
 Both are procedure, not code: **`convex-spending-cap-runbook.md`** carries the
 steps, the blast radius, and the sign-off. Read it before ticking the Convex line
@@ -141,7 +146,7 @@ they serve the commercial site and the fleet, not one restaurant.
 
 - [ ] `developers@beyours.fr` mailbox exists and is monitored
 - [ ] Decide BeYours vs BeInDigital ownership per service (§0)
-- [ ] Convex: **no transfer** (decided) — spending cap on team `momoseck8` funded, and a second person able to reach the account (`convex-spending-cap-runbook.md`)
+- [ ] Convex: transferred to team `be-yours` (2026-09-01) — spending cap **on `be-yours`** funded, and a second Admin able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded
 - [ ] Vercel account + `beyours.fr` domain
 - [ ] AWS: **one account per client** — follow [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md), and **start it on day one**: the SES sandbox exit is one AWS review per account and gates every customer email
