@@ -342,6 +342,50 @@ rebases — and it was the intended trade until the queue made it redundant.
 
 ---
 
+## 6bis. The remote cache — one secret, and it is the owner's
+
+`ci.yml` and `e2e.yml` pass `TURBO_TOKEN` and `TURBO_TEAM` to every job. The team
+slug is written in the workflow (`be-in-digital` — it is in the URL of every
+Vercel check). The token is not, and nothing in this repository can create it:
+
+1. Vercel → Account Settings → Tokens → create one scoped to the
+   `be-in-digital` team.
+2. GitHub → repository Settings → Secrets and variables → Actions → new
+   repository secret named `TURBO_TOKEN`.
+
+**Until that secret exists the wiring is inert**, and that is measured, not
+assumed: an empty token exits 0, and an invalid one still completed 7 tasks out
+of 7 by falling back to the local cache. A cache that is misconfigured degrades;
+it does not break a build.
+
+**What it buys, precisely.** The four e2e shards start at the same instant, so
+the *first* run of a commit still builds four times — nothing is in the cache
+yet when they begin. The saving lands on the runs that follow the same commit:
+the merge-queue run and the push-to-main run each restore the build instead of
+spending 126 s on it, which is 22 % of a shard. Two of the three runs a change
+goes through, not all three.
+
+**Why it cannot serve the wrong build.** `turbo.json` carries
+`globalDependencies: ["**/.env.*local"]`, and the e2e job builds with an
+`.env.local` that the `Build` job does not have. The hash follows the file:
+
+```
+no .env.local                        6fdf134d15d395c8
+.env.local → 127.0.0.1:3310          3aae56a11acde8c7
+.env.local → 127.0.0.1:9999          79edf7445cdaf732
+```
+
+Three inputs, three keys. `next build` bakes `NEXT_PUBLIC_CONVEX_URL` into the
+client bundle and into the CSP derived from it, so a shared key here would serve
+the e2e job a build with no backend — the global error boundary on every route,
+which is a failure this repository has already had once, for a different reason.
+
+Not enabled, and worth a decision later: `remoteCache: { signature: true }` with
+`TURBO_REMOTE_CACHE_SIGNATURE_KEY`, which signs artifacts so a cache entry
+cannot be forged. It is a second secret for a private repository with no forks.
+
+---
+
 ## 7. What this repo can and cannot detect
 
 | | Detected today? |

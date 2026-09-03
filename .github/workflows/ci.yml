@@ -32,6 +32,26 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
+# Turborepo's remote cache, shared by every job here.
+#
+# `TURBO_TOKEN` is a Vercel access token and lives in the repository secrets;
+# the team slug is not a secret — it is in the URL of every Vercel check on
+# every pull request. Until the secret exists this block is inert, which was
+# measured rather than hoped: an empty token exits 0, and an invalid one still
+# ran 7 tasks out of 7 and fell back to the local cache. A misconfigured cache
+# degrades; it does not break the build.
+#
+# What makes this safe is `globalDependencies: ["**/.env.*local"]` in
+# turbo.json. The build bakes NEXT_PUBLIC_CONVEX_URL into the client bundle and
+# into the CSP from it, and the e2e job builds with an `.env.local` the `Build`
+# job does not have. Measured: no file `6fdf134d`, one URL `3aae56a1`, another
+# `79edf744`. Three inputs, three keys — the e2e build cannot be served the CI
+# one, which would produce an app with no backend and a global error boundary
+# on every route.
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: be-in-digital
+
 jobs:
   lint:
     name: Lint
