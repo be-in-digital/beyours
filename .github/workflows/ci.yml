@@ -7,11 +7,30 @@ on:
   pull_request:
     branches:
       - main
+  # The merge queue. It builds the prospective merged state of the batch and
+  # asks these same jobs about it, so the checks branch protection requires have
+  # to answer here too — a queue whose required checks never run is a queue that
+  # never merges anything.
+  merge_group:
   # Callable so `release.yml` can gate publication on these four jobs. Adding
   # this changes nothing for the push and pull_request runs above — in
   # particular the job names stay `Lint` / `Type Check` / `Test` / `Build`,
   # which is what branch protection requires by name.
   workflow_call:
+
+concurrency:
+  # One run per ref, and the older one loses.
+  #
+  # Two pushes to a branch used to start two full suites; the first became
+  # useless the moment the second existed, and on the E2E workflow that is
+  # twenty minutes of runner for an answer nobody will read. Branch protection
+  # reads the most recent run for a given check name, so cancelling the stale
+  # one cannot leave a required check red.
+  #
+  # `merge_group` is the exception: the queue is waiting on that run to decide
+  # whether the batch may land, and a cancelled job is a failed one.
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   lint:

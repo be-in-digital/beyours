@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # For the issue below, and nothing else. Read-only everywhere it can be.
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,3 +103,52 @@ jobs:
         # The entry is deliberately one GHSA. Verified narrow: with it in place,
         # dropping --prod still exits 1 on the other 11 high advisories.
         run: pnpm audit --prod --audit-level high
+
+      # Everything below only runs when the line above went red.
+      #
+      # The nightly schedule already worked: it failed at 07:22 on 02/09/2026,
+      # two hours before the same advisory reached a feature branch and produced
+      # two duplicate pull requests that had to be untangled by hand. What was
+      # missing was not a signal — it was a signal anyone could act on without
+      # re-deriving the fix. So say what broke and what closes it.
+      - name: Say what is red, and what would close it
+        if: failure()
+        run: |
+          set -uo pipefail
+          # `--json` exits non-zero for the same reason the gate did.
+          pnpm audit --prod --json > /tmp/audit.json || true
+          node .github/scripts/audit-summary.mjs /tmp/audit.json >> "$GITHUB_STEP_SUMMARY"
+
+      # A red scheduled run is a red dot in a tab nobody opens. An issue is not.
+      #
+      # `continue-on-error` on purpose: this organisation forbids Actions from
+      # opening pull requests, and whether that policy extends to issues is not
+      # something this repository can read (`orgs/.../actions/permissions`
+      # answers 403 without `admin:org`). If it is refused, the job stays red on
+      # its own merits and the summary above is still there — the fallback must
+      # never be the thing that hides the finding.
+      - name: Carry it to an issue, if the organisation allows one
+        if: failure() && github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Audit: un avis high/critical bloque main"
+        run: |
+          set -uo pipefail
+          {
+            echo "L'audit nocturne est rouge sur \`main\` (\`${GITHUB_SHA:0:7}\`)."
+            echo
+            node .github/scripts/audit-summary.mjs /tmp/audit.json
+            echo
+            echo "[Le run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/issue.md
+
+          # One issue, reopened by comment rather than duplicated: a moving
+          # advisory database produces this several days running.
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/issue.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/issue.md
+          fi
