@@ -106,6 +106,18 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     soundConfig,
     setSoundConfig,
     handleUpdateSounds,
+    categories,
+    orderConfirmation,
+    setOrderConfirmation,
+    handleUpdateOrderConfirmation,
+    printConfig,
+    setPrintConfig,
+    handleUpdatePrintConfig,
+    kitchenStations,
+    setKitchenStations,
+    stationMapping,
+    setStationMapping,
+    handleUpdateStations,
     handleSaveUberEats,
     handleSaveDeliveroo,
     handleRemoveUberEats,
@@ -257,6 +269,18 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             soundConfig={soundConfig}
             setSoundConfig={setSoundConfig}
             handleUpdateSounds={handleUpdateSounds}
+            orderConfirmation={orderConfirmation}
+            setOrderConfirmation={setOrderConfirmation}
+            handleUpdateOrderConfirmation={handleUpdateOrderConfirmation}
+            printConfig={printConfig}
+            setPrintConfig={setPrintConfig}
+            handleUpdatePrintConfig={handleUpdatePrintConfig}
+            categories={categories}
+            kitchenStations={kitchenStations}
+            setKitchenStations={setKitchenStations}
+            stationMapping={stationMapping}
+            setStationMapping={setStationMapping}
+            handleUpdateStations={handleUpdateStations}
           />
         </TabsContent>
 
