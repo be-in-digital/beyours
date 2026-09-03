@@ -283,9 +283,37 @@ Its prerequisite is in the workflows, and the order is not optional: `ci.yml` an
 enabled. A queue whose required checks never fire is a queue that never merges,
 and every pull request parks behind it.
 
-**`gh pr merge` now queues instead of merging.** The button reads *Merge when
-ready*. Any script that calls `gh pr merge` and then asserts `state == MERGED` a
-few seconds later is wrong under a queue — use `--auto` and follow the queue.
+**A queue needs `allow_auto_merge` on the repository, and it is not optional.**
+Queueing goes through `enablePullRequestAutoMerge`, so with the repository
+setting off, nothing can be queued — not by the CLI, and not by the button,
+which calls the same mutation. Measured on 2026-09-03, with the queue live and
+every check green:
+
+```
+$ gh pr merge 300 --squash
+! The merge strategy for main is set by the merge queue
+GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)
+$ gh api -X PATCH repos/be-in-digital/beyours -F allow_auto_merge=true
+```
+
+This is the wall the first person to merge would have hit, on a queue that
+looked correctly configured from every angle except this one.
+
+**`gh pr merge` queues; it does not merge.** With auto-merge allowed the same
+command exits **0**, prints only `The merge strategy for main is set by the
+merge queue`, and **leaves the pull request `OPEN`**. Nothing is wrong: GitHub
+now builds `gh-readonly-queue/main/pr-<N>-<sha>`, runs the required checks
+against it, and merges the pull request itself when they pass. Any script that
+calls `gh pr merge` and then asserts `state == MERGED` a few seconds later is
+wrong under a queue — watch the queue instead:
+
+```bash
+gh run list --json event,name,status --jq '.[] | select(.event=="merge_group")'
+gh pr view <N> --json state --jq .state    # OPEN until the queue merges it
+```
+
+#300 is the run that proved the path: `CI` and `E2E Tests` green on the merge
+group, then merged as `3ee6923` without anyone touching it again.
 
 Two choices worth not "fixing" without a reason:
 
