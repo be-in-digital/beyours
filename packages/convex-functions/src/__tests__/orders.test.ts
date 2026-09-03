@@ -129,7 +129,7 @@ describe("createFromWebhook", () => {
 // createWithTicket — the order feeds the kitchen (one seam, one test surface)
 // ---------------------------------------------------------------------------
 
-import { createWithTicket, toKitchenTicketItems } from "../orders"
+import { createWithTicket, recordPaymentStatus, toKitchenTicketItems } from "../orders"
 
 describe("toKitchenTicketItems", () => {
   it("maps options to 'Option: Choice' labels and keeps notes", () => {
@@ -202,13 +202,19 @@ describe("createWithTicket", () => {
         patch: vi.fn(async (id: string, updates: Record<string, unknown>) => {
           Object.assign(docs[id] ?? {}, updates)
         }),
-        query: vi.fn(() => {
+        // `releaseToKitchen` asks "does this order already have a ticket?"
+        // before writing one, so the fake has to actually answer it — a stub
+        // returning null would make the idempotency test pass without the
+        // guard existing.
+        query: vi.fn((table: string) => {
+          const rows = () =>
+            Object.values(docs).filter((doc) => String(doc._id).startsWith(`${table}:`))
           const chain = {
             withIndex: () => chain,
             order: () => chain,
-            first: async () => null,
-            take: async () => [],
-            collect: async () => [],
+            first: async () => rows()[0] ?? null,
+            take: async () => rows(),
+            collect: async () => rows(),
           }
           return chain
         }),
@@ -217,28 +223,45 @@ describe("createWithTicket", () => {
     return { ctx, inserted }
   }
 
-  it("creates the order AND its kitchen ticket with mapped items", async () => {
+  const checkoutArgs = {
+    storeId: "stores:1",
+    customerInfo: { name: "Nadia", phone: "0600000000" },
+    items: [
+      {
+        productId: "products:1",
+        productName: "Pizza",
+        quantity: 1,
+        unitPrice: 1200,
+        subtotal: 1200,
+        selectedOptions: [{ optionName: "Taille", choiceName: "L", priceModifier: 200 }],
+      },
+    ],
+    type: "dine_in",
+    subtotal: 1200,
+    total: 1200,
+    paymentMethod: "cash",
+  }
+
+  /**
+   * This test used to assert the opposite — that checkout created the ticket —
+   * and so it stood on top of #136 and held it in place. A customer who reached
+   * the payment provider and closed the tab left a slip on the pass, and the
+   * kitchen cooked an order nobody had paid for.
+   */
+  it("creates the order and NO kitchen ticket while the payment is pending", async () => {
     const { ctx, inserted } = createOrchestrationCtx()
-    const orderId = await createWithTicket.handler(ctx, {
-      storeId: "stores:1",
-      customerInfo: { name: "Nadia", phone: "0600000000" },
-      items: [
-        {
-          productId: "products:1",
-          productName: "Pizza",
-          quantity: 1,
-          unitPrice: 1200,
-          subtotal: 1200,
-          selectedOptions: [{ optionName: "Taille", choiceName: "L", priceModifier: 200 }],
-        },
-      ],
-      type: "dine_in",
-      subtotal: 1200,
-      total: 1200,
-      paymentMethod: "cash",
-    } as never)
+    const orderId = await createWithTicket.handler(ctx, checkoutArgs as never)
 
     expect(orderId).toMatch(/^orders:/)
+    expect(inserted.find((entry) => entry.table === "kitchenTickets")).toBeUndefined()
+  })
+
+  it("puts the ticket on the pass when the payment is confirmed", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    const orderId = await createWithTicket.handler(ctx, checkoutArgs as never)
+
+    await recordPaymentStatus.handler(ctx, { id: orderId, paymentStatus: "paid" })
+
     const ticket = inserted.find((entry) => entry.table === "kitchenTickets")
     expect(ticket).toBeDefined()
     expect(ticket?.doc.orderId).toBe(orderId)
@@ -246,6 +269,17 @@ describe("createWithTicket", () => {
     expect((ticket?.doc.items as Array<{ options: string[] }>)[0]?.options).toEqual([
       "Taille: L",
     ])
+  })
+
+  it("does not put a second ticket on the pass when the payment is confirmed twice", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    const orderId = await createWithTicket.handler(ctx, checkoutArgs as never)
+
+    // The Stripe webhook and the success page both land, which is normal.
+    await recordPaymentStatus.handler(ctx, { id: orderId, paymentStatus: "paid" })
+    await recordPaymentStatus.handler(ctx, { id: orderId, paymentStatus: "paid" })
+
+    expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
   })
 })
 
@@ -267,9 +301,19 @@ describe("updateStatus", () => {
           patches.push({ id, updates })
           Object.assign(docs[id] ?? {}, updates)
         },
-        query: () => ({
-          withIndex: () => ({ collect: async () => payments }),
-        }),
+        query: (table: string) => {
+          // `updateStatus` reads two tables now: `payments` on a refund, and
+          // `kitchenTickets` when staff confirm an order by hand.
+          const rows = table === "payments" ? payments : []
+          const chain = {
+            withIndex: () => chain,
+            order: () => chain,
+            first: async () => rows[0] ?? null,
+            take: async () => rows,
+            collect: async () => rows,
+          }
+          return chain
+        },
       },
     }
     return { ctx, patches, docs }

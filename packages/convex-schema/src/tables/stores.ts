@@ -81,6 +81,31 @@ export const storesTable = defineTable({
     enabled: v.boolean(),
   })),
 
+  // Which order reaches the kitchen, and when.
+  //
+  // "auto" sends a paid order straight to the pass. "manual" holds it until a
+  // member of staff accepts it, which is what an establishment that batches
+  // its service, or refuses out-of-stock orders, actually needs. Read by
+  // `orders.releaseToKitchen` — the one seam every payment path goes through.
+  //
+  // This was withdrawn in #242 because it promised a workflow the product did
+  // not have. The workflow exists now, so the promise is honoured rather than
+  // withdrawn.
+  orderConfirmation: v.optional(v.union(v.literal("auto"), v.literal("manual"))),
+
+  // Kitchen stations, and which part of the menu each one cooks.
+  //
+  // `stations` is the establishment's own list — "chaud", "froid", "pizza".
+  // `stationMapping` sends a category to one of them. An order is split into
+  // one ticket per station it touches, so the cold station is not handed a
+  // slip for a pizza. Unmapped categories fall to `undefined`, which is the
+  // single-ticket behaviour every establishment has today.
+  kitchenStations: v.optional(v.array(v.string())),
+  stationMapping: v.optional(v.array(v.object({
+    categoryId: v.id("categories"),
+    station: v.string(),
+  }))),
+
   // Sound alerts configuration for KDS.
   //
   // Read by `KitchenContent` -> `KitchenSoundManager` in both apps: it decides
@@ -98,17 +123,17 @@ export const storesTable = defineTable({
   // Legacy fields (kept for backward compatibility with existing data)
   // Will be removed after data migration
   //
-  // `orderConfirmation` and `displayConfig` joined them: both had a mutation
-  // and an audit entry, and nothing anywhere read the stored value. The only
-  // screens that wrote them lived in `apps/themes/components/admin/settings/`,
-  // a folder no route rendered. `orderConfirmation: "manual"` in particular
-  // promised that staff would validate an order before the kitchen saw it, and
-  // no code made that true — a promise the product could not keep.
+  // `displayConfig` joined them: it had a mutation and an audit entry, and
+  // nothing anywhere read the stored value. The only screen that wrote it
+  // lived in `apps/themes/components/admin/settings/`, a folder no route
+  // rendered.
+  //
+  // `orderConfirmation` was withdrawn beside it and has come back typed, above
+  // — the workflow it promised is implemented now.
   //
   // They stay declared, and optional, because documents already hold them: a
   // stored field absent from the schema fails validation on the next write to
   // that document. Nothing writes them now.
-  orderConfirmation: v.optional(v.any()),
   displayConfig: v.optional(v.any()),
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),

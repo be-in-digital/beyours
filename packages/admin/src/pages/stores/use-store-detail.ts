@@ -14,6 +14,40 @@ import {
   resolveSoundConfig,
   type KitchenSoundConfig,
 } from "../../lib/kitchen-alerts"
+import {
+  DEFAULT_ORDER_CONFIRMATION,
+  DEFAULT_PRINT_CONFIG,
+  isProviderAvailable,
+  normaliseStationName,
+  orderTriggers,
+  resolveOrderConfirmation,
+  resolvePrintConfig,
+  type KitchenPrintConfig,
+  type OrderConfirmationMode,
+} from "../../lib/kitchen-print"
+
+/**
+ * The station list, cleaned: trimmed, empties dropped, case-insensitive
+ * duplicates collapsed onto the first spelling.
+ *
+ * `orders.resolveStations` matches a mapping row against a station by its
+ * exact string, so "Chaud" and "chaud" would be two passes that look like one.
+ */
+function dedupeStations(names: readonly string[]): string[] {
+  const seen = new Set<string>()
+  const stations: string[] = []
+
+  for (const raw of names) {
+    const name = normaliseStationName(raw)
+    if (name.length === 0) continue
+    const key = name.toLocaleLowerCase("fr")
+    if (seen.has(key)) continue
+    seen.add(key)
+    stations.push(name)
+  }
+
+  return stations
+}
 
 export function useStoreDetail({ params }: { params: Promise<{ storeId: string }> }) {
   const { storeId } = use(params)
@@ -21,12 +55,19 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const store = useQuery(api.stores.getById, { id: storeId as string })
   const globalSettings = useQuery(api.globalSettings.get)
   const storeIntegrations = useQuery(api.storeIntegrations.listByStore, { storeId: storeId as string })
+  // The catalogue the station mapping is drawn against. `api.categories.list`
+  // is the query the product forms already use — the mapping is keyed on
+  // category because that is the unit `orders.resolveStations` reads.
+  const categories = useQuery(api.categories.list, { storeId: storeId as string })
 
   const updateStore = useMutation(api.stores.update)
   const updateAddressMutation = useMutation(api.stores.updateAddress)
   const updateHours = useMutation(api.stores.updateHours)
   const updateOverrides = useMutation(api.stores.updateOverrides)
   const updateSoundConfig = useMutation(api.stores.updateSoundConfig)
+  const updatePrintConfig = useMutation(api.stores.updatePrintConfig)
+  const updateStationMapping = useMutation(api.stores.updateStationMapping)
+  const updateOrderConfirmation = useMutation(api.stores.updateOrderConfirmation)
   const upsertIntegration = useMutation(api.storeIntegrations.upsert)
   const removeIntegration = useMutation(api.storeIntegrations.remove)
 
@@ -47,6 +88,17 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   // Kitchen tab state
   const [soundConfig, setSoundConfig] =
     useState<KitchenSoundConfig>(DEFAULT_SOUND_CONFIG)
+  const [printConfig, setPrintConfig] =
+    useState<KitchenPrintConfig>(DEFAULT_PRINT_CONFIG)
+  const [orderConfirmation, setOrderConfirmation] =
+    useState<OrderConfirmationMode>(DEFAULT_ORDER_CONFIRMATION)
+
+  // Stations are held as a list plus a category→station lookup rather than as
+  // the stored array of pairs: the editor answers "where does this category
+  // go?" one row at a time, and a lookup makes an unassigned category the
+  // absence of a key instead of a row to hunt for and splice out.
+  const [kitchenStations, setKitchenStations] = useState<string[]>([])
+  const [stationMapping, setStationMapping] = useState<Record<string, string>>({})
 
   // Hours tab state
   const [useGlobalHours, setUseGlobalHours] = useState(true)
@@ -116,6 +168,31 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     // fallbacks, so the form opens on what the kitchen is currently hearing
     // rather than on zeroes.
     setSoundConfig(resolveSoundConfig(store.soundConfig as never))
+
+    // Same reasoning for printing, with the opposite default: an establishment
+    // that has never been configured has printing OFF, and the form has to say
+    // so rather than show an enabled-looking form over a `printConfig` that is
+    // `undefined` — which is the state that made every ticket `not_required`.
+    setPrintConfig(resolvePrintConfig(store.printConfig as never))
+
+    // Unset means "auto" — that is what `releaseToKitchen` falls back to, and
+    // every establishment on the product has it unset. The form has to agree
+    // with the backend rather than show an empty control.
+    setOrderConfirmation(resolveOrderConfirmation(store.orderConfirmation as string | undefined))
+
+    // Normalised and de-duplicated on the way in, not only on the way out: a
+    // station is matched by its exact string, an empty one cannot be a Radix
+    // `SelectItem` value at all, and a row written by anything other than this
+    // editor is not obliged to be clean.
+    setKitchenStations(
+      dedupeStations((store.kitchenStations as string[] | undefined) ?? [])
+    )
+    setStationMapping(
+      Object.fromEntries(
+        ((store.stationMapping as Array<{ categoryId: string; station: string }> | undefined) ?? [])
+          .map((entry) => [String(entry.categoryId), entry.station])
+      )
+    )
 
     setUseGlobalHours(store.useGlobalHours ?? true)
 
@@ -259,6 +336,95 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       toast.success("Alertes sonores mises à jour")
     } catch (error) {
       toast.error("Échec de la mise à jour des alertes")
+      console.error(error)
+    }
+  }
+
+  /**
+   * Write `stores.orderConfirmation` — the setting that decides whether a paid
+   * order reaches the kitchen without a human.
+   *
+   * Saved on its own rather than with the printing form: the two are read by
+   * different code paths, and an owner switching to "manual" is making a
+   * service decision that should not ride along with a paper-width change.
+   */
+  const handleUpdateOrderConfirmation = async () => {
+    try {
+      await updateOrderConfirmation({
+        id: storeId as string,
+        orderConfirmation,
+      })
+      toast.success("Mode de confirmation mis à jour")
+    } catch (error) {
+      toast.error("Échec de la mise à jour de la confirmation")
+      console.error(error)
+    }
+  }
+
+  /**
+   * Write `stores.printConfig` — the setting that decides whether a paid order
+   * produces a slip at all.
+   *
+   * The provider is re-checked here and not only in the select. The select is a
+   * disabled option; this is the mutation, and a config on a provider
+   * `KitchenPrintTrigger` walks away from leaves tickets queued forever while
+   * the display's printerOffline alarm repeats every thirty seconds. Refusing
+   * the save is the only place that can be enforced.
+   */
+  const handleUpdatePrintConfig = async () => {
+    if (printConfig.enabled && !isProviderAvailable(printConfig.provider)) {
+      toast.error(
+        "Ce mode d'impression n'est pas encore disponible. Choisissez « Navigateur » ou désactivez l'impression."
+      )
+      return
+    }
+
+    try {
+      await updatePrintConfig({
+        id: storeId as string,
+        printConfig: {
+          provider: printConfig.provider,
+          printerId: printConfig.printerId,
+          triggers: orderTriggers(printConfig.triggers),
+          paperSize: printConfig.paperSize,
+          enabled: printConfig.enabled,
+        },
+      })
+      toast.success("Configuration d'impression mise à jour")
+    } catch (error) {
+      toast.error("Échec de la mise à jour de l'impression")
+      console.error(error)
+    }
+  }
+
+  /**
+   * Write the station list and the category mapping, together.
+   *
+   * Assignments naming a station that is no longer in the list are dropped
+   * here rather than left to the reader: `orders.resolveStations` matches on
+   * the station *string*, so a stale pair would keep routing tickets to a pass
+   * the owner has just deleted.
+   */
+  const handleUpdateStations = async () => {
+    try {
+      const stations = dedupeStations(kitchenStations)
+      const known = new Set(stations)
+
+      const mapping = Object.entries(stationMapping)
+        .filter(([, station]) => known.has(station))
+        .map(([categoryId, station]) => ({ categoryId, station }))
+
+      await updateStationMapping({
+        id: storeId as string,
+        kitchenStations: stations,
+        stationMapping: mapping,
+      })
+
+      setKitchenStations(stations)
+      setStationMapping(Object.fromEntries(mapping.map((m) => [m.categoryId, m.station])))
+      toast.success("Postes de cuisine mis à jour")
+    } catch (error) {
+      toast.error("Échec de la mise à jour des postes")
       console.error(error)
     }
   }
@@ -608,6 +774,18 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     soundConfig,
     setSoundConfig,
     handleUpdateSounds,
+    categories,
+    orderConfirmation,
+    setOrderConfirmation,
+    handleUpdateOrderConfirmation,
+    printConfig,
+    setPrintConfig,
+    handleUpdatePrintConfig,
+    kitchenStations,
+    setKitchenStations,
+    stationMapping,
+    setStationMapping,
+    handleUpdateStations,
     useGlobalHours,
     setUseGlobalHours,
     hours,

@@ -60,13 +60,26 @@ export const kitchenTicketsTable = defineTable({
   allergens: v.optional(v.array(v.string())),
 
   // Print management
+  //
+  // "printing" is a claim, not a state the kitchen cares about: two tablets
+  // open on the same pass both saw `pending` and both printed the slip. A
+  // tablet now takes the ticket by moving it to "printing" in one transaction,
+  // and only one of them can win. `printClaimedAt` is what lets a claim from a
+  // tablet that was then closed mid-dialog be reclaimed instead of stranding
+  // the ticket forever.
   printStatus: v.union(
     v.literal("pending"),
+    v.literal("printing"),
     v.literal("printed"),
     v.literal("failed"),
     v.literal("not_required")
   ),
   printAttempts: v.number(),            // default: 0
+  printClaimedAt: v.optional(v.number()), // set when a tablet claims the ticket
+  // Who holds the claim. A tablet whose dialog outlived its claim comes back
+  // with a stale id and is refused, instead of closing a slip the tablet that
+  // reclaimed it is still printing.
+  printClaimId: v.optional(v.string()),
   printRequestedAt: v.optional(v.number()), // set at each trigger (confirmed/ready/reprint)
   printTrigger: v.optional(v.union(
     v.literal("confirmed"),
@@ -97,6 +110,10 @@ export const kitchenTicketsTable = defineTable({
   .index("by_store_printStatus_printFailedAt", ["storeId", "printStatus", "printFailedAt"])
   // Display screen (ready tickets)
   .index("by_store_status_readyAt", ["storeId", "status", "readyAt"])
+  // Retention sweep: every store at once, oldest first. Store-scoped indexes
+  // would make the nightly job walk the establishment list to find the rows it
+  // is about to delete anyway.
+  .index("by_status_createdAt", ["status", "createdAt"])
 
 /**
  * Printer Settings table
