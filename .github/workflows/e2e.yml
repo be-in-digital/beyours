@@ -4,6 +4,22 @@ on:
   pull_request:
     branches:
       - main
+  # And on `main` itself.
+  #
+  # A pull_request run tests `refs/pull/N/merge` — the base merged with the
+  # head — which equals what lands only while the branch is up to date and the
+  # merge is a squash. Both held on 03/09/2026, so main's tree had in fact been
+  # exercised; neither is guaranteed. `strict: true` keeps branches current
+  # today and could be relaxed tomorrow, and a merge that resolves anything at
+  # all produces a tree no run has seen.
+  #
+  # So the suite now also runs on what was actually pushed. It gates nothing —
+  # `E2E Status` is required on pull requests, and by the time this fires the
+  # merge has happened — but a red mark on main is how a regression that only
+  # appears once two branches meet gets noticed at all.
+  push:
+    branches:
+      - main
 
 jobs:
   e2e:
