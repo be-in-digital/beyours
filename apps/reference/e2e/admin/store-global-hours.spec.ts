@@ -83,31 +83,38 @@ async function setStoreHours(
   await page.locator("#open-1").fill(open)
   await page.locator("#close-1").fill(close)
   await page.getByRole("button", { name: "Appliquer à tous les jours" }).click()
-  await page.getByRole("button", { name: "Enregistrer les horaires" }).click()
-  await expect(page.getByText("Horaires mis à jour avec succès")).toBeVisible({
-    timeout: 20_000,
-  })
+
+  const save = page.getByRole("button", { name: "Enregistrer les horaires" })
+  const saved = page.getByText("Horaires mis à jour avec succès")
+
+  await save.click()
+  await expect(saved).toBeVisible({ timeout: 20_000 })
 
   if (followGlobal) {
-    const toast = page.getByText("Horaires mis à jour avec succès")
-
-    // Let the first toast clear before saving again.
+    // Both saves raise the same toast, and the first one stays up for four
+    // seconds. Flipping the switch and asserting inside that window proved
+    // nothing: the assertion passed on the toast that was already there, and
+    // the test left for the storefront with `useGlobalHours: true` still in
+    // flight — or already undone, because the form re-seeds itself from every
+    // echo of the store document the first save produced, and one landing
+    // between the toggle and the click puts the switch back.
     //
-    // It is still on screen here — measured, not assumed — so waiting for it a
-    // second time was satisfied by that same one and returned before this save
-    // had landed. The establishment then reached the storefront still on its
-    // own hours, and the test read a working feature as broken. It only bites
-    // on a runner slow enough to lose the race, which is why this file was
-    // flaky in CI and green on a laptop. It dismisses itself in about five
-    // seconds.
-    await expect(toast).toBeHidden({ timeout: 30_000 })
+    // Waiting for the first toast to clear settles both: the toggle happens
+    // after the echoes, and a toast appearing afterwards can only be the
+    // second save's, which is raised once its mutation has returned.
+    await expect(saved).toHaveCount(0, { timeout: 20_000 })
 
     await globalSwitch.setChecked(true, { force: true })
-    await page.getByRole("button", { name: "Enregistrer les horaires" }).click()
-    await expect(toast).toBeVisible({ timeout: 20_000 })
+    await save.click()
+    await expect(saved).toBeVisible({ timeout: 20_000 })
 
-    // And read the flag back, since the toast says the request was accepted
-    // rather than that the storefront will now see it.
+    // And read the flag back from the server, since the toast says the request
+    // was accepted rather than that the storefront will now see it. The reload
+    // is the point: the form re-seeds itself from the store document, so a
+    // switch still on after it is one the backend actually kept. Read in the
+    // page instead, an echo that undid the toggle would go unnoticed here and
+    // arrive three navigations later as a "restaurant fermé" banner with no
+    // visible reason to show one.
     await page.reload({ waitUntil: "domcontentloaded" })
     await page.getByRole("tab", { name: "Horaires" }).click()
     await expect(

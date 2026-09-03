@@ -16,19 +16,6 @@ import { test, expect } from "@playwright/test"
 /** Written by the cart store (packages/restaurant). */
 const CART_KEY = "beindigital-cart"
 
-/**
- * An hour the establishment is open, as an instant.
- *
- * /checkout refuses a closed restaurant, so an unpinned clock made this test
- * pass or fail on the time of day it was run. The hour has to be open under
- * both sets of hours the suite may leave behind: the fixture seeds 09:00-22:00
- * with Monday closed, and `store-overnight-hours.spec.ts` rewrites the week to
- * 18:00-02:00, so 18:00-22:00 is the overlap. This is 20:00 Paris on Friday
- * 2026-08-28, written in UTC because a wall-clock string means the runner's
- * zone while the storefront reads the establishment's, which is Europe/Paris.
- */
-const OPEN_HOUR = new Date("2026-08-28T18:00:00Z")
-
 /** A menu at 10 % and a bottle at 20 %: no single rate describes this basket. */
 const ITEMS = [
   {
@@ -56,39 +43,19 @@ test.describe("The checkout total", () => {
   test.use({ viewport: { width: 375, height: 812 } })
 
   test.beforeEach(async ({ page }) => {
-    // Let the storefront pick the establishment, then write the cart with the
-    // id it picked.
-    //
-    // Seeding `storeId: null` never reached the summary: `checkout/page.tsx`
-    // sends a cart with items and no establishment straight to
-    // /store-selector, so the assertions below were reading whatever page the
-    // redirect happened to land on. The storefront resolves an establishment
-    // for the SESSION, not for a cart already sitting in localStorage, so the
-    // null had to be filled in here.
-    await page.clock.setFixedTime(OPEN_HOUR)
-    await page.goto("/menu", { waitUntil: "domcontentloaded" })
-
-    const handle = await page.waitForFunction(
-      (key) => {
-        const raw = window.localStorage.getItem(key)
-        return raw ? (JSON.parse(raw)?.state?.storeId ?? null) : null
-      },
-      CART_KEY,
-      { timeout: 30_000 },
-    )
-    const storeId = await handle.jsonValue()
-
-    await page.evaluate(
-      ({ key, items, storeId }) => {
+    await page.addInitScript(
+      ({ key, items }: { key: string; items: unknown[] }) => {
         window.localStorage.setItem(
           key,
           JSON.stringify({
-            state: { items, orderType: "pickup", storeId },
+            // No store: the storefront resolves one on load, and the cart
+            // empties itself when the one it was filled from changes.
+            state: { items, orderType: "pickup", storeId: null },
             version: 1,
           }),
         )
       },
-      { key: CART_KEY, items: ITEMS as unknown[], storeId },
+      { key: CART_KEY, items: ITEMS },
     )
   })
 
