@@ -110,9 +110,19 @@ and `needs: [e2e]` so one check always reports for real: it passes when the
 suite is off, passes when the suite passed, and fails on every other outcome
 including `cancelled` (`e2e.yml:154-178`).
 
-`E2E Tests` and `E2E Status` are only produced by `pull_request`
-(`e2e.yml:3-6`) — there is no `push` trigger. A direct push to `main` gets the
-four `CI` checks and the two `Security` ones, and no E2E signal at all.
+~~`E2E Tests` and `E2E Status` are only produced by `pull_request` — there is no
+`push` trigger.~~ **No longer true, and struck rather than deleted because the
+gap it describes was real and the fix is worth being able to find.** `e2e.yml`
+now triggers on `pull_request`, on `push` to `main`, and on `merge_group`. The
+`push` run gates nothing — by the time it fires the merge has happened — but it
+is how a regression that only appears once two branches meet gets noticed at
+all. The `merge_group` trigger is the one that matters for correctness: the
+queue builds the prospective merged state and needs these same checks to answer
+against it.
+
+Also stale in this section: every `e2e.yml:NN` and `ci.yml:NN` line reference
+below predates the sharding rewrite and points at the wrong lines. Grep for the
+step name instead of trusting the number.
 
 ---
 ## 3. The test deployment — no longer anyone's to provision
@@ -218,25 +228,31 @@ Google Maps key the workflow does not set. `admin` — 437 tests behind
 `auth.setup.ts` — has not been measured, and S0-4's 80 conditional assertions
 live there.
 
-**So take the second path:**
+**Both paths were taken, in that order — this section is now history.**
+`E2E Status` is required on `main` today (§6). The advice below is kept because
+its reasoning still applies the next time a check is proposed as required, not
+because there is anything here to do.
 
-- **The suite is green** → add `E2E Status` to the required list in step 6.
-- **The suite is red — measured, today** → **do not make `E2E Status` required
-  yet.** Make the four `CI` checks required now (they pass; verified on #202),
-  leave `CONVEX_E2E_ENABLED=true` so the suite runs and is visible on every PR,
-  and add `E2E Status` once it has been green across a few consecutive PRs. A
-  red required check that everybody learns to override teaches the team that
-  required checks are advisory.
-
-> **The 30-minute job timeout will not be enough.** `e2e.yml:12` sets
-> `timeout-minutes: 30`, and Playwright runs `workers: 1`
-> (`playwright.config.ts:38`) with 2 retries in CI — deliberately, both are
-> documented in that file as fixes for real flakiness. 65 tests took **8.4
-> minutes** in the measurement above. 503 will not fit. Raise the timeout when
-> you switch the flag on, or split the projects across jobs. `e2e-status`
-> correctly reports a cancelled job as a failure, so a timeout blocks merges
-> rather than passing quietly — which is the right behaviour and also means you
-> will notice immediately.
+> **Superseded, 2026-09-04.** Three things this section asks for no longer
+> exist or no longer hold:
+>
+> - `CONVEX_E2E_ENABLED` is gone. There is no flag to leave set; the job has no
+>   `if:` and always runs.
+> - The 30-minute timeout was raised to **40** (`e2e.yml`, `timeout-minutes`),
+>   and the suite was split into **four shards** with their blobs merged in
+>   `E2E Report` — which is what made 500-plus tests fit. A healthy shard runs
+>   about 15 minutes; runs 411-425 took 14-42 minutes end to end.
+> - The six `public` failures quoted above are fixed. Run 425 reported `public
+>   80 ran, 0 skipped`.
+>
+> What has *not* changed is the warning in the last paragraph, and it earned
+> its keep: between runs 414 and 425, seven of fifteen runs went red without a
+> single failing test — every one of them at `Deploy Convex functions`, where
+> the Convex push overran the backend's own 300-second ceiling installing
+> `node.externalPackages`. A required check that is red for reasons the author
+> of the pull request cannot act on is the same corrosion as one that is
+> overridden. That is why the pre-fetch and the cache exist in `e2e.yml`; if
+> those failures return, treat them as blocking rather than as weather.
 
 ---
 
@@ -401,17 +417,31 @@ cannot be forged. It is a second secret for a private repository with no forks.
 
 ## 8. Sign-off
 
-- [ ] A Convex deployment dedicated to CI exists, and is **not** one any client is served from
-- [ ] Its functions have been pushed (`npx convex deploy`), and there is a note of who re-pushes them when `convex/` changes
-- [ ] `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `SITE_URL` set **on the deployment**
-- [ ] `BETTER_AUTH_SECRET` on the deployment and `E2E_BETTER_AUTH_SECRET` in GitHub hold the same value
-- [ ] Repository **variable** `CONVEX_E2E_ENABLED=true`
-- [ ] `E2E_NEXT_PUBLIC_CONVEX_URL` set; `E2E_CONVEX_DEPLOY_KEY` set
-- [ ] A pull request has been observed where `E2E Tests` **ran**, the seed reported `=== Seeding complete! ===`, and Playwright executed a non-zero number of tests
-- [ ] The pass/fail split of that run is written down, and §5's branch chosen from it
+> **Rewritten 2026-09-04.** Everything above the line below used to ask the
+> account owner to provision a hosted Convex deployment and five `E2E_*`
+> secrets. **None of that is read by anything any more**, and a checklist that
+> asks someone to create secrets the code ignores is worse than no checklist:
+> they get created, they look load-bearing, and they rot. `e2e.yml` starts its
+> own Convex backend on the runner from a pinned binary, with no account and no
+> secrets, so those boxes have been deleted rather than left unticked. The
+> history of why they existed is in §4 and §5 and stays there.
+
+**Nothing on this list is outstanding for the account owner.** It is kept as
+the description of a state to re-verify, not a queue of work.
+
+- [x] The E2E job needs no Convex account, no deploy key and no `E2E_*` secret — it provisions its own backend (`e2e.yml`, "Start a Convex backend")
+- [x] The gate is gone: `e2e.yml`'s `e2e` job carries no `if:` at all, so it cannot be switched off by a variable nobody set
+- [x] `E2E Status` fails on `skipped` and `cancelled`, not only on `failure` — a suite that did not run is not a pass
+- [x] `scripts/assert-e2e-ran.mjs` runs on the merged report with per-project floors (`--min 400 --projects setup:1,public:60,admin:380`), so a lost shard fails the run instead of shrinking it
+- [x] A pull request has been observed where the suite genuinely **ran** — runs 411-425 took 14-42 minutes each and reported `setup 3, public 80, admin 330`
 - [x] `main` requires `Lint`, `Type Check`, `Test`, `Build` — applied 2026-08-28
-- [ ] `E2E Status` required — **only** once the suite has been green on consecutive PRs
-- [x] `gh api …/branches/main/protection` returns the intended context list
+- [x] `main` requires `E2E Status` — applied; ruleset `main`, id `22177735`
+- [x] The required list is `E2E Status`, never `E2E Tests` — GitHub counts a skipped required check as satisfied, and `E2E Tests` is now four matrix checks besides
+
+**Re-verify when any of these changes:** the pinned `CONVEX_BACKEND_VERSION`,
+the `node.externalPackages` set in `convex.json` (it decides what the push has
+to install, and that install is what has overrun the backend's 300-second
+ceiling), or the per-project floors above whenever specs are added or removed.
 
 ---
 
