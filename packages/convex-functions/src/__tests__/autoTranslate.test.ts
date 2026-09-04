@@ -69,6 +69,43 @@ describe("parseLabelledFields", () => {
     expect(parsed.description).toBe("Tomato, mozzarella.\nBaked in a wood oven.")
   })
 
+  it("does not let an empty value swallow the label after it", () => {
+    // The old per-field regex used `\\s*` after the label, which crosses a
+    // newline: an empty name captured the next label and the dish shipped to
+    // the customer named `[description]:`.
+    const parsed = parseLabelledFields("[name]:\n[description]: Tomate", [
+      "name",
+      "description",
+    ])
+    expect(parsed.name).toBeUndefined()
+    expect(parsed.description).toBe("Tomate")
+  })
+
+  it("keeps model chatter out of the name", () => {
+    const parsed = parseLabelledFields(
+      "[name]: Margherita Pizza\nHope that helps!\n[description]: Tomato",
+      ["name", "description"]
+    )
+    expect(parsed.name).toBe("Margherita Pizza")
+    expect(parsed.description).toBe("Tomato")
+  })
+
+  it("strips a markdown fence the model wrapped the reply in", () => {
+    const parsed = parseLabelledFields(
+      "```\n[name]: Margherita Pizza\n[description]: Tomato\n```",
+      ["name", "description"]
+    )
+    expect(parsed).toEqual({ name: "Margherita Pizza", description: "Tomato" })
+  })
+
+  it("splits two labels sharing a line", () => {
+    const parsed = parseLabelledFields(
+      "[name]: Pizza [description]: Tomate",
+      ["name", "description"]
+    )
+    expect(parsed).toEqual({ name: "Pizza", description: "Tomate" })
+  })
+
   it("drops a field the model did not answer rather than guessing", () => {
     // The alternative — writing the whole reply into the missing field —
     // would put an English paragraph into a product name.
@@ -197,8 +234,10 @@ describe("runBatchChunkPlan", () => {
         { documentId: "p1", texts: { name: "Pizza Margherita" } },
         { documentId: "p2", texts: { name: "Pizza Reine" } },
       ],
-      emptyCount: 0,
+      skippedCount: 0,
       nextCursor: null,
+      quotaResetAt: Date.now() + 3_600_000,
+      quotaExhausted: false,
       ...overrides,
     }
   }

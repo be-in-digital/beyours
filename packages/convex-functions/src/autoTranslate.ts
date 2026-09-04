@@ -417,23 +417,66 @@ export interface TranslationResult {
   fields: Record<string, string>
 }
 
+/** Fields that must never span lines. A product name that does is not a name. */
+const SINGLE_LINE_FIELDS = new Set(["name"])
+
+/** Escape a field name for use inside a RegExp. */
+function escapeForRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 /**
  * Split a GPT reply back into the fields it was asked to translate.
  *
- * The prompt labels each field `[name]: …`, so the reply is parsed on those
- * labels. A field the model dropped is simply absent from the result and stays
- * untranslated — better than writing the whole reply into one field.
+ * The prompt labels each field `[name]: …`, and the reply is cut on those
+ * labels — every label is located in one pass and each value runs to the next
+ * one. A per-field regex cannot do this: `\s*` after the label crosses a
+ * newline, so a field the model answered empty swallowed the label after it
+ * and the product ended up named `[description]:`, on the customer's menu.
+ *
+ * A field the model dropped is simply absent from the result and stays in the
+ * source language — better than writing the whole reply into one field.
  */
 export function parseLabelledFields(
   translated: string,
   fields: string[]
 ): Record<string, string> {
   const parsed: Record<string, string> = {}
-  for (const field of fields) {
-    const regex = new RegExp(`\\[${field}\\]:\\s*(.+?)(?=\\n\\[|$)`, "s")
-    const match = translated.match(regex)
-    if (match?.[1]) parsed[field] = match[1].trim()
+  if (fields.length === 0) return parsed
+
+  // Models wrap answers in fences often enough to be worth stripping; the
+  // JSON translator already does it, and this one did not.
+  const body = translated
+    .replace(/^\s*```[a-z]*\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+
+  const labelPattern = fields.map(escapeForRegExp).join("|")
+  const labels = new RegExp(`\\[(${labelPattern})\\]\\s*:[ \\t]*`, "g")
+
+  const hits: Array<{ field: string; valueStart: number; labelStart: number }> = []
+  let match: RegExpExecArray | null
+  while ((match = labels.exec(body)) !== null) {
+    hits.push({
+      field: match[1]!,
+      labelStart: match.index,
+      valueStart: labels.lastIndex,
+    })
   }
+
+  for (let i = 0; i < hits.length; i++) {
+    const hit = hits[i]!
+    const stop = i + 1 < hits.length ? hits[i + 1]!.labelStart : body.length
+    let value = body.slice(hit.valueStart, stop).trim()
+
+    // A name runs to the end of its line and no further, which is also what
+    // keeps trailing model chatter out of the last field on the reply.
+    if (SINGLE_LINE_FIELDS.has(hit.field)) {
+      value = (value.split("\n")[0] ?? "").trim()
+    }
+
+    if (value) parsed[hit.field] = value
+  }
+
   return parsed
 }
 
@@ -566,21 +609,52 @@ export const saveDocumentTranslations = {
     }
 
     // The quota is billed on calls made, not on translations kept: a reply the
-    // staleness check discarded was still paid for. Written even when the
+    // staleness check discarded was still paid for. Billed even when the
     // document vanished mid-flight, for the same reason.
-    if (args.gptCalls > 0 || args.quotaWasReset) {
-      const store = await ctx.db.get(args.storeId)
-      if (store) {
-        await ctx.db.patch(args.storeId, {
-          translationQuota: {
-            dailyLimit: args.quota.dailyLimit,
-            used: args.quota.used + args.gptCalls,
-            resetAt: args.quota.resetAt,
-          },
-        })
-      }
-    }
+    await billQuota(ctx, args.storeId, args.gptCalls, args.quota.resetAt)
   },
+}
+
+/**
+ * Bill GPT calls against the store's quota, from the value stored *now*.
+ *
+ * The plan's snapshot cannot be trusted for this. It was read in a separate
+ * query transaction, so ten translations in flight all read `used: 0` and all
+ * wrote `0 + 1` — measured: ten documents translated, `used` recorded as 1.
+ * That is precisely the burst the quota exists to bound. Re-reading inside the
+ * mutation makes the increment atomic, because a mutation is.
+ */
+async function billQuota(
+  ctx: any,
+  storeId: any,
+  calls: number,
+  fallbackResetAt: number
+): Promise<void> {
+  if (calls <= 0) return
+
+  const store = await ctx.db.get(storeId)
+  if (!store) return
+
+  const stored = store.translationQuota
+  const now = Date.now()
+
+  // A stored quota whose window has closed starts again at zero.
+  const base =
+    stored && now <= stored.resetAt
+      ? stored
+      : {
+          dailyLimit: stored?.dailyLimit ?? DAILY_QUOTA_LIMIT,
+          used: 0,
+          resetAt: stored && now > stored.resetAt ? nextMidnightUTC() : fallbackResetAt,
+        }
+
+  await ctx.db.patch(storeId, {
+    translationQuota: {
+      dailyLimit: base.dailyLimit,
+      used: base.used + calls,
+      resetAt: base.resetAt,
+    },
+  })
 }
 
 // ── batchChunk: query → fetch → mutation ─────────────────────────────────
@@ -594,10 +668,14 @@ export interface BatchDocument {
 export interface BatchChunkPlan {
   sourceLang: string
   documents: BatchDocument[]
-  /** Documents skipped because they carry no translatable text — still progress. */
-  emptyCount: number
-  /** Cursor for the next chunk, or null when this was the last one. */
+  /** Documents this chunk need not translate — empty, or already current. */
+  skippedCount: number
+  /** Creation time of the last document in this chunk, or null when done. */
   nextCursor: string | null
+  /** The window the batch may bill against; the mutation re-reads it to bill. */
+  quotaResetAt: number
+  /** True when the store's daily budget is spent — stop the batch, do not chunk on. */
+  quotaExhausted: boolean
 }
 
 /**
@@ -624,15 +702,11 @@ export const getBatchChunkPlan = {
       throw new Error(`Invalid entity type: ${args.entityType}`)
     }
 
-    const allDocs = await ctx.db
-      .query(args.entityType)
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-      .collect()
+    const store = await ctx.db.get(args.storeId)
+    if (!store) return null
 
-    const startIdx = args.cursor ? parseInt(args.cursor, 10) : 0
-    const chunk = allDocs.slice(startIdx, startIdx + BATCH_CHUNK_SIZE)
-    const nextIdx = startIdx + BATCH_CHUNK_SIZE
-    const nextCursor = nextIdx < allDocs.length ? String(nextIdx) : null
+    const { quota } = effectiveQuota(store.translationQuota, Date.now())
+    const remaining = quota.dailyLimit - quota.used
 
     const allLanguages = await ctx.db
       .query("languages")
@@ -642,28 +716,87 @@ export const getBatchChunkPlan = {
     const defaultLang = allLanguages.find((l: any) => l.isDefault)
     if (!defaultLang) return null
 
+    if (remaining <= 0) {
+      console.log(`[batchChunk] Quota exceeded for store ${args.storeId}`)
+      return {
+        sourceLang: defaultLang.code,
+        documents: [],
+        skippedCount: 0,
+        nextCursor: null,
+        quotaResetAt: quota.resetAt,
+        quotaExhausted: true,
+      }
+    }
+
+    const allDocs = await ctx.db
+      .query(args.entityType)
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    // The cursor is a creation time, not an index into this list. An index is
+    // only stable while nothing is inserted or deleted mid-batch, and a delete
+    // during chunk 0 made the chunk-boundary document step past itself — it
+    // was never translated, and the job still reported 45/45 completed.
+    const after = args.cursor ? Number(args.cursor) : null
+    const pending =
+      after === null || Number.isNaN(after)
+        ? allDocs
+        : allDocs.filter((doc: any) => doc._creationTime > after)
+
+    const chunk = pending.slice(0, BATCH_CHUNK_SIZE)
+    const last = chunk[chunk.length - 1]
+    const nextCursor =
+      last && pending.length > chunk.length ? String(last._creationTime) : null
+
     const documents: BatchDocument[] = []
-    let emptyCount = 0
+    let skippedCount = 0
+
+    let budgetStopped = false
 
     for (const doc of chunk) {
+      // The budget is per chunk as well as per day: one GPT call per document.
+      if (documents.length >= remaining) {
+        budgetStopped = true
+        break
+      }
+
       const texts: Record<string, string> = {}
+      const existing = ((doc.translations ?? {}) as Record<string, any>)[
+        args.targetLang
+      ] ?? {}
+      const meta = existing._meta ?? {}
+
       for (const field of TRANSLATABLE_FIELDS) {
-        if (doc[field]) texts[field] = doc[field]
+        if (!doc[field]) continue
+        const prefix = META_KEY_PREFIX[field] ?? field
+        // Same two rules the incremental path applies: never overwrite a
+        // human, never pay twice for text that has not changed. Without them
+        // a second "add language" click re-translated the whole catalogue.
+        if (meta[`${prefix}Auto`] === false) continue
+        if (meta[`${prefix}Hash`] === computeSourceHash(doc[field])) continue
+        texts[field] = doc[field]
       }
 
       if (Object.keys(texts).length === 0) {
-        emptyCount++
+        skippedCount++
         continue
       }
 
       documents.push({ documentId: doc._id, texts })
     }
 
+    // A run cut short by the budget stops here — and says so. Reporting it as
+    // finished would tell the owner their catalogue is translated when part of
+    // it never reached GPT.
+    const outOfBudget = budgetStopped || (documents.length >= remaining && nextCursor !== null)
+
     return {
       sourceLang: defaultLang.code,
       documents,
-      emptyCount,
-      nextCursor,
+      skippedCount,
+      nextCursor: outOfBudget ? null : nextCursor,
+      quotaResetAt: quota.resetAt,
+      quotaExhausted: outOfBudget,
     }
   },
 }
@@ -686,9 +819,10 @@ export async function runBatchChunkPlan(
   targetLang: string,
   context: string,
   apiKey: string | undefined
-): Promise<{ results: BatchResult[]; attempted: number }> {
+): Promise<{ results: BatchResult[]; attempted: number; gptCalls: number }> {
   const results: BatchResult[] = []
   let attempted = 0
+  let gptCalls = 0
 
   for (const doc of plan.documents) {
     attempted++
@@ -706,6 +840,10 @@ export async function runBatchChunkPlan(
         apiKey
       )
 
+      // Billed on the call, not on the answer: a reply that parsed to nothing
+      // still reached OpenAI and still cost money.
+      gptCalls++
+
       const fields = parseLabelledFields(translated, fieldNames)
       const hashes: Record<string, string> = {}
       for (const field of Object.keys(fields)) {
@@ -720,7 +858,7 @@ export async function runBatchChunkPlan(
     }
   }
 
-  return { results, attempted }
+  return { results, attempted, gptCalls }
 }
 
 /**
@@ -741,7 +879,10 @@ export const saveBatchChunk = {
       })
     ),
     completed: v.number(),
+    gptCalls: v.number(),
+    quotaResetAt: v.number(),
     isLastChunk: v.boolean(),
+    quotaExhausted: v.boolean(),
     jobId: v.optional(v.id("translationJobs")),
   },
   handler: async (ctx: any, args: any) => {
@@ -753,28 +894,57 @@ export const saveBatchChunk = {
       const existing = translations[args.targetLang] ?? {}
       const entry: Record<string, any> = { ...existing }
       const meta: Record<string, any> = { ...(existing._meta ?? {}) }
+      let wrote = false
 
       for (const [field, value] of Object.entries(result.fields)) {
         const prefix = META_KEY_PREFIX[field] ?? field
         // A manual translation outranks the batch, same rule as the
         // incremental path.
         if (meta[`${prefix}Auto`] === false) continue
+
+        // Staleness: the batch had no such check, so renaming a dish while a
+        // batch ran wrote a translation of the old text stamped with the old
+        // hash — and because the batch never re-reads hashes, the wrong name
+        // stayed on the storefront until someone edited that product again.
+        const current = doc[field]
+        if (typeof current !== "string" || computeSourceHash(current) !== result.hashes[field]) {
+          continue
+        }
+
         entry[field] = value
         meta[`${prefix}Hash`] = result.hashes[field]
         meta[`${prefix}Auto`] = true
+        wrote = true
       }
+
+      if (!wrote) continue
 
       entry._meta = meta
       translations[args.targetLang] = entry
       await ctx.db.patch(result.documentId as any, { translations })
     }
 
+    // The batch bills the same quota as the incremental path. It did not
+    // before: `translateCatalogue` is fired three times by the admin on every
+    // language added, so a three-hundred-product catalogue spent ~900
+    // unmetered OpenAI calls in one click.
+    await billQuota(ctx, args.storeId, args.gptCalls, args.quotaResetAt)
+
     if (args.jobId) {
       const job = await ctx.db.get(args.jobId)
       if (job) {
         await ctx.db.patch(args.jobId, {
           completedItems: (job.completedItems ?? 0) + args.completed,
-          status: args.isLastChunk ? "completed" : "in_progress",
+          // A batch stopped by the budget is not "completed" — saying so would
+          // tell the owner their catalogue is translated when it is not.
+          status: args.quotaExhausted
+            ? "failed"
+            : args.isLastChunk
+              ? "completed"
+              : "in_progress",
+          ...(args.quotaExhausted
+            ? { error: "Daily translation quota reached — resumes after the next reset" }
+            : {}),
           updatedAt: Date.now(),
         })
       }

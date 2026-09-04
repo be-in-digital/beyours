@@ -69,11 +69,20 @@ export function normalizeStoredLocale(
 
   // ISO 639-1 with an optional region: `fr`, `pt-BR`. Anything else is either
   // a mistake or an injection attempt.
-  if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/i.test(trimmed)) return null
+  const match = /^([a-z]{2,3})(?:-([A-Za-z0-9]{2,8}))?$/i.exec(trimmed)
+  if (!match) return null
 
-  if (availableCodes && !availableCodes.includes(trimmed)) return null
+  // Canonicalise the case. `FR` used to come through as `FR`, and the
+  // translation lookup is a plain object key — so a store holding `fr` would
+  // quietly serve the source language while `<html lang="FR">` claimed
+  // otherwise. Language subtag lower, region upper, per BCP 47.
+  const language = match[1]!.toLowerCase()
+  const region = match[2]?.toUpperCase()
+  const canonical = region ? `${language}-${region}` : language
 
-  return trimmed
+  if (availableCodes && !availableCodes.includes(canonical)) return null
+
+  return canonical
 }
 
 /**
@@ -90,9 +99,18 @@ export function pickTranslatedField(
   const source = doc[field] ?? undefined
   if (!locale) return source || undefined
 
-  const translated = doc.translations?.[locale]?.[field]
-  if (typeof translated === 'string' && translated.trim().length > 0) {
-    return translated
+  // `Object.hasOwn`, not a bare index: the locale reaches here from a cookie,
+  // and `translations["constructor"]` would otherwise answer for every
+  // product. Unreachable today — the cookie is validated and the client store
+  // gates on the establishment's own languages — but one caller away from not
+  // being.
+  const translations = doc.translations
+  if (translations && Object.hasOwn(translations, locale)) {
+    const entry = translations[locale]
+    const translated = entry?.[field]
+    if (typeof translated === 'string' && translated.trim().length > 0) {
+      return translated
+    }
   }
 
   return source || undefined

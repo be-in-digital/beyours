@@ -652,6 +652,164 @@ describe("translateCatalogue", () => {
     expect(stored?.completedItems).toBe(2)
   })
 
+  test("bills the batch against the same daily quota as the incremental path", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await seedLanguages(t, storeId)
+    const categoryId = await seedCategory(t, storeId)
+    const asOwner = await seedOwner(t, [storeId])
+
+    await t.run(async (ctx) => {
+      for (const name of ["Un", "Deux", "Trois", "Quatre"]) {
+        await ctx.db.insert("products", {
+          storeId, categoryId, ...PRODUCT_ARGS, name,
+          slug: name.toLowerCase(), source: "manual",
+          createdAt: NOW, updatedAt: NOW,
+        })
+      }
+      // Two calls left in the window.
+      await ctx.db.patch(storeId, {
+        translationQuota: { dailyLimit: 10, used: 8, resetAt: Date.now() + 3_600_000 },
+      })
+    })
+
+    const gpt = stubGpt("[name]: Translated")
+    const job = await asOwner.action(api.autoTranslate.translateCatalogue, {
+      storeId, targetLang: "en", entityType: "products",
+    })
+    await t.action(internal.autoTranslate.batchChunk, {
+      storeId, targetLang: "en", entityType: "products",
+      jobId: job.jobId as Id<"translationJobs">,
+    })
+
+    // The batch had no quota at all: `translateCatalogue` is fired three
+    // times by the admin on every language added, so a large catalogue spent
+    // hundreds of unmetered OpenAI calls in one click.
+    expect(gpt).toHaveBeenCalledTimes(2)
+    const store = await t.run((ctx) => ctx.db.get(storeId))
+    expect(store?.translationQuota?.used).toBe(10)
+
+    // And it says so rather than reporting a catalogue that is translated.
+    const stored = await t.run((ctx) => ctx.db.get(job.jobId as Id<"translationJobs">))
+    expect(stored?.status).toBe("failed")
+    expect(stored?.error).toMatch(/quota/i)
+  })
+
+  test("does not pay again for text it already translated", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await seedLanguages(t, storeId)
+    const categoryId = await seedCategory(t, storeId)
+    const asOwner = await seedOwner(t, [storeId])
+    await t.run((ctx) =>
+      ctx.db.insert("products", {
+        storeId, categoryId, ...PRODUCT_ARGS, source: "manual",
+        createdAt: NOW, updatedAt: NOW,
+      })
+    )
+
+    stubGpt("[name]: Translated\n[description]: Translated description")
+    const first = await asOwner.action(api.autoTranslate.translateCatalogue, {
+      storeId, targetLang: "en", entityType: "products",
+    })
+    await t.action(internal.autoTranslate.batchChunk, {
+      storeId, targetLang: "en", entityType: "products",
+      jobId: first.jobId as Id<"translationJobs">,
+    })
+
+    // Adding a language twice, or re-adding a removed one, must not re-buy
+    // the whole catalogue.
+    const second = stubGpt("[name]: SHOULD NOT BE CALLED")
+    const rerun = await asOwner.action(api.autoTranslate.translateCatalogue, {
+      storeId, targetLang: "en", entityType: "products",
+    })
+    await t.action(internal.autoTranslate.batchChunk, {
+      storeId, targetLang: "en", entityType: "products",
+      jobId: rerun.jobId as Id<"translationJobs">,
+    })
+
+    expect(second).not.toHaveBeenCalled()
+  })
+
+  test("refuses to write a translation of text that changed under it", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await seedLanguages(t, storeId)
+    const categoryId = await seedCategory(t, storeId)
+    const productId = await t.run((ctx) =>
+      ctx.db.insert("products", {
+        storeId, categoryId, ...PRODUCT_ARGS, source: "manual",
+        createdAt: NOW, updatedAt: NOW,
+      })
+    )
+
+    // Rename the dish between the plan and the save, the way an owner editing
+    // during a back-fill would. The batch had no staleness check, so it wrote
+    // a translation of the old name — and never revisited it.
+    const plan = await t.query(internal.autoTranslate._getBatchChunkPlan, {
+      storeId, targetLang: "en", entityType: "products",
+    })
+    await t.run((ctx) => ctx.db.patch(productId, { name: "Pizza Reine" }))
+
+    await t.mutation(internal.autoTranslate._saveBatchChunk, {
+      storeId,
+      targetLang: "en",
+      results: [
+        {
+          documentId: productId,
+          fields: { name: "Margherita Pizza" },
+          hashes: { name: "stale-hash" },
+        },
+      ],
+      completed: 1,
+      gptCalls: 1,
+      quotaResetAt: plan!.quotaResetAt,
+      isLastChunk: true,
+      quotaExhausted: false,
+    })
+
+    const doc = await t.run((ctx) => ctx.db.get(productId))
+    expect(doc?.translations?.en?.name).toBeUndefined()
+  })
+
+  test("a delete mid-batch does not step over the next document", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await seedLanguages(t, storeId)
+    const categoryId = await seedCategory(t, storeId)
+
+    const ids: Id<"products">[] = []
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 3; i++) {
+        ids.push(
+          await ctx.db.insert("products", {
+            storeId, categoryId, ...PRODUCT_ARGS,
+            name: `Produit ${i}`, slug: `produit-${i}`, source: "manual",
+            createdAt: NOW, updatedAt: NOW,
+          })
+        )
+      }
+    })
+
+    const first = await t.query(internal.autoTranslate._getBatchChunkPlan, {
+      storeId, targetLang: "en", entityType: "products",
+    })
+    // The cursor is a creation time, not an index. With an index, deleting a
+    // document mid-run slid the next chunk left and the boundary document was
+    // never translated — while the job still reported every item done.
+    expect(first!.nextCursor).toBeNull()
+
+    await t.run((ctx) => ctx.db.delete(ids[0]!))
+    const cursor = String(
+      (await t.run((ctx) => ctx.db.get(ids[1]!)))!._creationTime
+    )
+    const next = await t.query(internal.autoTranslate._getBatchChunkPlan, {
+      storeId, targetLang: "en", entityType: "products", cursor,
+    })
+
+    expect(next!.documents.map((d) => d.documentId)).toEqual([ids[2]])
+  })
+
   test("refuses a caller with no rights on the establishment", async () => {
     const t = newHarness()
     const mine = await seedStore(t, "Chez Luigi")

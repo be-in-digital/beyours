@@ -367,6 +367,7 @@ describe('translator', () => {
     hello: 'Bonjour',
     'hello_name': 'Bonjour {{name}}',
     'items': '{{count}} article',
+    'exact': 'Choisir exactement {count}',
     'welcome': 'Bienvenue sur notre site',
   }
 
@@ -388,10 +389,18 @@ describe('translator', () => {
       expect(t('hello_name', { name: 'Jean' })).toBe('Bonjour Jean')
     })
 
-    it('should handle pluralization', () => {
+    it('substitutes count without inventing a plural form', () => {
+      // This test used to assert `t('items', {count: 5}) === '5 articles'`,
+      // produced by appending an English "s" to the whole string. That rule
+      // is wrong outside the one case it was written for — it turned
+      // "Choisir exactement {count}" into "Choisir exactement 3s" and
+      // "Table {count}" into "Table 4s". The catalogues carry explicit
+      // singular/plural key pairs, so the caller picks and the translator
+      // only substitutes.
       const t = createTranslator(translations, 'fr')
       expect(t('items', { count: 1 })).toBe('1 article')
-      expect(t('items', { count: 5 })).toBe('5 articles')
+      expect(t('items', { count: 5 })).toBe('5 article')
+      expect(t('exact', { count: 3 })).toBe('Choisir exactement 3')
     })
 
     it('should return key for missing translation', () => {

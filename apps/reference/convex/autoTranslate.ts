@@ -121,14 +121,14 @@ export const batchChunk = internalAction({
     if (!plan) return;
 
     const apiKey = process.env.OPENAI_API_KEY;
-    const { results, attempted } = apiKey
+    const { results, attempted, gptCalls } = apiKey
       ? await defs.runBatchChunkPlan(
           plan,
           args.targetLang,
           `restaurant ${args.entityType}`,
           apiKey
         )
-      : { results: [], attempted: 0 };
+      : { results: [], attempted: 0, gptCalls: 0 };
 
     if (!apiKey) console.error("[autoTranslate] OPENAI_API_KEY not set");
 
@@ -136,13 +136,20 @@ export const batchChunk = internalAction({
       storeId: args.storeId,
       targetLang: args.targetLang,
       results,
-      // Documents with no translatable text never reach GPT but are still
-      // dealt with, so the progress bar can reach the end.
-      completed: attempted + plan.emptyCount,
+      // Documents with nothing to translate — no text, already current, or
+      // manually translated — never reach GPT but are still dealt with, so
+      // the progress bar can reach the end.
+      completed: attempted + plan.skippedCount,
+      gptCalls,
+      quotaResetAt: plan.quotaResetAt,
       isLastChunk: plan.nextCursor === null,
+      quotaExhausted: plan.quotaExhausted,
       ...(args.jobId === undefined ? {} : { jobId: args.jobId }),
     });
 
+    // A batch the budget stopped does not chunk on: the plan already reported
+    // a null cursor for that case, and the job is marked failed with the
+    // reason, so the owner sees why rather than a bar that stopped moving.
     if (plan.nextCursor !== null) {
       await ctx.scheduler.runAfter(0, internal.autoTranslate.batchChunk, {
         storeId: args.storeId,

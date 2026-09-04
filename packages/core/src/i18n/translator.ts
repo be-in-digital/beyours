@@ -1,5 +1,5 @@
 /**
- * Translation system with interpolation and pluralization
+ * Translation system with interpolation
  * @packageDocumentation
  */
 
@@ -45,32 +45,6 @@ function interpolate(template: string, params: TranslationParams): string {
 }
 
 /**
- * Get the plural form of a translation
- *
- * Simple pluralization:
- * - If count = 0 or 1: singular form
- * - If count > 1: plural form (adds 's' if not already present)
- *
- * For custom plural forms, use separate keys (e.g., "item.zero", "item.one", "item.other")
- *
- * @param singular - Singular form
- * @param count - Count for pluralization
- * @returns Plural form
- */
-function pluralize(singular: string, count: number): string {
-  if (count === 0 || count === 1) {
-    return singular
-  }
-
-  // Simple English pluralization (add 's' if not present)
-  if (!singular.endsWith('s')) {
-    return `${singular}s`
-  }
-
-  return singular
-}
-
-/**
  * Create a translator function for a given locale
  *
  * @param translations - Translation map for the locale
@@ -87,7 +61,7 @@ function pluralize(singular: string, count: number): string {
  * )
  *
  * t('hello', { name: 'Jean' }) // "Bonjour Jean"
- * t('items', { count: 5 }) // "5 articles"
+ * t('items', { count: 5 }) // "5 article" — the caller picks the plural key
  * t('missing') // "missing" (key returned as fallback)
  * ```
  */
@@ -137,12 +111,16 @@ export function createTranslator(
       return translation
     }
 
-    // Handle pluralization
-    if ('count' in params && typeof params.count === 'number') {
-      translation = pluralize(translation, params.count)
-    }
-
-    // Interpolate params
+    // No automatic pluralization. It appended an English "s" to the WHOLE
+    // string whenever a `count` param was present, which is wrong in the
+    // language this product is written in and wrong in most others:
+    //
+    //   "Choisir exactement {count}"  + {count: 3}  ->  "Choisir exactement 3s"
+    //   "Table {count}"               + {count: 4}  ->  "Table 4s"
+    //
+    // The catalogues already carry explicit pairs — `cart.item` beside
+    // `cart.items`, `{count} article` beside `{count} articles` — so the
+    // caller picks the key and the translator only substitutes.
     return interpolate(translation, params)
   }
 }
