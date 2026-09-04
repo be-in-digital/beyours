@@ -10,9 +10,35 @@
 # value stays readable to anyone who can clone the repo. Part B of
 # tasks/secret-rotation-runbook.md is the only thing that removes it for real.
 #
-# A green Gitleaks run is NOT proof the history is clean. The default rules do
-# not match the Deliveroo client_secret, which is still present in 18 commits
-# and still rated High. The runbook, not this check, is the state of play.
+# A green Gitleaks run is NOT proof the history is clean.
+#
+# Re-measured 2026-09-04, by execution rather than by recollection. The previous
+# text here said the Deliveroo client_secret was "present in 18 commits". That
+# was wrong, and wrong in the direction that matters:
+#
+#   - 137 commits across all local refs contain it
+#   -  41 of those are ancestors of `main`, i.e. published
+#   -  96 are local-only, on the pre-monorepo lineage this clone still keeps
+#      under `archive/main-avant-monorepo` and 34 stale local tags
+#
+# The 18 figure counted `apps/restaurant-theme/e2e/deliveroo/test-config.ts`
+# alone and silently omitted `scripts/deliveroo-menu-scenarios.sh`, which is
+# where the secret actually lived longest. Understated by a factor of 2.3
+# against published history, 7.6 against this clone.
+#
+# Two further figures below were stale and have been corrected in place: the
+# scan covered 699 reachable commits (not 492), and the open-PR queue that
+# blocked the history rewrite is now EMPTY (not 14) — so the reason Part B was
+# deferred no longer holds.
+#
+# Also corrected: `c0f09cb` is reachable from 35 LOCAL refs and from ZERO remote
+# refs, so the claim that CI's checkout fetches it is not true today.
+#
+# The Deliveroo secret has never had a fingerprint entry in this file. It was
+# not suppressed — it was simply never detected, because no rule matched a bare
+# 52-character base36 token. Two rules now do: see `.gitleaks.toml`. Once a
+# scan runs with them, this file will need a decision on the finding rather
+# than continuing to be silent about it.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Better Auth convex_jwt captured in a Playwright storageState fixture.
@@ -26,14 +52,18 @@
 #     is the seeded test owner rather than a real account.
 #   - the repository is private, and apps/restaurant-theme/ no longer exists.
 #
-# Accepted rather than purged because Part B rewrites every SHA and would
-# invalidate the 14 open pull requests, the six-PR stack included. Revisit once
-# the queue is empty: see A.2 and Part B of tasks/secret-rotation-runbook.md.
+# Accepted rather than purged because Part B rewrites every SHA, which at the
+# time would have invalidated 14 open pull requests. Re-measured 2026-09-04:
+# the queue is EMPTY (0 open PRs), so that reason has expired. What a rewrite
+# now costs is 393 commits on `main`, 8 remote branches and 59 remote tags —
+# the tags being the `@be-in-digital/*` release anchors. See Part B of
+# tasks/secret-rotation-runbook.md; the decision is the account owner's.
 # Two fingerprints for ONE secret: gitleaks fingerprints per commit, and the
 # same blob was committed twice on 2026-03-11. 7cf4d41 is reachable from main;
-# c0f09cb is reachable only from 33 pushed package tags (and the local
-# archive/main-avant-monorepo branch), which the CI checkout fetches too. A full
-# scan over all 492 reachable commits on 2026-08-26 found these two and nothing
-# else for this file.
+# c0f09cb is reachable from 35 LOCAL refs (34 stale tags plus the local
+# archive/main-avant-monorepo branch) and from NO remote ref — corrected
+# 2026-09-04, the earlier claim that CI's checkout fetches it was wrong. A full
+# scan over all 699 reachable commits found these two and nothing else for this
+# file.
 7cf4d4100018a617363c2c6133bee27c05c9e650:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15
 c0f09cb0b61eb8b7377e0aa781232057d3274099:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15

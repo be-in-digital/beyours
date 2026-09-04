@@ -726,7 +726,9 @@ export const updateWithPropagation = {
     // Apply updates to the current product
     await ctx.db.patch(args.productId, updates);
 
-    if (args.scope === "self") return { updated: 1 };
+    // The store whose catalogue changed — the caller's wrapper schedules the
+    // platform push against it, and against nothing else.
+    if (args.scope === "self") return { updated: 1, storeIds: [product.storeId] };
 
     // 2. Resolve the root product ID used to find all sibling products.
     // If this product itself is a linked copy, follow to the original root.
@@ -780,6 +782,13 @@ export const updateWithPropagation = {
       await ctx.db.patch(linked._id, propagatedUpdates);
     }
 
-    return { updated: 1 + allRelated.length };
+    // Every establishment this write touched, so the caller can push exactly
+    // those menus. This mutation is the one place a single call changes the
+    // catalogue of several restaurants at once; a sync scoped to the named
+    // product's store alone would leave every twin stale on the platforms.
+    return {
+      updated: 1 + allRelated.length,
+      storeIds: Array.from(new Set<string>([product.storeId, ...targetStoreIds])),
+    };
   },
 }

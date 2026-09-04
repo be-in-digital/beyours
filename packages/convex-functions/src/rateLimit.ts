@@ -205,3 +205,132 @@ export async function consumeRateLimit(
 export const rateLimitArgs = {
   key: v.string(),
 }
+
+/* ------------------------------------------------------------------ */
+/* Menu sync windows                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The delivery platforms are rate-limited too, and the catalogue writes were
+ * ignoring it completely.
+ *
+ * Every product and menu mutation used to queue a full sweep — `syncAllStores`
+ * for Uber Eats *and* one for Deliveroo — and Convex does not dedupe scheduled
+ * jobs. Importing fifty products queued a hundred sweeps, and each sweep pushed
+ * the menu of **every** establishment, not the one that changed. Uber caps
+ * `PUT /v2/eats/stores/{id}/menu` at roughly one call per minute per store, so
+ * the overwhelming majority of those uploads could only ever come back 429.
+ *
+ * The same counter table that bounds the public forms bounds this: one row per
+ * (platform, establishment), `limit: 1`, so the first write of a window claims
+ * it and every write behind it rides along.
+ *
+ * WHY THE WINDOW IS ALSO THE DELAY: the claim schedules the push at the *end*
+ * of its window, not at the start. A leading-edge push would fire five seconds
+ * in and drop everything typed afterwards until the window ran out. Pushing at
+ * the end means the one upload carries the catalogue as it stands once the
+ * burst has settled — a menu upload is a full overwrite on both platforms, so
+ * the last state is the only one that matters.
+ *
+ * The cost, stated plainly: a single isolated edit now reaches the platform up
+ * to a minute later instead of five seconds later. That is the same minute Uber
+ * would have made us wait anyway.
+ */
+export const MENU_SYNC_WINDOW_MS = 60_000
+
+/** The platforms a store's menu is pushed to. */
+export const MENU_SYNC_PLATFORMS = ["uberEats", "deliveroo"] as const
+
+export type MenuSyncPlatform = (typeof MENU_SYNC_PLATFORMS)[number]
+
+const MENU_SYNC_RULE: RateLimitRule = { limit: 1, windowMs: MENU_SYNC_WINDOW_MS }
+
+/**
+ * The row key for one platform and one establishment.
+ *
+ * Deliberately NOT `rateLimitKey`: that one lowercases its subject, which is
+ * right for an email address and wrong for a Convex id. Ids are case-sensitive,
+ * so two different establishments can differ only in the case of one character
+ * — folding them together would let one restaurant's edit claim another's
+ * window and leave that menu unpushed.
+ */
+export function menuSyncKey(platform: MenuSyncPlatform, storeId: string): string {
+  return `menuSync:${platform}:${storeId}`
+}
+
+export interface MenuSyncClaim {
+  /** True when this call owns the window and must schedule the push. */
+  claimed: boolean
+  /** When the push should run. Only meaningful when `claimed`. */
+  runAt: number
+}
+
+/** One `rateLimits` row, as this bookkeeping cares about it. */
+interface RateLimitRow {
+  _id: unknown
+  windowStart: number
+  count: number
+}
+
+/**
+ * The slice of `ctx.db` this reads and writes.
+ *
+ * Reached through one cast rather than declared on the parameter, because a
+ * structural type cannot express it: an app's generated `db.query` is generic
+ * over that app's table names and index names, and any hand-written shape loose
+ * enough for `MutationCtx` to satisfy is also loose enough to be useless. The
+ * parameter therefore asks only for a `db`, and the cast is confined to this
+ * one function — the same trade `consumeRateLimit` above makes with `ctx: any`,
+ * one notch tighter.
+ */
+interface RateLimitDb {
+  query(table: "rateLimits"): {
+    withIndex(
+      index: "by_key",
+      range: (q: { eq(field: "key", value: string): unknown }) => unknown
+    ): { first(): Promise<RateLimitRow | null> }
+  }
+  insert(table: "rateLimits", doc: RateLimitWindow & { key: string }): Promise<unknown>
+  patch(id: never, patch: RateLimitWindow): Promise<void>
+}
+
+/**
+ * Claim the menu-sync window for one platform and one establishment.
+ *
+ * Returns `claimed: false` when a push is already booked for this window — the
+ * caller schedules nothing and the edit is carried by the push that is already
+ * coming. Unlike `consumeRateLimit` this never throws: a catalogue write must
+ * not fail because its platform push was already queued.
+ */
+export async function claimMenuSyncWindow(
+  ctx: { db: unknown },
+  platform: MenuSyncPlatform,
+  storeId: string,
+  now: number = Date.now()
+): Promise<MenuSyncClaim> {
+  const key = menuSyncKey(platform, storeId)
+  const db = ctx.db as RateLimitDb
+
+  const existing = await db
+    .query("rateLimits")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .first()
+
+  const verdict = checkRateLimit(
+    existing ? { windowStart: existing.windowStart, count: existing.count } : null,
+    MENU_SYNC_RULE,
+    now
+  )
+
+  if (!verdict.allowed || !verdict.next) {
+    return { claimed: false, runAt: verdict.retryAt ?? now + MENU_SYNC_WINDOW_MS }
+  }
+
+  if (existing) {
+    await db.patch(existing._id as never, verdict.next)
+  } else {
+    await db.insert("rateLimits", { key, ...verdict.next })
+  }
+
+  return { claimed: true, runAt: verdict.next.windowStart + MENU_SYNC_WINDOW_MS }
+}

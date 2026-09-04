@@ -2,9 +2,22 @@
  * Uber Eats API client with OAuth2 client_credentials flow
  */
 
-import type { UberEatsCredentials, UberEatsToken, UberEatsOrder } from "./types"
+import type {
+  UberEatsCredentials,
+  UberEatsToken,
+  UberEatsOrder,
+  UberEatsStoreStatus,
+} from "./types"
 import { UBER_EATS_URLS } from "./types"
 import { IntegrationError } from "../common/errors"
+import {
+  DEFAULT_BASE_DELAY_MS,
+  DEFAULT_MAX_ATTEMPTS,
+  DEFAULT_MAX_DELAY_MS,
+  DEFAULT_WAIT_HINT_HEADERS,
+  sendWithRetry,
+  type BackoffPolicy,
+} from "../common/backoff"
 
 /**
  * Validate a path parameter to prevent path traversal and SSRF
@@ -157,7 +170,28 @@ export function clearTokenCache(credentials?: UberEatsCredentials): void {
 }
 
 /**
- * Fetch wrapper for Uber Eats API with automatic auth
+ * How a rate-limited or failing Uber call is retried.
+ *
+ * The 60-second budget is the sequence's total sleep, not one delay. Uber
+ * tokens live thirty days, so nothing here can outlive its credentials — the
+ * budget exists to bound how long one menu push can sit in an action before it
+ * gives up and lets the store's `menuSyncStatus` say so.
+ */
+const UBER_EATS_RETRY_POLICY: BackoffPolicy = {
+  maxAttempts: DEFAULT_MAX_ATTEMPTS,
+  baseDelayMs: DEFAULT_BASE_DELAY_MS,
+  maxDelayMs: DEFAULT_MAX_DELAY_MS,
+  totalBudgetMs: 60_000,
+  waitHintHeaders: DEFAULT_WAIT_HINT_HEADERS,
+}
+
+/**
+ * Fetch wrapper for Uber Eats API with automatic auth.
+ *
+ * Retries a `429` — and a `5xx` on an idempotent method — with exponential
+ * backoff and jitter, honouring `Retry-After`. Before this, a single 429 from
+ * the menu endpoint (about one call a minute per store) failed the whole push.
+ * See `../common/backoff` for the bounds and the reasoning behind each.
  */
 export async function fetchUberEats(
   credentials: UberEatsCredentials,
@@ -176,28 +210,33 @@ export async function fetchUberEats(
   } = {}
 ): Promise<Response> {
   const usingUserToken = typeof options.accessToken === "string" && options.accessToken.length > 0
-  const token = usingUserToken
-    ? { accessToken: options.accessToken as string }
-    : await getAccessToken(credentials)
   const urls = getUrls(credentials.sandboxMode ?? false)
   const url = `${urls.api}${path}`
+  const method = options.method ?? "GET"
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token.accessToken}`,
-    "Content-Type": "application/json",
-    ...options.headers,
+  const body = options.body ? JSON.stringify(options.body) : undefined
+
+  // Resolved per attempt, not once: `getAccessToken` returns the cached token
+  // until it is close to expiry, so a retried request refreshes rather than
+  // replaying a token that ran out while it was backing off.
+  const send = async (): Promise<Response> => {
+    const token = usingUserToken
+      ? { accessToken: options.accessToken as string }
+      : await getAccessToken(credentials)
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token.accessToken}`,
+      "Content-Type": "application/json",
+      ...options.headers,
+    }
+
+    const fetchOptions: RequestInit = { method, headers }
+    if (body !== undefined) fetchOptions.body = body
+
+    return fetchWithTimeout(url, fetchOptions)
   }
 
-  const fetchOptions: RequestInit = {
-    method: options.method ?? "GET",
-    headers,
-  }
-
-  if (options.body) {
-    fetchOptions.body = JSON.stringify(options.body)
-  }
-
-  const response = await fetchWithTimeout(url, fetchOptions)
+  const response = await sendWithRetry(send, method, UBER_EATS_RETRY_POLICY)
 
   // If a client_credentials token expired, retry once with a fresh token.
   // User-scoped tokens are not refreshed here — the caller owns that.
@@ -205,13 +244,7 @@ export async function fetchUberEats(
     // M-03: Consume the body to release the connection
     await response.text().catch(() => {})
     clearTokenCache(credentials)
-    const newToken = await getAccessToken(credentials)
-    headers.Authorization = `Bearer ${newToken.accessToken}`
-
-    return fetchWithTimeout(url, {
-      ...fetchOptions,
-      headers,
-    })
+    return sendWithRetry(send, method, UBER_EATS_RETRY_POLICY)
   }
 
   return response
@@ -383,17 +416,51 @@ export async function markOrderAsReady(
   }
 }
 
+export interface UpdateStoreStatusOptions {
+  /** Free-text reason surfaced to Uber support. */
+  reason?: string
+  /**
+   * Epoch SECONDS at which the store auto-resumes. Required by Uber for
+   * PAUSED; ignored for ONLINE and OFFLINE.
+   */
+  pausedUntil?: number
+}
+
+/** Uber rejects a PAUSED status with no auto-resume time, so default to 30 min. */
+export const DEFAULT_PAUSE_SECONDS = 30 * 60
+
 /**
- * Update store status (ONLINE, PAUSED, OFFLINE)
+ * Update store status (ONLINE, PAUSED, OFFLINE).
+ * POST /v1/eats/store/{store_id}/status
+ *
+ * PAUSED requires `paused_until` (epoch seconds) — when to auto-resume. If the
+ * caller does not supply one we default to 30 minutes out rather than send a
+ * payload Uber will reject. OFFLINE is indefinite and needs manual re-enable.
+ *
+ * Uber treats more than one status change per second per store as abuse.
  */
 export async function updateStoreStatus(
   credentials: UberEatsCredentials,
   storeId: string,
-  status: "ONLINE" | "PAUSED" | "OFFLINE",
-  reason?: string
+  status: UberEatsStoreStatus,
+  options: UpdateStoreStatusOptions = {}
 ): Promise<void> {
   const body: Record<string, unknown> = { status }
-  if (reason) body.reason = reason
+  if (options.reason) body.reason = options.reason
+
+  if (status === "PAUSED") {
+    const nowSeconds = Math.floor(Date.now() / 1000)
+    const pausedUntil = options.pausedUntil ?? nowSeconds + DEFAULT_PAUSE_SECONDS
+
+    // A caller passing Date.now() would send milliseconds and pause the store
+    // until the year 56000. Catch it here rather than at the platform.
+    if (!Number.isInteger(pausedUntil) || pausedUntil <= nowSeconds) {
+      throw new Error(
+        "pausedUntil must be a future epoch in SECONDS (not milliseconds)"
+      )
+    }
+    body.paused_until = pausedUntil
+  }
 
   // NOTE: store status uses the SINGULAR "store" path segment, unlike most
   // other store endpoints which use "stores". Verified 200 against sandbox

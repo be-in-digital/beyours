@@ -200,20 +200,26 @@ const siteOptionalShape = {
   // PayPal (per restaurant)
   PAYPAL_CLIENT_ID: opt(z.string().min(1)),
   PAYPAL_CLIENT_SECRET: opt(z.string().min(1)),
-  // IMPORTANT: when UNSET this defaults to PRODUCTION. Keep "true" for sandbox.
+  // Sandbox flag. Declared optional HERE so a value already sitting in a
+  // deployment is never rejected by the reader, and required by
+  // `checkSandboxFlags()` at boot as soon as PayPal is configured at all.
+  // Unset at runtime resolves to SANDBOX, never to production — env/sandbox.ts.
   PAYPAL_SANDBOX_MODE: opt(z.enum(['true', 'false'])),
 
   // SumUp (per restaurant)
   SUMUP_CLIENT_ID: opt(z.string().min(1)),
   SUMUP_CLIENT_SECRET: opt(z.string().min(1)),
 
-  // Uber Eats site-level config
+  // Uber Eats site-level config. Required once the Uber Eats credentials are
+  // set — see `checkSandboxFlags()`; unset at runtime means SANDBOX.
   UBER_EATS_SANDBOX_MODE: opt(z.enum(['true', 'false'])),
 
   // Deliveroo site-level config. The brand/site ids are e2e fixtures — a
   // live deployment reads them from its stored Deliveroo connection.
   DELIVEROO_BRAND_ID: opt(z.string().min(1)),
   DELIVEROO_SITE_ID: opt(z.string().min(1)),
+  // Required once the Deliveroo credentials are set — see
+  // `checkSandboxFlags()`; unset at runtime means SANDBOX.
   DELIVEROO_IS_SANDBOX: opt(z.enum(['true', 'false'])),
 
   // CMS media

@@ -37,6 +37,13 @@ export interface UberEatsMenuPayload {
     tax_info?: { tax_rate: number }
     modifier_group_ids?: { ids: string[] }
     quantity_info?: { quantity: { max_permitted: number; min_permitted: number } }
+    /** Present only when the item is 86'd. `suspend_until` is epoch SECONDS. */
+    suspension_info?: {
+      suspension: {
+        suspend_until: number
+        reason: string
+      }
+    }
   }>
   modifier_groups: Array<{
     id: string
@@ -194,9 +201,40 @@ function getPlatformPrice(
 }
 
 /**
+ * How far ahead an out-of-stock item is suspended on the platform.
+ *
+ * Every menu sync re-asserts the state (a stock change schedules one within
+ * seconds), so this is a safety ceiling, not a promise about when the dish
+ * comes back. It exists because Uber's suspension payload demands an epoch.
+ */
+export const OUT_OF_STOCK_SUSPENSION_SECONDS = 7 * 24 * 60 * 60
+
+/**
+ * A product is sold out when stock tracking is ON and the counter has run out.
+ *
+ * Stock tracking is opt-in per product: `quantity: 0` on an untracked product
+ * means "we do not count this", not "we have none". Reading zero as sold out
+ * regardless of `tracked` would silently pull every uncounted dish off both
+ * platforms.
+ *
+ * `autoDisableWhenEmpty` deliberately does NOT gate this. That flag decides
+ * whether the product is deactivated outright in the catalogue; it is not a
+ * licence to keep advertising an empty shelf to Uber Eats and Deliveroo. This
+ * matches what the storefront already does in
+ * `packages/restaurant/src/services/product.ts` (`isProductAvailable`).
+ */
+export function isProductOutOfStock(
+  product: Pick<ProductRecord, "stock">
+): boolean {
+  return product.stock?.tracked === true && product.stock.quantity <= 0
+}
+
+/**
  * Convert internal products + categories to Uber Eats menu payload format.
  *
  * - Only includes active categories and active products
+ * - Out-of-stock products stay in the menu but carry `suspension_info`, so
+ *   Uber renders them as sold out instead of taking orders for them
  * - Skips categories with no active products
  * - Maps product options to Uber Eats modifier groups
  * - Prices are in cents; markup is applied via getPlatformPrice()
@@ -313,6 +351,18 @@ export function buildUberEatsMenuPayload(
 
     if (modifierGroupIds.length > 0) {
       item.modifier_group_ids = { ids: modifierGroupIds }
+    }
+
+    // 86'd dishes stay on the menu but are suspended, so a customer sees
+    // "sold out" rather than the dish vanishing — and the id stays valid for
+    // the per-item availability endpoint that un-suspends it on restock.
+    if (isProductOutOfStock(product)) {
+      item.suspension_info = {
+        suspension: {
+          suspend_until: Math.floor(Date.now() / 1000) + OUT_OF_STOCK_SUSPENSION_SECONDS,
+          reason: "OUT_OF_STOCK",
+        },
+      }
     }
 
     uberItems.push(item)

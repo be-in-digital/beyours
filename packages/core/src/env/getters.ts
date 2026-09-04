@@ -6,6 +6,7 @@ import {
   siteEnvOptionalSchema,
 } from './schemas'
 import type { PackageEnv, SiteEnv } from './schemas'
+import { checkSandboxFlags, _resetSandboxWarnings } from './sandbox'
 
 let _packageEnv: PackageEnv | null = null
 let _siteEnv: SiteEnv | null = null
@@ -44,6 +45,7 @@ export function getSiteEnv(): SiteEnv {
 export function _resetEnvCache(): void {
   _packageEnv = null
   _siteEnv = null
+  _resetSandboxWarnings()
 }
 
 /** Which tier a configuration problem belongs to. */
@@ -105,6 +107,14 @@ export function validateAllEnv(): { ok: boolean; missing: EnvProblem[] } {
         tier: issue.code === 'custom' ? 'feature' : 'site',
       })
     }
+  }
+
+  // Sandbox mode must be DECLARED, not inherited from a default. The rule
+  // spans both tiers — the Uber Eats and Deliveroo credentials are
+  // package-level, their flags site-level — so it cannot live in either
+  // schema's refinement. See env/sandbox.ts.
+  for (const problem of checkSandboxFlags(source)) {
+    missing.push({ ...problem, tier: 'feature' })
   }
 
   return { ok: missing.length === 0, missing }
