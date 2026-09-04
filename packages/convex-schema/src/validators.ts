@@ -386,9 +386,22 @@ export const updateOrderStatusSchema = z.object({
  */
 export const updateOrderPaymentStatusSchema = z.object({
   orderId: z.string().min(1),
-  paymentStatus: z.enum(["pending", "paid", "failed", "refunded", "partially_refunded"], {
-    error: "Statut de paiement invalide",
-  }),
+  // Kept in step with the `orders.paymentStatus` union in
+  // `tables/orders.ts`: a value the table stores but this enum rejects would
+  // make a legitimate order unvalidatable.
+  paymentStatus: z.enum(
+    [
+      "pending",
+      "paid",
+      "failed",
+      "refund_pending",
+      "refunded",
+      "partially_refunded",
+    ],
+    {
+      error: "Statut de paiement invalide",
+    }
+  ),
 })
 
 // ============================================================================

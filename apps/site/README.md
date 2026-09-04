@@ -167,10 +167,28 @@ Full template in `.env.production.example`.
 `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_TVA_ENABLED`
 
 **Set on the Convex deployment**, never in the repository —
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_TAX_ENABLED`,
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`,
-`AWS_SES_FROM_EMAIL`, `EMAIL_PROVIDER`, `RESEND_API_KEY`, `BID_NOTIFY_EMAIL`,
-`CALENDLY_URL`
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`,
+`STRIPE_TAX_ENABLED`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_REGION`, `AWS_SES_FROM_EMAIL`, `EMAIL_PROVIDER`, `RESEND_API_KEY`,
+`BID_NOTIFY_EMAIL`, `CALENDLY_URL`
+
+**Also on the Convex deployment — and each one refuses a sale when unset.**
+These were missing from the list above until 2026-09-03:
+
+| Variable | Read at | Unset ⇒ |
+| --- | --- | --- |
+| `STRIPE_PRICE_ESSENTIELLE_MONTHLY` | `convex/stripe.ts:24,47` | checkout refused before the order exists |
+| `STRIPE_PRICE_ESSENTIELLE_YEARLY` | `convex/stripe.ts:25,47` | same |
+| `STRIPE_PRICE_PREMIUM_MONTHLY` | `convex/stripe.ts:26,47` | same |
+| `STRIPE_PRICE_PREMIUM_YEARLY` | `convex/stripe.ts:27,47` | same |
+| `STRIPE_FOUNDERS_COUPON_ID` | `convex/stripe.ts:219` | founders sale refused — nothing caps the 10 seats |
+| `STRIPE_PRODUCT_CREATION_ESSENTIELLE` | `convex/stripe.ts:66,78` | founders sale refused |
+| `STRIPE_PRODUCT_CREATION_PREMIUM` | `convex/stripe.ts:67,78` | referral discount spreads over the maintenance line |
+| `BEYOURS_TEST_CHECKOUT` | `convex/stripeMode.ts:38,58` | nothing — but only `"true"` enables the no-payment path, and it must be unset anywhere that sells |
+
+Creating the Stripe objects behind those ids is an account-owner action:
+[`tasks/stripe-founders-offer-runbook.md`](../../tasks/stripe-founders-offer-runbook.md).
+`.env.example` carries the same list with the full reasoning.
 
 `.gitignore` covers `.env*` except the templates. On an app that handles Stripe
 in live mode, never relax that rule.

@@ -18,7 +18,7 @@ import type {
   OrderPaymentStatus,
   BadgeVariant,
 } from "../../lib/types"
-import { ORDER_STATUS_CONFIG } from "../../lib/vocabulary"
+import { ORDER_STATUS_CONFIG, ORDER_PAYMENT_STATUS_CONFIG } from "../../lib/vocabulary"
 
 type OrdersTableProps = {
   orders: Order[]
@@ -49,17 +49,15 @@ function getTypeBadge(type: OrderType) {
 
 /**
  * Get badge variant and label for payment status
+ *
+ * Falls back rather than indexing blind: an order carrying a status newer than
+ * this build must not render an empty badge.
  */
 function getPaymentBadge(status: OrderPaymentStatus) {
-  const paymentConfig: Record<OrderPaymentStatus, { className: string; label: string }> = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
-    paid: { className: "bg-green-100 text-green-800", label: "Payé" },
-    failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
-    refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
-    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Partiellement remboursé" },
+  const config = ORDER_PAYMENT_STATUS_CONFIG[status] ?? {
+    className: "bg-gray-100 text-gray-800",
+    label: status,
   }
-
-  const config = paymentConfig[status]
   return <Badge className={config.className}>{config.label}</Badge>
 }
 

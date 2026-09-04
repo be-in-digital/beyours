@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest"
-import { createFromWebhook, updateStatus } from "../orders"
+import {
+  cancellationPaymentStatus,
+  createFromWebhook,
+  markCashPaid,
+  updateFromWebhook,
+  updateStatus,
+} from "../orders"
+import { planRefund } from "../refundPolicy"
 
 // ---------------------------------------------------------------------------
 // Minimal in-memory Convex DB mock supporting query().filter().first() + insert.
@@ -254,11 +261,24 @@ describe("createWithTicket", () => {
 // ============================================================================
 
 describe("updateStatus", () => {
-  function createOrderCtx(order: Record<string, unknown>, payments: Doc[] = []) {
+  function createOrderCtx(
+    order: Record<string, unknown>,
+    payments: Doc[] = [],
+    kitchenTickets: Doc[] = []
+  ) {
     const docs: Record<string, Record<string, unknown>> = {
       "orders:1": { _id: "orders:1", ...order },
     }
+    for (const doc of [...payments, ...kitchenTickets]) {
+      docs[doc._id as string] = doc
+    }
     const patches: Array<{ id: string; updates: Record<string, unknown> }> = []
+
+    // Routed by table name. One shared result set answered every `withIndex`
+    // query, so the kitchen-ticket loop reached the payments rows and a test
+    // could not tell "the cancellation wrote to a payment" from "the
+    // cancellation closed a ticket".
+    const tables: Record<string, Doc[]> = { payments, kitchenTickets }
 
     const ctx = {
       db: {
@@ -267,15 +287,20 @@ describe("updateStatus", () => {
           patches.push({ id, updates })
           Object.assign(docs[id] ?? {}, updates)
         },
-        query: () => ({
-          withIndex: () => ({ collect: async () => payments }),
+        query: (table: string) => ({
+          withIndex: () => ({
+            collect: async () => tables[table] ?? [],
+            first: async () => tables[table]?.[0] ?? null,
+          }),
         }),
       },
     }
     return { ctx, patches, docs }
   }
 
-  const baseOrder = { status: "pending", paymentStatus: "unpaid" }
+  // "unpaid" was not one of the values the schema allows — no order in the
+  // database can ever look like this. "pending" is the real not-yet-paid state.
+  const baseOrder = { status: "pending", paymentStatus: "pending" }
 
   it("applies a valid transition", async () => {
     const { ctx, patches } = createOrderCtx(baseOrder)
@@ -325,7 +350,39 @@ describe("updateStatus", () => {
     expect(patches[0]?.updates.status).toBe("out_for_delivery")
   })
 
-  it("still refunds a paid order when the cancellation is legal", async () => {
+  // -------------------------------------------------------------------------
+  // Cancelling a paid order does not refund it.
+  //
+  // The test that used to sit here asserted the opposite — that the handler
+  // patched the order and its payments to "refunded" — and called that a
+  // refund. It was a database write and nothing else: no provider was ever
+  // called, so the customer's money stayed with the restaurant while the books
+  // said it had been returned. The test froze that in place.
+  //
+  // It was worse than a wrong label. `planRefund` accepts only "succeeded" and
+  // "partially_refunded", so the fake refund made the REAL one impossible:
+  // `payments.refundPayment` threw `not_settled` from then on, for ever.
+  // -------------------------------------------------------------------------
+
+  it("does not touch the payments when a paid order is cancelled", async () => {
+    const payments: Doc[] = [
+      { _id: "payments:1", status: "succeeded", amount: 2500 },
+    ]
+    const { ctx, patches } = createOrderCtx(
+      { status: "confirmed", paymentStatus: "paid" },
+      payments
+    )
+
+    await updateStatus.handler(ctx, {
+      id: "orders:1",
+      status: "cancelled",
+      cancellationReason: "out of stock",
+    })
+
+    expect(patches.some((p) => p.id === "payments:1")).toBe(false)
+  })
+
+  it("marks a cancelled paid order refund_pending, not refunded", async () => {
     const payments: Doc[] = [
       { _id: "payments:1", status: "succeeded", amount: 2500 },
     ]
@@ -341,9 +398,66 @@ describe("updateStatus", () => {
     })
 
     const orderPatch = patches.find((p) => p.id === "orders:1")
-    expect(orderPatch?.updates.paymentStatus).toBe("refunded")
+    // "refund_pending" records that money is OWED back. "refunded" claimed it
+    // had been sent.
+    expect(orderPatch?.updates.paymentStatus).toBe("refund_pending")
     expect(orderPatch?.updates.cancellationReason).toBe("out of stock")
-    expect(patches.some((p) => p.id === "payments:1")).toBe(true)
+  })
+
+  it("leaves the real refund possible after the cancellation", async () => {
+    // The point of the whole change: the payment the handler left behind must
+    // still pass `planRefund`, which is the gate `payments.refundPayment` runs
+    // before it calls a provider. The old code left a row this threw on.
+    const payments: Doc[] = [
+      { _id: "payments:1", status: "succeeded", amount: 2500 },
+    ]
+    const { ctx, docs } = createOrderCtx(
+      { status: "confirmed", paymentStatus: "paid" },
+      payments
+    )
+
+    await updateStatus.handler(ctx, {
+      id: "orders:1",
+      status: "cancelled",
+      cancellationReason: "out of stock",
+    })
+
+    const payment = payments[0] as {
+      status: string
+      amount: number
+      refundedAmount?: number
+    }
+    expect(payment.status).toBe("succeeded")
+    expect(payment.refundedAmount).toBeUndefined()
+
+    const plan = planRefund({
+      payment: {
+        provider: "stripe",
+        status: payment.status,
+        amount: payment.amount,
+        refundedAmount: payment.refundedAmount,
+        externalId: "pi_123",
+      },
+      amount: 2500,
+    })
+    expect(plan.isFullRefund).toBe(true)
+    expect(plan.refundedAmount).toBe(2500)
+
+    // And the order really is the one carrying the flag.
+    expect(docs["orders:1"]?.paymentStatus).toBe("refund_pending")
+  })
+
+  it("leaves an unpaid order's payment status alone", async () => {
+    // Only a PAID order owes anything back. An unpaid one is just cancelled.
+    const { ctx, patches } = createOrderCtx({
+      status: "confirmed",
+      paymentStatus: "pending",
+    })
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+
+    const orderPatch = patches.find((p) => p.id === "orders:1")
+    expect(orderPatch?.updates.paymentStatus).toBeUndefined()
   })
 
   it("throws when the order does not exist", async () => {
@@ -352,6 +466,58 @@ describe("updateStatus", () => {
     await expect(
       updateStatus.handler(ctx, { id: "orders:missing", status: "confirmed" })
     ).rejects.toThrow(/Order not found/)
+  })
+})
+
+// ============================================================================
+// markCashPaid — a refund still owed must not be paid over
+// ============================================================================
+
+describe("markCashPaid", () => {
+  function createCashCtx(order: Record<string, unknown>) {
+    const docs: Record<string, Record<string, unknown>> = {
+      "orders:1": { _id: "orders:1", storeId: "stores:1", total: 2500, ...order },
+    }
+    const inserted: Array<{ table: string; doc: Record<string, unknown> }> = []
+
+    const ctx = {
+      db: {
+        get: async (id: string) => docs[id] ?? null,
+        patch: async (id: string, updates: Record<string, unknown>) => {
+          Object.assign(docs[id] ?? {}, updates)
+        },
+        insert: async (table: string, doc: Record<string, unknown>) => {
+          inserted.push({ table, doc })
+          return `${table}:1`
+        },
+        query: () => ({ first: async () => null }),
+      },
+    }
+    return { ctx, docs, inserted }
+  }
+
+  it("refuses an order that is cancelled and awaiting its refund", async () => {
+    // `refund_pending` means: paid, then cancelled, money still owed back.
+    // Taking cash again would write a second payment and reset the order to
+    // "paid" — erasing the refund the customer is still waiting for.
+    const { ctx, inserted } = createCashCtx({ paymentStatus: "refund_pending" })
+
+    await expect(
+      markCashPaid.handler(ctx, { orderId: "orders:1" })
+    ).rejects.toThrow(/attente de remboursement/)
+
+    expect(inserted).toHaveLength(0)
+  })
+
+  it("still records cash on an order that has not been paid", async () => {
+    const { ctx, docs, inserted } = createCashCtx({ paymentStatus: "pending" })
+
+    await markCashPaid.handler(ctx, { orderId: "orders:1" })
+
+    expect(inserted).toHaveLength(1)
+    expect(inserted[0]?.doc.provider).toBe("cash")
+    expect(inserted[0]?.doc.status).toBe("succeeded")
+    expect(docs["orders:1"]?.paymentStatus).toBe("paid")
   })
 })
 
@@ -712,6 +878,226 @@ describe("create — the establishment has to be published", () => {
 
     await expect(create.handler(ctx, args as never)).rejects.toThrow(
       /Store not found/
+    )
+  })
+})
+
+// ============================================================================
+// A cancellation only owes a refund where the restaurant took the money
+//
+// Since #128, cancelling a paid order flags it `refund_pending` — money owed
+// back, an amber banner and a refund button in the admin. Uber Eats and
+// Deliveroo orders are created `paid` and never get a `payments` row, because
+// the customer paid the platform: `payments.provider` has no value for one, and
+// Deliveroo refunds the customer itself on a rejection. Cancelling one of those
+// therefore asked a restaurant to send back money it never held and has no way
+// to send.
+//
+// `source` is the discriminator, not the absence of a payment row. A direct
+// card order is marked paid and settled in two separate mutations, so between
+// them a real Stripe order looks exactly like a marketplace one — and absence
+// is also the shape of a genuine data bug, which must stay visible.
+// ============================================================================
+
+describe("cancellationPaymentStatus", () => {
+  it("owes a refund on a paid website order", () => {
+    expect(
+      cancellationPaymentStatus({ source: "website", paymentStatus: "paid" })
+    ).toBe("refund_pending")
+  })
+
+  it("owes a refund on a paid counter order", () => {
+    // "pos" is the till: the restaurant is holding those notes.
+    expect(
+      cancellationPaymentStatus({ source: "pos", paymentStatus: "paid" })
+    ).toBe("refund_pending")
+  })
+
+  it.each(["uber_eats", "deliveroo"])(
+    "owes nothing on a %s order",
+    (source) => {
+      expect(cancellationPaymentStatus({ source, paymentStatus: "paid" })).toBeUndefined()
+    }
+  )
+
+  it("owes nothing on an order that was never paid", () => {
+    expect(
+      cancellationPaymentStatus({ source: "website", paymentStatus: "pending" })
+    ).toBeUndefined()
+  })
+
+  it("treats an unclassified source as direct", () => {
+    // The default has to fall this way. A false "refund owed" is visible and an
+    // operator can dismiss it; a missing one silently keeps a customer's money,
+    // which is the defect #128 closed. A new marketplace must be added to the
+    // list — a new direct channel needs nothing.
+    expect(
+      cancellationPaymentStatus({ source: "kiosk", paymentStatus: "paid" })
+    ).toBe("refund_pending")
+    expect(cancellationPaymentStatus({ paymentStatus: "paid" })).toBe(
+      "refund_pending"
+    )
+  })
+})
+
+describe("cancelling a marketplace order", () => {
+  function createCancelCtx(order: Record<string, unknown>) {
+    const docs: Record<string, Record<string, unknown>> = {
+      "orders:1": { _id: "orders:1", ...order },
+    }
+    const patches: Array<{ id: string; updates: Record<string, unknown> }> = []
+
+    const ctx = {
+      db: {
+        get: async (id: string) => docs[id] ?? null,
+        patch: async (id: string, updates: Record<string, unknown>) => {
+          patches.push({ id, updates })
+          Object.assign(docs[id] ?? {}, updates)
+        },
+        query: () => ({
+          withIndex: () => ({ collect: async () => [], first: async () => null }),
+        }),
+      },
+    }
+    return { ctx, patches, docs }
+  }
+
+  it.each(["uber_eats", "deliveroo"])(
+    "leaves a %s order's payment status alone",
+    async (source) => {
+      const { ctx, patches } = createCancelCtx({
+        status: "pending",
+        paymentStatus: "paid",
+        source,
+      })
+
+      await updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+
+      const orderPatch = patches.find((p) => p.id === "orders:1")
+      expect(orderPatch?.updates.status).toBe("cancelled")
+      // The platform refunds its own customer. Asking the restaurant for money
+      // it never received is not a refund, it is a bill.
+      expect(orderPatch?.updates.paymentStatus).toBeUndefined()
+    }
+  )
+
+  it("still owes the refund on a paid website order", async () => {
+    // The regression guard for #128: the fix above must not reach this one.
+    const { ctx, patches } = createCancelCtx({
+      status: "confirmed",
+      paymentStatus: "paid",
+      source: "website",
+    })
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+
+    const orderPatch = patches.find((p) => p.id === "orders:1")
+    expect(orderPatch?.updates.paymentStatus).toBe("refund_pending")
+  })
+
+  it("still owes the refund when the payment row has not landed yet", async () => {
+    // A card order is marked paid by `internalUpdatePaymentStatus` and settled
+    // by `payments.internalSettle` — two mutations, two transactions. A
+    // cancellation in between sees a paid order with no `payments` row, which
+    // is exactly what a marketplace order looks like. `source` tells them
+    // apart; counting payment rows would not, and would drop the flag on real
+    // money.
+    const { ctx, patches } = createCancelCtx({
+      status: "confirmed",
+      paymentStatus: "paid",
+      source: "website",
+      paymentMethod: "card",
+    })
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+
+    const orderPatch = patches.find((p) => p.id === "orders:1")
+    expect(orderPatch?.updates.paymentStatus).toBe("refund_pending")
+  })
+})
+
+describe("the two webhook cancellation paths agree", () => {
+  // `deliverooWebhook`'s auto-reject cancels through `updateStatus`; its
+  // `order.status_update` — and Uber's `orders.failure` — cancel through
+  // `updateFromWebhook`. One platform, one cancellation, and the two used to
+  // write different payment statuses depending on which webhook carried it.
+  function marketplaceOrder(overrides: Record<string, unknown> = {}) {
+    return {
+      _id: "orders:1",
+      status: "pending",
+      paymentStatus: "paid",
+      source: "deliveroo",
+      externalOrderId: "gb:1",
+      ...overrides,
+    }
+  }
+
+  function ctxFor(order: Record<string, unknown>) {
+    const docs: Record<string, Record<string, unknown>> = {
+      [order._id as string]: { ...order },
+    }
+    const ctx = {
+      db: {
+        get: async (id: string) => docs[id] ?? null,
+        patch: async (id: string, updates: Record<string, unknown>) => {
+          Object.assign(docs[id] ?? {}, updates)
+        },
+        query: () => ({
+          filter: () => ({
+            first: async () => Object.values(docs)[0] ?? null,
+            collect: async () => Object.values(docs),
+          }),
+          withIndex: () => ({ collect: async () => [], first: async () => null }),
+        }),
+      },
+    }
+    return { ctx, docs }
+  }
+
+  it("both leave a cancelled marketplace order where it was", async () => {
+    const viaStatus = ctxFor(marketplaceOrder())
+    const viaWebhook = ctxFor(marketplaceOrder())
+
+    await updateStatus.handler(viaStatus.ctx, {
+      id: "orders:1",
+      status: "cancelled",
+    })
+    await updateFromWebhook.handler(viaWebhook.ctx, {
+      externalOrderId: "gb:1",
+      platform: "deliveroo",
+      status: "cancelled",
+      updatedAt: 1_700_000_000_000,
+    })
+
+    expect(viaStatus.docs["orders:1"]?.paymentStatus).toBe("paid")
+    expect(viaWebhook.docs["orders:1"]?.paymentStatus).toBe(
+      viaStatus.docs["orders:1"]?.paymentStatus
+    )
+  })
+
+  it("both flag a direct paid order that reaches them", async () => {
+    // `updateFromWebhook` only ever finds marketplace orders today — it filters
+    // on `source`. This asserts the shared rule is what decides, so the two
+    // cannot answer differently if that ever changes.
+    const viaStatus = ctxFor(
+      marketplaceOrder({ source: "website", status: "confirmed" })
+    )
+    const viaWebhook = ctxFor(marketplaceOrder({ source: "website" }))
+
+    await updateStatus.handler(viaStatus.ctx, {
+      id: "orders:1",
+      status: "cancelled",
+    })
+    await updateFromWebhook.handler(viaWebhook.ctx, {
+      externalOrderId: "gb:1",
+      platform: "deliveroo",
+      status: "cancelled",
+      updatedAt: 1_700_000_000_000,
+    })
+
+    expect(viaStatus.docs["orders:1"]?.paymentStatus).toBe("refund_pending")
+    expect(viaWebhook.docs["orders:1"]?.paymentStatus).toBe(
+      viaStatus.docs["orders:1"]?.paymentStatus
     )
   })
 })

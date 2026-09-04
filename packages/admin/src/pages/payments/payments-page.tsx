@@ -32,6 +32,9 @@ import type {
   BadgeVariant,
 } from "../../lib/types"
 import { ResolvingStore } from "../../components/resolving-store"
+import { refundControlState } from "../../lib/refund-eligibility"
+import { RefundControl } from "./refund-control"
+import { useAdminAuthStore } from "../../stores/admin-auth-store"
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
   pending: { label: "En attente", variant: "secondary" },
@@ -58,6 +61,9 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
+  // `payments:read` gets a role onto this screen; `payments:refund` is what the
+  // server checks on the click. They are not the same set of people.
+  const role = useAdminAuthStore((s) => s.role)
   const payments = useQuery(
     api?.payments?.getByStore ?? ("skip" as never),
     storeId ? { storeId } : "skip"
@@ -163,10 +169,7 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
             </TableHeader>
             <TableBody>
               {filteredPayments.map((payment: Payment) => {
-                const canRefund =
-                  payment.status === "succeeded" &&
-                  payment.provider !== "cash" &&
-                  (payment.refundedAmount || 0) < payment.amount
+                const refund = refundControlState(payment, role)
 
                 return (
                   <TableRow key={payment._id}>
@@ -217,17 +220,18 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
                             </a>
                           </Button>
                         )}
-                        {canRefund && (
+                        <RefundControl state={refund}>
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-7 text-xs"
+                            disabled={refund.disabled}
                             onClick={() => setRefundingPayment(payment)}
                           >
                             <RotateCcw className="mr-1.5 h-3 w-3" />
                             Rembourser
                           </Button>
-                        )}
+                        </RefundControl>
                       </div>
                     </TableCell>
                   </TableRow>

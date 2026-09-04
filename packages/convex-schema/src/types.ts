@@ -228,6 +228,8 @@ export type PaymentStatus =
   | 'pending'
   | 'paid'
   | 'failed'
+  /** Owed back, not yet sent: a cancelled paid order awaiting a real refund. */
+  | 'refund_pending'
   | 'refunded'
   | 'partially_refunded'
 
