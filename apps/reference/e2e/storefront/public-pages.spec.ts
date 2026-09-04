@@ -53,12 +53,28 @@ test.describe("Public Pages", () => {
   })
 
   test.describe("Blog", () => {
-    test("should display the article list heading", async ({ page }) => {
-      await page.goto("/blog", { waitUntil: "domcontentloaded" })
+    /**
+     * The hero, which always renders — not the "Tous les articles" heading,
+     * which does not.
+     *
+     * That heading sits above the grid of everything after the featured
+     * article, so a store with exactly one published article shows it as the
+     * featured card and the section is correctly absent. Asserting it would
+     * have failed on a real, healthy blog and passed here only because the
+     * fixture seeds no articles at all — a test that holds for the wrong
+     * reason. The hero is unconditional.
+     *
+     * Its text comes from the CMS and an owner may rewrite it, so the
+     * assertion is that the page has a first-level heading and that it says
+     * something, not what it says.
+     */
+    test("renders its hero", async ({ page }) => {
+      const response = await page.goto("/blog", { waitUntil: "domcontentloaded" })
+      expect(response?.status()).toBeLessThan(400)
 
-      await expect(
-        page.getByRole("heading", { name: "Tous les articles" })
-      ).toBeVisible({ timeout: 30_000 })
+      const hero = page.getByRole("heading", { level: 1 })
+      await expect(hero).toBeVisible({ timeout: 30_000 })
+      await expect(hero).not.toBeEmpty()
     })
 
     /**
@@ -68,8 +84,16 @@ test.describe("Public Pages", () => {
      */
     test("every article card links to an article page that exists", async ({ page }) => {
       await page.goto("/blog", { waitUntil: "domcontentloaded" })
+
+      // The articles arrive from a client-side Convex query, so the list is
+      // settled only once it has resolved into one of its two end states:
+      // at least one card, or the empty notice. Waiting on the hero alone
+      // would race the query and read an empty page as "no dead links".
       await expect(
-        page.getByRole("heading", { name: "Tous les articles" })
+        page
+          .locator('a[href^="/blog/"]')
+          .first()
+          .or(page.getByText("Aucun article pour le moment"))
       ).toBeVisible({ timeout: 30_000 })
 
       const hrefs = await page.locator('a[href^="/blog/"]').evaluateAll((links) =>
