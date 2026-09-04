@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LayoutList,
   Mail,
+  Palette,
   PenSquare,
   RefreshCw,
   Settings,
@@ -126,6 +127,12 @@ export const navGroups: NavGroup[] = [
         requiredPermission: "customers:read",
         badge: "unreadMessages",
       },
+      {
+        label: "Paiements",
+        href: adminRoutes.payments,
+        icon: CreditCard,
+        requiredPermission: "payments:read",
+      },
     ],
   },
   {
@@ -191,6 +198,21 @@ export const navGroups: NavGroup[] = [
         href: adminRoutes.contentMedia,
         icon: Image,
         requiredPermission: "settings:read",
+      },
+      /**
+       * Colours, typography and logo of the storefront.
+       *
+       * Gated on `stores:read` and not on `stores:write`, because this entry
+       * answers "may you look at it". The saves ask the second question
+       * themselves — see `lib/branding-eligibility.ts`. `manager` holds the
+       * read and not the write, so it reaches this screen with every save
+       * button drawn inert and explained.
+       */
+      {
+        label: "Design",
+        href: adminRoutes.design,
+        icon: Palette,
+        requiredPermission: "stores:read",
       },
     ],
   },

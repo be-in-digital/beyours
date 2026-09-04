@@ -85,6 +85,13 @@ export const ordersTable = defineTable({
     v.literal("pending"),
     v.literal("paid"),
     v.literal("failed"),
+    // Money is owed back but has NOT moved yet. Cancelling a paid order used to
+    // write "refunded" here and on every linked payment without calling a
+    // single provider, so the books claimed a refund the customer never got —
+    // and because `planRefund` refuses anything that is not "succeeded" or
+    // "partially_refunded", that lie permanently blocked the real refund. This
+    // status says "an operator still has to press the button".
+    v.literal("refund_pending"),
     v.literal("refunded"),
     v.literal("partially_refunded")
   ),
@@ -127,6 +134,23 @@ export const ordersTable = defineTable({
    * order that already exists.
    */
   idempotencyKey: v.optional(v.string()),
+  /**
+   * The Stripe Checkout Session this order was sent to pay through.
+   *
+   * WHY IT IS STORED: the session id was returned to the browser and kept
+   * nowhere else, so a customer who paid and then closed the tab before landing
+   * on the confirmation page left a paid Stripe charge and an order stuck at
+   * `paymentStatus: "pending"` — no webhook, no return page, and nothing on our
+   * side that could even name the session to ask Stripe about it. The kitchen
+   * never saw the order. With the id here, reconciliation is a point lookup
+   * against Stripe instead of a blind walk of every session in the window.
+   *
+   * Optional on purpose: cash, SumUp, PayPal and every platform order have no
+   * Stripe session, and every row written before this field existed has none
+   * either. Both read as "nothing to reconcile", which is the truth, so no
+   * backfill is required for `schemaValidation: true`.
+   */
+  stripeCheckoutSessionId: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -139,3 +163,8 @@ export const ordersTable = defineTable({
   .index("by_external_order", ["externalOrderId"])
   .index("by_uberDirectDeliveryId", ["uberDirectDeliveryId"])
   .index("by_storeId_idempotencyKey", ["storeId", "idempotencyKey"])
+  // Reconciliation reads exactly one slice: orders still unpaid, created inside
+  // the window where asking the provider is still meaningful. Without this the
+  // sweep would be a full walk of every order the store has ever taken, run on
+  // a schedule.
+  .index("by_paymentStatus_createdAt", ["paymentStatus", "createdAt"])

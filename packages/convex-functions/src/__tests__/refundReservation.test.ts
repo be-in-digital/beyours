@@ -4,8 +4,10 @@ import { reserveRefund, confirmRefund, releaseRefund } from "../payments"
 /**
  * The two-phase refund.
  *
- * `recordRefund` re-validated against a fresh document, so the stored balance
- * could never overshoot. What it could not do was run before the provider: two
+ * The write that recorded a refund re-validated against a fresh document, so
+ * the stored balance could never overshoot. What it could not do was run
+ * before the provider — and it has since been deleted outright, having had no
+ * callers left once the reservation moved in front of the provider call: two
  * refunds arriving together both read `refundedAmount: 0`, both passed
  * validation, and both sent money back. The database stayed consistent and the
  * till did not.
@@ -129,6 +131,29 @@ describe("releaseRefund gives the amount back when the provider refuses", () => 
     await expect(
       reserveRefund.handler(ctx, { id: "p1", amount: 10_000, refundMethod: "api" })
     ).resolves.toBeTruthy()
+  })
+
+  it("keeps a cancelled order at refund_pending instead of calling it paid", async () => {
+    // A cancelled order sits at "refund_pending": paid once, cancelled since,
+    // money still owed back. Releasing a refused refund used to write "paid"
+    // unconditionally, which erased the only marker saying an operator still
+    // has to send that money — the refund would be forgotten, not retried.
+    const { ctx, docs } = createDb(paidCard(), {
+      status: "cancelled",
+      paymentStatus: "refund_pending",
+    })
+
+    const { index } = await reserveRefund.handler(ctx, {
+      id: "p1",
+      amount: 10_000,
+      refundMethod: "api",
+    })
+    expect(docs.o1.paymentStatus).toBe("refunded")
+
+    await releaseRefund.handler(ctx, { id: "p1", index })
+
+    expect(docs.p1.refundedAmount).toBe(0)
+    expect(docs.o1.paymentStatus).toBe("refund_pending")
   })
 
   it("leaves a partial balance intact when only the second refund failed", async () => {

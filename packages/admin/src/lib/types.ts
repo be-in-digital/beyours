@@ -23,6 +23,13 @@ export type OrderPaymentStatus =
   | "failed"
   | "refunded"
   | "partially_refunded"
+  /**
+   * A paid order was cancelled, so the money is owed back — but nothing has
+   * been sent yet. Cancelling used to flip the order straight to "refunded"
+   * and patch the payment rows, claiming a refund no provider had performed.
+   * The order now stops here and waits for an operator to issue the real one.
+   */
+  | "refund_pending"
 
 export type OrderSource = "website" | "uber_eats" | "deliveroo" | "pos"
 
@@ -120,6 +127,21 @@ export type PaymentStatus =
   | "partially_refunded"
 
 export type PaymentProvider = "stripe" | "sumup" | "paypal" | "square" | "cash"
+
+/**
+ * Health of a store's connection to a payment provider.
+ *
+ * Mirrors the `status` union of the `paymentConnections` table in
+ * `@be-in-digital/convex-schema`, which documents each value. The one that is
+ * easy to get wrong: `onboarding_complete` means the provider account exists
+ * and onboarding finished, but charges are NOT routed to it — it is not a
+ * success and not a failure, and it must never be rendered as either.
+ */
+export type PaymentConnectionStatus =
+  | "connected"
+  | "onboarding_complete"
+  | "disconnected"
+  | "error"
 
 export interface PaymentMetadata {
   last4?: string

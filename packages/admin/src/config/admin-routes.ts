@@ -21,6 +21,15 @@ export const adminRoutes = {
   inventory: "/dashboard/inventory",
   messages: "/dashboard/messages",
 
+  /**
+   * Transactions and refunds. `PaymentsPage` carries the only working refund
+   * dialog in the admin, and until this route existed nothing rendered it —
+   * the page was exported from the package and mounted by neither app, so a
+   * refund could not be issued from anywhere. The Settings > Paiements tab is
+   * provider *configuration* and is a different screen.
+   */
+  payments: "/dashboard/payments",
+
   // ─── Marketing ──────────────────────────────────────────────────────────────
   promotions: "/dashboard/promotions",
 
@@ -38,6 +47,22 @@ export const adminRoutes = {
   emailConfig: "/dashboard/email/config",
 
   // ─── Content ────────────────────────────────────────────────────────────────
+  /**
+   * Colours, typography and logo of the storefront — `store.branding`.
+   *
+   * Its own route rather than a Settings tab, for the same reason the payments
+   * route is not the Settings > Paiements tab: this screen edits ONE
+   * establishment, resolved from `useAdminStoreId()`, while Settings is headed
+   * "Paramètres Globaux — valeurs par défaut héritées par tous les
+   * établissements". A per-store editor under that heading would tell an owner
+   * with three restaurants that they had just restyled all three.
+   *
+   * `DesignPage` was exported from the package and mounted by neither app
+   * before this route existed, so its three save buttons were unreachable even
+   * after the mutation behind them landed.
+   */
+  design: "/dashboard/design",
+
   contentPages: "/dashboard/content/pages",
   contentPageEdit: (slug: string) => `/dashboard/content/pages/${slug}` as const,
   contentComponents: "/dashboard/content/components",
