@@ -71,6 +71,26 @@ const REQUIRED: { name: string; check: Check }[] = [
   { name: 'NEXT_PUBLIC_SITE_URL', check: isUrl },
 ]
 
+/** The four maintenance Price IDs. `convex/stripe.ts` throws on any one missing. */
+const MAINTENANCE_PRICES = [
+  'STRIPE_PRICE_ESSENTIELLE_MONTHLY',
+  'STRIPE_PRICE_ESSENTIELLE_YEARLY',
+  'STRIPE_PRICE_PREMIUM_MONTHLY',
+  'STRIPE_PRICE_PREMIUM_YEARLY',
+]
+
+/**
+ * The persistent creation Products the founders coupon and every targeted
+ * referral discount are restricted to (`applies_to`).
+ *
+ * The plan → env-name mapping lives in `CREATION_PRODUCT_ENV`
+ * (convex/stripe.ts:65-68); these two lists must name the same variables.
+ */
+const CREATION_PRODUCTS = [
+  'STRIPE_PRODUCT_CREATION_ESSENTIELLE',
+  'STRIPE_PRODUCT_CREATION_PREMIUM',
+]
+
 /** Checked only when set — most of these are Convex-side in production. */
 const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'NEXT_PUBLIC_CONVEX_SITE_URL', check: isUrl },
@@ -86,7 +106,16 @@ const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'STRIPE_WEBHOOK_SECRET', check: startsWith('whsec_') },
   // Connect-scoped endpoint: its own endpoint, so its own secret.
   { name: 'STRIPE_CONNECT_WEBHOOK_SECRET', check: startsWith('whsec_') },
+  /* No prefix check: a coupon id is whatever the account owner typed into the
+     dashboard (the runbook recommends a readable one), not a generated `co_`. */
   { name: 'STRIPE_FOUNDERS_COUPON_ID', check: () => null },
+  /* Stripe object ids carry their type in the prefix, and these two families
+     sit next to each other in every checklist and every `convex env set` run.
+     A Price pasted into a Product var is accepted right up to `applies_to`,
+     which then matches nothing: the founders discount spreads pro rata over
+     the maintenance line instead of zeroing the creation one. */
+  ...CREATION_PRODUCTS.map((name) => ({ name, check: startsWith('prod_') })),
+  ...MAINTENANCE_PRICES.map((name) => ({ name, check: startsWith('price_') })),
   { name: 'EMAIL_PROVIDER', check: isOneOf('ses', 'resend') },
   { name: 'EMAIL_FROM', check: isEmail },
   { name: 'RESEND_FROM_EMAIL', check: isEmail },
@@ -96,14 +125,6 @@ const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'BOOKING_URL', check: isUrl },
   { name: 'CALENDLY_URL', check: isUrl },
   { name: 'LIVE_URL', check: isUrl },
-]
-
-/** The four maintenance Price IDs. `convex/stripe.ts` throws on any one missing. */
-const MAINTENANCE_PRICES = [
-  'STRIPE_PRICE_ESSENTIELLE_MONTHLY',
-  'STRIPE_PRICE_ESSENTIELLE_YEARLY',
-  'STRIPE_PRICE_PREMIUM_MONTHLY',
-  'STRIPE_PRICE_PREMIUM_YEARLY',
 ]
 
 /** All-or-nothing groups: half of one of these is worse than none of it. */
@@ -117,6 +138,26 @@ const FEATURE_GROUPS: { feature: string; vars: string[] }[] = [
     // never provisioned — convex/stripe.ts throws mid-session.
     feature: 'Prix de maintenance Stripe',
     vars: MAINTENANCE_PRICES,
+  },
+  {
+    /* resolveFoundersPricing (convex/foundersOffer.ts:71-84) needs BOTH: the
+       coupon enforces the 10-slot cap through max_redemptions, and the product
+       is what that coupon is restricted to. On a deployment holding a Stripe
+       key, either one missing throws FoundersOfferUnavailableError mid-checkout
+       — the first founders sale is refused in front of the customer instead of
+       being reported here, at boot, while it is still cheap to fix.
+       ESSENTIELLE is named literally because it is `foundersOffer.plan`; the
+       test suite pins the two together so a change of plan cannot pass. */
+    feature: 'Offre fondateurs',
+    vars: ['STRIPE_FOUNDERS_COUPON_ID', 'STRIPE_PRODUCT_CREATION_ESSENTIELLE'],
+  },
+  {
+    /* Not blocking on its own — an ordinary sale still completes. What half of
+       this pair costs is the split on the invoice: a discount with no product
+       to point at spreads pro rata over every line, billing an amortizable
+       investment and a deductible charge in the wrong proportions. */
+    feature: 'Produits de création Stripe',
+    vars: CREATION_PRODUCTS,
   },
 ]
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateSiteEnv, formatSiteEnvReport } from "../lib/env";
 import { VAT } from "../lib/legal/company";
+import { foundersOffer } from "../convex/foundersOffer";
 
 /** What the regime in force requires of both charging flags. */
 const CHARGING = String(VAT.regime === "reel");
@@ -213,6 +214,111 @@ describe("validateSiteEnv — feature groups", () => {
   // is normal and must not be reported.
   it("stays quiet when only the client-side TVA flag is visible", () => {
     expect(validateSiteEnv({ ...VALID, NEXT_PUBLIC_TVA_ENABLED: CHARGING }).ok).toBe(true);
+  });
+});
+
+/* ── The founders offer and the creation Products ──
+   tasks/stripe-founders-offer-runbook.md §7: neither STRIPE_PRODUCT_CREATION_*
+   appeared here, so a deployment holding half the founders pair passed
+   validateSiteEnv and refused the first sale at checkout instead — in front of
+   the customer, with FoundersOfferUnavailableError. */
+
+/* Derived, so that moving the offer to another plan cannot silently leave this
+   check guarding the old one. foundersOffer.plan is the offer's own truth. */
+const FOUNDERS_PRODUCT = `STRIPE_PRODUCT_CREATION_${foundersOffer.plan.toUpperCase()}`;
+
+describe("validateSiteEnv — offre fondateurs", () => {
+  it("guards the product of the plan the offer actually applies to", () => {
+    expect(FOUNDERS_PRODUCT).toBe("STRIPE_PRODUCT_CREATION_ESSENTIELLE");
+  });
+
+  // The reported gap, replayed: the coupon alone used to pass.
+  it("refuses the coupon without the creation product it is restricted to", () => {
+    const { ok, problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+    });
+    expect(ok).toBe(false);
+    expect(problems.find((p) => p.name === FOUNDERS_PRODUCT)?.tier).toBe("feature");
+  });
+
+  it("refuses the creation product without the coupon that caps the offer", () => {
+    const { ok, problems } = validateSiteEnv({
+      ...VALID,
+      [FOUNDERS_PRODUCT]: "prod_essentielle",
+    });
+    expect(ok).toBe(false);
+    expect(problems.find((p) => p.name === "STRIPE_FOUNDERS_COUPON_ID")?.tier).toBe(
+      "feature"
+    );
+  });
+
+  it("names the feature so the operator knows which sale breaks", () => {
+    const { problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+    });
+    expect(problems.find((p) => p.name === FOUNDERS_PRODUCT)?.message).toContain(
+      "Offre fondateurs"
+    );
+  });
+
+  it("accepts the complete founders configuration", () => {
+    expect(
+      validateSiteEnv({
+        ...VALID,
+        STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+        STRIPE_PRODUCT_CREATION_ESSENTIELLE: "prod_essentielle",
+        STRIPE_PRODUCT_CREATION_PREMIUM: "prod_premium",
+      }).ok
+    ).toBe(true);
+  });
+
+  /* Not blocking on its own: the sale completes. It costs the split on the
+     invoice — a discount with no product to point at spreads pro rata. */
+  it("refuses one creation product without the other", () => {
+    const { ok, problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+      STRIPE_PRODUCT_CREATION_ESSENTIELLE: "prod_essentielle",
+    });
+    expect(ok).toBe(false);
+    expect(problems.map((p) => p.name)).toEqual(["STRIPE_PRODUCT_CREATION_PREMIUM"]);
+  });
+
+  it("stays quiet when the whole founders offer is unconfigured", () => {
+    expect(validateSiteEnv(VALID).ok).toBe(true);
+  });
+});
+
+describe("validateSiteEnv — Stripe object ids carry their type", () => {
+  /* These vars sit next to each other in the runbook and in every
+     `convex env set` run. Stripe accepts a Price id in a Product var right up
+     to applies_to, which then matches nothing. */
+  it.each([
+    ["STRIPE_PRODUCT_CREATION_ESSENTIELLE", "price_1Nope", "prod_"],
+    ["STRIPE_PRODUCT_CREATION_PREMIUM", "price_1Nope", "prod_"],
+    ["STRIPE_PRICE_ESSENTIELLE_MONTHLY", "prod_1Nope", "price_"],
+    ["STRIPE_PRICE_PREMIUM_YEARLY", "prod_1Nope", "price_"],
+  ])("rejects %s = %s", (name, value, prefix) => {
+    const { ok, problems } = validateSiteEnv({ ...VALID, [name]: value });
+    expect(ok).toBe(false);
+    const problem = problems.find((p) => p.name === name);
+    expect(problem?.tier).toBe("format");
+    expect(problem?.message).toContain(prefix);
+  });
+
+  /* A coupon id is whatever the account owner typed, so it must NOT be
+     prefix-checked — the mirror that stops the rule above spreading. */
+  it("accepts a coupon id in any shape", () => {
+    expect(
+      validateSiteEnv({
+        ...VALID,
+        STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS-10-2026",
+        STRIPE_PRODUCT_CREATION_ESSENTIELLE: "prod_e",
+        STRIPE_PRODUCT_CREATION_PREMIUM: "prod_p",
+      }).ok
+    ).toBe(true);
   });
 });
 
