@@ -167,8 +167,11 @@ describe("importBatch", () => {
     })
     // The dialog read `result.imported`, which does not exist — so it fell back
     // to the row count of the file and reported every duplicate as imported.
-    expect(result.inserted).toBe(1)
-    expect(result.skipped).toBe(1)
+    expect(result).toEqual({
+      inserted: 1,
+      skipped: 1,
+      pendingIds: [expect.any(String)],
+    })
   })
 
   it("names the rows it inserted, so each can be sent a confirmation", async () => {
@@ -179,8 +182,10 @@ describe("importBatch", () => {
     })
     // A count cannot say WHICH rows were inserted, and the caller has to
     // schedule one confirmation email per row. The duplicate is not among them.
-    expect(result.pendingIds).toHaveLength(1)
-    expect(result.pendingIds[0]).toBe(rows(ctx)[0]?._id ?? result.pendingIds[0])
+    // `fakeCtx.db.insert` returns `row_N`, so that is what a real id looks like
+    // here. The previous spelling compared the value to itself through a `??`
+    // and could not fail.
+    expect(result.pendingIds).toEqual(["row_1"])
   })
 })
 

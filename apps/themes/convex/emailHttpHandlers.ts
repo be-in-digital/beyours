@@ -177,7 +177,9 @@ export const handleConfirmOptIn = httpAction(async (ctx, request) => {
         ? "Ce lien de confirmation a expiré (48h). Veuillez vous réinscrire."
         : msg === "Abonné déjà confirmé"
           ? "Votre inscription est déjà confirmée."
-          : "Ce lien de confirmation est invalide.";
+          : msg === "Adresse non distribuable"
+            ? "Nous n'avons pas pu livrer d'email à cette adresse. Vérifiez-la, puis réinscrivez-vous."
+            : "Ce lien de confirmation est invalide.";
 
     return new Response(htmlPage("Erreur", userMsg), {
       status: 400,
@@ -259,12 +261,9 @@ export const handleSesWebhook = httpAction(async (ctx, request) => {
   // attacker cannot produce. The host check still runs, in
   // `sesWebhookVerify`, doing the job it can actually do: deciding which host
   // we are willing to fetch a certificate from.
-  // Named rather than inferred: `runAction` widens an action's return type,
-  // so without the annotation `verdict.valid` is `any` and the check below
-  // proves nothing.
-  const verdict = (await ctx.runAction(internal.sesWebhookVerify.verify, {
+  const verdict = await ctx.runAction(internal.sesWebhookVerify.verify, {
     body: rawBody,
-  })) as { valid: boolean; reason?: string };
+  });
   if (!verdict.valid) {
     console.error("Rejected SES webhook:", verdict.reason);
     return new Response("Unauthorized", { status: 403 });

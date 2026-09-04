@@ -32,18 +32,32 @@ import schema from "../../convex/schema"
  * above all the link inside it — so the transport is the one part that has to
  * be replaced rather than exercised.
  */
-const sesSends: Array<Record<string, any>> = []
+interface CapturedEmail {
+  FromEmailAddress: string
+  ReplyToAddresses?: string[]
+  Destination: { ToAddresses: string[] }
+  ConfigurationSetName?: string
+  Content: {
+    Simple: {
+      Subject: { Data: string }
+      Body: { Html: { Data: string }; Text: { Data: string } }
+      Headers?: Array<{ Name: string; Value: string }>
+    }
+  }
+}
+
+const sesSends: CapturedEmail[] = []
 
 vi.mock("@aws-sdk/client-sesv2", () => ({
   SESv2Client: class {
-    async send(command: { input: Record<string, unknown> }) {
+    async send(command: { input: CapturedEmail }) {
       sesSends.push(command.input)
       return {}
     }
   },
   SendEmailCommand: class {
-    input: Record<string, unknown>
-    constructor(input: Record<string, unknown>) {
+    input: CapturedEmail
+    constructor(input: CapturedEmail) {
       this.input = input
     }
   },
@@ -160,8 +174,8 @@ describe("signing up from the storefront", () => {
     const sent = sesSends[0]
     expect(sent.Destination.ToAddresses).toEqual(["yanis@resto.example"])
 
-    const html = sent.Content.Simple.Body.Html.Data as string
-    const text = sent.Content.Simple.Body.Text.Data as string
+    const html = sent.Content.Simple.Body.Html.Data
+    const text = sent.Content.Simple.Body.Text.Data
     const expected = `${SITE_URL}/email/confirm?token=${subscriber!.doubleOptInToken}`
     expect(html).toContain(expected)
     expect(text).toContain(expected)
@@ -169,10 +183,7 @@ describe("signing up from the storefront", () => {
     // The correlation headers the SES webhook reads. A confirmation that hard
     // bounces is the clearest evidence an address is dead, and `markBounced`
     // now suppresses a permanent bounce on the first one.
-    const headers = sent.Content.Simple.Headers as Array<{
-      Name: string
-      Value: string
-    }>
+    const headers = sent.Content.Simple.Headers ?? []
     expect(headers.find((h) => h.Name === "X-Subscriber-Id")?.Value).toBe(
       subscriber!._id
     )
@@ -319,7 +330,7 @@ describe("the store name in the message", () => {
 
     // The name is whatever the owner typed, and it goes into the markup of a
     // message we send on their behalf.
-    const html = sesSends[0].Content.Simple.Body.Html.Data as string
+    const html = sesSends[0].Content.Simple.Body.Html.Data
     expect(html).not.toContain("<script>alert(1)</script>")
     expect(html).toContain("&lt;script&gt;")
   })
@@ -400,6 +411,118 @@ describe("importing a CSV", () => {
   })
 })
 
+describe("a signup whose confirmation never arrived", () => {
+  test("signing up again re-mints the token and sends another", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+    const first = await onlySubscriber(t)
+
+    // The whole reason this matters: a fresh client AWS account is in the SES
+    // sandbox, so on day one every confirmation throws MessageRejected. Convex
+    // does not retry a scheduled function that throws, and there is no resend
+    // anywhere in the product — so without recovery that visitor was stranded
+    // for good, and `create` refusing a second attempt made it permanent.
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+
+    const rows = await t.run((ctx) => ctx.db.query("emailSubscribers").collect())
+    expect(rows).toHaveLength(1) // recovered, not duplicated
+    const second = rows[0]
+    expect(second.status).toBe("pending")
+    expect(second.doubleOptInToken).not.toBe(first!.doubleOptInToken)
+    expect(second.doubleOptInExpiresAt).toBeGreaterThanOrEqual(
+      first!.doubleOptInExpiresAt!
+    )
+
+    await t.action(internal.emailOptInActions.sendConfirmation, {
+      subscriberId: second._id,
+    })
+    const html = sesSends[0].Content.Simple.Body.Html.Data
+    expect(html).toContain(`token=${second.doubleOptInToken}`)
+  })
+
+  test("an expired link can be replaced by signing up again", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+    const stale = await onlySubscriber(t)
+    await t.run((ctx) =>
+      ctx.db.patch(stale!._id, { doubleOptInExpiresAt: NOW - 1 })
+    )
+
+    // The confirmation page says "Veuillez vous réinscrire". That instruction
+    // used to throw.
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+
+    const revived = await onlySubscriber(t)
+    expect(revived!.doubleOptInExpiresAt).toBeGreaterThan(Date.now())
+    await t.action(internal.emailOptInActions.sendConfirmation, {
+      subscriberId: revived!._id,
+    })
+    expect(sesSends).toHaveLength(1)
+  })
+
+  test("a confirmed subscriber is not quietly reset by the form", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+    const row = await onlySubscriber(t)
+    await t.mutation(internal.emailSubscribers.confirmDoubleOptIn, {
+      token: row!.doubleOptInToken!,
+    })
+
+    // Recovery is for `pending` only. Anyone who can type an address into a
+    // form must not be able to reopen a decision already taken — confirmed,
+    // unsubscribed, bounced or complained.
+    await expect(
+      t.mutation(api.emailSubscribers.subscribe, {
+        storeId,
+        email: "yanis@resto.example",
+      })
+    ).rejects.toThrow(/déjà inscrit/)
+
+    expect((await onlySubscriber(t))!.status).toBe("active")
+  })
+
+  test("an address that hard-bounced is told so, not that it is confirmed", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t)
+    await t.mutation(api.emailSubscribers.subscribe, {
+      storeId,
+      email: "yanis@resto.example",
+    })
+    const row = await onlySubscriber(t)
+    // What one Permanent bounce on the confirmation itself now does.
+    await t.run((ctx) => ctx.db.patch(row!._id, { status: "bounced" as const }))
+
+    const response = await t.fetch(
+      `/email/confirm?token=${row!.doubleOptInToken}`
+    )
+    const body = await response.text()
+
+    // It used to render "Votre inscription est déjà confirmée." — untrue, and
+    // it sent them away believing they were on a list they never joined.
+    expect(body).not.toContain("déjà confirmée")
+    expect(body).toContain("Vérifiez-la")
+  })
+})
+
 describe("the round trip", () => {
   test("sign up, open the link that was mailed, and the welcome starts", async () => {
     const t = newHarness()
@@ -420,7 +543,7 @@ describe("the round trip", () => {
 
     // 3. Take the link out of the message itself rather than rebuilding it —
     //    the defect was precisely that no message contained one.
-    const html = sesSends[0].Content.Simple.Body.Html.Data as string
+    const html = sesSends[0].Content.Simple.Body.Html.Data
     const link = html.match(/href="([^"]*\/email\/confirm[^"]*)"/)?.[1]
     expect(link).toBeTruthy()
 

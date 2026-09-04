@@ -152,8 +152,11 @@ export const sendConfirmation = internalAction({
     const config = await ctx.runQuery(internal.emailConfig.getInternal, {
       storeId: subscriber.storeId,
     });
+    // `||`, not `??`: `emailConfig.fromEmail` is a required `v.string()` that
+    // `upsert` accepts empty, and `??` would hand SES "" rather than falling
+    // back — defeating the sentence above this one.
     const fromEmail =
-      config?.fromEmail ?? process.env.AWS_SES_FROM_EMAIL ?? "";
+      config?.fromEmail || process.env.AWS_SES_FROM_EMAIL || "";
     if (!fromEmail) {
       throw new Error(
         "Neither the store's email config nor AWS_SES_FROM_EMAIL provides a sender address"

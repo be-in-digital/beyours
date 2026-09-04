@@ -153,15 +153,6 @@ export const create = {
   handler: async (ctx: any, args: any) => {
     const email = args.email.toLowerCase()
 
-    // Check uniqueness
-    const existing = await ctx.db
-      .query("emailSubscribers")
-      .withIndex("by_storeId_email", (q: any) =>
-        q.eq("storeId", args.storeId).eq("email", email)
-      )
-      .first()
-    if (existing) throw new Error("Cet email est déjà inscrit")
-
     assertFieldLengths({
       email: args.email,
       name: args.firstName,
@@ -170,11 +161,46 @@ export const create = {
     // Public by necessity — a storefront visitor has no session — so the same
     // two windows the contact form uses apply here. Re-subscribing is normal;
     // doing it five times an hour is a script.
+    //
+    // Consumed BEFORE the uniqueness check, not after: a caller who guesses
+    // addresses one at a time is exactly what the limiter is for, and a check
+    // that throws first spends nothing and answers freely whether an address is
+    // on the list.
     await consumeRateLimit(ctx, "subscribePerEmail", email)
     await consumeRateLimit(ctx, "subscribePerStore", args.storeId)
 
     const now = Date.now()
     const { token: tokenBytes, expiresAt } = doubleOptInCredential()
+
+    const existing = await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId_email", (q: any) =>
+        q.eq("storeId", args.storeId).eq("email", email)
+      )
+      .first()
+
+    if (existing) {
+      // A `pending` row is someone who asked and never got their link — the
+      // confirmation bounced, SES refused it because the account is still
+      // sandboxed, the mail went to spam, or the 48 hours simply ran out.
+      // Refusing them was a one-way door: `create` was the only way in, there
+      // is no resend anywhere in the product, and the confirmation page told
+      // them to "se réinscrire", which threw. Re-minting is the recovery, and
+      // the rate limit above is what keeps it from being a mail cannon.
+      if (existing.status === "pending") {
+        await ctx.db.patch(existing._id, {
+          doubleOptInToken: tokenBytes,
+          doubleOptInExpiresAt: expiresAt,
+          consentAt: now,
+          updatedAt: now,
+        })
+        return existing._id
+      }
+      // Every other status is a decision already taken — confirmed,
+      // unsubscribed, bounced or complained — and none of them should be
+      // quietly overwritten by anyone who can type the address into a form.
+      throw new Error("Cet email est déjà inscrit")
+    }
 
     // Manual source = admin added, skip double opt-in
     const isManual = args.source === "manual"
@@ -237,6 +263,13 @@ export const confirmDoubleOptIn = {
       )
       .first()
     if (!subscriber) throw new Error("Token invalide")
+    // Distinguished, because the page renders these straight to the visitor.
+    // A suppressed address holding a live token was being told "votre
+    // inscription est déjà confirmée" — untrue, and it sent them away believing
+    // they were on a list they had never joined.
+    if (subscriber.status === "bounced" || subscriber.status === "complained") {
+      throw new Error("Adresse non distribuable")
+    }
     if (subscriber.status !== "pending") throw new Error("Abonné déjà confirmé")
     if (subscriber.doubleOptInExpiresAt && Date.now() > subscriber.doubleOptInExpiresAt) {
       throw new Error("Token expiré")

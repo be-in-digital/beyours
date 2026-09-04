@@ -109,3 +109,17 @@ describe("canVerify", () => {
     expect(canVerify({ ...NOTIFICATION, Type: "Nonsense" })).toBe(false)
   })
 })
+
+describe("a message type that is not a message type", () => {
+  it("refuses an inherited property instead of throwing", () => {
+    // `SIGNED_FIELDS` is a plain object, so `SIGNED_FIELDS["constructor"]`
+    // used to return `Object.prototype.constructor` — truthy, not an array —
+    // and the loop threw out of `canVerify`, before the webhook's try block.
+    // An unauthenticated POST could turn its own 403 into a 500.
+    for (const type of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      expect(() => buildSnsStringToSign({ ...NOTIFICATION, Type: type })).not.toThrow()
+      expect(buildSnsStringToSign({ ...NOTIFICATION, Type: type })).toBeNull()
+      expect(canVerify({ ...NOTIFICATION, Type: type })).toBe(false)
+    }
+  })
+})
