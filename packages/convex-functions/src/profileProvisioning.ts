@@ -213,6 +213,40 @@ export function creatorAdministersNewStore(role: Role): boolean {
 }
 
 /**
+ * Does the supplied bootstrap token match the one configured on the deployment?
+ *
+ * Constant-time by construction, because the alternative is not theoretical: a
+ * plain `===` returns on the first differing byte, and `claimFirstAdmin` is a
+ * PUBLIC mutation anyone holding the deployment URL can call in a loop. That is
+ * enough to recover the token one character at a time.
+ *
+ * It compares over the LONGER of the two and folds the length difference into
+ * the same accumulator, rather than returning early when the lengths differ.
+ * The previous version lived inline in both apps and opened with
+ * `if (a.length !== b.length) return false`, directly under a comment promising
+ * to leak neither length nor content — so an attacker could still walk the
+ * token's length before attacking its bytes. `charCodeAt` past the end of a
+ * string is `NaN`, and `NaN | 0` is `0`, which is what makes the overrun read
+ * safe rather than merely undefined.
+ *
+ * Neither argument may be empty: two empty strings compare equal, which on an
+ * unconfigured deployment would wave through a caller who supplied nothing.
+ * `claimFirstAdmin` refuses an unset `ADMIN_BOOTSTRAP_TOKEN` before it ever
+ * gets here, and this stays fail-closed on its own so the guarantee does not
+ * depend on that ordering surviving the next edit.
+ */
+export function bootstrapTokenMatches(supplied: string, expected: string): boolean {
+  if (expected.length === 0 || supplied.length === 0) return false
+
+  let diff = supplied.length ^ expected.length
+  const rounds = Math.max(supplied.length, expected.length)
+  for (let i = 0; i < rounds; i++) {
+    diff |= (supplied.charCodeAt(i) | 0) ^ (expected.charCodeAt(i) | 0)
+  }
+  return diff === 0
+}
+
+/**
  * Whether the authenticated caller may claim the first super-admin seat.
  *
  * Provisioning requires a super admin, and a fresh deployment has none — so

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { Role } from "@be-in-digital/core/auth/rbac"
 import {
   assertCanAssignProfile,
+  bootstrapTokenMatches,
   canClaimFirstAdmin,
   creatorAdministersNewStore,
   ProvisioningRejectedError,
@@ -264,5 +265,58 @@ describe("creatorAdministersNewStore", () => {
     for (const role of [Role.MANAGER, Role.KITCHEN, Role.WAITER, Role.DELIVERY, Role.CUSTOMER]) {
       expect(creatorAdministersNewStore(role)).toBe(false)
     }
+  })
+})
+
+describe("bootstrapTokenMatches", () => {
+  it("accepts the exact token", () => {
+    expect(bootstrapTokenMatches("s3cr3t-bootstrap", "s3cr3t-bootstrap")).toBe(true)
+  })
+
+  it("refuses a token that differs in one byte", () => {
+    expect(bootstrapTokenMatches("s3cr3t-bootstrap", "s3cr3t-bootstrbp")).toBe(false)
+  })
+
+  it("refuses a correct prefix", () => {
+    // The whole reason the comparison is constant-time: a prefix must be worth
+    // no more to an attacker than a wrong first byte.
+    expect(bootstrapTokenMatches("s3cr3t", "s3cr3t-bootstrap")).toBe(false)
+  })
+
+  it("refuses a supplied token that merely extends the real one", () => {
+    expect(bootstrapTokenMatches("s3cr3t-bootstrap-and-more", "s3cr3t-bootstrap")).toBe(
+      false
+    )
+  })
+
+  it("refuses two empty strings rather than calling them equal", () => {
+    // Fail-closed on its own account. `claimFirstAdmin` already refuses an
+    // unset ADMIN_BOOTSTRAP_TOKEN before reaching here, but an empty-equals-
+    // empty comparison would hand the deployment to whoever submits a blank
+    // field the day that ordering changes.
+    expect(bootstrapTokenMatches("", "")).toBe(false)
+  })
+
+  it("refuses an empty supplied token against a configured one", () => {
+    expect(bootstrapTokenMatches("", "s3cr3t-bootstrap")).toBe(false)
+  })
+
+  it("refuses any token when none is configured", () => {
+    expect(bootstrapTokenMatches("anything", "")).toBe(false)
+  })
+
+  it("reads past the end of the shorter string without throwing", () => {
+    // `charCodeAt` past the end is NaN and `NaN | 0` is 0. The loop runs over
+    // the LONGER string on purpose — returning early on a length mismatch is
+    // what leaked the token's length in the version this replaced.
+    expect(() => bootstrapTokenMatches("a", "abcdefghijklmnop")).not.toThrow()
+    expect(bootstrapTokenMatches("a", "abcdefghijklmnop")).toBe(false)
+  })
+
+  it("compares over the longer of the two, whichever side that is", () => {
+    // A NUL-padded guess must not compare equal to the real token: folding the
+    // length difference into the accumulator is what stops it.
+    expect(bootstrapTokenMatches("token\u0000\u0000", "token")).toBe(false)
+    expect(bootstrapTokenMatches("token", "token\u0000\u0000")).toBe(false)
   })
 })

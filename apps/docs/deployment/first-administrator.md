@@ -4,6 +4,14 @@
 > client, by whoever deploys the backend — and until they are, the back office
 > is unreachable and the maps key is a billing-drain vector.
 
+> **There is an executable companion to this page.**
+> `scripts/wizards/github-e2e-maps-bootstrap.sh` places the bootstrap token
+> itself, prints the Google Cloud click path, and then **verifies the referrer
+> restriction over the network** rather than trusting that somebody applied it.
+> `--check` writes nothing and exits non-zero while anything is outstanding, so
+> it also works as a pre-handover gate. Read this page for the reasoning; run
+> the script to do the work and to prove it was done.
+
 ## Part 1 — `ADMIN_BOOTSTRAP_TOKEN` and `/setup`
 
 ### Why the seat cannot appoint itself
@@ -106,10 +114,18 @@ In the **client's own** Google Cloud project:
    - `https://www.<client-domain>/*`
    - the Vercel preview domain, only while the site is being built —
      `https://<project>-*.vercel.app/*` — and remove it at go-live.
-3. **API restrictions → Restrict key.** Enable only what the app calls:
+3. **API restrictions → Restrict key.** Enable only what the app calls — and
+   that is **two**, not three:
    - Maps JavaScript API
    - Places API
-   - Geocoding API
+
+   This list used to name the Geocoding API as well. Nothing calls it. The only
+   loader in the repository asks for `maps/api/js?libraries=places`
+   (`packages/ui/src/hooks/useGooglePlacesAutocomplete.ts:22`, and the copy each
+   app carries), and the coordinates it reads come off `place.geometry` in the
+   Place Details response — a Places field. `google.maps.Geocoder` appears
+   nowhere. An unused API left enabled is billable surface, which is the very
+   thing the rest of this section exists to close.
 4. **Save**, then confirm from a browser on the client domain that the map still
    renders, and from any other origin that it does not.
 
@@ -133,6 +149,7 @@ Set a budget alert on the client's billing account as the backstop:
 - [ ] `ADMIN_BOOTSTRAP_TOKEN` set on the Convex deployment
 - [ ] First account created, address verified, `/setup` completed
 - [ ] `ADMIN_BOOTSTRAP_TOKEN` removed afterwards
-- [ ] Maps key restricted to the client domain, APIs narrowed to three
+- [ ] Maps key restricted to the client domain, APIs narrowed to two
+- [ ] `bash scripts/wizards/github-e2e-maps-bootstrap.sh --check` exits 0
 - [ ] Vercel preview domain removed from the referrer list at go-live
 - [ ] Budget alert set on the client's billing account

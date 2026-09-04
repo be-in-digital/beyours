@@ -4,6 +4,7 @@ import * as defs from "@be-in-digital/convex-functions/userProfiles";
 import { getAuthUser } from "@be-in-digital/convex-functions/auth";
 import {
   assertCanAssignProfile,
+  bootstrapTokenMatches,
   canClaimFirstAdmin,
 } from "@be-in-digital/convex-functions/profileProvisioning";
 import {
@@ -12,21 +13,6 @@ import {
 } from "@be-in-digital/convex-functions/accessAudit";
 import { Role } from "@be-in-digital/core/auth/rbac";
 
-
-/**
- * Compare two secrets without leaking their length or content through timing.
- *
- * A plain `===` returns on the first differing byte, which is enough to
- * recover a token one character at a time.
- */
-function timingSafeEqualString(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return diff === 0;
-}
 
 // === Queries ===
 //
@@ -190,7 +176,7 @@ export const claimFirstAdmin = mutation({
           "L'amorçage administrateur n'est pas configuré sur ce déploiement.",
       });
     }
-    if (!timingSafeEqualString(args.bootstrapToken, expected)) {
+    if (!bootstrapTokenMatches(args.bootstrapToken, expected)) {
       throw new ConvexError({
         code: "bootstrap_token_invalid",
         message: "Jeton d'amorçage invalide.",
