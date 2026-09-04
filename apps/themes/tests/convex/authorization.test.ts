@@ -293,7 +293,7 @@ describe("privilege escalation", () => {
     const asCustomer = await seedUser(t, "user:mallory", "customer", [])
 
     await expect(
-      asCustomer.mutation(api.userProfiles.upsert, {
+      asCustomer.mutation(internal.userProfiles.upsert, {
         userId: "user:mallory",
         role: "manager",
         storeIds: [storeId],
@@ -308,7 +308,7 @@ describe("privilege escalation", () => {
     const asOwnerOfA = await seedUser(t, "user:a", "client_admin", [storeA])
 
     await expect(
-      asOwnerOfA.mutation(api.userProfiles.upsert, {
+      asOwnerOfA.mutation(internal.userProfiles.upsert, {
         userId: "user:new",
         role: "manager",
         storeIds: [storeB],
@@ -322,7 +322,7 @@ describe("privilege escalation", () => {
     const asOwnerOfA = await seedUser(t, "user:a", "client_admin", [storeA])
 
     await expect(
-      asOwnerOfA.mutation(api.userProfiles.upsert, {
+      asOwnerOfA.mutation(internal.userProfiles.upsert, {
         userId: "user:new",
         role: "client_admin",
         storeIds: [storeA],
@@ -1059,17 +1059,46 @@ describe("claiming the first admin seat", () => {
     })
   })
 
-  test("`upsert` is not a second door onto the seat", async () => {
-    // `claimFirstAdmin` is not the only public mutation that writes a role.
-    // On an unconfigured deployment every one of these must refuse, or the
-    // bootstrap token guards a door with an open window beside it.
+  test("`upsert` is not publicly exported at all", () => {
+    // The strongest form of "not a second door onto the seat": the mutation is
+    // `internalMutation`, so no client can reach it whatever the policy says.
+    //
+    // This has to be a source assertion, and the reason is worth recording.
+    // Neither of the two things that would normally catch a regression here
+    // can see it. `tsconfig.json` excludes `tests`, so the compiler never
+    // type-checks these files and a stale `api.userProfiles.upsert` raises
+    // nothing. And convex-test resolves `api.` and `anyApi.` by path and runs
+    // the function regardless of its visibility — measured: calling
+    // `anyApi.userProfiles.upsert` after this change still executed the
+    // handler and returned the policy's refusal, not "no such export". The
+    // sibling tests above that DO assert "no such export" pass because those
+    // functions were deleted outright, which is a different thing.
+    //
+    // So reverting `internalMutation` to `mutation` would be invisible to the
+    // whole suite. This is what notices.
+    const sources = import.meta.glob("../../convex/userProfiles.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+    const source = Object.values(sources)[0]
+
+    expect(source).toBeTypeOf("string")
+    expect(source).toMatch(/export const upsert = internalMutation\(/)
+    expect(source).not.toMatch(/export const upsert = mutation\(/)
+  })
+
+  test("the provisioning policy still refuses an escalation from inside", async () => {
+    // Internal is the outer wall; the policy is the inner one, and it still
+    // runs. Reaching it through `internal.` is how a server function would,
+    // and how `seed-users.mts` does through a deploy key.
     await withBootstrapToken(undefined, async () => {
       const t = newHarness()
 
       // No profile at all — the state of every account on a fresh clone.
       expect(
         await refusalCode(
-          t.withIdentity({ subject: "user:nobody" }).mutation(api.userProfiles.upsert, {
+          t.withIdentity({ subject: "user:nobody" }).mutation(internal.userProfiles.upsert, {
             userId: "user:nobody",
             role: "super_admin",
             storeIds: [],
@@ -1082,7 +1111,7 @@ describe("claiming the first admin seat", () => {
       const asCustomer = await seedUser(t, "user:mallory", "customer", [])
       expect(
         await refusalCode(
-          asCustomer.mutation(api.userProfiles.upsert, {
+          asCustomer.mutation(internal.userProfiles.upsert, {
             userId: "user:mallory",
             role: "super_admin",
             storeIds: [],
@@ -1095,7 +1124,7 @@ describe("claiming the first admin seat", () => {
       const asClientAdmin = await seedUser(t, "user:owner", "client_admin", [])
       expect(
         await refusalCode(
-          asClientAdmin.mutation(api.userProfiles.upsert, {
+          asClientAdmin.mutation(internal.userProfiles.upsert, {
             userId: "user:owner",
             role: "super_admin",
             storeIds: [],
@@ -1124,7 +1153,7 @@ describe("claiming the first admin seat", () => {
 
       expect(
         await refusalCode(
-          asOwner.mutation(api.userProfiles.upsert, {
+          asOwner.mutation(internal.userProfiles.upsert, {
             userId: "user:root",
             role: "customer",
             storeIds: [],
