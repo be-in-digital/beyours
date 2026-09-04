@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { GiftIcon, UtensilsIcon } from "lucide-react"
-import { gameSounds, haptics, type GamePrize } from "@/lib/game"
-import { prizeEmoji } from "./WelcomeScreen"
+import { gameSounds, haptics, type GamePrize } from "./lib"
+import { prizeEmoji } from "./prize-emoji"
 
 const MotionLink = motion.create(Link)
 
@@ -20,7 +20,8 @@ interface ResultScreenProps {
   winTitle: string
   winDescription?: string
   loseTitle: string
-  loseDescription?: string
+  /** Always present — `resolveGameCopy` supplies the default. */
+  loseDescription: string
   onClaim: () => void
   onFinishLose: () => void
 }
@@ -67,7 +68,7 @@ export function ResultScreen({
         </motion.div>
         <h2 className="font-heading text-3xl font-bold text-white/90">{loseTitle}</h2>
         <p className="mt-3 max-w-xs text-sm leading-relaxed text-white/55">
-          {loseDescription ?? "La chance tourne… littéralement. Retentez votre chance demain !"}
+          {loseDescription}
         </p>
         <div className="mt-10 w-full max-w-xs space-y-3">
           <MotionLink

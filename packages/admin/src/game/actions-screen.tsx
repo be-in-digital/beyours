@@ -13,7 +13,7 @@ import {
   LockIcon,
   UnlockIcon,
 } from "lucide-react"
-import { gameSounds, haptics, type GameAction, type GameActionType } from "@/lib/game"
+import { gameSounds, haptics, type GameAction, type GameActionType } from "./lib"
 
 /**
  * Pre-game actions screen.

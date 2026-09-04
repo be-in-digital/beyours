@@ -30,7 +30,6 @@ export const subTitles: Record<string, string> = {
   "games/qr-codes": "QR Codes",
   "games/actions": "Actions",
   "games/winners": "Gagnants",
-  "games/settings": "Paramètres",
   "email/campaigns": "Campagnes",
   "email/templates": "Modèles",
   "email/subscribers": "Abonnés",

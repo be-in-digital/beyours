@@ -5,8 +5,8 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import QRCode from "qrcode"
 import { MailCheckIcon, UtensilsIcon } from "lucide-react"
-import { formatCountdown, type GamePrize } from "@/lib/game"
-import { prizeEmoji } from "./WelcomeScreen"
+import { formatCountdown, type GamePrize } from "./lib"
+import { prizeEmoji } from "./prize-emoji"
 
 const MotionLink = motion.create(Link)
 
@@ -88,7 +88,8 @@ export function RewardTicket({ code, expiresAt, prize, storeName, email }: Rewar
             <div className="px-6 pb-6 pt-5 text-center">
               <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-2xl border border-[#1c1427]/10 bg-white p-2.5 shadow-inner">
                 {qrDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
+                  // A data: URI generated in the browser — next/image has nothing to
+                  // optimise here and cannot fetch it.
                   <img src={qrDataUrl} alt={`QR code du lot ${code}`} className="h-full w-full" />
                 ) : (
                   <span className="text-xs text-[#1c1427]/40">QR indisponible</span>

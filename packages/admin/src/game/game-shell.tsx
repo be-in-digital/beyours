@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { Volume2Icon, VolumeXIcon } from "lucide-react"
-import { ParticleEngine, gameSounds } from "@/lib/game"
+import { ParticleEngine, gameSounds } from "./lib"
 
 /**
  * The game arena: dark ambient stage shared by every screen.
@@ -38,7 +38,9 @@ export function GameShell({ storeName, tableNumber, onEngineReady, children }: G
       window.removeEventListener("resize", handleResize)
       engine.destroy()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Mount-once on purpose: the engine owns a canvas and a rAF loop, and
+    // re-running this on a new `onEngineReady` identity would tear down the
+    // particle system mid-celebration.
   }, [])
 
   const toggleMute = () => {
@@ -50,7 +52,14 @@ export function GameShell({ storeName, tableNumber, onEngineReady, children }: G
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[#120d1a] text-white">
+    // `overflow-clip`, not `overflow-hidden`: the ambient gradients below sit
+    // at `bottom-[-30%]`, so the arena carries ~200px of phantom scroll height
+    // it never shows. `overflow-hidden` still makes that a scroll container —
+    // anything calling `scrollIntoView` inside it (a mobile keyboard focusing
+    // a claim-form input, an anchor, assistive tech) scrolls the header and
+    // the top of the wheel off-screen with no way back. `clip` renders the
+    // same and cannot be scrolled at all.
+    <div className="relative flex min-h-[100dvh] flex-col overflow-clip bg-[#120d1a] text-white">
       {/* Ambient stage lighting */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute left-1/2 top-[-20%] h-[60vh] w-[120vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(249,115,22,0.16),transparent)]" />

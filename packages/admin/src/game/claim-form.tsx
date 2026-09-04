@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { motion } from "framer-motion"
 import { PartyPopperIcon, Loader2Icon } from "lucide-react"
-import { gameSounds, haptics, type GamePrize } from "@/lib/game"
+import { gameSounds, haptics, type GamePrize } from "./lib"
 
 /**
  * Winner contact form — the last step before the ticket.
@@ -76,8 +76,8 @@ export function ClaimForm({ prize, onSubmit }: ClaimFormProps) {
         </motion.div>
         <h2 className="font-heading text-2xl font-bold">Votre lot vous attend</h2>
         <p className="mt-1.5 text-sm text-white/55">
-          {prize ? `« ${prize.name} » est réservé.` : "Votre lot est réservé."} Dites-nous à qui
-          l&apos;envoyer.
+          {prize ? `« ${prize.name} » est réservé.` : "Votre lot est réservé."}{" "}
+          Dites-nous à qui l&apos;envoyer.
         </p>
       </div>
 

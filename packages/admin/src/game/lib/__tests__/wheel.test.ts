@@ -7,10 +7,10 @@ import {
   wheelEase,
 } from "../wheel"
 import type { GamePrize } from "../types"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { DocId } from "@be-in-digital/convex-schema/dataModel"
 
 const prize = (id: string, name: string): GamePrize => ({
-  id: id as Id<"prizes">,
+  id: id as DocId<"prizes">,
   name,
   type: "free_product",
   validityDays: 7,
@@ -52,7 +52,7 @@ describe("pickTargetSegment", () => {
 
   it("lands on the exact prize segment on a win", () => {
     for (let i = 0; i < 20; i++) {
-      const index = pickTargetSegment(segments, true, "p2" as Id<"prizes">)
+      const index = pickTargetSegment(segments, true, "p2" as DocId<"prizes">)
       expect(segments[index]?.prizeId).toBe("p2")
     }
   })
