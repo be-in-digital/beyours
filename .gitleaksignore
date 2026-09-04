@@ -67,3 +67,47 @@
 # file.
 7cf4d4100018a617363c2c6133bee27c05c9e650:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15
 c0f09cb0b61eb8b7377e0aa781232057d3274099:apps/restaurant-theme/e2e/.auth/admin.json:jwt:15
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Deliveroo sandbox client_secret — the decision the header above left open.
+#
+# The two rules added in #315 (`deliveroo-client-secret-shape` and
+# `-context`, see .gitleaks.toml) finally detect what the header said was
+# "simply never detected". Four findings, one commit, two files, two rules
+# each — the full list, measured on the run of 2026-09-04 over 466 commits:
+#
+#   7cf4d41  apps/restaurant-theme/e2e/deliveroo/test-config.ts:16   (both rules)
+#   7cf4d41  scripts/deliveroo-menu-scenarios.sh:10                  (both rules)
+#
+# This entry is NOT the JWT case above, and must not be read as it. That token
+# was accepted because it was provably dead: expired, 15-minute lifetime,
+# localhost scope. This secret is recorded by
+# tasks/secret-rotation-runbook.md as **still unrotated**, and #172 (A.1 —
+# regenerate in the Deliveroo Developer Portal) is still open. Nothing here
+# makes it safe.
+#
+# What it is accepted for is narrower, and worth stating exactly: since #315
+# landed, `security.yml` has failed on `main` itself on every run. A check that
+# is red on every commit reports the same four known findings for ever, so a
+# NEW leak arrives as one more line in a list nobody reads. Silencing four
+# known findings is what lets the scanner speak again about a fifth.
+#
+# Verified before accepting, on 2026-09-04:
+#   - `apps/restaurant-theme/e2e/deliveroo/test-config.ts` no longer exists at
+#     HEAD; the app was renamed to `apps/reference`.
+#   - `scripts/deliveroo-menu-scenarios.sh` still exists and is CLEAN: it reads
+#     `${DELIVEROO_CLIENT_SECRET:-}` with an empty default, under an explicit
+#     "NEVER hardcode secrets here". The working tree carries no secret.
+#   - Both findings are therefore historical only, on one commit of
+#     2026-03-11, already inventoried by the runbook.
+#
+# Scoped per fingerprint — commit, file, rule and line — deliberately. Not by
+# file, not by rule: a NEW secret in either file, or on another line, still
+# fails the scan.
+#
+# Remove these four lines when Part B rewrites the history. They are the
+# scanner's memory of a leak that has not been cleaned, not a sign it was.
+7cf4d4100018a617363c2c6133bee27c05c9e650:apps/restaurant-theme/e2e/deliveroo/test-config.ts:deliveroo-client-secret-shape:16
+7cf4d4100018a617363c2c6133bee27c05c9e650:apps/restaurant-theme/e2e/deliveroo/test-config.ts:deliveroo-client-secret-context:16
+7cf4d4100018a617363c2c6133bee27c05c9e650:scripts/deliveroo-menu-scenarios.sh:deliveroo-client-secret-shape:10
+7cf4d4100018a617363c2c6133bee27c05c9e650:scripts/deliveroo-menu-scenarios.sh:deliveroo-client-secret-context:10

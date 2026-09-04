@@ -37,9 +37,16 @@ the overlap with the table above is only partial:
 
 Two things follow:
 
-1. **Gitleaks does NOT flag the Deliveroo secret.** Its default rules do not
-   match that pattern. Do not treat a green Gitleaks run as proof the history is
-   clean — this runbook stays the source of truth for A.1.
+1. **Gitleaks did NOT flag the Deliveroo secret — until #315.** Its default
+   rules do not match that pattern, so two project rules were added
+   (`deliveroo-client-secret-shape` and `-context`, in `.gitleaks.toml`). They
+   fire on four historical findings, all on `7cf4d41` of 2026-03-11, and made
+   `security.yml` red on `main` itself on every run. Those four are now
+   fingerprint-scoped in `.gitleaksignore` so the scanner can still report a
+   fifth; read that entry, it states plainly that the secret remains unrotated.
+
+   The instruction stands unchanged: do not treat a green Gitleaks run as proof
+   the history is clean — this runbook stays the source of truth for A.1.
 2. **The JWT finding is accepted, not fixed** (decided 2026-08-26). It is
    recorded in `.gitleaksignore`, with the measurements that justify it: the
    token expired 2026-02-25, it was a 15-minute session on a dev deployment,
