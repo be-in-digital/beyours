@@ -409,7 +409,13 @@ longer sold as automatic.
 ````
 
 ## Batch 10 — Emailing and CRM
-**3/8 done · 2 partial · 3 open.** The heaviest batch; scheduled sending now works, the double opt-in does not.
+**7/8 done · 1 partial (console-side) · nothing open.** Was: the heaviest batch, and the
+double opt-in was dead on arrival — no code anywhere built the `email/confirm` URL, so
+every storefront signup was unreachable. The prompt below is kept for the record; what is
+left is not repository work. AWS grants SES production access **per account**, and every
+client has its own since #197, so it is one console request per client rather than a
+single fleet-wide unlock — filed on day one of onboarding, procedure in
+`tasks/client-aws-onboarding-runbook.md`.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
