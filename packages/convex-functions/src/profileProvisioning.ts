@@ -213,6 +213,74 @@ export function creatorAdministersNewStore(role: Role): boolean {
 }
 
 /**
+ * The longest bootstrap token this will consider, in characters.
+ *
+ * `openssl rand -base64 32` — what every document and the `/setup` screen tell
+ * an operator to run — produces 44. 512 is an order of magnitude of headroom
+ * and still a hard bound, which is the point: without one the comparison does
+ * work proportional to whatever a caller sends, and `claimFirstAdmin` is public.
+ *
+ * A configured token longer than this can never match. That is a deliberate
+ * refusal rather than a silent truncation, because comparing the first 512
+ * characters of a longer secret would call two different tokens equal.
+ */
+export const MAX_BOOTSTRAP_TOKEN_LENGTH = 512
+
+/**
+ * Does the supplied bootstrap token match the one configured on the deployment?
+ *
+ * Constant-time, and the reason is not theoretical: a plain `===` returns on
+ * the first differing byte, and `claimFirstAdmin` is a PUBLIC mutation anyone
+ * holding the deployment URL can call in a loop. That is enough to recover the
+ * token one character at a time.
+ *
+ * The loop runs a FIXED number of rounds — `MAX_BOOTSTRAP_TOKEN_LENGTH`, never
+ * a function of either argument — and folds the length difference into the same
+ * accumulator. Two earlier versions each got this half right and were each
+ * measured wrong:
+ *
+ *   - The original opened with `if (a.length !== b.length) return false`, under
+ *     a comment promising to leak neither length nor content. It did zero byte
+ *     comparisons for a wrong-length guess, so the token's length fell out of
+ *     the timing before its bytes were ever attacked.
+ *   - Replacing that with `rounds = Math.max(supplied.length, expected.length)`
+ *     moved the oracle rather than closing it: a one-character guess still ran
+ *     `expected.length` rounds, so runtime stayed proportional to the secret's
+ *     length. Worse, it handed the caller the round count — a 1 MB argument,
+ *     which `v.string()` permits, bought ~17 ms of backend CPU per request
+ *     against an O(1) rejection before it.
+ *
+ * A fixed round count closes both: the work is identical for every input that
+ * gets past the length bounds, and the bounds themselves are O(1) and reveal
+ * only what the caller already knows (their own length) or what is already
+ * public (`bootstrapStatus.configured` says whether a token is set at all).
+ *
+ * `charCodeAt` past the end of a string is `NaN`, and `NaN | 0` is `0`, which
+ * is what makes reading to a fixed length safe rather than merely undefined.
+ *
+ * Neither argument may be empty: two empty strings compare equal, which on an
+ * unconfigured deployment would wave through a caller who supplied nothing.
+ * `claimFirstAdmin` refuses an unset `ADMIN_BOOTSTRAP_TOKEN` before it ever
+ * gets here, and this stays fail-closed on its own so the guarantee does not
+ * depend on that ordering surviving the next edit.
+ */
+export function bootstrapTokenMatches(supplied: string, expected: string): boolean {
+  if (expected.length === 0 || supplied.length === 0) return false
+  if (
+    supplied.length > MAX_BOOTSTRAP_TOKEN_LENGTH ||
+    expected.length > MAX_BOOTSTRAP_TOKEN_LENGTH
+  ) {
+    return false
+  }
+
+  let diff = supplied.length ^ expected.length
+  for (let i = 0; i < MAX_BOOTSTRAP_TOKEN_LENGTH; i++) {
+    diff |= (supplied.charCodeAt(i) | 0) ^ (expected.charCodeAt(i) | 0)
+  }
+  return diff === 0
+}
+
+/**
  * Whether the authenticated caller may claim the first super-admin seat.
  *
  * Provisioning requires a super admin, and a fresh deployment has none — so
