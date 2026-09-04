@@ -2,15 +2,15 @@ import { test, expect } from "@playwright/test"
 import { collectConsoleErrors } from "../helpers/console.helpers"
 
 test.describe("Coming Soon Pages", () => {
-  // /dashboard/games/settings is not in this list: the route has no page and
-  // answers 404. It was declared in `adminRoutes` and linked from nowhere, so
-  // the constant has been removed rather than the 404 tolerated here.
+  // The four gamification screens left this list when the player flow moved to
+  // `@be-in-digital/admin/game`: both apps now render the real
+  // `Game{Catalog,QrCodes,Actions,Winners}Page`, and `games.spec.ts` asserts
+  // them. `/dashboard/games/settings` is absent for a different reason — the
+  // route has no page in either app. It was declared in `adminRoutes` and
+  // linked from nowhere, so the constant went rather than the 404 being
+  // tolerated here.
   const comingSoonPages = [
     "/dashboard/customers",
-    "/dashboard/games/catalog",
-    "/dashboard/games/qr-codes",
-    "/dashboard/games/actions",
-    "/dashboard/games/winners",
     "/dashboard/email",
     "/dashboard/email/campaigns",
     "/dashboard/content/pages",

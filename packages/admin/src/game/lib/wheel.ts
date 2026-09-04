@@ -1,5 +1,5 @@
 import type { GamePrize, WheelSectionConfig } from "./types"
-import type { Id } from "@/convex/_generated/dataModel"
+import type { DocId } from "@be-in-digital/convex-schema/dataModel"
 
 /**
  * Wheel layout + landing math, kept pure for unit tests.
@@ -12,7 +12,7 @@ export interface WheelSegment {
   label: string
   color: string
   textColor: string
-  prizeId?: Id<"prizes">
+  prizeId?: DocId<"prizes">
   isWinning: boolean
 }
 
@@ -96,7 +96,7 @@ export function buildWheelSegments(
 export function pickTargetSegment(
   segments: WheelSegment[],
   didWin: boolean,
-  prizeId?: Id<"prizes"> | null,
+  prizeId?: DocId<"prizes"> | null,
   random: () => number = Math.random
 ): number {
   if (didWin) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { HourglassIcon, UtensilsIcon } from "lucide-react"
-import { formatCountdown } from "@/lib/game"
+import { formatCountdown } from "./lib"
 
 const MotionLink = motion.create(Link)
 

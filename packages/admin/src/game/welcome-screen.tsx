@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion"
 import { SparklesIcon, Clock3Icon } from "lucide-react"
-import { gameSounds, haptics, type GamePrize } from "@/lib/game"
+import { gameSounds, haptics, type GamePrize } from "./lib"
+import { prizeEmoji } from "./prize-emoji"
 
 /**
  * Cinematic lobby: the store's marquee, what's at stake, one glowing CTA.
@@ -161,18 +162,4 @@ export function WelcomeScreen({
       </motion.div>
     </motion.div>
   )
-}
-
-export function prizeEmoji(type: GamePrize["type"]): string {
-  switch (type) {
-    case "discount_percentage":
-    case "discount_fixed":
-      return "💸"
-    case "free_product":
-      return "🍔"
-    case "free_menu":
-      return "🍽️"
-    default:
-      return "🎁"
-  }
 }

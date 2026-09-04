@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { gameSounds, haptics, type ParticleEngine } from "@/lib/game"
+import { gameSounds, haptics, type ParticleEngine } from "./lib"
 
 /**
  * Scratch card with a real canvas foil layer.

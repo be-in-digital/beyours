@@ -1,9 +1,9 @@
-import type { Id } from "@/convex/_generated/dataModel"
+import type { DocId } from "@be-in-digital/convex-schema/dataModel"
 
 /** Client mirrors of the public payloads returned by convex/gamePlay.ts. */
 
 export interface GamePrize {
-  id: Id<"prizes">
+  id: DocId<"prizes">
   name: string
   description?: string
   imageUrl?: string
@@ -20,7 +20,7 @@ export type GameActionType =
   | "email_subscribe"
 
 export interface GameAction {
-  id: Id<"requiredActions">
+  id: DocId<"requiredActions">
   type: GameActionType
   name: string
   description?: string
@@ -33,7 +33,7 @@ export interface GameAction {
 export interface WheelSectionConfig {
   label: string
   color: string
-  prizeId?: Id<"prizes">
+  prizeId?: DocId<"prizes">
   isWinning?: boolean
   probability?: number
 }
@@ -70,11 +70,11 @@ export interface ReferralState {
 
 export interface GameSession {
   status: "ready"
-  qrCodeId: Id<"gameQRCodes">
+  qrCodeId: DocId<"gameQRCodes">
   tableNumber?: string
-  store: { id: Id<"stores">; name: string }
+  store: { id: DocId<"stores">; name: string }
   game: {
-    id: Id<"games">
+    id: DocId<"games">
     type: "wheel" | "scratch_card"
     name: string
     description?: string
@@ -88,7 +88,7 @@ export interface GameSession {
 }
 
 export interface PlayResult {
-  playId: Id<"gamePlays">
+  playId: DocId<"gamePlays">
   didWin: boolean
   prize: GamePrize | null
   nextPlayAt: number

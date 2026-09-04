@@ -43,7 +43,10 @@ carries `site/`, `site.config.ts`, `templates/`, `demos/`, `docs/`, `.template`
 and its own `scripts/`; the bench carries its design and setup notes.
 
 At the start of this pass, **70 shared source files differed**. Afterwards, 19
-do, and every one of them is listed below.
+did — a count that included config files outside the checker's comparison, so it
+never matched the guard's own tally. Go by the guard: `ALLOWED` in
+`scripts/check-app-divergence.mjs` held **17** rows, closing the gamification
+split (#159) removed **7**, and **10** remain. Those ten are listed below.
 
 ---
 
@@ -58,10 +61,6 @@ with the code. This table is the index, not the explanation.
 | `convex/http.ts` | The template keeps the old Next.js `/api/webhooks/*` routes as 410 tombstones, so a client whose provider dashboard still points at the old path gets an explanation instead of a 404. The bench deleted them on 2026-07-18. |
 | `app/layout.tsx` | Metadata, fonts and theme come from the client zone (`site.config.ts`, `site/fonts.ts`, `site/theme.css`). Already documented in the file and in `apps/themes/docs/UPDATES.md`. |
 | `app/(test)/layout.tsx` | Template-only. Sends the `(test)` route group to `notFound()` in production unless `NEXT_PUBLIC_ENABLE_TEST_ROUTES=true`. Playwright harnesses have no business on a client site. |
-| `app/(admin)/dashboard/games/{actions,catalog,qr-codes,winners,settings}/page.tsx` | Gamification is not part of what a client buys today. The template renders `ComingSoon`; the bench renders the real pages from `@be-in-digital/admin`. The routes stay declared because the sidebar links to them. |
-| `app/(admin)/games/settings/page.tsx` | Follows from the row above: the bench deleted `/dashboard/games/settings` and redirects this legacy path to `/dashboard/games`. That route exists in the template, so the redirect keeps its original target. |
-| `app/game/[qrCodeId]/_components/GameContent.tsx` | The player-facing half of the same decision. The bench implements the full flow across ten sibling components plus `lib/game`; the template ships a CMS-editable placeholder rather than a copy left to rot out of step with the engine. |
-| `e2e/admin/coming-soon.spec.ts` | Asserts one extra route — `/dashboard/games/settings`, which exists here and 404s in the bench. This is the single test that separates the two suites. |
 | `components/admin/index.ts` | Exports `StatusBadge`, `DateDisplay` and `ComingSoon`, which exist only in the template alongside its other local admin components. The bench renders those screens straight from `@be-in-digital/admin`. |
 | `convex/tsconfig.json` | Template build config (`outDir`, `paths`). Config file — outside the comparison by the rule above, listed here only because it shows up in a raw `diff -rq`. |
 
@@ -128,7 +127,8 @@ Underneath that, the whole hardening pass the bench received was missing:
 
 Result: the template went from 45 to 54 spec files, and now collects **542 tests
 in 55 files** against the bench's 541 — the one extra being the deliberate
-`coming-soon` case above.
+`coming-soon` case. Closing #159 removed that last difference too: the two
+suites are now identical.
 
 ### `convex/seedFixture.ts` — yes, the template should have the fixtures
 
@@ -299,17 +299,11 @@ fix one side had and the other did not; ported to the side named.
 
 | File | Verdict | Note |
 |---|---|---|
-| `app/(admin)/dashboard/games/actions/page.tsx` | deliberate | ComingSoon vs `GameActionsPage` |
-| `app/(admin)/dashboard/games/catalog/page.tsx` | deliberate | ComingSoon vs `GameCatalogPage` |
-| `app/(admin)/dashboard/games/qr-codes/page.tsx` | deliberate | ComingSoon vs `GameQrCodesPage` |
-| `app/(admin)/dashboard/games/winners/page.tsx` | deliberate | ComingSoon vs `GameWinnersPage` |
-| `app/(admin)/games/settings/page.tsx` | deliberate | redirect target follows the route above |
 | `app/(auth)/sign-in/page.tsx` | drift →themes | `sr-only` accessible name on the loading button |
 | `app/(storefront)/_components/HomepageContent.tsx` | drift →themes | 400 from the image optimizer on a missing hero |
 | `app/(storefront)/order/[orderId]/page.tsx` | drift →themes | Uber Direct courier tracking never surfaced |
 | `app/(test)/address-test/page.tsx` | drift →themes | fixture Maps key, without which the spec mocks nothing |
 | `app/api/contact/route.ts` | drift →themes | domain logic extracted + `null` body answered 400 |
-| `app/game/[qrCodeId]/_components/GameContent.tsx` | deliberate | full player flow vs CMS placeholder |
 | `app/layout.tsx` | deliberate | client zone owns metadata, fonts, theme |
 
 ### `components/` (14)
@@ -349,7 +343,6 @@ template.
 
 | File | Verdict | Note |
 |---|---|---|
-| `e2e/admin/coming-soon.spec.ts` | deliberate | one extra route the template has |
 | `e2e/helpers/filter.helpers.ts` | drift →themes | `chooseOption` (Radix double-render) |
 | `e2e/README.md` | benign | each app documents its own CI (deploy-key row added) |
 | *(new)* `e2e/helpers/list.helpers.ts` | drift →themes | `countAfterLoad` |
@@ -381,3 +374,39 @@ template.
 | `convex/http.ts` | deliberate | already documented |
 | `convex/seedFixture.ts` | drift →themes | the template *should* have the fixtures — see body |
 | `convex/tsconfig.json` | deliberate | template build config |
+
+---
+
+## What closed — the gamification split (#159)
+
+Seven of the nineteen documented divergences were one decision, recorded rather
+than resolved: `apps/themes` shipped a 37-line placeholder where the bench had
+the whole player flow, and four admin screens behind `ComingSoon`. The note said
+gamification "is not part of what a client buys today". A client's backend
+served it regardless — all seven Convex wrappers were live and byte-identical,
+`convex/gameEmail.ts` was already emailing a `/game/prize/<code>` link to a
+route that did not exist in the template, and `dashboard/games` was never
+stubbed at all: it rendered the real overview, linking to four placeholders.
+
+The flow now lives in `packages/admin/src/game/`, exported from
+`@be-in-digital/admin/game`, and both apps render it through identical thin
+adapters that supply the three things that are genuinely per-app: the generated
+Convex API, `useCmsPage`, and the route params. `apps/themes` gained
+`/game/prize/[code]`, which closes the emailed 404.
+
+Two claims in the removed rows were false, and are worth recording so they are
+not reintroduced:
+
+- **"The routes stay declared because the sidebar links to them."** It does not.
+  `packages/admin/src/config/admin-routes.ts` declares five game routes and
+  `nav-config.ts` links exactly those five; `/dashboard/games/settings` is not
+  among them. That route was reachable from nothing in either app, so the
+  template's copy has been deleted and its legacy `/games/settings` redirect now
+  points at `/dashboard/games`, as the bench's already did.
+- **"a copy left to rot out of step with the engine."** The concern was real —
+  the answer is one copy in a package, not a placeholder.
+
+Still deliberately one-sided: `components/admin/index.ts` exports a local
+`ComingSoon` and `DateDisplay` that nothing imports (every live call site takes
+`ComingSoon` from `@be-in-digital/admin`). That is dead code in the template,
+unrelated to gamification, and left for its own change.

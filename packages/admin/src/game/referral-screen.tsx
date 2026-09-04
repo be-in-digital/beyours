@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { CheckIcon, UnlockIcon, LockIcon, ExternalLinkIcon } from "lucide-react"
-import { gameSounds, haptics } from "@/lib/game"
+import { gameSounds, haptics } from "./lib"
 
 /**
  * "Referral" action: offered once every social action has been completed.

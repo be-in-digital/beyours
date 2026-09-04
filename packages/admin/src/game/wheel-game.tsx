@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
-import { gameSounds, haptics } from "@/lib/game"
+import { gameSounds, haptics } from "./lib"
 import {
   finalRotationForSegment,
   segmentAtPointer,
   wheelEase,
   type WheelSegment,
-} from "@/lib/game/wheel"
+} from "./lib/wheel"
 
 /**
  * Casino-grade wheel of fortune, rendered on canvas.

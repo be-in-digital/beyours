@@ -28,7 +28,8 @@
     "./stores/api": "./src/stores/admin-api-store.ts",
     "./pages": "./src/pages/index.ts",
     "./lib": "./src/lib/formatters.ts",
-    "./hooks": "./src/hooks/admin-hooks.ts"
+    "./hooks": "./src/hooks/admin-hooks.ts",
+    "./game": "./src/game/index.ts"
   },
   "peerDependencies": {
     "@be-in-digital/convex-functions": "workspace:^",
