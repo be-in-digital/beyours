@@ -9,6 +9,10 @@ import { planPrices } from "./planPrices";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
 import { resolveStripeAccess } from "./stripeMode";
 import {
+  MAINTENANCE_PRICE_ENV,
+  CREATION_PRODUCT_ENV,
+} from "./stripePriceAudit";
+import {
   invoiceLegalSettings,
   vatConfigurationProblem,
 } from "./invoiceLegal";
@@ -19,13 +23,10 @@ import {
    is debited but silently never provisioned. So we require all 4 STRIPE_PRICE_*
    (Convex env) and fail LOUDLY when one is missing.
    At go-live: set the 4 STRIPE_PRICE_* (prod Convex env) to the live Price IDs
-   of the Be in Digital account. */
-const MAINTENANCE_PRICE_ENV: Record<string, string> = {
-  "essentielle:monthly": "STRIPE_PRICE_ESSENTIELLE_MONTHLY",
-  "essentielle:yearly": "STRIPE_PRICE_ESSENTIELLE_YEARLY",
-  "premium:monthly": "STRIPE_PRICE_PREMIUM_MONTHLY",
-  "premium:yearly": "STRIPE_PRICE_PREMIUM_YEARLY",
-};
+   of the Be in Digital account.
+   The map itself lives in ./stripePriceAudit, the module that also knows what
+   those Prices must CONTAIN — so the checkout and the audit that verifies it
+   cannot read two different lists. */
 
 /**
  * Resolves the maintenance Stripe Price ID for a plan/period pair.
@@ -61,11 +62,8 @@ function resolveMaintenancePriceId(
    would bill 777,78 € of creation and 222,22 € of maintenance on the customer's
    invoice — the right total, the wrong split between an amortizable investment
    and a deductible charge. A product built on the fly (product_data) cannot be
-   targeted by applies_to, hence these persistent ones. */
-const CREATION_PRODUCT_ENV: Record<string, string> = {
-  essentielle: "STRIPE_PRODUCT_CREATION_ESSENTIELLE",
-  premium: "STRIPE_PRODUCT_CREATION_PREMIUM",
-};
+   targeted by applies_to, hence these persistent ones.
+   Map in ./stripePriceAudit, alongside the maintenance one. */
 
 /**
  * Persistent Stripe Product ID of the creation line, or null when not

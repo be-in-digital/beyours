@@ -4,6 +4,13 @@
 > Stripe Dashboard action only the account owner can perform — this file tells
 > them exactly what to create, with which values, and how to prove it worked.
 > It contains **no credential** and no Stripe id.
+>
+> **`scripts/wizards/stripe-founders-launch.sh` is the executable half of this
+> page.** Read here to understand the steps; run that to perform them and to
+> prove they were performed. It checks the deployment, the seven variables and
+> the Stripe objects, and reports three states rather than two — satisfied,
+> outstanding, and *I could not check* — because §6c is a browser check no
+> script can make.
 
 ## Why this card exists
 
@@ -16,7 +23,7 @@ Two independent guards, both of which fire *before* the customer is charged:
 | Guard | Where | Refuses when |
 |---|---|---|
 | `resolveFoundersPricing` | [`convex/foundersOffer.ts:55-88`](../apps/site/convex/foundersOffer.ts) | `STRIPE_FOUNDERS_COUPON_ID` **or** `STRIPE_PRODUCT_CREATION_ESSENTIELLE` unset, on a deployment with a Stripe key |
-| `resolveMaintenancePriceId` | [`convex/stripe.ts:36-55`](../apps/site/convex/stripe.ts) | any one of the four `STRIPE_PRICE_*` unset |
+| `resolveMaintenancePriceId` | [`convex/stripe.ts:37-56`](../apps/site/convex/stripe.ts) | any one of the four `STRIPE_PRICE_*` unset |
 
 Neither is a bug to route around. The founders guard refuses because nothing
 else caps the offer: past the tenth seat, each build ships for 3 500 € excl.
@@ -222,6 +229,17 @@ environment section.
 
 ## 6. Verification
 
+All of 6a and 6b, plus the §4 comparison, in one pass:
+
+```bash
+bash scripts/wizards/stripe-founders-launch.sh --prod
+```
+
+It exits `0` only when every section it ran is satisfied, so it works as a
+pre-launch gate and not merely a checklist — and it counts 6c below as
+*unverified*, never as passed. The manual steps stay here because the wizard
+tells you what is wrong, not why; the reasoning is what this page is for.
+
 **6a — the ids are on the right deployment.** From `apps/site`:
 
 ```bash
@@ -241,6 +259,23 @@ stripe coupons retrieve <coupon>  --live   # percent_off, max_redemptions, times
 Check against §3 and §4 field by field. `times_redeemed` must be `0` before the
 first sale — a non-zero count means seats were already spent, and only
 `max_redemptions − times_redeemed` remain.
+
+For the four maintenance Prices that comparison is now automated. From
+`apps/site`, against the deployment that sells:
+
+```bash
+pnpx convex run stripeAudit:run --prod
+```
+
+It reads each of the four ids back from Stripe and compares them to
+`planPrices` — amount, currency, `tax_behavior`, interval, `interval_count`,
+`active`, whether the Price hangs off a creation Product, and whether the object
+is live or test. `findings: []` means the four objects match what the code
+charges. Anything else names the variable, the Price id and the field.
+
+It does **not** audit the coupon: `max_redemptions`, `applies_to` and
+`times_redeemed` are still the manual read-back above, and §6c is what actually
+proves `applies_to`.
 
 **6c — the guards no longer fire.** This is the only step that proves the thing
 the card is about. Open a real Essentielle checkout on beyours.fr and stop at
@@ -272,20 +307,42 @@ Until one real order has been through it, the four Prices are verified as
 Stated plainly, because a check that looks like coverage and is not is worse
 than no check at all.
 
-| | Detected today? |
-|---|---|
-| A `STRIPE_PRICE_*` / coupon / creation product missing | **Yes** — the sale is refused before payment, loudly |
-| A maintenance Price created at the **wrong amount** | **No.** Nothing compares Stripe to `planPrices` |
-| A maintenance Price on the wrong `tax_behavior` | **No.** |
-| A maintenance Price attached to the creation product | **No.** The founders discount would silently zero maintenance too |
-| `STRIPE_PRODUCT_CREATION_*` missing | **Partly.** Blocks a founders sale; an ordinary sale proceeds and quietly loses `applies_to` targeting on referral discounts |
-| The ids pointing at **test-mode** objects under a live key | **No.** Fails at `subscriptions.create`, after the customer is charged |
+| | Detected today? | By what |
+|---|---|---|
+| A `STRIPE_PRICE_*` / coupon / creation product missing | **Yes** — the sale is refused before payment, loudly | the guards in `stripe.ts` / `foundersOffer.ts` |
+| Half the founders pair set (coupon without product, or the reverse) | **Only where Next sees the variables** † | `validateSiteEnv` — feature group « Offre fondateurs » |
+| One creation Product set without the other | **Only where Next sees the variables** † | `validateSiteEnv` — feature group « Produits de création Stripe » |
+| A Price id pasted into a Product variable, or the reverse | **Only where Next sees the variables** † | `validateSiteEnv` — `prod_` / `price_` prefix checks |
+| A maintenance Price created at the **wrong amount** | **Yes, on demand** | `stripeAudit:run`, against `planPrices` |
+| A maintenance Price on the wrong `tax_behavior` or currency | **Yes, on demand** | `stripeAudit:run` |
+| A maintenance Price on the wrong interval, or archived | **Yes, on demand** | `stripeAudit:run` |
+| A maintenance Price attached to the creation product | **Yes, on demand** | `stripeAudit:run` |
+| The ids pointing at **test-mode** objects under a live key | **Yes, on demand** | `stripeAudit:run` — `livemode`, and «&nbsp;no such Price&nbsp;» |
 
-`apps/site/lib/env.ts` also validates less than the code reads: it lists
-`STRIPE_FOUNDERS_COUPON_ID` (line 89) and the four prices (lines 102-107), but
-neither `STRIPE_PRODUCT_CREATION_ESSENTIELLE` nor `STRIPE_PRODUCT_CREATION_PREMIUM`
-appears in it — so a deployment missing the product half of the founders pair
-passes `validateSiteEnv` and refuses the sale at checkout instead.
+**†** — and on the deployment that sells, it does **not**. These variables live
+on the Convex deployment, not in the Next process env, so `validateSiteEnv`
+never sees them there and none of those three rows fires in production. They
+catch a bad local `.env.local`, and nothing else. `pnpx convex env list --prod`
+(§6a) is the only thing that covers the deployment. Read those three rows as
+"caught in dev", not as "caught".
+
+What « on demand » and « in dev only » cost, stated plainly rather than counted
+as coverage:
+
+- **Nothing runs the audit for you.** CI holds no live Stripe key, so it cannot.
+  A Price edited in the Dashboard the day after `stripeAudit:run` came back clean
+  is undetected until someone runs it again. Run it after any change to Stripe
+  billing objects, and before a go-live.
+- **The coupon is not audited.** `max_redemptions`, `applies_to` and
+  `times_redeemed` are read back by hand (§6b) and proven only by §6c. A coupon
+  whose `applies_to` points at the wrong Product still costs a free build.
+- **The renewal billing behaviour is still unproven** until one real order has
+  been through it — §6d, unchanged. The audit verifies the Prices as *objects*,
+  not the subscription that will be raised against them.
+- `validateSiteEnv` sees only the **Next** process env. In production these
+  variables live on the Convex deployment, so its founders checks fire in local
+  dev and in any environment where `.env.local` carries them — not on Vercel.
+  `pnpx convex env list --prod` (§6a) is what covers the deployment.
 
 ---
 
