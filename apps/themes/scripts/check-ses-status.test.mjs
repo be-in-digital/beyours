@@ -86,16 +86,35 @@ afterAll(() => {
  * and the interpreter running Vitest is not guaranteed to be on PATH under
  * every package manager.
  *
+ * `bareEnv` builds a PATH holding ONLY the directory `node` lives in, and
+ * deliberately does NOT inherit `process.env.PATH`. The point of that case is a
+ * machine with no AWS CLI, and inheriting the real PATH made it a question
+ * about the machine instead: it passed on a container with no `aws` installed
+ * and failed on a GitHub runner, which ships one.
+ *
  * @param {Record<string, string>} env
  * @param {{ bareEnv?: boolean }} [opts] omit the stub, to test a missing CLI
  */
+/**
+ * Where `bash` actually is.
+ *
+ * Resolved once, and the script is spawned through the absolute path, because
+ * the `bareEnv` case hands the child a PATH that deliberately holds almost
+ * nothing — spawning by name there fails to find the interpreter and produces
+ * no output at all, which is not the thing under test.
+ */
+const BASH = ["/bin/bash", "/usr/bin/bash"].find((p) => fs.existsSync(p)) ?? "bash"
+
 function run(env, opts = {}) {
-  const stubs = opts.bareEnv ? [] : [stubDir]
-  const result = spawnSync("bash", [SCRIPT], {
+  const nodeDir = path.dirname(process.execPath)
+  const searchPath = opts.bareEnv
+    ? nodeDir
+    : [stubDir, nodeDir, process.env.PATH].join(path.delimiter)
+  const result = spawnSync(BASH, [SCRIPT], {
     encoding: "utf8",
     env: {
       ...process.env,
-      PATH: [...stubs, path.dirname(process.execPath), process.env.PATH].join(path.delimiter),
+      PATH: searchPath,
       // Never inherit a real developer's region or domain into an assertion.
       AWS_REGION: "eu-west-3",
       DOMAIN: "",
