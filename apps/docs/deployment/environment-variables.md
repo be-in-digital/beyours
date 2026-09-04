@@ -164,10 +164,10 @@ Full procedure for a new client: [`sentry.md`](./sentry.md).
 
 | Variable | Validation | Description |
 |----------|------------|-------------|
-| `UBER_EATS_SANDBOX_MODE` | `'true' \| 'false'` | Sandbox mode flag |
+| `UBER_EATS_SANDBOX_MODE` | `'true' \| 'false'` | Sandbox mode. Required once the Uber Eats credentials are set; unset resolves to sandbox, never production |
 | `DELIVEROO_BRAND_ID` | `string` | Restaurant's Deliveroo brand ID |
 | `DELIVEROO_SITE_ID` | `string` | Restaurant's Deliveroo site ID |
-| `DELIVEROO_IS_SANDBOX` | `'true' \| 'false'` | Sandbox mode flag |
+| `DELIVEROO_IS_SANDBOX` | `'true' \| 'false'` | Sandbox mode. Required once the Deliveroo credentials are set; unset resolves to sandbox, never production |
 
 ### GitHub Packages
 

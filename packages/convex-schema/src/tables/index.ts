@@ -57,6 +57,8 @@ export {
 } from "./autoBlog"
 // System
 export { systemAuditLogTable } from "./systemAuditLog"
+// Delivery-platform webhooks that could not be acted on (dead letter)
+export { platformWebhookFailuresTable } from "./platformWebhookFailures"
 // Maintenance & migration
 export {
   maintenanceContractsTable,

@@ -38,7 +38,28 @@ function createOrdersDb(seed: Doc[] = []) {
           collect: async () => orders.filter(pred),
         }
       },
-      withIndex: () => ({ first: async () => null, collect: async () => [] }),
+      // Faithful enough to be worth trusting: it applies the `eq()` constraints
+      // the caller declared. It used to return null/[] unconditionally, which
+      // meant any code that moved from `.filter()` to an index would appear to
+      // find nothing — and an idempotency check that finds nothing looks
+      // exactly like a working one right up until it duplicates every order.
+      withIndex: (_name: string, builder?: (iq: unknown) => unknown) => {
+        const constraints: Array<[string, unknown]> = []
+        if (builder) {
+          const iq = {
+            eq: (field: string, value: unknown) => {
+              constraints.push([field, value])
+              return iq
+            },
+          }
+          builder(iq)
+        }
+        const match = (doc: Doc) => constraints.every(([f, v]) => doc[f] === v)
+        return {
+          first: async () => orders.find(match) ?? null,
+          collect: async () => orders.filter(match),
+        }
+      },
     }),
     insert: async (table: string, doc: Doc) => {
       const _id = `${table}:${counter++}`
@@ -100,7 +121,7 @@ describe("createFromWebhook", () => {
     expect(db._orders).toHaveLength(2)
   })
 
-  it("computes item subtotal as price*qty + modifiers, all in cents", async () => {
+  it("prices modifiers per unit, like a storefront line, all in cents", async () => {
     const db = createOrdersDb()
     await createFromWebhook.handler(
       { db },
@@ -119,8 +140,15 @@ describe("createFromWebhook", () => {
 
     const item = (db._orders[0] as { items: Record<string, unknown>[] }).items[0]
     expect(item.unitPrice).toBe(1000)
-    // (1000 * 2) + 150 = 2150 cents
-    expect(item.subtotal).toBe(2150)
+    // (1000 + 150) * 2 = 2300 cents.
+    //
+    // This assertion used to read 2150 — modifiers added once rather than per
+    // unit — and so it held the defect in place: the same basket was cheaper
+    // through a delivery platform than through the website. `verifyOrderLine`
+    // (the storefront path) computes `(price + options) * quantity`, and the
+    // Uber Eats mapper computes `(unitPrice + modifiers) * quantity`. Both
+    // agree with each other; only this path disagreed with both.
+    expect(item.subtotal).toBe(2300)
     expect(item.externalId).toBe("i1")
   })
 })

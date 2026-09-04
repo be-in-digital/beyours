@@ -9,6 +9,7 @@
 
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
+import { refusePlatformStatus } from "./platformWebhook"
 import {
   canTransitionOrderStatus,
   isOrderTypeOffered,
@@ -39,7 +40,7 @@ import {
   resolveTaxRatePercent,
   type TaxedLine,
 } from "./orderTotals"
-import { verifyOrderLine } from "./orderLine"
+import { verifyOrderLine, MAX_LINE_QUANTITY } from "./orderLine"
 
 // === QUERIES ===
 
@@ -882,24 +883,8 @@ export const updateStatus = {
       await releaseToKitchen(ctx, args.id, { force: true })
     }
 
-    // A cancelled order used to leave its ticket live: the kitchen kept cooking
-    // it on the display, and `/track/[token]` kept saying "en préparation" —
-    // the page's own cancelled branch was unreachable from a cancellation. The
-    // sync was one-way, ticket → order, and never the other.
     if (args.status === "cancelled") {
-      const tickets = await ctx.db
-        .query("kitchenTickets")
-        .withIndex("by_orderId", (q: any) => q.eq("orderId", args.id))
-        .collect()
-
-      for (const ticket of tickets) {
-        if (ticket.status !== "cancelled" && ticket.status !== "completed") {
-          await ctx.db.patch(ticket._id as string, {
-            status: "cancelled",
-            updatedAt: now,
-          })
-        }
-      }
+      await cancelKitchenTicketsForOrder(ctx, args.id, now)
     }
 
     // Carry the order through to the marketing side.
@@ -911,10 +896,18 @@ export const updateStatus = {
     // campaign and send to zero people, with no error to explain it.
     //
     // Here rather than in an app wrapper, for the same reason
-    // `createWithTicket` puts the kitchen ticket here: every path into a status
-    // change goes through this handler — the admin, the Deliveroo webhooks, the
-    // payment confirmation, the schedulers — and a rule that lives in one
-    // caller is a rule the other four skip.
+    // `createWithTicket` puts the kitchen ticket here: nearly every path into a
+    // status change goes through this handler — the admin, the payment
+    // confirmation, the schedulers — and a rule that lives in one caller is a
+    // rule the others skip.
+    //
+    // The exception, and it is the one that bit: `updateFromWebhook` is a
+    // SEPARATE handler. A platform cancellation never reaches this code. This
+    // comment used to name "the Deliveroo webhooks" among the callers, which
+    // was simply untrue, and the cost of believing it was a kitchen ticket that
+    // stayed live on the pass after Uber cancelled the order — the kitchen
+    // cooking and bagging something that no longer existed. Ticket cancellation
+    // is now `cancelKitchenTicketsForOrder`, called from both.
     //
     // Counted on entering `confirmed`, which the state machine allows exactly
     // once and only from `pending`, so no retry double-counts. Given back on
@@ -1008,6 +1001,8 @@ interface WebhookItemModifier {
   externalId: string
   name: string
   price: number
+  /** "double cheese" is one modifier at quantity 2. Absent means 1. */
+  quantity?: number
 }
 
 interface WebhookItem {
@@ -1083,6 +1078,10 @@ export const createFromWebhook = {
         externalId: v.string(),
         name: v.string(),
         price: v.number(),
+        // "double cheese" is one modifier at quantity 2. Absent means 1. The
+        // validator had no field for it, so the quantity was dropped at the
+        // door and the extra was charged once however many were ordered.
+        quantity: v.optional(v.number()),
       }))),
       // "allergie arachides — sauce à part". The Uber Eats mapper computes
       // this (`uber-eats/mappers.ts`, `special_instructions` then
@@ -1106,15 +1105,22 @@ export const createFromWebhook = {
 
     // Idempotency: if a webhook for this order was already processed (retry by Uber/Deliveroo),
     // return the existing id instead of creating a duplicate.
-    const existing = await ctx.db
-      .query("orders")
-      .filter((q: any) =>
-        q.and(
-          q.eq(q.field("externalOrderId"), args.externalOrderId),
-          q.eq(q.field("source"), source)
-        )
-      )
-      .first()
+    //
+    // Read through `by_external_order`, never `.filter()`. A filter is a full
+    // table scan, and Convex aborts a transaction that reads more than ~16k
+    // documents: past that many orders every delivery webhook would start
+    // failing at once, permanently, with no alert. The index narrows this to
+    // the handful of rows sharing one external id, so the source check below
+    // runs over 1-2 documents rather than the whole table.
+    const existing =
+      (
+        await ctx.db
+          .query("orders")
+          .withIndex("by_external_order", (q: any) =>
+            q.eq("externalOrderId", args.externalOrderId)
+          )
+          .collect()
+      ).find((o: any) => o.source === source) ?? null
     if (existing) {
       // Idempotent: duplicate webhook (Uber/Deliveroo retry). Signal the caller
       // so it does NOT create a second kitchen ticket or re-run auto-accept.
@@ -1126,19 +1132,41 @@ export const createFromWebhook = {
 
     const mappedItems = args.items.map((item: WebhookItem) => {
       const modifierTotal = item.modifiers?.reduce(
-        (sum: number, mod: WebhookItemModifier) => sum + mod.price,
+        (sum: number, mod: WebhookItemModifier) =>
+          sum + mod.price * Math.max(0, Math.trunc(mod.quantity ?? 1)),
         0
       ) ?? 0
+      // A platform is not a trusted source of arithmetic any more than a
+      // browser is. `MAX_LINE_QUANTITY` is the same ceiling the storefront uses.
+      const safeQuantity = Math.min(
+        MAX_LINE_QUANTITY,
+        Math.max(0, Math.trunc(item.quantity))
+      )
       return {
         productName: item.name,
-        quantity: item.quantity,
+        quantity: safeQuantity,
         unitPrice: item.price,
         selectedOptions: item.modifiers?.map((mod: WebhookItemModifier) => ({
           optionName: mod.name,
           choiceName: mod.name,
           priceModifier: mod.price,
         })) ?? [],
-        subtotal: item.price * item.quantity + modifierTotal,
+        // Modifiers are priced PER UNIT, then multiplied — the same arithmetic
+        // `verifyOrderLine` applies to a storefront line. Two of a burger with
+        // cheese is two lots of cheese.
+        //
+        // This used to read `item.price * item.quantity + modifierTotal`, which
+        // charged for exactly one modifier however many units were ordered, so
+        // the identical basket cost less through Uber Eats than through the
+        // website. The test that covered it asserted the wrong total.
+        //
+        // The clamps match `verifyOrderLine` too, and for its reasons: a
+        // removal discount ("sans fromage, −0,50 €") larger than the dish would
+        // otherwise make the line negative and pay for the rest of the basket,
+        // and a non-integer or absurd quantity would price straight through.
+        // The storefront refused all three; this path did not, so the same
+        // hostile input was worth more coming from a platform.
+        subtotal: Math.max(0, item.price + modifierTotal) * safeQuantity,
         externalId: item.externalId,
         notes: item.notes,
       }
@@ -1198,18 +1226,56 @@ export const updateFromWebhook = {
     }
     const source = sourceMap[args.platform] ?? args.platform
 
-    const order = await ctx.db
-      .query("orders")
-      .filter((q: any) =>
-        q.and(
-          q.eq(q.field("externalOrderId"), args.externalOrderId),
-          q.eq(q.field("source"), source)
-        )
-      )
-      .first()
+    // Indexed, for the same reason as `createFromWebhook`: a status update
+    // arrives for every order on every platform, so a scan here is the busiest
+    // scan in the product.
+    const order =
+      (
+        await ctx.db
+          .query("orders")
+          .withIndex("by_external_order", (q: any) =>
+            q.eq("externalOrderId", args.externalOrderId)
+          )
+          .collect()
+      ).find((o: any) => o.source === source) ?? null
 
     if (!order) {
       throw new Error(`Order not found: ${args.externalOrderId}`)
+    }
+
+    const from = order.status as OrderStatus
+    const to = args.status as OrderStatus
+
+    // What the platform is telling us, and whether it can be acted on.
+    //
+    // Two different mistakes were possible here and the first version made the
+    // second one. Writing every status unconditionally dragged live orders
+    // backwards. Applying the outbound transition table to an inbound
+    // notification silently dropped genuine cancellations for anything past
+    // `confirmed`. `refusePlatformStatus` separates the two: a cancellation is
+    // a fact the platform is reporting, everything else is a move the order
+    // lifecycle governs.
+    //
+    // A refusal is a logged no-op, never a throw: throwing returns 500 and the
+    // platform then retries the same impossible change seven times.
+    const refusal = refusePlatformStatus(from, to)
+    if (refusal) {
+      if (refusal !== "no_change") {
+        console.warn(
+          `[webhook] refusing ${args.platform} ${from} -> ${to} for ${args.externalOrderId} (${refusal})`
+        )
+        // A cancellation that arrived too late is somebody's refund. It is kept
+        // rather than dropped, because HTTP 200 and silence is how the previous
+        // version lost them.
+        await ctx.db.insert("platformWebhookFailures", {
+          platform: args.platform,
+          externalOrderId: args.externalOrderId,
+          reason: "processing_failed" as const,
+          detail: `Refused ${from} -> ${to} (${refusal})`,
+          receivedAt: Date.now(),
+        })
+      }
+      return order._id as string
     }
 
     const updates: Record<string, unknown> = {
@@ -1227,6 +1293,13 @@ export const updateFromWebhook = {
     }
 
     await ctx.db.patch(order._id as string, updates)
+
+    // The platform said the order is off. Take it off the pass too, or the
+    // kitchen keeps cooking it.
+    if (args.status === "cancelled") {
+      await cancelKitchenTicketsForOrder(ctx, order._id as string, args.updatedAt)
+    }
+
     return order._id as string
   },
 }
@@ -1381,6 +1454,43 @@ export async function summariseOrderLines(
  * second staff click all find the tickets already there and change nothing.
  * Returns the number of tickets created — 0 is a normal answer.
  */
+/**
+ * Take an order's tickets off the pass when the order is cancelled.
+ *
+ * The counterpart to `releaseToKitchen`, and it exists for the same reason:
+ * there is more than one way an order gets cancelled, and until now only one of
+ * them cancelled the ticket. `updateStatus` — the staff path — did it inline.
+ * `updateFromWebhook` — the path an Uber Eats or Deliveroo cancellation takes —
+ * did not, so the customer cancelled, the platform told us, the order went to
+ * `cancelled`, and the kitchen carried on cooking it because the ticket on the
+ * display never moved.
+ *
+ * Already-cancelled and completed tickets are left alone: a completed ticket is
+ * food that was actually made, and rewriting it would lose that.
+ */
+export async function cancelKitchenTicketsForOrder(
+  ctx: any,
+  orderId: string,
+  now: number
+): Promise<number> {
+  const tickets = await ctx.db
+    .query("kitchenTickets")
+    .withIndex("by_orderId", (q: any) => q.eq("orderId", orderId))
+    .collect()
+
+  let cancelled = 0
+  for (const ticket of tickets) {
+    if (ticket.status !== "cancelled" && ticket.status !== "completed") {
+      await ctx.db.patch(ticket._id as string, {
+        status: "cancelled",
+        updatedAt: now,
+      })
+      cancelled++
+    }
+  }
+  return cancelled
+}
+
 export async function releaseToKitchen(
   ctx: any,
   orderId: string,

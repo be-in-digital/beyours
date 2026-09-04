@@ -76,19 +76,31 @@ cp apps/reference/.env.example apps/reference/.env.local
 |----------|-------|
 | `CONVEX_SITE_URL` | Convex HTTP origin; hosts webhook + OAuth callback endpoints |
 | `ADMIN_URL` | Admin app origin used for OAuth post-callback redirect |
-| `UBER_EATS_SANDBOX_MODE` | `"true"` or `"false"`. **Unset ⇒ production** (see warning below) |
+| `UBER_EATS_SANDBOX_MODE` | `"true"` or `"false"`. **Required** once the Uber Eats credentials are set (see below) |
 | `DELIVEROO_BRAND_ID` / `DELIVEROO_SITE_ID` | The restaurant's Deliveroo identifiers |
-| `DELIVEROO_IS_SANDBOX` | `"true"` or `"false"`. **Unset ⇒ production** |
+| `DELIVEROO_IS_SANDBOX` | `"true"` or `"false"`. **Required** once the Deliveroo credentials are set |
 | `ENCRYPTION_KEY` | 64 hex chars (32 bytes). Encrypts stored OAuth tokens at rest. `openssl rand -hex 32` |
 
 ---
 
 ## Sandbox vs production
 
-> ⚠️ **Footgun:** `UBER_EATS_SANDBOX_MODE` and `DELIVEROO_IS_SANDBOX` are read as
-> `=== "true"`. If the variable is **unset, empty, or mistyped** (`"True"`, `"1"`),
-> the integration runs against **production** APIs. Always set these explicitly.
-> The `.env.example` template ships them as `true` for safety.
+These flags used to be read inline as `=== "true"`, which made an unset, empty or
+mistyped value (`"True"`, `"1"`) mean **production**. They now go through
+`isSandbox(platform)` from `@be-in-digital/core/env`, which inverts that:
+
+- `"false"` → production. It is the only value that opens the live host.
+- `"true"` → sandbox.
+- unset, empty or anything else → **sandbox**, with one warning per flag in the log.
+
+Being explicit is still required, not merely advised. `validateAllEnv()` refuses to
+boot a deployment that has set an integration's credentials without declaring its
+mode, so the omission surfaces at startup rather than on a live order. The fail-safe
+default covers the one place that check cannot reach: the **Convex deployment**, which
+carries its own environment store and runs no boot validation of its own. Set the flag
+on both — `.env.local` for Next.js, `npx convex env set` for Convex.
+
+> The `.env.example` and `.env.convex.example` templates ship them as `true`.
 
 Base URLs are selected automatically per mode in
 `packages/integrations/src/uber-eats/types.ts` (`UBER_EATS_URLS`) and
@@ -253,7 +265,8 @@ committed to git — removing the file does **not** purge history).
 ## Production readiness checklist
 
 - [ ] All secrets in the secret store; none in source, scripts, docs, or git history.
-- [ ] `UBER_EATS_SANDBOX_MODE` / `DELIVEROO_IS_SANDBOX` set explicitly (`false` for prod).
+- [ ] `UBER_EATS_SANDBOX_MODE` / `DELIVEROO_IS_SANDBOX` set explicitly (`false` for prod),
+      on the Next.js env **and** on the Convex deployment (`npx convex env list`).
 - [ ] Webhook URLs + signing secrets registered; a signed test webhook returns `200`,
       an unsigned/forged one returns `401`.
 - [ ] Uber Eats redirect URI registered; OAuth connect succeeds and stores an

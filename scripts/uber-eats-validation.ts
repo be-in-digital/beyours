@@ -15,13 +15,14 @@
  */
 
 import { uberEats } from "@be-in-digital/integrations"
+import { isSandbox } from "@be-in-digital/core/env"
 
 const TEST_STORE_UUID = "480eab8c-cc25-4c2b-b92f-70d7a1984f97"
 
 const credentials = {
   clientId: process.env.UBER_EATS_CLIENT_ID ?? "",
   clientSecret: process.env.UBER_EATS_CLIENT_SECRET ?? "",
-  sandboxMode: process.env.UBER_EATS_SANDBOX_MODE === "true",
+  sandboxMode: isSandbox("uberEats"),
 }
 
 if (!credentials.clientId || !credentials.clientSecret) {

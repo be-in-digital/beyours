@@ -186,18 +186,65 @@ git push --force --tags
 rm -f secrets-to-redact.txt
 ```
 
-### Blast radius (measured 2026-08-16)
+### Blast radius (re-measured 2026-09-04)
 
-387 commits across all local refs · **4 remote branches, all carrying the leak** ·
-35 tags, **10 of which carry both leaked artifacts**. Every one of them is rewritten,
-so every clone and every open PR is invalidated.
+The 2026-08-16 figures below were stale in every direction. Re-measured by
+execution:
 
-> ⚠️ **A fresh clone of origin does not reach everything.** Commit `c0f09cb`
-> (pre-monorepo) also carries both leaks and is reachable only from the
-> **local-only** branches `archive/main-avant-monorepo` and
-> `claude/repo-structure-review-468e64`. They are on someone's machine, not on
-> origin, so the purge will not touch them. Whoever holds those branches keeps the
-> secret — they must delete them, or rewrite them separately.
+| | 2026-08-16 | **2026-09-04** |
+|---|---|---|
+| Commits across all local refs | 387 | **699** |
+| Commits reachable from origin | — | **470** |
+| Commits on `main` (all rewritten) | — | **393** |
+| Commits containing the secret, all refs | — | **137** |
+| …of those, ancestors of `main` (published) | 18 (claimed) | **41** |
+| …local-only, never pushed | — | **96** |
+| Remote branches carrying the leak | 4 | **8 — every one** |
+| Remote tags carrying the leak | 10 of 35 | **59 of 60** |
+| Open PRs invalidated | 14 | **0** |
+
+Two of these change the decision rather than just the arithmetic:
+
+- **The blocker has expired.** Part B was deferred because it would invalidate
+  14 open pull requests. The queue is empty. That reason no longer applies.
+- **59 of the 60 remote tags carry the leak**, and they are the
+  `@be-in-digital/*` release anchors. A rewrite moves every one of them, so the
+  publish chain's version anchors all move with it. This is now the expensive
+  part, not the PRs.
+
+> ⚠️ **A rewrite of origin does not reach everything, and origin has been
+> rewritten once already.** Local and remote tags of the same name point at
+> different commits (e.g. `@be-in-digital/core@2.0.1`: same author date, same
+> subject, different tree). Both lineages contain the secret. This clone retains
+> the **pre-rewrite** lineage under `archive/main-avant-monorepo` and **34 stale
+> local tags** — 96 leaked commits that were never pushed and that a fresh clone
+> of origin will not touch. `git fetch` does not update tags that already exist
+> locally, which is how they were left behind. Whoever holds such a clone keeps
+> the secret: they must delete those refs or rewrite them separately.
+>
+> Corrected: `c0f09cb` is reachable from **35 local refs and zero remote refs**.
+> The earlier claim that CI's checkout fetches it via pushed tags is not true.
+
+### Detection status (2026-09-04)
+
+`.gitleaks.toml` now carries two rules — `deliveroo-client-secret-context` and
+`deliveroo-client-secret-shape` — which match this credential. Before them, no
+rule did: it is a bare 52-character base36 token, and the leak placed it after
+`:-` in a shell default and after `|| "` in TypeScript, neither of which the
+stock generic-api-key rule reads as an assignment. That is why the daily scan
+was green over a dirty history for months.
+
+Validated over all 7,459 blobs in the object store: the two rules match 3 blobs
+and yield exactly one distinct token — the secret. No false positives at HEAD
+(2,655 tracked files) or anywhere in history.
+
+**Consequence: the `Gitleaks (secret scan)` job will now FAIL on `main`** until
+the credential is rotated and Part B is executed. That job is **not** one of the
+five required status checks (Lint, Type Check, Test, Build, E2E Status), so the
+red does not block merges — it makes a real finding visible instead of hiding
+it. Do not silence it in `.gitleaksignore`: per that file's own policy an entry
+records a credential accepted as *no longer exploitable*, and this one has not
+been rotated yet.
 
 Then: tell the team to **re-clone** (old clones keep the leaked history), and
 rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a
