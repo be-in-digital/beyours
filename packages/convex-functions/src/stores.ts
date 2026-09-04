@@ -316,6 +316,71 @@ export const updatePrintConfig = {
 }
 
 /**
+ * Update whether a paid order reaches the kitchen on its own.
+ *
+ * `releaseToKitchen` reads this on every paid order: "auto" — and unset, which
+ * is every establishment on the product today — sends it straight to the pass,
+ * "manual" holds it until staff accept it through `orders.updateStatus`.
+ *
+ * The mutation was deleted in 74de4e9 along with the only screen that called
+ * it, which lived in a folder no route rendered. The field was withdrawn from
+ * the schema at the same time for promising a workflow nothing implemented.
+ * The workflow exists now and the field is typed again, so the setting was
+ * readable, meaningful and unreachable — the same defect as the print config
+ * beside it (#164).
+ */
+export const updateOrderConfirmation = {
+  args: {
+    id: v.id("stores"),
+    orderConfirmation: v.union(v.literal("auto"), v.literal("manual")),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await requireStore(ctx, args.id)
+    const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateOrderConfirmation, { orderConfirmation: args.orderConfirmation })
+    await ctx.db.patch(args.id, { orderConfirmation: args.orderConfirmation, updatedAt: Date.now() })
+    await recordStoreAudit(ctx, audit)
+  },
+}
+
+/**
+ * Update the establishment's kitchen stations, and which category each one cooks.
+ *
+ * Both halves travel in one mutation because they are one edit. Removing a
+ * station while a `stationMapping` row still names it would route tickets to a
+ * pass that no longer exists, and two mutations cannot be made to fail
+ * together — `resolveStations` reads the mapping on every paid order, so that
+ * window is not theoretical.
+ *
+ * Nothing wrote either field. `orders.resolveStations` returns `undefined` for
+ * every line while the mapping is empty, which is the single undifferentiated
+ * ticket every establishment gets today, so the routing the schema describes
+ * could not be switched on from anywhere in the product (#164).
+ */
+export const updateStationMapping = {
+  args: {
+    id: v.id("stores"),
+    kitchenStations: v.optional(v.array(v.string())),
+    stationMapping: v.optional(v.array(v.object({
+      categoryId: v.id("categories"),
+      station: v.string(),
+    }))),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await requireStore(ctx, args.id)
+    const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateStationMapping, {
+      kitchenStations: args.kitchenStations,
+      stationMapping: args.stationMapping,
+    })
+    await ctx.db.patch(args.id, {
+      kitchenStations: args.kitchenStations,
+      stationMapping: args.stationMapping,
+      updatedAt: Date.now(),
+    })
+    await recordStoreAudit(ctx, audit)
+  },
+}
+
+/**
  * Update store sound configuration
  *
  * The one of the three kitchen-display settings that is read: `KitchenContent`

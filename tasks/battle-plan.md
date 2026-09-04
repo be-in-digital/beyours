@@ -1,0 +1,290 @@
+# Battle plan — 57 work items in 15 batches
+
+The findings of the 27 Aug 2026 audit, grouped by feature and ordered by dependency.
+A batch is closed completely — code, test, verification — before the next one opens.
+
+Readable version (French, for the team): https://claude.ai/code/artifact/e75d9f2c-e3af-46cf-8769-5e2cf5b46380
+Card detail: `tasks/sales-readiness-backlog.md`
+Ready-to-paste prompts, one per unclosed batch: `tasks/fix-prompts.md`
+
+**Sequential:** batches 00 → 07, each one makes the next testable.
+**Independent:** batches 08 → 13 can be split across people.
+**Last:** batch 14, once you know what actually shipped.
+**Shortest path to an honest first sale:** 00 → 01 → 02 → 04 → 05, i.e. 24 items.
+Of those 24, **16 are done**; 8 remain: #178, #171, #179, #180, #128, #129, #162, #173.
+
+## Discovery audit — 1 Sep 2026, commit `009af63`
+
+A fifth pass asked the opposite question of the four before it: not "are the 57 cards
+resolved?" but **"what was never audited?"**. Eight agents, eight scopes, every finding
+proved by execution. Result: **65 defects no card in this backlog describes**, 13 of them
+blockers. Execution prompts for all of them are in `tasks/fix-prompts.md`.
+
+**One verdict below was wrong and is corrected.** #169 was marked resolved in the fourth
+round, closing batch 02. Its backup half is not fixed: `exportBackup` covers 29 of the
+schema's 100 tables, omitting `orders`, `payments`, `kitchenTickets` and `gamePlays`, and
+`importTable` re-inserts under new ids. A probe restored an establishment and reached **0
+orders**. It was credited because `backup-restore.test.ts` was green — and that file never
+names `orders`. Batch 02 is reopened.
+
+**The "181+ features" claim is settled.** Its only origin, `_project/FEATURES_DIAGRAM.md`,
+carries a table summing to **201**, not 181. `CLAUDE.md` copied the headline and reproduced
+9 of 22 categories (92). Several categories count non-features — 6 themes as 6 features,
+7 team roles, 6 social-action types. Neither number counts anything real. The audited figure,
+over the 92 enumerated: **29 ship as described, 23 partial, 41 absent or unreachable** from
+`apps/themes`, the app a paying client runs.
+
+### The 13 uncarded blockers
+
+| Where | What |
+|---|---|
+| `apps/site` | `createCheckoutSession` takes `discountPercent` from the caller, unauthenticated — a Premium build for 2,075 € instead of 8,750 € |
+| `apps/site` | The Stripe webhook reads three fields the pinned API version removed — every renewal is mis-plated and mis-billed |
+| engine | **No order confirmation email is ever sent.** A guest pays and receives nothing |
+| engine | **No invoice exists**, and the order number is `Math.random()` — French law requires an unbroken sequence |
+| engine | A diner's personal data has no retention, no erasure path and no consent record |
+| engine | The public prize mutation has no rate limit; 40 anonymous calls drained a 5-prize stock |
+| client sites | The mirror's `@source` paths resolve outside the client repo — clients ship 783 fewer CSS rules |
+| `packages/ui` | `AllergenBadge` throws on the French allergen names the product's own AI writes |
+| `apps/themes` | Every checkout refusal reaches the diner as "Server Error" |
+| `apps/themes` | A dine-in order carries no table number |
+| engine | `orders.list` is unbounded and is the only query behind the `/dashboard` home page |
+| engine | `products.remove` is a bare delete — Deliveroo keeps selling the deleted dish |
+| `apps/site` | "Analytics", the paid tier's only differentiator, has zero files — and no plan gating exists anywhere |
+
+### What the pass says about the codebase
+
+The signature failure repeated in every scope: **an annotation that asserts more than the
+code does.** Three separate places state nothing reads `stores.displayConfig`; it has a live
+reader on the customer-facing dining-room screen, and its writer was deleted on the strength
+of that claim. The accent guard added by the newest commit misses strings that same commit
+left behind. `oauthStates` documents a TTL Convex does not provide, which is why nobody wrote
+the sweeper. And the shipped template's 54 Playwright specs run in no workflow at all, while
+a parity guard keeps them byte-identical to the bench's — which reads as proof.
+
+Hygiene on this commit: **19/19 tasks, 2,965 tests green**, type-check 19/19. It has been
+total for five rounds, and it still says nothing about the seams.
+
+## Verified status — 30 Aug 2026, commit `8d41349`
+
+**23 resolved · 11 partial · 23 open.** Fourth verification pass, 15 commits after the
+previous one. Every item was replayed against its original failure with a throwaway probe;
+a passing existing test was never accepted as proof on its own.
+
+**Batches 03 and 04 are closed.** Batch 04 — the money path — closed this round: the VAT
+regime is settled and propagated (#174 extracts VAT from a gross price rather than adding it
+on top), and all five points of #161 hold. Six batches now have nothing open.
+
+**Scheduled emailing works.** #143 and #144 fall together: the cron dispatches campaigns every
+minute, and batched send relies on a `by_campaignId_subscriberId` index that makes duplicates
+impossible — probed with a forced restart mid-send, `dupes = []`.
+
+**Two regressions, not to be lost in the green.** #164 item 9: the print-configuration tab was
+*deleted* instead of being lifted into `packages/admin`, so `printConfig.enabled` can never be
+turned on and `create` always writes `printStatus: "not_required"` — auto-print went from
+unreachable to dead. #129 widened: both apps now mount the same broken refund button.
+
+**The recurring pattern is the comment that lies.** `stripe.ts:83` now claims to call
+`assertSettlesOrder`; the probe answers `calls assertSettlesOrder: false`. The CMS
+`@guarded-inline` markers silence the ESLint rule written for them. The accent check is
+blocking but blind to faults present on both sides. A guardrail that is described is not a
+guardrail that runs.
+
+**Why batch 07 has not moved:** no test in the repository names `uberEatsWebhook`,
+`deliverooWebhook`, `mapUberEatsOrderToUnified` or `mapDeliverooStatus`. Zero coverage — which
+is why five green CI passes have never spoken to its eleven defects.
+
+Full suite re-run serially on this commit: **19/19 tasks, 2,956 tests green** (2,437 the
+previous round), type-check 19/19. Hygiene is intact; the seams are what fail, and no test
+crosses them.
+
+
+
+## Batch 00 — Foundation: deploy, encrypt, observe
+*8 items · 5 P0 · first, no exceptions · _5 done · 3 partial_*
+
+Nothing is testable while a clone boots broken in silence and no error surfaces
+anywhere. This batch is what makes the rest verifiable.
+
+- [x] **#176** ✅ — Settle the S3 bucket policy: private + proxy, or public/CloudFront — _blocks #158 and #151_
+- [x] **#158** ✅ — Align the 16 files on the chosen policy — two opposite assumptions coexist today
+- [x] **#151** ✅ — Close the stored XSS: `content:write` check on `/api/upload`, SVG through DOMPurify, `/api/files` authenticated
+- [x] **#156** ✅ — Make client-supplied environment variables required — all 28 are `opt()`
+- [x] **#157** ✅ — Reject an empty `BETTER_AUTH_SECRET`, which currently opens an email relay
+- [ ] **#178** 🟡 — Check the Convex spending cap — too low, it disables the whole team including production
+- [ ] **#171** 🟡 — Type-check `convex/` in CI, install or remove Sentry, add `error.tsx`, restore the template's tests
+- [ ] **#179** 🟡 — Make CI blocking and switch E2E on — `release.yml` publishes without waiting for tests
+
+> **Closed when.** A fresh unconfigured clone refuses to boot, naming what is missing; a production error surfaces somewhere; a failing test stops publication.
+
+## Batch 01 — Authentication & team
+*4 items · 2 P0 · nobody can sign in today · _3 done · 1 partial_*
+
+Without an account, no other feature is reachable. This is the first wall a
+deploying client hits.
+
+- [x] **#131** ✅ — Send the verification email — verification is on and no sender is configured
+- [ ] **#180** 🟡 — Provision `ADMIN_BOOTSTRAP_TOKEN` and build the first-administrator path
+- [x] **#132** ✅ — Create `/invite/[token]` in both apps — the email link 404s
+- [x] **#170** ✅ — Role gate on `/dashboard`, session revocation on reset, per-module permissions enforced or removed
+
+> **Closed when.** Sign up → email → sign in → dashboard works end to end, and a signed-in customer typing `/dashboard` is redirected instead of crashing the page.
+
+## Batch 02 — Multi-store
+*3 items · 2 P0 · the product is billed per store · _2 done · 1 partial_*
+
+Creating an establishment and opening it at the right hours is the commercial
+foundation. Both are broken.
+
+- [x] **#125** ✅ — Drop the undeclared `settings` field — creation is rejected by the validator
+- [x] **#126** ✅ — Handle the midnight wrap in `isStoreOpen` — an 18:00–02:00 service reads as closed all evening
+- [ ] **#169** 🟡 — Delete cascade, timezone honoured, global hours applied, Uber Direct credentials not wiped on save — **CORRECTED 1 Sep: backup/restore is NOT fixed.** `exportBackup` covers 29 of 100 tables; `orders`, `payments`, `kitchenTickets`, `teamMembers`, `gamePlays` are all absent, and `backup-restore.test.ts` never names `orders`. A restaurant cannot recover its orders.
+
+> **Closed when.** Creating a second store from the dashboard succeeds; an 18:00–02:00 store accepts an order at 23:00 and at 01:00; deleting a store leaves no orphans.
+
+## Batch 03 — Catalogue & products
+*2 items · 1 P0 · _2/2 done — batch closed_*
+
+The server must refuse what it cannot serve. Today it accepts everything and charges.
+
+- [x] **#133** ✅ — Validate in `orders.create`: active product, stock, scheduling window, required options, quantity, option dedup
+- [x] **#165** ✅ — Cross-store scope on propagation and mappings, category cascade, `duplicateCatalog` fixed, product sort
+
+> **Closed when.** Ordering a deactivated, out-of-stock, out-of-window product, or one missing its required option, fails server-side — not just in the browser.
+
+## Batch 04 — Cart, orders & VAT
+*5 items · 2 P0 · the money path · _5/5 done — batch closed_*
+
+The displayed price must be the charged price. Commercially and legally the most
+sensitive batch.
+
+- [x] **#174** ✅ — Settle the VAT regime and propagate it to engine, site and issued invoices — _blocks #127_
+- [x] **#127** ✅ — Extract VAT from the price instead of adding it, and sum per-product rates
+- [x] **#153** ✅ — Give cart lines a stable `lineId` — option variants of one dish are conflated
+- [x] **#160** ✅ — Promotions: product/category scope, happy hour, automatic offers, displayed ≠ applied discount
+- [x] **#161** ✅ — Creation idempotence, cash settlement, cancellation that closes the ticket, minimum order and radius
+
+> **Closed when.** The cart total is exactly what Stripe charges, at every rate; two variants of a dish behave independently; a Back navigation from Stripe creates no duplicate.
+
+## Batch 05 — Payments & refunds
+*4 items · 2 P0 · _1 partial · 3 open_*
+
+A refund that is not one creates an accounting gap nobody in the app can close
+afterwards.
+
+- [ ] **#128** 🔴 — Remove the fake refund on cancellation — it permanently blocks the real one
+- [ ] **#129** 🔴 — `useAction(api.payments.refundPayment)` and mount the right tab — the current button calls a deleted function
+- [ ] **#162** 🔴 — Bind Stripe settlement to amount and currency, dedupe events, add the CSRF state to the SumUp callback
+- [ ] **#173** 🟡 — Create the founders coupon and the 4 maintenance prices — without them the first sale is refused by the code
+
+> **Closed when.** A real payment, then a partial refund, then a full refund all succeed from the UI and match the Stripe dashboard exactly.
+
+## Batch 06 — Kitchen & printing
+*4 items · 3 P0 · _2 partial · 2 open_*
+
+This is the screen the restaurant watches all day. A missing ticket or a duplicate
+costs a service.
+
+- [ ] **#136** 🟡 — Create the ticket on payment confirmation, not on order creation
+- [ ] **#135** 🔴 — Carry instructions and allergies through to the ticket — `notes: undefined` is hard-coded
+- [ ] **#137** 🔴 — Bound the KDS query and add retention — otherwise the screen eventually shows nothing
+- [ ] **#164** 🟡 — Print lock, retry on failure, overdue alarm, multi-station routing, cloud options disabled
+
+> **Closed when.** An abandoned payment produces no ticket; a confirmed one produces exactly one, with its allergies; two open tablets do not print twice.
+
+## Batch 07 — Delivery integrations
+*6 items · 4 P0 · the highest-volume channel · _6 open_*
+
+Three silent order-loss paths. A restaurant connecting Deliveroo loses orders on day one.
+
+- [ ] **#172** 🔴 — Rotate the Deliveroo secret exposed in git history, then rewrite the history
+- [ ] **#134** 🔴 — Create the Deliveroo kitchen ticket and wire accept/reject — neither exists today
+- [ ] **#138** 🔴 — Fix the Uber event names — cancellation and scheduled orders are never recognised
+- [ ] **#139** 🔴 — Stop assigning an unidentified order to `allIntegrations[0]`
+- [ ] **#140** 🔴 — Only set `confirmed` after a real accept on Uber
+- [ ] **#163** 🔴 — 2.1× line prices, non-conforming Deliveroo statuses, table scan per webhook, stock not propagated, sandbox flags
+
+> **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed.
+
+## Batch 08 — Customer storefront
+*2 items · 1 P0 · what the consumer sees · _1 partial · 1 open_*
+
+A page linked from the header of the whole site crashes on every visit. The rest is
+the finish that decides whether the theme sells.
+
+- [ ] **#152** 🟡 — Fix `/contact`, which renders a Convex object as a React child, and add the error boundaries
+- [ ] **#168** 🔴 — Dead CMS SEO, 404 sitemap, structured data never rendered, footer newsletter discarding the email, keyboard-inaccessible options, sub-AA contrast
+
+> **Closed when.** All eleven public routes return 200 with their real metadata, and a configurable dish can be bought entirely from the keyboard.
+
+## Batch 09 — CMS, blog & media
+*3 items · 2 P0 · _3 open_*
+
+The editing admin exists and works; it is the public output that is missing.
+Everything written goes nowhere.
+
+- [ ] **#149** 🔴 — Wire the public blog to real articles and create `/blog/[slug]` — six demo posts and twelve dead links today
+- [ ] **#150** 🔴 — Ship the Auto Blog crons, or reposition the offer as manual generation
+- [ ] **#167** 🔴 — Authorize the `storeId` of the generation actions, reserve quota before the OpenAI call, fix the preview blocked by `X-Frame-Options`
+
+> **Closed when.** An article published in the admin appears on the site with its own page, and a weekly configuration produces one with no human action.
+
+## Batch 10 — Email marketing
+*8 items · 6 P0 · the heaviest batch · _3 done · 2 partial · 3 open_*
+
+Three headline features are dead on arrival, and two defects put the domain's sending
+reputation at stake — which also means order confirmations.
+
+- [ ] **#177** 🟡 — Move AWS SES out of the sandbox — otherwise no client can email a real consumer — _blocks the rest of this batch_
+- [ ] **#146** 🔴 — Read `AWS_SES_CONFIGURATION_SET` instead of the hard-coded name, and fail loudly
+- [x] **#141** ✅ — Fix the CSV import — three required arguments missing, two rejected fields added
+- [ ] **#142** 🔴 — Send the double opt-in email — no path does, so every signup is unreachable
+- [x] **#143** ✅ — Add the scheduled-campaign cron — there is no `crons.ts` in the engine
+- [x] **#144** ✅ — Stop "Relancer" re-sending from the first subscriber
+- [ ] **#145** 🔴 — Suppress permanent bounces immediately — three retries lead to an AWS sending pause
+- [ ] **#166** 🟡 — `List-Unsubscribe` headers, POST unsubscribe, verified SNS signature, batched sending, automations
+
+> **Closed when.** An import succeeds, the signup gets its confirmation, a scheduled campaign sends itself, pause-then-resume sends no duplicates, and a permanent bounce suppresses on the first event.
+
+## Batch 11 — Internationalisation
+*2 items · 2 P0 · _2 open_*
+
+CMS translation genuinely works. Everything else — UI strings and catalogue — is wired
+to nothing.
+
+- [ ] **#147** 🔴 — Declare the schema fields, switch to `internalAction`, call `scheduleTranslation` from the catalogue mutations
+- [ ] **#148** 🔴 — Mount the language initialiser and expose a `t()` that is actually used — switching language only changes `<html lang>`
+
+> **Closed when.** Adding a language, saving a product, then switching on the storefront shows a translated menu and translated buttons.
+
+## Batch 12 — Gamification
+*2 items · 2 P0 · 16 advertised features · _2 open_*
+
+The backend is complete and the draw is correctly server-side. What is missing is QR
+creation and the whole client layer of the template.
+
+- [ ] **#130** 🔴 — Add `scannedCount: 0` to the insert — without a QR nobody ever plays — _one-line fix_
+- [ ] **#159** 🔴 — Lift the player flow into a package and render it from both apps; replace the template's five `ComingSoon` — _the 5 admin pages are one line each_
+
+> **Closed when.** Scan → actions → play → win → ticket → counter validation works end to end **in `apps/themes`**, not only in the test bench.
+
+## Batch 13 — Commercial site (beyours.fr)
+*3 items · 2 P0 · this is how you get paid · _2 done · 1 partial_*
+
+Separate backend, no engine dependency — so it can run in parallel with the other
+batches, handled by someone else.
+
+- [x] **#154** ✅ — Convert to `internalQuery` the three queries exposing invoices, Stripe PDFs, SIRET and amounts — none has a caller
+- [x] **#155** ✅ — Close the test-mode branch: with no Stripe key, every visitor gets a free "paid" order
+- [ ] **#181** 🟡 — Register each delivered site's licence key, otherwise maintenance renewals are unenforceable
+
+> **Closed when.** The billing queries no longer answer an anonymous browser, and removing the Stripe key makes checkout fail instead of giving the product away.
+
+## Batch 14 — Align the sales pitch with the product
+*1 item · product decision · _1 open_*
+
+Last, once you know what actually shipped. Four features are sold and do not exist.
+
+- [ ] **#175** 🔴 — **Square** — zero lines of code, advertised in three places · **Auto Blog** — no scheduler · **Menus / formules** — not orderable · **"ESC/POS printing"** — a browser print dialog. Build, or remove from the copy.
+
+> **Closed when.** Every promise in `CLAUDE.md`, on the site and in the onboarding tour maps to something a client can actually use.

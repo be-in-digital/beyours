@@ -201,25 +201,20 @@ export const internalUpdateStatus = internalMutation({
   handler: (ctx, args) => advanceOrder(ctx, args),
 });
 
-/** Update only paymentStatus — used by payment actions and webhooks */
+/**
+ * Update only paymentStatus — used by payment actions and webhooks.
+ *
+ * Transport over `defs.recordPaymentStatus`, which is where "a paid order
+ * feeds the kitchen" lives. Patching `paymentStatus` here directly is what
+ * left the Stripe, PayPal and SumUp paths each responsible for remembering to
+ * tell the kitchen, and none of them did.
+ *
+ * The union comes from the defs layer too, `refund_pending` included: the four
+ * provider paths pass whatever `paymentStatusAfterSettlement` returns, and for
+ * money arriving against a cancelled order that is `refund_pending`. Restating
+ * the union here is how the two would drift.
+ */
 export const internalUpdatePaymentStatus = internalMutation({
-  args: {
-    id: v.id("orders"),
-    paymentStatus: v.union(
-      v.literal("pending"),
-      v.literal("paid"),
-      v.literal("failed"),
-      // Mirrors the `orders.paymentStatus` union in the shared schema. Money
-      // owed back that has not moved yet — see `tables/orders.ts`.
-      v.literal("refund_pending"),
-      v.literal("refunded"),
-      v.literal("partially_refunded")
-    ),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, {
-      paymentStatus: args.paymentStatus,
-      updatedAt: Date.now(),
-    });
-  },
+  args: defs.recordPaymentStatus.args,
+  handler: (ctx, args) => defs.recordPaymentStatus.handler(ctx, args),
 });

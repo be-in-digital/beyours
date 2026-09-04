@@ -819,7 +819,58 @@ export const markCashPaid = {
       updatedAt: now,
     })
 
+    // Cash is a payment path like any other, and the kitchen learns about an
+    // order when it is paid for. Missing this call is how the cash branch used
+    // to be the one that never reached the pass.
+    await releaseToKitchen(ctx, args.orderId)
+
     return paymentId
+  },
+}
+
+/**
+ * Record a payment outcome, and let the kitchen know when it is good news.
+ *
+ * Every card path lands here — the Stripe webhook, the Stripe success-page
+ * verify, the PayPal capture, the SumUp verify — which is precisely why the
+ * release lives here rather than in four wrappers that each have to remember.
+ * Both apps' `internalUpdatePaymentStatus` are transport over this.
+ */
+export const recordPaymentStatus = {
+  args: {
+    id: v.id("orders"),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed"),
+      // Mirrors the `orders.paymentStatus` union in the shared schema. Money
+      // owed back that has not moved yet — see `tables/orders.ts`.
+      //
+      // Not decorative: the four provider paths ask
+      // `paymentStatusAfterSettlement` what a settlement should do to the
+      // order, and it answers `"refund_pending"` whenever the money arrives
+      // for an order that has already been cancelled. That value is handed
+      // straight to this validator. Omitting the literal would reject the
+      // call, which for the Stripe webhook is a 500 and three days of retries,
+      // and for a guest on the success page is an error on their own
+      // confirmation screen — over an order the code had understood correctly.
+      v.literal("refund_pending"),
+      v.literal("refunded"),
+      v.literal("partially_refunded")
+    ),
+  },
+  handler: async (
+    ctx: any,
+    args: { id: string; paymentStatus: string }
+  ): Promise<void> => {
+    await ctx.db.patch(args.id, {
+      paymentStatus: args.paymentStatus,
+      updatedAt: Date.now(),
+    })
+
+    if (args.paymentStatus === "paid") {
+      await releaseToKitchen(ctx, args.id)
+    }
   },
 }
 
@@ -960,6 +1011,16 @@ export const updateStatus = {
 
     await ctx.db.patch(args.id, updates)
 
+    // Staff accepting the order *is* the manual confirmation workflow, so this
+    // releases it whatever `orderConfirmation` says — the setting describes
+    // what happens without a human, and a human has just acted.
+    //
+    // `confirmed` is reachable exactly once, and only from `pending`, so this
+    // cannot double-release; `releaseToKitchen` refuses a second time anyway.
+    if (args.status === "confirmed") {
+      await releaseToKitchen(ctx, args.id, { force: true })
+    }
+
     // A cancelled order used to leave its ticket live: the kitchen kept cooking
     // it on the display, and `/track/[token]` kept saying "en préparation" —
     // the page's own cancelled branch was unreachable from a cancellation. The
@@ -1094,6 +1155,8 @@ interface WebhookItem {
   quantity: number
   price: number
   modifiers?: WebhookItemModifier[]
+  /** Special instructions and allergies, as the platform's mapper found them. */
+  notes?: string
 }
 
 interface CreateFromWebhookArgs {
@@ -1160,6 +1223,13 @@ export const createFromWebhook = {
         name: v.string(),
         price: v.number(),
       }))),
+      // "allergie arachides — sauce à part". The Uber Eats mapper computes
+      // this (`uber-eats/mappers.ts`, `special_instructions` then
+      // `customer_request.allergy.instructions`), and a validator with no
+      // field for it rejected the whole call — so the webhook passed
+      // `notes: undefined` instead and the kitchen never saw it. This is a
+      // food-safety path.
+      notes: v.optional(v.string()),
     })),
     subtotal: v.number(),
     total: v.number(),
@@ -1209,6 +1279,7 @@ export const createFromWebhook = {
         })) ?? [],
         subtotal: item.price * item.quantity + modifierTotal,
         externalId: item.externalId,
+        notes: item.notes,
       }
     })
 
@@ -1338,40 +1409,260 @@ export function toKitchenTicketItems(
 }
 
 /**
- * "A confirmed order feeds the kitchen" is a business invariant, so it lives
- * behind this seam — not in the app transport wrapper. Creates the order,
- * then its kitchen ticket, in the same mutation (one Convex transaction).
+ * Map a platform order's lines to the kitchen ticket item shape.
+ *
+ * The Uber Eats and Deliveroo webhooks build this by hand, identically, in two
+ * byte-identical files — and that is where the customer's instruction was lost:
+ * `notes: undefined`, hard-coded, one line after the mapper had extracted it
+ * from `special_instructions` and `customer_request.allergy`. A note on that
+ * path can be an allergy, so the drop was a food-safety defect, not a cosmetic
+ * one.
+ *
+ * Lifted here so there is one mapping, in the package that owns the ticket
+ * contract, with a test across the seam rather than one on each side of it.
  */
-export const createWithTicket = {
-  args: create.args,
-  handler: async (ctx: any, args: CreateOrderArgs): Promise<string> => {
-    const orderId = await create.handler(ctx, args)
+export function toKitchenTicketItemsFromPlatform(
+  items: Array<{
+    name: string
+    quantity: number
+    modifiers?: Array<{ name: string }>
+    notes?: string
+  }>
+): Array<{ productName: string; quantity: number; options: string[]; notes?: string }> {
+  return items.map((item) => ({
+    productName: item.name,
+    quantity: item.quantity,
+    options: item.modifiers?.map((mod) => mod.name) ?? [],
+    notes: item.notes,
+  }))
+}
 
-    const order = await ctx.db.get(orderId)
-    if (!order) throw new Error("Order creation failed")
+/**
+ * Resolve which station each line of an order belongs to.
+ *
+ * The mapping is per establishment and keyed on category, because that is the
+ * unit an owner thinks in — "les pizzas au four, les salades au froid" — and
+ * the unit the catalogue already carries. A category nobody mapped resolves to
+ * `undefined`, which is one undifferentiated ticket: exactly what every
+ * establishment gets today, so turning the feature on is opt-in and turning it
+ * off is not a data migration.
+ */
+export async function resolveStations(
+  ctx: any,
+  storeId: string,
+  items: OrderItemInput[]
+): Promise<Array<string | undefined>> {
+  const store = await ctx.db.get(storeId)
+  const mapping: Array<{ categoryId: string; station: string }> =
+    store?.stationMapping ?? []
+  if (mapping.length === 0) return items.map(() => undefined)
 
-    // A replayed checkout returns the order that already exists, so the ticket
-    // for it already exists too. Asking first is what keeps the kitchen from
-    // plating the same dinner twice.
-    const existingTicket = await ctx.db
-      .query("kitchenTickets")
-      .withIndex("by_orderId", (q: any) => q.eq("orderId", orderId))
-      .first()
-    if (existingTicket) return orderId
+  const byCategory = new Map(mapping.map((m) => [String(m.categoryId), m.station]))
+
+  return Promise.all(
+    items.map(async (item) => {
+      if (!item.productId) return undefined
+      const product = await ctx.db.get(item.productId)
+      if (!product?.categoryId) return undefined
+      return byCategory.get(String(product.categoryId))
+    })
+  )
+}
+
+/**
+ * The allergens carried by the products in an order, and the time they need.
+ *
+ * `kitchenTickets.allergens` had exactly one writer — the demo seed — so the
+ * "ALLERGÈNES" block on the printed slip could only ever fire on fake data,
+ * while every product in the catalogue carried the field. `estimatedPrepTime`
+ * had the same shape of hole: `getOverdueCount` compares `estimatedReadyAt`,
+ * which is derived from a prep time nothing ever passed, so the overdue alarm
+ * could not fire for any real order.
+ *
+ * Prep time is the longest line, not the sum: a kitchen cooks in parallel.
+ */
+export async function summariseOrderLines(
+  ctx: any,
+  items: OrderItemInput[]
+): Promise<{ allergens: string[]; estimatedPrepTime?: number }> {
+  const allergens = new Set<string>()
+  let longest = 0
+
+  for (const item of items) {
+    if (!item.productId) continue
+    const product = await ctx.db.get(item.productId)
+    if (!product) continue
+
+    for (const allergen of product.allergens ?? []) allergens.add(allergen)
+    if (typeof product.preparationTime === "number") {
+      longest = Math.max(longest, product.preparationTime)
+    }
+  }
+
+  return {
+    allergens: [...allergens],
+    estimatedPrepTime: longest > 0 ? longest : undefined,
+  }
+}
+
+/**
+ * Put an order's slips on the pass, once.
+ *
+ * This is the seam #136 was about. The ticket used to be created inside
+ * `createWithTicket`, in the same transaction as the order and *before* any
+ * provider redirect: a customer who reached Stripe and closed the tab left a
+ * slip on the pass, the kitchen cooked a €60 order nobody had paid for, and
+ * nothing retracted it. The kitchen also had no way to tell paid from unpaid,
+ * because every order looked the same to it.
+ *
+ * So the rule is now "a *paid* order feeds the kitchen", and it lives here
+ * rather than in any one caller — the same argument `updateStatus` makes about
+ * subscriber metadata. Every *card* path reaches it: Stripe's webhook, Stripe's
+ * success-page verify, the PayPal capture and the SumUp verify all confirm
+ * through `internalUpdatePaymentStatus`, which is transport over
+ * `recordPaymentStatus`. Cash reaches it from `markCashPaid`.
+ *
+ * The two platform paths do NOT come through here and are not meant to:
+ * `createFromWebhook` writes an order that Uber Eats or Deliveroo has already
+ * collected for, and the Uber Eats webhook creates its ticket itself so the
+ * slip can carry the platform's own display id — the number the kitchen matches
+ * against the tablet on the wall. (Deliveroo creates no ticket at all; that is
+ * P0-10's, not this seam's.)
+ *
+ * `store.orderConfirmation` decides *when*: "auto" releases on payment,
+ * "manual" holds the order until staff accept it. That setting was withdrawn
+ * in #242 for promising a workflow nothing implemented — this is the
+ * implementation, which is why it is back.
+ *
+ * Idempotent: a replayed webhook, a success page racing its own webhook, and a
+ * second staff click all find the tickets already there and change nothing.
+ * Returns the number of tickets created — 0 is a normal answer.
+ */
+export async function releaseToKitchen(
+  ctx: any,
+  orderId: string,
+  options: { force?: boolean } = {}
+): Promise<number> {
+  const order = await ctx.db.get(orderId)
+  if (!order) return 0
+
+  // Never twice. This is the guard that survived from `createWithTicket`, and
+  // it is the one that keeps the kitchen from plating the same dinner twice.
+  const existing = await ctx.db
+    .query("kitchenTickets")
+    .withIndex("by_orderId", (q: any) => q.eq("orderId", orderId))
+    .first()
+  if (existing) return 0
+
+  // A cancelled order has nothing to cook.
+  if (order.status === "cancelled") return 0
+
+  // Payment is required on every path, including this one.
+  //
+  // `force` was briefly allowed to skip this, and that put #136 straight back:
+  // a customer abandons at the provider, a member of staff clicks "Accepter la
+  // commande" on the still-unpaid order in the admin list, and the kitchen
+  // cooks it. The order looks the same to them as a paid one — the KDS shows no
+  // payment state at all, which is half of what #136 was about.
+  //
+  // An establishment that takes the money at the counter records it with
+  // `markCashPaid`, and that releases the order. "Money taken" is the event
+  // that feeds the kitchen; "staff looked at it" is not.
+  if (order.paymentStatus !== "paid") return 0
+
+  // `force` is staff accepting the order by hand: that IS the manual workflow,
+  // so it skips the setting describing what happens without a human — and
+  // nothing else.
+  //
+  // A status past `pending` counts the same way, and has to. Staff who accept a
+  // phone order before the payment lands hit `updateStatus(confirmed)` while it
+  // is still unpaid; the payment check above refuses, correctly. But `confirmed`
+  // is reachable exactly once and only from `pending`, so when the money then
+  // arrived the release ran WITHOUT `force`, the manual gate held it, and the
+  // order was stranded: paid, accepted, and no ticket, with no button left to
+  // press. Remembering that a human already accepted it is what closes that.
+  const alreadyAccepted = options.force || order.status !== "pending"
+
+  if (!alreadyAccepted) {
+    const store = await ctx.db.get(order.storeId)
+    // Absent means "auto": every establishment on the product today has the
+    // field unset and expects its paid orders to reach the kitchen.
+    if ((store?.orderConfirmation ?? "auto") === "manual") return 0
+  }
+
+  const items: OrderItemInput[] = order.items ?? []
+  const stations = await resolveStations(ctx, order.storeId, items)
+
+  // One token for the whole order, shared by its station tickets.
+  //
+  // `/track/[token]` follows a token, and a token per station meant the
+  // customer followed whichever one `getTrackingToken` happened to return
+  // first: the cold station finishes the salad and the page says "prête" while
+  // the pizza is still in the oven. `getByTrackingToken` reads all the tickets
+  // sharing the token and answers for the slowest.
+  const trackingToken = crypto.randomUUID()
+
+  // One ticket per station the order touches, so the cold station is not handed
+  // a slip for a pizza. With no mapping configured every line lands on the same
+  // `undefined` key, which is the single ticket every establishment has today.
+  const byStation = new Map<string | undefined, OrderItemInput[]>()
+  items.forEach((item, index) => {
+    const station = stations[index]
+    const bucket = byStation.get(station)
+    if (bucket) bucket.push(item)
+    else byStation.set(station, [item])
+  })
+
+  let created = 0
+  for (const [station, stationItems] of byStation) {
+    // Per station, not per order: a slip lists the allergens and the prep time
+    // of the food printed on it. Handing the cold station the pizza's gluten
+    // makes a cook read a warning for a dish they cannot see, next to items
+    // that do not carry it.
+    const summary = await summariseOrderLines(ctx, stationItems)
 
     await kitchenTicketCreate.handler(ctx, {
       storeId: order.storeId,
       orderId,
       orderNumber: order.orderNumber,
       orderType: order.type,
-      items: toKitchenTicketItems(order.items),
+      items: toKitchenTicketItems(stationItems),
+      station,
       priority: "normal",
-      source: "website",
-      trackingToken: crypto.randomUUID(),
+      source: order.source ?? "website",
+      estimatedPrepTime: summary.estimatedPrepTime,
+      trackingToken,
       customerName: order.customerInfo?.name,
       customerPhone: order.customerInfo?.phone,
       deliveryNotes: order.notes,
+      allergens: summary.allergens.length > 0 ? summary.allergens : undefined,
     })
+    created++
+  }
+
+  return created
+}
+
+/**
+ * Storefront checkout.
+ *
+ * Creates the order and nothing else. The kitchen hears about it when the
+ * payment does — see `releaseToKitchen`. The name is kept because both apps'
+ * transport wrappers and their tests refer to it, and because the seam it
+ * names is still the seam: what a confirmed order does is decided here, in the
+ * defs layer, not in an app wrapper.
+ */
+export const createWithTicket = {
+  args: create.args,
+  handler: async (ctx: any, args: CreateOrderArgs): Promise<string> => {
+    const orderId = await create.handler(ctx, args)
+
+    // `create` always writes `paymentStatus: "pending"`, so this releases
+    // nothing today — it asks rather than assumes, so that an order arriving
+    // paid through this path in future reaches the kitchen instead of waiting
+    // for a webhook that will never come. Cheap: one read of a document the
+    // mutation has already written.
+    await releaseToKitchen(ctx, orderId)
 
     return orderId
   },

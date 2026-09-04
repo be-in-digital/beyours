@@ -10,13 +10,23 @@ import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { ResolvingStore } from "../../components/resolving-store"
 
-type TicketStatus = "pending" | "in_progress" | "ready" | "completed"
+/**
+ * The pass, and only the pass.
+ *
+ * `completed` was a fourth column here. `kitchenTickets.getByStore` is a live
+ * subscription and no longer returns finished tickets — it is bounded to the
+ * three active statuses, because subscribing to an establishment's whole
+ * history is what took the kitchen screen down mid-service. So the column could
+ * only ever have rendered empty, which reads as "nothing was finished today"
+ * rather than "this screen does not show that". The finished history lives on
+ * its own tab, paginated.
+ */
+type TicketStatus = "pending" | "in_progress" | "ready"
 
 const STATUS_CONFIG: Record<TicketStatus, { title: string; color: string }> = {
   pending: { title: "En attente", color: "bg-yellow-500" },
   in_progress: { title: "En cours", color: "bg-blue-500" },
   ready: { title: "Prêt", color: "bg-green-500" },
-  completed: { title: "Terminé", color: "bg-gray-500" },
 }
 
 export function KitchenPage() {
@@ -56,7 +66,6 @@ export function KitchenPage() {
       pending: filteredTickets.filter((t: any) => t.status === "pending"),
       in_progress: filteredTickets.filter((t: any) => t.status === "in_progress"),
       ready: filteredTickets.filter((t: any) => t.status === "ready"),
-      completed: filteredTickets.filter((t: any) => t.status === "completed"),
     }
   }, [filteredTickets])
 

@@ -462,6 +462,7 @@ describe("getByTrackingToken query", () => {
     db.query = vi.fn(() => ({
       withIndex: vi.fn(() => ({
         first: vi.fn(async () => null),
+        take: vi.fn(async () => []),
       })),
     })) as any
 
@@ -498,6 +499,7 @@ describe("getByTrackingToken query", () => {
       query: vi.fn(() => ({
         withIndex: vi.fn(() => ({
           first: vi.fn(async () => ticket),
+          take: vi.fn(async () => [ticket]),
         })),
       })),
     }
@@ -546,6 +548,7 @@ describe("getForDisplay query", () => {
         withIndex: vi.fn(() => ({
           order: vi.fn(() => ({
             collect: vi.fn(async () => []),
+            take: vi.fn(async () => []),
           })),
           collect: vi.fn(async () => []),
         })),
@@ -579,6 +582,7 @@ describe("getForDisplay query", () => {
         withIndex: vi.fn(() => ({
           order: vi.fn(() => ({
             collect: vi.fn(async () => []),
+            take: vi.fn(async () => []),
           })),
           collect: vi.fn(async () => []),
         })),
@@ -868,6 +872,7 @@ describe("Scenario: Tracking token privacy", () => {
       query: vi.fn(() => ({
         withIndex: vi.fn(() => ({
           first: vi.fn(async () => ticket),
+          take: vi.fn(async () => [ticket]),
         })),
       })),
     }
@@ -942,6 +947,7 @@ describe("Scenario: Display auto-dismiss filtering", () => {
             withIndex: vi.fn(() => ({
               order: vi.fn(() => ({
                 collect: vi.fn(async () => []),
+                take: vi.fn(async () => []),
               })),
             })),
           }
@@ -951,6 +957,7 @@ describe("Scenario: Display auto-dismiss filtering", () => {
           withIndex: vi.fn(() => ({
             order: vi.fn(() => ({
               collect: vi.fn(async () => [freshReady, staleReady, pickedUpReady]),
+              take: vi.fn(async () => [freshReady, staleReady, pickedUpReady]),
             })),
           })),
         }
@@ -995,6 +1002,7 @@ describe("Scenario: Display auto-dismiss filtering", () => {
             withIndex: vi.fn(() => ({
               order: vi.fn(() => ({
                 collect: vi.fn(async () => []),
+                take: vi.fn(async () => []),
               })),
             })),
           }
@@ -1003,6 +1011,7 @@ describe("Scenario: Display auto-dismiss filtering", () => {
           withIndex: vi.fn(() => ({
             order: vi.fn(() => ({
               collect: vi.fn(async () => [oldReady]),
+              take: vi.fn(async () => [oldReady]),
             })),
           })),
         }
