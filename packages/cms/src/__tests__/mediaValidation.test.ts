@@ -1,7 +1,10 @@
 import { describe, it, expect } from "vitest"
 import {
   CMS_MEDIA_LIMITS,
+  CMS_MEDIA_SIZE_OVERRIDES,
+  extensionFromFilename,
   getMediaKind,
+  maxSizeForMimeType,
   validateMediaUpload,
 } from "../media/types"
 
@@ -252,4 +255,149 @@ describe("validateMediaUpload", () => {
       expect(result.error?.code).toBe("file_too_large")
     })
   })
+})
+
+// ---------------------------------------------------------------------------
+// extensionFromFilename
+// ---------------------------------------------------------------------------
+describe("extensionFromFilename", () => {
+  it("returns the lowercased extension", () => {
+    expect(extensionFromFilename("PHOTO.PNG")).toBe("png")
+  })
+
+  it("returns the last extension of a double-barrelled name", () => {
+    expect(extensionFromFilename("archive.tar.gz")).toBe("gz")
+  })
+
+  it("returns null when there is no extension", () => {
+    expect(extensionFromFilename("screenshot")).toBeNull()
+  })
+
+  it("returns null for a dotfile with no extension", () => {
+    expect(extensionFromFilename(".env")).toBeNull()
+  })
+
+  it("returns null when the name ends in a dot", () => {
+    expect(extensionFromFilename("photo.")).toBeNull()
+  })
+
+  it("ignores directory segments", () => {
+    expect(extensionFromFilename("dossier.old/photo.png")).toBe("png")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// maxSizeForMimeType
+// ---------------------------------------------------------------------------
+describe("maxSizeForMimeType", () => {
+  it("caps SVG at 1 MB, below the 10 MB image limit", () => {
+    expect(maxSizeForMimeType("image/svg+xml")).toBe(1 * 1024 * 1024)
+    expect(CMS_MEDIA_SIZE_OVERRIDES["image/svg+xml"]).toBe(1 * 1024 * 1024)
+  })
+
+  it("uses the kind limit where there is no override", () => {
+    expect(maxSizeForMimeType("image/png")).toBe(IMAGE_MAX)
+    expect(maxSizeForMimeType("video/mp4")).toBe(VIDEO_MAX)
+    expect(maxSizeForMimeType("application/pdf")).toBe(FILE_MAX)
+  })
+
+  it("returns null for a type the CMS does not accept", () => {
+    expect(maxSizeForMimeType("text/html")).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The hostile cases this allow-list exists for (#167)
+//
+// `validateMediaUpload` was called only by two browser components. It is now
+// also the server-side check in `createMedia`, so every case below is a request
+// the backend has to refuse on its own.
+// ---------------------------------------------------------------------------
+describe("validateMediaUpload — hostile uploads", () => {
+  it("refuses text/html", () => {
+    const result = validateMediaUpload("payload.html", "text/html", 512)
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("invalid_mime")
+  })
+
+  it("refuses a 5 GB SVG", () => {
+    const result = validateMediaUpload(
+      "huge.svg",
+      "image/svg+xml",
+      5 * 1024 * 1024 * 1024,
+    )
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("file_too_large")
+  })
+
+  it("refuses an SVG over 1 MB, well under the image limit", () => {
+    // Markup, not pixels: the same ceiling cmsSvgUpload enforces.
+    const result = validateMediaUpload(
+      "logo.svg",
+      "image/svg+xml",
+      1 * 1024 * 1024 + 1,
+    )
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("file_too_large")
+  })
+
+  it("accepts an SVG at exactly 1 MB", () => {
+    const result = validateMediaUpload("logo.svg", "image/svg+xml", 1024 * 1024)
+    expect(result.valid).toBe(true)
+    expect(result.kind).toBe("image")
+  })
+
+  it("refuses a .html filename declared as image/png", () => {
+    const result = validateMediaUpload("payload.html", "image/png", 1024)
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("mime_extension_mismatch")
+  })
+
+  it("refuses a .svg filename declared as image/png", () => {
+    const result = validateMediaUpload("logo.svg", "image/png", 1024)
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("mime_extension_mismatch")
+  })
+
+  it("refuses a negative size, the one value under every cap", () => {
+    const result = validateMediaUpload("photo.png", "image/png", -1)
+    expect(result.valid).toBe(false)
+    expect(result.error?.code).toBe("file_too_large")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// …without refusing files editors legitimately upload
+// ---------------------------------------------------------------------------
+describe("validateMediaUpload — extension agreement", () => {
+  it("accepts .jpeg for image/jpeg even though it is stored as .jpg", () => {
+    const result = validateMediaUpload("photo.jpeg", "image/jpeg", 1024)
+    expect(result.valid).toBe(true)
+  })
+
+  it("accepts an uppercase extension", () => {
+    const result = validateMediaUpload("PHOTO.PNG", "image/png", 1024)
+    expect(result.valid).toBe(true)
+  })
+
+  it("accepts a filename with no extension at all", () => {
+    // The stored key is derived from the MIME type, so there is nothing to
+    // disagree with — refusing this would refuse real uploads.
+    const result = validateMediaUpload("capture-decran", "image/png", 1024)
+    expect(result.valid).toBe(true)
+  })
+
+  it("accepts an accented French filename", () => {
+    const result = validateMediaUpload("entrée-du-jour.jpg", "image/jpeg", 1024)
+    expect(result.valid).toBe(true)
+  })
+})
+
+describe("validateMediaUpload — JPEG extension aliases", () => {
+  it.each(["photo.jpg", "photo.jpeg", "photo.jfif", "photo.jpe"])(
+    "accepts %s as image/jpeg",
+    (filename) => {
+      expect(validateMediaUpload(filename, "image/jpeg", 1024).valid).toBe(true)
+    },
+  )
 })

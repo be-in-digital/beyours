@@ -8,7 +8,9 @@
 import { v } from "convex/values"
 import { getCurrentPeriodKey } from "./blogAutoUsage"
 import { createArticleCore } from "./blog"
+import { publishArticleCore } from "./blogPublish"
 import { generateSlug } from "./helpers"
+import { sanitizeArticleHtml } from "./htmlSanitize"
 
 // ============================================================================
 // Validators
@@ -30,110 +32,6 @@ export const generateArticleArgs = {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Increment blogAutoUsage for the current month.
- * Upserts the usage record (creates if first generation this month).
- */
-export async function incrementUsageCore(
-  ctx: any,
-  ownerId: string,
-): Promise<void> {
-  const periodKey = getCurrentPeriodKey()
-  const now = Date.now()
-
-  const existing = await ctx.db
-    .query("blogAutoUsage")
-    .withIndex("by_ownerId_periodKey", (q: any) =>
-      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
-    )
-    .first()
-
-  if (existing) {
-    await ctx.db.patch(existing._id, {
-      generatedCount: existing.generatedCount + 1,
-      updatedAt: now,
-    })
-  } else {
-    await ctx.db.insert("blogAutoUsage", {
-      ownerId,
-      periodKey,
-      generatedCount: 1,
-      publishedCount: 0,
-      updatedAt: now,
-    })
-  }
-}
-
-/**
- * Increment image generation usage for the current month.
- * Upserts the usage record (creates if first generation this month).
- */
-export async function incrementImageUsageCore(
-  ctx: any,
-  ownerId: string,
-): Promise<void> {
-  const periodKey = getCurrentPeriodKey()
-  const now = Date.now()
-
-  const existing = await ctx.db
-    .query("blogAutoUsage")
-    .withIndex("by_ownerId_periodKey", (q: any) =>
-      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
-    )
-    .first()
-
-  if (existing) {
-    await ctx.db.patch(existing._id, {
-      imageGeneratedCount: (existing.imageGeneratedCount ?? 0) + 1,
-      updatedAt: now,
-    })
-  } else {
-    await ctx.db.insert("blogAutoUsage", {
-      ownerId,
-      periodKey,
-      generatedCount: 0,
-      publishedCount: 0,
-      imageGeneratedCount: 1,
-      updatedAt: now,
-    })
-  }
-}
-
-/**
- * Increment Image-to-Product analysis count for an owner.
- * Upserts the usage record (creates if first usage this month).
- */
-export async function incrementImageToProductUsageCore(
-  ctx: any,
-  ownerId: string,
-): Promise<void> {
-  const periodKey = getCurrentPeriodKey()
-  const now = Date.now()
-
-  const existing = await ctx.db
-    .query("blogAutoUsage")
-    .withIndex("by_ownerId_periodKey", (q: any) =>
-      q.eq("ownerId", ownerId).eq("periodKey", periodKey)
-    )
-    .first()
-
-  if (existing) {
-    await ctx.db.patch(existing._id, {
-      imageToProductAnalysisCount: (existing.imageToProductAnalysisCount ?? 0) + 1,
-      updatedAt: now,
-    })
-  } else {
-    await ctx.db.insert("blogAutoUsage", {
-      ownerId,
-      periodKey,
-      generatedCount: 0,
-      publishedCount: 0,
-      imageToProductAnalysisCount: 1,
-      updatedAt: now,
-    })
-  }
-}
 
 /**
  * Get store and category context for the AI prompt.
@@ -171,8 +69,14 @@ export async function saveGeneratedArticleCore(
     metaTitle?: string
     metaDescription?: string
     tags?: string[]
+    /**
+     * What the owner configured and their plan allows. The caller resolves
+     * both — this function is not the place to read entitlements — and passes
+     * the answer. Anything other than "auto_publish" leaves a draft.
+     */
+    approvalMode?: "draft_review" | "auto_publish"
   },
-): Promise<string> {
+): Promise<{ articleId: string; status: "draft" | "published" }> {
   // Create article (empty draft)
   const articleId = await createArticleCore(ctx, {
     storeId: args.storeId,
@@ -189,7 +93,7 @@ export async function saveGeneratedArticleCore(
     title: args.title,
     slug,
     excerpt: args.excerpt,
-    content: args.content,
+    content: sanitizeArticleHtml(args.content),
     updatedAt: now,
   }
 
@@ -240,8 +144,26 @@ export async function saveGeneratedArticleCore(
     }
   }
 
-  // Increment usage
-  await incrementUsageCore(ctx, args.ownerId)
+  // The quota is reserved before the first paid call, not here: incrementing
+  // after the fact is what let ten concurrent requests past a quota of two.
+  // See `reserveArticleQuota` in blogAutoGuards.
 
-  return articleId
+  // Publish only where the plan allows it AND the draft is complete. An
+  // article the model produced without a cover image cannot pass
+  // `publishArticleCore`'s validation, and failing the whole generation over
+  // it would throw away work the owner has already paid for — so it stays a
+  // draft they can finish.
+  if (args.approvalMode === "auto_publish") {
+    try {
+      await publishArticleCore(ctx, articleId, args.authorId)
+      return { articleId, status: "published" }
+    } catch (error) {
+      console.warn(
+        `[autoBlog] auto-publish refused for ${articleId}, left as draft:`,
+        error instanceof Error ? error.message : error,
+      )
+    }
+  }
+
+  return { articleId, status: "draft" }
 }

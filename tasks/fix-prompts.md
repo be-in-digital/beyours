@@ -397,7 +397,9 @@ accepts, and the options are operable from a keyboard.
 ````
 
 ## Batch 09 — Blog and Auto Blog
-**0/3 done · 3 open.** A sold feature with no scheduler, and a blog wired to demo content.
+**3/3 done.** The blog serves published articles at `/blog/[slug]`, Auto Blog runs on two
+crons, and #167 closed 8/8. Kept for the record; the prompt below describes the state
+before the batch was closed.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,

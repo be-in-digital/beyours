@@ -52,6 +52,47 @@ test.describe("Public Pages", () => {
     })
   })
 
+  test.describe("Blog", () => {
+    test("should display the article list heading", async ({ page }) => {
+      await page.goto("/blog", { waitUntil: "domcontentloaded" })
+
+      await expect(
+        page.getByRole("heading", { name: "Tous les articles" })
+      ).toBeVisible({ timeout: 30_000 })
+    })
+
+    /**
+     * The list used to be six hard-coded demo posts linking to a route that did
+     * not exist. Whatever it shows now comes from the database, so the check is
+     * that every card leads somewhere real rather than that any card is there.
+     */
+    test("every article card links to an article page that exists", async ({ page }) => {
+      await page.goto("/blog", { waitUntil: "domcontentloaded" })
+      await expect(
+        page.getByRole("heading", { name: "Tous les articles" })
+      ).toBeVisible({ timeout: 30_000 })
+
+      const hrefs = await page.locator('a[href^="/blog/"]').evaluateAll((links) =>
+        links.map((a) => a.getAttribute("href")).filter((h): h is string => !!h)
+      )
+
+      for (const href of [...new Set(hrefs)]) {
+        const response = await page.request.get(href)
+        expect(response.status(), `${href} should not be a dead link`).toBeLessThan(400)
+      }
+    })
+
+    test("should not produce console errors", async ({ page }) => {
+      const { getErrors, cleanup } = collectConsoleErrors(page)
+
+      await page.goto("/blog", { waitUntil: "domcontentloaded" })
+      await page.waitForTimeout(2_000)
+
+      cleanup()
+      expect(getErrors()).toEqual([])
+    })
+  })
+
   test.describe("Cart Page", () => {
     test("should display the heading", async ({ page }) => {
       await page.goto("/cart", { waitUntil: "domcontentloaded" })

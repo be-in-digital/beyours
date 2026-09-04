@@ -88,7 +88,10 @@
     "./contactMessages": "./src/contactMessages.ts",
     "./deliveryFee": "./src/deliveryFee.ts",
     "./auth": "./src/auth.ts",
-    "./maintenance": "./src/maintenance.ts"
+    "./maintenance": "./src/maintenance.ts",
+    "./htmlSanitize": "./src/htmlSanitize.ts",
+    "./blogAutoSchedule": "./src/blogAutoSchedule.ts",
+    "./blogAutoPlanner": "./src/blogAutoPlanner.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -101,13 +104,15 @@
   "dependencies": {
     "@be-in-digital/cms": "workspace:*",
     "@be-in-digital/convex-schema": "workspace:*",
-    "@be-in-digital/core": "workspace:*"
+    "@be-in-digital/core": "workspace:*",
+    "sanitize-html": "^2.17.5"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7",
-    "convex": "1.44.0"
+    "convex": "1.44.0",
+    "@types/sanitize-html": "^2.16.1"
   },
   "peerDependencies": {
     "convex": "^1.44.0"

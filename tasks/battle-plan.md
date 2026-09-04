@@ -218,14 +218,14 @@ the finish that decides whether the theme sells.
 > **Closed when.** All eleven public routes return 200 with their real metadata, and a configurable dish can be bought entirely from the keyboard.
 
 ## Batch 09 — CMS, blog & media
-*3 items · 2 P0 · _3 open_*
+*3 items · 2 P0 · _3 done_*
 
-The editing admin exists and works; it is the public output that is missing.
-Everything written goes nowhere.
+The editing admin exists and works; it was the public output that was missing.
+Everything written went nowhere.
 
-- [ ] **#149** 🔴 — Wire the public blog to real articles and create `/blog/[slug]` — six demo posts and twelve dead links today
-- [ ] **#150** 🔴 — Ship the Auto Blog crons, or reposition the offer as manual generation
-- [ ] **#167** 🔴 — Authorize the `storeId` of the generation actions, reserve quota before the OpenAI call, fix the preview blocked by `X-Frame-Options`
+- [x] **#149** ✅ — The public blog reads published articles and `/blog/[slug]` exists; the six demo posts and twelve dead links are gone
+- [x] **#150** ✅ — Both crons ship: `plan auto blog jobs` hourly, `execute auto blog queue` every 10 minutes. `approvalMode` is honoured and re-checked against the plan at execution time, so auto-publish needs an entitlement and everything else lands as a draft
+- [x] **#167** ✅ — 8/8. Generation actions authorize their `storeId`, quota is reserved before the OpenAI call (measured: 10 concurrent past a quota of 2), uploads refuse `text/html` and active SVG, media deletion reaches S3, and the preview renders
 
 > **Closed when.** An article published in the admin appears on the site with its own page, and a weekly configuration produces one with no human action.
 

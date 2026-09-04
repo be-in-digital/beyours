@@ -12,6 +12,7 @@ import {
   getAllPageSlugs,
   validateBlockValues,
 } from "@be-in-digital/cms"
+import { sanitizeRichTextHtml } from "./htmlSanitize"
 
 // ============================================================================
 // Validators
@@ -333,7 +334,12 @@ export async function saveDraftBlockCore(
     throw new Error(`Block "${args.blockKey}" not found in page "${args.pageSlug}"`)
   }
 
-  const validation = validateBlockValues(args.values, blockDef)
+  // Clean rich text before anything else looks at it, so validation measures
+  // and the table stores the same string the visitor's browser will be asked
+  // to run. Sanitising after validation would leave the two able to disagree.
+  const values = sanitizeRichTextValues(args.values, blockDef)
+
+  const validation = validateBlockValues(values, blockDef)
   if (!validation.valid) {
     throw new Error(
       `Validation failed: ${validation.errors.map((e) => e.message).join(", ")}`,
@@ -356,24 +362,24 @@ export async function saveDraftBlockCore(
 
   if (existing) {
     // Update usageCount for media changes
-    await updateMediaUsageDelta(ctx, existing.values, args.values)
+    await updateMediaUsageDelta(ctx, existing.values, values)
 
     await ctx.db.patch(existing._id, {
-      values: args.values,
+      values,
       updatedAt: now,
       updatedBy: args.updatedBy,
     })
     blockId = existing._id
   } else {
     // Update usageCount for new media references
-    await updateMediaUsageForNewValues(ctx, args.values)
+    await updateMediaUsageForNewValues(ctx, values)
 
     blockId = await ctx.db.insert("cmsBlocks", {
       storeId: args.storeId,
       pageSlug: args.pageSlug,
       blockKey: args.blockKey,
       isDraft: true,
-      values: args.values,
+      values,
       updatedAt: now,
       updatedBy: args.updatedBy,
     })
@@ -517,6 +523,45 @@ export const resetPage = {
 // ============================================================================
 // Internal Helpers
 // ============================================================================
+
+/**
+ * Run every `richtext` field of a block through the shared allow-list.
+ *
+ * The CMS editor is Tiptap and what it hands the mutation is
+ * `editor.getHTML()` — markup, written by whoever has `content:write` on the
+ * store. It was stored verbatim, which was harmless only for as long as the
+ * storefront printed it as text instead of rendering it. It renders it now
+ * (`components/storefront/cms-rich-text.tsx`), so the string has to be clean
+ * before it reaches the table.
+ *
+ * Only fields the *registry* declares `richtext` are touched. The `type` on the
+ * incoming value is the client's word for it and is not trusted here; a `text`
+ * field stays untouched, because a plain-text field is escaped on render and
+ * silently stripping its angle brackets would corrupt legitimate content.
+ *
+ * The values object is copied rather than mutated: the caller's argument is
+ * also what the app wrapper logs and what the auto-translation hook may read.
+ */
+function sanitizeRichTextValues(
+  values: Record<string, CmsFieldValue>,
+  blockDef: { fields: Record<string, { type: string }> },
+): Record<string, CmsFieldValue> {
+  const cleaned: Record<string, CmsFieldValue> = { ...values }
+
+  for (const [fieldKey, fieldDef] of Object.entries(blockDef.fields)) {
+    if (fieldDef.type !== "richtext") continue
+
+    const value = cleaned[fieldKey]
+    if (!value || typeof value.textValue !== "string") continue
+
+    cleaned[fieldKey] = {
+      ...value,
+      textValue: sanitizeRichTextHtml(value.textValue),
+    }
+  }
+
+  return cleaned
+}
 
 async function resolveTranslations(
   ctx: any,

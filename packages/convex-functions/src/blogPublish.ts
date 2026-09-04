@@ -6,6 +6,7 @@
  */
 
 import { now } from "./helpers"
+import { sanitizeArticleHtml } from "./htmlSanitize"
 
 // ============================================================================
 // Publish
@@ -104,7 +105,16 @@ export async function publishArticleCore(
     publishedSlug: draft.slug,
     publishedCategoryId: article.draftCategoryId,
     publishedAuthorId: article.draftAuthorId,
-    publishedContent: { ...draft, updatedAt: timestamp },
+    // Cleaned again on the way out, not only on the way in: a draft written
+    // before `saveDraftCore` started sanitising is still sitting in the
+    // database, and publishing is what puts it in front of the public.
+    publishedContent: {
+      ...draft,
+      ...(typeof draft.content === "string"
+        ? { content: sanitizeArticleHtml(draft.content) }
+        : {}),
+      updatedAt: timestamp,
+    },
     // Clear scheduling fields
     scheduledPublishAt: undefined,
     scheduledPublishJobId: undefined,

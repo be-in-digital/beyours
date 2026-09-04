@@ -73,6 +73,33 @@ So: **export and transfer first, revoke second, tick last.**
 - [ ] **Third-party accounts they own** — Stripe, Sentry, Google Maps. Nothing
       to revoke; confirm the keys in their deployment are theirs and not yours.
 
+## 2 bis. Erase what they asked you to erase
+
+A departure and an erasure request are different jobs. This section is the
+second one, and it is the one where "the row is gone" has, until now, not meant
+"the file is gone".
+
+- [x] **A media deleted from the library takes its S3 objects with it.**
+      `cmsMedia.deleteMedia` schedules `cmsMediaDelete.purgeS3Objects`, which
+      removes the source and every generated variant (`thumb`, `card`, `og`).
+      Before this, `DeleteObjectCommand` appeared nowhere in the repository: the
+      admin reported "définitivement supprimé" and deleted a database row. If
+      you have ever told a client a deleted photograph was gone, it was not —
+      files deleted before this landed are still in the bucket and have to be
+      removed by hand.
+- [ ] **Deleting the *établissement* does not.** `storeCascade` drops the
+      `cmsMedia` rows for a store in bulk and never touches S3, so a store
+      deletion still orphans every object it owned. Under the shared-bucket
+      model those objects sit under `cms/<mediaId>/…`, and once the rows are
+      gone there is nothing left to enumerate them from. **If an erasure request
+      covers a whole establishment, export the media keys before deleting the
+      store**, or delete the media from the library first and the store second.
+- [ ] **Objects written by the other upload route** (`/api/upload` →
+      `products/`, `branding/`, `stores/`, `users/`) are referenced by URL from
+      product and profile rows, not by a media record. Deleting the row that
+      points at one leaves the object. These are per-file, by hand, from the
+      URLs in the export.
+
 ## 3. Close it out
 
 - [ ] Set the deployment to **Sorti** in the fleet console, if not already.
@@ -89,6 +116,8 @@ Stated plainly, so nobody reads the tick as a guarantee:
 |---|---|
 | The deployment is marked gone | yes |
 | Revocation is recorded as outstanding until ticked | yes |
+| Deleting one media deletes its S3 objects | yes |
+| Deleting an establishment deletes its S3 objects | **no — rows only, see 2 bis** |
 | The credentials are actually revoked | **no — this list, by hand** |
 | The tick is verified against reality | **no — it is an attestation** |
 
