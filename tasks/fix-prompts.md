@@ -464,6 +464,11 @@ execution at commit 8d41349:
 - #166 — 9 of 10 sub-points done. Find the tenth, finish it, and report which it was.
 - #177 — The `check-ses-status` script is delivered and tested. Missing: the `ses:check`
   script in `apps/reference`, and the AWS production-access request itself.
+  **Correction, verified by execution:** it was delivered but NOT tested — no test
+  existed anywhere in the repo. Reading it adversarially found the AWS response was
+  `eval`'d, so a crafted `EnforcementStatus` both executed a shell command and graded as
+  `HEALTHY`, plus two further states it called "ready" without understanding. Fixed, and
+  now covered by `apps/*/scripts/check-ses-status.test.mjs`.
 
 Order: #145 first (it protects the sending account and the rest of the batch depends on
 SES staying healthy), then #142, then #146.

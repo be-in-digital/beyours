@@ -15,6 +15,10 @@ import {
   nextStep,
   occurrenceFor,
 } from "@be-in-digital/convex-functions/automationDispatch";
+import {
+  configurationSetFields,
+  resolveConfigurationSet,
+} from "@be-in-digital/convex-functions/sesSending";
 
 function createSESClient() {
   return new SESv2Client({
@@ -118,6 +122,15 @@ export const runStep = internalAction({
       { siteUrl: appUrl }
     );
 
+    // Same setting, same reasoning as a campaign: the configuration set belongs
+    // to the client's own AWS account, so it is read from the deployment and
+    // the field is omitted when they have none. Hard-coding the agency's own
+    // meant `ConfigurationSetDoesNotExist` on every automation SES ever
+    // attempted — a welcome sequence that silently reached nobody.
+    const configurationSet = resolveConfigurationSet(
+      process.env.AWS_SES_CONFIGURATION_SET
+    );
+
     try {
       await createSESClient().send(
         new SendEmailCommand({
@@ -126,7 +139,7 @@ export const runStep = internalAction({
             : config.fromEmail,
           Destination: { ToAddresses: [subscriber.email] },
           ReplyToAddresses: config.replyToEmail ? [config.replyToEmail] : undefined,
-          ConfigurationSetName: "beindigital-email-tracking",
+          ...configurationSetFields(configurationSet),
           Content: {
             Simple: {
               Subject: { Data: template.subject, Charset: "UTF-8" },
@@ -153,7 +166,14 @@ export const runStep = internalAction({
     } catch (error) {
       // Not recorded, so the step can be retried. Recording a send that failed
       // would drop the message from the sequence for good.
-      console.error(`[emailAutomations] step ${step.id} failed:`, error);
+      //
+      // The configuration set is named because it is the setting this failure
+      // is usually about, and the one an operator can check in a second.
+      console.error(
+        `[emailAutomations] step ${step.id} failed (configuration set: ` +
+          `${configurationSet ?? "none"}):`,
+        error
+      );
       return;
     }
 

@@ -27,7 +27,11 @@ pointed at a stand-in that records what was sent.
 - pausing a send mid-flight and resuming it — **the P0 where "Relancer"
   restarted at the first subscriber and mailed everyone a second time**
 - a send spanning several batch pages
-- the welcome automation, from the confirmation link to the delivered email
+- the double opt-in, end to end: the confirmation email being sent at all, the
+  link inside it being absolute, and opening that link — the link is taken out
+  of the captured message rather than rebuilt from the database token, because
+  the defect was precisely that no message contained one
+- the welcome automation firing off the back of that confirmation
 
 ## Running it
 

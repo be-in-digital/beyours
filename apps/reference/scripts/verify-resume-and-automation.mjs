@@ -173,20 +173,45 @@ await retry(() => admin.mutation("emailAutomations:activate", { id: automationId
 ok("welcome automation created and activated")
 
 const before = (await sentMail()).length
-// The real storefront path: subscribe, then confirm with the emailed token.
+// The real storefront path, and it now genuinely is one. This block used to
+// read `doubleOptInToken` straight out of the database and build the URL
+// itself, under a comment that said "the emailed token" — so it proved the
+// route worked while the thing a visitor actually needs, the email carrying
+// the link, was never sent by any code at all. Taking the link out of the
+// captured message is the difference between testing the handler and testing
+// the feature.
 const newcomer = `welcome-${stamp}@example.test`
 await retry(() => admin.mutation("emailSubscribers:subscribe", { storeId, email: newcomer }))
 const row = (await retry(() => admin.query("emailSubscribers:list", { storeId })))
   .find((s) => s.email === newcomer)
 info(`subscriber is "${row?.status}" with a token: ${row?.doubleOptInToken ? "yes" : "no"}`)
 
-const confirmRes = await fetch(`${SITE}/email/confirm?token=${row.doubleOptInToken}`)
+await settle("confirmation email", { quietPolls: 4 })
+const optInMail = (await sentMail()).slice(before).filter((m) => m.to.includes(newcomer))
+
+optInMail.length === 1
+  ? ok(`confirmation email delivered (subject "${optInMail[0].subject}")`)
+  : bad("no confirmation email was sent", `${optInMail.length} emails`)
+
+const confirmLink = optInMail[0]?.links.find((href) => href.includes("/email/confirm"))
+confirmLink
+  ? ok(`it carries a confirmation link: ${confirmLink}`)
+  : bad("the confirmation email carries no /email/confirm link", JSON.stringify(optInMail[0]?.links))
+
+// Absolute, or it is not a link in any mail client. `CONVEX_SITE_URL` falls
+// back to "" in the older senders, which silently produces a relative path.
+confirmLink?.startsWith("http")
+  ? ok("the link is absolute")
+  : bad("the confirmation link is relative and would not be clickable", confirmLink)
+
+const afterOptIn = (await sentMail()).length
+const confirmRes = await fetch(confirmLink)
 confirmRes.ok
   ? ok(`confirmation page answered ${confirmRes.status}`)
   : bad("confirmation failed", confirmRes.status)
 
 await settle("welcome automation", { quietPolls: 4 })
-const welcomeMail = (await sentMail()).slice(before).filter((m) => m.to.includes(newcomer))
+const welcomeMail = (await sentMail()).slice(afterOptIn).filter((m) => m.to.includes(newcomer))
 
 welcomeMail.length === 1
   ? ok(`welcome email delivered to the new subscriber (subject "${welcomeMail[0].subject}")`)

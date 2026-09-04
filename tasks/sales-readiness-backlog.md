@@ -644,6 +644,21 @@ registration returns **nothing**: no code builds the URL and no code sends it.
 **Done when.** A storefront signup receives the email, the link flips them to `active`,
 and the next campaign reaches them.
 
+**RESOLVED.** `emailOptInActions.sendConfirmation` (both apps) composes and sends the
+link, scheduled from `subscribe`, `create` (every non-`manual` source) and `importBatch`,
+which now returns `pendingIds` so each imported row gets one. It refuses to send when
+`CONVEX_SITE_URL` is unset rather than mailing a relative, unclickable link. Two further
+lies on the same path were fixed: the footer newsletter form called **no mutation at
+all** — it discarded the address and toasted success — and the admin form promised a
+confirmation on `source: "manual"`, the one path that skips opt-in by design. Guarded by
+`apps/*/tests/convex/opt-in-confirmation.test.ts`, whose last case signs up, takes the
+link out of the sent message, opens it through the real router, and asserts `active`
+plus a scheduled welcome.
+
+**Correction to the card.** `startWelcome` was never unreachable: its chain from
+`/email/confirm` was complete and already covered by `automation-welcome.test.ts`. The
+break was entirely upstream — nothing composed the email.
+
 ---
 
 ## P0-19 · Scheduled campaigns never send
@@ -707,6 +722,16 @@ only sets `status: "bounced"` at `newCount >= 3`. The webhook
 **Done when.** A simulated permanent bounce flips the subscriber to `bounced` on the
 first event.
 
+**RESOLVED.** `markBounced` takes an optional `bounceType`; `Permanent` suppresses on
+the first event, `Transient` and `Undetermined` keep the three-strike counter, and a
+bounce no longer overwrites an `unsubscribed` or `complained` status — a spam report is
+the one a regulator asks about. The webhook normalises the value through
+`normalizeBounceType` before forwarding it: the validator is a closed union and the
+dispatch sits inside a `catch` that only logs, so an unrecognised classification would
+otherwise have been swallowed and the bounce lost entirely — worse than the behaviour it
+replaced. Guarded by seven unit tests and `apps/*/tests/convex/ses-bounce.test.ts`, which
+drives the real `POST /webhooks/ses` with a genuinely RSA-signed SNS envelope.
+
 ---
 
 ## P0-22 · The SES Configuration Set is hard-coded
@@ -730,6 +755,15 @@ campaign `sent` with 0 delivered.
 
 **Done when.** A send without a valid configuration set fails loudly and leaves the
 campaign in a non-`sent` state.
+
+**RESOLVED.** All three sites in both apps read `AWS_SES_CONFIGURATION_SET` through
+`resolveConfigurationSet`, and omit the field when it is unset or blank. Five consecutive
+SES refusals abort the batch: it pauses the campaign and throws, so the cursor is
+preserved, the chain halts, and "Relancer" resumes the aborted page once the account is
+fixed. `paused` rather than `sending` deliberately — the admin renders `sending` as
+"En cours", which still claims a send is progressing when it has stopped. The counter is
+reset by every send that works, so a list with scattered bad addresses still goes out in
+full.
 
 ---
 
@@ -1400,9 +1434,16 @@ every bullet becomes a checklist item in ClickUp.
   `runMutation` round-trips per subscriber. Around 3,000 subscribers the action exceeds
   the Convex time limit, the campaign is stuck at `sending`, and the only exit is
   "Relancer" — which triggers the duplicate send in P0-20.
-- [ ] **Automations have no execution engine.** `emailAutomations.ts` is CRUD only;
+- [x] **Automations have no execution engine.** `emailAutomations.ts` is CRUD only;
   nothing dispatches on the `welcome` / `birthday` / `inactive` / `post_order` /
   `abandoned_cart` triggers, while `emailConfig.ts:23-29` exposes five toggles in the UI.
+  → Engine landed; `welcome`, `post_order` and `inactive` dispatch. `birthday` and
+  `abandoned_cart` cannot: **no record anywhere carries a date of birth**, and the cart
+  is a browser-local Zustand store that is never persisted. Both are marked
+  `ready: false` in `TRIGGER_READINESS`, `canDispatch` refuses them, and the admin now
+  renders their switches disabled with the reason — derived from `TRIGGER_READINESS`
+  rather than a second hard-coded list, so a toggle re-enables itself the day its trigger
+  is wired. Carded separately below.
 - [ ] **A/B testing is collected and never applied.** `emailCampaignActions.ts:145` uses
   `campaign.subject` for everyone; `campaign.variants` is never read and
   `emailEvents.metadata.variantId` is never written.
@@ -1705,6 +1746,26 @@ detects the contradiction, logs it and **does not block**), and invoices already
 Two opposite assumptions coexist (P0-34). Choose private + authenticated proxy, or
 public/CloudFront with `AWS_S3_PUBLIC_BASE_URL` required. Write the decision into
 `apps/docs/deployment/` — the whole P0-34 fix depends on it.
+
+## TECH-07b · Two automation triggers the schema cannot support
+**Priority:** medium · **Parent:** #109
+
+Split out of TECH-07, which is otherwise closed. Both are blocked on data that does not
+exist, not on the automation engine, which works.
+
+- [ ] **`birthday` needs a date of birth.** No table carries one — not
+  `emailSubscribers`, not `userProfiles`. Needs a schema field, a migration, somewhere to
+  collect it (subscribe form, account page or order flow), a GDPR basis for a new
+  category of personal data, and a daily cron matching today's date.
+- [ ] **`abandoned_cart` needs a persisted cart.** The cart is
+  `packages/restaurant/src/stores/cart.ts` — Zustand with `persist` to localStorage,
+  never written to Convex. Needs a `carts` table, a write path, an identity for anonymous
+  carts, a definition of abandonment, and a sweep.
+
+Until then both stay `ready: false` and their admin toggles stay disabled with a stated
+reason, which is the honest state rather than a switch that controls nothing.
+
+---
 
 ## LAUNCH-06 · Move AWS SES out of the sandbox
 `tasks/production-accounts-checklist.md:52`: SES starts sandboxed in eu-west-3. Until

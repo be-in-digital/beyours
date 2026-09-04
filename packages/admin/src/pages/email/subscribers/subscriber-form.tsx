@@ -62,7 +62,15 @@ export function SubscriberForm({ onSuccess, onCancel }: SubscriberFormProps) {
         tags,
         source: "manual",
       })
-      toast.success("Abonné ajouté — email de confirmation envoyé")
+      // `source: "manual"` is written `active` with the opt-in already
+      // recorded, so no confirmation is sent — the owner is asserting the
+      // consent directly. The toast said one was, which was untrue twice over:
+      // no code sent any confirmation at all until the storefront path was
+      // wired, and this path is the one that never will.
+      toast.success("Abonné ajouté", {
+        description:
+          "Inscrit directement, sans email de confirmation : vous attestez de son consentement.",
+      })
       onSuccess?.()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erreur inconnue"
@@ -113,7 +121,9 @@ export function SubscriberForm({ onSuccess, onCancel }: SubscriberFormProps) {
           placeholder="vip, fidèle (séparés par des virgules)"
         />
         <p className="text-xs text-muted-foreground">
-          Un email de confirmation (double opt-in) sera envoyé automatiquement
+          Ajout manuel : l&apos;abonné est actif immédiatement, sans email de
+          confirmation. N&apos;ajoutez ici que des adresses dont vous avez
+          recueilli le consentement.
         </p>
       </div>
 

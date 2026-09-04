@@ -17,7 +17,12 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest"
-import { create, importBatch } from "../emailSubscribers"
+import {
+  create,
+  importBatch,
+  markBounced,
+  normalizeBounceType,
+} from "../emailSubscribers"
 
 /** The parts of a Convex ctx these two handlers touch. */
 /**
@@ -162,6 +167,147 @@ describe("importBatch", () => {
     })
     // The dialog read `result.imported`, which does not exist — so it fell back
     // to the row count of the file and reported every duplicate as imported.
-    expect(result).toEqual({ inserted: 1, skipped: 1 })
+    expect(result.inserted).toBe(1)
+    expect(result.skipped).toBe(1)
+  })
+
+  it("names the rows it inserted, so each can be sent a confirmation", async () => {
+    const ctx = fakeCtx(["yanis@resto.example"])
+    const result = await importBatch.handler(ctx, {
+      storeId: STORE,
+      subscribers: [csvRow, { email: "claire@resto.example" }],
+    })
+    // A count cannot say WHICH rows were inserted, and the caller has to
+    // schedule one confirmation email per row. The duplicate is not among them.
+    expect(result.pendingIds).toHaveLength(1)
+    expect(result.pendingIds[0]).toBe(rows(ctx)[0]?._id ?? result.pendingIds[0])
+  })
+})
+
+/**
+ * A ctx holding one subscriber, for the mutations that patch an existing row.
+ *
+ * Separate from `fakeCtx` because these read before they write: `fakeCtx.db.get`
+ * does not exist, and `patch` there is a no-op that records nothing.
+ */
+function subscriberCtx(doc: Record<string, unknown>) {
+  const row = { ...doc }
+  return {
+    row,
+    db: {
+      get: async () => row,
+      patch: async (_id: unknown, fields: Record<string, unknown>) => {
+        Object.assign(row, fields)
+      },
+    },
+  }
+}
+
+const SUBSCRIBER = "emailSubscribers:a"
+
+/**
+ * How many sends a dead address is worth.
+ *
+ * `markBounced` counted to three before suppressing, whatever SES said about
+ * the address. For a `Permanent` bounce — the mailbox does not exist — the
+ * other two sends buy nothing and are spent on the one number AWS suspends an
+ * account over: the bounce *ratio*. The published threshold is 5%, and a list
+ * built over two years reaches that on its own once every dead address is
+ * counted three times. Losing the sending identity takes order confirmations
+ * with it, since they leave through the same one.
+ *
+ * The classification was already arriving from SES and being thrown away —
+ * `markBounced` had no argument to receive it with.
+ */
+describe("markBounced", () => {
+  it("suppresses a permanent bounce on the first one", async () => {
+    const ctx = subscriberCtx({ status: "active", bounceCount: 0 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Permanent" })
+    // `pageForSending` selects on `status === "active"`, so this flip is the
+    // whole suppression — anything less mails the address again.
+    expect(ctx.row.status).toBe("bounced")
+    expect(ctx.row.bounceCount).toBe(1)
+  })
+
+  it("gives a transient bounce three strikes", async () => {
+    const ctx = subscriberCtx({ status: "active", bounceCount: 0 })
+
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Transient" })
+    expect(ctx.row.status).toBe("active")
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Transient" })
+    // A full mailbox or a greylisting recovers. Suppressing on the first would
+    // quietly delete paying customers from the list.
+    expect(ctx.row.status).toBe("active")
+
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Transient" })
+    expect(ctx.row.status).toBe("bounced")
+    expect(ctx.row.bounceCount).toBe(3)
+  })
+
+  it("treats an undetermined bounce as transient", async () => {
+    const ctx = subscriberCtx({ status: "active", bounceCount: 0 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Undetermined" })
+    // SES could not classify it. An address we cannot prove dead keeps its
+    // place.
+    expect(ctx.row.status).toBe("active")
+  })
+
+  it("keeps the counter when the caller names no type", async () => {
+    const ctx = subscriberCtx({ status: "active", bounceCount: 0 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER })
+    // The cautious reading. An absent classification is not a permanent one,
+    // and the argument is optional so an older caller still type-checks.
+    expect(ctx.row.status).toBe("active")
+    expect(ctx.row.bounceCount).toBe(1)
+  })
+
+  it("does not overwrite a spam complaint", async () => {
+    const ctx = subscriberCtx({ status: "complained", bounceCount: 0 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Permanent" })
+    // Both statuses suppress, but only one of them answers "why did you stop
+    // mailing this person" the way a regulator asks it.
+    expect(ctx.row.status).toBe("complained")
+    expect(ctx.row.bounceCount).toBe(1)
+  })
+
+  it("does not resurrect an unsubscribe", async () => {
+    const ctx = subscriberCtx({ status: "unsubscribed", bounceCount: 2 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Transient" })
+    expect(ctx.row.status).toBe("unsubscribed")
+  })
+
+  it("suppresses a pending subscriber who never confirmed", async () => {
+    const ctx = subscriberCtx({ status: "pending", bounceCount: 0 })
+    await markBounced.handler(ctx, { id: SUBSCRIBER, bounceType: "Permanent" })
+    // The confirmation mail itself bounced, so the address is dead and the
+    // token can never be used. Leaving the row `pending` would keep it as a
+    // candidate for a re-send.
+    expect(ctx.row.status).toBe("bounced")
+  })
+})
+
+/**
+ * The classification arrives over the wire, so it is not ours to assume.
+ *
+ * `markBounced`'s validator is a closed union of SES's three values, and the
+ * webhook's whole dispatch sits in a `catch` that only logs. Forwarding a
+ * fourth value raw would therefore fail validation, be swallowed, and lose the
+ * bounce entirely — strictly worse than the three-strike rule it replaced,
+ * which at least counted it.
+ */
+describe("normalizeBounceType", () => {
+  it("passes SES's own three classifications through", () => {
+    expect(normalizeBounceType("Permanent")).toBe("Permanent")
+    expect(normalizeBounceType("Transient")).toBe("Transient")
+    expect(normalizeBounceType("Undetermined")).toBe("Undetermined")
+  })
+
+  it("reduces anything else to no classification at all", () => {
+    // `undefined` is the cautious branch in `markBounced`: the counter moves
+    // and nothing is suppressed. An unreadable classification must land there
+    // rather than throw.
+    for (const raw of ["SomethingAwsAddedLater", "permanent", "", null, undefined, 42, {}, []]) {
+      expect(normalizeBounceType(raw)).toBeUndefined()
+    }
   })
 })

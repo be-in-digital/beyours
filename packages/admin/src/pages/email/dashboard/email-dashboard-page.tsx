@@ -22,6 +22,7 @@ import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
 import { computeStatRates } from "@be-in-digital/marketing"
 import { EmailKpiCards } from "./email-kpi-cards"
+import { isTriggerAvailable } from "../config/automation-controls"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Campaign = any
@@ -229,12 +230,23 @@ export function EmailDashboardPage() {
                   {automations.map((auto: Automation) => (
                     <div
                       key={auto._id}
-                      className="flex items-center justify-between text-sm"
+                      className="flex items-center justify-between gap-2 text-sm"
                     >
-                      <span className="font-medium">
+                      <span className="flex items-center gap-2 font-medium">
                         {AUTOMATION_TRIGGER_LABELS[auto.trigger] ?? auto.trigger}
+                        {/*
+                          An automation on an unwired trigger is `active` in the
+                          row and inert in fact — `canDispatch` refuses it. The
+                          card is titled "Automations actives"; say which ones
+                          are not going anywhere.
+                        */}
+                        {!isTriggerAvailable(auto.trigger) && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            Indisponible
+                          </Badge>
+                        )}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {auto.stats?.sent ?? 0} envoyés
                       </span>
                     </div>
