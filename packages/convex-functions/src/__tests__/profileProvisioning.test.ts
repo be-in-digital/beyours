@@ -3,6 +3,7 @@ import { Role } from "@be-in-digital/core/auth/rbac"
 import {
   assertCanAssignProfile,
   bootstrapTokenMatches,
+  MAX_BOOTSTRAP_TOKEN_LENGTH,
   canClaimFirstAdmin,
   creatorAdministersNewStore,
   ProvisioningRejectedError,
@@ -311,6 +312,44 @@ describe("bootstrapTokenMatches", () => {
     // what leaked the token's length in the version this replaced.
     expect(() => bootstrapTokenMatches("a", "abcdefghijklmnop")).not.toThrow()
     expect(bootstrapTokenMatches("a", "abcdefghijklmnop")).toBe(false)
+  })
+
+  it("refuses a token longer than the bound rather than truncating to it", () => {
+    // Truncating would call two different tokens equal. Refusing is the only
+    // safe answer, and the bound is what stops a caller buying backend CPU by
+    // the megabyte — `v.string()` permits ~1 MiB, and an earlier version ran
+    // one loop iteration per character of it.
+    const tooLong = "a".repeat(MAX_BOOTSTRAP_TOKEN_LENGTH + 1)
+    expect(bootstrapTokenMatches(tooLong, tooLong)).toBe(false)
+    expect(bootstrapTokenMatches(tooLong, "s3cr3t-bootstrap")).toBe(false)
+    expect(bootstrapTokenMatches("s3cr3t-bootstrap", tooLong)).toBe(false)
+  })
+
+  it("still matches a token sitting exactly on the bound", () => {
+    const atLimit = "a".repeat(MAX_BOOTSTRAP_TOKEN_LENGTH)
+    expect(bootstrapTokenMatches(atLimit, atLimit)).toBe(true)
+    // ...and still notices a difference in its very last character, which is
+    // what an off-by-one in the round count would hide.
+    expect(
+      bootstrapTokenMatches("a".repeat(MAX_BOOTSTRAP_TOKEN_LENGTH - 1) + "b", atLimit)
+    ).toBe(false)
+  })
+
+  it("does the same amount of work whatever the secret's length", () => {
+    // The property the docblock claims, asserted rather than asserted-in-prose.
+    // An earlier version ran `max(supplied.length, expected.length)` rounds, so
+    // a one-character guess against a long secret took time proportional to the
+    // secret — the length oracle it was written to remove, moved rather than
+    // closed. Measured at 291x across these three; the bar here is deliberately
+    // loose so a busy machine cannot make it flap.
+    const time = (secretLength: number) => {
+      const secret = "a".repeat(secretLength)
+      const start = performance.now()
+      for (let i = 0; i < 20_000; i++) bootstrapTokenMatches("x", secret)
+      return performance.now() - start
+    }
+    const samples = [time(8), time(64), time(MAX_BOOTSTRAP_TOKEN_LENGTH)]
+    expect(Math.max(...samples)).toBeLessThan(Math.min(...samples) * 4 + 25)
   })
 
   it("compares over the longer of the two, whichever side that is", () => {

@@ -20,11 +20,17 @@
 #      the required checks are actually required.
 #
 # Sections 1 and 3 can be checked from a terminal, and section 1 can be DONE
-# from one. Section 2 cannot: Google Cloud has no API for setting an API key's
-# restrictions that is worth wiring up for a handful of clients a year. So the
-# wizard prints the exact click path and then VERIFIES the result over the
-# network, which is the half that matters — an instruction nobody can check is
-# how a key stays unrestricted for a year while everyone believes otherwise.
+# from one. Section 2 can be neither: Google Cloud has no API for setting an
+# API key's restrictions worth wiring up for a handful of clients a year, and
+# the restriction cannot be read back over the network either — `maps/api/js`
+# answers 200 with an identical body for any key, and enforcement happens later
+# in the browser. So section 2 prints the exact click path plus a two-minute
+# browser check, and counts itself UNVERIFIED rather than pretending.
+#
+# That distinction is the whole design of this script. It reports three states,
+# not two: satisfied, outstanding, and "I could not check". An earlier version
+# collapsed the third into the first and reported a green summary over a
+# section it had never managed to look at.
 #
 # The reasoning behind all of this — why the claim fails closed, why a public
 # Maps key still needs restricting, what /setup shows in each state — lives in
@@ -32,7 +38,11 @@
 # half: read that page to understand the steps, run this one to perform them and
 # to prove they were performed.
 #
-# This script never prints a secret value. It reports presence and length.
+# On secrets: the CHECK path never prints a value — it reports presence and
+# length only, so it is safe to run and paste anywhere. The write path prints
+# exactly one, the bootstrap token it has just generated, because the operator
+# has to hand that to the client and there is nowhere else for it to come from.
+# Nothing else is ever echoed, and `--check` never reaches that line.
 #
 # Usage:
 #   bash scripts/wizards/github-e2e-maps-bootstrap.sh            # all sections
@@ -49,9 +59,10 @@
 #   --prod           Target the production Convex deployment (`--prod`) rather
 #                    than the one named by CONVEX_DEPLOYMENT in .env.local.
 #   --section N      Run only section N (1, 2 or 3). Repeatable.
-#   --maps-key KEY   The Maps key to verify in section 2. Defaults to
+#   --maps-key KEY   The Maps key section 2 should talk about. Defaults to
 #                    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY from the environment or
-#                    from the app's .env.local.
+#                    from the app's .env.local. Section 2 reports whether a key
+#                    exists to restrict; it cannot read back the restriction.
 #   -h, --help       This text.
 #
 # Exit status: 0 when every section it ran is satisfied, 1 when at least one is
@@ -78,9 +89,18 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --check)      CHECK_ONLY=true; shift ;;
     --prod)       CONVEX_TARGET=(--prod); shift ;;
-    --app)        APP="${2:?--app needs a value}"; shift 2 ;;
-    --maps-key)   MAPS_KEY="${2:?--maps-key needs a value}"; shift 2 ;;
-    --section)    SECTIONS+=("${2:?--section needs a value}"); shift 2 ;;
+    # `${2:?...}` exits 1, which this script reserves for "something is
+    # outstanding". A usage mistake must not be mistakable for a finding.
+    --app)        [[ $# -ge 2 ]] || { echo "--app needs a value" >&2; exit 2; }
+                  APP="$2"; shift 2 ;;
+    --maps-key)   [[ $# -ge 2 ]] || { echo "--maps-key needs a value" >&2; exit 2; }
+                  MAPS_KEY="$2"; shift 2 ;;
+    --section)    [[ $# -ge 2 ]] || { echo "--section needs a value" >&2; exit 2; }
+                  case "$2" in
+                    1|2|3) SECTIONS+=("$2") ;;
+                    *) echo "--section must be 1, 2 or 3 (got: $2)" >&2; exit 2 ;;
+                  esac
+                  shift 2 ;;
     -h|--help)    usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -102,10 +122,14 @@ else
 fi
 
 OUTSTANDING=0
+UNVERIFIED=0
 heading() { printf '\n%s══ %s ══%s\n\n' "$B" "$1" "$Z"; }
 ok()      { printf '  %s✓%s %s\n' "$G" "$Z" "$1"; }
 warn()    { printf '  %s!%s %s\n' "$Y" "$Z" "$1"; }
 bad()     { printf '  %s✗%s %s\n' "$R" "$Z" "$1"; OUTSTANDING=$((OUTSTANDING + 1)); }
+# "I could not look" is not "I looked and it is fine". Collapsing the two is how
+# a gate reports green over a section it never managed to check.
+unknown() { printf '  %s?%s %s\n' "$Y" "$Z" "$1"; UNVERIFIED=$((UNVERIFIED + 1)); }
 note()    { printf '    %s%s%s\n' "$D" "$1" "$Z"; }
 runs()    { for s in "${SECTIONS[@]}"; do [[ "$s" == "$1" ]] && return 0; done; return 1; }
 
@@ -132,7 +156,24 @@ EXPLAIN
     return
   fi
 
-  local present=false value=""
+  # Three outcomes, not two. `npx convex env get` fails identically for "no
+  # deployment linked", "not authenticated" and "the variable is absent", and
+  # reporting the last one as fact is how a runbook states something it never
+  # established. Prove the deployment answers at all before reading anything
+  # into what it said.
+  local reachable=false present=false value=""
+  if (cd "$APP_DIR" && npx convex env list "${CONVEX_TARGET[@]}" </dev/null >/dev/null 2>&1); then
+    reachable=true
+  fi
+
+  if ! $reachable; then
+    unknown "Could not reach a Convex deployment from apps/$APP — nothing read."
+    note "This is NOT the same as the token being unset; the script cannot tell"
+    note "from here. Link one and re-run:  cd apps/$APP && npx convex dev"
+    note "Then:  npx convex env set ADMIN_BOOTSTRAP_TOKEN \"\$(openssl rand -base64 32)\" ${CONVEX_TARGET[*]}"
+    return
+  fi
+
   if value="$(cd "$APP_DIR" && npx convex env get ADMIN_BOOTSTRAP_TOKEN "${CONVEX_TARGET[@]}" </dev/null 2>/dev/null)"; then
     # Never echo the value. Presence and length only.
     value="$(printf '%s' "$value" | tr -d '\r\n')"
@@ -223,11 +264,13 @@ section_maps_key() {
     b) API restrictions → Restrict key. Tick exactly two:
          Maps JavaScript API
          Places API
-       Two, not three. Those are what the only loader in the repository asks
-       for (`maps/api/js?libraries=places`,
-       packages/ui/src/hooks/useGooglePlacesAutocomplete.ts:22), and the
-       coordinates it reads come off `place.geometry` in the Place Details
-       response — a Places field. `google.maps.Geocoder` appears nowhere.
+       Two, not three. Every loader in the repository asks for exactly
+       `maps/api/js?key=...&libraries=places` — there are three byte-identical
+       copies (apps/reference/hooks/, apps/themes/hooks/ and packages/ui/src/
+       hooks/useGooglePlacesAutocomplete.ts:22), and each app imports its own
+       rather than the package's. The coordinates they read come off
+       `place.geometry` in the Place Details response, a Places field;
+       `google.maps.Geocoder` appears in none of the three.
        Anything else ticked is billable surface nobody uses.
 
     c) Then set a budget alert on the project — Billing › Budgets & alerts.
@@ -237,49 +280,45 @@ section_maps_key() {
 EXPLAIN
 
   if [[ -z "$MAPS_KEY" ]]; then
-    warn "No key to verify (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY unset, and none in apps/$APP/.env.local)."
-    note "Address autocomplete is optional — a client without it needs no key."
-    note "To verify one: $0 --section 2 --maps-key AIza..."
+    warn "No key configured for apps/$APP — address autocomplete is optional."
+    note "A client without address autocomplete needs no key and no restriction."
+    note "If this client HAS one, pass it: $0 --section 2 --maps-key AIza..."
+    note "Reasoning, one-key-per-client, and the budget alert:"
+    note "  apps/docs/deployment/first-administrator.md"
     return
   fi
 
-  if ! command -v curl >/dev/null 2>&1; then
-    warn "curl not found — cannot verify the restriction. The click path above still stands."
-    return
-  fi
-
-  echo "  Verifying over the network: asking Google for the Maps loader while"
-  echo "  claiming to be a site that must NOT be allowed to use this key."
+  # WHY THERE IS NO NETWORK CHECK HERE.
+  #
+  # An earlier version of this script curl'd the loader with a forbidden
+  # `Referer` and graded the response. It could never have worked, and it
+  # always reported success:
+  #
+  #   - `maps/api/js` is only a bootstrap loader. It answers HTTP 200 with a
+  #     byte-identical ~1.36 MB body for ANY key — valid, invalid, restricted,
+  #     unrestricted. Measured across three keys including `totally-not-a-key`.
+  #   - Referrer and key enforcement happen afterwards, in the browser, inside
+  #     the `AuthenticationService.Authenticate` call the loader makes. A single
+  #     curl of the loader never reaches it.
+  #   - The grader matched the string `keyless`, which is baked into every
+  #     bundle as part of a `utm_campaign=keyless` docs URL. It has nothing to
+  #     do with the key, so the "invalid key" branch swallowed every response
+  #     and an unrestricted production key graded green.
+  #
+  # A check that cannot fail is worse than no check: it converts "nobody has
+  # verified this" into "verified". So this section states plainly that the
+  # verification is a browser step, and counts it UNVERIFIED until a human
+  # confirms it. That keeps the gate honest at the cost of being manual.
+  unknown "Restriction cannot be verified from a terminal — it is enforced in the browser."
   echo
-
-  local body
-  body="$(curl -sS --max-time 20 \
-    -H 'Referer: https://key-restriction-probe.invalid/' \
-    "https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places" 2>/dev/null || true)"
-
-  if [[ -z "$body" ]]; then
-    warn "No response from Google — network blocked? Verification inconclusive."
-    note "Re-run from a machine with plain outbound HTTPS before handover."
-    return
-  fi
-
-  if grep -qi 'RefererNotAllowedMapError\|referer.*not.*allowed\|not authorized to use this API' <<<"$body"; then
-    ok "Referrer-restricted: a foreign origin is refused."
-    note "Confirm in the console that the allowed list is the CLIENT's domain"
-    note "and not a leftover localhost entry — this probe cannot see the list."
-  elif grep -qi 'ApiNotActivatedMapError\|ApiTargetBlockedMapError\|This API project is not authorized' <<<"$body"; then
-    ok "The key is restricted (Google refused this request)."
-    note "If autocomplete is broken in the product too, the API restriction is"
-    note "too narrow — tick Maps JavaScript API *and* Places API."
-  elif grep -qi 'InvalidKeyMapError\|API key not valid\|keyless' <<<"$body"; then
-    warn "Google says this key is invalid or unrecognised. Nothing to restrict yet."
-    note "Check you passed the browser key from the client's own project."
-  else
-    bad "UNRESTRICTED: Google served the Maps loader to an origin that should be refused."
-    note "Anyone can lift this key from the page source and bill the client for it."
-    note "Apply (a) and (b) above, then re-run: $0 --section 2 --check"
-  fi
-
+  note "Confirm it yourself, in two minutes, once the restriction is applied:"
+  note "  1. Open https://<client-domain> and use the address field."
+  note "     The autocomplete dropdown must appear."
+  note "  2. Open the SAME page from any other origin (a local file, a Vercel"
+  note "     preview you removed from the list, another domain)."
+  note "     The browser console must show: RefererNotAllowedMapError"
+  note "  If step 2 shows a working map instead, the key is NOT restricted."
+  echo
   note "Reasoning, one-key-per-client, and the budget alert:"
   note "  apps/docs/deployment/first-administrator.md"
 }
@@ -305,7 +344,7 @@ section_github() {
 EXPLAIN
 
   if ! command -v gh >/dev/null 2>&1; then
-    warn "gh CLI not found — cannot read the rules from here."
+    unknown "gh CLI not found — cannot read the rules from here."
     note "Check by hand: Settings › Rules › Rulesets › main."
     note "Expected required checks: Lint, Type Check, Test, Build, E2E Status."
     note "Full expected state, rule by rule: tasks/ci-required-checks-runbook.md §6."
@@ -333,10 +372,17 @@ EXPLAIN
 
   ok "main requires status checks (via a ruleset)."
 
+  # Parsed, not grepped: `grep '"context":"X"'` assumes GitHub never pretty-
+  # prints, and a single space after a colon would report all five as missing.
+  local contexts
+  contexts="$(cd "$REPO_ROOT" && gh api "repos/be-in-digital/beyours/rules/branches/main" \
+    --jq '.[] | select(.type=="required_status_checks")
+              | .parameters.required_status_checks[]?.context' 2>/dev/null || true)"
+
   local missing=()
   local check
   for check in "Lint" "Type Check" "Test" "Build" "E2E Status"; do
-    grep -q "\"context\":\"${check}\"" <<<"$rules" || missing+=("$check")
+    grep -qxF "$check" <<<"$contexts" || missing+=("$check")
   done
 
   if [[ ${#missing[@]} -eq 0 ]]; then
@@ -362,16 +408,19 @@ EXPLAIN
 printf '%sBeYours — console residue: bootstrap token, Maps key, required checks%s\n' "$B" "$Z"
 printf '%sapp: apps/%s   mode: %s%s\n' "$D" "$APP" "$($CHECK_ONLY && echo 'check only' || echo 'check and set')" "$Z"
 
-# `runs N && section` would abort the script under `set -e` the moment a
-# section is skipped, because a false AND-list is itself the tested command.
+# `if` rather than `runs N && section` for legibility only. (An earlier comment
+# here claimed `set -e` would abort on a skipped section; it would not — a
+# command failing anywhere but the end of an `&&` list is exempt, which is also
+# why `runs()` itself is safe to call the way it is.)
 if runs 1; then section_bootstrap_token; fi
 if runs 2; then section_maps_key; fi
 if runs 3; then section_github; fi
 
 heading "Summary"
-if [[ $OUTSTANDING -eq 0 ]]; then
+if [[ $OUTSTANDING -eq 0 && $UNVERIFIED -eq 0 ]]; then
   ok "Every section this run checked is satisfied."
   exit 0
 fi
-bad "$OUTSTANDING item(s) outstanding — see the ✗ lines above."
+[[ $OUTSTANDING -gt 0 ]] && printf '  %s✗%s %s\n' "$R" "$Z" "$OUTSTANDING item(s) outstanding — see the ✗ lines above."
+[[ $UNVERIFIED -gt 0 ]] && printf '  %s?%s %s\n' "$Y" "$Z" "$UNVERIFIED item(s) NOT VERIFIED — see the ? lines above. Unchecked is not the same as fine."
 exit 1

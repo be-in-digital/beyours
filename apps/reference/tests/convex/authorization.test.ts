@@ -1108,11 +1108,74 @@ describe("claiming the first admin seat", () => {
     })
   })
 
+  test("a client admin cannot demote the super admin out of the seat", async () => {
+    // The mirror image of claiming it, and the one `upsert` makes reachable:
+    // the requested role is harmless, the target holds no foreign store, and
+    // every other check passes. Only reading who the target IS today refuses
+    // it — so this covers the seam between `assertCanAssignProfile` and its
+    // call site, which the pure-function tests in `convex-functions` cannot.
+    // Passing `existingTarget: null` from the handler reopens it, and until
+    // this test existed that change kept the whole suite green.
+    await withBootstrapToken("s3cr3t-bootstrap", async () => {
+      const t = newHarness()
+      const storeA = await seedStore(t, "Pizza A")
+      await seedUser(t, "user:root", "super_admin", [])
+      const asOwner = await seedUser(t, "user:owner", "client_admin", [storeA])
+
+      expect(
+        await refusalCode(
+          asOwner.mutation(api.userProfiles.upsert, {
+            userId: "user:root",
+            role: "customer",
+            storeIds: [],
+            permissions: [],
+          })
+        )
+      ).toMatch(/super administrateur/)
+
+      // Still holds the seat, with the role and stores it had.
+      const supers = await mintedSuperAdmins(t)
+      expect(supers).toHaveLength(1)
+      expect(supers[0]?.userId).toBe("user:root")
+    })
+  })
+
+  test("the claim is wired to the constant-time comparison, not to `!==`", async () => {
+    // `bootstrapTokenMatches` and `!==` agree on every input — they differ only
+    // in timing, which no assertion can pin down reliably. So the property is
+    // checked structurally instead: reverting the call site to `!==` is
+    // otherwise invisible to the entire suite, and it silently reinstates the
+    // byte-at-a-time oracle the function exists to close.
+    const sources = import.meta.glob("../../convex/userProfiles.ts", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }) as Record<string, string>
+    const source = Object.values(sources)[0]
+
+    expect(source).toBeTypeOf("string")
+    expect(source).toContain("bootstrapTokenMatches(args.bootstrapToken, expected)")
+    // No hand-rolled comparison of the token beside it.
+    expect(source).not.toMatch(/args\.bootstrapToken\s*[!=]==/)
+  })
+
   test("`bootstrapStatus` tells the setup screen the truth", async () => {
     // `/setup` renders one of three states off this query. If it lied about
     // `configured`, the screen would show a token field on a deployment where
     // no token can work — or hide it on one where the seat is still free.
     await withBootstrapToken(undefined, async () => {
+      const t = newHarness()
+      expect(await t.query(api.userProfiles.bootstrapStatus, {})).toEqual({
+        claimed: false,
+        configured: false,
+      })
+    })
+
+    // `ADMIN_BOOTSTRAP_TOKEN=` — the shape a half-finished setup leaves behind.
+    // `claimFirstAdmin` already refuses it; the screen has to agree, or it
+    // shows a token field on a deployment where no token can ever work. A
+    // `!== undefined` test here reads as correct and reports the opposite.
+    await withBootstrapToken("", async () => {
       const t = newHarness()
       expect(await t.query(api.userProfiles.bootstrapStatus, {})).toEqual({
         claimed: false,
