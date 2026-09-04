@@ -4,67 +4,111 @@
  */
 
 /**
- * Verify Deliveroo webhook signature (HMAC-SHA256)
+ * The byte joining the sequence GUID to the body in the signed message.
  *
- * Deliveroo signs webhooks with: HMAC-SHA256(secret, requestId + " " + rawBody)
- * The signature is in header: X-Deliveroo-Hmac-SHA256
- * The request ID is in header: X-Deliveroo-Request-Id
+ * A single space for every modern webhook: order events, rider events, menu,
+ * picking, catalogue, Express and Signature. The legacy POS webhook
+ * (`new_order` / `cancel_order`) signs with `" \n "` instead and is NOT
+ * supported here — nothing in this platform subscribes to it, and offering
+ * both separators from one function is how a verifier ends up accepting a
+ * message it should have refused.
+ */
+const SIGNATURE_SEPARATOR = " "
+
+/**
+ * Verify a Deliveroo webhook signature (HMAC-SHA256).
  *
- * Dual strategy: try with requestId prefix first, fallback to body-only
+ * The signed message is `sequence_guid + " " + raw body bytes`, hex-encoded,
+ * keyed on the webhook secret. Two headers carry it:
+ * - `X-Deliveroo-Hmac-Sha256` — the hex signature
+ * - `X-Deliveroo-Sequence-Guid` — the GUID that goes into the message
+ *
+ * The body must be passed as **raw bytes**, exactly as received. Decoding it
+ * to a string and re-encoding is usually lossless and occasionally is not;
+ * re-serializing parsed JSON never is. Either changes the bytes and the
+ * signature stops matching, which surfaces as an unexplained 401 in
+ * production and nowhere else.
+ *
+ * This function previously took the body as a string, read the GUID from the
+ * wrong header (`X-Deliveroo-Request-Id`), and — on a mismatch — fell back to
+ * verifying the body alone. That fallback accepted a signature computed with
+ * no GUID at all, which is both a real forgery class (nothing binds the
+ * payload to its delivery) and precisely the malformed signature the e2e
+ * suites were producing. There is no fallback now: one message shape, or 401.
+ *
+ * @param rawBody      the request body as received, undecoded
+ * @param signature    the `X-Deliveroo-Hmac-Sha256` header value
+ * @param sequenceGuid the `X-Deliveroo-Sequence-Guid` header value
+ * @param secret       the webhook secret from the Developer Portal
  */
 export async function verifyWebhookSignature(
-  rawBody: string,
+  rawBody: ArrayBuffer | Uint8Array,
   signature: string,
-  requestId: string,
+  sequenceGuid: string,
   secret: string
 ): Promise<boolean> {
-  if (!signature || !secret) return false
+  if (!signature || !secret || !sequenceGuid) return false
 
   // Normalize incoming signature: lowercase, trim, and validate hex format
   const normalizedSignature = signature.toLowerCase().trim()
   if (!/^[0-9a-f]+$/.test(normalizedSignature)) {
     return false
   }
+  // SHA-256 is 32 bytes, so a valid hex signature is exactly 64 characters.
+  // Checked before decoding so a truncated header cannot reach the comparison.
+  if (normalizedSignature.length !== 64) {
+    return false
+  }
 
   try {
     const encoder = new TextEncoder()
-    const keyData = encoder.encode(secret)
+
+    const bodyBytes =
+      rawBody instanceof Uint8Array ? rawBody : new Uint8Array(rawBody)
+    const guidBytes = encoder.encode(sequenceGuid)
+    const separatorBytes = encoder.encode(SIGNATURE_SEPARATOR)
+
+    // Message = guid bytes + separator byte + body bytes
+    const message = new Uint8Array(
+      guidBytes.length + separatorBytes.length + bodyBytes.length
+    )
+    message.set(guidBytes, 0)
+    message.set(separatorBytes, guidBytes.length)
+    message.set(bodyBytes, guidBytes.length + separatorBytes.length)
 
     const key = await crypto.subtle.importKey(
       "raw",
-      keyData,
+      encoder.encode(secret),
       { name: "HMAC", hash: "SHA-256" },
       false,
-      ["sign"]
+      ["verify"]
     )
 
-    // Strategy 1: HMAC(secret, requestId + " " + rawBody)
-    const data1 = encoder.encode(requestId + " " + rawBody)
-    const sig1 = await crypto.subtle.sign("HMAC", key, data1)
-    const hex1 = arrayToHex(new Uint8Array(sig1))
-    if (safeCompare(hex1, normalizedSignature)) return true
-
-    // Strategy 2 (fallback): HMAC(secret, rawBody)
-    const data2 = encoder.encode(rawBody)
-    const sig2 = await crypto.subtle.sign("HMAC", key, data2)
-    const hex2 = arrayToHex(new Uint8Array(sig2))
-    return safeCompare(hex2, normalizedSignature)
+    // `crypto.subtle.verify` compares in constant time, so no hex string ever
+    // gets compared character by character.
+    return await crypto.subtle.verify(
+      "HMAC",
+      key,
+      hexToArrayBuffer(normalizedSignature),
+      message
+    )
   } catch {
     return false
   }
 }
 
-function arrayToHex(arr: Uint8Array): string {
-  return Array.from(arr)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-}
-
-function safeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+/**
+ * Decode a validated even-length lowercase hex string to an ArrayBuffer.
+ *
+ * Returns the buffer rather than the view: since TypeScript 5.7 a bare
+ * `Uint8Array` is `Uint8Array<ArrayBufferLike>`, which `BufferSource` does not
+ * accept, and `ArrayBuffer` sidesteps the generic entirely.
+ */
+function hexToArrayBuffer(hex: string): ArrayBuffer {
+  const buffer = new ArrayBuffer(hex.length / 2)
+  const bytes = new Uint8Array(buffer)
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16)
   }
-  return result === 0
+  return buffer
 }

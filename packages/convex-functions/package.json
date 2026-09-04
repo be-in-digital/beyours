@@ -91,7 +91,9 @@
     "./maintenance": "./src/maintenance.ts",
     "./htmlSanitize": "./src/htmlSanitize.ts",
     "./blogAutoSchedule": "./src/blogAutoSchedule.ts",
-    "./blogAutoPlanner": "./src/blogAutoPlanner.ts"
+    "./blogAutoPlanner": "./src/blogAutoPlanner.ts",
+    "./platformWebhook": "./src/platformWebhook.ts",
+    "./platformWebhookFailures": "./src/platformWebhookFailures.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -108,11 +110,12 @@
     "sanitize-html": "^2.17.5"
   },
   "devDependencies": {
+    "@be-in-digital/integrations": "workspace:*",
     "@types/node": "^20.19.39",
-    "typescript": "^5.9.3",
-    "vitest": "^3.2.7",
     "convex": "1.44.0",
-    "@types/sanitize-html": "^2.16.1"
+    "typescript": "^5.9.3",
+    "@types/sanitize-html": "^2.16.1",
+    "vitest": "^3.2.7"
   },
   "peerDependencies": {
     "convex": "^1.44.0"

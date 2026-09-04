@@ -70,6 +70,7 @@ import {
   cmsMaintenanceTable,
   cmsAccountTable,
   systemAuditLogTable,
+  platformWebhookFailuresTable,
   maintenanceContractsTable,
   platformReleasesTable,
   migrationRequestsTable,
@@ -160,6 +161,7 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
+  platformWebhookFailures: platformWebhookFailuresTable,
   // Maintenance & migration
   maintenanceContracts: maintenanceContractsTable,
   platformReleases: platformReleasesTable,

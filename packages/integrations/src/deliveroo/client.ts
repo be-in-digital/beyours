@@ -6,6 +6,13 @@ import type { DeliverooCredentials, DeliverooToken, DeliverooApiType } from "./t
 import { DELIVEROO_URLS } from "./types"
 import { IntegrationError } from "../common/errors"
 import { createLogger } from "../common/logger"
+import {
+  DEFAULT_BASE_DELAY_MS,
+  DEFAULT_MAX_ATTEMPTS,
+  DEFAULT_MAX_DELAY_MS,
+  sendWithRetry,
+  type BackoffPolicy,
+} from "../common/backoff"
 
 const log = createLogger("Deliveroo")
 
@@ -28,6 +35,9 @@ const tokenCache = new Map<string, DeliverooToken>()
 const pendingTokenRequests = new Map<string, Promise<DeliverooToken>>()
 
 const FETCH_TIMEOUT_MS = 15_000
+
+/** How early a cached token is treated as spent. Tokens live 300 seconds. */
+const TOKEN_REFRESH_MARGIN_MS = 60_000
 
 function getCacheKey(credentials: DeliverooCredentials): string {
   return `${credentials.clientId}:${credentials.sandboxMode ? "sandbox" : "prod"}`
@@ -75,9 +85,16 @@ export async function getAccessToken(
 ): Promise<DeliverooToken> {
   const key = getCacheKey(credentials)
 
-  // Return cached token if still valid (with 5 min buffer)
+  // Refresh a minute before expiry, not five.
+  //
+  // A Deliveroo token lives 300 SECONDS. The five-minute margin this replaces
+  // was exactly the token's whole life, so `expiresAt > now + 300_000` was
+  // false the instant the token was minted: the cache never returned anything
+  // and every single API call opened the sequence by minting a new token. That
+  // is also why a backoff loop here has to stay well inside 300s — see
+  // DELIVEROO_RETRY_POLICY below.
   const cached = tokenCache.get(key)
-  if (cached && cached.expiresAt > Date.now() + 5 * 60 * 1000) {
+  if (cached && cached.expiresAt > Date.now() + TOKEN_REFRESH_MARGIN_MS) {
     return cached
   }
 
@@ -162,7 +179,34 @@ export function clearTokenCache(credentials?: DeliverooCredentials): void {
 }
 
 /**
- * Fetch wrapper for Deliveroo API with automatic auth
+ * How a rate-limited or failing Deliveroo call is retried.
+ *
+ * The budget is the hard constraint here, and it is set by the token: 300
+ * seconds of life, minted at the top of the sequence. Forty-five seconds of
+ * sleep plus at most three 15-second request timeouts is ninety seconds worst
+ * case — comfortably inside one token, so the sequence can never spend its last
+ * attempt on credentials that expired while it waited. Anything longer belongs
+ * to the caller's own scheduling, not to a retry loop.
+ *
+ * `X-Deliveroo-RateLimit-Wait-Time-Seconds` is read before `Retry-After`: it is
+ * the header the Catalogue API actually sends, and it says exactly how long the
+ * bucket needs.
+ */
+const DELIVEROO_RETRY_POLICY: BackoffPolicy = {
+  maxAttempts: DEFAULT_MAX_ATTEMPTS,
+  baseDelayMs: DEFAULT_BASE_DELAY_MS,
+  maxDelayMs: DEFAULT_MAX_DELAY_MS,
+  totalBudgetMs: 45_000,
+  waitHintHeaders: ["x-deliveroo-ratelimit-wait-time-seconds", "retry-after"],
+}
+
+/**
+ * Fetch wrapper for Deliveroo API with automatic auth.
+ *
+ * Retries a `429` — and a `5xx` on an idempotent method — with exponential
+ * backoff and jitter, honouring the platform's wait-time header. The menu
+ * upload is a `PUT` against a fixed menu id, so replaying it re-sends the same
+ * full overwrite rather than compounding a partial one.
  */
 export async function fetchDeliveroo(
   credentials: DeliverooCredentials,
@@ -174,41 +218,50 @@ export async function fetchDeliveroo(
   } = {},
   apiType: DeliverooApiType = "menu"
 ): Promise<Response> {
-  const token = await getAccessToken(credentials)
   const sandbox = credentials.sandboxMode ?? false
   const baseUrl = getBaseUrl(sandbox, apiType)
   const url = `${baseUrl}${path}`
-
-  // Strip any whitespace from token (defensive, matches base-theme pattern)
-  const normalizedToken = token.accessToken.replace(/\s+/g, "")
   const method = options.method ?? "GET"
+  const body = options.body ? JSON.stringify(options.body) : undefined
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${normalizedToken}`,
-    Accept: "application/json",
-    Connection: "close",
-    ...options.headers,
+  // Resolved per attempt: a token minted before a backoff may be gone by the
+  // time the retry fires, and 300 seconds is not long.
+  const send = async (): Promise<Response> => {
+    const token = await getAccessToken(credentials)
+
+    // Strip any whitespace from token (defensive, matches base-theme pattern)
+    const normalizedToken = token.accessToken.replace(/\s+/g, "")
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${normalizedToken}`,
+      Accept: "application/json",
+      Connection: "close",
+      ...options.headers,
+    }
+
+    // Only set Content-Type for requests with a body
+    if (method !== "GET" && method !== "HEAD") {
+      headers["Content-Type"] = "application/json"
+    }
+
+    const fetchOptions: RequestInit = { method, headers }
+    if (body !== undefined) fetchOptions.body = body
+
+    log.request({ method, url, hasBody: body !== undefined })
+
+    const attemptResponse = await fetchWithTimeout(url, fetchOptions)
+
+    log.response({
+      method,
+      url,
+      status: attemptResponse.status,
+      statusText: attemptResponse.statusText,
+    })
+
+    return attemptResponse
   }
 
-  // Only set Content-Type for requests with a body
-  if (method !== "GET" && method !== "HEAD") {
-    headers["Content-Type"] = "application/json"
-  }
-
-  const fetchOptions: RequestInit = {
-    method,
-    headers,
-  }
-
-  if (options.body) {
-    fetchOptions.body = JSON.stringify(options.body)
-  }
-
-  log.request({ method, url, hasBody: !!fetchOptions.body })
-
-  const response = await fetchWithTimeout(url, fetchOptions)
-
-  log.response({ method, url, status: response.status, statusText: response.statusText })
+  const response = await sendWithRetry(send, method, DELIVEROO_RETRY_POLICY)
 
   // If token expired/rejected, retry once with fresh token.
   // Deliveroo gateway returns 403 (not 401) for invalid/expired tokens.
@@ -216,13 +269,7 @@ export async function fetchDeliveroo(
     // M-03: Consume the body to release the connection
     await response.text().catch(() => {})
     clearTokenCache(credentials)
-    const newToken = await getAccessToken(credentials)
-    headers.Authorization = `Bearer ${newToken.accessToken.replace(/\s+/g, "")}`
-
-    return fetchWithTimeout(url, {
-      ...fetchOptions,
-      headers,
-    })
+    return sendWithRetry(send, method, DELIVEROO_RETRY_POLICY)
   }
 
   return response

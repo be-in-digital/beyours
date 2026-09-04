@@ -12,6 +12,7 @@ import {
   denyOrder,
   cancelOrder,
   updateStoreStatus,
+  DEFAULT_PAUSE_SECONDS,
   getStoreStatus,
   markOrderAsReady,
   activateIntegration,
@@ -548,7 +549,8 @@ describe('Uber Eats API Client', () => {
   })
 
   describe('updateStoreStatus', () => {
-    it('should update store status', async () => {
+    /** Mint a token, then answer every API call with 204. */
+    function mockOk(): void {
       mockFetch.mockImplementation((url: string) => {
         if (url.includes('oauth/v2/token')) {
           return Promise.resolve({
@@ -563,6 +565,18 @@ describe('Uber Eats API Client', () => {
         }
         return Promise.resolve({ ok: true })
       })
+    }
+
+    function statusBody(): Record<string, unknown> {
+      const apiCall = mockFetch.mock.calls.find((call) =>
+        call[0].includes(`/eats/store/${STORE_ID}/status`)
+      )
+      expect(apiCall).toBeDefined()
+      return JSON.parse(apiCall![1].body)
+    }
+
+    it('should update store status', async () => {
+      mockOk()
 
       await expect(
         updateStoreStatus(mockCredentials, STORE_ID, 'ONLINE')
@@ -571,38 +585,67 @@ describe('Uber Eats API Client', () => {
       const apiCall = mockFetch.mock.calls.find((call) =>
         call[0].includes(`/eats/store/${STORE_ID}/status`)
       )
-
-      expect(apiCall).toBeDefined()
-      const [, options] = apiCall!
-      expect(options.method).toBe('POST')
-      expect(JSON.parse(options.body)).toEqual({ status: 'ONLINE' })
+      expect(apiCall![1].method).toBe('POST')
+      expect(statusBody()).toEqual({ status: 'ONLINE' })
     })
 
     it('should include reason when provided', async () => {
-      mockFetch.mockImplementation((url: string) => {
-        if (url.includes('oauth/v2/token')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              access_token: 'test-token',
-              token_type: 'Bearer',
-              expires_in: 3600,
-              scope: 'eats.store',
-            }),
-          })
-        }
-        return Promise.resolve({ ok: true })
+      mockOk()
+
+      await updateStoreStatus(mockCredentials, STORE_ID, 'OFFLINE', { reason: 'Refurbishment' })
+
+      expect(statusBody()).toEqual({ status: 'OFFLINE', reason: 'Refurbishment' })
+    })
+
+    // Uber requires `paused_until` on PAUSED. This test previously asserted a
+    // body WITHOUT it — a green test sitting on top of a payload the platform
+    // rejects, which is why pausing a store never worked.
+    it('should default paused_until to 30 minutes out for PAUSED', async () => {
+      mockOk()
+      const before = Math.floor(Date.now() / 1000)
+
+      await updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', { reason: 'Too busy' })
+
+      const body = statusBody()
+      expect(body.status).toBe('PAUSED')
+      expect(body.reason).toBe('Too busy')
+      expect(body.paused_until).toBeGreaterThanOrEqual(before + DEFAULT_PAUSE_SECONDS)
+      expect(body.paused_until).toBeLessThanOrEqual(before + DEFAULT_PAUSE_SECONDS + 5)
+    })
+
+    it('should honour an explicit paused_until', async () => {
+      mockOk()
+      const resumeAt = Math.floor(Date.now() / 1000) + 900
+
+      await updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', { pausedUntil: resumeAt })
+
+      expect(statusBody()).toEqual({ status: 'PAUSED', paused_until: resumeAt })
+    })
+
+    it('should not send paused_until for ONLINE or OFFLINE', async () => {
+      mockOk()
+
+      await updateStoreStatus(mockCredentials, STORE_ID, 'OFFLINE', {
+        pausedUntil: Math.floor(Date.now() / 1000) + 900,
       })
 
-      await updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', 'Too busy')
+      expect(statusBody()).toEqual({ status: 'OFFLINE' })
+    })
 
-      const apiCall = mockFetch.mock.calls.find((call) =>
-        call[0].includes(`/eats/store/${STORE_ID}/status`)
-      )
+    // Date.now() is milliseconds; sending it would pause the store for
+    // millennia. Reject it locally rather than at the platform.
+    it('should reject a milliseconds timestamp', async () => {
+      mockOk()
 
-      expect(apiCall).toBeDefined()
-      const [, options] = apiCall!
-      expect(JSON.parse(options.body)).toEqual({ status: 'PAUSED', reason: 'Too busy' })
+      await expect(
+        updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', { pausedUntil: Date.now() * 1000 })
+      ).resolves.toBeUndefined()
+
+      await expect(
+        updateStoreStatus(mockCredentials, STORE_ID, 'PAUSED', {
+          pausedUntil: Math.floor(Date.now() / 1000) - 60,
+        })
+      ).rejects.toThrow('epoch in SECONDS')
     })
   })
 
