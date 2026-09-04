@@ -20,9 +20,12 @@ import {
 } from "@be-in-digital/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { useAdminAuthStore } from "../../stores/admin-auth-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { cn } from "../../lib/utils"
 import { ResolvingStore } from "../../components/resolving-store"
+import { brandingControlState } from "../../lib/branding-eligibility"
+import { BrandingControl } from "./branding-control"
 
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
@@ -40,6 +43,11 @@ interface DesignPageProps {
 export function DesignPage({ embedded = false }: DesignPageProps) {
   const { api } = useAdminApiStore()
   const storeId = useAdminStoreId()
+  // `stores:read` gets a role onto this screen; `stores:write` is what
+  // `stores.updateBranding` checks on the click. `manager` holds the first and
+  // not the second, so the two sets are not the same people.
+  const role = useAdminAuthStore((s) => s.role)
+  const branding = brandingControlState(role)
   const store = useQuery(
     api?.stores?.getById,
     storeId ? { id: storeId } : "skip"
@@ -109,10 +117,10 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
     try {
       await updateBranding({
         id: storeId,
-        branding: {
-          logoUrl: logoUrl || undefined,
-          faviconUrl: faviconUrl || undefined,
-        },
+        // Sent as written, empty string included. `stores.updateBranding`
+        // merges, so an absent field means "untouched" and would make clearing
+        // a logo impossible; `""` is what tells it to remove the field.
+        branding: { logoUrl, faviconUrl },
       })
       toast.success("Logo mis à jour avec succès")
     } catch (error) {
@@ -177,7 +185,11 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
             ))}
           </div>
           {selectedTheme && (
-            <Button size="sm" onClick={handleSaveColors}>Appliquer le thème sélectionné</Button>
+            <BrandingControl state={branding}>
+              <Button size="sm" disabled={branding.disabled} onClick={handleSaveColors}>
+                Appliquer le thème sélectionné
+              </Button>
+            </BrandingControl>
           )}
         </TabsContent>
 
@@ -209,7 +221,11 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
                 <div className="h-16 rounded-lg border" style={{ backgroundColor: accentColor }} />
               </div>
             </div>
-            <Button size="sm" onClick={handleSaveColors}>Enregistrer les couleurs</Button>
+            <BrandingControl state={branding}>
+              <Button size="sm" disabled={branding.disabled} onClick={handleSaveColors}>
+                Enregistrer les couleurs
+              </Button>
+            </BrandingControl>
           </div>
         </TabsContent>
 
@@ -232,7 +248,11 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
                 </div>
               </div>
             </div>
-            <Button size="sm" onClick={handleSaveTypography}>Enregistrer la typographie</Button>
+            <BrandingControl state={branding}>
+              <Button size="sm" disabled={branding.disabled} onClick={handleSaveTypography}>
+                Enregistrer la typographie
+              </Button>
+            </BrandingControl>
           </div>
         </TabsContent>
 
@@ -258,7 +278,11 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
                 )}
               </div>
             </div>
-            <Button size="sm" onClick={handleSaveLogo}>Enregistrer le logo</Button>
+            <BrandingControl state={branding}>
+              <Button size="sm" disabled={branding.disabled} onClick={handleSaveLogo}>
+                Enregistrer le logo
+              </Button>
+            </BrandingControl>
           </div>
         </TabsContent>
       </Tabs>

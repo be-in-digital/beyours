@@ -411,6 +411,158 @@ export const updateSoundConfig = {
 }
 
 /**
+ * The branding fields the Design screen owns, and the only ones writable here.
+ *
+ * `stores.branding` is `v.any()` in the schema — it sits in the legacy block
+ * with `integrations` and `settings` — and that is exactly why the missing
+ * mutation went unnoticed for so long: there was no declared shape for anything
+ * to be measured against. The blob stays untyped in the schema (see
+ * `updateBranding` for why), so this validator is the one place the shape is
+ * stated, and the door every write comes through.
+ *
+ * Every field is optional because every write is partial: the page saves
+ * colours, typography and logo from three separate buttons. `v.object` refuses
+ * a field that is not named here, so a typo in a save handler is an error at
+ * the call rather than a stray key in the document.
+ */
+export const BRANDING_FIELDS = {
+  primaryColor: v.optional(v.string()),
+  secondaryColor: v.optional(v.string()),
+  accentColor: v.optional(v.string()),
+  fontHeading: v.optional(v.string()),
+  fontBody: v.optional(v.string()),
+  logoUrl: v.optional(v.string()),
+  faviconUrl: v.optional(v.string()),
+} as const
+
+/** The fields rendered as a URL, which therefore need a scheme they can be trusted with. */
+const BRANDING_URL_FIELDS = new Set(["logoUrl", "faviconUrl"])
+
+/**
+ * Longest value any branding field may carry.
+ *
+ * A colour is seven characters and a font name a handful; a URL is the only one
+ * with any length to it. The bound is here because `v.string()` has none, and
+ * an unbounded field ends up in both the store document and the audit entry —
+ * where `serializeAuditDetails` would start degrading entries that should never
+ * have been large.
+ */
+export const MAX_BRANDING_VALUE_LENGTH = 512
+
+/**
+ * Reject a branding value the Design screen could not have produced.
+ *
+ * The type is already settled by the validator; what is left is what a string
+ * is allowed to *say*. `logoUrl` and `faviconUrl` are rendered into `<img src>`
+ * and a favicon link, so their scheme is not a matter of taste: `javascript:`
+ * and `data:` have no business there, and `v.string()` accepts both.
+ */
+export function assertBrandingValues(branding: Record<string, unknown>): void {
+  for (const [field, value] of Object.entries(branding)) {
+    if (value === undefined) continue
+    if (typeof value !== "string") {
+      throw new Error(`Invalid branding: ${field} must be a string`)
+    }
+    if (value.length > MAX_BRANDING_VALUE_LENGTH) {
+      throw new Error(
+        `Invalid branding: ${field} exceeds ${MAX_BRANDING_VALUE_LENGTH} characters`
+      )
+    }
+    // An empty value clears the field, so it is checked before the scheme.
+    if (value === "" || !BRANDING_URL_FIELDS.has(field)) continue
+    if (!/^(https?:\/\/|\/)/.test(value)) {
+      throw new Error(
+        `Invalid branding: ${field} must be an http(s) or root-relative URL`
+      )
+    }
+  }
+}
+
+/**
+ * Fold a partial branding write into what the establishment already has.
+ *
+ * THE WHOLE POINT OF THIS FUNCTION. The Design page saves in three pieces —
+ * colours, typography, logo — each sending only its own fields. A mutation that
+ * assigned `args.branding` to the document would therefore make saving the
+ * typography erase the colours, and saving the logo erase both; the page reads
+ * all seven fields back on mount, so the loss shows up on the next visit rather
+ * than on the click that caused it.
+ *
+ * Three cases, deliberately distinct:
+ *  - absent field  -> untouched. That is what makes a partial write partial.
+ *  - empty string  -> removed. `<input>` gives back `""` for a cleared box, and
+ *    an owner who deletes their logo URL and saves means it. Without this the
+ *    clear button would be another control that reports success and does
+ *    nothing.
+ *  - anything else -> written.
+ *
+ * Keys already in the document that this mutation does not name are carried
+ * through rather than dropped: `branding` is a legacy `v.any()` blob and a
+ * deployment may hold something nobody here has seen. Preserving it is the
+ * conservative half of leaving the schema untyped.
+ */
+export function mergeBranding(
+  existing: unknown,
+  incoming: Record<string, unknown>,
+): Record<string, unknown> {
+  const merged =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {}
+
+  for (const [field, value] of Object.entries(incoming)) {
+    if (value === undefined) continue
+    if (value === "") {
+      delete merged[field]
+      continue
+    }
+    merged[field] = value
+  }
+
+  return merged
+}
+
+/**
+ * Update the establishment's branding — colours, typography, logo.
+ *
+ * The Design screen's three save buttons all land here, and all three send a
+ * partial object, so the handler merges rather than replaces. See
+ * `mergeBranding` for what each case means.
+ *
+ * The schema keeps `branding` as `v.optional(v.any())`. Tightening it to this
+ * validator's shape would be better, and is not safe from here: Convex
+ * validates the whole document on every write, so one deployed store holding a
+ * key nobody declared would start failing on the next unrelated edit — an
+ * opening-hours change refused because of a colour. `apps/themes` is cloned per
+ * client, one Convex instance each, and nothing in this repo can see what those
+ * documents hold. The schema comment on the legacy block already says as much.
+ * A follow-up would need an inventory of the distinct `branding` key sets across
+ * deployments, a migration for the ones this validator does not name, and only
+ * then the narrower type. Until then the writer is the narrow thing.
+ */
+export const updateBranding = {
+  args: {
+    id: v.id("stores"),
+    branding: v.object(BRANDING_FIELDS),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await requireStore(ctx, args.id)
+    assertBrandingValues(args.branding)
+
+    const branding = mergeBranding(existing.branding, args.branding)
+    // Diff the merged result, not the arguments: the entry should say what the
+    // establishment's branding became, which is the point of merging at all.
+    const audit = prepareStoreFieldUpdate(
+      existing,
+      STORE_AUDIT_OPERATIONS.updateBranding,
+      { branding }
+    )
+    await ctx.db.patch(args.id, { branding, updatedAt: Date.now() })
+    await recordStoreAudit(ctx, audit)
+  },
+}
+
+/**
  * Update store global order mode (applies to all sources unless overridden per-platform)
  */
 export const updateOrderMode = {

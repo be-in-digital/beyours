@@ -6,13 +6,20 @@ import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 
-// Better Auth component client
+// Better Auth component client.
 //
-// The type annotation is not decoration. `createClient`'s return type mentions
-// `GenericCtx<DataModel>` a dozen times over, so the inferred type here grows
-// with the schema — and the catalogue translation columns pushed it past what
-// TypeScript will serialise (TS7056). Naming the type keeps the compiler from
-// having to write it out.
+// Annotated rather than inferred: this app's `_generated/api.d.ts` is the
+// compact form (265 lines against the template's expanded 22k), so `components`
+// is inferred rather than named, and once #315 widened the Convex surface the
+// inferred type of this call exceeded what the compiler will serialize —
+// TS7056. The annotation says what inference was already producing; it changes
+// no behaviour.
+//
+// It is no longer this app only. `createClient`'s return type mentions
+// `GenericCtx<DataModel>` a dozen times over, so it grows with the schema too,
+// not just with the function surface — the catalogue translation columns
+// (#147) pushed `apps/themes` over the same limit, and it carries the same
+// annotation for the same reason.
 export const authComponent: ReturnType<typeof createClient<DataModel>> =
   createClient<DataModel>(components.betterAuth);
 

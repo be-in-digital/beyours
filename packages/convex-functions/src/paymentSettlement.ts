@@ -14,11 +14,20 @@
  * against a 200 € order. The expensive order flipped to `paid` and a payment
  * record for the full amount was written. The same id was reusable forever.
  *
- * Both actions now route through `assertSettlesOrder` before anything is
- * marked paid.
+ * Stripe was added afterwards, for a different reason. `verifyCheckoutSession`
+ * derives the order from the SAME session's metadata, so there is no
+ * cross-order replay to close there — the reference check is tautological on
+ * that path and is kept only because it costs nothing and keeps the guard
+ * uniform. What Stripe genuinely needed is the amount and currency binding:
+ * a session settling less than the order total flipped the order to `paid`
+ * and booked the smaller amount as a full settlement.
+ *
+ * All three providers now route through `assertSettlesOrder` before anything is
+ * marked paid: SumUp and PayPal from their verification actions, Stripe from
+ * both the return page and the webhook.
  */
 
-export type PaymentProvider = "sumup" | "paypal"
+export type PaymentProvider = "sumup" | "paypal" | "stripe"
 
 /** What the payment provider claims about a settled payment. */
 export interface SettlementClaim {
@@ -33,6 +42,19 @@ export interface SettlementClaim {
    * provider reports it — a number for SumUp, a decimal string for PayPal.
    */
   amountMajor?: number | string | null
+  /**
+   * The amount the provider actually settled, already in MINOR units (cents),
+   * as Stripe reports it. Mutually exclusive with `amountMajor`; when both are
+   * given this one wins.
+   *
+   * Stripe's `amount_total` is minor units already. Feeding it to `amountMajor`
+   * multiplies it by 100 and rejects every legitimate payment — 11500 becomes
+   * 1150000 against an 11500 order. Dividing it by 100 at the call site is not
+   * the fix either: that reintroduces the float rounding `toMinorUnits` exists
+   * to prevent, and it is simply wrong for zero-decimal currencies like JPY,
+   * where the minor unit IS the major unit.
+   */
+  amountMinor?: number | null
   /** Currency code the provider reports, e.g. "EUR". */
   currency?: string | null
 }
@@ -149,7 +171,18 @@ export function assertSettlesOrder(
 
   // 3. Amount — to the cent. Under-payment and over-payment are both refused:
   // an over-payment means the two sides disagree about what was bought.
-  const settledMinor = toMinorUnits(claim.amountMajor)
+  //
+  // A provider reporting minor units directly skips the conversion entirely.
+  // A non-integer there is not rounded into shape: silently turning 11500.5
+  // into 11501 would be a guard inventing the number it is supposed to be
+  // checking, so it is refused as unusable.
+  const settledMinor =
+    claim.amountMinor !== null && claim.amountMinor !== undefined
+      ? Number.isInteger(claim.amountMinor)
+        ? claim.amountMinor
+        : null
+      : toMinorUnits(claim.amountMajor)
+
   if (settledMinor === null) {
     throw new SettlementRejectedError(
       "amount_missing",
@@ -202,4 +235,103 @@ export function readPayPalCapture(capture: {
     // was what got stored, which would have made every PayPal refund fail.
     captureId: capturedPayment?.id,
   }
+}
+
+/**
+ * Pull the reference, amount and payment intent out of a Stripe checkout
+ * session.
+ *
+ * Same shape and same reason as `readPayPalCapture`: read the fields once, in a
+ * place a test can reach, rather than four times inside a "use node" action the
+ * test environment cannot load.
+ *
+ * `amountMinor` is `amount_total` verbatim — Stripe reports minor units, and
+ * the guard takes them as they are. `reference` comes from the session
+ * metadata, which is where `createCheckoutSession` writes the order id.
+ */
+export function readStripeCheckoutSession(session: {
+  id?: string
+  amount_total?: number | null
+  currency?: string | null
+  payment_intent?: string | null | { id?: string }
+  metadata?: { orderId?: string; storeId?: string } | null
+}): {
+  reference?: string
+  amountMinor?: number | null
+  currency?: string
+  paymentIntentId?: string
+} {
+  const intent = session.payment_intent
+  const paymentIntentId =
+    typeof intent === "string"
+      ? intent
+      : (intent?.id ?? undefined)
+
+  return {
+    reference: session.metadata?.orderId,
+    amountMinor: session.amount_total,
+    currency: session.currency?.toUpperCase(),
+    // Falls back to the session id: a refund needs SOMETHING to point at, and
+    // an empty string would make the payment permanently unrefundable.
+    paymentIntentId: paymentIntentId ?? session.id,
+  }
+}
+
+/** The order state a settlement has to reckon with. */
+export interface OrderBeingSettled {
+  /** Order lifecycle status — "cancelled" is the one that matters here. */
+  status: string
+  /** Current payment status, from the `orders.paymentStatus` union. */
+  paymentStatus: string
+}
+
+/**
+ * What a provider settlement should write to `order.paymentStatus` — or `null`
+ * when it must write nothing at all.
+ *
+ * WHY THIS EXISTS: all four settlement paths guarded with
+ * `if (order.paymentStatus !== "paid")` and then wrote `"paid"`. Issue #128
+ * introduced `refund_pending` — the order was paid, then cancelled, the money
+ * is owed back and a human still has to send it — and `"refund_pending" !==
+ * "paid"` is TRUE. So a Stripe retry (they run for up to three days) or a guest
+ * refreshing the success tab walked straight into the branch and wrote `"paid"`
+ * back over the marker. The refund banner and the "Rembourser le client" action
+ * disappear from the admin, and nothing anywhere still records that money is
+ * owed. `markCashPaid` was given this guard; the provider paths were missed.
+ *
+ * The rules, in order:
+ *
+ *  1. Money already returned, or owed back and awaiting a human — leave it
+ *     alone. This is the case that was destroying the marker.
+ *  2. The order is cancelled — money arrived for something nobody will
+ *     deliver, so it is OWED BACK, not "paid". `payments.releaseRefund`
+ *     reaches the same conclusion the same way. Writing `refund_pending` here
+ *     also repairs an order the old code had already flipped to
+ *     cancelled + paid.
+ *  3. Already paid — nothing to do.
+ *  4. Otherwise the settlement is what it looks like: the order is paid.
+ *
+ * Deliberately returns a value instead of throwing, unlike `markCashPaid`.
+ * That one is a member of staff pressing a button and can be told "no". These
+ * are machines re-delivering a payment that genuinely happened: throwing would
+ * give Stripe a 500 to retry for three days and would show an innocent guest an
+ * error on their own confirmation page. The payment row is still recorded
+ * either way — the money moved, and a refund needs something to point at.
+ */
+export function paymentStatusAfterSettlement(
+  order: OrderBeingSettled
+): "paid" | "refund_pending" | null {
+  if (
+    order.paymentStatus === "refund_pending" ||
+    order.paymentStatus === "refunded" ||
+    order.paymentStatus === "partially_refunded"
+  ) {
+    return null
+  }
+
+  if (order.status === "cancelled") {
+    return "refund_pending"
+  }
+
+  return order.paymentStatus === "paid" ? null : "paid"
 }

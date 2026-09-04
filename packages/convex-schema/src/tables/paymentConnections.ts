@@ -49,9 +49,32 @@ export const paymentConnectionsTable = defineTable({
    */
   tokenExpiresAt: v.optional(v.number()),
 
-  /** Current connection health status */
+  /**
+   * Current connection health status.
+   *
+   * - `connected`           — the provider is authorised AND the charge path
+   *                           uses this row. Money reaches the restaurant.
+   * - `onboarding_complete` — the provider account exists and finished
+   *                           onboarding, but charges are NOT routed to it.
+   *                           Stripe Connect is here: `oauthConnect.ts` creates
+   *                           a connected account and the callback verifies it,
+   *                           while `stripe.ts` builds its client from the
+   *                           PLATFORM secret key, never reads this row, and
+   *                           sends no `stripeAccount` / `on_behalf_of` /
+   *                           `transfer_data`. Every euro lands in the platform
+   *                           balance. This literal exists so the admin can say
+   *                           that instead of showing a green "Connecté" to an
+   *                           owner whose takings go elsewhere.
+   * - `disconnected`        — no working authorisation. Rows are deleted on
+   *                           disconnect, so this is mostly a legacy value.
+   * - `error`               — the provider refused or onboarding never enabled
+   *                           charges. An account id may still be stored.
+   *
+   * Only `connected` may gate a charge path. Every other value must not.
+   */
   status: v.union(
     v.literal("connected"),
+    v.literal("onboarding_complete"),
     v.literal("disconnected"),
     v.literal("error")
   ),
