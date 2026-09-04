@@ -134,7 +134,7 @@ instance. Do not copy one to the other.
 | Service | Used for | Env vars |
 |---|---|---|
 | **Sentry** | error tracking — **one project per client**, under the client's own account | `NEXT_PUBLIC_SENTRY_DSN`, and optionally `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` for source maps |
-| **Google Cloud** (Maps Platform) | address autocomplete | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` |
+| **Google Cloud** (Maps Platform) | address autocomplete | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — restrict it by HTTP referrer and to the two APIs the loader asks for, then verify: `bash scripts/wizards/github-e2e-maps-bootstrap.sh --section 2 --check` |
 
 ---
 

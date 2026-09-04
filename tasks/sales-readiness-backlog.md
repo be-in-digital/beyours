@@ -1879,6 +1879,13 @@ referrer per client domain, or it is a billing-drain vector. And provision
 `ADMIN_BOOTSTRAP_TOKEN` per deployment, without which no first administrator can be
 appointed (TECH-11).
 
+**Both are scripted**: `scripts/wizards/github-e2e-maps-bootstrap.sh`. It generates and
+places the bootstrap token itself, prints the Google Cloud click path, and then verifies
+the referrer restriction over the network rather than trusting that somebody applied it.
+`--check` writes nothing and exits non-zero while anything is outstanding, so it works as
+a pre-handover gate. Neither step can be closed from the repository: the Convex
+deployment and the client's Google Cloud project both belong to the account owner.
+
 ## LAUNCH-10 · Register every client site's licence key
 `saDeployments` must hold the `licenseKey` before handover, otherwise maintenance
 renewals are unenforceable: `http.ts:716-746` answers

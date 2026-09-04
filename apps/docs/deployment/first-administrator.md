@@ -4,6 +4,14 @@
 > client, by whoever deploys the backend — and until they are, the back office
 > is unreachable and the maps key is a billing-drain vector.
 
+> **There is an executable companion to this page.**
+> `scripts/wizards/github-e2e-maps-bootstrap.sh` places the bootstrap token
+> itself, prints the Google Cloud click path, and reads back what can be read
+> back. `--check` writes nothing and exits non-zero while anything is either
+> outstanding or **unverified** — it reports those as two different states on
+> purpose, because a gate that calls an unchecked item "fine" is worse than no
+> gate. Read this page for the reasoning; run the script to do the work.
+
 ## Part 1 — `ADMIN_BOOTSTRAP_TOKEN` and `/setup`
 
 ### Why the seat cannot appoint itself
@@ -63,6 +71,14 @@ Nothing else reads it. Keeping it is keeping a spare key to a door that is
 already locked from the inside — the claim will refuse it anyway, but the value
 is one more secret to rotate when someone leaves.
 
+**And there is a sharper reason than tidiness.** The claim is self-closing on
+the deployment's *current state*, not on its history: it refuses while a super
+admin exists. Remove that profile — or demote it — and `/setup` opens again.
+That is correct behaviour (it is the only way back in if the sole administrator
+is lost), but it means a bootstrap token left lying around stays a live path to
+the seat rather than a spent one. Removing the variable is what makes the door
+need two things to reopen instead of one.
+
 ### What `/setup` tells you
 
 | Screen | Meaning | What to do |
@@ -106,12 +122,35 @@ In the **client's own** Google Cloud project:
    - `https://www.<client-domain>/*`
    - the Vercel preview domain, only while the site is being built —
      `https://<project>-*.vercel.app/*` — and remove it at go-live.
-3. **API restrictions → Restrict key.** Enable only what the app calls:
+3. **API restrictions → Restrict key.** Enable only what the app calls — and
+   that is **two**, not three:
    - Maps JavaScript API
    - Places API
-   - Geocoding API
-4. **Save**, then confirm from a browser on the client domain that the map still
-   renders, and from any other origin that it does not.
+
+   This list used to name the Geocoding API as well. Nothing calls it. The only
+   loader in the repository asks for `maps/api/js?libraries=places`
+   (`packages/ui/src/hooks/useGooglePlacesAutocomplete.ts:22`, and the copy each
+   app carries), and the coordinates it reads come off `place.geometry` in the
+   Place Details response — a Places field. `google.maps.Geocoder` appears
+   nowhere. An unused API left enabled is billable surface, which is the very
+   thing the rest of this section exists to close.
+4. **Save**, then verify it — and it has to be a browser, which is worth
+   knowing before you try to automate it. `maps/api/js` is only a bootstrap
+   loader: it answers `200` with a byte-identical body for any key, valid or
+   not, restricted or not. Enforcement happens afterwards, in the
+   `AuthenticationService.Authenticate` call the loader makes from the page. So
+   `curl` cannot see the restriction, and a script that claims to check it this
+   way is checking nothing.
+
+   Two minutes, once:
+
+   - Open `https://<client-domain>`, use the address field. The autocomplete
+     dropdown must appear.
+   - Open the same page from **any other origin** — a Vercel preview you took
+     off the list, a local file, another domain. The browser console must show
+     `RefererNotAllowedMapError`.
+
+   A working map in the second case means the key is not restricted.
 
 ### One key per client
 
@@ -133,6 +172,11 @@ Set a budget alert on the client's billing account as the backstop:
 - [ ] `ADMIN_BOOTSTRAP_TOKEN` set on the Convex deployment
 - [ ] First account created, address verified, `/setup` completed
 - [ ] `ADMIN_BOOTSTRAP_TOKEN` removed afterwards
-- [ ] Maps key restricted to the client domain, APIs narrowed to three
+- [ ] Maps key restricted to the client domain, APIs narrowed to two
+- [ ] Restriction confirmed in a browser: dropdown on the client domain,
+      `RefererNotAllowedMapError` from any other origin
+- [ ] `bash scripts/wizards/github-e2e-maps-bootstrap.sh --check` reports no
+      outstanding items (it will still list the Maps restriction as unverified —
+      that check is the browser step above, and no script can do it for you)
 - [ ] Vercel preview domain removed from the referrer list at go-live
 - [ ] Budget alert set on the client's billing account

@@ -126,6 +126,9 @@ deploying client hits.
 
 - [x] **#131** ✅ — Send the verification email — verification is on and no sender is configured
 - [ ] **#180** 🟡 — Provision `ADMIN_BOOTSTRAP_TOKEN` and build the first-administrator path
+      — repo half done and held by tests (`apps/*/tests/convex/authorization.test.ts`,
+      "claiming the first admin seat"); placing the token and restricting the Maps key
+      are console actions, scripted in `scripts/wizards/github-e2e-maps-bootstrap.sh`
 - [x] **#132** ✅ — Create `/invite/[token]` in both apps — the email link 404s
 - [x] **#170** ✅ — Role gate on `/dashboard`, session revocation on reset, per-module permissions enforced or removed
 
