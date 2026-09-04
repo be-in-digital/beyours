@@ -496,3 +496,76 @@ describe("staff who accept before the money arrives", () => {
     expect(await releaseToKitchen(ctx, "orders:1")).toBe(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// NEW2-JOURNEY-4 — cash has no provider, so it has nothing to abandon
+// ---------------------------------------------------------------------------
+
+/**
+ * The regression this seam caused, and the defect it was protecting against,
+ * pinned side by side.
+ *
+ * Gating every path on `paymentStatus === "paid"` closed #136 — an abandoned
+ * card checkout no longer feeds the kitchen — and broke order-ahead cash: the
+ * checkout's cash branch shows "Commande confirmée !" without touching the
+ * server, so the order sat at `pending`/`pending` and the pass stayed empty
+ * until somebody opened the admin and recorded the money. In auto mode nobody
+ * ever does, which is the whole point of auto mode.
+ *
+ * Both halves are tested here because fixing either one alone reopens the
+ * other, and that has already happened once.
+ */
+describe("a cash order", () => {
+  const cash = (extra: Doc = {}) =>
+    baseDocs({}, orderDoc({ paymentMethod: "cash", paymentStatus: "pending", ...extra }))
+
+  it("reaches the pass at checkout in auto mode, before the money is taken", async () => {
+    const { ctx, inserted } = createCtx(cash())
+
+    expect(await releaseToKitchen(ctx, "orders:1")).toBe(1)
+    expect(inserted).toHaveLength(1)
+  })
+
+  it("waits for staff in manual mode, then goes when they accept", async () => {
+    const { ctx, inserted, store } = createCtx(cash())
+    store["stores:1"]!.orderConfirmation = "manual"
+
+    expect(await releaseToKitchen(ctx, "orders:1")).toBe(0)
+    expect(await releaseToKitchen(ctx, "orders:1", { force: true })).toBe(1)
+    expect(inserted).toHaveLength(1)
+  })
+
+  it("is not plated twice when the till is recorded afterwards", async () => {
+    const { ctx, inserted, store } = createCtx(cash())
+
+    await releaseToKitchen(ctx, "orders:1")
+    // `markCashPaid` runs later and calls the seam again.
+    store["orders:1"]!.paymentStatus = "paid"
+    expect(await releaseToKitchen(ctx, "orders:1")).toBe(0)
+    expect(inserted).toHaveLength(1)
+  })
+})
+
+describe("a card order", () => {
+  const card = (extra: Doc = {}) =>
+    baseDocs({}, orderDoc({ paymentMethod: "card", paymentStatus: "pending", ...extra }))
+
+  it("stays off the pass while the provider has not confirmed (#136)", async () => {
+    const { ctx, inserted } = createCtx(card())
+
+    expect(await releaseToKitchen(ctx, "orders:1")).toBe(0)
+    expect(inserted).toHaveLength(0)
+  })
+
+  it("stays off the pass even when staff accept the abandoned checkout", async () => {
+    const { ctx, inserted } = createCtx(card())
+
+    expect(await releaseToKitchen(ctx, "orders:1", { force: true })).toBe(0)
+    expect(inserted).toHaveLength(0)
+  })
+
+  it("goes to the pass once the provider confirms", async () => {
+    const { ctx } = createCtx(card({ paymentStatus: "paid" }))
+    expect(await releaseToKitchen(ctx, "orders:1")).toBe(1)
+  })
+})

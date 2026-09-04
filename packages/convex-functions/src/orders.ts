@@ -1667,18 +1667,30 @@ export async function releaseToKitchen(
   // A cancelled order has nothing to cook.
   if (order.status === "cancelled") return 0
 
-  // Payment is required on every path, including this one.
+  // The payment gate is about ABANDONMENT, and only a provider can be abandoned.
   //
-  // `force` was briefly allowed to skip this, and that put #136 straight back:
-  // a customer abandons at the provider, a member of staff clicks "Accepter la
-  // commande" on the still-unpaid order in the admin list, and the kitchen
-  // cooks it. The order looks the same to them as a paid one — the KDS shows no
-  // payment state at all, which is half of what #136 was about.
+  // #136 was a customer who reached Stripe and closed the tab: the order exists,
+  // the money never will, and the kitchen cooked it anyway. So a card or PayPal
+  // order waits for its provider to confirm, and `force` does not skip that —
+  // staff clicking "Accepter la commande" on an abandoned checkout must not
+  // start a meal nobody is paying for.
   //
-  // An establishment that takes the money at the counter records it with
-  // `markCashPaid`, and that releases the order. "Money taken" is the event
-  // that feeds the kitchen; "staff looked at it" is not.
-  if (order.paymentStatus !== "paid") return 0
+  // Cash has no provider and no redirect, so it has nothing to abandon. The
+  // checkout's cash branch shows "Commande confirmée !" and changes nothing
+  // server-side, which meant an order-ahead cash order — a food truck, a
+  // click-and-collect — sat invisible to the kitchen until somebody happened to
+  // open the admin and record the money. In auto mode nobody ever does, because
+  // auto mode is the promise that no human step is needed. The diner read
+  // "confirmée" while the pass stayed empty (NEW2-JOURNEY-4).
+  //
+  // So cash skips the payment gate and falls through to `orderConfirmation`
+  // below, like any other order: "auto" sends it to the pass now, "manual"
+  // holds it for staff. The money is collected at handover, which is what
+  // paying cash means. `markCashPaid` still records the till, and finds the
+  // ticket already there.
+  const settlesOnHandover = order.paymentMethod === "cash"
+
+  if (!settlesOnHandover && order.paymentStatus !== "paid") return 0
 
   // `force` is staff accepting the order by hand: that IS the manual workflow,
   // so it skips the setting describing what happens without a human — and
