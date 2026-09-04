@@ -76,13 +76,35 @@ one). Decide per service which brand owns it before creating duplicates.
 
 | Service | Used for | Env vars |
 |---|---|---|
-| **Stripe** | two distinct flows: BeYours billing the restaurateur (`STRIPE_BID_*`) **and** the restaurant taking customer payments (`STRIPE_*`) | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_BID_SECRET_KEY`, `STRIPE_BID_WEBHOOK_SECRET`, `STRIPE_BID_PRICE_*`, `STRIPE_TAX_ENABLED` |
+| **Stripe** | three surfaces, three deployments — see below | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_TAX_ENABLED`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `STRIPE_PRICE_*`, `STRIPE_FOUNDERS_COUPON_ID`, `STRIPE_PRODUCT_CREATION_*`, `STRIPE_BID_SECRET_KEY`, `STRIPE_BID_WEBHOOK_SECRET`, `STRIPE_BID_PRICE_*` |
 | **PayPal** | alternative payment | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` |
 | **SumUp** | alternative payment | `SUMUP_CLIENT_ID`, `SUMUP_CLIENT_SECRET` |
 | **Square** | alternative payment | `SQUARE_ACCESS_TOKEN` |
 
+**The three Stripe surfaces** (corrected 2026-09-03 — this row named two, and
+omitted the one that gates the first sale):
+
+| Surface | Deployment | Variables |
+|---|---|---|
+| **beyours.fr selling the product** — creation + maintenance checkout, founders offer | `famous-wildcat-229` (`apps/site`) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `STRIPE_TAX_ENABLED`, the four `STRIPE_PRICE_*`, `STRIPE_FOUNDERS_COUPON_ID`, `STRIPE_PRODUCT_CREATION_{ESSENTIELLE,PREMIUM}` |
+| **BeYours billing the restaurateur** — auto-blog plans, maintenance renewal | `optimistic-swordfish-937` (`apps/reference`), and each client instance | `STRIPE_BID_SECRET_KEY`, `STRIPE_BID_WEBHOOK_SECRET`, the six `STRIPE_BID_PRICE_*` plan prices, `STRIPE_BID_PRICE_MAINTENANCE`, `BID_APP_URL` |
+| **The restaurant taking customer payments** | each client instance (`apps/themes`) | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+
+`STRIPE_SECRET_KEY` therefore names **two different accounts** depending on the
+deployment: BeYours' own on `famous-wildcat-229`, the restaurant's on a client
+instance. Do not copy one to the other.
+
+> `STRIPE_PUBLISHABLE_KEY` was listed here and has been removed: **no line of
+> the product reads it.** It is declared optional in
+> `packages/core/src/env/schemas.ts:197` and shown by the themes setup wizard,
+> and the schema says so itself at `:248`. Create the key if a future client
+> integration needs it, but nothing today gates on it.
+
 > Stripe live mode is gated on the legal/invoicing work in
 > `apps/site/MISE_EN_PROD.md` §2-3 (compliant invoicing, VAT regime).
+> The console steps for the founders coupon and the four maintenance Prices —
+> the blocker on the first Essentielle sale — are in
+> [`stripe-founders-offer-runbook.md`](./stripe-founders-offer-runbook.md).
 
 ## 3. Delivery platforms
 

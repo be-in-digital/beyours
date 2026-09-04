@@ -3,6 +3,8 @@ import {
   assertSettlesOrder,
   toMinorUnits,
   readPayPalCapture,
+  readStripeCheckoutSession,
+  paymentStatusAfterSettlement,
   SettlementRejectedError,
   type SettlementClaim,
   type OrderToSettle,
@@ -218,5 +220,281 @@ describe("readPayPalCapture", () => {
       assertSettlesOrder({ provider: "paypal", ...parsed }, ORDER)
     )
     expect(error.reason).toBe("reference_missing")
+  })
+})
+
+// ============================================================================
+// Stripe
+//
+// Stripe reached this guard last, and for a different reason than the other
+// two. `verifyCheckoutSession` derives the order from the SAME session's
+// metadata, so there is no cross-order replay to close on that path. What the
+// binding closes is the amount: `amount_total` was written to the payment
+// record with nothing ever compared to it.
+// ============================================================================
+
+describe("Stripe settlement", () => {
+  it("accepts stripe as a provider", () => {
+    expect(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMinor: 11_500,
+          currency: "EUR",
+        },
+        ORDER
+      )
+    ).not.toThrow()
+  })
+
+  it("refuses Stripe's minor units fed into the major-unit field", () => {
+    // THE 100x TRAP, and the reason `amountMinor` exists at all.
+    //
+    // `amountMajor` is documented as euros and runs through `toMinorUnits`,
+    // which multiplies by 100. Stripe's `amount_total` is ALREADY cents. Wiring
+    // it to `amountMajor` turns a correct 115 EUR payment into 1_150_000 c
+    // against an 11_500 c order and rejects EVERY legitimate Stripe payment —
+    // the product goes down, not the attack.
+    //
+    // The naive repair is worse than the bug: dividing by 100 at the call site
+    // reintroduces the float rounding `toMinorUnits` exists to avoid, and it is
+    // simply wrong for zero-decimal currencies like JPY.
+    const error = rejection(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMajor: 11_500,
+          currency: "EUR",
+        },
+        ORDER
+      )
+    )
+    expect(error.reason).toBe("amount_mismatch")
+
+    // The same number in the right field is the same payment, accepted.
+    expect(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMinor: 11_500,
+          currency: "EUR",
+        },
+        ORDER
+      )
+    ).not.toThrow()
+  })
+
+  it("refuses a session that settled less than the order total", () => {
+    // An order edited after the session was created, a Stripe-side coupon, or a
+    // stale session for an earlier cart. All three used to mark the order paid.
+    const error = rejection(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMinor: 10_000,
+          currency: "EUR",
+        },
+        ORDER
+      )
+    )
+    expect(error.reason).toBe("amount_mismatch")
+  })
+
+  it("refuses a non-integer minor amount rather than rounding it", () => {
+    // Cents are integers. Rounding 11500.5 into 11500 would be the guard
+    // inventing the number it is meant to be checking.
+    const error = rejection(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMinor: 11_500.5,
+          currency: "EUR",
+        },
+        ORDER
+      )
+    )
+    expect(error.reason).toBe("amount_missing")
+  })
+
+  it("accepts a zero-amount settlement against a zero-total order", () => {
+    // `amountMinor: 0` is a real amount, not a missing one — the falsy-check
+    // mistake that `toMinorUnits` was written to avoid on the major side.
+    expect(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:free",
+          amountMinor: 0,
+          currency: "EUR",
+        },
+        { orderId: "orders:free", total: 0 }
+      )
+    ).not.toThrow()
+  })
+
+  it("refuses a session paid in another currency", () => {
+    const error = rejection(() =>
+      assertSettlesOrder(
+        {
+          provider: "stripe",
+          reference: "orders:1",
+          amountMinor: 11_500,
+          currency: "USD",
+        },
+        ORDER
+      )
+    )
+    expect(error.reason).toBe("currency_mismatch")
+  })
+})
+
+// ============================================================================
+// Stripe checkout session parsing
+// ============================================================================
+
+describe("readStripeCheckoutSession", () => {
+  it("pulls the reference, minor amount and intent out of a real session", () => {
+    expect(
+      readStripeCheckoutSession({
+        id: "cs_test_1",
+        amount_total: 11_500,
+        currency: "eur",
+        payment_intent: "pi_123",
+        metadata: { orderId: "orders:1", storeId: "stores:1" },
+      })
+    ).toEqual({
+      reference: "orders:1",
+      amountMinor: 11_500,
+      currency: "EUR",
+      paymentIntentId: "pi_123",
+    })
+  })
+
+  it("reads an expanded payment_intent object as well as a bare id", () => {
+    expect(
+      readStripeCheckoutSession({
+        id: "cs_test_1",
+        amount_total: 11_500,
+        currency: "eur",
+        payment_intent: { id: "pi_expanded" },
+        metadata: { orderId: "orders:1" },
+      }).paymentIntentId
+    ).toBe("pi_expanded")
+  })
+
+  it("falls back to the session id when there is no intent", () => {
+    // Never an empty string: `routeRefund` treats a payment with no externalId
+    // as unrefundable, so a charge recorded that way could never be given back.
+    expect(
+      readStripeCheckoutSession({ id: "cs_test_1", metadata: { orderId: "orders:1" } })
+        .paymentIntentId
+    ).toBe("cs_test_1")
+  })
+
+  it("feeds a truncated session straight into a rejection", () => {
+    const parsed = readStripeCheckoutSession({ id: "cs_test_1" })
+    const error = rejection(() =>
+      assertSettlesOrder({ provider: "stripe", ...parsed }, ORDER)
+    )
+    expect(error.reason).toBe("reference_missing")
+  })
+
+  it("rejects on the amount when the reference is present but the total is not", () => {
+    const parsed = readStripeCheckoutSession({
+      id: "cs_test_1",
+      metadata: { orderId: "orders:1" },
+    })
+    const error = rejection(() =>
+      assertSettlesOrder({ provider: "stripe", ...parsed }, ORDER)
+    )
+    expect(error.reason).toBe("amount_missing")
+  })
+})
+
+// ============================================================================
+// What a settlement does to the ORDER
+// ============================================================================
+
+describe("paymentStatusAfterSettlement", () => {
+  it("marks a pending order paid", () => {
+    expect(
+      paymentStatusAfterSettlement({ status: "confirmed", paymentStatus: "pending" })
+    ).toBe("paid")
+  })
+
+  it("does nothing to an order that is already paid", () => {
+    expect(
+      paymentStatusAfterSettlement({ status: "confirmed", paymentStatus: "paid" })
+    ).toBeNull()
+  })
+
+  it("does not write paid over a refund the customer is still owed", () => {
+    // THE BUG. Issue #128 made a cancelled paid order sit at "refund_pending":
+    // money owed back, a human still has to send it. All four provider
+    // settlement paths guarded with `if (order.paymentStatus !== "paid")`, and
+    // "refund_pending" !== "paid" is TRUE — so a Stripe retry (they run for up
+    // to three days) or a guest refreshing the success tab entered the branch
+    // and wrote "paid" back over the marker. The refund banner and the
+    // "Rembourser le client" action then vanish from the admin and NOTHING
+    // records that money is owed.
+    expect(
+      paymentStatusAfterSettlement({
+        status: "cancelled",
+        paymentStatus: "refund_pending",
+      })
+    ).toBeNull()
+  })
+
+  it("does not write paid over a refund that has already been made", () => {
+    expect(
+      paymentStatusAfterSettlement({ status: "cancelled", paymentStatus: "refunded" })
+    ).toBeNull()
+    expect(
+      paymentStatusAfterSettlement({
+        status: "completed",
+        paymentStatus: "partially_refunded",
+      })
+    ).toBeNull()
+  })
+
+  it("owes money back when a settlement lands on a cancelled order", () => {
+    // A payment that arrives for something nobody will deliver is not "paid",
+    // it is owed back. Same conclusion `payments.releaseRefund` reaches for a
+    // cancelled order, reached the same way.
+    expect(
+      paymentStatusAfterSettlement({ status: "cancelled", paymentStatus: "pending" })
+    ).toBe("refund_pending")
+  })
+
+  it("repairs a cancelled order the old code had already flipped to paid", () => {
+    // The residue of the bug: cancelled + paid, with no marker saying money is
+    // owed. A later delivery of the same charge now corrects it instead of
+    // confirming it.
+    expect(
+      paymentStatusAfterSettlement({ status: "cancelled", paymentStatus: "paid" })
+    ).toBe("refund_pending")
+  })
+
+  it("converges — a second settlement after the repair writes nothing", () => {
+    const first = paymentStatusAfterSettlement({
+      status: "cancelled",
+      paymentStatus: "paid",
+    })
+    expect(first).toBe("refund_pending")
+    expect(
+      paymentStatusAfterSettlement({ status: "cancelled", paymentStatus: first! })
+    ).toBeNull()
+  })
+
+  it("settles an order that had failed a previous attempt", () => {
+    // A retry with a new session is a legitimate payment.
+    expect(
+      paymentStatusAfterSettlement({ status: "pending", paymentStatus: "failed" })
+    ).toBe("paid")
   })
 })

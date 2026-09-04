@@ -41,8 +41,63 @@ import {
   type TaxedLine,
 } from "./orderTotals"
 import { verifyOrderLine, MAX_LINE_QUANTITY } from "./orderLine"
+import { requireStorePermission } from "./auth"
 
 // === QUERIES ===
+
+/* ------------------------------------------------------------------ */
+/* Who may read one order                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The permission that already means "may read this store's orders".
+ *
+ * `list` and `getByStatus` are both wrapped in `storeQuery({ permission:
+ * "orders:read" })` and both return whole order documents. Reusing the same
+ * string here is the point: the staff branch of `getById` must not be able to
+ * answer for anyone `list` would refuse, and must not need a permission of its
+ * own that the role table would then have to grow.
+ */
+export const ORDER_READ_PERMISSION = "orders:read" as const
+
+/**
+ * Does the caller work at this restaurant, with the right to read its orders?
+ *
+ * WHY THIS EXISTS. `orders.getById` granted access on two questions only — "do
+ * you hold this order's view token" and "did you place this order" — and had no
+ * branch at all for the people who cook it. A guest order carries no
+ * `customerId` (checkout stores `session?.user?.id`, which is `undefined` for a
+ * guest), so both questions answered no for every member of staff, and
+ * `/dashboard/orders/<id>` rendered "Commande introuvable" for the majority of
+ * a restaurant's orders. Access was decided by "did you place this order",
+ * never by "do you work here".
+ *
+ * It asks `requireStorePermission` rather than re-deriving the answer, so the
+ * staff branch inherits the whole existing chain unchanged: the profile lookup,
+ * the super admin's bypass, the `storeIds` membership check that keeps one
+ * restaurant out of another's orders, the RBAC table, and the module
+ * narrowing an owner sets on the invite dialog. A second implementation of that
+ * chain is a second thing to keep in step, and the one place it would first
+ * drift is the store scoping.
+ *
+ * Soft, like `isStaff`: `requireStorePermission` throws, which is right for a
+ * screen that belongs to the administration and wrong for a query the storefront
+ * shares. A guest reading their own order is not an error, so the refusal has to
+ * come back as `false` and let the caller fall through to `null`. Every failure
+ * — no session, no profile, wrong store, wrong role, module withheld — is a no.
+ */
+export async function mayReadStoreOrders(
+  ctx: any,
+  storeId: string
+): Promise<boolean> {
+  try {
+    await requireStorePermission(ctx, storeId, ORDER_READ_PERMISSION)
+    return true
+  } catch {
+    // Fail closed. Anything that is not an explicit grant is a refusal.
+    return false
+  }
+}
 
 /**
  * List all orders for a store, ordered by creation date (newest first)
@@ -736,6 +791,15 @@ export const markCashPaid = {
     if (order.paymentStatus === "refunded" || order.paymentStatus === "partially_refunded") {
       throw new Error("Cette commande a déjà été remboursée.")
     }
+    // `refund_pending` means the order was paid and then cancelled: the money
+    // is owed back and the real refund has not been made yet. Taking cash again
+    // would insert a second payment and reset the flag to "paid", quietly
+    // erasing the refund the customer is still waiting for.
+    if (order.paymentStatus === "refund_pending") {
+      throw new Error(
+        "Cette commande est annulée et en attente de remboursement."
+      )
+    }
 
     const now = Date.now()
     const globalSettings = await ctx.db.query("globalSettings").first()
@@ -780,6 +844,18 @@ export const recordPaymentStatus = {
       v.literal("pending"),
       v.literal("paid"),
       v.literal("failed"),
+      // Mirrors the `orders.paymentStatus` union in the shared schema. Money
+      // owed back that has not moved yet — see `tables/orders.ts`.
+      //
+      // Not decorative: the four provider paths ask
+      // `paymentStatusAfterSettlement` what a settlement should do to the
+      // order, and it answers `"refund_pending"` whenever the money arrives
+      // for an order that has already been cancelled. That value is handed
+      // straight to this validator. Omitting the literal would reject the
+      // call, which for the Stripe webhook is a 500 and three days of retries,
+      // and for a guest on the success page is an error on their own
+      // confirmation screen — over an order the code had understood correctly.
+      v.literal("refund_pending"),
       v.literal("refunded"),
       v.literal("partially_refunded")
     ),
@@ -797,6 +873,55 @@ export const recordPaymentStatus = {
       await releaseToKitchen(ctx, args.id)
     }
   },
+}
+
+/**
+ * The sources where the customer paid a MARKETPLACE, not the restaurant.
+ *
+ * An Uber Eats or Deliveroo order is created with `paymentStatus: "paid"` and
+ * never gets a `payments` row — there is nothing to write one from, and the
+ * `payments.provider` union has no value for a platform. The money went to
+ * Uber or Deliveroo, who remit it later and who refund the customer
+ * themselves when the order is rejected.
+ *
+ * `source` is the discriminator rather than the absence of a `payments` row.
+ * A direct card order is marked paid and settled in TWO separate mutations —
+ * `orders.internalUpdatePaymentStatus` then `payments.internalSettle`, in each
+ * app's `convex/stripe.ts` and `convex/stripeWebhook.ts` — so between the two a
+ * genuine Stripe order is "paid" with zero payment rows. Reading marketplace
+ * from that window would drop the refund flag on a real customer's money.
+ * Absence is also what a genuine data bug looks like, and that must stay loud.
+ *
+ * Listed as marketplace rather than as "not website, not pos" on purpose: a
+ * source nobody has classified yet falls through to DIRECT. A false "refund
+ * owed" is visible and correctable; a missing one silently keeps a customer's
+ * money, which is the whole defect #128 closed.
+ */
+const MARKETPLACE_ORDER_SOURCES: readonly string[] = ["uber_eats", "deliveroo"]
+
+/** Whether the restaurant was paid by a marketplace instead of by the customer. */
+export function isMarketplaceOrder(source: unknown): boolean {
+  return typeof source === "string" && MARKETPLACE_ORDER_SOURCES.includes(source)
+}
+
+/**
+ * What cancelling an order must write to `paymentStatus` — or nothing at all.
+ *
+ * `refund_pending` means one thing: the restaurant is holding money it owes
+ * back. Only a paid DIRECT order qualifies. Cancelling a marketplace order used
+ * to raise the same flag, so the admin showed the restaurant an amber
+ * "remboursement dû" banner and a refund button for money it never received and
+ * cannot send — while Deliveroo had already refunded the customer itself.
+ *
+ * Both cancellation paths ask this function, so they cannot drift apart again.
+ */
+export function cancellationPaymentStatus(order: {
+  source?: unknown
+  paymentStatus?: unknown
+}): "refund_pending" | undefined {
+  if (order.paymentStatus !== "paid") return undefined
+  if (isMarketplaceOrder(order.source)) return undefined
+  return "refund_pending"
 }
 
 /**
@@ -848,26 +973,40 @@ export const updateStatus = {
         updates.cancellationReason = args.cancellationReason
       }
 
-      // If the order was paid, trigger refund on linked payments
-      if (order.paymentStatus === "paid") {
-        updates.paymentStatus = "refunded"
-
-        // Also mark all succeeded payments as refunded
-        const payments = await ctx.db
-          .query("payments")
-          .withIndex("by_orderId", (q: any) => q.eq("orderId", args.id))
-          .collect()
-
-        for (const payment of payments) {
-          if (payment.status === "succeeded") {
-            await ctx.db.patch(payment._id as string, {
-              status: "refunded",
-              refundedAmount: payment.amount,
-              refundReason: args.cancellationReason ?? "Order cancelled",
-              updatedAt: now,
-            })
-          }
-        }
+      // Cancelling an order does not move money, and must not claim to.
+      //
+      // This block used to set the order AND every succeeded payment to
+      // "refunded" with a bare `ctx.db.patch` — no Stripe, SumUp or PayPal call
+      // anywhere. The restaurant read "remboursé", the customer was never paid
+      // back, and the gap only surfaced at reconciliation or in a dispute.
+      //
+      // It was also irreversible. `planRefund` accepts only "succeeded" and
+      // "partially_refunded", so once the payment had been faked to "refunded"
+      // the real action — `payments.refundPayment` — threw `not_settled` and
+      // the money could never be returned at all. The fake refund permanently
+      // blocked the real one. And `orders:update_status` is held by the KITCHEN
+      // and DELIVERY roles, so a line cook could trigger it.
+      //
+      // The payment rows are therefore left exactly as they are: `succeeded`,
+      // refundable, and still true. The order is flagged `refund_pending` —
+      // which records that money is owed back, not that it was sent — and an
+      // operator drives the real refund through `payments.refundPayment`, which
+      // calls the provider first and records the outcome only once the money
+      // has actually moved.
+      //
+      // No auto-refund is scheduled here on purpose. Refunding is a decision
+      // (full or partial, which payment, out-of-band cash) and it carries
+      // `payments:refund`, which the roles that cancel orders do not hold.
+      //
+      // And only for an order the restaurant was actually paid for. A rejected
+      // Deliveroo order reaches this exact line — `deliverooWebhook`'s
+      // auto-reject calls `internalUpdateStatus` — and it has no `payments`
+      // row at all, because Deliveroo took the money and Deliveroo gives it
+      // back. Flagging that one `refund_pending` demanded a refund the
+      // restaurant could not send.
+      const owed = cancellationPaymentStatus(order)
+      if (owed) {
+        updates.paymentStatus = owed
       }
     }
 
@@ -1289,6 +1428,24 @@ export const updateFromWebhook = {
       updates.cancelledAt = args.updatedAt
       if (args.cancellationReason) {
         updates.cancellationReason = args.cancellationReason
+      }
+
+      // The same rule `updateStatus` applies, asked here too.
+      //
+      // These are the two ways a platform cancellation reaches the database —
+      // `deliverooWebhook` auto-reject goes through `internalUpdateStatus`,
+      // its `order.status_update` and Uber's `orders.failure` come here — and
+      // they used to answer differently: one raised `refund_pending`, the other
+      // left the order at `paid`. One platform, one cancellation, two payment
+      // states depending on which webhook happened to carry it.
+      //
+      // For a marketplace order this still writes nothing, which is the right
+      // answer. What changed is that it is now the SAME function deciding, so
+      // the two paths cannot drift apart again — and a direct order that ever
+      // reached this handler would be flagged here as well.
+      const owed = cancellationPaymentStatus(order)
+      if (owed) {
+        updates.paymentStatus = owed
       }
     }
 

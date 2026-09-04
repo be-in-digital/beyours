@@ -2,6 +2,8 @@
 // Shared types for the settings page and its tab sections
 // ---------------------------------------------------------------------------
 
+import type { PaymentConnectionStatus } from "../../lib/types"
+
 export type HelpStep = { text: string }
 export type HelpLink = { label: string; url: string }
 
@@ -17,7 +19,8 @@ export type PaymentConnection = {
   _id: string
   provider: "stripe" | "sumup" | "paypal"
   merchantId: string
-  status: "connected" | "disconnected" | "error"
+  /** Union owned by `../../lib/types` — mirrors the Convex schema. */
+  status: PaymentConnectionStatus
   connectedAt: number
   updatedAt: number
 }
