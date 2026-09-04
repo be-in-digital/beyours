@@ -4,6 +4,13 @@
 > Stripe Dashboard action only the account owner can perform — this file tells
 > them exactly what to create, with which values, and how to prove it worked.
 > It contains **no credential** and no Stripe id.
+>
+> **`scripts/wizards/stripe-founders-launch.sh` is the executable half of this
+> page.** Read here to understand the steps; run that to perform them and to
+> prove they were performed. It checks the deployment, the seven variables and
+> the Stripe objects, and reports three states rather than two — satisfied,
+> outstanding, and *I could not check* — because §6c is a browser check no
+> script can make.
 
 ## Why this card exists
 
@@ -16,7 +23,7 @@ Two independent guards, both of which fire *before* the customer is charged:
 | Guard | Where | Refuses when |
 |---|---|---|
 | `resolveFoundersPricing` | [`convex/foundersOffer.ts:55-88`](../apps/site/convex/foundersOffer.ts) | `STRIPE_FOUNDERS_COUPON_ID` **or** `STRIPE_PRODUCT_CREATION_ESSENTIELLE` unset, on a deployment with a Stripe key |
-| `resolveMaintenancePriceId` | [`convex/stripe.ts:36-55`](../apps/site/convex/stripe.ts) | any one of the four `STRIPE_PRICE_*` unset |
+| `resolveMaintenancePriceId` | [`convex/stripe.ts:37-56`](../apps/site/convex/stripe.ts) | any one of the four `STRIPE_PRICE_*` unset |
 
 Neither is a bug to route around. The founders guard refuses because nothing
 else caps the offer: past the tenth seat, each build ships for 3 500 € excl.
@@ -221,6 +228,17 @@ environment section.
 ---
 
 ## 6. Verification
+
+All of 6a and 6b, plus the §4 comparison, in one pass:
+
+```bash
+bash scripts/wizards/stripe-founders-launch.sh --prod
+```
+
+It exits `0` only when every section it ran is satisfied, so it works as a
+pre-launch gate and not merely a checklist — and it counts 6c below as
+*unverified*, never as passed. The manual steps stay here because the wizard
+tells you what is wrong, not why; the reasoning is what this page is for.
 
 **6a — the ids are on the right deployment.** From `apps/site`:
 
