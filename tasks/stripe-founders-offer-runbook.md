@@ -292,16 +292,24 @@ than no check at all.
 | | Detected today? | By what |
 |---|---|---|
 | A `STRIPE_PRICE_*` / coupon / creation product missing | **Yes** — the sale is refused before payment, loudly | the guards in `stripe.ts` / `foundersOffer.ts` |
-| Half the founders pair set (coupon without product, or the reverse) | **Yes, at boot** | `validateSiteEnv` — feature group « Offre fondateurs » |
-| One creation Product set without the other | **Yes, at boot** | `validateSiteEnv` — feature group « Produits de création Stripe » |
-| A Price id pasted into a Product variable, or the reverse | **Yes, at boot** | `validateSiteEnv` — `prod_` / `price_` prefix checks |
+| Half the founders pair set (coupon without product, or the reverse) | **Only where Next sees the variables** † | `validateSiteEnv` — feature group « Offre fondateurs » |
+| One creation Product set without the other | **Only where Next sees the variables** † | `validateSiteEnv` — feature group « Produits de création Stripe » |
+| A Price id pasted into a Product variable, or the reverse | **Only where Next sees the variables** † | `validateSiteEnv` — `prod_` / `price_` prefix checks |
 | A maintenance Price created at the **wrong amount** | **Yes, on demand** | `stripeAudit:run`, against `planPrices` |
 | A maintenance Price on the wrong `tax_behavior` or currency | **Yes, on demand** | `stripeAudit:run` |
 | A maintenance Price on the wrong interval, or archived | **Yes, on demand** | `stripeAudit:run` |
 | A maintenance Price attached to the creation product | **Yes, on demand** | `stripeAudit:run` |
 | The ids pointing at **test-mode** objects under a live key | **Yes, on demand** | `stripeAudit:run` — `livemode`, and «&nbsp;no such Price&nbsp;» |
 
-What « on demand » costs, stated plainly rather than counted as coverage:
+**†** — and on the deployment that sells, it does **not**. These variables live
+on the Convex deployment, not in the Next process env, so `validateSiteEnv`
+never sees them there and none of those three rows fires in production. They
+catch a bad local `.env.local`, and nothing else. `pnpx convex env list --prod`
+(§6a) is the only thing that covers the deployment. Read those three rows as
+"caught in dev", not as "caught".
+
+What « on demand » and « in dev only » cost, stated plainly rather than counted
+as coverage:
 
 - **Nothing runs the audit for you.** CI holds no live Stripe key, so it cannot.
   A Price edited in the Dashboard the day after `stripeAudit:run` came back clean

@@ -9,7 +9,7 @@
    internalAction on purpose. It is an account-owner verification step, run
    from the CLI against the deployment that sells:
 
-     npx convex run stripeAudit:run --prod
+     pnpx convex run stripeAudit:run --prod
 
    Not a public action: requireAdmin (convex/admin.ts) takes a Query or
    Mutation ctx and cannot guard an action, and this returns the shape of the
@@ -26,8 +26,13 @@ import {
   type StripePriceFacts,
 } from "./stripePriceAudit";
 
-/** Maps a Stripe Price onto the facts the audit reads. */
-function toFacts(price: Stripe.Price): StripePriceFacts {
+/**
+ * Maps a Stripe Price onto the facts the audit reads.
+ *
+ * Exported for the tests: this is where a wrong field name would read a correct
+ * Price as a broken one, or the reverse, and nothing downstream could tell.
+ */
+export function toFacts(price: Stripe.Price): StripePriceFacts {
   return {
     id: price.id,
     active: price.active,

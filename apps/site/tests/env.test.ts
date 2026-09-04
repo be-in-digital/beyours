@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import { validateSiteEnv, formatSiteEnvReport } from "../lib/env";
 import { VAT } from "../lib/legal/company";
 import { foundersOffer } from "../convex/foundersOffer";
+import {
+  CREATION_PRODUCT_ENV,
+  MAINTENANCE_PRICE_ENV,
+} from "../convex/stripePriceAudit";
 
 /** What the regime in force requires of both charging flags. */
 const CHARGING = String(VAT.regime === "reel");
@@ -319,6 +323,51 @@ describe("validateSiteEnv — Stripe object ids carry their type", () => {
         STRIPE_PRODUCT_CREATION_PREMIUM: "prod_p",
       }).ok
     ).toBe(true);
+  });
+});
+
+describe("validateSiteEnv — one variable, one problem", () => {
+  /* STRIPE_PRODUCT_CREATION_ESSENTIELLE belongs to both the founders group and
+     the creation-products group. It was reported once per group: one variable
+     to set, printed twice and counted as two, sending the operator looking for
+     a second thing that did not exist. */
+  it("reports a variable shared by two groups only once", () => {
+    const { problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+      STRIPE_PRODUCT_CREATION_PREMIUM: "prod_premium",
+    });
+    expect(problems.map((p) => p.name)).toEqual([
+      "STRIPE_PRODUCT_CREATION_ESSENTIELLE",
+    ]);
+  });
+
+  it("attributes it to the most blocking group that wants it", () => {
+    const { problems } = validateSiteEnv({
+      ...VALID,
+      STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
+      STRIPE_PRODUCT_CREATION_PREMIUM: "prod_premium",
+    });
+    expect(problems[0].message).toContain("Offre fondateurs");
+  });
+});
+
+/* lib/env.ts keeps its own list of these names — it is deliberately
+   dependency-free and does not import the Convex maps. These pin the two
+   together: a variable renamed in convex/stripePriceAudit.ts and not here
+   would otherwise leave the boot check silently guarding a name nothing reads. */
+describe("validateSiteEnv knows every variable the Convex maps name", () => {
+  it.each(Object.values(CREATION_PRODUCT_ENV))("guards %s", (name) => {
+    const { problems } = validateSiteEnv({ ...VALID, STRIPE_FOUNDERS_COUPON_ID: "F" });
+    const known = problems.some((p) => p.name === name);
+    const setAlone = validateSiteEnv({ ...VALID, [name]: "prod_x" });
+    expect(known || !setAlone.ok).toBe(true);
+  });
+
+  it.each(Object.values(MAINTENANCE_PRICE_ENV))("guards %s", (name) => {
+    const { ok, problems } = validateSiteEnv({ ...VALID, [name]: "price_x" });
+    expect(ok).toBe(false);
+    expect(problems.some((p) => p.tier === "feature")).toBe(true);
   });
 });
 

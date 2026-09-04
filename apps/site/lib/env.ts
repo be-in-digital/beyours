@@ -84,7 +84,9 @@ const MAINTENANCE_PRICES = [
  * referral discount are restricted to (`applies_to`).
  *
  * The plan → env-name mapping lives in `CREATION_PRODUCT_ENV`
- * (convex/stripe.ts:65-68); these two lists must name the same variables.
+ * (convex/stripePriceAudit.ts), which convex/stripe.ts imports; these two lists
+ * must name the same variables. Named here rather than imported because this
+ * module is deliberately dependency-free — the test suite pins them instead.
  */
 const CREATION_PRODUCTS = [
   'STRIPE_PRODUCT_CREATION_ESSENTIELLE',
@@ -188,12 +190,20 @@ export function validateSiteEnv(
     if (failure) problems.push({ name, message: failure, tier: 'format' })
   }
 
+  /* A variable can belong to more than one group — the Essentielle creation
+     Product is both half of the founders pair and half of the creation pair.
+     It is still ONE variable to go and set, so it is reported once, against the
+     first group that wants it (the groups are ordered most-blocking first).
+     Reporting it per group padded the count and made the operator look for two
+     things that were one. */
+  const reported = new Set<string>()
   for (const { feature, vars } of FEATURE_GROUPS) {
     const set = vars.filter((name) => isSet(source[name]))
     if (set.length === 0 || set.length === vars.length) continue
 
     for (const name of vars) {
-      if (isSet(source[name])) continue
+      if (isSet(source[name]) || reported.has(name)) continue
+      reported.add(name)
       problems.push({
         name,
         message: `requise dès que ${feature} est configuré (${set.length}/${vars.length} déjà posée(s))`,

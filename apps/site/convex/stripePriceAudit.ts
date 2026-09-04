@@ -8,7 +8,7 @@
    wrong Product was undetectable from the repo — the first signal would have
    been a customer disputing a renewal invoice, a year after the sale. The four
    `STRIPE_PRICE_*` env vars are opaque ids: `resolveMaintenancePriceId`
-   (convex/stripe.ts:36-55) checks that they are SET, never that they are RIGHT.
+   (convex/stripe.ts) checks that they are SET, never that they are RIGHT.
 
    Plain module on purpose — no "use node", no Stripe import, no Convex
    registration — so the whole decision is unit-testable without credentials.
@@ -98,13 +98,6 @@ const PLANS: PlanId[] = ["essentielle", "premium"];
 const PERIODS: BillingPeriod[] = ["monthly", "yearly"];
 
 /**
- * What the four maintenance Prices must be, derived from `planPrices`.
- *
- * Derived, never written twice: an edit to planPrices.ts moves this with it,
- * which is the whole point — the drift this catches is Stripe drifting from
- * the repo, not the repo drifting from itself.
- */
-/**
  * The env var for a plan/period pair.
  *
  * The map is total over PlanId x BillingPeriod, so the throw is unreachable —
@@ -120,6 +113,13 @@ function envNameFor(plan: PlanId, period: BillingPeriod): string {
   return envName;
 }
 
+/**
+ * What the four maintenance Prices must be, derived from `planPrices`.
+ *
+ * Derived, never written twice: an edit to planPrices.ts moves this with it,
+ * which is the whole point — the drift this catches is Stripe drifting from
+ * the repo, not the repo drifting from itself.
+ */
 export const EXPECTED_MAINTENANCE_PRICES: ExpectedPrice[] = PLANS.flatMap((plan) =>
   PERIODS.map((period) => ({
     envName: envNameFor(plan, period),
@@ -291,9 +291,36 @@ export function auditMaintenancePrices(input: {
     creationProductIds: input.creationProductIds,
     liveMode: input.liveMode,
   };
-  return EXPECTED_MAINTENANCE_PRICES.flatMap((expected) =>
+
+  const findings = EXPECTED_MAINTENANCE_PRICES.flatMap((expected) =>
     expected.envName in input.prices
       ? auditMaintenancePrice(expected, input.prices[expected.envName], context)
       : [],
   );
+
+  /* The creation-Product check is the one rule here that needs something other
+     than the Price itself, and with no creation Product ids it cannot run. It
+     used to return silently, so an audit that had skipped a check reported the
+     same empty result as one that had passed it — a clean bill of health for a
+     rule that never executed. That is the failure this module exists to make
+     impossible, so it is reported rather than assumed harmless. */
+  const auditedSomething = EXPECTED_MAINTENANCE_PRICES.some(
+    (expected) => expected.envName in input.prices,
+  );
+  if (auditedSomething && context.creationProductIds.length === 0) {
+    findings.push({
+      envName: "STRIPE_PRODUCT_CREATION_*",
+      priceId: "—",
+      field: "coverage",
+      expected: "au moins un produit de création connu",
+      actual: "aucun",
+      message:
+        "Aucun STRIPE_PRODUCT_CREATION_* n'est posé sur ce déploiement, donc la " +
+        "vérification « un Price de maintenance rattaché au produit de création » " +
+        "n'a pas pu être faite. Les autres contrôles restent valables ; celui-ci " +
+        "n'a pas été exécuté — ce n'est pas un succès.",
+    });
+  }
+
+  return findings;
 }

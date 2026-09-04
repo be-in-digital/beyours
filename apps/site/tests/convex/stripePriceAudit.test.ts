@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { planPrices } from "../../convex/planPrices";
 import {
+  CREATION_PRODUCT_ENV,
+  MAINTENANCE_PRICE_ENV,
   EXPECTED_MAINTENANCE_PRICES,
   auditMaintenancePrice,
   auditMaintenancePrices,
@@ -267,5 +269,84 @@ describe("variables that are not configured", () => {
     });
     expect(findings).toHaveLength(1);
     expect(findings[0].envName).toBe(envName);
+  });
+});
+
+/* ── The maps both the checkout and this audit read ──
+   convex/stripe.ts imports these, so a wrong value here misconfigures the real
+   checkout as well as the audit. Written twice on purpose: the mutation that
+   proved this gap was renaming them wholesale with the suite still green. */
+describe("the env-name maps", () => {
+  it("names the two creation Products", () => {
+    expect(CREATION_PRODUCT_ENV).toEqual({
+      essentielle: "STRIPE_PRODUCT_CREATION_ESSENTIELLE",
+      premium: "STRIPE_PRODUCT_CREATION_PREMIUM",
+    });
+  });
+
+  it("names the four maintenance Prices, by plan and period", () => {
+    expect(MAINTENANCE_PRICE_ENV).toEqual({
+      "essentielle:monthly": "STRIPE_PRICE_ESSENTIELLE_MONTHLY",
+      "essentielle:yearly": "STRIPE_PRICE_ESSENTIELLE_YEARLY",
+      "premium:monthly": "STRIPE_PRICE_PREMIUM_MONTHLY",
+      "premium:yearly": "STRIPE_PRICE_PREMIUM_YEARLY",
+    });
+  });
+});
+
+/* ── Through the aggregate, not just the single-Price function ──
+   auditMaintenancePrices is what the action calls. Every case below was
+   reachable only through auditMaintenancePrice() before, so the aggregate's
+   own handling of them was unverified. */
+describe("auditMaintenancePrices — the function the action calls", () => {
+  it("reports an id that matches no Price, rather than dropping it", () => {
+    const envName = "STRIPE_PRICE_ESSENTIELLE_MONTHLY";
+    const findings = auditMaintenancePrices({
+      prices: { [envName]: null },
+      ...CONTEXT,
+    });
+    expect(findings.map((f) => f.field)).toEqual(["existence"]);
+    expect(findings[0].envName).toBe(envName);
+  });
+
+  it("still reports the others when one id matches no Price", () => {
+    const [first, second] = EXPECTED_MAINTENANCE_PRICES;
+    const findings = auditMaintenancePrices({
+      prices: {
+        [first.envName]: null,
+        [second.envName]: validFacts(second, { currency: "usd" }),
+      },
+      ...CONTEXT,
+    });
+    expect(findings.map((f) => f.field).sort()).toEqual(["currency", "existence"]);
+  });
+
+  /* The audit used to return [] here — identical to a clean pass — so an
+     operator was told everything matched while one rule had not run. */
+  it("says so when it cannot run the creation-Product check", () => {
+    const expected = EXPECTED_MAINTENANCE_PRICES[0];
+    const findings = auditMaintenancePrices({
+      prices: { [expected.envName]: validFacts(expected) },
+      creationProductIds: [],
+      liveMode: true,
+    });
+    expect(findings.map((f) => f.field)).toEqual(["coverage"]);
+    expect(findings[0].message).toContain("n'a pas été exécuté");
+  });
+
+  it("does not claim a coverage gap when it audited nothing at all", () => {
+    expect(
+      auditMaintenancePrices({ prices: {}, creationProductIds: [], liveMode: true }),
+    ).toEqual([]);
+  });
+
+  it("stays quiet about coverage once a creation Product is known", () => {
+    const expected = EXPECTED_MAINTENANCE_PRICES[0];
+    expect(
+      auditMaintenancePrices({
+        prices: { [expected.envName]: validFacts(expected) },
+        ...CONTEXT,
+      }),
+    ).toEqual([]);
   });
 });
