@@ -271,15 +271,19 @@ reputation at stake — which also means order confirmations.
 > **Closed when.** An import succeeds, the signup gets its confirmation, a scheduled campaign sends itself, pause-then-resume sends no duplicates, and a permanent bounce suppresses on the first event.
 
 ## Batch 11 — Internationalisation
-*2 items · 2 P0 · _2 open_*
+*2 items · 2 P0 · _2 done_*
 
-CMS translation genuinely works. Everything else — UI strings and catalogue — is wired
-to nothing.
+CMS translation genuinely worked. Everything else — UI strings and catalogue — was wired
+to nothing, and now is not.
 
-- [ ] **#147** 🔴 — Declare the schema fields, switch to `internalAction`, call `scheduleTranslation` from the catalogue mutations
-- [ ] **#148** 🔴 — Mount the language initialiser and expose a `t()` that is actually used — switching language only changes `<html lang>`
+- [x] **#147** ✅ — Schema fields declared on products/categories/menus and `translationQuota` on stores; `executeTranslation` and `batchChunk` re-registered as `internalAction`s over internal query → fetch → internal mutation; `scheduleTranslation` called from all six catalogue mutations; `translateCatalogue` added so the batch back-fill has a way in
+- [x] **#148** ✅ — `StorefrontI18nProvider` mounted in the shell fills the language store; `useTranslation()` exposes `t()` and the header, cart, product grid and product card use it; the SSR CMS and SEO readers now read `beid_locale` rather than a `locale` cookie nothing writes
 
 > **Closed when.** Adding a language, saving a product, then switching on the storefront shows a translated menu and translated buttons.
+>
+> **Console residue.** `OPENAI_API_KEY` must be set on the Convex deployment, or every
+> translation logs `OPENAI_API_KEY not set` and clears its pending flag without
+> translating. Nothing in the repository can set it.
 
 ## Batch 12 — Gamification
 *2 items · 2 P0 · 16 advertised features · _2 open_*

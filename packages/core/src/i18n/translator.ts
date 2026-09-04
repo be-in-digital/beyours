@@ -1,5 +1,5 @@
 /**
- * Translation system with interpolation and pluralization
+ * Translation system with interpolation
  * @packageDocumentation
  */
 
@@ -12,45 +12,36 @@ const translationParamsSchema = z.record(z.string(), z.union([z.string(), z.numb
 /**
  * Replace placeholders in a string with values from params
  *
- * Supports:
- * - {{key}} for interpolation
- * - {{count}} for plural forms
+ * Supports both brace styles, and it has to:
+ * - `{{key}}` — what this module was written for
+ * - `{key}` — what the shipped locale catalogues actually use
+ *   (`{count} article`, `Livraison gratuite à partir de {amount}`), and what
+ *   the GPT bulk translator is told to preserve verbatim
+ *   (`@be-in-digital/convex-functions/autoTranslate`)
+ *
+ * Reading only the double form meant every catalogue string carrying a value
+ * rendered its placeholder to the customer: `{count} articles`, literally.
+ *
+ * An unknown placeholder is left as it stands rather than blanked, so a
+ * missing parameter is visible in review instead of silently eating a number.
  *
  * @param template - Template string with placeholders
  * @param params - Values to interpolate
  * @returns Interpolated string
  */
 function interpolate(template: string, params: TranslationParams): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    const value = params[key]
-    return value !== undefined ? String(value) : match
-  })
-}
-
-/**
- * Get the plural form of a translation
- *
- * Simple pluralization:
- * - If count = 0 or 1: singular form
- * - If count > 1: plural form (adds 's' if not already present)
- *
- * For custom plural forms, use separate keys (e.g., "item.zero", "item.one", "item.other")
- *
- * @param singular - Singular form
- * @param count - Count for pluralization
- * @returns Plural form
- */
-function pluralize(singular: string, count: number): string {
-  if (count === 0 || count === 1) {
-    return singular
-  }
-
-  // Simple English pluralization (add 's' if not present)
-  if (!singular.endsWith('s')) {
-    return `${singular}s`
-  }
-
-  return singular
+  // The double-brace alternative is listed first: alternation is ordered, so
+  // `{{name}}` is consumed whole and never mistaken for `{name}` wrapped in
+  // stray braces.
+  return template.replace(
+    /\{\{(\w+)\}\}|\{(\w+)\}/g,
+    (match, doubled?: string, single?: string) => {
+      const key = doubled ?? single
+      if (key === undefined) return match
+      const value = params[key]
+      return value !== undefined ? String(value) : match
+    }
+  )
 }
 
 /**
@@ -70,7 +61,7 @@ function pluralize(singular: string, count: number): string {
  * )
  *
  * t('hello', { name: 'Jean' }) // "Bonjour Jean"
- * t('items', { count: 5 }) // "5 articles"
+ * t('items', { count: 5 }) // "5 article" — the caller picks the plural key
  * t('missing') // "missing" (key returned as fallback)
  * ```
  */
@@ -120,12 +111,16 @@ export function createTranslator(
       return translation
     }
 
-    // Handle pluralization
-    if ('count' in params && typeof params.count === 'number') {
-      translation = pluralize(translation, params.count)
-    }
-
-    // Interpolate params
+    // No automatic pluralization. It appended an English "s" to the WHOLE
+    // string whenever a `count` param was present, which is wrong in the
+    // language this product is written in and wrong in most others:
+    //
+    //   "Choisir exactement {count}"  + {count: 3}  ->  "Choisir exactement 3s"
+    //   "Table {count}"               + {count: 4}  ->  "Table 4s"
+    //
+    // The catalogues already carry explicit pairs — `cart.item` beside
+    // `cart.items`, `{count} article` beside `{count} articles` — so the
+    // caller picks the key and the translator only substitutes.
     return interpolate(translation, params)
   }
 }

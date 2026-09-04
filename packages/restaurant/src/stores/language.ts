@@ -11,7 +11,10 @@ import {
   setLocale,
   getLocaleFromLocalStorage,
   getLocaleFromCookie,
+  createTranslator,
+  mergeUiStrings,
 } from '@be-in-digital/core'
+import type { TranslatorFunction } from '@be-in-digital/core'
 
 /**
  * Language document from Convex (subset of fields needed client-side)
@@ -163,3 +166,39 @@ export const useLanguageStore = create<LanguageStore>()((set, get) => ({
     set({ staticStrings: strings })
   },
 }))
+
+/**
+ * The state a translator is built from — the four fields, nothing else.
+ *
+ * Taken as a parameter rather than read off the store so the cascade can be
+ * tested without React and without a store instance.
+ */
+export type TranslatableState = Pick<
+  LanguageState,
+  'locale' | 'defaultLocale' | 'overrides' | 'staticStrings'
+>
+
+/**
+ * Build the `t()` the storefront renders through.
+ *
+ * The cascade, in order:
+ *   1. the store's manual override for the current locale
+ *   2. the static JSON catalogue for the current locale
+ *   3. the same two for the default locale
+ *   4. the key itself
+ *
+ * Steps 3 and 4 are `createTranslator`'s job — it takes the default locale's
+ * merged map as its fallback and returns the key when both miss. Step 1 wins
+ * over step 2 because the override is the restaurateur correcting the machine,
+ * and the machine must not win that argument.
+ */
+export function buildTranslator(state: TranslatableState): TranslatorFunction {
+  const layerFor = (code: string) =>
+    mergeUiStrings(state.staticStrings.get(code), state.overrides[code])
+
+  return createTranslator(
+    layerFor(state.locale),
+    state.locale,
+    state.locale === state.defaultLocale ? undefined : layerFor(state.defaultLocale)
+  )
+}

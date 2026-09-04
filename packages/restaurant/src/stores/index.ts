@@ -10,7 +10,7 @@ export {
   STOREFRONT_SELECTION_KEY,
 } from './store'
 export { useUIStore } from './ui'
-export { useLanguageStore } from './language'
+export { useLanguageStore, buildTranslator } from './language'
 
 // The state/action types must be public: without them a consumer writing
 // `export const cart = useCartStore` gets TS4023/TS2742, the inferred type
@@ -27,4 +27,5 @@ export type {
   LanguageState,
   LanguageActions,
   LanguageStore,
+  TranslatableState,
 } from './language'

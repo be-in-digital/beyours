@@ -487,7 +487,9 @@ reporting `sent` has actually been delivered.
 ````
 
 ## Batch 11 — Internationalisation
-**0/2 done · 2 open.** Ten advertised features; switching language changes one HTML attribute.
+**2/2 done · nothing open.** Was: ten advertised features, and switching language changed
+one HTML attribute. The prompt below is kept for the record; the only thing left is the
+console step — `OPENAI_API_KEY` on the Convex deployment.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,

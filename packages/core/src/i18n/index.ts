@@ -52,6 +52,22 @@ export {
   getLocaleFromLocalStorage,
 } from './storage'
 
+// Catalogue text + request-locale resolution
+export {
+  LOCALE_COOKIE_NAME,
+  normalizeStoredLocale,
+  pickTranslatedField,
+  localizeDocument,
+  localizeDocuments,
+  mergeUiStrings,
+  resolveRequestLocale,
+} from './catalogue'
+export type {
+  DocumentTranslationEntry,
+  TranslatableDocument,
+  LocalizedText,
+} from './catalogue'
+
 // Translator
 export {
   createTranslator,

@@ -2,6 +2,47 @@ import { defineTable } from "convex/server"
 import { v } from "convex/values"
 
 /**
+ * Auto-translated content for one catalogue document, keyed by language code.
+ *
+ * `_meta` carries the bookkeeping the translator needs to stay incremental:
+ * a hash of the source text it translated from, so an unchanged field is not
+ * re-sent to GPT, and an `Auto` flag that a manual edit clears so the machine
+ * never overwrites a human. The abbreviated key prefixes (`name`, `desc`) are
+ * the ones `META_KEY_PREFIX` in `@be-in-digital/convex-functions/autoTranslate`
+ * writes — they have to agree, or a translation is recomputed on every save.
+ */
+export const documentTranslationsValidator = v.record(
+  v.string(),
+  v.object({
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    _meta: v.optional(
+      v.object({
+        nameHash: v.optional(v.string()),
+        nameAuto: v.optional(v.boolean()),
+        descHash: v.optional(v.string()),
+        descAuto: v.optional(v.boolean()),
+      })
+    ),
+  })
+)
+
+/**
+ * The three columns every translatable catalogue table carries.
+ *
+ * Spread into the table definition rather than repeated, so products,
+ * categories and menus cannot drift apart.
+ */
+export const translatableFields = {
+  /** GPT output per language code. Absent until the first translation lands. */
+  translations: v.optional(documentTranslationsValidator),
+  /** True between the debounced schedule and the translation completing. */
+  pendingTranslation: v.optional(v.boolean()),
+  /** The debounced job, kept so a second edit can cancel the first. */
+  scheduledTranslationJobId: v.optional(v.id("_scheduled_functions")),
+}
+
+/**
  * Categories table
  * Hierarchical product categories
  */
@@ -14,6 +55,7 @@ export const categoriesTable = defineTable({
   sortOrder: v.number(),
   isActive: v.boolean(),
   parentId: v.optional(v.id("categories")),
+  ...translatableFields,
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -106,6 +148,7 @@ export const productsTable = defineTable({
       syncError: v.optional(v.string()),
     })),
   })),
+  ...translatableFields,
   createdAt: v.number(),
   updatedAt: v.number(),
 })
@@ -171,6 +214,7 @@ export const menusTable = defineTable({
   })),
   isActive: v.boolean(),
   sortOrder: v.number(),
+  ...translatableFields,
   createdAt: v.number(),
   updatedAt: v.number(),
 })

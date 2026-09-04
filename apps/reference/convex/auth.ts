@@ -12,8 +12,14 @@ import authConfig from "./auth.config";
 // compact form (265 lines against the template's expanded 22k), so `components`
 // is inferred rather than named, and once #315 widened the Convex surface the
 // inferred type of this call exceeded what the compiler will serialize —
-// TS7056, on this line only, in this app only. The annotation says what
-// inference was already producing; it changes no behaviour.
+// TS7056. The annotation says what inference was already producing; it changes
+// no behaviour.
+//
+// It is no longer this app only. `createClient`'s return type mentions
+// `GenericCtx<DataModel>` a dozen times over, so it grows with the schema too,
+// not just with the function surface — the catalogue translation columns
+// (#147) pushed `apps/themes` over the same limit, and it carries the same
+// annotation for the same reason.
 export const authComponent: ReturnType<typeof createClient<DataModel>> =
   createClient<DataModel>(components.betterAuth);
 
