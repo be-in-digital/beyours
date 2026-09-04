@@ -15,6 +15,7 @@ import {
   printerSettingsTable,
   paymentsTable,
   paymentConnectionsTable,
+  paymentEventsTable,
   uberEatsConnectionsTable,
   oauthStatesTable,
   deliveryQuotesTable,
@@ -70,6 +71,7 @@ import {
   cmsMaintenanceTable,
   cmsAccountTable,
   systemAuditLogTable,
+  platformWebhookFailuresTable,
   maintenanceContractsTable,
   platformReleasesTable,
   migrationRequestsTable,
@@ -111,6 +113,7 @@ export default defineSchema({
   promotions: promotionsTable,
   promotionUsages: promotionUsagesTable,
   paymentConnections: paymentConnectionsTable,
+  paymentEvents: paymentEventsTable,
   uberEatsConnections: uberEatsConnectionsTable,
   oauthStates: oauthStatesTable,
   deliveryQuotes: deliveryQuotesTable,
@@ -160,6 +163,7 @@ export default defineSchema({
   cmsAccount: cmsAccountTable,
   // System
   systemAuditLog: systemAuditLogTable,
+  platformWebhookFailures: platformWebhookFailuresTable,
   // Maintenance & migration
   maintenanceContracts: maintenanceContractsTable,
   platformReleases: platformReleasesTable,

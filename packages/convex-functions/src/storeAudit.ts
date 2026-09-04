@@ -48,6 +48,7 @@ export const STORE_AUDIT_OPERATIONS = {
   updateHours: "updateHours",
   updateOverrides: "updateOverrides",
   updateAddress: "updateAddress",
+  updateBranding: "updateBranding",
   updatePrintConfig: "updatePrintConfig",
   updateStationMapping: "updateStationMapping",
   updateSoundConfig: "updateSoundConfig",

@@ -388,8 +388,19 @@ covers `products`, `categories` or `menus`.
 
 ---
 
-## P0-10 · Deliveroo orders never reach the kitchen
+## P0-10 · Deliveroo orders never reach the kitchen — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+> **Resolved 2026-09-04.** `handleNewOrder` now creates the ticket after the `!created`
+> guard, using the shared `toKitchenTicketItemsFromPlatform` so the customer's instruction
+> and allergy survive. Held by `tests/convex/deliveroo-webhook.test.ts` in both apps.
+>
+> **The "Fix" below is wrong about accept/reject — do not follow it.** Verified:
+> `TicketCard.tsx:99-104` already called `api.kitchenTickets.acceptTicket` for **both**
+> platforms, and `kitchenTickets.ts:273` already called `deliveroo.acceptOrder`. The accept
+> path existed and worked; it was unreachable only because no ticket was ever created, and
+> the card acts on a ticket. Creating the ticket made it reachable. `deliverooOrders.ts`
+> really is dead — zero callers — but it is a duplicate of the live path, not the live path.
 
 ### The problem
 In auto mode the order is accepted on Deliveroo's side and a rider is dispatched,
@@ -520,8 +531,14 @@ A 50,000-ticket dataset degrades neither the KDS nor the completed tab.
 
 ---
 
-## P0-14 · Uber cancellation and scheduled-order webhooks match names Uber never sends
+## P0-14 · Uber cancellation and scheduled-order webhooks match names Uber never sends — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+> **Resolved 2026-09-04.** `classifyUberEvent` (in `@be-in-digital/convex-functions/platformWebhook`,
+> so both apps render from one copy) normalises the `.notification` suffix and matches Uber's
+> real catalogue. The `eats.order.status_update` branch and its status map are deleted. One
+> test per real event, asserting the database effect rather than the HTTP code — and a
+> cancellation now also takes the kitchen ticket off the pass, which the original fix missed.
 
 ### The problem
 A customer cancels: the handler answers 200, the order stays `confirmed`, the ticket
@@ -547,8 +564,16 @@ One test per real Uber event, asserting the database effect — not just the HTT
 
 ---
 
-## P0-15 · An unfetchable Uber order is assigned to an arbitrary store
+## P0-15 · An unfetchable Uber order is assigned to an arbitrary store — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+> **Resolved 2026-09-04.** `resolveStoreIntegration` refuses rather than guesses, and the
+> event is kept verbatim in the new `platformWebhookFailures` table so it can be replayed.
+> An adversarial pass then found three more ways to land on the wrong restaurant, all now
+> closed: an integration saved with a blank `platformStoreId` swallowing an unidentified
+> order, two integrations sharing one `platformStoreId` (an owner pasting the same id onto a
+> second location) routing to whichever sorted first, and a non-string store id throwing
+> `trim is not a function` into a 500 with nothing recorded.
 
 ### The problem
 On a multi-location account, **every order from every location** lands on the first
@@ -576,8 +601,19 @@ leaves an actionable trace.
 
 ---
 
-## P0-16 · `auto_accept` marks the order confirmed without accepting it on Uber
+## P0-16 · `auto_accept` marks the order confirmed without accepting it on Uber — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #103
+
+> **Resolved 2026-09-04.** `settleWithUber` calls the platform first and moves the order only
+> on success. `platformSyncStatus` — in the schema since the beginning, written by nothing —
+> now records the outcome, and a bounded retry (15s/60s/180s; 255s total, inside Uber's
+> 11.5-minute auto-cancel) abandons itself if staff have acted in the meantime.
+>
+> One caveat, stated rather than implied: `platformSyncStatus` is **written but not yet
+> rendered**. The KDS reads `kitchenTickets` and this lives on `orders`. What staff see today
+> is the order itself — it stays `pending`, its ticket stays on the pass, the accept button
+> stays live — so an order Uber never accepted is visibly unaccepted. Surfacing the flag on
+> the display is follow-up work.
 
 ### The problem
 Two failure modes on one path: either Uber is never told and auto-cancels at 11.5
@@ -1295,45 +1331,80 @@ every bullet becomes a checklist item in ClickUp.
 ---
 
 ## TECH-04 · Delivery integrations — money, statuses and volume
-**Priority:** high · **Parent:** #103
+**Priority:** high · **Parent:** #103 · **9/9 closed**
 
-- [ ] **Uber line items stored at ~2.1× their real price.** `uberEatsWebhook.ts:145`
-  (and `:374`) feeds `item.totalPrice` — already `(unitPrice + modifiers) × quantity`
-  (`mappers.ts:120`) — into the slot `orders.ts:743` treats as a unit price and `:749`
-  re-multiplies by quantity. Deliveroo passes a genuine unit price
-  (`deliverooWebhook.ts:268`), so the two platforms silently disagree.
-  → pass `item.unitPrice`, and add a test that runs mapper output through
-  `createFromWebhook` rather than testing each half in isolation.
-- [ ] **Deliveroo status vocabulary does not match the API.**
-  `deliverooWebhook.ts:136-158` — no `confirmed` case, `canceled` misspelled, four
-  values Deliveroo never sends, and a `default: return "pending"` that drags the order
-  **backwards**. A cancellation cancels nothing (`cancelledAt` never set).
-- [ ] **A `denied` status 500s the webhook into a retry loop.** `types.ts:355` maps
-  `DENIED → "denied"`, absent from the `updateFromWebhook` validator
-  (`orders.ts:787-796`); the cast at `:261` hides the mismatch. Uber retries seven times.
-- [ ] **Every delivery webhook full-scans `orders`.** `orders.ts:719` and `:810` use
-  `.filter()` with no index, while `by_external_order` exists
-  (`tables/orders.ts:129`). Past ~16,000 orders (Convex's per-transaction ceiling)
-  **order ingestion stops permanently**, with no alert.
-- [ ] **Item availability (86'ing) and store pause are not wired.**
-  `deliveroo/store-status.ts:44,77,14` and `uber-eats/client.ts:389` have no callers.
-  Menu sync filters on `isActive` only and ignores `stock`
-  (`uberEatsMenuSync.ts:211-212`). A sold-out dish keeps selling.
-  The Deliveroo path is also mis-targeted: `PUT …/v1/…/unavailabilities` against the
-  documented `PUT …/v2/…/menu/item-unavailabilities`.
-- [ ] **Menu sync fans out on every product edit, with no throttling or backoff.**
-  `products.ts:32-39` and `menus.ts:21-28` schedule `syncAllStores` on every mutation —
-  Convex does not dedupe scheduled jobs — and the sweep pushes the menu of **every**
-  store. A 50-product import queues 50 sweeps × 2 platforms; neither client has 429 backoff.
-- [ ] **Sandbox flags default to production, read in 20 files.** None has a default;
-  the templates ship `true`, which sends production credentials to the test endpoints.
-  → one `isSandbox()` in `@be-in-digital/core/env`, with the variable made required.
-- [ ] **Deliveroo failures are acknowledged as 200.**
-  `deliverooWebhookHandler.ts:65-79` answers 200 even when `processOrderWebhook` returns
-  `{success:false}`: Deliveroo never retries and the order is gone with no record.
-- [ ] **The Deliveroo e2e suite cannot sign correctly.**
-  `e2e/deliveroo/test-config.ts:64-82` signs the body alone, while the verifier requires
-  `sequenceGuid + " " + body` (`deliverooWebhookHandler.ts:104-110`).
+All nine were verified by execution before being fixed, and each fix is held by a test that
+was proven red against the unfixed code.
+
+- [x] **Uber line items stored at ~2.1x their real price.** Measured 2.209x on a
+  quantity-2 line. `uberEatsWebhook.ts` fed `item.totalPrice` — already
+  `(unitPrice + modifiers) x quantity` — into the slot `createFromWebhook` treats as a
+  unit price and multiplies again. Now `toWebhookOrderItems` passes `unitPrice`, named
+  for what it is so the next such mistake is a type error.
+  Two further money defects surfaced while testing the seam:
+  `createFromWebhook` added modifiers **once** rather than per unit, so the same basket
+  was cheaper through a platform than through the website — and the existing test
+  asserted the wrong total, holding the bug in place. It has been rewritten. A modifier's
+  own `quantity` was dropped at the boundary, so a "double cheese" was charged once. The
+  line arithmetic now also clamps the way `verifyOrderLine` does (no negative line from an
+  over-large removal discount, integer quantities, `MAX_LINE_QUANTITY`).
+- [x] **Deliveroo status vocabulary does not match the API.** Confirmed against Deliveroo's
+  published contract: it sends only `pending`, `placed`, `accepted`, `confirmed`,
+  `rejected`, `canceled` — **one l**. The switch matched `cancelled`, had no `confirmed`
+  case, accepted four prep *stages* it never receives, and defaulted to `pending`, dragging
+  live orders backwards. Unknown statuses now return `null` and the caller leaves the order
+  alone.
+- [x] **A `denied` status 500s the webhook into a retry loop.** The cast that hid it lived in
+  the webhook, not `orders.ts`. The whole `eats.order.status_update` branch that carried the
+  value has been deleted — Uber never sent that event — so no Uber path applies a mapped
+  status any more. The landmine itself (`UBER_EATS_STATUS_MAP.DENIED = "denied"`, a value our
+  eight-status table cannot store) is pinned by a test at source, so the next person to write
+  `status: unified.status` is warned rather than paged.
+- [x] **Every delivery webhook full-scans `orders`.** Both lookups now read through
+  `by_external_order`, which existed and was used by nothing. The index is on
+  `externalOrderId` alone while the queries also match on `source`, so this is covered
+  against the real Convex engine rather than a stub: the same external id from two platforms
+  stays two orders, and an update reaches the right one.
+- [x] **Item availability (86'ing) and store pause are not wired.** The Deliveroo path was
+  aimed at an endpoint that matches nothing documented, with the wrong body shape, through
+  the wrong API base, sending lowercase statuses against an uppercase enum. Uber's
+  `updateStoreStatus` never sent the `paused_until` the contract requires — and a green test
+  asserted that broken payload. Menu sync now propagates stock instead of filtering on
+  `isActive` alone.
+- [x] **Menu sync fans out on every product edit.** Measured: a 50-product import queued
+  **100** sweeps, each pushing every store's menu. Now 2, scoped to the store actually
+  edited, coalesced through the existing `rateLimits` table. Both clients gained 429/5xx
+  backoff with jitter honouring `Retry-After`; Deliveroo's token cache never hit at all,
+  because it demanded 5 minutes of life from a 300-second token.
+- [x] **Sandbox flags default to production, read in 20 files.** Measured: **37 read sites
+  across 25 files**, not 20. Centralised in `@be-in-digital/core/env`.
+- [x] **Deliveroo failures are acknowledged as 200.** The handler now returns 500 when
+  processing genuinely failed so Deliveroo retries, and keeps 200 for duplicates and
+  unhandled events, which must never be retried. An unclassified failure fails safe toward
+  retry.
+- [x] **The Deliveroo e2e suite cannot sign correctly.** It signed the body alone while the
+  verifier requires `sequenceGuid + " " + body`; the GUID was generated *after* the
+  signature. Every one of those webhooks got a 401, and with the env vars unset the suite
+  skipped — so a signature that could never be accepted looked exactly like a green run. The
+  skip is now loud, and a no-network test pins the digest against a value computed with
+  `openssl`, not with repo code.
+
+### Also fixed, found by adversarial verification rather than by the cards
+
+- [x] **An Uber cancellation left the kitchen ticket live.** Cancelling the order patched the
+  order row only: the ticket stayed `pending`, stayed on the pass, and **stayed in the print
+  queue**. `updateStatus` (the staff path) had always cascaded to the ticket;
+  `updateFromWebhook` — the path every platform cancellation takes — is a different handler
+  and never did. A comment in `updateStatus` claimed "every path into a status change goes
+  through this handler ... the Deliveroo webhooks", which was simply untrue. Now one
+  `cancelKitchenTicketsForOrder`, called from both.
+- [x] **A cancellation for an order past `confirmed` was silently swallowed.** The first fix
+  applied `ORDER_STATUS_TRANSITIONS` to inbound notifications. That table stops the
+  cancellation window at `confirmed` for an **outbound** reason — Deliveroo refuses to cancel
+  food already being made — and applying it inbound meant a customer cancelling a `preparing`
+  order got HTTP 200, no change, and a kitchen that carried on cooking. A platform
+  cancellation is a fact, not a request: `refusePlatformStatus` now honours it from any status
+  where stopping still means something, and records the ones that arrive after delivery.
 
 ---
 
@@ -1700,16 +1771,38 @@ every bullet becomes a checklist item in ClickUp.
 
 Outside the repo: none of this is fixed by writing code.
 
-## LAUNCH-01 · Rotate the exposed Deliveroo secret — **urgent**
-The `client_secret` is still readable in git history (commit `7cf4d41`,
-`scripts/deliveroo-menu-scenarios.sh:33-34`, plus 18 commits on
-`e2e/deliveroo/test-config.ts`). The working tree is clean; the history is not.
-`.gitleaksignore:13-15` states this explicitly — so **the Gitleaks scan is green over a
-dirty history**.
-Mandatory order: regenerate in the Deliveroo portal → propagate
+## LAUNCH-01 · Rotate the exposed Deliveroo secret — **urgent, still open**
+The `client_secret` is still readable in git history. Re-measured 2026-09-04 by execution,
+because the previous figures here were wrong in the direction that matters:
+
+- **137 commits** across all local refs contain it; **41 are ancestors of `main`** (published).
+  The old "18 commits" counted `test-config.ts` alone and omitted
+  `scripts/deliveroo-menu-scenarios.sh`, where it lived longest — understated 2.3x against
+  published history.
+- 96 more are local-only, on the pre-monorepo lineage this clone keeps under
+  `archive/main-avant-monorepo` and 34 stale tags. A fresh clone of origin will not touch them.
+- The working tree is clean. One distinct secret value; no prior rotation.
+- First seen `7cf4d41` (2026-03-11, at **lines 9-10**, not 33-34), last `9e751d5` (2026-06-02).
+
+**Detection is fixed; rotation is not.** `.gitleaks.toml` now carries
+`deliveroo-client-secret-context` and `deliveroo-client-secret-shape`. Before them no rule
+matched: it is a bare 52-character base36 token, and the leak placed it after `:-` in a shell
+default and after `|| "` in TypeScript, neither of which the stock generic-api-key rule reads
+as an assignment. Validated across all 7,459 blobs in the object store — 3 matching blobs, one
+distinct token, zero false positives at HEAD (2,655 files) or in history.
+
+**Consequence: the `Gitleaks (secret scan)` job now fails on `main`.** It is not one of the five
+required checks (Lint, Type Check, Test, Build, E2E Status), so it does not block merges. Do
+**not** silence it in `.gitleaksignore`: that file's own policy is that an entry records a
+credential accepted as *no longer exploitable*, and this one has not been rotated.
+
+Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 (`npx convex env set … --prod`) → re-verify → revoke the old one. Then part B of
-`tasks/secret-rotation-runbook.md` (history rewrite), after draining the open PR queue.
-Add a Gitleaks rule for the Deliveroo secret shape.
+`tasks/secret-rotation-runbook.md` (history rewrite).
+
+Cost of the rewrite, re-measured: **393 commits on `main`, 8 remote branches, 59 of 60 remote
+tags** — the tags being the `@be-in-digital/*` release anchors. The blocker that deferred it
+last time has expired: **0 open PRs** (was 14).
 
 ## LAUNCH-02 · Create the founders coupon and the 4 maintenance prices in Stripe — **urgent**
 Without them the **first Essentielle sale is refused by the code** —

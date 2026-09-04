@@ -17,6 +17,9 @@ export type {
 } from "./uberEatsMenuSync";
 
 import type { ProductRecord, CategoryRecord } from "./uberEatsMenuSync";
+import { isProductOutOfStock } from "./uberEatsMenuSync";
+
+export { isProductOutOfStock };
 
 // === V1 Menu Payload Types (matches Deliveroo Partner API V1) ===
 
@@ -143,6 +146,73 @@ function allDaySchedule() {
 // === Build Payload ===
 
 /**
+ * The id an item is addressed by on Deliveroo: the mapped platform id when the
+ * product has one, otherwise the Convex id. The menu payload and the
+ * availability call MUST agree on this, or 86'ing silently targets nothing.
+ */
+export function deliverooItemId(product: Pick<ProductRecord, "_id" | "externalIds">): string {
+  return product.externalIds?.deliverooId ?? product._id;
+}
+
+/**
+ * The products that `buildDeliverooMenuPayload` actually publishes.
+ *
+ * Being active is not enough: the builder walks active CATEGORIES and emits
+ * their products, so an active product filed under an inactive or deleted
+ * category never reaches the menu. Anything derived from the menu — above all
+ * the availability call — has to apply the same rule, or it addresses ids
+ * Deliveroo has never seen and the request fails.
+ */
+function selectDeliverooMenuProducts(
+  products: ProductRecord[],
+  categories: CategoryRecord[]
+): ProductRecord[] {
+  const activeCategoryIds = new Set(
+    categories.filter((c) => c.isActive).map((c) => c._id)
+  );
+  return products.filter((p) => p.isActive && activeCategoryIds.has(p.categoryId));
+}
+
+/**
+ * The availability changes to send after a menu push, as a per-item DELTA.
+ *
+ * Deliveroo carries availability on a separate endpoint, not in the menu
+ * payload, so the sold-out dishes stay in the uploaded menu (an id absent from
+ * the menu cannot be 86'd) and are switched off in a second call.
+ *
+ * Only products with stock TRACKING ON appear here, and that restriction is
+ * the whole point. Convex is not the authority on availability in general:
+ * staff 86 a dish on the Deliveroo tablet, nothing writes that back, and no
+ * order path decrements stock. Tracking is the line. For a tracked product an
+ * admin typed the number, so we assert BOTH directions and will overwrite a
+ * manual 86 — `unavailable` at zero, `available` once it is restocked. For an
+ * untracked one we say nothing at all, and the kitchen's own call stands.
+ * Untracked is the default for a new product, so most of the catalogue is in
+ * the second group.
+ *
+ * This is why the caller uses the POST delta and not the v2 PUT: PUT replaces
+ * the entire availability state, which would un-86 every dish staff had marked
+ * out — tracked or not — and un-hide every hidden item, on each catalogue edit.
+ *
+ * Known limitation: turning tracking OFF on a product we had 86'd leaves it
+ * unavailable on Deliveroo, because we stop speaking for it rather than
+ * retracting. Staff can clear it on the tablet and it stays cleared. Fixing it
+ * here would mean asserting `available` for every untracked product, which is
+ * the manual-86 stomp above on the majority of the catalogue — a worse trade.
+ */
+export function collectDeliverooAvailabilityUpdates(
+  products: ProductRecord[],
+  categories: CategoryRecord[]
+): Array<{ itemId: string; status: "available" | "unavailable" }> {
+  return selectDeliverooMenuProducts(products, categories)
+    .filter((p) => p.stock?.tracked === true)
+    .map((p) => ({
+      itemId: deliverooItemId(p),
+      status: isProductOutOfStock(p) ? ("unavailable" as const) : ("available" as const),
+    }));
+}
+
+/**
  * Convert internal products + categories to Deliveroo V1 menu payload.
  *
  * Produces the flat-array format expected by PUT /v1/brands/{brandId}/menus/{menuId}:
@@ -184,7 +254,7 @@ export function buildDeliverooMenuPayload(
     const itemIds: string[] = [];
 
     for (const product of catProducts) {
-      const itemId = product.externalIds?.deliverooId ?? product._id;
+      const itemId = deliverooItemId(product);
       itemIds.push(itemId);
 
       const item: V1Item = {

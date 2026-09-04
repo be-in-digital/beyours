@@ -11,6 +11,7 @@ export { ordersTable } from "./orders"
 export { kitchenTicketsTable, printerSettingsTable } from "./kitchen"
 export { paymentsTable } from "./payments"
 export { paymentConnectionsTable } from "./paymentConnections"
+export { paymentEventsTable } from "./paymentEvents"
 export { uberEatsConnectionsTable } from "./uberEatsConnections"
 export { oauthStatesTable } from "./oauthStates"
 export { deliveryQuotesTable } from "./deliveryQuotes"
@@ -57,6 +58,8 @@ export {
 } from "./autoBlog"
 // System
 export { systemAuditLogTable } from "./systemAuditLog"
+// Delivery-platform webhooks that could not be acted on (dead letter)
+export { platformWebhookFailuresTable } from "./platformWebhookFailures"
 // Maintenance & migration
 export {
   maintenanceContractsTable,

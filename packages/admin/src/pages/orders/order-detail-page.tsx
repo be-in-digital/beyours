@@ -1,7 +1,7 @@
 "use client"
 
 import { use, useState } from "react"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useAction } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
@@ -24,7 +24,7 @@ import {
 import { Input, Label, Textarea } from "@be-in-digital/ui"
 import { OrderStatusActions } from "./order-status-actions"
 import { UberDirectPanel } from "./uber-direct-panel"
-import { ArrowLeft, RotateCcw, Banknote } from "lucide-react"
+import { ArrowLeft, RotateCcw, Banknote, AlertTriangle } from "lucide-react"
 import { Button } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -39,7 +39,10 @@ import type {
   Payment,
   BadgeVariant,
 } from "../../lib/types"
-import { ORDER_STATUS_CONFIG } from "../../lib/vocabulary"
+import { ORDER_STATUS_CONFIG, ORDER_PAYMENT_STATUS_CONFIG } from "../../lib/vocabulary"
+import { refundControlState } from "../../lib/refund-eligibility"
+import { RefundControl } from "../payments/refund-control"
+import { useAdminAuthStore } from "../../stores/admin-auth-store"
 
 type OrderDetailPageProps = {
   params: Promise<{ orderId: string }>
@@ -69,17 +72,15 @@ function getTypeBadge(type: OrderType) {
 
 /**
  * Get badge for payment status
+ *
+ * Falls back rather than indexing blind: an order carrying a status newer than
+ * this build must not render an empty badge.
  */
 function getPaymentBadge(status: OrderPaymentStatus) {
-  const paymentConfig: Record<OrderPaymentStatus, { className: string; label: string }> = {
-    pending: { className: "bg-yellow-100 text-yellow-800", label: "En attente" },
-    paid: { className: "bg-green-100 text-green-800", label: "Payé" },
-    failed: { className: "bg-red-100 text-red-800", label: "Échoué" },
-    refunded: { className: "bg-gray-100 text-gray-800", label: "Remboursé" },
-    partially_refunded: { className: "bg-orange-100 text-orange-800", label: "Partiellement remboursé" },
+  const config = ORDER_PAYMENT_STATUS_CONFIG[status] ?? {
+    className: "bg-gray-100 text-gray-800",
+    label: status,
   }
-
-  const config = paymentConfig[status]
   return <Badge className={config.className}>{config.label}</Badge>
 }
 
@@ -97,7 +98,11 @@ function OrderRefundDialog({
 }) {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const api = useAdminApiStore((s) => s.api)
-  const refundMutation = useMutation(api?.payments?.refund ?? ("skip" as never))
+  // An action, not a mutation: the refund calls the payment provider before
+  // anything is recorded. `payments.refund` was a database-only patch that
+  // reported success while the customer was never paid back. It was deleted;
+  // this dialog kept calling it, so the button threw on every click.
+  const refundPayment = useAction(api?.payments?.refundPayment ?? ("skip" as never))
 
   const maxRefundAmount = payment.amount - (payment.refundedAmount || 0)
   const [refundAmount, setRefundAmount] = useState(maxRefundAmount)
@@ -109,14 +114,16 @@ function OrderRefundDialog({
 
     setIsSubmitting(true)
     try {
-      await refundMutation({
+      await refundPayment({
         id: payment._id,
         amount: refundAmount,
         reason: reason.trim() || undefined,
       })
 
       toast.success(
-        `Remboursement de ${formatPrice(refundAmount, payment.currency)} traité avec succès`
+        payment.provider === "cash"
+          ? `Remboursement de ${formatPrice(refundAmount, payment.currency)} enregistré (espèces, à remettre au client)`
+          : `Remboursement de ${formatPrice(refundAmount, payment.currency)} confirmé par ${payment.provider}`
       )
       onOpenChange(false)
       setRefundAmount(maxRefundAmount)
@@ -313,11 +320,18 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
     }
   }
 
-  const canRefund = primaryPayment
-    ? primaryPayment.status === "succeeded" &&
-      primaryPayment.provider !== "cash" &&
-      (primaryPayment.refundedAmount || 0) < primaryPayment.amount
-    : false
+  // `payments:read` gets a role onto this screen; `payments:refund` is what the
+  // server checks on the click. They are not the same set of people.
+  const role = useAdminAuthStore((s) => s.role)
+  const refund = refundControlState(primaryPayment, role)
+
+  /**
+   * Cancelling a paid order leaves the money with the restaurant: the payment
+   * rows are untouched and the order parks on `refund_pending`. Nothing else
+   * on this page says so — the operator would see a cancelled order and assume
+   * the customer had been paid back.
+   */
+  const awaitingRefund = order?.paymentStatus === "refund_pending"
 
   if (!isValidOrderId || order === null) {
     return (
@@ -357,6 +371,36 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
           {getTypeBadge(order.type)}
         </div>
       </div>
+
+      {/* Refund owed but not yet sent — see `awaitingRefund` above. */}
+      {awaitingRefund && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-semibold text-amber-900">
+              Remboursement à effectuer
+            </p>
+            <p className="text-sm text-amber-800">
+              Cette commande a été annulée après paiement. Aucun remboursement n&apos;a
+              encore été envoyé au client.
+              {!refund.visible &&
+                " Effectuez-le depuis le tableau de bord de votre prestataire, ou rendez les espèces au comptoir."}
+            </p>
+          </div>
+          {primaryPayment && (
+            <RefundControl state={refund} className="shrink-0">
+              <Button
+                size="sm"
+                disabled={refund.disabled}
+                onClick={() => setShowRefundDialog(true)}
+              >
+                <RotateCcw className="mr-1.5 h-3 w-3" />
+                Rembourser le client
+              </Button>
+            </RefundControl>
+          )}
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -547,16 +591,19 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                   Encaisser en espèces
                 </Button>
               )}
-              {canRefund && primaryPayment && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setShowRefundDialog(true)}
-                >
-                  <RotateCcw className="mr-1.5 h-3 w-3" />
-                  Rembourser
-                </Button>
+              {primaryPayment && (
+                <RefundControl state={refund}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={refund.disabled}
+                    onClick={() => setShowRefundDialog(true)}
+                  >
+                    <RotateCcw className="mr-1.5 h-3 w-3" />
+                    Rembourser
+                  </Button>
+                </RefundControl>
               )}
             </CardHeader>
             <CardContent className="space-y-3">

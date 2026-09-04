@@ -14,6 +14,23 @@ const providerValidator = v.union(
   v.literal("paypal")
 )
 
+/**
+ * Connection status validator — must stay equal to the `status` union in
+ * `@be-in-digital/convex-schema` (`tables/paymentConnections.ts`), which
+ * documents what each value means.
+ *
+ * `onboarding_complete` says the provider account exists and onboarding
+ * finished, but the charge path does not route to it. Only `connected` means
+ * the restaurant is actually being paid, so only `connected` may open a charge
+ * path (see `getSumUpAccessToken` in each app's `convex/sumup.ts`).
+ */
+const statusValidator = v.union(
+  v.literal("connected"),
+  v.literal("onboarding_complete"),
+  v.literal("disconnected"),
+  v.literal("error")
+)
+
 // === QUERIES ===
 
 /**
@@ -84,11 +101,7 @@ export const upsert = {
     encryptedAccessToken: v.optional(v.string()),
     encryptedRefreshToken: v.optional(v.string()),
     tokenExpiresAt: v.optional(v.number()),
-    status: v.union(
-      v.literal("connected"),
-      v.literal("disconnected"),
-      v.literal("error")
-    ),
+    status: statusValidator,
   },
   handler: async (ctx: any, args: any) => {
     const existing = await ctx.db

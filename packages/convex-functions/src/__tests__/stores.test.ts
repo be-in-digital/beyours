@@ -1,9 +1,14 @@
 import { describe, it, expect, vi } from "vitest"
 import {
+  BRANDING_FIELDS,
+  MAX_BRANDING_VALUE_LENGTH,
+  assertBrandingValues,
   create,
+  mergeBranding,
   remove,
   update,
   updateAddress,
+  updateBranding,
   updateHours,
   updatePrintConfig,
   updateSoundConfig,
@@ -411,6 +416,199 @@ describe("updateSoundConfig", () => {
     expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
       soundConfig: config,
     }))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// updateBranding
+// ---------------------------------------------------------------------------
+
+/**
+ * The Design screen saves in three pieces and `branding` is one blob, so the
+ * question these tests ask is never "did the write land" but "did it land
+ * without taking the other two pieces with it".
+ */
+describe("mergeBranding", () => {
+  it("keeps the fields a partial write does not name", () => {
+    const merged = mergeBranding(
+      { primaryColor: "#FF6B00", accentColor: "#FF9800" },
+      { fontHeading: "Playfair" }
+    )
+    expect(merged).toEqual({
+      primaryColor: "#FF6B00",
+      accentColor: "#FF9800",
+      fontHeading: "Playfair",
+    })
+  })
+
+  it("overwrites the field it does name", () => {
+    expect(mergeBranding({ primaryColor: "#000" }, { primaryColor: "#FFF" }))
+      .toEqual({ primaryColor: "#FFF" })
+  })
+
+  it("reads an empty string as a clear, not as a value", () => {
+    // `<input>` returns `""` for a box the owner emptied. Storing it would
+    // leave `<img src="">` on the page; ignoring it would make the clear
+    // button do nothing.
+    expect(mergeBranding({ logoUrl: "https://x.test/a.png" }, { logoUrl: "" }))
+      .toEqual({})
+  })
+
+  it("ignores an absent field rather than deleting it", () => {
+    expect(mergeBranding({ logoUrl: "https://x.test/a.png" }, { logoUrl: undefined }))
+      .toEqual({ logoUrl: "https://x.test/a.png" })
+  })
+
+  it("carries through a key it does not know about", () => {
+    // `branding` is a legacy `v.any()` blob; a deployment may hold a key this
+    // validator never named, and dropping it would be silent data loss.
+    expect(mergeBranding({ legacyTheme: "pizzeria" }, { primaryColor: "#FFF" }))
+      .toEqual({ legacyTheme: "pizzeria", primaryColor: "#FFF" })
+  })
+
+  it("starts from nothing when the store has no branding", () => {
+    expect(mergeBranding(undefined, { primaryColor: "#FFF" })).toEqual({ primaryColor: "#FFF" })
+    expect(mergeBranding(null, { primaryColor: "#FFF" })).toEqual({ primaryColor: "#FFF" })
+  })
+
+  it("refuses to merge into something that is not an object", () => {
+    // A string or an array where an object was expected would otherwise spread
+    // into numbered keys.
+    expect(mergeBranding("#FF6B00", { primaryColor: "#FFF" })).toEqual({ primaryColor: "#FFF" })
+    expect(mergeBranding(["#FF6B00"], { primaryColor: "#FFF" })).toEqual({ primaryColor: "#FFF" })
+  })
+
+  it("does not mutate the stored object it merges into", () => {
+    const existing = { primaryColor: "#000" }
+    mergeBranding(existing, { primaryColor: "#FFF" })
+    expect(existing).toEqual({ primaryColor: "#000" })
+  })
+})
+
+describe("assertBrandingValues", () => {
+  it("accepts what the Design screen sends", () => {
+    expect(() =>
+      assertBrandingValues({
+        primaryColor: "#FF6B00",
+        fontHeading: "Playfair Display",
+        logoUrl: "https://cdn.test/logo.png",
+        faviconUrl: "/uploads/branding/favicon.png",
+      })
+    ).not.toThrow()
+  })
+
+  it("refuses a URL scheme an <img> should not be given", () => {
+    // `v.string()` accepts `javascript:` and `data:` happily; these two fields
+    // are rendered as a URL, so the scheme is not a matter of taste.
+    expect(() => assertBrandingValues({ logoUrl: "javascript:alert(1)" }))
+      .toThrow(/http\(s\) or root-relative URL/)
+    expect(() => assertBrandingValues({ faviconUrl: "data:text/html;base64,PHN2Zz4=" }))
+      .toThrow(/http\(s\) or root-relative URL/)
+  })
+
+  it("lets an emptied URL through, because that is a clear", () => {
+    expect(() => assertBrandingValues({ logoUrl: "" })).not.toThrow()
+  })
+
+  it("bounds the length of every field", () => {
+    expect(() =>
+      assertBrandingValues({ fontHeading: "x".repeat(MAX_BRANDING_VALUE_LENGTH + 1) })
+    ).toThrow(/exceeds/)
+    expect(() =>
+      assertBrandingValues({ fontHeading: "x".repeat(MAX_BRANDING_VALUE_LENGTH) })
+    ).not.toThrow()
+  })
+
+  it("refuses a value that is not a string", () => {
+    expect(() => assertBrandingValues({ primaryColor: 16711680 })).toThrow(/must be a string/)
+  })
+})
+
+describe("updateBranding", () => {
+  it("names every field the Design screen reads back, and no others", () => {
+    // The page reads seven fields on mount (design-page.tsx). A field it reads
+    // but the validator refuses is a save that throws; a field the validator
+    // accepts but nothing reads is a key nobody will ever see again.
+    expect(Object.keys(BRANDING_FIELDS).sort()).toEqual([
+      "accentColor",
+      "faviconUrl",
+      "fontBody",
+      "fontHeading",
+      "logoUrl",
+      "primaryColor",
+      "secondaryColor",
+    ])
+  })
+
+  it("declares no `any` of its own", () => {
+    // The schema stores `branding` as `v.any()`, which is how the missing
+    // mutation went unnoticed. The writer does not inherit that.
+    expect(updateBranding.args.branding).not.toEqual(expect.objectContaining({ kind: "any" }))
+  })
+
+  it("refuses a store that is not there", async () => {
+    const db = createMockDb()
+    await expect(
+      updateBranding.handler(createCtx(db), {
+        id: "stores:missing",
+        branding: { primaryColor: "#FFF" },
+      })
+    ).rejects.toThrow("Store not found")
+  })
+
+  it("writes the merge, not the argument", async () => {
+    const db = createMockDb({
+      "stores:1": { ...A_STORE, branding: { primaryColor: "#FF6B00", accentColor: "#FF9800" } },
+    })
+
+    await updateBranding.handler(createCtx(db, "user_42"), {
+      id: "stores:1",
+      branding: { fontHeading: "Playfair", fontBody: "Inter" },
+    })
+
+    expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
+      branding: {
+        primaryColor: "#FF6B00",
+        accentColor: "#FF9800",
+        fontHeading: "Playfair",
+        fontBody: "Inter",
+      },
+      updatedAt: expect.any(Number),
+    }))
+  })
+
+  it("validates before it touches the document", async () => {
+    const db = createMockDb({ "stores:1": { ...A_STORE, branding: { logoUrl: "https://x.test/a.png" } } })
+
+    await expect(
+      updateBranding.handler(createCtx(db, "user_42"), {
+        id: "stores:1",
+        branding: { logoUrl: "javascript:alert(1)" },
+      })
+    ).rejects.toThrow(/http\(s\) or root-relative URL/)
+
+    expect(db.patch).not.toHaveBeenCalled()
+    expect(auditEntries(db)).toHaveLength(0)
+  })
+
+  it("journals the operation and what the branding became", async () => {
+    const db = createMockDb({ "stores:1": { ...A_STORE, branding: { primaryColor: "#000" } } })
+
+    await updateBranding.handler(createCtx(db, "user_42"), {
+      id: "stores:1",
+      branding: { fontHeading: "Playfair" },
+    })
+
+    const entry = soleAuditEntry(db)
+    expect(entry.action).toBe("store_updated")
+    expect(entry.performedBy).toBe("user_42")
+    expect(entry.details.operation).toBe("updateBranding")
+    // The merged result: the entry says what the branding IS, which is the
+    // whole point of merging rather than replacing.
+    expect(entry.details.changes.branding.after).toEqual({
+      primaryColor: "#000",
+      fontHeading: "Playfair",
+    })
   })
 })
 

@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
   assertSettlesOrder,
+  paymentStatusAfterSettlement,
   readPayPalCapture,
 } from "@be-in-digital/convex-functions/paymentSettlement";
 
@@ -21,7 +22,7 @@ interface PayPalEnv {
 
 function getPayPalEnv(): PayPalEnv {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import in Convex "use node" context
-  const { getSiteEnv } = require("@be-in-digital/core/env");
+  const { getSiteEnv, isSandbox } = require("@be-in-digital/core/env");
   const site = getSiteEnv();
   const clientId = site.PAYPAL_CLIENT_ID;
   const clientSecret = site.PAYPAL_CLIENT_SECRET;
@@ -35,10 +36,13 @@ function getPayPalEnv(): PayPalEnv {
   // every live client id that did not happen to begin with "A" to the sandbox
   // host, where payments are never actually collected.
   //
-  // Follows the UBER_EATS_SANDBOX_MODE / DELIVEROO_IS_SANDBOX convention: unset
-  // means PRODUCTION, so a missing variable never silently voids real payments.
-  const isSandbox = site.PAYPAL_SANDBOX_MODE === "true";
-  const baseUrl = isSandbox
+  // PAYPAL_SANDBOX_MODE is required at boot as soon as PayPal is configured
+  // (see @be-in-digital/core/env). Left unset anyway — on a Convex deployment,
+  // which runs no boot check of its own — it resolves to SANDBOX, never to the
+  // live host: a capture that does not settle is recoverable, a live charge
+  // against test credentials is not.
+  const sandbox = isSandbox("paypal");
+  const baseUrl = sandbox
     ? "https://api-m.sandbox.paypal.com"
     : "https://api-m.paypal.com";
 
@@ -165,6 +169,9 @@ export const capturePayPalOrder = action({
       total: number;
       orderNumber: string;
       storeId: string;
+      // Needed by `paymentStatusAfterSettlement`: money arriving for a
+      // cancelled order is owed back, not "paid".
+      status: string;
       paymentStatus: string;
       viewToken?: string;
       customerInfo?: { email?: string };
@@ -242,28 +249,37 @@ export const capturePayPalOrder = action({
         { orderId: args.orderId, total: order.total }
       );
 
-      if (order.paymentStatus !== "paid") {
+      // What this settlement should do to the ORDER — which is not always
+      // "mark it paid". `refund_pending` (paid, then cancelled, money owed
+      // back) is not "paid", so the old `if (order.paymentStatus !== "paid")`
+      // walked into the branch and wrote the marker away; a provider retry or
+      // a refreshed success tab was enough. The payment row is recorded either
+      // way: the money moved, and a refund needs something to point at.
+      const nextPaymentStatus = paymentStatusAfterSettlement(order);
+      if (nextPaymentStatus) {
         await ctx.runMutation(internal.orders.internalUpdatePaymentStatus, {
           id: args.orderId,
-          paymentStatus: "paid",
+          paymentStatus: nextPaymentStatus,
         });
-
-        try {
-          await ctx.runMutation(internal.payments.internalCreate, {
-            orderId: args.orderId,
-            storeId: order.storeId as Id<"stores">,
-            amount: order.total,
-            currency: "EUR",
-            provider: "paypal",
-            // The CAPTURE id, not the order id: PayPal refunds are issued
-            // against a capture. Storing the order id here would have made
-            // every refund attempt fail at the provider.
-            externalId: captured.captureId ?? args.paypalOrderId,
-          });
-        } catch {
-          // Payment record may already exist
-        }
       }
+
+      // One mutation, one transaction: keyed on the capture id, so a second
+      // capture attempt for the same PayPal order returns the row that already
+      // exists instead of writing another refundable one.
+      //
+      // Unconditional now: the row records that the money moved, which stays
+      // true whether the order ends up paid or awaiting a refund.
+      await ctx.runMutation(internal.payments.internalSettle, {
+        orderId: args.orderId,
+        storeId: order.storeId as Id<"stores">,
+        amount: order.total,
+        currency: "EUR",
+        provider: "paypal",
+        // The CAPTURE id, not the order id: PayPal refunds are issued against a
+        // capture. Storing the order id here would have made every refund
+        // attempt fail at the provider.
+        externalId: captured.captureId ?? args.paypalOrderId,
+      });
 
       return {
         status: "paid" as const,

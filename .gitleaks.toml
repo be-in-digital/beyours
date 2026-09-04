@@ -21,6 +21,43 @@
 [extend]
 useDefault = true
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Custom rules
+#
+# The default ruleset does NOT match a Deliveroo credential: it is a bare
+# 52-character base36 token with no prefix and no separators, and the leak put
+# it after `:-` in a shell default and after `|| "` in TypeScript — neither of
+# which the stock generic-api-key rule reads as an assignment. So the scan ran
+# green over a history that contained it, every day, for months.
+#
+# Measured 2026-09-04 over all 7,459 blobs in the object store: these two rules
+# match 3 blobs between them and yield exactly ONE distinct token — the leaked
+# secret. Zero false positives anywhere in the history or the working tree.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[rules]]
+id = "deliveroo-client-secret-context"
+description = "Deliveroo client_secret assigned near a Deliveroo keyword"
+# Scoped (?i:...) on the keywords only: the token itself is strictly lowercase
+# base36, and a case-insensitive character class would widen it wrongly.
+regex = '''(?i:deliveroo)[_A-Za-z0-9]{0,32}(?i:secret)[^0-9A-Za-z]{0,16}([0-9a-z]{52})'''
+secretGroup = 1
+keywords = ["deliveroo"]
+
+[[rules]]
+id = "deliveroo-client-secret-shape"
+description = "Bare 52-character base36 token — the shape of a Deliveroo credential"
+# The context rule above only fires when the keyword is nearby. This one catches
+# the same credential pasted anywhere at all — a .env, a fixture, a comment.
+# If it ever fires on something that was never a credential, allowlist that
+# specific path in the [allowlist] block below. Do NOT delete the rule.
+regex = '''\b([0-9a-z]{52})\b'''
+secretGroup = 1
+# The real secret measures 4.55 bits/char. 3.5 clears every degenerate string
+# (a repeated character scores 0) while leaving a wide margin under a genuine
+# credential.
+entropy = 3.5
+
 [allowlist]
 description = "Test fixtures — values that were never real credentials"
 

@@ -282,9 +282,10 @@ export const TOUR_STEPS: StepType[] = [
     highlightedSelectors: ['[data-tour="nav-settings"]'],
     content:
       "Paramètres — Plusieurs onglets de configuration : " +
-      "informations du restaurant, design et thème, moyens de paiement " +
+      "informations du restaurant, moyens de paiement " +
       "(Stripe, SumUp, PayPal, Square), options de livraison, " +
-      "langues du site et notifications.",
+      "horaires et intégrations. Les couleurs, la typographie et le logo " +
+      "se règlent sur l'écran Design, dans le groupe Contenu.",
     action: goTo("/settings"),
   },
 

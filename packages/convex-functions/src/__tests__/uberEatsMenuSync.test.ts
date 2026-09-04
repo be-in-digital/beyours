@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildUberEatsMenuPayload } from '../uberEatsMenuSync'
+import { buildUberEatsMenuPayload, isProductOutOfStock } from '../uberEatsMenuSync'
 import type { ProductRecord, CategoryRecord } from '../uberEatsMenuSync'
 
 const STORE_ID = '480eab8c-cc25-4c2b-b92f-70d7a1984f97'
@@ -496,5 +496,109 @@ describe('buildUberEatsMenuPayload', () => {
 
     expect(payload.categories[0].title.translations.en).toBe('Pizzas')
     expect(payload.categories[1].title.translations.en).toBe('Salads')
+  })
+})
+
+/**
+ * Stock propagation (86'ing).
+ *
+ * The builder used to filter on `isActive` alone, so a dish the kitchen had
+ * run out of was pushed to Uber Eats as fully orderable. The only route from
+ * stock to the platform was the optional `autoDisableWhenEmpty` flag flipping
+ * `isActive`; with that flag off — its default — sold-out dishes kept selling.
+ */
+describe('buildUberEatsMenuPayload — out of stock', () => {
+  const category = createMockCategory({ _id: 'cat-1' })
+
+  it('suspends a tracked product whose quantity has run out', () => {
+    const soldOut = createMockProduct({
+      _id: 'prod-soldout',
+      categoryId: 'cat-1',
+      stock: { tracked: true, quantity: 0, lowStockThreshold: 2 },
+    })
+
+    const payload = buildUberEatsMenuPayload([soldOut], [category])
+    const item = payload.items.find((i) => i.id === 'item-prod-soldout')
+
+    expect(item).toBeDefined()
+    expect(item!.suspension_info?.suspension.reason).toBe('OUT_OF_STOCK')
+    expect(item!.suspension_info!.suspension.suspend_until).toBeGreaterThan(
+      Math.floor(Date.now() / 1000)
+    )
+  })
+
+  it('keeps the suspended item on the menu so its id stays addressable', () => {
+    const soldOut = createMockProduct({
+      _id: 'prod-soldout',
+      categoryId: 'cat-1',
+      stock: { tracked: true, quantity: 0, lowStockThreshold: 2 },
+    })
+
+    const payload = buildUberEatsMenuPayload([soldOut], [category])
+
+    expect(payload.categories[0].entities.map((e) => e.id)).toContain('item-prod-soldout')
+  })
+
+  it('leaves a restocked product available', () => {
+    const restocked = createMockProduct({
+      _id: 'prod-restocked',
+      categoryId: 'cat-1',
+      stock: { tracked: true, quantity: 3, lowStockThreshold: 2 },
+    })
+
+    const payload = buildUberEatsMenuPayload([restocked], [category])
+    const item = payload.items.find((i) => i.id === 'item-prod-restocked')
+
+    expect(item!.suspension_info).toBeUndefined()
+  })
+
+  // Stock tracking is opt-in. `quantity: 0` on an untracked product means "we
+  // do not count this", not "we have none".
+  it('ignores quantity when stock tracking is off', () => {
+    const untracked = createMockProduct({
+      _id: 'prod-untracked',
+      categoryId: 'cat-1',
+      stock: { tracked: false, quantity: 0, lowStockThreshold: 0 },
+    })
+
+    const payload = buildUberEatsMenuPayload([untracked], [category])
+    const item = payload.items.find((i) => i.id === 'item-prod-untracked')
+
+    expect(item!.suspension_info).toBeUndefined()
+  })
+
+  it('treats a product with no stock block as always available', () => {
+    const noStock = createMockProduct({ _id: 'prod-nostock', categoryId: 'cat-1' })
+
+    const payload = buildUberEatsMenuPayload([noStock], [category])
+    const item = payload.items.find((i) => i.id === 'item-prod-nostock')
+
+    expect(item!.suspension_info).toBeUndefined()
+  })
+
+  it('suspends only the sold-out dish, not its neighbours', () => {
+    const soldOut = createMockProduct({
+      _id: 'prod-soldout',
+      categoryId: 'cat-1',
+      stock: { tracked: true, quantity: 0, lowStockThreshold: 2 },
+    })
+    const available = createMockProduct({ _id: 'prod-ok', categoryId: 'cat-1' })
+
+    const payload = buildUberEatsMenuPayload([soldOut, available], [category])
+
+    expect(payload.items.find((i) => i.id === 'item-prod-soldout')!.suspension_info).toBeDefined()
+    expect(payload.items.find((i) => i.id === 'item-prod-ok')!.suspension_info).toBeUndefined()
+  })
+})
+
+describe('isProductOutOfStock', () => {
+  it.each([
+    [{ stock: undefined }, false],
+    [{ stock: { tracked: false, quantity: 0, lowStockThreshold: 0 } }, false],
+    [{ stock: { tracked: true, quantity: 5, lowStockThreshold: 2 } }, false],
+    [{ stock: { tracked: true, quantity: 0, lowStockThreshold: 2 } }, true],
+    [{ stock: { tracked: true, quantity: -1, lowStockThreshold: 2 } }, true],
+  ])('%o → %s', (product, expected) => {
+    expect(isProductOutOfStock(product as Pick<ProductRecord, 'stock'>)).toBe(expected)
   })
 })

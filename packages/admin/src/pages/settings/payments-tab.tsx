@@ -6,6 +6,42 @@ import { Button, Input, Label, Switch } from "@be-in-digital/ui"
 import { FieldInfo } from "./field-info"
 import { HELP } from "./help-content"
 import type { PaymentConnection } from "./settings-types"
+import { PAYMENT_CONNECTION_STATUS_CONFIG } from "../../lib/vocabulary"
+import { canConnectProvider, canDisconnectProvider } from "../../lib/payment-connection"
+
+/**
+ * Connection state of one provider, as the owner reads it.
+ *
+ * Every state comes from `PAYMENT_CONNECTION_STATUS_CONFIG` — the two cards
+ * used to test `status === "connected"` inline and fold everything else into
+ * "Non connecté", which turned `onboarding_complete` (account live, takings
+ * still landing on the platform) and `error` into the same grey nothing.
+ */
+function ConnectionStatus({ connection }: { connection: PaymentConnection | undefined }) {
+  const badge = connection
+    ? PAYMENT_CONNECTION_STATUS_CONFIG[connection.status]
+    : PAYMENT_CONNECTION_STATUS_CONFIG.disconnected
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className={`h-2 w-2 rounded-full shrink-0 ${badge.dotClassName}`} />
+        <span className={`text-xs ${badge.textClassName}`}>{badge.label}</span>
+      </div>
+
+      {badge.detail && (
+        <p className="text-xs text-muted-foreground leading-snug">{badge.detail}</p>
+      )}
+
+      {/* The account id is what the support team asks for, in every state that has one. */}
+      {connection?.merchantId && (
+        <p className="text-xs text-muted-foreground font-mono truncate">
+          ID : {connection.merchantId}
+        </p>
+      )}
+    </div>
+  )
+}
 
 interface PaymentsTabProps {
   cardProvider: "stripe" | "sumup"
@@ -78,37 +114,12 @@ export function PaymentsTab({
             </div>
 
             {/* Connection status badge */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  stripeConnection?.status === "connected" ? "bg-green-500" : "bg-muted-foreground/40"
-                }`}
-              />
-              <span className="text-xs text-muted-foreground">
-                {stripeConnection?.status === "connected" ? "Connecté" : "Non connecté"}
-              </span>
-            </div>
+            <ConnectionStatus connection={stripeConnection} />
 
-            {/* Merchant ID when connected */}
-            {stripeConnection?.status === "connected" && stripeConnection.merchantId && (
-              <p className="text-xs text-muted-foreground font-mono truncate">
-                ID : {stripeConnection.merchantId}
-              </p>
-            )}
-
-            {/* Connect / Disconnect button — only shown for selected provider */}
+            {/* Connect / Disconnect buttons — only shown for selected provider */}
             {cardProvider === "stripe" && (
-              <div onClick={(e) => e.stopPropagation()}>
-                {stripeConnection?.status === "connected" ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
-                    onClick={() => handleDisconnect("stripe")}
-                  >
-                    Déconnecter
-                  </Button>
-                ) : (
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {canConnectProvider(stripeConnection) && (
                   <Button
                     size="sm"
                     className="h-7"
@@ -123,6 +134,16 @@ export function PaymentsTab({
                     ) : (
                       "Connecter"
                     )}
+                  </Button>
+                )}
+                {canDisconnectProvider(stripeConnection) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
+                    onClick={() => handleDisconnect("stripe")}
+                  >
+                    Déconnecter
                   </Button>
                 )}
               </div>
@@ -156,37 +177,12 @@ export function PaymentsTab({
             </div>
 
             {/* Connection status badge */}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  sumupConnection?.status === "connected" ? "bg-green-500" : "bg-muted-foreground/40"
-                }`}
-              />
-              <span className="text-xs text-muted-foreground">
-                {sumupConnection?.status === "connected" ? "Connecté" : "Non connecté"}
-              </span>
-            </div>
+            <ConnectionStatus connection={sumupConnection} />
 
-            {/* Merchant ID when connected */}
-            {sumupConnection?.status === "connected" && sumupConnection.merchantId && (
-              <p className="text-xs text-muted-foreground font-mono truncate">
-                ID : {sumupConnection.merchantId}
-              </p>
-            )}
-
-            {/* Connect / Disconnect button — only shown for selected provider */}
+            {/* Connect / Disconnect buttons — only shown for selected provider */}
             {cardProvider === "sumup" && (
-              <div onClick={(e) => e.stopPropagation()}>
-                {sumupConnection?.status === "connected" ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
-                    onClick={() => handleDisconnect("sumup")}
-                  >
-                    Déconnecter
-                  </Button>
-                ) : (
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {canConnectProvider(sumupConnection) && (
                   <Button
                     size="sm"
                     className="h-7"
@@ -201,6 +197,16 @@ export function PaymentsTab({
                     ) : (
                       "Connecter"
                     )}
+                  </Button>
+                )}
+                {canDisconnectProvider(sumupConnection) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
+                    onClick={() => handleDisconnect("sumup")}
+                  >
+                    Déconnecter
                   </Button>
                 )}
               </div>

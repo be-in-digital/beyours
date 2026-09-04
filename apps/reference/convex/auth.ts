@@ -6,8 +6,16 @@ import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
 
-// Better Auth component client
-export const authComponent = createClient<DataModel>(components.betterAuth);
+// Better Auth component client.
+//
+// Annotated rather than inferred: this app's `_generated/api.d.ts` is the
+// compact form (265 lines against the template's expanded 22k), so `components`
+// is inferred rather than named, and once #315 widened the Convex surface the
+// inferred type of this call exceeded what the compiler will serialize —
+// TS7056, on this line only, in this app only. The annotation says what
+// inference was already producing; it changes no behaviour.
+export const authComponent: ReturnType<typeof createClient<DataModel>> =
+  createClient<DataModel>(components.betterAuth);
 
 /**
  * Post one transactional email to the deployment's own `/api/email/send`.

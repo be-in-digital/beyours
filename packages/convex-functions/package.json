@@ -36,7 +36,9 @@
     "./orders": "./src/orders.ts",
     "./kitchenTickets": "./src/kitchenTickets.ts",
     "./payments": "./src/payments.ts",
+    "./paymentEvents": "./src/paymentEvents.ts",
     "./paymentSettlement": "./src/paymentSettlement.ts",
+    "./stripeChargeRouting": "./src/stripeChargeRouting.ts",
     "./refundPolicy": "./src/refundPolicy.ts",
     "./orderTotals": "./src/orderTotals.ts",
     "./orderLine": "./src/orderLine.ts",
@@ -89,7 +91,9 @@
     "./contactMessages": "./src/contactMessages.ts",
     "./deliveryFee": "./src/deliveryFee.ts",
     "./auth": "./src/auth.ts",
-    "./maintenance": "./src/maintenance.ts"
+    "./maintenance": "./src/maintenance.ts",
+    "./platformWebhook": "./src/platformWebhook.ts",
+    "./platformWebhookFailures": "./src/platformWebhookFailures.ts"
   },
   "scripts": {
     "lint": "eslint src/",
@@ -105,10 +109,11 @@
     "@be-in-digital/core": "workspace:*"
   },
   "devDependencies": {
+    "@be-in-digital/integrations": "workspace:*",
     "@types/node": "^20.19.39",
+    "convex": "1.44.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.7",
-    "convex": "1.44.0"
+    "vitest": "^3.2.7"
   },
   "peerDependencies": {
     "convex": "^1.44.0"

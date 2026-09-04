@@ -35,9 +35,23 @@ Every item is tagged **[decision]** (a human call) or **[build]** (to be coded) 
 - [ ] 🔴 **[config] Switch Stripe to Live mode**: `STRIPE_SECRET_KEY` set to
   `sk_live_…`, recreate the webhook on the prod endpoint, update `STRIPE_WEBHOOK_SECRET`.
   Today, a missing key means the order is marked `paid` with no Stripe (test mode).
-- [ ] 🔴 **[config] Check the 4 maintenance Price IDs** (`price_1TEn…` in
-  `convex/stripe.ts:28-33`): confirm in the dashboard that they really exist in
-  **Live mode**, not only in test. Recreate them on the Live side if needed.
+- [ ] 🔴 **[config] Create the 4 maintenance Prices and set their ids**. There
+  are **no hard-coded Price IDs any more** — this item used to name
+  `price_1TEn…` in `convex/stripe.ts:28-33`, and that fallback is gone on
+  purpose (`convex/stripe.ts:16-22`: a test Price charged with a live key fails
+  *after* the payment). `convex/stripe.ts:23-28` now maps each plan/period pair
+  to an env var, and `resolveMaintenancePriceId` (`:36-55`) throws when the one
+  it needs is unset — before the order exists. Set all four
+  `STRIPE_PRICE_{ESSENTIELLE,PREMIUM}_{MONTHLY,YEARLY}` on the Convex
+  deployment, or none.
+- [ ] 🔴 **[config] Create the founders coupon and the 2 creation Products**.
+  `STRIPE_FOUNDERS_COUPON_ID` and `STRIPE_PRODUCT_CREATION_ESSENTIELLE` both
+  unset ⇒ the **first Essentielle sale is refused**
+  (`convex/foundersOffer.ts:55-88`), deliberately: without the coupon's
+  `max_redemptions` nothing caps the offer, and every seat past the tenth ships
+  a 3 500 € build for nothing.
+  Console steps, field by field, with the amounts and the verification:
+  [`tasks/stripe-founders-offer-runbook.md`](../../tasks/stripe-founders-offer-runbook.md).
 - [ ] 🟠 **[build] Dunning (failed payment)**: today `invoice.payment_failed`
   leaves the invoice `open` and does nothing. Turn on Stripe retries (Smart
   Retries in the dashboard) + a chaser email to the customer. Otherwise a failed

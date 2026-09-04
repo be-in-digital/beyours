@@ -186,12 +186,11 @@ export const incrementPrintCount = storeMutation({
  * Helper: get Uber Eats credentials from env vars.
  */
 async function getUberEatsCredentials() {
-  const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
   const pkg = getPackageEnv();
-  const site = getSiteEnv();
   const clientId = pkg.UBER_EATS_CLIENT_ID;
   const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
-  const sandboxMode = site.UBER_EATS_SANDBOX_MODE === "true";
+  const sandboxMode = isSandbox("uberEats");
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret, sandboxMode };
 }
@@ -200,12 +199,11 @@ async function getUberEatsCredentials() {
  * Helper: get Deliveroo credentials from env vars.
  */
 async function getDeliverooCredentials() {
-  const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
   const pkg = getPackageEnv();
-  const site = getSiteEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
   const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
-  const sandboxMode = site.DELIVEROO_IS_SANDBOX === "true";
+  const sandboxMode = isSandbox("deliveroo");
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret, sandboxMode };
 }
@@ -336,16 +334,15 @@ export const readyTicket = action({
       }
     } else if (ticket.source === "uber_eats" && externalId) {
       try {
-        const { getPackageEnv, getSiteEnv } = await import("@be-in-digital/core/env");
+        const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
         const pkg = getPackageEnv();
-        const site = getSiteEnv();
         if (pkg.UBER_EATS_CLIENT_ID && pkg.UBER_EATS_CLIENT_SECRET) {
           const { uberEats } = await import("@be-in-digital/integrations");
           await uberEats.markOrderAsReady(
             {
               clientId: pkg.UBER_EATS_CLIENT_ID,
               clientSecret: pkg.UBER_EATS_CLIENT_SECRET,
-              sandboxMode: site.UBER_EATS_SANDBOX_MODE === "true",
+              sandboxMode: isSandbox("uberEats"),
             },
             externalId
           );
@@ -415,7 +412,13 @@ export const completeTicket = action({
  * Platform behavior:
  * - Uber Eats: deny (pre-accept) or cancel (post-accept). Refund is automatic.
  * - Deliveroo: reject (pre-accept only). Post-accept cancel not available via API.
- * - Website: orders.internalUpdateStatus already marks payments as refunded at DB level.
+ * - Website: NOTHING is refunded here. `orders.internalUpdateStatus` flags the
+ *   order `paymentStatus: "refund_pending"` and leaves the `payments` rows
+ *   alone. It used to patch them to "refunded" without calling any provider, so
+ *   the books claimed a refund the customer never received — and since
+ *   `planRefund` accepts only "succeeded"/"partially_refunded", that fake
+ *   refund then made the real one impossible. An operator sends the money back
+ *   through `payments.refundPayment`, which calls the provider first.
  */
 // @guarded-inline: checks kitchen:write on the ticket's own store
 export const cancelTicket = action({
@@ -447,7 +450,8 @@ export const cancelTicket = action({
       status: "cancelled",
     });
 
-    // 2. Cancel the order (also handles DB-level refund for website payments)
+    // 2. Cancel the order. This flags it `refund_pending` when it was paid; it
+    //    does NOT move money and does not touch the payments rows.
     try {
       await ctx.runMutation(internal.orders.internalUpdateStatus, {
         id: ticket.orderId,
