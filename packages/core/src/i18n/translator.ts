@@ -12,19 +12,36 @@ const translationParamsSchema = z.record(z.string(), z.union([z.string(), z.numb
 /**
  * Replace placeholders in a string with values from params
  *
- * Supports:
- * - {{key}} for interpolation
- * - {{count}} for plural forms
+ * Supports both brace styles, and it has to:
+ * - `{{key}}` — what this module was written for
+ * - `{key}` — what the shipped locale catalogues actually use
+ *   (`{count} article`, `Livraison gratuite à partir de {amount}`), and what
+ *   the GPT bulk translator is told to preserve verbatim
+ *   (`@be-in-digital/convex-functions/autoTranslate`)
+ *
+ * Reading only the double form meant every catalogue string carrying a value
+ * rendered its placeholder to the customer: `{count} articles`, literally.
+ *
+ * An unknown placeholder is left as it stands rather than blanked, so a
+ * missing parameter is visible in review instead of silently eating a number.
  *
  * @param template - Template string with placeholders
  * @param params - Values to interpolate
  * @returns Interpolated string
  */
 function interpolate(template: string, params: TranslationParams): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    const value = params[key]
-    return value !== undefined ? String(value) : match
-  })
+  // The double-brace alternative is listed first: alternation is ordered, so
+  // `{{name}}` is consumed whole and never mistaken for `{name}` wrapped in
+  // stray braces.
+  return template.replace(
+    /\{\{(\w+)\}\}|\{(\w+)\}/g,
+    (match, doubled?: string, single?: string) => {
+      const key = doubled ?? single
+      if (key === undefined) return match
+      const value = params[key]
+      return value !== undefined ? String(value) : match
+    }
+  )
 }
 
 /**

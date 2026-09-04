@@ -138,6 +138,20 @@ export const storesTable = defineTable({
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),
   settings: v.optional(v.any()),
+
+  /**
+   * Daily GPT auto-translation budget for this establishment.
+   *
+   * The translator bills per document per language; a fifty-product import on
+   * three languages is a hundred and fifty calls. `used` is incremented by the
+   * translator itself and zeroed once `resetAt` has passed, so a store that is
+   * never edited never needs the cron to run for it.
+   */
+  translationQuota: v.optional(v.object({
+    dailyLimit: v.number(),
+    used: v.number(),
+    resetAt: v.number(), // epoch ms of the next reset (midnight UTC)
+  })),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

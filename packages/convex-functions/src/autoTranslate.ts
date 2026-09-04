@@ -27,6 +27,10 @@ const META_KEY_PREFIX: Record<string, string> = {
 // Allowed entity types for batch translation (prevents table injection)
 const TRANSLATABLE_TABLES = ["products", "categories", "menus"]
 
+// The catalogue fields worth sending to a translator. `slug` is deliberately
+// absent: it is a URL segment, and translating it would break every link.
+const TRANSLATABLE_FIELDS = ["name", "description"]
+
 // ── Inlined utilities ────────────────────────────────────────────────────
 
 function normalizeText(text: string): string {
@@ -255,222 +259,356 @@ export function nextMidnightUTC(): number {
   return tomorrow.getTime()
 }
 
-// ── executeTranslation ───────────────────────────────────────────────────
+// ── executeTranslation: query → fetch → mutation ─────────────────────────
+//
+// A Convex mutation may not call `fetch`, and every one of these paths reaches
+// OpenAI. So the work is split three ways, exactly as `cmsAutoTranslate` does
+// it: an internal query reads the document and decides what is worth sending,
+// a plain async function does the HTTP, and an internal mutation writes the
+// result back inside a fresh transaction. The app wrapper registers the query
+// and the mutation, and an `internalAction` chains them — the chaining lives
+// there because it needs `internal.*`, which a package cannot reference.
+
+/** A single language's worth of work: which fields still need translating. */
+export interface TranslationTarget {
+  code: string
+  fields: string[]
+}
+
+/** Everything the fetch step needs, read in one transaction. */
+export interface TranslationPlan {
+  sourceLang: string
+  /** field → source text, as read at plan time. The staleness check re-compares these. */
+  sourceTexts: Record<string, string>
+  /** field → hash of the source text, stored alongside the translation. */
+  sourceHashes: Record<string, string>
+  /** Free-text hint for the model, e.g. "restaurant products". */
+  context: string
+  /** Quota with the daily reset already applied — the mutation persists it. */
+  quota: { dailyLimit: number; used: number; resetAt: number }
+  /** True when `quota` differs from what is stored, i.e. the reset must be written. */
+  quotaWasReset: boolean
+  targets: TranslationTarget[]
+}
+
+const quotaValidator = v.object({
+  dailyLimit: v.number(),
+  used: v.number(),
+  resetAt: v.number(),
+})
 
 /**
- * Execute translation for a single document.
- * Called by the scheduler after the 5s debounce.
+ * The store's quota with the daily reset applied in memory.
+ *
+ * A query cannot write, so the reset is computed here and persisted by
+ * whichever mutation runs next. A store whose quota never gets written back
+ * simply recomputes the same reset on its next translation.
  */
-export const executeTranslation = {
+function effectiveQuota(
+  stored: { dailyLimit: number; used: number; resetAt: number } | undefined,
+  now: number
+): { quota: { dailyLimit: number; used: number; resetAt: number }; wasReset: boolean } {
+  const quota = stored ?? {
+    dailyLimit: DAILY_QUOTA_LIMIT,
+    used: 0,
+    resetAt: nextMidnightUTC(),
+  }
+
+  if (now > quota.resetAt) {
+    return {
+      quota: { dailyLimit: quota.dailyLimit, used: 0, resetAt: nextMidnightUTC() },
+      wasReset: true,
+    }
+  }
+
+  return { quota, wasReset: stored === undefined }
+}
+
+/**
+ * Internal query: decide what to translate for one document.
+ *
+ * Returns `null` when there is nothing to do — no document, no store, quota
+ * spent, no second active language, no translatable text, or every field
+ * already translated from the same source. The caller must still run
+ * `finishTranslation` in that case, so the document does not sit `pending`
+ * for ever.
+ */
+export const getTranslationPlan = {
   args: {
     documentId: v.string(),
     tableName: v.string(),
     storeId: v.id("stores"),
   },
-  handler: async (ctx: any, args: any) => {
+  handler: async (ctx: any, args: any): Promise<TranslationPlan | null> => {
     const doc = await ctx.db.get(args.documentId as any)
+    if (!doc) return null
 
-    // Cleanup helper — always runs in all exit paths
-    const cleanup = async () => {
-      try {
-        const current = await ctx.db.get(args.documentId as any)
-        if (current) {
-          await ctx.db.patch(args.documentId as any, {
-            pendingTranslation: false,
-            scheduledTranslationJobId: undefined,
-          })
-        }
-      } catch {
-        // Document may have been deleted
-      }
+    const store = await ctx.db.get(args.storeId)
+    if (!store) return null
+
+    const { quota, wasReset } = effectiveQuota(store.translationQuota, Date.now())
+    if (quota.used >= quota.dailyLimit) {
+      console.log(`[autoTranslate] Quota exceeded for store ${args.storeId}`)
+      return null
     }
 
-    try {
-      if (!doc) {
-        await cleanup()
-        return
+    // Active languages, minus the default — that one is the source.
+    const allLanguages = await ctx.db
+      .query("languages")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    const defaultLang = allLanguages.find((l: any) => l.isDefault)
+    const targetLanguages = allLanguages.filter(
+      (l: any) => l.isActive && !l.isDefault
+    )
+
+    if (!defaultLang || targetLanguages.length === 0) return null
+
+    const sourceTexts: Record<string, string> = {}
+    for (const field of TRANSLATABLE_FIELDS) {
+      if (doc[field]) sourceTexts[field] = doc[field]
+    }
+    if (Object.keys(sourceTexts).length === 0) return null
+
+    const sourceHashes: Record<string, string> = {}
+    for (const [field, text] of Object.entries(sourceTexts)) {
+      sourceHashes[field] = computeSourceHash(text)
+    }
+
+    const existingTranslations = (doc.translations ?? {}) as Record<string, any>
+    const targets: TranslationTarget[] = []
+
+    for (const lang of targetLanguages) {
+      const existing = existingTranslations[lang.code] ?? {}
+      const meta = existing._meta ?? {}
+      const fields: string[] = []
+
+      for (const field of TRANSLATABLE_FIELDS) {
+        if (!sourceTexts[field]) continue
+        const prefix = META_KEY_PREFIX[field] ?? field
+        // A human edited this translation — never overwrite it.
+        if (meta[`${prefix}Auto`] === false) continue
+        // The source has not changed since the last translation.
+        if (meta[`${prefix}Hash`] === sourceHashes[field]) continue
+        fields.push(field)
       }
 
-      // Get store + check/reset quota
-      const store = await ctx.db.get(args.storeId)
-      if (!store) {
-        await cleanup()
-        return
-      }
+      if (fields.length > 0) targets.push({ code: lang.code, fields })
+    }
 
-      let quota = store.translationQuota ?? {
-        dailyLimit: DAILY_QUOTA_LIMIT,
-        used: 0,
-        resetAt: nextMidnightUTC(),
-      }
+    if (targets.length === 0) return null
 
-      // Reset quota on-the-fly if past reset time
-      const now = Date.now()
-      if (now > quota.resetAt) {
-        quota = {
-          dailyLimit: quota.dailyLimit,
-          used: 0,
-          resetAt: nextMidnightUTC(),
-        }
-        await ctx.db.patch(args.storeId, { translationQuota: quota })
-      }
-
-      if (quota.used >= quota.dailyLimit) {
-        console.log(`[autoTranslate] Quota exceeded for store ${args.storeId}`)
-        await cleanup()
-        return
-      }
-
-      // Get active languages (skip default — it's the source)
-      const allLanguages = await ctx.db
-        .query("languages")
-        .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-        .collect()
-
-      const defaultLang = allLanguages.find((l: any) => l.isDefault)
-      const targetLanguages = allLanguages.filter(
-        (l: any) => l.isActive && !l.isDefault
-      )
-
-      if (!defaultLang || targetLanguages.length === 0) {
-        await cleanup()
-        return
-      }
-
-      const translatableFields = ["name", "description"]
-
-      // Build source texts
-      const sourceTexts: Record<string, string> = {}
-      for (const field of translatableFields) {
-        if (doc[field]) {
-          sourceTexts[field] = doc[field]
-        }
-      }
-
-      if (Object.keys(sourceTexts).length === 0) {
-        await cleanup()
-        return
-      }
-
-      // Compute source hashes
-      const sourceHashes: Record<string, string> = {}
-      for (const [field, text] of Object.entries(sourceTexts)) {
-        sourceHashes[field] = computeSourceHash(text)
-      }
-
-      const translations = { ...(doc.translations ?? {}) }
-      let gptCallsMade = 0
-
-      for (const lang of targetLanguages) {
-        if (quota.used + gptCallsMade >= quota.dailyLimit) {
-          console.log(`[autoTranslate] Quota would be exceeded, stopping`)
-          break
-        }
-
-        const existing = translations[lang.code] ?? {}
-        const meta = existing._meta ?? {}
-
-        // Collect fields that need translation
-        const fieldsToTranslate: string[] = []
-        const textsToTranslate: string[] = []
-
-        for (const field of translatableFields) {
-          if (!sourceTexts[field]) continue
-          const prefix = META_KEY_PREFIX[field] ?? field
-          // Skip if manually translated
-          if (meta[`${prefix}Auto`] === false) continue
-          // Skip if hash unchanged
-          if (meta[`${prefix}Hash`] === sourceHashes[field]) continue
-
-          fieldsToTranslate.push(field)
-          textsToTranslate.push(sourceTexts[field]!)
-        }
-
-        if (fieldsToTranslate.length === 0) continue
-
-        // 1 GPT call per language per document
-        try {
-          const combinedText = fieldsToTranslate
-            .map((f, i) => `[${f}]: ${textsToTranslate[i]}`)
-            .join("\n")
-
-          const translated = await translateViaGPT(
-            combinedText,
-            defaultLang.code,
-            lang.code,
-            `restaurant ${args.tableName}`,
-            process.env.OPENAI_API_KEY
-          )
-
-          gptCallsMade++
-
-          // Parse response back into fields
-          const translatedFields: Record<string, string> = {}
-          for (const field of fieldsToTranslate) {
-            const regex = new RegExp(`\\[${field}\\]:\\s*(.+?)(?=\\n\\[|$)`, "s")
-            const match = translated.match(regex)
-            if (match?.[1]) {
-              translatedFields[field] = match[1].trim()
-            }
-          }
-
-          // Concurrence check: re-read to verify source hasn't changed
-          const freshDoc = await ctx.db.get(args.documentId as any)
-          if (!freshDoc) continue
-
-          let sourceChanged = false
-          for (const field of fieldsToTranslate) {
-            if (freshDoc[field] !== sourceTexts[field]) {
-              sourceChanged = true
-              break
-            }
-          }
-          if (sourceChanged) continue
-
-          // Write translated fields
-          const updatedLangEntry = { ...existing }
-          const updatedMeta = { ...(existing._meta ?? {}) }
-
-          for (const field of fieldsToTranslate) {
-            if (translatedFields[field]) {
-              const prefix = META_KEY_PREFIX[field] ?? field
-              updatedLangEntry[field] = translatedFields[field]
-              updatedMeta[`${prefix}Hash`] = sourceHashes[field]
-              updatedMeta[`${prefix}Auto`] = true
-            }
-          }
-
-          updatedLangEntry._meta = updatedMeta
-          translations[lang.code] = updatedLangEntry
-        } catch (error) {
-          console.error(`[autoTranslate] GPT error for ${lang.code}:`, error)
-        }
-      }
-
-      // Persist translations + update quota
-      if (gptCallsMade > 0) {
-        await ctx.db.patch(args.documentId as any, { translations })
-        await ctx.db.patch(args.storeId, {
-          translationQuota: {
-            ...quota,
-            used: quota.used + gptCallsMade,
-          },
-        })
-      }
-    } finally {
-      await cleanup()
+    return {
+      sourceLang: defaultLang.code,
+      sourceTexts,
+      sourceHashes,
+      context: `restaurant ${args.tableName}`,
+      quota,
+      quotaWasReset: wasReset,
+      targets,
     }
   },
 }
 
-// ── batchChunkCore ───────────────────────────────────────────────────────
+/** One language's translated fields, as produced by the fetch step. */
+export interface TranslationResult {
+  languageCode: string
+  fields: Record<string, string>
+}
 
 /**
- * Core batch translation logic for a chunk of documents.
- * Returns the next cursor index (or null if done) so the app wrapper
- * can schedule the next chunk via internal ref.
+ * Split a GPT reply back into the fields it was asked to translate.
+ *
+ * The prompt labels each field `[name]: …`, so the reply is parsed on those
+ * labels. A field the model dropped is simply absent from the result and stays
+ * untranslated — better than writing the whole reply into one field.
  */
-export const batchChunkCore = {
+export function parseLabelledFields(
+  translated: string,
+  fields: string[]
+): Record<string, string> {
+  const parsed: Record<string, string> = {}
+  for (const field of fields) {
+    const regex = new RegExp(`\\[${field}\\]:\\s*(.+?)(?=\\n\\[|$)`, "s")
+    const match = translated.match(regex)
+    if (match?.[1]) parsed[field] = match[1].trim()
+  }
+  return parsed
+}
+
+/**
+ * The fetch step: one GPT call per language, inside an action.
+ *
+ * Stops as soon as the plan's quota would be exceeded, and swallows a
+ * per-language failure so one bad language does not lose the others.
+ */
+export async function runTranslationPlan(
+  plan: TranslationPlan,
+  apiKey: string | undefined
+): Promise<{ results: TranslationResult[]; gptCalls: number }> {
+  const results: TranslationResult[] = []
+  let gptCalls = 0
+
+  for (const target of plan.targets) {
+    if (plan.quota.used + gptCalls >= plan.quota.dailyLimit) {
+      console.log(`[autoTranslate] Quota would be exceeded, stopping`)
+      break
+    }
+
+    try {
+      const combinedText = target.fields
+        .map((f) => `[${f}]: ${plan.sourceTexts[f]}`)
+        .join("\n")
+
+      const translated = await translateViaGPT(
+        combinedText,
+        plan.sourceLang,
+        target.code,
+        plan.context,
+        apiKey
+      )
+
+      gptCalls++
+
+      const fields = parseLabelledFields(translated, target.fields)
+      if (Object.keys(fields).length > 0) {
+        results.push({ languageCode: target.code, fields })
+      }
+    } catch (error) {
+      console.error(`[autoTranslate] GPT error for ${target.code}:`, error)
+    }
+  }
+
+  return { results, gptCalls }
+}
+
+/**
+ * Internal mutation: clear the pending flags and nothing else.
+ *
+ * Every exit path of the action ends here, including the ones that translated
+ * nothing — a document left `pendingTranslation: true` would show a spinner
+ * that never stops and would block the next debounce from cancelling cleanly.
+ */
+export const finishTranslation = {
+  args: { documentId: v.string() },
+  handler: async (ctx: any, args: any) => {
+    const current = await ctx.db.get(args.documentId as any)
+    if (!current) return
+    await ctx.db.patch(args.documentId as any, {
+      pendingTranslation: false,
+      scheduledTranslationJobId: undefined,
+    })
+  },
+}
+
+/**
+ * Internal mutation: write the translations back.
+ *
+ * Re-reads the document first: the source may have been edited while GPT was
+ * answering, and a translation of text nobody is showing any more is worse
+ * than none. The staleness check is per field, so an edit to the description
+ * does not discard a freshly translated name.
+ */
+export const saveDocumentTranslations = {
+  args: {
+    documentId: v.string(),
+    storeId: v.id("stores"),
+    sourceTexts: v.record(v.string(), v.string()),
+    sourceHashes: v.record(v.string(), v.string()),
+    results: v.array(
+      v.object({
+        languageCode: v.string(),
+        fields: v.record(v.string(), v.string()),
+      })
+    ),
+    gptCalls: v.number(),
+    quota: quotaValidator,
+    quotaWasReset: v.boolean(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const doc = await ctx.db.get(args.documentId as any)
+
+    if (doc) {
+      const sourceTexts = args.sourceTexts as Record<string, string>
+      const sourceHashes = args.sourceHashes as Record<string, string>
+      const translations = { ...((doc.translations ?? {}) as Record<string, any>) }
+      let wrote = false
+
+      for (const result of args.results as TranslationResult[]) {
+        const existing = translations[result.languageCode] ?? {}
+        const updatedEntry: Record<string, any> = { ...existing }
+        const updatedMeta: Record<string, any> = { ...(existing._meta ?? {}) }
+        let wroteLang = false
+
+        for (const [field, value] of Object.entries(result.fields)) {
+          // Concurrency check: the source changed under us, drop this field.
+          if (doc[field] !== sourceTexts[field]) continue
+          const prefix = META_KEY_PREFIX[field] ?? field
+          updatedEntry[field] = value
+          updatedMeta[`${prefix}Hash`] = sourceHashes[field]
+          updatedMeta[`${prefix}Auto`] = true
+          wroteLang = true
+        }
+
+        if (wroteLang) {
+          updatedEntry._meta = updatedMeta
+          translations[result.languageCode] = updatedEntry
+          wrote = true
+        }
+      }
+
+      await ctx.db.patch(args.documentId as any, {
+        ...(wrote ? { translations } : {}),
+        pendingTranslation: false,
+        scheduledTranslationJobId: undefined,
+      })
+    }
+
+    // The quota is billed on calls made, not on translations kept: a reply the
+    // staleness check discarded was still paid for. Written even when the
+    // document vanished mid-flight, for the same reason.
+    if (args.gptCalls > 0 || args.quotaWasReset) {
+      const store = await ctx.db.get(args.storeId)
+      if (store) {
+        await ctx.db.patch(args.storeId, {
+          translationQuota: {
+            dailyLimit: args.quota.dailyLimit,
+            used: args.quota.used + args.gptCalls,
+            resetAt: args.quota.resetAt,
+          },
+        })
+      }
+    }
+  },
+}
+
+// ── batchChunk: query → fetch → mutation ─────────────────────────────────
+
+/** One document's translatable text, as read by the batch planner. */
+export interface BatchDocument {
+  documentId: string
+  texts: Record<string, string>
+}
+
+export interface BatchChunkPlan {
+  sourceLang: string
+  documents: BatchDocument[]
+  /** Documents skipped because they carry no translatable text — still progress. */
+  emptyCount: number
+  /** Cursor for the next chunk, or null when this was the last one. */
+  nextCursor: string | null
+}
+
+/**
+ * Internal query: read one chunk of a batch translation.
+ *
+ * Returns `null` only when the batch cannot proceed at all (unknown entity
+ * type is rejected outright; no default language means there is no source to
+ * translate from). An empty chunk is a normal end-of-batch and comes back with
+ * `documents: []` and `nextCursor: null`, so the caller can close the job.
+ */
+export const getBatchChunkPlan = {
   args: {
     storeId: v.id("stores"),
     targetLang: v.string(),
@@ -480,9 +618,8 @@ export const batchChunkCore = {
       v.literal("menus")
     ),
     cursor: v.optional(v.string()),
-    jobId: v.optional(v.id("translationJobs")),
   },
-  handler: async (ctx: any, args: any): Promise<string | null> => {
+  handler: async (ctx: any, args: any): Promise<BatchChunkPlan | null> => {
     if (!TRANSLATABLE_TABLES.includes(args.entityType)) {
       throw new Error(`Invalid entity type: ${args.entityType}`)
     }
@@ -494,18 +631,9 @@ export const batchChunkCore = {
 
     const startIdx = args.cursor ? parseInt(args.cursor, 10) : 0
     const chunk = allDocs.slice(startIdx, startIdx + BATCH_CHUNK_SIZE)
+    const nextIdx = startIdx + BATCH_CHUNK_SIZE
+    const nextCursor = nextIdx < allDocs.length ? String(nextIdx) : null
 
-    if (chunk.length === 0) {
-      if (args.jobId) {
-        await ctx.db.patch(args.jobId, {
-          status: "completed",
-          updatedAt: Date.now(),
-        })
-      }
-      return null
-    }
-
-    // Get default language
     const allLanguages = await ctx.db
       .query("languages")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
@@ -514,83 +642,202 @@ export const batchChunkCore = {
     const defaultLang = allLanguages.find((l: any) => l.isDefault)
     if (!defaultLang) return null
 
-    let completedInChunk = 0
+    const documents: BatchDocument[] = []
+    let emptyCount = 0
 
     for (const doc of chunk) {
-      const sourceTexts: Record<string, string> = {}
-      for (const field of ["name", "description"]) {
-        if (doc[field]) sourceTexts[field] = doc[field]
+      const texts: Record<string, string> = {}
+      for (const field of TRANSLATABLE_FIELDS) {
+        if (doc[field]) texts[field] = doc[field]
       }
 
-      if (Object.keys(sourceTexts).length === 0) {
-        completedInChunk++
+      if (Object.keys(texts).length === 0) {
+        emptyCount++
         continue
       }
 
-      try {
-        const combinedText = Object.entries(sourceTexts)
-          .map(([f, t]) => `[${f}]: ${t}`)
-          .join("\n")
-
-        const translated = await translateViaGPT(
-          combinedText,
-          defaultLang.code,
-          args.targetLang,
-          `restaurant ${args.entityType}`,
-          process.env.OPENAI_API_KEY
-        )
-
-        const translations = { ...(doc.translations ?? {}) }
-        const langEntry: Record<string, any> = {}
-        const meta: Record<string, any> = {}
-
-        for (const [field, text] of Object.entries(sourceTexts)) {
-          const regex = new RegExp(`\\[${field}\\]:\\s*(.+?)(?=\\n\\[|$)`, "s")
-          const match = translated.match(regex)
-          if (match?.[1]) {
-            const prefix = META_KEY_PREFIX[field] ?? field
-            langEntry[field] = match[1].trim()
-            meta[`${prefix}Hash`] = computeSourceHash(text)
-            meta[`${prefix}Auto`] = true
-          }
-        }
-
-        langEntry._meta = meta
-        translations[args.targetLang] = langEntry
-        await ctx.db.patch(doc._id, { translations })
-        completedInChunk++
-      } catch (error) {
-        console.error(`[batchChunk] Error translating ${doc._id}:`, error)
-        completedInChunk++
-      }
+      documents.push({ documentId: doc._id, texts })
     }
 
-    // Update job progress
+    return {
+      sourceLang: defaultLang.code,
+      documents,
+      emptyCount,
+      nextCursor,
+    }
+  },
+}
+
+/** One document's batch translation, ready to be written. */
+export interface BatchResult {
+  documentId: string
+  fields: Record<string, string>
+  hashes: Record<string, string>
+}
+
+/**
+ * The fetch step for a batch chunk: one GPT call per document.
+ *
+ * A document whose call fails still counts as attempted, so a failing chunk
+ * cannot stall the job's progress bar for ever.
+ */
+export async function runBatchChunkPlan(
+  plan: BatchChunkPlan,
+  targetLang: string,
+  context: string,
+  apiKey: string | undefined
+): Promise<{ results: BatchResult[]; attempted: number }> {
+  const results: BatchResult[] = []
+  let attempted = 0
+
+  for (const doc of plan.documents) {
+    attempted++
+    try {
+      const fieldNames = Object.keys(doc.texts)
+      const combinedText = fieldNames
+        .map((f) => `[${f}]: ${doc.texts[f]}`)
+        .join("\n")
+
+      const translated = await translateViaGPT(
+        combinedText,
+        plan.sourceLang,
+        targetLang,
+        context,
+        apiKey
+      )
+
+      const fields = parseLabelledFields(translated, fieldNames)
+      const hashes: Record<string, string> = {}
+      for (const field of Object.keys(fields)) {
+        hashes[field] = computeSourceHash(doc.texts[field]!)
+      }
+
+      if (Object.keys(fields).length > 0) {
+        results.push({ documentId: doc.documentId, fields, hashes })
+      }
+    } catch (error) {
+      console.error(`[batchChunk] Error translating ${doc.documentId}:`, error)
+    }
+  }
+
+  return { results, attempted }
+}
+
+/**
+ * Internal mutation: write one batch chunk and advance the job.
+ *
+ * `completed` counts documents dealt with — translated, empty or failed — so
+ * `completedItems` reaches `totalItems` even on a partially failing run.
+ */
+export const saveBatchChunk = {
+  args: {
+    storeId: v.id("stores"),
+    targetLang: v.string(),
+    results: v.array(
+      v.object({
+        documentId: v.string(),
+        fields: v.record(v.string(), v.string()),
+        hashes: v.record(v.string(), v.string()),
+      })
+    ),
+    completed: v.number(),
+    isLastChunk: v.boolean(),
+    jobId: v.optional(v.id("translationJobs")),
+  },
+  handler: async (ctx: any, args: any) => {
+    for (const result of args.results as BatchResult[]) {
+      const doc = await ctx.db.get(result.documentId as any)
+      if (!doc) continue
+
+      const translations = { ...((doc.translations ?? {}) as Record<string, any>) }
+      const existing = translations[args.targetLang] ?? {}
+      const entry: Record<string, any> = { ...existing }
+      const meta: Record<string, any> = { ...(existing._meta ?? {}) }
+
+      for (const [field, value] of Object.entries(result.fields)) {
+        const prefix = META_KEY_PREFIX[field] ?? field
+        // A manual translation outranks the batch, same rule as the
+        // incremental path.
+        if (meta[`${prefix}Auto`] === false) continue
+        entry[field] = value
+        meta[`${prefix}Hash`] = result.hashes[field]
+        meta[`${prefix}Auto`] = true
+      }
+
+      entry._meta = meta
+      translations[args.targetLang] = entry
+      await ctx.db.patch(result.documentId as any, { translations })
+    }
+
     if (args.jobId) {
       const job = await ctx.db.get(args.jobId)
       if (job) {
         await ctx.db.patch(args.jobId, {
-          completedItems: (job.completedItems ?? 0) + completedInChunk,
-          status: "in_progress",
+          completedItems: (job.completedItems ?? 0) + args.completed,
+          status: args.isLastChunk ? "completed" : "in_progress",
           updatedAt: Date.now(),
         })
       }
     }
+  },
+}
 
-    // Return next cursor or null if done
-    const nextIdx = startIdx + BATCH_CHUNK_SIZE
-    if (nextIdx < allDocs.length) {
-      return String(nextIdx)
+/**
+ * Internal mutation: open a batch translation job.
+ *
+ * Returns the job id and how many documents it covers, so the action that
+ * starts the batch can report progress from the first chunk.
+ */
+export const createBatchJob = {
+  args: {
+    storeId: v.id("stores"),
+    targetLang: v.string(),
+    entityType: v.union(
+      v.literal("products"),
+      v.literal("categories"),
+      v.literal("menus")
+    ),
+  },
+  handler: async (ctx: any, args: any): Promise<{ jobId: string; totalItems: number }> => {
+    if (!TRANSLATABLE_TABLES.includes(args.entityType)) {
+      throw new Error(`Invalid entity type: ${args.entityType}`)
     }
 
-    // All done
-    if (args.jobId) {
-      await ctx.db.patch(args.jobId, {
-        status: "completed",
-        updatedAt: Date.now(),
-      })
+    const allLanguages = await ctx.db
+      .query("languages")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    const defaultLang = allLanguages.find((l: any) => l.isDefault)
+    if (!defaultLang) throw new Error("No default language configured for this store")
+    if (defaultLang.code === args.targetLang) {
+      throw new Error("Cannot translate a store into its own default language")
     }
-    return null
+
+    const target = allLanguages.find(
+      (l: any) => l.code === args.targetLang && l.isActive
+    )
+    if (!target) throw new Error(`Language not active for this store: ${args.targetLang}`)
+
+    const docs = await ctx.db
+      .query(args.entityType)
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    const now = Date.now()
+    const jobId = await ctx.db.insert("translationJobs", {
+      storeId: args.storeId,
+      sourceLanguage: defaultLang.code,
+      targetLanguage: args.targetLang,
+      entityType: args.entityType,
+      totalItems: docs.length,
+      completedItems: 0,
+      status: "pending" as const,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { jobId, totalItems: docs.length }
   },
 }
 
@@ -610,4 +857,19 @@ export const resetDailyQuota = {
       },
     })
   },
+}
+
+// ── Helper: did this write touch anything worth translating? ─────────────
+
+/**
+ * True when an update carries a field the translator cares about.
+ *
+ * A price change or a stock toggle must not book a GPT round trip, and must
+ * not flag the document `pendingTranslation` — the plan would find nothing to
+ * do and the admin would have watched a spinner for no reason.
+ */
+export function touchesTranslatableText(
+  args: Record<string, unknown>
+): boolean {
+  return TRANSLATABLE_FIELDS.some((field) => args[field] !== undefined)
 }
