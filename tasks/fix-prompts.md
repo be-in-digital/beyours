@@ -1,12 +1,13 @@
 # Fix prompts — one per unclosed batch
 
-Thirty-three prompts. Twelve close out the original backlog batches; twenty-one address findings
+Thirty-two prompts. Eleven close out the original backlog batches; twenty-one address findings
 from the **discovery audit of 1 Sep 2026**, which asked a different question — not "are the
 57 cards resolved?" but "what was never carded at all?". Paste one into a fresh
 conversation opened on this repository.
 
-Batches 02, 03 and 04 are closed and have no prompt here. The discovery prompts are
-grouped under *New findings* at the end of the file, and six of them are blockers.
+Batches 01, 02, 03 and 04 are closed and have no prompt here — batch 01 on 4 Sep 2026,
+when #180 closed. The discovery prompts are grouped under *New findings* at the end of the
+file, and six of them are blockers.
 
 > **The discovery audit is complete.** All eight scopes have reported. The headline number
 > from the last of them: of the 92 features `CLAUDE.md` enumerates, **29 ship as described,
@@ -180,35 +181,6 @@ Not yours to close: reading the Convex spending cap (#178) and placing `E2E_*` s
 GitHub (#179) are account-owner actions. Write the runbook, name them as outstanding.
 
 Done when: CI fails a pull request whose e2e is broken, and you have demonstrated it.
-````
-
-## Batch 01 — Authentication
-**3/4 done · 1 partial.** The repo half is complete; what is left is a console action.
-
-````
-Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
-fleet, conventions. Then close batch 01 of the sales-readiness backlog.
-
-One item, partial. Verified by execution at commit 8d41349:
-
-- #180 — `ADMIN_BOOTSTRAP_TOKEN` and the first-administrator path. The repo half is done:
-  the call chain exists and the runbook is written. What remains is placing the token and
-  restricting the Google Maps key — both console-side.
-
-Before you assume there is nothing to do, verify the repo half yourself: follow the call
-chain end to end and prove with a probe that a fresh, unconfigured clone cannot mint an
-administrator without the token, and that a correct token mints exactly one. If either is
-untrue, that is repo work and it is yours.
-
-Skills: `systematic-debugging`, `security-audit`, `convex-patterns`, `tdd`.
-Fleet: an Explore agent to find every path that can create a privileged user — including
-seeds, fixtures and test helpers, which are where this kind of hole usually survives.
-
-Not yours to close: placing the token and restricting the Maps key are account-owner
-actions. Confirm the runbook is executable without you, then say they are outstanding.
-
-Done when: no unconfigured clone can produce an administrator, proven by a test that stays
-in the repo.
 ````
 
 ## Batch 05 — Payments and refunds

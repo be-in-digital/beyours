@@ -1679,11 +1679,18 @@ was proven red against the unfixed code.
 - [ ] **The password-reset email fails silently.** `auth.ts:33-52` does
   `if (!siteUrl || !secret) return;` with no log, and never checks the response status.
   Both variables live on the Convex side, which `instrumentation.ts` does not inspect.
-- [ ] **The first administrator cannot be created from the product.**
+- [x] **The first administrator cannot be created from the product.** — **RESOLVED**
   `claimFirstAdmin` requires an undocumented `ADMIN_BOOTSTRAP_TOKEN` and has no caller;
   nothing provisions `userProfiles` on sign-up, so `getAuthUser` throws
   "User profile not found" on every admin screen.
   → a one-time `/setup` page, or a documented step in `apps/docs/deployment/`.
+  Both, in the end. `app/(auth)/setup/page.tsx` exists in each app and calls the mutation,
+  rendering one of four states off `bootstrapStatus`; the token is documented in
+  `apps/docs/deployment/first-administrator.md`, both `.env` templates and the screen
+  itself. `getAuthUser` still throws `no_profile` — that is the designed state of every
+  account before the seat is claimed, and `/setup` is what explains it rather than a white
+  screen. The claim fails closed when the variable is unset, mints exactly one seat, and is
+  self-closing; held by `apps/*/tests/convex/authorization.test.ts`.
 - [ ] **Per-module permissions are never enforced.** The invite dialog offers eight
   checkboxes, stores them in `teamMembers.permissions`, and **nothing reads them**:
   `invitationGrant` does not carry them across, acceptance writes
@@ -1878,6 +1885,11 @@ status checks on `main`. See TECH-12.
 referrer per client domain, or it is a billing-drain vector. And provision
 `ADMIN_BOOTSTRAP_TOKEN` per deployment, without which no first administrator can be
 appointed (TECH-11).
+
+**Status, 4 Sep 2026 — the repository half is closed, this card is not.** The
+first-administrator path is built and tested (TECH-11, and #180 in the battle plan). What
+remains here is exactly the two console actions, and neither can be closed from the
+repository.
 
 **Both are scripted**: `scripts/wizards/github-e2e-maps-bootstrap.sh`. It generates and
 places the bootstrap token itself, prints the Google Cloud click path, and then verifies
