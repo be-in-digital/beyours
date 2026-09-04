@@ -50,7 +50,7 @@ export function UserMenu({ variant = "solid" }: UserMenuProps) {
             : "bg-white border-zinc-100 shadow-sm text-[#0D5C3F] hover:bg-zinc-50"
         }`}
       >
-        <Link href="/sign-in">
+        <Link href="/login">
           <User className="mr-2 h-4 w-4" />
           Connexion
         </Link>
