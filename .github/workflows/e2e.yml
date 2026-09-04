@@ -139,6 +139,75 @@ jobs:
           path: ~/.cache/convex-e2e
           key: convex-backend-${{ env.CONVEX_BACKEND_VERSION }}
 
+      # ── The npm cache the Convex push reaches for, and why it is here ─────
+      #
+      # `convex deploy` does not only evaluate modules. `convex.json` declares
+      # `node.externalPackages: ["sharp", "isomorphic-dompurify"]`, and the
+      # backend installs those with a real `npm install` — inside the push, and
+      # inside a 300-second ceiling it enforces itself and exposes no flag to
+      # raise. When that install does not finish in time, `evaluate_push`
+      # answers 408 and the shard is lost.
+      #
+      # That is not a theory about the logs. Measured against this same pinned
+      # backend on a machine with a fast registry path: `build_deps took
+      # 3.849s` on a cold `~/.npm` and `2.383s` on a warm one, and the run took
+      # `~/.npm` from empty to 17 MB — 3 tarballs and 38 registry metadata
+      # requests, every one of them for `sharp`'s per-platform variants. So the
+      # install is npm's, it is network-bound, and it uses the ordinary shared
+      # cache that any other npm on the runner would use. On CI's registry path
+      # the same step measured 158-285s, which is how a 300s ceiling gets hit.
+      #
+      # Hence: fetch those packages before the clock starts, and persist the
+      # cache between runs. The push then installs from disk rather than from
+      # the network, which is the part that was overrunning.
+      - name: Cache the npm downloads the Convex push needs
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          # convex.json names the packages; package.json pins them. A change to
+          # either has to fetch again, so both are in the key.
+          key: convex-external-deps-${{ hashFiles('apps/reference/convex.json', 'apps/reference/package.json') }}
+          restore-keys: |
+            convex-external-deps-
+
+      - name: Pre-fetch the Convex external dependencies
+        run: |
+          set -euo pipefail
+
+          # Read the package set from convex.json rather than restating it, so
+          # this cannot drift from what the backend will actually install.
+          SPECS="$(cd apps/reference && node -e '
+            const fs = require("fs")
+            const cfg = JSON.parse(fs.readFileSync("convex.json", "utf8"))
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+            const pinned = { ...pkg.dependencies, ...pkg.devDependencies }
+            const specs = (cfg.node?.externalPackages ?? [])
+              .filter((n) => n !== "*")
+              .map((n) => (pinned[n] ? `${n}@${pinned[n]}` : n))
+            process.stdout.write(specs.join(" "))
+          ')"
+
+          if [ -z "$SPECS" ]; then
+            echo "No external packages declared — nothing to pre-fetch."
+            exit 0
+          fi
+
+          echo "Warming ~/.npm for: $SPECS"
+
+          # A throwaway prefix: the tree itself is not wanted, only the tarballs
+          # and metadata it drags into ~/.npm, which is what the backend's own
+          # install will then find already there.
+          #
+          # --ignore-scripts because sharp's postinstall is the backend's
+          # business, not ours; the cache entries are identical either way.
+          # Non-fatal on purpose: a warm cache is an optimisation, and a
+          # registry hiccup here must not fail a suite that can still run.
+          npm install --prefix "$RUNNER_TEMP/convex-deps-warm" \
+            --ignore-scripts --no-audit --no-fund --loglevel=error \
+            $SPECS || echo "::warning::Pre-fetch failed; the push will fetch these itself."
+
+          echo "~/.npm is now $(du -sh "$HOME/.npm" 2>/dev/null | cut -f1)."
+
       - name: Start a Convex backend
         run: |
           set -euo pipefail
@@ -274,23 +343,86 @@ jobs:
           # read only by the Playwright command further down. It was simply the
           # one that ran slowest on the day.
           #
-          # A cold backend evaluates all 108 convex modules from scratch, and
-          # every shard starts its own. The same push against a warm backend
-          # takes 4-5 seconds, so a retry is not a superstition: the attempt
-          # that timed out leaves evaluated modules cached, and the next one
-          # starts from there.
+          # What that ceiling is actually spent on — corrected, because the
+          # explanation that stood here was wrong and it made the retry useless.
           #
-          # This is a margin problem, not a flake. If the retries start being
-          # needed routinely, the push has outgrown the ceiling and the module
-          # graph is what has to change.
+          # It said a cold backend "evaluates all 108 convex modules from
+          # scratch" and that "the attempt that timed out leaves evaluated
+          # modules cached, and the next one starts from there". The logs of
+          # runs 414, 415, 416, 418, 419, 422 and 425 say otherwise. Every one
+          # of those failed here, and in every one:
+          #
+          #   * `Cache miss for external deps package, running build_deps...`
+          #     appears on ALL THREE attempts, never once as a hit;
+          #   * each attempt re-uploads the same source package
+          #     (`Zipped: 577951`) under a fresh key, doing the previous
+          #     attempt's work again;
+          #   * every retry that reached the ceiling took 300001-300002 ms,
+          #     indistinguishable from the first.
+          #
+          # Nine failing shards, twenty-seven attempts, zero recoveries. The
+          # loop was not warming anything; it was buying ten extra minutes of
+          # runner per doomed shard.
+          #
+          # The cost is `build_deps` — the npm install for `externalPackages`,
+          # measured at 158-285 s in those logs — not module evaluation. The
+          # step above now pre-fetches those packages, which is the real fix.
+          # What follows makes the retry worth having for the case where the
+          # ceiling is hit anyway.
+          #
+          # The client giving up does NOT stop the backend: the install keeps
+          # running, and an `npm install` orphan was still alive at job cleanup
+          # on six of those runs. Pushing again immediately starts a SECOND
+          # install over the same temp area, and that race is the other failure
+          # signature in the logs — `ENOENT: no such file or directory, stat
+          # '/tmp/.tmpXXXX/build_deps/node_modules.zip'` on runs 414, 418 and
+          # 422, where build_deps finished and its own artifact was gone.
+          #
+          # So wait for the in-flight build to land before retrying. Once it
+          # lands the package is cached, and the next attempt is the "Cache hit
+          # for external deps package!" that finishes in seconds.
           deploy_attempt() {
             npx convex deploy -y --typecheck disable
+          }
+
+          # How many external-dependency builds the backend has completed. The
+          # count, not the presence of the line: earlier attempts leave their
+          # own, and what matters is whether a NEW one finished.
+          # Always an integer. `grep -c` exits 1 on no match and 2 on a missing
+          # file, and on the missing-file path it prints nothing at all — which
+          # made `[ "$(deps_builds)" -gt ... ]` fail with "integer expression
+          # expected" and the wait below run its full 8 minutes every time.
+          # Caught by probing this function rather than by reading it.
+          deps_builds() {
+            local n
+            n="$(grep -c "build_deps took" "$HOME/convex-backend.log" 2>/dev/null || true)"
+            echo "${n:-0}"
+          }
+
+          # Block until the backend finishes the build it is still running, or
+          # until it is clear it is not running one.
+          #
+          # 8 minutes: the longest `build_deps` observed in those logs was 285 s
+          # and it started when the attempt did, so a build still going after
+          # eight has not simply been slow. Falling through rather than failing
+          # keeps this a wait, not a second ceiling.
+          wait_for_deps_build() {
+            local before="$1" deadline=$(( $(date +%s) + 480 ))
+            while [ "$(date +%s)" -lt "$deadline" ]; do
+              if [ "$(deps_builds)" -gt "$before" ]; then
+                echo "The external dependency package finished building; retrying."
+                return 0
+              fi
+              sleep 5
+            done
+            echo "No new build_deps completion after 8 minutes; retrying anyway."
           }
 
           ATTEMPTS=3
           for attempt in $(seq 1 "$ATTEMPTS"); do
             echo "::group::convex deploy (attempt $attempt/$ATTEMPTS)"
             START=$(date +%s)
+            BUILDS_BEFORE="$(deps_builds)"
             if deploy_attempt; then
               echo "Deployed in $(( $(date +%s) - START ))s on attempt $attempt"
               echo "::endgroup::"
@@ -309,7 +441,12 @@ jobs:
                 "http://127.0.0.1:${CONVEX_PORT}/version" || echo "no answer"
               exit 1
             fi
-            sleep 5
+
+            # Not `sleep 5`. Five seconds is long enough to guarantee the two
+            # installs overlap and short enough to guarantee the second one
+            # starts cold, which is exactly the combination that produced the
+            # ENOENT above.
+            wait_for_deps_build "$BUILDS_BEFORE"
           done
 
           # Read by Convex functions, so they live on the deployment and not in
