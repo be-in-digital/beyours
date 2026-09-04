@@ -274,7 +274,10 @@ describe("createWithTicket", () => {
     type: "dine_in",
     subtotal: 1200,
     total: 1200,
-    paymentMethod: "cash",
+    // Card, deliberately: these tests are about a payment that can be
+    // ABANDONED at a provider. Cash has no provider and no redirect, so it
+    // reaches the pass at checkout — that case is covered separately below.
+    paymentMethod: "card",
   }
 
   /**
@@ -283,12 +286,29 @@ describe("createWithTicket", () => {
    * the payment provider and closed the tab left a slip on the pass, and the
    * kitchen cooked an order nobody had paid for.
    */
-  it("creates the order and NO kitchen ticket while the payment is pending", async () => {
+  it("creates the order and NO kitchen ticket while a CARD payment is pending", async () => {
     const { ctx, inserted } = createOrchestrationCtx()
     const orderId = await createWithTicket.handler(ctx, checkoutArgs as never)
 
     expect(orderId).toMatch(/^orders:/)
     expect(inserted.find((entry) => entry.table === "kitchenTickets")).toBeUndefined()
+  })
+
+  /**
+   * The other half of the same rule, and the regression the first version of
+   * this fix caused (NEW2-JOURNEY-4): gating cash on payment made order-ahead
+   * cash invisible. The diner read "Commande confirmée !" — which the cash
+   * branch of checkout shows without touching the server — while the pass
+   * stayed empty until somebody opened the admin and recorded the money.
+   */
+  it("puts a CASH order on the pass at checkout, before the money is taken", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    await createWithTicket.handler(ctx, {
+      ...checkoutArgs,
+      paymentMethod: "cash",
+    } as never)
+
+    expect(inserted.find((entry) => entry.table === "kitchenTickets")).toBeDefined()
   })
 
   it("puts the ticket on the pass when the payment is confirmed", async () => {
