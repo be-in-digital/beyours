@@ -254,19 +254,19 @@ Everything written went nowhere.
 > **Closed when.** An article published in the admin appears on the site with its own page, and a weekly configuration produces one with no human action.
 
 ## Batch 10 — Email marketing
-*8 items · 6 P0 · the heaviest batch · _3 done · 2 partial · 3 open_*
+*8 items · 6 P0 · the heaviest batch · _7 done · 1 partial (console-side)_*
 
-Three headline features are dead on arrival, and two defects put the domain's sending
+Three headline features were dead on arrival, and two defects put the domain's sending
 reputation at stake — which also means order confirmations.
 
-- [ ] **#177** 🟡 — Move AWS SES out of the sandbox — otherwise no client can email a real consumer — _blocks the rest of this batch_
-- [ ] **#146** 🔴 — Read `AWS_SES_CONFIGURATION_SET` instead of the hard-coded name, and fail loudly
+- [ ] **#177** 🟡 — Move AWS SES out of the sandbox — otherwise no client can email a real consumer — _repo half done: `ses:check` is wired in both apps and tested; the production-access request is an account-owner console action_
+- [x] **#146** ✅ — Read `AWS_SES_CONFIGURATION_SET` instead of the hard-coded name, and fail loudly
 - [x] **#141** ✅ — Fix the CSV import — three required arguments missing, two rejected fields added
-- [ ] **#142** 🔴 — Send the double opt-in email — no path does, so every signup is unreachable
+- [x] **#142** ✅ — Send the double opt-in email — no path did, so every signup was unreachable
 - [x] **#143** ✅ — Add the scheduled-campaign cron — there is no `crons.ts` in the engine
 - [x] **#144** ✅ — Stop "Relancer" re-sending from the first subscriber
-- [ ] **#145** 🔴 — Suppress permanent bounces immediately — three retries lead to an AWS sending pause
-- [ ] **#166** 🟡 — `List-Unsubscribe` headers, POST unsubscribe, verified SNS signature, batched sending, automations
+- [x] **#145** ✅ — Suppress permanent bounces immediately — three retries lead to an AWS sending pause
+- [x] **#166** ✅ — `List-Unsubscribe` headers, POST unsubscribe, verified SNS signature, batched sending, automations
 
 > **Closed when.** An import succeeds, the signup gets its confirmation, a scheduled campaign sends itself, pause-then-resume sends no duplicates, and a permanent bounce suppresses on the first event.
 

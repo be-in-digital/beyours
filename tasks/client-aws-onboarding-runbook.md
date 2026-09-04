@@ -128,8 +128,15 @@ DOMAIN=chez-mario.fr pnpm ses:check
 It reports the identity **and** the account: DKIM status, whether production
 access is granted, whether sending is enabled, the reputation status, and the
 24-hour quota. Exit `0` means this account can email real customers; `1` names
-what blocks it; `2` means it could not tell — no credentials, wrong region, or
-missing `ses:GetAccount`. Treat `2` as unknown, never as ready.
+what blocks it; `2` means it could not tell — no AWS CLI, no credentials, wrong
+region, missing `ses:GetAccount`, an unreadable response, or a state the script
+does not recognise. Treat `2` as unknown, never as ready.
+
+Every `2` prints the remedy on the line beneath it. The two you will actually
+meet are a machine with no AWS CLI installed, and a CLI authenticated to *your*
+account rather than the client's — `aws configure`, or `AWS_PROFILE`, fixes the
+second, and the account id on the first line of the output is how you confirm
+you are pointed at the right one.
 
 Do not move on while DKIM says `PENDING`. Requesting production access against
 an unverified domain is what turns a one-day approval into a week.

@@ -107,7 +107,15 @@ export function hashAlgorithmFor(version: string | undefined): "sha1" | "sha256"
  * never verifies.
  */
 export function buildSnsStringToSign(message: SnsEnvelope): string | null {
-  const fields = message.Type ? SIGNED_FIELDS[message.Type] : undefined
+  // `hasOwnProperty`, not a bare index: `SIGNED_FIELDS` is a plain object, so
+  // `Type: "constructor"` returned `Object.prototype.constructor` — truthy, not
+  // an array — and the loop below threw `fields is not iterable` out of
+  // `canVerify`, before the webhook's own try block. An unauthenticated POST
+  // could turn a 403 into a 500 that way.
+  const fields =
+    message.Type && Object.prototype.hasOwnProperty.call(SIGNED_FIELDS, message.Type)
+      ? SIGNED_FIELDS[message.Type]
+      : undefined
   if (!fields) return null
 
   let out = ""

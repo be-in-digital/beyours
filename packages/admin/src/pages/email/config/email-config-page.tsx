@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useEffect } from "react"
 import { Settings2 } from "lucide-react"
 import {
+  Badge,
   Button,
   ButtonGroup,
   Input,
@@ -28,6 +29,10 @@ import { LoadingState } from "../../../components/loading-state"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 import { ResolvingStore } from "../../../components/resolving-store"
+import {
+  AUTOMATION_CONTROLS,
+  normalizeAutomationSettings,
+} from "./automation-controls"
 
 const emailConfigSchema = z.object({
   senderName: z.string().min(1, "Le nom d'expéditeur est requis").max(100),
@@ -114,11 +119,17 @@ export function EmailConfigPage() {
         socialWebsite: config.branding?.socialLinks?.website ?? "",
         unsubscribeText: config.unsubscribeText ?? "Se désabonner",
         maxEmailsPerWeek: config.maxEmailsPerWeek ?? 3,
-        welcomeEnabled: config.automationSettings?.welcomeEnabled ?? true,
-        postOrderEnabled: config.automationSettings?.postOrderEnabled ?? true,
-        birthdayEnabled: config.automationSettings?.birthdayEnabled ?? false,
-        inactiveEnabled: config.automationSettings?.inactiveEnabled ?? false,
-        abandonedCartEnabled: config.automationSettings?.abandonedCartEnabled ?? false,
+        // A stored `true` on a trigger the engine refuses would light the
+        // switch back up on every load; normalising here means the screen only
+        // ever shows what can actually happen.
+        ...normalizeAutomationSettings({
+          welcomeEnabled: config.automationSettings?.welcomeEnabled ?? true,
+          postOrderEnabled: config.automationSettings?.postOrderEnabled ?? true,
+          birthdayEnabled: config.automationSettings?.birthdayEnabled ?? false,
+          inactiveEnabled: config.automationSettings?.inactiveEnabled ?? false,
+          abandonedCartEnabled:
+            config.automationSettings?.abandonedCartEnabled ?? false,
+        }),
       })
     }
   }, [config, reset])
@@ -144,13 +155,13 @@ export function EmailConfigPage() {
         },
         unsubscribeText: data.unsubscribeText,
         maxEmailsPerWeek: data.maxEmailsPerWeek,
-        automationSettings: {
+        automationSettings: normalizeAutomationSettings({
           welcomeEnabled: data.welcomeEnabled,
           postOrderEnabled: data.postOrderEnabled,
           birthdayEnabled: data.birthdayEnabled,
           inactiveEnabled: data.inactiveEnabled,
           abandonedCartEnabled: data.abandonedCartEnabled,
-        },
+        }),
       })
       toast.success("Configuration email sauvegardée")
     } catch (error: unknown) {
@@ -164,14 +175,6 @@ export function EmailConfigPage() {
   if (config === undefined) {
     return <LoadingState variant="form" />
   }
-
-  const automations = [
-    { key: "welcomeEnabled" as const, label: "Email de bienvenue", description: "Envoyé après la confirmation du double opt-in" },
-    { key: "postOrderEnabled" as const, label: "Email post-commande", description: "Envoyé 2h après une commande confirmée" },
-    { key: "birthdayEnabled" as const, label: "Email d'anniversaire", description: "Envoyé le jour de l'anniversaire de l'abonné" },
-    { key: "inactiveEnabled" as const, label: "Email de réengagement", description: "Pour les abonnés inactifs depuis 90 jours" },
-    { key: "abandonedCartEnabled" as const, label: "Panier abandonné", description: "Rappel 1h après un panier non finalisé" },
-  ]
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -391,19 +394,31 @@ export function EmailConfigPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {automations.map(({ key, label, description }) => (
-            <div key={key} className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor={key}>{label}</Label>
-                <p className="text-xs text-muted-foreground">{description}</p>
+          {AUTOMATION_CONTROLS.map(
+            ({ key, label, description, available, unavailableReason }) => (
+              <div key={key} className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={key}>{label}</Label>
+                    {!available && (
+                      <Badge variant="outline" className="text-xs font-normal">
+                        Indisponible
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {available ? description : unavailableReason}
+                  </p>
+                </div>
+                <Switch
+                  id={key}
+                  disabled={!available}
+                  checked={watch(key)}
+                  onCheckedChange={(checked) => setValue(key, checked)}
+                />
               </div>
-              <Switch
-                id={key}
-                checked={watch(key)}
-                onCheckedChange={(checked) => setValue(key, checked)}
-              />
-            </div>
-          ))}
+            )
+          )}
         </CardContent>
       </Card>
 

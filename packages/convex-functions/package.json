@@ -28,6 +28,7 @@
     "./accessAudit": "./src/accessAudit.ts",
     "./automationDispatch": "./src/automationDispatch.ts",
     "./campaignDelivery": "./src/campaignDelivery.ts",
+    "./sesSending": "./src/sesSending.ts",
     "./rateLimit": "./src/rateLimit.ts",
     "./emailAutomationRuns": "./src/emailAutomationRuns.ts",
     "./products": "./src/products.ts",

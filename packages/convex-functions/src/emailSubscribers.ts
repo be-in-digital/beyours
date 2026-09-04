@@ -153,15 +153,6 @@ export const create = {
   handler: async (ctx: any, args: any) => {
     const email = args.email.toLowerCase()
 
-    // Check uniqueness
-    const existing = await ctx.db
-      .query("emailSubscribers")
-      .withIndex("by_storeId_email", (q: any) =>
-        q.eq("storeId", args.storeId).eq("email", email)
-      )
-      .first()
-    if (existing) throw new Error("Cet email est déjà inscrit")
-
     assertFieldLengths({
       email: args.email,
       name: args.firstName,
@@ -170,11 +161,46 @@ export const create = {
     // Public by necessity — a storefront visitor has no session — so the same
     // two windows the contact form uses apply here. Re-subscribing is normal;
     // doing it five times an hour is a script.
+    //
+    // Consumed BEFORE the uniqueness check, not after: a caller who guesses
+    // addresses one at a time is exactly what the limiter is for, and a check
+    // that throws first spends nothing and answers freely whether an address is
+    // on the list.
     await consumeRateLimit(ctx, "subscribePerEmail", email)
     await consumeRateLimit(ctx, "subscribePerStore", args.storeId)
 
     const now = Date.now()
     const { token: tokenBytes, expiresAt } = doubleOptInCredential()
+
+    const existing = await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId_email", (q: any) =>
+        q.eq("storeId", args.storeId).eq("email", email)
+      )
+      .first()
+
+    if (existing) {
+      // A `pending` row is someone who asked and never got their link — the
+      // confirmation bounced, SES refused it because the account is still
+      // sandboxed, the mail went to spam, or the 48 hours simply ran out.
+      // Refusing them was a one-way door: `create` was the only way in, there
+      // is no resend anywhere in the product, and the confirmation page told
+      // them to "se réinscrire", which threw. Re-minting is the recovery, and
+      // the rate limit above is what keeps it from being a mail cannon.
+      if (existing.status === "pending") {
+        await ctx.db.patch(existing._id, {
+          doubleOptInToken: tokenBytes,
+          doubleOptInExpiresAt: expiresAt,
+          consentAt: now,
+          updatedAt: now,
+        })
+        return existing._id
+      }
+      // Every other status is a decision already taken — confirmed,
+      // unsubscribed, bounced or complained — and none of them should be
+      // quietly overwritten by anyone who can type the address into a form.
+      throw new Error("Cet email est déjà inscrit")
+    }
 
     // Manual source = admin added, skip double opt-in
     const isManual = args.source === "manual"
@@ -237,6 +263,13 @@ export const confirmDoubleOptIn = {
       )
       .first()
     if (!subscriber) throw new Error("Token invalide")
+    // Distinguished, because the page renders these straight to the visitor.
+    // A suppressed address holding a live token was being told "votre
+    // inscription est déjà confirmée" — untrue, and it sent them away believing
+    // they were on a list they had never joined.
+    if (subscriber.status === "bounced" || subscriber.status === "complained") {
+      throw new Error("Adresse non distribuable")
+    }
     if (subscriber.status !== "pending") throw new Error("Abonné déjà confirmé")
     if (subscriber.doubleOptInExpiresAt && Date.now() > subscriber.doubleOptInExpiresAt) {
       throw new Error("Token expiré")
@@ -264,15 +297,75 @@ export const unsubscribe = {
   },
 }
 
+/**
+ * How SES classifies a bounce, and how much of it we are allowed to ignore.
+ *
+ * `Permanent` is SES saying the mailbox does not exist and never will. Sending
+ * to it again does not fail more informatively, it just adds another bounce to
+ * the ratio AWS suspends the account over — the published threshold is 5%, and
+ * a list built over two years carries enough dead addresses on its own to reach
+ * it if every one of them is tried three times.
+ *
+ * `Transient` is the opposite claim: a full mailbox, a greylisting, a server
+ * that was down. Those recover, so they keep the three-strike counter.
+ * `Undetermined` means SES could not tell, and an address we cannot prove dead
+ * is treated as one that might not be.
+ */
+const bounceTypeValidator = v.union(
+  v.literal("Permanent"),
+  v.literal("Transient"),
+  v.literal("Undetermined")
+)
+
+/**
+ * Reduce whatever SES sent to one of its three classifications, or to nothing.
+ *
+ * The validator above is a closed union, and the webhook's whole dispatch sits
+ * inside a `try { } catch { console.error }`. So a fourth value — AWS adding
+ * one, or a malformed notification — would fail validation, be swallowed
+ * there, and the bounce would not be recorded AT ALL. That is worse than the
+ * three-strike behaviour it replaced, which at least counted the event.
+ *
+ * Normalising at the boundary keeps the validator strict and makes an
+ * unrecognised classification behave exactly as no classification does: the
+ * counter still moves, and nothing is suppressed on evidence we cannot read.
+ */
+export function normalizeBounceType(
+  raw: unknown
+): "Permanent" | "Transient" | "Undetermined" | undefined {
+  return raw === "Permanent" || raw === "Transient" || raw === "Undetermined"
+    ? raw
+    : undefined
+}
+
+/** Statuses a bounce may overwrite. */
+const MAILABLE_STATUSES = ["pending", "active"]
+
 export const markBounced = {
-  args: { id: v.id("emailSubscribers") },
+  args: {
+    id: v.id("emailSubscribers"),
+    /**
+     * Optional so an older caller still type-checks; an absent value is read
+     * as the cautious case and keeps the counter, never as a permanent bounce.
+     */
+    bounceType: v.optional(bounceTypeValidator),
+  },
   handler: async (ctx: any, args: any) => {
     const subscriber = await ctx.db.get(args.id)
     if (!subscriber) throw new Error("Abonné introuvable")
     const newCount = (subscriber.bounceCount ?? 0) + 1
+
+    const suppress = args.bounceType === "Permanent" || newCount >= 3
+
     await ctx.db.patch(args.id, {
       bounceCount: newCount,
-      status: newCount >= 3 ? "bounced" : subscriber.status,
+      // `unsubscribed` and `complained` are already suppressed and say more
+      // than "bounced" does — a spam report in particular is the one a
+      // regulator asks about. A bounce must not overwrite either.
+      status:
+        suppress && MAILABLE_STATUSES.includes(subscriber.status)
+          ? "bounced"
+          : subscriber.status,
       updatedAt: Date.now(),
     })
   },
@@ -353,7 +446,15 @@ export const importBatch = {
   },
   handler: async (ctx: any, args: any) => {
     const now = Date.now()
-    const results = { inserted: 0, skipped: 0 }
+    // `pendingIds` rather than a count alone: the caller has to schedule one
+    // confirmation email per row it actually inserted, and a number cannot say
+    // which rows those were. Duplicates are skipped, so it is not the input
+    // list either.
+    const results: {
+      inserted: number
+      skipped: number
+      pendingIds: string[]
+    } = { inserted: 0, skipped: 0, pendingIds: [] }
 
     for (const sub of args.subscribers) {
       const email = sub.email.toLowerCase()
@@ -371,7 +472,7 @@ export const importBatch = {
 
       const credential = doubleOptInCredential(now)
 
-      await ctx.db.insert("emailSubscribers", {
+      const id = await ctx.db.insert("emailSubscribers", {
         storeId: args.storeId,
         email,
         firstName: sub.firstName,
@@ -400,6 +501,7 @@ export const importBatch = {
         updatedAt: now,
       })
       results.inserted++
+      results.pendingIds.push(id)
     }
 
     return results
