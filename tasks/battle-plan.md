@@ -195,17 +195,50 @@ afterwards.
 > **Closed when.** A real payment, then a partial refund, then a full refund all succeed from the UI and match the Stripe dashboard exactly.
 
 ## Batch 06 — Kitchen & printing
-*4 items · 3 P0 · _2 partial · 2 open_*
+*4 items · 3 P0 · _4 done — closed 4 Sep 2026_*
 
 This is the screen the restaurant watches all day. A missing ticket or a duplicate
 costs a service.
 
-- [ ] **#136** 🟡 — Create the ticket on payment confirmation, not on order creation
-- [ ] **#135** 🔴 — Carry instructions and allergies through to the ticket — `notes: undefined` is hard-coded
-- [ ] **#137** 🔴 — Bound the KDS query and add retention — otherwise the screen eventually shows nothing
-- [ ] **#164** 🟡 — Print lock, retry on failure, overdue alarm, multi-station routing, cloud options disabled
+- [x] **#136** ✅ — The ticket is created on payment, not at checkout. The rule lives in
+      `releaseToKitchen`, which every card path reaches through `orders.recordPaymentStatus`
+      and cash reaches through `markCashPaid`. An abandoned checkout leaves nothing on the
+      pass; `store.orderConfirmation` decides *when* — withdrawn once for promising a
+      workflow nothing implemented, and reinstated here because this is the implementation.
+- [x] **#135** ✅ — The customer's instruction survives the Uber Eats mapper, the
+      `createFromWebhook` validator and the ticket insert, through one shared mapping
+      (`toKitchenTicketItemsFromPlatform`) rather than two hand-written copies. Each half
+      had a green test before; the seam between them dropped the note.
+- [x] **#137** ✅ — `getByStore` reads the active statuses only, capped and oldest-first;
+      the completed tab paginates; `purgeExpiredTickets` runs nightly at 02:30 UTC in both
+      apps, rescheduling itself while there is more to delete.
+- [x] **#164** ✅ — 9 of 9, two of them on the storefront path only. The print-configuration
+      tab is back — in `packages/admin` this time, on the store-detail screen both apps
+      already mount — so `printConfig.enabled` can be turned on at all and a ticket reaches
+      `printStatus: "pending"`. Beside it:
+      `claimForPrint` takes a slip in one transaction, failed prints return to the queue
+      until `MAX_PRINT_ATTEMPTS`, the trigger commits with `flushSync`, the three cloud
+      providers are offered `disabled` with the reason in view, and an order is split into
+      one ticket per station it touches under a single tracking token. The allergen block
+      and the prep time are the two that stop at the storefront — see the note below.
 
 > **Closed when.** An abandoned payment produces no ticket; a confirmed one produces exactly one, with its allergies; two open tablets do not print twice.
+>
+> **Closed 4 Sep 2026** (PR #311, with the cash release in #335), re-verified by execution
+> the same day. Each guard was mutation-checked rather than read: removing the payment gate
+> fails 5 tests, collapsing the station split fails 3, dropping the platform note fails the
+> end-to-end Uber Eats test. Two things are deliberately **not** counted as closed:
+>
+> - **The allergen block and the prep time are fed on the storefront path only.**
+>   `releaseToKitchen` computes both from the ordered products; the Uber Eats webhook builds
+>   its own ticket and passes neither, so a platform order still prints without its allergen
+>   block and cannot arm the overdue alarm. Feeding it means resolving platform lines to
+>   internal products through `externalProductMappings` — real work, not a line, and it
+>   belongs to the delivery surface rather than to this batch.
+> - **The diner is still offered nowhere to type an allergy.** The whole pipeline exists
+>   behind it — schema, `orders.create`, the printed `Note:` block — and the storefront
+>   checkout sends no `notes` at all. Tracked as NEW2-P8-1 in
+>   [#325](https://github.com/be-in-digital/beyours/issues/325), not here.
 
 ## Batch 07 — Delivery integrations
 *6 items · 4 P0 · the highest-volume channel · _5 done · 1 owner action outstanding_*
