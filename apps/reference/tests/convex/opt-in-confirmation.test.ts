@@ -152,7 +152,7 @@ describe("signing up from the storefront", () => {
     // Before this, the row was created and nothing else happened — the token
     // was minted into a table and abandoned.
     expect(await scheduledNames(t)).toContain(
-      "emailOptInActions:sendConfirmation"
+      "emailAutomationActions:sendConfirmation"
     )
   })
 
@@ -166,7 +166,7 @@ describe("signing up from the storefront", () => {
     })
     const subscriber = await onlySubscriber(t)
 
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
 
@@ -206,7 +206,7 @@ describe("signing up from the storefront", () => {
     // all. Doing that with a confirmation would burn the token on a message
     // that cannot work, and the 48h expiry would run out before anyone noticed.
     await expect(
-      t.action(internal.emailOptInActions.sendConfirmation, {
+      t.action(internal.emailAutomationActions.sendConfirmation, {
         subscriberId: subscriber!._id,
       })
     ).rejects.toThrow(/CONVEX_SITE_URL/)
@@ -229,7 +229,7 @@ describe("signing up from the storefront", () => {
     // The row is `active` and its token is cleared. A second delivery attempt
     // is a no-op, not an error: the scheduler may retry, and a duplicate
     // "please confirm" to someone who already did is worse than silence.
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
     expect(sesSends).toHaveLength(0)
@@ -267,7 +267,7 @@ describe("who the confirmation comes from", () => {
       email: "yanis@resto.example",
     })
     const subscriber = await onlySubscriber(t)
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
 
@@ -288,7 +288,7 @@ describe("who the confirmation comes from", () => {
       email: "yanis@resto.example",
     })
     const subscriber = await onlySubscriber(t)
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
 
@@ -324,7 +324,7 @@ describe("the store name in the message", () => {
       email: "yanis@resto.example",
     })
     const subscriber = await onlySubscriber(t)
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
 
@@ -367,7 +367,7 @@ describe("an address the owner typed in themselves", () => {
     // `manual` is the one source that skips the confirmation by design: the
     // owner is asserting the consent directly. Mailing them a link about a step
     // that did not happen would be a message about nothing.
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: id,
     })
     expect(sesSends).toHaveLength(0)
@@ -396,7 +396,7 @@ describe("importing a CSV", () => {
       ctx.db.query("emailSubscribers").collect()
     )
     for (const row of rows) {
-      await t.action(internal.emailOptInActions.sendConfirmation, {
+      await t.action(internal.emailAutomationActions.sendConfirmation, {
         subscriberId: row._id,
       })
     }
@@ -441,7 +441,7 @@ describe("a signup whose confirmation never arrived", () => {
       first!.doubleOptInExpiresAt!
     )
 
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: second._id,
     })
     const html = sesSends[0].Content.Simple.Body.Html.Data
@@ -469,7 +469,7 @@ describe("a signup whose confirmation never arrived", () => {
 
     const revived = await onlySubscriber(t)
     expect(revived!.doubleOptInExpiresAt).toBeGreaterThan(Date.now())
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: revived!._id,
     })
     expect(sesSends).toHaveLength(1)
@@ -537,7 +537,7 @@ describe("the round trip", () => {
     expect(subscriber!.status).toBe("pending")
 
     // 2. The scheduled action composes and sends the confirmation.
-    await t.action(internal.emailOptInActions.sendConfirmation, {
+    await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,
     })
 

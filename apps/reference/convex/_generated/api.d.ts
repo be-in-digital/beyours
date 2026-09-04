@@ -49,7 +49,6 @@ import type * as emailCampaigns from "../emailCampaigns.js";
 import type * as emailConfig from "../emailConfig.js";
 import type * as emailEvents from "../emailEvents.js";
 import type * as emailHttpHandlers from "../emailHttpHandlers.js";
-import type * as emailOptInActions from "../emailOptInActions.js";
 import type * as emailSegments from "../emailSegments.js";
 import type * as emailSubscribers from "../emailSubscribers.js";
 import type * as emailTemplates from "../emailTemplates.js";
@@ -166,7 +165,6 @@ declare const fullApi: ApiFromModules<{
   emailConfig: typeof emailConfig;
   emailEvents: typeof emailEvents;
   emailHttpHandlers: typeof emailHttpHandlers;
-  emailOptInActions: typeof emailOptInActions;
   emailSegments: typeof emailSegments;
   emailSubscribers: typeof emailSubscribers;
   emailTemplates: typeof emailTemplates;

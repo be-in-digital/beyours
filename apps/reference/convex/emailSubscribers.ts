@@ -37,7 +37,7 @@ async function scheduleConfirmation(
 
   await ctx.scheduler.runAfter(
     0,
-    internal.emailOptInActions.sendConfirmation,
+    internal.emailAutomationActions.sendConfirmation,
     { subscriberId: id }
   );
 }

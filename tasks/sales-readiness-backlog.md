@@ -680,7 +680,7 @@ registration returns **nothing**: no code builds the URL and no code sends it.
 **Done when.** A storefront signup receives the email, the link flips them to `active`,
 and the next campaign reaches them.
 
-**RESOLVED.** `emailOptInActions.sendConfirmation` (both apps) composes and sends the
+**RESOLVED.** `emailAutomationActions.sendConfirmation` (both apps) composes and sends the
 link, scheduled from `subscribe`, `create` (every non-`manual` source) and `importBatch`,
 which now returns `pendingIds` so each imported row gets one. It refuses to send when
 `CONVEX_SITE_URL` is unset rather than mailing a relative, unclickable link. Two further
