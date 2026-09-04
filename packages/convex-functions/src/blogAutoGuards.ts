@@ -6,7 +6,11 @@
  * Pure logic — no auth, no side effects.
  */
 
-import { getCurrentPeriodKey } from "./blogAutoUsage"
+import {
+  bumpImageToProductUsage,
+  bumpUsage,
+  getCurrentPeriodKey,
+} from "./blogAutoUsage"
 
 // ============================================================================
 // Types
@@ -296,6 +300,134 @@ export function normalizeScheduleDays(config: {
   return { weekdays, monthDays }
 }
 
+// ============================================================================
+// Quota reservation
+// ============================================================================
+
+export interface QuotaReservation {
+  ok: boolean
+  reason?: string
+  remaining: number
+}
+
+/**
+ * Take one article out of this month's quota — in the transaction that just
+ * checked it was there.
+ *
+ * The generation action used to check the quota, spend two to five minutes at
+ * OpenAI, and only then increment. Ten requests arriving together all read the
+ * same count and all passed: measured, ten articles generated against a quota
+ * of two, and every one of them billed. Nothing about the check was wrong; the
+ * gap after it was.
+ *
+ * Convex mutations are serializable, so a read and the write that depends on it
+ * are atomic when they sit in the same mutation. Reserving here and calling the
+ * paid API afterwards is what turns the cap into a cap. The caller releases on
+ * failure — an article that was never generated must not cost the owner a slot.
+ */
+export async function reserveArticleQuota(
+  ctx: any,
+  ownerId: string,
+): Promise<QuotaReservation> {
+  const access = await checkAutoBlogAccess(ctx, ownerId)
+  if (!access.allowed) {
+    return { ok: false, reason: access.reason ?? "Accès refusé", remaining: 0 }
+  }
+
+  await bumpUsage(ctx, ownerId, { generated: 1 })
+  return { ok: true, remaining: access.remainingQuota - 1 }
+}
+
+/** Give an article slot back after a generation that never produced anything. */
+export async function releaseArticleQuota(ctx: any, ownerId: string): Promise<void> {
+  await bumpUsage(ctx, ownerId, { generated: -1 })
+}
+
+/**
+ * The same reservation for generated images.
+ *
+ * An article generates up to four of them — one cover plus three in the body —
+ * and each is a `gpt-image-1` call. They were counted by nothing at all: the
+ * image quota existed, `checkImageGenerationAccess` read it, and the article
+ * pipeline never asked. A plan with five images a month could produce forty in
+ * ten articles.
+ */
+export async function reserveImageQuota(
+  ctx: any,
+  ownerId: string,
+): Promise<QuotaReservation> {
+  const access = await checkImageGenerationAccess(ctx, ownerId)
+  if (!access.allowed) {
+    return {
+      ok: false,
+      reason: access.reason ?? "Quota d'images atteint",
+      remaining: 0,
+    }
+  }
+
+  await bumpUsage(ctx, ownerId, { images: 1 })
+  return { ok: true, remaining: access.remainingImageQuota - 1 }
+}
+
+/** Give an image slot back after a generation that returned nothing. */
+export async function releaseImageQuota(ctx: any, ownerId: string): Promise<void> {
+  await bumpUsage(ctx, ownerId, { images: -1 })
+}
+
+/**
+ * The same reservation for Image-to-Product analyses.
+ *
+ * Not named in the audit card, and the identical defect: `imageToProduct`
+ * checked the quota, then made three OpenAI calls — a vision pass, an
+ * enrichment pass and up to several `gpt-image` generations — and incremented
+ * the counter seventy-five lines later. Concurrent requests all read the same
+ * count and all passed, exactly as the blog quota did.
+ */
+export async function reserveImageToProductQuota(
+  ctx: any,
+  ownerId: string,
+): Promise<QuotaReservation> {
+  const access = await checkImageToProductAccess(ctx, ownerId)
+  if (!access.allowed) {
+    return {
+      ok: false,
+      reason: access.reason ?? "Quota d'analyses atteint",
+      remaining: 0,
+    }
+  }
+
+  await bumpImageToProductUsage(ctx, ownerId, 1)
+  return { ok: true, remaining: access.remainingAnalysisQuota - 1 }
+}
+
+/** Give an analysis slot back when nothing was produced. */
+export async function releaseImageToProductQuota(
+  ctx: any,
+  ownerId: string,
+): Promise<void> {
+  await bumpImageToProductUsage(ctx, ownerId, -1)
+}
+
+/**
+ * What actually happens to a generated article, once the plan has its say.
+ *
+ * `approvalMode: "auto_publish"` was stored, validated against the plan at
+ * config time, and then read by nobody: every generated article was saved as a
+ * draft. A subscription sold as "weekly, auto-publish" produced drafts nobody
+ * was told about.
+ *
+ * The plan is checked again here rather than trusted from the config, because
+ * a subscription can be downgraded after the config was written and the row
+ * does not change when it is.
+ */
+export function resolveApprovalMode(
+  entitlements: any,
+  requested: string | undefined,
+): "draft_review" | "auto_publish" {
+  if (requested !== "auto_publish") return "draft_review"
+  return entitlements?.autoBlog?.allowAutoPublish ? "auto_publish" : "draft_review"
+}
+
 /**
  * Validate plan-specific limits for a config upsert.
  * Throws with a descriptive French error message if validation fails.
@@ -309,6 +441,8 @@ export function validateConfigAgainstPlan(
     frequency?: "weekly" | "monthly"
     preferredWeekdays?: number[]
     preferredMonthDays?: number[]
+    preferredHour?: number
+    timezone?: string
   }
 ): void {
   const ab = entitlements?.autoBlog
@@ -339,6 +473,31 @@ export function validateConfigAgainstPlan(
     throw new Error(
       `La traduction automatique n'est pas disponible avec le plan ${ab.plan}. Passez au plan Enterprise.`
     )
+  }
+
+  // The hour the owner picked, bounded where it is saved.
+  //
+  // `upsert` declares `preferredHour: v.number()`; the 0-23 constraint lived
+  // only in the client form, so hour 25 stored cleanly and was simply never due
+  // — a subscription that produced nothing, with nothing to show why.
+  if (config.preferredHour !== undefined) {
+    if (
+      !Number.isInteger(config.preferredHour) ||
+      config.preferredHour < 0 ||
+      config.preferredHour > 23
+    ) {
+      throw new Error("L'heure de publication doit être comprise entre 0 et 23.")
+    }
+  }
+
+  // A timezone the runtime cannot resolve silently plans on UTC, which is the
+  // right hour in the wrong place.
+  if (config.timezone !== undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: config.timezone })
+    } catch {
+      throw new Error(`Fuseau horaire inconnu : ${config.timezone}.`)
+    }
   }
 
   // Check schedule days

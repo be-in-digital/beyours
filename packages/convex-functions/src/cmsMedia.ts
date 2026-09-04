@@ -9,7 +9,12 @@
  */
 
 import { v } from "convex/values"
-import { getExtensionFromMimeType } from "@be-in-digital/cms"
+import {
+  getExtensionFromMimeType,
+  getMediaKind,
+  validateMediaUpload,
+} from "@be-in-digital/cms"
+import { mediaKeyFromUrl } from "@be-in-digital/core/aws/media-url"
 
 // ============================================================================
 // Queries
@@ -72,6 +77,42 @@ export const getMedia = {
 // ============================================================================
 
 /**
+ * Refuses an upload the media library must not accept.
+ *
+ * `validateMediaUpload` is the allow-list — MIME type, declared extension,
+ * size — and it lived only in the browser: `CmsMediaPicker` and
+ * `CmsMediaLibrary` called it, nothing on the server did. A client-side check
+ * is a courtesy to the editor, not a boundary; `createMedia` is a public
+ * mutation and a caller who skips the component reaches it directly. It
+ * accepted `text/html` and a 5 GB SVG.
+ *
+ * `kind` is checked against the MIME type as well, because it is a separate
+ * argument the caller chooses: declaring an `image/svg+xml` as kind `"file"`
+ * routed it around `confirmUpload`'s image branch.
+ *
+ * Throws rather than returning a result: the caller is a mutation, and there is
+ * nothing useful it could do with a refusal but propagate it.
+ */
+export function assertMediaUploadAllowed(args: {
+  filename: string
+  mimeType: string
+  size: number
+  kind: string
+}): void {
+  const result = validateMediaUpload(args.filename, args.mimeType, args.size)
+  if (!result.valid) {
+    throw new Error(result.error?.message ?? "Upload refusé")
+  }
+
+  const derivedKind = getMediaKind(args.mimeType)
+  if (derivedKind !== args.kind) {
+    throw new Error(
+      `Le type de média "${args.kind}" ne correspond pas au type MIME "${args.mimeType}" (attendu : "${derivedKind}")`,
+    )
+  }
+}
+
+/**
  * Reserve a media record before upload.
  * Returns { mediaId } — the canonical S3 key is derived server-side
  * by getPresignedUrlForMedia using: cms/{mediaId}/source.{ext}
@@ -88,6 +129,13 @@ export const createMedia = {
     uploadedBy: v.string(),
   },
   handler: async (ctx: any, args: any) => {
+    assertMediaUploadAllowed({
+      filename: args.filename,
+      mimeType: args.mimeType,
+      size: args.size,
+      kind: args.kind,
+    })
+
     const now = Date.now()
     const mediaId = await ctx.db.insert("cmsMedia", {
       storeId: args.storeId,
@@ -106,7 +154,67 @@ export const createMedia = {
   },
 }
 
-/** Delete a media item (blocked if referenced in any cmsBlock) */
+/**
+ * Every S3 object a media row owns: the source, and each generated variant.
+ *
+ * Two sources, because rows were written two ways. A row with an `s3Key` is a
+ * v2 upload, and `processImage` writes its variants as siblings of the source
+ * (`cms/{mediaId}/thumb.webp`), so the variant keys are derivable — deriving
+ * them is exact and needs no environment. Older rows carry only URLs, which
+ * `mediaKeyFromUrl` turns back into keys when they are this deployment's own.
+ *
+ * Deduplicated, because the two agree for a v2 row.
+ */
+export function collectMediaS3Keys(
+  media: {
+    s3Key?: string
+    sourceUrl?: string
+    url?: string
+    thumbnailUrl?: string
+    variants?: Record<string, { url?: string } | undefined>
+  },
+  origin: { publicBaseUrl?: string; bucketName?: string } = {},
+): string[] {
+  const keys = new Set<string>()
+
+  const add = (key: string | null | undefined) => {
+    if (key && !key.includes("..")) keys.add(key)
+  }
+
+  add(media.s3Key)
+
+  // Variants sit beside the source under the same `cms/{mediaId}/` prefix.
+  if (media.s3Key) {
+    const slash = media.s3Key.lastIndexOf("/")
+    if (slash > 0) {
+      const prefix = media.s3Key.slice(0, slash)
+      for (const name of Object.keys(media.variants ?? {})) {
+        if (media.variants?.[name]) add(`${prefix}/${name}.webp`)
+      }
+    }
+  }
+
+  for (const url of [
+    media.sourceUrl,
+    media.url,
+    media.thumbnailUrl,
+    ...Object.values(media.variants ?? {}).map((variant) => variant?.url),
+  ]) {
+    if (url) add(mediaKeyFromUrl(url, origin))
+  }
+
+  return [...keys]
+}
+
+/**
+ * Delete a media item (blocked if referenced in any cmsBlock or blog article).
+ *
+ * Returns the S3 keys the row owned. Deleting the row was the whole of this
+ * function — `DeleteObjectCommand` appeared nowhere in the repository — so an
+ * erasure request left every byte in the bucket. A mutation cannot reach S3,
+ * so the keys are read here, while the row still exists, and handed to the app
+ * wrapper to schedule against; looking them up after the commit is impossible.
+ */
 export const deleteMedia = {
   args: {
     storeId: v.id("stores"),
@@ -154,8 +262,15 @@ export const deleteMedia = {
       }
     }
 
+    // Read before the delete: once the mutation commits the row is gone and
+    // the keys with it, so the caller has to be handed them, not a lookup.
+    const s3Keys = collectMediaS3Keys(media, {
+      publicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL,
+      bucketName: process.env.AWS_S3_BUCKET_NAME,
+    })
+
     await ctx.db.delete(args.mediaId)
-    return { deleted: true }
+    return { deleted: true, s3Keys }
   },
 }
 

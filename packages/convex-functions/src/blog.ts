@@ -11,6 +11,7 @@
 
 import { v } from "convex/values"
 import { generateSlug, now } from "./helpers"
+import { sanitizeArticleHtml } from "./htmlSanitize"
 
 // ============================================================================
 // Validators (reusable across queries and mutations)
@@ -28,6 +29,66 @@ const blogContentValidator = v.object({
   ogImageId: v.optional(v.id("cmsMedia")),
   updatedAt: v.number(),
 })
+
+/**
+ * How much markup is worth scanning for a reading time.
+ *
+ * This runs once per article inside `listPublishedArticles`, which is the query
+ * behind every render of the public blog. A generated article is 1200-1800
+ * words; 200 kB is far past any real one, and past it the answer would not
+ * change anyway.
+ */
+const READING_TIME_SCAN_LIMIT = 200_000
+
+/** Words a reader gets through in a minute. The usual figure for prose. */
+const WORDS_PER_MINUTE = 200
+
+/**
+ * Minutes a reader needs for an article, from the HTML the editor stored.
+ *
+ * The card design has always shown a reading time; the demo content simply
+ * hard-coded one per fake post. Never returns 0, so a two-line note reads
+ * "1 min" rather than "0 min".
+ *
+ * Counted by one pass over the characters rather than by stripping tags with a
+ * regular expression. `/<[^>]*>/g` looks linear and is not: given markup with
+ * many `<` and no `>` — which a public query has no way to refuse — the engine
+ * restarts at each one and the cost becomes quadratic. Measured at 15 seconds
+ * on a pathological input, inside the query that serves `/blog`.
+ */
+export function estimateReadingMinutes(html: string): number {
+  const source =
+    html.length > READING_TIME_SCAN_LIMIT
+      ? html.slice(0, READING_TIME_SCAN_LIMIT)
+      : html
+
+  let words = 0
+  let insideTag = false
+  let insideWord = false
+
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]
+    if (insideTag) {
+      if (char === ">") insideTag = false
+      continue
+    }
+    if (char === "<") {
+      insideTag = true
+      insideWord = false
+      continue
+    }
+    if (char === " " || char === "\n" || char === "\t" || char === "\r") {
+      insideWord = false
+      continue
+    }
+    if (!insideWord) {
+      words++
+      insideWord = true
+    }
+  }
+
+  return Math.max(1, Math.round(words / WORDS_PER_MINUTE))
+}
 
 // ============================================================================
 // Public Queries (storefront, no auth at package level)
@@ -65,6 +126,7 @@ export const listPublishedArticles = {
           category: category ? { _id: category._id, name: category.name, slug: category.slug } : null,
           publishedAt: article.publishedAt,
           authorId: article.publishedAuthorId,
+          readingMinutes: estimateReadingMinutes(article.publishedContent.content ?? ""),
         }
       }),
     )
@@ -217,6 +279,7 @@ export const getArticleBySlug = {
       publishedAt: article.publishedAt,
       authorId: article.publishedAuthorId,
       content: article.publishedContent,
+      readingMinutes: estimateReadingMinutes(article.publishedContent.content ?? ""),
       coverImage: media.coverImage,
       ogImage: media.ogImage,
       category: category ? { _id: category._id, name: category.name, slug: category.slug } : null,
@@ -456,8 +519,16 @@ export async function saveDraftCore(
   const newSlug = args.draftContent.slug || generateSlug(args.draftContent.title)
   const slug = await ensureUniqueSlug(ctx, article.storeId, newSlug, article._id)
 
+  // The editor's HTML is as untrusted as the model's. Only the AI path was
+  // ever cleaned; this one — the article somebody typed, and the one a
+  // compromised admin session would use — was stored verbatim and rendered on
+  // the public site. Same allow-list for both, applied here on write, and the
+  // renderer sanitises again for rows written before this existed.
   const draftContent = {
     ...args.draftContent,
+    ...(typeof args.draftContent?.content === "string"
+      ? { content: sanitizeArticleHtml(args.draftContent.content) }
+      : {}),
     slug,
     updatedAt: timestamp,
   }

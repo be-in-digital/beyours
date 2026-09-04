@@ -51,7 +51,20 @@ export * as blogPublish from "./blogPublish"
 export * as ownerEntitlements from "./ownerEntitlements"
 export * as blogAutoConfig from "./blogAutoConfig"
 export * as blogAutoUsage from "./blogAutoUsage"
-export { checkAutoBlogAccess, checkImageGenerationAccess, checkImageToProductAccess, validateConfigAgainstPlan, normalizeScheduleDays } from "./blogAutoGuards"
+export {
+  checkAutoBlogAccess,
+  checkImageGenerationAccess,
+  checkImageToProductAccess,
+  releaseArticleQuota,
+  releaseImageQuota,
+  releaseImageToProductQuota,
+  reserveArticleQuota,
+  reserveImageQuota,
+  reserveImageToProductQuota,
+  resolveApprovalMode,
+  validateConfigAgainstPlan,
+  normalizeScheduleDays,
+} from "./blogAutoGuards"
 export * as bidSubscription from "./bidSubscription"
 export * as maintenance from "./maintenance"
 export * as blogAutoGenerate from "./blogAutoGenerate"

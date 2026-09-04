@@ -210,6 +210,49 @@ Role:
 
 **Separating planning from execution** → more reliable, easier to debug.
 
+> **Shipped.** Both crons are registered in `apps/reference/convex/crons.ts` and
+> `apps/themes/convex/crons.ts`:
+>
+> | Cron | Schedule | Target |
+> |---|---|---|
+> | `plan auto blog jobs` | hourly, on the hour | `internal.blogAutoPlanner.planAutoBlogJobs` |
+> | `execute auto blog queue` | every 10 minutes | `internal.blogAutoGenerate.executeAutoBlogQueue` |
+>
+> The scheduling rule itself is pure and lives in
+> `packages/convex-functions/src/blogAutoSchedule.ts` (timezone, due-hour and
+> idempotency-key logic); the sweep bodies are in
+> `packages/convex-functions/src/blogAutoPlanner.ts`. Tests:
+> `packages/convex-functions/src/__tests__/blogAutoSchedule.test.ts` and
+> `apps/*/tests/convex/auto-blog-scheduler.test.ts`.
+>
+> **`approvalMode` is honoured, and re-checked against the plan at execution
+> time** rather than trusted from the config row — a subscription downgraded
+> after the owner chose "auto-publish" produces a draft, not a published
+> article. A generated article whose cover image is missing also stays a draft,
+> because `publishArticleCore` requires one.
+>
+> **Known limits, named rather than left to be discovered.**
+> `targetStoreIds` is validated and authorised by `blogAutoConfig.upsert` — one
+> `requireStorePermission` per target — and the planner queues only for
+> `config.storeId`. Fail-safe, and half-built: fanning one configuration out
+> across several establishments needs a `blogCategories` row per target store
+> and is a feature, not a fix. A configuration whose chosen hour is the one the
+> clocks skip on the spring-forward Sunday (02:00 in Europe/Paris) misses that
+> one occurrence a year, because the hour genuinely does not happen; the form
+> does not yet warn about it. A sweep that is missed by more than
+> `CATCH_UP_WINDOW_HOURS` (6) loses its slot.
+>
+> **Operator checklist for a client deployment.** The crons are part of the
+> Convex deployment, so they exist only after `convex deploy` has run against
+> that backend. Verify in the Convex dashboard (Functions → Crons) that both
+> appear. `OPENAI_API_KEY` and, optionally, `UNSPLASH_ACCESS_KEY` must be set on
+> the **Convex deployment** environment — not only in the Next.js one — because
+> the sweep runs inside Convex; both are already listed in
+> `.env.convex.example` and pushed by `pnpm convex:env`. Nothing is generated
+> for an owner with no `ownerEntitlements` row: that row is written from the
+> Stripe subscription webhooks, so a subscription that was never wired produces
+> a silent no-op, by design.
+
 ### 4.3 Generation pipeline
 
 ```
