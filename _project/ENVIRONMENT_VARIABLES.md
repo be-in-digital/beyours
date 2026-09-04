@@ -143,13 +143,13 @@ group is set, the whole group is required.
 | | `STRIPE_WEBHOOK_SECRET` | feature | Webhook secret (`whsec_` prefix) |
 | **PayPal** | `PAYPAL_CLIENT_ID` | feature | Restaurant's PayPal client ID |
 | | `PAYPAL_CLIENT_SECRET` | feature | PayPal client secret |
-| | `PAYPAL_SANDBOX_MODE` | optional | **Unset defaults to PRODUCTION.** Keep `"true"` for sandbox |
+| | `PAYPAL_SANDBOX_MODE` | feature | `true`/`false`. **Required once PayPal is configured** — boot refuses without it. Read while still unset, it resolves to **sandbox**, never to production |
 | **SumUp** | `SUMUP_CLIENT_ID` | feature | Restaurant's SumUp client ID |
 | | `SUMUP_CLIENT_SECRET` | feature | SumUp client secret |
-| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | optional | Sandbox mode (`true`/`false`); unset defaults to PRODUCTION |
+| **Uber Eats** | `UBER_EATS_SANDBOX_MODE` | feature | `true`/`false`. **Required once the Uber Eats credentials are set** — boot refuses without it. Read while still unset, it resolves to **sandbox** |
 | **Deliveroo** | `DELIVEROO_BRAND_ID` | optional | Restaurant's Deliveroo brand ID (e2e fixture; a live deployment reads it from its stored connection) |
 | | `DELIVEROO_SITE_ID` | optional | Restaurant's Deliveroo site ID (same) |
-| | `DELIVEROO_IS_SANDBOX` | optional | Sandbox mode (`true`/`false`); unset defaults to PRODUCTION |
+| | `DELIVEROO_IS_SANDBOX` | feature | `true`/`false`. **Required once the Deliveroo credentials are set** — boot refuses without it. Read while still unset, it resolves to **sandbox** |
 | **CMS media** | `UNSPLASH_ACCESS_KEY` | optional | Unsplash key for the CMS media picker |
 | **BeYours billing** | `STRIPE_BID_SECRET_KEY` | feature | Stripe key of the BeYours account (not the restaurant's). Lives on the **Convex** deployment |
 | | `STRIPE_BID_WEBHOOK_SECRET` | feature | Verifies the renewal webhook |

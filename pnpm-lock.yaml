@@ -826,6 +826,9 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@be-in-digital/integrations':
+        specifier: workspace:*
+        version: link:../integrations
       '@types/node':
         specifier: ^20.19.39
         version: 20.19.39

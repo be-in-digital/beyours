@@ -45,7 +45,28 @@ function createOrdersDb(seed: Doc[] = []) {
           collect: async () => orders.filter(pred),
         }
       },
-      withIndex: () => ({ first: async () => null, collect: async () => [] }),
+      // Faithful enough to be worth trusting: it applies the `eq()` constraints
+      // the caller declared. It used to return null/[] unconditionally, which
+      // meant any code that moved from `.filter()` to an index would appear to
+      // find nothing — and an idempotency check that finds nothing looks
+      // exactly like a working one right up until it duplicates every order.
+      withIndex: (_name: string, builder?: (iq: unknown) => unknown) => {
+        const constraints: Array<[string, unknown]> = []
+        if (builder) {
+          const iq = {
+            eq: (field: string, value: unknown) => {
+              constraints.push([field, value])
+              return iq
+            },
+          }
+          builder(iq)
+        }
+        const match = (doc: Doc) => constraints.every(([f, v]) => doc[f] === v)
+        return {
+          first: async () => orders.find(match) ?? null,
+          collect: async () => orders.filter(match),
+        }
+      },
     }),
     insert: async (table: string, doc: Doc) => {
       const _id = `${table}:${counter++}`
@@ -107,7 +128,7 @@ describe("createFromWebhook", () => {
     expect(db._orders).toHaveLength(2)
   })
 
-  it("computes item subtotal as price*qty + modifiers, all in cents", async () => {
+  it("prices modifiers per unit, like a storefront line, all in cents", async () => {
     const db = createOrdersDb()
     await createFromWebhook.handler(
       { db },
@@ -126,8 +147,15 @@ describe("createFromWebhook", () => {
 
     const item = (db._orders[0] as { items: Record<string, unknown>[] }).items[0]
     expect(item.unitPrice).toBe(1000)
-    // (1000 * 2) + 150 = 2150 cents
-    expect(item.subtotal).toBe(2150)
+    // (1000 + 150) * 2 = 2300 cents.
+    //
+    // This assertion used to read 2150 — modifiers added once rather than per
+    // unit — and so it held the defect in place: the same basket was cheaper
+    // through a delivery platform than through the website. `verifyOrderLine`
+    // (the storefront path) computes `(price + options) * quantity`, and the
+    // Uber Eats mapper computes `(unitPrice + modifiers) * quantity`. Both
+    // agree with each other; only this path disagreed with both.
+    expect(item.subtotal).toBe(2300)
     expect(item.externalId).toBe("i1")
   })
 })
@@ -1144,13 +1172,19 @@ describe("the two webhook cancellation paths agree", () => {
         patch: async (id: string, updates: Record<string, unknown>) => {
           Object.assign(docs[id] ?? {}, updates)
         },
-        query: () => ({
-          filter: () => ({
-            first: async () => Object.values(docs)[0] ?? null,
-            collect: async () => Object.values(docs),
-          }),
-          withIndex: () => ({ collect: async () => [], first: async () => null }),
-        }),
+        // Routed by table, and answering through `withIndex` as well as
+        // `filter`: #315 moved the order lookup onto `by_external_order`, and a
+        // fake that served only `filter` reported "Order not found". Only the
+        // orders table is populated, so the payments and kitchenTickets loops
+        // still read empty rather than mistaking the order for one of their own.
+        query: (table: string) => {
+          const rows = () => (table === "orders" ? Object.values(docs) : [])
+          const result = {
+            first: async () => rows()[0] ?? null,
+            collect: async () => rows(),
+          }
+          return { filter: () => result, withIndex: () => result }
+        },
       },
     }
     return { ctx, docs }
@@ -1177,10 +1211,13 @@ describe("the two webhook cancellation paths agree", () => {
     )
   })
 
-  it("both flag a direct paid order that reaches them", async () => {
-    // `updateFromWebhook` only ever finds marketplace orders today — it filters
-    // on `source`. This asserts the shared rule is what decides, so the two
-    // cannot answer differently if that ever changes.
+  it("keeps a direct paid order away from the platform path entirely", async () => {
+    // This asserted that both paths apply the same rule to a direct order.
+    // #315 made that unreachable rather than untrue: `updateFromWebhook` now
+    // collects on `by_external_order` and then matches `o.source` against the
+    // platform, so a website order is not merely filtered out of the update —
+    // it is never found. The divergence this guarded is now structurally
+    // impossible, and that is what is asserted here.
     const viaStatus = ctxFor(
       marketplaceOrder({ source: "website", status: "confirmed" })
     )
@@ -1190,16 +1227,19 @@ describe("the two webhook cancellation paths agree", () => {
       id: "orders:1",
       status: "cancelled",
     })
-    await updateFromWebhook.handler(viaWebhook.ctx, {
-      externalOrderId: "gb:1",
-      platform: "deliveroo",
-      status: "cancelled",
-      updatedAt: 1_700_000_000_000,
-    })
 
+    await expect(
+      updateFromWebhook.handler(viaWebhook.ctx, {
+        externalOrderId: "gb:1",
+        platform: "deliveroo",
+        status: "cancelled",
+        updatedAt: 1_700_000_000_000,
+      })
+    ).rejects.toThrow(/Order not found/)
+
+    // The direct order still owes its refund, and the platform path left the
+    // other one untouched rather than writing a different answer to it.
     expect(viaStatus.docs["orders:1"]?.paymentStatus).toBe("refund_pending")
-    expect(viaWebhook.docs["orders:1"]?.paymentStatus).toBe(
-      viaStatus.docs["orders:1"]?.paymentStatus
-    )
+    expect(viaWebhook.docs["orders:1"]?.paymentStatus).toBe("paid")
   })
 })

@@ -85,9 +85,13 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-    # ~8 minutes a shard. 30 leaves room for a slow runner without letting a
-    # hung one hold the queue for an hour.
-    timeout-minutes: 30
+    # Measured, not estimated: a healthy shard runs ~15 minutes end to end
+    # (02:17:56 -> 02:32:45 on the run that first went red), of which ~3 are the
+    # Convex push. The push is retried up to three times, and its own ceiling is
+    # 5 minutes, so a bad day can add ~12 minutes to that 15. 30 left no room
+    # for the retries to finish; 40 does, and still stops a genuinely hung shard
+    # from holding the queue for an hour.
+    timeout-minutes: 40
 
     env:
       # ── The backend under test ────────────────────────────────────────────
@@ -257,7 +261,56 @@ jobs:
         working-directory: apps/reference
         run: |
           set -euo pipefail
-          npx convex deploy -y --typecheck disable
+
+          # Retried, because this push runs uncomfortably close to a ceiling we
+          # do not control.
+          #
+          # `evaluate_push` is answered by the local backend, which gives up
+          # after 5 minutes and returns 408. Neither the CLI nor the backend
+          # binary exposes a flag to raise it. Measured on the run that first
+          # went red: shards 2, 3 and 4 pushed in 2m30s, 3m16s and 3m03s, and
+          # shard 1 — queued 17 minutes later, so on a busier runner — hit
+          # 5m02s and failed. Nothing about shard 1 differs; `matrix.shard` is
+          # read only by the Playwright command further down. It was simply the
+          # one that ran slowest on the day.
+          #
+          # A cold backend evaluates all 108 convex modules from scratch, and
+          # every shard starts its own. The same push against a warm backend
+          # takes 4-5 seconds, so a retry is not a superstition: the attempt
+          # that timed out leaves evaluated modules cached, and the next one
+          # starts from there.
+          #
+          # This is a margin problem, not a flake. If the retries start being
+          # needed routinely, the push has outgrown the ceiling and the module
+          # graph is what has to change.
+          deploy_attempt() {
+            npx convex deploy -y --typecheck disable
+          }
+
+          ATTEMPTS=3
+          for attempt in $(seq 1 "$ATTEMPTS"); do
+            echo "::group::convex deploy (attempt $attempt/$ATTEMPTS)"
+            START=$(date +%s)
+            if deploy_attempt; then
+              echo "Deployed in $(( $(date +%s) - START ))s on attempt $attempt"
+              echo "::endgroup::"
+              break
+            fi
+            echo "Attempt $attempt failed after $(( $(date +%s) - START ))s"
+            echo "::endgroup::"
+
+            if [ "$attempt" -eq "$ATTEMPTS" ]; then
+              # The backend log was only ever printed when the backend failed to
+              # start, so a push that timed out left nothing to diagnose from.
+              echo "::error::convex deploy failed $ATTEMPTS times. Backend log follows."
+              tail -200 "$HOME/convex-backend.log" || true
+              echo "--- backend still answering? ---"
+              curl -sS -o /dev/null -w "GET /version -> %{http_code} in %{time_total}s\n" \
+                "http://127.0.0.1:${CONVEX_PORT}/version" || echo "no answer"
+              exit 1
+            fi
+            sleep 5
+          done
 
           # Read by Convex functions, so they live on the deployment and not in
           # the env file above. Without the first, sign-in answers 403 and every

@@ -90,9 +90,10 @@ unreachable to dead. #129 widened: both apps now mount the same broken refund bu
 blocking but blind to faults present on both sides. A guardrail that is described is not a
 guardrail that runs.
 
-**Why batch 07 has not moved:** no test in the repository names `uberEatsWebhook`,
+**Why batch 07 had not moved:** no test in the repository named `uberEatsWebhook`,
 `deliverooWebhook`, `mapUberEatsOrderToUnified` or `mapDeliverooStatus`. Zero coverage — which
-is why five green CI passes have never spoken to its eleven defects.
+is why five green CI passes never spoke to its eleven defects. That surface now exists, and
+building it was most of the work.
 
 Full suite re-run serially on this commit: **19/19 tasks, 2,956 tests green** (2,437 the
 previous round), type-check 19/19. Hygiene is intact; the seams are what fail, and no test
@@ -193,18 +194,41 @@ costs a service.
 > **Closed when.** An abandoned payment produces no ticket; a confirmed one produces exactly one, with its allergies; two open tablets do not print twice.
 
 ## Batch 07 — Delivery integrations
-*6 items · 4 P0 · the highest-volume channel · _6 open_*
+*6 items · 4 P0 · the highest-volume channel · _5 done · 1 owner action outstanding_*
 
-Three silent order-loss paths. A restaurant connecting Deliveroo loses orders on day one.
+Three silent order-loss paths. A restaurant connecting Deliveroo lost orders on day one.
 
-- [ ] **#172** 🔴 — Rotate the Deliveroo secret exposed in git history, then rewrite the history
-- [ ] **#134** 🔴 — Create the Deliveroo kitchen ticket and wire accept/reject — neither exists today
-- [ ] **#138** 🔴 — Fix the Uber event names — cancellation and scheduled orders are never recognised
-- [ ] **#139** 🔴 — Stop assigning an unidentified order to `allIntegrations[0]`
-- [ ] **#140** 🔴 — Only set `confirmed` after a real accept on Uber
-- [ ] **#163** 🔴 — 2.1× line prices, non-conforming Deliveroo statuses, table scan per webhook, stock not propagated, sandbox flags
+- [x] **#134** — The Deliveroo kitchen ticket is created. **The card was wrong about accept/reject:**
+      `TicketCard.tsx:99-104` already routed both platforms through
+      `api.kitchenTickets.acceptTicket`, which already called `deliveroo.acceptOrder`. The
+      accept path existed and was unreachable only because no ticket was ever made.
+      `apps/*/convex/deliverooOrders.ts` is dead duplicate code with zero callers — left in place.
+- [x] **#138** — Uber's real event catalogue (`orders.cancel.notification`,
+      `orders.scheduled.notification`, `orders.release.notification`, `store.provisioned`).
+      The `eats.order.status_update` branch and its status map were deleted: Uber has never
+      sent that event.
+- [x] **#139** — `allIntegrations[0]` is gone. An order that cannot be placed is refused and
+      kept in the new `platformWebhookFailures` table with its raw body, rather than guessed at.
+      Also refuses an ambiguous store id (two integrations sharing one `platformStoreId`) and
+      survives a non-string one, both of which an adversarial pass found afterwards.
+- [x] **#140** — `confirmed` is written only on a 2xx from Uber. `platformSyncStatus` — declared
+      since the beginning and written by nothing — now records the outcome, with a bounded
+      retry (15s/60s/180s, 255s total, inside Uber's 11.5-minute auto-cancel) that abandons
+      itself if staff have acted in the meantime.
+- [x] **#163** — 9 of 9. Prices (2.209× measured → correct, plus modifier quantity and the
+      storefront's clamps), Deliveroo's real status vocabulary (`canceled`, one l), the `denied`
+      landmine pinned at source, `by_external_order` instead of a full table scan, 86'ing and
+      store pause wired to the documented endpoints, menu-sync fan-out (100 sweeps per
+      50-product import → 2) with 429/5xx backoff, sandbox flags centralised, Deliveroo failures
+      answered 500 so they are retried, and an e2e suite that can finally sign.
+- [ ] **#172** 🔴 — **Owner action, deliberately left open.** The repo half is done: two Gitleaks
+      rules now match the credential (validated over all 7,459 blobs — 3 matches, one distinct
+      token, zero false positives), and the false claims in `.gitleaksignore` are corrected.
+      Rotating the secret and rewriting the history are the account owner's calls. **The
+      `Gitleaks (secret scan)` job will now fail on `main`** — it is not one of the five required
+      checks, so it does not block merges; it makes a real finding visible instead of hiding it.
 
-> **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed.
+> **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed. — **Met**, and covered by tests that stay in the repo: `uber-eats-webhook.test.ts` and `deliveroo-webhook.test.ts` in both apps, `platform-webhook-failures.test.ts`, and `platformWebhook.test.ts` in the package. Each drives the signed HTTP endpoint, and each was proven red against the unfixed code.
 
 ## Batch 08 — Customer storefront
 *2 items · 1 P0 · what the consumer sees · _1 partial · 1 open_*

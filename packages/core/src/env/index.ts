@@ -14,3 +14,16 @@ export {
   formatEnvReport,
 } from './getters'
 export type { EnvTier, EnvProblem } from './getters'
+export {
+  isSandbox,
+  checkSandboxFlags,
+  SANDBOX_FLAGS,
+  SANDBOX_FLAG_RULES,
+  _resetSandboxWarnings,
+} from './sandbox'
+export type {
+  SandboxPlatform,
+  SandboxFlagName,
+  SandboxFlagRule,
+  SandboxFlagProblem,
+} from './sandbox'
