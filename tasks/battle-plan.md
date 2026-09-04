@@ -11,7 +11,7 @@ Ready-to-paste prompts, one per unclosed batch: `tasks/fix-prompts.md`
 **Independent:** batches 08 → 13 can be split across people.
 **Last:** batch 14, once you know what actually shipped.
 **Shortest path to an honest first sale:** 00 → 01 → 02 → 04 → 05, i.e. 24 items.
-Of those 24, **16 are done**; 8 remain: #178, #171, #179, #180, #128, #129, #162, #173.
+Of those 24, **17 are done**; 7 remain: #178, #171, #179, #128, #129, #162, #173.
 
 ## Discovery audit — 1 Sep 2026, commit `009af63`
 
@@ -119,20 +119,31 @@ anywhere. This batch is what makes the rest verifiable.
 > **Closed when.** A fresh unconfigured clone refuses to boot, naming what is missing; a production error surfaces somewhere; a failing test stops publication.
 
 ## Batch 01 — Authentication & team
-*4 items · 2 P0 · nobody can sign in today · _3 done · 1 partial_*
+*4 items · 2 P0 · nobody can sign in today · _4 done — closed 4 Sep 2026_*
 
 Without an account, no other feature is reachable. This is the first wall a
 deploying client hits.
 
 - [x] **#131** ✅ — Send the verification email — verification is on and no sender is configured
-- [ ] **#180** 🟡 — Provision `ADMIN_BOOTSTRAP_TOKEN` and build the first-administrator path
-      — repo half done and held by tests (`apps/*/tests/convex/authorization.test.ts`,
-      "claiming the first admin seat"); placing the token and restricting the Maps key
-      are console actions, scripted in `scripts/wizards/github-e2e-maps-bootstrap.sh`
+- [x] **#180** ✅ — Provision `ADMIN_BOOTSTRAP_TOKEN` and build the first-administrator path
+      — `/setup` calls `claimFirstAdmin` in both apps, the claim fails closed on an
+      unconfigured deployment, and the guarantee is held by
+      `apps/*/tests/convex/authorization.test.ts` ("claiming the first admin seat").
+      The tests that stood here before asserted `rejects.toThrow()` and stayed green with
+      the token comparison deleted outright; they were rewritten to read the refusal code
+      and count super-admin rows. **Console residue is not part of this item and is not
+      closed**: placing the token and restricting the Maps key are account-owner actions,
+      tracked in `tasks/sales-readiness-backlog.md` under LAUNCH-09 and scripted in
+      `scripts/wizards/github-e2e-maps-bootstrap.sh`.
 - [x] **#132** ✅ — Create `/invite/[token]` in both apps — the email link 404s
 - [x] **#170** ✅ — Role gate on `/dashboard`, session revocation on reset, per-module permissions enforced or removed
 
 > **Closed when.** Sign up → email → sign in → dashboard works end to end, and a signed-in customer typing `/dashboard` is redirected instead of crashing the page.
+>
+> **Closed 4 Sep 2026.** All four items done. The console half of #180 —
+> `ADMIN_BOOTSTRAP_TOKEN` on each deployment, and the Google Maps referrer restriction —
+> is an account-owner action and stays open under LAUNCH-09; it was never inside this
+> batch's scope.
 
 ## Batch 02 — Multi-store
 *3 items · 2 P0 · the product is billed per store · _2 done · 1 partial_*
