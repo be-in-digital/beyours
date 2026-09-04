@@ -293,11 +293,25 @@ to nothing, and now is not.
 - [x] **#147** ✅ — Schema fields declared on products/categories/menus and `translationQuota` on stores; `executeTranslation` and `batchChunk` re-registered as `internalAction`s over internal query → fetch → internal mutation; `scheduleTranslation` called from all six catalogue mutations; `translateCatalogue` added so the batch back-fill has a way in
 - [x] **#148** ✅ — `StorefrontI18nProvider` mounted in the shell fills the language store; `useTranslation()` exposes `t()` and the header, cart, product grid and product card use it; the SSR CMS and SEO readers now read `beid_locale` rather than a `locale` cookie nothing writes
 
+**CLOSED 4 Sep 2026** — PR #317, merged as `04836fed`. Verified by execution:
+`scheduleTranslation` is called from all six catalogue mutations, the storefront reads
+the translations, and the language selector works with two active languages.
+
 > **Closed when.** Adding a language, saving a product, then switching on the storefront shows a translated menu and translated buttons.
 >
 > **Console residue.** `OPENAI_API_KEY` must be set on the Convex deployment, or every
 > translation logs `OPENAI_API_KEY not set` and clears its pending flag without
 > translating. Nothing in the repository can set it.
+>
+> **Related new work — not a reopening.** Adding the *first* extra language flips the
+> whole storefront to English: NEW2-JOURNEY-2, issue #325 (batch 05 of the 4 Sep audit).
+> A new defect on the surface this batch shipped, and only reachable because it shipped —
+> before #317 nothing read the language list at all, so nothing could flip. The mechanism
+> is the default-locale fallback in `StorefrontI18nProvider`:
+> `active.find((l) => l.isDefault)?.code ?? active[0]?.code ?? "fr"`. A fresh deployment
+> seeds no `languages` rows, so the first language added is `active[0]`, carries no
+> `isDefault` flag, and becomes the establishment default for every diner. The selector
+> renders `null` at ≤1 language, so the UI offers no way back.
 
 ## Batch 12 — Gamification
 *2 items · 2 P0 · 16 advertised features · _2 open_*
