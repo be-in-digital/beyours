@@ -20,6 +20,23 @@
  *
  * These cases hold the rule that replaced it: the customer says which code
  * they hold, the server says what it is worth.
+ *
+ * WHY THEY RUN ON ESSENTIELLE, AND WITH THE FOUNDERS SLOTS FULL. They were
+ * written against Premium/yearly, which is where the figures above were
+ * measured. #350 then closed Premium for sale — `planAvailability` marks it
+ * `coming_soon` and `createCheckoutSession` refuses a closed plan ahead of
+ * every other check, deliberately including the test path — so all 25 cases
+ * stopped reaching the referral logic they exist to protect and died on
+ * « L'offre Premium n'est pas encore ouverte à la vente ».
+ *
+ * Moving them to Essentielle is not a one-line swap, and getting it wrong is
+ * worse than leaving them red: the founders offer is Essentielle-only and
+ * zeroes the creation line for the first ten builds, so a case asserting « a
+ * bad code is billed at LIST PRICE » would have been handed 1 000 € — the
+ * maintenance alone — and the assertion rewritten to match would have blessed
+ * a discount instead of refusing one. `seedProgramme` therefore fills the ten
+ * slots, which puts every case in the state the business spends all but its
+ * first ten sales in: founders gone, referral programme running.
  */
 
 import { convexTest } from "convex-test";
@@ -28,18 +45,21 @@ import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
 import { planPrices } from "../../convex/planPrices";
+import { foundersOffer } from "../../convex/foundersOffer";
 import { VAT } from "../../lib/legal/company";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
-/* Premium/yearly, so the numbers below are the ones that were measured.
-   Premium creation 7 500 € + yearly maintenance 2 000 € = 9 500 € excl. tax. */
+/* Essentielle/yearly: creation 3 500 € + yearly maintenance 1 000 €
+   = 4 500 € excl. tax. The figures in the header above are the Premium ones
+   that were measured at the time; they are the record of the defect, not the
+   expectations below. */
 const LIST_TOTAL =
-  planPrices.premium.creation + planPrices.premium.maintenanceYearly;
+  planPrices.essentielle.creation + planPrices.essentielle.maintenanceYearly;
 
 const CHECKOUT = {
-  plan: "premium" as const,
+  plan: "essentielle" as const,
   orderType: "creation" as const,
   buyerType: "business" as const,
   billingPeriod: "yearly" as const,
@@ -88,6 +108,32 @@ async function seedProgramme(
   } = {},
 ) {
   return await t.run(async (ctx) => {
+    /* Fill the founders slots before anything else.
+       The offer is Essentielle-only and zeroes the creation line for the
+       first ten builds, and it does not stack with a referral — so leaving
+       the slots open would price the no-code cases at the maintenance alone
+       and make « billed at list price » assert a discount. Ten paid rows put
+       the checkout in the steady state these cases are about. Counted by
+       `orders.countFoundersSold` through `by_isFounders_and_status`. */
+    for (let slot = 0; slot < foundersOffer.totalSlots; slot++) {
+      await ctx.db.insert("orders", {
+        customerEmail: `founder${slot}@example.test`,
+        customerFirstName: "Founder",
+        customerLastName: String(slot),
+        customerPhone: "+33600000000",
+        restaurantName: `Founder ${slot}`,
+        city: "Lyon",
+        buyerType: "business" as const,
+        plan: "essentielle" as const,
+        orderType: "creation" as const,
+        billingPeriod: "yearly" as const,
+        amountCents: planPrices.essentielle.maintenanceYearly,
+        status: "paid" as const,
+        isFounders: true,
+        createdAt: Date.now(),
+      });
+    }
+
     await ctx.db.insert("affiliateSettings", {
       defaultCommissionCents: 50000,
       defaultDiscountPercent: opts.defaultDiscountPercent ?? 10,
@@ -122,6 +168,23 @@ async function seedProgramme(
   });
 }
 
+/* The orders this checkout wrote — not every row in the table.
+   `seedProgramme` fills the ten founders slots, so "the refusal left nothing
+   behind" has to be asked of the buyer under test rather than of an empty
+   table. It is also the sharper question: a forgery that wrote an order for
+   somebody else would pass an emptiness check on its own email. */
+async function ordersFor(
+  t: ReturnType<typeof convexTest>,
+  email: string,
+): Promise<unknown[]> {
+  return await t.run((ctx) =>
+    ctx.db
+      .query("orders")
+      .withIndex("by_email", (q) => q.eq("customerEmail", email))
+      .collect(),
+  );
+}
+
 async function orderAmount(
   t: ReturnType<typeof convexTest>,
   orderId: string,
@@ -151,8 +214,7 @@ describe("the discount is derived, never accepted", () => {
 
     /* And it left nothing behind: a refused forgery must not hold a founders
        slot or show up in the ops console as revenue. */
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await ordersFor(t, CHECKOUT.customerEmail)).toEqual([]);
   });
 
   test.each([
@@ -183,9 +245,9 @@ describe("the discount is derived, never accepted", () => {
     });
 
     // 9 500 € − 10 % of the 7 500 € creation line = 8 750 €.
-    const expected = LIST_TOTAL - planPrices.premium.creation * 0.1;
+    const expected = LIST_TOTAL - planPrices.essentielle.creation * 0.1;
     expect(await orderAmount(t, orderId)).toBe(expected);
-    expect(expected).toBe(875000);
+    expect(expected).toBe(415000);
   });
 
   test("an affiliate's override wins over the programme default", async () => {
@@ -198,7 +260,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.25,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.25,
     );
   });
 
@@ -212,7 +274,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -288,7 +350,7 @@ describe("a code that must not discount anything", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals).toHaveLength(1);
@@ -371,7 +433,7 @@ describe("a code only discounts while its contract holds", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -397,8 +459,7 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
     ).rejects.toThrow(/Remise de parrainage invalide/);
 
     // Refused before the order exists — no negative row, no founders slot held.
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await ordersFor(t, CHECKOUT.customerEmail)).toEqual([]);
   });
 
   test("no order can ever be written for a negative amount", async () => {
@@ -464,7 +525,7 @@ describe("the commission follows the code, not the caller", () => {
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals[0]!.discountPercent).toBe(15);
     expect(referrals[0]!.discountAmountCents).toBe(
-      planPrices.premium.creation * 0.15,
+      planPrices.essentielle.creation * 0.15,
     );
   });
 });
@@ -516,7 +577,7 @@ describe("validateCode and the checkout cannot drift", () => {
 
     // 5 %, the current value — not the 30 % the page is still displaying.
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.05,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.05,
     );
   });
 });
