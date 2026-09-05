@@ -94,3 +94,14 @@ tasks/clickup-tickets-a-fermer.md
 # not be, or the mirror would carry the agency's project id into every client
 # repo. See apps/docs/deployment/infisical.md
 .infisical.json
+
+# Throwaway verification probes
+# `tasks/fix-prompts.md` mandates writing a `zz-probe-*` test that replays a
+# defect, watching it fail, fixing, watching it pass, then deleting it — the
+# permanent regression test is a separate, named file. `zz-verify-*` is the
+# same thing for an adversarial re-check of a fix. Neither is ever meant to
+# land: they are scaffolding, they name defects that no longer exist, and one
+# committed by accident becomes a test nobody can explain. Ignored so the
+# method cannot leak into the history.
+zz-probe-*
+zz-verify-*
