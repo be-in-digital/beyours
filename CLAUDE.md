@@ -185,7 +185,7 @@ run writes a `privacy_*` line to `systemAuditLog`.
 
 Guarded by `customers:manage`, held by `super_admin` and `client_admin` only —
 deliberately not `customers:read`, which a waiter holds. Operator guide and the
-**seven decisions still owed by the client**:
+**eight decisions still owed by the client**:
 `tasks/gdpr-diner-data-runbook.md`.
 
 ### Design (14)

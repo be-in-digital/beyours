@@ -173,4 +173,4 @@ request was honoured, and it keeps the address for exactly that reason.
   every request.
 - **Closing the login account** — the authentication component's tables are not
   reachable from this screen.
-- **The seven decisions above** — the client's, with their counsel.
+- **The eight decisions above** — the client's, with their counsel.
