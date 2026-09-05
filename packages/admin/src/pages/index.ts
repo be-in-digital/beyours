@@ -1,56 +1,36 @@
 /**
- * Admin pages barrel.
+ * Every admin screen, at the subpath `package.json` has always advertised.
  *
- * Backs the `@be-in-digital/admin/pages` subpath declared in `package.json`.
- * That subpath was declared with no file behind it, so every consumer following
- * the export map — `@be-in-digital/mcp-server` advertised ten page components at
- * it — got a module-not-found.
+ * `"./pages": "./src/pages/index.ts"` was declared and the file did not exist
+ * — the only broken subpath of the twenty this package publishes. Ten entries
+ * in `packages/mcp-server`'s registry point client builds at
+ * `@be-in-digital/admin/pages`, and every one of them failed to resolve.
  *
- * The set here mirrors the page components `../index.ts` re-exports, exactly:
- * one surface reached by two paths, so which import a consumer picks cannot
- * change what they get. The other members of the `pages/*` sub-barrels
- * (`DashboardSkeleton`, `MenusTab`, `PropagationModal` and the rest) are pieces
- * those pages are built from and stay internal. `src/__tests__/pages-barrel.test.ts`
- * fails if the two sides drift apart in either direction.
+ * It re-exports the per-screen barrels rather than restating them, so a screen
+ * added to `pages/<x>/index.ts` arrives here on its own.
+ *
+ * EVERY SCREEN HERE MUST MOUNT UNDER `AuthGuard`. These components read the
+ * Convex API from `useAdminApiStore` and dereference it without a guard,
+ * because `AuthGuard` folds `api === null` into its pending state and renders a
+ * skeleton rather than its children until the layout's effect has injected it.
+ * Mounted outside that shell, the first render throws
+ * `TypeError: Cannot read properties of null`.
  */
 
-export { CategoriesPage } from "./categories"
-export { DashboardPage } from "./dashboard"
-export { DesignPage } from "./design"
-export {
-  EmailCampaignsPage,
-  EmailConfigPage,
-  EmailDashboardPage,
-  EmailSegmentsPage,
-  EmailSubscribersPage,
-  EmailTemplatesPage,
-} from "./email"
-export {
-  GameActionsPage,
-  GameCatalogPage,
-  GameQrCodesPage,
-  GameWinnersPage,
-  GamesPage,
-} from "./games"
-export { InventoryPage } from "./inventory"
-export { KitchenPage } from "./kitchen"
-export { LanguagesPage } from "./languages"
-export { MessagesPage } from "./messages"
-export { OrderDetailPage, OrdersPage } from "./orders"
-export { PaymentsPage } from "./payments"
-export {
-  EditProductPage,
-  ImageToProductPage,
-  NewProductPage,
-  ProductsPage,
-} from "./products"
-export { PromotionsPage } from "./promotions"
-export { SettingsPage } from "./settings"
-export {
-  StoreDetailPage,
-  StoresPage,
-  StoresPagination,
-  StoresTable,
-} from "./stores"
-export { SystemPage } from "./system"
-export { TeamPage } from "./team"
+export * from "./categories"
+export * from "./dashboard"
+export * from "./design"
+export * from "./email"
+export * from "./games"
+export * from "./inventory"
+export * from "./kitchen"
+export * from "./languages"
+export * from "./messages"
+export * from "./orders"
+export * from "./payments"
+export * from "./products"
+export * from "./promotions"
+export * from "./settings"
+export * from "./stores"
+export * from "./system"
+export * from "./team"

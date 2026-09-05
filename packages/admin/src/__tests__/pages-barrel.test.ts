@@ -1,14 +1,26 @@
 /**
- * `package.json` declares `"./pages": "./src/pages/index.ts"`, and for the whole
- * life of that entry the file did not exist. Anyone following the export map —
- * including `@be-in-digital/mcp-server`, which advertised ten page components at
- * `@be-in-digital/admin/pages` — got a module-not-found.
+ * `@be-in-digital/admin/pages` carries every screen the root barrel does.
  *
- * The barrel exists now. These tests hold it to two things: it stays present, and
- * it stays in step with the page components the root barrel re-exports. Reading
- * the two files as text rather than importing them is deliberate — this package's
- * Vitest environment is `node`, and the page modules pull in `convex/react`,
- * `recharts` and friends at module scope.
+ * `package.json` declared `"./pages": "./src/pages/index.ts"` for the life of
+ * the entry with no such file behind it — the one broken subpath of the twenty
+ * this package publishes, and the reason ten claims in `packages/mcp-server`'s
+ * registry pointed client builds at a module that could not resolve.
+ *
+ * `src/pages/index.ts` re-exports the per-screen barrels with `export *`, so a
+ * screen added to `pages/<dir>/index.ts` reaches this subpath on its own. What
+ * that cannot catch is a *new directory*: add `pages/reports/`, export
+ * `ReportsPage` from `src/index.ts`, forget the `export * from "./reports"`
+ * here, and the root barrel offers a screen the subpath does not. That is the
+ * gap this file holds.
+ *
+ * Sibling coverage, deliberately not repeated here: `page-reachability.test.ts`
+ * checks that every exported page is actually mounted in both apps, and
+ * `packages/mcp-server/src/__tests__/registry.test.ts` checks that every
+ * declared subpath resolves to a file that exists.
+ *
+ * Read as text rather than imported: this package's Vitest environment is
+ * `node`, and the page modules pull in `convex/react`, `recharts` and friends
+ * at module scope.
  */
 
 import { readFileSync } from "node:fs"
@@ -22,18 +34,27 @@ function read(relativePath: string): string {
   return readFileSync(join(packageRoot, relativePath), "utf8")
 }
 
-/** Every identifier in `export { A, B } from "./x"` clauses, `type` aliases aside. */
-function namedReExports(source: string, fromMatching: RegExp): string[] {
-  const names: string[] = []
-  const clause = /export\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g
-  for (const [, body = "", from = ""] of source.matchAll(clause)) {
-    if (!fromMatching.test(from)) continue
+/** `export { A, B } from "./x"` — the names, and the `./x` each came from. */
+function namedReExports(
+  source: string,
+): { name: string; from: string }[] {
+  const found: { name: string; from: string }[] = []
+  for (const [, body = "", from = ""] of source.matchAll(
+    /export\s*\{([^}]*)\}\s*from\s*"([^"]+)"/g,
+  )) {
     for (const entry of body.split(",")) {
       const name = entry.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0]
-      if (name) names.push(name)
+      if (name) found.push({ name, from })
     }
   }
-  return names
+  return found
+}
+
+/** The `./x` of every `export * from "./x"`. */
+function starReExports(source: string): string[] {
+  return [...source.matchAll(/export\s*\*\s*from\s*"([^"]+)"/g)].map(
+    ([, from]) => from ?? "",
+  )
 }
 
 describe("@be-in-digital/admin/pages", () => {
@@ -41,24 +62,33 @@ describe("@be-in-digital/admin/pages", () => {
     const manifest = JSON.parse(read("package.json")) as {
       exports?: Record<string, string>
     }
-    const declared = manifest.exports?.["./pages"]
-    expect(declared).toBe("./src/pages/index.ts")
-    expect(read("src/pages/index.ts")).toContain("export {")
+    expect(manifest.exports?.["./pages"]).toBe("./src/pages/index.ts")
+    expect(read("src/pages/index.ts")).toMatch(/export\s*\*/)
   })
 
-  it("re-exports every page the root barrel does", () => {
-    const fromRoot = namedReExports(read("src/index.ts"), /^\.\/pages\//)
-    const fromBarrel = namedReExports(read("src/pages/index.ts"), /^\.\//)
+  it("re-exports every page directory the root barrel draws from", () => {
+    // `./pages/orders` in the root barrel -> `./orders` in the pages barrel.
+    const rootDirectories = new Set(
+      namedReExports(read("src/index.ts"))
+        .filter(({ from }) => from.startsWith("./pages/"))
+        .map(({ from }) => `.${from.slice("./pages".length)}`),
+    )
+    expect(rootDirectories.size).toBeGreaterThan(10)
 
-    expect(fromRoot.length).toBeGreaterThan(20)
-    expect(fromRoot.filter((name) => !fromBarrel.includes(name))).toEqual([])
+    const covered = new Set(starReExports(read("src/pages/index.ts")))
+    const missing = [...rootDirectories].filter((dir) => !covered.has(dir)).sort()
+    expect(missing).toEqual([])
   })
 
-  it("adds nothing the root barrel does not also carry", () => {
-    // The two are one surface reached by two paths. A name on only one side is a
-    // consumer picking an import path and getting a different package.
-    const fromRoot = namedReExports(read("src/index.ts"), /^\.\/pages\//)
-    const fromBarrel = namedReExports(read("src/pages/index.ts"), /^\.\//)
-    expect(fromBarrel.filter((name) => !fromRoot.includes(name))).toEqual([])
+  it("re-exports nothing from a directory that does not exist", () => {
+    const unreadable = starReExports(read("src/pages/index.ts")).filter((from) => {
+      try {
+        read(join("src/pages", from, "index.ts"))
+        return false
+      } catch {
+        return true
+      }
+    })
+    expect(unreadable).toEqual([])
   })
 })
