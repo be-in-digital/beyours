@@ -26,6 +26,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import schema from "../../convex/schema";
 import { postSigned, stubWebhookSecrets } from "./helpers/stripeWebhook";
+import { drainScheduled } from "./helpers/scheduled";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -38,13 +39,27 @@ const YEAR = 365 * 24 * 60 * 60;
 const PERIOD_END = 1731536000;
 
 let restoreSecrets: () => void;
+let harness: ReturnType<typeof convexTest> | null = null;
+
 beforeEach(() => {
   restoreSecrets = stubWebhookSecrets({ account: SECRET });
 });
-afterEach(() => {
+
+afterEach(async () => {
+  /* A renewal schedules a receipt, a failed one a dunning mail. Undrained,
+     they run against a harness being torn down and fail the run without
+     failing a test. See ./helpers/scheduled. */
+  if (harness) await drainScheduled(harness);
+  harness = null;
   restoreSecrets();
   vi.restoreAllMocks();
 });
+
+/** `convexTest`, registered so afterEach can drain what it scheduled. */
+function testConvex() {
+  harness = convexTest(schema, modules);
+  return harness;
+}
 
 let eventCounter = 0;
 function event(type: string, object: unknown, apiVersion = "2026-02-25.clover") {
@@ -142,7 +157,7 @@ function updatedSubscription(
 
 describe("a renewal invoice finds its subscription", () => {
   test("a PREMIUM renewal is booked as premium, linked to its subscription", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     const { subscriptionId } = await seedPremiumSubscription(t);
 
     const res = await postSigned(
@@ -166,7 +181,7 @@ describe("a renewal invoice finds its subscription", () => {
 
   test("a failed renewal is booked on the right plan too", async () => {
     // A dunning email naming the wrong plan is the same mis-statement.
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     const { subscriptionId } = await seedPremiumSubscription(t);
 
     const res = await postSigned(
@@ -188,7 +203,7 @@ describe("a renewal invoice finds its subscription", () => {
        replays re-send the payload as first rendered — so an old shape can
        still arrive. It must be read, and it must be noisy: a silent fallback
        would hide an endpoint that is on the wrong version. */
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     const { subscriptionId } = await seedPremiumSubscription(t);
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -211,7 +226,7 @@ describe("a renewal invoice finds its subscription", () => {
   });
 
   test("no Convex row: the plan comes off the invoice's own metadata", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     // No subscriptions row at all — the link that used to fail silently.
     const res = await postSigned(
       t,
@@ -226,7 +241,7 @@ describe("a renewal invoice finds its subscription", () => {
   });
 
   test("nothing to go on: it falls back to essentielle, loudly", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const orphan = renewalInvoice();
@@ -250,7 +265,7 @@ describe("a renewal invoice finds its subscription", () => {
 
 describe("a renewal moves the maintenance period forward", () => {
   test("currentPeriodEnd advances from items.data", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPremiumSubscription(t);
 
     const before = await t.run(
@@ -280,7 +295,7 @@ describe("a renewal moves the maintenance period forward", () => {
   test("an empty item list leaves the period untouched, never zeroed", async () => {
     /* A 0 here would set coveredUntil to the epoch and expire a client who is
        paying — strictly worse than a stale value. */
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPremiumSubscription(t);
     vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -300,7 +315,7 @@ describe("a renewal moves the maintenance period forward", () => {
   });
 
   test("a pre-clover subscription update still advances the period", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPremiumSubscription(t);
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -335,7 +350,7 @@ describe("what the paying client is told", () => {
   test("/maintenance/status stops reporting an expired contract after a renewal", async () => {
     /* The user-visible symptom the two field reads produced: a client who has
        just paid for another year is told their maintenance ran out. */
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     const expired = Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60;
     const { orderId } = await seedPremiumSubscription(t, {
       currentPeriodEnd: expired,
@@ -407,7 +422,7 @@ describe("a null where Convex wants an absent key", () => {
     /* Stripe returns `null`; `v.optional(v.string())` rejects it. The `as`
        casts laundered it into the mutation, which threw, which returned 500,
        which made Stripe retry the event forever. */
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPremiumSubscription(t);
 
     const res = await postSigned(
@@ -434,7 +449,7 @@ describe("a null where Convex wants an absent key", () => {
   });
 
   test("an expanded customer object is stored as its id", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPremiumSubscription(t);
 
     const res = await postSigned(

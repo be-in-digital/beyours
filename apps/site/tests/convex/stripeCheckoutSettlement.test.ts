@@ -29,6 +29,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import schema from "../../convex/schema";
 import { api } from "../../convex/_generated/api";
 import { postSigned, stubWebhookSecrets } from "./helpers/stripeWebhook";
+import { drainScheduled } from "./helpers/scheduled";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -38,10 +39,28 @@ const ROUTE = "/webhooks/stripe";
 const SESSION = "cs_test_1";
 
 let restoreSecrets: () => void;
+let harness: ReturnType<typeof convexTest> | null = null;
+
 beforeEach(() => {
   restoreSecrets = stubWebhookSecrets({ account: SECRET });
 });
-afterEach(() => restoreSecrets());
+
+afterEach(async () => {
+  /* Settling an order schedules the confirmation email. A test that returns
+     without draining leaves it running against a harness being torn down,
+     which surfaces as an unhandled "Write outside of transaction" — it fails
+     the RUN while every assertion still passes, so it reaches CI as a green
+     suite with a red exit code. See ./helpers/scheduled. */
+  if (harness) await drainScheduled(harness);
+  harness = null;
+  restoreSecrets();
+});
+
+/** `convexTest`, registered so afterEach can drain what it scheduled. */
+function testConvex() {
+  harness = convexTest(schema, modules);
+  return harness;
+}
 
 let eventCounter = 0;
 function event(type: string, object: Record<string, unknown>) {
@@ -111,7 +130,7 @@ async function countRows(t: ReturnType<typeof convexTest>) {
 
 describe("an unpaid session settles nothing", () => {
   test("payment_status « unpaid » leaves the order pending", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     const res = await postSigned(
@@ -128,7 +147,7 @@ describe("an unpaid session settles nothing", () => {
   });
 
   test("it writes no payment row and no maintenance subscription", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
@@ -143,7 +162,7 @@ describe("an unpaid session settles nothing", () => {
   });
 
   test("it consumes no founders slot", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
@@ -165,7 +184,7 @@ describe("a paid session still settles, as it always did", () => {
     // A 100 % coupon: legitimately settled, nothing left to collect.
     ["no_payment_required", "no_payment_required"],
   ])("payment_status « %s » marks the order paid", async (_label, status) => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     const res = await postSigned(
@@ -185,7 +204,7 @@ describe("a paid session still settles, as it always did", () => {
 
 describe("the delayed payment is settled when it lands", () => {
   test("async_payment_succeeded settles an order left pending", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     // 1. The session completes unpaid — nothing happens.
@@ -216,7 +235,7 @@ describe("the delayed payment is settled when it lands", () => {
   });
 
   test("async_payment_failed marks the order failed, never paid", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
@@ -245,7 +264,7 @@ describe("the delayed payment is settled when it lands", () => {
   test("a failure after a settled payment does not undo it", async () => {
     /* Reversing a collected payment is a refund's job, not this handler's —
        it has the money detail this one does not. */
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
@@ -269,7 +288,7 @@ describe("the delayed payment is settled when it lands", () => {
 
 describe("an expired session releases what it was holding", () => {
   test("checkout.session.expired cancels the pending order", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     const res = await postSigned(
@@ -284,7 +303,7 @@ describe("an expired session releases what it was holding", () => {
   });
 
   test("the founders slot it held goes back to the pool", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t, { isFounders: true });
 
     expect(await t.query(api.orders.countFoundersSold, {})).toBe(1);
@@ -301,7 +320,7 @@ describe("an expired session releases what it was holding", () => {
   });
 
   test("an expiry after payment leaves a paid order alone", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
@@ -364,7 +383,7 @@ describe("a commission is paid only to the code's owner", () => {
   }
 
   test("metadata naming someone else's code pays nobody", async () => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
     const { outsider, codeId } = await seedAffiliateWithCode(t);
 
@@ -395,7 +414,7 @@ describe("a commission is paid only to the code's owner", () => {
 
   test("metadata naming the real owner still pays them", async () => {
     // The guard must not break the legitimate referral.
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
     const { owner, codeId } = await seedAffiliateWithCode(t);
 
@@ -438,7 +457,7 @@ describe("the events the route answers", () => {
     ["checkout.session.async_payment_failed", "unpaid", "failed"],
     ["checkout.session.expired", "unpaid", "cancelled"],
   ])("%s is handled, not swallowed by default:", async (type, paymentStatus, expected) => {
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     const res = await postSigned(
@@ -454,7 +473,7 @@ describe("the events the route answers", () => {
 
   test("async_payment_succeeded on a still-unpaid session settles nothing", async () => {
     // The gate is on the money, not on the event name.
-    const t = convexTest(schema, modules);
+    const t = testConvex();
     await seedPendingOrder(t);
 
     await postSigned(
