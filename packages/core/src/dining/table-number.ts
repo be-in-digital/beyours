@@ -29,6 +29,25 @@
 export const MAX_TABLE_NUMBER_LENGTH = 32
 
 /**
+ * Characters that carry no ink and that `\s` does not match.
+ *
+ * `\s` covers NBSP and the BOM but not the zero-width family or a soft hyphen,
+ * so a label pasted from Word as a lone `U+200B` used to survive `trim()` as a
+ * one-character string: the storefront's required check saw a truthy value, the
+ * server accepted it, and the slip printed `TABLE` with nothing after it — the
+ * exact outcome the doc below says this function exists to prevent.
+ *
+ * The C0/C1 control range goes with them. `U+001B` is the ESC/POS lead byte,
+ * and the thermal path in LAUNCH-04 will feed this label to a printer.
+ *
+ * U+0009 to U+000D are deliberately absent: tab, newline and carriage return
+ * ARE whitespace, so they belong to the collapse below rather than here.
+ * Deleting them outright turned `"Table<tab>4"` into `"Table4"`.
+ */
+const INVISIBLE =
+  /[\u0000-\u0008\u000e-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\ufeff]/g
+
+/**
  * Collapse a typed table label to what should be stored, or `undefined` when
  * nothing was really entered.
  *
@@ -40,7 +59,10 @@ export const MAX_TABLE_NUMBER_LENGTH = 32
  */
 export function normalizeTableNumber(value: string | undefined | null): string | undefined {
   if (typeof value !== 'string') return undefined
-  const trimmed = value.replace(/\s+/g, ' ').trim()
+  const trimmed = value
+    .replace(INVISIBLE, '')
+    .replace(/\s+/g, ' ')
+    .trim()
   return trimmed.length > 0 ? trimmed : undefined
 }
 

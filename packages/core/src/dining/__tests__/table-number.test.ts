@@ -36,6 +36,32 @@ describe('normalizeTableNumber', () => {
     expect(normalizeTableNumber('\t\n')).toBeUndefined()
   })
 
+  it('returns undefined for a label made only of invisible characters', () => {
+    // `\\s` matches NBSP and the BOM but not the zero-width family, so a label
+    // pasted from Word as a lone U+200B used to survive `trim()` as a
+    // one-character string: the storefront's required check saw a truthy
+    // value, the server accepted it, and the slip printed `TABLE` with nothing
+    // after it.
+    for (const invisible of ['\u200b', '\u200c', '\u200d', '\u2060', '\ufeff', '\u00ad']) {
+      expect(normalizeTableNumber(invisible)).toBeUndefined()
+    }
+  })
+
+  it('strips control characters out of a real label', () => {
+    // U+001B is the ESC/POS lead byte, and this label is bound for a printer.
+    expect(normalizeTableNumber('A\u001b3')).toBe('A3')
+    expect(normalizeTableNumber('12\u0000')).toBe('12')
+  })
+
+  it('strips a bidi override rather than printing a reversed table', () => {
+    expect(normalizeTableNumber('\u202e12')).toBe('12')
+  })
+
+  it('keeps an invisible character from faking a valid label', () => {
+    expect(isValidTableNumber(normalizeTableNumber('\u200b'))).toBe(true)
+    expect(normalizeTableNumber('\u200b')).toBeUndefined()
+  })
+
   it('returns undefined for a missing value', () => {
     expect(normalizeTableNumber(undefined)).toBeUndefined()
     expect(normalizeTableNumber(null)).toBeUndefined()

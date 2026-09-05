@@ -180,8 +180,38 @@ describe('resolveAllergens', () => {
     expect(resolved[0]?.allergen).toBe('dairy')
   })
 
-  it('deduplicates unrecognised values on their normalised form', () => {
+  it('collapses two unrecognised values only when they are the same text', () => {
     expect(resolveAllergens(['Fait maison', 'fait maison'])).toHaveLength(1)
+    expect(resolveAllergens(['Fait  maison', ' fait maison '])).toHaveLength(1)
+  })
+
+  it('keeps two allergens written in a script with no ASCII letters', () => {
+    // `\u843d\u82b1\u751f` is peanut, `\u725b\u4e73` is milk — an ordinary pair on an Asian
+    // menu in France. Keying unrecognised values by the [a-z0-9] matching key
+    // gave both the empty string, so they shared one key and the milk was
+    // silently deleted: shown on the dish page, absent from the kitchen slip,
+    // absent from the Uber Eats payload, and absent from the report that names
+    // what could not be synced.
+    const resolved = resolveAllergens(['\u843d\u82b1\u751f', '\u725b\u4e73'])
+    expect(resolved.map((r) => r.raw)).toEqual(['\u843d\u82b1\u751f', '\u725b\u4e73'])
+  })
+
+  it('keeps a legend written as circled numerals', () => {
+    expect(resolveAllergens(['\u2460', '\u2461', '\u2462'])).toHaveLength(3)
+  })
+
+  it('does not fold two different French words onto one another', () => {
+    // `p\u00e2te` is dough, `p\u00e2t\u00e9` is terrine. Same bistro card, different
+    // allergens, one accent apart — and nothing here knows they differ, which
+    // is exactly why an unrecognised value must not be accent-folded.
+    expect(resolveAllergens(['p\u00e2te', 'p\u00e2t\u00e9'])).toHaveLength(2)
+  })
+
+  it('still folds accents when MATCHING a known name', () => {
+    // The mirror: accent-insensitivity is right for recognition and wrong for
+    // deduplicating something we do not recognise.
+    expect(normalizeAllergen('C\u00e9leri')).toBe('celery')
+    expect(normalizeAllergen('celeri')).toBe('celery')
   })
 
   it('keeps two genuinely different unrecognised values', () => {
@@ -228,6 +258,15 @@ describe('toUberEatsAllergens', () => {
       allergens: [{ type: 'TREE_NUTS' }, { type: 'GLUTEN' }, { type: 'MILK' }],
       unmapped: [],
     })
+  })
+
+  it('reports every unmappable value, including ones with no ASCII letters', () => {
+    // The gap report is the only thing standing between an unmappable allergen
+    // and silence. It has to name all of them.
+    expect(toUberEatsAllergens(['\u843d\u82b1\u751f', '\u725b\u4e73']).unmapped).toEqual([
+      '\u843d\u82b1\u751f',
+      '\u725b\u4e73',
+    ])
   })
 
   it('reports an unrecognised value instead of dropping it silently', () => {

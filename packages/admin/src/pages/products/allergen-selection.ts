@@ -25,7 +25,7 @@ import {
   ALLERGEN_LABELS,
   KNOWN_ALLERGENS,
   normalizeAllergen,
-  normalizeAllergenKey,
+  unverifiedAllergenKey,
   resolveAllergens,
   type Allergen,
   type AllergenLocale,
@@ -67,19 +67,23 @@ export interface AllergenSelection {
 }
 
 /**
- * The identity `resolveAllergens` deduplicates on, restated so that removing a
- * value removes exactly the entries that were collapsed into the chip clicked.
+ * The identity `resolveAllergens` deduplicates on, so that removing a value
+ * removes exactly the entries that were collapsed into the chip clicked.
  *
- * The two halves are both load-bearing. `"lactose"` and `"lait"` are one
- * declaration and must be removed together, which the canonical key gives us.
- * But `"gluten"` and `"gluten ✗"` normalise to the same string while resolving
- * differently — the second is negated, so the vocabulary refuses it — and
- * removing the unverified `"gluten ✗"` must not silently drop the real gluten
- * declaration sitting beside it.
+ * Both halves are load-bearing. `"lactose"` and `"lait"` are one declaration
+ * and must be removed together, which the canonical key gives us. But
+ * `"gluten"` and `"gluten ✗"` resolve differently — the second is negated, so
+ * the vocabulary refuses it — and removing the unverified `"gluten ✗"` must not
+ * silently drop the real gluten declaration sitting beside it.
+ *
+ * The unrecognised half comes from `unverifiedAllergenKey` rather than being
+ * restated here. It was restated, with `normalizeAllergenKey`, and that is a
+ * key which collapses every non-Latin value to the empty string — so removing
+ * one CJK chip removed every other one with it.
  */
 function declarationKey(value: string): string {
   const allergen = normalizeAllergen(value)
-  return allergen ?? `raw:${normalizeAllergenKey(value)}`
+  return allergen ?? `raw:${unverifiedAllergenKey(value)}`
 }
 
 /** Drop `undefined` and hand back a plain, mutable copy. */
@@ -150,15 +154,22 @@ export function toggleAllergenValue(
 }
 
 /**
- * Whether a typed value is a declaration at all.
+ * Whether a typed value names anything at all.
  *
- * `normalizeAllergenKey` keeps only letters and digits, so a value that
- * normalises to nothing — spaces, punctuation, a lone `✗` — carries no name and
- * is not stored. The control leaves such text in the input rather than
- * pretending to have accepted it.
+ * A letter or a digit in ANY script. This used to be
+ * `normalizeAllergenKey(raw).length > 0`, and that key keeps only `[a-z0-9]` —
+ * so the control silently refused `落花生`, `σέλινο`, `كرفس` and a legend
+ * written `①`. The free-text field is the escape hatch this whole design rests
+ * on ("refusing a name we do not know would push a real declaration off the
+ * menu"), and it was closed for every non-Latin script.
+ *
+ * Punctuation and symbols alone still do not qualify: a declaration needs a
+ * name, and a lone `✗` is not one.
  */
+const NAMES_SOMETHING = /[\p{L}\p{N}]/u
+
 export function isDeclarableAllergenValue(raw: string): boolean {
-  return normalizeAllergenKey(raw).length > 0
+  return NAMES_SOMETHING.test(raw)
 }
 
 /**

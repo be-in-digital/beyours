@@ -416,13 +416,37 @@ export interface ResolvedAllergen {
 }
 
 /**
+ * The identity two *unrecognised* values must share before one is dropped as a
+ * duplicate of the other.
+ *
+ * Case and whitespace only. Deliberately NOT `normalizeAllergenKey`, which is
+ * built for the opposite job — matching a typed name against a known one, where
+ * folding accents is what makes `Céleri` find `celeri`. Applied to a value the
+ * vocabulary does *not* recognise, that folding destroys declarations:
+ *
+ *   - it collapses everything outside `[a-z0-9]` to the empty string, so
+ *     `落花生` and `牛乳` — peanut and milk, an ordinary pair on an Asian menu
+ *     in France — share one key and the second is silently deleted. Same for a
+ *     legend written `①②③`, and for emoji.
+ *   - it folds accents, so `pâte` and `pâté` become one. Those are different
+ *     foods on the same bistro card, and only one of them carries pistachio.
+ *
+ * There is no vocabulary here to say two spellings mean the same thing, so the
+ * only safe claim is that identical text is one declaration. Anything less
+ * conservative drops an allergen the diner was told about, which is the one
+ * direction this module must never fail in.
+ */
+export function unverifiedAllergenKey(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+/**
  * Resolve a stored allergen list for display.
  *
  * Deduplicates: `["lactose", "lait"]` both resolve to `dairy` and a cook should
- * read "Lait" once, not twice. Unrecognised values dedupe on their normalised
- * form, so `"Fait maison"` and `"fait maison"` collapse but two genuinely
- * different notes do not. Empty and whitespace-only entries are dropped —
- * they are not a declaration of anything.
+ * read "Lait" once, not twice. Unrecognised values collapse only when they are
+ * the same text — see `unverifiedAllergenKey`. Empty and whitespace-only entries are
+ * dropped; they are not a declaration of anything.
  *
  * Order is the order the owner entered, which is the order they proof-read.
  */
@@ -441,7 +465,7 @@ export function resolveAllergens(
     if (!raw) continue
 
     const allergen = normalizeAllergen(raw)
-    const dedupeKey = allergen ?? `raw:${normalizeAllergenKey(raw)}`
+    const dedupeKey = allergen ?? `raw:${unverifiedAllergenKey(raw)}`
     if (seen.has(dedupeKey)) continue
     seen.add(dedupeKey)
 
@@ -570,6 +594,13 @@ export const UBER_EATS_ALLERGEN_TYPE: Record<Allergen, UberEatsAllergenType | nu
  * Returns the mapped types and, separately, the raw values that could not be
  * mapped — because dropping those silently is exactly the defect this replaces.
  * The caller decides what to do with `unmapped`; it must not be discarded.
+ *
+ * Today the only caller writes it to the Convex log (`uberEatsMenuSync` in both
+ * apps). That is diagnosable but it is not a dashboard: no restaurateur sees
+ * it. Surfacing it in the admin needs a field the store-integration screen
+ * actually renders, and `menuSyncError` — which already exists — is rendered
+ * nowhere either, so adding a second unrendered field would repeat the mistake
+ * rather than fix it.
  */
 export function toUberEatsAllergens(values: readonly string[] | undefined): {
   allergens: Array<{ type: UberEatsAllergenType }>

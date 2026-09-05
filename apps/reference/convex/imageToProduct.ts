@@ -20,8 +20,7 @@ import { buildMediaUrl, mediaKeyFromUrl } from "@be-in-digital/core/aws/media-ur
 import {
   ALLERGEN_KIND,
   KNOWN_ALLERGENS,
-  normalizeAllergen,
-  normalizeAllergenKey,
+  resolveAllergens,
 } from "@be-in-digital/core/allergens"
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -267,23 +266,12 @@ const ALLERGEN_PROMPT_RULES = `  * Choisis les valeurs dans cette liste, en angl
  * declaration, and an unrecognised value dedupes on its normalised form.
  */
 export function normalizeExtractedAllergens(values: readonly string[]): string[] {
-  const normalized: string[] = []
-  const seen = new Set<string>()
-
-  for (const value of values) {
-    if (typeof value !== "string") continue
-    const raw = value.trim()
-    if (!raw) continue
-
-    const allergen = normalizeAllergen(raw)
-    const dedupeKey = allergen ?? `raw:${normalizeAllergenKey(raw)}`
-    if (seen.has(dedupeKey)) continue
-    seen.add(dedupeKey)
-
-    normalized.push(allergen ?? raw)
-  }
-
-  return normalized
+  // Delegates rather than re-deriving. This function used to carry its own copy
+  // of the resolve-and-dedupe loop, and the copy is where a defect lived: it
+  // keyed unrecognised values by `normalizeAllergenKey`, which collapses
+  // anything outside [a-z0-9] to the empty string, so a model answering with
+  // two CJK allergen names had the second deleted before it was ever stored.
+  return resolveAllergens(values).map((entry) => entry.allergen ?? entry.raw)
 }
 
 // ─── Vision Analysis ─────────────────────────────────────────────────────────
