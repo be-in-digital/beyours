@@ -3,6 +3,7 @@ import {
   query,
   mutation,
   internalMutation,
+  internalQuery,
   QueryCtx,
   MutationCtx,
 } from "./_generated/server";
@@ -25,6 +26,19 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 
   return affiliate;
 }
+
+/* The same gate, reachable from an action.
+   `requireAdmin` takes a `QueryCtx | MutationCtx` and reads the database, so an
+   `ActionCtx` cannot call it. Rather than let actions carry a looser check of
+   their own, they run this through `ctx.runQuery`, which forwards the caller's
+   identity — one implementation of "is an admin", not two. */
+export const assertAdmin = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await requireAdmin(ctx);
+    return { actorName: admin.firstName ?? "Admin" };
+  },
+});
 
 /* ── Queries ── */
 

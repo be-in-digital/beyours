@@ -101,9 +101,18 @@ export const COMPANY: CompanyInfo = {
  * `lib/payment-providers.ts`), Stripe follows `STRIPE_TAX_ENABLED` (Convex
  * side, see `convex/stripe.ts`). Neither decides anything — both are measured
  * against `regime`, because agreeing with each other and being wrong together
- * is the state that issues wrong invoices. A deployment where either
- * contradicts the regime is refused by `validateSiteEnv` (`lib/env.ts`), and a
- * sale that reaches Stripe anyway is refused by `createCheckoutSession`.
+ * is the state that issues wrong invoices.
+ *
+ * They are checked where each is visible, which is not the same place. The
+ * Next flag is checked by `validateSiteEnv` (`lib/env.ts`), which refuses a
+ * deployment where it contradicts the regime OR is simply missing — missing
+ * being the default state of a fresh Vercel project, and indistinguishable
+ * from "no VAT" at the read site. The Convex flag is invisible to that
+ * function and is checked by `createCheckoutSession`, which refuses the sale.
+ * Since the two envs never meet, the checkout also carries the VAT stance the
+ * client actually rendered and refuses a sale where that stance and Stripe's
+ * disagree. That is one bit, not the total: two summaries agreeing VAT was
+ * quoted can still differ in amount, and nothing checks that today.
  *
  * Every price in the app is quoted excluding tax, which is the right B2B
  * convention here — restaurants recover the VAT. Switching regime therefore

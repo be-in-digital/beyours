@@ -16,6 +16,7 @@ import { KpiCard } from "@/components/admin/kpi-card";
 import { EmptyState } from "@/components/admin/empty-state";
 import { HealthDot } from "@/components/admin/status";
 import { INTEGRATION_LABEL } from "@/components/admin/status";
+import { ProbeNowButton } from "@/components/admin/probe-now-button";
 import { Badge } from "@/components/admin/ui/badge";
 import { Card } from "@/components/admin/ui/card";
 import { Skeleton } from "@/components/admin/ui/skeleton";
@@ -73,6 +74,7 @@ export default function MonitoringPage() {
           <Activity className="size-3.5" /> {formatNumber(rollup.total)} déploiement
           {rollup.total > 1 ? "s" : ""}
         </Badge>
+        <ProbeNowButton />
       </PageHeader>
 
       {/* Health rollup */}
@@ -100,11 +102,18 @@ export default function MonitoringPage() {
           icon={<ShieldOff />}
           accent={rollup.byHealth.down > 0 ? "var(--danger)" : undefined}
         />
+        {/* Null until a probe has run: an average over nothing is not 100 %. */}
         <KpiCard
           label="Uptime moyen"
-          value={formatPercentPoints(rollup.avgUptime)}
+          value={
+            rollup.avgUptime === null ? "—" : formatPercentPoints(rollup.avgUptime)
+          }
           icon={<Gauge />}
-          hint="sur 30 jours"
+          hint={
+            rollup.avgUptime === null
+              ? "aucun déploiement sondé"
+              : `sur 30 jours · ${formatNumber(rollup.monitored)} sondé${rollup.monitored > 1 ? "s" : ""}`
+          }
         />
       </div>
 
@@ -182,9 +191,20 @@ export default function MonitoringPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="tnum font-medium text-foreground">
-                        {formatPercentPoints(d.uptime30d)}
-                      </span>
+                      {/* No probe yet, no figure — `uptime30d` is a
+                          placeholder until the first check lands. */}
+                      {d.lastCheckAt === null ? (
+                        <span
+                          className="text-muted-foreground"
+                          title="Jamais sondé"
+                        >
+                          —
+                        </span>
+                      ) : (
+                        <span className="tnum font-medium text-foreground">
+                          {formatPercentPoints(d.uptime30d)}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {d.integrationErrors.length > 0 ? (
@@ -224,7 +244,7 @@ export default function MonitoringPage() {
             <EmptyState
               icon={<Radio />}
               title="Aucun contrôle enregistré"
-              description="Les sondes de disponibilité alimenteront ce flux au fil de l'eau."
+              description="La sonde passe toutes les 10 minutes sur les déploiements en ligne. « Sonder maintenant » déclenche un passage immédiat."
             />
           </div>
         ) : (

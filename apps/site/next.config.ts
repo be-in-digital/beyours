@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
+import { validateSiteEnv, formatSiteEnvReport, isInlinedAtBuild } from "./lib/env";
 import { BOOKING_ORIGIN } from "./lib/site-config";
 
 /**
@@ -12,6 +14,49 @@ const contentSecurityPolicy = buildContentSecurityPolicy({
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
   bookingOrigin: BOOKING_ORIGIN,
 });
+
+/**
+ * Report the variables this build is about to freeze into the client bundle.
+ *
+ * This has to live here rather than in `instrumentation.ts`, and the reason is
+ * worth writing down because it is not guessable: Next 16 with Turbopack does
+ * NOT call `register()` during `next build`. Measured — a full build with
+ * `NEXT_PUBLIC_TVA_ENABLED` deliberately unset emits no `[env]` line at all,
+ * so the boot check runs only when a server starts, long after the bundle was
+ * written. `next.config.ts` is evaluated during the build itself, which is why
+ * the CSP above already reads its Convex URL from here.
+ *
+ * It matters most for the charging flag. `/checkout` and `/tarifs` are
+ * prerendered as static content, so the VAT branch of the order summary is
+ * baked into HTML here and afterwards served straight from the CDN — no server
+ * boot, and therefore no boot check, stands between that page and the customer.
+ * `resolveTvaEnabled` is what keeps the baked value right; this is what says so
+ * out loud while the build that bakes it is still running.
+ *
+ * Only the inlined half is judged, since the Stripe, AWS and e-mail variables
+ * live on the Convex deployment and are absent from every build by design. It
+ * warns and never throws: CI compiles this app against a deliberate placeholder
+ * Convex URL, and a deployment whose flag is wrong is still refused at boot and
+ * its sales still refused at checkout.
+ *
+ * Gated on the build phase, and that gate is load-bearing rather than tidy:
+ * this file is evaluated by `next dev` and `next start` too, where the env it
+ * can read is the RUNTIME env and not the one the bundle was compiled from.
+ * Reporting there would be both a false alarm (a correct server whose bundle
+ * is fine) and a false silence (a stale bundle built without the flag, started
+ * with it) — announced under a heading that says "build". `instrumentation.ts`
+ * covers the runtime, from the runtime, and says so.
+ */
+function reportInlinedEnv(): void {
+  const problems = validateSiteEnv().problems.filter(
+    (p) => isInlinedAtBuild(p) && p.tier !== "required",
+  );
+  if (problems.length === 0) return;
+  console.warn(
+    "[env] build : variables inlinées dans le bundle client à corriger",
+  );
+  console.warn(formatSiteEnvReport(problems));
+}
 
 const nextConfig: NextConfig = {
   /**
@@ -69,4 +114,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/* The phase comes from Next itself. `process.env.NEXT_PHASE` is NOT set when
+   this file is evaluated — measured: gating on it silenced the report during a
+   real `next build` — so the phase argument is the only reliable signal, and it
+   is the documented one. */
+export default function config(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_BUILD) reportInlinedEnv();
+  return nextConfig;
+}
