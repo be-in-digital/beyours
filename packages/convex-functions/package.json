@@ -36,6 +36,7 @@
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
     "./orders": "./src/orders.ts",
+    "./dashboardStats": "./src/dashboardStats.ts",
     "./kitchenTickets": "./src/kitchenTickets.ts",
     "./payments": "./src/payments.ts",
     "./paymentEvents": "./src/paymentEvents.ts",

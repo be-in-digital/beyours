@@ -8,6 +8,7 @@
  */
 
 import { v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
 import type {
   BusinessHours,
   OrderStatus,
@@ -17,6 +18,13 @@ import {
   isWithinBusinessHours,
   resolveStoreHours,
 } from "@be-in-digital/convex-schema"
+import {
+  assertDayStarts,
+  computeDashboardStats,
+  dashboardWindowStart,
+  type DashboardStats,
+} from "./dashboardStats"
+import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
@@ -239,17 +247,152 @@ export async function mayReadStoreOrders(
   }
 }
 
+/** Every status an order can hold, as the queries below accept it. */
+const ORDER_STATUS = v.union(
+  v.literal("pending"),
+  v.literal("confirmed"),
+  v.literal("preparing"),
+  v.literal("ready"),
+  v.literal("out_for_delivery"),
+  v.literal("delivered"),
+  v.literal("completed"),
+  v.literal("cancelled")
+)
+
 /**
- * List all orders for a store, ordered by creation date (newest first)
+ * One page of a store's orders, newest first, narrowed by status where asked.
+ *
+ * WHY IT IS PAGINATED. This returned every order the establishment had ever
+ * taken, and it was the query behind both `/dashboard` and `/dashboard/orders`.
+ * Measured on a seeded store: 5,000 orders in the table, 5,000 rows returned,
+ * 3.07 MB on the wire. Convex aborts a transaction that reads more than 16,384
+ * documents, so the two screens an owner opens most were on a path to throwing
+ * on every load, permanently, with no admin action able to clear it. Worse,
+ * both are live subscriptions: every new order re-serialised the restaurant's
+ * whole order history to every open admin tab.
+ *
+ * `status` is an equality on `by_storeId_status_createdAt`, so the filter costs
+ * the rows it returns rather than the rows it rejects, and both branches order
+ * by the same field — a status tab that ordered by `_creationTime` printed a
+ * Date column that was not monotonic as soon as a platform webhook arrived
+ * late. `getByStatus` was this read with the filter mandatory and no caller; it
+ * is folded in here rather than left as a second unbounded doorway onto the
+ * same table.
  */
 export const list = {
-  args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: { storeId: string }) => {
+  args: {
+    storeId: v.id("stores"),
+    status: v.optional(ORDER_STATUS),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      status?: string
+      paginationOpts: { numItems: number; cursor: string | null }
+    }
+  ) => {
+    const page = clampPagination(args.paginationOpts)
+
+    if (args.status) {
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_storeId_status_createdAt", (q: any) =>
+          q.eq("storeId", args.storeId).eq("status", args.status)
+        )
+        .order("desc")
+        .paginate(page)
+    }
+
     return await ctx.db
       .query("orders")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
-      .collect()
+      .paginate(page)
+  },
+}
+
+/**
+ * The most orders `dashboardStats` will read in one transaction.
+ *
+ * The window is the real bound — the aggregates cover a month, not a lifetime —
+ * and this is the ceiling under it, so an establishment that takes more orders
+ * in a month than Convex will read in one transaction still gets a dashboard.
+ * Ordered newest-first, so what a truncated read loses is the far end of the
+ * 30-day breakdown; the today, yesterday and seven-day figures are the newest
+ * rows and stay exact. The answer says `truncated` when it happens.
+ */
+export const DASHBOARD_ORDER_SCAN_LIMIT = 5_000
+
+/**
+ * Everything `/dashboard` renders, aggregated on the server.
+ *
+ * The page used to subscribe to `orders.list` — every order ever — and do this
+ * arithmetic in the browser. See `dashboardStats.ts` for why the day boundaries
+ * arrive as an argument rather than being derived here.
+ */
+export const dashboardStats = {
+  args: {
+    storeId: v.id("stores"),
+    /** Local-midnight boundaries, ascending; the last one is today. */
+    dayStarts: v.array(v.number()),
+    /** Tomorrow's local midnight — the exclusive end of today. */
+    todayEnd: v.number(),
+    /** Start of the wider window the type/source breakdowns cover. */
+    breakdownSince: v.number(),
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      dayStarts: number[]
+      todayEnd: number
+      breakdownSince: number
+    }
+  ): Promise<DashboardStats> => {
+    assertDayStarts(args.dayStarts, args.todayEnd)
+    const windowStart = dashboardWindowStart(args)
+
+    const rows = await ctx.db
+      .query("orders")
+      .withIndex("by_storeId_createdAt", (q: any) =>
+        q.eq("storeId", args.storeId).gte("createdAt", windowStart)
+      )
+      .order("desc")
+      .take(DASHBOARD_ORDER_SCAN_LIMIT + 1)
+
+    const truncated = rows.length > DASHBOARD_ORDER_SCAN_LIMIT
+    return computeDashboardStats(
+      rows.slice(0, DASHBOARD_ORDER_SCAN_LIMIT),
+      { ...args, now: Date.now() },
+      truncated
+    )
+  },
+}
+
+/** How many orders the dashboard's "Dernières commandes" table shows. */
+export const RECENT_ORDERS_LIMIT = 10
+
+/**
+ * The last handful of orders, for the dashboard's recent-orders table.
+ *
+ * The table used to be `orders.slice(0, 10)` over the entire history the page
+ * had already downloaded. Ten rows are ten rows; this reads ten.
+ */
+export const recent = {
+  args: { storeId: v.id("stores"), limit: v.optional(v.number()) },
+  handler: async (ctx: any, args: { storeId: string; limit?: number }) => {
+    // `clampPageSize` rather than `Math.min(Math.max(...))`: `v.number()`
+    // accepts NaN over the wire, and NaN survives both of those to reach
+    // `.take()`, which refuses it with an error naming an argument the caller
+    // never sent.
+    const limit = clampPageSize(args.limit, RECENT_ORDERS_LIMIT, 50)
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))
+      .order("desc")
+      .take(limit)
   },
 }
 
@@ -263,47 +406,10 @@ export const getById = {
   },
 }
 
-/**
- * Get orders by customer
- */
-export const getByCustomer = {
-  args: { customerId: v.string() },
-  handler: async (ctx: any, args: { customerId: string }) => {
-    return await ctx.db
-      .query("orders")
-      .withIndex("by_customerId", (q: any) => q.eq("customerId", args.customerId))
-      .order("desc")
-      .collect()
-  },
-}
-
-/**
- * Get orders by status
- */
-export const getByStatus = {
-  args: {
-    storeId: v.id("stores"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("preparing"),
-      v.literal("ready"),
-      v.literal("out_for_delivery"),
-      v.literal("delivered"),
-      v.literal("completed"),
-      v.literal("cancelled")
-    ),
-  },
-  handler: async (ctx: any, args: { storeId: string; status: string }) => {
-    return await ctx.db
-      .query("orders")
-      .withIndex("by_storeId_status", (q: any) =>
-        q.eq("storeId", args.storeId).eq("status", args.status)
-      )
-      .order("desc")
-      .collect()
-  },
-}
+// REMOVED: `getByCustomer` collected one customer's entire order history from
+// `by_customerId` with no window and no limit, and — like the app-level
+// wrapper deleted before it — had no caller. The account page reads
+// `getMyOrders`, which derives the customer from the session and pages.
 
 /**
  * Get orders by view token (public access for order confirmation page)
