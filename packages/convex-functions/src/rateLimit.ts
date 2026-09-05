@@ -42,6 +42,7 @@
  */
 
 import { v } from "convex/values"
+import { RefusalError } from "./refusal"
 
 /** One counter, as the limiter cares about it. */
 export interface RateLimitWindow {
@@ -225,13 +226,17 @@ export const FIELD_LIMITS = {
   message: 5_000,
 } as const
 
-export class FieldTooLongError extends Error {
+export class FieldTooLongError extends RefusalError<"field_too_long"> {
   constructor(
     readonly field: keyof typeof FIELD_LIMITS,
     readonly limit: number
   ) {
-    super(`Le champ « ${field} » dépasse ${limit} caractères.`)
-    this.name = "FieldTooLongError"
+    super(
+      "FieldTooLongError",
+      "field_too_long",
+      `Le champ « ${field} » dépasse ${limit} caractères.`,
+      { field, limit }
+    )
   }
 }
 
@@ -248,10 +253,14 @@ export function assertFieldLengths(
   }
 }
 
-export class RateLimitedError extends Error {
+export class RateLimitedError extends RefusalError<"rate_limited"> {
   constructor(readonly retryAt: number) {
-    super("Trop de requêtes. Merci de réessayer dans quelques minutes.")
-    this.name = "RateLimitedError"
+    super(
+      "RateLimitedError",
+      "rate_limited",
+      "Trop de requêtes. Merci de réessayer dans quelques minutes.",
+      { retryAt }
+    )
   }
 }
 
