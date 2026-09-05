@@ -120,21 +120,38 @@ export const storesTable = defineTable({
   // Homepage trending section mode
   trendingMode: v.optional(v.union(v.literal("manual"), v.literal("automatic"))),
 
-  // Legacy fields (kept for backward compatibility with existing data)
-  // Will be removed after data migration
+  // Untyped blobs (kept for backward compatibility with existing data)
   //
-  // `displayConfig` joined them: it had a mutation and an audit entry, and
-  // nothing anywhere read the stored value. The only screen that wrote it
-  // lived in `apps/themes/components/admin/settings/`, a folder no route
-  // rendered.
+  // `displayConfig` had a mutation and an audit entry, and nothing anywhere
+  // read the stored value. The only screen that wrote it lived in
+  // `apps/themes/components/admin/settings/`, a folder no route rendered.
   //
   // `orderConfirmation` was withdrawn beside it and has come back typed, above
   // — the workflow it promised is implemented now.
   //
   // They stay declared, and optional, because documents already hold them: a
   // stored field absent from the schema fails validation on the next write to
-  // that document. Nothing writes them now.
+  // that document. Nothing writes `displayConfig`, `integrations` or
+  // `settings`.
   displayConfig: v.optional(v.any()),
+
+  // `branding` IS live, and this block used to say otherwise. The Design
+  // screen writes it through `stores.updateBranding`, whose `BRANDING_FIELDS`
+  // validator is the real shape: `primaryColor`, `secondaryColor`,
+  // `accentColor`, `fontHeading`, `fontBody`, `logoUrl`, `faviconUrl`. The
+  // colours and the two fonts are read back by `buildBrandingCss`
+  // (`packages/ui/src/lib/branding.ts`) and painted onto the storefront's CSS
+  // custom properties by `StoreTheme`, so an establishment's palette is what a
+  // diner sees.
+  //
+  // It stays `v.any()` on purpose, and the reason is in the doc comment on
+  // `updateBranding`: Convex validates the whole document on every write, so
+  // narrowing this to `BRANDING_FIELDS` would make one client deployment
+  // holding an undeclared key fail its next unrelated edit — an opening-hours
+  // change refused because of a colour. `apps/themes` is cloned per client,
+  // one Convex instance each, and nothing here can see what those documents
+  // hold. Narrowing needs an inventory of the deployed key sets first; until
+  // then the writer is the narrow thing.
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),
   settings: v.optional(v.any()),

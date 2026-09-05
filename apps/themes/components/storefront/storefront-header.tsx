@@ -34,7 +34,18 @@ const NAV_LINKS = [
   { href: "/contact", labelKey: "nav.contact" },
 ]
 
-export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean }) {
+export function StorefrontHeader({
+  hasBanner = false,
+  fallbackLogoUrl,
+}: {
+  hasBanner?: boolean
+  /**
+   * The establishment's `branding.logoUrl` from the admin's Design screen,
+   * used when the CMS block carries no uploaded logo. See `StorefrontShell`
+   * for why the CMS wins.
+   */
+  fallbackLogoUrl?: string
+}) {
   const pathname = usePathname()
   const { t } = useTranslation()
   const navLinks = NAV_LINKS.map((link) => ({
@@ -43,7 +54,7 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
   }))
   const itemCount = useCartStore((s) => s.getItemCount())
   const cms = useCmsPage("storefront-layout")
-  const logoMedia = cms.block("branding").field("logo")
+  const logoUrl = cms.block("branding").field("logo").mediaUrl ?? fallbackLogoUrl
   const brandName = cms.block("branding").field("brandName").text ?? "BeYours"
 
   const [isScrolled, setIsScrolled] = useState(false)
@@ -96,9 +107,9 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
               showTransparent ? "text-white" : "text-[#0D5C3F]"
             }`}
           >
-            {logoMedia.mediaUrl ? (
+            {logoUrl ? (
               <img
-                src={logoMedia.mediaUrl}
+                src={logoUrl}
                 alt={brandName}
                 className="h-8 w-auto object-contain"
               />
@@ -229,9 +240,9 @@ export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean })
             {/* Close button */}
             <div className="flex items-center justify-between px-6 py-4">
               <span className="font-black text-xl tracking-tighter text-white">
-                {logoMedia.mediaUrl ? (
+                {logoUrl ? (
                   <img
-                    src={logoMedia.mediaUrl}
+                    src={logoUrl}
                     alt={brandName}
                     className="h-8 w-auto object-contain brightness-0 invert"
                   />

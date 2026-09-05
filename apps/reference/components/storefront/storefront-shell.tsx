@@ -13,8 +13,17 @@ interface StorefrontShellProps {
 }
 
 export function StorefrontShell({ children }: StorefrontShellProps) {
-  const { storeId } = useStoreId()
+  const { storeId, store } = useStoreId()
   const { isOpen, isLoading, hoursStatus } = useStoreStatus(storeId)
+
+  // The Design screen's Logo tab writes `branding.logoUrl` and
+  // `branding.faviconUrl`, and nothing read either of them: the storefront
+  // takes its logo and favicon from the CMS block, which an owner reaches from
+  // a different screen. Rather than a second source of truth, these are the
+  // FALLBACK — the CMS block wins wherever it is filled in, and the Design
+  // screen's fields cover the establishment that never opened it. The store
+  // document is already in hand here, so neither child needs its own query.
+  const branding = store?.branding
 
   const nextOpenTime = hoursStatus?.nextChange
     ? hoursStatus.nextChange.toLocaleTimeString("fr-FR", {
@@ -28,9 +37,9 @@ export function StorefrontShell({ children }: StorefrontShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <StorefrontI18nProvider />
-      <DynamicFavicon />
+      <DynamicFavicon fallbackUrl={branding?.faviconUrl} />
       {showBanner && <StoreClosedBanner nextOpenTime={nextOpenTime} />}
-      <StorefrontHeader hasBanner={showBanner} />
+      <StorefrontHeader hasBanner={showBanner} fallbackLogoUrl={branding?.logoUrl} />
       <main className="flex-1">{children}</main>
       <StorefrontFooter />
     </div>

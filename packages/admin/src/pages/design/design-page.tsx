@@ -26,6 +26,7 @@ import { cn } from "../../lib/utils"
 import { ResolvingStore } from "../../components/resolving-store"
 import { brandingControlState } from "../../lib/branding-eligibility"
 import { BrandingControl } from "./branding-control"
+import { BrandingPreview } from "./branding-preview"
 
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
@@ -221,6 +222,9 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
                 <div className="h-16 rounded-lg border" style={{ backgroundColor: accentColor }} />
               </div>
             </div>
+            <BrandingPreview
+              branding={{ primaryColor, secondaryColor, accentColor, fontHeading, fontBody }}
+            />
             <BrandingControl state={branding}>
               <Button size="sm" disabled={branding.disabled} onClick={handleSaveColors}>
                 Enregistrer les couleurs
@@ -248,6 +252,9 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
                 </div>
               </div>
             </div>
+            <BrandingPreview
+              branding={{ primaryColor, secondaryColor, accentColor, fontHeading, fontBody }}
+            />
             <BrandingControl state={branding}>
               <Button size="sm" disabled={branding.disabled} onClick={handleSaveTypography}>
                 Enregistrer la typographie
@@ -258,6 +265,11 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
 
         <TabsContent value="logo" className="space-y-4">
           <div className="border border-border/50 rounded-xl p-6 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Ces adresses servent de repli : si vous avez déposé un logo ou un
+              favicon dans le CMS (Contenu → Layout du storefront), c&apos;est
+              celui-là qui s&apos;affiche.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="logoUrl">URL du logo</Label>

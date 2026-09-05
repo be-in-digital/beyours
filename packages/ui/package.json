@@ -22,6 +22,7 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./branding": "./src/lib/branding.ts",
     "./components": "./src/components/index.ts",
     "./restaurant": "./src/components/restaurant/index.ts",
     "./admin": "./src/components/admin/index.ts"
