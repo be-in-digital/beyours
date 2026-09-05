@@ -395,3 +395,63 @@ reservations joined from #330.
 > on the site, in the demos and in the onboarding tour now maps to something a
 > client can use — see `tasks/sales-readiness-backlog.md` → LAUNCH-04 for what
 > was decided and what shipped for each.
+
+## Batch NEW-T — Sold and absent, at four times the scale
+*11 items + 2 uncarded · product decisions · **decided 5 Sep 2026** · _3 open sub-items_*
+
+LAUNCH-04's question, asked of eleven more capabilities. Re-measured at
+`158019f` before anything was decided, and two of the eleven had moved: **T-4
+was already fixed** by #340, and **four sub-claims of T-8 and T-10 were wrong**
+— the controls they said were missing exist, save correctly, and change nothing
+a customer can see. Two findings nobody had carded outranked most of the list.
+
+- [x] **Fake social proof in every delivered client site** ✅ — three invented
+  five-star testimonials with generated avatars, a hard-coded `4.5★` on every
+  real dish, two invented dishes, "4.9/5" and "10K+" tiles, and an About page
+  defaulting to a customer count and an average rating. None of it removable
+  from the admin. Deleted in both apps and held by
+  `tests/storefront/no-fabricated-social-proof.test.ts`, which fails 7 of 7
+  against the pre-fix tree.
+- [x] **T-1 Analytics** ✅ — reworded; the row is `true/true` because the one
+  dashboard is available to everyone, and Premium differentiates on the app
+  alone. The three named metrics are decided **build** (below).
+- [ ] **T-2 Clients (CRM)** 🟠 — decided **build**, its own PR. Cheaper than it
+  looks: orders carry name/email/phone indexed `by_customerId`, and
+  `emailSubscribers.metadata` already computes and renders the per-person
+  history. The tour steps that walked an owner to the placeholder are removed
+  until it ships.
+- [x] **T-3 Themes** ✅ — the six-theme picker (two of which had no template)
+  is gone; Couleurs and Typographie are disabled with a stated reason; the Logo
+  tab points at the CMS block that genuinely drives every logo surface.
+- [x] **T-4 Sitemap and JSON-LD** ✅ — already fixed by #340. Dead `store-url.ts`
+  deleted in both apps; the bare admin paths added to the crawler disallow list.
+- [x] **T-5 Push** ✅ — one bullet reworded. Eight of nine mentions were already
+  gated behind the Premium app.
+- [x] **T-6 Créneaux horaires** ✅ — copy reworded, the sales demo's working slot
+  picker removed, the no-op Click & Collect switch disabled with a reason, the
+  dead `scheduledAt` deleted and the inverted kitchen priority corrected.
+- [ ] **T-7 Backups and monitoring** 🟠 — copy aligned to the manual export and
+  the measured availability that exist; the **nightly backup and the alert** are
+  decided **build**, their own PR. #169 is closed, not reopened.
+- [x] **T-8 Fifteen features** ✅ — loyalty reworded to the wheel and scratch
+  card that ship (including the tier-system mockup, which drew a product that
+  exists in no form); the controls that report success and change nothing are
+  disabled with reasons.
+- [x] **T-9 Reviews, SMS, suppliers** ✅ — the marketing was already clean; the
+  live SMS toggle with no sender is gone.
+- [x] **T-10 2FA and social login** ✅ — never sold commercially. The auth guide
+  is rewritten against the code, the dead `authRoutes` (7 of 8 paths wrong) is
+  deleted, `twoFactorEnabled` is optional and commented.
+- [x] **The "181+ features" headline** ✅ — replaced with the audited figure.
+- [ ] **Analytics metrics** 🟠 — decided **build**, its own PR; carries the
+  server-side aggregate that also closes NEW-P.
+
+> **Closed when.** The Clients page is reachable, the nightly backup runs and
+> alerts, and the three named metrics exist — see
+> `tasks/sales-readiness-backlog.md` → LAUNCH-11 for what was decided and what
+> shipped for each. **`apps/site` was red on `main` independently of this
+> batch:** `checkoutReferralIntegrity.test.ts` failed 25 cases because every one
+> called the plan #350 closed, leaving the referral guards unexercised. This
+> branch diagnosed it and carried its own repair for one commit; #355 landed
+> the same two-part fix on `main` first, so the merge takes that one and this
+> branch no longer touches the file. 41 files / 644 tests passing.

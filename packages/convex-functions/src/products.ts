@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { requireStorePermission } from "./auth"
 
 // === QUERIES ===
@@ -587,11 +587,167 @@ export const reorder = {
 }
 
 /**
- * Delete a product
+ * Delete a product.
+ *
+ * This was a bare `ctx.db.delete(args.id)`. Thirteen columns across nine tables
+ * point at `products`, and two of them — `externalProductMappings
+ * .internalProductId` and `favorites.productId` — are REQUIRED, so the rows
+ * survived holding an id that resolves to nothing and could not be repaired
+ * field by field. A routine catalogue tidy-up did all of the following in
+ * silence:
+ *
+ *  - **Deliveroo kept selling the dish.** `getByExternal` returned the surviving
+ *    mapping without dereferencing it, so the webhook's PLU check counted zero
+ *    unmatched items and answered `sendSyncStatus(..., "succeeded")` for an
+ *    order the kitchen cannot cook.
+ *  - **The formule became permanently uneditable.** `menus.update` re-validates
+ *    every stored section as a unit (`assertSectionsInStore`), so one dead id
+ *    refused every subsequent write — including the one removing that section.
+ *
+ * `categories.remove` set the precedent and the reasoning: refuse rather than
+ * cascade when the referrer is something the owner sat down and wrote, because
+ * a cascade destroys an afternoon's work on a click meant to tidy up. The
+ * decision is per table, and it splits on authorship:
+ *
+ *  - REFUSED while they point here — `menus`, `promotions`, `prizes`. Each is a
+ *    selling decision the owner made, and each has a screen to unmake it on.
+ *  - CASCADED — `externalProductMappings` and `favorites` (machine-kept rows
+ *    that mean nothing without the dish), `orphanProducts` (the platform match
+ *    is void, so the import goes back to `pending` for review) and the
+ *    `linkedProductId` provenance link on twins in other stores.
+ *  - LEFT ALONE — `orders.items[].productId`. What was sold is history, the
+ *    column is already optional, and rewriting it would falsify the receipt.
+ *
+ * The refusals are `ConvexError`, not plain `Error`: Convex redacts a plain
+ * error's message in production, so a carefully counted refusal would reach the
+ * owner as "Server Error" and read as a bug in the product. `data` survives —
+ * the same reasoning `auth.ts`'s `denied()` records.
+ *
+ * `favorites` gained a `by_productId` index for this, so the customers who
+ * favourited one dish are reached directly rather than by collecting the whole
+ * establishment's. `menus`, `promotions` and `prizes` have no product index and
+ * are read through their store — bounded by one establishment's catalogue,
+ * which is the same cost profile as the rest of this module.
  */
 export const remove = {
   args: { id: v.id("products") },
   handler: async (ctx: any, args: any) => {
+    const product = await ctx.db.get(args.id)
+    if (!product) throw new Error("Product not found")
+
+    const storeId = product.storeId
+
+    // --- Refusals: owner-authored content that names this product ---
+
+    const menus = await ctx.db
+      .query("menus")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", storeId))
+      .collect()
+
+    const blockingMenus = menus.filter((menu: any) =>
+      (menu.sections ?? []).some(
+        (section: any) =>
+          section.productId === args.id ||
+          (section.productIds ?? []).includes(args.id) ||
+          (section.priceAdjustments ?? []).some(
+            (adjustment: any) => adjustment.productId === args.id
+          )
+      )
+    )
+
+    if (blockingMenus.length > 0) {
+      const names = blockingMenus.map((menu: any) => `"${menu.name}"`).join(", ")
+      throw new ConvexError({
+        code: "product_in_menu",
+        message: `Ce produit est utilisé dans ${blockingMenus.length} formule${blockingMenus.length > 1 ? "s" : ""} : ${names}. Retirez-le de ${blockingMenus.length > 1 ? "ces formules" : "cette formule"} avant de le supprimer.`,
+      })
+    }
+
+    const promotions = await ctx.db
+      .query("promotions")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", storeId))
+      .collect()
+
+    const blockingPromotions = promotions.filter(
+      (promotion: any) =>
+        promotion.freeProductId === args.id ||
+        promotion.bogoTriggerProductId === args.id ||
+        promotion.bogoRewardProductId === args.id ||
+        (promotion.targetProductIds ?? []).includes(args.id)
+    )
+
+    if (blockingPromotions.length > 0) {
+      const names = blockingPromotions.map((p: any) => `"${p.name}"`).join(", ")
+      throw new ConvexError({
+        code: "product_in_promotion",
+        message: `Ce produit est utilisé dans ${blockingPromotions.length} promotion${blockingPromotions.length > 1 ? "s" : ""} : ${names}. Modifiez ou supprimez ${blockingPromotions.length > 1 ? "ces promotions" : "cette promotion"} avant de supprimer le produit.`,
+      })
+    }
+
+    const prizes = await ctx.db
+      .query("prizes")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", storeId))
+      .collect()
+
+    const blockingPrizes = prizes.filter((prize: any) => prize.productId === args.id)
+
+    if (blockingPrizes.length > 0) {
+      const names = blockingPrizes.map((prize: any) => `"${prize.name}"`).join(", ")
+      throw new ConvexError({
+        code: "product_in_prize",
+        message: `Ce produit est offert par ${blockingPrizes.length} lot${blockingPrizes.length > 1 ? "s" : ""} du jeu : ${names}. Modifiez ou supprimez ${blockingPrizes.length > 1 ? "ces lots" : "ce lot"} avant de supprimer le produit.`,
+      })
+    }
+
+    // --- Cascade: machine-kept rows that mean nothing without the dish ---
+
+    // The platform mapping first. It is the row that told Deliveroo the order
+    // was fine, and it is required-typed, so nulling it is not an option.
+    const mappings = await ctx.db
+      .query("externalProductMappings")
+      .withIndex("by_internal", (q: any) => q.eq("internalProductId", args.id))
+      .collect()
+    for (const mapping of mappings) {
+      await ctx.db.delete(mapping._id)
+    }
+
+    // Every `favorites` index started at `userId`, so reaching the customers who
+    // favourited one dish meant collecting the whole establishment's favourites
+    // inside a mutation that deletes one row. `by_productId` was added for this.
+    const favorites = await ctx.db
+      .query("favorites")
+      .withIndex("by_productId", (q: any) => q.eq("productId", args.id))
+      .collect()
+    for (const favorite of favorites) {
+      await ctx.db.delete(favorite._id)
+    }
+
+    // An imported platform item matched to this dish is unmatched again, and
+    // goes back into the review queue rather than keeping a dead match.
+    const orphans = await ctx.db
+      .query("orphanProducts")
+      .withIndex("by_status", (q: any) => q.eq("storeId", storeId).eq("status", "matched"))
+      .collect()
+    for (const orphan of orphans) {
+      if (orphan.matchedProductId === args.id) {
+        await ctx.db.patch(orphan._id, {
+          matchedProductId: undefined,
+          status: "pending",
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
+    // Twins in other establishments keep their own copy of the dish; only the
+    // provenance link back to this one goes.
+    const twins = await ctx.db
+      .query("products")
+      .withIndex("by_linkedProductId", (q: any) => q.eq("linkedProductId", args.id))
+      .collect()
+    for (const twin of twins) {
+      await ctx.db.patch(twin._id, { linkedProductId: undefined, updatedAt: Date.now() })
+    }
+
     await ctx.db.delete(args.id)
   },
 }

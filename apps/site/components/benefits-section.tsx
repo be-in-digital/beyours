@@ -117,9 +117,9 @@ export function BenefitsSection() {
                     { label: "Menu", status: "Actif" },
                     { label: "Site web", status: "En ligne" },
                     { label: "Commandes", status: "Actif" },
-                    { label: "Fidélité", status: "Actif" },
+                    { label: "Jeux", status: "Actif" },
                     { label: "Branding", status: "Custom" },
-                    { label: "Analytics", status: "Live" },
+                    { label: "Tableau de bord", status: "Live" },
                   ].map((item) => (
                     <div
                       key={item.label}
@@ -194,7 +194,7 @@ export function BenefitsSection() {
                 {[
                   { task: "Mise à jour menu", time: "Auto", done: true },
                   { task: "Confirmation commande", time: "Instant", done: true },
-                  { task: "Rappel fidélité", time: "Planifié", done: true },
+                  { task: "Email de relance", time: "Planifié", done: true },
                 ].map((t) => (
                   <div
                     key={t.task}
@@ -223,41 +223,46 @@ export function BenefitsSection() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Fidélisation renforcée</h3>
               <p className="text-sm text-muted-foreground leading-relaxed mb-5">
-                Créez un lien durable avec vos clients grâce à un programme engageant.
+                Un jeu scanné à table qui donne une raison de revenir, et vous laisse leur email.
               </p>
-              {/* Mini loyalty card */}
+              {/* Mini game card — one scan, one action, one play, one prize.
+                  Nothing accumulates, so nothing here counts up. */}
               <div className="mt-auto rounded-lg bg-gradient-to-br from-primary/[0.04] to-transparent border border-primary/10 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[9px] text-primary/40 uppercase tracking-wider font-medium">
-                    Carte fidélité
+                    Jeu à table
                   </span>
-                  <span className="text-[9px] text-white/20">4/6</span>
+                  <span className="text-[9px] text-white/20">Taux de gain 30 %</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {[true, true, true, true, false, false].map((filled, i) => (
-                    <div
-                      key={i}
-                      className={`w-6 h-6 rounded-full border flex items-center justify-center ${
-                        filled
-                          ? "bg-primary/15 border-primary/30"
-                          : "bg-white/[0.02] border-white/[0.08] border-dashed"
-                      }`}
-                    >
-                      {filled && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-primary/50">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { label: "Scan", path: "M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z" },
+                    { label: "Avis", path: "M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26z" },
+                    { label: "Partie", path: "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2m0 4a6 6 0 1 1-6 6 6 6 0 0 1 6-6" },
+                    { label: "Lot", path: "M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7" },
+                  ].map((s, i, all) => (
+                    <div key={s.label} className="flex items-center gap-1.5">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-6 h-6 rounded-full border bg-primary/15 border-primary/30 flex items-center justify-center">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/60">
+                            <path d={s.path} />
+                          </svg>
+                        </div>
+                        <span className="text-[8px] text-white/30 leading-none">{s.label}</span>
+                      </div>
+                      {i < all.length - 1 && (
+                        <span className="w-2 h-px bg-primary/20 mb-3" />
                       )}
                     </div>
                   ))}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2.5">
                   <span className="text-[9px] text-primary/40 font-medium">
-                    +12% rétention
+                    Lot par email en QR code
                   </span>
                   <span className="text-[9px] text-white/15">•</span>
                   <span className="text-[9px] text-white/25">
-                    +8€ panier moyen
+                    1 partie / 24 h
                   </span>
                 </div>
               </div>
@@ -297,7 +302,7 @@ export function BenefitsSection() {
                     {[
                       { name: "Site web", color: "bg-primary/30" },
                       { name: "Commandes", color: "bg-blue-400/20" },
-                      { name: "Fidélité", color: "bg-purple-400/20" },
+                      { name: "Jeux", color: "bg-purple-400/20" },
                       { name: "Analytics", color: "bg-amber-400/20" },
                     ].map((src) => (
                       <div

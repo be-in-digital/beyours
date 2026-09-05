@@ -12,7 +12,7 @@ const INCLUS = [
   "Site e-commerce & commande en ligne",
   "Back-office restaurant + KDS",
   "Personnalisable à vos couleurs",
-  "Programme de fidélité intégré",
+  "Jeu concours à table (roue, carte à gratter)",
 ];
 
 export function TemplatePreview({

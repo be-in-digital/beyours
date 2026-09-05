@@ -49,7 +49,7 @@ pnpm add @be-in-digital/convex-functions
 | `kitchenTickets.stations` | Multi-station routing |
 
 Print configuration lives on `stores.printConfig` (`stores.updatePrintConfig`).
-There is no `printerSettings` function module.
+There is no `printerSettings` function module, and no `printerSettings` table.
 
 ### Payments
 
