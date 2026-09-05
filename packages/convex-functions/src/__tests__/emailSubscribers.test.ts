@@ -18,10 +18,12 @@
 
 import { beforeEach, describe, expect, it } from "vitest"
 import {
+  SUBSCRIBE_REFUSALS,
   create,
   importBatch,
   markBounced,
   normalizeBounceType,
+  normalizeSubscriberEmail,
 } from "../emailSubscribers"
 
 /** The parts of a Convex ctx these two handlers touch. */
@@ -116,6 +118,71 @@ describe("create", () => {
     const row = rows(ctx)[0]
     expect(row?.status).toBe("active")
     expect(row?.doubleOptInToken).toBeUndefined()
+  })
+
+  /**
+   * `create` is what every signup surface goes through, and `subscribe` — the
+   * storefront's door to it — is public. It accepted `pas-un-email`, inserted
+   * it, and left the footer telling the visitor to check their inbox. Every one
+   * of those rows is a guaranteed SES bounce, on the 5% ratio AWS suspends the
+   * account over.
+   */
+  it("refuses an address that is not one, before writing anything", async () => {
+    const ctx = fakeCtx()
+
+    await expect(
+      create.handler(ctx, {
+        storeId: STORE,
+        email: "pas-un-email",
+        source: "storefront_form",
+      })
+    ).rejects.toMatchObject({ data: { code: SUBSCRIBE_REFUSALS.invalidEmail } })
+
+    expect(rows(ctx)).toHaveLength(0)
+  })
+
+  it("refuses before spending a rate-limit slot, so a typo is correctable", async () => {
+    const ctx = fakeCtx()
+
+    await expect(
+      create.handler(ctx, { storeId: STORE, email: "  ", source: "storefront_form" })
+    ).rejects.toMatchObject({ data: { code: SUBSCRIBE_REFUSALS.invalidEmail } })
+
+    expect(ctx.rows("rateLimits")).toHaveLength(0)
+  })
+
+  it("names the duplicate refusal, so the storefront need not guess", async () => {
+    // A plain thrown message is redacted to "Server Error" in production, which
+    // is why the footer used to hedge with "déjà inscrit, ou une erreur".
+    const ctx = fakeCtx(["yanis@resto.example"])
+
+    await expect(
+      create.handler(ctx, {
+        storeId: STORE,
+        email: "yanis@resto.example",
+        source: "storefront_form",
+      })
+    ).rejects.toMatchObject({ data: { code: SUBSCRIBE_REFUSALS.alreadySubscribed } })
+  })
+})
+
+describe("normalizeSubscriberEmail", () => {
+  it("accepts an address and returns it ready to store", () => {
+    expect(normalizeSubscriberEmail("  Yanis@Resto.Example  ")).toBe(
+      "yanis@resto.example"
+    )
+  })
+
+  it.each([
+    ["pas-un-email", "no @ at all"],
+    ["yanis@resto", "no dot in the domain"],
+    ["@resto.example", "no local part"],
+    ["yanis@", "no domain"],
+    ["yanis @resto.example", "a space inside"],
+    ["", "empty"],
+    ["   ", "whitespace only"],
+  ])("rejects %s (%s)", (input) => {
+    expect(normalizeSubscriberEmail(input)).toBeNull()
   })
 })
 
