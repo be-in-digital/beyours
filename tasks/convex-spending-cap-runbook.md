@@ -83,13 +83,18 @@ threshold — and as of 2026-08-28 that is **every deployment this repository
 knows about**, production included. Measured from outside on 2026-08-28,
 unauthenticated `GET /version`:
 
-| Deployment | Role, per the repo | `/version` | Source of the role claim |
+**Every role in this table was superseded on 2026-09-01** by the transfer to team
+`be-yours`; it is kept as the measurement that drew the blast radius at the time.
+Nothing in it is a statement about today — for that, see
+[README → Convex deployments](../README.md#convex-deployments).
+
+| Deployment | Role **as of 2026-08-28** | `/version` | Source of the role claim |
 |---|---|---|---|
-| `fearless-poodle-133` | **prod** — `apps/site` (beyours.fr) | `200` | `apps/site/.env.production.example:38`, `check-prod-bundle.mjs:26` |
+| `fearless-poodle-133` | then **prod** — `apps/site` (beyours.fr); today serves nothing, superseded by `famous-wildcat-229` | `200` | the two sources then cited now name `famous-wildcat-229` |
 | `capable-crocodile-720` | **dev** — `apps/site` | `200` | `apps/site/.env.production.example:28` |
 | `reliable-parrot-452` | **dev**, personal (`dev/mamadou-seck`) — engine | `200` | dashboard, 2026-08-28 |
 | `youthful-goose-352` | **stray dev** — project `beyours-reference` | `200` | dashboard + owner, 2026-08-28 |
-| `robust-elephant-263` | **prod** — engine (`apps/reference`), project `beindigital-engine` | `200` | dashboard, 2026-08-28 |
+| `robust-elephant-263` | then **prod** — engine (`apps/reference`), project `beindigital-engine`; today serves nothing, superseded by `optimistic-swordfish-937` | `200` | dashboard, 2026-08-28 |
 | `happy-otter-123` | **dead** — caused bug #6 | `404` | `check-prod-bundle.mjs:30` |
 
 The full inventory, with the app and project columns, is in
@@ -103,7 +108,9 @@ it. What that resolution means *for this card*:
   functions: it proves a live Convex backend answers on that subdomain, and
   nothing about whose it is. This is why the roles above come from the dashboard
   and not from the probe.
-- **`robust-elephant-263` is ours, and it is production.** The dashboard shows
+- **`robust-elephant-263` was ours, and it was production** — until the
+  2026-09-01 transfer moved that role to `optimistic-swordfish-937`. What the
+  investigation established still holds, and is why it mattered: the dashboard shows
   project `beindigital-engine` holding exactly two deployments: `production`
   (`robust-elephant-263`) and `dev/mamadou-seck` (`reliable-parrot-452`). It had
   been created on 2026-03-03 and recorded in exactly one file, which is what made
@@ -116,11 +123,17 @@ it. What that resolution means *for this card*:
   five live deployments — three projects — sit on this one team, so this card's
   threshold is the single control that can silence the whole business:
 
-  | If the disable threshold trips | What stops |
+  | If the disable threshold trips | What stopped, as of 2026-08-28 |
   |---|---|
   | `fearless-poodle-133` | beyours.fr — the site prospects buy from |
   | `robust-elephant-263` | client restaurants **and** Stripe BID billing |
   | the three dev deployments | every developer, at the same moment |
+
+  **This table is historical.** Since 2026-09-01 the deployments above serve
+  nothing, and `momoseck8`'s threshold can no longer take production down. The
+  cap that can is **`be-yours`'s**, over `famous-wildcat-229` and
+  `optimistic-swordfish-937` — same single point of failure, different team, as
+  the section "Why this card exists" already states.
 
   There is no second team acting as a backstop, and no project isolated from the
   rest. **Prefer a warning threshold you will read over a disable threshold that
@@ -201,8 +214,15 @@ Verified one-liner. Live deployments answer `200` with a build stamp; deleted or
 misspelled ones answer `404`:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://fearless-poodle-133.convex.cloud/version
+curl -s -o /dev/null -w '%{http_code}\n' https://famous-wildcat-229.convex.cloud/version
 ```
+
+**Check the host before you trust the answer.** This probed
+`fearless-poodle-133` until 5 Sep 2026 — the *former* production of beyours.fr,
+which is still alive on the old `momoseck8` team and still answers `200`. So did
+the check, for ever, whatever the real production was doing. Six of the
+deployments this repo names answer `200` and only one of them serves the site;
+the authoritative list is the **Convex deployments** section of `README.md`.
 
 **Read the result carefully — this check is asymmetric:**
 

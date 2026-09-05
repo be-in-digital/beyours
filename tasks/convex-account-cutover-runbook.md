@@ -26,7 +26,7 @@ Created and **verified** on 2026-08-28, team `be-yours` (account
 
 | Project | What it is | Production deployment |
 |---|---|---|
-| `beyours-commercial-site` | beyours.fr — marketing, template catalogue, Stripe checkout, affiliate portal, ops console | `dusty-nightingale-945` |
+| `beyours-commercial-site` | beyours.fr — marketing, template catalogue, Stripe checkout, affiliate portal, ops console | `famous-wildcat-229` *(this said `dusty-nightingale-945` until 5 Sep 2026 — see below)* |
 | `beyours-engine-reference` | the engine's test bench — storefront, admin, CMS, kitchen display, QR games | `optimistic-swordfish-937` |
 | `beyours-client-template` | the boilerplate cloned per restaurant | *(none — see below)* |
 
@@ -57,17 +57,27 @@ included amounts). A deployment's region **cannot be changed afterwards**.
 
 ## What still runs on the old account
 
-Nothing below has been touched. Production is still served by team `momoseck8`:
+> **Answered on 2026-09-01, the other way round — and this section is the record
+> of the plan, not of what happened.** The site's project was **transferred**,
+> deployment and all, so `famous-wildcat-229` never moved and nothing below was
+> executed. The two deployments in the table are on `momoseck8` still, and they
+> serve nothing. Do not work this section; read
+> [README → Convex deployments](../README.md#convex-deployments).
 
-| Deployment | Serves | Project |
+As written on 2026-08-28 — production was then served by team `momoseck8`:
+
+| Deployment | Served, until the transfer | Project |
 |---|---|---|
-| `fearless-poodle-133` | beyours.fr, live | `wedilybird` |
-| `robust-elephant-263` | the engine, incl. Stripe BID billing | `beindigital-engine` |
+| `fearless-poodle-133` | beyours.fr — **superseded by `famous-wildcat-229`** | `wedilybird` |
+| `robust-elephant-263` | the engine, incl. Stripe BID billing — **superseded by `optimistic-swordfish-937`** | `beindigital-engine` |
 
-> ⚠️ **Rebuilding was chosen over transferring, so the old data is abandoned.**
-> Convex can transfer a project between teams while preserving deployments,
-> URLs, env vars, data and deploy keys; that path was deliberately not taken.
-> **Export anything worth keeping before deleting the old projects** — beyours.fr
+> ⚠️ **Rebuilding was planned over transferring — and then was not done.**
+> ~~Convex can transfer a project between teams while preserving deployments,
+> URLs, env vars, data and deploy keys; that path was deliberately not taken.~~
+> **That path is exactly the one that was taken**, on 2026-09-01, which is why
+> nothing had to be re-wired on Vercel or Stripe and the site served traffic
+> throughout. The warning below applied to the abandoned plan; no data was
+> abandoned. **Export anything worth keeping before deleting the old projects** — beyours.fr
 > has been live, so `contactLeads`, `affiliateUsers` and any `orders` rows exist
 > only there. `npx convex export --deployment <old>` writes a ZIP.
 
@@ -117,10 +127,16 @@ Check the bundle actually served, do not assume:
 node apps/site/scripts/check-prod-bundle.mjs https://beyours.fr
 ```
 
-That script hard-codes `fearless-poodle-133` as the only allowed subdomain
+> **Done, and not as written — corrected 5 Sep 2026.** This told you to point the
+> guard at `dusty-nightingale-945`, which is an **empty, unused project**; doing
+> so would have made the check pass against a deployment serving nothing. The
+> script now names `famous-wildcat-229` (`check-prod-bundle.mjs:26`,
+> `ALLOWED_CONVEX_SUBDOMAIN`) and needs no change. Verified 5 Sep 2026.
+
+~~That script hard-codes `fearless-poodle-133` as the only allowed subdomain
 (`check-prod-bundle.mjs:26`), so **it will fail until you update it** to
 `dusty-nightingale-945`. Update it as part of this step — its blocklist should
-gain the old name at the same time, exactly as it holds `happy-otter-123`.
+gain the old name at the same time, exactly as it holds `happy-otter-123`.~~
 
 ### 3. Webhooks and origins
 
@@ -151,7 +167,8 @@ is scoped to `momoseck8` and will need rewriting for `be-yours` when this lands
 ## Sign-off
 
 - [ ] Old data exported, or explicitly written off
-- [ ] Env vars pushed to `dusty-nightingale-945` and `optimistic-swordfish-937`
+- [ ] Env vars pushed to `famous-wildcat-229` and `optimistic-swordfish-937`
+      *(said `dusty-nightingale-945` until 5 Sep 2026 — the empty project)*
 - [ ] Vercel repointed **and rebuilt without cache**
 - [ ] `check-prod-bundle.mjs` updated to the new subdomain, old one blocklisted
 - [ ] Bundle check passes against the live site
