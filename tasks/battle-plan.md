@@ -449,7 +449,9 @@ a customer can see. Two findings nobody had carded outranked most of the list.
 > **Closed when.** The Clients page is reachable, the nightly backup runs and
 > alerts, and the three named metrics exist — see
 > `tasks/sales-readiness-backlog.md` → LAUNCH-11 for what was decided and what
-> shipped for each. **`apps/site` is red on `main` independently of this batch:**
-> `checkoutReferralIntegrity.test.ts` fails 25 tests because every case calls a
-> plan that #350 closed, so the referral guards are currently unexercised. That
-> is its own fix, and the card explains why repointing the fixture is not it.
+> shipped for each. **`apps/site` was red on `main` independently of this
+> batch, and is fixed here:** `checkoutReferralIntegrity.test.ts` failed 25
+> cases because every one called the plan #350 closed, leaving the referral
+> guards unexercised. The suite now buys the open plan with the founders offer
+> taken out of the fixture — without that second half it would have measured
+> the offer rather than the guards. 41 files / 644 tests passing.

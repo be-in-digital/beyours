@@ -2544,24 +2544,39 @@ amount of code supplies either.
 
 ### Found while working this card, and NOT fixed here
 
-**`apps/site` has been red on `main` since #350, and the red is hiding a suite
-that no longer tests anything.** `tests/convex/checkoutReferralIntegrity.test.ts`
-reports **25 failed | 6 passed**, reproduced at `158019f` with no local changes.
-Every failure is the same: the cases call `createCheckoutSession` with
-`plan: "premium"`, and #350 deliberately put the plan-availability refusal ahead
-of every other check, so all 25 die on « L'offre Premium n'est pas encore ouverte
-à la vente » without ever reaching a referral guard. The referral-integrity guards
-are currently unexercised, and CI runs `pnpm test` across every workspace, so this
-is red on the base branch.
+**`apps/site` was red on `main` since #350, and the red was hiding a suite that
+no longer tested anything. Fixed here** — see the commit
+`fix(site): make the referral-integrity suite reach the guards it names`.
 
-Repointing the fixture at `essentielle` was tried and **abandoned deliberately**:
-it takes the failures from 25 to 13, and the remaining 13 are not arithmetic. On
-Essentielle the founders offer waives the 3 500 € creation line, so the order
-amount becomes the maintenance alone — the plan swap changes which *business
-path* the suite exercises, not just its numbers. Deciding what these guards should
-be tested against (list price, founders offer, or both) is a real decision and
-belongs in a PR where a reviewer can see only it. Half-fixing it here would leave
-a suite that is green and tests something nobody chose.
+`tests/convex/checkoutReferralIntegrity.test.ts` reported **25 failed | 6
+passed**. Every case called `createCheckoutSession` with `plan: "premium"`, and
+#350 deliberately put the plan-availability refusal ahead of every other check,
+so all 25 died on « L'offre Premium n'est pas encore ouverte à la vente »
+without ever reaching a referral guard. Those guards had been unexercised
+since — worse than the red suggested, because the red read as a plan problem
+rather than as missing coverage.
+
+The guards are plan-independent, so the suite moved to the plan that is open.
+That alone was not enough, and this is the part that made it a decision rather
+than a rename: `foundersOffer.plan` is `essentielle`, and `stripe.ts` applies
+the offer whenever slots remain **and no referral applied** (`isFounders`
+requires `!isReferral`). On a case where the code is honoured the offer is
+invisible; on a case where the code is refused it is decisive — the refused
+referral falls through to the founders offer, the creation line is waived, and
+the order comes to the annual maintenance alone instead of the list total. Half
+the assertions would have measured the founders offer instead of the guard they
+name. `seedProgramme` now fills the ten slots, which is also the state the
+offer ends in, since it runs out rather than expiring.
+
+Two assertions were rescoped rather than renumbered: « it left nothing behind »
+meant *this refused checkout wrote no order*, not *the table is empty*, so they
+query by the buyer's own address instead of collecting every row.
+
+Held to a real standard rather than a green one: breaking the discount
+derivation in `stripe.ts` turns 7 cases red, and the five rejection assertions
+now match the guards' own messages — `/discountPercent/` and `/Remise de
+parrainage invalide/` — where before they matched the plan gate. `apps/site` is
+41 files / 644 tests, all passing.
 
 **Nothing decrements stock on an order.** Stock tracking, low-stock alerts and
 auto-disable are real and propagate to Uber Eats and Deliveroo, but
