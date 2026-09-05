@@ -20,7 +20,7 @@ const milestones = [
     year: "Aujourd'hui",
     title: "Une plateforme complète, enfin",
     description:
-      "Site web premium, commande en ligne, fidélisation, analytics — tout centralisé dans un seul écosystème. Conçu pour les restaurants ambitieux qui veulent reprendre le contrôle de leur présence digitale.",
+      "Site web premium, commande en ligne, fidélisation, suivi des ventes : tout centralisé dans un seul écosystème. Conçu pour les restaurants ambitieux qui veulent reprendre le contrôle de leur présence digitale.",
   },
 ];
 

@@ -42,7 +42,8 @@ export const plans: Plan[] = [
       "Menu digital consultable en ligne",
       "Hébergement sécurisé & nom de domaine inclus",
       "Commande en ligne & click and collect",
-      "Programme de fidélité intégré",
+      "Suivi des ventes : chiffre d'affaires, commandes, panier moyen",
+      "Jeu concours à table : roue ou carte à gratter",
       "Référencement local Google (SEO)",
       "Campagnes email marketing",
       "Formation à Google Business Profile",
@@ -66,7 +67,6 @@ export const plans: Plan[] = [
       "Tout ce qui est inclus dans l'Essentielle",
       "Application mobile native iOS & Android",
       "Notifications push pour vos clients",
-      "Dashboard analytics & suivi des performances",
       "Expérience de marque unifiée web + mobile",
       "Mises à jour prioritaires & support dédié",
     ],
@@ -106,7 +106,7 @@ export const comparisonCategories: ComparisonCategory[] = [
     features: [
       { label: "Commande en ligne directe", essentielle: true, premium: true },
       { label: "Click & collect intégré", essentielle: true, premium: true },
-      { label: "Programme de fidélité & gamification", essentielle: true, premium: true },
+      { label: "Jeu concours par QR code (roue, carte à gratter)", essentielle: true, premium: true },
       { label: "Campagnes email marketing", essentielle: true, premium: true },
     ],
   },
@@ -116,7 +116,7 @@ export const comparisonCategories: ComparisonCategory[] = [
       { label: "Dashboard administrateur", essentielle: true, premium: true },
       { label: "Centralisation des commandes directes (site, click & collect, sur place)", essentielle: true, premium: true },
       { label: "Intégration Uber Eats & Deliveroo", essentielle: "soon", premium: "soon" },
-      { label: "Analytics & suivi des performances", essentielle: false, premium: true },
+      { label: "Suivi des ventes : chiffre d'affaires, commandes, panier moyen", essentielle: true, premium: true },
     ],
   },
   {
@@ -156,14 +156,25 @@ export const maintenanceIncluded = [
     description: "Assistance par email pour toutes vos questions et demandes.",
     icon: "headset",
   },
+  /* Both of these described a mechanism rather than the one that runs.
+     Availability is genuinely measured — a probe hits the site and its backend
+     every ten minutes and keeps thirty days of history — so the tile now says
+     what is measured instead of implying somebody is watching a screen.
+     "Sauvegardes automatiques quotidiennes de vos données et contenus" was
+     false on all three counts: the export is manual, it runs when an
+     administrator asks for it, and it carries the establishment's
+     configuration and catalogue rather than its order history. Update this
+     copy in the commit that ships the nightly job, not before. */
   {
-    title: "Monitoring 24/7",
-    description: "Surveillance continue de la disponibilité et des performances.",
+    title: "Disponibilité surveillée",
+    description:
+      "Votre site et son serveur sont testés toutes les 10 minutes, 24 h/24.",
     icon: "activity",
   },
   {
-    title: "Sauvegardes",
-    description: "Sauvegardes automatiques quotidiennes de vos données et contenus.",
+    title: "Export de vos données",
+    description:
+      "Exportez à tout moment vos établissements, votre carte et vos contenus depuis votre tableau de bord.",
     icon: "database",
   },
   {
@@ -225,7 +236,7 @@ export const faqItems = [
   {
     question: "Que comprend exactement la maintenance ?",
     answer:
-      "La maintenance inclut l'hébergement sécurisé, les mises à jour techniques et de sécurité, le monitoring 24/7, les sauvegardes quotidiennes, le support technique par email et les évolutions mineures (ajustements de contenu, corrections). Les refontes complètes, nouvelles fonctionnalités majeures et créations graphiques avancées ne sont pas incluses et font l'objet d'un devis séparé.",
+      "La maintenance inclut l'hébergement sécurisé, les mises à jour techniques et de sécurité, la surveillance de la disponibilité de votre site, l'export de vos données depuis votre tableau de bord, le support technique par email et les évolutions mineures (ajustements de contenu, corrections). Les refontes complètes, nouvelles fonctionnalités majeures et créations graphiques avancées ne sont pas incluses et font l'objet d'un devis séparé.",
   },
   {
     question: "Puis-je payer mensuellement ou annuellement ?",
@@ -255,7 +266,7 @@ export const faqItems = [
   {
     question: "L'application mobile est-elle déjà disponible ?",
     answer:
-      "Non, pas encore, et c'est pour cette raison que l'offre Premium n'est pas ouverte à la commande. Elle est prévue en natif pour iOS et Android, avec votre identité, votre programme de fidélité et les notifications push. Nous n'annoncerons pas de date tant que la publication sur l'App Store et Google Play ne sera pas acquise : cette étape ne dépend pas que de nous. Laissez-nous vos coordonnées, vous serez prévenu au lancement.",
+      "Non, pas encore, et c'est pour cette raison que l'offre Premium n'est pas ouverte à la commande. Elle est prévue en natif pour iOS et Android, avec votre identité, votre jeu concours et les notifications push. Nous n'annoncerons pas de date tant que la publication sur l'App Store et Google Play ne sera pas acquise : cette étape ne dépend pas que de nous. Laissez-nous vos coordonnées, vous serez prévenu au lancement.",
   },
   {
     question: "Puis-je commencer avec Essentielle puis passer à Premium ?",

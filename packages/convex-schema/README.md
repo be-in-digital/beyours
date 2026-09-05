@@ -12,7 +12,7 @@ src/
 │   ├── teamMembers.ts
 │   ├── catalog.ts       # categories, products, menus
 │   ├── orders.ts
-│   ├── kitchen.ts       # kitchenTickets, printerSettings
+│   ├── kitchen.ts       # kitchenTickets
 │   ├── payments.ts
 │   ├── i18n.ts          # languages, translations, translationJobs
 │   ├── gamification.ts  # gameQRCodes, requiredActions, games, prizes, gamePlays, prizeRedemptions
@@ -56,7 +56,6 @@ import {
   menusTable,
   ordersTable,
   kitchenTicketsTable,
-  printerSettingsTable,
   paymentsTable,
   languagesTable,
   translationsTable,
@@ -78,7 +77,6 @@ export default defineSchema({
   menus: menusTable,
   orders: ordersTable,
   kitchenTickets: kitchenTicketsTable,
-  printerSettings: printerSettingsTable,
   payments: paymentsTable,
   languages: languagesTable,
   translations: translationsTable,
@@ -182,7 +180,6 @@ The app schema at `apps/reference/convex/schema.ts` is the **source of truth** f
 ### Order Tables
 - `ordersTable` - Complete order lifecycle with multi-source support
 - `kitchenTicketsTable` - Kitchen display with station routing
-- `printerSettingsTable` - Registered but **unused** (zero readers, zero writers): it belongs to an ESC/POS path that was never built. Live print config is `stores.printConfig`
 - `paymentsTable` - Multi-provider payment tracking
 
 ### i18n Tables

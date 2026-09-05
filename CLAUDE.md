@@ -9,6 +9,19 @@
 - **Multi-store**: 1 restaurant owner = 1-∞ locations (unlimited)
 - **Pricing**: Per store
 - **Maintenance**: 1 year included, then annual renewal
+- **No plan gating exists.** Two offers are sold — Essentielle and Premium — and
+  the engine never learns which one was bought: no plan literal, no `planSlug`,
+  no entitlement read anywhere in `apps/themes/convex` or `packages/*/src`.
+  `apps/site/convex/planAvailability.ts` decides which plan may be **bought**, not
+  what a bought plan unlocks. Do not write copy that implies a feature is withheld
+  from a tier. If gating is ever wanted, `maintenanceContracts` is the right home:
+  one singleton row per deployment, written by the team, read-only for the client.
+- **A delivered site never invents its own social proof.** No `reviews` table and
+  no `ratings` table exist, so nothing can produce a star. Never ship a hard-coded
+  testimonial, rating, review count or customer count in `apps/themes` — not even
+  as a placeholder a client is "expected to overwrite". A figure about an
+  establishment is the establishment's to state. Held by
+  `tests/storefront/no-fabricated-social-proof.test.ts` in both apps.
 
 ---
 
@@ -52,7 +65,7 @@ beindigital/
 │   ├── core/                  # Auth, i18n, Payments, AWS
 │   ├── restaurant/            # Business Logic, Zustand stores
 │   ├── integrations/          # Uber Eats, Deliveroo, Uber Direct
-│   ├── marketing/             # Email, Gamification
+│   ├── marketing/             # Email campaigns, segments, subscribers
 │   ├── cms/                   # Custom CMS
 │   ├── convex-schema/         # DB Schemas
 │   ├── convex-functions/      # Backend Functions
@@ -95,7 +108,8 @@ Convex backend per client.
 **Two scopes, deliberately.** The three apps use `@beyours/*`; the ten engine packages
 under `packages/` use `@be-in-digital/*` (private GitHub Packages). Installing them
 needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
-`pnpm engine:link <engine-clone>` for local symlinks.
+`pnpm engine:link <engine-clone>` from inside `apps/themes` for local symlinks
+(the script lives there, not at the root).
 
 > **BeYours is the product sold to restaurant owners. BeInDigital is the agency.**
 > Two brands, two businesses — read the Naming section of `README.md` before any
@@ -105,15 +119,23 @@ needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 
 ## 🗄️ Key Database Schemas
 
-**Multi-tenant**: 1 schema per restaurant (Neon)
+**Multi-tenant**: one **Convex deployment** per client — isolation is a whole
+backend, not a schema inside a shared database. No SQL database is involved;
+neither Neon nor Postgres appears anywhere in the codebase.
 
 ### Core Tables
-- `users`, `sessions`, `stores`, `products`, `menus`, `orders`
+- `stores`, `products`, `menus`, `orders`, `userProfiles`
+- Auth tables (`user`, `session`, `account`, `verification`, `jwks`) are owned by
+  the Better Auth component and are **not** declared in
+  `packages/convex-schema/src/schema.ts` — see its comment at `:80-87`. There is
+  no `users` or `sessions` table to query.
 
 ### Kitchen System
-- `kitchenTickets` (auto-print). `printerSettings` is registered but has **zero
-  readers and zero writers** — it belongs to the unbuilt ESC/POS path, not to
-  the printing that ships. Print config lives on `stores.printConfig`.
+- `kitchenTickets` (auto-print). Print config lives on `stores.printConfig`.
+  There is no `printerSettings` table: it was declared for the unbuilt ESC/POS
+  path, never gained a reader or a writer, and has been removed. The thermal
+  path when it comes is cloud printing, whose shape `stores.printConfig`
+  already carries.
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`
@@ -122,12 +144,23 @@ needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 - `languages` (dynamic, unlimited), `translations`, `translationJobs` (GPT)
 
 ### Integrations
-- Stores have `integrations.uberEats`, `integrations.deliveroo`
+- Platform links live in the `storeIntegrations` table, keyed by `storeId` +
+  `platform`. `stores.integrations` is still declared as `v.optional(v.any())`
+  because old documents hold it, but **nothing reads or writes it**
+  (`packages/convex-schema/src/tables/stores.ts:149-154`).
 - Products have `externalIds.uberEatsId`, `externalIds.deliverooId`
 
 ---
 
-## 🎯 Key Features (181+)
+## 🎯 Key Features — 29 shipping · 23 partial · 41 absent
+
+This section used to be headed "181+", a number copied from
+`_project/FEATURES_DIAGRAM.md` whose own table sums to 201 and which counts
+things that are not features (six themes as six, seven team roles as seven).
+Neither figure was ever measured. The discovery audit of 1 September 2026 went
+through the 92 features enumerated below and found **29 shipping as described,
+23 partial, and 41 absent or unreachable** from `apps/themes` — the application
+a paying client actually runs. Quote that, or quote nothing.
 
 ### Multi-Store (5)
 Store config, hours, geolocation, status
@@ -158,14 +191,50 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
 - **Admin adds ANY language**
 - **GPT-3.5-turbo auto-translation** ($0.001/product)
 - Manual translation option
-- Bulk translator
+- Bulk translation of the **catalogue** — adding a language backfills products,
+  categories and menus, and the CMS page editor has a « Traduire tout ». There is
+  no bulk translator for **UI strings**: `translateUIStrings` used to exist in
+  both apps' `convex/autoTranslate.ts`, with zero callers and a docblock claiming
+  the admin languages page called it, and has been deleted. UI strings are
+  translated one at a time through the « Traductions UI » tab of the admin
+  languages screen (`translations.upsert`).
+- `translationJobs` rows are written but **read by nothing**, so a batch that
+  stops on the daily quota looks exactly like one that finished.
+- **RTL, currency and date locale do not reach the storefront.** The « Droite à
+  gauche » switch and the « Devise » picker are therefore **disabled with a
+  stated reason**; the value is still stored, and nothing on the storefront reads
+  it. Prices format as `fr-FR`/EUR whatever the owner picked, and Arabic renders
+  left-to-right. Currency is the half-case: the admin's own payment and refund
+  screens do format in the currency taken, only the public site does not.
 
-### Design (14)
-Design system in `packages/ui`, theming per store via CMS branding settings.
-(Note: no predefined-theme package exists — `packages/themes` was an empty stub and has been removed.)
+### Design
+Design system in `packages/ui`. A site's look is fixed **at clone time** by
+`pnpm template:apply <slug>` — 5 verticals, 51 templates under
+`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). The
+storefront's palette and fonts are compile-time constants in
+`apps/*/app/globals.css` and `apps/*/site/fonts.ts`.
+
+Logo, favicon and brand name are per store, through the CMS `branding` block on
+the `storefront-layout` page — the only branding the storefront header, the
+favicon, the JSON-LD and the admin sidebar actually read.
+
+**Per-store colours and typography are NOT applied.** `stores.updateBranding`
+writes `store.branding` correctly and *nothing reads it*, so the Design screen's
+Couleurs and Typographie tabs are disabled with a stated reason until
+`store.branding` and the CMS `branding` block are reconciled. Do not "fix" this
+by deleting the mutation — the write path is the half that works.
+
+There is no runtime theme selector, and `themeId` is a schema field with zero
+writers and zero readers. (No predefined-theme package exists either —
+`packages/themes` was an empty stub and has been removed.)
 
 ### Testing
-- Vitest unit tests (80%+ coverage)
+- Vitest unit tests. **Coverage is measured on demand, not gated** —
+  `pnpm test:coverage` reports it, no config sets a threshold and no workflow
+  runs it. This file claimed "80%+ coverage" for months while nothing produced
+  that figure; a run on 5 Sep 2026 had two of the nine engine packages clearing
+  80% of statements and the lowest at 4%. Measure before you quote a number,
+  and read `TESTING.md` before adding a threshold.
 - Playwright E2E tests (critical flows)
 
 ---
@@ -207,12 +276,18 @@ const products = useQuery(api.products.list)
 
 **Admin adds languages dynamically** (unlimited)
 
-```typescript
-// Auto-translate
-await translateWithGPT(text, "en", "fr", "product name")
+Both live in `packages/core/src/i18n/gpt-translation.ts`. There is no
+`translateWithGPT` — the function is `translateText`, and `batchTranslate`
+requires the HTTP client and the API key, they are not optional.
 
-// Batch translate
-await batchTranslate([items], "en", "es")
+```typescript
+import { translateText, batchTranslate } from "@be-in-digital/core"
+
+// One string. `context` steers the model; the rest have defaults.
+await translateText(text, "en", "fr", "product name", httpClient, apiKey)
+
+// Many strings. httpClient and apiKey are REQUIRED here.
+await batchTranslate(items, "en", "es", httpClient, apiKey)
 ```
 
 **Cost**: ~$0.001 per product, $0.01 per page
@@ -260,15 +335,31 @@ cloud providers already exist in `packages/admin/src/lib/kitchen-print.ts` as
 ## ☁️ AWS Services
 
 ### S3 Storage
+There is no `uploadToS3`. Build the service and call `upload` on it; the
+client is injected, which is what makes it testable.
+
 ```typescript
-await uploadToS3(file, key, "products")
-// Folders: products/, branding/, stores/, cms/
+import { createS3Service } from "@be-in-digital/core"
+
+const s3 = createS3Service(config, client)
+const { key, url } = await s3.upload(file, { folder: "products" })
 ```
 
+Folders are a closed set — `products`, `branding`, `stores`, `cms`, `email`,
+`users` (`packages/core/src/aws/s3/validation.ts:27`). The bucket is private:
+`getPublicUrl` returns the CDN or the app's `/api/files` proxy, never a direct
+S3 URL.
+
 ### SES Email
+`sendEmail` and `sendTemplatedEmail` are methods on the SES service
+(`packages/core/src/aws/ses/client.ts:38,45`), not top-level exports.
+
 ```typescript
-await sendEmail({ to, subject, htmlBody })
-await sendTemplatedEmail({ to, templateName, templateData })
+import { getSESService } from "@be-in-digital/core"
+
+const ses = getSESService()
+await ses.sendEmail({ to, subject, htmlBody })
+await ses.sendTemplatedEmail({ to, templateName, templateData })
 ```
 
 ---
@@ -277,51 +368,85 @@ await sendTemplatedEmail({ to, templateName, templateData })
 
 ### Unit Tests (Vitest)
 ```bash
-pnpm test
-pnpm test:coverage
-pnpm test:ui
+pnpm test              # turbo run test, every workspace
+pnpm test:coverage     # turbo run test:coverage; writes coverage/ per package
+pnpm test:ui           # Vitest UI for apps/reference, the engine's test bench
 ```
+
+`test` and `test:coverage` fan out across the monorepo. `test:ui` cannot: a
+Vitest UI is one server per project, so the root script opens the bench. For
+any other workspace, name it — `pnpm --filter @be-in-digital/core test:coverage`.
 
 ### E2E Tests (Playwright)
 ```bash
-pnpm test:e2e
-pnpm test:e2e:ui
-pnpm test:e2e:debug
+pnpm test:e2e          # turbo run test:e2e
+pnpm test:e2e:ui       # Playwright UI mode, apps/reference
+pnpm test:e2e:debug    # Playwright inspector, apps/reference
 ```
 
+The last two delegate to `apps/reference` for the same reason: an interactive
+runner needs one target. `apps/themes` defines both as well, so
+`pnpm --filter @beyours/themes test:e2e:debug` works on the template.
+
 ### CI/CD
-GitHub Actions runs tests on every push/PR
+GitHub Actions runs the suite on pushes to `main`, on pull requests targeting
+`main`, and in the merge queue (`.github/workflows/ci.yml:3-19`). A push to a
+feature branch with no open pull request runs nothing — open the PR to get CI.
 
 ---
 
 ## 🔐 Environment Variables
 
-```bash
-# Convex
-NEXT_PUBLIC_CONVEX_URL=
-CONVEX_DEPLOYMENT=
+`packages/core/src/env/schemas.ts` is the source of truth, and
+`instrumentation.ts` enforces it at boot. The names below are the ones code
+actually reads — several that used to be listed here (`SUMUP_API_KEY`,
+`UBER_EATS_API_KEY`, `DELIVEROO_API_KEY`, `UBER_DIRECT_CUSTOMER_ID`) are read
+by nothing and never were.
 
-# AWS
+**Required — a deployment refuses to start without these** (`schemas.ts:69-105`):
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=       # the backend itself
+CONVEX_SITE_URL=              # webhook and OAuth callback URLs
+SITE_URL=                     # password reset links
+BETTER_AUTH_SECRET=           # >= 32 chars: openssl rand -base64 32
+ENCRYPTION_KEY=               # 64 hex chars: openssl rand -hex 32
 AWS_REGION=eu-west-1
-AWS_ACCESS_KEY_ID=
+AWS_ACCESS_KEY_ID=            # the CLIENT's own AWS account, not a fleet key
 AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET_NAME=
 AWS_SES_FROM_EMAIL=
-
-# OpenAI (Translation)
 OPENAI_API_KEY=sk-...
+```
+
+**Optional — each one gates a feature that stays off until it is set:**
+
+```bash
+CONVEX_DEPLOYMENT=
 
 # Payments
-STRIPE_SECRET_KEY=
-SUMUP_API_KEY=
+STRIPE_SECRET_KEY=            # sk_...
+STRIPE_WEBHOOK_SECRET=        # whsec_...
+SUMUP_CLIENT_ID=
+SUMUP_CLIENT_SECRET=
 PAYPAL_CLIENT_ID=
-# SQUARE_ACCESS_TOKEN — no code reads this yet; Square is unimplemented
+PAYPAL_CLIENT_SECRET=
+PAYPAL_SANDBOX_MODE=          # "true" | "false"
+# SQUARE_ACCESS_TOKEN — no code reads this; Square is unimplemented
 
-# Integrations
-UBER_EATS_API_KEY=
-DELIVEROO_API_KEY=
-UBER_DIRECT_CUSTOMER_ID=
+# Delivery platforms
+UBER_EATS_CLIENT_ID=
+UBER_EATS_CLIENT_SECRET=
+UBER_EATS_WEBHOOK_SECRET=
+UBER_DIRECT_WEBHOOK_SECRET=   # falls back to the Uber Eats one when unset
+DELIVEROO_CLIENT_ID=
+DELIVEROO_CLIENT_SECRET=
+DELIVEROO_WEBHOOK_SECRET=
 ```
+
+`turbo.json` declares no `env` for most tasks, so a non-`NEXT_PUBLIC_` variable
+that is not listed in a task's `env`/`passThroughEnv` never reaches it. Adding a
+variable means adding it there too.
 
 ---
 
@@ -334,7 +459,8 @@ When working on tasks:
 3. **Follow code standards** (TypeScript strict, no `any`, Zod validation)
 4. **Create barrel files** (`index.ts`) in folders
 5. **Write tests** (Vitest for unit, Playwright for e2e)
-6. **Multi-store**: Always filter by `restaurant_id`
+6. **Multi-store**: always filter by `storeId` (`v.id("stores")`). There is no
+   `restaurant_id` field anywhere in the codebase.
 7. **i18n**: Use cookies (primary) or localStorage (fallback)
 8. **State**: Zustand for client, Convex for server
 9. **Run tests** before commit: `pnpm test && pnpm test:e2e`
@@ -379,14 +505,25 @@ they are.
 
 ## 📚 Additional Documentation
 
-**For detailed implementation examples, see:**
-- `ARCHITECTURE.md` - Complete architecture details
-- `FEATURES.md` - Full feature specifications
-- `TESTING.md` - Testing strategy and examples
-- `DEPLOYMENT.md` - Deployment guide
+These four are written from the code, and each says plainly where the product
+falls short of what this file claims. `pnpm check:claude-md` fails the build if
+one of them stops existing, or if a command named above stops running.
+
+- `ARCHITECTURE.md` — the three apps, the ten engine packages, how a client
+  site is cloned and updated, and the real shape of the shared services
+- `FEATURES.md` — every feature marked shipped, partial or not built, measured
+  against `apps/themes` rather than against the sales page
+- `TESTING.md` — what the suites cover, what CI actually runs, how to measure
+  coverage and why no threshold is enforced
+- `DEPLOYMENT.md` — Vercel and Convex per client, the env tiers a deployment
+  refuses to boot without, and the rollback path
+
+Alongside them: `README.md` for orientation, `apps/docs/` for per-feature
+guides and deployment detail, and `tasks/sales-readiness-backlog.md` for the
+authoritative sold-vs-built ledger.
 
 ---
 
-**Version**: 2.0.0  
-**Last Updated**: February 14, 2026  
+**Version**: 2.1.0  
+**Last Updated**: September 5, 2026  
 **Maintained by**: BeInDigital Team

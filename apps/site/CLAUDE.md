@@ -13,8 +13,11 @@ Complete B2B solution for restaurants:
 - **KDS** (Kitchen Display System) + ticket printing
 - **Real-time tracking** for the customer
 - **Simple CMS** for menu/content
-- **Statistics** / analytics
-- **Loyalty / gamification**
+- **Sales dashboard** (revenue, orders, average basket, last 7 days)
+- **QR-code prize game** (wheel of fortune, scratch card, owner-set win ratio,
+  prize redeemed in-store, 24h cooldown). There is no points balance, no tier and
+  no challenge — nothing carries over between plays, so do not write copy that
+  calls it a loyalty programme.
 
 **Model**: one-off purchase of the site + annual maintenance.
 **Positioning**: premium, food-tech, restaurant-first, business-oriented.

@@ -35,15 +35,39 @@ export interface CampaignVariant {
  */
 export const DEFAULT_MAX_EMAILS_PER_WEEK = 3
 
+/**
+ * The highest cap the product offers, mirroring the settings screen's own
+ * `z.number().min(1).max(100)` (`email-config-page.tsx`).
+ *
+ * Repeated here because that bound is client-side only: `emailConfig.upsert`
+ * takes a bare `v.number()`, so a seed, a restore or a direct call can store
+ * anything. It matters because the cap is not only compared against — it also
+ * bounds how many events `sentCountsSince` reads per subscriber, and a cap of
+ * a million is not a bound at all.
+ *
+ * It is also the number `emailEvents` sizes its read ceiling from, so that the
+ * count can always reach the cap it is measured against. When those two
+ * diverged, the guard inverted above 50 rather than failing loudly.
+ */
+export const MAX_EMAILS_PER_WEEK = 100
+
 export const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
-/** The cap to enforce for a store, whatever its config happens to hold. */
+/**
+ * The cap to enforce for a store, whatever its config happens to hold.
+ *
+ * Rounded down before it is tested for usability, not after: a stored 0.5 is a
+ * positive number that floors to zero, and a cap of zero holds every subscriber
+ * back forever — the same silent stop as reading the field as zero, which is
+ * what the default exists to avoid.
+ */
 export function resolveWeeklyCap(configured: unknown): number {
-  return typeof configured === "number" &&
-    Number.isFinite(configured) &&
-    configured > 0
-    ? configured
-    : DEFAULT_MAX_EMAILS_PER_WEEK
+  if (typeof configured !== "number" || !Number.isFinite(configured)) {
+    return DEFAULT_MAX_EMAILS_PER_WEEK
+  }
+  const whole = Math.floor(configured)
+  if (whole <= 0) return DEFAULT_MAX_EMAILS_PER_WEEK
+  return Math.min(whole, MAX_EMAILS_PER_WEEK)
 }
 
 /**

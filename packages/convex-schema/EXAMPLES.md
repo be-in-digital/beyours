@@ -453,18 +453,13 @@ export const createKitchenTicket = mutation({
       updatedAt: Date.now(),
     })
 
-    // Auto-print if configured
-    const printerSettings = await ctx.db
-      .query('printerSettings')
-      .withIndex('by_storeId', (q) => q.eq('storeId', ticket.storeId))
-      .filter((q) => q.and(
-        q.eq(q.field('autoPrint'), true),
-        q.eq(q.field('station'), ticket.station)
-      ))
-      .first()
+    // Auto-print if configured. The configuration is on the store, not in a
+    // table of its own: printing happens in the browser, on the kitchen screen
+    // that is already showing the ticket.
+    const store = await ctx.db.get(ticket.storeId)
+    const printConfig = store?.printConfig
 
-    if (printerSettings) {
-      // TODO: Send to the printer
+    if (printConfig?.enabled && printConfig.triggers.includes('confirmed')) {
       await ctx.db.patch(ticketId, { printCount: 1 })
     }
 

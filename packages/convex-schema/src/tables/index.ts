@@ -10,7 +10,7 @@ export { categoriesTable, productsTable, menuSectionValidator, menusTable } from
 export { ordersTable } from "./orders"
 export { numberSequencesTable } from "./numberSequences"
 export { invoicesTable } from "./invoices"
-export { kitchenTicketsTable, printerSettingsTable } from "./kitchen"
+export { kitchenTicketsTable } from "./kitchen"
 export { paymentsTable } from "./payments"
 export { paymentConnectionsTable } from "./paymentConnections"
 export { paymentEventsTable } from "./paymentEvents"

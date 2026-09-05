@@ -36,7 +36,6 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "orders", index: "by_storeId" },
   { table: "payments", index: "by_storeId" },
   { table: "kitchenTickets", index: "by_storeId" },
-  { table: "printerSettings", index: "by_storeId" },
   { table: "deliveryQuotes", index: "by_storeId" },
   { table: "promotions", index: "by_storeId" },
   { table: "promotionUsages", index: "by_storeId" },
@@ -193,6 +192,41 @@ export async function deleteStoreDependents(
   }
 
   return { deleted, hasMore: false }
+}
+
+/**
+ * Take the establishment out of every Auto Blog config that targets it.
+ *
+ * `blogAutoConfig` carries two references to `stores`: the `storeId` it belongs
+ * to, which the sweep above deletes the row by, and `targetStoreIds` — the other
+ * establishments the same config fans articles out to. Only the first was ever
+ * handled, so a config owned by store A that publishes into store B kept B's id
+ * forever after B was deleted, and the next generation run wrote an article
+ * against an establishment that is not there.
+ *
+ * It was invisible because the guard that keeps this list honest matched on the
+ * field *name* `storeId`; `targetStoreIds` is the same type and a different
+ * word. The guard reads types now, which is what surfaced this.
+ */
+export async function detachStoreFromBlogAutoConfigs(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown
+): Promise<number> {
+  const configs = await ctx.db.query("blogAutoConfig").collect()
+  let touched = 0
+
+  for (const config of configs) {
+    const targetStoreIds: unknown[] = config.targetStoreIds ?? []
+    if (!targetStoreIds.includes(storeId)) continue
+    await ctx.db.patch(config._id, {
+      targetStoreIds: targetStoreIds.filter((id) => id !== storeId),
+      updatedAt: Date.now(),
+    })
+    touched++
+  }
+
+  return touched
 }
 
 /**

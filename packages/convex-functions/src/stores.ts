@@ -8,13 +8,14 @@
  * rather than in the app wrappers.
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { assertReservationUrl, isPublishedStore } from "@be-in-digital/convex-schema"
 import { grantCreatedStoreAccess } from "./auth"
 import {
   assertStoreHasNoInvoices,
   deleteStoreDependents,
   detachStoreFromProfiles,
+  detachStoreFromBlogAutoConfigs,
 } from "./storeCascade"
 import {
   STORE_AUDIT_ACTIONS,
@@ -390,15 +391,22 @@ export const updateStationMapping = {
 /**
  * Update store sound configuration
  *
- * The one of the three kitchen-display settings that is read: `KitchenContent`
- * hands `soundConfig` to `KitchenSoundManager`, in both apps, and it decides
- * which alerts sound and how loudly. `orderConfirmation` and `displayConfig`
- * sat beside it with nothing reading them and were removed; this one was kept
- * for exactly that reason.
+ * `KitchenContent` hands `soundConfig` to `KitchenSoundManager`, in both apps,
+ * and it decides which alerts sound and how loudly. The KDS falls back to
+ * `{ enabled: true, volume: 80..100 }` for every alert, so an establishment
+ * that has never been configured still makes a noise.
  *
- * It has no editor. The KDS falls back to `{ enabled: true, volume: 80..100 }`
- * for every alert, so the feature works and is not configurable — a gap worth
- * closing, and not the same thing as dead code.
+ * Its editor is the kitchen tab's "Alertes sonores" card in
+ * `packages/admin/src/pages/stores/store-kitchen-tab.tsx` (#243), which is what
+ * `useStoreDetail.handleUpdateSounds` calls this through.
+ *
+ * A note on the company this mutation was said to keep: 74de4e9 deleted
+ * `updateOrderConfirmation` and `updateDisplayConfig` beside it, on the claim
+ * that nothing read either field, and kept this one as the exception. The claim
+ * held for neither. `orderConfirmation` is read by `releaseToKitchen` and its
+ * mutation is back; `displayConfig` is read by `kitchenTickets.getForDisplay`
+ * and was read there the whole time, so `updateDisplayConfig` below is a
+ * restoration rather than a new feature (Q-2).
  */
 export const updateSoundConfig = {
   args: {
@@ -413,6 +421,97 @@ export const updateSoundConfig = {
     const existing = await requireStore(ctx, args.id)
     const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateSoundConfig, { soundConfig: args.soundConfig })
     await ctx.db.patch(args.id, { soundConfig: args.soundConfig, updatedAt: Date.now() })
+    await recordStoreAudit(ctx, audit)
+  },
+}
+
+/**
+ * The narrowest and widest auto-dismiss windows that may be stored.
+ *
+ * Paired with `MIN_AUTO_DISMISS_MINUTES` / `MAX_AUTO_DISMISS_MINUTES` in
+ * `@be-in-digital/admin`'s `kitchen-display.ts`, which clamps the input to the
+ * same range. The editor's clamp keeps the form honest; this is the one that
+ * holds, because a mutation is callable by anything holding `stores:write` and
+ * the screen it governs is the one a customer is watching.
+ */
+export const MIN_AUTO_DISMISS_MINUTES = 1
+export const MAX_AUTO_DISMISS_MINUTES = 240
+
+/**
+ * Update the dining-room display configuration
+ *
+ * `kitchenTickets.getForDisplay` reads `displayConfig` on every subscription
+ * tick of the customer-facing screen: `autoDismissEnabled` decides whether a
+ * ready order is dropped from it at all, `autoDismissMinutes` how long it
+ * survives after the kitchen calls it ready. Unset, the query falls back to
+ * `{ autoDismissEnabled: true, autoDismissMinutes: 15 }`.
+ *
+ * That fallback is the reason this mutation had to come back. Without a writer,
+ * every establishment ran on fifteen minutes, and an order the customer is
+ * still waiting for disappeared from the wall they are watching — with no
+ * setting anywhere to change it. The editor is the kitchen tab's
+ * "Écran de salle" card.
+ *
+ * `v.optional`, like `updateSoundConfig`: clearing the field is how an owner
+ * returns the screen to the query's own default.
+ *
+ * REFUSES rather than clamps a window outside
+ * `MIN_AUTO_DISMISS_MINUTES..MAX_AUTO_DISMISS_MINUTES`, `NaN` and `Infinity`
+ * included — see the handler for why. Callers get
+ * `ConvexError({ code: "invalid_display_config", message })`, and nothing is
+ * written.
+ */
+export const updateDisplayConfig = {
+  args: {
+    id: v.id("stores"),
+    displayConfig: v.optional(v.object({
+      autoDismissEnabled: v.boolean(),
+      autoDismissMinutes: v.number(),
+    })),
+  },
+  handler: async (ctx: any, args: any) => {
+    const existing = await requireStore(ctx, args.id)
+
+    // `v.number()` accepts zero, negatives, `NaN` and `Infinity`, and Convex
+    // stores the float64 specials verbatim — measured: they round-trip through
+    // the schema unchanged, `typeof number` with `isFinite` false. So the
+    // validator is not the guard here; this is.
+    //
+    // `getForDisplay` turns whatever is stored into
+    // `readyAt > now - minutes * 60_000`:
+    //   zero, a negative, -Infinity  keep only tickets that became ready in the
+    //                                future, i.e. none
+    //   NaN                          makes every comparison false, same result
+    // Each of those empties the ready column of the dining-room screen — the
+    // exact failure this setting was restored to prevent, reached through the
+    // writer instead of around it.
+    //
+    // `Infinity` is the odd one and is refused for a different reason: it does
+    // NOT blank the screen (`readyAt > -Infinity` is always true) but silently
+    // becomes a second, undeclared way to say "never dismiss". There is already
+    // an honest way to say that, and it is `autoDismissEnabled: false`.
+    //
+    // Refused rather than clamped: silently storing a number other than the one
+    // sent is how a setting comes to disagree with the screen it governs, and
+    // it would put a value nobody typed into the audit trail. The editor clamps
+    // its own input so an owner never sees this, which means anything arriving
+    // here bypassed the form and deserves an answer rather than a correction.
+    const minutes = args.displayConfig?.autoDismissMinutes
+    if (minutes !== undefined) {
+      if (
+        !Number.isFinite(minutes) ||
+        minutes < MIN_AUTO_DISMISS_MINUTES ||
+        minutes > MAX_AUTO_DISMISS_MINUTES
+      ) {
+        throw new ConvexError({
+          code: "invalid_display_config",
+          message: `La durée d'affichage doit être comprise entre ${MIN_AUTO_DISMISS_MINUTES} et ${MAX_AUTO_DISMISS_MINUTES} minutes.`,
+        })
+      }
+    }
+
+    const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.updateDisplayConfig, { displayConfig: args.displayConfig })
+    await ctx.db.patch(args.id, { displayConfig: args.displayConfig, updatedAt: Date.now() })
     await recordStoreAudit(ctx, audit)
   },
 }
@@ -645,6 +744,7 @@ export const remove = {
 
     const { hasMore } = await deleteStoreDependents(ctx, args.id)
     await detachStoreFromProfiles(ctx, args.id)
+    await detachStoreFromBlogAutoConfigs(ctx, args.id)
     await ctx.db.delete(args.id)
     await recordStoreAudit(ctx, audit)
 

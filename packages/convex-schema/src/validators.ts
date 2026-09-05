@@ -739,7 +739,8 @@ export const createUserProfileSchema = z.object({
   permissions: z.array(z.string()).default([]),
   language: z.string().min(2).max(5).default("fr"),
   phone: z.string().optional(),
-  twoFactorEnabled: z.boolean().default(false),
+  /** Placeholder — 2FA is not implemented. See `tables/userProfiles.ts`. */
+  twoFactorEnabled: z.boolean().optional(),
 })
 
 /**

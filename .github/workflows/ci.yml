@@ -95,6 +95,14 @@ jobs:
       - name: Check app divergence
         run: pnpm check:divergence
 
+      # Documentation is the one artefact here that nothing executes, so it is
+      # the one that rots without saying so. CLAUDE.md spent months pointing at
+      # four documents that had never existed and four commands that answered
+      # ERR_PNPM_NO_SCRIPT — and it is the first file every contributor and
+      # every agent reads, so each false line propagated into the work.
+      - name: Check CLAUDE.md's commands and documents
+        run: pnpm check:claude-md
+
       # The one check that looks at what a CLIENT builds rather than at what
       # this repository builds. `apps/themes` is published verbatim to
       # `beyours-boilerplate`, where it is the repository root, and a stylesheet

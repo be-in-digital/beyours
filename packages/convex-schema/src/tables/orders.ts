@@ -153,7 +153,6 @@ export const ordersTable = defineTable({
     v.literal("dine_in")
   )),
   isRemake: v.optional(v.boolean()), // Flag for remake orders from delivery platforms
-  scheduledAt: v.optional(v.number()), // Alternative field for platform scheduled orders
   platformSyncStatus: v.optional(v.union(
     v.literal("pending"),
     v.literal("synced"),
