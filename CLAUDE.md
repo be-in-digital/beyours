@@ -361,27 +361,34 @@ import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
 
 const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
 const { key, url } = await s3.upload(buffer, {
-  folder: "products",       // see the warning below on which folders work
+  folder: "products",       // any of the eleven in S3_FOLDERS
   contentType: "image/webp",
 })
 // also: getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl,
 //       exists, getMetadata
 ```
-**The two folder lists in `packages/core` disagree, and the narrower one wins
-at runtime.** `S3_FOLDERS` (`aws/folders.ts:19`) has eleven entries — `products`,
-`categories`, `cms`, `branding`, `stores`, `storefront`, `blogs`, `blog-auto`,
-`email`, `avatars`, `users` — and is where the `S3Folder` type comes from, so all
-eleven type-check. But `upload()` calls `uploadOptionsSchema.parse()`
-(`aws/s3/client.ts:159`), whose `s3FolderSchema` (`aws/s3/validation.ts:27`) is a
-`z.enum` of six: `products`, `branding`, `stores`, `cms`, `email`, `users`.
+Folders are a closed set of eleven, declared once in
+`packages/core/src/aws/folders.ts` — `products`, `categories`, `cms`,
+`branding`, `stores`, `storefront`, `blogs`, `blog-auto`, `email`, `avatars`,
+`users`. Everything else derives from it: the Zod schema `upload()` parses
+through (`aws/s3/validation.ts`), the MIME and size tables, and the
+`/api/files` allowlist. Add a folder there and nowhere else.
 
-So `s3.upload(file, { folder: "categories" })` compiles and then throws. That is
-the failure `folders.ts`'s own header describes — "which is exactly how category,
-blog and storefront images were lost". Treat the six as what works today, and see
-the note at the end of this file.
+This entry, and `s3FolderSchema` itself, used to name six. `S3_FOLDERS` is
+where the `S3Folder` type comes from, so all eleven type-checked, and then
+`s3.upload(file, { folder: "categories" })` threw at
+`uploadOptionsSchema.parse()` — the failure `folders.ts`'s own header
+describes: "which is exactly how category, blog and storefront images were
+lost". The schema is now `z.enum(S3_FOLDERS)`, so the two cannot disagree
+again.
 
-The bucket is private either way: reads go through the app's `/api/files` proxy,
-and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
+The HTTP route `apps/*/app/api/upload/route.ts` deliberately accepts only five
+of them; the rest are written by the presigned Convex flow, authorised
+separately. That narrowing is a security boundary, not drift — do not widen it
+to match.
+
+The bucket is private either way: reads go through the app's `/api/files`
+proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 
 ### SES Email
 `sendEmail` and `sendTemplatedEmail` are methods on the SES service
