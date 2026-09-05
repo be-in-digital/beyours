@@ -291,9 +291,8 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Le réglage est enregistré, mais la boutique en ligne ne
-                    s&apos;affiche pas encore de droite à gauche : l&apos;arabe et
-                    l&apos;hébreu
-                    y restent orientés de gauche à droite.
+                    s&apos;affiche pas encore de droite à gauche : l&apos;arabe
+                    et l&apos;hébreu y restent orientés de gauche à droite.
                   </p>
                 </div>
                 <Switch
