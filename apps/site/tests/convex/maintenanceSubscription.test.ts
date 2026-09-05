@@ -469,6 +469,13 @@ function checkoutCompleted(eventId: string): string {
         id: SESSION,
         customer: CUSTOMER,
         customer_details: { email: "chef@trattoria.fr" },
+        /* Stripe declares `payment_status` non-optional on a Checkout Session
+           and always sends it. It was absent here, and the webhook did not
+           read it — which is the defect that let an « unpaid » Klarna session
+           mark an order paid. Settlement is now gated on it, and an absent
+           value fails closed, so a fixture without it exercises that gate
+           instead of the provisioning this file is about. */
+        payment_status: "paid",
         payment_method_types: ["card"],
         amount_total: 100000,
         payment_intent: "pi_trattoria",
