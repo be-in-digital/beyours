@@ -21,6 +21,19 @@
  * - **Per email address.** Tight, and trivially dodged by changing the address —
  *   which is precisely why it is not the only one. It stops the accidental
  *   double-submit and the naive script without troubling a real visitor.
+ * - **Per row the server resolved**, added for the gamification endpoints. A
+ *   key derived from a document the handler looked up — the QR code behind
+ *   `args.code` — is not caller-controlled in the way a string argument is:
+ *   inventing another value does not produce another valid row. It is the
+ *   closest thing to a per-caller identity available here, and the reason the
+ *   prize drain is bounded even though the cooldown it defeats is not fixable.
+ *
+ * WHAT THIS STILL CANNOT DO: bind a play to a person. The game's cooldown is
+ * keyed on a `fingerprint` the browser supplies, and no amount of limiting
+ * makes that unforgeable — a caller who wants another turn sends another
+ * string. The windows above bound the damage per table and per restaurant;
+ * they do not restore the cooldown. Treat the cooldown as fairness, not as a
+ * control.
  *
  * A fixed window rather than a sliding one: it can admit up to twice the limit
  * across a boundary, and that is an acceptable price for a rule an operator can
@@ -69,6 +82,60 @@ export const RATE_LIMITS = {
   subscribePerEmail: { limit: 5, windowMs: 60 * 60_000 },
   /** Sign-ups arriving at one restaurant. */
   subscribePerStore: { limit: 100, windowMs: 60 * 60_000 },
+  /**
+   * One device asking to play. The game's own cooldown is a day, so five in an
+   * hour is already far outside honest use — it is the referral bonus and the
+   * retry after a dropped connection, not a player. Dodged by inventing a new
+   * `fingerprint`, which is exactly why the two below exist.
+   */
+  gamePlayPerFingerprint: { limit: 5, windowMs: 60 * 60_000 },
+  /**
+   * Every play on one QR code, keyed on the id the server resolved rather than
+   * the string the caller sent. This is the one a drain cannot dodge: a code is
+   * printed on a table, and inventing another does not produce a valid one.
+   * A table seats a handful of people and a genuine device plays once a day,
+   * so ten an hour is already a table turning over faster than it can.
+   *
+   * Read what this does and does not buy. It bounds the RATE, never the stock:
+   * against a five-prize budget the first ten plays still empty it, because
+   * nothing here can tell one person sending ten fingerprints from ten diners.
+   * Lowering it far enough to protect the stock would refuse real players
+   * first. Binding a play to a person needs a control this platform does not
+   * have — a sign-in, or an anti-automation check at the edge.
+   */
+  gamePlayPerQr: { limit: 10, windowMs: 60 * 60_000 },
+  /**
+   * Every play across one restaurant's tables, because an attacker seated in
+   * the room can photograph several codes and multiply the window above.
+   */
+  gamePlayPerStore: { limit: 200, windowMs: 60 * 60_000 },
+  /**
+   * Scan counters. Scanning is cheap and legitimately repeated — a diner
+   * reopening the page is a scan — so this only stops a counter being driven
+   * for its own sake.
+   */
+  gameScanPerQr: { limit: 60, windowMs: 60 * 60_000 },
+  /**
+   * Referral codes minted at one restaurant. One row per device is the design;
+   * a new device every second is a loop writing rows.
+   */
+  gameReferralPerStore: { limit: 100, windowMs: 60 * 60_000 },
+  /**
+   * Prize claims for one address. A claim sends mail to an address the caller
+   * chose, so this window is the relay bound, and it is deliberately as tight
+   * as the contact form's.
+   */
+  gameClaimPerEmail: { limit: 3, windowMs: 60 * 60_000 },
+  /** Prize claims arriving at one restaurant. */
+  gameClaimPerStore: { limit: 60, windowMs: 60 * 60_000 },
+  /**
+   * Orders placed at one restaurant. Set well above a real rush — a busy
+   * service is dozens an hour, not hundreds — because refusing a paying
+   * customer costs more than the junk row this stops. Prices, options and
+   * discounts are already recomputed server-side, so what remains to bound is
+   * database and kitchen-ticket noise rather than value extraction.
+   */
+  orderPerStore: { limit: 300, windowMs: 60 * 60_000 },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitName = keyof typeof RATE_LIMITS

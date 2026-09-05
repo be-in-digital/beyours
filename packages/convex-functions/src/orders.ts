@@ -10,6 +10,7 @@
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
 import { refusePlatformStatus } from "./platformWebhook"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 import {
   canTransitionOrderStatus,
   isOrderTypeOffered,
@@ -412,6 +413,18 @@ export const create = {
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
     if (!store) throw new Error("Store not found")
 
+    // Public by design — a guest checks out without a session — and until now
+    // nothing bounded it: `customerInfo.name` and the two `notes` fields were
+    // unbounded strings, so one request could store a megabyte. Checked here,
+    // before any of the work below, because rejecting an oversized payload
+    // should cost nothing.
+    assertFieldLengths({
+      name: args.customerInfo.name,
+      email: args.customerInfo.email,
+      phone: args.customerInfo.phone,
+      message: args.notes,
+    })
+
     // A draft establishment is not a storefront. Keeping drafts out of
     // `stores.list` is how one stops being *reachable*; this is what stops one
     // being *ordered from* — a tab left open before the owner unpublished it, a
@@ -445,6 +458,17 @@ export const create = {
     if (!isOrderTypeOffered(args.type, resolveStoreServices(store, globalSettings))) {
       throw new Error(`This store does not offer ${args.type} orders`)
     }
+
+    // Only now, past every reason an order can be refused. The window is the
+    // restaurant's, and a slot spent on a request that was never going to
+    // become an order would let a loop of invalid ones exhaust it and refuse
+    // the real customer behind them — turning a limiter meant to protect the
+    // restaurant into a way to close its till. So it is consumed once the
+    // order is admissible and about to do work, and a generous window at that:
+    // prices, options and discounts are already recomputed server-side, so
+    // what is left to bound is database and kitchen-ticket noise, not value.
+    // After the idempotency check too, so a retried checkout spends nothing.
+    await consumeRateLimit(ctx, "orderPerStore", args.storeId)
 
     const taxRatePercent = resolveTaxRatePercent({
       globalTaxRate: globalSettings?.taxRate,

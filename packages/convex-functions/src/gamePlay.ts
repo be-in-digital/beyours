@@ -6,6 +6,7 @@ import type {
   SchemaMutationCtx,
   SchemaQueryCtx,
 } from "@be-in-digital/convex-schema/dataModel"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
 /**
  * Player-facing gamification flow (public, anonymous players).
@@ -13,6 +14,13 @@ import type {
  * The outcome of every play is resolved SERVER-SIDE (win roll + prize pick);
  * the client only animates toward the result it receives. The 24h cooldown is
  * enforced per store + device fingerprint, whatever the game and the outcome.
+ *
+ * WHAT THE COOLDOWN IS NOT: a control. `fingerprint` is a string the browser
+ * sends, so a caller who wants another turn sends another string — 40 of them
+ * emptied a five-prize stock in one loop, which is what these endpoints were
+ * bounded for. The cooldown is fairness between honest devices. The bound on
+ * abuse is `consumeRateLimit`, keyed partly on the QR row the SERVER resolved,
+ * which no argument can rotate. See `rateLimit.ts` for why no IP is available.
  *
  * Handlers are typed against the shared SchemaDataModel: schema drift breaks
  * this package's type-check, not the consuming apps at runtime.
@@ -69,6 +77,51 @@ export function remainingStock(prize: {
 export function cooldownMsForGame(game: { config?: { cooldownHours?: number } }): number {
   const hours = game.config?.cooldownHours ?? DEFAULT_COOLDOWN_HOURS
   return hours * 60 * 60 * 1000
+}
+
+/**
+ * The most `completedActions` a caller may claim, and the longest an id may be.
+ * A Convex id is 32 characters; the cap is loose enough not to break a future
+ * format and tight enough that the array cannot be used as free storage.
+ */
+const MAX_COMPLETED_ACTIONS = 32
+const MAX_ACTION_ID_LENGTH = 128
+
+/**
+ * Keep only the claimed action ids that name a real, active required action of
+ * this store, capped in count and length.
+ *
+ * This is NOT verification. Whether someone actually left a Google review is
+ * not observable from a mutation, and the ids are readable from `getSession`,
+ * so a caller can always claim the real ones. What it stops is the unbounded
+ * write: `completedActions` was persisted verbatim, so one call could store an
+ * arbitrarily large array of arbitrarily long strings, and the analytics built
+ * on the column counted ids that never existed.
+ *
+ * Nothing is thrown for an unknown id. Stale ids are normal — a store that
+ * reconfigures its actions leaves them behind in older rows, and
+ * `selectSequentialProgression` already tolerates them at read time.
+ */
+async function sanitiseCompletedActions(
+  ctx: SchemaQueryCtx,
+  storeId: DocId<"stores">,
+  claimed: string[]
+): Promise<string[]> {
+  if (claimed.length === 0) return []
+  const capped = claimed.slice(0, MAX_COMPLETED_ACTIONS)
+  const actions = await ctx.db
+    .query("requiredActions")
+    .withIndex("by_storeId_isActive", (q) => q.eq("storeId", storeId).eq("isActive", true))
+    .collect()
+  const real = new Set(actions.map((a) => a._id as string))
+  const kept: string[] = []
+  for (const id of capped) {
+    if (id.length > MAX_ACTION_ID_LENGTH) continue
+    if (!real.has(id)) continue
+    if (kept.includes(id)) continue
+    kept.push(id)
+  }
+  return kept
 }
 
 /** Public-safe projection of a prize document. */
@@ -345,6 +398,9 @@ export const recordScan = {
       .withIndex("by_code", (q) => q.eq("code", args.code))
       .first()
     if (!qr) return
+    // Keyed on the row the server resolved, not on `args.code`: a caller can
+    // send any string, but only a real code reaches this line.
+    await consumeRateLimit(ctx, "gameScanPerQr", qr._id)
     await ctx.db.patch(qr._id, {
       scannedCount: (qr.scannedCount ?? 0) + 1,
       lastScannedAt: Date.now(),
@@ -368,6 +424,10 @@ const playArgs = {
 export const play = {
   args: playArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof playArgs>) => {
+    // Consumed before the lookup, so probing codes is bounded too. Dodged by
+    // sending a new fingerprint — the two windows after the lookup are not.
+    await consumeRateLimit(ctx, "gamePlayPerFingerprint", args.fingerprint)
+
     const qr = await ctx.db
       .query("gameQRCodes")
       .withIndex("by_code", (q) => q.eq("code", args.code))
@@ -378,6 +438,13 @@ export const play = {
     if (!game || !game.isActive || game.storeId !== qr.storeId) {
       throw new Error("GAME_UNAVAILABLE")
     }
+
+    // The bound that holds when the fingerprint rotates. Both keys come from
+    // rows this handler resolved, so no argument can move them: reaching
+    // another QR window means finding another code physically on a table, and
+    // the store window bounds however many of those an attacker collects.
+    await consumeRateLimit(ctx, "gamePlayPerQr", qr._id)
+    await consumeRateLimit(ctx, "gamePlayPerStore", qr.storeId)
 
     const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
     const isFirstPlay = latest === null
@@ -423,13 +490,19 @@ export const play = {
       })
     }
 
+    const completedActions = await sanitiseCompletedActions(
+      ctx,
+      qr.storeId,
+      args.completedActions
+    )
+
     const now = Date.now()
     const playId = await ctx.db.insert("gamePlays", {
       storeId: qr.storeId,
       gameId: game._id,
       qrCodeId: qr._id,
       fingerprint: args.fingerprint,
-      completedActions: args.completedActions,
+      completedActions,
       referredByCode: isFriendWelcome ? args.ref : undefined,
       didWin: didWin && prize !== null,
       prizeId: prize?._id,
@@ -481,6 +554,10 @@ export const ensureReferralCode = {
       .first()
     if (!qr || !qr.isActive) throw new Error("GAME_UNAVAILABLE")
 
+    // One row per device is the design; a new fingerprint every second is a
+    // loop writing rows, and the store key is the one it cannot rotate.
+    await consumeRateLimit(ctx, "gameReferralPerStore", qr.storeId)
+
     const existing = await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
     if (existing) return { code: existing.code }
 
@@ -519,8 +596,20 @@ const claimArgs = {
 export const claim = {
   args: claimArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof claimArgs>) => {
+    // A claim mails a prize code to an address the caller chose, which makes
+    // this the one endpoint here that can be used as a relay. Bound it like the
+    // contact form: lengths first, then the address, then the restaurant.
+    assertFieldLengths({
+      name: `${args.firstName} ${args.lastName}`,
+      email: args.email,
+      phone: args.phone,
+    })
+    await consumeRateLimit(ctx, "gameClaimPerEmail", args.email)
+
     const play = await ctx.db.get(args.playId)
     if (!play || !play.didWin || !play.prizeId) throw new Error("CLAIM_INVALID")
+
+    await consumeRateLimit(ctx, "gameClaimPerStore", play.storeId)
 
     const existing = await ctx.db
       .query("prizeRedemptions")
