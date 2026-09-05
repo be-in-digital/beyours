@@ -31,6 +31,7 @@
     "./sesSending": "./src/sesSending.ts",
     "./rateLimit": "./src/rateLimit.ts",
     "./refusal": "./src/refusal.ts",
+    "./prizeBudget": "./src/prizeBudget.ts",
     "./emailAutomationRuns": "./src/emailAutomationRuns.ts",
     "./products": "./src/products.ts",
     "./menus": "./src/menus.ts",
