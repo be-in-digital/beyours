@@ -7,6 +7,7 @@ import {
   invoiceLegalSettings,
   latePaymentTerms,
   sellerIdentity,
+  taxDisplayMismatch,
   vatConfigurationProblem,
   vatMention,
 } from "../../convex/invoiceLegal";
@@ -148,5 +149,43 @@ describe("vatConfigurationProblem", () => {
     expect(problem).toContain("STRIPE_TAX_ENABLED");
     expect(problem).toContain("NEXT_PUBLIC_TVA_ENABLED");
     expect(problem).toContain("lib/legal/company.ts");
+  });
+});
+
+/* ── taxDisplayMismatch ──
+   Tested here rather than only through `createCheckoutSession`, because half of
+   it cannot be reached that way: under the régime réel, `vatConfigurationProblem`
+   refuses a Stripe that is not charging VAT before this function is ever asked
+   about the display. So the over-quoted branch has no route through the action,
+   and an adversarial pass found it asserted by nothing at all. A message an
+   operator only ever sees in the one state we cannot reproduce is exactly the
+   one worth pinning. */
+
+describe("taxDisplayMismatch", () => {
+  test("says nothing when the summary and Stripe agree", () => {
+    expect(taxDisplayMismatch(true, true)).toBeNull();
+    expect(taxDisplayMismatch(false, false)).toBeNull();
+  });
+
+  test("refuses a summary with no VAT against a Stripe that charges it", () => {
+    const problem = taxDisplayMismatch(true, false);
+    expect(problem).not.toBeNull();
+    // The Next-side flag is the one to go and set; naming the Convex flag here
+    // would send the operator to the wrong console.
+    expect(problem).toContain("NEXT_PUBLIC_TVA_ENABLED");
+    expect(problem).toContain("inférieur");
+  });
+
+  test("refuses the over-quoted direction, which no action path can reach", () => {
+    const problem = taxDisplayMismatch(false, true);
+    expect(problem).not.toBeNull();
+    expect(problem).toContain("supérieur");
+    // Both flags are named here: which one is wrong depends on the regime, and
+    // this branch is reachable only when the regime itself has moved.
+    expect(problem).toContain("STRIPE_TAX_ENABLED");
+  });
+
+  test("tells the two directions apart", () => {
+    expect(taxDisplayMismatch(true, false)).not.toBe(taxDisplayMismatch(false, true));
   });
 });

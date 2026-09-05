@@ -109,9 +109,10 @@ export const COMPANY: CompanyInfo = {
  * being the default state of a fresh Vercel project, and indistinguishable
  * from "no VAT" at the read site. The Convex flag is invisible to that
  * function and is checked by `createCheckoutSession`, which refuses the sale.
- * Since the two envs never meet, the checkout also carries the stance the
- * client actually displayed and refuses a sale that would debit a total the
- * customer was never shown.
+ * Since the two envs never meet, the checkout also carries the VAT stance the
+ * client actually rendered and refuses a sale where that stance and Stripe's
+ * disagree. That is one bit, not the total: two summaries agreeing VAT was
+ * quoted can still differ in amount, and nothing checks that today.
  *
  * Every price in the app is quoted excluding tax, which is the right B2B
  * convention here — restaurants recover the VAT. Switching regime therefore

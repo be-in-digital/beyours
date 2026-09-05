@@ -105,9 +105,13 @@ export function resolveTvaEnabled(raw: string | undefined): boolean {
   return VAT.regime === "reel";
 }
 
-/* Written as a direct static member access so Next still inlines the value
-   into the client bundle at build time — a computed lookup would not be
-   substituted, and the flag would read as undefined in the browser. */
+/* Written as a direct static member access, which is the form Next can
+   substitute. Measured, by reading the emitted chunk: when the variable IS set
+   the build inlines and constant-folds it; when it is NOT set the access
+   survives into the bundle as a read against Next's `process` polyfill, which
+   yields undefined rather than throwing — so the fallback below runs in the
+   browser exactly as it does on the server. A computed lookup would be
+   substituted in neither case. */
 export const TVA_ENABLED = resolveTvaEnabled(
   process.env.NEXT_PUBLIC_TVA_ENABLED,
 );

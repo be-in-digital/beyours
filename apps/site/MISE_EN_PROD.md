@@ -79,7 +79,12 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
   `tax_behavior=exclusive` on the four maintenance Prices, then
   `STRIPE_TAX_ENABLED=true` (Convex env) and `NEXT_PUBLIC_TVA_ENABLED=true`
   (Next env). Until the Next flag is set the site refuses to boot in production
-  (`validateSiteEnv`, which sees only that half); until the Convex flag is set
+  (`validateSiteEnv`, which sees only that half) — but note what that does NOT
+  cover: `/checkout` and `/tarifs` are prerendered as static content and served
+  from the CDN without booting a server, so the boot refusal never stands
+  between those pages and a customer. What keeps them correct is
+  `resolveTvaEnabled`, which resolves an unset flag to the declared regime
+  rather than to "no VAT". Until the Convex flag is set
   `createCheckoutSession` refuses the sale — deliberately:
   an invoice stating a VAT position the company does not hold cannot be taken
   back, while a refused sale can be retried. Dashboard-only, so it cannot be

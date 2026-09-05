@@ -112,8 +112,10 @@ checked against the regime, each where it is visible. The Next flag is refused
 at boot when it contradicts the regime or is missing — missing being the
 default state of a fresh project, and the state that used to escape. The Convex
 flag is out of the boot check's reach and refuses the sale instead. The
-checkout also carries the total the client displayed, so the two envs — which
-never meet — cannot disagree in front of the customer.
+checkout also carries the tax stance the client displayed, so the two envs —
+which never meet — cannot disagree about VAT in front of the customer. That is
+one bit and not the total: a price that drifts for another reason (a founders
+slot taken between render and submit, a stale bundle) is not covered by it.
 
 ---
 

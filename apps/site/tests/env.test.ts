@@ -309,10 +309,19 @@ describe("resolveTvaEnabled — what an unset flag resolves to", () => {
 
   // What the bundle actually shipped with: the module-level constant the
   // checkout summary branches on.
-  it("is what TVA_ENABLED holds", () => {
-    expect(TVA_ENABLED).toBe(
-      resolveTvaEnabled(process.env.NEXT_PUBLIC_TVA_ENABLED)
-    );
+  //
+  // Checked against a rule written out here rather than against
+  // `resolveTvaEnabled(process.env…)`. That was the first version and it pinned
+  // nothing: both sides call the same function on the same value in the same
+  // process, so `f(x) === f(x)` holds even if the module read a different
+  // variable entirely. Restating the rule independently is what makes the
+  // assertion capable of failing — and it holds whatever the machine running
+  // the suite happens to export, which asserting a bare `undefined` would not.
+  it("carries the declared value, or the regime's stance when there is none", () => {
+    const raw = process.env.NEXT_PUBLIC_TVA_ENABLED;
+    const expected =
+      raw === "true" ? true : raw === "false" ? false : VAT.regime === "reel";
+    expect(TVA_ENABLED).toBe(expected);
   });
 });
 

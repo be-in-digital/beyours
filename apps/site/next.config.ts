@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
 import { validateSiteEnv, formatSiteEnvReport, isInlinedAtBuild } from "./lib/env";
 import { BOOKING_ORIGIN } from "./lib/site-config";
@@ -37,15 +38,24 @@ const contentSecurityPolicy = buildContentSecurityPolicy({
  * warns and never throws: CI compiles this app against a deliberate placeholder
  * Convex URL, and a deployment whose flag is wrong is still refused at boot and
  * its sales still refused at checkout.
+ *
+ * Gated on the build phase, and that gate is load-bearing rather than tidy:
+ * this file is evaluated by `next dev` and `next start` too, where the env it
+ * can read is the RUNTIME env and not the one the bundle was compiled from.
+ * Reporting there would be both a false alarm (a correct server whose bundle
+ * is fine) and a false silence (a stale bundle built without the flag, started
+ * with it) — announced under a heading that says "build". `instrumentation.ts`
+ * covers the runtime, from the runtime, and says so.
  */
-const inlinedProblems = validateSiteEnv().problems.filter(
-  (p) => isInlinedAtBuild(p) && p.tier !== "required",
-);
-if (inlinedProblems.length > 0) {
+function reportInlinedEnv(): void {
+  const problems = validateSiteEnv().problems.filter(
+    (p) => isInlinedAtBuild(p) && p.tier !== "required",
+  );
+  if (problems.length === 0) return;
   console.warn(
     "[env] build : variables inlinées dans le bundle client à corriger",
   );
-  console.warn(formatSiteEnvReport(inlinedProblems));
+  console.warn(formatSiteEnvReport(problems));
 }
 
 const nextConfig: NextConfig = {
@@ -104,4 +114,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/* The phase comes from Next itself. `process.env.NEXT_PHASE` is NOT set when
+   this file is evaluated — measured: gating on it silenced the report during a
+   real `next build` — so the phase argument is the only reliable signal, and it
+   is the documented one. */
+export default function config(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_BUILD) reportInlinedEnv();
+  return nextConfig;
+}
