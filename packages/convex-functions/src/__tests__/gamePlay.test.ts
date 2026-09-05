@@ -15,7 +15,7 @@ import {
   isActionRequirementMet,
   sanitiseCompletedActions,
 } from "../gamePlay"
-import { prizeBudgetKey } from "../prizeBudget"
+
 
 describe("selectSequentialProgression", () => {
   const ids = ["a1", "a2", "a3"]
@@ -208,7 +208,9 @@ function playFixtures(
     prizes?: MockDoc[]
     requiredActions?: MockDoc[]
     rateLimits?: MockDoc[]
+    prizeIssuance?: MockDoc[]
     config?: Record<string, unknown>
+    extraGames?: MockDoc[]
     referrals?: MockDoc[]
   } = {}
 ) {
@@ -225,9 +227,11 @@ function playFixtures(
         isActive: true,
         ...(overrides.config ? { config: overrides.config } : {}),
       },
+      ...(overrides.extraGames ?? []),
     ],
     requiredActions: overrides.requiredActions ?? [],
     rateLimits: overrides.rateLimits ?? [],
+    prizeIssuance: overrides.prizeIssuance ?? [],
     gameReferrals: overrides.referrals ?? [],
     prizes:
       overrides.prizes ??
@@ -946,28 +950,31 @@ describe("play — the establishment's prize budget", () => {
     completedActions: [] as string[],
   }
 
-  it("charges the window when a prize is drawn", async () => {
+  it("records the prize in the establishment's ledger", async () => {
     const ctx = playFixtures()
     const result = await play.handler(ctx, baseArgs)
     expect(result.didWin).toBe(true)
-    const row = ctx.store.rateLimits.find((r) => r.key === prizeBudgetKey("stores:1"))
-    expect(row?.count).toBe(1)
+    expect(ctx.store.prizeIssuance[0]?.issuedAt).toHaveLength(1)
   })
 
-  it("charges nothing when the play loses", async () => {
-    // A window that counted attempts would let a run of losing spins exhaust a
+  it("records nothing when the play loses", async () => {
+    // A ledger that recorded attempts would let a run of losing spins exhaust a
     // budget nothing came out of.
     const ctx = playFixtures({ winRatio: 0 })
     const result = await play.handler(ctx, baseArgs)
     expect(result.didWin).toBe(false)
-    expect(ctx.store.rateLimits.find((r) => r.key === prizeBudgetKey("stores:1"))).toBeUndefined()
+    expect(ctx.store.prizeIssuance ?? []).toHaveLength(0)
   })
 
   it("stops winning once the window is full, and still lets the player play", async () => {
     const ctx = playFixtures({
       config: { prizeBudget: { maxPrizes: 2, windowHours: 24 } },
-      rateLimits: [
-        { _id: "rateLimits:1", key: prizeBudgetKey("stores:1"), windowStart: Date.now(), count: 2 },
+      prizeIssuance: [
+        {
+          _id: "prizeIssuance:1",
+          storeId: "stores:1",
+          issuedAt: [Date.now() - 1000, Date.now() - 500],
+        },
       ],
     })
     const result = await play.handler(ctx, baseArgs)
@@ -979,19 +986,205 @@ describe("play — the establishment's prize budget", () => {
     expect(ctx.store.prizes[0]?.remainingCount).toBeUndefined()
   })
 
-  it("wins again once the window has run out", async () => {
+  it("wins again once the oldest prize has rolled out of the window", async () => {
     const ctx = playFixtures({
       config: { prizeBudget: { maxPrizes: 2, windowHours: 1 } },
-      rateLimits: [
+      prizeIssuance: [
         {
-          _id: "rateLimits:1",
-          key: prizeBudgetKey("stores:1"),
-          windowStart: Date.now() - 2 * 60 * 60_000,
-          count: 2,
+          _id: "prizeIssuance:1",
+          storeId: "stores:1",
+          issuedAt: [Date.now() - 3 * 60 * 60_000, Date.now() - 2 * 60 * 60_000],
         },
       ],
     })
     const result = await play.handler(ctx, baseArgs)
     expect(result.didWin).toBe(true)
+  })
+
+  it("takes the tightest budget of the establishment's games, not the one played", async () => {
+    // `args.gameId` is the caller's. Reading the rule off it let a caller pick
+    // whichever of the owner's games was most generous.
+    const ctx = playFixtures({
+      config: { prizeBudget: { maxPrizes: 50, windowHours: 24 } },
+      extraGames: [
+        {
+          _id: "games:2",
+          storeId: "stores:1",
+          type: "scratch_card",
+          winRatio: 100,
+          isActive: true,
+          config: { prizeBudget: { maxPrizes: 1, windowHours: 24 } },
+        },
+      ],
+      prizeIssuance: [
+        { _id: "prizeIssuance:1", storeId: "stores:1", issuedAt: [Date.now() - 1000] },
+      ],
+    })
+    const result = await play.handler(ctx, baseArgs)
+    expect(result.didWin).toBe(false)
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* What an adversarial pass found wrong with the first version         */
+/* ------------------------------------------------------------------ */
+
+describe("play — the exemptions, after an adversarial pass got through them", () => {
+  const baseArgs = {
+    code: "TABLE1",
+    gameId: "games:1",
+    fingerprint: "device-1",
+    completedActions: [] as string[],
+  }
+  const oneAction = [
+    {
+      _id: "requiredActions:1",
+      storeId: "stores:1",
+      type: "google_review",
+      name: "Avis Google",
+      isRequired: true,
+      sortOrder: 0,
+      isActive: true,
+    },
+  ]
+  const referral = (over: Partial<MockDoc> = {}) => ({
+    _id: "gameReferrals:1",
+    storeId: "stores:1",
+    code: "SHARE123",
+    referrerFingerprint: "device-OTHER",
+    conversions: 0,
+    pendingBonuses: 0,
+    ...over,
+  })
+
+  it("meters the friend welcome on the referral row, so one code cannot exempt forever", async () => {
+    // Measured before this: `isFriendWelcome` turns on `isFirstPlay`, which is
+    // per fingerprint, so every rotated fingerprint was a first-timer.
+    // Appending one `?ref` to the loop took 120 plays with `completedActions:
+    // []` past a store demanding three Google reviews, with zero refusals.
+    const ctx = playFixtures({ requiredActions: oneAction, referrals: [referral()] })
+    let exempted = 0
+    let refused = 0
+    for (let i = 0; i < 6; i++) {
+      try {
+        await play.handler(ctx, { ...baseArgs, fingerprint: `friend-${i}`, ref: "SHARE123" })
+        exempted++
+      } catch {
+        refused++
+      }
+    }
+    expect(exempted).toBe(3)
+    expect(refused).toBe(3)
+  })
+
+  it("does not spend the friend welcome on a friend who did the action", async () => {
+    const ctx = playFixtures({ requiredActions: oneAction, referrals: [referral()] })
+    for (let i = 0; i < 5; i++) {
+      await play.handler(ctx, {
+        ...baseArgs,
+        fingerprint: `friend-${i}`,
+        ref: "SHARE123",
+        completedActions: ["requiredActions:1"],
+      })
+    }
+    // The play's own windows were spent; the welcome window was not, because
+    // nothing needed exempting.
+    const welcomes = ctx.store.rateLimits.filter((r) =>
+      String(r.key).startsWith("gameFriendWelcomePerReferral:")
+    )
+    expect(welcomes).toHaveLength(0)
+  })
+
+  it("spends a bonus when the bonus is what buys the gate-free play", async () => {
+    // `hasBonus` rather than `consumedBonus` let a banked bonus buy an unlimited
+    // number of gate-free plays, because nothing ever spent it: five banked
+    // bought six plays.
+    const ctx = playFixtures({
+      requiredActions: oneAction,
+      referrals: [referral({ referrerFingerprint: "device-1", pendingBonuses: 1 })],
+    })
+    await play.handler(ctx, baseArgs)
+    expect(ctx.store.gameReferrals[0]?.pendingBonuses).toBe(0)
+    await expect(play.handler(ctx, { ...baseArgs, fingerprint: "device-2" })).rejects.toThrow(
+      "ACTIONS_INCOMPLETE"
+    )
+  })
+
+  it("does not spend a bonus on a player who did the action anyway", async () => {
+    const ctx = playFixtures({
+      requiredActions: oneAction,
+      referrals: [referral({ referrerFingerprint: "device-1", pendingBonuses: 2 })],
+    })
+    await play.handler(ctx, { ...baseArgs, completedActions: ["requiredActions:1"] })
+    expect(ctx.store.gameReferrals[0]?.pendingBonuses).toBe(2)
+  })
+
+  it("never confiscates bonuses a referrer already banked", async () => {
+    // `Math.min(MAX, stored + 1)` clamped the stored VALUE, not the increment:
+    // a row sitting at 8 from before the cap existed dropped to 5 on its next
+    // conversion, destroying three plays that had been earned.
+    const ctx = playFixtures({ referrals: [referral({ pendingBonuses: 8 })] })
+    await play.handler(ctx, { ...baseArgs, ref: "SHARE123" })
+    expect(ctx.store.gameReferrals[0]?.pendingBonuses).toBe(8)
+  })
+
+  it("keeps a store playable past the storage cap on claimed actions", async () => {
+    // `MAX_COMPLETED_ACTIONS` capped the sanitised list, and the "all" branch
+    // demanded every required action: a store with 33 of them was permanently
+    // unplayable, with no error an owner could diagnose. The cap is a storage
+    // bound; the gate now sees the whole claim.
+    const many = Array.from({ length: 33 }, (_, i) => ({
+      _id: `requiredActions:${i}`,
+      storeId: "stores:1",
+      type: "google_review",
+      name: `Action ${i}`,
+      isRequired: true,
+      sortOrder: i,
+      isActive: true,
+    }))
+    const ctx = playFixtures({ requiredActions: many, config: { actionMode: "all" } })
+    const result = await play.handler(ctx, {
+      ...baseArgs,
+      completedActions: many.map((a) => a._id),
+    })
+    expect(result.didWin).toBe(true)
+    // Still bounded on the way into the row.
+    expect(ctx.store.gamePlays[0]?.completedActions).toHaveLength(32)
+  })
+})
+
+describe("getSession — what a public, unauthenticated query may publish", () => {
+  it("does not publish the establishment's prize budget", async () => {
+    // The decision to LOSE rather than refuse past the budget rests on a prober
+    // not knowing where the budget sits. `config` was returned verbatim, so
+    // anyone holding a table code could read it off.
+    const ctx = createMockCtx({
+      gameQRCodes: [
+        { _id: "qr:1", storeId: "stores:1", code: "TABLE1", isActive: true, scannedCount: 0 },
+      ],
+      stores: [{ _id: "stores:1", name: "Chez Momo" }],
+      games: [
+        {
+          _id: "games:1",
+          storeId: "stores:1",
+          type: "wheel",
+          winRatio: 30,
+          isActive: true,
+          config: {
+            actionMode: "sequential",
+            primaryColor: "#f97316",
+            prizeBudget: { maxPrizes: 7, windowHours: 3 },
+          },
+        },
+      ],
+      requiredActions: [],
+      prizes: [],
+      gamePlays: [],
+    })
+    const session = await getSession.handler(ctx, { code: "TABLE1" })
+    expect(session.status).toBe("ready")
+    if (session.status !== "ready") return
+    expect(session.game.config).not.toHaveProperty("prizeBudget")
+    expect(session.game.config?.primaryColor).toBe("#f97316")
   })
 })

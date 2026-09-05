@@ -134,6 +134,23 @@ export const RATE_LIMITS = {
    */
   gameReferralPerStore: { limit: 100, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
+   * Friend welcomes granted by ONE referral code — the row the server resolved
+   * from `args.ref`, not the string the caller sent.
+   *
+   * A friend arriving on a share link skips the required actions, and that
+   * exemption turns on `isFirstPlay`, which is per fingerprint: every rotated
+   * fingerprint is a first-timer, so one minted code took 120 plays past a
+   * store demanding three Google reviews without a single refusal. Three a day
+   * per code is a genuine share among friends; past it the fourth friend still
+   * plays, they just do the action like everybody else. That degradation is why
+   * this number can be small without costing anyone a game.
+   */
+  gameFriendWelcomePerReferral: {
+    limit: 3,
+    windowMs: 24 * 60 * 60_000,
+    foldSubjectCase: false,
+  },
+  /**
    * Prize claims for one address. A claim sends mail to an address the caller
    * chose, so this window is the relay bound, and it is deliberately as tight
    * as the contact form's.

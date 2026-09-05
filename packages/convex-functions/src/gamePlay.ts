@@ -6,11 +6,13 @@ import type {
   SchemaMutationCtx,
   SchemaQueryCtx,
 } from "@be-in-digital/convex-schema/dataModel"
-import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
+import { RateLimitedError, assertFieldLengths, consumeRateLimit } from "./rateLimit"
 import {
-  readPrizeBudget,
+  appendPrizeIssuance,
+  prizeBudgetAllows,
+  readPrizeIssuance,
   recordPrizeIssued,
-  resolvePrizeBudget,
+  strictestPrizeBudget,
 } from "./prizeBudget"
 
 /**
@@ -126,7 +128,17 @@ const MAX_ACTION_ID_LENGTH = 128
  */
 export function sanitiseCompletedActions(
   activeActions: Doc<"requiredActions">[],
-  claimed: string[]
+  claimed: string[],
+  /**
+   * The cap to apply. Defaults to the storage bound; the GATE passes
+   * `Infinity`, because capping there is a lock, not a bound. A store with more
+   * than `MAX_COMPLETED_ACTIONS` required actions in "all" mode became
+   * permanently unplayable: the honest client sent every id, 32 survived, and
+   * the gate demanded all 33 — with no error an owner could diagnose. `real` is
+   * bounded by the store's own configuration, so nothing unbounded is done
+   * either way.
+   */
+  cap: number = MAX_COMPLETED_ACTIONS
 ): string[] {
   if (claimed.length === 0) return []
   const real = new Set(activeActions.map((a) => a._id as string))
@@ -139,13 +151,50 @@ export function sanitiseCompletedActions(
   // configuration, so `kept` cannot exceed the number of actions it defined.
   const kept: string[] = []
   for (const id of claimed) {
-    if (kept.length >= MAX_COMPLETED_ACTIONS) break
+    if (kept.length >= cap) break
     if (id.length > MAX_ACTION_ID_LENGTH) continue
     if (!real.has(id)) continue
     if (kept.includes(id)) continue
     kept.push(id)
   }
   return kept
+}
+
+/**
+ * Spend one friend-welcome against a referral code, or report the window out.
+ *
+ * Never throws, unlike every other `consumeRateLimit` call here. A refused
+ * window must not refuse the play: it only means this friend does the action
+ * like anybody else. Turning a metered exemption into a failed game would take
+ * the product away from the very people it is meant to reward.
+ */
+async function claimFriendWelcome(
+  ctx: SchemaMutationCtx,
+  refRow: Doc<"gameReferrals"> | null
+): Promise<boolean> {
+  if (!refRow) return false
+  try {
+    await consumeRateLimit(ctx, "gameFriendWelcomePerReferral", refRow._id)
+    return true
+  } catch (error) {
+    if (error instanceof RateLimitedError) return false
+    throw error
+  }
+}
+
+/**
+ * The game configuration a player is allowed to see.
+ *
+ * `prizeBudget` is the establishment's, not the player's. `getSession` is
+ * public and unauthenticated, so returning `config` verbatim published the
+ * exact ceiling to anyone holding a table code — which is precisely what the
+ * decision to LOSE rather than refuse past the budget was meant to avoid
+ * revealing. Everything else here drives the wheel and the screens.
+ */
+function publicGameConfig(config: Doc<"games">["config"]) {
+  if (!config) return config
+  const { prizeBudget: _budget, ...visible } = config
+  return visible
 }
 
 /** Public-safe projection of a prize document. */
@@ -228,8 +277,14 @@ export function selectSequentialProgression(
  * - `sequential` (the default): only the action currently due must be claimed.
  *   The UI shows one action per visit, so demanding all of them would refuse a
  *   first-time diner who did exactly what they were asked.
- * - `all` (legacy): every action flagged `isRequired` must be covered. Optional
- *   actions stay optional, which is what the flag is for.
+ * - `all` (legacy): every action flagged `isRequired` must be covered, and an
+ *   action the owner left optional stays optional.
+ *
+ * `isRequired` is deliberately IGNORED in sequential mode, and that is not an
+ * oversight: the sequential UI hands out every active action in turn, optional
+ * ones included, so a server rule that skipped them would disagree with the
+ * screen the diner is looking at. The flag only means something in `all` mode,
+ * where the actions are shown together and the player chooses.
  *
  * `previouslyCompleted` counts. A device that did an action on an earlier visit
  * has done it, and the client resets its local state on every load — a rule
@@ -298,14 +353,21 @@ async function loadActiveActions(
   return actions.sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
+async function loadActiveGames(
+  ctx: SchemaQueryCtx,
+  storeId: DocId<"stores">
+): Promise<Doc<"games">[]> {
+  return await ctx.db
+    .query("games")
+    .withIndex("by_storeId_isActive", (q) => q.eq("storeId", storeId).eq("isActive", true))
+    .collect()
+}
+
 async function loadActiveGameForQr(
   ctx: SchemaQueryCtx,
   qr: Doc<"gameQRCodes">
 ): Promise<Doc<"games"> | null> {
-  const games = await ctx.db
-    .query("games")
-    .withIndex("by_storeId_isActive", (q) => q.eq("storeId", qr.storeId).eq("isActive", true))
-    .collect()
+  const games = await loadActiveGames(ctx, qr.storeId)
   if (games.length === 0) return null
   if (qr.gameType) {
     const preferred = games.find((g) => g.type === qr.gameType)
@@ -465,7 +527,7 @@ export const getSession = {
         type: game.type,
         name: game.name,
         description: game.description,
-        config: game.config,
+        config: publicGameConfig(game.config),
       },
       actions: actions.map((a) => ({
         id: a._id,
@@ -579,31 +641,45 @@ export const play = {
     }
 
     // The store's own rule, enforced where the client cannot be the only one
-    // enforcing it. The two exemptions are the two paths the player UI already
-    // routes straight to the game, and both are decided from rows the server
-    // resolved rather than from an argument: a friend arriving on a real
-    // referral code, and a referrer spending a bonus they were granted.
-    // `hasBonus`, not `consumedBonus` — the UI sends a bonus holder to the game
-    // whether or not a cooldown is running, and a gate that refused them would
-    // break a real player to no end.
+    // enforcing it. Two paths the player UI routes straight to the game may
+    // skip it — a friend arriving on a real referral code, and a referrer
+    // spending a bonus — and NEITHER IS FREE, which is what an adversarial pass
+    // found the first version of this getting wrong. `isFriendWelcome` turns on
+    // `isFirstPlay`, which is per fingerprint, so every rotated fingerprint was
+    // a first-timer: appending one `?ref` to the loop took 120 plays with an
+    // empty `completedActions` past a store requiring three Google reviews,
+    // without a single refusal. The exemption is now metered on the referral
+    // ROW the server resolved, and past that window a friend plays under the
+    // same rule as everybody else rather than being turned away.
     const activeActions = await loadActiveActions(ctx, qr.storeId)
     const completedActions = sanitiseCompletedActions(activeActions, args.completedActions)
-    if (!isFriendWelcome && !hasBonus) {
-      const previouslyCompleted = await completedActionIdsFor(
-        ctx,
-        qr.storeId,
-        args.fingerprint
-      )
-      const met = isActionRequirementMet({
-        mode: game.config?.actionMode ?? "sequential",
-        activeActions: activeActions.map((a) => ({
-          id: a._id as string,
-          isRequired: a.isRequired,
-        })),
-        previouslyCompleted,
-        claimedNow: completedActions,
-      })
-      if (!met) throw new Error("ACTIONS_INCOMPLETE")
+    const met = isActionRequirementMet({
+      mode: game.config?.actionMode ?? "sequential",
+      activeActions: activeActions.map((a) => ({
+        id: a._id as string,
+        isRequired: a.isRequired,
+      })),
+      previouslyCompleted: await completedActionIdsFor(ctx, qr.storeId, args.fingerprint),
+      // Uncapped: the cap is a storage bound, and applying it here locked out
+      // any store with more required actions than it allows.
+      claimedNow: sanitiseCompletedActions(
+        activeActions,
+        args.completedActions,
+        Number.POSITIVE_INFINITY
+      ),
+    })
+    if (!met) {
+      if (isFriendWelcome && (await claimFriendWelcome(ctx, refRow))) {
+        // Spent: this code has welcomed a friend this window.
+      } else if (hasBonus) {
+        // `consumedBonus`, not merely `hasBonus`. A banked bonus used to buy an
+        // unlimited number of gate-free plays because nothing ever spent it —
+        // five banked bought six plays. Skipping the actions IS what the bonus
+        // is for, so it pays for itself here exactly as it does for a cooldown.
+        consumedBonus = true
+      } else {
+        throw new Error("ACTIONS_INCOMPLETE")
+      }
     }
 
     // The budget the restaurant owns, read before the roll and charged only if
@@ -611,13 +687,19 @@ export const play = {
     // against an empty stock: the player still plays, and loses. Refusing here
     // would tell a prober where the budget sits and would punish whoever
     // happened to scan next.
-    const budget = resolvePrizeBudget(game)
-    const budgetState = await readPrizeBudget(ctx, qr.storeId, budget, now)
+    // Read across every active game, not just the one the caller named: the
+    // ledger is per establishment, so taking the rule from `args.gameId` would
+    // let a caller pick whichever of the owner's games is most generous. An
+    // owner who tightened the wheel and left the scratch card on the default
+    // used to get the default, because the caller chose.
+    const budget = strictestPrizeBudget(await loadActiveGames(ctx, qr.storeId))
+    const issuance = await readPrizeIssuance(ctx, qr.storeId)
+    const withinBudget = prizeBudgetAllows(issuance.issuedAt, budget, now)
 
     const prizes = await loadAvailablePrizes(ctx, qr.storeId)
     const didWin = rollOutcome({
       winRatio: game.winRatio,
-      prizeCount: budgetState.allowed ? prizes.length : 0,
+      prizeCount: withinBudget ? prizes.length : 0,
     })
     const prize = didWin ? pickPrize(prizes) : null
 
@@ -636,7 +718,7 @@ export const play = {
     // Charged in the same transaction as the decrement above, never before the
     // draw: a window that counted attempts would let a run of losing spins
     // exhaust a budget nothing came out of.
-    if (prize) await recordPrizeIssued(ctx, qr.storeId, budget, now)
+    if (prize) await recordPrizeIssued(ctx, qr.storeId, issuance, budget, now)
 
     const playId = await ctx.db.insert("gamePlays", {
       storeId: qr.storeId,
@@ -664,7 +746,13 @@ export const play = {
     if (isFriendWelcome && refRow) {
       await ctx.db.patch(refRow._id, {
         conversions: refRow.conversions + 1,
-        pendingBonuses: Math.min(MAX_PENDING_BONUSES, refRow.pendingBonuses + 1),
+        // Clamp the INCREMENT, never the stored value. `Math.min` on the sum
+        // confiscated plays a referrer had already earned: a row sitting at 8
+        // from before the cap existed dropped to 5 on its next conversion.
+        pendingBonuses:
+          refRow.pendingBonuses >= MAX_PENDING_BONUSES
+            ? refRow.pendingBonuses
+            : refRow.pendingBonuses + 1,
         updatedAt: now,
       })
     }

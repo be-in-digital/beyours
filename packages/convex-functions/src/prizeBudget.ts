@@ -21,9 +21,31 @@
  * WHAT THIS IS: a rolling window on prizes issued per establishment, owned by
  * the restaurant. It is keyed on `qr.storeId` — a value the SERVER resolved
  * from the code printed on a table — so no argument the caller sends can move
- * it. It reuses the same `rateLimits` row shape and the same pure
- * `checkRateLimit` as every other window in this codebase, because an operator
- * asked "why did this refuse?" should read one kind of row, not two.
+ * it.
+ *
+ * WHY IT DOES NOT REUSE `rateLimits`, having first tried to. That table's
+ * window is fixed: it opens on the first event, never slides, and is read back
+ * against whatever `windowMs` the CURRENT rule says. For a rate limit that is
+ * an accepted trade, documented in `rateLimit.ts`. For a budget it was three
+ * defects, all measured:
+ *
+ * - **Twice the stated number.** Spend one prize, wait until the window is
+ *   nearly out, spend the other 49, wait a minute, spend 50 more: 100 prizes
+ *   out of "50 per rolling 24 h", in two minutes, with no configuration and no
+ *   trick beyond waiting.
+ * - **A shorter window resets the longer one.** Two games sharing the counter,
+ *   one configured "1 an hour", and a single play on it made the row look stale
+ *   to the other. Chained hourly: 1 200 prizes against a 50-a-day budget.
+ * - **Tightening the setting refunded it.** An owner moving from 50/24 h to
+ *   50/1 h — typing a stricter-looking number — handed out 50 more at once.
+ *
+ * So the row holds the ISSUANCE TIMESTAMPS instead, in `prizeIssuance`, and the
+ * question "how many in the last N hours" is answered from them. That is
+ * correct however the owner moves the setting, and it is genuinely rolling —
+ * which is what both the code and the French copy on the control already
+ * claimed. The array is pruned to the most recent `maxPrizes` entries on every
+ * write, so one indexed document read decides the answer and its size is
+ * bounded by the owner's own ceiling.
  *
  * WHAT THIS IS NOT, said plainly because the audit asked for it:
  *
@@ -44,8 +66,6 @@
  * nothing wrong. `rollOutcome` already returns false when nothing is in stock,
  * so this is the state the game has always had a screen for.
  */
-
-import { checkRateLimit, type RateLimitRule, type RateLimitWindow } from "./rateLimit"
 
 const HOUR_MS = 60 * 60_000
 
@@ -85,66 +105,130 @@ export const PRIZE_BUDGET_LIMITS = {
 } as const
 
 function clamp(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min
   return Math.min(max, Math.max(min, Math.floor(value)))
 }
 
 /**
  * The budget in force for one game.
  *
- * Clamps rather than throws. This runs inside the public play path, where a
- * malformed row written by an older admin build must not take the game down —
- * and `games.update` takes `config: v.any()`, so a bad value can genuinely
- * reach here. `resolvePrizeBudget` is the one place that decides what a stored
- * value means, so the admin form and the player path cannot disagree.
+ * Clamps and falls back rather than throwing: this runs inside the public play
+ * path, and a malformed row must not take the game down. `resolvePrizeBudget`
+ * is the one place that decides what a stored value means, so the admin form
+ * and the player path cannot disagree about it.
+ *
+ * WHAT CAN ACTUALLY BE MALFORMED, corrected from an earlier claim in this file
+ * that `games.update` taking `config: v.any()` lets anything through. It does
+ * not: the schema types `prizeBudget.maxPrizes` and `windowHours` as numbers
+ * and rejects a string outright. What survives to here is `NaN` and `±Infinity`,
+ * which Convex's Float64 accepts, and those go to the DEFAULT rather than to a
+ * bound. Sending a non-finite `windowHours` to `minWindowHours` was a bug: the
+ * minimum window is the LOOSEST setting, so a stored `NaN` turned "50 a day"
+ * into "50 an hour" — 24 times more generous than the default it was meant to
+ * be falling back to.
  */
 export function resolvePrizeBudget(game: {
   config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } }
 }): PrizeBudget {
   const configured = game.config?.prizeBudget
   if (!configured) return DEFAULT_PRIZE_BUDGET
+  const maxPrizes = configured.maxPrizes ?? DEFAULT_PRIZE_BUDGET.maxPrizes
+  const windowHours = configured.windowHours ?? DEFAULT_PRIZE_BUDGET.windowHours
   return {
-    maxPrizes: clamp(
-      configured.maxPrizes ?? DEFAULT_PRIZE_BUDGET.maxPrizes,
-      PRIZE_BUDGET_LIMITS.minPrizes,
-      PRIZE_BUDGET_LIMITS.maxPrizes
-    ),
-    windowHours: clamp(
-      configured.windowHours ?? DEFAULT_PRIZE_BUDGET.windowHours,
-      PRIZE_BUDGET_LIMITS.minWindowHours,
-      PRIZE_BUDGET_LIMITS.maxWindowHours
-    ),
-  }
-}
-
-/** The budget as the shared window machinery wants it. */
-export function prizeBudgetRule(budget: PrizeBudget): RateLimitRule {
-  return {
-    limit: budget.maxPrizes,
-    windowMs: budget.windowHours * HOUR_MS,
-    // Keyed on a Convex id, which is case-SENSITIVE: folding it would let one
-    // establishment consume another's budget. Same reasoning as every id-keyed
-    // rule in `rateLimit.ts`.
-    foldSubjectCase: false,
+    maxPrizes: Number.isFinite(maxPrizes)
+      ? clamp(maxPrizes, PRIZE_BUDGET_LIMITS.minPrizes, PRIZE_BUDGET_LIMITS.maxPrizes)
+      : DEFAULT_PRIZE_BUDGET.maxPrizes,
+    windowHours: Number.isFinite(windowHours)
+      ? clamp(
+          windowHours,
+          PRIZE_BUDGET_LIMITS.minWindowHours,
+          PRIZE_BUDGET_LIMITS.maxWindowHours
+        )
+      : DEFAULT_PRIZE_BUDGET.windowHours,
   }
 }
 
 /**
- * The row key for one establishment's issuance window.
+ * The budget in force at an establishment, across every game it runs.
  *
- * Not a `RateLimitName`, because the limit and the window are the restaurant's
- * to choose and `RATE_LIMITS` holds the ones the product fixes. It shares the
- * table so that "why was this refused" has one answer.
+ * WHY THIS IS NOT SIMPLY THE PLAYED GAME'S SETTING. The counter is keyed per
+ * ESTABLISHMENT — one budget, however many games share it — but `play` takes
+ * `gameId` from the caller. A restaurant running a wheel and a scratch card is
+ * a supported configuration (`loadActiveGameForQr` picks between them), so if
+ * the rule came from whichever game the caller named, an owner who tightened
+ * the wheel to two prizes a day and left the scratch card on the default would
+ * get the default: the caller picks the loosest. A guard whose strictness the
+ * caller chooses is the pattern this whole card exists to remove.
+ *
+ * So the tightest budget any active game sets governs the establishment.
+ * Strictness is compared as an issuance RATE — prizes per hour — because two
+ * budgets can differ in both numbers and "50 a week" is tighter than "2 an
+ * hour"; ties go to the smaller `maxPrizes`, which is the smaller burst.
+ *
+ * The cost, stated plainly: an owner running two games can no longer be
+ * generous on one and mean on the other — the mean one wins. That surprise is
+ * in the safe direction, it is written on the control in the admin, and it is
+ * the only reading under which the setting means what it says.
  */
-export function prizeBudgetKey(storeId: string): string {
-  return `prizeBudget:${storeId}`
+export function strictestPrizeBudget(
+  games: { config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } } }[]
+): PrizeBudget {
+  const budgets = games.map(resolvePrizeBudget)
+  if (budgets.length === 0) return DEFAULT_PRIZE_BUDGET
+  return budgets.reduce((tightest, candidate) => {
+    const a = candidate.maxPrizes / candidate.windowHours
+    const b = tightest.maxPrizes / tightest.windowHours
+    if (a < b) return candidate
+    if (a > b) return tightest
+    return candidate.maxPrizes < tightest.maxPrizes ? candidate : tightest
+  })
 }
 
-/** One `rateLimits` row, as this bookkeeping cares about it. */
-interface BudgetRow {
-  _id: unknown
-  windowStart: number
-  count: number
+/* ------------------------------------------------------------------ */
+/* The issuance ledger                                                 */
+/* ------------------------------------------------------------------ */
+
+/** One establishment's issuance row, as this bookkeeping cares about it. */
+export interface PrizeIssuance {
+  /** Absent until the establishment issues its first prize. */
+  id: unknown | null
+  /** Timestamps of prizes already issued, ascending. */
+  issuedAt: number[]
+}
+
+/**
+ * Whether one more prize may be issued.
+ *
+ * Pure, and genuinely rolling: it counts what falls inside the window ending
+ * now, rather than trusting a start recorded when some earlier window opened.
+ * That is what makes changing the setting take effect immediately and in the
+ * direction it was typed.
+ */
+export function prizeBudgetAllows(
+  issuedAt: readonly number[],
+  budget: PrizeBudget,
+  now: number
+): boolean {
+  const cutoff = now - budget.windowHours * HOUR_MS
+  let inWindow = 0
+  for (const at of issuedAt) if (at > cutoff) inWindow++
+  return inWindow < budget.maxPrizes
+}
+
+/**
+ * The ledger after one more prize.
+ *
+ * Pruned by COUNT, never by age. Keeping the most recent `maxPrizes` entries is
+ * exactly enough to answer the question — the limit can never be reached by
+ * fewer — and it means an owner who LENGTHENS the window still has the history
+ * to count, which pruning by age would have thrown away and quietly refunded.
+ */
+export function appendPrizeIssuance(
+  issuedAt: readonly number[],
+  budget: PrizeBudget,
+  now: number
+): number[] {
+  const next = [...issuedAt, now].sort((a, b) => a - b)
+  return next.slice(-budget.maxPrizes)
 }
 
 /**
@@ -155,104 +239,61 @@ interface BudgetRow {
  * structural type loose enough for a real `MutationCtx` to satisfy is too loose
  * to be worth writing. The cast stays confined to this file.
  */
-interface BudgetDb {
-  query(table: "rateLimits"): {
+interface IssuanceDb {
+  query(table: "prizeIssuance"): {
     withIndex(
-      index: "by_key",
-      range: (q: { eq(field: "key", value: string): unknown }) => unknown
-    ): { first(): Promise<BudgetRow | null> }
+      index: "by_storeId",
+      range: (q: { eq(field: "storeId", value: string): unknown }) => unknown
+    ): { first(): Promise<{ _id: unknown; issuedAt: number[] } | null> }
   }
-  insert(table: "rateLimits", doc: RateLimitWindow & { key: string }): Promise<unknown>
-  patch(id: never, patch: RateLimitWindow): Promise<void>
-}
-
-/** What the current window has left. */
-export interface PrizeBudgetState {
-  /** True when at least one more prize may be issued. */
-  allowed: boolean
-  /** Prizes already issued inside the window in force. */
-  issued: number
-  /** When the window resets and issuance resumes. */
-  resetsAt: number
+  insert(
+    table: "prizeIssuance",
+    doc: { storeId: string; issuedAt: number[]; updatedAt: number }
+  ): Promise<unknown>
+  patch(id: never, patch: { issuedAt: number[]; updatedAt: number }): Promise<void>
 }
 
 /**
- * Read the establishment's issuance window without consuming it.
+ * Read the establishment's ledger without changing it.
  *
  * Separate from the write on purpose: whether a prize may be issued has to be
- * known BEFORE the win roll, and the counter must move only when a prize
- * actually leaves the stock. A limiter that counted attempts would let a run of
- * losing spins exhaust a budget nothing was drawn from.
+ * known BEFORE the win roll, and the ledger must move only when a prize
+ * actually leaves the stock. A counter that recorded attempts would let a run
+ * of losing spins exhaust a budget nothing was drawn from.
  */
-export async function readPrizeBudget(
+export async function readPrizeIssuance(
   ctx: { db: unknown },
-  storeId: string,
-  budget: PrizeBudget,
-  now: number = Date.now()
-): Promise<PrizeBudgetState> {
-  const rule = prizeBudgetRule(budget)
-  const existing = await (ctx.db as BudgetDb)
-    .query("rateLimits")
-    .withIndex("by_key", (q) => q.eq("key", prizeBudgetKey(storeId)))
+  storeId: string
+): Promise<PrizeIssuance> {
+  const row = await (ctx.db as IssuanceDb)
+    .query("prizeIssuance")
+    .withIndex("by_storeId", (q) => q.eq("storeId", storeId))
     .first()
-
-  const live = existing && now - existing.windowStart < rule.windowMs ? existing : null
-  const verdict = checkRateLimit(
-    live ? { windowStart: live.windowStart, count: live.count } : null,
-    rule,
-    now
-  )
-
-  return {
-    allowed: verdict.allowed,
-    issued: live?.count ?? 0,
-    resetsAt: verdict.retryAt ?? (live ? live.windowStart : now) + rule.windowMs,
-  }
+  return { id: row?._id ?? null, issuedAt: row?.issuedAt ?? [] }
 }
 
 /**
- * Count one prize against the establishment's window.
+ * Write one prize into the establishment's ledger.
  *
  * Called only once a prize has genuinely been drawn and its stock decremented,
- * in the same transaction as that decrement — a counter that commits separately
- * from the thing it counts is a counter with a gap in it.
+ * in the same transaction as that decrement — a ledger that commits separately
+ * from the thing it records is a ledger with a gap in it.
  *
- * Never throws. By the time this runs the prize is already awarded, and the
- * caller established the budget had room; turning a bookkeeping edge into a
- * failed play would take a legitimately won prize away from the player who won
- * it.
+ * Takes the row the caller already read rather than reading it again, so the
+ * decision and the record cannot be made from two different states.
  */
 export async function recordPrizeIssued(
   ctx: { db: unknown },
   storeId: string,
+  issuance: PrizeIssuance,
   budget: PrizeBudget,
   now: number = Date.now()
 ): Promise<void> {
-  const rule = prizeBudgetRule(budget)
-  const db = ctx.db as BudgetDb
-  const key = prizeBudgetKey(storeId)
-
-  const existing = await db
-    .query("rateLimits")
-    .withIndex("by_key", (q) => q.eq("key", key))
-    .first()
-
-  const verdict = checkRateLimit(
-    existing ? { windowStart: existing.windowStart, count: existing.count } : null,
-    rule,
-    now
-  )
-  // Refused means the window filled between the read and here, which a
-  // serialisable transaction does not allow. Keep the row truthful anyway
-  // rather than dropping the count: the prize did leave the stock.
-  const next: RateLimitWindow = verdict.next ?? {
-    windowStart: existing?.windowStart ?? now,
-    count: (existing?.count ?? 0) + 1,
-  }
-
-  if (existing) {
-    await db.patch(existing._id as never, next)
+  const db = ctx.db as IssuanceDb
+  const issuedAt = appendPrizeIssuance(issuance.issuedAt, budget, now)
+  if (issuance.id === null) {
+    await db.insert("prizeIssuance", { storeId, issuedAt, updatedAt: now })
   } else {
-    await db.insert("rateLimits", { key, ...next })
+    await db.patch(issuance.id as never, { issuedAt, updatedAt: now })
   }
 }

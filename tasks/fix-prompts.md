@@ -1674,10 +1674,55 @@ ratio turns each into a free pizza. Two guards close it.
   in `gamePlay.ts`, throwing `ACTIONS_INCOMPLETE`. It mirrors the rule the
   player UI already applies (sequential: the action currently due; "all": every
   action flagged `isRequired`), counts what the device did on earlier visits,
-  and exempts exactly the two paths the UI routes straight to the game — the
-  friend on a real referral code and the referrer spending a bonus, both
-  decided from rows the server resolved. Bonus accrual is now capped at 5, since
-  a bonus play skips both the cooldown and this gate.
+  and exempts the two paths the UI routes straight to the game — the friend on
+  a real referral code and the referrer spending a bonus, both decided from rows
+  the server resolved.
+
+**Round three, because an adversarial pass broke round two.** Neither guard
+survived first contact, and both were rewritten rather than patched. Written
+down because "it was verified" has been claimed in this backlog before without
+anyone having tried to break the thing:
+
+- **The budget paid out twice, and reset itself.** It counted into a
+  `rateLimits` row, and that table's window is FIXED — opened by the first event,
+  never sliding, read back against whatever `windowMs` the current rule says.
+  Measured: 100 prizes out of "50 per rolling 24 h" in two minutes by waiting out
+  a boundary; 1 200 prizes when a second game with a one-hour window nudged the
+  shared counter hourly; and 50 more handed out the moment an owner *tightened*
+  the setting. It now keeps the issuance TIMESTAMPS, in a `prizeIssuance` table,
+  pruned to the most recent `maxPrizes`. Genuinely rolling, and correct in both
+  directions when the setting moves.
+- **The budget rule was picked by the caller.** `play` took it from
+  `args.gameId`, while the counter is per establishment — so an owner who
+  tightened the wheel and left the scratch card on the default got the default.
+  `strictestPrizeBudget` now reads across every active game and the tightest
+  governs.
+- **`NaN` made the budget 24× looser.** A non-finite `windowHours` was clamped to
+  the MINIMUM window, which is the loosest setting, turning "50 a day" into
+  "50 an hour". Non-finite values now fall back to the default. (The docstring
+  claiming `config: v.any()` lets any garbage through was also wrong — the schema
+  types the field and rejects a string. Only `NaN`/`±Infinity` reach it.)
+- **The public session published the budget.** `getSession` returned
+  `game.config` verbatim, so the exact ceiling the lose-don't-refuse decision
+  depends on hiding was readable by anyone with a table code. Now stripped.
+- **One `?ref` turned the actions gate off entirely.** `isFriendWelcome` rests on
+  `isFirstPlay`, which is per fingerprint, so every rotated fingerprint was a
+  first-timer — and a caller can be their own referrer, since both fingerprints
+  are theirs. Measured: 30 plays refused without `ref`; the same loop with one
+  minted code appended took **120 plays, 0 refusals, 50 prizes, every row with an
+  empty `completedActions`**. The exemption is now metered on the referral ROW
+  (`gameFriendWelcomePerReferral`, 3/day), and past it the friend plays under the
+  same rule as everyone else rather than being turned away.
+- **A banked bonus bought unlimited gate-free plays.** The exemption tested
+  `hasBonus` and never spent it: five banked bought six plays. It now consumes
+  one, exactly as it does for a cooldown.
+- **The bonus cap confiscated earned plays.** `Math.min(5, stored + 1)` clamped
+  the stored value, so a referrer sitting at 8 dropped to 5 on their next
+  conversion. It clamps the increment now.
+- **A store with more than 32 required actions was permanently unplayable.** The
+  storage cap on `completedActions` was applied to the gate too, so the honest
+  client's 33 ids became 32 and the "all" rule demanded all 33, with no error an
+  owner could diagnose. The cap is storage-only now.
 
 **What is still not fixed, and will not be by more of the same.** A stock
 smaller than the budget in force still empties: five prizes behind a fifty-prize

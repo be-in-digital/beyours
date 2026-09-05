@@ -696,9 +696,11 @@ function PrizeBudgetControl({
         <Label className="text-sm">Budget de lots</Label>
         <p className="text-xs text-muted-foreground">
           Le nombre maximum de lots distribués sur une période glissante. Au-delà, les
-          parties continuent mais ne sont plus gagnantes, jusqu&apos;à la fin de la
-          période. Par défaut : {DEFAULT_PRIZE_BUDGET.maxPrizes} lots par{" "}
-          {DEFAULT_PRIZE_BUDGET.windowHours} h.
+          parties continuent mais ne sont plus gagnantes, le temps que les lots les plus
+          anciens sortent de la période. Par défaut : {DEFAULT_PRIZE_BUDGET.maxPrizes}{" "}
+          lots par {DEFAULT_PRIZE_BUDGET.windowHours} h. Si plusieurs jeux sont actifs,
+          c&apos;est le budget le plus strict qui s&apos;applique à
+          l&apos;établissement.
         </p>
       </div>
       <div className="flex items-center gap-2">

@@ -162,6 +162,27 @@ export const gamePlaysTable = defineTable({
   .index("by_storeId_fingerprint", ["storeId", "fingerprint"])
 
 /**
+ * Prize Issuance table
+ *
+ * One row per establishment, holding the timestamps of the prizes its games
+ * have issued. This is what the prize budget counts, and it is deliberately NOT
+ * a `rateLimits` row: that table's window is fixed, opened by the first event
+ * and never sliding, which let a 50-a-day budget pay out 100 across a boundary
+ * and reset itself whenever an owner changed the window length. Timestamps
+ * answer "how many in the last N hours" correctly however the setting moves.
+ *
+ * The array is pruned to the most recent `maxPrizes` entries on every write, so
+ * it is bounded by the owner's own ceiling and never by how long the
+ * establishment has been trading.
+ */
+export const prizeIssuanceTable = defineTable({
+  storeId: v.id("stores"),
+  /** When each prize was issued, ascending. */
+  issuedAt: v.array(v.number()),
+  updatedAt: v.number(),
+}).index("by_storeId", ["storeId"])
+
+/**
  * Prize Redemptions table
  * Tracks prize redemption with QR codes
  */

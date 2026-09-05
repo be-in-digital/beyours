@@ -305,10 +305,86 @@ describe("the drain the card measured, run against the real backend", () => {
       expect(r.didWin).toBe(false)
     }
 
-    // A window that counted attempts would let a run of losing spins exhaust a
+    // A ledger that recorded attempts would let a run of losing spins exhaust a
     // budget nothing came out of.
-    const rows = await t.run((ctx) => ctx.db.query("rateLimits").collect())
-    expect(rows.some((r) => r.key === `prizeBudget:${storeId}`)).toBe(false)
+    const ledger = await t.run((ctx) => ctx.db.query("prizeIssuance").collect())
+    expect(ledger.filter((r) => r.storeId === storeId)).toHaveLength(0)
+  })
+
+  test("the window rolls, so the budget cannot be spent twice across a boundary", async () => {
+    const t = newHarness()
+    const { gameId, codes } = await seedGame(t, 100, {
+      prizeBudget: { maxPrizes: 2, windowHours: 24 },
+    })
+
+    const play = (fingerprint: string) =>
+      t.mutation(api.gamePlay.play, {
+        code: codes[0]!,
+        gameId,
+        fingerprint,
+        completedActions: [],
+      })
+
+    expect((await play("a")).didWin).toBe(true)
+    expect((await play("b")).didWin).toBe(true)
+    expect((await play("c")).didWin).toBe(false)
+
+    // Backdate the two issuances to just inside the window. With the fixed
+    // window this replaced, the counter's START was what aged out, so the whole
+    // budget became spendable again at once: 50 prizes, then 50 more a minute
+    // later, against "50 per rolling 24 h". Here each prize ages out on its own.
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.query("prizeIssuance").first())!
+      const nearlyOut = Date.now() - 24 * 60 * 60 * 1000 + 60_000
+      await ctx.db.patch(row._id, { issuedAt: [nearlyOut - 1000, nearlyOut] })
+    })
+    expect((await play("d")).didWin).toBe(false)
+
+    // Only once both have genuinely left the window does the budget return.
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.query("prizeIssuance").first())!
+      const longGone = Date.now() - 25 * 60 * 60 * 1000
+      await ctx.db.patch(row._id, { issuedAt: [longGone, longGone + 1000] })
+    })
+    expect((await play("e")).didWin).toBe(true)
+  })
+
+  test("a second game cannot loosen the establishment's budget", async () => {
+    const t = newHarness()
+    const { storeId, gameId, codes } = await seedGame(t, 100, {
+      prizeBudget: { maxPrizes: 50, windowHours: 24 },
+    })
+    // The owner adds a scratch card and sets it to one prize a day. `play`
+    // takes `gameId` from the caller, so reading the budget off the game they
+    // named let them pick the generous one — and a game with a shorter window
+    // used to reset the shared counter outright.
+    const tightGameId = await t.run((ctx) =>
+      ctx.db.insert("games", {
+        storeId,
+        type: "scratch_card",
+        name: "Carte à gratter",
+        winRatio: 100,
+        isActive: true,
+        config: { prizeBudget: { maxPrizes: 1, windowHours: 24 } },
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    )
+
+    const wins: boolean[] = []
+    for (const id of [gameId, tightGameId, gameId, tightGameId]) {
+      wins.push(
+        (
+          await t.mutation(api.gamePlay.play, {
+            code: codes[0]!,
+            gameId: id,
+            fingerprint: `f-${wins.length}`,
+            completedActions: [],
+          })
+        ).didWin
+      )
+    }
+    expect(wins).toEqual([true, false, false, false])
   })
 
   test("what this still does NOT fix: a stock smaller than the budget in force", async () => {
@@ -475,6 +551,38 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
       ref: shareCode,
     })
     expect(result.didWin).toBe(true)
+  })
+
+  test("one referral code cannot exempt an unbounded loop from the actions", async () => {
+    const t = newHarness()
+    const { gameId } = await seedGame(t, 100, { requiredActions: 1 })
+    const { code: shareCode } = await t.mutation(api.gamePlay.ensureReferralCode, {
+      code: "TABLE1",
+      fingerprint: "referrer-device",
+    })
+
+    // Measured before this was metered: `isFriendWelcome` turns on
+    // `isFirstPlay`, which is per fingerprint, so every rotated fingerprint was
+    // a first-timer and one `?ref` took 120 plays past a store demanding three
+    // Google reviews without a single refusal.
+    let exempted = 0
+    let refused = 0
+    for (let i = 0; i < 8; i++) {
+      try {
+        await t.mutation(api.gamePlay.play, {
+          code: "TABLE1",
+          gameId,
+          fingerprint: `friend-${i}`,
+          completedActions: [],
+          ref: shareCode,
+        })
+        exempted++
+      } catch {
+        refused++
+      }
+    }
+    expect(exempted).toBe(3)
+    expect(refused).toBe(5)
   })
 
   test("a referrer's banked bonuses are capped, however many friends are invented", async () => {
