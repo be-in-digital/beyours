@@ -66,16 +66,40 @@ const NOT_A_DINER: Record<string, string> = {
   cmsPages: "The staff member who last edited the page.",
   cmsBlocks: "The staff member who last edited the block.",
   cmsMedia: "The staff member who uploaded the file.",
+  invoices:
+    "A fiscal document in an unbroken numbered series (art. 242 nonies A CGI):\n     never edited, never deleted. The erasure walk reaches it through\n     `orders.invoiceId`, exports it (art. 15, 20) and REPORTS it as retained\n     under art. 17.3.b — it is out of the deletion set, not out of sight.",
   oauthStates: "A CSRF nonce tied to no person.",
   orphanProducts: "Platform menu items that failed to import.",
 }
 
-/** Every field name a table declares, however deeply nested. */
+/**
+ * Every field name a table declares, however deeply nested.
+ *
+ * WALKED, NOT GREPPED. This was a regex over `JSON.stringify(validator)`
+ * looking for `"name":{"type"`, and a Convex validator does not serialise that
+ * way — a field's value opens with `isOptional`, and `type` appears nowhere.
+ * It therefore returned the EMPTY SET for all 77 tables, which made the caller
+ * below pass by looking at nothing: no field ever matched the personal-data
+ * pattern, so nothing was ever unclassified. It was caught when `invoices`
+ * arrived in #367 carrying a buyer's name, e-mail, phone and address, and the
+ * suite stayed green. Structure now, so a shape change breaks it loudly
+ * instead of silently emptying it.
+ */
 function fieldNames(validator: unknown, into = new Set<string>()): Set<string> {
-  const json = JSON.stringify(validator ?? {})
-  for (const match of json.matchAll(/"([A-Za-z_][A-Za-z0-9_]*)":\{"type"/g)) {
-    if (match[1]) into.add(match[1])
+  const node = validator as {
+    fields?: Record<string, unknown>
+    members?: unknown[]
+    element?: unknown
+  } | null
+  if (!node || typeof node !== "object") return into
+  if (node.fields && typeof node.fields === "object") {
+    for (const [name, child] of Object.entries(node.fields)) {
+      into.add(name)
+      fieldNames(child, into)
+    }
   }
+  if (Array.isArray(node.members)) for (const member of node.members) fieldNames(member, into)
+  if (node.element) fieldNames(node.element, into)
   return into
 }
 

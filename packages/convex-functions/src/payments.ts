@@ -9,6 +9,8 @@ import { paginationOptsValidator } from "convex/server"
 import { clampPagination } from "./pagination"
 import { planRefund } from "./refundPolicy"
 import { paymentStatusAfterSettlement } from "./paymentSettlement"
+import { recordPaymentStatus } from "./orders"
+import type { OrderConfirmationDispatch } from "./orderConfirmation"
 
 /** The providers whose events can settle or reverse a charge on their own. */
 const PROVIDER_EVENT_SOURCE = v.union(
@@ -675,6 +677,7 @@ export const settleFromChargeEvent = {
     created?: boolean
     orderId?: string
     paymentId?: string
+    confirmation?: OrderConfirmationDispatch | null
   }> => {
     const externalId = args.externalId.trim()
     if (!externalId) return { status: "no_reference" }
@@ -695,10 +698,21 @@ export const settleFromChargeEvent = {
       status: order.status,
       paymentStatus: order.paymentStatus,
     })
+    let confirmation: OrderConfirmationDispatch | null = null
     if (next) {
-      await ctx.db.patch(payment.orderId, {
+      // Through `recordPaymentStatus`, not a bare patch.
+      //
+      // This path patched `paymentStatus` itself and skipped everything that
+      // hangs off an order becoming paid — the kitchen release AND the diner's
+      // confirmation. `payment_intent.succeeded` is a real Stripe event and
+      // reaches here, so an order could go to `paid` with nothing on the pass
+      // and nothing in the customer's inbox; and because
+      // `paymentStatusAfterSettlement` then answers `null` for an order already
+      // paid, no later webhook, success page or reconciliation sweep would ever
+      // put it right. The bare patch was the whole of that defect.
+      confirmation = await recordPaymentStatus.handler(ctx, {
+        id: payment.orderId,
         paymentStatus: next,
-        updatedAt: Date.now(),
       })
     }
 
@@ -716,6 +730,9 @@ export const settleFromChargeEvent = {
       created: settled.created,
       orderId: payment.orderId,
       paymentId: settled.paymentId,
+      // Handed back for the app to schedule, the same way `orders.ts` does it:
+      // this layer has no `internal.*` to schedule with.
+      confirmation,
     }
   },
 }

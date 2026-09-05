@@ -606,6 +606,32 @@ export async function privacyPass(
           if (mode === "export") {
             collect(records, "orders", order)
           }
+          // The invoice issued for this order, if #367 issued one.
+          //
+          // IT IS EXPORTED BUT NEVER ERASED. An invoice is a numbered fiscal
+          // document in an unbroken series (art. 242 nonies A CGI): it is never
+          // edited and never deleted, which its own table header states, and
+          // blanking the buyer would forge the accounting record rather than
+          // honour a request. So art. 17.3.b keeps it — and art. 15 and 20 still
+          // entitle the diner to a copy, which is why the export takes it.
+          //
+          // Reported with a real count, not silence. Before #367 this engine
+          // issued no invoice and the order WAS the pièce justificative, which
+          // is why `orders` is anonymised rather than deleted; now a second copy
+          // of the buyer's name, e-mail, phone and address survives an erasure,
+          // and the operator has to be able to tell the diner so.
+          if (order.invoiceId) {
+            const invoice = await ctx.db.get(order.invoiceId)
+            if (invoice) {
+              if (mode === "export") collect(records, "invoices", invoice)
+              note(
+                state,
+                "invoices",
+                1,
+                "Facture : document fiscal à numérotation continue, ni modifiable ni supprimable (art. 242 nonies A du CGI, art. L102 B du LPF). Conservée avec le nom et les coordonnées de l'acheteur au titre de l'art. 17.3.b ; une copie vous est remise par l'export."
+              )
+            }
+          }
           if (!orderIsErasable(order)) {
             note(
               state,

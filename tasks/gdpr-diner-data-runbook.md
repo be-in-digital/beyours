@@ -52,6 +52,10 @@ the two things that surprise people:
   and the law requires you to keep them. What leaves is the customer: name,
   e-mail, phone, delivery address, the notes on the order and the tracking
   links. The order shows as « Client anonymisé » afterwards.
+- **The invoice is kept in full.** A paid order issues a *facture*, and a fiscal
+  series cannot have a hole or an edit in it. The buyer's name and coordinates
+  stay on it, the diner receives a copy in the export, and the report names it.
+  This is the one place where « tout a été effacé » would be untrue.
 - **An order still being served is not touched yet.** Blanking the address of an
   order a courier is carrying would strand the delivery. It is reported as kept,
   and the nightly purge takes it once the service is over. If the customer wants
@@ -114,13 +118,14 @@ code runs on the defaults below.
 | # | Decision | Default in code | Why it needs confirming |
 | --- | --- | --- | --- |
 | 1 | **The retention window** | 1095 days (3 years) from the row's date | The CNIL's guidance for a consumer business's customer and prospect data. It is guidance, not a statute, and a restaurant may have a reason to hold less. |
-| 2 | **The delivery address is not part of the accounting record** | Dropped on anonymisation | This engine issues no *facture*: for a B2C restaurant sale the instrument is a *note*, whose mandatory mentions do not include the customer. If the client ever invoices a business customer, that changes and the code has no way to tell the two apart yet. |
+| 2 | **The delivery address is dropped from the ORDER on anonymisation** | Dropped | Written when the engine issued no *facture* and the order was the only record: for a B2C restaurant sale the instrument is a *note*, whose mandatory mentions do not name the customer. Since #367 an invoice is issued and keeps the address anyway (row 9), so this now decides what the ORDER keeps, not what the business retains. |
 | 3 | **Which accounting period to publish** | The code keeps orders indefinitely; nothing deletes them | Art. L123-22 C. com. says ten years for accounting documents; art. L102 B LPF says six for tax. Different obligations, different clocks. Publish one. |
 | 4 | **Card `last4` and `brand` survive an erasure** | Kept | They are the handle in a chargeback, and scheme windows run to about 540 days. Kept deliberately, and it is arguable — last4 plus amount plus date is a real re-identification vector against a bank statement. |
 | 5 | **An erasure resets promotion eligibility** | Accepted | The `promotionUsages` row exists to enforce "one use per customer". Deleting it is what erasure means, and it makes a once-per-customer offer usable again by that address. |
 | 6 | **An erasure destroys an unclaimed prize** | Accepted, and reported | A won-but-unredeemed code stops working. The report says how many. |
 | 7 | **Anonymisation is irreversible** | No mapping is kept, anywhere | A reversible mapping is pseudonymisation (art. 4.5), not erasure — and the key would be the single worst table in the deployment. The safeguard against a mistyped address is the preview, not a way back. |
 | 8 | **A game play from before the consent field cannot be claimed** | Refused with `CONSENT_REQUIRED` | Claiming attaches a name, an e-mail and a phone number to the play. Doing that to a row whose legal basis was never recorded would be collecting identified data with no basis at all. A diner holding an old winning code will be turned away and has to be handled at the counter. |
+| 9 | **The invoice survives an erasure, with the buyer on it** | Kept, exported and reported | #367 made a paid order issue an `invoices` row — a numbered fiscal document in an unbroken series (art. 242 nonies A CGI), never edited and never deleted, carrying the buyer's name, e-mail, phone and address. Art. 17.3.b covers keeping it, and the diner still gets a copy through the export. It means an erasure no longer removes every trace of a paying customer, and the reply you send them has to say so. Confirm the reading, and confirm how long the series is kept (row 3). |
 
 Record the answers here when they are made, with the date and who made them.
 
@@ -173,4 +178,4 @@ request was honoured, and it keeps the address for exactly that reason.
   every request.
 - **Closing the login account** — the authentication component's tables are not
   reachable from this screen.
-- **The eight decisions above** — the client's, with their counsel.
+- **The nine decisions above** — the client's, with their counsel.

@@ -5,6 +5,7 @@ import {
   CASCADE_BATCH_SIZE,
   deleteStoreDependents,
   detachStoreFromProfiles,
+  STORE_SCOPED_TABLES_NEVER_CASCADED,
   detachStoreFromBlogAutoConfigs,
 } from "../storeCascade"
 
@@ -153,9 +154,18 @@ describe("store references in the schema", () => {
       DETACHED_STORE_REFERENCES.map((entry) => `${entry.table}.${entry.path}`)
     )
 
+    // A third resolution, alongside deleting the row and detaching the
+    // reference: keeping the row on purpose. An invoice outlives the
+    // establishment that issued it — it is a fiscal archive, never deleted —
+    // and `assertStoreHasNoInvoices` is what stops the establishment going
+    // while one exists, so the reference cannot dangle. See
+    // `STORE_SCOPED_TABLES_NEVER_CASCADED`.
+    const exempt = new Set(STORE_SCOPED_TABLES_NEVER_CASCADED)
+
     const unhandled = storeReferencesInSchema().filter((reference) => {
       // The table's own `storeId` column: the row goes with the store.
       if (reference.path === "storeId" && swept.has(reference.table)) return false
+      if (reference.path === "storeId" && exempt.has(reference.table)) return false
       return !detached.has(`${reference.table}.${reference.path}`)
     })
 
@@ -183,13 +193,25 @@ describe("STORE_SCOPED_TABLES", () => {
       .map((reference) => reference.table)
     expect(owned.length).toBeGreaterThan(20)
 
+    // Three ways a store-scoped table can be covered: it is cascaded, its
+    // reference is detached rather than deleted, or it is deliberately exempt
+    // with a reason recorded beside it. A NEW one is none of the three and
+    // still fails here, which is what makes this check worth having.
     const declared = new Set(STORE_SCOPED_TABLES.map((entry) => entry.table))
     const detachedTables = new Set(DETACHED_STORE_REFERENCES.map((entry) => entry.table))
+    const exempt = new Set(STORE_SCOPED_TABLES_NEVER_CASCADED)
     const missing = owned.filter(
-      (name) => !declared.has(name) && !detachedTables.has(name)
+      (name) => !declared.has(name) && !detachedTables.has(name) && !exempt.has(name)
     )
 
     expect(missing).toEqual([])
+  })
+
+  it("keeps invoices out of the cascade, on purpose", () => {
+    // An invoice is a fiscal archive: never edited, never deleted. Deleting one
+    // would put a hole in a series the law requires to be unbroken.
+    expect(STORE_SCOPED_TABLES_NEVER_CASCADED).toContain("invoices")
+    expect(STORE_SCOPED_TABLES.map((e) => e.table)).not.toContain("invoices")
   })
 
   it("names only tables that exist", () => {

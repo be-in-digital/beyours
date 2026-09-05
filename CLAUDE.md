@@ -225,14 +225,21 @@ rendered at Dashboard → Organisation → **Données personnelles**:
 - **Retention** (art. 5.1.e) — the cron **purge expired customer data**, window
   in `globalSettings.dataRetention`, defaulting to the CNIL's three years.
 
-**A paid order is anonymised, never deleted.** There is no `invoices` table —
-the order IS the accounting record — so the money, lines, VAT and dates stay and
-the customer leaves. Everything else about a diner is deleted outright. Every
-run writes a `privacy_*` line to `systemAuditLog`.
+**A paid order is anonymised, never deleted.** The money, lines, VAT and dates
+stay and the customer leaves. Everything else about a diner is deleted outright.
+Every run writes a `privacy_*` line to `systemAuditLog`.
+
+**The invoice survives, whole.** Since #367 a paid order also issues an
+`invoices` row, and that is a numbered fiscal document in an unbroken series
+(art. 242 nonies A CGI) — never edited, never deleted. It keeps the buyer's
+name, e-mail, phone and address under art. 17.3.b. The erasure reaches it
+through `orders.invoiceId`, **exports** it (art. 15, 20) and **reports** it as
+retained, so the operator can tell the diner what was kept and why. Do not add
+it to the deletion set.
 
 Guarded by `customers:manage`, held by `super_admin` and `client_admin` only —
 deliberately not `customers:read`, which a waiter holds. Operator guide and the
-**eight decisions still owed by the client**:
+**nine decisions still owed by the client**:
 `tasks/gdpr-diner-data-runbook.md`.
 
 ### Design

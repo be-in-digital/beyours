@@ -363,6 +363,83 @@ describe("referential integrity after an erasure", () => {
     return dangling
   }
 
+  test("the invoice survives, is reported, and the export hands it back (#367)", async () => {
+    const t = newHarness()
+    const storeId = await seedStore(t, "Napoli Oberkampf")
+    const owner = await seedOwner(t, [storeId])
+
+    const { invoiceId } = await t.run(async (ctx) => {
+      const orderId = await ctx.db.insert("orders", {
+        storeId,
+        orderNumber: "ORD-1",
+        customerInfo: { name: "Marie Dupont", email: EMAIL_AS_TYPED, phone: PHONE },
+        type: "delivery" as const,
+        status: "completed" as const,
+        items: [],
+        subtotal: 1200,
+        taxAmount: 120,
+        total: 1320,
+        paymentStatus: "paid" as const,
+        source: "website" as const,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+      const invoiceId = await ctx.db.insert("invoices", {
+        number: "FA-2026-000001",
+        kind: "invoice" as const,
+        issuedAt: NOW,
+        year: 2026,
+        orderId,
+        orderNumber: "ORD-1",
+        storeId,
+        seller: { legalName: "Napoli SAS", storeName: "Napoli Oberkampf" },
+        buyer: {
+          name: "Marie Dupont",
+          email: EMAIL,
+          phone: PHONE,
+          address: { street: "8 rue de Charonne", city: "Paris", postalCode: "75011" },
+        },
+        lines: [],
+        subtotal: 1200,
+        taxAmount: 120,
+        taxBreakdown: [],
+        total: 1320,
+        currency: "EUR",
+        payment: { method: "card", paidAt: NOW },
+        createdAt: NOW,
+      })
+      await ctx.db.patch(orderId, { invoiceId })
+      return { invoiceId }
+    })
+
+    // The export must hand the diner their own invoice (art. 15, 20).
+    const exported = await owner.query(api.privacy.exportDataSubject, { email: EMAIL })
+    const invoiceRecords = exported.records.find((r: { table: string }) => r.table === "invoices")
+    expect(invoiceRecords?.rows).toHaveLength(1)
+
+    const report = await eraseFully(t, owner, { email: EMAIL })
+
+    // Kept, whole, buyer and all — a fiscal series has no holes (art. 242
+    // nonies A CGI), and art. 17.3.b is what allows it.
+    const invoice = await t.run((ctx) => ctx.db.get(invoiceId))
+    expect(invoice).not.toBeNull()
+    expect(invoice?.buyer.email).toBe(EMAIL)
+    expect(invoice?.buyer.name).toBe("Marie Dupont")
+    expect(invoice?.buyer.address?.street).toBe("8 rue de Charonne")
+
+    // And SAID so. A report that stayed silent would have the operator tell the
+    // diner everything was erased while their name sits on a document that
+    // cannot be touched.
+    const kept = report.report.retained.find((r: { table: string }) => r.table === "invoices")
+    expect(kept, "the erasure report must name the invoice it kept").toBeDefined()
+    expect(kept?.count).toBe(1)
+    expect(kept?.reason).toMatch(/242 nonies A|17\.3\.b/)
+
+    // The order itself still loses its customer.
+    const order = await t.run(async (ctx) => (await ctx.db.query("orders").collect())[0])
+    expect(order?.customerInfo?.email).toBeUndefined()
+  })
+
   test("CONTROL: the dangling-id checker can actually fail", async () => {
     // Without this the CLEAN below means nothing: a checker whose id detector
     // never matches reports an empty list on any database at all.

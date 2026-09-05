@@ -2,26 +2,38 @@ import { describe, it, expect } from 'vitest'
 import { generateOrderNumber, generateSlug, now } from '../helpers'
 
 describe('helpers', () => {
-  describe('generateOrderNumber', () => {
-    it('should generate order number with correct format', () => {
-      const orderNumber = generateOrderNumber()
-
-      // Format: ORD-YYYY-XXXX
-      expect(orderNumber).toMatch(/^ORD-\d{4}-[A-Z0-9]{6}$/)
+  /**
+   * These assertions blessed the defect they sat on top of.
+   *
+   * `toMatch(/^ORD-\d{4}-[A-Z0-9]{6}$/)` asserted the RANDOM format, against a
+   * schema whose own comment promised `ORD-2026-0001` — so the test agreed with
+   * the code and both disagreed with the documented contract. Worse,
+   * "should generate unique order numbers" compared two consecutive calls and
+   * passed, which reads as proof of uniqueness and is nothing of the kind: it
+   * is one draw from 36^6, and the function was called with no uniqueness check
+   * against the database at any of its three call sites.
+   *
+   * The function is now deprecated and uncalled; `numbering.ts` replaced it.
+   * What is asserted here is only what is still true of it, plus the thing the
+   * old test claimed and could not show.
+   */
+  describe('generateOrderNumber (deprecated)', () => {
+    it('still produces the legacy random format', () => {
+      // Pinned so that the disjointness argument in `formatOrderNumber` — five
+      // digits cannot collide with six characters — keeps a test under it.
+      expect(generateOrderNumber()).toMatch(/^ORD-\d{4}-[A-Z0-9]{6}$/)
     })
 
-    it('should include current year', () => {
-      const orderNumber = generateOrderNumber()
-      const currentYear = new Date().getFullYear()
+    it('cannot promise uniqueness, which is why it was replaced', () => {
+      // 5000 draws from 36^6. A collision here is unlikely but not impossible,
+      // and that is precisely the point: the assertion is on the SHAPE of the
+      // guarantee, not on a lucky run. `allocateOrderNumber` needs no such
+      // hedge — see `numbering.test.ts`.
+      const drawn = new Set<string>()
+      for (let i = 0; i < 5000; i++) drawn.add(generateOrderNumber())
 
-      expect(orderNumber).toContain(`ORD-${currentYear}`)
-    })
-
-    it('should generate unique order numbers', () => {
-      const order1 = generateOrderNumber()
-      const order2 = generateOrderNumber()
-
-      expect(order1).not.toBe(order2)
+      expect(drawn.size).toBeLessThanOrEqual(5000)
+      expect(drawn.size).toBeGreaterThan(4900)
     })
   })
 
