@@ -7,6 +7,23 @@ import {
   updateStatus,
 } from "../orders"
 import { planRefund } from "../refundPolicy"
+import { OrderRefusedError } from "../orders"
+
+/**
+ * The refusal a call produced, as the browser would read it.
+ *
+ * These assertions used to match the thrown message. The messages are French
+ * customer copy now, and copy is edited — the `code` is the contract, and it is
+ * what `data` carries across the wire. See `refusal.ts`.
+ */
+async function refusalCode(call: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await call
+    return undefined
+  } catch (error) {
+    return error instanceof OrderRefusedError ? error.reason : undefined
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Minimal in-memory Convex DB mock supporting query().filter().first() + insert.
@@ -955,7 +972,7 @@ describe("create — promotion handling", () => {
 
     await expect(
       create.handler(ctx, { ...baseArgs, promotionId: "promotions:1" } as never)
-    ).rejects.toThrow(/Promotion not found/)
+    ).rejects.toThrow(/Ce code promo n'existe pas/)
   })
 
   it("records the usage once the order is accepted", async () => {
@@ -1129,8 +1146,8 @@ describe("create — the establishment has to be published", () => {
   it("refuses a draft establishment", async () => {
     const { ctx } = ctxForStore({ name: "Pizza Chantier", status: "draft" })
 
-    await expect(create.handler(ctx, args as never)).rejects.toThrow(
-      /not open for orders/
+    await expect(refusalCode(create.handler(ctx, args as never))).resolves.toBe(
+      "store_not_published"
     )
   })
 
@@ -1161,9 +1178,9 @@ describe("create — the establishment has to be published", () => {
       // wider rule `isPublishedStore` still carries.
       const { ctx, inserted } = ctxForStore({ status })
 
-      await expect(create.handler(ctx, args as never)).rejects.toThrow(
-        /not accepting orders/
-      )
+      await expect(
+        refusalCode(create.handler(ctx, args as never))
+      ).resolves.toBe("store_not_accepting")
       expect(inserted).toEqual([])
     }
   )
@@ -1173,16 +1190,16 @@ describe("create — the establishment has to be published", () => {
     // wave it through. The rule is an allow-list for exactly this reason.
     const { ctx } = ctxForStore({ name: "Pizza Legacy" })
 
-    await expect(create.handler(ctx, args as never)).rejects.toThrow(
-      /not open for orders/
+    await expect(refusalCode(create.handler(ctx, args as never))).resolves.toBe(
+      "store_not_published"
     )
   })
 
   it("still reports a missing establishment as missing", async () => {
     const { ctx } = ctxForStore(null)
 
-    await expect(create.handler(ctx, args as never)).rejects.toThrow(
-      /Store not found/
+    await expect(refusalCode(create.handler(ctx, args as never))).resolves.toBe(
+      "store_not_found"
     )
   })
 })

@@ -23,6 +23,16 @@ import { ORDER_STATUS_CONFIG, ORDER_PAYMENT_STATUS_CONFIG } from "../../lib/voca
 type OrdersTableProps = {
   orders: Order[]
   isLoading: boolean
+  /**
+   * What to say when there is nothing to show.
+   *
+   * The default reads "Aucune commande trouvée", which is a claim about the
+   * establishment's whole history. The list is paginated, so a search that
+   * matches nothing on the page loaded so far has found nothing *yet* — and
+   * saying otherwise sends an owner looking for an order they were told does
+   * not exist.
+   */
+  emptyMessage?: string
 }
 
 /**
@@ -72,7 +82,7 @@ function getTotalItems(items: Order["items"]): number {
  * Orders table component
  * Displays orders in a table with columns for key information
  */
-export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
+export function OrdersTable({ orders, isLoading, emptyMessage }: OrdersTableProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -84,7 +94,7 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
   if (orders.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-sm text-muted-foreground">Aucune commande trouvée.</p>
+        <p className="text-sm text-muted-foreground">{emptyMessage ?? "Aucune commande trouvée."}</p>
       </div>
     )
   }

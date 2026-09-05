@@ -151,6 +151,13 @@ export interface ProductFilters {
   minPrice?: number // in cents
   maxPrice?: number // in cents
   availableOnly?: boolean
+  /**
+   * The establishment's timezone, for `availableOnly`.
+   *
+   * A serving window is the kitchen's, not the visitor's: without this the
+   * late menu is filtered out on the clock of whoever is browsing.
+   */
+  timeZone?: string
 }
 
 /**
