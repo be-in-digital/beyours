@@ -47,4 +47,15 @@ crons.cron(
   {},
 );
 
+// Probe every live instance and record what came back. Ten minutes is the
+// coarsest cadence that still catches an outage before a lunch service is lost,
+// and it keeps a 30-day uptime window at ~4 300 checks per deployment — one
+// bounded index scan per recompute. See convex/saMonitoring.ts for the rules.
+crons.cron(
+  "probe live deployments",
+  "*/10 * * * *",
+  internal.saMonitoring.runProbes,
+  {},
+);
+
 export default crons;

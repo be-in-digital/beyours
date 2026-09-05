@@ -8,6 +8,7 @@ import { useCheckoutStore } from "@/lib/store";
 import {
   FOUNDERS_OFFER,
   getCheckoutTotals,
+  TVA_ENABLED,
   type PaymentMethodSlug,
 } from "@/lib/payment-providers";
 import { WITHDRAWAL_WAIVER } from "@/lib/legal/withdrawal-waiver";
@@ -105,6 +106,20 @@ export function CheckoutFlow() {
         siret: info.siret || undefined,
         successUrl: `${origin}/checkout/success`,
         cancelUrl: `${origin}/checkout/cancel`,
+        /* What OrderSummary just rendered above this button — the same
+           constant, so the two cannot drift. The Convex side compares this
+           with what Stripe is about to do and refuses the sale when the two
+           disagree; nothing else can make that comparison, since the two flags
+           live in two envs that never meet.
+
+           It is one bit, and only one: whether VAT was quoted. It does NOT
+           certify the total. Two summaries agreeing on the tax stance can
+           still differ in amount — a founders slot taken between render and
+           submit, a referral discount revalued server-side — and this argument
+           says nothing about those. Widening it to carry the total would be a
+           different guard against a different defect; do not read this one as
+           already being it. */
+        taxDisplayed: TVA_ENABLED,
         withdrawalWaiverConsent: consentRetractation,
         ...referralArgs,
       });

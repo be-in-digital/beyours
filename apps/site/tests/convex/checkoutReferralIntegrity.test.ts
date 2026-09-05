@@ -55,6 +55,10 @@ const CHECKOUT = {
      (art. L. 221-28). The handler refuses a checkout without it, so every
      case here has to carry it to reach the behaviour it is testing. */
   withdrawalWaiverConsent: true,
+  /* Required since #346: what the summary the customer read actually
+     quoted, so the handler can check it against what Stripe is about to
+     charge. Same expression the other checkout suites use. */
+  taxDisplayed: VAT.regime === "reel",
 };
 
 beforeEach(() => {

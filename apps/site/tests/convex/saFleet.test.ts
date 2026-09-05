@@ -442,3 +442,127 @@ describe("the registration backlog", () => {
     await expect(t.query(api.saFleet.unlicensed, {})).rejects.toThrow();
   });
 });
+
+/* `saFleet.update` was the only writer of domain, version, storeCount, notes
+   and integrations after provisioning, and it was mounted on no page at all —
+   so none of those could be corrected without opening the Convex dashboard. It
+   is now behind « Modifier » on the deployment page, and two of its arguments
+   are gone: `health` and `uptime30d` belong to the prober
+   (convex/saMonitoring.ts), and a value typed here would be overwritten by the
+   next round ten minutes later. */
+describe("operator corrections go through update", () => {
+  test("it writes the fields the console displays read-only", async () => {
+    const t = convexTest(schema, modules);
+    const admin = await asAdmin(t);
+    const id = await seedDeployment(t);
+
+    await admin.mutation(api.saFleet.update, {
+      deploymentId: id,
+      domain: "chez-test.fr",
+      region: "eu-west-1",
+      version: "1.4.2",
+      latestVersion: "1.5.0",
+      storeCount: 3,
+      notes: "Bascule DNS faite le 12/03.",
+      integrations: [
+        { key: "stripe", status: "connected" },
+        { key: "deliveroo", status: "error", detail: "Webhook 401" },
+      ],
+    });
+
+    const dep = await admin.query(api.saFleet.get, { deploymentId: id });
+    expect(dep?.domain).toBe("chez-test.fr");
+    expect(dep?.region).toBe("eu-west-1");
+    expect(dep?.version).toBe("1.4.2");
+    expect(dep?.latestVersion).toBe("1.5.0");
+    expect(dep?.storeCount).toBe(3);
+    expect(dep?.notes).toBe("Bascule DNS faite le 12/03.");
+    expect(dep?.integrations).toHaveLength(2);
+    expect(dep?.integrations[1]).toEqual({
+      key: "deliveroo",
+      status: "error",
+      detail: "Webhook 401",
+    });
+  });
+
+  test("recording a new version stamps lastDeployAt", async () => {
+    const t = convexTest(schema, modules);
+    const admin = await asAdmin(t);
+    const id = await seedDeployment(t);
+
+    // Nothing wrote this field before; « Dernier déploiement » was always "—".
+    expect(
+      (await admin.query(api.saFleet.get, { deploymentId: id }))?.lastDeployAt,
+    ).toBeUndefined();
+
+    await admin.mutation(api.saFleet.update, {
+      deploymentId: id,
+      version: "1.4.2",
+    });
+    const stamped = (await admin.query(api.saFleet.get, { deploymentId: id }))
+      ?.lastDeployAt;
+    expect(stamped).toBeTypeOf("number");
+
+    // Re-submitting the same version is not a deploy.
+    await admin.mutation(api.saFleet.update, {
+      deploymentId: id,
+      version: "1.4.2",
+      notes: "rien de neuf",
+    });
+    expect(
+      (await admin.query(api.saFleet.get, { deploymentId: id }))?.lastDeployAt,
+    ).toBe(stamped);
+  });
+
+  test("health and uptime are no longer settable by hand", async () => {
+    const t = convexTest(schema, modules);
+    const admin = await asAdmin(t);
+    const id = await seedDeployment(t);
+
+    // Typed out of the signature; the validator refuses them at runtime too,
+    // so an old caller fails loudly instead of writing a figure the next probe
+    // round silently overwrites.
+    const forbidden = {
+      deploymentId: id,
+      health: "healthy",
+      uptime30d: 99.99,
+    } as unknown as { deploymentId: typeof id };
+
+    await expect(
+      admin.mutation(api.saFleet.update, forbidden),
+    ).rejects.toThrow(/Unexpected field `(health|uptime30d)`/);
+  });
+
+  test("it is refused to a caller who is not an admin", async () => {
+    const t = convexTest(schema, modules);
+    const id = await seedDeployment(t);
+
+    await expect(
+      t.mutation(api.saFleet.update, {
+        deploymentId: id,
+        domain: "pirate.example",
+      }),
+    ).rejects.toThrow();
+  });
+
+  test("provisioning no longer claims a perfect uptime", async () => {
+    const t = convexTest(schema, modules);
+    const admin = await asAdmin(t);
+
+    const id = await admin.mutation(api.saFleet.create, {
+      customerEmail: "chef@restaurant.example",
+      restaurantName: "Chez Test",
+      city: "Lyon",
+      name: "chez-test",
+      domain: "chez-test.example",
+      plan: "essentielle",
+    });
+
+    const dep = await admin.query(api.saFleet.get, { deploymentId: id });
+    // `uptime30d` is a placeholder every reader gates on `lastCheckAt`; it is
+    // 0 rather than 100 so an ungated reader fails visibly.
+    expect(dep?.uptime30d).toBe(0);
+    expect(dep?.lastCheckAt).toBeUndefined();
+    expect(dep?.health).toBe("unknown");
+  });
+});

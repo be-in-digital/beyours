@@ -78,8 +78,14 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
   in the dashboard (registered address, FR registration), set
   `tax_behavior=exclusive` on the four maintenance Prices, then
   `STRIPE_TAX_ENABLED=true` (Convex env) and `NEXT_PUBLIC_TVA_ENABLED=true`
-  (Next env). Until both are set, the site refuses to boot in production
-  (`validateSiteEnv`) and `createCheckoutSession` refuses the sale — deliberately:
+  (Next env). Until the Next flag is set the site refuses to boot in production
+  (`validateSiteEnv`, which sees only that half) — but note what that does NOT
+  cover: `/checkout` and `/tarifs` are prerendered as static content and served
+  from the CDN without booting a server, so the boot refusal never stands
+  between those pages and a customer. What keeps them correct is
+  `resolveTvaEnabled`, which resolves an unset flag to the declared regime
+  rather than to "no VAT". Until the Convex flag is set
+  `createCheckoutSession` refuses the sale — deliberately:
   an invoice stating a VAT position the company does not hold cannot be taken
   back, while a refused sale can be retried. Dashboard-only, so it cannot be
   done from the code.
@@ -131,9 +137,23 @@ Provisioning is **100% manual**, and **that is acceptable at the volume we targe
   most favourable — so an unlinked site is entitled by its owner's healthiest
   contract rather than its own. **Left**: link the sites already delivered,
   listed on `/admin/flotte` (`tasks/license-key-registration-runbook.md`).
-- [ ] 🟡 **[build] Real monitoring**: `saMonitoringChecks` is a table with no
-  meaning without a loop. Add a cron (every 5-10 min) that pings each `live`
-  instance and records a check. Do it once there are several instances.
+- [x] ✅ **Real monitoring** (2026-09-05): the loop exists. A cron
+  (`convex/crons.ts`, `*/10 * * * *`) runs `saMonitoring.runProbes`, which GETs
+  each `live`/`degraded` instance's site root and, when it has one, its Convex
+  backend at `/instance_name` — the endpoint `npx convex network-test` itself
+  uses. There is deliberately **no `/health` route**: neither `apps/themes` nor
+  `apps/reference` serves one, so the root is the honest target; point
+  `httpTarget()` at a real health route the day one ships. Each round records
+  its checks through an `internalMutation`, then recomputes `health` (one failed
+  round = degraded, two consecutive = down) and `uptime30d` (share of http
+  probes over 30 days) from those rows. A deployment nobody has probed reports
+  « — », not 100 %: `updateStatus` no longer promotes `health` to "healthy" on
+  go-live, and every average skips deployments with no `lastCheckAt`.
+  « Sonder maintenant » on `/admin/monitoring` and on a deployment page forces
+  a round. Covered by `tests/convex/saMonitoring.test.ts`.
+  **Left**: `integration` and `webhook` checks are still unwritten — probing a
+  client's Stripe or Uber Eats needs that client's credentials, which this
+  backend does not hold.
 - [ ] 🟡 **[decision] Automating provisioning**: push it back until ~20-30
   customers. The manual runbook (PROCESS_DE_VENTE.md §5) is enough until then.
 

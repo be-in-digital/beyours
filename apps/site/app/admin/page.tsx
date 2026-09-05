@@ -186,7 +186,9 @@ export default function AdminOverviewPage() {
             <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
               <span className="text-muted-foreground">Uptime moyen</span>
               <span className="font-display font-semibold tnum">
-                {formatPercentPoints(fleet.avgUptime)}
+                {fleet.avgUptime === null
+                  ? "—"
+                  : formatPercentPoints(fleet.avgUptime)}
               </span>
             </div>
           </Card>
