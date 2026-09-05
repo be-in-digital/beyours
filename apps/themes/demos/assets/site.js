@@ -422,7 +422,7 @@
     document.title = `${LOCS.length > 1 ? "Nos adresses" : "Nous trouver"} · ${brandTxt()} (démo)`;
     chrome("locations", `
       <div class="wrap page-head"><h1>${LOCS.length > 1 ? "Nos adresses" : "Nous trouver"}</h1>
-      <p>${LOCS.length > 1 ? "Choisissez votre lieu : votre commande s'y rattache." : "Une seule adresse, tout le reste en ligne."}</p></div>
+      <p>${LOCS.length > 1 ? "Choisissez votre lieu : c'est là que votre commande sera préparée." : "Une seule adresse, tout le reste en ligne."}</p></div>
       <section class="sec" style="padding-top:24px"><div class="wrap"><div class="locgrid" id="locgrid">${LOCS.map((l) => locCard(l, true)).join("")}</div></div></section>`);
     document.getElementById("locgrid").addEventListener("click", (e) => {
       const b = e.target.closest("[data-choose]"); if (!b) return;
