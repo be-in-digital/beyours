@@ -17,6 +17,11 @@ import {
   taxDisplayMismatch,
   vatConfigurationProblem,
 } from "./invoiceLegal";
+import {
+  findSubscriptionForOrder,
+  maintenanceIdempotencyKey,
+  maintenanceSubscriptionParams,
+} from "./maintenanceSubscription";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -487,13 +492,11 @@ export const createSubscription = internalAction({
     // and reported WITHOUT returning 500 (see http.ts handleCheckoutCompleted).
     const priceId = resolveMaintenancePriceId(args.plan, args.billingPeriod);
 
-    // Work out when the next period starts
-    // (the first period is already paid for at checkout)
-    const now = Math.floor(Date.now() / 1000);
-    const trialEnd =
-      args.billingPeriod === "monthly"
-        ? now + 30 * 24 * 60 * 60 // +30 jours
-        : now + 365 * 24 * 60 * 60; // +365 jours
+    const order = {
+      orderId: args.orderId,
+      plan: args.plan,
+      billingPeriod: args.billingPeriod,
+    };
 
     /* ── Legal mentions on the renewal invoices ──
        invoice_creation on the Checkout session covers the FIRST invoice only.
@@ -509,17 +512,54 @@ export const createSubscription = internalAction({
       invoice_settings: invoiceLegalSettings(args.buyerType),
     });
 
-    const subscription = await stripe.subscriptions.create({
+    /* ── Does Stripe already bill this order? ──
+       Asked before creating, because neither our row nor the idempotency key
+       is guaranteed to still be there: a delivery that created the subscription
+       and then died leaves no row, and Stripe forgets an idempotency key after
+       24 h while it keeps retrying the webhook for three days. Checkout opens
+       one Customer per session, so a page of a hundred is far more than this
+       customer can hold — the number is a guard against an unbounded call, not
+       a cap on anything real. */
+    const known = await stripe.subscriptions.list({
       customer: args.stripeCustomerId,
-      items: [{ price: priceId }],
-      trial_end: trialEnd,
-      ...(stripeTaxEnabled() ? { automatic_tax: { enabled: true } } : {}),
-      metadata: {
-        orderId: args.orderId,
-        plan: args.plan,
-        billingPeriod: args.billingPeriod,
-      },
+      limit: 100,
     });
+    const adopted = findSubscriptionForOrder(known.data, args.orderId);
+
+    if (adopted) {
+      /* Worth seeing: it means an earlier delivery got as far as Stripe and
+         never came back to record it. Nothing is broken now, but the sale went
+         through a path that lost its footing halfway. */
+      console.warn(
+        `[STRIPE] Order ${args.orderId} already carries subscription ${adopted.id} at Stripe — ` +
+          `adopting it instead of creating a second one.`,
+      );
+    }
+
+    /* The deterministic key is what stops the concurrent case: the delivery
+       that loses the race gets THIS subscription back from Stripe rather than
+       a second one that would bill on every renewal. See
+       ./maintenanceSubscription for why the parameters may not read a clock. */
+    const subscription =
+      adopted ??
+      (await stripe.subscriptions.create(
+        maintenanceSubscriptionParams({
+          order,
+          stripeCustomerId: args.stripeCustomerId,
+          priceId,
+          automaticTax: stripeTaxEnabled(),
+        }),
+        { idempotencyKey: maintenanceIdempotencyKey(order) },
+      ));
+
+    /* Read off the subscription Stripe returned, never off a local clock: an
+       adopted subscription may be hours old, and a replay hands back the
+       original object. `trial_end` is when billing actually starts — the first
+       period was collected at checkout. */
+    const periodStartMs = subscription.start_date * 1000;
+    const periodEndMs = subscription.trial_end
+      ? subscription.trial_end * 1000
+      : undefined;
 
     await ctx.runMutation(internal.subscriptions.create, {
       orderId: args.orderId,
@@ -529,12 +569,15 @@ export const createSubscription = internalAction({
       plan: args.plan,
       billingPeriod: args.billingPeriod,
       status: "active",
-      currentPeriodStart: now * 1000,
-      currentPeriodEnd: trialEnd * 1000,
+      currentPeriodStart: periodStartMs,
+      currentPeriodEnd: periodEndMs,
     });
 
     console.log(
-      `Subscription ${subscription.id} created for order ${args.orderId} (trial until ${new Date(trialEnd * 1000).toISOString()})`,
+      `Subscription ${subscription.id} recorded for order ${args.orderId}` +
+        (periodEndMs
+          ? ` (trial until ${new Date(periodEndMs).toISOString()})`
+          : ""),
     );
   },
 });

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "@/components/admin/ui/toast";
 import { useAdmin } from "@/components/admin/auth-gate";
 import {
@@ -33,7 +34,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/admin/ui/dialog";
-import { formatRelative } from "@/lib/format";
+import { formatCents, formatDate, formatRelative } from "@/lib/format";
 
 /* ── Checklist go-live (informatif, statique) ── */
 const GO_LIVE_STEPS: { title: string; detail: string }[] = [
@@ -64,6 +65,11 @@ const GO_LIVE_STEPS: { title: string; detail: string }[] = [
   {
     title: "Bascule DNS / domaine",
     detail: "Le domaine final pointe vers l'instance et le certificat est actif.",
+  },
+  {
+    title: "Clé de licence reportée dans le site",
+    detail:
+      "Fiche du déploiement, panneau Licence : la clé et l'API doivent être écrites dans le .beindigital-site.json du client, sinon ses mises à jour ne vérifient aucun contrat.",
   },
 ];
 
@@ -204,17 +210,28 @@ function ProvisionDialog({
   const clients = useQuery(api.saClients.list, {});
   const create = useMutation(api.saFleet.create);
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
+  const [orderId, setOrderId] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  /* The paid orders of the selected client, to link one to this deployment.
+     Skipped entirely until a client is chosen. */
+  const orders = useQuery(
+    api.saClients.paidOrders,
+    form.customerEmail ? { customerEmail: form.customerEmail } : "skip",
+  );
 
   // Resets the form every time it is opened.
   React.useEffect(() => {
-    if (open) setForm(EMPTY_FORM);
+    if (open) {
+      setForm(EMPTY_FORM);
+      setOrderId("");
+    }
   }, [open]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   function onClientChange(email: string) {
+    setOrderId("");
     const client = clients?.find((c) => c.email === email);
     if (!client) {
       setForm((f) => ({ ...f, customerEmail: "" }));
@@ -249,8 +266,13 @@ function ProvisionDialog({
         domain: form.domain.trim(),
         plan: form.plan,
         region: form.region,
+        ...(orderId ? { orderId: orderId as Id<"orders"> } : {}),
       });
-      toast.success("Déploiement provisionné.");
+      toast.success(
+        orderId
+          ? "Déploiement provisionné et rattaché à sa commande."
+          : "Déploiement provisionné — sans commande liée, sa maintenance ne peut pas lui être opposée.",
+      );
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erreur");
@@ -291,6 +313,47 @@ function ProvisionDialog({
                 </option>
               ))}
             </Select>
+          </div>
+
+          {/* Which contract answers for this site. Without it the maintenance
+              gate replies from the healthiest subscription the customer holds,
+              so a multi-site owner is never refused on the one they stopped
+              paying for. It cannot be guessed — hence a human choice. */}
+          <div className="space-y-1.5">
+            <Label htmlFor="prov-order">Commande rattachée</Label>
+            <Select
+              id="prov-order"
+              value={orderId}
+              onChange={(e) => setOrderId(e.target.value)}
+              disabled={!form.customerEmail || orders === undefined}
+            >
+              <option value="">
+                {!form.customerEmail
+                  ? "Sélectionner un client d'abord"
+                  : orders === undefined
+                    ? "Chargement…"
+                    : orders.length === 0
+                      ? "Aucune commande payée"
+                      : "Sans commande liée"}
+              </option>
+              {orders?.map((o) => (
+                <option
+                  key={o._id}
+                  value={o._id}
+                  disabled={o.linkedDeployment !== null}
+                >
+                  {formatDate(o.createdAt)} — {o.restaurantName} (
+                  {formatCents(o.amountCents)})
+                  {o.linkedDeployment
+                    ? ` — déjà liée à ${o.linkedDeployment}`
+                    : ""}
+                </option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Sans elle, la maintenance de ce site répondra depuis le contrat le
+              plus favorable du client, pas depuis le sien.
+            </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

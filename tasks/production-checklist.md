@@ -17,8 +17,10 @@
 
 > **IMPORTANT**: the current credentials are in **test** mode. Before going to production, they must be replaced with the real live credentials.
 
-> ✅ **Target deployment confirmed** (Convex dashboard, 2026-08-28):
-> `robust-elephant-263` is the **production** deployment of project
+> ✅ **Target deployment confirmed** (Convex dashboard, 2026-08-28) — **and
+> superseded on 2026-09-01**: the engine's production is now
+> `optimistic-swordfish-937`, as the heading below says. As measured then,
+> `robust-elephant-263` was the **production** deployment of project
 > `beindigital-engine` — the same project whose dev deployment is
 > `reliable-parrot-452`. This file was right; the doubt came from the name never
 > having been written down anywhere else. Full inventory:
@@ -45,8 +47,9 @@ deployment backs `apps/site` (beyours.fr), whose `convex/` directory contains no
 exists only in `apps/reference/convex/` and `apps/themes/convex/`. The rule
 enforced by `apps/site/scripts/check-prod-bundle.mjs` is about the **browser
 bundle served by beyours.fr**, a different app and a different artefact. The two
-statements never conflicted. (The rule still names `fearless-poodle-133`, the
-site's *former* production deployment — see the banner.)
+statements never conflicted. (That rule named `fearless-poodle-133`, the site's
+*former* production deployment, until it was updated; `ALLOWED_CONVEX_SUBDOMAIN`
+is `famous-wildcat-229` — verified 5 Sep 2026.)
 
 **The site has its own, separate Stripe surface**, and it is what gates the
 first sale: the founders coupon, the two creation Products and the four

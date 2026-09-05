@@ -4,7 +4,14 @@ import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Server, Signal, Activity, TriangleAlert, Search } from "lucide-react";
+import {
+  Server,
+  Signal,
+  Activity,
+  TriangleAlert,
+  Search,
+  KeyRound,
+} from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { KpiCard } from "@/components/admin/kpi-card";
 import { EmptyState } from "@/components/admin/empty-state";
@@ -55,6 +62,7 @@ export default function FleetPage() {
   }, [search]);
 
   const stats = useQuery(api.saFleet.stats, {});
+  const unlicensed = useQuery(api.saFleet.unlicensed, {});
   const deployments = useQuery(api.saFleet.list, {
     ...(status ? { status } : {}),
     ...(health ? { health } : {}),
@@ -74,6 +82,71 @@ export default function FleetPage() {
           {stats ? `${formatNumber(stats.total)} déploiements` : "…"}
         </Badge>
       </PageHeader>
+
+      {/* What still stands between us and a refusable renewal. A site with no
+          key asks nothing; a site with no order linked is answered by the
+          healthiest contract its owner holds rather than by its own. Both lists
+          have to be empty before BEYOURS_LICENSE_ENFORCEMENT is set to strict —
+          it refuses exactly the first one. */}
+      {unlicensed &&
+        (unlicensed.missing.length > 0 || unlicensed.unlinked.length > 0) && (
+          <Card className="border-warning-border bg-warning-soft p-4">
+            <div className="flex gap-3">
+              <KeyRound className="mt-0.5 size-4 shrink-0 text-warning" />
+              <div className="min-w-0 space-y-3">
+                <p className="text-sm font-medium text-foreground">
+                  Maintenance non opposable sur une partie de la flotte
+                </p>
+
+                {unlicensed.missing.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="text-foreground">
+                        {unlicensed.missing.length} site
+                        {unlicensed.missing.length > 1
+                          ? "s livrés"
+                          : " livré"}{" "}
+                        sans clé de licence
+                      </span>{" "}
+                      — leurs scripts de mise à jour ne vérifient rien. Émettez
+                      la clé sur la fiche, puis reportez-la dans le{" "}
+                      <span className="font-mono text-xs">
+                        .beindigital-site.json
+                      </span>{" "}
+                      du client.
+                    </p>
+                    <DeploymentLinks rows={unlicensed.missing} />
+                  </div>
+                )}
+
+                {unlicensed.unlinked.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="text-foreground">
+                        {unlicensed.unlinked.length} site
+                        {unlicensed.unlinked.length > 1
+                          ? "s livrés"
+                          : " livré"}{" "}
+                        sans commande rattachée
+                      </span>{" "}
+                      — leur maintenance répond depuis le contrat le plus
+                      favorable du client, pas depuis le leur. Rattachez la
+                      commande sur la fiche.
+                    </p>
+                    <DeploymentLinks rows={unlicensed.unlinked} />
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Marche à suivre :{" "}
+                  <span className="font-mono">
+                    tasks/license-key-registration-runbook.md
+                  </span>
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
 
       {/* KPIs */}
       {stats === undefined ? (
@@ -315,6 +388,27 @@ export default function FleetPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+function DeploymentLinks({
+  rows,
+}: {
+  rows: { _id: string; restaurantName: string }[];
+}) {
+  return (
+    <ul className="flex flex-wrap gap-x-3 gap-y-1">
+      {rows.map((d) => (
+        <li key={d._id}>
+          <Link
+            href={`/admin/flotte/${d._id}`}
+            className="text-sm text-foreground underline-offset-4 hover:underline"
+          >
+            {d.restaurantName}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 

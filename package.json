@@ -8,6 +8,7 @@
     "lint": "turbo run lint",
     "check:accents": "node scripts/check-french-accents.mjs",
     "check:divergence": "node scripts/check-app-divergence.mjs",
+    "check:mirror-css": "node scripts/check-mirror-css.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",

@@ -242,6 +242,8 @@ https://<deploiement-convex-prod>.convex.site/connect/uber-eats/callback
 ```
 Référence sur l'app de test « Base Theme » :
 `https://reliable-parrot-452.convex.site/connect/uber-eats/callback`
+(déploiement de dev perso resté sur l'ancienne team `momoseck8` depuis le
+2026-09-01 : il répond encore, il ne sert plus rien)
 
 ## Le chemin est défini ici
 ```
@@ -356,17 +358,24 @@ depuis Stripe renvoie `200`.
 
 **Priorité : high**
 
-> ✅ **Débloqué par la fiche 15.** Le déploiement cible est **`robust-elephant-263`**
-> — la **production** du projet `beindigital-engine`, confirmée au dashboard le
-> 2026-08-28 (même projet que `reliable-parrot-452`, qui en est le dev perso
-> `dev/mamadou-seck`). Le nom n'était consigné que dans un seul fichier, d'où le
-> doute ; il était juste.
+> ⚠️ **Cible corrigée le 2026-09-05 : c'est `optimistic-swordfish-937`.** Le
+> transfert du 2026-09-01 a déplacé la production du moteur ;
+> `robust-elephant-263` répond toujours `200` et ne sert plus rien, donc la
+> commande d'origine écrivait des clés Stripe **live** dans un déploiement mort,
+> sans rien signaler. Inventaire :
+> [README → Convex deployments](../README.md#convex-deployments).
+>
+> ~~✅ **Débloqué par la fiche 15.** Le déploiement cible est
+> **`robust-elephant-263`** — la **production** du projet `beindigital-engine`,
+> confirmée au dashboard le 2026-08-28~~ (même projet que `reliable-parrot-452`,
+> qui en était le dev perso `dev/mamadou-seck`). Le nom n'était consigné que dans
+> un seul fichier, d'où le doute ; il était juste **à cette date**.
 >
 > Deux points de vigilance avant de lancer les commandes :
 > - `--prod` passe par le `CONVEX_DEPLOYMENT` local, et `apps/reference` a aussi
 >   été relié à un projet parasite (`beyours-reference`). Lancer
 >   `pnpx convex env list --prod` **d'abord** et vérifier qu'il affiche bien
->   `robust-elephant-263`.
+>   `optimistic-swordfish-937`.
 > - `BID_APP_URL` n'est pas une URL Convex : c'est la base des redirections
 >   Stripe, donc une page publique (voir la fiche 15).
 
@@ -522,14 +531,19 @@ qui se contredisaient ont été corrigés (`tasks/production-checklist.md`,
 `apps/reference/MISE_EN_PROD.md`, `apps/site/.env.production.example`,
 `tasks/convex-spending-cap-runbook.md` §2).
 
-| Déploiement | App | Rôle | Projet |
+**Tous les rôles de ce tableau ont été périmés le 2026-09-01** par le transfert
+vers la team `be-yours`. Il est conservé comme le relevé qui a levé les
+contradictions à l'époque ; l'inventaire à jour est dans
+[README → Convex deployments](../README.md#convex-deployments).
+
+| Déploiement | Rôle **au 2026-08-28** | App | Projet |
 |---|---|---|---|
-| `fearless-poodle-133` | `apps/site` | **prod** (beyours.fr) | `wedilybird` |
-| `capable-crocodile-720` | `apps/site` | dev | non consigné |
-| `reliable-parrot-452` | `apps/reference` | dev **perso** (`dev/mamadou-seck`) | `beindigital-engine` |
-| `youthful-goose-352` | `apps/reference` | dev parasite | `beyours-reference` |
-| `robust-elephant-263` | `apps/reference` | **prod** du moteur (dont facturation BID) | `beindigital-engine` |
-| `happy-otter-123` | `apps/site` | mort (bug #6) | — |
+| `fearless-poodle-133` | alors **prod** (beyours.fr) ; ne sert plus rien, remplacé par `famous-wildcat-229` | `apps/site` | `wedilybird` |
+| `capable-crocodile-720` | dev | `apps/site` | non consigné |
+| `reliable-parrot-452` | dev **perso** (`dev/mamadou-seck`) | `apps/reference` | `beindigital-engine` |
+| `youthful-goose-352` | dev parasite | `apps/reference` | `beyours-reference` |
+| `robust-elephant-263` | alors **prod** du moteur (dont facturation BID) ; ne sert plus rien, remplacé par `optimistic-swordfish-937` | `apps/reference` | `beindigital-engine` |
+| `happy-otter-123` | mort (bug #6) | `apps/site` | — |
 
 ## Les fausses contradictions, levées
 - **Trois noms de projet ≠ trois noms pour un projet.** `wedilybird`,
@@ -582,11 +596,16 @@ aussi sur `momoseck8`**. Donc les cinq déploiements vivants, trois projets, son
 sur **une seule team** — et le seuil de désactivation du plafond de dépenses est
 le seul bouton capable de tout couper d'un coup :
 
-| Si le seuil saute | Ce qui s'arrête |
+| Si le seuil saute | Ce qui s'arrêtait, au 2026-08-28 |
 |---|---|
 | `fearless-poodle-133` | beyours.fr — le site où les prospects achètent |
 | `robust-elephant-263` | les restaurants clients **et** la facturation Stripe BID |
 | les trois déploiements de dev | toute l'équipe, au même instant |
+
+**Ce tableau est historique.** Depuis le 2026-09-01 ces déploiements ne servent
+plus rien : le seuil de `momoseck8` ne peut plus couper la production. Celui qui
+le peut est celui de **`be-yours`**, au-dessus de `famous-wildcat-229` et
+`optimistic-swordfish-937` — même point de rupture unique, autre team.
 
 Pas de seconde team en filet, aucun projet isolé. Conséquence directe pour
 LAUNCH-07 : privilégier un **seuil d'alerte qu'on lit** plutôt qu'un seuil de

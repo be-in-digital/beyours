@@ -128,9 +128,15 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
 Provisioning is **100% manual**, and **that is acceptable at the volume we target**
 (≤ ~20-30 customers). Do not over-industrialize it now. Still worth doing:
 
-- [ ] 🟠 **[build] Link order → deployment**: `saDeployments.orderId` exists
-  but is never filled in. Pass the `orderId` through the « Provisionner » form
-  so payment → instance is traceable (audit + follow-up).
+- [x] 🟠 **[build] Link order → deployment** — done (#181). `saFleet.create` and
+  `saFleet.update` accept an `orderId`, the « Provisionner » form lists the
+  customer's paid orders, and a site delivered before this can be linked from
+  its own page. It was filed as traceability; it is more than that. The
+  maintenance gate resolves a site's entitlement through this link, and without
+  it falls back to every subscription under the customer's email keeping the
+  most favourable — so an unlinked site is entitled by its owner's healthiest
+  contract rather than its own. **Left**: link the sites already delivered,
+  listed on `/admin/flotte` (`tasks/license-key-registration-runbook.md`).
 - [x] ✅ **Real monitoring** (2026-09-05): the loop exists. A cron
   (`convex/crons.ts`, `*/10 * * * *`) runs `saMonitoring.runProbes`, which GETs
   each `live`/`degraded` instance's site root and, when it has one, its Convex
@@ -188,8 +194,12 @@ Provisioning is **100% manual**, and **that is acceptable at the volume we targe
 `NEXT_PUBLIC_*` values are **inlined at `next build`**; changing the Vercel variable
 is not enough, you have to rebuild. Prod values are in `.env.production.example`.
 
-- [ ] 🔴 **[config]** Set `NEXT_PUBLIC_CONVEX_URL=https://fearless-poodle-133.convex.cloud`
+- [ ] 🔴 **[config]** Set `NEXT_PUBLIC_CONVEX_URL=https://famous-wildcat-229.convex.cloud`
   (+ `…_CONVEX_SITE_URL`, `…_SITE_URL`) on the Vercel **Production** environment.
+  This named `fearless-poodle-133` until 5 Sep 2026 — the former production,
+  which still answers and serves nothing. Following it would have pointed
+  beyours.fr at a dead backend. Deployment names: `README.md` → **Convex
+  deployments**.
 - [ ] 🔴 **[config] REBUILD WITHOUT CACHE** (Vercel → Redeploy, **uncheck** « Use
   existing Build Cache »). A plain redeploy reuses the old bundle and does NOT
   re-inline.
