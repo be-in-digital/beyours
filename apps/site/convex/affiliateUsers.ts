@@ -47,15 +47,19 @@ export const me = query({
   },
 });
 
-export const getByUserId = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("affiliateUsers")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .unique();
-  },
-});
+/* ── No public `getByUserId` here, on purpose ──
+   It took a `v.id("users")` and performed no identity check, so an anonymous
+   caller who held or guessed a user id read the whole affiliate document:
+   first and last name, address, city, postal code, phone, SIRET, role,
+   `commissionOverrideCents` and `stripeConnectAccountId`. The deployment URL
+   ships in the browser bundle, so "public query" means public — the same rule
+   that removed `orders.get` and `invoices.getByEmail` in this app, and the same
+   defect the engine closed on `userProfiles.getByUserId`.
+
+   It had no caller. Every UI path reads `me` above, which derives the affiliate
+   from the session and can only ever return the caller's own row; the server
+   paths use `getByUserIdInternal` below, which is an `internalQuery` and is
+   therefore unreachable from a browser. */
 
 /* ── Public mutations ── */
 

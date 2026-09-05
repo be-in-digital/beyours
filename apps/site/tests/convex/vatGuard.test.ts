@@ -57,6 +57,7 @@ function checkoutArgs() {
     // require of it. Overridden in the cross-env cases below, which are about
     // the two disagreeing.
     taxDisplayed: CHARGING_EXPECTED,
+    withdrawalWaiverConsent: true,
   };
 }
 

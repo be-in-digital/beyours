@@ -37,6 +37,7 @@ const CHECKOUT = {
   // STRIPE_TAX_ENABLED is pinned below: these cases are about the Stripe key,
   // and the third refusal must not answer for the first.
   taxDisplayed: VAT.regime === "reel",
+  withdrawalWaiverConsent: true,
 };
 
 beforeEach(() => {

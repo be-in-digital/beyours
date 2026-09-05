@@ -27,6 +27,17 @@ crons.cron(
   {},
 );
 
+// Enforce the published retention schedule: prospects are deleted three years
+// after their last contact (/confidentialite §6). Off-peak, and next to the
+// storage sweep, so the two destructive jobs land together in the log. Neither
+// reads what the other writes — no row this one deletes references a file.
+crons.cron(
+  "delete expired prospects",
+  "15 4 * * *",
+  internal.retention.sweepExpiredProspects,
+  {},
+);
+
 // Delete upload-URL files that were never attached to a commission.
 // Off-peak, and after the referral jobs above have settled the rows this reads.
 crons.cron(
