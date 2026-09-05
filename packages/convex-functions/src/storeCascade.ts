@@ -82,6 +82,59 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
 ]
 
 /**
+ * Store-scoped tables that must NOT be cascaded, and why.
+ *
+ * This list is not a loophole. `storeCascade.test.ts` compares
+ * `STORE_SCOPED_TABLES` against the schema and a new table carrying a
+ * `storeId` still fails that test until it appears in one list or the other —
+ * so the decision has to be made and written down, which is the point.
+ *
+ * - **invoices** — a *facture* is a fiscal archive, not operational data. It is
+ *   never edited and never deleted; deleting one would put a hole in a series
+ *   art. 242 nonies A requires to be unbroken. It also does not need the store
+ *   row: the seller identity, the establishment's name and address, the buyer
+ *   and the lines are all snapshotted onto the document at issue, so an invoice
+ *   whose establishment is gone still reads correctly.
+ *
+ *   `assertStoreHasNoInvoices` is what stops an establishment being deleted out
+ *   from under one. Nothing here silently keeps rows behind an owner's back.
+ */
+export const STORE_SCOPED_TABLES_NEVER_CASCADED: ReadonlyArray<string> = [
+  "invoices",
+]
+
+/**
+ * Refuse to delete an establishment that has issued invoices.
+ *
+ * Deleting it would take its ORDERS with it, and every invoice references the
+ * order it was issued for — so the archive would survive with its references
+ * dangling, which is worse than either keeping the establishment or being told
+ * plainly that it cannot go.
+ *
+ * A draft establishment, or one that never took a paid order, has no invoices
+ * and deletes exactly as before.
+ */
+export async function assertStoreHasNoInvoices(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown
+): Promise<void> {
+  const issued = await ctx.db
+    .query("invoices")
+    .withIndex("by_storeId_issuedAt", (q: { eq: (f: string, v: unknown) => unknown }) =>
+      q.eq("storeId", storeId)
+    )
+    .first()
+
+  if (issued) {
+    throw new Error(
+      "Cet établissement a émis des factures : il ne peut pas être supprimé. " +
+        "Les factures sont des documents comptables conservés de façon définitive."
+    )
+  }
+}
+
+/**
  * How many dependent documents one transaction will delete.
  *
  * A Convex mutation is one transaction with a bounded read and write budget,

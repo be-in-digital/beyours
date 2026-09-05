@@ -5,6 +5,7 @@ import {
   CASCADE_BATCH_SIZE,
   deleteStoreDependents,
   detachStoreFromProfiles,
+  STORE_SCOPED_TABLES_NEVER_CASCADED,
 } from "../storeCascade"
 
 /**
@@ -45,10 +46,23 @@ describe("STORE_SCOPED_TABLES", () => {
     // A silent zero here would make this test pass by finding nothing.
     expect(inSchema.length).toBeGreaterThan(20)
 
-    const declared = new Set(STORE_SCOPED_TABLES.map((entry) => entry.table))
+    // A table is covered either by being cascaded or by being deliberately
+    // exempted with a reason. A NEW store-scoped table appears in neither and
+    // still fails here, which is what makes this check worth having.
+    const declared = new Set([
+      ...STORE_SCOPED_TABLES.map((entry) => entry.table),
+      ...STORE_SCOPED_TABLES_NEVER_CASCADED,
+    ])
     const missing = inSchema.filter((name) => !declared.has(name))
 
     expect(missing).toEqual([])
+  })
+
+  it("keeps invoices out of the cascade, on purpose", () => {
+    // An invoice is a fiscal archive: never edited, never deleted. Deleting one
+    // would put a hole in a series the law requires to be unbroken.
+    expect(STORE_SCOPED_TABLES_NEVER_CASCADED).toContain("invoices")
+    expect(STORE_SCOPED_TABLES.map((e) => e.table)).not.toContain("invoices")
   })
 
   it("names only tables that exist", () => {

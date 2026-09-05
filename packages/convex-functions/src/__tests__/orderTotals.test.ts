@@ -159,6 +159,16 @@ describe("computeOrderTotals", () => {
     })
   })
 
+  /**
+   * This assertion blessed an over-declaration.
+   *
+   * It expected `taxAmount: 1_667` — the VAT contained in the FULL 100,00 €
+   * basket — on an order where a 2,50 € discount meant the customer was charged
+   * 97,50 € for the goods. A discount reduces the taxable base, so the VAT owed
+   * is 16,25 €, not 16,67 €. Cosmetic while these figures only fed a display;
+   * over-declared VAT on a document that goes to the tax administration the
+   * moment an invoice is printed from them.
+   */
   it("returns every component so a summary can itemise what it displays", () => {
     expect(
       computeOrderTotals({
@@ -169,11 +179,121 @@ describe("computeOrderTotals", () => {
       })
     ).toEqual({
       subtotal: 10_000,
-      taxAmount: 1_667,
-      taxBreakdown: [{ ratePercent: 20, grossAmount: 10_000, taxAmount: 1_667 }],
+      taxAmount: 1_625,
+      taxBreakdown: [{ ratePercent: 20, grossAmount: 9_750, taxAmount: 1_625 }],
       deliveryFee: 490,
       discount: 250,
       total: 10_240,
+    })
+  })
+
+  describe("the discount reaches the taxable base", () => {
+    it("declares the VAT on what was actually charged", () => {
+      // 20,00 € at 10 % with a 5,00 € coupon: the customer pays 15,00 € for the
+      // goods and owes 1,36 €, not the 1,82 € contained in the undiscounted 20.
+      const totals = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        discount: 500,
+      })
+
+      expect(totals.taxBreakdown).toEqual([
+        { ratePercent: 10, grossAmount: 1_500, taxAmount: 136 },
+      ])
+      expect(totals.total).toBe(1_500)
+    })
+
+    it("splits it across rates in proportion, and the parts sum to the whole", () => {
+      const totals = computeOrderTotals({
+        subtotal: 3_000,
+        taxRatePercent: 10,
+        lines: [
+          { subtotal: 2_000, taxRatePercent: 10 },
+          { subtotal: 1_000, taxRatePercent: 20 },
+        ],
+        discount: 300,
+      })
+
+      const discounted = totals.taxBreakdown.reduce(
+        (sum, entry) => sum + entry.grossAmount,
+        0
+      )
+      // 3 000 taxed less a 300 discount, with nothing lost to rounding.
+      expect(discounted).toBe(2_700)
+      expect(totals.taxBreakdown.map((e) => e.ratePercent)).toEqual([10, 20])
+    })
+
+    it("leaves nothing to declare when the discount covers everything", () => {
+      const totals = computeOrderTotals({
+        subtotal: 1_000,
+        taxRatePercent: 10,
+        discount: 5_000,
+      })
+
+      expect(totals.total).toBe(0)
+      expect(totals.taxAmount).toBe(0)
+      expect(totals.taxBreakdown.every((e) => e.grossAmount === 0)).toBe(true)
+    })
+  })
+
+  describe("the delivery fee", () => {
+    it("is left out of the breakdown while no rate has been decided", () => {
+      // Not an oversight: which rate a delivery charge carries in France
+      // depends on whether it is accessory to the meal or a separate service.
+      // Saying nothing is honest; guessing is a misdeclaration on every order.
+      const totals = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        deliveryFee: 490,
+      })
+
+      expect(totals.taxBreakdown).toEqual([
+        { ratePercent: 10, grossAmount: 2_000, taxAmount: 182 },
+      ])
+      expect(totals.total).toBe(2_490)
+    })
+
+    it("is taxed at its own rate once one is given", () => {
+      const totals = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        deliveryFee: 500,
+        deliveryTaxRatePercent: 20,
+      })
+
+      expect(totals.taxBreakdown).toEqual([
+        { ratePercent: 10, grossAmount: 2_000, taxAmount: 182 },
+        { ratePercent: 20, grossAmount: 500, taxAmount: 83 },
+      ])
+    })
+
+    it("merges into the food's entry when it carries the same rate", () => {
+      const totals = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        deliveryFee: 500,
+        deliveryTaxRatePercent: 10,
+      })
+
+      expect(totals.taxBreakdown).toEqual([
+        { ratePercent: 10, grossAmount: 2_500, taxAmount: 227 },
+      ])
+    })
+
+    it("does not move what the customer is charged", () => {
+      const withRate = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        deliveryFee: 500,
+        deliveryTaxRatePercent: 20,
+      })
+      const without = computeOrderTotals({
+        subtotal: 2_000,
+        taxRatePercent: 10,
+        deliveryFee: 500,
+      })
+
+      expect(withRate.total).toBe(without.total)
     })
   })
 })

@@ -35,14 +35,30 @@ function createOrdersDb(seed: Doc[] = []) {
         preds.every((p) => p(doc)),
   }
 
+  // Scoped by table, because the fake holds every table in one array: without
+  // it, a `globalSettings` lookup answers with the first order and the
+  // sequence counter is read out of the wrong row.
+  const rowsOf = (table?: string) =>
+    table === undefined
+      ? orders
+      : orders.filter((doc) => String(doc._id).startsWith(`${table}:`))
+
   return {
-    _orders: orders,
-    query: () => ({
+    // The fake holds every table in one array, so what the tests want to count
+    // is the ORDERS in it — not the sequence-counter row the allocator now
+    // writes alongside them.
+    get _orders() {
+      return rowsOf("orders")
+    },
+    query: (table?: string) => ({
+      // `globalSettings` is a singleton, read with no index at all.
+      first: async () => rowsOf(table)[0] ?? null,
+      collect: async () => rowsOf(table),
       filter: (builder: (qq: typeof q) => (doc: Doc) => boolean) => {
         const pred = builder(q)
         return {
-          first: async () => orders.find(pred) ?? null,
-          collect: async () => orders.filter(pred),
+          first: async () => rowsOf(table).find(pred) ?? null,
+          collect: async () => rowsOf(table).filter(pred),
         }
       },
       // Faithful enough to be worth trusting: it applies the `eq()` constraints
@@ -62,9 +78,18 @@ function createOrdersDb(seed: Doc[] = []) {
           builder(iq)
         }
         const match = (doc: Doc) => constraints.every(([f, v]) => doc[f] === v)
+        const matched = () => rowsOf(table).filter(match)
         return {
-          first: async () => orders.find(match) ?? null,
-          collect: async () => orders.filter(match),
+          first: async () => matched()[0] ?? null,
+          // The sequence allocator reads with `.unique()` on purpose: two rows
+          // for one counter key means numbers already issued are about to be
+          // issued again, and it must stop the line rather than pick one.
+          unique: async () => {
+            const rows = matched()
+            if (rows.length > 1) throw new Error("unique() found multiple rows")
+            return rows[0] ?? null
+          },
+          collect: async () => matched(),
         }
       },
     }),
@@ -72,6 +97,10 @@ function createOrdersDb(seed: Doc[] = []) {
       const _id = `${table}:${counter++}`
       orders.push({ _id, ...doc })
       return _id
+    },
+    patch: async (id: string, updates: Doc) => {
+      const doc = orders.find((o) => o._id === id)
+      if (doc) Object.assign(doc, updates)
     },
     get: async (id: string) => orders.find((o) => o._id === id) ?? null,
   }
@@ -248,6 +277,12 @@ describe("createWithTicket", () => {
             withIndex: () => chain,
             order: () => chain,
             first: async () => rows()[0] ?? null,
+            // `numbering.allocate` reads its counter with `.unique()`.
+            unique: async () => {
+              const found = rows()
+              if (found.length > 1) throw new Error("unique() found multiple rows")
+              return found[0] ?? null
+            },
             take: async () => rows(),
             collect: async () => rows(),
           }
@@ -727,13 +762,50 @@ describe("create — promotion handling", () => {
         // legacy column no mutation declares, so the only value it could ever
         // have held came from the create payload Convex rejected (#125).
         query: vi.fn((table: string) => {
+          // Answers from `docs` rather than with a blanket null, so the order
+          // number allocator reads and advances a real counter row. A stub that
+          // always answered null would hand out number 1 for ever and the
+          // sequence would look correct while being nothing of the kind.
+          const rows = () =>
+            Object.values(docs).filter((doc) =>
+              String(doc._id).startsWith(`${table}:`)
+            )
           const chain = {
-            withIndex: () => chain,
+            withIndex: (_name?: string, builder?: (iq: unknown) => unknown) => {
+              const constraints: Array<[string, unknown]> = []
+              if (builder) {
+                const iq: Record<string, unknown> = {
+                  eq: (field: string, value: unknown) => {
+                    constraints.push([field, value])
+                    return iq
+                  },
+                }
+                builder(iq)
+              }
+              const matched = () =>
+                rows().filter((doc) =>
+                  constraints.every(([f, v]) => doc[f] === v)
+                )
+              const indexed = {
+                order: () => indexed,
+                first: async () => matched()[0] ?? null,
+                unique: async () => {
+                  const found = matched()
+                  if (found.length > 1) {
+                    throw new Error("unique() found multiple rows")
+                  }
+                  return found[0] ?? null
+                },
+                take: async () => matched(),
+                collect: async () => matched(),
+              }
+              return indexed
+            },
             order: () => chain,
             first: async () =>
-              table === "globalSettings" ? { taxRate: 10 } : null,
-            take: async () => [],
-            collect: async () => [],
+              table === "globalSettings" ? { taxRate: 10 } : rows()[0] ?? null,
+            take: async () => rows(),
+            collect: async () => rows(),
           }
           return chain
         }),
@@ -1008,14 +1080,28 @@ describe("create — the establishment has to be published", () => {
             return id
           }),
           get: vi.fn(async (id: string) => docs[id] ?? null),
-          patch: vi.fn(async () => undefined),
-          query: vi.fn(() => {
+          patch: vi.fn(async (id: string, updates: Record<string, unknown>) => {
+            Object.assign(docs[id] ?? {}, updates)
+          }),
+          query: vi.fn((table: string) => {
+            const rows = () =>
+              Object.values(docs).filter((doc) =>
+                String(doc._id).startsWith(`${table}:`)
+              )
             const chain = {
               withIndex: () => chain,
               order: () => chain,
-              first: async () => null,
-              take: async () => [],
-              collect: async () => [],
+              first: async () => rows()[0] ?? null,
+              // The order number allocator reads its counter with `.unique()`.
+              unique: async () => {
+                const found = rows()
+                if (found.length > 1) {
+                  throw new Error("unique() found multiple rows")
+                }
+                return found[0] ?? null
+              },
+              take: async () => rows(),
+              collect: async () => rows(),
             }
             return chain
           }),

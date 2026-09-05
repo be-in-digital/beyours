@@ -135,12 +135,15 @@ describe('SES Service', () => {
         templateData: {
           orderNumber: 'ORD-12345',
           customerName: 'John Doe',
+          type: 'pickup',
+          store: { name: 'Chez Luigi' },
           items: [
-            { name: 'Pizza', quantity: 2, price: 12.5 },
-            { name: 'Drink', quantity: 1, price: 3.5 },
+            { name: 'Pizza', quantity: 2, subtotal: 2500 },
+            { name: 'Drink', quantity: 1, subtotal: 350 },
           ],
-          total: 28.5,
-          address: '123 Main St, Paris',
+          subtotal: 2850,
+          taxAmount: 259,
+          total: 2850,
         },
       })
 
@@ -148,7 +151,7 @@ describe('SES Service', () => {
       expect(mockClient.sendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: 'customer@example.com',
-          subject: 'Commande confirmée - #ORD-12345',
+          subject: 'Chez Luigi : votre commande ORD-12345 est confirmée',
           html: expect.stringContaining('ORD-12345'),
           text: expect.stringContaining('ORD-12345'),
         })
