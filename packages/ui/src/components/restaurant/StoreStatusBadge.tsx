@@ -44,7 +44,12 @@ const StoreStatusBadge: React.FC<StoreStatusBadgeProps> = ({
   status,
   className,
 }) => {
-  const config = statusConfig[status] ?? UNKNOWN_STATUS_CONFIG
+  // `??` does not catch what an object literal inherits from
+  // `Object.prototype`: `statusConfig["constructor"]` is a function, not
+  // undefined, and reading `.className` off it renders garbage.
+  const config = Object.hasOwn(statusConfig, status)
+    ? statusConfig[status]
+    : UNKNOWN_STATUS_CONFIG
 
   return (
     <Badge className={`${config.className} ${className || ""}`}>

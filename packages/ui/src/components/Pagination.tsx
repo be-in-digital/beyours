@@ -104,12 +104,13 @@ function PaginationEllipsis({
   ...props
 }: React.ComponentProps<"span">) {
   return (
+    // `aria-hidden` on the wrapper prunes the whole subtree, including the
+    // sr-only text somebody wrote to name this. Hide the icon, not the label.
     <span
-      aria-hidden
       className={cn("flex h-9 w-9 items-center justify-center", className)}
       {...props}
     >
-      <MoreHorizontal className="h-4 w-4" />
+      <MoreHorizontal className="h-4 w-4" aria-hidden />
       <span className="sr-only">Plus de pages</span>
     </span>
   )
