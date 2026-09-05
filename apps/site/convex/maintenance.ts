@@ -46,7 +46,9 @@ export type EntitlementReason =
   /** Cancelled and the paid period has run out. */
   | "cancelled"
   /** Never paid, or the first payment never completed. */
-  | "unpaid";
+  | "unpaid"
+  /** No deployment holds this key. Only ever returned under strict enforcement. */
+  | "unknown_key";
 
 export type Entitlement = {
   entitled: boolean;
@@ -55,10 +57,75 @@ export type Entitlement = {
   coveredUntil: number | null;
 };
 
+/* ── Enforcement policy ──
+   What a key nobody issued is worth.
+
+   Until this deployment says otherwise, an unknown key is let through: every
+   site delivered before the gate was wired carries no key at all, and refusing
+   theirs would freeze the updates of clients who pay. That forgiveness is also
+   the hole — a made-up key entitles exactly as well as a real one, so a lapsed
+   contract is collectable only by asking nicely.
+
+   Closing it is one env var on the Convex deployment, reversible in seconds and
+   without a redeploy, and it must not be set before every delivered site is
+   registered (tasks/license-key-registration-runbook.md).
+
+   Note the direction of the typo: unlike STRIPE_SECRET_KEY, where a mistyped
+   flag must refuse, a mistyped flag here must FORGIVE. The worst case on this
+   side is a paying client whose `pnpm update:engine` stops working, against an
+   unpaid renewal — and the renewal has a real lock behind it anyway: access to
+   the private repo and to the @be-in-digital/* registry (apps/themes/docs/UPDATES.md). */
+
+/** The env var that closes the licence gate, and the only thing that does. */
+export const LICENSE_ENFORCEMENT_ENV = "BEYOURS_LICENSE_ENFORCEMENT";
+
+export type LicenseEnforcement =
+  /** An unknown key is let through and reported as unregistered. */
+  | "forgiving"
+  /** An unknown key is refused. */
+  | "strict";
+
+/**
+ * Reads the enforcement policy off the deployment.
+ * Only the exact string `"strict"` closes the gate: `1`, `yes`, `STRICT` and
+ * every other near miss stay forgiving, so a fumbled flag cannot brick a
+ * client's updates.
+ */
+export function resolveLicenseEnforcement(
+  env: Record<string, string | undefined> = process.env,
+): LicenseEnforcement {
+  return env[LICENSE_ENFORCEMENT_ENV] === "strict" ? "strict" : "forgiving";
+}
+
 type SubscriptionState = {
   status: Doc<"subscriptions">["status"];
   currentPeriodEnd?: number;
+  billingPeriod: Doc<"subscriptions">["billingPeriod"];
+  /** When we recorded the subscription. Required: it is the only anchor a row
+      with no `currentPeriodEnd` has, and without one its grace never ends. */
+  createdAt: number;
 };
+
+const PERIOD_MS = {
+  monthly: 30 * 24 * 60 * 60 * 1000,
+  yearly: 365 * 24 * 60 * 60 * 1000,
+} as const;
+
+/**
+ * When the paid period ends, for a subscription that does not say.
+ *
+ * `currentPeriodEnd` is optional on the table and is not always written —
+ * `handleSubscriptionUpdated` only patches it when Stripe sends the field. A
+ * missing one used to make the `past_due` deadline `now + 14 days`, recomputed
+ * on every request, so a failed renewal stayed in « grace » for ever.
+ *
+ * The fallback mirrors how the date is produced in the first place:
+ * `stripe.createSubscription` sets the first period to exactly one billing
+ * period after creation.
+ */
+function coverageEnd(sub: SubscriptionState): number {
+  return sub.currentPeriodEnd ?? sub.createdAt + PERIOD_MS[sub.billingPeriod];
+}
 
 /**
  * Decides whether a site may pull engine updates.
@@ -88,7 +155,7 @@ export function resolveEntitlement(input: {
       return { entitled: true, reason: "active", coveredUntil };
 
     case "past_due": {
-      const deadline = (coveredUntil ?? input.now) + MAINTENANCE_GRACE_MS;
+      const deadline = coverageEnd(sub) + MAINTENANCE_GRACE_MS;
       return input.now <= deadline
         ? { entitled: true, reason: "grace", coveredUntil }
         : { entitled: false, reason: "expired", coveredUntil };
@@ -104,6 +171,21 @@ export function resolveEntitlement(input: {
     case "incomplete":
       return { entitled: false, reason: "unpaid", coveredUntil };
   }
+}
+
+/**
+ * Decides what to answer a key no deployment holds — including no key at all.
+ *
+ * This is the one place the gate is open or closed. `resolveEntitlement` is
+ * about a site we know; this is about a site we do not, which is both the
+ * unregistered legacy client and whoever invents a key.
+ */
+export function resolveUnknownKey(
+  enforcement: LicenseEnforcement,
+): Entitlement {
+  return enforcement === "strict"
+    ? { entitled: false, reason: "unknown_key", coveredUntil: null }
+    : { entitled: true, reason: "unregistered", coveredUntil: null };
 }
 
 /** Message shown to the client by the update scripts. */
@@ -129,6 +211,8 @@ export function entitlementMessage(e: Entitlement): string {
       return `La maintenance a été résiliée${until ? ` et la période payée s'est terminée le ${until}` : ""}. Le site continue de fonctionner dans sa version actuelle ; les mises à jour reprennent dès la reprise du contrat.`;
     case "unpaid":
       return "Aucun paiement de maintenance enregistré pour ce site. Les mises à jour reprennent dès la régularisation.";
+    case "unknown_key":
+      return "Clé de licence inconnue : aucun site enregistré ne la porte. Vérifiez la clé du fichier .beindigital-site.json, ou écrivez à contact@beyours.fr pour la faire enregistrer.";
   }
 }
 
@@ -138,31 +222,64 @@ export function entitlementMessage(e: Entitlement): string {
  * customer's subscriptions and keeps the most favourable, so a client running
  * several sites is never blocked by whichever row happened to come first.
  */
+/**
+ * The most favourable verdict among several subscriptions.
+ * A client running several sites must not be cut off by whichever row the
+ * index happened to return first.
+ */
+function best(subs: SubscriptionState[], now: number): Entitlement | null {
+  return (
+    subs
+      .map((subscription) => resolveEntitlement({ subscription, now }))
+      .sort(
+        (a, b) =>
+          Number(b.entitled) - Number(a.entitled) ||
+          (b.coveredUntil ?? 0) - (a.coveredUntil ?? 0),
+      )[0] ?? null
+  );
+}
+
 export const byLicenseKey = internalQuery({
   args: { licenseKey: v.string() },
   handler: async (ctx, args) => {
-    const deployment = await ctx.db
+    /* `take(2)`, never `unique()`. An entitlement read must not throw: an
+       uncaught error here is an HTTP 500, and the client's update script reads
+       any non-2xx as « the API is unreachable » and updates anyway. A refusal
+       that crashes is a refusal that lets the update through. */
+    const [deployment, duplicate] = await ctx.db
       .query("saDeployments")
       .withIndex("by_licenseKey", (q) => q.eq("licenseKey", args.licenseKey))
-      .unique();
+      .take(2);
 
     if (!deployment) return null;
+    if (duplicate) {
+      console.error(
+        `Deux déploiements portent la clé ${args.licenseKey} — ` +
+          `réponse rendue sur « ${deployment.name} », à corriger dans la flotte.`,
+      );
+    }
 
     const now = Date.now();
 
     if (deployment.orderId) {
+      /* Same reason: two subscription rows can exist on one order — the
+         webhook's existence guard reads in one transaction and writes in
+         another, so two concurrent Stripe deliveries can both pass it. */
       const linked = await ctx.db
         .query("subscriptions")
         .withIndex("by_orderId", (q) => q.eq("orderId", deployment.orderId!))
-        .unique();
-      if (linked) {
-        return {
-          site: deployment.name,
-          ...resolveEntitlement({ subscription: linked, now }),
-        };
-      }
+        .take(20);
+      const verdict = best(linked, now);
+      if (verdict) return { site: deployment.name, ...verdict };
     }
 
+    /* No order linked — which today is every deployment created in the console,
+       since `saFleet.create` only started accepting an `orderId` with #181.
+       Falling back to the customer's own subscriptions keeps a real client
+       working, but it entitles ALL their sites from whichever contract is
+       healthiest: a client running several restaurants is not refused on the
+       one they stopped paying for. Linking the order is what fixes that, and
+       `saFleet.unlicensed` lists the deployments still missing the link. */
     const owned = await ctx.db
       .query("subscriptions")
       .withIndex("by_customerEmail", (q) =>
@@ -170,17 +287,9 @@ export const byLicenseKey = internalQuery({
       )
       .take(20);
 
-    const best = owned
-      .map((s) => resolveEntitlement({ subscription: s, now }))
-      .sort(
-        (a, b) =>
-          Number(b.entitled) - Number(a.entitled) ||
-          (b.coveredUntil ?? 0) - (a.coveredUntil ?? 0),
-      )[0];
-
     return {
       site: deployment.name,
-      ...(best ?? resolveEntitlement({ subscription: null, now })),
+      ...(best(owned, now) ?? resolveEntitlement({ subscription: null, now })),
     };
   },
 });

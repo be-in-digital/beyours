@@ -1951,3 +1951,65 @@ deployment and the client's Google Cloud project both belong to the account owne
 renewals are unenforceable: `http.ts:716-746` answers
 `entitled: true, reason: "unregistered"` for any unknown key, and the client-side script
 also fails open.
+
+**Status, 5 Sep 2026 — the repository half is closed, this card is not.** Three
+things landed, none of which can close the two account-owner actions below.
+
+- **A delivered site now gets a key.** `saFleet.create` already stamped one at
+  provisioning (#70); `saFleet.updateStatus` now stamps one at go-live when the
+  deployment reached handover without it, and records that it still has to be
+  reported into the site's `.beindigital-site.json`. The console shows the key,
+  the licence API and the exact `pnpm setup` line, and `saFleet.issueLicenseKey`
+  — which had sat with no caller since #70 — is reachable at last, so a site
+  delivered before the gate existed can be given one.
+- **The fail-open is now one switch, not a hard-coded branch.**
+  `resolveLicenseEnforcement` reads `BEYOURS_LICENSE_ENFORCEMENT` and
+  `resolveUnknownKey` is the single place the gate opens or closes. The default
+  is unchanged — an unknown key is still let through — because flipping it before
+  every delivered site is registered would refuse exactly those sites.
+- **`GET /maintenance/status` has tests.** It had none, which is where the defect
+  lived: `byLicenseKey` returning `null` and the route turning that into
+  `entitled: true`. Both policies are now covered, including that a refusal
+  arrives as HTTP 200 — a 4xx reads as "API unreachable" to the client script and
+  would fail open.
+
+An adversarial pass against the closed gate found four ways to still get
+`entitled: true`, three of which reproduced. Fixed here:
+
+- **The key alone proved worthless.** `saFleet.create` never accepted an
+  `orderId`, so no deployment had one, so entitlement always resolved through
+  "every subscription under this customer's email, keep the most favourable" — a
+  customer running two restaurants was entitled on both by whichever contract was
+  healthiest. Measured: a console-created site with no contract of its own
+  answered `entitled: true, reason: "active"` under strict. `create` and `update`
+  now take an `orderId`, the provisioning form lists the customer's paid orders,
+  and the fleet page lists the delivered sites still unlinked. Filed in
+  `MISE_EN_PROD.md` as traceability; it was the enforcement.
+- **A crash was a free pass.** Two `subscriptions` rows on one order — reachable,
+  the webhook's existence guard reads and writes in separate transactions — made
+  `unique()` throw, and an uncaught error in an `httpAction` is a non-2xx, which
+  the client script reads as "API unreachable" and updates anyway. The
+  entitlement read no longer uses `unique()` anywhere.
+- **A failed renewal could stay in grace for ever.** `past_due` with no
+  `currentPeriodEnd` recomputed its 14-day window from `now` on every request.
+  The window is now anchored to the period the subscription was created for.
+
+Not fixed, and deliberate: a deployment whose email matches no subscription is
+still let through. Linking its order removes the dependency on that email match.
+
+Outstanding, both the account owner's: **(1)** issue a key AND link the order for
+every site already delivered — the fleet page lists both gaps, the repository
+cannot; **(2)** decide whether to set `BEYOURS_LICENSE_ENFORCEMENT=strict`, which
+makes renewals enforceable and would freeze the updates of any site still missing
+a key. Order matters: (1) then (2). Runbook:
+`tasks/license-key-registration-runbook.md`.
+
+Two things the audit could not close and that remain open elsewhere:
+`subscriptions.create` has no uniqueness guard on `orderId` (the duplicate above
+is now survivable, not prevented), and the email fallback reads at most 20
+subscriptions, so a customer with more dead rows than that can be wrongly
+refused.
+
+The client-side check keeps failing open, and cannot do otherwise: the sentinel
+lives in the client's own repository, and `BEYOURS_LICENSE_API` overrides the
+host it asks. The gate is a courtesy; the lock is repo and registry access.

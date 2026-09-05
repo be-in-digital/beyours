@@ -19,6 +19,8 @@ import {
   Plug,
   ShieldCheck,
   CheckCircle2,
+  KeyRound,
+  Copy,
 } from "lucide-react";
 import { SectionTitle } from "@/components/admin/page-header";
 import { KpiCard } from "@/components/admin/kpi-card";
@@ -37,6 +39,7 @@ import {
 import { Badge } from "@/components/admin/ui/badge";
 import { Button } from "@/components/admin/ui/button";
 import { Card } from "@/components/admin/ui/card";
+import { Select } from "@/components/admin/ui/select";
 import { Skeleton } from "@/components/admin/ui/skeleton";
 import {
   Dropdown,
@@ -107,6 +110,18 @@ const CHECK_KIND_LABEL: Record<string, string> = {
   webhook: "Webhook",
 };
 
+/* The console is where a licence key is read out of the fleet and into a client
+   repo, so copying it has to be one click and has to say it worked — retyping a
+   32-hex key by eye is how a site ends up asking with a key nobody holds. */
+async function copy(text: string, message: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(message);
+  } catch {
+    toast.error("Copie impossible — sélectionnez le texte à la main.");
+  }
+}
+
 export default function DeploymentDetailPage() {
   const { deploymentId } = useParams<{ deploymentId: string }>();
   const id = deploymentId as Id<"saDeployments">;
@@ -118,8 +133,19 @@ export default function DeploymentDetailPage() {
   });
   const updateStatus = useMutation(api.saFleet.updateStatus);
   const recordAccessRevoked = useMutation(api.saFleet.recordAccessRevoked);
+  const issueLicenseKey = useMutation(api.saFleet.issueLicenseKey);
+  const updateDeployment = useMutation(api.saFleet.update);
 
   const [pending, setPending] = React.useState(false);
+  const [confirmRotate, setConfirmRotate] = React.useState(false);
+  const [orderId, setOrderId] = React.useState("");
+  /* Only fetched while a link is actually missing — see the Licence card. */
+  const linkableOrders = useQuery(
+    api.saClients.paidOrders,
+    deployment?.customerEmail && !deployment?.orderId
+      ? { customerEmail: deployment.customerEmail }
+      : "skip",
+  );
 
   if (deployment === undefined) return <DetailSkeleton />;
 
@@ -146,6 +172,13 @@ export default function DeploymentDetailPage() {
     deployment.latestVersion &&
     deployment.version !== deployment.latestVersion;
 
+  /* The exact line the operator runs in the client repo. Built here rather than
+     written down anywhere, so it cannot drift from the key it quotes. */
+  const setupCommand =
+    deployment.licenseKey && deployment.licenseApi
+      ? `pnpm setup -- --license-key ${deployment.licenseKey} --license-api ${deployment.licenseApi}`
+      : null;
+
   async function onChangeStatus(status: DeploymentStatus) {
     if (status === deployment!.status || pending) return;
     setPending(true);
@@ -164,6 +197,36 @@ export default function DeploymentDetailPage() {
     try {
       await recordAccessRevoked({ deploymentId: id });
       toast.success("Accès marqués comme révoqués.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onIssueLicenseKey() {
+    setPending(true);
+    try {
+      const key = await issueLicenseKey({ deploymentId: id });
+      setConfirmRotate(false);
+      await copy(key, "Clé de licence copiée — à reporter dans le site.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onLinkOrder() {
+    if (!orderId) return;
+    setPending(true);
+    try {
+      await updateDeployment({
+        deploymentId: id,
+        orderId: orderId as Id<"orders">,
+      });
+      toast.success("Commande rattachée — la maintenance répond désormais sur son propre contrat.");
+      setOrderId("");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erreur");
     } finally {
@@ -615,6 +678,160 @@ export default function DeploymentDetailPage() {
                 )}
               </DefRow>
             </dl>
+          </Card>
+
+          {/* Licence — what makes the renewal enforceable. The key has to reach
+              the site's .beindigital-site.json; sitting here it checks nothing. */}
+          <Card className="p-5">
+            <SectionTitle>
+              <span className="inline-flex items-center gap-2">
+                <KeyRound className="size-3.5" /> Licence
+              </span>
+            </SectionTitle>
+
+            {deployment.licenseKey ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <code className="min-w-0 flex-1 truncate rounded-md bg-surface-2 px-2.5 py-1.5 font-mono text-xs text-foreground">
+                    {deployment.licenseKey}
+                  </code>
+                  <button
+                    type="button"
+                    title="Copier la clé"
+                    onClick={() =>
+                      copy(deployment.licenseKey!, "Clé de licence copiée.")
+                    }
+                    className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Copy className="size-4" />
+                  </button>
+                </div>
+
+                {deployment.licenseApi ? (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">
+                      À passer au site, une fois, à l&apos;initialisation :
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate rounded-md bg-surface-2 px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground">
+                        {setupCommand}
+                      </code>
+                      <button
+                        type="button"
+                        title="Copier la commande"
+                        onClick={() =>
+                          copy(setupCommand!, "Commande copiée.")
+                        }
+                        className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <Copy className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-warning">
+                    CONVEX_SITE_URL n&apos;est pas posée sur ce backend : le site
+                    ne saurait pas quelle API interroger.
+                  </p>
+                )}
+
+                {/* A key says which site is asking; the order says which
+                    contract answers for it. Without the link the gate replies
+                    from the healthiest contract this customer holds. */}
+                <div className="space-y-1.5 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Commande rattachée
+                  </p>
+                  {deployment.orderId ? (
+                    <Badge variant="success">Oui</Badge>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Aucune : la maintenance de ce site répond depuis le
+                        contrat le plus favorable du client, pas depuis le sien.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={orderId}
+                          onChange={(e) => setOrderId(e.target.value)}
+                          disabled={pending || linkableOrders === undefined}
+                          className="min-w-0 flex-1"
+                        >
+                          <option value="">
+                            {linkableOrders === undefined
+                              ? "Chargement…"
+                              : linkableOrders.length === 0
+                                ? "Aucune commande payée"
+                                : "Choisir la commande"}
+                          </option>
+                          {linkableOrders?.map((o) => (
+                            <option
+                              key={o._id}
+                              value={o._id}
+                              disabled={o.linkedDeployment !== null}
+                            >
+                              {formatDate(o.createdAt)} — {o.restaurantName}
+                              {o.linkedDeployment
+                                ? ` (déjà liée à ${o.linkedDeployment})`
+                                : ""}
+                            </option>
+                          ))}
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pending || !orderId}
+                          onClick={onLinkOrder}
+                          className="shrink-0"
+                        >
+                          Rattacher
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                  <p className="text-xs text-muted-foreground">
+                    Régénérer invalide la clé que le site détient.
+                  </p>
+                  <Button
+                    variant={confirmRotate ? "danger" : "outline"}
+                    size="sm"
+                    disabled={pending}
+                    onClick={() =>
+                      confirmRotate
+                        ? onIssueLicenseKey()
+                        : setConfirmRotate(true)
+                    }
+                    className="shrink-0"
+                  >
+                    {confirmRotate ? "Confirmer" : "Régénérer"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Ce site ne porte aucune clé : ses scripts de mise à jour ne
+                  vérifient rien, et la maintenance ne peut pas lui être
+                  opposée. Émettez-en une, puis reportez-la dans son{" "}
+                  <span className="font-mono text-xs">
+                    .beindigital-site.json
+                  </span>
+                  .
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={onIssueLicenseKey}
+                >
+                  <KeyRound className="size-4" />
+                  Émettre une clé
+                </Button>
+              </div>
+            )}
           </Card>
         </div>
       </div>
