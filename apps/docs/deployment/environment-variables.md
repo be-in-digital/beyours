@@ -150,7 +150,29 @@ Full procedure: [`first-administrator.md`](./first-administrator.md).
 | `SENTRY_ORG` | `string` | Source-map upload — build time, all three or none |
 | `SENTRY_PROJECT` | `string` | Source-map upload — build time |
 | `SENTRY_AUTH_TOKEN` | `string` | Source-map upload — build-host secret |
+| `SENTRY_DSN` | `url` | The same DSN, set on the **Convex** deployment. Unset, backend errors reach `console.error` and nothing else |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `string` | Google Maps API key — **must** be restricted by HTTP referrer |
+
+**`SENTRY_DSN` lives on the Convex deployment**, and it is a separate setting
+from `NEXT_PUBLIC_SENTRY_DSN` even though the value is the same. A Convex
+function does not read the Next.js environment, so setting one does not set the
+other — and it is the Convex half that holds every webhook, every order
+mutation and the whole kitchen path. It is named without the `NEXT_PUBLIC_`
+prefix because that prefix means "inlined into a browser bundle", which is
+misleading in a store Next.js never reads; the prefixed name still works there
+as a fallback.
+
+```bash
+npx convex env set SENTRY_DSN "https://<key>@<org>.ingest.sentry.io/<project>"
+```
+
+Leaving it unset is supported and costs nothing. Detail:
+[`sentry.md`](./sentry.md).
+
+Two liveness endpoints come with it, neither of which needs any variable:
+`GET $CONVEX_SITE_URL/health` and `GET https://<site>/api/health` — the second
+calls the first, so one URL per client site tells a monitor whether both halves
+are up. `200` healthy, `503` degraded.
 
 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` ships in the browser bundle by design; what
 keeps it from being reused elsewhere is the referrer restriction on Google's

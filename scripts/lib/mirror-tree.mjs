@@ -45,7 +45,34 @@ import { dirname, join, posix } from "node:path"
 export const NOT_SHIPPED_ROOT = ["vercel.json"]
 
 /** Never sent to the mirror, at any depth: build output, meaningless there. */
-export const NOT_SHIPPED_ANYWHERE = [".turbo", "tsconfig.tsbuildinfo"]
+export const NOT_SHIPPED_ANYWHERE = [".turbo", "tsconfig.tsbuildinfo", "coverage"]
+
+/**
+ * Never sent to the mirror, at any depth, because they are local state — and
+ * two of them are live credentials.
+ *
+ * This walk reads the FILESYSTEM and consults no gitignore, so a file being
+ * ignored by git protects it from a commit and not from a sync. `README.md`
+ * and `publish-mirror.mjs` both document running the publisher by hand, and
+ * that path takes no CI gate at all: one local run used to copy `.env.local`
+ * — real Stripe, AWS and Deliveroo keys — into the repository every client
+ * clones from. The root `.gitignore` already gives the reason for
+ * `.infisical.json`, in as many words: "or the mirror would carry the agency's
+ * project id into every client repo". This is that reason implemented.
+ *
+ * `.engine-link.json` is the third: it points pnpm at an engine checkout on the
+ * operator's own machine, which resolves to nothing on a client's.
+ *
+ * `.env.example` and `.env.convex.example` are NOT matched and must keep
+ * shipping — they are how a client learns what to set. Hence a prefix rule with
+ * an explicit exemption rather than a bare `.env*` glob.
+ */
+export const NOT_SHIPPED_LOCAL_STATE = [".infisical.json", ".engine-link.json"]
+
+/** True for a dotenv file that carries values rather than documenting keys. */
+function isLocalDotenv(name) {
+  return name.startsWith(".env") && !name.endsWith(".example")
+}
 
 /** Never overwritten and never deleted on the mirror: its own, or regenerated. */
 export const MIRROR_OWNED = [".git", "node_modules", ".next", "pnpm-lock.yaml", "next-env.d.ts"]
@@ -55,7 +82,9 @@ export function isNotShipped(rel) {
   const segments = rel.split("/")
   return (
     (segments.length === 1 && NOT_SHIPPED_ROOT.includes(rel)) ||
-    segments.some((s) => NOT_SHIPPED_ANYWHERE.includes(s))
+    segments.some((s) => NOT_SHIPPED_ANYWHERE.includes(s)) ||
+    segments.some((s) => NOT_SHIPPED_LOCAL_STATE.includes(s)) ||
+    segments.some(isLocalDotenv)
   )
 }
 

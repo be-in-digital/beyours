@@ -23,8 +23,23 @@
  * @module sentry
  */
 
-/** Where `Sentry.init` is being called. Only the defaults differ. */
-export type SentryRuntime = 'browser' | 'server' | 'edge'
+import { parseSentryDsn } from './envelope'
+import { REDACTED, SENTRY_REDACTED_QUERY_KEYS } from './redaction-keys'
+
+/**
+ * Building and sending an event by hand, for the Convex runtime. Re-exported
+ * rather than given its own entry point, so `@be-in-digital/core/sentry` stays
+ * the ONE import path: a Convex module and a browser bundle then read the same
+ * module and cannot drift into two conventions for the same project.
+ */
+export * from './envelope'
+export { SENTRY_REDACTED_QUERY_KEYS } from './redaction-keys'
+
+/**
+ * Where `Sentry.init` is being called — or, for `convex`, where an envelope is
+ * being built by hand. Only the defaults and the DSN variable differ.
+ */
+export type SentryRuntime = 'browser' | 'server' | 'edge' | 'convex'
 
 /**
  * The variables read here.
@@ -36,6 +51,17 @@ export type SentryRuntime = 'browser' | 'server' | 'edge'
  */
 export interface SentryEnvSource {
   NEXT_PUBLIC_SENTRY_DSN?: string | undefined
+  /**
+   * The Convex-side name for the same DSN, read only by the `convex` runtime.
+   *
+   * A Convex deployment holds its OWN environment store — nothing in
+   * `.env.local` reaches it — so the DSN has to be set there separately with
+   * `npx convex env set`. Naming it `NEXT_PUBLIC_…` in a store Next.js never
+   * reads is how an operator ends up setting the one that does nothing, so the
+   * Convex store gets the honest name. `NEXT_PUBLIC_SENTRY_DSN` still works
+   * there as a fallback: a deployment that already carries it keeps reporting.
+   */
+  SENTRY_DSN?: string | undefined
   NEXT_PUBLIC_SENTRY_ENVIRONMENT?: string | undefined
   NEXT_PUBLIC_SENTRY_RELEASE?: string | undefined
   NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE?: string | undefined
@@ -94,12 +120,18 @@ export const DEVELOPMENT_TRACES_SAMPLE_RATE = 1.0
  * deployments already carry would turn a wrong value into a refused boot. So
  * the shape is checked here instead, and a value that is not a DSN disables
  * Sentry with a named warning rather than reaching `Sentry.init`.
+ *
+ * Defined as "`parseSentryDsn` can read it", rather than as a second pattern
+ * that means to say the same thing. The two DID disagree while they were
+ * written separately: `https://:pass@host/4505` passed this gate — the old
+ * `[^@/\s]+` happily matched `:pass` — while the parser returned `null` for
+ * having no public key. The Next.js SDK would have initialised on it and every
+ * Convex report would have died as `bad-dsn`, which is the precise failure this
+ * module exists to prevent: the variable is set, the operator believes
+ * monitoring is live, and half of it silently is not.
  */
-const DSN_PATTERN = /^https?:\/\/[^@/\s]+@[^/\s]+\/\d+$/
-
-/** True when `value` can be used as a Sentry DSN. */
 export function isSentryDsn(value: string | undefined): boolean {
-  return typeof value === 'string' && DSN_PATTERN.test(value.trim())
+  return typeof value === 'string' && parseSentryDsn(value) !== null
 }
 
 /** `''` and whitespace mean "not set" — `.env.example` ships every key empty. */
@@ -187,29 +219,6 @@ export const SENTRY_KEPT_HEADERS: readonly string[] = [
   'content-length',
 ]
 
-/**
- * Query parameters whose VALUE is replaced before the event leaves.
- *
- * `request.url` is not a header and survives the allowlist above. This product
- * puts real credentials in query strings: `/reset-password?token=…` is a live
- * password reset, and `/order/<id>?token=…` opens one customer's order to
- * whoever holds the link. Neither belongs in a monitoring tool.
- */
-export const SENTRY_REDACTED_QUERY_KEYS: readonly string[] = [
-  'token',
-  'access_token',
-  'refresh_token',
-  'id_token',
-  'code',
-  'secret',
-  'password',
-  'signature',
-  'key',
-  'api_key',
-  'apikey',
-]
-
-const REDACTED = '[Filtered]'
 
 /** The shape `scrubSentryEvent` touches — structural, so no SDK import. */
 export interface SentryScrubbableEvent {
@@ -312,7 +321,10 @@ export function resolveSentryOptions(
     : {},
   warn: (message: string) => void = (message) => console.warn(message),
 ): SentryOptions | null {
-  const dsn = clean(env.NEXT_PUBLIC_SENTRY_DSN)
+  const dsn =
+    runtime === 'convex'
+      ? (clean(env.SENTRY_DSN) ?? clean(env.NEXT_PUBLIC_SENTRY_DSN))
+      : clean(env.NEXT_PUBLIC_SENTRY_DSN)
   if (!dsn) return null
 
   if (!isSentryDsn(dsn)) {
@@ -320,9 +332,9 @@ export function resolveSentryOptions(
     // failure this module exists to end: the operator sets the DSN, believes
     // monitoring is live, and no one sees the checkout error.
     warn(
-      `[sentry] NEXT_PUBLIC_SENTRY_DSN is set but is not a Sentry DSN ` +
-        `(expected https://<key>@<host>/<projectId>). Error reporting is OFF for the ` +
-        `${runtime} runtime.`,
+      `[sentry] ${runtime === 'convex' ? 'SENTRY_DSN' : 'NEXT_PUBLIC_SENTRY_DSN'} is set but ` +
+        `is not a Sentry DSN (expected https://<key>@<host>/<projectId>). Error reporting is ` +
+        `OFF for the ${runtime} runtime.`,
     )
     return null
   }

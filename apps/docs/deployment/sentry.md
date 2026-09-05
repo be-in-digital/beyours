@@ -161,5 +161,74 @@ traced request.
 - **`apps/site`.** The commercial site depends on none of the engine packages
   and has its own env validator; it is BeYours-level, not client-level, and
   needs its own decision.
-- **Convex.** Backend functions run outside Next and report nothing here. The
-  DSN is deliberately absent from `.env.convex.example`.
+(**Convex used to be on this list.** It is not any more — see below.)
+
+## The Convex backend
+
+Backend functions used to report nothing here, and that was the largest hole in
+this document. Every Stripe, Deliveroo, Uber Eats and SES webhook runs on the
+Convex side, along with every order mutation and the whole kitchen path; the
+only trace of a failure in any of them was one of 112 `console.error` calls,
+landing in the dashboard of ONE client's deployment. With one deployment per
+client, a Saturday-night order that failed inside Convex was seen by nobody,
+and finding it meant opening each client's console in turn.
+
+It reports to the **same project** as the rest of that client's site. A failed
+checkout raises one issue whether it broke in the browser, in the route handler
+or in the mutation, and issues carry a `runtime` tag (`browser`, `server`,
+`edge`, `convex`) plus a `source` tag naming the handler.
+
+**To turn it on for a deployment**, set the DSN in the Convex environment store
+— which is a different store from the one Next.js reads:
+
+```bash
+npx convex env set SENTRY_DSN "https://<key>@<org>.ingest.sentry.io/<project>"
+npx convex env set NEXT_PUBLIC_SENTRY_ENVIRONMENT production   # optional
+```
+
+`SENTRY_DSN`, not `NEXT_PUBLIC_SENTRY_DSN`: the `NEXT_PUBLIC_` prefix means
+"inlined into a browser bundle", and a store Next.js never reads is exactly
+where that name gets someone to set the wrong variable. The old name still
+works as a fallback, so a deployment already carrying it keeps reporting.
+
+Leaving it unset is a supported state and the default one. There is no
+transport, no buffer and no cost — `convex/errorReporting.ts` returns
+`{ reported: false, reason: "no-dsn" }` and says nothing.
+
+**How it works, and why not `@sentry/node`.** A Convex module is not a Node
+program: the default runtime is a V8 isolate with `fetch` and no Node API.
+Putting the SDK behind a `"use node"` action would not help either — nothing
+outside such a module can import from it, and an `httpAction` cannot be
+`"use node"` at all, which is every webhook. So the envelope is built by hand
+in [`@be-in-digital/core/sentry`](../../../packages/core/src/sentry/envelope.ts)
+and POSTed with one `fetch`. Same scrubbing as the Next.js runtimes, plus
+`redactSentryExtra` for the context a call site attaches by hand.
+
+**How to report from a new call site:**
+
+```ts
+} catch (error) {
+  console.error("[Stripe Webhook] …", error)
+  await captureBackendError(ctx, { error, source: "stripeWebhook", tags: { eventType } })
+  return new Response("Processing error", { status: 500 })
+}
+```
+
+`console.error` stays — the Convex dashboard is still the fastest place to read
+a log with a deploy in front of you. This is a second destination, not a
+replacement. One trap: from a **mutation** the report is scheduled inside the
+mutation's transaction, so a mutation that rethrows rolls its own report back.
+Report those from the action or `httpAction` above them.
+
+## Liveness
+
+`GET $CONVEX_SITE_URL/health` and `GET https://<site>/api/health`. The second
+calls the first and reports both halves, so one URL per client site tells an
+uptime monitor whether Vercel is serving *and* whether that client's Convex
+deployment is answering. Unauthenticated by design — a monitor cannot hold a
+credential — and neither response contains a configuration value: they say
+whether Sentry is configured, never what to. `200` healthy, `503` degraded.
+
+A deployment with no Sentry project reports `errorReporting: "off"` and stays
+`200`: that is a configuration decision, not an outage, and paging on it would
+train whoever carries the pager to ignore the alert.

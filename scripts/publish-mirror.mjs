@@ -53,6 +53,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import {
+  describeUnresolvable,
+  engineImportsIn,
+  unresolvableImports,
+} from "./lib/engine-exports.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
@@ -118,6 +123,22 @@ function publishedVersion(pkg) {
   } catch {
     return null
   }
+}
+
+/**
+ * The `exports` map of the version a client would actually install.
+ *
+ * `undefined` means the package declares no `exports` at all, which is a valid
+ * state Node resolves legacily — `exportsResolve` treats it as "cannot be
+ * wrong". A FAILED lookup is different and must not be confused with it, so it
+ * throws rather than returning `undefined`: not knowing is not the same as
+ * being fine, and this guard exists precisely to stop the mirror shipping on an
+ * assumption.
+ */
+function publishedExports(pkg, version) {
+  const raw = run("npm", ["view", `${pkg}@${version}`, "exports", "--json", `--registry=${REGISTRY}`])
+  if (!raw) return undefined
+  return JSON.parse(raw)
 }
 
 function resolveVersions(deps) {
@@ -207,6 +228,21 @@ try {
   const sourcePkg = JSON.parse(readFileSync(join(SOURCE, "package.json"), "utf8"))
   const versions = resolveVersions(sourcePkg.dependencies)
   for (const [pkg, range] of Object.entries(versions)) log(`   ${pkg} → ${range}`)
+
+  log("→ checking the pinned versions can resolve what the tree imports")
+  // CI builds `apps/themes` against `packages/*` at HEAD through the workspace
+  // link; a client installs the tarballs pinned above. A subpath added to a
+  // package's `exports` without a version bump exists in the first and not in
+  // the second, so all four required checks stay green while the published
+  // template cannot build. See `lib/engine-exports.mjs` for the measurement.
+  const published = {}
+  for (const [pkg, range] of Object.entries(versions)) {
+    const version = range.replace(/^\^/, "")
+    published[pkg] = { version, exports: publishedExports(pkg, version) }
+  }
+  const unresolvable = unresolvableImports(engineImportsIn(SOURCE), published)
+  if (unresolvable.length > 0) fail(describeUnresolvable(unresolvable))
+  log(`   ${Object.keys(published).length} package(s) verified`)
 
   log("→ copying contents")
   // What is shipped, and what the mirror keeps, is decided in
