@@ -8,7 +8,23 @@
  */
 
 import { v } from "convex/values"
-import type { OrderStatus } from "@be-in-digital/convex-schema"
+import { paginationOptsValidator } from "convex/server"
+import type {
+  BusinessHours,
+  OrderStatus,
+  OrderType,
+} from "@be-in-digital/convex-schema"
+import {
+  isWithinBusinessHours,
+  resolveStoreHours,
+} from "@be-in-digital/convex-schema"
+import {
+  assertDayStarts,
+  computeDashboardStats,
+  dashboardWindowStart,
+  type DashboardStats,
+} from "./dashboardStats"
+import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
@@ -48,7 +64,132 @@ import {
   type TaxedLine,
 } from "./orderTotals"
 import { verifyOrderLine, MAX_LINE_QUANTITY } from "./orderLine"
+import { stockPatch, type ProductStockCount } from "./products"
 import { requireStorePermission } from "./auth"
+import { RefusalError } from "./refusal"
+
+/* ------------------------------------------------------------------ */
+/* Refusing an order                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Why the order as a whole was refused.
+ *
+ * The per-line reasons are `LineRejectionReason`; the delivery ones are
+ * `ZoneRejectionReason` and `QuoteRejectionReason`; the coupon's are
+ * `PromotionRejectionReason`. These are the refusals that belong to the order
+ * itself — the establishment, the service, the shape of the basket.
+ */
+export type OrderRefusalCode =
+  | "store_not_found"
+  | "too_many_lines"
+  | "store_not_published"
+  | "store_not_accepting"
+  | "outside_opening_hours"
+  | "service_not_offered"
+  | "line_without_product"
+  | "product_not_found"
+  | "product_wrong_store"
+  | "quote_required"
+  | "promotion_not_found"
+
+/**
+ * An order the establishment cannot take, refused so the diner can read why.
+ *
+ * Every message here used to be a plain `throw new Error`, which Convex redacts
+ * in production: the checkout rendered "Server Error" at the moment of payment,
+ * for every one of them. See `refusal.ts`. Three of them were also written in
+ * English — they are the only copy on this path a diner could ever be shown, so
+ * they are French now, like the rest of the storefront.
+ */
+export class OrderRefusedError extends RefusalError<OrderRefusalCode> {
+  readonly reason: OrderRefusalCode
+
+  constructor(
+    reason: OrderRefusalCode,
+    message: string,
+    details?: Record<string, string | number>
+  ) {
+    super("OrderRefusedError", reason, message, details)
+    this.reason = reason
+  }
+}
+
+/**
+ * Move the tracked stock an order's lines account for, by `direction`.
+ *
+ * `-1` sells it, `+1` gives it back. Both ends of the same rule, because they
+ * have to agree about which lines count and how the same dish appearing on two
+ * of them adds up: a basket holding one pizza with extra cheese and one without
+ * is two lines and two portions.
+ *
+ * Only `stock.tracked` products, only one patch each, and never below zero.
+ * `stockPatch` carries the auto-disable rule with it, so the last portion sold
+ * takes the dish off the menu and the first one returned puts it back.
+ */
+async function moveTrackedStock(
+  ctx: any,
+  lines: Array<{ productId?: string; quantity: number }>,
+  direction: 1 | -1,
+  now: number
+): Promise<void> {
+  const byProduct = new Map<string, number>()
+  for (const line of lines) {
+    if (!line.productId) continue
+    byProduct.set(line.productId, (byProduct.get(line.productId) ?? 0) + line.quantity)
+  }
+
+  for (const [productId, quantity] of byProduct) {
+    const product = await ctx.db.get(productId)
+    if (!product?.stock?.tracked) continue
+    await ctx.db.patch(productId, {
+      ...stockPatch(product, Math.max(0, product.stock.quantity + direction * quantity)),
+      updatedAt: now,
+    })
+  }
+}
+
+/**
+ * Did this order move stock the delivery platforms show as availability?
+ *
+ * `stock.quantity` is what `isProductOutOfStock` reads before suspending an
+ * item on Uber Eats and what the Deliveroo availability delta is built from.
+ * The Inventaire screen has booked a platform push on every stock edit since
+ * the beginning; the order path started moving the same number and told nobody,
+ * so a dish sold out on the restaurant's own site stayed orderable on the
+ * platforms until some unrelated catalogue write happened to book a sync — and
+ * there is no sweep to catch it, so that window has no end.
+ *
+ * Asked rather than assumed: most baskets hold no tracked dish at all, and a
+ * full menu upload per order is a full menu upload per order.
+ *
+ * It lives here because the products are here; the push itself is booked by the
+ * app wrapper, which is the only layer that can reach `internal.*`.
+ */
+export async function orderMovedTrackedStock(
+  ctx: any,
+  orderId: string
+): Promise<boolean> {
+  const order = await ctx.db.get(orderId)
+  // A marketplace order never took any — see the cancellation branch.
+  if (!order || isMarketplaceOrder(order.source)) return false
+
+  const seen = new Set<string>()
+  for (const line of order.items ?? []) {
+    if (!line.productId || seen.has(line.productId)) continue
+    seen.add(line.productId)
+    const product = await ctx.db.get(line.productId)
+    if (product?.stock?.tracked) return true
+  }
+  return false
+}
+
+/** The service, as a French sentence names it. */
+const ORDER_TYPE_LABEL: Record<OrderType, string> = {
+  delivery: "la livraison",
+  pickup: "le retrait sur place",
+  dine_in: "la commande sur place",
+}
 
 // === QUERIES ===
 
@@ -106,17 +247,152 @@ export async function mayReadStoreOrders(
   }
 }
 
+/** Every status an order can hold, as the queries below accept it. */
+const ORDER_STATUS = v.union(
+  v.literal("pending"),
+  v.literal("confirmed"),
+  v.literal("preparing"),
+  v.literal("ready"),
+  v.literal("out_for_delivery"),
+  v.literal("delivered"),
+  v.literal("completed"),
+  v.literal("cancelled")
+)
+
 /**
- * List all orders for a store, ordered by creation date (newest first)
+ * One page of a store's orders, newest first, narrowed by status where asked.
+ *
+ * WHY IT IS PAGINATED. This returned every order the establishment had ever
+ * taken, and it was the query behind both `/dashboard` and `/dashboard/orders`.
+ * Measured on a seeded store: 5,000 orders in the table, 5,000 rows returned,
+ * 3.07 MB on the wire. Convex aborts a transaction that reads more than 16,384
+ * documents, so the two screens an owner opens most were on a path to throwing
+ * on every load, permanently, with no admin action able to clear it. Worse,
+ * both are live subscriptions: every new order re-serialised the restaurant's
+ * whole order history to every open admin tab.
+ *
+ * `status` is an equality on `by_storeId_status_createdAt`, so the filter costs
+ * the rows it returns rather than the rows it rejects, and both branches order
+ * by the same field — a status tab that ordered by `_creationTime` printed a
+ * Date column that was not monotonic as soon as a platform webhook arrived
+ * late. `getByStatus` was this read with the filter mandatory and no caller; it
+ * is folded in here rather than left as a second unbounded doorway onto the
+ * same table.
  */
 export const list = {
-  args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: { storeId: string }) => {
+  args: {
+    storeId: v.id("stores"),
+    status: v.optional(ORDER_STATUS),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      status?: string
+      paginationOpts: { numItems: number; cursor: string | null }
+    }
+  ) => {
+    const page = clampPagination(args.paginationOpts)
+
+    if (args.status) {
+      return await ctx.db
+        .query("orders")
+        .withIndex("by_storeId_status_createdAt", (q: any) =>
+          q.eq("storeId", args.storeId).eq("status", args.status)
+        )
+        .order("desc")
+        .paginate(page)
+    }
+
     return await ctx.db
       .query("orders")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
-      .collect()
+      .paginate(page)
+  },
+}
+
+/**
+ * The most orders `dashboardStats` will read in one transaction.
+ *
+ * The window is the real bound — the aggregates cover a month, not a lifetime —
+ * and this is the ceiling under it, so an establishment that takes more orders
+ * in a month than Convex will read in one transaction still gets a dashboard.
+ * Ordered newest-first, so what a truncated read loses is the far end of the
+ * 30-day breakdown; the today, yesterday and seven-day figures are the newest
+ * rows and stay exact. The answer says `truncated` when it happens.
+ */
+export const DASHBOARD_ORDER_SCAN_LIMIT = 5_000
+
+/**
+ * Everything `/dashboard` renders, aggregated on the server.
+ *
+ * The page used to subscribe to `orders.list` — every order ever — and do this
+ * arithmetic in the browser. See `dashboardStats.ts` for why the day boundaries
+ * arrive as an argument rather than being derived here.
+ */
+export const dashboardStats = {
+  args: {
+    storeId: v.id("stores"),
+    /** Local-midnight boundaries, ascending; the last one is today. */
+    dayStarts: v.array(v.number()),
+    /** Tomorrow's local midnight — the exclusive end of today. */
+    todayEnd: v.number(),
+    /** Start of the wider window the type/source breakdowns cover. */
+    breakdownSince: v.number(),
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      dayStarts: number[]
+      todayEnd: number
+      breakdownSince: number
+    }
+  ): Promise<DashboardStats> => {
+    assertDayStarts(args.dayStarts, args.todayEnd)
+    const windowStart = dashboardWindowStart(args)
+
+    const rows = await ctx.db
+      .query("orders")
+      .withIndex("by_storeId_createdAt", (q: any) =>
+        q.eq("storeId", args.storeId).gte("createdAt", windowStart)
+      )
+      .order("desc")
+      .take(DASHBOARD_ORDER_SCAN_LIMIT + 1)
+
+    const truncated = rows.length > DASHBOARD_ORDER_SCAN_LIMIT
+    return computeDashboardStats(
+      rows.slice(0, DASHBOARD_ORDER_SCAN_LIMIT),
+      { ...args, now: Date.now() },
+      truncated
+    )
+  },
+}
+
+/** How many orders the dashboard's "Dernières commandes" table shows. */
+export const RECENT_ORDERS_LIMIT = 10
+
+/**
+ * The last handful of orders, for the dashboard's recent-orders table.
+ *
+ * The table used to be `orders.slice(0, 10)` over the entire history the page
+ * had already downloaded. Ten rows are ten rows; this reads ten.
+ */
+export const recent = {
+  args: { storeId: v.id("stores"), limit: v.optional(v.number()) },
+  handler: async (ctx: any, args: { storeId: string; limit?: number }) => {
+    // `clampPageSize` rather than `Math.min(Math.max(...))`: `v.number()`
+    // accepts NaN over the wire, and NaN survives both of those to reach
+    // `.take()`, which refuses it with an error naming an argument the caller
+    // never sent.
+    const limit = clampPageSize(args.limit, RECENT_ORDERS_LIMIT, 50)
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))
+      .order("desc")
+      .take(limit)
   },
 }
 
@@ -130,47 +406,10 @@ export const getById = {
   },
 }
 
-/**
- * Get orders by customer
- */
-export const getByCustomer = {
-  args: { customerId: v.string() },
-  handler: async (ctx: any, args: { customerId: string }) => {
-    return await ctx.db
-      .query("orders")
-      .withIndex("by_customerId", (q: any) => q.eq("customerId", args.customerId))
-      .order("desc")
-      .collect()
-  },
-}
-
-/**
- * Get orders by status
- */
-export const getByStatus = {
-  args: {
-    storeId: v.id("stores"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("preparing"),
-      v.literal("ready"),
-      v.literal("out_for_delivery"),
-      v.literal("delivered"),
-      v.literal("completed"),
-      v.literal("cancelled")
-    ),
-  },
-  handler: async (ctx: any, args: { storeId: string; status: string }) => {
-    return await ctx.db
-      .query("orders")
-      .withIndex("by_storeId_status", (q: any) =>
-        q.eq("storeId", args.storeId).eq("status", args.status)
-      )
-      .order("desc")
-      .collect()
-  },
-}
+// REMOVED: `getByCustomer` collected one customer's entire order history from
+// `by_customerId` with no window and no limit, and — like the app-level
+// wrapper deleted before it — had no caller. The account page reads
+// `getMyOrders`, which derives the customer from the session and pages.
 
 /**
  * Get orders by view token (public access for order confirmation page)
@@ -306,6 +545,14 @@ interface CreateOrderArgs {
 interface StoreDoc {
   status?: string
   address?: { latitude?: number; longitude?: number }
+  /**
+   * The weekly schedule, and whether this location follows the global one.
+   *
+   * Both were absent from this interface, which is how the order path came to
+   * ignore them: the mutation could not read a field it had never declared.
+   */
+  hours?: BusinessHours[]
+  useGlobalHours?: boolean
   settings?: { taxRate?: number }
   /** Per-store service switches, when the owner has customised them. */
   overrides?: {
@@ -321,6 +568,8 @@ interface StoreDoc {
 interface GlobalSettingsDoc {
   taxRate?: number
   timezone?: string
+  /** The deployment-wide week, for every location on `useGlobalHours`. */
+  hours?: BusinessHours[]
   minimumOrderAmount?: number
   /** The deployment-wide service switches, written by the settings page. */
   services?: {
@@ -417,7 +666,12 @@ export const create = {
 
     // Get store and global settings for tax rate and delivery config
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
-    if (!store) throw new Error("Store not found")
+    if (!store) {
+      throw new OrderRefusedError(
+        "store_not_found",
+        "Ce restaurant n'existe plus. Rechargez la page pour en choisir un autre."
+      )
+    }
 
     // Public by design — a guest checks out without a session — and until now
     // nothing bounded it: `customerInfo.name` and the two `notes` fields were
@@ -440,7 +694,8 @@ export const create = {
     // never trusted, but it is bounded here so the argument cannot be the
     // payload either.
     if (args.items.length > MAX_ORDER_LINES) {
-      throw new Error(
+      throw new OrderRefusedError(
+        "too_many_lines",
         `Une commande ne peut pas dépasser ${MAX_ORDER_LINES} lignes.`
       )
     }
@@ -463,7 +718,10 @@ export const create = {
     // store id persisted in localStorage, or a direct call all skip the list.
     // The kitchen behind a draft is not waiting for tickets.
     if (!isPublishedStore(store)) {
-      throw new Error("This store is not open for orders")
+      throw new OrderRefusedError(
+        "store_not_published",
+        "Ce restaurant ne prend pas encore de commandes en ligne."
+      )
     }
 
     // `closed` and `temporarily_unavailable` are the two ways an owner says
@@ -473,7 +731,10 @@ export const create = {
     // the order, and a stale tab, a cart restored from localStorage or a direct
     // call reached it with no page in between.
     if (!isOrderableStore(store)) {
-      throw new Error("This store is not accepting orders right now")
+      throw new OrderRefusedError(
+        "store_not_accepting",
+        "Ce restaurant ne prend pas de commandes pour le moment."
+      )
     }
 
     // Read once, before the items: the serving window of a dish is a question
@@ -482,13 +743,41 @@ export const create = {
     const globalSettings = await ctx.db.query("globalSettings").first() as GlobalSettingsDoc | null
     const deliveryConfig = globalSettings?.delivery
 
+    // The weekly schedule, enforced for the first time. `isOrderableStore`
+    // above answers only for the status an owner set by hand; the hours are the
+    // gate restaurants actually rely on, and until now the only thing honouring
+    // them was a `toast.error` on the checkout page. A tab left open past
+    // closing, a cart restored from localStorage or a direct call each bought a
+    // kitchen ticket at 4 a.m. in an empty building.
+    //
+    // Read here, after `globalSettings`, because both halves of the answer live
+    // there: which week governs (`useGlobalHours` may point at the global one)
+    // and the clock it is read on. `isWithinBusinessHours` is the same function
+    // the storefront's `useStoreStatus` calls, so the two cannot drift.
+    if (
+      !isWithinBusinessHours(
+        resolveStoreHours(store, globalSettings),
+        now,
+        globalSettings?.timezone
+      )
+    ) {
+      throw new OrderRefusedError(
+        "outside_opening_hours",
+        "Ce restaurant est fermé pour le moment. Revenez à ses heures d'ouverture."
+      )
+    }
+
     // The four service switches were enforced nowhere. The selector treated an
     // absent store override as "offer everything", and this mutation never
     // looked at `args.type`, so a restaurant that does not deliver took
     // delivery orders — including from a cart whose type was persisted before
     // the owner turned the service off.
     if (!isOrderTypeOffered(args.type, resolveStoreServices(store, globalSettings))) {
-      throw new Error(`This store does not offer ${args.type} orders`)
+      throw new OrderRefusedError(
+        "service_not_offered",
+        `Ce restaurant ne propose pas ${ORDER_TYPE_LABEL[args.type]}.`,
+        { orderType: args.type }
+      )
     }
 
     // Only now, past every reason an order can be refused. The window is the
@@ -514,27 +803,77 @@ export const create = {
     // The same lines, seen by the promotion resolver: a discount scoped to a
     // product or a category has to know what is in the basket.
     const discountableLines: DiscountableLine[] = []
+    // Every tracked dish this basket takes, and how many of it.
+    //
+    // Two lines can name the same product — one pizza with extra cheese, one
+    // without — and each was verified on its own against the stored quantity,
+    // so a stock of 3 accepted 2 + 2. The running total is what the guard is
+    // checked against below, and what is sold off the counter after the insert.
+    const soldStock = new Map<
+      string,
+      {
+        product: { _id: unknown; stock: ProductStockCount; isActive: boolean }
+        ordered: number
+      }
+    >()
     for (const item of args.items) {
       if (!item.productId) {
-        throw new Error("productId is required for each item")
+        throw new OrderRefusedError(
+          "line_without_product",
+          "Votre Box contient un article invalide. Videz-la et recommencez."
+        )
       }
 
+      // The ids stay in `details`, out of the sentence: they are for a log, and
+      // a customer cannot act on one.
       const product = await ctx.db.get(item.productId)
-      if (!product) throw new Error(`Product not found: ${item.productId}`)
-      if (product.storeId !== args.storeId) {
-        throw new Error(`Product ${item.productId} does not belong to store ${args.storeId}`)
+      if (!product) {
+        throw new OrderRefusedError(
+          "product_not_found",
+          "Un article de votre Box n'existe plus. Retirez-le pour continuer.",
+          { productId: item.productId }
+        )
       }
+      if (product.storeId !== args.storeId) {
+        throw new OrderRefusedError(
+          "product_wrong_store",
+          "Votre Box contient un article d'un autre restaurant. Videz-la et recommencez.",
+          { productId: item.productId }
+        )
+      }
+
+      // What is left of this dish once the earlier lines of this same basket
+      // have taken their share. Without it the sold-out guard is per line, and
+      // a basket is not a line.
+      const alreadySold = soldStock.get(item.productId)?.ordered ?? 0
+      const remaining =
+        product.stock?.tracked && alreadySold > 0
+          ? {
+              ...product,
+              stock: {
+                ...product.stock,
+                quantity: product.stock.quantity - alreadySold,
+              },
+            }
+          : product
 
       // Availability, quantity, options and price all resolve in `orderLine`,
       // pure and tested, because each refusal is the difference between an
       // order the kitchen can cook and one it cannot.
       const line = verifyOrderLine({
-        product,
+        product: remaining,
         quantity: item.quantity,
         selectedOptions: item.selectedOptions,
         now,
         timezone: globalSettings?.timezone,
       })
+
+      if (product.stock?.tracked) {
+        soldStock.set(item.productId, {
+          product,
+          ordered: alreadySold + line.quantity,
+        })
+      }
 
       verifiedItems.push({
         productId: item.productId,
@@ -608,7 +947,8 @@ export const create = {
         // `uberDirectFee: 0` bought free delivery. The client now sends only
         // the estimate id and the fee is read from the quote we issued.
         if (!args.uberDirectEstimateId) {
-          throw new Error(
+          throw new OrderRefusedError(
+            "quote_required",
             "Un devis de livraison est requis : veuillez confirmer votre adresse."
           )
         }
@@ -659,7 +999,12 @@ export const create = {
       const promotion = (await ctx.db.get(args.promotionId)) as
         | PromotionForDiscount
         | null
-      if (!promotion) throw new Error("Promotion not found")
+      if (!promotion) {
+        throw new OrderRefusedError(
+          "promotion_not_found",
+          "Ce code promo n'existe pas."
+        )
+      }
 
       // Per-customer caps are keyed on email. `resolvePromotionDiscount`
       // refuses a capped promotion on an anonymous order rather than let the
@@ -788,6 +1133,36 @@ export const create = {
     // promotion capped at `maxTotalUsage: 1` stayed redeemable forever. The
     // per-customer cap was closed by refusing anonymous orders, but the GLOBAL
     // cap was not — the counter simply never advanced.
+    // Sell the stock this order just took.
+    //
+    // `orderLine` has refused a sold-out dish since P0-09, and the refusal was
+    // unreachable: NOTHING moved `stock.quantity` except an owner retyping it
+    // in the Inventaire screen. A restaurant tracking ten portions of the daily
+    // special sold fifty and found out in the kitchen. `autoDisableWhenEmpty`
+    // hung off the same manual mutation, so a dish that ran out never came off
+    // the menu on its own either — hence `stockPatch`, shared with `updateStock`
+    // so the rule has one implementation.
+    //
+    // Here rather than in a scheduled job: a Convex mutation is one
+    // transaction, so the order, its kitchen ticket and this decrement commit
+    // together or not at all, and two checkouts racing for the last portion are
+    // serialised by the same read-write conflict that protects the promotion
+    // counter below. Split across transactions, both would read 1 and both
+    // would sell it.
+    //
+    // Floored at zero: the guard above makes an oversell unreachable, and a
+    // negative count would read as "minus two portions" on every screen that
+    // shows it if it ever became reachable again.
+    await moveTrackedStock(
+      ctx,
+      [...soldStock.entries()].map(([productId, { ordered }]) => ({
+        productId,
+        quantity: ordered,
+      })),
+      -1,
+      now
+    )
+
     // Burn the delivery quote. One quote, one order: it used to be reusable
     // forever, so a single cheap estimate could pay for every future delivery.
     if (consumedQuoteId) {
@@ -1027,6 +1402,23 @@ export const updateStatus = {
       updates.cancelledAt = now
       if (args.cancellationReason) {
         updates.cancellationReason = args.cancellationReason
+      }
+
+      // Give the kitchen back what the order took.
+      //
+      // `orders.create` sells tracked stock now, and until this existed the
+      // sale was one-way: a restaurant that cancelled three orders was left
+      // showing three portions it still had, and `autoDisableWhenEmpty` could
+      // leave the dish off the menu with a full tray behind the counter.
+      //
+      // Once only, and this is why `cancelled` being terminal matters: it is
+      // reachable from `pending` and `confirmed` alone, a replayed status
+      // returns above before reaching here, and nothing leaves it. Marketplace
+      // orders are skipped because they never took any — `createFromWebhook`
+      // has no stock path, the platform keeps its own count, and crediting one
+      // here would invent stock the restaurant does not have.
+      if (!isMarketplaceOrder(order.source)) {
+        await moveTrackedStock(ctx, order.items ?? [], 1, now)
       }
 
       // Cancelling an order does not move money, and must not claim to.

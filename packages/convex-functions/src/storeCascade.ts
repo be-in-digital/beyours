@@ -55,6 +55,7 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "gamePlays", index: "by_storeId" },
   { table: "prizeRedemptions", index: "by_storeId" },
   { table: "gameReferrals", index: "by_storeId_referrerFingerprint" },
+  { table: "prizeIssuance", index: "by_storeId" },
   // i18n
   { table: "languages", index: "by_storeId" },
   { table: "translations", index: "by_storeId_entity" },

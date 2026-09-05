@@ -399,6 +399,47 @@ export const update = {
   },
 }
 
+/** A product's stock counter, as the catalogue stores it. */
+export interface ProductStockCount {
+  tracked: boolean
+  quantity: number
+  lowStockThreshold: number
+  autoDisableWhenEmpty?: boolean
+}
+
+/**
+ * The patch that leaves a tracked product holding `quantity`.
+ *
+ * WHY THIS IS A FUNCTION: the auto-disable rule used to live inline in
+ * `updateStock`'s handler, which is why it only ever ran when an owner retyped
+ * the number in the Inventaire screen. It is a rule about stock, not about that
+ * screen. `orders.create` now sells stock too — the decrement that never
+ * existed — and a dish that runs out has to come off the menu whichever of the
+ * two took the last portion.
+ *
+ * Pure, so both callers get the same answer and it is testable without a
+ * database. It does not clamp: `updateStock` never did, and the order path
+ * hands it a quantity it has already floored at zero.
+ */
+export function stockPatch(
+  product: { stock: ProductStockCount; isActive: boolean },
+  quantity: number
+): { stock: ProductStockCount; isActive?: boolean } {
+  const patch: { stock: ProductStockCount; isActive?: boolean } = {
+    stock: { ...product.stock, quantity },
+  }
+
+  if (product.stock.autoDisableWhenEmpty) {
+    if (quantity <= 0 && product.isActive) {
+      patch.isActive = false
+    } else if (quantity > 0 && !product.isActive) {
+      patch.isActive = true
+    }
+  }
+
+  return patch
+}
+
 /**
  * Update product stock quantity.
  * When autoDisableWhenEmpty is enabled:
@@ -415,23 +456,10 @@ export const updateStock = {
     if (!product) throw new Error("Product not found")
     if (!product.stock) throw new Error("Product does not track stock")
 
-    const patch: Record<string, any> = {
-      stock: {
-        ...product.stock,
-        quantity: args.quantity,
-      },
+    await ctx.db.patch(args.id, {
+      ...stockPatch(product, args.quantity),
       updatedAt: Date.now(),
-    }
-
-    if (product.stock.autoDisableWhenEmpty) {
-      if (args.quantity <= 0 && product.isActive) {
-        patch.isActive = false
-      } else if (args.quantity > 0 && !product.isActive) {
-        patch.isActive = true
-      }
-    }
-
-    await ctx.db.patch(args.id, patch)
+    })
   },
 }
 

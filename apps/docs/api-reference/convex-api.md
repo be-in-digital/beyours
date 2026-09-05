@@ -120,6 +120,40 @@ const orderId = await createOrder({
 });
 ```
 
+#### Refusals
+
+`orders.create` refuses an order it cannot honour by throwing a `ConvexError`.
+Convex redacts the message of a plain `Error` in production — the browser
+receives "Server Error" — so the reason travels in `data`, never in `message`:
+
+```typescript
+import { convexErrorMessage } from "@/lib/convex-error";
+
+try {
+  await createOrder({ ... });
+} catch (error) {
+  // Falls back to the server's own French sentence for a code this screen
+  // does not know about, so a refusal added later still reads correctly.
+  toast.error(convexErrorMessage(error, {}, "Erreur lors de la commande."));
+}
+```
+
+`data.code` is what a screen switches on. Per line, from `orderLine`:
+`invalid_quantity`, `inactive`, `insufficient_stock`, `outside_window`,
+`unknown_choice`, `missing_required_option`, `too_many_choices` — each also
+carries `data.productName`. For the order as a whole: `store_not_found`,
+`store_not_published`, `store_not_accepting`, `outside_opening_hours`,
+`service_not_offered`, `too_many_lines`, `line_without_product`,
+`product_not_found`, `product_wrong_store`, `quote_required`,
+`promotion_not_found`. Delivery adds `below_minimum`, `outside_radius`,
+`not_located` and the quote reasons (`missing`, `wrong_store`, `expired`,
+`already_used`, `address_not_located`, `address_mismatch`); a coupon adds the
+`PromotionRejectionReason` set. Public-mutation limits raise `field_too_long`
+and `rate_limited`.
+
+`data.message` is customer-facing French copy and may be reworded; `data.code`
+is the contract.
+
 ### `api.orders.listByStore`
 
 ```typescript

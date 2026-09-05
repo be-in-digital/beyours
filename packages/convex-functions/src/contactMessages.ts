@@ -5,6 +5,7 @@
  */
 
 import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 import { v } from "convex/values"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
@@ -31,13 +32,13 @@ export const list = {
           q.eq("storeId", args.storeId).eq("status", args.status)
         )
         .order("desc")
-        .paginate(args.paginationOpts)
+        .paginate(clampPagination(args.paginationOpts))
     }
     return await ctx.db
       .query("contactMessages")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
-      .paginate(args.paginationOpts)
+      .paginate(clampPagination(args.paginationOpts))
   },
 }
 

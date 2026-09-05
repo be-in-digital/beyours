@@ -177,17 +177,23 @@ PAYPAL_CLIENT_SECRET=...
 
 ### S3 Storage
 
+There are no `uploadToS3` / `deleteFromS3` / `getSignedUrl` exports. S3 is a
+service object built with an injected client, which is what makes it testable
+(`packages/core/src/aws/s3/client.ts:112`).
+
 ```typescript
-import { uploadToS3, deleteFromS3, getSignedUrl } from "@be-in-digital/core";
+import { createS3Service } from "@be-in-digital/core";
+
+const s3 = createS3Service(config, client);
 
 // Upload a file
-const url = await uploadToS3(file, "products/pizza.jpg", "products");
+const { key, url } = await s3.upload(file, { folder: "products" });
 
-// Get a signed URL (private files)
-const signedUrl = await getSignedUrl("products/pizza.jpg");
+// Presigned URL for a private object
+const { url: signed } = await s3.getPresignedDownloadUrl(key);
 
 // Delete
-await deleteFromS3("products/pizza.jpg");
+await s3.delete(key);
 ```
 
 **S3 Folders:**
