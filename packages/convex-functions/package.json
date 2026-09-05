@@ -30,6 +30,7 @@
     "./campaignDelivery": "./src/campaignDelivery.ts",
     "./sesSending": "./src/sesSending.ts",
     "./rateLimit": "./src/rateLimit.ts",
+    "./refusal": "./src/refusal.ts",
     "./prizeBudget": "./src/prizeBudget.ts",
     "./emailAutomationRuns": "./src/emailAutomationRuns.ts",
     "./products": "./src/products.ts",
@@ -122,7 +123,8 @@
     "convex": "1.44.0",
     "typescript": "^5.9.3",
     "@types/sanitize-html": "^2.16.1",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "@vitest/coverage-v8": "^3.2.4"
   },
   "peerDependencies": {
     "convex": "^1.44.0"

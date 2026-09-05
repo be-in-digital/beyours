@@ -23,7 +23,7 @@ import {
   Warehouse,
   type LucideIcon,
 } from "lucide-react"
-import type { Permission } from "@be-in-digital/core"
+import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
 import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -75,6 +75,53 @@ export interface NavGroup {
 /** Check whether a nav entry is collapsible (has children) */
 export function isCollapsible(entry: NavEntry): entry is CollapsibleNavItem {
   return "children" in entry
+}
+
+// ─── Tour anchors ───────────────────────────────────────────────────────────────
+
+/**
+ * The `data-tour` id the sidebar puts on the entry for `href`.
+ *
+ * WHY THIS IS A FUNCTION: it used to be an inline template literal in
+ * `app-sidebar.tsx`, written twice (flat branch and collapsible branch), while
+ * the onboarding tour carried its own hand-typed copies of the results. When
+ * the admin moved under `/dashboard`, the sidebar's ids followed the hrefs and
+ * the tour's did not — `nav-orders` against an emitted `nav-dashboard-orders`,
+ * 19 of 20 highlights pointing at nothing. Both the sidebar and the tour now
+ * call this, so an href change cannot desynchronise them again.
+ */
+export function navTourId(href: string): string {
+  return `nav-${href.replace(/^\//, "").replace(/\//g, "-")}`
+}
+
+/** The `data-tour` id of every entry the sidebar renders, flat and collapsible. */
+export function navTourIds(): string[] {
+  return navGroups.flatMap((group) =>
+    group.items.map((entry) =>
+      navTourId(isCollapsible(entry) ? entry.basePath : entry.href)
+    )
+  )
+}
+
+/**
+ * Whether `role` is shown the entry that leads to `href`.
+ *
+ * The same question `app-sidebar.tsx`'s `canSeeEntry` answers, asked by href
+ * rather than by entry, because the onboarding tour knows a route and needs to
+ * find out whether there is a menu item to point at. A `kitchen` account is
+ * shown 3 of the 21 entries; without this the tour would spend most of itself
+ * spotlighting elements that account never renders.
+ */
+export function canRoleSeeNavHref(role: Role, href: string): boolean {
+  for (const group of navGroups) {
+    for (const entry of group.items) {
+      const entryHref = isCollapsible(entry) ? entry.basePath : entry.href
+      if (entryHref !== href) continue
+      const permission = entry.requiredPermission
+      return permission ? hasPermission(role, permission as Permission) : true
+    }
+  }
+  return false
 }
 
 // ─── Navigation structure ───────────────────────────────────────────────────────

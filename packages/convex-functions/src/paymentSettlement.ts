@@ -27,6 +27,8 @@
  * both the return page and the webhook.
  */
 
+import { RefusalError } from "./refusal"
+
 export type PaymentProvider = "sumup" | "paypal" | "stripe"
 
 /** What the payment provider claims about a settled payment. */
@@ -75,8 +77,15 @@ export type SettlementRejectionReason =
   | "amount_mismatch"
   | "currency_mismatch"
 
-/** Thrown when a payment does not legitimately settle the given order. */
-export class SettlementRejectedError extends Error {
+/**
+ * Thrown when a payment does not legitimately settle the given order.
+ *
+ * The diner reads this one. `/checkout/success` renders it *after* they have
+ * been charged, which is the worst possible moment to be shown "Server Error" —
+ * and that is what Convex redacts a thrown `Error` to. `RefusalError` is what
+ * carries the sentence to that screen; see `refusal.ts`.
+ */
+export class SettlementRejectedError extends RefusalError<SettlementRejectionReason> {
   readonly reason: SettlementRejectionReason
   readonly provider: PaymentProvider
 
@@ -85,8 +94,7 @@ export class SettlementRejectedError extends Error {
     provider: PaymentProvider,
     message: string
   ) {
-    super(message)
-    this.name = "SettlementRejectedError"
+    super("SettlementRejectedError", reason, message, { provider })
     this.reason = reason
     this.provider = provider
   }
