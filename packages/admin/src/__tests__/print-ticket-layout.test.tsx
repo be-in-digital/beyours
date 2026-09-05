@@ -21,7 +21,7 @@
 
 import { describe, it, expect } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
-import { PrintTicketLayout } from "@/components/admin/kitchen/PrintTicketLayout"
+import { PrintTicketLayout } from "../pages/kitchen/print-ticket-layout"
 
 type Props = Parameters<typeof PrintTicketLayout>[0]
 
