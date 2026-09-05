@@ -525,7 +525,9 @@ async function seedMonitoring(ctx: MutationCtx, now: number) {
       await ctx.db.insert("saMonitoringChecks", {
         deploymentId: dep._id,
         kind: "http",
-        target: `https://${dep.domain}/health`,
+        /* Same targets the real prober uses (convex/saMonitoring.ts). Demo data
+           that points at a route nothing serves teaches the wrong thing. */
+        target: `https://${dep.domain}/`,
         status: down ? "down" : degraded ? "degraded" : "up",
         latencyMs: down ? undefined : Math.round((degraded ? 1400 : 220) + rand() * 260),
         statusCode: down ? 503 : 200,
@@ -536,7 +538,7 @@ async function seedMonitoring(ctx: MutationCtx, now: number) {
     await ctx.db.insert("saMonitoringChecks", {
       deploymentId: dep._id,
       kind: "convex",
-      target: dep.convexUrl ?? "convex",
+      target: dep.convexUrl ? `${dep.convexUrl}/instance_name` : "convex",
       status: dep.health === "down" ? "down" : "up",
       latencyMs: Math.round(40 + rand() * 60),
       checkedAt: now - 60_000,

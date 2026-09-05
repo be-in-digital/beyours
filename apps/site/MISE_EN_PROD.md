@@ -126,9 +126,23 @@ Provisioning is **100% manual**, and **that is acceptable at the volume we targe
 - [ ] 🟠 **[build] Link order → deployment**: `saDeployments.orderId` exists
   but is never filled in. Pass the `orderId` through the « Provisionner » form
   so payment → instance is traceable (audit + follow-up).
-- [ ] 🟡 **[build] Real monitoring**: `saMonitoringChecks` is a table with no
-  meaning without a loop. Add a cron (every 5-10 min) that pings each `live`
-  instance and records a check. Do it once there are several instances.
+- [x] ✅ **Real monitoring** (2026-09-05): the loop exists. A cron
+  (`convex/crons.ts`, `*/10 * * * *`) runs `saMonitoring.runProbes`, which GETs
+  each `live`/`degraded` instance's site root and, when it has one, its Convex
+  backend at `/instance_name` — the endpoint `npx convex network-test` itself
+  uses. There is deliberately **no `/health` route**: neither `apps/themes` nor
+  `apps/reference` serves one, so the root is the honest target; point
+  `httpTarget()` at a real health route the day one ships. Each round records
+  its checks through an `internalMutation`, then recomputes `health` (one failed
+  round = degraded, two consecutive = down) and `uptime30d` (share of http
+  probes over 30 days) from those rows. A deployment nobody has probed reports
+  « — », not 100 %: `updateStatus` no longer promotes `health` to "healthy" on
+  go-live, and every average skips deployments with no `lastCheckAt`.
+  « Sonder maintenant » on `/admin/monitoring` and on a deployment page forces
+  a round. Covered by `tests/convex/saMonitoring.test.ts`.
+  **Left**: `integration` and `webhook` checks are still unwritten — probing a
+  client's Stripe or Uber Eats needs that client's credentials, which this
+  backend does not hold.
 - [ ] 🟡 **[decision] Automating provisioning**: push it back until ~20-30
   customers. The manual runbook (PROCESS_DE_VENTE.md §5) is enough until then.
 

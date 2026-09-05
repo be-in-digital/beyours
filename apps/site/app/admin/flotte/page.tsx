@@ -102,10 +102,19 @@ export default function FleetPage() {
               <HealthChip health="down" n={stats.byHealth.down ?? 0} />
             </div>
           </KpiCard>
+          {/* Null while nothing has been probed — see convex/saMonitoring.ts. */}
           <KpiCard
             label="Uptime moyen"
-            value={formatPercentPoints(stats.avgUptime)}
-            hint="restaurants en ligne"
+            value={
+              stats.avgUptime === null
+                ? "—"
+                : formatPercentPoints(stats.avgUptime)
+            }
+            hint={
+              stats.avgUptime === null
+                ? "aucun déploiement sondé"
+                : `${formatNumber(stats.monitored)} restaurant${stats.monitored > 1 ? "s" : ""} sondé${stats.monitored > 1 ? "s" : ""}`
+            }
             icon={<Activity />}
           />
           <KpiCard
@@ -279,7 +288,9 @@ export default function FleetPage() {
                         href={`/admin/flotte/${d._id}`}
                         className="block tabular-nums text-foreground tnum"
                       >
-                        {d.uptime30d.toFixed(2)} %
+                        {d.lastCheckAt === undefined
+                          ? "—"
+                          : `${d.uptime30d.toFixed(2)} %`}
                       </Link>
                     </TableCell>
                     <TableCell className="text-right">

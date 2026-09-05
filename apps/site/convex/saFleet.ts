@@ -152,13 +152,19 @@ export const stats = query({
     const byStatus: Record<string, number> = {};
     const byHealth: Record<string, number> = {};
     let uptimeSum = 0;
-    let liveCount = 0;
+    let monitored = 0;
     for (const d of deps) {
       byStatus[d.status] = (byStatus[d.status] ?? 0) + 1;
       byHealth[d.health] = (byHealth[d.health] ?? 0) + 1;
-      if (d.status === "live" || d.status === "degraded") {
+      /* Only deployments the prober has actually reached carry an uptime.
+         Averaging in the provisioning placeholder is how the console came to
+         quote a fleet-wide figure nobody had measured. */
+      if (
+        (d.status === "live" || d.status === "degraded") &&
+        d.lastCheckAt !== undefined
+      ) {
         uptimeSum += d.uptime30d;
-        liveCount += 1;
+        monitored += 1;
       }
     }
     return {
@@ -169,7 +175,8 @@ export const stats = query({
       provisioning: byStatus["provisioning"] ?? 0,
       degraded: byHealth["degraded"] ?? 0,
       down: byHealth["down"] ?? 0,
-      avgUptime: liveCount ? uptimeSum / liveCount : 100,
+      monitored,
+      avgUptime: monitored ? uptimeSum / monitored : null,
     };
   },
 });
@@ -200,7 +207,12 @@ export const create = mutation({
       health: "unknown",
       region: args.region ?? "eu-west-3",
       plan: args.plan,
-      uptime30d: 100,
+      /* Placeholder, not a measurement. `uptime30d` is owned by
+         convex/saMonitoring.ts and means nothing until the prober has run, so
+         every reader gates it on `lastCheckAt`. It starts at 0 rather than 100
+         so a reader that forgets to gate shows something obviously wrong
+         instead of a plausible perfect score. */
+      uptime30d: 0,
       storeCount: 0,
       provisionedAt: now,
       integrations: [],
@@ -233,9 +245,12 @@ export const updateStatus = mutation({
       status: args.status,
       updatedAt: Date.now(),
     };
-    if (args.status === "live") {
-      if (!dep.goLiveAt) patch.goLiveAt = Date.now();
-      if (dep.health === "unknown") patch.health = "healthy";
+    /* Going live stamps the date and nothing else. This used to promote
+       `health` from "unknown" to "healthy", which was an assertion about a
+       system nobody had contacted; `health` is now written only by the prober
+       (convex/saMonitoring.ts), and stays "unknown" until it has run. */
+    if (args.status === "live" && !dep.goLiveAt) {
+      patch.goLiveAt = Date.now();
     }
     /* Marking a client gone revokes nothing on its own — the deployment keeps
        the credentials it was provisioned with. Stamp the date so the console
@@ -308,6 +323,16 @@ export const recordAccessRevoked = mutation({
   },
 });
 
+/* ── Operator corrections ──
+   The fields a human keeps up to date by hand, and only those.
+
+   `health` and `uptime30d` used to be settable here and no longer are: since
+   convex/saMonitoring.ts probes the fleet, they are computed from
+   `saMonitoringChecks` on every round. Leaving them writable would let an
+   operator type a figure that the next probe silently overwrites ten minutes
+   later — a worse failure than the one this replaced, because it looks like it
+   worked. Health is corrected by fixing the instance, or by « Sonder
+   maintenant ». */
 export const update = mutation({
   args: {
     deploymentId: v.id("saDeployments"),
@@ -315,8 +340,6 @@ export const update = mutation({
     region: v.optional(v.string()),
     version: v.optional(v.string()),
     latestVersion: v.optional(v.string()),
-    health: v.optional(healthStatus),
-    uptime30d: v.optional(v.number()),
     storeCount: v.optional(v.number()),
     notes: v.optional(v.string()),
     integrations: v.optional(integrationsValidator),
@@ -329,6 +352,12 @@ export const update = mutation({
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
     for (const [k, val] of Object.entries(rest)) {
       if (val !== undefined) patch[k] = val;
+    }
+    /* `lastDeployAt` had no writer at all. Recording a new running version is
+       the one moment we know a deploy happened, so stamp it here rather than
+       leaving the console's « Dernier déploiement » permanently empty. */
+    if (args.version !== undefined && args.version !== dep.version) {
+      patch.lastDeployAt = Date.now();
     }
     await ctx.db.patch(deploymentId, patch);
     await recordSaActivity(ctx, {
