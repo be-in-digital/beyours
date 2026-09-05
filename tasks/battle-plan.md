@@ -384,14 +384,14 @@ reservations joined from #330.
   **ESC/POS** — copy now describes the browser path that ships; cloud printing
   (Star CloudPRNT / Epson) chosen over a local agent, with no public promise
   made · **Square** — kept visible, marked « Bientôt ».
-- [ ] **Menus / formules** 🟠 — decided **build**, deferred to its own PR. The
+- [ ] **#352** 🟠 — **Menus / formules** — decided **build**, deferred to its own PR. The
   admin half is complete; the storefront, cart and order path are not, and
   `orders.ts:518` rejects any line without a `productId`. The cost is VAT
   allocation across a mixed-rate formule and the promotion interaction — money
   correctness, which wants a PR of its own. Until it lands the guided tour still
   promises « offres combinées » that nobody can order.
 
-> **Closed when.** The formule flow is orderable. Everything else in `CLAUDE.md`,
+> **Closed when.** The formule flow is orderable (#352). Everything else in `CLAUDE.md`,
 > on the site, in the demos and in the onboarding tour now maps to something a
 > client can use — see `tasks/sales-readiness-backlog.md` → LAUNCH-04 for what
 > was decided and what shipped for each.

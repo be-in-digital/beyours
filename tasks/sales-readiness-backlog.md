@@ -1957,7 +1957,7 @@ the alternative is shipping and supporting signed desktop software per OS. The
 three providers already sit in `kitchen-print.ts` as `available: false`. No
 public promise has been made about it, deliberately.
 
-### 4 · Menus / formules — **build the orderable flow, in its own PR**
+### 4 · Menus / formules — **build the orderable flow, in its own PR** (#352)
 
 Not "one reader and no UI": the admin half is **complete** — a « Menus /
 Formules » tab, a 473-line list and a 761-line section builder, Convex CRUD,
@@ -1971,9 +1971,12 @@ it is VAT allocation across a mixed-rate formule and how category promotions
 apply to dishes bought inside one. Both are money-correctness problems and want
 a PR where a reviewer can see only them.
 
-**Open until that PR lands.** The tour still tells owners they can « proposer des
-offres combinées » and no customer can order one. That gap is deliberate and
-recorded here rather than papered over.
+**Open until that PR lands**, and tracked as #352, which carries the file-level
+breakdown, the two money-correctness questions and the loose ends found while
+measuring (a public unfiltered `menus.list`, `platformVisibility` collected and
+never read, a dead `prizes.menuId`). The tour still tells owners they can
+« proposer des offres combinées » and no customer can order one. That gap is
+deliberate and recorded rather than papered over.
 
 ### 5 · Square — **keep it visible, marked « Bientôt »**
 
