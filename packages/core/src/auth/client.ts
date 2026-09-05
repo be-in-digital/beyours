@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import { useAuth, usePermission }                 │      │
- * │  │   from '@repo/core/auth'                          │      │
+ * │  │   from '@be-in-digital/core'                          │      │
  * │  │                                                   │      │
  * │  │ const { user, signIn } = useAuth()                │      │
  * │  │ const { allowed } = usePermission('orders:write') │      │
@@ -288,7 +288,7 @@ export function createAuthClient(options: { baseUrl: string }) {
  * @example
  * ```tsx
  * // app/layout.tsx
- * import { AuthProvider } from '@be-in-digital/core/auth'
+ * import { AuthProvider } from '@be-in-digital/core'
  *
  * export default function RootLayout({ children }) {
  *   return (

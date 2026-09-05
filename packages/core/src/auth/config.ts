@@ -7,7 +7,7 @@
  * │                                                             │
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
- * │  │ import { createAuthConfig } from '@repo/core/auth'│      │
+ * │  │ import { createAuthConfig } from '@be-in-digital/core'│      │
  * │  │                                                   │      │
  * │  │ const config = createAuthConfig({                 │      │
  * │  │   baseUrl: 'https://myrestaurant.com',            │      │

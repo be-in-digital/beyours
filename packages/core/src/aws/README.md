@@ -22,8 +22,8 @@ pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ```typescript
 import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { createS3Service } from '@be-in-digital/core/aws'
-import type { S3Operations } from '@be-in-digital/core/aws'
+import { createS3Service } from '@be-in-digital/core'
+import type { S3Operations } from '@be-in-digital/core'
 
 // Configuration
 const config = {
@@ -207,8 +207,8 @@ pnpm add @aws-sdk/client-ses
 
 ```typescript
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
-import { createSESService } from '@be-in-digital/core/aws'
-import type { SESOperations } from '@be-in-digital/core/aws'
+import { createSESService } from '@be-in-digital/core'
+import type { SESOperations } from '@be-in-digital/core'
 
 // Configuration
 const config = {

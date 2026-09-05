@@ -91,23 +91,50 @@ Blocks are the building units of CMS pages. Each block has typed fields.
 
 ### Validate Uploads
 
+`validateMediaUpload` takes the three facts about a file, not the `File`
+object — so it runs unchanged in a Convex isolate, where there is no `File`.
+
 ```typescript
 import { validateMediaUpload } from "@be-in-digital/cms";
 
-const validation = validateMediaUpload(file);
+const validation = validateMediaUpload("photo.jpg", "image/jpeg", 2_000_000);
 if (!validation.valid) {
   console.error(validation.error);
-  // "File too large (max 10MB)" or "Unsupported file type"
+  // { code: "file_too_large", message: "…" } | invalid_mime | invalid_filename
 }
 ```
 
 ### SVG Sanitization
 
-```typescript
-import { sanitizeSvg } from "@be-in-digital/cms";
+`sanitizeSvg` ships from the `@be-in-digital/cms/sanitize` subpath, **not** from
+the package barrel. It parses markup through DOMPurify, which needs a DOM, and
+the barrel is imported by Convex isolate modules that have none — re-exporting
+it made the whole backend fail to push. The reason is written out at the
+sanitize section of `packages/cms/src/index.ts`.
 
-// Remove malicious scripts from SVG content
-const safeSvg = sanitizeSvg(rawSvgString);
+```typescript
+import { sanitizeSvg } from "@be-in-digital/cms/sanitize";
+
+const result = sanitizeSvg(rawSvgString);
+result.sanitized;       // the cleaned SVG
+result.removedElements; // ["<script>", "onclick", …]
+```
+
+It returns a `SanitizeResult`, not a string, and throws above 1 MB of input.
+
+For the Convex callers that cannot pull in a parser, the barrel exports a
+DOM-free refusal check instead — regex-based, dependency-free, and enough to
+reject an upload before it is ever stored:
+
+```typescript
+import { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms";
+
+if (containsActiveContent(rawSvgString)) {
+  // refuse the upload
+}
+
+const report = inspectSvgForActiveContent(rawSvgString);
+// { active: true, reasons: ["élément actif (script, animation ou objet embarqué)", …] }
 ```
 
 ## Validation

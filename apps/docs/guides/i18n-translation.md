@@ -47,33 +47,68 @@ import { LanguagesPage } from "@be-in-digital/admin/pages";
 
 ## Auto-Translation with GPT
 
+Two things share the name "auto-translation", and they are not the same code:
+
+| | Where | Calls OpenAI |
+|---|---|---|
+| What the admin button runs | `@be-in-digital/convex-functions/autoTranslate` (`getTranslationPlan`, `runTranslationPlan`, `runBatchChunkPlan`, `saveDocumentTranslations`…), wrapped by each app as the `translateCatalogue`, `translateUIStrings` and `batchChunk` actions | Yes, `fetch` straight to `api.openai.com`, under a per-store daily quota |
+| The reusable helpers | `translateText` / `batchTranslate` in `@be-in-digital/core` | Only through an **injected** HTTP client |
+
+The core helpers never import an SDK and never read `process.env`: an `HttpClient`
+and an API key are handed in, which is what keeps the package loadable from the
+Convex runtime.
+
 ### Single Translation
 
-```typescript
-import { translateWithGPT } from "@be-in-digital/core";
+The export is `translateText` — there is no `translateWithGPT`.
 
-const result = await translateWithGPT(
+```typescript
+import { translateText } from "@be-in-digital/core";
+import type { HttpClient } from "@be-in-digital/core";
+
+const result = await translateText(
   "Margherita Pizza",    // text
   "en",                  // source language
   "fr",                  // target language
-  "product name"         // context hint for better accuracy
+  "product name",        // context hint (optional)
+  httpClient,            // HttpClient — throws without it
+  process.env.OPENAI_API_KEY!, // API key — throws without it
+  3                      // maxRetries, default 3
 );
 // → "Pizza Margherita"
 ```
+
+`httpClient` and `apiKey` sit *after* the optional `context`, so both are typed
+optional — but the function throws `"HTTP client is required for translation"` /
+`"OpenAI API key is required for translation"` when either is missing. Pass
+`undefined` for `context` if you have no hint but do have a client.
+
+`HttpClient` is a single method: `post<T>(url, data, headers?)`.
 
 ### Batch Translation
 
 ```typescript
 import { batchTranslate } from "@be-in-digital/core";
 
-// Translate all products to Spanish
-await batchTranslate(products, "en", "es");
+// Items are { text, key? } — not your documents. Map first.
+const items = products.map((p) => ({ text: p.name, key: p._id }));
 
-// Translate specific fields
-await batchTranslate(products, "en", "de", {
-  fields: ["name", "description"],
-});
+const translated = await batchTranslate(
+  items,
+  "en",           // source
+  "es",           // target
+  httpClient,     // required here, not optional
+  apiKey,         // required here, not optional
+  60              // rateLimit: max requests per minute, default 60
+);
+// → [{ original, translated, locale, cost }, ...]
 ```
+
+There is no options object and no `fields` argument: `batchTranslate` translates
+one string per item, in sequence, sleeping between requests to stay under the
+rate limit. Each item's `key` is passed through as the translation's context
+hint. Companion helpers: `estimateTranslationCost`, `calculateTotalCost`,
+`groupTranslationResults`.
 
 ### Context Hints
 
@@ -89,54 +124,83 @@ Provide context hints for more accurate translations:
 
 ## Manual Translation
 
-Override any automatic translation:
+Overrides are rows in the `translations` table, written by the
+`translations.upsert` mutation. `isAutoTranslated: false` is what marks a value
+as hand-written:
 
 ```typescript
-import { useTranslation } from "@be-in-digital/core";
-
-// In the admin translation editor
-await updateTranslation({
-  key: "product_123_name",
-  locale: "fr",
-  value: "Pizza Reine", // Manual override
-  isManual: true,       // Won't be overwritten by auto-translate
+// convex/translations.ts wraps @be-in-digital/convex-functions/translations
+await upsert({
+  storeId,
+  entityType: "product",
+  entityId: productId,
+  field: "name",
+  languageCode: "fr",
+  value: "Pizza Reine",   // Manual override
+  isAutoTranslated: false,
 });
 ```
+
+`bulkUpsert` takes an array of the same shape; `remove` deletes one row;
+`getForEntity`, `getByLanguage` and `getUIOverrides` read them back.
 
 ## Using Translations in Code
 
 ### useTranslation Hook
 
+`@be-in-digital/core` exports the **type** `UseTranslation`, not the hook —
+`packages/core/src/i18n/examples.ts` says so outright: "The core package only
+provides types, not the implementation." The running hook is in
+`@be-in-digital/restaurant`, built on the language store:
+
 ```typescript
-import { useTranslation } from "@be-in-digital/core";
+import { useTranslation } from "@be-in-digital/restaurant";
 
 function ProductCard({ product }) {
-  const { t, locale, setLocale, availableLocales } = useTranslation();
+  const { t, locale, defaultLocale, isReady } = useTranslation();
 
   return (
     <div>
-      <h2>{t(product.name)}</h2>
-      <p>{t(product.description)}</p>
+      <h2>{t("product.title")}</h2>
       <span>{formatPrice(product.price)}</span>
     </div>
   );
 }
 ```
 
-### Language Switcher
+`t` resolves a **key** through the cascade override → static JSON → default
+locale → the key itself. Text still resolves while `isReady` is false, so a
+component may render immediately instead of gating on it.
+
+Product, category and menu names are not keys — their translations live on the
+document itself, in the `translations` column the auto-translator writes. Use the
+sibling hooks for those:
 
 ```tsx
-import { useTranslation } from "@be-in-digital/core";
+import { useLocalizedDocument, useLocalizedDocuments } from "@be-in-digital/restaurant";
+
+const product = useLocalizedDocument(rawProduct);      // name/description for the current locale
+const products = useLocalizedDocuments(rawProducts);   // same, over a list
+```
+
+### Language Switcher
+
+Switching the locale is a store action, not part of `useTranslation`'s return:
+
+```tsx
+import { useLanguageStore } from "@be-in-digital/restaurant/stores";
 import { Select } from "@be-in-digital/ui";
 
 function LanguageSwitcher() {
-  const { locale, setLocale, availableLocales } = useTranslation();
+  const locale = useLanguageStore((s) => s.locale);
+  const setLocale = useLanguageStore((s) => s.setLocale);
+  const availableLanguages = useLanguageStore((s) => s.availableLanguages);
 
   return (
     <Select value={locale} onValueChange={setLocale}>
-      {availableLocales.map((lang) => (
+      {availableLanguages.map((lang) => (
         <SelectItem key={lang.code} value={lang.code}>
-          {lang.flag} {lang.name}
+          {lang.flagEmoji} {lang.nativeName}
         </SelectItem>
       ))}
     </Select>
@@ -144,17 +208,52 @@ function LanguageSwitcher() {
 }
 ```
 
+`setLocale` is idempotent and refuses a code the store does not list as active;
+`initialize(storeLanguages, storeDefault)` is what fills `availableLanguages`.
+
 ### Storage
 
+There is no `getLocale`. Reading and writing are separate functions, and reading
+differs by where you are:
+
 ```typescript
-import { getLocale, setLocale } from "@be-in-digital/core";
+import {
+  getLocaleFromCookie,
+  getLocaleFromLocalStorage,
+  detectLocale,
+  resolveRequestLocale,
+  setLocale,
+  clearLocale,
+  DEFAULT_I18N_CONFIG,
+} from "@be-in-digital/core";
 
-// Get current locale
-const locale = getLocale(); // "fr"
+// Server: you hold the request's cookie header
+const fromCookie = getLocaleFromCookie(request.headers.get("cookie") ?? "");
 
-// Set locale (saves to cookie + localStorage)
+// Client: no argument needed
+const fromStorage = getLocaleFromLocalStorage();
+
+// Either: walk the whole priority chain in one call
+const locale = detectLocale(DEFAULT_I18N_CONFIG, {
+  cookieString,
+  acceptLanguage,
+});
+
+// Rendering for a store: the store's own active languages are the allow-list,
+// deliberately not config.supportedLocales
+const rendered = resolveRequestLocale({
+  cookieValue,
+  availableCodes: ["fr", "en", "es"],
+  defaultLocale: "fr",
+});
+
+// Writing: sets cookie + localStorage together
 setLocale("en");
 ```
+
+`setLocaleCookie` and `setLocaleLocalStorage` write one side only;
+`getLocaleFromCookie` and `getLocaleFromLocalStorage` return `null` rather than a
+fallback when nothing is stored.
 
 ## Costs
 
