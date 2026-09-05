@@ -145,46 +145,50 @@ import { cn } from "@/lib/utils"
 </button>
 ```
 
-## Adding shadcn/ui Components
+## Where the components live
 
-To add new shadcn/ui components:
+Every shared component comes from `@be-in-digital/ui`, and there is exactly one
+implementation of each:
 
-```bash
-cd apps/reference
-npx shadcn@latest add button
-npx shadcn@latest add card
-npx shadcn@latest add input
-# etc...
+```tsx
+import { Button, Card, Input, Badge } from "@be-in-digital/ui"
 ```
 
-Components will be added to `components/ui/` and can be customized as needed.
+This app used to carry its own `components/ui/` as well — 37 files, byte-
+identical to the template's and drifted from the package, so the same site
+rendered two button heights depending on the page. That directory is gone and
+must not come back.
+`packages/ui/src/__tests__/design-system-singularity.test.ts` fails if it does.
+
+**Adding a component.** Add it to `packages/ui`, not here. A component that
+lives in the bench is a component no client can render — and the bench exists
+to prove what clients get.
 
 ## Theme Customization
 
-### Changing Primary Color
+There are three places a colour can come from, and they are not
+interchangeable.
 
-Update the `--primary` variable in `app/globals.css`:
+### 1. The establishment owner, from the admin
 
-```css
-:root {
-  --primary: 22 100% 50%;  /* Orange (default) */
-  /* or */
-  --primary: 142 76% 36%;  /* Green for eco-friendly restaurants */
-  /* or */
-  --primary: 262 83% 58%;  /* Purple for fine dining */
-}
-```
+`/dashboard/design` → **Couleurs**. Primary, secondary and accent are saved on
+the establishment and painted onto the storefront's custom properties at
+runtime, per store — so a two-location client can give each site its own
+palette. This is the one an owner can use without a developer, and the one to
+reach for first.
 
-### Restaurant Type Themes
+The screen derives the rest of the palette from what is picked: the focus ring
+follows the primary, the accent becomes a tint rather than a slab (`bg-accent`
+paints hover states), the text on a coloured button is chosen by contrast ratio,
+and a dark-mode set is emitted alongside. The preview on the screen is rendered
+by the same code as the storefront, so it cannot drift from it.
 
-The design system supports 6 predefined themes:
+### 2. `app/globals.css` — the engine default
 
-1. **Fast Food**: Orange primary, bold typography
-2. **Pizzeria**: Red primary, Italian-inspired
-3. **Chinese**: Red/gold accents, traditional feel
-4. **Fine Dining**: Dark, elegant, minimal
-5. **Café**: Warm browns, cozy aesthetic
-6. **Sushi**: Clean, modern, Japanese-inspired
+The orange a site renders when no establishment has chosen anything. This is
+the bench, so editing it here is editing the engine's default for every client;
+`apps/themes` additionally has a client zone (`site/theme.css`) that a
+delivered site overrides it from, and which `pnpm template:apply` writes.
 
 ## Best Practices
 
@@ -203,9 +207,12 @@ The design system supports 6 predefined themes:
 
 ### Consistency
 
-- Use design tokens instead of arbitrary values
+- Use design tokens instead of arbitrary values, so an establishment's chosen
+  colours reach what you build. A hard-coded `bg-[#FF6B00]` is a component that
+  ignores the owner's palette.
 - Follow the component composition pattern from shadcn/ui
-- Keep custom components in `components/ui/` directory
+- Take shared components from `@be-in-digital/ui`; keep genuinely site-specific
+  ones in `components/`, composed out of the design system
 - Document new components with JSDoc comments
 
 ## Chart Colors

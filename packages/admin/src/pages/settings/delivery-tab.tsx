@@ -13,6 +13,7 @@ import {
   AddressAutocomplete,
   type AddressValue,
 } from "@be-in-digital/ui"
+import { Button as LegacyButton } from "../../components/design/button"
 import { centsToEuros } from "../../lib/formatters"
 import { GOOGLE_MAPS_API_KEY } from "./settings-constants"
 import type { SimulationResult } from "./settings-types"
@@ -213,6 +214,7 @@ export function DeliveryTab({
           </div>
         )}
 
+        <LegacyButton onClick={handleSaveDelivery}>Enregistrer (legacy)</LegacyButton>
         <Button onClick={handleSaveDelivery} size="sm">
           Enregistrer les paramètres de livraison
         </Button>
