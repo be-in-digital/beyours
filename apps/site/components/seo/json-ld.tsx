@@ -31,7 +31,7 @@ export function OrganizationJsonLd() {
     legalName: COMPANY.legalName,
     url: SITE_URL,
     logo: LOGO_URL,
-    description: `Agence spécialisée dans la digitalisation des restaurants, éditrice de la solution ${SITE_NAME} : site web, commande en ligne, fidélité, analytics.`,
+    description: `Agence spécialisée dans la digitalisation des restaurants, éditrice de la solution ${SITE_NAME} : site web, commande en ligne, fidélité, suivi des ventes.`,
     sameAs: Object.values(SOCIAL_LINKS),
     contactPoint: {
       "@type": "ContactPoint",
@@ -53,7 +53,7 @@ export function SoftwareApplicationJsonLd() {
     applicationSubCategory: "RestaurantManagementSoftware",
     operatingSystem: "Web",
     description:
-      "Plateforme tout-en-un pour restaurants : site vitrine, commande en ligne, Click & Collect, KDS, fidélité et analytics. 0 % de commission sur les ventes directes.",
+      "Plateforme tout-en-un pour restaurants : site vitrine, commande en ligne, Click & Collect, KDS, fidélité et suivi des ventes. 0 % de commission sur les ventes directes.",
     url: SITE_URL,
     image: `${SITE_URL}/opengraph-image`,
     offers: {
@@ -75,8 +75,8 @@ export function SoftwareApplicationJsonLd() {
       "KDS (Kitchen Display System)",
       "Impression de tickets",
       "Centralisation des commandes directes (site, click & collect, sur place)",
-      "Programme de fidélité & gamification",
-      "Analytics et rapports",
+      "Jeu concours par QR code (roue de la fortune, carte à gratter)",
+      "Tableau de bord : chiffre d'affaires, commandes, panier moyen",
       "CMS simple",
       "Formation Google Business Profile",
     ],

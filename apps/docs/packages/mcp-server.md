@@ -178,10 +178,38 @@ The server expects JSON-RPC messages on stdin and responds on stdout, following 
 ## Architecture
 
 ```
+scripts/
+└── sync-package-versions.mjs   # Regenerates package-versions.ts from the workspace
 src/
-├── index.ts       # Entry point (calls startServer)
-├── server.ts      # MCP server setup (resources + tools)
-└── registry.ts    # Package metadata registry (all exports)
+├── index.ts                    # Entry point (calls startServer)
+├── server.ts                   # MCP server setup (resources + tools)
+├── registry.ts                 # Package metadata registry
+├── package-versions.ts         # GENERATED — do not hand-edit
+└── __tests__/registry.test.ts  # Structural guards over the registry data
 ```
 
-The registry contains metadata for all 10 packages including every exported component, hook, store, function, and type — with descriptions, import paths, props/params, examples, and tags.
+The registry describes the **nine** engine packages (`mcp-server` documents itself
+here rather than in its own registry). It is a curated selection of each package's
+surface, not an exhaustive dump: the entries carry hand-written descriptions,
+import paths, props/params, examples and tags.
+
+### Keeping it true
+
+The registry is hand-maintained, and it drifted badly before anything checked it —
+23 of 148 claims named symbols or subpaths that did not exist, and every package
+version read `2.0.1` while `@be-in-digital/admin` had reached `8.0.0`. Two things
+hold it now:
+
+- **Versions are derived.** `src/package-versions.ts` is generated from the
+  workspace `package.json` files by `pnpm --filter @be-in-digital/mcp-server
+  sync:versions`. Run it after a version bump; the tests fail if you forget.
+- **Every claim is compiled.** `apps/reference/__tests__/mcp-registry-imports.test.ts`
+  renders one import per registry entry — through `importStatement()`, the same
+  function the server prints — and type-checks the lot against the real packages.
+  A claim that names a missing export or an undeclared subpath fails the build.
+  Its sibling `engine-doc-imports.test.ts` does the same for every `@be-in-digital`
+  import in the repository's Markdown and JSDoc.
+
+When you add an entry, give it the import path a consumer would really write —
+including a subpath where the export is not on the package barrel, as with
+`@be-in-digital/cms/sanitize`.

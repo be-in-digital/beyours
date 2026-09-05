@@ -27,15 +27,11 @@ The Kitchen Display System (KDS) provides real-time order management for kitchen
 
 ```typescript
 // convex/schema.ts
-import {
-  kitchenTicketsTable,
-  printerSettingsTable,
-} from "@be-in-digital/convex-schema/tables";
+import { kitchenTicketsTable } from "@be-in-digital/convex-schema/tables";
 
 export default defineSchema({
   // ...
   kitchenTickets: kitchenTicketsTable,
-  printerSettings: printerSettingsTable,
 });
 ```
 
@@ -89,9 +85,9 @@ a thermal printer as the OS default and you get a thermal ticket — through the
 vendor driver, not through ESC/POS bytes this codebase emits.
 
 There is no `configurePrinter()`, no `POST /api/print`, no port 9100, no USB
-transport and no printer status polling. The `printerSettings` table is
-registered in the schema and has zero readers and zero writers; it belongs to a
-path that was never built. Live configuration is `stores.printConfig`, edited in
+transport and no printer status polling. A `printerSettings` table was declared
+for that path and removed once measurement confirmed it had never had a reader
+or a writer. Live configuration is `stores.printConfig`, edited in
 Établissements → Cuisine.
 
 ### Turning it on

@@ -2,9 +2,12 @@
  * The kitchen display's three sound alerts.
  *
  * WHY THIS EXISTS: `stores.soundConfig` decides which alerts sound and how
- * loudly, and until now nothing wrote it. The mutation, the schema field and
+ * loudly, and before #243 nothing wrote it. The mutation, the schema field and
  * the reader were all in place; the settings screen never was, so every
- * deployment ran on a literal hardcoded inside `KitchenContent` (#243).
+ * deployment ran on a literal hardcoded inside `KitchenContent`. It has a
+ * writer now — the kitchen tab's "Alertes sonores" card, which saves through
+ * `stores.updateSoundConfig` — so that sentence is history, not the state of
+ * the code.
  *
  * The catalogue lives here, in the shared admin package, because two screens
  * need to agree on it: the editor an owner sets the volumes in, and the display

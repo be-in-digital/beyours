@@ -63,18 +63,7 @@ function useReservationUrl(): string | null {
   return isSafeReservationUrl(url) ? url : null
 }
 
-export function StorefrontHeader({
-  hasBanner = false,
-  fallbackLogoUrl,
-}: {
-  hasBanner?: boolean
-  /**
-   * The establishment's `branding.logoUrl` from the admin's Design screen,
-   * used when the CMS block carries no uploaded logo. See `StorefrontShell`
-   * for why the CMS wins.
-   */
-  fallbackLogoUrl?: string
-}) {
+export function StorefrontHeader({ hasBanner = false }: { hasBanner?: boolean }) {
   const pathname = usePathname()
   const { t } = useTranslation()
   const navLinks = NAV_LINKS.map((link) => ({
@@ -84,7 +73,7 @@ export function StorefrontHeader({
   const itemCount = useCartStore((s) => s.getItemCount())
   const reservationUrl = useReservationUrl()
   const cms = useCmsPage("storefront-layout")
-  const logoUrl = cms.block("branding").field("logo").mediaUrl ?? fallbackLogoUrl
+  const logoUrl = cms.block("branding").field("logo").mediaUrl
   const brandName = cms.block("branding").field("brandName").text ?? "BeYours"
 
   const [isScrolled, setIsScrolled] = useState(false)

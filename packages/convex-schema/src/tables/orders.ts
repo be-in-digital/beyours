@@ -19,6 +19,16 @@ export const ordersTable = defineTable({
     v.literal("pickup"),
     v.literal("dine_in")
   ),
+  /**
+   * Which table the order goes to. Set for `dine_in` orders placed from the
+   * storefront; absent otherwise, and absent on the platform `dine_in` orders
+   * Uber Eats and Deliveroo forward, which carry no table of their own.
+   *
+   * A label rather than a number — dining rooms use `A3` and `Terrasse 4` as
+   * readily as `12`. Same representation as `gameQRCodes.tableNumber`; see
+   * `@be-in-digital/core/dining` for why they are not the same field.
+   */
+  tableNumber: v.optional(v.string()),
   status: v.union(
     v.literal("pending"),
     v.literal("confirmed"),
@@ -110,7 +120,6 @@ export const ordersTable = defineTable({
     v.literal("dine_in")
   )),
   isRemake: v.optional(v.boolean()), // Flag for remake orders from delivery platforms
-  scheduledAt: v.optional(v.number()), // Alternative field for platform scheduled orders
   platformSyncStatus: v.optional(v.union(
     v.literal("pending"),
     v.literal("synced"),

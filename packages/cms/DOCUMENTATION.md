@@ -665,12 +665,39 @@ CMS_MEDIA_LIMITS.image.mimeTypes     // ["image/jpeg", "image/jpg", ...]
 
 Uploaded SVGs are cleaned automatically to strip dangerous elements.
 
+`sanitizeSvg` ships from the **`@be-in-digital/cms/sanitize` subpath**, not from
+the package barrel. It delegates to DOMPurify, which parses the markup and so
+needs a DOM; the barrel is imported by Convex isolate modules (`convex/cms.ts`,
+`cmsAutoTranslate.ts`, `cmsSeedData.ts`, `cmsMediaConfirmUpload.ts`) that have
+none. Re-exporting it from the barrel made the whole backend fail to push with
+`Failed to analyze cms.js: Cannot read properties of undefined (reading 'bind')`.
+Importing it by subpath keeps the parser in the server-side callers that
+actually sanitize. See the sanitize section of `src/index.ts`.
+
 ```typescript
-import { sanitizeSvg } from "@be-in-digital/cms"
+import { sanitizeSvg } from "@be-in-digital/cms/sanitize"
 
 const result = sanitizeSvg(svgContent)
 // result.sanitized    → cleaned SVG
 // result.removedElements → ["<script>", "onclick", ...]
+```
+
+### containsActiveContent(svg) / inspectSvgForActiveContent(svg)
+
+The DOM-free half, exported from the **barrel** so the Convex callers that
+cannot import the parser can still refuse an upload. Regex-based and
+dependency-free: it decodes entities first, then answers whether the markup
+contains anything that executes.
+
+```typescript
+import { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms"
+
+if (containsActiveContent(svgContent)) {
+  // refuse before storing
+}
+
+const report = inspectSvgForActiveContent(svgContent)
+// { active: true, reasons: ["attribut gestionnaire d'événement (on…)", ...] }
 ```
 
 **Removed elements:**
@@ -1142,9 +1169,13 @@ export { seoBlock } from "@be-in-digital/cms"
 export { validateBlockValues } from "@be-in-digital/cms"
 export type { ValidationError, ValidationResult } from "@be-in-digital/cms"
 
-// SVG sanitization
-export { sanitizeSvg } from "@be-in-digital/cms"
-export type { SanitizeResult } from "@be-in-digital/cms"
+// SVG active-content check (DOM-free, safe in a Convex isolate)
+export { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms"
+export type { ActiveContentReport } from "@be-in-digital/cms"
+
+// SVG sanitization — subpath only, never the barrel (see section 10)
+export { sanitizeSvg } from "@be-in-digital/cms/sanitize"
+export type { SanitizeResult } from "@be-in-digital/cms/sanitize"
 
 // Media
 export {

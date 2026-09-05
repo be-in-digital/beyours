@@ -572,7 +572,8 @@ export type TeamMemberDoc = BaseEntity & CreateTeamMemberInput & {
 }
 
 export type UserProfileDoc = BaseEntity & CreateUserProfileInput & {
-  twoFactorEnabled: boolean
+  /** Placeholder — 2FA is not implemented. See `tables/userProfiles.ts`. */
+  twoFactorEnabled?: boolean
 }
 
 export type GameQRCodeDoc = BaseEntity & CreateGameQRCodeInput & {

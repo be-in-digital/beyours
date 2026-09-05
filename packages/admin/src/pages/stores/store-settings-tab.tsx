@@ -137,9 +137,23 @@ export function StoreSettingsTab({
                 <Label htmlFor="delivery" className="text-sm cursor-pointer">Livraison</Label>
                 <Switch id="delivery" checked={delivery} onCheckedChange={setDelivery} />
               </div>
-              <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                <Label htmlFor="clickAndCollect" className="text-sm cursor-pointer">Click & Collect</Label>
-                <Switch id="clickAndCollect" checked={clickAndCollect} onCheckedChange={setClickAndCollect} />
+              {/* Disabled for the same reason as on the global settings page:
+                  `ORDER_TYPE_SERVICE` maps the three order types onto the other
+                  three switches and never reads this one. Re-enable it, here and
+                  there, once a fourth order type maps to it. */}
+              <div className="flex items-start justify-between gap-3 rounded-lg border px-4 py-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="clickAndCollect" className="text-sm">Click & Collect</Label>
+                    <Badge variant="outline" className="text-xs font-normal">Indisponible</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Vos trois types de commande couvrent déjà le retrait, via
+                    «&nbsp;À emporter&nbsp;». Ce réglage agira le jour où un
+                    quatrième type de commande existera.
+                  </p>
+                </div>
+                <Switch id="clickAndCollect" disabled checked={clickAndCollect} onCheckedChange={setClickAndCollect} />
               </div>
             </div>
           </CardContent>

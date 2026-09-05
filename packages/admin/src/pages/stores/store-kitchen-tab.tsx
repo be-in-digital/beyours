@@ -1,7 +1,17 @@
 "use client"
 
 import { useState, type Dispatch, type SetStateAction } from "react"
-import { Volume2, VolumeX, Play, Printer, Plus, X, Check, AlertTriangle } from "lucide-react"
+import {
+  Volume2,
+  VolumeX,
+  Play,
+  Printer,
+  Plus,
+  X,
+  Check,
+  AlertTriangle,
+  MonitorPlay,
+} from "lucide-react"
 import {
   Alert,
   AlertDescription,
@@ -29,6 +39,11 @@ import {
   playAlertBeep,
   type KitchenSoundConfig,
 } from "../../lib/kitchen-alerts"
+import {
+  MAX_AUTO_DISMISS_MINUTES,
+  MIN_AUTO_DISMISS_MINUTES,
+  type KitchenDisplayConfig,
+} from "../../lib/kitchen-display"
 import {
   MAX_STATION_NAME_LENGTH,
   ORDER_CONFIRMATION_MODES,
@@ -67,15 +82,19 @@ interface StoreKitchenTabProps {
   stationMapping: Record<string, string>
   setStationMapping: Dispatch<SetStateAction<Record<string, string>>>
   handleUpdateStations: () => Promise<void>
+  displayConfig: KitchenDisplayConfig
+  setDisplayConfig: Dispatch<SetStateAction<KitchenDisplayConfig>>
+  handleUpdateDisplay: () => Promise<void>
 }
 
 /** The value a category select carries when nothing is assigned. */
 const UNASSIGNED = "__unassigned__"
 
 /**
- * Everything the kitchen does with an order: print it, route it, announce it.
+ * Everything the kitchen does with an order: print it, route it, announce it,
+ * and show it to the customer waiting for it.
  *
- * Four settings, one tab, in the order a service runs through them.
+ * Five settings, one tab, in the order a service runs through them.
  *
  * CONFIRMATION (#164) decides whether a paid order reaches the pass without a
  * human at all. `releaseToKitchen` reads it; the mutation that wrote it was
@@ -94,8 +113,16 @@ const UNASSIGNED = "__unassigned__"
  * routing the schema describes could not be switched on.
  *
  * SOUND was the first of the three to be given a screen (#243) and is
- * unchanged; it sits last because it is what an owner tunes once the tickets
- * are actually coming out.
+ * unchanged; it is what an owner tunes once the tickets are actually coming
+ * out.
+ *
+ * DISPLAY (Q-2) sits last because the dining-room screen is downstream of all
+ * of it: nothing reaches that wall until the pass has confirmed, printed,
+ * routed and cooked the order. `getForDisplay` has read `stores.displayConfig`
+ * since the screen shipped, and 74de4e9 deleted its mutation anyway, on the
+ * claim that nothing read it. Until this card, every establishment ran on the
+ * query's fallback — an order the customer is still waiting for left the screen
+ * fifteen minutes after the kitchen called it ready.
  */
 export function StoreKitchenTab({
   soundConfig,
@@ -113,6 +140,9 @@ export function StoreKitchenTab({
   stationMapping,
   setStationMapping,
   handleUpdateStations,
+  displayConfig,
+  setDisplayConfig,
+  handleUpdateDisplay,
 }: StoreKitchenTabProps) {
   const [stationDraft, setStationDraft] = useState("")
 
@@ -683,6 +713,90 @@ export function StoreKitchenTab({
 
       <Button onClick={handleUpdateSounds} size="sm">
         Enregistrer les alertes
+      </Button>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Dining-room screen                                               */}
+      {/* ---------------------------------------------------------------- */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">
+                <MonitorPlay className="mr-2 inline h-4 w-4 align-[-3px] text-muted-foreground" />
+                Écran de salle
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {displayConfig.autoDismissEnabled
+                  ? `Une commande prête reste affichée ${displayConfig.autoDismissMinutes} minutes, puis disparaît toute seule.`
+                  : "Une commande prête reste affichée jusqu'à ce qu'elle soit remise au client."}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span
+                className={`text-xs ${displayConfig.autoDismissEnabled ? "text-green-600" : "text-muted-foreground"}`}
+              >
+                {displayConfig.autoDismissEnabled ? "Activé" : "Coupé"}
+              </span>
+              <Switch
+                id="display-auto-dismiss"
+                data-testid="display-auto-dismiss"
+                aria-label="Retirer automatiquement les commandes prêtes"
+                checked={displayConfig.autoDismissEnabled}
+                onCheckedChange={(autoDismissEnabled) =>
+                  setDisplayConfig((current) => ({
+                    ...current,
+                    autoDismissEnabled,
+                  }))
+                }
+              />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {displayConfig.autoDismissEnabled ? (
+            <div className="max-w-xs space-y-2">
+              <Label htmlFor="display-auto-dismiss-minutes" className="text-sm font-medium">
+                Retirer après (minutes)
+              </Label>
+              <Input
+                id="display-auto-dismiss-minutes"
+                data-testid="display-auto-dismiss-minutes"
+                type="number"
+                min={MIN_AUTO_DISMISS_MINUTES}
+                max={MAX_AUTO_DISMISS_MINUTES}
+                step={1}
+                value={displayConfig.autoDismissMinutes}
+                onChange={(e) =>
+                  setDisplayConfig((current) => ({
+                    ...current,
+                    // Kept as a raw number while the field is being typed in;
+                    // `handleUpdateDisplay` clamps on the way out, so a
+                    // half-typed value cannot be saved out of range.
+                    autoDismissMinutes: Number(e.target.value),
+                  }))
+                }
+              />
+              <p className="text-sm text-muted-foreground">
+                Le compte part du moment où la cuisine annonce la commande
+                prête, pas du moment où le client commande.
+              </p>
+            </div>
+          ) : (
+            <Alert title="Rien ne disparaît tout seul">
+              <p>
+                Le numéro reste à l&apos;écran tant que la cuisine n&apos;a pas
+                appuyé sur «&nbsp;Récupéré&nbsp;». Sur un service chargé,
+                l&apos;écran finit par être plein.
+              </p>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button onClick={handleUpdateDisplay} size="sm" data-testid="display-save">
+        Enregistrer l&apos;écran de salle
       </Button>
     </>
   )

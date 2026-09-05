@@ -170,6 +170,21 @@
   feature. It has no editor — the KDS runs on the component's fallbacks — which is
   a gap worth closing and not the same thing.
 
+  > **Correction, 5 Sep 2026 (Q-2).** The entry above is left as written, because
+  > it is the record of what was decided; this note is the record of what was
+  > wrong with it. `displayConfig` did have a reader, and had one at the time:
+  > `kitchenTickets.getForDisplay` reads it on every tick of the customer-facing
+  > dining-room screen, `app/display/[storeId]/page.tsx` in both apps, and its
+  > own unit tests asserted the behaviour throughout. Deleting
+  > `updateDisplayConfig` therefore left a live setting with no writer, and every
+  > establishment on the query's fallback: an order the customer was still
+  > waiting for left the screen fifteen minutes after the kitchen called it
+  > ready, with nothing anywhere to change that. The mutation is restored, the
+  > schema field is typed rather than `v.any()`, and the kitchen tab has an
+  > "Écran de salle" card. `orderConfirmation` came back separately with #164,
+  > which implemented the workflow it promised. The one claim in the entry that
+  > held is the one about `soundConfig` — which has had an editor since #243.
+
 ## 2.2.0
 
 ### Minor Changes

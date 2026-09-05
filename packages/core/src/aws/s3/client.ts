@@ -7,7 +7,7 @@
  * │                                                             │
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
- * │  │ import { createS3Service } from '@repo/core/aws'  │      │
+ * │  │ import { createS3Service } from '@be-in-digital/core'  │      │
  * │  │                                                   │      │
  * │  │ const s3 = createS3Service(config, client)        │      │
  * │  │ const { key, url } = await s3.upload(file, {      │      │

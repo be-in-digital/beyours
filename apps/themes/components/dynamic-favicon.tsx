@@ -6,17 +6,15 @@ import { useCmsPage } from "@/lib/cms/useCmsPage"
 /**
  * Injects a dynamic favicon <link> tag from CMS branding data.
  *
- * `fallbackUrl` is the establishment's `branding.faviconUrl`, saved on the
- * admin's Design screen. The CMS block wins because it holds uploaded media
- * an owner picked in the editor; the Design screen's URL covers a deployment
- * whose CMS block was never filled in — before it existed that field was
- * written by a form and read by nothing.
+ * The CMS `branding` block is the only source: `store.branding.faviconUrl` is
+ * written by nothing since the Design screen sent the logo settings to the CMS,
+ * and reading it here would contradict what that screen tells the owner.
  *
- * Falls back to the static /favicon.ico when neither is set.
+ * Falls back to the static /favicon.ico when the block carries none.
  */
-export function DynamicFavicon({ fallbackUrl }: { fallbackUrl?: string }) {
+export function DynamicFavicon() {
   const cms = useCmsPage("storefront-layout")
-  const faviconUrl = cms.block("branding").field("favicon").mediaUrl ?? fallbackUrl
+  const faviconUrl = cms.block("branding").field("favicon").mediaUrl
 
   useEffect(() => {
     if (!faviconUrl) return

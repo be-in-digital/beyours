@@ -59,3 +59,18 @@ export function brandingControlState(role: Role | undefined): BrandingControlSta
 
   return { disabled: false }
 }
+
+/*
+ * `BRANDING_UNAPPLIED_REASON` and `unappliedBrandingState` lived here.
+ *
+ * They disabled every save on the Design screen for every role, the owner
+ * included, on a fact that was true when they were written and is not any more:
+ * that `stores.updateBranding` wrote `store.branding` correctly and nothing
+ * read it. `buildBrandingCss` reads it now and `StoreTheme` paints the
+ * storefront with it, per establishment, so a gate saying "not yet applied"
+ * would be the false statement. Keeping a disabled control that no longer has a
+ * reason is how a screen ends up lying in the other direction.
+ *
+ * `brandingControlState` above is the gate that remains, and it is the one this
+ * module was written for: the role.
+ */

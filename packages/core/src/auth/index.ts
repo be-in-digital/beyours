@@ -6,16 +6,20 @@
  *
  * @module auth
  *
+ * `@be-in-digital/core/auth` is NOT a resolvable specifier — the package's
+ * `exports` map publishes `.`, `./env`, `./sentry`, `./auth/rbac`,
+ * `./aws/media-url` and `./aws/folders`, and nothing else. Import RBAC from
+ * the `./auth/rbac` subpath (what every call site in the repo does) and the
+ * rest from the package root.
+ *
  * @example
  * ```ts
- * // Import RBAC
- * import { Role, hasPermission } from '@be-in-digital/core/auth'
+ * // RBAC — the subpath, resolved straight from source
+ * import { Role, hasPermission } from '@be-in-digital/core/auth/rbac'
  *
- * // Import hooks React
- * import { useAuth, usePermission } from '@be-in-digital/core/auth'
- *
- * // Import utilitaires serveur
- * import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
+ * // Everything else — the package root
+ * import { useAuth, usePermission } from '@be-in-digital/core'
+ * import { requireAuth, requirePermission } from '@be-in-digital/core'
  * ```
  */
 
@@ -67,7 +71,6 @@ export {
   createAuthConfig,
   authHooks,
   emailTemplates,
-  authRoutes,
   authErrors,
   validatePassword,
   validateEmail,

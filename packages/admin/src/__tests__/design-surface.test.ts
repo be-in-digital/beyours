@@ -97,18 +97,100 @@ describe("the Design page and the branding validator agree", () => {
     expect(readFields().filter((f) => !VALIDATED.includes(f))).toEqual([])
   })
 
-  it("covers every validated field between its three save buttons", () => {
-    // Colours, typography and logo between them own the whole shape. A field in
-    // the validator that no button writes has no way of ever being set.
-    expect(VALIDATED.filter((f) => !sentFields().includes(f))).toEqual([])
+  it("covers every colour and typography field between its two save handlers", () => {
+    // What is left after the logo moved to the CMS. A field in this list that
+    // no handler writes has no way of ever being set.
+    const OWNED = [
+      "primaryColor",
+      "secondaryColor",
+      "accentColor",
+      "fontHeading",
+      "fontBody",
+    ]
+    expect(OWNED.filter((f) => !sentFields().includes(f))).toEqual([])
+  })
+
+  it("leaves the logo to the CMS block rather than writing a rival copy", () => {
+    // `logoUrl`/`faviconUrl` stay in `BRANDING_FIELDS` because deployed stores
+    // may hold them and `mergeBranding` must keep carrying them through. What
+    // must not come back is a second input for a fact the CMS `branding` block
+    // already owns across the storefront header, the favicon, the JSON-LD and
+    // this dashboard's own sidebar.
+    expect(sentFields()).not.toContain("logoUrl")
+    expect(sentFields()).not.toContain("faviconUrl")
+    expect(VALIDATED).toContain("logoUrl")
+    expect(VALIDATED).toContain("faviconUrl")
   })
 
   it("sends a cleared field as an empty string, not as undefined", () => {
     // The mutation merges, so an absent field means "leave it alone". The logo
     // handler used to send `logoUrl || undefined`, which Convex drops from the
     // payload entirely — an owner deleting their logo got a success toast and
-    // kept the logo.
-    expect(source).not.toMatch(/(logoUrl|faviconUrl):\s*\w+\s*\|\|\s*undefined/)
+    // kept the logo. Stated over every payload rather than that one field, so
+    // the trap is closed for whoever writes the next save handler.
+    const literals = [...source.matchAll(/branding:\s*\{([^}]*)\}/g)].map((m) => m[1] as string)
+    for (const body of literals) {
+      expect(body).not.toMatch(/\|\|\s*undefined/)
+    }
+  })
+})
+
+describe("the screen says what it does not do", () => {
+  it("no longer offers themes that no template backs", () => {
+    // Six themes were listed; `fine-dining` and `cafe` matched no directory in
+    // `apps/themes/templates/`, and the "Appliquer" button saved three hex
+    // strings while the chosen id died in local state. Choosing a design is
+    // `pnpm template:apply <slug>` at clone time.
+    for (const id of ["fine-dining", "cafe", "fast-food", "chinese", "sushi"]) {
+      expect(source, `theme "${id}" is back`).not.toContain(`"${id}"`)
+    }
+    expect(source).not.toContain('TabsTrigger value="theme"')
+    expect(source).not.toContain("Appliquer le thème")
+  })
+
+  it("keeps no writer for the `themeId` the schema still carries", () => {
+    // It has neither a reader nor a writer anywhere in the repository. A save
+    // added here would make it a stored value nothing consumes. The header
+    // comment names it, so this asks for a write rather than for the word.
+    expect(sentFields()).not.toContain("themeId")
+    expect(source).not.toMatch(/themeId\s*[:=]/)
+  })
+
+})
+
+describe("the logo tab points somewhere that exists", () => {
+  const CMS_PAGE = "cms/pages/storefront-layout.ts"
+
+  it("links to the CMS page editor rather than duplicating the field", () => {
+    expect(source).toContain('adminRoutes.contentPageEdit(STOREFRONT_LAYOUT_SLUG)')
+    expect(source).toContain('const STOREFRONT_LAYOUT_SLUG = "storefront-layout"')
+    expect(adminRoutes.contentPageEdit("storefront-layout")).toBe(
+      "/dashboard/content/pages/storefront-layout"
+    )
+  })
+
+  for (const app of APPS) {
+    it(`apps/${app} registers that slug with a branding block`, () => {
+      // `packages/admin` cannot see an app's CMS registry, so the slug above is
+      // spelled by hand. This is what stops the link rotting into a 404.
+      const definition = read(path.join(REPO, "apps", app, CMS_PAGE))
+      expect(definition).toContain('slug: "storefront-layout"')
+      expect(definition).toContain('key: "branding"')
+      expect(definition).toContain("logo:")
+      expect(definition).toContain("favicon:")
+
+      const registry = read(path.join(REPO, "apps", app, "cms/index.ts"))
+      expect(registry).toContain('"storefront-layout": storefrontLayoutPage')
+    })
+  }
+
+  it("is reachable from the sidebar it names", () => {
+    // The alert tells the owner "Contenu › Pages". If that entry ever goes, the
+    // instruction becomes a wild goose chase.
+    const entries = navGroups
+      .flatMap((group) => group.items)
+      .filter((entry): entry is NavItem => !isCollapsible(entry))
+    expect(entries.some((e) => e.href === adminRoutes.contentPages)).toBe(true)
   })
 })
 
@@ -220,11 +302,11 @@ describe("the save buttons ask the same question the server does", () => {
     }
   })
 
-  it("routes all four saves through the shared decision", () => {
-    // Four buttons, one rule. The theme tab saves colours too, and it is the
-    // one most easily forgotten.
-    expect([...source.matchAll(/<BrandingControl state=\{branding\}>/g)]).toHaveLength(4)
-    expect([...source.matchAll(/disabled=\{branding\.disabled\}/g)]).toHaveLength(4)
+  it("routes both remaining saves through the shared decision", () => {
+    // Two buttons, one rule. It was four: the theme tab saved colours too, and
+    // the logo tab has since handed its job to the CMS.
+    expect([...source.matchAll(/<BrandingControl state=\{branding\}>/g)]).toHaveLength(2)
+    expect([...source.matchAll(/disabled=\{branding\.disabled\}/g)]).toHaveLength(2)
   })
 
   it("spells no permission rule of its own", () => {
@@ -307,23 +389,12 @@ describe("what the screen saves reaches a diner", () => {
       expect(fs.existsSync(path.join(REPO, "apps", app, STORE_THEME))).toBe(true)
     })
 
-    it(`apps/${app} uses the branding logo and favicon when the CMS has none`, () => {
-      // `logoUrl` and `faviconUrl` are the two fields no stylesheet can carry.
-      // Without these they would be exactly what the colours used to be: saved
-      // by a form, read by nobody.
-      const shell = read(
-        path.join(REPO, "apps", app, "components/storefront/storefront-shell.tsx")
-      )
-      expect(shell).toContain("fallbackUrl={branding?.faviconUrl}")
-      expect(shell).toContain("fallbackLogoUrl={branding?.logoUrl}")
-
-      const favicon = read(path.join(REPO, "apps", app, "components/dynamic-favicon.tsx"))
-      expect(favicon).toContain("?? fallbackUrl")
-      const header = read(
-        path.join(REPO, "apps", app, "components/storefront/storefront-header.tsx")
-      )
-      expect(header).toContain("?? fallbackLogoUrl")
-    })
+    // The logo and the favicon are deliberately NOT asserted here. `logoUrl`
+    // and `faviconUrl` stay in `BRANDING_FIELDS` because deployed stores hold
+    // them, but the Design screen sends the owner to the CMS `branding` block
+    // for both and tells them the value saved on that tab "n'est utilisée
+    // nulle part". A storefront fallback that quietly rendered it would make
+    // that sentence false and put one fact back under two screens.
 
     it(`apps/${app} lets a stored font override the bundled one`, () => {
       // `@theme inline` substitutes a token's VALUE into the utility at build

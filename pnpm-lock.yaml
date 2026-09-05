@@ -887,6 +887,10 @@ importers:
         version: 3.2.7(@edge-runtime/vm@5.0.0)(@types/debug@4.1.13)(@types/node@20.19.39)(@vitest/ui@3.2.7)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(msw@2.14.6(@types/node@20.19.39)(typescript@5.9.3))(terser@5.51.2)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/integrations:
+    dependencies:
+      '@be-in-digital/core':
+        specifier: workspace:^
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^20.19.39
@@ -974,6 +978,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@be-in-digital/core':
+        specifier: workspace:^
+        version: link:../core
       '@hookform/resolvers':
         specifier: ^3.0.0
         version: 3.10.0(react-hook-form@7.72.1(react@19.2.4))

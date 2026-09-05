@@ -3,13 +3,8 @@
 import { useCallback, useId, useRef, useState } from "react"
 import { Check, Heart, Minus, Plus, ShoppingBag, Clock } from "lucide-react"
 import Link from "next/link"
-import {
-  Badge,
-  Separator,
-  Label,
-  AllergenBadge,
-  SpiceLevelIndicator,
-} from "@be-in-digital/ui"
+import { Badge, Separator, Label, AllergenBadge, SpiceLevelIndicator } from "@be-in-digital/ui"
+import { resolveAllergens } from "@be-in-digital/core/allergens"
 import {
   useCartStore,
   formatPrice,
@@ -201,11 +196,16 @@ export function ProductDetailClient({
         <div className="space-y-4 text-left">
           {/* Allergens & Tags */}
           <div className="flex items-center gap-4 flex-wrap">
-            {product.allergens && product.allergens.length > 0 && (
-              product.allergens.map((allergen) => (
-                <AllergenBadge key={allergen} allergen={allergen} />
-              ))
-            )}
+            {/*
+              Resolved, not mapped raw. Rendering `product.allergens` directly
+              showed two "Lait" badges for a dish tagged both `lactose` and
+              `lait`, where the kitchen slip — which resolves — showed one, and
+              it handed React a duplicate key. The dish page and the slip have
+              to agree about what a diner was told.
+            */}
+            {resolveAllergens(product.allergens).map((entry) => (
+              <AllergenBadge key={entry.raw} allergen={entry.raw} />
+            ))}
             {product.spiceLevel !== undefined && product.spiceLevel > 0 && (
               <SpiceLevelIndicator level={product.spiceLevel} />
             )}

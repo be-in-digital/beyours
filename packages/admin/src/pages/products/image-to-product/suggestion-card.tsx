@@ -16,6 +16,7 @@ import { AiFieldBadge } from "./ai-field-badge"
 import { ConfidenceIndicator } from "./confidence-indicator"
 import { WarningBanner } from "./warning-banner"
 import { CategoryMapper } from "./category-mapper"
+import { AllergenField } from "../allergen-field"
 
 interface Category {
   _id: string
@@ -191,23 +192,22 @@ export function SuggestionCard({
               />
             </div>
 
-            {/* Allergens */}
+            {/* Allergens — the same control the product form uses.
+                What the model proposes is free text in French, so the
+                vocabulary resolves it here, where an operator can still see
+                which names were recognised and which were not. */}
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <label className="text-xs font-medium text-muted-foreground">Allergenes (suggestion IA)</label>
+                <span className="text-xs font-medium text-muted-foreground">Allergènes (suggestion IA)</span>
                 <AiFieldBadge source="inferred" />
                 <ConfidenceIndicator value={suggestion.allergens.confidence} />
               </div>
-              <Input
-                value={suggestion.allergens.value.join(", ")}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  updateField("allergens", {
-                    ...suggestion.allergens,
-                    value: e.target.value.split(",").map((s: string) => s.trim()).filter(Boolean),
-                  })
+              <AllergenField
+                value={suggestion.allergens.value}
+                onChange={(next: string[]) =>
+                  updateField("allergens", { ...suggestion.allergens, value: next })
                 }
-                placeholder="Séparés par des virgules"
-                className="h-7 text-xs"
+                density="compact"
                 disabled={!selected}
               />
             </div>

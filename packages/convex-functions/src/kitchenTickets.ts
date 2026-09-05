@@ -644,6 +644,8 @@ export const create = {
     trackingToken: v.string(),
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
+    /** Copied from the order. Printed on the slip for `dine_in` tickets. */
+    tableNumber: v.optional(v.string()),
     deliveryNotes: v.optional(v.string()),
     allergens: v.optional(v.array(v.string())),
   },
@@ -678,6 +680,7 @@ export const create = {
       estimatedReadyAt,
       customerName: args.customerName,
       customerPhone: args.customerPhone,
+      tableNumber: args.tableNumber,
       deliveryNotes: args.deliveryNotes,
       allergens: args.allergens,
       status: "pending",

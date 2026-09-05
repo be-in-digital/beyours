@@ -154,9 +154,21 @@ describe('Kitchen Service', () => {
       expect(getPriorityLevel(deliveryOrder)).toBe('urgent')
     })
 
-    it('should return urgent for scheduled orders', () => {
+    // Rewritten: this case used to assert 'urgent'. An order booked for later
+    // is the least urgent thing in the queue until its slot approaches, so
+    // `scheduledFor` no longer raises the priority of anything.
+    it('should not make a scheduled order urgent', () => {
       const scheduledOrder = { ...baseOrder, scheduledFor: Date.now() + 3600000 }
-      expect(getPriorityLevel(scheduledOrder)).toBe('urgent')
+      expect(getPriorityLevel(scheduledOrder)).toBe('normal')
+    })
+
+    it('should keep a scheduled delivery order urgent', () => {
+      const scheduledDelivery = {
+        ...baseOrder,
+        type: 'delivery' as const,
+        scheduledFor: Date.now() + 3600000,
+      }
+      expect(getPriorityLevel(scheduledDelivery)).toBe('urgent')
     })
 
     it('should return normal for pickup orders', () => {

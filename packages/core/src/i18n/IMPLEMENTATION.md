@@ -157,7 +157,7 @@ import {
   DEFAULT_I18N_CONFIG,
   COMMON_LANGUAGES,
   isRtlLocale,
-} from '@be-in-digital/core/i18n'
+} from '@be-in-digital/core'
 ```
 
 ### 🎨 Provided Examples

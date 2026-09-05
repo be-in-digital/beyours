@@ -164,17 +164,42 @@ export function TicketCard({ ticket }: TicketCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg">#{ticket.orderNumber}</CardTitle>
+            <CardTitle className="text-lg">
+              #{ticket.orderNumber}
+              {/*
+                The table sits next to the order number, not in a badge row: on
+                a kanban column read from across a kitchen it is the field that
+                decides where the plate goes.
+              */}
+              {ticket.tableNumber && (
+                <span className="ml-2 font-bold">Table {ticket.tableNumber}</span>
+              )}
+            </CardTitle>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline" className="text-xs">
                 {ORDER_TYPE_LABELS[ticket.orderType]}
               </Badge>
-              <Badge
-                variant={PRIORITY_CONFIG[ticket.priority].variant}
-                className="text-xs"
-              >
-                {PRIORITY_CONFIG[ticket.priority].label}
-              </Badge>
+              {/* The priority badge renders only above "normal". Every writer
+                  that runs in production hard-codes `priority: "normal"` —
+                  `orders.ts` when it opens a ticket, plus the Uber Eats and the
+                  Deliveroo webhooks — so a grey "Normal" sat on every card of
+                  every service and told the kitchen nothing, while making the
+                  two values that do mean something harder to spot.
+                  `getPriorityLevel` in @be-in-digital/restaurant already
+                  classifies an order (external platform -> vip, delivery ->
+                  urgent) and is unit-tested, but nothing calls it; today the
+                  only non-normal tickets come from `seedKitchenOrders`.
+                  `PRIORITY_CONFIG` deliberately still covers all three values,
+                  so an urgent or VIP ticket stands out the moment any writer
+                  produces one. */}
+              {ticket.priority !== "normal" && (
+                <Badge
+                  variant={PRIORITY_CONFIG[ticket.priority].variant}
+                  className="text-xs"
+                >
+                  {PRIORITY_CONFIG[ticket.priority].label}
+                </Badge>
+              )}
             </div>
           </div>
 

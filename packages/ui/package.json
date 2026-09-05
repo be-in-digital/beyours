@@ -30,6 +30,7 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
+    "@be-in-digital/core": "workspace:^",
     "@types/google.maps": "^3.58.1",
     "class-variance-authority": "^0.7.1",
     "embla-carousel-react": "^8.6.0",

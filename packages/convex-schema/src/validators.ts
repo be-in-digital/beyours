@@ -339,6 +339,17 @@ export const createOrderSchema = z.object({
   type: z.enum(["delivery", "pickup", "dine_in"], {
     error: "Type de commande invalide",
   }),
+  // Optional at this layer even for `dine_in`: a platform `dine_in` order
+  // forwarded by Uber Eats or Deliveroo carries no table, and rejecting it
+  // would lose the order outright. The storefront requires it — that is where
+  // the diner is actually sitting at a table.
+  //
+  // Length is not bounded here. These schemas derive types (`CreateOrderInput`)
+  // and are not what runs on a mutation, so a bound written here would be a
+  // second, unenforced copy of the one in `@be-in-digital/core/dining`, which
+  // `orders.create` actually applies. This package deliberately does not depend
+  // on `core`.
+  tableNumber: z.string().optional(),
   customerInfo: z.object({
     name: z.string().min(1, "Le nom du client est requis"),
     email: z.string().email("Email invalide").optional(),
@@ -436,6 +447,7 @@ export const createKitchenTicketSchema = z.object({
   })).min(1, "Au moins un article est requis"),
   orderNumber: z.string().min(1),
   orderType: z.enum(["delivery", "pickup", "dine_in"]),
+  tableNumber: z.string().optional(),
   source: z.enum(["website", "uber_eats", "deliveroo", "pos"]).default("website"),
   estimatedPrepTime: z.number().int().min(0).optional(),
 })
@@ -739,7 +751,8 @@ export const createUserProfileSchema = z.object({
   permissions: z.array(z.string()).default([]),
   language: z.string().min(2).max(5).default("fr"),
   phone: z.string().optional(),
-  twoFactorEnabled: z.boolean().default(false),
+  /** Placeholder — 2FA is not implemented. See `tables/userProfiles.ts`. */
+  twoFactorEnabled: z.boolean().optional(),
 })
 
 /**
