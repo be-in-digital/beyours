@@ -30,6 +30,11 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@be-in-digital/ui"
+import {
+  DEFAULT_PRIZE_BUDGET,
+  PRIZE_BUDGET_LIMITS,
+  resolvePrizeBudget,
+} from "@be-in-digital/convex-functions/prizeBudget"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
@@ -54,6 +59,7 @@ interface Game {
     actionMode?: "all" | "sequential"
     referral?: { enabled?: boolean; friendRewardLabel?: string }
     cooldownHours?: number
+    prizeBudget?: { maxPrizes?: number; windowHours?: number }
     [key: string]: unknown
   }
 }
@@ -426,6 +432,21 @@ export function GameCatalogPage() {
                       aria-label="Activer le parrainage"
                     />
                   </div>
+                  <PrizeBudgetControl
+                    config={game.config}
+                    onSave={async (prizeBudget) => {
+                      try {
+                        await updateGame({
+                          id: game._id,
+                          config: { ...(game.config ?? {}), prizeBudget },
+                        })
+                        toast.success("Budget de lots mis à jour")
+                      } catch (error) {
+                        toast.error("Mise à jour impossible — réessayez")
+                        console.error(error)
+                      }
+                    }}
+                  />
                 </div>
               </div>
             ))}
@@ -624,6 +645,90 @@ export function GameCatalogPage() {
         description="Cette action est irréversible. Les tickets déjà gagnés restent valables."
         isDeleting={isDeleting}
       />
+    </div>
+  )
+}
+
+/**
+ * The establishment's prize budget: how many lots the game may hand out inside
+ * one rolling window.
+ *
+ * WHY THIS CONTROL EXISTS, in one line for whoever reads it next: the player
+ * endpoints are anonymous by design, the rate limiter bounds how OFTEN they can
+ * be called, and nothing bounded how MUCH they could give away — a loop over
+ * forty table codes issued 200 prizes in an hour. This is the owner's say over
+ * that, and the defaults apply whether or not they ever open it.
+ *
+ * Values are clamped by `resolvePrizeBudget`, which is also what the player
+ * path calls, so the form cannot promise a bound the game will not honour.
+ */
+function PrizeBudgetControl({
+  config,
+  onSave,
+}: {
+  config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } }
+  onSave: (budget: { maxPrizes: number; windowHours: number }) => Promise<void>
+}) {
+  const inForce = resolvePrizeBudget({ config })
+  const [maxPrizes, setMaxPrizes] = useState(String(inForce.maxPrizes))
+  const [windowHours, setWindowHours] = useState(String(inForce.windowHours))
+
+  const commit = async (next: { maxPrizes: string; windowHours: string }) => {
+    const budget = resolvePrizeBudget({
+      config: {
+        prizeBudget: {
+          maxPrizes: Number(next.maxPrizes),
+          windowHours: Number(next.windowHours),
+        },
+      },
+    })
+    // Show what was actually stored, not what was typed: a value outside the
+    // bounds is clamped rather than refused, and an owner who typed 5000 must
+    // not be left believing the game will honour it.
+    setMaxPrizes(String(budget.maxPrizes))
+    setWindowHours(String(budget.windowHours))
+    await onSave(budget)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="min-w-0">
+        <Label className="text-sm">Budget de lots</Label>
+        <p className="text-xs text-muted-foreground">
+          Le nombre maximum de lots distribués sur une période glissante. Au-delà, les
+          parties continuent mais ne sont plus gagnantes, le temps que les lots les plus
+          anciens sortent de la période. Par défaut : {DEFAULT_PRIZE_BUDGET.maxPrizes}{" "}
+          lots par {DEFAULT_PRIZE_BUDGET.windowHours} h. Si plusieurs jeux sont actifs,
+          c&apos;est le budget le plus strict qui s&apos;applique à
+          l&apos;établissement.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={PRIZE_BUDGET_LIMITS.minPrizes}
+          max={PRIZE_BUDGET_LIMITS.maxPrizes}
+          value={maxPrizes}
+          onChange={(e) => setMaxPrizes(e.target.value)}
+          onBlur={() => void commit({ maxPrizes, windowHours })}
+          className="w-24"
+          aria-label="Nombre maximum de lots"
+        />
+        <span className="text-xs text-muted-foreground">lots toutes les</span>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={PRIZE_BUDGET_LIMITS.minWindowHours}
+          max={PRIZE_BUDGET_LIMITS.maxWindowHours}
+          value={windowHours}
+          onChange={(e) => setWindowHours(e.target.value)}
+          onBlur={() => void commit({ maxPrizes, windowHours })}
+          className="w-20"
+          aria-label="Durée de la période en heures"
+        />
+        <span className="text-xs text-muted-foreground">heures</span>
+      </div>
     </div>
   )
 }
