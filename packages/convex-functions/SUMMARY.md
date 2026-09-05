@@ -347,7 +347,6 @@ According to CLAUDE.md, these are still missing:
 - `gamePlays.ts` - Play history
 - `prizeRedemptions.ts` - Prize redemption
 - `menus.ts` - Menus (collection of categories)
-- `printerSettings.ts` - Printer configuration
 - `translationJobs.ts` - GPT translation jobs
 
 These modules can be added later as needed.
