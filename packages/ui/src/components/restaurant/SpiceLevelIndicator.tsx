@@ -6,31 +6,51 @@ export interface SpiceLevelIndicatorProps
   extends React.HTMLAttributes<HTMLDivElement> {
   level: number
   maxLevel?: number
+  /**
+   * Accessible name. Defaults to French, matching the storefront this renders
+   * on; pass a string to override, e.g. `` `Spice level: ${level}/5` ``.
+   */
+  label?: string
 }
 
+/**
+ * The row of flames is one image with one name.
+ *
+ * It used to carry only a `title`, which is not a reliable accessible name on a
+ * non-interactive element and never surfaces on touch — so the spice level was
+ * invisible to a screen reader and to a phone. `role="img"` plus `aria-label`
+ * names it once; the individual flames are decoration and stay hidden.
+ */
 const SpiceLevelIndicator = React.forwardRef<
   HTMLDivElement,
   SpiceLevelIndicatorProps
->(({ className, level, maxLevel = 5, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center gap-0.5", className)}
-    title={`Spice level: ${level}/${maxLevel}`}
-    {...props}
-  >
-    {Array.from({ length: maxLevel }, (_, index) => (
-      <Flame
-        key={index}
-        className={cn(
-          "h-4 w-4",
-          index < level
-            ? "fill-orange-500 text-orange-500"
-            : "text-muted-foreground/30"
-        )}
-      />
-    ))}
-  </div>
-))
+>(({ className, level, maxLevel = 5, label, ...props }, ref) => {
+  const name = label ?? `Niveau de piment : ${level}/${maxLevel}`
+
+  return (
+    <div
+      ref={ref}
+      role="img"
+      aria-label={name}
+      className={cn("flex items-center gap-0.5", className)}
+      title={name}
+      {...props}
+    >
+      {Array.from({ length: maxLevel }, (_, index) => (
+        <Flame
+          key={index}
+          aria-hidden
+          className={cn(
+            "h-4 w-4",
+            index < level
+              ? "fill-orange-500 text-orange-500"
+              : "text-muted-foreground/30"
+          )}
+        />
+      ))}
+    </div>
+  )
+})
 SpiceLevelIndicator.displayName = "SpiceLevelIndicator"
 
 export { SpiceLevelIndicator }

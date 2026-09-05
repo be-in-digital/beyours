@@ -34,7 +34,17 @@ const PriceDisplay = React.forwardRef<HTMLDivElement, PriceDisplayProps>(
       }).format(value)
     }
 
-    const hasDiscount = showDiscount && originalAmount && originalAmount > amount
+    /**
+     * `showDiscount && originalAmount && originalAmount > amount` yielded the
+     * *number* `0` when `originalAmount` was 0, and JSX renders `{0 && ...}`
+     * as a literal `0` next to the price. Compare against 0 so the guard is a
+     * boolean and a zero original amount simply means "no discount".
+     */
+    const hasDiscount =
+      showDiscount &&
+      originalAmount !== undefined &&
+      originalAmount > 0 &&
+      originalAmount > amount
 
     return (
       <div

@@ -1,0 +1,260 @@
+/**
+ * AllergenBadge must not throw on the allergen names the data actually holds.
+ *
+ * `products.allergens` is `v.array(v.string())`
+ * (packages/convex-schema/src/tables/catalog.ts:104) and the values in it are
+ * French: the seed writes `arachides`, the schema test writes `lactose`, the
+ * kitchen tests write `lait` and `moutarde`, and the GPT extractor in
+ * `imageToProduct.ts` is prompted in French and told to answer in French. The
+ * component declared nine English keys and indexed them unguarded, so every
+ * one of those values read `.icon` off `undefined` and took the dish page down
+ * with a client-side TypeError.
+ *
+ * The page that died is the page carrying the allergen disclosure that INCO
+ * 1169/2011 makes mandatory, which is why the fallback renders the value the
+ * owner typed rather than dropping the badge. A hidden allergen is a hazard;
+ * an unstyled one is not.
+ */
+
+import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it } from "vitest"
+import {
+  AllergenBadge,
+  KNOWN_ALLERGENS,
+  normalizeAllergen,
+} from "../components/restaurant/AllergenBadge"
+import type {
+  Allergen,
+  AllergenLocale,
+} from "../components/restaurant/AllergenBadge"
+
+function render(allergen: string, props: { showLabel?: boolean; locale?: AllergenLocale } = {}) {
+  return renderToStaticMarkup(<AllergenBadge allergen={allergen} {...props} />)
+}
+
+/** Strip tags so assertions read the text a diner sees. */
+function text(html: string) {
+  return html.replace(/<[^>]*>/g, "")
+}
+
+describe("AllergenBadge — values measured in this repository", () => {
+  // Every one of these threw before the fix.
+  it.each([
+    ["arachides", "Arachides"], // apps/reference/convex/seedKitchenOrders.ts:188
+    ["lactose", "Lait"], // packages/convex-schema/src/__tests__/validators.test.ts:90
+    ["lait", "Lait"], // apps/reference/tests/convex/kitchen-auto-print.test.ts:197
+    ["moutarde", "Moutarde"], // apps/reference/tests/convex/kitchen-auto-print.test.ts:335
+    ["fruits à coque", "Fruits à coque"],
+    ["crustacés", "Crustacés"],
+    ["oeufs", "Œufs"],
+    ["GLUTEN", "Gluten"],
+  ])("renders %s as %s instead of throwing", (value, label) => {
+    expect(() => render(value)).not.toThrow()
+    expect(text(render(value, { showLabel: true }))).toContain(label)
+  })
+
+  it("renders every key the component declares", () => {
+    for (const key of KNOWN_ALLERGENS) {
+      expect(() => render(key)).not.toThrow()
+      expect(render(key)).toContain("aria-label=")
+    }
+  })
+
+  it("still renders the nine keys the original union declared", () => {
+    // `shellfish` folds onto crustaceans and `dairy` onto lait, but no caller
+    // that worked before may break now.
+    for (const key of [
+      "gluten",
+      "dairy",
+      "nuts",
+      "shellfish",
+      "eggs",
+      "soy",
+      "fish",
+      "vegetarian",
+      "vegan",
+    ]) {
+      expect(normalizeAllergen(key)).not.toBeNull()
+    }
+  })
+})
+
+describe("AllergenBadge — normalisation", () => {
+  it.each([
+    ["Fruits à coque", "nuts"],
+    ["FRUITS A COQUE", "nuts"],
+    ["fruits-a-coque", "nuts"],
+    ["  fruits  à   coque  ", "nuts"],
+    ["Crustacés", "crustaceans"],
+    ["shellfish", "crustaceans"],
+    // `\u0153` is a ligature, not a decomposable accent: NFD leaves it whole, so
+    // an unexpanded "\u0152ufs" normalises to "ufs" and misses the table.
+    ["\u0152ufs", "eggs"],
+    ["\u0153ufs", "eggs"],
+    ["oeuf", "eggs"],
+    ["Céleri", "celery"],
+    ["Sésame", "sesame"],
+    ["anhydride sulfureux", "sulphites"],
+    ["Blé", "gluten"],
+    ["Cacahuètes", "peanuts"],
+    ["Mollusques", "molluscs"],
+    ["végétalien", "vegan"],
+  ])("maps %s to %s", (input, expected) => {
+    expect(normalizeAllergen(input)).toBe(expected as Allergen)
+  })
+
+  it("does not invert a negation into a declaration", () => {
+    // "sans gluten" is gluten-FREE. Mapping it to `gluten` would tell a diner
+    // the dish contains the very thing the owner said it does not.
+    for (const negation of ["sans gluten", "gluten free", "sans lactose"]) {
+      expect(normalizeAllergen(negation)).toBeNull()
+    }
+  })
+
+  it("does not guess a category from an ingredient", () => {
+    // Naming an allergen the owner did not write is worse than leaving the
+    // badge unstyled. "fruits de mer" spans crustaceans and molluscs.
+    for (const ingredient of ["beurre", "crevette", "fruits de mer", "fromage"]) {
+      expect(normalizeAllergen(ingredient)).toBeNull()
+    }
+  })
+
+  it("returns null for blank input", () => {
+    expect(normalizeAllergen("")).toBeNull()
+    expect(normalizeAllergen("   ")).toBeNull()
+    expect(normalizeAllergen("!!!")).toBeNull()
+  })
+
+  it("does not hand back what Object.prototype inherits", () => {
+    // `allergenAliases` is an object literal, so a plain `aliases[key]` returns
+    // a *function* for these — and an owner can type any of them into the
+    // allergen field. `?? null` does not catch a function.
+    for (const inherited of [
+      "constructor",
+      "__proto__",
+      "toString",
+      "valueOf",
+      "hasOwnProperty",
+      "propertyIsEnumerable",
+    ]) {
+      expect(normalizeAllergen(inherited)).toBeNull()
+    }
+  })
+
+  it("renders an inherited property name as the plain text it is", () => {
+    expect(() => render("constructor")).not.toThrow()
+    expect(text(render("constructor"))).toContain("constructor")
+    expect(render("__proto__")).toContain('aria-label="Allergène : __proto__"')
+  })
+
+  it("resolves every alias to a key the config actually holds", () => {
+    // A typo in the alias table would reintroduce the original crash.
+    const known = new Set<string>(KNOWN_ALLERGENS)
+    for (const alias of ["gluten", "arachides", "lactose", "so2", "lupin"]) {
+      const resolved = normalizeAllergen(alias)
+      expect(resolved).not.toBeNull()
+      expect(known.has(resolved as string)).toBe(true)
+    }
+  })
+})
+
+describe("AllergenBadge — an allergen it does not recognise", () => {
+  it("renders the value the owner typed rather than dropping it", () => {
+    const html = render("épices du chef")
+    expect(text(html)).toContain("épices du chef")
+  })
+
+  it("shows that value even when showLabel is false", () => {
+    // The fallback icon means nothing on its own, so hiding the text would
+    // hide the disclosure.
+    expect(text(render("épices du chef", { showLabel: false }))).toContain(
+      "épices du chef"
+    )
+  })
+
+  it("announces it as an allergen", () => {
+    expect(render("épices du chef")).toContain(
+      'aria-label="Allergène : épices du chef"'
+    )
+  })
+
+  it("escapes it instead of rendering it as markup", () => {
+    const html = render("<script>alert(1)</script>")
+    expect(html).not.toContain("<script>")
+    expect(html).toContain("&lt;script&gt;")
+  })
+
+  it("renders nothing at all for a blank value", () => {
+    expect(render("")).toBe("")
+    expect(render("   ")).toBe("")
+  })
+})
+
+describe("AllergenBadge — accessible name", () => {
+  it("names the badge instead of relying on title alone", () => {
+    // `title` on a non-interactive div is not a reliable accessible name and
+    // never surfaces on touch.
+    const html = render("nuts")
+    expect(html).toContain('role="img"')
+    expect(html).toContain('aria-label="Allergène : Fruits à coque"')
+  })
+
+  it("hides the decorative icon from the accessibility tree", () => {
+    expect(render("nuts")).toContain('aria-hidden="true"')
+  })
+
+  it("does not announce a dietary marker as an allergen", () => {
+    expect(render("vegan")).toContain('aria-label="Régime : Végan"')
+    expect(render("vegetarian")).toContain('aria-label="Régime : Végétarien"')
+  })
+
+  it("falls back to French for a locale it does not carry", () => {
+    // The prop is typed, but this component was taken down once already by
+    // trusting a type over the value that arrived.
+    const html = renderToStaticMarkup(
+      <AllergenBadge allergen="nuts" locale={"de" as AllergenLocale} />
+    )
+    expect(html).not.toContain("undefined")
+    expect(html).toContain('aria-label="Allergène : Fruits à coque"')
+  })
+
+  it("announces in English when asked", () => {
+    expect(render("nuts", { locale: "en" })).toContain(
+      'aria-label="Allergen: Nuts"'
+    )
+    expect(render("vegan", { locale: "en" })).toContain('aria-label="Diet: Vegan"')
+  })
+})
+
+describe("AllergenBadge — the fourteen allergens INCO 1169/2011 makes mandatory", () => {
+  const annexII: Array<[string, string]> = [
+    ["gluten", "Gluten"],
+    ["crustacés", "Crustacés"],
+    ["oeufs", "Œufs"],
+    ["poisson", "Poisson"],
+    ["arachides", "Arachides"],
+    ["soja", "Soja"],
+    ["lait", "Lait"],
+    ["fruits à coque", "Fruits à coque"],
+    ["céleri", "Céleri"],
+    ["moutarde", "Moutarde"],
+    ["graines de sésame", "Sésame"],
+    ["sulfites", "Sulfites"],
+    ["lupin", "Lupin"],
+    ["mollusques", "Mollusques"],
+  ]
+
+  it("covers all fourteen", () => {
+    expect(annexII).toHaveLength(14)
+  })
+
+  it.each(annexII)("declares %s in French", (french, label) => {
+    expect(text(render(french, { showLabel: true }))).toContain(label)
+  })
+
+  it("gives each one a distinct canonical key", () => {
+    const keys = annexII.map(([french]) => normalizeAllergen(french))
+    expect(new Set(keys).size).toBe(14)
+    expect(keys).not.toContain(null)
+  })
+})
