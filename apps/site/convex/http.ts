@@ -34,22 +34,84 @@ auth.addHttpRoutes(http);
    5. customer.subscription.deleted
    ═══════════════════════════════════════════════ */
 
+/** How far a delivery's timestamp may be from now. Stripe's own default. */
+const SIGNATURE_TOLERANCE_SECONDS = 300;
+
+/**
+ * How many `v1=` signatures we are willing to check.
+ *
+ * Stripe sends one per active signing secret — two during a roll, briefly more
+ * if several are live. The HMAC is computed once whatever the count, so this
+ * only stops an unbounded list of comparisons being posted at us.
+ */
+const MAX_SIGNATURE_CANDIDATES = 8;
+
+/**
+ * Compare two hex digests without returning early on the first difference.
+ *
+ * The lengths are compared first, which does leak whether a candidate is
+ * digest-shaped at all — unavoidable, and what every implementation does. What
+ * this avoids is a comparison whose duration grows with the number of leading
+ * bytes an attacker got right, which is the part that can be measured.
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let i = 0; i < a.length; i++) {
+    difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return difference === 0;
+}
+
+/**
+ * Whether this delivery really came from Stripe.
+ *
+ * Three things this gets right that the previous version did not, each
+ * measured against the real route:
+ *
+ * - **Every `v1=`, not the first.** The header carries ONE SIGNATURE PER
+ *   ACTIVE SIGNING SECRET, so during a secret roll — the routine operation
+ *   Stripe itself recommends — a delivery arrives signed with both the old and
+ *   the new one, in no promised order. Reading only the first meant a rotation
+ *   silently dropped every delivery whose new-secret signature happened to
+ *   come second: `valid signature SECOND -> 400`. That is a self-inflicted
+ *   outage on the money path, triggered by good security hygiene.
+ * - **A timestamp that is actually a number.** `parseInt("abc")` is `NaN`, and
+ *   `NaN > 300` is `false`, so a non-numeric `t` sailed through the replay
+ *   window rather than failing it: `t=abc -> 200`. The control was one
+ *   malformed header away from not existing. (An outsider still needs the
+ *   secret to forge the HMAC over `"abc.<body>"`, so this degraded the
+ *   anti-replay guarantee rather than opening the door outright.)
+ * - **A comparison that does not leak.** `===` on a digest returns as soon as
+ *   two characters differ.
+ */
 async function verifyStripeSignature(
   body: string,
   signature: string,
   secret: string,
 ): Promise<boolean> {
-  const parts = signature.split(",");
-  const ts = parts.find((p) => p.startsWith("t="))?.slice(2);
-  const sig = parts.find((p) => p.startsWith("v1="))?.slice(3);
+  const parts = signature.split(",").map((part) => part.trim());
+  const ts = parts.find((part) => part.startsWith("t="))?.slice(2);
+  const candidates = parts
+    .filter((part) => part.startsWith("v1="))
+    .map((part) => part.slice(3))
+    .slice(0, MAX_SIGNATURE_CANDIDATES);
 
-  if (!ts || !sig) return false;
+  if (!ts || candidates.length === 0) return false;
 
-  // Make sure the timestamp is not too old (5 minutes)
+  /* `Number`, not `parseInt`: `parseInt("12abc")` is 12, which would accept a
+     malformed timestamp as a good one. `Number("12abc")` is NaN, and
+     `Number.isFinite` then refuses it — along with the `NaN` and `Infinity`
+     that made the window unenforceable. */
+  const issuedAt = Number(ts);
+  if (!Number.isFinite(issuedAt)) return false;
+
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - parseInt(ts)) > 300) return false;
+  if (Math.abs(now - issuedAt) > SIGNATURE_TOLERANCE_SECONDS) return false;
 
   const encoder = new TextEncoder();
+  /* The raw `t=` string as Stripe signed it, never the parsed number: they
+     differ for any value that round-trips lossily. */
   const payload = `${ts}.${body}`;
   const key = await crypto.subtle.importKey(
     "raw",
@@ -67,7 +129,14 @@ async function verifyStripeSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return expectedSig === sig;
+  /* Every candidate is checked, and the loop does not break on a match: which
+     signature matched is not something the response should be able to tell
+     apart by timing either. */
+  let matched = false;
+  for (const candidate of candidates) {
+    if (constantTimeEquals(expectedSig, candidate)) matched = true;
+  }
+  return matched;
 }
 
 /* ── What a handler may do ──
