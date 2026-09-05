@@ -49,6 +49,32 @@ export const DEFAULT_MAX_EMAILS_PER_WEEK = 3
  */
 export const MAX_EMAILS_PER_WEEK = 100
 
+/**
+ * Convex refuses a transaction that scans more than this many documents.
+ *
+ * Quoted here because the weekly cap's lookup is now sized against it. (Note
+ * `convex-test` defaults its own ceiling to 32,000, so tests that mean this
+ * limit have to ask for it by name rather than take the default.)
+ */
+export const CONVEX_DOCUMENTS_READ_LIMIT = 16_384
+
+/**
+ * The largest page `sentCountsSince` can answer for in one transaction.
+ *
+ * That query reads at most `cap` documents per subscriber, so its cost is
+ * `page x cap` and the cap is already held to `MAX_EMAILS_PER_WEEK`. What is
+ * left unbounded is the page. `BATCH_SIZE` in the send action is 40 and that is
+ * the only reason the product stays under the ceiling — a number with no
+ * visible connection to this query, which someone will reasonably raise for
+ * throughput one day and reopen exactly the failure this bound exists to stop.
+ * So the relationship is written down, enforced where the read happens, and
+ * tested. Past this, split the page across several `runQuery` calls: each is
+ * its own transaction and gets its own budget.
+ */
+export const MAX_CAP_LOOKUP_BATCH = Math.floor(
+  CONVEX_DOCUMENTS_READ_LIMIT / MAX_EMAILS_PER_WEEK
+)
+
 export const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 /**

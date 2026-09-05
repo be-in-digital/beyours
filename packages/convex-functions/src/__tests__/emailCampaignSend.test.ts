@@ -16,7 +16,12 @@
 import { describe, expect, it } from "vitest"
 import { alreadySentTo, sentCountsSince } from "../emailEvents"
 import { dueForSending } from "../emailCampaigns"
-import { MAX_EMAILS_PER_WEEK } from "../campaignDelivery"
+import {
+  CONVEX_DOCUMENTS_READ_LIMIT,
+  MAX_CAP_LOOKUP_BATCH,
+  MAX_EMAILS_PER_WEEK,
+  resolveWeeklyCap,
+} from "../campaignDelivery"
 
 const CAMPAIGN = "campaigns:a"
 const OTHER_CAMPAIGN = "campaigns:b"
@@ -248,6 +253,69 @@ describe("sentCountsSince", () => {
       })
     ).toEqual([])
     expect(ctx.asked).toEqual([])
+  })
+
+  it("refuses a page too large to answer in one transaction", async () => {
+    // The per-subscriber read is bounded; the number of subscribers is not, and
+    // `BATCH_SIZE` is the only thing holding the product under the ceiling.
+    // Raising it for throughput would reopen this defect with nothing to say so
+    // — hence a refusal that names the knob rather than a Convex read error.
+    const ctx = recordingEventsCtx([])
+    const tooMany = Array.from(
+      { length: MAX_CAP_LOOKUP_BATCH + 1 },
+      (_, i) => `subs:${i}`
+    )
+    await expect(
+      sentCountsSince.handler(ctx, {
+        subscriberIds: tooMany,
+        since: WEEK_AGO,
+        cap: MAX_EMAILS_PER_WEEK,
+      })
+    ).rejects.toThrow(/MAX_CAP_LOOKUP_BATCH/)
+    // Refused before reading anything, not part-way through.
+    expect(ctx.asked).toEqual([])
+  })
+
+  it("answers a page of exactly the largest size it allows", async () => {
+    const ctx = recordingEventsCtx([])
+    const full = Array.from({ length: MAX_CAP_LOOKUP_BATCH }, (_, i) => `subs:${i}`)
+    const counts = await sentCountsSince.handler(ctx, {
+      subscriberIds: full,
+      since: WEEK_AGO,
+      cap: MAX_EMAILS_PER_WEEK,
+    })
+    expect(counts).toHaveLength(MAX_CAP_LOOKUP_BATCH)
+  })
+})
+
+describe("the weekly cap's read budget", () => {
+  it("keeps the worst page x cap inside Convex's read ceiling", () => {
+    // The arithmetic the whole fix rests on, asserted rather than reasoned
+    // about, so that moving either constant fails here instead of in a
+    // customer's campaign.
+    expect(MAX_CAP_LOOKUP_BATCH * MAX_EMAILS_PER_WEEK).toBeLessThanOrEqual(
+      CONVEX_DOCUMENTS_READ_LIMIT
+    )
+    expect((MAX_CAP_LOOKUP_BATCH + 1) * MAX_EMAILS_PER_WEEK).toBeGreaterThan(
+      CONVEX_DOCUMENTS_READ_LIMIT
+    )
+  })
+
+  it("leaves room for the send action's own page", () => {
+    // `BATCH_SIZE` is 40 in both apps. Restated as a floor rather than imported,
+    // because the send action is a `"use node"` module this suite cannot load.
+    expect(MAX_CAP_LOOKUP_BATCH).toBeGreaterThanOrEqual(40)
+  })
+
+  it("resolves a cap to itself, so query and caller bound the same number", () => {
+    // `sentCountsSince` resolves the cap it is given; the caller compares
+    // against the cap it resolved. Those agree only because resolving twice
+    // changes nothing — if it stopped being idempotent, a saturated count would
+    // start reading as under the cap.
+    for (const raw of [undefined, null, "3", 0, -2, 0.5, 1, 3, 3.7, 99, 100, 101, NaN, Infinity]) {
+      const once = resolveWeeklyCap(raw)
+      expect(resolveWeeklyCap(once)).toBe(once)
+    }
   })
 })
 

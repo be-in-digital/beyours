@@ -10,7 +10,7 @@
 
 import { v } from "convex/values"
 
-import { resolveWeeklyCap } from "./campaignDelivery"
+import { MAX_CAP_LOOKUP_BATCH, resolveWeeklyCap } from "./campaignDelivery"
 
 const eventTypeValidator = v.union(
   v.literal("sent"),
@@ -141,13 +141,31 @@ export const sentCountsSince = {
     ctx: any,
     args: any
   ): Promise<Array<{ subscriberId: string; count: number }>> => {
-    // Through the same function the caller resolved the cap with, so the bound
-    // on the read is the bound on the comparison by construction, and callers
-    // cannot widen it. `v.number()` is a float64: it admits NaN and Infinity,
-    // and `.take(Infinity)` is the unbounded read this query was fixed to stop
-    // making. It admits a non-positive cap too, which would read nothing,
-    // report zero, and wave every subscriber through the guard. Applying it to
-    // an already-resolved cap changes nothing — it is idempotent.
+    // Refused rather than attempted: `page x cap` documents is what this costs,
+    // and past this page size that exceeds what Convex will read in one
+    // transaction — the very failure the index was added to remove, back again
+    // and just as permanent. Callers send a fixed page (`BATCH_SIZE`), so this
+    // fires for a code change, not for data, and says which knob moved.
+    if (args.subscriberIds.length > MAX_CAP_LOOKUP_BATCH) {
+      throw new Error(
+        `sentCountsSince: ${args.subscriberIds.length} subscribers exceeds ` +
+          `MAX_CAP_LOOKUP_BATCH (${MAX_CAP_LOOKUP_BATCH}). Split the page ` +
+          `across several calls — each runQuery is its own transaction.`
+      )
+    }
+    // Through the same function the caller resolved the cap with. `v.number()`
+    // is a float64: it admits NaN and Infinity, and `.take(Infinity)` is the
+    // unbounded read this query was fixed to stop making. It admits a
+    // non-positive cap too, which would read nothing, report zero, and wave
+    // every subscriber through the guard.
+    //
+    // Callers pass a cap that has already been through this function, and it is
+    // idempotent, so the count and the comparison are bounded by the same
+    // number. A caller that passed a raw fractional cap instead would break
+    // that: the count would stop at the floor while the comparison used the
+    // fraction, and a saturated count then always reads as under the cap. That
+    // is what `resolveWeeklyCap` being the single definition of a cap prevents
+    // — do not compare against anything else.
     const limit = resolveWeeklyCap(args.cap)
     const counts: Array<{ subscriberId: string; count: number }> = []
     for (const subscriberId of args.subscriberIds) {

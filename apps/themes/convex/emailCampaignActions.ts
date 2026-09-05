@@ -40,7 +40,14 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Subscribers handled per batch. One SES call and a 100 ms pause each. */
+/**
+ * Subscribers handled per batch. One SES call and a 100 ms pause each.
+ *
+ * Also the page `sentCountsSince` answers the weekly cap for, which costs
+ * `BATCH_SIZE x cap` documents in one transaction. Raising this past
+ * `MAX_CAP_LOOKUP_BATCH` is refused there rather than left to fail against
+ * Convex's read ceiling; split the page across several calls instead.
+ */
 const BATCH_SIZE = 40;
 
 /**

@@ -31,6 +31,7 @@
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
 import {
+  CONVEX_DOCUMENTS_READ_LIMIT,
   MAX_EMAILS_PER_WEEK,
   resolveWeeklyCap,
   withinWeeklyCap,
@@ -61,8 +62,10 @@ const CAP = 3
  */
 const WINDOW_BUDGET = BATCH_SIZE * CAP + 100
 
-/** Convex refuses a transaction that scans more than this. */
-const CONVEX_DOCUMENTS_READ_LIMIT = 16_384
+// `convex-test` defaults its own ceiling to 32,000, so every harness here names
+// a budget explicitly: the ones testing the read's shape use `WINDOW_BUDGET`,
+// and the worst-case test uses Convex's real `CONVEX_DOCUMENTS_READ_LIMIT`.
+// Nothing relies on the default, which would be looser than production.
 
 function harness(documentsRead: number) {
   return convexTest({ schema, modules, transactionLimits: { documentsRead } })
