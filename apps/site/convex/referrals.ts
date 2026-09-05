@@ -6,6 +6,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { SITE_SUBJECT, consumeRateLimit } from "./rateLimit";
 
 /* ── Internal queries ── */
 
@@ -280,12 +281,46 @@ export const getMyStats = query({
 
 /* ── Affiliate invoicing (invoice mandatory before payout, art. 4.2) ── */
 
-/** Signed upload URL for attaching an invoice (the file is POSTed to it). */
+/**
+ * Signed upload URL for attaching an invoice (the file is POSTed to it).
+ *
+ * This is the first half of `attachReferralInvoice` below, and it used to ask
+ * for strictly less than the half that follows it: any signed-in account, with
+ * or without an affiliate profile, could mint upload URLs without limit, and
+ * nothing ever collected the files that were never attached. It now asks for
+ * the same profile its sibling does and spends a quota to do it. Files that are
+ * minted and never attached are swept by ./storageSweep.ts.
+ */
 export const generateInvoiceUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Non authentifié");
+
+    const affiliate = await ctx.db
+      .query("affiliateUsers")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!affiliate) throw new Error("Profil apporteur introuvable");
+
+    // The profile, and deliberately nothing more. `attachReferralInvoice` below
+    // — the other half of this same flow — asks for a profile, ownership of the
+    // commission and a commission that is not yet `paid`/`cancelled`, and says
+    // nothing about `affiliate.status`. Gating the mint on `status` and not the
+    // attach would leave a suspended apporteur able to attach an invoice but
+    // unable to produce the URL to upload one, and art. 4.2 makes that invoice
+    // mandatory before payout — so the stricter gate would withhold a payout,
+    // not prevent an abuse. Whether a suspended apporteur may still invoice a
+    // commission earned before suspension is a business question, and it is not
+    // answered here.
+    //
+    // Two windows, as everywhere else here. The per-affiliate one is keyed on
+    // the id the server resolved, not on anything the caller sent. The
+    // site-wide one is the bound an attacker who signs up repeatedly — the
+    // affiliate profile is self-serve — cannot dodge.
+    await consumeRateLimit(ctx, "invoiceUploadUrlPerAffiliate", affiliate._id);
+    await consumeRateLimit(ctx, "invoiceUploadUrlSiteWide", SITE_SUBJECT);
+
     return await ctx.storage.generateUploadUrl();
   },
 });

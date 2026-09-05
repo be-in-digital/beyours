@@ -8,6 +8,8 @@ import {
   resolveStoreHours,
   getNextOpenTime,
   formatStoreAddress,
+  formatStoreAddressLines,
+  formatWeeklyHours,
   getStoreDistance,
   sortStoresByDistance,
 } from '../services/store'
@@ -365,6 +367,125 @@ describe('Store Service', () => {
       const formatted = formatStoreAddress(address)
 
       expect(formatted).toBe('123 Main St, 75001 Paris, FR')
+    })
+  })
+
+  describe('formatStoreAddressLines', () => {
+    it('writes the address the way it goes on an envelope', () => {
+      const address: Address = {
+        street: '12 rue des Martyrs',
+        city: 'Paris',
+        postalCode: '75009',
+        country: 'France',
+      }
+
+      expect(formatStoreAddressLines(address)).toEqual([
+        '12 rue des Martyrs',
+        '75009 Paris',
+        'France',
+      ])
+    })
+
+    it('leaves out a field the import never filled rather than its punctuation', () => {
+      const address: Address = {
+        street: '12 rue des Martyrs',
+        city: 'Paris',
+        postalCode: '',
+        country: '',
+      }
+
+      expect(formatStoreAddressLines(address)).toEqual([
+        '12 rue des Martyrs',
+        'Paris',
+      ])
+    })
+  })
+
+  describe('formatWeeklyHours', () => {
+    const service = (day: number, open: string, close: string): BusinessHours => ({
+      day,
+      open,
+      close,
+      isClosed: false,
+    })
+
+    it('collapses consecutive days that serve the same times', () => {
+      const hours: BusinessHours[] = [
+        service(1, '11:30', '22:00'),
+        service(2, '11:30', '22:00'),
+        service(3, '11:30', '22:00'),
+        service(4, '11:30', '22:00'),
+        service(5, '11:30', '23:30'),
+        service(6, '18:00', '23:30'),
+        { day: 0, open: '00:00', close: '00:00', isClosed: true },
+      ]
+
+      expect(formatWeeklyHours(hours)).toEqual([
+        { days: 'Lun - Jeu', hours: '11h30 - 22h00' },
+        { days: 'Ven', hours: '11h30 - 23h30' },
+        { days: 'Sam', hours: '18h00 - 23h30' },
+        { days: 'Dim', hours: 'Fermé' },
+      ])
+    })
+
+    it('starts the week on Monday, whatever order the rows were stored in', () => {
+      const hours: BusinessHours[] = [
+        { day: 0, open: '00:00', close: '00:00', isClosed: true },
+        service(6, '18:00', '23:00'),
+        service(1, '09:00', '17:00'),
+      ]
+
+      expect(formatWeeklyHours(hours).map((row) => row.days)).toEqual([
+        'Lun',
+        'Sam',
+        'Dim',
+      ])
+    })
+
+    it('does not bridge a run across a day the store is shut', () => {
+      // Open Monday and Wednesday on the same times, shut on Tuesday: reading
+      // `Lun - Mer` off this would send someone to a closed door.
+      const hours: BusinessHours[] = [
+        service(1, '11:00', '22:00'),
+        { day: 2, open: '00:00', close: '00:00', isClosed: true },
+        service(3, '11:00', '22:00'),
+      ]
+
+      expect(formatWeeklyHours(hours)).toEqual([
+        { days: 'Lun', hours: '11h00 - 22h00' },
+        { days: 'Mar', hours: 'Fermé' },
+        { days: 'Mer', hours: '11h00 - 22h00' },
+      ])
+    })
+
+    it('does not bridge a run across a day the store never declared', () => {
+      const hours: BusinessHours[] = [
+        service(1, '11:00', '22:00'),
+        service(3, '11:00', '22:00'),
+      ]
+
+      expect(formatWeeklyHours(hours)).toEqual([
+        { days: 'Lun', hours: '11h00 - 22h00' },
+        { days: 'Mer', hours: '11h00 - 22h00' },
+      ])
+    })
+
+    it('keeps an overnight service readable', () => {
+      expect(formatWeeklyHours([service(5, '18:00', '02:00')])).toEqual([
+        { days: 'Ven', hours: '18h00 - 02h00' },
+      ])
+    })
+
+    it('returns nothing at all for a store with no declared week', () => {
+      expect(formatWeeklyHours([])).toEqual([])
+    })
+
+    it('collapses a seven-day identical week into one row', () => {
+      const hours = [1, 2, 3, 4, 5, 6, 0].map((day) => service(day, '08:00', '20:00'))
+
+      expect(formatWeeklyHours(hours)).toEqual([
+        { days: 'Lun - Dim', hours: '08h00 - 20h00' },
+      ])
     })
   })
 

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { recordSaActivity } from "./saActivity";
 
 const planValidator = v.union(v.literal("essentielle"), v.literal("premium"));
 const billingPeriodValidator = v.union(
@@ -27,6 +28,51 @@ export const create = internalMutation({
     currentPeriodEnd: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    /* ── One subscription per order, guarded where the write happens ──
+       Stripe delivers checkout.session.completed at least once, and retries it.
+       The webhook does look for an existing subscription before calling here,
+       but that read sits in its own transaction and the write lands in another
+       (httpAction reads → action → this mutation writes): two deliveries racing
+       each other both read « none » and both insert. The check has to live
+       inside the transaction that inserts. Convex mutations are serializable,
+       so a second delivery either sees this row or is retried until it does.
+
+       The duplicated state used to sustain itself: getByOrderId ran .unique()
+       and threw once there were two rows, so the webhook's own guard stayed
+       broken for that order for good. Both halves are handled — here we
+       prevent, below we tolerate what is already on file. */
+    const existing = await ctx.db
+      .query("subscriptions")
+      .withIndex("by_orderId", (q) => q.eq("orderId", args.orderId))
+      .first();
+
+    if (existing) {
+      /* The same Stripe subscription recorded twice is a plain replay: nothing
+         to report. A DIFFERENT one means the caller already created a second
+         subscription at Stripe before reaching us — we refuse the row, but
+         Stripe will bill that subscription all the same. No guard on this side
+         can undo it, so it goes where ops look and not only into the logs. */
+      if (existing.stripeSubscriptionId !== args.stripeSubscriptionId) {
+        console.error(
+          `[STRIPE] Duplicate maintenance subscription for order ${args.orderId}: ` +
+            `${args.stripeSubscriptionId} was created at Stripe while ` +
+            `${existing.stripeSubscriptionId} is already on file. Row refused — ` +
+            `the extra subscription still has to be cancelled in Stripe.`,
+        );
+        await recordSaActivity(ctx, {
+          kind: "system",
+          action: "subscription_duplicate_refused",
+          summary:
+            `Deuxième abonnement de maintenance créé chez Stripe pour la commande ${args.orderId} ` +
+            `(${args.stripeSubscriptionId}) alors que ${existing.stripeSubscriptionId} est déjà en base. ` +
+            `La ligne en double a été refusée, mais l'abonnement en trop existe chez Stripe : ` +
+            `l'annuler, sinon le client sera prélevé deux fois.`,
+          customerEmail: args.customerEmail,
+        });
+      }
+      return existing._id;
+    }
+
     return await ctx.db.insert("subscriptions", {
       ...args,
       createdAt: Date.now(),
@@ -74,13 +120,25 @@ export const getByStripeSubscriptionId = internalQuery({
   },
 });
 
+/**
+ * The subscription on file for an order, or null.
+ *
+ * Not `.unique()`, on purpose: an order that already carries duplicate rows —
+ * from a webhook race that predates the guard in `create` — still has to be
+ * readable. This is the read the webhook consults to decide « one exists
+ * already », so throwing here left the guard against duplicates broken for
+ * exactly the orders that had one. The other read of these rows,
+ * maintenance.byLicenseKey, tolerates duplicates for its own reason: it answers
+ * GET /maintenance/status, and a 500 there reads to the client update scripts
+ * as « API unreachable » — they then update anyway.
+ */
 export const getByOrderId = internalQuery({
   args: { orderId: v.id("orders") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("subscriptions")
       .withIndex("by_orderId", (q) => q.eq("orderId", args.orderId))
-      .unique();
+      .first();
   },
 });
 

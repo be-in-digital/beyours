@@ -294,3 +294,106 @@ export const sortStoresByDistance = (
     return distA - distB
   })
 }
+
+/**
+ * Split a store address into the lines a postal address is written on.
+ *
+ * `formatStoreAddress` joins the same fields with commas for a single-line
+ * context — a select, a confirmation email. A contact card wants the shape the
+ * visitor would copy onto an envelope, so the two live side by side rather
+ * than one being derived from the other by splitting on a comma.
+ *
+ * Empty fields are dropped instead of leaving a stray "75009 ," on screen: a
+ * store seeded from a partial import has them, and the visitor should see the
+ * part that is known, not the punctuation around the part that is not.
+ */
+export const formatStoreAddressLines = (address: Address): string[] => {
+  const locality = [address.postalCode, address.city]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(' ')
+
+  return [address.street, locality, address.country]
+    .map((line) => line?.trim())
+    .filter((line): line is string => Boolean(line))
+}
+
+/** A run of consecutive days that keep the same service, as displayed. */
+export type WeeklyHoursRow = {
+  /** `"Lun"`, or `"Lun - Ven"` when the run covers several days. */
+  days: string
+  /** `"11h30 - 22h00"`, or `"Fermé"`. */
+  hours: string
+}
+
+/** Monday first: the French week, not the schema's Sunday-indexed one. */
+const WEEK_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const
+
+const SHORT_DAY_NAMES = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'] as const
+
+/** `"11:30"` reads as `"11h30"` to a French visitor. */
+const toFrenchTime = (time: string): string => time.replace(':', 'h')
+
+/**
+ * Turn the stored week into the rows a contact card shows.
+ *
+ * The storefront used to render `store.openingHours` — a field that has never
+ * existed on the document — so every visitor read an invented
+ * `Lun - Ven / 11h00 - 22h00`. The real field is `hours`, indexed 0=Sunday,
+ * one row per day, and it is not display-ready: seven identical lines is not
+ * what a restaurant puts on its door.
+ *
+ * So consecutive days that serve the same times collapse into one range, and
+ * only consecutive ones — a place open Monday and Wednesday but shut Tuesday
+ * must not read `Lun - Mer`. Days the store never declared are left out
+ * entirely rather than guessed as closed.
+ */
+export const formatWeeklyHours = (hours: BusinessHours[]): WeeklyHoursRow[] => {
+  const byDay = new Map<number, BusinessHours>()
+  for (const entry of hours) {
+    if (!byDay.has(entry.day)) byDay.set(entry.day, entry)
+  }
+
+  const rows: WeeklyHoursRow[] = []
+  let runStart: number | null = null
+  let runEnd: number | null = null
+  let runLabel: string | null = null
+
+  const flush = (): void => {
+    if (runStart === null || runEnd === null || runLabel === null) return
+    const from = SHORT_DAY_NAMES[runStart]
+    const to = SHORT_DAY_NAMES[runEnd]
+    rows.push({
+      days: runStart === runEnd ? `${from}` : `${from} - ${to}`,
+      hours: runLabel,
+    })
+    runStart = null
+    runEnd = null
+    runLabel = null
+  }
+
+  for (const day of WEEK_DISPLAY_ORDER) {
+    const entry = byDay.get(day)
+    if (!entry) {
+      flush()
+      continue
+    }
+
+    const label = entry.isClosed
+      ? 'Fermé'
+      : `${toFrenchTime(entry.open)} - ${toFrenchTime(entry.close)}`
+
+    if (label === runLabel) {
+      runEnd = day
+      continue
+    }
+
+    flush()
+    runStart = day
+    runEnd = day
+    runLabel = label
+  }
+
+  flush()
+  return rows
+}

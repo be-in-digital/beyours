@@ -357,9 +357,9 @@ describe("byLicenseKey", () => {
 
   /* An entitlement read must never throw: an uncaught error is an HTTP 500, and
      the client's update script reads any non-2xx as « API unreachable » and
-     updates anyway. Two subscription rows on one order are reachable — the
-     webhook's existence guard reads and writes in separate transactions — and
-     used to make `unique()` throw, turning a refusal into a free pass. */
+     updates anyway. `subscriptions.create` refuses a second row per order since
+     #343, but orders that predate it still carry one, and a read that throws on
+     them turns a refusal into a free pass. */
   test("duplicate subscriptions on one order refuse instead of throwing", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
@@ -407,5 +407,64 @@ describe("byLicenseKey", () => {
     });
     expect(result?.entitled).toBe(true);
     expect(result?.reason).toBe("unregistered");
+  });
+
+  /* Two concurrent Stripe deliveries used to write two rows for one order.
+     Reading them with .unique() threw, the route answered 500, and the client
+     update scripts read any non-2xx as « API unreachable » and updated anyway.
+     The guard in ./subscriptions stops new duplicates; orders already in that
+     state still have to answer. */
+  test("answers for an order that carries duplicate subscriptions", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const orderId = await ctx.db.insert("orders", order());
+      await ctx.db.insert("saDeployments", deployment({ orderId }));
+      await ctx.db.insert(
+        "subscriptions",
+        subscription(orderId, { stripeSubscriptionId: "sub_race_a" }),
+      );
+      await ctx.db.insert(
+        "subscriptions",
+        subscription(orderId, { stripeSubscriptionId: "sub_race_b" }),
+      );
+    });
+    const result = await t.query(internal.maintenance.byLicenseKey, {
+      licenseKey: "bys_test",
+    });
+    expect(result?.entitled).toBe(true);
+    expect(result?.reason).toBe("active");
+  });
+
+  /* A long history of finished contracts must not bury the live one: the scan
+     used to keep the OLDEST 20, so a client past that count was refused an
+     update they had paid for. */
+  test("finds the live subscription behind a long history of dead ones", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const orderId = await ctx.db.insert("orders", order());
+      await ctx.db.insert("saDeployments", deployment());
+      for (let i = 0; i < 25; i++) {
+        await ctx.db.insert(
+          "subscriptions",
+          subscription(orderId, {
+            stripeSubscriptionId: `sub_dead_${i}`,
+            status: "canceled",
+            currentPeriodEnd: Date.now() - 400 * DAY,
+          }),
+        );
+      }
+      await ctx.db.insert(
+        "subscriptions",
+        subscription(orderId, {
+          stripeSubscriptionId: "sub_live",
+          currentPeriodEnd: Date.now() + 200 * DAY,
+        }),
+      );
+    });
+    const result = await t.query(internal.maintenance.byLicenseKey, {
+      licenseKey: "bys_test",
+    });
+    expect(result?.entitled).toBe(true);
+    expect(result?.reason).toBe("active");
   });
 });

@@ -151,3 +151,36 @@ describe("assertFieldLengths", () => {
     expect(() => assertFieldLengths({ phone: undefined })).not.toThrow()
   })
 })
+
+describe("rateLimitKey — folding is per rule (#323, adversarial round)", () => {
+  it("folds an address, because one address is one address", () => {
+    expect(rateLimitKey("contactPerEmail", "Yanis@Resto.FR")).toBe(
+      rateLimitKey("contactPerEmail", "yanis@resto.fr")
+    )
+  })
+
+  it("does NOT fold a document id, which is case-sensitive", () => {
+    // Two ids differing only in case are two different rows. Folding them gave
+    // them one window: on `orderPerStore` that is one establishment closing
+    // another's till. `menuSyncKey` in the same file exists to avoid exactly
+    // this and says so; every id-keyed rule now declares it at the key.
+    expect(rateLimitKey("orderPerStore", "jd7aB2")).not.toBe(
+      rateLimitKey("orderPerStore", "jd7ab2")
+    )
+    expect(rateLimitKey("gamePlayPerQr", "kx9Z")).not.toBe(
+      rateLimitKey("gamePlayPerQr", "kx9z")
+    )
+    expect(rateLimitKey("gamePlayPerStore", "sT1")).not.toBe(
+      rateLimitKey("gamePlayPerStore", "st1")
+    )
+  })
+
+  it("every rule states which it is, so a new one cannot forget", () => {
+    for (const [name, rule] of Object.entries(RATE_LIMITS)) {
+      expect(
+        typeof rule.foldSubjectCase,
+        `${name} must declare foldSubjectCase`
+      ).toBe("boolean")
+    }
+  })
+})

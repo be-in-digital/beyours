@@ -6,6 +6,7 @@ import type {
   SchemaMutationCtx,
   SchemaQueryCtx,
 } from "@be-in-digital/convex-schema/dataModel"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
 /**
  * Player-facing gamification flow (public, anonymous players).
@@ -13,6 +14,13 @@ import type {
  * The outcome of every play is resolved SERVER-SIDE (win roll + prize pick);
  * the client only animates toward the result it receives. The 24h cooldown is
  * enforced per store + device fingerprint, whatever the game and the outcome.
+ *
+ * WHAT THE COOLDOWN IS NOT: a control. `fingerprint` is a string the browser
+ * sends, so a caller who wants another turn sends another string — 40 of them
+ * emptied a five-prize stock in one loop, which is what these endpoints were
+ * bounded for. The cooldown is fairness between honest devices. The bound on
+ * abuse is `consumeRateLimit`, keyed partly on the QR row the SERVER resolved,
+ * which no argument can rotate. See `rateLimit.ts` for why no IP is available.
  *
  * Handlers are typed against the shared SchemaDataModel: schema drift breaks
  * this package's type-check, not the consuming apps at runtime.
@@ -69,6 +77,58 @@ export function remainingStock(prize: {
 export function cooldownMsForGame(game: { config?: { cooldownHours?: number } }): number {
   const hours = game.config?.cooldownHours ?? DEFAULT_COOLDOWN_HOURS
   return hours * 60 * 60 * 1000
+}
+
+/**
+ * The most `completedActions` a caller may claim, and the longest an id may be.
+ * A Convex id is 32 characters; the cap is loose enough not to break a future
+ * format and tight enough that the array cannot be used as free storage.
+ */
+const MAX_COMPLETED_ACTIONS = 32
+const MAX_ACTION_ID_LENGTH = 128
+
+/**
+ * Keep only the claimed action ids that name a real, active required action of
+ * this store, capped in count and length.
+ *
+ * This is NOT verification. Whether someone actually left a Google review is
+ * not observable from a mutation, and the ids are readable from `getSession`,
+ * so a caller can always claim the real ones. What it stops is the unbounded
+ * write: `completedActions` was persisted verbatim, so one call could store an
+ * arbitrarily large array of arbitrarily long strings, and the analytics built
+ * on the column counted ids that never existed.
+ *
+ * Nothing is thrown for an unknown id. Stale ids are normal — a store that
+ * reconfigures its actions leaves them behind in older rows, and
+ * `selectSequentialProgression` already tolerates them at read time.
+ */
+async function sanitiseCompletedActions(
+  ctx: SchemaQueryCtx,
+  storeId: DocId<"stores">,
+  claimed: string[]
+): Promise<string[]> {
+  if (claimed.length === 0) return []
+  const actions = await ctx.db
+    .query("requiredActions")
+    .withIndex("by_storeId_isActive", (q) => q.eq("storeId", storeId).eq("isActive", true))
+    .collect()
+  const real = new Set(actions.map((a) => a._id as string))
+  // Filter BEFORE the cap, never after. Capping first lets a caller push the
+  // genuine ids off the end with junk — 32 invented strings followed by the one
+  // action the diner really completed stored nothing at all, which loses real
+  // progress rather than bounding anything. The cap exists to stop the array
+  // being used as storage, and there is no way to store anything through it
+  // once only real ids survive: `real` is bounded by the store's own
+  // configuration, so `kept` cannot exceed the number of actions it defined.
+  const kept: string[] = []
+  for (const id of claimed) {
+    if (kept.length >= MAX_COMPLETED_ACTIONS) break
+    if (id.length > MAX_ACTION_ID_LENGTH) continue
+    if (!real.has(id)) continue
+    if (kept.includes(id)) continue
+    kept.push(id)
+  }
+  return kept
 }
 
 /** Public-safe projection of a prize document. */
@@ -345,6 +405,9 @@ export const recordScan = {
       .withIndex("by_code", (q) => q.eq("code", args.code))
       .first()
     if (!qr) return
+    // Keyed on the row the server resolved, not on `args.code`: a caller can
+    // send any string, but only a real code reaches this line.
+    await consumeRateLimit(ctx, "gameScanPerQr", qr._id)
     await ctx.db.patch(qr._id, {
       scannedCount: (qr.scannedCount ?? 0) + 1,
       lastScannedAt: Date.now(),
@@ -368,6 +431,13 @@ const playArgs = {
 export const play = {
   args: playArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof playArgs>) => {
+    // Dodged by sending a new fingerprint; the two windows after the lookup
+    // are not. It does NOT meter code-probing, though its position suggests it
+    // might: an unknown code throws, the transaction rolls back, and the row
+    // this wrote goes with it. Enumeration through a mutation that throws
+    // cannot be metered at all — measured at 500 probes, 0 limiter rows.
+    await consumeRateLimit(ctx, "gamePlayPerFingerprint", args.fingerprint)
+
     const qr = await ctx.db
       .query("gameQRCodes")
       .withIndex("by_code", (q) => q.eq("code", args.code))
@@ -378,6 +448,13 @@ export const play = {
     if (!game || !game.isActive || game.storeId !== qr.storeId) {
       throw new Error("GAME_UNAVAILABLE")
     }
+
+    // The bound that holds when the fingerprint rotates. Both keys come from
+    // rows this handler resolved, so no argument can move them: reaching
+    // another QR window means finding another code physically on a table, and
+    // the store window bounds however many of those an attacker collects.
+    await consumeRateLimit(ctx, "gamePlayPerQr", qr._id)
+    await consumeRateLimit(ctx, "gamePlayPerStore", qr.storeId)
 
     const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
     const isFirstPlay = latest === null
@@ -423,13 +500,19 @@ export const play = {
       })
     }
 
+    const completedActions = await sanitiseCompletedActions(
+      ctx,
+      qr.storeId,
+      args.completedActions
+    )
+
     const now = Date.now()
     const playId = await ctx.db.insert("gamePlays", {
       storeId: qr.storeId,
       gameId: game._id,
       qrCodeId: qr._id,
       fingerprint: args.fingerprint,
-      completedActions: args.completedActions,
+      completedActions,
       referredByCode: isFriendWelcome ? args.ref : undefined,
       didWin: didWin && prize !== null,
       prizeId: prize?._id,
@@ -484,6 +567,12 @@ export const ensureReferralCode = {
     const existing = await findReferralByFingerprint(ctx, qr.storeId, args.fingerprint)
     if (existing) return { code: existing.code }
 
+    // Past the idempotent return, for the reason spelled out in `claim`: this
+    // endpoint is called again on every visit by the same device, and metering
+    // that free path let one browser tab spend the whole store's window and
+    // refuse a referral code to every diner after it.
+    await consumeRateLimit(ctx, "gameReferralPerStore", qr.storeId)
+
     let code = generateRedemptionCode()
     for (let attempt = 0; attempt < 5; attempt++) {
       const clash = await findReferralByCode(ctx, code)
@@ -519,6 +608,14 @@ const claimArgs = {
 export const claim = {
   args: claimArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof claimArgs>) => {
+    // A claim mails a prize code to an address the caller chose, which makes
+    // this the one endpoint here that can be used as a relay.
+    assertFieldLengths({
+      name: `${args.firstName} ${args.lastName}`,
+      email: args.email,
+      phone: args.phone,
+    })
+
     const play = await ctx.db.get(args.playId)
     if (!play || !play.didWin || !play.prizeId) throw new Error("CLAIM_INVALID")
 
@@ -532,6 +629,20 @@ export const claim = {
 
     const prize = await ctx.db.get(play.prizeId)
     if (!prize) throw new Error("CLAIM_INVALID")
+
+    // Consumed HERE, past every path that leaves without writing.
+    //
+    // A Convex mutation is a transaction: when a handler throws, the limiter
+    // row it wrote is rolled back with everything else, so placing a limiter
+    // before a check that THROWS buys nothing and costs nothing. A path that
+    // RETURNS is the opposite — it commits, so a slot spent there is spent for
+    // real. The repeat claim above is exactly that path: it writes no
+    // redemption and sends no mail, and when it was metered, sixty replays of
+    // one already-claimed `playId` with sixty invented addresses emptied the
+    // restaurant's window and told the next genuine winner, standing at the
+    // counter, to come back in an hour. The limiter became the attack.
+    await consumeRateLimit(ctx, "gameClaimPerEmail", args.email)
+    await consumeRateLimit(ctx, "gameClaimPerStore", play.storeId)
 
     let code = generateRedemptionCode()
     for (let attempt = 0; attempt < 5; attempt++) {

@@ -306,7 +306,7 @@ Everything written went nowhere.
 Three headline features were dead on arrival, and two defects put the domain's sending
 reputation at stake — which also means order confirmations.
 
-- [ ] **#177** 🟡 — Move AWS SES out of the sandbox — otherwise no client can email a real consumer — _repo half done: `ses:check` is wired in both apps and tested; the production-access request is an account-owner console action_
+- [ ] **#177** 🟡 — Move AWS SES out of the sandbox — otherwise no client can email a real consumer — _repo half done: `ses:check` is wired in both apps and tested; what is left is one production-access request per client AWS account, an account-owner console action — see LAUNCH-06_
 - [x] **#146** ✅ — Read `AWS_SES_CONFIGURATION_SET` instead of the hard-coded name, and fail loudly
 - [x] **#141** ✅ — Fix the CSV import — three required arguments missing, two rejected fields added
 - [x] **#142** ✅ — Send the double opt-in email — no path did, so every signup was unreachable

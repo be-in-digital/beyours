@@ -86,6 +86,11 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
+    // AVIF first, WebP behind it. A menu page carries a dozen dish photographs
+    // and they are the whole payload; AVIF is roughly half the bytes of the
+    // JPEG an owner uploads from a phone, and a browser that cannot read it
+    // is served the WebP instead.
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",

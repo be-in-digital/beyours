@@ -216,20 +216,28 @@ export function entitlementMessage(e: Entitlement): string {
   }
 }
 
+/* How many of a customer's subscriptions one lookup reads.
+   Bounded so the biggest account cannot blow the read limit, and taken NEWEST
+   FIRST: the row that still entitles is a recent one, the dead ones are
+   history. The old bound kept the OLDEST 20, so a client with more than 20
+   finished contracts had their live subscription fall outside the window and
+   was refused an update they had paid for. */
+const MAX_SUBSCRIPTIONS_SCANNED = 200;
+
 /**
- * Resolves a site's entitlement from its license key.
- * Prefers the subscription linked to the deployment's order; falls back to the
- * customer's subscriptions and keeps the most favourable, so a client running
- * several sites is never blocked by whichever row happened to come first.
+ * The most favourable verdict among several subscriptions, or null for none.
+ *
+ * A lookup can turn up more than one row: several sites on one email, contracts
+ * that ended, and — for orders that predate the guard in ./subscriptions — a
+ * duplicate written by two concurrent webhook deliveries. None of those may
+ * cost a paying client their updates, so the best row decides.
  */
-/**
- * The most favourable verdict among several subscriptions.
- * A client running several sites must not be cut off by whichever row the
- * index happened to return first.
- */
-function best(subs: SubscriptionState[], now: number): Entitlement | null {
+function mostFavourable(
+  subscriptions: Doc<"subscriptions">[],
+  now: number,
+): Entitlement | null {
   return (
-    subs
+    subscriptions
       .map((subscription) => resolveEntitlement({ subscription, now }))
       .sort(
         (a, b) =>
@@ -239,6 +247,15 @@ function best(subs: SubscriptionState[], now: number): Entitlement | null {
   );
 }
 
+/**
+ * Resolves a site's entitlement from its license key.
+ * Prefers the subscription linked to the deployment's order; falls back to the
+ * customer's subscriptions. Either way the most favourable row wins, so a
+ * client running several sites is never blocked by whichever one happened to
+ * come first — and neither reads with `.unique()`, so an order carrying
+ * duplicate rows answers instead of throwing a 500 the client update scripts
+ * would read as « API unreachable, update anyway ».
+ */
 export const byLicenseKey = internalQuery({
   args: { licenseKey: v.string() },
   handler: async (ctx, args) => {
@@ -262,15 +279,17 @@ export const byLicenseKey = internalQuery({
     const now = Date.now();
 
     if (deployment.orderId) {
-      /* Same reason: two subscription rows can exist on one order — the
-         webhook's existence guard reads in one transaction and writes in
-         another, so two concurrent Stripe deliveries can both pass it. */
+      /* Same reason, for orders that predate the guard in ./subscriptions:
+         two rows on one order used to be reachable, and a read that throws on
+         them is a read that lets the update through. */
       const linked = await ctx.db
         .query("subscriptions")
         .withIndex("by_orderId", (q) => q.eq("orderId", deployment.orderId!))
-        .take(20);
-      const verdict = best(linked, now);
-      if (verdict) return { site: deployment.name, ...verdict };
+        .take(MAX_SUBSCRIPTIONS_SCANNED);
+      const verdict = mostFavourable(linked, now);
+      if (verdict) {
+        return { site: deployment.name, ...verdict };
+      }
     }
 
     /* No order linked — which today is every deployment created in the console,
@@ -285,11 +304,13 @@ export const byLicenseKey = internalQuery({
       .withIndex("by_customerEmail", (q) =>
         q.eq("customerEmail", deployment.customerEmail),
       )
-      .take(20);
+      .order("desc")
+      .take(MAX_SUBSCRIPTIONS_SCANNED);
 
     return {
       site: deployment.name,
-      ...(best(owned, now) ?? resolveEntitlement({ subscription: null, now })),
+      ...(mostFavourable(owned, now) ??
+        resolveEntitlement({ subscription: null, now })),
     };
   },
 });

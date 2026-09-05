@@ -188,3 +188,83 @@ export function resolveRequestLocale(options: {
     normalizeStoredLocale(options.cookieValue, options.availableCodes) ?? fallback
   )
 }
+
+/** One row of an establishment's `languages` table, as the storefront reads it. */
+export interface EstablishmentLanguage {
+  code: string
+  name: string
+  nativeName: string
+  flagEmoji?: string | undefined
+  isDefault: boolean
+  isActive: boolean
+}
+
+/** What the storefront should offer, and which of those is the establishment's. */
+export interface ResolvedEstablishmentLanguages {
+  languages: EstablishmentLanguage[]
+  defaultCode: Locale
+}
+
+/**
+ * Name a locale in English and in itself, for a row we are synthesising.
+ *
+ * `Intl.DisplayNames` throws on a code it cannot parse, and the admin can type
+ * any code at all, so every call is guarded. Falling back to the code itself
+ * shows `de` rather than nothing — ugly, but it never hides the language.
+ */
+function describeLocale(code: string): { name: string; nativeName: string } {
+  const label = (inLocale: string): string => {
+    try {
+      return new Intl.DisplayNames([inLocale], { type: 'language' }).of(code) ?? code
+    } catch {
+      return code
+    }
+  }
+  return { name: label('en'), nativeName: label(code) }
+}
+
+/**
+ * The languages an establishment offers, and which one it is written in.
+ *
+ * Two rules, and the first one is the whole point of this function.
+ *
+ * **The establishment default is never taken from array order.** It used to be:
+ * the storefront read `active.find((l) => l.isDefault)?.code ?? active[0]?.code`,
+ * and a fresh deployment seeds no `languages` rows while `languages.create`
+ * takes `isDefault` from its caller. So the first language an admin added
+ * became `active[0]`, carried no flag, and became the default for every diner —
+ * a French restaurant adding English served English to French customers, and
+ * the resolved locale was written back to the cookie, so the server half
+ * agreed on the next request. Issue #325, NEW2-JOURNEY-2. With no flagged row
+ * the answer is the source language, which is what the catalogue is written in.
+ *
+ * **The default is always selectable.** A store whose only row is the language
+ * it just added would otherwise offer one entry, and the selector hides itself
+ * below two — leaving the source language reachable by no one. When no active
+ * row carries the default, one is synthesised for it. It is not persisted:
+ * this is a render-time view of what the diner may choose, not a write.
+ *
+ * @param rows - The store's `languages` rows. Inactive ones are dropped.
+ * @param sourceLocale - The language the catalogue is written in.
+ */
+export function resolveEstablishmentLanguages(
+  rows: readonly EstablishmentLanguage[],
+  sourceLocale: string = DEFAULT_I18N_CONFIG.defaultLocale
+): ResolvedEstablishmentLanguages {
+  const active = rows.filter((row) => row.isActive)
+
+  const defaultCode = active.find((row) => row.isDefault)?.code ?? sourceLocale
+
+  if (active.some((row) => row.code === defaultCode)) {
+    return { languages: active, defaultCode }
+  }
+
+  const { name, nativeName } = describeLocale(defaultCode)
+  return {
+    languages: [
+      { code: defaultCode, name, nativeName, isDefault: true, isActive: true },
+      ...active,
+    ],
+    defaultCode,
+  }
+}
