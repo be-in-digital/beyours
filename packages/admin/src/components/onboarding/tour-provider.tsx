@@ -1,37 +1,61 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { useQuery } from "convex/react"
 import { TourProvider as ReactourProvider, useTour } from "@reactour/tour"
+import type { Role } from "@be-in-digital/core"
+import { useAdminStoreSelection, type StoreDoc } from "@be-in-digital/restaurant"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
+import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useOptionalSidebar } from "@be-in-digital/ui"
-import { TOUR_STEPS, setTourNavigate } from "./tour-steps"
+import { canRoleSeeNavHref } from "../../config/nav-config"
+import { resolveStoreSelection } from "../store-selection"
+import { hasSeenTour, markTourSeen } from "./tour-storage"
+import { tourStepsFor, setTourNavigate } from "./tour-steps"
 
-const STORAGE_PREFIX = "bid-tour-"
 const AUTO_LAUNCH_DELAY_MS = 1200
 
-function hasCompletedTour(userId: string): boolean {
-  try {
-    return localStorage.getItem(`${STORAGE_PREFIX}${userId}`) === "done"
-  } catch {
-    return false
-  }
-}
+/**
+ * Whether to open the tour unasked.
+ *
+ * A predicate rather than a tangle of early returns inside the effect, so the
+ * rule can be tested. The first version of this was asserted at by grepping
+ * the provider's source for `resolveStoreSelection`, which passes just as
+ * happily when the comparison is inverted.
+ */
+export function shouldOfferTour(state: {
+  isAuthenticated: boolean
+  isAuthLoading: boolean
+  userId: string | null | undefined
+  /** `undefined` while `stores.listAll` is still in flight. */
+  stores: readonly { _id: string }[] | undefined
+  selectedStoreId: string | null
+  alreadySeen: boolean
+}): boolean {
+  if (!state.isAuthenticated || state.isAuthLoading || !state.userId) return false
+  if (state.alreadySeen) return false
 
-function markTourCompleted(userId: string): void {
-  try {
-    localStorage.setItem(`${STORAGE_PREFIX}${userId}`, "done")
-  } catch {
-    // silently ignore
-  }
+  // `StoreGuard` replaces the body of every admin page except Établissements,
+  // Paramètres and Équipe with "Aucun établissement — Créez votre premier
+  // établissement." A brand-new owner has none, and they are precisely who
+  // this tour opens for: it used to walk them through twenty screens of empty
+  // state while describing charts, tickets and stock levels that were not on
+  // screen. `pending` is not `empty` — an undecided list must not launch it
+  // either.
+  const decision = resolveStoreSelection({
+    storeId: state.selectedStoreId,
+    stores: state.stores,
+  })
+  return decision.status !== "empty" && decision.status !== "pending"
 }
 
 /**
- * Inner component that auto-launches the tour, manages sidebar state,
- * and registers the Next.js router for page navigation during the tour.
+ * Auto-launches the tour, keeps the sidebar open, and lends the tour the
+ * Next.js router so its steps can change page.
  */
 function TourAutoLauncher() {
-  const { setIsOpen, isOpen, currentStep } = useTour()
+  const { setIsOpen, setCurrentStep, isOpen, currentStep } = useTour()
   const user = useAdminAuthStore((s) => s.user)
   const isAuthenticated = useAdminAuthStore((s) => s.isAuthenticated)
   const isAuthLoading = useAdminAuthStore((s) => s.isLoading)
@@ -45,18 +69,45 @@ function TourAutoLauncher() {
     return () => setTourNavigate(null)
   }, [router])
 
-  // Auto-launch on first visit
+  /**
+   * Which establishments THIS ACCOUNT holds.
+   *
+   * Not "does the deployment have one": `stores.listAll` is wrapped in
+   * `authedQuery` + `requireStaff`, and only `super_admin` sees every store —
+   * a `client_admin` owner gets the ones on their own `storeIds`. That is the
+   * same answer `StoreGuard` acts on, which is what makes the two agree.
+   *
+   * The skip sentinel is the SECOND argument. `useQuery(x)` with `x` the
+   * string `"skip"` does not skip — `convex/react` reads skip from `args[0]`
+   * and would turn the string into a function reference and subscribe to it.
+   * Convex de-duplicates this subscription with `StoreGuard`'s, so asking here
+   * costs nothing extra.
+   */
+  const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
+  const storesQuery = api?.stores?.listAll
+  const stores = useQuery(
+    (storesQuery ?? "skip") as never,
+    storesQuery ? {} : "skip"
+  ) as StoreDoc[] | undefined
+  const selectedStoreId = useAdminStoreSelection((s) => s.storeId)
+
+  const offer = shouldOfferTour({
+    isAuthenticated,
+    isAuthLoading,
+    userId: user?.id,
+    stores,
+    selectedStoreId,
+    alreadySeen: user?.id ? hasSeenTour(user.id) : true,
+  })
+
   useEffect(() => {
-    if (!isAuthenticated || isAuthLoading || !user?.id) return
-
+    if (!offer) return
     const timeout = setTimeout(() => {
-      if (!hasCompletedTour(user.id)) {
-        setIsOpen(true)
-      }
+      setCurrentStep(0)
+      setIsOpen(true)
     }, AUTO_LAUNCH_DELAY_MS)
-
     return () => clearTimeout(timeout)
-  }, [isAuthenticated, isAuthLoading, user?.id, setIsOpen])
+  }, [offer, setIsOpen, setCurrentStep])
 
   // Keep sidebar open during tour
   useEffect(() => {
@@ -79,16 +130,28 @@ export function OnboardingTourProvider({
   children: React.ReactNode
 }) {
   const user = useAdminAuthStore((s) => s.user)
+  const role = useAdminAuthStore((s) => s.role)
+
+  /**
+   * A step spotlights a sidebar entry, and the sidebar hides what the role may
+   * not open. A `kitchen` or `delivery` account sees 3 of the 21 entries — and
+   * invitations hand out exactly those roles — so the tour is cut to the menu
+   * this particular person has.
+   */
+  const steps = useMemo(
+    () => tourStepsFor((href) => canRoleSeeNavHref(role as Role, href)),
+    [role]
+  )
 
   const handleClose = useCallback(() => {
     if (user?.id) {
-      markTourCompleted(user.id)
+      markTourSeen(user.id)
     }
   }, [user?.id])
 
   return (
     <ReactourProvider
-      steps={TOUR_STEPS}
+      steps={steps}
       scrollSmooth
       showBadge
       showDots={false}

@@ -397,12 +397,21 @@ fix one side had and the other did not; ported to the side named.
 | `components/admin/blog/CreateArticleDialog.tsx` | drift →themes | accents + `htmlFor`/`id` label linkage |
 | `components/admin/blog/GenerateArticleDialog.tsx` | drift →themes | accents + `htmlFor`/`id` on three fields |
 | `components/admin/blog/GenerateImageDialog.tsx` | drift →themes | accents |
-| `components/admin/kitchen/CompletedTickets.tsx` | drift →themes | accents |
-| `components/admin/kitchen/KitchenContent.tsx` | drift →themes | accents |
-| `components/admin/kitchen/TicketCard.tsx` | drift →themes | accents |
+| `components/admin/kitchen/CompletedTickets.tsx` | drift →themes | accents — file since moved, see below |
+| `components/admin/kitchen/KitchenContent.tsx` | drift →themes | accents — file since moved, see below |
+| `components/admin/kitchen/TicketCard.tsx` | drift →themes | accents — file since moved, see below |
 | `components/admin/index.ts` | deliberate | template-only components in the barrel |
 | `components/storefront/user-menu.tsx` | benign | comment rewording |
 | `components/website/meal-card.tsx` | drift →themes | 400 from the image optimizer on every photoless product |
+
+> **`components/admin/kitchen/` no longer exists in either app.** The nine
+> files it held were the KDS, kept twice — and a third, older `KitchenPage` sat
+> unrendered in `packages/admin`. The live screen now lives in
+> `packages/admin/src/pages/kitchen/` and both apps render it, so the three rows
+> above record a reconciliation between two copies that have since become one.
+> `components/admin/languages/LanguagesContent.tsx` went the same way;
+> `UIOverridesContent.tsx` stays local, because it lists the template's own
+> translation keys. Two copies cannot diverge when there is one.
 
 ### `e2e/` (32)
 

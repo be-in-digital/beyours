@@ -24,6 +24,17 @@
       "dependsOn": ["^build"]
     },
     "test": {
+      "dependsOn": ["^build"]
+    },
+    // `pnpm test:coverage` is the only task that writes `coverage/`. It used
+    // to be declared as an output of `test`, which produces nothing — a cache
+    // slot for an artefact no command created, next to a CLAUDE.md line
+    // promising "80%+ coverage" that nothing measured.
+    //
+    // No threshold is enforced. The number is reported, not gated; see
+    // TESTING.md before adding one, because a threshold set above what the
+    // suite currently reaches turns every unrelated pull request red.
+    "test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     },

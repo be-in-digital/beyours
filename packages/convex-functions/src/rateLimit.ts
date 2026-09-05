@@ -42,6 +42,7 @@
  */
 
 import { v } from "convex/values"
+import { RefusalError } from "./refusal"
 
 /** One counter, as the limiter cares about it. */
 export interface RateLimitWindow {
@@ -134,6 +135,23 @@ export const RATE_LIMITS = {
    */
   gameReferralPerStore: { limit: 100, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
+   * Friend welcomes granted by ONE referral code — the row the server resolved
+   * from `args.ref`, not the string the caller sent.
+   *
+   * A friend arriving on a share link skips the required actions, and that
+   * exemption turns on `isFirstPlay`, which is per fingerprint: every rotated
+   * fingerprint is a first-timer, so one minted code took 120 plays past a
+   * store demanding three Google reviews without a single refusal. Three a day
+   * per code is a genuine share among friends; past it the fourth friend still
+   * plays, they just do the action like everybody else. That degradation is why
+   * this number can be small without costing anyone a game.
+   */
+  gameFriendWelcomePerReferral: {
+    limit: 3,
+    windowMs: 24 * 60 * 60_000,
+    foldSubjectCase: false,
+  },
+  /**
    * Prize claims for one address. A claim sends mail to an address the caller
    * chose, so this window is the relay bound, and it is deliberately as tight
    * as the contact form's.
@@ -223,15 +241,27 @@ export const FIELD_LIMITS = {
   phone: 40,
   subject: 200,
   message: 5_000,
+  /* Gamification. `play` bounded `completedActions` and nothing else, beside a
+     cap that exists precisely to stop a row being used as free storage. A
+     500 KB `userAgent` and a 200 000-character `fingerprint` were both stored,
+     and the fingerprint also becomes a `rateLimits.key` on the `by_key` INDEX.
+     The client sends a UUID and a real user agent, so both of these are
+     generous by an order of magnitude. */
+  fingerprint: 200,
+  userAgent: 512,
 } as const
 
-export class FieldTooLongError extends Error {
+export class FieldTooLongError extends RefusalError<"field_too_long"> {
   constructor(
     readonly field: keyof typeof FIELD_LIMITS,
     readonly limit: number
   ) {
-    super(`Le champ « ${field} » dépasse ${limit} caractères.`)
-    this.name = "FieldTooLongError"
+    super(
+      "FieldTooLongError",
+      "field_too_long",
+      `Le champ « ${field} » dépasse ${limit} caractères.`,
+      { field, limit }
+    )
   }
 }
 
@@ -248,10 +278,14 @@ export function assertFieldLengths(
   }
 }
 
-export class RateLimitedError extends Error {
+export class RateLimitedError extends RefusalError<"rate_limited"> {
   constructor(readonly retryAt: number) {
-    super("Trop de requêtes. Merci de réessayer dans quelques minutes.")
-    this.name = "RateLimitedError"
+    super(
+      "RateLimitedError",
+      "rate_limited",
+      "Trop de requêtes. Merci de réessayer dans quelques minutes.",
+      { retryAt }
+    )
   }
 }
 
@@ -292,6 +326,36 @@ export async function consumeRateLimit(
   } else {
     await ctx.db.insert("rateLimits", { key, ...verdict.next })
   }
+}
+
+/**
+ * Whether one more call would be admitted, without consuming anything.
+ *
+ * For a QUERY, which cannot write and so cannot meter. `getSession` needs it to
+ * stop advertising a friend-welcome that `play` will refuse: the exemption is
+ * metered per referral row, and the session was computing it with no reference
+ * to that window, so the fourth friend on a share link was sent straight to the
+ * wheel and lost a spin to an error the screen had been told was impossible.
+ *
+ * Never use this to guard a mutation. Read-then-write across two calls is a gap
+ * a mutation does not need — `consumeRateLimit` decides and records in one.
+ */
+export async function peekRateLimit(
+  ctx: any,
+  name: RateLimitName,
+  subject: string,
+  now: number = Date.now()
+): Promise<boolean> {
+  const existing = await ctx.db
+    .query("rateLimits")
+    .withIndex("by_key", (q: any) => q.eq("key", rateLimitKey(name, subject)))
+    .first()
+
+  return checkRateLimit(
+    existing ? { windowStart: existing.windowStart, count: existing.count } : null,
+    RATE_LIMITS[name],
+    now
+  ).allowed
 }
 
 /** Args shared by the table wrappers in each app. */

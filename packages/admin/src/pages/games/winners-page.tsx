@@ -25,19 +25,16 @@ import {
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import {
+  formatStatCount,
+  GAME_STATS_WINDOW_SUFFIX,
+  type GameStats,
+} from "./game-stats"
 
 /**
  * Winners dashboard: play/win stats, redemption list, and the staff
  * validation input (type or scan a redemption code to mark it used).
  */
-
-interface Stats {
-  totalPlays: number
-  totalWins: number
-  winRate: number
-  totalRedeemed: number
-  pendingRedemptions: number
-}
 
 interface Redemption {
   id: string
@@ -72,7 +69,7 @@ export function GameWinnersPage() {
   const stats = useQuery(
     api.prizeRedemptions.getStats,
     storeId ? { storeId } : "skip"
-  ) as Stats | undefined
+  ) as GameStats | undefined
   const redemptions = useQuery(
     api.prizeRedemptions.listRedemptions,
     storeId ? { storeId } : "skip"
@@ -123,10 +120,26 @@ export function GameWinnersPage() {
   }
 
   const statCards = [
-    { label: "Parties jouées", value: stats.totalPlays, icon: Gamepad2Icon },
-    { label: "Victoires", value: stats.totalWins, icon: TrophyIcon },
-    { label: "Taux de gain réel", value: `${stats.winRate}%`, icon: PercentIcon },
-    { label: "Lots utilisés", value: stats.totalRedeemed, icon: TicketCheckIcon },
+    {
+      label: `Parties jouées${GAME_STATS_WINDOW_SUFFIX}`,
+      value: formatStatCount(stats.totalPlays, stats.truncated),
+      icon: Gamepad2Icon,
+    },
+    {
+      label: `Victoires${GAME_STATS_WINDOW_SUFFIX}`,
+      value: formatStatCount(stats.totalWins, stats.truncated),
+      icon: TrophyIcon,
+    },
+    {
+      label: `Taux de gain réel${GAME_STATS_WINDOW_SUFFIX}`,
+      value: `${stats.winRate}%`,
+      icon: PercentIcon,
+    },
+    {
+      label: `Lots utilisés${GAME_STATS_WINDOW_SUFFIX}`,
+      value: formatStatCount(stats.totalRedeemed, stats.truncated),
+      icon: TicketCheckIcon,
+    },
   ]
 
   return (

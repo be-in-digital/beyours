@@ -607,17 +607,24 @@ export const packages: PackageInfo[] = [
         importPath: "@be-in-digital/core",
         tags: ["i18n"],
       },
+      // Neither S3 nor SES exposes a bare function. Both are service objects
+      // built with an injected client — that injection is what makes them
+      // testable, and it is why `uploadToS3` and a top-level `sendEmail`,
+      // advertised here until 5 Sep 2026, resolve to undefined at every call
+      // site that believed this registry.
       {
-        name: "uploadToS3",
+        name: "createS3Service",
         type: "function",
-        description: "Upload file to S3 bucket",
+        description:
+          "Builds the S3 service: upload, presigned upload/download URLs, delete, exists, getMetadata",
         importPath: "@be-in-digital/core",
         tags: ["aws", "s3", "storage"],
       },
       {
-        name: "sendEmail",
+        name: "getSESService",
         type: "function",
-        description: "Send email via AWS SES",
+        description:
+          "Returns the SES service, whose sendEmail and sendTemplatedEmail send transactional mail",
         importPath: "@be-in-digital/core",
         tags: ["aws", "ses", "email"],
       },

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { useQuery } from "convex/react"
+import { useState } from "react"
+import { usePaginatedQuery } from "convex/react"
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ import type {
   BadgeVariant,
 } from "../../lib/types"
 import { ResolvingStore } from "../../components/resolving-store"
+import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import { refundControlState } from "../../lib/refund-eligibility"
 import { RefundControl } from "./refund-control"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
@@ -59,54 +60,70 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   cash: { label: "Espèces", color: "bg-green-100 text-green-800" },
 }
 
-interface PaymentsPageProps {
-  embedded?: boolean
-}
-
-export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * The two guards, then the ledger.
+ *
+ * `usePaginatedQuery` needs a real function reference on its very first render
+ * and `api` is injected by the admin layout a render later, so the query lives
+ * in a child that is not mounted until there is something to query with — the
+ * same shape `MessagesPage` uses, and for the same reason.
+ */
+export function PaymentsPage() {
   const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
+
+  if (!storeId || !api) return <ResolvingStore />
+
+  return <PaymentsLedger api={api} storeId={storeId} />
+}
+
+function PaymentsLedger({
+  api,
+  storeId,
+}: {
+  // The Convex API is injected at runtime and has no static type here.
+  api: any
+  storeId: string
+}) {
   // `payments:read` gets a role onto this screen; `payments:refund` is what the
   // server checks on the click. They are not the same set of people.
   const role = useAdminAuthStore((s) => s.role)
-  const payments = useQuery(
-    api?.payments?.getByStore ?? ("skip" as never),
-    storeId ? { storeId } : "skip"
-  ) as Payment[] | undefined
 
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [providerFilter, setProviderFilter] = useState<string>("all")
   const [refundingPayment, setRefundingPayment] = useState<Payment | null>(null)
 
-  const filteredPayments = useMemo(() => {
-    if (!payments) return null
+  /**
+   * Both filters go to the server.
+   *
+   * They used to be applied here, over every payment the establishment had ever
+   * taken — the screen downloaded the whole ledger on every load and narrowed it
+   * in the browser. Narrowing after the read saves nothing: the read is the
+   * cost, and past ~16k rows Convex refuses the transaction outright. Each
+   * filter is an equality the schema now indexes, so a page of fifteen reads
+   * fifteen rows whether the store took a hundred payments or a hundred
+   * thousand.
+   */
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.payments.getByStore,
+    {
+      storeId,
+      ...(statusFilter === "all" ? {} : { status: statusFilter }),
+      ...(providerFilter === "all" ? {} : { provider: providerFilter }),
+    },
+    { initialNumItems: ADMIN_PAGE_SIZE }
+  )
 
-    let filtered = payments
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((p: Payment) => p.status === statusFilter)
-    }
-
-    if (providerFilter !== "all") {
-      filtered = filtered.filter((p: Payment) => p.provider === providerFilter)
-    }
-
-    return filtered
-  }, [payments, statusFilter, providerFilter])
-
-  if (!storeId) return <ResolvingStore />
+  const filteredPayments = status === "LoadingFirstPage" ? null : (results as Payment[])
 
   return (
     <div className="space-y-6">
-      {!embedded && (
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Consultez les transactions et gérez les remboursements.
-          </p>
-        </div>
-      )}
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Consultez les transactions et gérez les remboursements.
+        </p>
+      </div>
 
       {/* Filters */}
       <div className="flex items-center gap-4">
@@ -246,6 +263,19 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
           </Table>
         </Card>
       )}
+
+      {status === "CanLoadMore" || status === "LoadingMore" ? (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={status === "LoadingMore"}
+            onClick={() => loadMore(ADMIN_PAGE_SIZE)}
+          >
+            {status === "LoadingMore" ? "Chargement…" : "Charger plus"}
+          </Button>
+        </div>
+      ) : null}
 
       {refundingPayment && (
         <RefundDialog

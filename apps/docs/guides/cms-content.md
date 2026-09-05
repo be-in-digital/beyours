@@ -133,7 +133,7 @@ if (!validation.valid) {
 }
 
 // Proceed with upload to S3
-const url = await uploadToS3(file, `cms/${file.name}`, "cms");
+const { url } = await s3.upload(file, { folder: "cms", filename: file.name });
 ```
 
 ### SVG Sanitization

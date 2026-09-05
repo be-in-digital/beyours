@@ -16,6 +16,16 @@ import {
 interface OrderBreakdownProps {
   byType: { name: string; value: number; label: string }[]
   bySource: { name: string; value: number; label: string }[]
+  /**
+   * True when the server stopped at its read cap, so these slices are a sample
+   * of the window rather than all of it.
+   *
+   * A busy establishment can take more orders in thirty days than Convex will
+   * read in one transaction. The sample is the most recent orders, so the
+   * proportions stay meaningful — but a pie chart that quietly describes ten
+   * days while its caption says thirty is the kind of wrong nobody can see.
+   */
+  truncated?: boolean
 }
 
 const typeChartConfig = {
@@ -97,30 +107,40 @@ function DonutChart({
   )
 }
 
-export function OrderBreakdown({ byType, bySource }: OrderBreakdownProps) {
+export function OrderBreakdown({ byType, bySource, truncated }: OrderBreakdownProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <Card className="border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Par type de commande
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DonutChart data={byType} config={typeChartConfig} />
-        </CardContent>
-      </Card>
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Par type de commande
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DonutChart data={byType} config={typeChartConfig} />
+          </CardContent>
+        </Card>
 
-      <Card className="border-border/50">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Par source
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DonutChart data={bySource} config={sourceChartConfig} />
-        </CardContent>
-      </Card>
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Par source
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DonutChart data={bySource} config={sourceChartConfig} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {truncated && (
+        <p className="text-xs text-muted-foreground" data-testid="breakdown-truncated">
+          Répartition calculée sur vos commandes les plus récentes, pas sur les
+          30 jours complets — votre volume dépasse ce qui peut être analysé en
+          une fois.
+        </p>
+      )}
     </div>
   )
 }

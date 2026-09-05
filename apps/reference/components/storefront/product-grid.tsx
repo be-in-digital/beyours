@@ -18,6 +18,8 @@ interface ProductGridProps {
   products: ProductDoc[] | undefined
   storeId: string | null
   isStoreOpen: boolean
+  /** `globalSettings.timezone` — the clock a serving window is read on. */
+  timeZone?: string
   onProductClick: (product: ProductDoc) => void
   onAddToCart: (product: ProductDoc) => void
 }
@@ -26,6 +28,7 @@ export function ProductGrid({
   products,
   storeId,
   isStoreOpen,
+  timeZone,
   onProductClick,
   onAddToCart,
 }: ProductGridProps) {
@@ -79,6 +82,7 @@ export function ProductGrid({
           product={product}
           storeId={storeId ?? ""}
           isStoreOpen={isStoreOpen}
+          timeZone={timeZone}
           isFavorite={storeId ? isFavorite(product._id, storeId) : false}
           onToggleFavorite={() => storeId && toggleFavorite(product._id, storeId)}
           onClick={() => onProductClick(product)}

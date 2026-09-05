@@ -1,6 +1,22 @@
 "use client"
 
-import { Button, ButtonGroup, Badge } from "@be-in-digital/ui"
+import { Button, ButtonGroup } from "@be-in-digital/ui"
+
+/**
+ * "Actif", inside the station button.
+ *
+ * A `<span>` and not a `<Badge>`: this package's `Badge` renders a `<div>`, and
+ * a `<div>` inside a `<button>` is invalid — the button content model admits
+ * phrasing content only. It looked like a badge before because the app copy of
+ * this screen imported an older `Badge` that rendered a `<span>`.
+ */
+function ActiveMark() {
+  return (
+    <span className="ml-2 inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+      Actif
+    </span>
+  )
+}
 
 interface StationFilterProps {
   stations: string[]
@@ -15,7 +31,7 @@ export function StationFilter({
 }: StationFilterProps) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs font-medium">Station :</span>
+      <span className="text-sm font-medium">Station :</span>
 
       <ButtonGroup>
         <Button
@@ -24,11 +40,7 @@ export function StationFilter({
           onClick={() => onStationChange(null)}
         >
           Toutes les stations
-          {selectedStation === null && (
-            <Badge variant="secondary" className="ml-2 text-xs">
-              Actif
-            </Badge>
-          )}
+          {selectedStation === null && <ActiveMark />}
         </Button>
 
         {stations.map((station) => (
@@ -39,11 +51,7 @@ export function StationFilter({
             onClick={() => onStationChange(station)}
           >
             {station}
-            {selectedStation === station && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                Actif
-              </Badge>
-            )}
+            {selectedStation === station && <ActiveMark />}
           </Button>
         ))}
       </ButtonGroup>

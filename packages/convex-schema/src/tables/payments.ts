@@ -69,5 +69,14 @@ export const paymentsTable = defineTable({
 })
   .index("by_orderId", ["orderId"])
   .index("by_storeId", ["storeId"])
+  // The "Statut" filter on `/dashboard/payments`, answered by the index rather
+  // than by reading every payment the store has ever taken and narrowing the
+  // list in the browser. Declared since the table was written and used by
+  // nothing until the screen was paginated.
   .index("by_storeId_status", ["storeId", "status"])
+  // The "Fournisseur" filter, and the two filters together. `provider` sits
+  // before `status` so that the provider-only case is an equality on a prefix;
+  // status-only keeps the index above. Between them the screen's four filter
+  // combinations are all exact index reads, and none of them scans.
+  .index("by_storeId_provider_status", ["storeId", "provider", "status"])
   .index("by_externalId", ["externalId"])

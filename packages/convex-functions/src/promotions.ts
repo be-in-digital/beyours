@@ -243,19 +243,73 @@ export const toggleStatus = {
 /**
  * Delete a promotion and its usages
  */
+/**
+ * How many usage rows one transaction will clear.
+ *
+ * `promotionUsages` takes a row per redemption, so a coupon that worked grows
+ * with the restaurant's trade — and a Convex mutation is one transaction with a
+ * bounded read and write budget. Deleting them all at once meant the successful
+ * promotions were the ones that could not be deleted. 512 matches
+ * `CASCADE_BATCH_SIZE`, for the same reasons set out there.
+ */
+export const PROMOTION_USAGE_BATCH = 512
+
+export interface PromotionPurgeResult {
+  /** Usage rows deleted in this pass. */
+  deleted: number
+  /** Whether another pass is needed. */
+  hasMore: boolean
+}
+
+/** Delete up to `budget` usage rows of one promotion. */
+async function deleteUsageBatch(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  promotionId: unknown,
+  budget: number = PROMOTION_USAGE_BATCH
+): Promise<PromotionPurgeResult> {
+  // `take(budget + 1)`: the extra row is how we learn there is more to do
+  // without paying for a count.
+  const usages = await ctx.db
+    .query("promotionUsages")
+    .withIndex("by_promotionId", (q: any) => q.eq("promotionId", promotionId))
+    .take(budget + 1)
+
+  const hasMore = usages.length > budget
+  const batch = hasMore ? usages.slice(0, budget) : usages
+  for (const usage of batch) {
+    await ctx.db.delete(usage._id)
+  }
+  return { deleted: batch.length, hasMore }
+}
+
+/**
+ * Delete a promotion and the record of its use.
+ *
+ * The promotion row goes in this transaction so the offer stops working
+ * immediately; the usage rows are cleared a batch at a time. `hasMore` is the
+ * caller's signal to schedule the next pass — see `purgeUsages`.
+ */
 export const remove = {
   args: { id: v.id("promotions") },
-  handler: async (ctx: any, args: any) => {
-    // Delete all usage records
-    const usages = await ctx.db
-      .query("promotionUsages")
-      .withIndex("by_promotionId", (q: any) => q.eq("promotionId", args.id))
-      .collect()
-    for (const usage of usages) {
-      await ctx.db.delete(usage._id)
-    }
+  handler: async (ctx: any, args: any): Promise<PromotionPurgeResult> => {
+    const result = await deleteUsageBatch(ctx, args.id)
     await ctx.db.delete(args.id)
+    return result
   },
+}
+
+/**
+ * The rest of the sweep, one batch per run, until there is nothing left.
+ *
+ * Internal only: it takes an id that no longer resolves — the promotion row is
+ * deleted in the first transaction — and it is nobody's to call but the
+ * scheduler's.
+ */
+export const purgeUsages = {
+  args: { promotionId: v.id("promotions") },
+  handler: async (ctx: any, args: any): Promise<PromotionPurgeResult> =>
+    await deleteUsageBatch(ctx, args.promotionId),
 }
 
 // === INTERNAL (wrapped as internalMutation in app) ===
