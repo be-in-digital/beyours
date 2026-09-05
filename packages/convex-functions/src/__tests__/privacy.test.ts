@@ -66,7 +66,6 @@ const NOT_A_DINER: Record<string, string> = {
   cmsPages: "The staff member who last edited the page.",
   cmsBlocks: "The staff member who last edited the block.",
   cmsMedia: "The staff member who uploaded the file.",
-  printerSettings: "A printer's LAN address, not a person's.",
   oauthStates: "A CSRF nonce tied to no person.",
   orphanProducts: "Platform menu items that failed to import.",
 }
