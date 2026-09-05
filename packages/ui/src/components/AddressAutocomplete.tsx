@@ -67,10 +67,26 @@ export function AddressAutocomplete({
   )
 
   return (
-    <div className="w-full space-y-3">
-      {/* Heads the group, not one field, so it labels nothing on its own. */}
+    // `role="group"` + `aria-labelledby`, not a bare heading.
+    //
+    // The four fields are one control between them, and `label` names the whole
+    // of it — "Adresse de l'établissement", not any one box. Rendered as a bare
+    // `<p>` it named nothing: assistive technology announced four anonymous
+    // fields, and `getByLabel` could not find the group at all. Binding it here
+    // gives the group the name its caller supplies without mislabelling the
+    // street field, which has its own.
+    //
+    // Not a `<fieldset>`/`<legend>`: a legend folds into the accessible name of
+    // every field inside it, so all four would answer to "Adresse" and any
+    // locator for one of them would match four.
+    <div
+      className="w-full space-y-3"
+      {...(label ? { role: "group", "aria-labelledby": `${fieldId}-group` } : {})}
+    >
       {label && (
-        <p className="text-sm font-medium leading-none">{label}</p>
+        <p id={`${fieldId}-group`} className="text-sm font-medium leading-none">
+          {label}
+        </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
