@@ -37,7 +37,11 @@
  *   today). Convex caps one transaction's reads at 8 MiB, which puts the hard
  *   ceiling around 450 rows; `SIGNATURE_SCAN_CAP` aborts well before that. Past
  *   that point the fix is an index on the reference field, or moving the
- *   snapshot out of the row — not a bigger cap.
+ *   snapshot out of the row — not a bigger cap. Note what passing that cap
+ *   means: 300 signed contracts is an ordinary good year, so this job is
+ *   expected to switch itself off eventually. It says so in `saActivity` when
+ *   it does, because a cleanup that quietly stopped is indistinguishable from
+ *   one that had nothing to clean.
  */
 
 import { internalMutation } from "./_generated/server";
@@ -106,30 +110,43 @@ export const sweepOrphanUploads = internalMutation({
 
     // Build the reference set. Read cap + 1 so an over-full table is detected
     // rather than silently cut off.
-    const referrals = await ctx.db.query("referrals").take(REFERRAL_SCAN_CAP + 1);
-    if (referrals.length > REFERRAL_SCAN_CAP) {
-      const abortedReason = `referrals exceeds ${REFERRAL_SCAN_CAP} rows; cannot prove a file is unreferenced`;
-      console.error(`[storageSweep] aborted: ${abortedReason}`);
+    //
+    // Aborting is the SAFE outcome for the files, and the dangerous one for the
+    // product: the cap is passed by ordinary success — 300 signed contracts is
+    // a good year, not an anomaly — and from that day on this job reclaims
+    // nothing, for ever. A `console.error` is how that becomes invisible, and
+    // this repository has paid for that pattern more than once, so an abort
+    // also leaves a row where an operator actually looks.
+    const abort = async (reason: string): Promise<SweepReport> => {
+      console.error(`[storageSweep] aborted: ${reason}`);
+      await recordSaActivity(ctx, {
+        kind: "system",
+        action: "storage.sweep.aborted",
+        summary: `Nettoyage des fichiers orphelins interrompu : ${reason}. Aucun fichier supprimé ; ${expired.length} en attente.`,
+        actorName: "cron",
+      });
       return {
         scanned: candidates.length,
         expired: expired.length,
         deleted: 0,
-        abortedReason,
+        abortedReason: reason,
       };
+    };
+
+    const referrals = await ctx.db.query("referrals").take(REFERRAL_SCAN_CAP + 1);
+    if (referrals.length > REFERRAL_SCAN_CAP) {
+      return await abort(
+        `referrals exceeds ${REFERRAL_SCAN_CAP} rows; cannot prove a file is unreferenced`
+      );
     }
 
     const signatures = await ctx.db
       .query("contractSignatures")
       .take(SIGNATURE_SCAN_CAP + 1);
     if (signatures.length > SIGNATURE_SCAN_CAP) {
-      const abortedReason = `contractSignatures exceeds ${SIGNATURE_SCAN_CAP} rows; cannot prove a file is unreferenced`;
-      console.error(`[storageSweep] aborted: ${abortedReason}`);
-      return {
-        scanned: candidates.length,
-        expired: expired.length,
-        deleted: 0,
-        abortedReason,
-      };
+      return await abort(
+        `contractSignatures exceeds ${SIGNATURE_SCAN_CAP} rows; cannot prove a file is unreferenced`
+      );
     }
 
     const referenced = new Set<string>();

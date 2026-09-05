@@ -329,6 +329,16 @@ describe("storageSweep.sweepOrphanUploads", () => {
     expect(report.expired).toBe(1);
     expect(report.deleted).toBe(0);
     expect(await storageIds(t)).toEqual([orphan]);
+
+    // And it must say so where somebody looks. This cap is passed by ordinary
+    // success — 300 signed contracts is a good year — so the job is expected to
+    // switch itself off one day, and a cleanup that quietly stopped is
+    // indistinguishable from one that had nothing to clean. `console.error` is
+    // how that becomes invisible.
+    const activity = await t.run((ctx) => ctx.db.query("saActivity").collect());
+    const aborted = activity.filter((a) => a.action === "storage.sweep.aborted");
+    expect(aborted).toHaveLength(1);
+    expect(aborted[0]?.summary).toMatch(/interrompu/);
   });
 
   test("a run that deletes leaves an audit row behind", async () => {
