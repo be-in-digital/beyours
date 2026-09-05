@@ -17,6 +17,7 @@
     "seed": "convex run saSeed:run",
     "seed:reset": "convex run saSeed:reset '{\"confirm\":true}'",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -56,6 +57,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.184.0",
+    "@vitest/coverage-v8": "4.1.9",
     "convex-test": "^0.0.44",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",

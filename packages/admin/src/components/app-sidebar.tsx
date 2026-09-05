@@ -28,11 +28,13 @@ import {
 } from "../ui/collapsible"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { UnreadMessagesBadge } from "./unread-messages-badge"
-import { canSeeNavEntry } from "../lib/nav-visibility"
 import {
   navGroups,
   isCollapsible,
+  navTourId,
+  canRoleSeeNavHref,
   ChevronRight,
+  type NavEntry,
   type CollapsibleNavItem,
 } from "../config/nav-config"
 
@@ -43,6 +45,19 @@ interface AppSidebarProps {
   brandName?: string
 }
 
+/**
+ * Delegated, not reimplemented. The onboarding tour asks the same question by
+ * href (`canRoleSeeNavHref`), and a second copy of this rule is exactly how the
+ * tour's `nav-*` ids drifted away from the ones the sidebar emits.
+ *
+ * `modules` is the second gate: `userProfiles.permissions`, the invite dialog's
+ * eight checkboxes, which the server narrows a role by and which this sidebar
+ * used to ignore entirely.
+ */
+function canSeeEntry(role: Role, modules: string[], entry: NavEntry): boolean {
+  const href = isCollapsible(entry) ? entry.basePath : entry.href
+  return canRoleSeeNavHref(role, href, modules)
+}
 export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
@@ -80,7 +95,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
       <SidebarContent>
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((entry) =>
-            canSeeNavEntry(role as Role, modules, entry)
+            canSeeEntry(role as Role, modules, entry)
           )
           if (visibleItems.length === 0) return null
 
@@ -104,7 +119,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
                     const isActive =
                       pathname === entry.href ||
                       pathname.startsWith(entry.href + "/")
-                    const tourId = `nav-${entry.href.replace(/^\//, "").replace(/\//g, "-")}`
+                    const tourId = navTourId(entry.href)
 
                     return (
                       <SidebarMenuItem key={entry.href} data-tour={tourId}>
@@ -163,7 +178,7 @@ function CollapsibleNavMenuItem({
   const Icon = item.icon
   const isInSection = pathname.startsWith(item.basePath)
 
-  const tourId = `nav-${item.basePath.replace(/^\//, "").replace(/\//g, "-")}`
+  const tourId = navTourId(item.basePath)
 
   return (
     <Collapsible defaultOpen={isInSection} className="group/collapsible">
