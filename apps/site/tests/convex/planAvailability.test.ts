@@ -42,6 +42,9 @@ function checkoutArgs(plan: (typeof PLAN_SLUGS)[number]) {
     city: "Paris",
     successUrl: "https://beyours.fr/merci",
     cancelUrl: "https://beyours.fr/tarifs",
+    // Required since #349. Given here so a refusal below can only be about
+    // availability — the consent guard sits further down the same handler.
+    withdrawalWaiverConsent: true,
   };
 }
 
