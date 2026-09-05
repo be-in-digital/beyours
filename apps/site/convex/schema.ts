@@ -553,4 +553,21 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_createdAt", ["createdAt"]),
+
+  /* Fixed-window rate limit counters.
+
+     One row per (limit, subject) — see `rateLimitKey` in ./rateLimit.ts for the
+     key's shape. It backs the two mutations anybody can drive in a loop:
+     `contactLeads.submit`, which schedules mail to a caller-supplied address,
+     and `referrals.generateInvoiceUploadUrl`, which mints storage.
+
+     Kept deliberately small: a row holds a window start and a count, and
+     nothing else. An operator asked why a submit was refused can read the
+     answer off the row. */
+  rateLimits: defineTable({
+    /** `<limit name>:<subject>`, e.g. `contactPerEmail:yanis@resto.example`. */
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
 });

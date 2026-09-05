@@ -27,4 +27,13 @@ crons.cron(
   {},
 );
 
+// Delete upload-URL files that were never attached to a commission.
+// Off-peak, and after the referral jobs above have settled the rows this reads.
+crons.cron(
+  "sweep orphaned uploads",
+  "45 4 * * *",
+  internal.storageSweep.sweepOrphanUploads,
+  {},
+);
+
 export default crons;

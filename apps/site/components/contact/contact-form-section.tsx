@@ -86,6 +86,10 @@ export function ContactFormSection() {
     email: "",
     restaurant: "",
     message: "",
+    // Honeypot. Hidden from people and from screen readers, so anything in it
+    // was put there by something filling every input it could find. The server
+    // accepts such a submit and drops it — see `contactLeads.submit`.
+    website: "",
   });
 
   function validate(data: typeof formData): FormErrors {
@@ -128,9 +132,16 @@ export function ContactFormSection() {
         email: formData.email.trim(),
         restaurant: formData.restaurant.trim() || undefined,
         message: formData.message.trim(),
+        website: formData.website,
       });
       setFormState("sent");
-      setFormData({ name: "", email: "", restaurant: "", message: "" });
+      setFormData({
+        name: "",
+        email: "",
+        restaurant: "",
+        message: "",
+        website: "",
+      });
     } catch {
       setFormState("error");
     }
@@ -175,6 +186,31 @@ export function ContactFormSection() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                  {/* Honeypot. Off-screen rather than `hidden`, so a script
+                      that reads the DOM and fills every input finds it while a
+                      person never sees it; hidden from assistive technology and
+                      from the tab order so it is invisible to people too. */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-[-9999px] h-0 w-0 overflow-hidden"
+                  >
+                    <label htmlFor="website">Site web</label>
+                    <input
+                      type="text"
+                      id="website"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={formData.website}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          website: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                       <label
