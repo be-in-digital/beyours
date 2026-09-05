@@ -10,6 +10,7 @@ import {
   getCheckoutTotals,
   type PaymentMethodSlug,
 } from "@/lib/payment-providers";
+import { WITHDRAWAL_WAIVER } from "@/lib/legal/withdrawal-waiver";
 import { FadeIn } from "@/components/ui/motion";
 import { BuyerTypeSelector } from "./buyer-type-selector";
 import { BillingPeriodSelector } from "./billing-period-selector";
@@ -26,6 +27,11 @@ export function CheckoutFlow() {
   // consumer code): never pre-checked, it evidences the waiver of the
   // withdrawal right and blocks payment until it is given. PROPOSED TEXT, to be
   // validated by counsel (IP lawyer / attorney) before going live.
+  //
+  // This checkbox is the buyer's affordance, not the guard. The guard is in
+  // `createCheckoutSession`, which refuses an order whose
+  // `withdrawalWaiverConsent` is false and records the clause server-side —
+  // a public action cannot be gated by React state.
   const [consentRetractation, setConsentRetractation] = useState(false);
 
   const foundersSold = useQuery(api.orders.countFoundersSold, {});
@@ -102,6 +108,7 @@ export function CheckoutFlow() {
         siret: info.siret || undefined,
         successUrl: `${origin}/checkout/success`,
         cancelUrl: `${origin}/checkout/cancel`,
+        withdrawalWaiverConsent: consentRetractation,
         ...referralArgs,
       });
 
@@ -208,13 +215,14 @@ export function CheckoutFlow() {
                   className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-primary"
                   aria-describedby="consent-retractation-desc"
                 />
+                {/* Rendered from lib/legal/withdrawal-waiver.ts, the same
+                    constant the server stores on the order — so what the buyer
+                    read and what the audit trail says can never diverge. */}
                 <span
                   id="consent-retractation-desc"
                   className="text-xs leading-relaxed text-muted-foreground"
                 >
-                  Je demande l&apos;exécution immédiate de la prestation et
-                  reconnais perdre mon droit de rétractation une fois le service
-                  pleinement exécuté (art. L. 221-28 du Code de la consommation).
+                  {WITHDRAWAL_WAIVER.text}
                 </span>
               </label>
 

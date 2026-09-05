@@ -502,7 +502,13 @@ Done when: scan → actions → play → win → ticket → counter validation w
 ````
 
 ## Batch 13 — Commercial site (beyours.fr)
-**2/3 done · 1 partial.** Nothing has landed on the last item.
+**Closed 5 Sep 2026**, as far as the repository can close it. #181's repo half
+landed: a delivered site is issued a key at go-live, the console hands it over,
+`issueLicenseKey` has a caller at last, and `GET /maintenance/status` — which had
+no test at all — is covered under both enforcement policies. Two account-owner
+actions remain and are named on the card: register the sites already delivered,
+then decide on `BEYOURS_LICENSE_ENFORCEMENT=strict`, in that order. The prompt
+below is kept for its record of the measurement.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,

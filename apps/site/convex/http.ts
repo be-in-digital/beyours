@@ -5,7 +5,11 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { recordSaActivity } from "./saActivity";
-import { entitlementMessage } from "./maintenance";
+import {
+  entitlementMessage,
+  resolveLicenseEnforcement,
+  resolveUnknownKey,
+} from "./maintenance";
 
 const http = httpRouter();
 
@@ -806,9 +810,17 @@ export const recordSubscriptionOutcome = internalMutation({
 
    Asked by a client site's update scripts before they pull anything
    (apps/themes/scripts/lib/maintenance.mjs). Read-only, no side effect, and
-   deliberately forgiving: an unknown key answers « unregistered » rather than
-   an error, so the scripts can tell « we have no contract on file » apart from
-   « the API is down » — the second must never block a client who pays.
+   unauthenticated: the key IS the credential.
+
+   A key no deployment holds is answered by `resolveUnknownKey`, which reads the
+   deployment's enforcement policy — forgiving until BEYOURS_LICENSE_ENFORCEMENT
+   says otherwise. See convex/maintenance.ts for why that default exists and
+   what has to be true before it is flipped.
+
+   ALWAYS 200, refusals included. The client script treats any non-2xx as « the
+   API is unreachable » and updates anyway (maintenance.mjs:61-66), so answering
+   a bad key with 403 would fail OPEN — the opposite of what it looks like.
+   The refusal has to arrive as a body the script can read.
    ═══════════════════════════════════════════════ */
 
 http.route({
@@ -826,37 +838,24 @@ http.route({
         },
       });
 
-    if (!key) {
+    const unknown = () => {
+      const verdict = resolveUnknownKey(resolveLicenseEnforcement());
       return json({
         found: false,
-        entitled: true,
-        reason: "unregistered",
-        coveredUntil: null,
-        message: entitlementMessage({
-          entitled: true,
-          reason: "unregistered",
-          coveredUntil: null,
-        }),
+        entitled: verdict.entitled,
+        reason: verdict.reason,
+        coveredUntil: verdict.coveredUntil,
+        message: entitlementMessage(verdict),
       });
-    }
+    };
+
+    if (!key) return unknown();
 
     const result = await ctx.runQuery(internal.maintenance.byLicenseKey, {
       licenseKey: key,
     });
 
-    if (!result) {
-      return json({
-        found: false,
-        entitled: true,
-        reason: "unregistered",
-        coveredUntil: null,
-        message: entitlementMessage({
-          entitled: true,
-          reason: "unregistered",
-          coveredUntil: null,
-        }),
-      });
-    }
+    if (!result) return unknown();
 
     return json({
       found: true,

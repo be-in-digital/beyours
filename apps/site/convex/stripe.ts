@@ -16,6 +16,15 @@ import {
   invoiceLegalSettings,
   vatConfigurationProblem,
 } from "./invoiceLegal";
+import {
+  WITHDRAWAL_WAIVER,
+  WITHDRAWAL_WAIVER_REQUIRED,
+} from "../lib/legal/withdrawal-waiver";
+import {
+  findSubscriptionForOrder,
+  maintenanceIdempotencyKey,
+  maintenanceSubscriptionParams,
+} from "./maintenanceSubscription";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -125,6 +134,14 @@ export const createCheckoutSession = action({
     siret: v.optional(v.string()),
     successUrl: v.string(),
     cancelUrl: v.string(),
+    /* ── art. L. 221-28: the express request for immediate performance ──
+       Required, never defaulted. It used to live only in React state
+       (components/checkout/checkout-flow.tsx), which meant two things: the
+       company could produce no evidence of the waiver its own CGV rely on, and
+       the gate was a client-side one on a public action — the deployment URL
+       ships in the browser bundle, so skipping the checkbox was a matter of
+       calling this directly. Same shape as `affiliateSignature.consented`. */
+    withdrawalWaiverConsent: v.boolean(),
     // Referral (optional)
     referralCode: v.optional(v.string()),
     referralCodeId: v.optional(v.id("referralCodes")),
@@ -157,6 +174,16 @@ export const createCheckoutSession = action({
        only fires if the Convex env drifts from the regime afterwards. */
     const vatProblem = vatConfigurationProblem(stripeTaxEnabled());
     if (vatProblem) throw new Error(`[TVA] ${vatProblem}`);
+
+    /* ── The waiver, refused before anything exists ──
+       Third, and above the order insert for the same reason as the two checks
+       above it: a refused sale must leave no row behind for the ops console to
+       count. The consent is recorded on the order below, from the server's own
+       copy of the clause, so what is stored is the wording the company
+       published rather than a string a caller chose. */
+    if (!args.withdrawalWaiverConsent) {
+      throw new Error(WITHDRAWAL_WAIVER_REQUIRED);
+    }
 
     // ── Provisioning guardrail (payment fix) ──
     // NEVER open a checkout session for a plan whose maintenance subscription
@@ -252,6 +279,12 @@ export const createCheckoutSession = action({
       billingPeriod: args.billingPeriod,
       amountCents: finalTotal,
       isFounders,
+      withdrawalWaiver: {
+        consentedAt: Date.now(),
+        version: WITHDRAWAL_WAIVER.version,
+        text: WITHDRAWAL_WAIVER.text,
+        cgvClause: WITHDRAWAL_WAIVER.cgvClause,
+      },
     });
 
     // Referral metadata for the webhook
@@ -459,13 +492,11 @@ export const createSubscription = internalAction({
     // and reported WITHOUT returning 500 (see http.ts handleCheckoutCompleted).
     const priceId = resolveMaintenancePriceId(args.plan, args.billingPeriod);
 
-    // Work out when the next period starts
-    // (the first period is already paid for at checkout)
-    const now = Math.floor(Date.now() / 1000);
-    const trialEnd =
-      args.billingPeriod === "monthly"
-        ? now + 30 * 24 * 60 * 60 // +30 jours
-        : now + 365 * 24 * 60 * 60; // +365 jours
+    const order = {
+      orderId: args.orderId,
+      plan: args.plan,
+      billingPeriod: args.billingPeriod,
+    };
 
     /* ── Legal mentions on the renewal invoices ──
        invoice_creation on the Checkout session covers the FIRST invoice only.
@@ -481,17 +512,54 @@ export const createSubscription = internalAction({
       invoice_settings: invoiceLegalSettings(args.buyerType),
     });
 
-    const subscription = await stripe.subscriptions.create({
+    /* ── Does Stripe already bill this order? ──
+       Asked before creating, because neither our row nor the idempotency key
+       is guaranteed to still be there: a delivery that created the subscription
+       and then died leaves no row, and Stripe forgets an idempotency key after
+       24 h while it keeps retrying the webhook for three days. Checkout opens
+       one Customer per session, so a page of a hundred is far more than this
+       customer can hold — the number is a guard against an unbounded call, not
+       a cap on anything real. */
+    const known = await stripe.subscriptions.list({
       customer: args.stripeCustomerId,
-      items: [{ price: priceId }],
-      trial_end: trialEnd,
-      ...(stripeTaxEnabled() ? { automatic_tax: { enabled: true } } : {}),
-      metadata: {
-        orderId: args.orderId,
-        plan: args.plan,
-        billingPeriod: args.billingPeriod,
-      },
+      limit: 100,
     });
+    const adopted = findSubscriptionForOrder(known.data, args.orderId);
+
+    if (adopted) {
+      /* Worth seeing: it means an earlier delivery got as far as Stripe and
+         never came back to record it. Nothing is broken now, but the sale went
+         through a path that lost its footing halfway. */
+      console.warn(
+        `[STRIPE] Order ${args.orderId} already carries subscription ${adopted.id} at Stripe — ` +
+          `adopting it instead of creating a second one.`,
+      );
+    }
+
+    /* The deterministic key is what stops the concurrent case: the delivery
+       that loses the race gets THIS subscription back from Stripe rather than
+       a second one that would bill on every renewal. See
+       ./maintenanceSubscription for why the parameters may not read a clock. */
+    const subscription =
+      adopted ??
+      (await stripe.subscriptions.create(
+        maintenanceSubscriptionParams({
+          order,
+          stripeCustomerId: args.stripeCustomerId,
+          priceId,
+          automaticTax: stripeTaxEnabled(),
+        }),
+        { idempotencyKey: maintenanceIdempotencyKey(order) },
+      ));
+
+    /* Read off the subscription Stripe returned, never off a local clock: an
+       adopted subscription may be hours old, and a replay hands back the
+       original object. `trial_end` is when billing actually starts — the first
+       period was collected at checkout. */
+    const periodStartMs = subscription.start_date * 1000;
+    const periodEndMs = subscription.trial_end
+      ? subscription.trial_end * 1000
+      : undefined;
 
     await ctx.runMutation(internal.subscriptions.create, {
       orderId: args.orderId,
@@ -501,12 +569,15 @@ export const createSubscription = internalAction({
       plan: args.plan,
       billingPeriod: args.billingPeriod,
       status: "active",
-      currentPeriodStart: now * 1000,
-      currentPeriodEnd: trialEnd * 1000,
+      currentPeriodStart: periodStartMs,
+      currentPeriodEnd: periodEndMs,
     });
 
     console.log(
-      `Subscription ${subscription.id} created for order ${args.orderId} (trial until ${new Date(trialEnd * 1000).toISOString()})`,
+      `Subscription ${subscription.id} recorded for order ${args.orderId}` +
+        (periodEndMs
+          ? ` (trial until ${new Date(periodEndMs).toISOString()})`
+          : ""),
     );
   },
 });
