@@ -18,6 +18,10 @@
  * ids for any code, and affiliate codes are published by design, so nothing
  * about this needed guessing.
  *
+ * Those figures are the record of the defect, measured on Premium when Premium
+ * was still on sale. The cases below now run on Essentielle — see `PLAN` — so
+ * the amounts they assert are smaller; the rule under test is unchanged.
+ *
  * These cases hold the rule that replaced it: the customer says which code
  * they hold, the server says what it is worth.
  */
@@ -28,18 +32,27 @@ import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
 import { planPrices } from "../../convex/planPrices";
+import { foundersOffer } from "../../convex/foundersOffer";
 import { VAT } from "../../lib/legal/company";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
-/* Premium/yearly, so the numbers below are the ones that were measured.
-   Premium creation 7 500 € + yearly maintenance 2 000 € = 9 500 € excl. tax. */
+/* The plan under test has to be one that is OPEN for sale.
+   `createCheckoutSession` refuses a closed plan before any referral logic runs
+   (convex/planAvailability.ts), so a fixture pinned to a closed one makes every
+   case below fail on the refusal rather than on the discount it is about. #350
+   closed Premium — the plan these cases were originally measured on — which is
+   why this now names the plan once and derives every amount from it.
+
+   Essentielle/yearly: creation 3 500 € + yearly maintenance 1 000 €
+   = 4 500 € excl. tax. */
+const PLAN = "essentielle" as const;
 const LIST_TOTAL =
-  planPrices.premium.creation + planPrices.premium.maintenanceYearly;
+  planPrices[PLAN].creation + planPrices[PLAN].maintenanceYearly;
 
 const CHECKOUT = {
-  plan: "premium" as const,
+  plan: PLAN,
   orderType: "creation" as const,
   buyerType: "business" as const,
   billingPeriod: "yearly" as const,
@@ -122,6 +135,45 @@ async function seedProgramme(
   });
 }
 
+/**
+ * Take the founders offer off the table.
+ *
+ * The first ten Essentielle builds have their creation line zeroed
+ * (`convex/foundersOffer.ts`), and only when NO referral applies — the two are
+ * mutually exclusive by construction. That is precisely the condition every
+ * case below that expects LIST PRICE is in: the code was refused, so no
+ * referral resolved, so the founders offer takes over and the order comes back
+ * at the maintenance line alone. The assertion would still be handed a number,
+ * but it would be reading the founders freebie rather than the absence of a
+ * discount.
+ *
+ * Selling the slots out first keeps "list price" meaning list price. The rows
+ * go straight into the table rather than through `orders.create`, which is
+ * rate-limited precisely to stop ten cheap calls consuming the offer.
+ */
+async function sellOutFoundersSlots(t: ReturnType<typeof convexTest>) {
+  await t.run(async (ctx) => {
+    for (let i = 0; i < foundersOffer.totalSlots; i++) {
+      await ctx.db.insert("orders", {
+        customerEmail: `founder${i}@example.test`,
+        customerFirstName: "Fondateur",
+        customerLastName: String(i),
+        customerPhone: "+33600000000",
+        restaurantName: `Fondateur ${i}`,
+        city: "Lyon",
+        buyerType: "business" as const,
+        plan: foundersOffer.plan,
+        orderType: "creation" as const,
+        billingPeriod: "yearly" as const,
+        amountCents: planPrices[foundersOffer.plan].maintenanceYearly,
+        status: "paid" as const,
+        isFounders: true,
+        createdAt: Date.now(),
+      });
+    }
+  });
+}
+
 async function orderAmount(
   t: ReturnType<typeof convexTest>,
   orderId: string,
@@ -182,10 +234,14 @@ describe("the discount is derived, never accepted", () => {
       referralCode: "BID-HONEST",
     });
 
-    // 9 500 € − 10 % of the 7 500 € creation line = 8 750 €.
-    const expected = LIST_TOTAL - planPrices.premium.creation * 0.1;
+    // 4 500 € − 10 % of the 3 500 € creation line = 4 150 €.
+    const expected = LIST_TOTAL - planPrices[PLAN].creation * 0.1;
     expect(await orderAmount(t, orderId)).toBe(expected);
-    expect(expected).toBe(875000);
+    /* Pinned as a literal as well as derived. The derived form follows
+       `planPrices`, so a change there would silently move every expectation in
+       this file with it; this line makes such a change show up as one
+       deliberate edit. */
+    expect(expected).toBe(415000);
   });
 
   test("an affiliate's override wins over the programme default", async () => {
@@ -198,7 +254,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.25,
+      LIST_TOTAL - planPrices[PLAN].creation * 0.25,
     );
   });
 
@@ -212,7 +268,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices[PLAN].creation * 0.1,
     );
   });
 });
@@ -225,6 +281,7 @@ describe("a code that must not discount anything", () => {
   ])("a %s code is billed at list price and earns no commission", async (_label, seed, code) => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, seed);
+    await sellOutFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -251,6 +308,7 @@ describe("a code that must not discount anything", () => {
   ])("the affiliate buying as %s gets no discount", async (_label, buyer) => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, { affiliateEmail: "apporteur@example.test" });
+    await sellOutFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -266,6 +324,7 @@ describe("a code that must not discount anything", () => {
   test("gmail's dots do not buy a second identity either", async () => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, { affiliateEmail: "jean.dupont@gmail.com" });
+    await sellOutFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -288,7 +347,7 @@ describe("a code that must not discount anything", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices[PLAN].creation * 0.1,
     );
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals).toHaveLength(1);
@@ -333,6 +392,7 @@ describe("a code only discounts while its contract holds", () => {
        commission with nothing signed. */
     const t = convexTest(schema, modules);
     await seedProgramme(t, { contractStatus });
+    await sellOutFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -371,7 +431,7 @@ describe("a code only discounts while its contract holds", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices[PLAN].creation * 0.1,
     );
   });
 });
@@ -464,7 +524,7 @@ describe("the commission follows the code, not the caller", () => {
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals[0]!.discountPercent).toBe(15);
     expect(referrals[0]!.discountAmountCents).toBe(
-      planPrices.premium.creation * 0.15,
+      planPrices[PLAN].creation * 0.15,
     );
   });
 });
@@ -516,7 +576,7 @@ describe("validateCode and the checkout cannot drift", () => {
 
     // 5 %, the current value — not the 30 % the page is still displaying.
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.05,
+      LIST_TOTAL - planPrices[PLAN].creation * 0.05,
     );
   });
 });
