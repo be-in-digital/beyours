@@ -85,13 +85,55 @@ Also fixed, from the "verify each" list on the card:
 | `by_storeId_provider_status` (new) | `payments` | the "Fournisseur" filter, and both filters together |
 | `by_automation_subscriber_step` → `by_automation_subscriber_occurrence_step` | `emailAutomationRuns` | `occurrenceKey` moved before `stepId` so the read can narrow on three equalities; the write still equals all four |
 | `by_automationId` (removed) | `emailAutomationRuns` | its only reader was the broken `stepsSentTo`. An index nothing reads is still a write on every insert |
+| `by_storeId_status_createdAt` (new) | `orders` | a status tab ordered by `_creationTime` — when the row was written — so a late platform webhook broke the Date column's ordering |
 | `by_storeId_status` (now used) | `payments` | declared since the table was written, read by nothing until now |
 | `by_storeId_status` → `by_storeId_status_expiresAt` | `prizeRedemptions` | "what is still waiting at the till" — expired prizes never stop being rows, so the expiry belongs in the index. The old index was its prefix and no query used it |
 | `by_storeId_status_redeemedAt` (new) | `prizeRedemptions` | "how many prizes were handed over this month". Without it the count had to be taken over redemptions *created* in the window, which is a different question wearing the same label |
 
+### What an adversarial pass found in this change
+
+A verifier briefed to prove the fix does not work found six defects the bounding
+itself introduced. All six are fixed and held by tests; they are recorded because
+the shape they share is worth remembering — **a bound that is correct about read
+counts and wrong about something else**.
+
+1. **A status tab listed orders in the wrong order.** `by_storeId_status` carries
+   no timestamp, so `.order("desc")` fell back to `_creationTime` — when the row
+   was written, not when the order was placed. A platform webhook arriving late
+   floated to the top of the tab and the Date column stopped being monotonic.
+   Fixed with `orders.by_storeId_status_createdAt`, the shape `kitchenTickets`
+   has carried since #137.
+2. **`/dashboard` under-reported silently past its cap.** `truncated` was
+   computed, carried through two modules and typed into the hook — and rendered
+   by nobody, while the code comment claimed "the answer says `truncated` when it
+   happens". At 250 orders a day the breakdown pies were 33% low with no marker
+   on screen. `OrderBreakdown` now says so.
+3. **Order search returned false negatives.** It filters the loaded page, and the
+   table answered "Aucune commande trouvée" — a claim about the whole history —
+   when the match was simply on a later page. The placeholder and the empty state
+   now both say what is being searched.
+4. **`recent`'s clamp did not clamp `NaN`.** `v.number()` accepts NaN over the
+   wire and it survives `Math.min(Math.max(1, Math.floor(NaN)), 50)`, reaching
+   `.take()`, which refuses it with an error naming an argument the caller never
+   sent.
+5. **`paginationOpts.numItems` was unclamped.** Convex only refuses a negative
+   page size, so every paginated query was bounded by its caller rather than by
+   itself — `{ numItems: 1_000_000 }` reinstated the transaction the pagination
+   existed to prevent. `pagination.ts` now clamps every one of them, including
+   the two that shipped before this change.
+6. **The last chart bar lost its upper bound.** The browser code closed today's
+   bucket at tomorrow's local midnight; the server version had no upper bound at
+   all, so an order stamped in the future counted as today's takings. `todayEnd`
+   is now supplied alongside `dayStarts`.
+
+Everything else the pass checked came back clean, including an arithmetic parity
+run of the old browser aggregation against the new pure function over 400 mixed
+orders — identical on every figure, every bar and the order of the breakdown
+entries.
+
 ### Tests
 
-- `packages/convex-functions/src/__tests__/queryBounds.test.ts` — 30 cases
+- `packages/convex-functions/src/__tests__/queryBounds.test.ts` — 36 cases
   asserting **document read counts** rather than answers, because a test that
   checks the answer passes on ten rows and passes again on ten million. Verified
   by injection: restoring the `.collect()` in `orders.list` fails two cases
@@ -102,10 +144,10 @@ Also fixed, from the "verify each" list on the card:
   enforces Convex's own rule (equalities cover a prefix; a range bound only on the
   next field), so "narrow it in JavaScript instead" cannot pass either. Its own
   behaviour is held by four cases.
-- `packages/admin/src/__tests__/dashboard-windows.test.ts` — the half of the
+- `packages/admin/src/__tests__/dashboard-windows.test.ts` — 12 cases on the half of the
   dashboard that stayed in the browser: the local-midnight boundaries (including
   the DST case a fixed 24-hour subtraction gets wrong) and the French labels.
-- `apps/{reference,themes}/tests/convex/query-bounds.test.ts` — 15 cases each,
+- `apps/{reference,themes}/tests/convex/query-bounds.test.ts` — 17 cases each,
   byte-identical, driving the real API through the real schema. This is the layer
   that proves the five new, renamed and widened indexes exist in what the apps
   deploy.

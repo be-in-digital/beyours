@@ -9,6 +9,7 @@
  */
 
 import { v } from "convex/values"
+import { clampPageSize } from "./pagination"
 
 const eventTypeValidator = v.union(
   v.literal("sent"),
@@ -151,9 +152,12 @@ export const sentCountsSince = {
      * limit above, and no longer by how long the subscriber has been a
      * customer.
      */
-    const limit = Math.max(
-      1,
-      Math.floor(args.countLimit ?? DEFAULT_SENT_COUNT_LIMIT)
+    // `clampPageSize` rather than `Math.max(1, Math.floor(...))`: `v.number()`
+    // accepts NaN over the wire and NaN survives both, reaching `.take()`.
+    const limit = clampPageSize(
+      args.countLimit,
+      DEFAULT_SENT_COUNT_LIMIT,
+      DEFAULT_SENT_COUNT_LIMIT
     )
     const counts: Array<{ subscriberId: string; count: number }> = []
     for (const subscriberId of args.subscriberIds) {

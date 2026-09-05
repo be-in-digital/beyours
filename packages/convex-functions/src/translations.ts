@@ -6,6 +6,7 @@
 
 import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 
 // === QUERIES ===
 
@@ -53,7 +54,7 @@ export const getByLanguage = {
       .withIndex("by_storeId_language", (q: any) =>
         q.eq("storeId", args.storeId).eq("languageCode", args.languageCode)
       )
-      .paginate(args.paginationOpts)
+      .paginate(clampPagination(args.paginationOpts))
   },
 }
 

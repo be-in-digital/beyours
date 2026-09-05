@@ -6,6 +6,7 @@
 
 import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 import { planRefund } from "./refundPolicy"
 import { paymentStatusAfterSettlement } from "./paymentSettlement"
 
@@ -89,7 +90,11 @@ export const getByStore = {
       paginationOpts: { numItems: number; cursor: string | null }
     }
   ) => {
-    const newestFirst = (query: any) => query.order("desc").paginate(args.paginationOpts)
+    // Clamped: `paginationOptsValidator` lets the caller name any page size,
+    // and a page of a million rows is the transaction this query was rewritten
+    // to stop being.
+    const page = clampPagination(args.paginationOpts)
+    const newestFirst = (query: any) => query.order("desc").paginate(page)
 
     if (args.provider) {
       // `by_storeId_provider_status` carries provider before status, so this

@@ -16,6 +16,7 @@ import {
   dashboardWindowStart,
   type DashboardStats,
 } from "./dashboardStats"
+import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
@@ -137,10 +138,13 @@ const ORDER_STATUS = v.union(
  * both are live subscriptions: every new order re-serialised the restaurant's
  * whole order history to every open admin tab.
  *
- * `status` is an equality on `by_storeId_status`, so the filter costs the rows
- * it returns rather than the rows it rejects. `getByStatus` was the same read
- * with the filter mandatory and no caller; it is folded in here rather than
- * left as a second unbounded doorway onto the same table.
+ * `status` is an equality on `by_storeId_status_createdAt`, so the filter costs
+ * the rows it returns rather than the rows it rejects, and both branches order
+ * by the same field — a status tab that ordered by `_creationTime` printed a
+ * Date column that was not monotonic as soon as a platform webhook arrived
+ * late. `getByStatus` was this read with the filter mandatory and no caller; it
+ * is folded in here rather than left as a second unbounded doorway onto the
+ * same table.
  */
 export const list = {
   args: {
@@ -156,21 +160,23 @@ export const list = {
       paginationOpts: { numItems: number; cursor: string | null }
     }
   ) => {
+    const page = clampPagination(args.paginationOpts)
+
     if (args.status) {
       return await ctx.db
         .query("orders")
-        .withIndex("by_storeId_status", (q: any) =>
+        .withIndex("by_storeId_status_createdAt", (q: any) =>
           q.eq("storeId", args.storeId).eq("status", args.status)
         )
         .order("desc")
-        .paginate(args.paginationOpts)
+        .paginate(page)
     }
 
     return await ctx.db
       .query("orders")
       .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))
       .order("desc")
-      .paginate(args.paginationOpts)
+      .paginate(page)
   },
 }
 
@@ -198,14 +204,21 @@ export const dashboardStats = {
     storeId: v.id("stores"),
     /** Local-midnight boundaries, ascending; the last one is today. */
     dayStarts: v.array(v.number()),
+    /** Tomorrow's local midnight — the exclusive end of today. */
+    todayEnd: v.number(),
     /** Start of the wider window the type/source breakdowns cover. */
     breakdownSince: v.number(),
   },
   handler: async (
     ctx: any,
-    args: { storeId: string; dayStarts: number[]; breakdownSince: number }
+    args: {
+      storeId: string
+      dayStarts: number[]
+      todayEnd: number
+      breakdownSince: number
+    }
   ): Promise<DashboardStats> => {
-    assertDayStarts(args.dayStarts)
+    assertDayStarts(args.dayStarts, args.todayEnd)
     const windowStart = dashboardWindowStart(args)
 
     const rows = await ctx.db
@@ -237,7 +250,11 @@ export const RECENT_ORDERS_LIMIT = 10
 export const recent = {
   args: { storeId: v.id("stores"), limit: v.optional(v.number()) },
   handler: async (ctx: any, args: { storeId: string; limit?: number }) => {
-    const limit = Math.min(Math.max(1, Math.floor(args.limit ?? RECENT_ORDERS_LIMIT)), 50)
+    // `clampPageSize` rather than `Math.min(Math.max(...))`: `v.number()`
+    // accepts NaN over the wire, and NaN survives both of those to reach
+    // `.take()`, which refuses it with an error naming an argument the caller
+    // never sent.
+    const limit = clampPageSize(args.limit, RECENT_ORDERS_LIMIT, 50)
     return await ctx.db
       .query("orders")
       .withIndex("by_storeId_createdAt", (q: any) => q.eq("storeId", args.storeId))

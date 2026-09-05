@@ -36,6 +36,7 @@ import { stepsSentTo, record as recordRun } from "../emailAutomationRuns"
 import { sentCountsSince } from "../emailEvents"
 import { getByLanguage } from "../translations"
 import { remove as removePromotion, purgeUsages, PROMOTION_USAGE_BATCH } from "../promotions"
+import { MAX_PAGE_SIZE } from "../pagination"
 import { createCountingDb } from "./support/countingDb"
 
 const STORE = "stores:1"
@@ -128,7 +129,16 @@ describe("orders.dashboardStats", () => {
     return Array.from({ length: 7 }, (_, i) => midnight.getTime() - (6 - i) * DAY)
   }
 
-  const windows = () => ({ dayStarts: dayStarts(), breakdownSince: Date.now() - 30 * DAY })
+  const windows = () => {
+    const starts = dayStarts()
+    const tomorrow = new Date(starts[starts.length - 1]!)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    return {
+      dayStarts: starts,
+      todayEnd: tomorrow.getTime(),
+      breakdownSince: Date.now() - 30 * DAY,
+    }
+  }
 
   it("reads the window, not the history", async () => {
     // Two years of trade at one order every three hours: ~5,800 rows, of which
@@ -180,6 +190,7 @@ describe("orders.dashboardStats", () => {
       dashboardStats.handler(ctx, {
         storeId: STORE,
         dayStarts: [],
+        todayEnd: Date.now(),
         breakdownSince: Date.now() - 30 * DAY,
       })
     ).rejects.toThrow(/at least one boundary/)
@@ -588,3 +599,135 @@ describe("countingDb", () => {
     expect(() => ctx.db.query("invoices")).toThrow(/not declared in/)
   })
 })
+
+// ---------------------------------------------------------------------------
+// What the adversarial pass on this change found
+// ---------------------------------------------------------------------------
+
+/**
+ * Six defects that the bounding itself introduced.
+ *
+ * A verifier briefed to break the fix found them; each one is held here so the
+ * next attempt at this code does not reintroduce it. They are grouped rather
+ * than filed under the query they belong to, because what they have in common
+ * is the shape: a bound that is correct about read counts and wrong about
+ * something else.
+ */
+describe("regressions the bounding introduced", () => {
+  it("orders a status tab by when the order was placed, not when the row was written", async () => {
+    const now = Date.now()
+    // A platform webhook arrives late: written last, placed first. Ordering on
+    // `_creationTime` — which is what `by_storeId_status` alone gives you —
+    // puts it at the top of the tab and makes the Date column non-monotonic.
+    const ctx = createCountingDb({
+      orders: [
+        { _id: "orders:1", storeId: STORE, status: "pending", type: "delivery", total: 100, createdAt: now - 60_000 },
+        { _id: "orders:2", storeId: STORE, status: "pending", type: "delivery", total: 100, createdAt: now - 30_000 },
+        { _id: "orders:3", storeId: STORE, status: "pending", type: "delivery", total: 100, createdAt: now - 3_600_000 },
+      ],
+    })
+
+    const page = await ordersList.handler(ctx, {
+      storeId: STORE,
+      status: "pending",
+      paginationOpts: { numItems: 10, cursor: null },
+    })
+    const dates = page.page.map((order: { createdAt: number }) => order.createdAt)
+    expect(dates).toEqual([...dates].sort((a, b) => b - a))
+    expect(page.page[0]!._id).toBe("orders:2")
+    expect(page.page[2]!._id).toBe("orders:3")
+  })
+
+  it("refuses to serve a page the size of the table because a caller asked for one", async () => {
+    const ctx = createCountingDb({ orders: busyOrders(BUSY) })
+    const page = await ordersList.handler(ctx, {
+      storeId: STORE,
+      paginationOpts: { numItems: 1_000_000, cursor: null },
+    })
+    // `paginationOptsValidator` accepts any size Convex will take, and Convex
+    // only refuses a negative one — so an unclamped query is bounded by its
+    // caller, which is the transaction the pagination exists to prevent.
+    expect(page.page.length).toBeLessThanOrEqual(MAX_PAGE_SIZE)
+    expect(ctx.reads()).toBeLessThanOrEqual(MAX_PAGE_SIZE)
+  })
+
+  it("clamps the payments ledger the same way", async () => {
+    const ctx = createCountingDb({
+      payments: Array.from({ length: BUSY }, (_, i) => ({
+        _id: `payments:${i}`,
+        storeId: STORE,
+        orderId: `orders:${i}`,
+        amount: 1_000,
+        currency: "EUR",
+        provider: "stripe",
+        status: "succeeded",
+        createdAt: Date.now() - i * 60_000,
+      })),
+    })
+    const page = await paymentsGetByStore.handler(ctx, {
+      storeId: STORE,
+      paginationOpts: { numItems: 1_000_000, cursor: null },
+    })
+    expect(page.page.length).toBeLessThanOrEqual(MAX_PAGE_SIZE)
+  })
+
+  it("survives a NaN limit rather than failing inside Convex", async () => {
+    // `v.number()` accepts NaN over the wire, and NaN survives both
+    // `Math.floor` and `Math.min(Math.max(...))` to reach `.take()`, which
+    // refuses it with an error naming an argument the caller never sent.
+    const ctx = createCountingDb({ orders: busyOrders(100) })
+    const rows = await ordersRecent.handler(ctx, { storeId: STORE, limit: Number.NaN })
+    expect(rows).toHaveLength(RECENT_ORDERS_LIMIT)
+
+    const counts = await sentCountsSince.handler(
+      createCountingDb({ emailEvents: [] }),
+      { subscriberIds: ["emailSubscribers:1"], since: 0, countLimit: Number.NaN }
+    )
+    expect(counts[0]?.count).toBe(0)
+  })
+
+  it("closes today at midnight rather than leaving it open-ended", async () => {
+    const midnight = new Date()
+    midnight.setHours(0, 0, 0, 0)
+    const starts = Array.from({ length: 7 }, (_, i) => midnight.getTime() - (6 - i) * DAY)
+    const tomorrow = new Date(midnight)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
+    // An order stamped three days out — a browser clock running ahead, or a
+    // fixture. The browser code this replaced closed today's bucket at
+    // tomorrow's midnight; an unbounded last bucket booked it as takings.
+    const ctx = createCountingDb({
+      orders: [
+        { _id: "orders:1", storeId: STORE, status: "completed", type: "delivery", source: "website", total: 5_000, createdAt: Date.now() + 3 * DAY },
+      ],
+    })
+    const stats = await dashboardStats.handler(ctx, {
+      storeId: STORE,
+      dayStarts: starts,
+      todayEnd: tomorrow.getTime(),
+      breakdownSince: midnight.getTime() - 30 * DAY,
+    })
+    expect(stats.today.orderCount).toBe(0)
+    expect(stats.last7Days[6]!.orders).toBe(0)
+  })
+
+  it("refuses a todayEnd that does not come after the last boundary", async () => {
+    const ctx = createCountingDb({ orders: [] })
+    const starts = dayStartsFrom(new Date())
+    await expect(
+      dashboardStats.handler(ctx, {
+        storeId: STORE,
+        dayStarts: starts,
+        todayEnd: starts[starts.length - 1]!,
+        breakdownSince: Date.now() - 30 * DAY,
+      })
+    ).rejects.toThrow(/todayEnd must be after/)
+  })
+})
+
+/** Seven local midnights ending on the day of `now`. */
+function dayStartsFrom(now: Date): number[] {
+  const midnight = new Date(now)
+  midnight.setHours(0, 0, 0, 0)
+  return Array.from({ length: 7 }, (_, i) => midnight.getTime() - (6 - i) * DAY)
+}

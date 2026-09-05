@@ -124,6 +124,14 @@ function dayStarts(): number[] {
   return Array.from({ length: 7 }, (_, i) => midnight.getTime() - (6 - i) * DAY)
 }
 
+/** Tomorrow's local midnight — the exclusive end of today. */
+function todayEnd(): number {
+  const tomorrow = new Date(NOW)
+  tomorrow.setHours(0, 0, 0, 0)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.getTime()
+}
+
 // ===========================================================================
 // P-1 — /dashboard and /dashboard/orders
 // ===========================================================================
@@ -174,6 +182,7 @@ describe("a restaurant with a year of orders", () => {
     const stats = await owner.query(api.orders.dashboardStats, {
       storeId,
       dayStarts: dayStarts(),
+      todayEnd: todayEnd(),
       breakdownSince: NOW - 30 * DAY,
     })
 
@@ -184,6 +193,75 @@ describe("a restaurant with a year of orders", () => {
     // the count must be below the number of orders in the window.
     expect(stats.today.orderCount).toBeLessThan(BUSY)
     expect(stats.truncated).toBe(false)
+  })
+
+  test("a status tab prints its dates in order, even with a late platform order", async () => {
+    const t = convexTest(schema, modules)
+    const storeId = await seedStore(t)
+    const owner = await seedOwner(t, [storeId])
+
+    // Four native orders written as they were placed, then a platform webhook
+    // arriving late for an order placed an hour earlier. `by_storeId_status`
+    // alone orders by `_creationTime`, which would float the late row to the
+    // top of the tab and make the Date column non-monotonic.
+    await t.run(async (ctx) => {
+      const placedAt = [0, 30, 60, 90].map((m) => NOW - m * 60_000)
+      for (const [i, createdAt] of placedAt.entries()) {
+        await ctx.db.insert("orders", {
+          storeId,
+          orderNumber: `NATIVE-${i}`,
+          customerInfo: { name: "Camille" },
+          type: "pickup" as const,
+          status: "pending" as const,
+          items: [],
+          subtotal: 1000,
+          taxAmount: 100,
+          total: 1100,
+          paymentStatus: "paid" as const,
+          source: "website" as const,
+          createdAt,
+          updatedAt: NOW,
+        })
+      }
+      await ctx.db.insert("orders", {
+        storeId,
+        orderNumber: "UBER-LATE",
+        customerInfo: { name: "Camille" },
+        type: "delivery" as const,
+        status: "pending" as const,
+        items: [],
+        subtotal: 1000,
+        taxAmount: 100,
+        total: 1100,
+        paymentStatus: "paid" as const,
+        source: "uber_eats" as const,
+        createdAt: NOW - 45 * 60_000,
+        updatedAt: NOW,
+      })
+    })
+
+    const page = await owner.query(api.orders.list, {
+      storeId,
+      status: "pending" as const,
+      paginationOpts: { numItems: 10, cursor: null },
+    })
+    const dates = page.page.map((order) => order.createdAt)
+    expect(dates).toEqual([...dates].sort((a, b) => b - a))
+    expect(page.page[0]!.orderNumber).toBe("NATIVE-0")
+  })
+
+  test("serves a clamped page however large a page the caller asks for", async () => {
+    const t = convexTest(schema, modules)
+    const storeId = await seedStore(t)
+    const owner = await seedOwner(t, [storeId])
+    await seedOrders(t, storeId, BUSY)
+
+    const page = await owner.query(api.orders.list, {
+      storeId,
+      paginationOpts: { numItems: 1_000_000, cursor: null },
+    })
+    expect(page.page.length).toBeLessThanOrEqual(200)
+    expect(page.isDone).toBe(false)
   })
 
   test("the recent-orders table is ten rows whatever the history", async () => {

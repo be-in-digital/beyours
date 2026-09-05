@@ -95,6 +95,19 @@ export function dashboardDayStarts(
   return starts
 }
 
+/**
+ * Tomorrow's local midnight — the exclusive end of today.
+ *
+ * Walked with the calendar rather than added as 24h, so a DST changeover does
+ * not move the boundary by an hour.
+ */
+export function dashboardTodayEnd(now: Date = new Date()): number {
+  const tomorrow = new Date(now)
+  tomorrow.setHours(0, 0, 0, 0)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return tomorrow.getTime()
+}
+
 /** Start of the wider window the breakdown pies cover. */
 export function dashboardBreakdownSince(
   now: Date = new Date(),
@@ -137,7 +150,12 @@ export function labelDashboardStats(stats: ServerDashboardStats): DashboardStats
  * for the next midnight, rather than a poll.
  */
 function useTodayStart(): number {
-  const [todayStart, setTodayStart] = useState(() => startOfLocalDay(new Date()))
+  // A counter rather than the boundary itself, because the effect has to re-arm
+  // even when the day has not turned. `setTodayStart(sameValue)` would be a
+  // React bail-out: the effect would not re-run, no new timer would be armed,
+  // and one early wake would freeze the dashboard on yesterday until reload.
+  const [tick, setTick] = useState(0)
+  const todayStart = useMemo(() => startOfLocalDay(new Date()), [tick])
 
   useEffect(() => {
     // Walked with the calendar rather than assumed to be 24h away: a DST change
@@ -146,7 +164,7 @@ function useTodayStart(): number {
     nextDay.setDate(nextDay.getDate() + 1)
 
     const timer = setTimeout(
-      () => setTodayStart(startOfLocalDay(new Date())),
+      () => setTick((previous) => previous + 1),
       Math.max(1_000, startOfLocalDay(nextDay) - Date.now())
     )
     return () => clearTimeout(timer)
@@ -178,6 +196,7 @@ export function useDashboardStats(): {
   const windows = useMemo(
     () => ({
       dayStarts: dashboardDayStarts(new Date(todayStart)),
+      todayEnd: dashboardTodayEnd(new Date(todayStart)),
       breakdownSince: dashboardBreakdownSince(new Date(todayStart)),
     }),
     [todayStart]

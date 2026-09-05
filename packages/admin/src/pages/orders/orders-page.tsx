@@ -69,8 +69,11 @@ function OrdersList({
    * `orderNumber` and the customer's name are not indexed and a substring match
    * cannot use an index anyway, so a server-side search would be the full scan
    * this screen was just rescued from. "Charger plus" widens what the search
-   * can see; the placeholder says which orders are being searched.
+   * can see, and the placeholder and the empty state both say so — a paginated
+   * list that answers "Aucune commande trouvée" is claiming something about the
+   * whole history that it has not looked at.
    */
+  const searching = searchQuery.trim().length > 0
   const filteredOrders = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
     if (!needle) return orders
@@ -80,6 +83,13 @@ function OrdersList({
         order.customerInfo.name.toLowerCase().includes(needle)
     )
   }, [orders, searchQuery])
+
+  const moreToLoad = status === "CanLoadMore" || status === "LoadingMore"
+  const emptyMessage = searching
+    ? moreToLoad
+      ? "Aucune commande trouvée parmi celles chargées. Cliquez sur « Charger plus » pour chercher plus loin."
+      : "Aucune commande ne correspond à cette recherche."
+    : undefined
 
   return (
     <div className="space-y-6">
@@ -94,7 +104,7 @@ function OrdersList({
       {/* Search */}
       <div className="max-w-md" data-tour="orders-search">
         <SearchInput
-          placeholder="Rechercher par n° de commande ou nom du client..."
+          placeholder="Rechercher parmi les commandes chargées (n° ou nom du client)..."
           value={searchQuery}
           onValueChange={setSearchQuery}
         />
@@ -122,8 +132,9 @@ function OrdersList({
           <OrdersTable
             orders={filteredOrders}
             isLoading={status === "LoadingFirstPage"}
+            emptyMessage={emptyMessage}
           />
-          {status === "CanLoadMore" || status === "LoadingMore" ? (
+          {moreToLoad ? (
             <div className="flex justify-center">
               <Button
                 variant="outline"

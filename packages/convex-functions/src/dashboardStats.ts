@@ -37,6 +37,16 @@ export interface DashboardWindows {
    * entry is today's midnight, and the one before it is yesterday's.
    */
   dayStarts: number[]
+  /**
+   * Tomorrow's local midnight — the exclusive end of today.
+   *
+   * Without it the last bar and the "today" card have no upper bound at all,
+   * and an order stamped in the future is counted in today's takings. The
+   * browser code this replaced closed the last bucket at tomorrow's midnight;
+   * this is that bound, carried across rather than re-derived from a `+ 24h`
+   * that a DST change makes wrong.
+   */
+  todayEnd: number
   /** Start of the wider window the type/source breakdowns cover. */
   breakdownSince: number
   /** The moment the answer is for. */
@@ -141,7 +151,7 @@ export function dashboardWindowStart(windows: {
  * bars rather than an error, and the dashboard is the screen nobody
  * cross-checks.
  */
-export function assertDayStarts(dayStarts: number[]): void {
+export function assertDayStarts(dayStarts: number[], todayEnd?: number): void {
   if (dayStarts.length === 0) {
     throw new Error("dashboardStats: dayStarts must contain at least one boundary")
   }
@@ -157,6 +167,9 @@ export function assertDayStarts(dayStarts: number[]): void {
       throw new Error("dashboardStats: dayStarts must be strictly ascending")
     }
   }
+  if (todayEnd !== undefined && todayEnd <= (dayStarts[dayStarts.length - 1] as number)) {
+    throw new Error("dashboardStats: todayEnd must be after the last boundary")
+  }
 }
 
 /**
@@ -170,7 +183,7 @@ export function computeDashboardStats(
   windows: DashboardWindows,
   truncated = false
 ): DashboardStats {
-  assertDayStarts(windows.dayStarts)
+  assertDayStarts(windows.dayStarts, windows.todayEnd)
 
   // `assertDayStarts` has already refused an empty list, so both indexes exist.
   const todayStart = windows.dayStarts[windows.dayStarts.length - 1] as number
@@ -189,7 +202,7 @@ export function computeDashboardStats(
   ).length
 
   const last7Days: DashboardDay[] = windows.dayStarts.map((dayStart, index) => {
-    const dayEnd = windows.dayStarts[index + 1] ?? Number.POSITIVE_INFINITY
+    const dayEnd = windows.dayStarts[index + 1] ?? windows.todayEnd
     const ofThatDay = valid.filter(
       (order) => order.createdAt >= dayStart && order.createdAt < dayEnd
     )
@@ -204,7 +217,11 @@ export function computeDashboardStats(
 
   return {
     today: {
-      ...totals(valid.filter((order) => order.createdAt >= todayStart)),
+      ...totals(
+        valid.filter(
+          (order) => order.createdAt >= todayStart && order.createdAt < windows.todayEnd
+        )
+      ),
       activeOrders,
     },
     yesterday: totals(

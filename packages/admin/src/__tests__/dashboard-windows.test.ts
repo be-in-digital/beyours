@@ -13,6 +13,7 @@ import { describe, it, expect } from "vitest"
 import {
   dashboardBreakdownSince,
   dashboardDayStarts,
+  dashboardTodayEnd,
   labelDashboardStats,
   DASHBOARD_BREAKDOWN_DAYS,
   DASHBOARD_CHART_DAYS,
@@ -54,6 +55,24 @@ describe("dashboardDayStarts", () => {
     const starts = dashboardDayStarts(new Date("2026-03-15T10:00:00"))
     const [yesterday, today] = [starts.at(-2)!, starts.at(-1)!]
     expect(new Date(yesterday).getDate()).toBe(new Date(today).getDate() - 1)
+  })
+})
+
+describe("dashboardTodayEnd", () => {
+  it("is the midnight after today's, so today has an upper bound", () => {
+    const now = new Date("2026-03-15T22:10:00")
+    const todayStart = dashboardDayStarts(now).at(-1)!
+    const end = dashboardTodayEnd(now)
+    expect(end).toBeGreaterThan(todayStart)
+    expect(new Date(end).getHours()).toBe(0)
+    expect(new Date(end).getDate()).toBe(new Date(todayStart).getDate() + 1)
+  })
+
+  it("walks the calendar across a DST changeover rather than adding 24 hours", () => {
+    // 25 October 2026 is the European autumn changeover. Whatever the offset
+    // does, the boundary is still a local midnight.
+    expect(new Date(dashboardTodayEnd(new Date("2026-10-24T12:00:00"))).getHours()).toBe(0)
+    expect(new Date(dashboardTodayEnd(new Date("2026-10-25T12:00:00"))).getHours()).toBe(0)
   })
 })
 
