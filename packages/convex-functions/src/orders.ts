@@ -11,6 +11,12 @@ import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
+
+/**
+ * Most lines one order may carry. A large catering basket is dozens; five
+ * hundred is a script building one enormous document a line at a time.
+ */
+const MAX_ORDER_LINES = 100
 import {
   canTransitionOrderStatus,
   isOrderTypeOffered,
@@ -424,6 +430,32 @@ export const create = {
       phone: args.customerInfo.phone,
       message: args.notes,
     })
+
+    // Every other string a caller controls. The four above were capped first
+    // and the rest were not, which left the megabyte they were meant to stop
+    // arriving through `deliveryAddress.street` and `items[].notes` instead —
+    // measured at just over 1 MB per stored row. `items` is itself an
+    // unbounded array, so the cap on it is what stops 500 lines becoming one
+    // enormous document; `productName` is re-read from the catalogue below and
+    // never trusted, but it is bounded here so the argument cannot be the
+    // payload either.
+    if (args.items.length > MAX_ORDER_LINES) {
+      throw new Error(
+        `Une commande ne peut pas dépasser ${MAX_ORDER_LINES} lignes.`
+      )
+    }
+    if (args.deliveryAddress) {
+      assertFieldLengths({
+        street: args.deliveryAddress.street,
+        city: args.deliveryAddress.city,
+        postalCode: args.deliveryAddress.postalCode,
+        country: args.deliveryAddress.country,
+        instructions: args.deliveryAddress.instructions,
+      })
+    }
+    for (const line of args.items) {
+      assertFieldLengths({ name: line.productName, lineNote: line.notes })
+    }
 
     // A draft establishment is not a storefront. Keeping drafts out of
     // `stores.list` is how one stops being *reachable*; this is what stops one

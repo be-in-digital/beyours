@@ -53,6 +53,19 @@ export interface RateLimitRule {
   /** How many are allowed inside one window. */
   limit: number
   windowMs: number
+  /**
+   * Whether to lowercase the subject before it becomes a key.
+   *
+   * True for an address a human types: one address is one address however it
+   * was capitalised, and a limiter that disagrees is one `Shift` away from
+   * being no limiter. **False for a document id**, which is case-SENSITIVE —
+   * folding two ids together lets one restaurant consume another's window, and
+   * on `orderPerStore` that means one establishment closing another's till.
+   * `menuSyncKey` at the foot of this file exists for exactly this reason and
+   * documents it; every id-keyed rule here now says the same thing in the one
+   * place the key is actually built.
+   */
+  foldSubjectCase: boolean
 }
 
 export interface RateLimitVerdict {
@@ -69,26 +82,26 @@ export const RATE_LIMITS = {
    * One visitor writing to one restaurant. Three in an hour covers a genuine
    * correction ("I gave the wrong phone number") and stops a loop.
    */
-  contactPerEmail: { limit: 3, windowMs: 60 * 60_000 },
+  contactPerEmail: { limit: 3, windowMs: 60 * 60_000, foldSubjectCase: true },
   /**
    * Everything arriving at one restaurant. Sixty an hour is far above what a
    * contact form sees and far below what a flood wants.
    */
-  contactPerStore: { limit: 60, windowMs: 60 * 60_000 },
+  contactPerStore: { limit: 60, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Newsletter sign-ups for one address. Re-subscribing is normal; doing it
    * five times an hour is not.
    */
-  subscribePerEmail: { limit: 5, windowMs: 60 * 60_000 },
+  subscribePerEmail: { limit: 5, windowMs: 60 * 60_000, foldSubjectCase: true },
   /** Sign-ups arriving at one restaurant. */
-  subscribePerStore: { limit: 100, windowMs: 60 * 60_000 },
+  subscribePerStore: { limit: 100, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * One device asking to play. The game's own cooldown is a day, so five in an
    * hour is already far outside honest use — it is the referral bonus and the
    * retry after a dropped connection, not a player. Dodged by inventing a new
    * `fingerprint`, which is exactly why the two below exist.
    */
-  gamePlayPerFingerprint: { limit: 5, windowMs: 60 * 60_000 },
+  gamePlayPerFingerprint: { limit: 5, windowMs: 60 * 60_000, foldSubjectCase: true },
   /**
    * Every play on one QR code, keyed on the id the server resolved rather than
    * the string the caller sent. This is the one a drain cannot dodge: a code is
@@ -103,31 +116,31 @@ export const RATE_LIMITS = {
    * first. Binding a play to a person needs a control this platform does not
    * have — a sign-in, or an anti-automation check at the edge.
    */
-  gamePlayPerQr: { limit: 10, windowMs: 60 * 60_000 },
+  gamePlayPerQr: { limit: 10, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Every play across one restaurant's tables, because an attacker seated in
    * the room can photograph several codes and multiply the window above.
    */
-  gamePlayPerStore: { limit: 200, windowMs: 60 * 60_000 },
+  gamePlayPerStore: { limit: 200, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Scan counters. Scanning is cheap and legitimately repeated — a diner
    * reopening the page is a scan — so this only stops a counter being driven
    * for its own sake.
    */
-  gameScanPerQr: { limit: 60, windowMs: 60 * 60_000 },
+  gameScanPerQr: { limit: 60, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Referral codes minted at one restaurant. One row per device is the design;
    * a new device every second is a loop writing rows.
    */
-  gameReferralPerStore: { limit: 100, windowMs: 60 * 60_000 },
+  gameReferralPerStore: { limit: 100, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Prize claims for one address. A claim sends mail to an address the caller
    * chose, so this window is the relay bound, and it is deliberately as tight
    * as the contact form's.
    */
-  gameClaimPerEmail: { limit: 3, windowMs: 60 * 60_000 },
+  gameClaimPerEmail: { limit: 3, windowMs: 60 * 60_000, foldSubjectCase: true },
   /** Prize claims arriving at one restaurant. */
-  gameClaimPerStore: { limit: 60, windowMs: 60 * 60_000 },
+  gameClaimPerStore: { limit: 60, windowMs: 60 * 60_000, foldSubjectCase: false },
   /**
    * Orders placed at one restaurant. Set well above a real rush — a busy
    * service is dozens an hour, not hundreds — because refusing a paying
@@ -135,7 +148,7 @@ export const RATE_LIMITS = {
    * discounts are already recomputed server-side, so what remains to bound is
    * database and kitchen-ticket noise rather than value extraction.
    */
-  orderPerStore: { limit: 300, windowMs: 60 * 60_000 },
+  orderPerStore: { limit: 300, windowMs: 60 * 60_000, foldSubjectCase: false },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitName = keyof typeof RATE_LIMITS
@@ -172,12 +185,15 @@ export function checkRateLimit(
 /**
  * The row key for one limit and one subject.
  *
- * The email is lowercased for the same reason the subscriber lookup is: an
- * address is one address however it was typed, and a limiter that disagrees is
- * one `Shift` away from being no limiter at all.
+ * Folding is per rule, not universal. An address is one address however it was
+ * typed, so folding it is what makes the limiter agree with the subscriber
+ * lookup beside it. A document id is case-SENSITIVE, so folding it is a bug:
+ * it merges windows that must stay apart. This used to fold everything, which
+ * quietly put every id-keyed rule in the second category.
  */
 export function rateLimitKey(name: RateLimitName, subject: string): string {
-  return `${name}:${subject.toLowerCase()}`
+  const subjectKey = RATE_LIMITS[name].foldSubjectCase ? subject.toLowerCase() : subject
+  return `${name}:${subjectKey}`
 }
 
 /* ------------------------------------------------------------------ */
@@ -192,6 +208,16 @@ export function rateLimitKey(name: RateLimitName, subject: string): string {
  * and small for a script.
  */
 export const FIELD_LIMITS = {
+  /* Order fields. A postal address has real-world bounds; an order line's note
+     is a sentence to the kitchen, not a document. Added because `orders.create`
+     capped the top-level `notes` and left `items[].notes` and every
+     `deliveryAddress` field unbounded — a 1 MB street landed in a stored row. */
+  street: 200,
+  city: 100,
+  postalCode: 20,
+  country: 100,
+  instructions: 500,
+  lineNote: 500,
   name: 120,
   email: 254, // RFC 5321's maximum path length.
   phone: 40,
@@ -310,16 +336,29 @@ export const MENU_SYNC_PLATFORMS = ["uberEats", "deliveroo"] as const
 
 export type MenuSyncPlatform = (typeof MENU_SYNC_PLATFORMS)[number]
 
-const MENU_SYNC_RULE: RateLimitRule = { limit: 1, windowMs: MENU_SYNC_WINDOW_MS }
+const MENU_SYNC_RULE: RateLimitRule = {
+  limit: 1,
+  windowMs: MENU_SYNC_WINDOW_MS,
+  // Keyed on an establishment id by `menuSyncKey` below, which has never
+  // folded. Stated rather than made optional, so a rule cannot be added
+  // without someone deciding which kind of subject it carries.
+  foldSubjectCase: false,
+}
 
 /**
  * The row key for one platform and one establishment.
  *
- * Deliberately NOT `rateLimitKey`: that one lowercases its subject, which is
- * right for an email address and wrong for a Convex id. Ids are case-sensitive,
- * so two different establishments can differ only in the case of one character
- * — folding them together would let one restaurant's edit claim another's
- * window and leave that menu unpushed.
+ * Separate from `rateLimitKey` for a reason that used to be sharper than it is
+ * now. `rateLimitKey` lowercased every subject, which is right for an email
+ * address and wrong for a Convex id: ids are case-sensitive, so two different
+ * establishments can differ only in the case of one character, and folding
+ * them together would let one restaurant's edit claim another's window and
+ * leave that menu unpushed. This function existed to escape that.
+ *
+ * As of #323 `rateLimitKey` folds per rule and no longer has the flaw — the
+ * six id-keyed windows added there had inherited it. This one stays as it is:
+ * it is not a `RateLimitName`, it carries a platform as well as an id, and
+ * rewriting a working key would change every live row for no gain.
  */
 export function menuSyncKey(platform: MenuSyncPlatform, storeId: string): string {
   return `menuSync:${platform}:${storeId}`
