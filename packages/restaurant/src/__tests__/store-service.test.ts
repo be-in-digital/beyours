@@ -13,9 +13,33 @@ import {
   getStoreDistance,
   sortStoresByDistance,
 } from '../services/store'
+import { isWithinBusinessHours } from '@be-in-digital/convex-schema'
 import type { BusinessHours, Address, StoreDoc } from '../types'
 
 describe('Store Service', () => {
+  describe('isStoreOpen agrees with the shared rule', () => {
+    // `isOpen` is `isWithinBusinessHours` from `@be-in-digital/convex-schema`,
+    // which is also what `orders.create` asks. The storefront's disabled button
+    // and the mutation's refusal have to be the same answer: they were not, and
+    // an order at 4 a.m. was the result.
+    const week = (open: string, close: string, isClosed = false) =>
+      Array.from({ length: 7 }, (_, day) => ({ day, open, close, isClosed }))
+
+    it.each([
+      ['inside the service', week('11:00', '23:00'), Date.UTC(2029, 6, 3, 12, 0)],
+      ['before it opens', week('11:00', '14:00'), Date.UTC(2029, 6, 3, 2, 0)],
+      ['on a closed day', week('11:00', '23:00', true), Date.UTC(2029, 6, 3, 12, 0)],
+      ['past midnight on an overnight service', week('18:00', '02:00'), Date.UTC(2029, 6, 3, 23, 0)],
+      ['between an overnight close and its open', week('18:00', '02:00'), Date.UTC(2029, 6, 3, 8, 0)],
+      ['with no week declared at all', [], Date.UTC(2029, 6, 3, 2, 0)],
+    ])('%s', (_name, hours, at) => {
+      const now = new Date(at)
+      expect(isStoreOpen(hours, now, 'Europe/Paris').isOpen).toBe(
+        isWithinBusinessHours(hours, at, 'Europe/Paris')
+      )
+    })
+  })
+
   describe('isStoreOpen', () => {
     it('should return open when current time is within hours', () => {
       const hours: BusinessHours[] = [

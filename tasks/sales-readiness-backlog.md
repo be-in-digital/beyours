@@ -2209,11 +2209,26 @@ narrated a full feature and then navigated the owner to a `<ComingSoon/>` —
 those two routes are the only ones in the admin that still render one, and the
 tour opens 1.2 s after a first login, unprompted. `nav-customers` could never
 have highlighted anything either, since the sidebar derives its anchors from
-nav entries and Clients is deliberately kept out of the nav. Held by
-`packages/admin/src/__tests__/tour-destinations.test.ts`, which resolves every
-step's `goTo` against the real route files in both apps, follows the
-`/x → /dashboard/x` redirect hop, and refuses any destination that renders the
-placeholder. Put the Clients step back in the commit that ships the page.
+nav entries and Clients is deliberately kept out of the nav.
+
+#362 removed both steps on `main` while this branch was open, having found them
+the same way, and rebuilt the tour around them: `TOUR_STEP_SPECS` replaces
+`TOUR_STEPS`, and `packages/admin/src/__tests__/onboarding-tour.test.ts` covers
+every check this branch had written its own `tour-destinations.test.ts` for, in
+a stronger form — it resolves a step's route against both apps, follows the
+one-line re-export into the package rather than only the `/x → /dashboard/x`
+redirect, and refuses a destination that renders the placeholder. That file is
+therefore deleted here rather than repaired: two suites asking the same
+question, one of them weaker, is worse than one.
+
+What this branch still owes the merged tour is copy. Its « Design » step sold
+four tabs including « Thème », and told the owner that colours, typography and
+the logo are set there and apply to the selected establishment — every clause of
+which this card makes false. Both that step and the « Paramètres » step now say
+what the screen does: three tabs, colours and typography not yet reaching the
+public site with saving disabled for that reason, and the logo on the CMS
+« Layout du storefront » page. Put the Clients step back in the commit that
+ships the page.
 
 ### 1 · Analytics, and the plan gating that does not exist (T-1) — **reword now, build the metrics in their own PR**
 
@@ -2545,8 +2560,7 @@ amount of code supplies either.
 ### Found while working this card, and NOT fixed here
 
 **`apps/site` was red on `main` since #350, and the red was hiding a suite that
-no longer tested anything. Fixed here** — see the commit
-`fix(site): make the referral-integrity suite reach the guards it names`.
+no longer tested anything. Diagnosed here; the fix that ships is #355's.**
 
 `tests/convex/checkoutReferralIntegrity.test.ts` reported **25 failed | 6
 passed**. Every case called `createCheckoutSession` with `plan: "premium"`, and
@@ -2556,27 +2570,25 @@ without ever reaching a referral guard. Those guards had been unexercised
 since — worse than the red suggested, because the red read as a plan problem
 rather than as missing coverage.
 
-The guards are plan-independent, so the suite moved to the plan that is open.
-That alone was not enough, and this is the part that made it a decision rather
+The guards are plan-independent, so the suite belongs on the plan that is open.
+That alone is not enough, and it is the part that made this a decision rather
 than a rename: `foundersOffer.plan` is `essentielle`, and `stripe.ts` applies
 the offer whenever slots remain **and no referral applied** (`isFounders`
 requires `!isReferral`). On a case where the code is honoured the offer is
 invisible; on a case where the code is refused it is decisive — the refused
 referral falls through to the founders offer, the creation line is waived, and
 the order comes to the annual maintenance alone instead of the list total. Half
-the assertions would have measured the founders offer instead of the guard they
-name. `seedProgramme` now fills the ten slots, which is also the state the
-offer ends in, since it runs out rather than expiring.
+the assertions would otherwise have measured the founders offer instead of the
+guard they name.
 
-Two assertions were rescoped rather than renumbered: « it left nothing behind »
-meant *this refused checkout wrote no order*, not *the table is empty*, so they
-query by the buyer's own address instead of collecting every row.
-
-Held to a real standard rather than a green one: breaking the discount
-derivation in `stripe.ts` turns 7 cases red, and the five rejection assertions
-now match the guards' own messages — `/discountPercent/` and `/Remise de
-parrainage invalide/` — where before they matched the plan gate. `apps/site` is
-41 files / 644 tests, all passing.
+This branch carried its own repair of that suite for one commit. #355 landed
+the same two-part fix on `main` first, reached independently, and the merge
+takes it: `main`'s version exhausts the ten founders slots only in the cases
+that bill without a discount, which leaves the two « it left nothing behind »
+assertions honest as written instead of needing to be rescoped by buyer
+address. It is the better of the two, so this branch now changes that file not
+at all. Recorded because the diagnosis is worth keeping even though the patch
+is not: a suite can be red for a reason that conceals a second, larger one.
 
 **Nothing decrements stock on an order.** Stock tracking, low-stock alerts and
 auto-disable are real and propagate to Uber Eats and Deliveroo, but

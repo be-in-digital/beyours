@@ -5,17 +5,42 @@
  * No side effects, no Convex calls - operates on data only
  */
 
+import {
+  isWithinBusinessHoursAt,
+  parseClockTime,
+  resolveStoreHours,
+} from '@be-in-digital/convex-schema'
 import type { BusinessHours, Address, StoreDoc, StoreHoursStatus } from '../types'
+
+/**
+ * Which hours govern an establishment — re-exported from `convex-schema`.
+ *
+ * It moved there with `isWithinBusinessHours`, so `orders.create` can resolve
+ * the same week this storefront reads. Re-exported rather than moved outright:
+ * `@be-in-digital/restaurant` is where every caller imports it from.
+ */
+export { resolveStoreHours }
 
 /**
  * Is this a service that runs past midnight?
  *
- * `"18:00" – "02:00"` closes on the *next* calendar day. The two times are
- * compared as strings, so a service that ends before it starts can only mean it
- * crossed midnight. `open === close` is the 24-hour day that `"00:00" – "00:00"`
- * has always meant; a day that is shut says so with `isClosed`.
+ * `"18:00" – "02:00"` closes on the *next* calendar day: a service that ends
+ * before it starts can only mean it crossed midnight. `open === close` is the
+ * 24-hour day that `"00:00" – "00:00"` has always meant; a day that is shut
+ * says so with `isClosed`.
+ *
+ * Compared as parsed minutes, not as the raw strings, and for the same reason
+ * `openingHours` does it that way: `parseClockTime` accepts `"9:00"`, and
+ * `"17:00" <= "9:00"` is lexicographically true. A 9-to-5 bakery written that
+ * way read as an overnight service, and `"18:00" – "2:00"` read as a same-day
+ * window no minute can be inside. A row neither time can be read from is not a
+ * service that crosses anything.
  */
-const isOvernight = (open: string, close: string): boolean => close <= open
+const isOvernight = (open: string, close: string): boolean => {
+  const from = parseClockTime(open)
+  const until = parseClockTime(close)
+  return from !== undefined && until !== undefined && until <= from
+}
 
 /** Minutes past midnight, for arithmetic the `"HH:mm"` strings cannot do. */
 const toMinutes = (time: string): number => {
@@ -91,31 +116,6 @@ const readingFrame = (now: Date, timeZone?: string): { clock: Date; shift: numbe
 }
 
 /**
- * Which hours actually govern an establishment.
- *
- * `useGlobalHours` is a per-store flag the dashboard writes and the storefront
- * ignored: `use-store-status` read `store.hours` and nothing else, so an owner
- * who edited the global hours and left every location on "horaires globaux"
- * changed nothing anyone could see. `stores.create` seeds a hard-coded
- * 09:00–22:00 week, so what the storefront showed was that placeholder.
- *
- * Resolved on read rather than copied on write: one source of truth, and
- * editing the global hours reaches every location that follows them without a
- * migration.
- */
-export const resolveStoreHours = (
-  store: { hours?: BusinessHours[] | null; useGlobalHours?: boolean | null } | null | undefined,
-  globalSettings?: { hours?: BusinessHours[] | null } | null
-): BusinessHours[] => {
-  if (!store) return []
-  const globalHours = globalSettings?.hours
-  if (store.useGlobalHours && globalHours && globalHours.length > 0) {
-    return globalHours
-  }
-  return store.hours ?? []
-}
-
-/**
  * Check if store is currently open based on business hours
  *
  * WHY THE PREVIOUS DAY IS READ: a service declared on Friday as 18:00–02:00 is
@@ -129,6 +129,12 @@ export const resolveStoreHours = (
  * `"23:00" < "02:00"` is false, and at 01:00 `"01:00" >= "18:00"` is false. The
  * boolean disables add-to-cart everywhere and blocks checkout, so the shipped
  * `fast-food-minuit` vertical and the food trucks could not sell anything.
+ *
+ * An EMPTY week reports open, with no period and no next change — the same
+ * answer `isWithinBusinessHours` gives, because nothing has been declared to be
+ * outside of. It is `status` that decides then, and every caller reads it
+ * alongside this. Callers wanting to *render* the week should check the array
+ * first: there is nothing here to draw.
  */
 export const isStoreOpen = (
   hours: BusinessHours[],
@@ -143,6 +149,23 @@ export const isStoreOpen = (
   const currentDay = clock.getDay() // 0=Sunday, 6=Saturday
   const currentTime = `${String(clock.getHours()).padStart(2, '0')}:${String(clock.getMinutes()).padStart(2, '0')}`
 
+  // Whether the shop is serving is not decided here any more. `orders.create`
+  // has to answer the same question and cannot import this package, so the rule
+  // lives in `convex-schema` and both ends render from it — the browser's toast
+  // and the mutation's refusal can no longer disagree. What stays here is
+  // everything the storefront needs *around* the answer: when it next changes,
+  // and which service is running.
+  //
+  // Asked about THIS function's own clock rather than handed a timestamp and a
+  // zone to read for itself. The two frames fall back differently when `Intl`
+  // rejects the zone — `restaurantClock` to UTC, `readingFrame` to the
+  // visitor's — and a call would then report "open, no current service, opens
+  // again in two hours". The rule is shared; the clock is this function's.
+  const openNow = isWithinBusinessHoursAt(hours, {
+    day: currentDay,
+    minutes: toMinutes(currentTime),
+  })
+
   // 1. Yesterday's service, if it runs into today.
   const yesterdayHours = hours.find((h) => h.day === (currentDay + 6) % 7)
   if (
@@ -152,7 +175,7 @@ export const isStoreOpen = (
     toMinutes(currentTime) < toMinutes(yesterdayHours.close)
   ) {
     return {
-      isOpen: true,
+      isOpen: openNow,
       nextChange: real(at(clock, yesterdayHours.close)),
       currentPeriod: { open: yesterdayHours.open, close: yesterdayHours.close },
     }
@@ -162,7 +185,7 @@ export const isStoreOpen = (
 
   if (!todayHours || todayHours.isClosed) {
     return {
-      isOpen: false,
+      isOpen: openNow,
       nextChange: real(nextOpeningOn(hours, clock)),
       currentPeriod: undefined,
     }
@@ -170,9 +193,7 @@ export const isStoreOpen = (
 
   // 2. Today's own service.
   const overnight = isOvernight(todayHours.open, todayHours.close)
-  const isOpen = overnight
-    ? currentTime >= todayHours.open
-    : currentTime >= todayHours.open && currentTime < todayHours.close
+  const isOpen = openNow
 
   let nextChange: Date | null
   if (isOpen) {

@@ -1,4 +1,6 @@
 import type { StepType } from "@reactour/tour"
+import { adminRoutes } from "../../config/admin-routes"
+import { navTourId } from "../../config/nav-config"
 
 // ─── Navigation bridge ──────────────────────────────────────────────
 // Set by TourAutoLauncher with useRouter().push
@@ -14,73 +16,117 @@ function goTo(path: string): () => void {
   }
 }
 
-// ─── Tour steps ─────────────────────────────────────────────────────
-// Each page step navigates to the page, then highlights specific
-// UI elements to walk the user through every feature.
-
-/*
- * Two steps were removed rather than reworded: « Clients » and « Composants ».
+// ─── Step specs ─────────────────────────────────────────────────────
+/**
+ * The tour is declared as data, then compiled into `@reactour/tour` steps.
  *
- * Both narrated a full feature and then navigated the owner to a
- * `<ComingSoon/>` placeholder — those two routes are the only ones in the admin
- * that still render one. A guided tour is the first thing a new client sees,
- * unprompted, 1.2 s after their first login, so a step that ends on "coming
- * soon" is worse than no step at all.
+ * WHY A SPEC AND NOT StepType DIRECTLY: the highlight and the destination are
+ * the two things that rot, and they used to be a hand-typed
+ * `[data-tour="nav-orders"]` next to a hand-typed `"/orders"` buried in an
+ * opaque `action` closure — unreadable to a test, and both wrong. When the
+ * admin moved under `/dashboard` the sidebar's ids followed the hrefs and the
+ * tour's copies did not: 19 of 20 highlights resolved to nothing. Here they are
+ * `navFor` and `route`, plain strings drawn from `adminRoutes`, which
+ * `onboarding-tour.test.ts` measures against the sidebar and against the pages
+ * both apps actually ship.
  *
- * `nav-customers` could never have highlighted anything either: the sidebar
- * derives its tour anchors from nav entries, and "Clients" is deliberately kept
- * out of the nav until the page exists.
+ * ONE SPOTLIGHT PER STEP, and never `highlightedSelectors`. In
+ * `@reactour/tour@3.8.0`, `bypassElem` defaults to `true`, and
+ * `getHighlightedRect` (dist/index.js:153-211) then builds its rect from the
+ * highlighted selectors ALONE and discards the target's. So a step that
+ * highlighted the sidebar entry while describing the page content spotlit the
+ * menu item and nothing else — which is what the first repair of this file
+ * accidentally switched on, by making those ids resolve for the first time.
+ * `bypassElem: false` is no better: it unions the two, and the union of a
+ * sidebar entry and the content pane is the whole window.
  *
- * Put the Clients step back in the commit that ships the page, not before.
+ * WHICH ELEMENT: a step that navigates spotlights the SIDEBAR ENTRY for its
+ * page, not an element on the page. Reactour measures when the step becomes
+ * current, `router.push` has not painted yet, and a missing target measures as
+ * a 0x0 rect in the top-left corner. (`mutationObservables` does not rescue
+ * this: `@reactour/utils`'s observer matches `addedNodes` only, and React
+ * commits a page as one subtree insertion whose root is not the anchor.) The
+ * sidebar is mounted throughout, so the spotlight always lands — and on a first
+ * run it teaches the menu, which is the thing a new owner has to learn anyway.
+ * A step that does NOT navigate stays on a page the previous step opened, so it
+ * can safely spotlight an element on it.
  */
-export const TOUR_STEPS: StepType[] = [
+export interface TourStepSpec {
+  /** Route opened before the step is shown. Omit to stay on the current page. */
+  route?: string
+  /** The nav entry this step is about. Spotlit whenever `anchor` is absent. */
+  navFor?: string
+  /**
+   * A `data-tour` name to spotlight instead of the nav entry. Only legal on a
+   * step that does not navigate, or for an anchor that is mounted at all times.
+   */
+  anchor?: string
+  /** Customer-facing copy — French, and true of what ships. */
+  content: string
+  position?: StepType["position"]
+}
+
+/**
+ * Anchors rendered by the admin chrome rather than by a page, so they are in
+ * the DOM whatever the route and whatever the account owns.
+ *
+ * `main-content` used to be in here and is deliberately gone: it wraps the
+ * whole content pane, so a mask cut around it covers the viewport and
+ * spotlights nothing. Membership of this list exempts an anchor from the
+ * "not on a navigating step" and "lives on this page" checks, so it is
+ * verified against the layouts rather than trusted.
+ */
+export const ALWAYS_MOUNTED_ANCHORS = ["sidebar-brand"] as const
+
+export const TOUR_STEP_SPECS: TourStepSpec[] = [
   // ── Welcome ────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="sidebar-brand"]',
+    anchor: "sidebar-brand",
     content:
       "Bienvenue dans votre cuisine digitale ! " +
       "Ce menu à gauche regroupe toutes les pages de votre tableau de bord. " +
-      "On va visiter chaque page et vous montrer tout ce que vous pouvez faire. C'est parti !",
+      "On va les parcourir une par une. C'est parti !",
     position: "right",
   },
 
   // ── Dashboard ──────────────────────────────────────────────────────
   {
-    selector: '[data-tour="dashboard-stats"]',
-    highlightedSelectors: ['[data-tour="nav-dashboard"]'],
+    route: adminRoutes.dashboard,
+    navFor: adminRoutes.dashboard,
     content:
-      "Vue d'ensemble — Vos indicateurs du jour ! " +
-      "4 cartes : chiffre d'affaires, nombre de commandes, panier moyen " +
-      "et commandes en cours. Chaque carte compare avec hier pour voir la tendance.",
-    action: goTo("/dashboard"),
+      "Vue d'ensemble — Vos indicateurs du jour, en 4 cartes : chiffre d'affaires, " +
+      "nombre de commandes, panier moyen et « À traiter (24h) ». " +
+      "Les trois premières se comparent à hier pour vous donner la tendance.",
   },
   {
-    selector: '[data-tour="dashboard-charts"]',
+    navFor: adminRoutes.dashboard,
+    anchor: "dashboard-charts",
     content:
       "Graphiques — Le chiffre d'affaires des 7 derniers jours en barres, " +
       "plus deux camemberts : répartition par type (sur place, livraison, à emporter) " +
       "et par source (site web, Uber Eats, Deliveroo, caisse).",
   },
   {
-    selector: '[data-tour="dashboard-actions"]',
+    navFor: adminRoutes.dashboard,
+    anchor: "dashboard-actions",
     content:
-      "Actions rapides — 3 raccourcis pour les tâches courantes : " +
-      "créer une commande, ajouter un produit ou ouvrir la vue cuisine. " +
-      "Un clic et c'est parti !",
+      "Actions rapides — Trois raccourcis vers les écrans du quotidien : " +
+      "les commandes, l'ajout d'un produit et la vue cuisine. " +
+      "Juste au-dessus, les dernières commandes reçues.",
   },
 
   // ── Orders ─────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="orders-search"]',
-    highlightedSelectors: ['[data-tour="nav-orders"]'],
+    route: adminRoutes.orders,
+    navFor: adminRoutes.orders,
     content:
-      "Commandes — La barre de recherche vous permet de trouver " +
-      "une commande par son numéro ou par le nom du client. " +
-      "Pratique quand un client appelle !",
-    action: goTo("/orders"),
+      "Commandes — Toutes vos commandes, quel que soit le canal. " +
+      "Cherchez par numéro de commande ou par nom de client dans la barre " +
+      "en haut : pratique quand un client appelle.",
   },
   {
-    selector: '[data-tour="orders-tabs"]',
+    navFor: adminRoutes.orders,
+    anchor: "orders-tabs",
     content:
       "Filtrez par statut en un clic : en attente, confirmées, " +
       "en préparation, prêtes, en livraison, livrées, terminées ou annulées. " +
@@ -90,31 +136,31 @@ export const TOUR_STEPS: StepType[] = [
 
   // ── Kitchen KDS ────────────────────────────────────────────────────
   {
-    selector: '[data-tour="kitchen-board"]',
-    highlightedSelectors: ['[data-tour="nav-orders-kitchen"]'],
+    route: adminRoutes.kitchen,
+    navFor: adminRoutes.kitchen,
     content:
       "Cuisine (KDS) — L'écran de votre cuisine ! " +
-      "4 colonnes Kanban : En attente → En cours → Prêt → Terminé. " +
-      "Chaque ticket affiche le n° de commande, les articles et un chrono. " +
-      "Filtrez par poste (entrées, grillades, desserts…) en haut. " +
-      "Et si vous activez l'impression dans les réglages de l'établissement, " +
+      "Trois colonnes qui suivent le service : En attente → En cours → Prêt. " +
+      "Chaque ticket affiche le n° de commande, les articles et un chrono, " +
+      "et vous filtrez par poste (entrées, grillades, desserts…) en haut. " +
+      "Les commandes terminées passent sur leur propre onglet. " +
+      "Activez l'impression dans les réglages de l'établissement et " +
       "chaque commande payée sort toute seule sur l'imprimante du poste.",
-    action: goTo("/orders/kitchen"),
   },
 
   // ── Products ───────────────────────────────────────────────────────
   {
-    selector: '[data-tour="products-header"]',
-    highlightedSelectors: ['[data-tour="nav-products"]'],
+    route: adminRoutes.products,
+    navFor: adminRoutes.products,
     content:
       "Menu & Produits — Le bouton « Ajouter un produit » ouvre un formulaire complet : " +
       "nom, description, prix, images, catégorie, options (suppléments, tailles, cuissons…), " +
       "planification horaire et intégrations Uber Eats/Deliveroo. " +
       "Deux onglets : Produits individuels et Menus/Formules.",
-    action: goTo("/products"),
   },
   {
-    selector: '[data-tour="products-filters"]',
+    navFor: adminRoutes.products,
+    anchor: "products-filters",
     content:
       "Filtres — Recherchez par nom, filtrez par catégorie, " +
       "statut (actif/inactif) ou source (manuel, Uber Eats, Deliveroo). " +
@@ -124,188 +170,244 @@ export const TOUR_STEPS: StepType[] = [
 
   // ── Categories ─────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-categories"]'],
+    route: adminRoutes.categories,
+    navFor: adminRoutes.categories,
     content:
       "Catégories — Organisez vos plats par famille : entrées, plats, desserts, boissons… " +
       "Chaque catégorie a un nom, une image, un statut (actif/inactif) et un slug. " +
       "Réordonnez-les avec les flèches haut/bas, modifiez ou supprimez en un clic.",
-    action: goTo("/categories"),
   },
 
   // ── Inventory ──────────────────────────────────────────────────────
   {
-    selector: '[data-tour="inventory-status"]',
-    highlightedSelectors: ['[data-tour="nav-inventory"]'],
+    route: adminRoutes.inventory,
+    navFor: adminRoutes.inventory,
     content:
-      "Inventaire — 4 cartes de résumé cliquables : En stock (vert), " +
+      "Inventaire — Quatre cartes de résumé cliquables : En stock (vert), " +
       "Stock faible (orange), Rupture (rouge), Non suivi (gris). " +
-      "Cliquez sur une carte pour filtrer instantanément la liste.",
-    action: goTo("/inventory"),
+      "Cliquez sur une carte pour filtrer la liste. " +
+      "Sur chaque produit : ajuster la quantité avec +/−, définir un seuil " +
+      "d'alerte, et activer la désactivation automatique — le produit " +
+      "disparaît du site dès que le stock atteint 0.",
   },
+  // ── Messages ───────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
+    route: adminRoutes.messages,
+    navFor: adminRoutes.messages,
     content:
-      "Pour chaque produit, vous pouvez : ajuster la quantité avec +/−, " +
-      "définir un seuil d'alerte de stock bas, activer la désactivation automatique " +
-      "(le produit disparaît du site quand le stock atteint 0) " +
-      "et activer/désactiver le suivi de stock.",
+      "Messages — Ce que vos clients vous écrivent depuis le formulaire de contact " +
+      "de votre site. Expéditeur, sujet, date et statut : cliquez sur une ligne " +
+      "pour lire le message en entier. " +
+      "La pastille dans le menu compte ceux que personne n'a encore ouverts.",
+  },
+
+  // ── Payments ───────────────────────────────────────────────────────
+  {
+    route: adminRoutes.payments,
+    navFor: adminRoutes.payments,
+    content:
+      "Paiements — Toutes vos transactions, filtrables par statut " +
+      "(réussi, en attente, échoué, remboursé) et par fournisseur. " +
+      "C'est ici que se fait un remboursement, total ou partiel, " +
+      "sur le moyen de paiement d'origine — Stripe, SumUp ou PayPal. " +
+      "Un paiement en espèces se rend au comptoir, pas depuis cet écran.",
   },
 
   // ── Promotions ─────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-promotions"]'],
+    route: adminRoutes.promotions,
+    navFor: adminRoutes.promotions,
     content:
       "Promotions — Deux types : Codes promo (le client saisit un code) " +
       "et Offres automatiques (appliquées sans code). " +
       "Pour chaque promo : nom, code, type de réduction (%, fixe, livraison offerte…), " +
       "période de validité, horaires, compteur d'utilisation " +
       "et un interrupteur pour activer/désactiver.",
-    action: goTo("/promotions"),
   },
 
   // ── Gamification ───────────────────────────────────────────────────
   {
-    selector: '[data-tour="games-tabs"]',
-    highlightedSelectors: ['[data-tour="nav-games"]'],
+    route: adminRoutes.games,
+    navFor: adminRoutes.games,
     content:
-      "Gamification — 4 onglets : Configuration (créez vos jeux : roue de la fortune " +
-      "ou carte à gratter, avec un curseur de taux de victoire de 0 à 100%), " +
-      "Codes QR (à imprimer sur vos tables), " +
-      "Prix (réductions, produits offerts, personnalisés) " +
-      "et Historique des parties jouées.",
-    action: goTo("/games"),
+      "Gamification — Cette page vous donne le pouls : parties jouées, victoires, " +
+      "scans de QR codes et lots à valider. " +
+      "Le reste se règle sur les pages juste en dessous dans le menu : " +
+      "Jeux & Lots (roue de la fortune ou carte à gratter, avec le curseur " +
+      "de ratio de victoire de 0 à 100 %), Codes QR à imprimer sur vos tables, " +
+      "Actions demandées au client, et Gagnants pour valider un lot au comptoir.",
   },
 
   // ── Email Marketing ────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-email"]'],
+    route: adminRoutes.email,
+    navFor: adminRoutes.email,
     content:
-      "Email Marketing — Tableau de bord avec KPIs (envois, ouvertures, clics). " +
+      "Email Marketing — Tableau de bord avec vos KPIs (envois, ouvertures, clics). " +
       "Sous-pages : Campagnes (créer/planifier), Modèles (éditeur visuel par blocs), " +
       "Abonnés (import CSV, détail client), Segments (groupes ciblés) " +
       "et Configuration (expéditeur, domaine, DKIM).",
-    action: goTo("/email"),
   },
 
   // ── CMS Pages ──────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-content-pages"]'],
+    route: adminRoutes.contentPages,
+    navFor: adminRoutes.contentPages,
     content:
       "Pages — Créez et éditez les pages de votre site : accueil, à propos, " +
       "mentions légales, CGV… Un éditeur visuel simple, " +
       "sans aucune ligne de code à écrire. Publiez ou dépubliez en un clic.",
-    action: goTo("/content/pages"),
   },
 
   // ── Blog ───────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-content-blog"]'],
+    route: adminRoutes.contentBlog,
+    navFor: adminRoutes.contentBlog,
     content:
       "Blog — Publiez des articles pour attirer du trafic : recettes, coulisses, événements. " +
-      "Éditeur riche avec images, et le mode Auto Blog qui génère " +
-      "du contenu automatiquement grâce à l'IA.",
-    action: goTo("/content/blog"),
+      "L'éditeur accepte le texte enrichi et les images. " +
+      "L'option Auto Blog, qui rédige les articles pour vous, " +
+      "fait partie des abonnements — l'écran vous dira si le vôtre l'inclut.",
   },
 
   // ── Media Library ──────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-content-media"]'],
+    route: adminRoutes.contentMedia,
+    navFor: adminRoutes.contentMedia,
     content:
       "Médiathèque — Toutes vos images au même endroit ! " +
       "Photos de plats, logo, bannières… Glissez-déposez pour ajouter. " +
-      "Les images sont stockées sur AWS S3 et optimisées automatiquement.",
-    action: goTo("/content/media"),
+      "Les fichiers sont stockés sur votre espace AWS S3 privé, " +
+      "et servis à vos visiteurs par votre site.",
+  },
+
+  // ── Design ─────────────────────────────────────────────────────────
+  {
+    route: adminRoutes.design,
+    navFor: adminRoutes.design,
+    content:
+      "Design — Trois onglets : Couleurs, Typographie et Logo. " +
+      "Les couleurs et la typographie ne s'appliquent pas encore à votre " +
+      "site public : l'enregistrement y est désactivé, et l'écran vous " +
+      "l'explique sur place. Votre site affiche la palette et les polices " +
+      "de son modèle de design, choisi à l'installation. Le logo, lui, se " +
+      "règle dans Contenu › Pages, sur « Layout du storefront ».",
   },
 
   // ── Stores ─────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-stores"]'],
+    route: adminRoutes.stores,
+    navFor: adminRoutes.stores,
     content:
       "Établissements — Créez et gérez un ou plusieurs restaurants. " +
       "Pour chaque établissement : nom, adresse (avec autocomplétion), " +
       "téléphone, email, statut. Sélection et actions en masse. " +
       "Basculez entre vos restaurants avec le sélecteur en haut de page.",
-    action: goTo("/stores"),
   },
 
   // ── Team ───────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-team"]'],
+    route: adminRoutes.team,
+    navFor: adminRoutes.team,
     content:
-      "Équipe & Rôles — Invitez vos collaborateurs par email et assignez un rôle : " +
-      "admin, manager, cuisinier, serveur… Chacun a des permissions adaptées. " +
-      "Filtrez par nom, statut (actif, en attente) ou rôle. " +
-      "Modifiez les accès, renvoyez une invitation ou désactivez un membre.",
-    action: goTo("/team"),
+      "Équipe & Rôles — Invitez vos collaborateurs par email et donnez à chacun " +
+      "son rôle : Manager, Cuisine, Serveur ou Livreur. " +
+      "Chaque rôle ouvre les écrans qui le concernent, et rien d'autre. " +
+      "Filtrez par nom, statut (actif, en attente) ou rôle, " +
+      "renvoyez une invitation ou désactivez un membre.",
   },
 
   // ── Languages ──────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-languages"]'],
+    route: adminRoutes.languages,
+    navFor: adminRoutes.languages,
     content:
       "Langues — Ajoutez autant de langues que vous voulez ! " +
       "Tableau avec drapeau, code, nom et nom natif. " +
       "Définissez une langue par défaut, activez/désactivez chaque langue. " +
-      "La traduction automatique par IA traduit toute votre carte : ~0.001€ par produit.",
-    action: goTo("/languages"),
+      "La traduction automatique par IA traduit toute votre carte, " +
+      "pour environ 0,001 $ par produit.",
   },
 
   // ── Subscription ───────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-subscription"]'],
+    route: adminRoutes.subscription,
+    navFor: adminRoutes.subscription,
     content:
       "Abonnement — Votre formule en un coup d'œil. " +
       "Consultez votre plan actuel, gérez votre facturation, " +
       "découvrez les fonctionnalités incluses et les options de mise à niveau.",
-    action: goTo("/subscription"),
   },
 
   // ── Settings ───────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-settings"]'],
+    route: adminRoutes.settings,
+    navFor: adminRoutes.settings,
     content:
       "Paramètres — Plusieurs onglets de configuration : " +
-      "informations du restaurant, moyens de paiement " +
-      "(Stripe, SumUp, PayPal, espèces — Square arrive), options de livraison, " +
-      "horaires et intégrations. Votre logo, lui, se règle dans Contenu, " +
-      "sur la page « Layout du storefront » : c'est de là que votre site " +
-      "et cet écran tirent leur logo. L'écran Design propose aussi les " +
-      "couleurs et la typographie, mais elles ne s'appliquent pas encore " +
-      "à votre site — il vous le rappelle sur place.",
-    action: goTo("/settings"),
+      "informations du restaurant, horaires, options de livraison, " +
+      "moyens de paiement (Stripe, SumUp, PayPal, espèces — Square arrive) " +
+      "et intégrations. Votre logo se règle dans Contenu › Pages, sur " +
+      "« Layout du storefront » : c'est de là que votre site, l'icône de " +
+      "l'onglet et cet écran tirent tous le leur.",
   },
 
   // ── System ─────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-system"]'],
+    route: adminRoutes.system,
+    navFor: adminRoutes.system,
     content:
       "Système & Mises à jour — Le tableau de bord technique : " +
       "état de votre site, version actuelle, mises à jour disponibles " +
       "et informations système. Réservé aux administrateurs.",
-    action: goTo("/system"),
   },
 
   // ── End ────────────────────────────────────────────────────────────
   {
-    selector: '[data-tour="sidebar-brand"]',
+    route: adminRoutes.dashboard,
+    anchor: "sidebar-brand",
     content:
-      "La visite est terminée ! Vous connaissez maintenant " +
-      "chaque page et chaque fonctionnalité de votre tableau de bord. " +
-      "Commencez par ajouter vos produits, puis explorez à votre rythme. " +
-      'Relancez cette visite à tout moment via "Revoir la visite" en bas du menu.',
+      "La visite est terminée ! Vous connaissez maintenant les pages " +
+      "auxquelles votre compte donne accès — un cuisinier et un livreur en " +
+      "voient moins qu'un propriétaire, c'est voulu. " +
+      "Explorez à votre rythme, et relancez cette visite quand vous voulez " +
+      'avec "Revoir la visite", en bas du menu.',
     position: "right",
-    action: goTo("/dashboard"),
   },
 ]
+
+// ─── Compilation ────────────────────────────────────────────────────
+
+const at = (anchor: string): string => `[data-tour="${anchor}"]`
+
+/** The single element a step spotlights. */
+export function spotlightOf(spec: TourStepSpec): string {
+  if (spec.anchor) return at(spec.anchor)
+  if (spec.navFor) return at(navTourId(spec.navFor))
+  throw new Error("a tour step must spotlight either an anchor or a nav entry")
+}
+
+function compile(spec: TourStepSpec): StepType {
+  return {
+    selector: spotlightOf(spec),
+    content: spec.content,
+    ...(spec.position ? { position: spec.position } : {}),
+    ...(spec.route ? { action: goTo(spec.route) } : {}),
+  }
+}
+
+export const TOUR_STEPS: StepType[] = TOUR_STEP_SPECS.map(compile)
+
+/**
+ * The steps a given role can actually be shown.
+ *
+ * The sidebar hides an entry whose `requiredPermission` the role lacks
+ * (`app-sidebar.tsx`'s `canSeeEntry`), and every navigating step spotlights a
+ * sidebar entry — so for a `kitchen` or `delivery` account, 18 of the 21
+ * entries are absent and the tour would spend most of itself lighting up
+ * nothing. Invitations hand out exactly those roles (`team-page.tsx`), so this
+ * is not a hypothetical audience.
+ */
+export function tourStepsFor(canSee: (href: string) => boolean): StepType[] {
+  return TOUR_STEP_SPECS.filter((spec) => !spec.navFor || canSee(spec.navFor)).map(compile)
+}

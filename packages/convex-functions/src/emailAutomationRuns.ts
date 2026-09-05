@@ -24,19 +24,32 @@ export const stepsSentTo = {
     occurrenceKey: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any): Promise<string[]> => {
+    /**
+     * Read exactly this subscriber's firing, not the automation's whole history.
+     *
+     * This narrowed on `automationId` alone and matched `subscriberId` and
+     * `occurrenceKey` in JavaScript, so answering "which steps has Camille had
+     * for order #4012" read every run the automation had ever recorded, for
+     * every subscriber who ever entered it — and the dispatcher asks it once
+     * per subscriber per step. A store with 500 subscribers in a four-step
+     * sequence read 2,000 documents to return four strings, then did it again
+     * for the next subscriber. Convex aborts a transaction past 16,384
+     * documents, which is a two-year-old mailing list.
+     *
+     * The write path at `record` below has always used this index. The read is
+     * now on the same one: three equalities leave only the steps of this one
+     * firing, so the cost is the length of the sequence and nothing else.
+     */
     const runs = await ctx.db
       .query("emailAutomationRuns")
-      .withIndex("by_automationId", (q: any) =>
-        q.eq("automationId", args.automationId)
+      .withIndex("by_automation_subscriber_occurrence_step", (q: any) =>
+        q
+          .eq("automationId", args.automationId)
+          .eq("subscriberId", args.subscriberId)
+          .eq("occurrenceKey", args.occurrenceKey)
       )
       .collect()
-    return runs
-      .filter(
-        (r: any) =>
-          r.subscriberId === args.subscriberId &&
-          r.occurrenceKey === args.occurrenceKey
-      )
-      .map((r: any) => r.stepId)
+    return runs.map((r: any) => r.stepId)
   },
 }
 
@@ -62,12 +75,12 @@ export const record = {
     // send finishes.
     const existing = await ctx.db
       .query("emailAutomationRuns")
-      .withIndex("by_automation_subscriber_step", (q: any) =>
+      .withIndex("by_automation_subscriber_occurrence_step", (q: any) =>
         q
           .eq("automationId", args.automationId)
           .eq("subscriberId", args.subscriberId)
-          .eq("stepId", args.stepId)
           .eq("occurrenceKey", args.occurrenceKey)
+          .eq("stepId", args.stepId)
       )
       .first()
     if (existing) return existing._id

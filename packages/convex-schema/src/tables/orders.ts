@@ -156,6 +156,18 @@ export const ordersTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_storeId_createdAt", ["storeId", "createdAt"])
+  /**
+   * One status tab of `/dashboard/orders`, in the order the screen prints.
+   *
+   * `by_storeId_status` carries no timestamp, so `.order("desc")` on it falls
+   * back to `_creationTime` — which is when the row was written, not when the
+   * order was placed. A platform webhook arriving late writes a row whose
+   * `createdAt` is half an hour old, so the "Toutes" tab (ordered by
+   * `createdAt`) and a status tab disagreed about which order is newest, and
+   * the Date column the table prints was not monotonic. `kitchenTickets` has
+   * carried the same three-field shape since #137, for the same reason.
+   */
+  .index("by_storeId_status_createdAt", ["storeId", "status", "createdAt"])
   .index("by_customerId", ["customerId"])
   .index("by_orderNumber", ["orderNumber"])
   .index("by_source", ["source"])

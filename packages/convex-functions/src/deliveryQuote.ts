@@ -27,6 +27,8 @@ export interface StoredQuote {
   consumedByOrderId?: string
 }
 
+import { RefusalError } from "./refusal"
+
 /** Where the order is actually going. */
 export interface Dropoff {
   latitude?: number
@@ -41,12 +43,11 @@ export type QuoteRejectionReason =
   | "address_not_located"
   | "address_mismatch"
 
-export class QuoteRejectedError extends Error {
+export class QuoteRejectedError extends RefusalError<QuoteRejectionReason> {
   readonly reason: QuoteRejectionReason
 
   constructor(reason: QuoteRejectionReason, message: string) {
-    super(message)
-    this.name = "QuoteRejectedError"
+    super("QuoteRejectedError", reason, message)
     this.reason = reason
   }
 }

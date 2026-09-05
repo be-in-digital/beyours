@@ -20,6 +20,7 @@
  * storefront could one day answer the same question with the same code.
  */
 
+import { RefusalError } from "./refusal"
 import { isWithinWindow, restaurantClock } from "./timeWindow"
 
 export { restaurantClock }
@@ -96,7 +97,15 @@ export type LineRejectionReason =
   | "missing_required_option"
   | "too_many_choices"
 
-export class LineRejectedError extends Error {
+/**
+ * A line the kitchen cannot cook, refused in a way the diner can act on.
+ *
+ * `RefusalError` is what carries the sentence to the browser — see `refusal.ts`
+ * for why a plain `Error` never arrived. `productName` rides along in `data` as
+ * well as on the class, so a screen can name the dish without parsing it back
+ * out of the sentence.
+ */
+export class LineRejectedError extends RefusalError<LineRejectionReason> {
   readonly reason: LineRejectionReason
   /** The dish the customer has to act on, for a message that names it. */
   readonly productName: string
@@ -106,8 +115,7 @@ export class LineRejectedError extends Error {
     productName: string,
     message: string
   ) {
-    super(message)
-    this.name = "LineRejectedError"
+    super("LineRejectedError", reason, message, { productName })
     this.reason = reason
     this.productName = productName
   }

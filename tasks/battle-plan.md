@@ -450,8 +450,8 @@ a customer can see. Two findings nobody had carded outranked most of the list.
 > alerts, and the three named metrics exist — see
 > `tasks/sales-readiness-backlog.md` → LAUNCH-11 for what was decided and what
 > shipped for each. **`apps/site` was red on `main` independently of this
-> batch, and is fixed here:** `checkoutReferralIntegrity.test.ts` failed 25
-> cases because every one called the plan #350 closed, leaving the referral
-> guards unexercised. The suite now buys the open plan with the founders offer
-> taken out of the fixture — without that second half it would have measured
-> the offer rather than the guards. 41 files / 644 tests passing.
+> batch:** `checkoutReferralIntegrity.test.ts` failed 25 cases because every one
+> called the plan #350 closed, leaving the referral guards unexercised. This
+> branch diagnosed it and carried its own repair for one commit; #355 landed
+> the same two-part fix on `main` first, so the merge takes that one and this
+> branch no longer touches the file. 41 files / 644 tests passing.
