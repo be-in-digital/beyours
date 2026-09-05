@@ -1,9 +1,10 @@
 /**
- * The sidebar's visibility rule, against the server's own two gates.
+ * The nav gate, against the server's own two gates.
  *
  * `nav-permission-surface.test.ts` answers "does each entry name the
  * permission its screen enforces". This file answers the other half: given a
- * role and a module selection, does the sidebar draw exactly what the server
+ * role and a module selection, does `canRoleSeeNavHref` — the one rule the
+ * sidebar and the onboarding tour both ask — admit exactly what the server
  * would serve?
  */
 
@@ -11,8 +12,26 @@ import { describe, it, expect } from "vitest"
 import { Role, hasPermission, type Permission } from "@be-in-digital/core"
 import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
 
-import { navGroups, isCollapsible, type NavEntry } from "../config/nav-config"
-import { canSeeNavEntry, visibleNavGroups } from "../lib/nav-visibility"
+import {
+  navGroups,
+  isCollapsible,
+  canRoleSeeNavHref,
+  type NavEntry,
+  type NavGroup,
+} from "../config/nav-config"
+
+/** The sidebar's own question, asked the way the sidebar asks it. */
+const canSeeNavEntry = (role: Role, modules: string[], entry: NavEntry): boolean =>
+  canRoleSeeNavHref(role, isCollapsible(entry) ? entry.basePath : entry.href, modules)
+
+/** What the sidebar draws: entries filtered, then groups that emptied dropped. */
+const visibleNavGroups = (role: Role, modules: string[]): NavGroup[] =>
+  navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((entry) => canSeeNavEntry(role, modules, entry)),
+    }))
+    .filter((group) => group.items.length > 0)
 
 const ENTRIES: NavEntry[] = navGroups.flatMap((g) => g.items)
 const entry = (label: string): NavEntry => {

@@ -200,10 +200,7 @@ export function KitchenPage({ headerAction }: KitchenPageProps) {
         {/* Active kanban */}
         <TabsContent value="active" className="mt-4">
           {!ticketsByStatus ? (
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              data-tour="kitchen-board"
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="space-y-4">
                   <Skeleton className="h-10 w-full" />
@@ -217,10 +214,7 @@ export function KitchenPage({ headerAction }: KitchenPageProps) {
             // (`components/onboarding/tour-steps.ts`). The attribute existed
             // only on the packaged board nothing rendered, so the step has been
             // anchorless on the live screen; it is on the live screen now.
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              data-tour="kitchen-board"
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {ACTIVE_STATUSES.map((status) => (
                 <div key={status} className="space-y-4">
                   {/* Column header */}

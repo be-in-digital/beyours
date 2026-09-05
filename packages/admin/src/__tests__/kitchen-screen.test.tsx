@@ -1,12 +1,16 @@
 /**
  * The KDS screen's own behaviours, after it was lifted out of the two apps.
  *
- * A lift is a merge, and a merge silently picks a winner. Three things here
+ * A lift is a merge, and a merge silently picks a winner. Two things here
  * existed in ONE of the two copies and would have been deleted by taking the
- * other whole: the timer's 24h cap (packaged copy only), the guided tour's
- * anchor (packaged copy only), and the completed/print/sound/order-mode
- * machinery (app copy only). This file holds all three, so the next person to
- * reconcile these files finds out from a test rather than from a kitchen.
+ * other whole: the timer's 24h cap (packaged copy only) and the
+ * completed/print/sound/order-mode machinery (app copy only). This file holds
+ * both, so the next person to reconcile these files finds out from a test
+ * rather than from a kitchen.
+ *
+ * The tour's KDS step is NOT here: `onboarding-tour.test.ts` owns it, and its
+ * steps anchor on the sidebar entry rather than on anything this screen
+ * renders — a navigating step measures before the page paints.
  */
 
 import { describe, it, expect, beforeAll, afterEach } from "vitest"
@@ -17,7 +21,6 @@ import path from "node:path"
 
 import { TicketTimer } from "../pages/kitchen/ticket-timer"
 import { StationFilter } from "../pages/kitchen/station-filter"
-import { TOUR_STEPS } from "../components/onboarding/tour-steps"
 
 const KITCHEN = path.join(__dirname, "../pages/kitchen")
 
@@ -95,31 +98,6 @@ describe("the station filter", () => {
       <StationFilter stations={["grillades"]} selectedStation={null} onStationChange={() => {}} />
     )
     expect(container.querySelector("button")?.textContent).toBe("Toutes les stationsActif")
-  })
-})
-
-/** `@reactour/tour` types `selector` as `string | Element`; ours are strings. */
-const kdsStep = () =>
-  TOUR_STEPS.find(
-    (s) => typeof s.selector === "string" && s.selector.includes("kitchen-board")
-  )
-
-describe("the guided tour still has something to point at", () => {
-  it("anchors its KDS step to an attribute the screen renders", () => {
-    expect(kdsStep()).toBeDefined()
-    const page = fs.readFileSync(path.join(KITCHEN, "kitchen-page.tsx"), "utf8")
-    // Both boards — the skeleton and the loaded one — or the step loses its
-    // anchor for as long as the tickets are in flight.
-    expect(page.match(/data-tour="kitchen-board"/g)).toHaveLength(2)
-  })
-
-  it("describes the board this screen actually draws", () => {
-    const step = kdsStep()!
-    // Three active columns and a Terminées tab — `getByStore` is bounded to the
-    // three live statuses and no longer returns finished tickets, so a fourth
-    // column could only ever render empty.
-    expect(step.content).toContain("3 colonnes")
-    expect(step.content).not.toContain("4 colonnes")
   })
 })
 

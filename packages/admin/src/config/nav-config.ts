@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
+import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
 import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
@@ -103,21 +104,41 @@ export function navTourIds(): string[] {
 }
 
 /**
- * Whether `role` is shown the entry that leads to `href`.
+ * Whether this operator is shown the entry that leads to `href`.
  *
  * The same question `app-sidebar.tsx`'s `canSeeEntry` answers, asked by href
  * rather than by entry, because the onboarding tour knows a route and needs to
  * find out whether there is a menu item to point at. A `kitchen` account is
  * shown 3 of the 21 entries; without this the tour would spend most of itself
  * spotlighting elements that account never renders.
+ *
+ * BOTH of the server's gates, in the server's order
+ * (`convex-functions/src/auth.ts`, `requireStorePermission`): the RBAC role
+ * check, then `profileAllowsPermission`, which narrows the role to the modules
+ * the owner actually ticked in the invite dialog. Running only the first is
+ * what showed a member every entry their role permits and let the server refuse
+ * half of them with `module_denied` — a link that opens an error page is worse
+ * than no link, because the operator cannot tell a missing right from a broken
+ * product.
+ *
+ * `profileAllowsPermission` is imported rather than reimplemented: it is the
+ * function the server calls, and a second copy of a policy is a second copy to
+ * drift. It reads an empty module list as unrestricted, which is what every
+ * existing deployment carries.
  */
-export function canRoleSeeNavHref(role: Role, href: string): boolean {
+export function canRoleSeeNavHref(
+  role: Role,
+  href: string,
+  modules: string[] = []
+): boolean {
   for (const group of navGroups) {
     for (const entry of group.items) {
       const entryHref = isCollapsible(entry) ? entry.basePath : entry.href
       if (entryHref !== href) continue
       const permission = entry.requiredPermission
-      return permission ? hasPermission(role, permission as Permission) : true
+      if (!permission) return true
+      if (!hasPermission(role, permission as Permission)) return false
+      return profileAllowsPermission({ role, permissions: modules }, permission)
     }
   }
   return false
