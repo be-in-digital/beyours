@@ -43,6 +43,7 @@ import {
   emailAutomationsTable,
   emailAutomationRunsTable,
   rateLimitsTable,
+  prizeIssuanceTable,
   emailEventsTable,
   emailConfigTable,
   cmsPagesTable,
@@ -132,6 +133,7 @@ export default defineSchema({
   emailAutomations: emailAutomationsTable,
   emailAutomationRuns: emailAutomationRunsTable,
   rateLimits: rateLimitsTable,
+  prizeIssuance: prizeIssuanceTable,
   emailEvents: emailEventsTable,
   emailConfig: emailConfigTable,
   // CMS block-based system
