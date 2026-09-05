@@ -15,22 +15,35 @@ import * as defs from "@be-in-digital/convex-functions/privacy";
  * a data-subject request spans every establishment the caller administers, and
  * three of the tables it has to reach — `customerAddresses`, `rateLimits`,
  * `userProfiles` — have no `storeId` at all. There is no single store to scope
- * to. `privacyScope` is the guard instead: it requires `customers:manage`
- * through both gates (role, then the modules on the profile) and returns the
- * establishments the caller may act on, which the report then names.
+ * to. `requirePrivacyScope` is the guard instead: it throws unless the caller
+ * holds `customers:manage`, and returns the establishments they may act on,
+ * which the report then names.
+ *
+ * WHY THE GUARD IS CALLED HERE rather than left inside the shared handler: an
+ * exposed function should say how it is authorised at the point it is exposed.
+ * The policy still lives in one place — this is a call to it, not a second
+ * copy — and the scope it returns is passed on, so nothing is resolved twice.
  */
 
-// @guarded-inline: defs.previewErasure calls privacyScope, which requires
-// `customers:manage` and throws `denied("permission_denied")` otherwise.
+// @guarded-inline: requirePrivacyScope throws `denied("permission_denied")`
+// unless the caller holds `customers:manage`.
 export const previewErasure = query({
   args: defs.previewErasure.args,
-  handler: (ctx, args) => defs.previewErasure.handler(ctx, args),
+  handler: async (ctx, args) => {
+    const scope = await defs.requirePrivacyScope(ctx);
+    return defs.previewErasure.handler(ctx, args, scope);
+  },
 });
 
-// @guarded-inline: defs.exportDataSubject calls privacyScope.
+// @guarded-inline: requirePrivacyScope throws unless the caller holds
+// `customers:manage`. An export is a full dossier on one person, so it is
+// gated exactly as hard as the erasure.
 export const exportDataSubject = query({
   args: defs.exportDataSubject.args,
-  handler: (ctx, args) => defs.exportDataSubject.handler(ctx, args),
+  handler: async (ctx, args) => {
+    const scope = await defs.requirePrivacyScope(ctx);
+    return defs.exportDataSubject.handler(ctx, args, scope);
+  },
 });
 
 /**
@@ -42,10 +55,14 @@ export const exportDataSubject = query({
  * `complete`, and the screen has to render it: a partial erasure reported as
  * finished is the failure the whole module is built to avoid.
  */
+// @guarded-inline: requirePrivacyScope throws unless the caller holds
+// `customers:manage`, and bounds the walk to the establishments they
+// administer.
 export const eraseDataSubject = mutation({
   args: defs.eraseDataSubject.args,
   handler: async (ctx, args) => {
-    const result = await defs.eraseDataSubject.handler(ctx, args);
+    const scope = await defs.requirePrivacyScope(ctx);
+    const result = await defs.eraseDataSubject.handler(ctx, args, scope);
     if (!result.complete) {
       await ctx.scheduler.runAfter(0, internal.privacy.continueErasure, {
         email: args.email,
@@ -82,10 +99,15 @@ export const continueErasure = internalMutation({
   },
 });
 
-// @guarded-inline: defs.setRetention calls privacyScope.
+// @guarded-inline: requirePrivacyScope throws unless the caller holds
+// `customers:manage`. The window is the controller's legal position, not a
+// display preference, so it is not `settings:write`.
 export const setRetention = mutation({
   args: defs.setRetention.args,
-  handler: (ctx, args) => defs.setRetention.handler(ctx, args),
+  handler: async (ctx, args) => {
+    const scope = await defs.requirePrivacyScope(ctx);
+    return defs.setRetention.handler(ctx, args, scope);
+  },
 });
 
 // @public-by-design: the retention window is quoted to the diner in the game's

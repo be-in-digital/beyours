@@ -10,6 +10,7 @@
  * and that nothing gets past it until it is ticked.
  */
 
+import type React from "react"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, test, vi } from "vitest"
@@ -31,7 +32,8 @@ vi.mock("framer-motion", async () => {
         whileTap: _w,
         ...rest
       } = props
-      return react.createElement(tag, rest, (rest as { children?: unknown }).children)
+      const { children, ...attrs } = rest as { children?: React.ReactNode }
+      return react.createElement(tag, attrs, children)
     }
   return {
     motion: new Proxy({}, { get: (_t, tag: string) => passthrough(tag) }),
@@ -48,7 +50,11 @@ afterEach(() => {
   container = null
 })
 
-function render(consentAccepted: boolean, onConsentChange = () => {}, onStart = () => {}) {
+function render(
+  consentAccepted: boolean,
+  onConsentChange: (accepted: boolean) => void = () => {},
+  onStart: () => void = () => {}
+) {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -113,7 +119,9 @@ describe("the consent gate on the game's welcome screen", () => {
     // The play mutation is fired from the flow, several screens later, so the
     // answer has to leave this component or it is lost by the time it matters.
     const changes: boolean[] = []
-    const dom = render(false, (next) => changes.push(next))
+    const dom = render(false, (next) => {
+      changes.push(next)
+    })
     act(() => {
       const box = dom.querySelector<HTMLInputElement>('input[type="checkbox"]')!
       box.click()

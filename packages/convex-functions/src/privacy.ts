@@ -227,9 +227,16 @@ export const READ_SCAN_BUDGET = 2_048
  * so theirs is. The report carries the list, so the answer given to the diner
  * says which establishments were covered instead of implying all of them were.
  */
-export async function privacyScope(
+/** Who the caller is, and what they may reach. */
+export interface PrivacyScope {
+  storeIds: string[]
+  everyStore: boolean
+  actor: string
+}
+
+export async function requirePrivacyScope(
   ctx: any
-): Promise<{ storeIds: string[]; everyStore: boolean; actor: string }> {
+): Promise<PrivacyScope> {
   const user = await getAuthUser(ctx)
   const role = user.role as Role
 
@@ -1165,10 +1172,10 @@ export const previewErasure = {
   args: subjectArgs,
   handler: async (
     ctx: any,
-    args: { email?: string; fingerprint?: string }
+    args: { email?: string; fingerprint?: string },
+    scope: PrivacyScope
   ): Promise<PrivacyReport> => {
     const subject = assertSubject(args)
-    const scope = await privacyScope(ctx)
     const { state, complete } = await privacyPass(ctx, {
       subject,
       storeIds: scope.storeIds,
@@ -1193,10 +1200,10 @@ export const exportDataSubject = {
   args: subjectArgs,
   handler: async (
     ctx: any,
-    args: { email?: string; fingerprint?: string }
+    args: { email?: string; fingerprint?: string },
+    scope: PrivacyScope
   ): Promise<PrivacyExport> => {
     const subject = assertSubject(args)
-    const scope = await privacyScope(ctx)
     const now = Date.now()
     const { state, complete, records } = await privacyPass(ctx, {
       subject,
@@ -1246,10 +1253,10 @@ export const eraseDataSubject = {
   args: subjectArgs,
   handler: async (
     ctx: any,
-    args: { email?: string; fingerprint?: string }
+    args: { email?: string; fingerprint?: string },
+    scope: PrivacyScope
   ): Promise<ErasePassResult> => {
     const subject = assertSubject(args)
-    const scope = await privacyScope(ctx)
     return await erasePassWithScope(ctx, {
       subject,
       scope,
@@ -1272,7 +1279,7 @@ export interface ErasePassResult {
  * The continuation of an erasure, for the scheduler.
  *
  * INTERNAL, AND UNAUTHENTICATED BY NECESSITY. A scheduled job runs with no
- * identity, so `privacyScope` cannot run here — it would refuse itself. The
+ * identity, so `requirePrivacyScope` cannot run here — it would refuse itself. The
  * scope the first pass computed is carried instead, which is why this must
  * stay internal: it takes the establishments to act on as an argument, and a
  * public function that did that would let any caller name any establishment.
@@ -1368,9 +1375,9 @@ export const setRetention = {
   },
   handler: async (
     ctx: any,
-    args: { customerDataDays: number; enabled: boolean }
+    args: { customerDataDays: number; enabled: boolean },
+    scope: PrivacyScope
   ): Promise<{ customerDataDays: number; enabled: boolean }> => {
-    const scope = await privacyScope(ctx)
     // A window of a month is already aggressive for a restaurant and ten years
     // is the accounting ceiling; outside that range the number is a typo, and
     // a typo here deletes a business's customer history tonight.
