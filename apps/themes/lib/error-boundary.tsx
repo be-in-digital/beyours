@@ -52,7 +52,11 @@ export function classifyBoundaryError(error: Error): {
   shouldReport: boolean
 } {
   const denial = convexErrorPayload(error)
-  const denialMessage = denial ? (DENIALS[denial.code] ?? denial.message) : null
+  // `?? null` rather than letting `undefined` through: `DENIALS[code]` and
+  // `payload.message` are both optional, so a refusal carrying an unknown code
+  // and no message of its own has nothing to display. That case is reported and
+  // shown as a crash — which is honest, since nothing here can say what it was.
+  const denialMessage = denial ? (DENIALS[denial.code] ?? denial.message ?? null) : null
 
   // A refusal is an answer, not an incident.
   return { denialMessage, shouldReport: denialMessage === null }

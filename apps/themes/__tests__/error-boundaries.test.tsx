@@ -95,6 +95,20 @@ describe("classifying what arrived at the boundary", () => {
     })
   })
 
+  it("treats a refusal with nothing to display as a crash, rather than showing 'undefined'", () => {
+    // Both `DENIALS[code]` and the payload's own `message` are optional. When
+    // neither is there the boundary has nothing to tell the visitor, so it
+    // reports and shows the crash screen instead of rendering an empty panel.
+    const mute = Object.assign(new Error("Server Error"), {
+      data: { code: "unheard_of" },
+    })
+
+    expect(classifyBoundaryError(mute)).toEqual({
+      denialMessage: null,
+      shouldReport: true,
+    })
+  })
+
   it("falls back to the payload's own message for a code it has no copy for", () => {
     const unknown = Object.assign(new Error("Server Error"), {
       data: { code: "quota_exhausted", message: "Quota de traduction épuisé." },
