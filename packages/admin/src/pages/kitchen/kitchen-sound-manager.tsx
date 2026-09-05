@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import { useAdminApiStore } from "../../stores/admin-api-store"
 
 interface SoundChannelConfig {
   enabled: boolean
@@ -11,7 +10,7 @@ interface SoundChannelConfig {
 }
 
 interface KitchenSoundManagerProps {
-  storeId: Id<"stores">
+  storeId: string
   soundConfig: {
     newTicket: SoundChannelConfig
     overdue: SoundChannelConfig
@@ -49,6 +48,7 @@ export function KitchenSoundManager({
   soundConfig,
   ticketCount,
 }: KitchenSoundManagerProps) {
+  const { api } = useAdminApiStore()
   const audioCtxRef = useRef<AudioContext | null>(null)
   const [audioReady, setAudioReady] = useState(false)
 

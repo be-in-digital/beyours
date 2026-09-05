@@ -9,6 +9,7 @@
  */
 
 import { v } from "convex/values"
+import { MAX_EMAILS_PER_WEEK } from "./campaignDelivery"
 import { clampPageSize } from "./pagination"
 
 const eventTypeValidator = v.union(
@@ -114,8 +115,16 @@ export const alreadySentTo = {
  * The only consumer compares the count against `maxEmailsPerWeek`, so counting
  * past that cap buys nothing and costs a document per row. The caller passes
  * its own cap; this is the ceiling applied when it does not.
+ *
+ * It is `MAX_EMAILS_PER_WEEK` and not a number of its own, because saturating
+ * the count is only safe while the count can still reach the cap it is compared
+ * against. At 50 it could not: the settings screen offers up to 100, so a store
+ * set anywhere from 51 upward counted 50, `50 < 60` is true, and a subscriber
+ * with five hundred sends behind them was sent another — every batch, with the
+ * anti-spam promise in the settings screen reading as enforced throughout.
+ * Tying the two to one constant is what stops them drifting apart again.
  */
-export const DEFAULT_SENT_COUNT_LIMIT = 50
+export const DEFAULT_SENT_COUNT_LIMIT = MAX_EMAILS_PER_WEEK
 
 export const sentCountsSince = {
   args: {
@@ -157,7 +166,7 @@ export const sentCountsSince = {
     const limit = clampPageSize(
       args.countLimit,
       DEFAULT_SENT_COUNT_LIMIT,
-      DEFAULT_SENT_COUNT_LIMIT
+      MAX_EMAILS_PER_WEEK
     )
     const counts: Array<{ subscriberId: string; count: number }> = []
     for (const subscriberId of args.subscriberIds) {
