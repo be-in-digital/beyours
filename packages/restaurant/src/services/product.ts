@@ -12,6 +12,7 @@ import {
   type ResolvedAllergen,
   type AllergenLocale,
 } from '@be-in-digital/core/allergens'
+import { isWithinWindow } from '@be-in-digital/convex-schema'
 import type { ProductDoc, ProductFilters, ProductSortBy, CartSelectedOption } from '../types'
 
 /**
@@ -24,8 +25,12 @@ export const calculateProductPrice = (basePrice: number, options: CartSelectedOp
 
 /**
  * Check if product is available
+ *
+ * `timeZone` is the establishment's — see `isProductScheduledNow`. Without it
+ * the serving window is read on the visitor's own clock, which is how a diner
+ * abroad was shown a dish the kitchen would refuse.
  */
-export const isProductAvailable = (product: ProductDoc): boolean => {
+export const isProductAvailable = (product: ProductDoc, timeZone?: string): boolean => {
   // Check if active
   if (!product.isActive) return false
 
@@ -33,33 +38,46 @@ export const isProductAvailable = (product: ProductDoc): boolean => {
   if (product.stock?.tracked && product.stock.quantity <= 0) return false
 
   // Check scheduling
-  if (product.scheduling && !isProductScheduledNow(product)) return false
+  if (product.scheduling && !isProductScheduledNow(product, new Date(), timeZone)) return false
 
   return true
 }
 
 /**
  * Check if product is available according to scheduling
+ *
+ * WHY THIS DELEGATES: the menu and `orders.create` used to disagree about the
+ * same dish. This function read `now.getDay()` and `now.getHours()` on the
+ * *visitor's* clock and compared `"HH:MM"` strings with no wrap, so a
+ * 22:00–02:00 late menu was an empty set — `currentTime > availableUntil` is
+ * true from 02:01 until midnight — and the dish was greyed out for every hour
+ * it was actually being served. The mutation, meanwhile, handled the
+ * midnight crossing and read the restaurant's timezone, so a diner abroad saw a
+ * dish, added it, and was refused at payment.
+ *
+ * One implementation now, in `convex-schema` because it is the only package
+ * both the storefront and the order mutation can import. Two that agree today
+ * is what produced this.
+ *
+ * `timeZone` is `globalSettings.timezone`. Absent, `isWithinWindow` falls back
+ * to UTC, which is what the server does when the setting is unwritten.
  */
-export const isProductScheduledNow = (product: ProductDoc, now: Date = new Date()): boolean => {
+export const isProductScheduledNow = (
+  product: ProductDoc,
+  now: Date = new Date(),
+  timeZone?: string
+): boolean => {
   if (!product.scheduling) return true
 
-  const currentDay = now.getDay()
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-  // Check day restriction
-  if (product.scheduling.availableDays && product.scheduling.availableDays.length > 0) {
-    if (!product.scheduling.availableDays.includes(currentDay)) {
-      return false
-    }
-  }
-
-  // Check time restriction
-  const { availableFrom, availableUntil } = product.scheduling
-  if (availableFrom && currentTime < availableFrom) return false
-  if (availableUntil && currentTime > availableUntil) return false
-
-  return true
+  return isWithinWindow(
+    {
+      days: product.scheduling.availableDays,
+      from: product.scheduling.availableFrom,
+      until: product.scheduling.availableUntil,
+    },
+    now.getTime(),
+    timeZone
+  )
 }
 
 /**
@@ -179,7 +197,7 @@ export const filterProducts = (products: ProductDoc[], filters: ProductFilters):
 
   // Filter by availability
   if (filters.availableOnly) {
-    filtered = filtered.filter((p) => isProductAvailable(p))
+    filtered = filtered.filter((p) => isProductAvailable(p, filters.timeZone))
   }
 
   return filtered

@@ -11,14 +11,15 @@
  * to serve is a rule, and a rule is worth a test.
  */
 
+import { RefusalError } from "./refusal"
+
 export type ZoneRejectionReason = "below_minimum" | "outside_radius" | "not_located"
 
-export class OrderZoneRejectedError extends Error {
+export class OrderZoneRejectedError extends RefusalError<ZoneRejectionReason> {
   readonly reason: ZoneRejectionReason
 
   constructor(reason: ZoneRejectionReason, message: string) {
-    super(message)
-    this.name = "OrderZoneRejectedError"
+    super("OrderZoneRejectedError", reason, message)
     this.reason = reason
   }
 }
