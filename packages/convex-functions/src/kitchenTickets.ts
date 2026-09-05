@@ -37,7 +37,7 @@ const ACTIVE_STATUSES = ["pending", "in_progress", "ready"] as const
  * Keeping the newest would drop the longest-waiting orders off the screen, and
  * nobody would ever cook them.
  */
-const ACTIVE_TICKET_LIMIT = 200
+export const ACTIVE_TICKET_LIMIT = 200
 
 // ============================================================
 // QUERIES

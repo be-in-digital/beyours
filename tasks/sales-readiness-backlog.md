@@ -432,8 +432,16 @@ from the KDS propagates back to Deliveroo.
 
 ---
 
-## P0-11 · Uber Eats special instructions and allergies are dropped before the kitchen
+## P0-11 · Uber Eats special instructions and allergies are dropped before the kitchen — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+> **Resolved 2026-09-04** (#135, PR #311). `createFromWebhook`'s item validator carries
+> `notes`, `mappedItems` sets it, and both platform webhooks build their ticket lines
+> through one shared `toKitchenTicketItemsFromPlatform` rather than two hand-written
+> copies. Held across the seam by "an Uber Eats customer's instruction survives the
+> mapper, the webhook validator and the ticket insert"
+> (`apps/*/tests/convex/kitchen-auto-print.test.ts`) — which is the test that was missing:
+> re-verified by putting `notes: undefined` back, and it goes red.
 
 ### The problem
 An Uber Eats customer writes "allergie arachides — sauce à part". The kitchen never
@@ -470,8 +478,23 @@ why the seam is broken.
 
 ---
 
-## P0-12 · The kitchen ticket is created and printed before payment
+## P0-12 · The kitchen ticket is created and printed before payment — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+> **Resolved 2026-09-04** (#136, PR #311; the cash half in #335). The seam is split:
+> `orders.create` writes the order and nothing else, and the ticket is made by
+> `releaseToKitchen`, which every card path reaches through `recordPaymentStatus` and cash
+> reaches through `markCashPaid`. It refuses twice, refuses a cancelled order, and refuses
+> an unpaid card order even when staff accept it by hand — an abandoned checkout is exactly
+> what `force` must not override. `store.orderConfirmation` is read here, which is why it
+> came back: "auto" and unset release on payment, "manual" holds for staff.
+>
+> Re-verified by deleting the payment gate: 5 tests in
+> `packages/convex-functions/src/__tests__/kitchenRelease.test.ts` go red.
+>
+> **Cash is deliberately not gated on the money.** It has no provider and nothing to
+> abandon, so it releases at checkout in auto mode; gating it left order-ahead cash
+> invisible to the kitchen while the diner read « Commande confirmée ! » (NEW2-JOURNEY-4).
 
 ### The problem
 A customer builds a €60 order, reaches Stripe, closes the tab. The slip is already on
@@ -504,8 +527,21 @@ produces exactly one.
 
 ---
 
-## P0-13 · The KDS query is unbounded — the kitchen screen will go dark
+## P0-13 · The KDS query is unbounded — the kitchen screen will go dark — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #100
+
+> **Resolved 2026-09-04** (#137, PR #311). `getByStore` subscribes to the three active
+> statuses only, each capped at `ACTIVE_TICKET_LIMIT` and read oldest-first — the
+> asymmetry is the point, since keeping the newest would drop the longest-waiting orders
+> off the screen. The "Terminées" tab uses Convex cursor pagination. `purgeExpiredTickets`
+> runs nightly at 02:30 UTC in both apps and reschedules itself while `hasMore`.
+>
+> **The cap was unheld, and this is worth reading.** The 5,000-ticket test
+> seeds `completed` rows, so it passes on the status filter alone: replacing
+> `.take(ACTIVE_TICKET_LIMIT)` with `.collect()` left it green. The gap is not academic —
+> the retention sweep never deletes a ticket still on the pass, so an establishment that
+> leaves slips open has nothing else bounding the read. "A pass nobody ever cleared" now
+> holds both halves, and both go red when the cap or the ordering is removed.
 
 ### The problem
 At 60 orders/day every reactive update re-serialises the whole ticket history to every
@@ -1408,47 +1444,59 @@ was proven red against the unfixed code.
 
 ---
 
-## TECH-05 · Kitchen — stations, locks and print reliability
+## TECH-05 · Kitchen — stations, locks and print reliability — **RESOLVED**
 **Priority:** high · **Parent:** #100
 
-- [ ] **Multi-station routing does not exist.** No production path ever sets
-  `kitchenTickets.station`; `assignStation`
-  (`packages/restaurant/src/services/kitchen.ts:48-66`) has no caller outside its own
-  test; `stationMapping` has no schema field, no UI and no persistence. The station
-  filter therefore never renders (`KitchenContent.tsx:140`).
-- [ ] **Two open tablets print every ticket twice.**
-  `KitchenPrintTrigger.tsx:34-51` — each instance takes `printQueue[0]` and only claims
-  the ticket after `onafterprint`, 1–20 s later. No lock.
-  → a `claimForPrint` mutation flipping `pending → printing` atomically.
-- [ ] **A failed print is never retried.** `kitchenTickets.ts:492-509` sets `failed`;
-  `getPrintQueue` (`:93-107`) only returns `pending`. `printAttempts` is incremented and
-  read by nobody.
-- [ ] **Blank slips can print and be recorded as successful.**
-  `KitchenPrintTrigger.tsx:110` waits 100 ms after `root.render` — React 19 commits
-  asynchronously — then prints (`:139`). `onafterprint` also fires when the user
-  **cancels** the dialog.
-  → `flushSync` or a double `requestAnimationFrame`, and gate success on something
-  stronger than `onafterprint`.
-- [ ] **The overdue alarm can never fire.** `getOverdueCount` (`:112-140`) compares
-  `estimatedReadyAt`, derived from `estimatedPrepTime` (`:365-367`) — which neither
-  `createWithTicket` nor `uberEatsWebhook` ever passes. Only the demo seed sets it.
-- [ ] **The allergen block on the ticket is only ever populated by demo data.**
-  `kitchenTickets.allergens` has exactly one writer: `seedKitchenOrders.ts:188`.
-  Products do carry `allergens`.
-- [ ] **"Manual confirmation" is a saved setting nothing reads.**
-  `store.orderConfirmation` (`tables/stores.ts:57-61`) is written by
-  `stores.ts:334-339`, offered in the UI, and read nowhere.
-- [ ] **Choosing a "cloud" printer silently disables printing.**
-  `KitchenSettingsTabContent.tsx:249-259` offers `star_cloud`/`epson_cloud`/`sunmi_cloud`
-  as selectable options; `KitchenPrintTrigger.tsx:45` returns immediately for any
-  `provider !== "browser"`. Tickets pile up as `pending` and the alarm beeps every 30 s
-  with no explanation.
-  → mark the three options `disabled`.
-- [ ] **Print configuration is unreachable from the engine.**
-  `stores.updatePrintConfig` has no caller in `packages/admin`, `apps/reference` or
-  `apps/themes`. `KitchenSettingsTabContent` exists only in `apps/themes`, imported by a
-  `SettingsContent` that nothing mounts.
-  → lift the tab into `packages/admin` as a store-detail tab.
+> **Resolved 2026-09-04** (#164, PR #311). Nine of nine, with two of them closed on the
+> storefront path only — said plainly under the last two bullets rather than counted as
+> whole. Sub-point 9 is the one that had gone backwards: the tab was *deleted* rather than
+> lifted, so `printConfig.enabled` could not be turned on by anyone and every ticket was
+> stamped `not_required`. Automatic printing was not unreachable, it was dead product-wide.
+
+- [x] **Multi-station routing does not exist.** — **RESOLVED.** `stationMapping` is a
+  schema field (`tables/stores.ts`), written by `stores.updateStationMapping` from the
+  store-detail kitchen tab, and read by `resolveStations` on every release: an order is
+  split into one ticket per station it touches, each slip carrying its own allergens and
+  prep time, all of them sharing one tracking token so no station can tell the customer
+  their food is ready before the slowest one has. The KDS station filter renders off
+  `ticket.station`, which now has a production writer. Collapsing the split fails 3 tests.
+- [x] **Two open tablets print every ticket twice.** — **RESOLVED.** `claimForPrint` flips
+  `pending → printing` in one transaction and returns a claim id; `markPrintSent` refuses a
+  claim the tablet no longer holds. An expired claim — the dialog nobody answered — returns
+  the slip to the queue.
+- [x] **A failed print is never retried.** — **RESOLVED.** `getPrintQueue` returns failed
+  tickets whose retry delay has elapsed, up to `MAX_PRINT_ATTEMPTS`, alongside pending ones
+  and expired claims. `printAttempts` is read now, by `isRetryable` and by the alarm.
+- [x] **Blank slips can print and be recorded as successful.** — **RESOLVED.** The trigger
+  commits with `flushSync` rather than waiting 100 ms on an asynchronous React 19 commit,
+  and refuses to print a slip whose content is not there.
+- [x] **The overdue alarm can never fire.** — **RESOLVED on the storefront path.**
+  `releaseToKitchen` passes `summary.estimatedPrepTime`, computed from the ordered
+  products, so `estimatedReadyAt` exists and the alarm can fire. **The Uber Eats webhook
+  still passes neither**: it builds its own ticket, and its lines carry `productName` and
+  `externalId` but no internal `productId`, so nothing can be looked up without resolving
+  them through `externalProductMappings` first. A platform order therefore cannot arm the
+  alarm. That resolution is delivery-surface work, not this card's.
+- [x] **The allergen block on the ticket is only ever populated by demo data.** —
+  **RESOLVED on the storefront path.** `summariseOrderLines` gathers the allergens of every
+  product in the order and `releaseToKitchen` writes them per station. Same platform
+  exception as the bullet above, and it matters more here: an Uber Eats slip prints without
+  its allergen block. The customer's own typed note *does* survive on that path (P0-11) —
+  it is the product-derived allergen list that does not.
+- [x] **"Manual confirmation" is a saved setting nothing reads.** — **RESOLVED.**
+  `releaseToKitchen` reads `store.orderConfirmation`: "auto" and unset release on payment,
+  "manual" holds the order until staff accept it. Staff accepting by hand *is* the manual
+  workflow, so it skips the setting — and only the setting, never the payment gate.
+- [x] **Choosing a "cloud" printer silently disables printing.** — **RESOLVED.** The three
+  cloud providers are offered `disabled`, with the reason beside them. They stay listed
+  rather than removed: the schema still accepts them, and an establishment already holding
+  one deserves to see which.
+- [x] **Print configuration is unreachable from the engine.** — **RESOLVED.** The tab lives
+  in `packages/admin` (`pages/stores/store-kitchen-tab.tsx`), rendered by `StoreDetailPage`,
+  which both apps mount at `/dashboard/stores/[storeId]`. `updatePrintConfig`,
+  `updateStationMapping` and `updateOrderConfirmation` all have callers and app wrappers in
+  both apps. Proven end to end by "a paid order prints automatically", which writes
+  `printConfig` through the real guarded mutation and then reads `printStatus: "pending"`.
 
 ---
 

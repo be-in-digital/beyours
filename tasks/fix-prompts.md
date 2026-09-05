@@ -1,13 +1,13 @@
 # Fix prompts — one per unclosed batch
 
-Thirty-two prompts. Eleven close out the original backlog batches; twenty-one address findings
+Thirty-one prompts. Ten close out the original backlog batches; twenty-one address findings
 from the **discovery audit of 1 Sep 2026**, which asked a different question — not "are the
 57 cards resolved?" but "what was never carded at all?". Paste one into a fresh
 conversation opened on this repository.
 
-Batches 01, 02, 03 and 04 are closed and have no prompt here — batch 01 on 4 Sep 2026,
-when #180 closed. The discovery prompts are grouped under *New findings* at the end of the
-file, and six of them are blockers.
+Batches 01, 02, 03, 04 and 06 are closed and have no prompt here — batch 01 on 4 Sep 2026
+when #180 closed, batch 06 the same day with #311. The discovery prompts are grouped under
+*New findings* at the end of the file, and six of them are blockers.
 
 > **The discovery audit is complete.** All eight scopes have reported. The headline number
 > from the last of them: of the 92 features `CLAUDE.md` enumerates, **29 ship as described,
@@ -235,46 +235,6 @@ account-owner action.
 
 Done when: a real payment, then a partial refund, then a total refund all succeed from the
 interface of BOTH apps, and appear identically in the Stripe dashboard.
-````
-
-## Batch 06 — Kitchen display and printing
-**0/4 done · 2 partial · 2 open.** Auto-print regressed from unreachable to dead.
-
-````
-Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
-fleet, conventions. Then close batch 06 of the sales-readiness backlog.
-
-Verified by execution at commit 8d41349:
-
-- #164 — REGRESSION. 2 of 9 sub-points done, and both were done by deletion rather than
-  implementation. Sub-point 9 went backwards: the print-configuration tab was DELETED
-  instead of being lifted into `packages/admin`. Measured consequence:
-  `printConfig.enabled` can no longer be turned on by anyone, so `create` always writes
-  `printStatus: "not_required"`. Automatic printing is not merely unreachable — it is dead
-  product-wide. Restore the tab in `packages/admin`, render it from both apps, and prove a
-  ticket reaches `printStatus: "pending"`.
-- #135 — `notes: undefined` is hard-coded. End-to-end probe: a customer note dies at the
-  validator, and the ticket item arrives with neither options nor note. Carry instructions
-  and allergies through — this is a food-safety path, not a nicety.
-- #137 — Probe on 5,000 tickets: `getByStore` returns all 5,000 and `getByStatus` returns
-  4,988. No retention job exists. Bound the queries and add retention, or the kitchen
-  screen eventually renders nothing.
-- #136 — The duplicate is still fixed, but the ticket is still created on order creation
-  rather than on payment confirmation, and `orderConfirmation` was removed instead of being
-  implemented. Removing the caller does not implement the feature.
-
-Note the pattern across #164 and #136: work was closed by deleting the thing that revealed
-the gap. Treat any "fixed by removal" as unfixed until you can point at the behaviour
-working.
-
-Skills: `systematic-debugging`, `convex-patterns`, `tdd`, `typescript-expert`,
-`design-taste-frontend` (the restored print tab is UI — do not ship a default-looking form).
-Fleet: an Explore agent to map every writer of `printStatus` and every reader of
-`printConfig` across packages and both apps before you touch anything; an adversarial
-verifier briefed to prove auto-print is still dead.
-
-Done when: a paid order prints automatically on a configured station, carrying its notes
-and allergies; and the KDS query stays bounded at 5,000+ tickets.
 ````
 
 ## Batch 07 — Delivery platforms (Uber Eats, Deliveroo)
@@ -583,7 +543,9 @@ actually shipped. Verified by execution at commit 8d41349, all four still true:
     Overlaps with #150 in batch 09.
   - **Menus / formules** — not orderable.
   - **"ESC/POS printing"** — what ships is a browser print dialog. `printerSettings` is
-    still dead. Related to #164 in batch 06, which regressed.
+    still dead. Batch 06 closed on 4 Sep 2026 and did NOT change this: #164 made the
+    browser path reliable — a lock, retries, a real commit — it did not make it ESC/POS.
+    The marketing claim is exactly as false as it was.
 
 Two honest ways out per feature: build it, or remove it from the copy. Both are
 legitimate; shipping neither is not. This is a product decision with commercial
@@ -1958,8 +1920,10 @@ prevent. Make the guard walk `v.id("stores")` in the validators, not field names
 has 10 required fields, **zero writers and zero readers** anywhere, yet `storeCascade.ts:39`
 deletes from it. Auto-print actually runs on the embedded `stores.printConfig` object
 instead. `CLAUDE.md:114` advertises `printerSettings` as the auto-print mechanism. It is
-pure dead schema behind a documented claim — relevant to batch 06 (#164), where the print
-configuration tab was deleted rather than lifted.
+pure dead schema behind a documented claim, and batch 06 settled which of the two is real:
+#164 closed on 4 Sep 2026 by restoring the configuration tab in `packages/admin`, and it
+writes `stores.printConfig`. `printerSettings` has no writer still, so the choice here is
+to delete the table or to correct `CLAUDE.md` — not to wire it up.
 
 Skills: `convex-patterns`, `systematic-debugging`, `typescript-expert`, `tdd`,
 `deliveroo-developer` for Q-1's sync-status consequence.
