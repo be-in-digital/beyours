@@ -33,6 +33,10 @@ const CHECKOUT = {
   siret: "12345678901234",
   successUrl: "https://beyours.fr/checkout/success",
   cancelUrl: "https://beyours.fr/checkout",
+  // What the summary rendered. Aligned with the regime for the same reason
+  // STRIPE_TAX_ENABLED is pinned below: these cases are about the Stripe key,
+  // and the third refusal must not answer for the first.
+  taxDisplayed: VAT.regime === "reel",
   withdrawalWaiverConsent: true,
 };
 
@@ -42,8 +46,9 @@ beforeEach(() => {
   vi.stubEnv(TEST_CHECKOUT_ENV, "");
   // Pinned for the same reason, and because the checkout gained a second
   // refusal (#174): a sale is turned away when this flag contradicts the
-  // declared VAT regime. These cases are about the Stripe key, so the tax
-  // configuration is set to the one the regime requires and kept out of the way.
+  // declared VAT regime, and a third when it contradicts the total the client
+  // was shown. These cases are about the Stripe key, so the tax configuration
+  // is set to the one the regime requires and kept out of the way.
   vi.stubEnv("STRIPE_TAX_ENABLED", String(VAT.regime === "reel"));
 });
 

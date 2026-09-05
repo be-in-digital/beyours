@@ -95,15 +95,20 @@ export const overview = query({
     };
     const byStatus: Record<string, number> = {};
     let uptimeSum = 0;
-    let liveish = 0;
+    let monitored = 0;
     let integrationErrors = 0;
     for (const d of deployments) {
       byHealth[d.health] = (byHealth[d.health] ?? 0) + 1;
       byStatus[d.status] = (byStatus[d.status] ?? 0) + 1;
       integrationErrors += d.integrations.filter((i) => i.status === "error").length;
-      if (d.status === "live" || d.status === "degraded") {
+      /* Probed deployments only — `uptime30d` before the first check is the
+         provisioning placeholder, not a score (convex/saMonitoring.ts). */
+      if (
+        (d.status === "live" || d.status === "degraded") &&
+        d.lastCheckAt !== undefined
+      ) {
         uptimeSum += d.uptime30d;
-        liveish += 1;
+        monitored += 1;
       }
     }
 
@@ -172,7 +177,8 @@ export const overview = query({
           down: byHealth.down ?? 0,
           unknown: byHealth.unknown ?? 0,
         },
-        avgUptime: liveish ? uptimeSum / liveish : 100,
+        monitored,
+        avgUptime: monitored ? uptimeSum / monitored : null,
         integrationErrors,
       },
       incidents: {

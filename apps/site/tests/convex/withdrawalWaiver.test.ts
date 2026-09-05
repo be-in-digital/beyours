@@ -40,6 +40,10 @@ const CHECKOUT = {
   city: "Lyon",
   successUrl: "https://beyours.fr/checkout/success",
   cancelUrl: "https://beyours.fr/checkout",
+  /* Aligned with the regime for the same reason STRIPE_TAX_ENABLED is pinned
+     below: these cases are about the consent record, and the VAT refusal that
+     sits just above the waiver check must not answer for it. */
+  taxDisplayed: VAT.regime === "reel",
 };
 
 beforeEach(() => {

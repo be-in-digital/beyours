@@ -2,12 +2,16 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  /* Same "@/" root as tsconfig and Next. Without it a test cannot import
-     anything under components/, because those files import "@/convex/..." —
-     which is how the pricing page and the checkout guard went untested
-     together for as long as they disagreed. */
   resolve: {
-    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+    // Mirrors the "@/*" path in tsconfig.json. Two things need it, and both
+    // were untestable without it: `lib/payment-providers.ts`, which decides
+    // whether the checkout quotes VAT, and anything under `components/` that
+    // imports "@/convex/..." — which is how the pricing page's « À venir »
+    // badge and the checkout guard behind it went untested together for as
+    // long as they disagreed.
+    alias: {
+      "@": fileURLToPath(new URL("./", import.meta.url)),
+    },
   },
   test: {
     environment: "edge-runtime",

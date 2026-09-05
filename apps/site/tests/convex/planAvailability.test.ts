@@ -42,9 +42,13 @@ function checkoutArgs(plan: (typeof PLAN_SLUGS)[number]) {
     city: "Paris",
     successUrl: "https://beyours.fr/merci",
     cancelUrl: "https://beyours.fr/tarifs",
-    // Required since #349. Given here so a refusal below can only be about
-    // availability — the consent guard sits further down the same handler.
+    // Both required since #349 and #346, and both given the value that keeps
+    // the guards below quiet, so a refusal in these cases can only be about
+    // plan availability. `taxDisplayed` has to agree with STRIPE_TAX_ENABLED,
+    // which beforeEach pins to the regime — the same pairing checkoutWithoutStripe
+    // and vatGuard use.
     withdrawalWaiverConsent: true,
+    taxDisplayed: VAT.regime === "reel",
   };
 }
 

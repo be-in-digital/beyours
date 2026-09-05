@@ -220,25 +220,55 @@ export function validateSiteEnv(
   // the régime réel charging no VAT still owes it, and every invoice it issues
   // in the meantime is wrong.
   //
-  // Checked only where visible: in production STRIPE_TAX_ENABLED lives on the
-  // Convex deployment, so a one-sided Next env is normal, not an error.
+  // The two are NOT symmetric, and reading them in one loop is what left this
+  // check unable to fire on the state that actually occurs. It skipped any
+  // flag that was absent, so it refused a flag set to the WRONG value and
+  // never a forgotten one — and forgotten is the default state of a fresh
+  // Vercel project. Each half now gets the rule its location earns:
+  //
+  //   NEXT_PUBLIC_TVA_ENABLED lives HERE, in the Next env this function holds,
+  //   so its absence is visible to us and to nobody else. It is also the flag
+  //   that decides the total the buyer is shown, and it is frozen into the
+  //   client bundle at build time. Absent is reported.
+  //
+  //   STRIPE_TAX_ENABLED lives on the CONVEX deployment in production, where
+  //   this function cannot see it: demanding it here would fire on every
+  //   correct deploy. Its absence is not unguarded — convex/stripe.ts measures
+  //   it against this same regime on every checkout and refuses the sale
+  //   (vatConfigurationProblem). Reported here only when set and wrong.
   const chargingExpected = VAT.regime === 'reel'
   const expected = String(chargingExpected)
   const regimeLabel = chargingExpected
     ? 'régime réel (TVA due)'
     : 'franchise en base (art. 293 B du CGI)'
 
-  for (const name of ['NEXT_PUBLIC_TVA_ENABLED', 'STRIPE_TAX_ENABLED']) {
-    const value = source[name]
-    if (!isSet(value) || value === expected) continue
+  const contradictsRegime = (name: string, value: string): EnvProblem => ({
+    name,
+    message:
+      `vaut "${value}" alors que VAT.regime déclare ${regimeLabel} ` +
+      `(lib/legal/company.ts) — les factures émises seraient incohérentes ; ` +
+      `attendu "${expected}", et les deux drapeaux vont ensemble`,
+    tier: 'feature',
+  })
+
+  const displayFlag = source.NEXT_PUBLIC_TVA_ENABLED
+  if (!isSet(displayFlag)) {
     problems.push({
-      name,
+      name: 'NEXT_PUBLIC_TVA_ENABLED',
       message:
-        `vaut "${value}" alors que VAT.regime déclare ${regimeLabel} ` +
-        `(lib/legal/company.ts) — les factures émises seraient incohérentes ; ` +
-        `attendu "${expected}", et les deux drapeaux vont ensemble`,
+        `non définie — ce drapeau décide du total affiché au client et il est ` +
+        `figé dans le bundle au build : il se déclare, il ne se devine pas. ` +
+        `Attendu "${expected}" sous ${regimeLabel} (lib/legal/company.ts), ` +
+        `avec STRIPE_TAX_ENABLED="${expected}" côté Convex`,
       tier: 'feature',
     })
+  } else if (displayFlag !== expected) {
+    problems.push(contradictsRegime('NEXT_PUBLIC_TVA_ENABLED', displayFlag))
+  }
+
+  const stripeTaxFlag = source.STRIPE_TAX_ENABLED
+  if (isSet(stripeTaxFlag) && stripeTaxFlag !== expected) {
+    problems.push(contradictsRegime('STRIPE_TAX_ENABLED', stripeTaxFlag))
   }
 
   const emailProvider = source.EMAIL_PROVIDER
@@ -263,6 +293,16 @@ export function validateSiteEnv(
 
   return { ok: problems.length === 0, problems }
 }
+
+/**
+ * Is this a problem in a variable Next freezes into the client bundle?
+ *
+ * `NEXT_PUBLIC_*` is substituted at build time, which is the one moment the
+ * boot check cannot cover — `instrumentation.ts` uses this to report that half
+ * in the build log, where the bundle being compiled is still the subject.
+ */
+export const isInlinedAtBuild = (p: EnvProblem): boolean =>
+  p.name.startsWith('NEXT_PUBLIC_')
 
 const SECTIONS: { tier: EnvTier; title: string }[] = [
   { tier: 'required', title: '── Requises (serveur Next) ──' },

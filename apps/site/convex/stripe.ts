@@ -18,6 +18,7 @@ import {
 } from "./stripePriceAudit";
 import {
   invoiceLegalSettings,
+  taxDisplayMismatch,
   vatConfigurationProblem,
 } from "./invoiceLegal";
 import {
@@ -117,8 +118,11 @@ function getStripeOrTestMode(operation: string): Stripe | null {
       side (see lib/payment-providers.ts).
    The amounts sent stay pre-tax; Stripe adds French VAT (20 %).
 
-   Left off while the regime says otherwise, the sale is refused below rather
-   than invoiced wrongly. */
+   Absent reads as "off", which is the fail-closed direction under the régime
+   réel: left off — forgotten or deliberate — while the regime says otherwise,
+   the sale is refused below rather than invoiced wrongly. This is also the
+   only place the variable is checked at all: it lives on the Convex
+   deployment, and validateSiteEnv (lib/env.ts) reads the Next env. */
 function stripeTaxEnabled(): boolean {
   return process.env.STRIPE_TAX_ENABLED === "true";
 }
@@ -151,6 +155,15 @@ export const createCheckoutSession = action({
     referralCodeId: v.optional(v.id("referralCodes")),
     referrerId: v.optional(v.id("affiliateUsers")),
     discountPercent: v.optional(v.number()),
+    /* Whether the summary the customer just read quoted VAT — the value of
+       TVA_ENABLED in the bundle that rendered it, not a preference. Required,
+       and deliberately so: a caller that cannot say what it displayed cannot
+       be checked against what Stripe is about to charge, and this argument
+       exists precisely because that comparison had no home. An old bundle is
+       refused by the validator until it is redeployed, which is the safe
+       direction — a retried sale costs a minute, a wrong invoice cannot be
+       taken back. */
+    taxDisplayed: v.boolean(),
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
     /* ── Is this plan even on sale? ──
@@ -185,17 +198,32 @@ export const createCheckoutSession = action({
        It also sat *after* the early return for the keyless path, so the one
        branch that marks an order paid without Stripe never checked at all.
 
-       `validateSiteEnv` refuses the deployment for the same reason, so this
-       only fires if the Convex env drifts from the regime afterwards. */
+       `validateSiteEnv` refuses the deployment over the Next-side flag for the
+       same reason, but it cannot see this one: STRIPE_TAX_ENABLED lives on the
+       Convex deployment, which no Next-side function reads. This is the only
+       place it is checked at all. */
     const vatProblem = vatConfigurationProblem(stripeTaxEnabled());
     if (vatProblem) throw new Error(`[TVA] ${vatProblem}`);
 
+    /* ── The two envs, finally compared ──
+       Both flags being individually right does not make them agree: they are
+       read from two different envs, and the Next one was frozen into the
+       client bundle at build time, possibly before the deployment was
+       finished. A summary that quoted no VAT against a Stripe that adds it
+       shows the buyer one total and debits another. Refuse, still before any
+       write. */
+    const displayProblem = taxDisplayMismatch(
+      stripeTaxEnabled(),
+      args.taxDisplayed,
+    );
+    if (displayProblem) throw new Error(`[TVA] ${displayProblem}`);
+
     /* ── The waiver, refused before anything exists ──
-       Third, and above the order insert for the same reason as the two checks
-       above it: a refused sale must leave no row behind for the ops console to
-       count. The consent is recorded on the order below, from the server's own
-       copy of the clause, so what is stored is the wording the company
-       published rather than a string a caller chose. */
+       Fourth, and above the order insert for the same reason as the three
+       checks above it: a refused sale must leave no row behind for the ops
+       console to count. The consent is recorded on the order below, from the
+       server's own copy of the clause, so what is stored is the wording the
+       company published rather than a string a caller chose. */
     if (!args.withdrawalWaiverConsent) {
       throw new Error(WITHDRAWAL_WAIVER_REQUIRED);
     }

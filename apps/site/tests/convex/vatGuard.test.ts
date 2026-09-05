@@ -58,6 +58,10 @@ function checkoutArgs() {
     city: "Paris",
     successUrl: "https://beyours.fr/merci",
     cancelUrl: "https://beyours.fr/tarifs",
+    // The stance the summary rendered, which is what the deployment's flags
+    // require of it. Overridden in the cross-env cases below, which are about
+    // the two disagreeing.
+    taxDisplayed: CHARGING_EXPECTED,
     withdrawalWaiverConsent: true,
   };
 }
@@ -120,5 +124,94 @@ describe("createCheckoutSession — the VAT configuration", () => {
 
     expect(result.orderId).toBeDefined();
     expect(await t.run((ctx) => ctx.db.query("orders").collect())).toHaveLength(1);
+  });
+});
+
+/* ── The two envs, compared ──
+   The check above measures the Convex flag against the regime, and
+   `validateSiteEnv` measures the Next flag against the same regime. Both were
+   anchored and neither could see the other's env, so a bundle built with the
+   wrong charging flag — or built before the flag was set — passed its own
+   check, met a Convex deployment that passed its own check, and disagreed with
+   it in front of the customer. Nothing compared the two until the checkout
+   started carrying the stance the client actually rendered. */
+
+describe("createCheckoutSession — the total the customer was shown", () => {
+  test("refuses when the summary quoted no VAT and Stripe would charge it", async () => {
+    // The measured mischarge: NEXT_PUBLIC_TVA_ENABLED forgotten on Vercel,
+    // STRIPE_TAX_ENABLED set on Convex. The summary rendered 9 500 €, Stripe
+    // was about to debit 11 400 €, and the deployment booted clean.
+    vi.stubEnv("STRIPE_TAX_ENABLED", "true");
+    vi.stubEnv("BEYOURS_TEST_CHECKOUT", "true");
+    const t = convexTest(schema, modules);
+
+    await expect(
+      t.action(api.stripe.createCheckoutSession, {
+        ...checkoutArgs(),
+        taxDisplayed: false,
+      })
+    ).rejects.toThrow(/\[TVA\]/);
+  });
+
+  test("names the Next-side flag, which is the one to go and set", async () => {
+    // The Convex flag is right here; repeating it would send the operator to
+    // the wrong console.
+    vi.stubEnv("STRIPE_TAX_ENABLED", "true");
+    vi.stubEnv("BEYOURS_TEST_CHECKOUT", "true");
+    const t = convexTest(schema, modules);
+
+    await expect(
+      t.action(api.stripe.createCheckoutSession, {
+        ...checkoutArgs(),
+        taxDisplayed: false,
+      })
+    ).rejects.toThrow(/NEXT_PUBLIC_TVA_ENABLED/);
+  });
+
+  test("writes no order when the two disagree", async () => {
+    vi.stubEnv("STRIPE_TAX_ENABLED", "true");
+    vi.stubEnv("BEYOURS_TEST_CHECKOUT", "true");
+    const t = convexTest(schema, modules);
+
+    await expect(
+      t.action(api.stripe.createCheckoutSession, {
+        ...checkoutArgs(),
+        taxDisplayed: false,
+      })
+    ).rejects.toThrow(/\[TVA\]/);
+
+    expect(await t.run((ctx) => ctx.db.query("orders").collect())).toEqual([]);
+  });
+
+  test("refuses the other direction too, where the customer is over-quoted", async () => {
+    // Franchise en base on Convex, a bundle still quoting VAT. Nobody is
+    // debited more than they agreed, but the summary is 20 % above the invoice
+    // and the sale would be argued about afterwards. Under the régime réel the
+    // regime check fires first, which is why this asserts only the refusal.
+    vi.stubEnv("STRIPE_TAX_ENABLED", "false");
+    vi.stubEnv("BEYOURS_TEST_CHECKOUT", "true");
+    const t = convexTest(schema, modules);
+
+    await expect(
+      t.action(api.stripe.createCheckoutSession, {
+        ...checkoutArgs(),
+        taxDisplayed: true,
+      })
+    ).rejects.toThrow(/\[TVA\]/);
+  });
+
+  test("lets the sale through when the summary matches what Stripe charges", async () => {
+    // The mirror: a guard that refused every checkout would pass all four
+    // above. Same env as the regime-agreement case, and the order is recorded.
+    vi.stubEnv("STRIPE_TAX_ENABLED", String(CHARGING_EXPECTED));
+    vi.stubEnv("BEYOURS_TEST_CHECKOUT", "true");
+    const t = convexTest(schema, modules);
+
+    const result = await t.action(api.stripe.createCheckoutSession, {
+      ...checkoutArgs(),
+      taxDisplayed: CHARGING_EXPECTED,
+    });
+
+    expect(result.orderId).toBeDefined();
   });
 });
