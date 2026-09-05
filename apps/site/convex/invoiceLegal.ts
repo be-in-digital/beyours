@@ -173,6 +173,14 @@ export function vatConfigurationProblem(taxCharged: boolean): string | null {
  * genuinely rendered rather than what it thinks ought to be true, which is the
  * only value worth comparing: a browser that lies about it buys itself a
  * refused sale or a total higher than the one it showed, never a cheaper one.
+ *
+ * Scope, stated plainly because the name invites more: this compares the VAT
+ * STANCE, not the amount. Two summaries that agree VAT was quoted can still
+ * differ in total — a founders slot consumed between render and submit, a
+ * referral discount revalued server-side — and nothing here detects that. A
+ * guard on the total would need the client to send the figure and the server
+ * to recompute it; that is a different check against a different defect, and
+ * it does not exist yet.
  */
 export function taxDisplayMismatch(
   taxCharged: boolean,
