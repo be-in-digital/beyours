@@ -596,7 +596,14 @@ describe("countingDb", () => {
 
   it("refuses a table the schema does not declare", () => {
     const ctx = createCountingDb({})
-    expect(() => ctx.db.query("invoices")).toThrow(/not declared in/)
+    // Deliberately not a plausible table name. This case used to name
+    // `invoices`, which was a fair example right up to the commit that added
+    // an `invoices` table — at which point the schema declared it, nothing
+    // threw, and the test failed for a reason that had nothing to do with
+    // query bounds. A name no feature will ever want cannot be overtaken.
+    expect(() => ctx.db.query("thisTableWillNeverExist")).toThrow(
+      /not declared in/
+    )
   })
 })
 

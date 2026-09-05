@@ -205,22 +205,45 @@ describe("refusePlatformStatus", () => {
  * It still models only what these tests need. The real engine is exercised by
  * the `uber-eats-webhook` suite in both apps, which uses `convex-test`.
  */
-const ORDERS_INDEXES: Record<string, readonly string[]> = {
-  by_external_order: ["externalOrderId"],
-  by_store: ["storeId"],
-  by_status: ["status"],
+const TABLE_INDEXES: Record<string, Record<string, readonly string[]>> = {
+  orders: {
+    by_external_order: ["externalOrderId"],
+    // The real names on the table. `by_store` and `by_status` were listed here
+    // and do not exist in the schema, which quietly gave back the one thing
+    // this registry exists to refuse: a made-up index that answers happily.
+    by_storeId: ["storeId"],
+    by_storeId_status: ["storeId", "status"],
+    by_orderNumber: ["orderNumber"],
+  },
+  numberSequences: {
+    by_key: ["key"],
+    by_kind_year: ["kind", "year"],
+  },
 }
 
 function createDb(seed: Array<Record<string, unknown>> = []) {
-  const orders: Array<Record<string, unknown>> = [...seed]
+  const rows: Array<Record<string, unknown>> = [...seed]
   let counter = 1
+  // Every table lives in one array, so a read has to be scoped by table or the
+  // sequence counter answers an order lookup and vice versa.
+  const rowsOf = (table: string) =>
+    rows.filter((doc) => String(doc._id).startsWith(`${table}:`))
   return {
-    _orders: orders,
-    query: () => ({
+    get _orders() {
+      return rowsOf("orders")
+    },
+    query: (table: string) => ({
+      // `globalSettings` is a singleton, read with no index at all.
+      first: async () => rowsOf(table)[0] ?? null,
+      collect: async () => rowsOf(table),
       withIndex: (name: string, builder?: (iq: unknown) => unknown) => {
-        const fields = ORDERS_INDEXES[name]
+        const indexes = TABLE_INDEXES[table]
+        if (!indexes) {
+          throw new Error(`No indexes modelled for table "${table}"`)
+        }
+        const fields = indexes[name]
         if (!fields) {
-          throw new Error(`No index named "${name}" on table "orders"`)
+          throw new Error(`No index named "${name}" on table "${table}"`)
         }
         const constraints: Array<[string, unknown]> = []
         if (builder) {
@@ -241,17 +264,31 @@ function createDb(seed: Array<Record<string, unknown>> = []) {
           builder(iq)
         }
         const match = (d: Record<string, unknown>) => constraints.every(([f, v]) => d[f] === v)
-        return { first: async () => orders.find(match) ?? null, collect: async () => orders.filter(match) }
+        const matched = () => rowsOf(table).filter(match)
+        return {
+          first: async () => matched()[0] ?? null,
+          // The order number allocator reads its counter with `.unique()`:
+          // two rows for one key means re-issuing numbers already used, and it
+          // must stop rather than pick one.
+          unique: async () => {
+            const found = matched()
+            if (found.length > 1) {
+              throw new Error(`unique() found ${found.length} rows on "${table}"`)
+            }
+            return found[0] ?? null
+          },
+          collect: async () => matched(),
+        }
       },
     }),
     insert: async (table: string, doc: Record<string, unknown>) => {
       const _id = `${table}:${counter++}`
-      orders.push({ _id, ...doc })
+      rows.push({ _id, ...doc })
       return _id
     },
-    get: async (id: string) => orders.find((o) => o._id === id) ?? null,
+    get: async (id: string) => rows.find((o) => o._id === id) ?? null,
     patch: async (id: string, updates: Record<string, unknown>) => {
-      const o = orders.find((x) => x._id === id)
+      const o = rows.find((x) => x._id === id)
       if (o) Object.assign(o, updates)
     },
   }
@@ -411,16 +448,27 @@ describe("the in-memory index stub refuses what Convex refuses", () => {
   it("rejects an index that does not exist", () => {
     const db = createDb()
     expect(() =>
-      db.query().withIndex("by_a_completely_made_up_index", (q: never) =>
+      db.query("orders").withIndex("by_a_completely_made_up_index", (q: never) =>
         (q as unknown as { eq: (a: string, b: string) => unknown }).eq("externalOrderId", "x")
       )
     ).toThrow(/No index named/)
   })
 
+  it("rejects an index borrowed from another table", () => {
+    // `by_key` is real — on `numberSequences`. Reading `orders` through it is
+    // the same mistake as inventing one, and has to fail the same way.
+    const db = createDb()
+    expect(() =>
+      db.query("orders").withIndex("by_key", (q: never) =>
+        (q as unknown as { eq: (a: string, b: string) => unknown }).eq("key", "x")
+      )
+    ).toThrow(/No index named "by_key" on table "orders"/)
+  })
+
   it("rejects an equality on a field the index does not cover", () => {
     const db = createDb()
     expect(() =>
-      db.query().withIndex("by_external_order", (q: never) => {
+      db.query("orders").withIndex("by_external_order", (q: never) => {
         const iq = q as unknown as { eq: (a: string, b: string) => { eq: (a: string, b: string) => unknown } }
         return iq.eq("externalOrderId", "x").eq("source", "uber_eats")
       })

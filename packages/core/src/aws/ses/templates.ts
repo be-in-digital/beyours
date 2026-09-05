@@ -3,6 +3,13 @@
  * @module aws/ses/templates
  */
 
+import {
+  orderConfirmationSubject,
+  renderOrderConfirmationHtml,
+  renderOrderConfirmationText,
+  type OrderConfirmationInput,
+} from './order-confirmation'
+
 /**
  * Generic interface for an email template
  */
@@ -18,94 +25,36 @@ export interface EmailTemplate<T = Record<string, unknown>> {
 }
 
 /**
- * Data for the order confirmation template
+ * Data for the order confirmation template.
+ *
+ * WHAT CHANGED, AND WHY IT HAD TO: this used to be its own little shape —
+ * `{ orderNumber, items: [{name, quantity, price}], total, address,
+ * customerName }` — with amounts in EUROS and a delivery address that was
+ * printed unconditionally. Every amount in the schema is in CENTS, so wiring
+ * the template up as it stood would have quoted the diner 3 400,00 € for a
+ * 34 € dinner in their own confirmation; and the address block appeared on
+ * click-and-collect and dine-in orders that have no address at all.
+ *
+ * It is now the input of the real builder, so the template and the email the
+ * product actually sends cannot drift apart. `orderTotals.ts` says it best:
+ * two implementations of one price will always drift.
  */
-export interface OrderConfirmationData {
-  orderNumber: string
-  items: Array<{
-    name: string
-    quantity: number
-    price: number
-  }>
-  total: number
-  address: string
-  customerName: string
-}
+export type OrderConfirmationData = OrderConfirmationInput
 
 /**
- * Order confirmation template
+ * Order confirmation template.
+ *
+ * Kept in the registry so `sendTemplatedEmail` can still name it, but the copy
+ * itself lives in `./order-confirmation`: the Convex actions that do the
+ * sending cannot import this module — it is only reachable through the package
+ * barrel, which drags in `@aws-sdk/client-sesv2` and the whole of auth — and
+ * they must render the same email as anything going through the registry.
  */
 export const orderConfirmationTemplate: EmailTemplate<OrderConfirmationData> = {
   name: 'orderConfirmation',
-  subject: (data) => `Commande confirmée - #${data.orderNumber}`,
-  html: (data) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #4CAF50; color: white; padding: 20px; text-align: center; }
-          .content { padding: 20px; background: #f9f9f9; }
-          .order-items { margin: 20px 0; }
-          .item { padding: 10px; border-bottom: 1px solid #ddd; }
-          .total { font-size: 18px; font-weight: bold; margin-top: 20px; text-align: right; }
-          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Commande confirmée !</h1>
-          </div>
-          <div class="content">
-            <p>Bonjour ${data.customerName},</p>
-            <p>Votre commande <strong>#${data.orderNumber}</strong> a été confirmée.</p>
-
-            <div class="order-items">
-              <h3>Articles commandés :</h3>
-              ${data.items
-                .map(
-                  (item) => `
-                <div class="item">
-                  <strong>${item.name}</strong> x ${item.quantity} - ${item.price.toFixed(2)}€
-                </div>
-              `
-                )
-                .join('')}
-            </div>
-
-            <div class="total">
-              Total : ${data.total.toFixed(2)}€
-            </div>
-
-            <p><strong>Adresse de livraison :</strong><br>${data.address}</p>
-          </div>
-          <div class="footer">
-            <p>Merci de votre confiance !</p>
-          </div>
-        </div>
-      </body>
-    </html>
-  `,
-  text: (data) => `
-Commande confirmée - #${data.orderNumber}
-
-Bonjour ${data.customerName},
-
-Votre commande #${data.orderNumber} a été confirmée.
-
-Articles commandés :
-${data.items.map((item) => `- ${item.name} x ${item.quantity} - ${item.price.toFixed(2)}€`).join('\n')}
-
-Total : ${data.total.toFixed(2)}€
-
-Adresse de livraison :
-${data.address}
-
-Merci de votre confiance !
-  `.trim(),
+  subject: (data) => orderConfirmationSubject(data),
+  html: (data) => renderOrderConfirmationHtml(data),
+  text: (data) => renderOrderConfirmationText(data),
 }
 
 /**

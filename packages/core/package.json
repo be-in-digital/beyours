@@ -35,6 +35,7 @@
     "./allergens": "./src/allergens/index.ts",
     "./dining": "./src/dining/table-number.ts",
     "./auth/rbac": "./src/auth/rbac.ts",
+    "./aws/ses/order-confirmation": "./src/aws/ses/order-confirmation.ts",
     "./aws/media-url": "./src/aws/media-url.ts",
     "./aws/folders": "./src/aws/folders.ts"
   },
