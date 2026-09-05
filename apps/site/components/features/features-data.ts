@@ -17,6 +17,10 @@ export interface Feature {
   mockupPattern: "dashboard" | "mobile" | "integration";
   /** Whether this feature gets a full deep-dive section */
   deepDive: boolean;
+  /** Set when a client cannot use this yet. `label` says what it waits on —
+      the two current cases wait on different things, and a reader deserves to
+      know which. Absent means it ships today; every renderer badges it. */
+  notYetAvailable?: { label: string };
 }
 
 export const pillars: Record<Pillar, { label: string; description: string }> = {
@@ -104,9 +108,9 @@ export const features: Feature[] = [
     title: "Expérience Mobile",
     subtitle: "Votre app, votre marque",
     shortDescription:
-      "Une application native iOS & Android pour une expérience mobile-first.",
+      "Une application native iOS & Android, au programme de l'offre Premium.",
     longDescription:
-      "Offrez à vos clients une application mobile à votre image. Commande rapide, programme de fidélité intégré, notifications push personnalisées et expérience de marque complète. Votre restaurant dans la poche de chaque client.",
+      "Une application à votre image : commande en quelques secondes, fidélité intégrée, notifications push. Elle fera l'offre Premium, qui ouvrira le jour de sa publication sur l'App Store et Google Play. Nous ne la vendons pas avant.",
     benefits: [
       "Application native iOS & Android à votre image",
       "Notifications push pour engager vos clients",
@@ -115,6 +119,7 @@ export const features: Feature[] = [
     pillar: "vendre",
     mockupPattern: "mobile",
     deepDive: true,
+    notYetAvailable: { label: "À venir" },
   },
 
   // ── Manage ──
@@ -189,6 +194,7 @@ export const features: Feature[] = [
     pillar: "gerer",
     mockupPattern: "integration",
     deepDive: true,
+    notYetAvailable: { label: "Uber en attente" },
   },
 
   // ── Retain & optimise ──

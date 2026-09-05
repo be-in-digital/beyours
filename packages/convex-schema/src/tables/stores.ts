@@ -21,6 +21,21 @@ export const storesTable = defineTable({
   phone: v.optional(v.string()),
   email: v.optional(v.string()),
 
+  // Where « Réserver une table » sends the guest.
+  //
+  // The product has no reservation feature — no table, no availability model,
+  // no mutation — and building one means modelling capacity, which is where
+  // double-bookings come from. Restaurants that take bookings already run
+  // TheFork, Zenchef or Guestonline, so the storefront links out to whichever
+  // they use and those tools keep the hard part.
+  //
+  // Unset means no reservation call to action is rendered at all. Absence is
+  // the honest default: most establishments here take bookings by phone.
+  //
+  // Always validated against `assertReservationUrl` before it is stored — this
+  // string reaches an href, so a `javascript:` scheme would be stored XSS.
+  reservationUrl: v.optional(v.string()),
+
   // Hours: store-specific or inherited from globalSettings
   useGlobalHours: v.optional(v.boolean()),
   hours: v.array(v.object({

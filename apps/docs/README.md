@@ -62,7 +62,7 @@ Welcome to the official documentation for the **BeYours Engine** — a premium N
 - **Styling**: Tailwind CSS + shadcn/ui
 - **State**: Zustand (client) + Convex (server)
 - **Auth**: Better Auth + Convex
-- **Payments**: Stripe, SumUp, PayPal, Square
+- **Payments**: Stripe, SumUp, PayPal (Square announced, not implemented)
 - **Storage**: AWS S3
 - **Email**: AWS SES
 - **i18n**: GPT-3.5-turbo auto-translation

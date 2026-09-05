@@ -6,7 +6,9 @@ export type OrderStatus =
   | "confirmed"
   | "preparing"
   | "ready"
+  | "out_for_delivery"
   | "delivered"
+  | "completed"
   | "cancelled"
 
 export interface OrderStatusBadgeProps {
@@ -34,9 +36,17 @@ const statusConfig: Record<
     label: "Ready",
     className: "bg-green-100 text-green-800 border-green-200",
   },
+  out_for_delivery: {
+    label: "Out for Delivery",
+    className: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  },
   delivered: {
     label: "Delivered",
     className: "bg-purple-100 text-purple-800 border-purple-200",
+  },
+  completed: {
+    label: "Completed",
+    className: "bg-emerald-100 text-emerald-800 border-emerald-200",
   },
   cancelled: {
     label: "Cancelled",
@@ -44,11 +54,34 @@ const statusConfig: Record<
   },
 }
 
+/**
+ * An unrecognised status renders as pending rather than throwing.
+ *
+ * `orders.status` is a `v.union` of eight literals
+ * (packages/convex-schema/src/tables/orders.ts:22), and this component now
+ * declares all eight. It used to declare six, and the single caller papered
+ * over the gap by folding `out_for_delivery` and `completed` onto `delivered`
+ * — which showed a purple "Delivered" badge for an order still in the van,
+ * sixteen lines above a label reading "En livraison". The fold is gone.
+ *
+ * The guard stays for the ninth status somebody adds to the schema later:
+ * reading `.className` off `undefined` takes the order page down.
+ *
+ * Pending is the safe reading of "we do not know what this is": it is the one
+ * that does not tell a customer their order is further along than it is.
+ */
+const UNKNOWN_STATUS_CONFIG = statusConfig.pending
+
 const OrderStatusBadge: React.FC<OrderStatusBadgeProps> = ({
   status,
   className,
 }) => {
-  const config = statusConfig[status]
+  // `??` does not catch what an object literal inherits from
+  // `Object.prototype`: `statusConfig["constructor"]` is a function, not
+  // undefined, and reading `.className` off it renders garbage.
+  const config = Object.hasOwn(statusConfig, status)
+    ? statusConfig[status]
+    : UNKNOWN_STATUS_CONFIG
 
   return (
     <Badge className={`${config.className} ${className || ""}`}>

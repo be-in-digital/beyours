@@ -242,3 +242,58 @@ describe("only connected opens a charge path", () => {
     })
   }
 })
+
+/**
+ * The payments tab has to stay locatable by the e2e suite.
+ *
+ * `apps/reference/e2e/admin/settings.spec.ts` finds the provider cards with
+ * `getByText(name, { exact: false })` and NO `.first()` — for Stripe, SumUp and
+ * Espèces. Playwright runs those in strict mode, so a SECOND mention of one of
+ * those words anywhere on the tab resolves the locator to two nodes and the
+ * shard goes red, however correct the new copy is.
+ *
+ * That is not hypothetical. Announcing Square as forthcoming with the sentence
+ * « En attendant, encaissez par Stripe ou SumUp — et par PayPal ou en espèces
+ * ci-dessous » added a second match for three of the four names at once, and
+ * E2E shard 3/4 failed on a change that touched no behaviour at all.
+ *
+ * PayPal is deliberately absent from the list below: it is named four times on
+ * this tab, and the spec already reaches for it with `.first()`. That asymmetry
+ * is the tell — whoever wrote the spec hit this once already.
+ *
+ * If a future tab genuinely needs to repeat one of these names, add `.first()`
+ * on the matching assertion in that spec, then take the name out of here.
+ */
+const SINGLE_MENTION = ["Stripe", "SumUp", "Espèces"] as const
+
+describe("the payments tab stays unambiguous for its e2e locators", () => {
+  /**
+   * The text a locator can actually match: JSX text nodes, comments and code
+   * removed. Counting raw source would trip over `handleConnect("stripe")`,
+   * which no user ever sees.
+   */
+  const renderedText = (source: string): string[] => {
+    const code = source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "")
+    return (code.match(/>([^<>{}]+)</g) ?? [])
+      .map((node) => node.slice(1, -1).trim())
+      .filter((node) => node.length > 0)
+  }
+
+  /**
+   * Matched the way the spec matches: `{ exact: false }` is case-insensitive
+   * and substring-based, so « espèces » in prose collides with the « Espèces »
+   * label just as surely as a second « Stripe » would.
+   */
+  const mentions = (source: string, name: string): string[] =>
+    renderedText(source).filter((node) =>
+      node.toLocaleLowerCase().includes(name.toLocaleLowerCase()),
+    )
+
+  for (const name of SINGLE_MENTION) {
+    it(`names ${name} exactly once in what a user can read`, () => {
+      expect(mentions(read(PAYMENTS_TAB), name)).toHaveLength(1)
+    })
+  }
+})

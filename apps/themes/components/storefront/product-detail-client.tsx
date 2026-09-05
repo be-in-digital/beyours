@@ -9,7 +9,6 @@ import {
   Label,
   AllergenBadge,
   SpiceLevelIndicator,
-  type Allergen,
 } from "@be-in-digital/ui"
 import {
   useCartStore,
@@ -204,7 +203,7 @@ export function ProductDetailClient({
           <div className="flex items-center gap-4 flex-wrap">
             {product.allergens && product.allergens.length > 0 && (
               product.allergens.map((allergen) => (
-                <AllergenBadge key={allergen} allergen={allergen as Allergen} />
+                <AllergenBadge key={allergen} allergen={allergen} />
               ))
             )}
             {product.spiceLevel !== undefined && product.spiceLevel > 0 && (

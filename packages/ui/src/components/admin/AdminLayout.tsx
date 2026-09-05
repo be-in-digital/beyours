@@ -44,9 +44,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Fermer le menu"
               onClick={() => setIsSidebarOpen(false)}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" aria-hidden />
             </Button>
           </div>
 
@@ -65,9 +66,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 variant="ghost"
                 size="icon"
                 className="md:hidden"
+                aria-label="Ouvrir le menu"
+                aria-expanded={isSidebarOpen}
                 onClick={() => setIsSidebarOpen(true)}
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5 w-5" aria-hidden />
               </Button>
               {header}
             </div>

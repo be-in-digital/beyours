@@ -33,10 +33,27 @@ describe("StoreStatusBadge", () => {
     expect(renderUnchecked(status)).toContain(label)
   })
 
+  it("carries the status colour, not `undefined`, in the class", () => {
+    expect(renderUnchecked("open")).toContain("bg-green-100")
+    expect(renderUnchecked("closed")).toContain("bg-red-100")
+    expect(renderUnchecked("draft")).toContain("bg-red-100")
+  })
+
   it("renders a draft as closed instead of throwing", () => {
     expect(() => renderUnchecked("draft")).not.toThrow()
     expect(renderUnchecked("draft")).toContain("Closed")
   })
+
+  it.each(["constructor", "__proto__", "toString", "valueOf"])(
+    "does not read %s off Object.prototype",
+    (inherited) => {
+      // An object literal inherits these, so `statusConfig[inherited]` is a
+      // function and `??` never fires.
+      const html = renderUnchecked(inherited)
+      expect(html).not.toContain("undefined")
+      expect(html).toContain("Closed")
+    }
+  )
 
   it("renders an unknown status as closed instead of throwing", () => {
     // A status added to the schema later arrives here as a string this

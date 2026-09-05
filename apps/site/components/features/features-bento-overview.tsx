@@ -77,8 +77,13 @@ function BentoCard({
       </div>
 
       {/* Title & description */}
-      <h3 className="mb-2 font-display text-sm font-semibold text-foreground">
+      <h3 className="mb-2 flex items-center gap-2 font-display text-sm font-semibold text-foreground">
         {feature.title}
+        {feature.notYetAvailable && (
+          <span className="inline-flex items-center rounded-full border border-[color:var(--info-border)] bg-[color:var(--info-soft)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[color:var(--info)]">
+            {feature.notYetAvailable.label}
+          </span>
+        )}
       </h3>
       <p className="text-xs leading-relaxed text-muted-foreground">
         {feature.shortDescription}

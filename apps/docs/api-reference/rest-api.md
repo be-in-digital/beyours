@@ -72,34 +72,6 @@ Upload files to AWS S3.
 }
 ```
 
-## Kitchen Printing
-
-### Print Ticket
-
-```
-POST /api/print
-```
-
-Send a kitchen ticket to a thermal printer.
-
-**Body:**
-
-```json
-{
-  "ticketId": "ticket_123",
-  "printerId": "printer_456"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Ticket sent to Kitchen Printer 1"
-}
-```
-
 ## Email
 
 ### Send Transactional Email

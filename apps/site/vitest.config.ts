@@ -3,10 +3,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    // Mirrors the "@/*" path in tsconfig.json. Without it nothing under
-    // `lib/` that imports through the alias — payment-providers.ts, which
-    // decides whether the checkout quotes VAT — can be loaded by a test at
-    // all, so the module that renders the total was untestable.
+    // Mirrors the "@/*" path in tsconfig.json. Two things need it, and both
+    // were untestable without it: `lib/payment-providers.ts`, which decides
+    // whether the checkout quotes VAT, and anything under `components/` that
+    // imports "@/convex/..." — which is how the pricing page's « À venir »
+    // badge and the checkout guard behind it went untested together for as
+    // long as they disagreed.
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
     },

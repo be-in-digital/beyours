@@ -143,8 +143,10 @@ Payment management.
 - Stripe
 - SumUp
 - PayPal
-- Square
 - Cash
+
+Square is a schema literal only — announced, with no implementation.
+`refundPolicy.ts` refuses it by name.
 
 ---
 

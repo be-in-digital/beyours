@@ -7,16 +7,8 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { CheckCircle, Package, ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
-import { Badge, Separator, Skeleton, OrderStatusBadge, type OrderStatus } from "@be-in-digital/ui"
+import { Badge, Separator, Skeleton, OrderStatusBadge } from "@be-in-digital/ui"
 import { formatPrice } from "@be-in-digital/restaurant"
-
-function toDisplayStatus(status: string): OrderStatus {
-  const map: Record<string, OrderStatus> = {
-    out_for_delivery: "delivered",
-    completed: "delivered",
-  }
-  return (map[status] ?? status) as OrderStatus
-}
 
 function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
@@ -157,7 +149,7 @@ function OrderConfirmationContent() {
           <div className="rounded-[2rem] bg-white border border-zinc-100 shadow-2xl shadow-black/[0.04] p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-black uppercase tracking-tighter">Détails</h2>
-              <OrderStatusBadge status={toDisplayStatus(order.status)} />
+              <OrderStatusBadge status={order.status} />
             </div>
 
             <div className="space-y-4 text-sm">

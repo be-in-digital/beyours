@@ -45,9 +45,11 @@ pnpm add @be-in-digital/convex-functions
 
 | Module | Description |
 |--------|-------------|
-| `kitchenTickets` | Ticket creation, printing, status |
+| `kitchenTickets` | Ticket creation, browser printing, status |
 | `kitchenTickets.stations` | Multi-station routing |
-| `printerSettings` | Printer configuration |
+
+Print configuration lives on `stores.printConfig` (`stores.updatePrintConfig`).
+There is no `printerSettings` function module.
 
 ### Payments
 
