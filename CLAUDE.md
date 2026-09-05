@@ -345,10 +345,22 @@ const s3 = createS3Service(config, client)
 const { key, url } = await s3.upload(file, { folder: "products" })
 ```
 
-Folders are a closed set — `products`, `branding`, `stores`, `cms`, `email`,
-`users` (`packages/core/src/aws/s3/validation.ts:27`). The bucket is private:
-`getPublicUrl` returns the CDN or the app's `/api/files` proxy, never a direct
-S3 URL.
+Folders are a closed set of eleven, declared once in
+`packages/core/src/aws/folders.ts` — `products`, `categories`, `cms`,
+`branding`, `stores`, `storefront`, `blogs`, `blog-auto`, `email`, `avatars`,
+`users`. Everything else derives from it: the Zod schema `upload()` parses
+through, the MIME and size tables, and the `/api/files` allowlist. Add a folder
+there and nowhere else. (This entry used to name six and cite the Zod enum,
+which had fallen five behind the list — `upload({ folder: "categories" })`
+type-checked and threw.)
+
+The HTTP route `apps/*/app/api/upload/route.ts` deliberately accepts only five
+of them; the rest are written by the presigned Convex flow, authorised
+separately. That narrowing is a security boundary, not drift — do not widen it
+to match.
+
+The bucket is private: `getPublicUrl` returns the CDN or the app's `/api/files`
+proxy, never a direct S3 URL.
 
 ### SES Email
 `sendEmail` and `sendTemplatedEmail` are methods on the SES service

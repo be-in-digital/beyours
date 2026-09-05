@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { S3_FOLDERS, isKnownS3Folder } from '../folders'
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from '../types'
 import { buildMediaUrl } from '../media-url'
+import { s3FolderSchema } from '../s3/validation'
 
 /**
  * The bucket is private and `/api/files` is the only read path, so a folder an
@@ -34,6 +35,23 @@ describe('S3 folder allowlist', () => {
   it('declares no folder the tables do not describe', () => {
     expect(Object.keys(ALLOWED_MIME_TYPES).sort()).toEqual([...S3_FOLDERS].sort())
     expect(Object.keys(MAX_FILE_SIZES).sort()).toEqual([...S3_FOLDERS].sort())
+  })
+
+  it('lets an upload target every folder it declares', () => {
+    // `upload()` and `getPresignedUploadUrl()` both parse their options through
+    // `s3FolderSchema`. It used to be a hand-written enum of six while
+    // `S3_FOLDERS` grew to eleven, so `categories`, `storefront`, `blogs`,
+    // `blog-auto` and `avatars` type-checked as `S3Folder` and threw at
+    // runtime — the documented upload API refusing five folders the type says
+    // are fine. Nothing in the apps called it, which is why nobody noticed.
+    for (const folder of S3_FOLDERS) {
+      expect(s3FolderSchema.safeParse(folder).success).toBe(true)
+    }
+    expect(s3FolderSchema.options.slice().sort()).toEqual([...S3_FOLDERS].sort())
+  })
+
+  it('refuses a folder the product does not declare', () => {
+    expect(s3FolderSchema.safeParse('invoices').success).toBe(false)
   })
 
   it('fails closed on an unknown folder', () => {
