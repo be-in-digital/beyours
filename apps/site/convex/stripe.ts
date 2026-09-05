@@ -125,11 +125,21 @@ export const createCheckoutSession = action({
     siret: v.optional(v.string()),
     successUrl: v.string(),
     cancelUrl: v.string(),
-    // Referral (optional)
+    /* ── Referral ──
+       The code the customer typed, and nothing else. This action is PUBLIC and
+       unauthenticated, so every argument here is attacker-chosen; it used to
+       also accept `referralCodeId`, `referrerId` and `discountPercent`, and
+       billed the percent it was handed. `discountPercent: 99` bought a Premium
+       build for 2 075 € instead of 8 750 €, and anything above 100 wrote a
+       NEGATIVE order that still reached « paid ». The affiliate id was equally
+       free: it named who collected the commission, without ever being checked
+       against the code.
+       All three are now derived from this string by
+       `referralCodes.resolveForCheckout`, an internalQuery no client can call.
+       Removing them rather than ignoring them is deliberate — Convex rejects
+       unknown arguments, so an old client that still sends a percent fails
+       loudly instead of being quietly overruled. */
     referralCode: v.optional(v.string()),
-    referralCodeId: v.optional(v.id("referralCodes")),
-    referrerId: v.optional(v.id("affiliateUsers")),
-    discountPercent: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
     /* Refuses before anything exists — the order is created 80 lines below, so
@@ -176,27 +186,35 @@ export const createCheckoutSession = action({
         ? prices.maintenanceMonthly
         : prices.maintenanceYearly;
 
-    // ── Referral (build only, not stackable with the founders offer) ──
-    let isReferral = false;
+    /* ── Referral (build only, not stackable with the founders offer) ──
+       Everything the discount depends on is read here, server-side, from the
+       code alone: which code row it is, who owns it, and what it is worth. A
+       code that does not exist, is deactivated, or belongs to a suspended
+       affiliate resolves to `null` and the order is billed at list price —
+       the customer is never told a code is good by the thing that charges
+       them. An out-of-range percent throws instead (see ./referralDiscount):
+       that is a misconfiguration, and it must not read as a bad code. */
+    const resolvedReferral = args.referralCode
+      ? await ctx.runQuery(internal.referralCodes.resolveForCheckout, {
+          code: args.referralCode,
+        })
+      : null;
 
-    if (args.referralCodeId && args.referrerId && args.discountPercent) {
-      // Anti-self-referral: compare the customer's email with the affiliate's
-      const affiliateEmail: string | null = await ctx.runQuery(
-        internal.affiliateUsers.getEmailById,
-        { affiliateUserId: args.referrerId },
+    /* Anti-self-referral, now comparing against the owner of THIS code rather
+       than against an affiliate id the caller picked. */
+    const selfReferral =
+      resolvedReferral?.referrerEmail != null &&
+      resolvedReferral.referrerEmail.toLowerCase() ===
+        args.customerEmail.toLowerCase();
+
+    if (selfReferral) {
+      console.log(
+        `[REFERRAL] Self-referral detected (${args.customerEmail}), ignoring discount`,
       );
-
-      if (
-        !affiliateEmail ||
-        affiliateEmail.toLowerCase() !== args.customerEmail.toLowerCase()
-      ) {
-        isReferral = true;
-      } else {
-        console.log(
-          `[REFERRAL] Self-referral detected (${args.customerEmail}), ignoring discount`,
-        );
-      }
     }
+
+    const referral = selfReferral ? null : resolvedReferral;
+    const isReferral = referral !== null;
 
     // ── Founders offer: while slots remain, and outside any referral ──
     let isFounders = false;
@@ -230,8 +248,8 @@ export const createCheckoutSession = action({
         ? foundersOffer.creationCents
         : prices.creation;
     const foundersDiscountCents = useFoundersCoupon ? prices.creation : 0;
-    const referralDiscountCents = isReferral
-      ? Math.round((creationCents * args.discountPercent!) / 100)
+    const referralDiscountCents = referral
+      ? Math.round((creationCents * referral.discountPercent) / 100)
       : 0;
     const discountAmountCents = foundersDiscountCents + referralDiscountCents;
     const totalCents = creationCents + maintenanceCents;
@@ -256,10 +274,10 @@ export const createCheckoutSession = action({
 
     // Referral metadata for the webhook
     const referralMetadata: Record<string, string> = {};
-    if (isReferral) {
-      referralMetadata.referralCodeId = String(args.referralCodeId!);
-      referralMetadata.referrerId = String(args.referrerId!);
-      referralMetadata.discountPercent = String(args.discountPercent!);
+    if (referral) {
+      referralMetadata.referralCodeId = String(referral.referralCodeId);
+      referralMetadata.referrerId = String(referral.referrerId);
+      referralMetadata.discountPercent = String(referral.discountPercent);
       referralMetadata.discountAmountCents = String(discountAmountCents);
     }
 
@@ -276,26 +294,26 @@ export const createCheckoutSession = action({
       });
 
       // Create the referral straight away in test mode
-      if (isReferral) {
+      if (referral) {
         const settings = await ctx.runQuery(
           internal.affiliateSettings.getInternal,
           {},
         );
         const affiliate = await ctx.runQuery(
           internal.affiliateUsers.getById,
-          { affiliateUserId: args.referrerId! },
+          { affiliateUserId: referral.referrerId },
         );
         const commissionCents =
           affiliate?.commissionOverrideCents ?? settings.defaultCommissionCents;
 
         await ctx.runMutation(internal.referrals.createFromCheckout, {
-          referrerId: args.referrerId!,
-          referralCodeId: args.referralCodeId!,
+          referrerId: referral.referrerId,
+          referralCodeId: referral.referralCodeId,
           orderId,
           customerEmail: args.customerEmail,
           customerName: `${args.customerFirstName} ${args.customerLastName}`.trim() || undefined,
           commissionCents,
-          discountPercent: args.discountPercent!,
+          discountPercent: referral.discountPercent,
           discountAmountCents,
         });
       }
@@ -317,12 +335,12 @@ export const createCheckoutSession = action({
     let couponId: string | undefined;
     if (useFoundersCoupon) {
       couponId = foundersCouponId;
-    } else if (isReferral && referralDiscountCents > 0) {
+    } else if (referral && referralDiscountCents > 0) {
       const coupon = await stripe.coupons.create({
         amount_off: referralDiscountCents,
         currency: "eur",
         duration: "once",
-        name: `Parrainage -${args.discountPercent}%`,
+        name: `Parrainage -${referral.discountPercent}%`,
         /* Computed on the creation only, so restrict it there: otherwise
            Stripe spreads it over the maintenance line too (see
            CREATION_PRODUCT_ENV). */

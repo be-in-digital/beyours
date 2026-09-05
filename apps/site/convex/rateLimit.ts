@@ -122,6 +122,34 @@ export const RATE_LIMITS = {
     foldSubjectCase: false,
   },
   /**
+   * Checkouts opened from one email address.
+   *
+   * `stripe.createCheckoutSession` is public and unauthenticated: it creates
+   * an `orders` row and a Stripe coupon before anything is paid, and it was
+   * bounded by nothing at all. Five an hour covers a buyer who abandons and
+   * comes back, changes plan, or has a card declined twice, and stops the
+   * loop from one address. Dodged by inventing addresses — which is why the
+   * window below exists.
+   */
+  checkoutPerEmail: { limit: 5, windowMs: HOUR, foldSubjectCase: true },
+  /**
+   * Every checkout opened on the site, whatever address it claims.
+   *
+   * What this bounds honestly: the rate at which anonymous callers can create
+   * order rows, Stripe coupon objects and founders holds. Sixty an hour is far
+   * above this site's real volume — it sells a handful of builds — so a
+   * genuine buyer, including on a launch-day burst, never meets it.
+   *
+   * What it does NOT do, said plainly: it cannot stop a burst from making the
+   * founders offer look sold out. That offer has ten slots, and ten calls is
+   * fewer than any ceiling a real storefront can carry. The duration of such a
+   * burst is bounded by FOUNDERS_HOLD_MS instead (see ./foundersOffer), and
+   * the offer's true cap is the Stripe coupon's max_redemptions, never this
+   * counter. Preventing it outright would mean authenticating or challenging
+   * the checkout, which is a product decision.
+   */
+  checkoutSiteWide: { limit: 60, windowMs: HOUR, foldSubjectCase: false },
+  /**
    * Invoice upload URLs minted by one affiliate.
    *
    * An affiliate attaches one invoice per commission, and payouts run twice a
