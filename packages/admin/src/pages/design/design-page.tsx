@@ -28,6 +28,26 @@ import { brandingControlState } from "../../lib/branding-eligibility"
 import { BrandingControl } from "./branding-control"
 import { BrandingPreview } from "./branding-preview"
 
+/**
+ * Font families a diner's browser will actually have.
+ *
+ * Nothing here fetches a webfont: the engine bundles Inter and Poppins through
+ * `next/font` and a stored family renders only if the visitor's device already
+ * has it. Offering these as suggestions rather than a closed list keeps an
+ * establishment free to name a font it installs itself, while making the safe
+ * answers the easy ones. The warning under the fields says the rest.
+ */
+const SAFE_FONTS = [
+  "Inter",
+  "Poppins",
+  "Arial",
+  "Helvetica",
+  "Georgia",
+  "Times New Roman",
+  "Verdana",
+  "Courier New",
+]
+
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
   { id: "pizzeria", name: "Pizzeria", primary: "#D32F2F", secondary: "#FFEBEE", accent: "#FF5722" },
@@ -235,17 +255,29 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
 
         <TabsContent value="typography" className="space-y-4">
           <div className="border border-border/50 rounded-xl p-6 space-y-4">
+            <datalist id="beid-safe-fonts">
+              {SAFE_FONTS.map((font) => (
+                <option key={font} value={font} />
+              ))}
+            </datalist>
+            <p className="text-sm text-muted-foreground">
+              Une police ne s&apos;affiche que si l&apos;appareil du client la
+              possède déjà — le site ne télécharge aucune police. Inter et
+              Poppins sont fournies avec le site et fonctionnent partout ; les
+              autres suggestions sont installées sur presque tous les appareils.
+              Une police introuvable revient à la police par défaut.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fontHeading">Police des titres</Label>
-                <Input id="fontHeading" value={fontHeading} onChange={(e) => setFontHeading(e.target.value)} placeholder="Inter, Roboto, Arial..." />
+                <Input id="fontHeading" list="beid-safe-fonts" value={fontHeading} onChange={(e) => setFontHeading(e.target.value)} placeholder="Inter, Poppins, Georgia..." />
                 <div className="p-4 border rounded-lg text-2xl font-bold" style={{ fontFamily: fontHeading }}>
                   Exemple de titre
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fontBody">Police du texte</Label>
-                <Input id="fontBody" value={fontBody} onChange={(e) => setFontBody(e.target.value)} placeholder="Inter, Roboto, Arial..." />
+                <Input id="fontBody" list="beid-safe-fonts" value={fontBody} onChange={(e) => setFontBody(e.target.value)} placeholder="Inter, Poppins, Georgia..." />
                 <div className="p-4 border rounded-lg text-sm" style={{ fontFamily: fontBody }}>
                   Ceci est un exemple de texte qui montre comment votre contenu
                   apparaîtra avec la police sélectionnée.

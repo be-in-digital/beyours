@@ -152,6 +152,18 @@ describe("the surviving geometry is the newer generation", () => {
     }
   })
 
+  it("keeps CardTitle in the document outline", () => {
+    // The newer generation renders a `<div>` here. Sixty cards in
+    // `packages/admin` alone were `<h3>` before the convergence, and five e2e
+    // assertions find a card by `getByRole("heading")` — "Uber Eats",
+    // "Deliveroo", "Uber Direct", "Alertes sonores", "Type de commande". A
+    // `<div>` drops every one of them from the outline, silently: nothing
+    // type-checks it and no unit test renders it.
+    const src = fs.readFileSync(path.join(UI_SRC, "components", "Card.tsx"), "utf8")
+    expect(src).toMatch(/as: Comp = "h3"/)
+    expect(src).toContain('data-slot="card-title"')
+  })
+
   it("kept the dialog fix the app copy had lost", () => {
     // The one place the package was ahead: a dialog taller than the window grew
     // past it in both directions, so its buttons sat below the screen. The fix

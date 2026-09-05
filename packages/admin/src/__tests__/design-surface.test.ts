@@ -342,6 +342,19 @@ describe("what the screen saves reaches a diner", () => {
     })
   }
 
+  it("does not promise a font it cannot deliver", () => {
+    // Nothing fetches a webfont, so a stored family renders only where the
+    // visitor already has it. The typography tab used to suggest "Roboto",
+    // which is on essentially no desktop — a control that saves, previews
+    // correctly on the owner's machine, and changes nothing for a diner. The
+    // screen now says so, and suggests families that do render.
+    expect(source).toContain("beid-safe-fonts")
+    expect(source).toMatch(/le site ne télécharge aucune police/)
+    // The two the engine actually bundles through `next/font`.
+    expect(source).toContain('"Inter"')
+    expect(source).toContain('"Poppins"')
+  })
+
   it("wins the cascade against the engine's own defaults", () => {
     // The reason the injected rules take effect at all. `globals.css` keeps
     // its literal `--primary: 24 95% 53%` — it has to, it is what an

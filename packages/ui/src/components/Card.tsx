@@ -28,9 +28,27 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * A heading, deliberately — upstream shadcn renders a `<div>` here.
+ *
+ * The generation this package converged onto dropped the element the previous
+ * one used, and the previous one is what 77 admin routes render: every card
+ * section of the dashboard, the settings tabs and the store tabs was an `<h3>`
+ * in the document outline. A `<div>` removes all of them at once, which no
+ * type checker and no unit test would notice — and five e2e assertions locate
+ * a card by `getByRole("heading")`, so it is load-bearing as well as correct.
+ *
+ * `as` is the escape hatch for a card whose title genuinely is not a section
+ * heading; the default is the answer that keeps a screen reader able to
+ * navigate the page.
+ */
+function CardTitle({
+  className,
+  as: Comp = "h3",
+  ...props
+}: React.ComponentProps<"h3"> & { as?: "h2" | "h3" | "h4" | "div" }) {
   return (
-    <div
+    <Comp
       data-slot="card-title"
       className={cn("leading-none font-semibold", className)}
       {...props}
