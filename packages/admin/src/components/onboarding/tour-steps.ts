@@ -79,7 +79,8 @@ export const TOUR_STEPS: StepType[] = [
     highlightedSelectors: ['[data-tour="nav-orders-kitchen"]'],
     content:
       "Cuisine (KDS) — L'écran de votre cuisine ! " +
-      "4 colonnes Kanban : En attente → En cours → Prêt → Terminé. " +
+      "3 colonnes Kanban : En attente → En cours → Prêt, " +
+      "et un onglet Terminées pour l'historique. " +
       "Chaque ticket affiche le n° de commande, les articles et un chrono. " +
       "Filtrez par poste (entrées, grillades, desserts…) en haut. " +
       "Et si vous activez l'impression dans les réglages de l'établissement, " +

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { hasPermission, type Role, type Permission } from "@be-in-digital/core"
+import { type Role } from "@be-in-digital/core"
 import { UtensilsCrossed, Store } from "lucide-react"
 import {
   Sidebar,
@@ -28,11 +28,11 @@ import {
 } from "../ui/collapsible"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { UnreadMessagesBadge } from "./unread-messages-badge"
+import { canSeeNavEntry } from "../lib/nav-visibility"
 import {
   navGroups,
   isCollapsible,
   ChevronRight,
-  type NavEntry,
   type CollapsibleNavItem,
 } from "../config/nav-config"
 
@@ -43,17 +43,12 @@ interface AppSidebarProps {
   brandName?: string
 }
 
-function canSeeEntry(role: Role, entry: NavEntry): boolean {
-  const permission = entry.requiredPermission
-  if (!permission) return true
-  return hasPermission(role, permission as Permission)
-}
-
 export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
   const role = useAdminAuthStore((s) => s.role)
+  const modules = useAdminAuthStore((s) => s.permissions)
 
   return (
     <Sidebar collapsible="icon">
@@ -85,7 +80,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
       <SidebarContent>
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((entry) =>
-            canSeeEntry(role as Role, entry)
+            canSeeNavEntry(role as Role, modules, entry)
           )
           if (visibleItems.length === 0) return null
 

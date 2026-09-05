@@ -59,11 +59,7 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   cash: { label: "Espèces", color: "bg-green-100 text-green-800" },
 }
 
-interface PaymentsPageProps {
-  embedded?: boolean
-}
-
-export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
+export function PaymentsPage() {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
@@ -99,14 +95,12 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
 
   return (
     <div className="space-y-6">
-      {!embedded && (
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Consultez les transactions et gérez les remboursements.
-          </p>
-        </div>
-      )}
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Consultez les transactions et gérez les remboursements.
+        </p>
+      </div>
 
       {/* Filters */}
       <div className="flex items-center gap-4">

@@ -94,11 +94,23 @@ export const navGroups: NavGroup[] = [
         icon: ShoppingCart,
         requiredPermission: "orders:read",
       },
+      /**
+       * Gated on the permission the KDS screen's own queries enforce, not on
+       * the one that merely sounds adjacent.
+       *
+       * This read `orders:read`, and `waiter` and `delivery` hold that while
+       * holding no `kitchen:read` — so every server and every driver the owner
+       * added from the Team screen was shown a "Cuisine (KDS)" link, clicked
+       * it, and landed on an error page. Convex rethrows a refusal out of
+       * `useQuery` during render, so the screen never got as far as drawing an
+       * empty state; it unwound. `kitchenTickets.getByStore`, `getPrintQueue`,
+       * `getOverdueCount` and `getPrintStuckCount` all require `kitchen:read`.
+       */
       {
         label: "Cuisine (KDS)",
         href: adminRoutes.kitchen,
         icon: ChefHat,
-        requiredPermission: "orders:read",
+        requiredPermission: "kitchen:read",
       },
       {
         label: "Menu & Produits",
@@ -138,11 +150,21 @@ export const navGroups: NavGroup[] = [
   {
     label: "Marketing",
     items: [
+      /**
+       * `promotions.list` enforces `marketing:read`, not `games:read`.
+       *
+       * Both resolve to the same three roles today, so nothing was visibly
+       * broken — but the resource NAME is load-bearing on its own. The server
+       * runs a second gate after the role check, `profileAllowsPermission`,
+       * which maps a permission's resource onto one of the eight module
+       * checkboxes the invite dialog offers. Naming the wrong resource is a
+       * refusal waiting for the first owner who ticks the boxes.
+       */
       {
         label: "Promotions",
         href: adminRoutes.promotions,
         icon: Tag,
-        requiredPermission: "games:read",
+        requiredPermission: "marketing:read",
       },
       {
         label: "Gamification",
@@ -161,7 +183,12 @@ export const navGroups: NavGroup[] = [
         label: "Email Marketing",
         icon: Mail,
         basePath: adminRoutes.email,
-        requiredPermission: "settings:read",
+        // Every screen behind this entry — campaigns, templates, subscribers,
+        // segments, config — enforces `marketing:read`. `settings:read` maps to
+        // a different module (`settings` rather than `marketing`), so a member
+        // granted settings and not marketing was shown all six and refused all
+        // six.
+        requiredPermission: "marketing:read",
         children: [
           { label: "Tableau de bord", href: adminRoutes.email },
           { label: "Campagnes", href: adminRoutes.emailCampaigns },
@@ -176,28 +203,35 @@ export const navGroups: NavGroup[] = [
   {
     label: "Contenu",
     items: [
+      // The list itself is an unguarded query, but it exists to open the page
+      // editor, and `cms.getAdminPageBlocks` enforces `content:read`. Gating
+      // the entry on the resource its own screens are about keeps it in the
+      // same module as Blog and Médiathèque, which is where the server puts it.
       {
         label: "Pages",
         href: adminRoutes.contentPages,
         icon: FileText,
-        requiredPermission: "settings:read",
+        requiredPermission: "content:read",
       },
       // "Composants" is deliberately left out until the editor exists.
       {
         label: "Blog",
         icon: PenSquare,
         basePath: adminRoutes.contentBlog,
-        requiredPermission: "settings:read",
+        // `blog.listAdminArticles` and `blogAutoConfig.getByStoreId` enforce
+        // `content:read`.
+        requiredPermission: "content:read",
         children: [
           { label: "Articles", href: adminRoutes.contentBlog },
           { label: "Auto Blog", href: adminRoutes.contentBlogAutoConfig },
         ],
       },
+      // `cmsMedia.listMedia` enforces `content:read`.
       {
         label: "Médiathèque",
         href: adminRoutes.contentMedia,
         icon: Image,
-        requiredPermission: "settings:read",
+        requiredPermission: "content:read",
       },
       /**
        * Colours, typography and logo of the storefront.
