@@ -58,6 +58,7 @@ function checkoutArgs() {
     city: "Paris",
     successUrl: "https://beyours.fr/merci",
     cancelUrl: "https://beyours.fr/tarifs",
+    withdrawalWaiverConsent: true,
   };
 }
 

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
+import { WITHDRAWAL_WAIVER } from "../lib/legal/withdrawal-waiver";
 
 /* ══════════════════════════════════════════════
    Superadmin console seed.
@@ -155,6 +156,17 @@ async function seedCommercial(ctx: MutationCtx) {
       status: r.sub === "none" ? "pending" : "paid",
       paymentMethod: "card",
       stripeSessionId: `cs_${idx}_creation`,
+      /* Demo data, but the shape has to be the real one: ./schema.ts says every
+         order created from now on carries the waiver, and a seed that skipped it
+         made that sentence false — and put waiverless rows into the revenue the
+         ops console reports. Marked as seeded so nobody mistakes it for a tick
+         somebody actually made. */
+      withdrawalWaiver: {
+        consentedAt: signedAt,
+        version: WITHDRAWAL_WAIVER.version,
+        text: WITHDRAWAL_WAIVER.text,
+        cgvClause: `${WITHDRAWAL_WAIVER.cgvClause} — donnée de démonstration`,
+      },
       createdAt: signedAt,
     });
     if (r.sub !== "none") {

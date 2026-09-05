@@ -117,3 +117,48 @@ export const cleanupLegacyUsers = internalMutation({
     return { deleted, normalized, total: rows.length };
   },
 });
+
+
+/**
+ * Repair: reclassify orphaned in-app signature rows left by the old ordering.
+ *
+ * `signAffiliateContract` used to commit `status: "signed"` BEFORE generating
+ * the PDF, with no duplicate guard, so a signatory whose name left
+ * Windows-1252 produced one signed-looking row per attempt and never a
+ * document. Those rows say a contract was signed that does not exist, which is
+ * exactly the audit trail the eIDAS art. 25 claim in ./affiliateSignature.ts
+ * rests on.
+ *
+ * They are marked `failed`, not deleted. An audit trail is repaired by making
+ * it say what happened, not by removing the evidence that it went wrong — and
+ * `contractSignatures.status` already has the literal for it.
+ *
+ * Safe to run more than once: a signed row WITH a document is never touched.
+ *   npx convex run migrations:markOrphanSignaturesFailed
+ */
+export const markOrphanSignaturesFailed = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const CAP = 5000;
+    const rows = await ctx.db.query("contractSignatures").take(CAP + 1);
+    /* Says so rather than stopping quietly: a deployment past the cap would
+       otherwise be told the repair is complete while orphans remain. */
+    const truncated = rows.length > CAP;
+    let marked = 0;
+    for (const row of rows.slice(0, CAP)) {
+      if (row.status !== "signed") continue;
+      if (row.signedDocumentFileId !== undefined) continue;
+      await ctx.db.patch(row._id, {
+        status: "failed" as const,
+        updatedAt: Date.now(),
+      });
+      marked++;
+    }
+    if (truncated) {
+      console.warn(
+        `[markOrphanSignaturesFailed] more than ${CAP} rows: run again, the repair is incomplete`,
+      );
+    }
+    return { marked, scanned: Math.min(rows.length, CAP), truncated };
+  },
+});

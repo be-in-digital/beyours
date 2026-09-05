@@ -44,6 +44,15 @@ export const create = internalMutation({
     billingPeriod: billingPeriodValidator,
     amountCents: v.number(),
     isFounders: v.optional(v.boolean()),
+    /* Required here, optional in the schema: the schema has to keep validating
+       the orders taken before the waiver was recorded, but nothing may create a
+       new one without it. See convex/schema.ts and lib/legal/withdrawal-waiver.ts. */
+    withdrawalWaiver: v.object({
+      consentedAt: v.number(),
+      version: v.string(),
+      text: v.string(),
+      cgvClause: v.string(),
+    }),
   },
   handler: async (ctx, args) => {
     const orderId = await ctx.db.insert("orders", {
