@@ -312,7 +312,7 @@ export default function DeploymentDetailPage() {
                     )}
                   </DropdownItem>
                 );
-            })}
+              })}
             </Dropdown>
           </div>
         </div>
