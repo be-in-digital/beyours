@@ -286,9 +286,12 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
     route: adminRoutes.design,
     navFor: adminRoutes.design,
     content:
-      "Design — L'allure de votre site, en 4 onglets : Thème, Couleurs, " +
-      "Typographie et Logo. Les réglages s'appliquent à l'établissement " +
-      "sélectionné en haut de page — vos autres restaurants gardent le leur.",
+      "Design — Trois onglets : Couleurs, Typographie et Logo. " +
+      "Les couleurs et la typographie ne s'appliquent pas encore à votre " +
+      "site public : l'enregistrement y est désactivé, et l'écran vous " +
+      "l'explique sur place. Votre site affiche la palette et les polices " +
+      "de son modèle de design, choisi à l'installation. Le logo, lui, se " +
+      "règle dans Contenu › Pages, sur « Layout du storefront ».",
   },
 
   // ── Stores ─────────────────────────────────────────────────────────
@@ -344,8 +347,9 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
       "Paramètres — Plusieurs onglets de configuration : " +
       "informations du restaurant, horaires, options de livraison, " +
       "moyens de paiement (Stripe, SumUp, PayPal, espèces — Square arrive) " +
-      "et intégrations. Les couleurs, la typographie et le logo " +
-      "se règlent sur l'écran Design, dans le groupe Contenu.",
+      "et intégrations. Votre logo se règle dans Contenu › Pages, sur " +
+      "« Layout du storefront » : c'est de là que votre site, l'icône de " +
+      "l'onglet et cet écran tirent tous le leur.",
   },
 
   // ── System ─────────────────────────────────────────────────────────

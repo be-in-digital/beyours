@@ -95,7 +95,7 @@ export const features: Feature[] = [
       "Libérez-vous des commissions des plateformes. Vos clients commandent directement depuis votre site — en livraison ou en click and collect. Paiement sécurisé, notifications en temps réel, et un parcours d'achat optimisé pour maximiser votre panier moyen.",
     benefits: [
       "Zéro commission sur les commandes directes",
-      "Click and collect intégré avec créneaux horaires",
+      "Click and collect intégré à votre site",
       "Parcours d'achat optimisé pour maximiser le panier moyen",
     ],
     pillar: "vendre",
@@ -110,7 +110,7 @@ export const features: Feature[] = [
     shortDescription:
       "Une application native iOS & Android, au programme de l'offre Premium.",
     longDescription:
-      "Une application à votre image : commande en quelques secondes, fidélité intégrée, notifications push. Elle fera l'offre Premium, qui ouvrira le jour de sa publication sur l'App Store et Google Play. Nous ne la vendons pas avant.",
+      "Une application à votre image : commande en quelques secondes, jeu et lots intégrés, notifications push. Elle fera l'offre Premium, qui ouvrira le jour de sa publication sur l'App Store et Google Play. Nous ne la vendons pas avant.",
     benefits: [
       "Application native iOS & Android à votre image",
       "Notifications push pour engager vos clients",
@@ -170,7 +170,7 @@ export const features: Feature[] = [
       "Vos commandes directes convergent dans un flux unique et en temps réel : celles de votre site, du click & collect et du sur place. Fini le jonglage entre les écrans et les commandes manquées ; tout se gère au même endroit, avec alertes sonores et notifications instantanées. Les commandes Deliveroo y arrivent déjà, notre application étant certifiée ; celles d'Uber Eats rejoindront le flux une fois la validation obtenue.",
     benefits: [
       "Toutes vos commandes directes dans un seul écran",
-      "Alertes sonores et notifications push en temps réel",
+      "Alerte sonore à chaque commande, écran mis à jour en direct",
       "Historique complet et traçabilité de chaque commande",
     ],
     pillar: "gerer",
@@ -204,13 +204,13 @@ export const features: Feature[] = [
     title: "Fidélisation & Gamification",
     subtitle: "Engagez vos clients",
     shortDescription:
-      "Un programme de fidélité engageant avec des mécaniques de gamification.",
+      "Un QR code sur vos tables, un avis ou un abonnement, une partie : vos clients jouent et repartent avec un lot.",
     longDescription:
-      "Transformez vos clients occasionnels en habitués grâce à un programme de fidélité intelligent et gamifié. Points, niveaux, défis, récompenses exclusives — chaque interaction renforce l'engagement et incite à revenir. Personnalisable et intégré à votre site et votre application.",
+      "Le client scanne le QR code posé sur sa table, laisse un avis Google ou vous suit sur Instagram, puis lance la roue de la fortune ou gratte sa carte. Vous fixez le taux de gain, de 0 à 100 %, et la liste des lots : réduction, produit offert, menu offert. Le gagnant reçoit son QR code par email et vient le retirer chez vous ; il attend 24 h avant de rejouer. Une partie par visite, et un avis ou un abonné de plus à chaque fois.",
     benefits: [
-      "Système de points, niveaux et récompenses personnalisable",
-      "Défis et challenges pour stimuler l'engagement",
-      "Suivi et analyse du comportement de fidélisation",
+      "Roue de la fortune et carte à gratter, à vos couleurs",
+      "Taux de gain réglé par vous, de 0 à 100 %",
+      "Lot reçu par email en QR code, retiré au restaurant",
     ],
     pillar: "fideliser",
     mockupPattern: "mobile",
@@ -219,16 +219,16 @@ export const features: Feature[] = [
   {
     id: "analytics",
     tag: "08",
-    title: "Analytics",
-    subtitle: "Décisions data-driven",
+    title: "Suivi des ventes",
+    subtitle: "Vos chiffres en direct",
     shortDescription:
-      "Comprenez vos performances avec des données claires et des insights actionnables.",
+      "Chiffre d'affaires, commandes et panier moyen du jour, comparés à la veille.",
     longDescription:
-      "Prenez des décisions éclairées grâce à des données précises sur votre activité. Chiffre d'affaires, panier moyen, plats populaires, heures de pointe, taux de retour — tout est visualisé dans des tableaux de bord clairs et actionnables. Identifiez les opportunités et optimisez votre stratégie.",
+      "Votre tableau de bord ouvre sur les indicateurs du jour : chiffre d'affaires, nombre de commandes, panier moyen et commandes encore à traiter, chacun comparé à la veille. En dessous, le chiffre d'affaires des sept derniers jours en barres, la répartition de vos commandes par type et par canal de vente, puis vos dix dernières commandes. Tout se met à jour en direct, sans export ni tableur.",
     benefits: [
-      "Tableaux de bord visuels avec KPIs essentiels",
-      "Analyse des tendances et des performances par période",
-      "Insights actionnables pour optimiser votre offre",
+      "Chiffre d'affaires, commandes et panier moyen, comparés à la veille",
+      "Le chiffre d'affaires des 7 derniers jours en graphique",
+      "Répartition des commandes par type et par canal de vente",
     ],
     pillar: "fideliser",
     mockupPattern: "dashboard",

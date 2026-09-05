@@ -220,15 +220,19 @@ await updateGame(gameId, { winRatio: 40 }); // 40% win rate
 // random() >= (winRatio / 100) → LOSE
 ```
 
-### Analytics
+### Stats
 
-The `GamesPage` admin component provides:
+The `GamesPage` admin component shows four counters, from
+`api.prizeRedemptions.getStats` plus the store's QR codes:
 
 - Total plays
-- Win/loss ratio
-- Prize redemption rate
-- Revenue attribution (from returning winners)
-- Popular game times
+- Wins
+- QR scans (summed from each code's `scannedCount`)
+- Prizes awaiting redemption
+
+`getStats` also returns `winRate` and `totalRedeemed`, which `GamesPage` does
+not render today. There is no revenue attribution and no breakdown by time of
+day.
 
 ## Cooldown System
 

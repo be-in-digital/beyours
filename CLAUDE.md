@@ -9,6 +9,19 @@
 - **Multi-store**: 1 restaurant owner = 1-∞ locations (unlimited)
 - **Pricing**: Per store
 - **Maintenance**: 1 year included, then annual renewal
+- **No plan gating exists.** Two offers are sold — Essentielle and Premium — and
+  the engine never learns which one was bought: no plan literal, no `planSlug`,
+  no entitlement read anywhere in `apps/themes/convex` or `packages/*/src`.
+  `apps/site/convex/planAvailability.ts` decides which plan may be **bought**, not
+  what a bought plan unlocks. Do not write copy that implies a feature is withheld
+  from a tier. If gating is ever wanted, `maintenanceContracts` is the right home:
+  one singleton row per deployment, written by the team, read-only for the client.
+- **A delivered site never invents its own social proof.** No `reviews` table and
+  no `ratings` table exist, so nothing can produce a star. Never ship a hard-coded
+  testimonial, rating, review count or customer count in `apps/themes` — not even
+  as a placeholder a client is "expected to overwrite". A figure about an
+  establishment is the establishment's to state. Held by
+  `tests/storefront/no-fabricated-social-proof.test.ts` in both apps.
 
 ---
 
@@ -139,7 +152,15 @@ neither Neon nor Postgres appears anywhere in the codebase.
 
 ---
 
-## 🎯 Key Features (181+)
+## 🎯 Key Features — 29 shipping · 23 partial · 41 absent
+
+This section used to be headed "181+", a number copied from
+`_project/FEATURES_DIAGRAM.md` whose own table sums to 201 and which counts
+things that are not features (six themes as six, seven team roles as seven).
+Neither figure was ever measured. The discovery audit of 1 September 2026 went
+through the 92 features enumerated below and found **29 shipping as described,
+23 partial, and 41 absent or unreachable** from `apps/themes` — the application
+a paying client actually runs. Quote that, or quote nothing.
 
 ### Multi-Store (5)
 Store config, hours, geolocation, status
@@ -170,11 +191,42 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
 - **Admin adds ANY language**
 - **GPT-3.5-turbo auto-translation** ($0.001/product)
 - Manual translation option
-- Bulk translator
+- Bulk translation of the **catalogue** — adding a language backfills products,
+  categories and menus, and the CMS page editor has a « Traduire tout ». There is
+  no bulk translator for **UI strings**: `translateUIStrings` used to exist in
+  both apps' `convex/autoTranslate.ts`, with zero callers and a docblock claiming
+  the admin languages page called it, and has been deleted. UI strings are
+  translated one at a time through the « Traductions UI » tab of the admin
+  languages screen (`translations.upsert`).
+- `translationJobs` rows are written but **read by nothing**, so a batch that
+  stops on the daily quota looks exactly like one that finished.
+- **RTL, currency and date locale do not reach the storefront.** The « Droite à
+  gauche » switch and the « Devise » picker are therefore **disabled with a
+  stated reason**; the value is still stored, and nothing on the storefront reads
+  it. Prices format as `fr-FR`/EUR whatever the owner picked, and Arabic renders
+  left-to-right. Currency is the half-case: the admin's own payment and refund
+  screens do format in the currency taken, only the public site does not.
 
-### Design (14)
-Design system in `packages/ui`, theming per store via CMS branding settings.
-(Note: no predefined-theme package exists — `packages/themes` was an empty stub and has been removed.)
+### Design
+Design system in `packages/ui`. A site's look is fixed **at clone time** by
+`pnpm template:apply <slug>` — 5 verticals, 51 templates under
+`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). The
+storefront's palette and fonts are compile-time constants in
+`apps/*/app/globals.css` and `apps/*/site/fonts.ts`.
+
+Logo, favicon and brand name are per store, through the CMS `branding` block on
+the `storefront-layout` page — the only branding the storefront header, the
+favicon, the JSON-LD and the admin sidebar actually read.
+
+**Per-store colours and typography are NOT applied.** `stores.updateBranding`
+writes `store.branding` correctly and *nothing reads it*, so the Design screen's
+Couleurs and Typographie tabs are disabled with a stated reason until
+`store.branding` and the CMS `branding` block are reconciled. Do not "fix" this
+by deleting the mutation — the write path is the half that works.
+
+There is no runtime theme selector, and `themeId` is a schema field with zero
+writers and zero readers. (No predefined-theme package exists either —
+`packages/themes` was an empty stub and has been removed.)
 
 ### Testing
 - Vitest unit tests. **Coverage is measured on demand, not gated** —

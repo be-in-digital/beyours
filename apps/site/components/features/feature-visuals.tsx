@@ -14,9 +14,9 @@ import {
   Clock,
   Bell,
   Check,
-  Gift,
-  Trophy,
-  Flame,
+  QrCode,
+  Sparkles,
+  Ticket,
   BarChart3,
   MapPin,
   UtensilsCrossed,
@@ -290,7 +290,7 @@ function MobileAppVisual() {
         <div className="mt-3 grid grid-cols-2 gap-2 px-4">
           {[
             { label: "Commander", sub: "Livraison / retrait", primary: true },
-            { label: "320 pts", sub: "Niveau Gold", primary: false },
+            { label: "Mes lots", sub: "1 à retirer", primary: false },
           ].map((c) => (
             <div
               key={c.label}
@@ -521,73 +521,95 @@ function IntegrationVisual() {
   );
 }
 
-/* ── 07 · Loyalty & gamification — light card, consistent with the others ── */
+/* ── 07 · The game at the table — one scan, one action, one play, one prize.
+   Nothing accumulates between plays, so nothing here counts up: no balance,
+   no tier, no progress bar towards a next level. What the owner actually
+   holds is the win ratio, so that is the control the card ends on. ── */
+
+const gameSteps = [
+  { Icon: QrCode, label: "Scan à table" },
+  { Icon: Star, label: "Avis Google" },
+  { Icon: Sparkles, label: "Une partie" },
+];
 
 function FideliteVisual() {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
-      {/* Halo chaud discret */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
-      />
+    <VisualCard>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
+        <p className="text-xs font-semibold text-foreground">Jeu à table</p>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
+          <QrCode className="h-3 w-3 text-primary" strokeWidth={2.2} /> Table 12
+        </span>
+      </div>
 
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-              Programme fidélité
-            </span>
-            <p className="mt-1 font-display text-lg font-semibold text-foreground">
-              Niveau Gold
+      <div className="p-4">
+        {/* The three steps of a single play */}
+        <div className="grid grid-cols-3 gap-2">
+          {gameSteps.map((s) => (
+            <div
+              key={s.label}
+              className="rounded-xl border border-[color:var(--border)] bg-background px-2 py-2.5 text-center"
+            >
+              <span className="mx-auto grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                <s.Icon className="h-3.5 w-3.5" strokeWidth={2} />
+              </span>
+              <p className="mt-1.5 text-[10px] font-semibold text-foreground">
+                {s.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* The wheel and the prize it gave */}
+        <div className="mt-3 flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-background p-3">
+          <span
+            aria-hidden="true"
+            className="relative h-11 w-11 shrink-0 rounded-full border border-[color:var(--border-contrast)]"
+            style={{
+              background:
+                "conic-gradient(var(--primary) 0deg 60deg, var(--surface-3) 60deg 120deg, var(--primary) 120deg 180deg, var(--surface-3) 180deg 240deg, var(--primary) 240deg 300deg, var(--surface-3) 300deg 360deg)",
+            }}
+          >
+            <span className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-1" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-foreground">
+              Roue de la fortune
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              Lot gagné : dessert offert
             </p>
           </div>
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary">
-            <Trophy className="h-5 w-5" strokeWidth={1.8} />
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+            <Ticket className="h-3 w-3" strokeWidth={2.4} /> QR envoyé
           </span>
         </div>
 
-        {/* Progress towards the next tier */}
-        <div className="mt-4 rounded-xl border border-[color:var(--border)] bg-background p-3">
+        {/* The only dial the owner sets */}
+        <div className="mt-2.5 rounded-xl border border-[color:var(--border)] bg-background p-3">
           <div className="flex items-center justify-between text-[11px] font-medium text-secondary-foreground">
-            <span className="tabular-nums">320 pts</span>
-            <span className="tabular-nums">Platinum · 400 pts</span>
+            <span>Taux de gain</span>
+            <span className="font-semibold tabular-nums text-primary">30 %</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-3">
-            <div className="h-full w-4/5 rounded-full bg-primary" />
+          <div className="relative mt-2 h-2 rounded-full bg-surface-3">
+            <div className="h-full w-[30%] rounded-full bg-primary" />
+            <span
+              aria-hidden="true"
+              className="absolute top-1/2 left-[30%] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[color:var(--primary)] bg-surface-1"
+            />
           </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            Plus que 80 points pour le prochain palier.
-          </p>
-        </div>
-
-        {/* Challenge + reward */}
-        <div className="mt-3 grid grid-cols-2 gap-2.5">
-          <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Flame className="h-4 w-4" strokeWidth={2} />
+          <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <span className="tabular-nums">0 %</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" strokeWidth={2.2} /> 24 h avant de
+              rejouer
             </span>
-            <p className="mt-2 text-[11px] font-semibold text-foreground">
-              Défi du jour
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              Un dessert · +50 pts
-            </p>
-          </div>
-          <div className="rounded-xl border border-[color:var(--border)] bg-background p-3">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Gift className="h-4 w-4" strokeWidth={2} />
-            </span>
-            <p className="mt-2 text-[11px] font-semibold text-foreground">
-              Récompense
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              Dessert offert · 500 pts
-            </p>
+            <span className="tabular-nums">100 %</span>
           </div>
         </div>
       </div>
-    </div>
+    </VisualCard>
   );
 }
 
@@ -612,7 +634,7 @@ function AnalyticsVisual() {
         {[
           { label: "CA mensuel", value: "48,2 k€" },
           { label: "Panier moyen", value: "32,50 €" },
-          { label: "Taux retour", value: "34 %" },
+          { label: "Commandes", value: "1 483" },
         ].map((k) => (
           <div
             key={k.label}

@@ -14,6 +14,27 @@
 > The measured inventory is in the README, section **Convex deployments**. The
 > reasoning below is kept as the record of what was done at the time.
 
+> **⚠️ Also superseded, 2026-09-05 — the product and commercial sections.** This
+> file describes an intended product, and several of its sections were written
+> before the code and never revised against it. Do not quote from it in a
+> proposal, a contract or a pricing conversation. Specifically:
+>
+> - The **maintenance table** below (Basic €29 / Premium €59 / Enterprise, with
+>   48h / 24h / 4h SLAs) is not the offer. The offer is Essentielle and Premium,
+>   priced per creation plus annual maintenance, with **no SLA committed
+>   anywhere**; `apps/site/components/pricing/pricing-data.ts` is the source and
+>   the CGV is the contract.
+> - **Six themes by restaurant type** — `fine-dining` and `cafe` have no template
+>   in the repository. What ships is 51 template directories across five
+>   verticals, applied by an operator at clone time.
+> - **2FA "Mandatory: for all admin accounts"**, the `twoFactor` and `magicLink`
+>   plugin configuration, **SMS OTP via Twilio**, and **social login** (Google,
+>   Facebook, Apple) — none of it is implemented. The auth plugins array is
+>   empty and the config object it sits in has no call sites.
+> - **Customer Management** is a `<ComingSoon/>` page.
+>
+> The rest of the architecture reasoning is sound and worth keeping.
+
 
 ## 📋 Overview
 

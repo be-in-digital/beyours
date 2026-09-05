@@ -39,7 +39,24 @@ export const userProfilesTable = defineTable({
     email: v.boolean(),
     sms: v.boolean(),
   })),
-  twoFactorEnabled: v.boolean(),
+  /**
+   * Placeholder. Two-factor authentication is NOT implemented.
+   *
+   * Nothing reads this column, and every production writer hardcodes `false`,
+   * so it has never been true on a real deployment — the only values that vary
+   * are the ones test fixtures type in. It was required, which is the problem
+   * being fixed here: a required, undocumented column named exactly like a
+   * protection reads as a shipped capability to anyone auditing the schema,
+   * and there is no capability behind it.
+   *
+   * When 2FA is built it will not be built here. Better Auth owns
+   * `user.twoFactorEnabled` once its two-factor plugin is registered on
+   * `createAuth` (the generated component types already carry that field), and
+   * the flag belongs beside the credentials it guards, not beside the
+   * restaurant profile. This column stays optional only so rows already
+   * carrying it remain valid.
+   */
+  twoFactorEnabled: v.optional(v.boolean()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

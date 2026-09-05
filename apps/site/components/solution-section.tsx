@@ -205,8 +205,9 @@ export function SolutionSection() {
               Une raison de revenir
             </h3>
             <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Programme de fidélité et jeux personnalisables. Vous gardez le lien
-              entre deux visites, avec les coordonnées de vos clients.
+              Roue ou carte à gratter, scannées au QR code sur vos tables. Vous
+              gardez le lien entre deux visites, avec les coordonnées de vos
+              clients.
             </p>
             <div className="mt-4 space-y-3 rounded-xl border border-[color:var(--border)] bg-background p-4">
               {/* The game + the reward */}
