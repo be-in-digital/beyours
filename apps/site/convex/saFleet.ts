@@ -4,7 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./admin";
 import { recordSaActivity } from "./saActivity";
 import { DAY_MS, startOfDay, summarize } from "./saLib";
-import { newLicenseKey } from "./maintenance";
+import { newLicenseKey, resolveLicenseEnforcement } from "./maintenance";
 
 const HEALTH_RANK: Record<string, number> = {
   down: 3,
@@ -140,6 +140,14 @@ export const get = query({
       incidents: incidents.slice(0, 12),
       openIncidentCount: incidents.filter((i) => i.status !== "resolved").length,
       sales30: summarize(snaps),
+      /* What the site has to be handed at init, alongside its key: the host its
+         update scripts will ask. Convex knows its own; there is nowhere else to
+         read it from, and a wrong one fails silently (the script treats an
+         unreachable API as « keep updating »). */
+      licenseApi: process.env.CONVEX_SITE_URL ?? null,
+      /* So the console shows the gate as it actually stands on this deployment,
+         not as the code reads. */
+      licenseEnforcement: resolveLicenseEnforcement(),
     };
   },
 });
@@ -184,6 +192,11 @@ export const create = mutation({
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
     region: v.optional(v.string()),
     convexUrl: v.optional(v.string()),
+    /* The order this site was sold on. Optional only because a deployment can
+       precede its paperwork; without it the maintenance gate cannot tell this
+       site's contract from any other contract the customer holds, and entitles
+       it from the healthiest of them (convex/maintenance.ts, byLicenseKey). */
+    orderId: v.optional(v.id("orders")),
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
@@ -192,6 +205,7 @@ export const create = mutation({
       customerEmail: args.customerEmail,
       restaurantName: args.restaurantName,
       city: args.city,
+      orderId: args.orderId,
       name: args.name,
       domain: args.domain,
       convexUrl: args.convexUrl,
@@ -233,9 +247,18 @@ export const updateStatus = mutation({
       status: args.status,
       updatedAt: Date.now(),
     };
+    /* Go-live is the handover. A deployment that reaches it without a licence
+       key is one whose update scripts will never be able to ask anything —
+       either it predates the gate, or it was seeded. Mint one here rather than
+       refusing the transition: an operator mid-handover must not be blocked by
+       our bookkeeping, and a key that exists can still be written into the
+       site's sentinel afterwards. The activity row below is what says so. */
+    const licenseIssuedAtGoLive = args.status === "live" && !dep.licenseKey;
+
     if (args.status === "live") {
       if (!dep.goLiveAt) patch.goLiveAt = Date.now();
       if (dep.health === "unknown") patch.health = "healthy";
+      if (licenseIssuedAtGoLive) patch.licenseKey = newLicenseKey();
     }
     /* Marking a client gone revokes nothing on its own — the deployment keeps
        the credentials it was provisioned with. Stamp the date so the console
@@ -259,6 +282,19 @@ export const updateStatus = mutation({
       customerEmail: dep.customerEmail,
       deploymentId: dep._id,
     });
+    if (licenseIssuedAtGoLive) {
+      await recordSaActivity(ctx, {
+        kind: "deployment",
+        action: "deployment.license_issued",
+        summary:
+          `Clé de licence émise pour « ${dep.name} » à la mise en ligne — ` +
+          `à reporter dans son .beindigital-site.json, sinon ses scripts de ` +
+          `mise à jour ne vérifient rien.`,
+        actorName: `${admin.firstName ?? "Admin"}`,
+        customerEmail: dep.customerEmail,
+        deploymentId: dep._id,
+      });
+    }
     if (args.status === "offboarded" && !dep.accessRevokedAt) {
       await recordSaActivity(ctx, {
         kind: "system",
@@ -311,6 +347,9 @@ export const recordAccessRevoked = mutation({
 export const update = mutation({
   args: {
     deploymentId: v.id("saDeployments"),
+    /* Linking the order after provisioning — the case for every site delivered
+       before `create` accepted one. */
+    orderId: v.optional(v.id("orders")),
     domain: v.optional(v.string()),
     region: v.optional(v.string()),
     version: v.optional(v.string()),
@@ -339,6 +378,61 @@ export const update = mutation({
       customerEmail: dep.customerEmail,
       deploymentId: dep._id,
     });
+  },
+});
+
+/* ── The registration backlog ──
+   What is still missing before a renewal can be refused: the licence key that
+   says which site is asking, and the order link that says which contract
+   answers for it. A site missing the key is asking nothing at all; a site
+   missing the link is answered by the healthiest contract its customer holds,
+   which for a multi-site owner is not its own.
+
+   `provisioning` and `staging` are excluded — they are not handed over yet, and
+   go-live mints their key. `offboarded` too: a departed client is not owed one.
+
+   This is the list the account owner works through before
+   BEYOURS_LICENSE_ENFORCEMENT is ever set to "strict"; flipping it first would
+   refuse exactly these sites. See tasks/license-key-registration-runbook.md. */
+export const unlicensed = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const deps = await ctx.db.query("saDeployments").take(500);
+    const delivered = deps.filter(
+      (d) =>
+        d.status === "live" || d.status === "degraded" || d.status === "suspended",
+    );
+    const unlinked = delivered
+      .filter((d) => !d.orderId)
+      .map((d) => ({
+        _id: d._id,
+        name: d.name,
+        restaurantName: d.restaurantName,
+      }));
+    const missing = delivered
+      .filter((d) => !d.licenseKey)
+      .sort((a, b) => (a.goLiveAt ?? a.createdAt) - (b.goLiveAt ?? b.createdAt))
+      .map((d) => ({
+        _id: d._id,
+        name: d.name,
+        restaurantName: d.restaurantName,
+        customerEmail: d.customerEmail,
+        domain: d.domain,
+        status: d.status,
+        goLiveAt: d.goLiveAt ?? null,
+      }));
+    return {
+      deliveredCount: delivered.length,
+      missing,
+      /* The second half of an enforceable renewal. A key says which site is
+         asking; the order says which contract answers for it. Without the link
+         a customer's healthiest subscription entitles every site they run. */
+      unlinked,
+      /* Strict enforcement refuses every row in `missing`. The console shows
+         both numbers together so the flip is never made blind. */
+      enforcement: resolveLicenseEnforcement(),
+    };
   },
 });
 

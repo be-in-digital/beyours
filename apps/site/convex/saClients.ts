@@ -69,6 +69,47 @@ export const list = query({
   },
 });
 
+/**
+ * A customer's paid orders, for linking one to a deployment at provisioning.
+ *
+ * The link is what lets the maintenance gate answer for THIS site rather than
+ * for the healthiest contract its owner holds (convex/maintenance.ts,
+ * byLicenseKey). It cannot be guessed: a customer running two restaurants has
+ * two paid orders, and picking the most recent would give both sites the same
+ * contract — the very fault the link exists to remove. So the console shows
+ * them, with the deployment each is already linked to, and a human chooses.
+ */
+export const paidOrders = query({
+  args: { customerEmail: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_email", (q) => q.eq("customerEmail", args.customerEmail))
+      .take(50);
+
+    const deployments = await ctx.db.query("saDeployments").take(500);
+    const linkedTo = new Map<string, string>();
+    for (const d of deployments) {
+      if (d.orderId) linkedTo.set(d.orderId, d.name);
+    }
+
+    return orders
+      .filter((o) => o.status === "paid")
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((o) => ({
+        _id: o._id,
+        restaurantName: o.restaurantName,
+        city: o.city,
+        plan: o.plan,
+        orderType: o.orderType,
+        amountCents: o.amountCents,
+        createdAt: o.createdAt,
+        linkedDeployment: linkedTo.get(o._id) ?? null,
+      }));
+  },
+});
+
 /** Prospects (liste d'attente / whitelist). */
 export const prospects = query({
   args: {},
