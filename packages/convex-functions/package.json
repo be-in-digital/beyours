@@ -103,7 +103,9 @@
     "./blogAutoSchedule": "./src/blogAutoSchedule.ts",
     "./blogAutoPlanner": "./src/blogAutoPlanner.ts",
     "./platformWebhook": "./src/platformWebhook.ts",
-    "./platformWebhookFailures": "./src/platformWebhookFailures.ts"
+    "./platformWebhookFailures": "./src/platformWebhookFailures.ts",
+    "./privacyPolicy": "./src/privacyPolicy.ts",
+    "./privacy": "./src/privacy.ts"
   },
   "scripts": {
     "lint": "eslint src/",

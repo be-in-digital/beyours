@@ -13,6 +13,7 @@ import {
   peekRateLimit,
 } from "./rateLimit"
 import { prizeBudgetAllowsAll, readPrizeIssuance, recordPrizeIssued } from "./prizeBudget"
+import { DEFAULT_CUSTOMER_RETENTION_DAYS } from "./privacyPolicy"
 
 /**
  * Player-facing gamification flow (public, anonymous players).
@@ -51,6 +52,33 @@ import { prizeBudgetAllowsAll, readPrizeIssuance, recordPrizeIssued } from "./pr
 
 const DAY_MS = 24 * 60 * 60 * 1000
 export const DEFAULT_COOLDOWN_HOURS = 24
+
+/**
+ * The consent notice a diner is shown before a play, by version.
+ *
+ * WHY A VERSION AND NOT A BOOLEAN: art. 7.1 asks the controller to demonstrate
+ * that the diner consented, and "they ticked a box" is not that on its own —
+ * the notice will be reworded, and a stored `true` would then claim every past
+ * player agreed to today's text. The row records which wording was on screen.
+ *
+ * WHY A LIST AND NOT ONE STRING: a browser holding yesterday's bundle still
+ * shows yesterday's notice, truthfully. Refusing it outright would break every
+ * open tab on the day the wording changes, and accepting it silently would
+ * record the wrong text. Keeping the previous versions here does neither: the
+ * play is accepted and the row says exactly what was agreed to. Drop a version
+ * from this list to withdraw it — a notice found to be non-compliant should
+ * stop being accepted the moment it is replaced.
+ *
+ * WHY THE TEXT IS NOT HERE: the wording is French customer-facing copy and
+ * lives in `packages/admin/src/game/consent-copy.ts`, which owns the version
+ * it renders. That split is deliberate — a browser serves the text and the
+ * identifier from the SAME bundle, so the version a play sends is the version
+ * of the wording that was actually on screen, not whatever this deployment
+ * currently believes is current. `consent-copy.test.ts` pins the text to its
+ * version, so rewording without bumping fails there; adding the new version
+ * here is then what lets it be played.
+ */
+export const GAME_CONSENT_NOTICE_VERSIONS: readonly string[] = ["fr-2026-09"]
 
 /** Unambiguous alphabet for redemption codes (no O/0/I/1/L). */
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -526,11 +554,20 @@ export const getSession = {
       myShareCode: myReferral?.code ?? null,
     }
 
+    // How long the restaurant keeps what this play writes. Sent with the
+    // session because the notice has to say it: "we keep your data" with no
+    // period is not the informed consent art. 13.2.a asks for, and only the
+    // server knows what this deployment is configured to.
+    const settings = await ctx.db.query("globalSettings").first()
+    const retentionDays =
+      settings?.dataRetention?.customerDataDays ?? DEFAULT_CUSTOMER_RETENTION_DAYS
+
     return {
       status: "ready" as const,
       qrCodeId: qr._id,
       tableNumber: qr.tableNumber,
       store: { id: store._id, name: store.name },
+      privacy: { retentionDays },
       game: {
         id: game._id,
         type: game.type,
@@ -588,10 +625,40 @@ const playArgs = {
   completedActions: v.array(v.string()),
   ref: v.optional(v.string()),
   userAgent: v.optional(v.string()),
+  /**
+   * Which consent notice the diner ticked, by version.
+   *
+   * OPTIONAL IN THE VALIDATOR, REQUIRED BY THE HANDLER. A missing argument is
+   * a caller that never showed the notice — a stale bundle, a script — and
+   * the honest answer to both is the same refusal. Making it required here
+   * would give that caller a validator error instead, which the flow cannot
+   * turn into a sentence a diner can act on.
+   */
+  consentNoticeVersion: v.optional(v.string()),
 }
 export const play = {
   args: playArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof playArgs>) => {
+    // No consent, no play — and no row either.
+    //
+    // First in the handler on purpose, ahead of the length check and the
+    // limiter alike. A refusal here throws, so the transaction rolls back and
+    // nothing is written; putting it later would spend a rate-limit slot on a
+    // caller we are about to turn away, which is the shape `claim` was already
+    // bitten by. It is also the cheapest check in the handler: it reads
+    // nothing, and it compares two short strings.
+    //
+    // The play stores a device fingerprint and a user agent, and a claim adds
+    // a name, an email and a phone number to the same row. That is the
+    // processing the diner is agreeing to; without the agreement the
+    // restaurant has no legal basis for any of it (RGPD art. 6.1.a, 7.1).
+    if (
+      !args.consentNoticeVersion ||
+      !GAME_CONSENT_NOTICE_VERSIONS.includes(args.consentNoticeVersion)
+    ) {
+      throw new Error("CONSENT_REQUIRED")
+    }
+
     // Before anything is metered or written. `fingerprint` becomes a
     // `rateLimits.key` on an index, so an unbounded one is an unbounded index
     // entry — and `userAgent` is stored verbatim on every play.
@@ -741,6 +808,7 @@ export const play = {
       gameId: game._id,
       qrCodeId: qr._id,
       fingerprint: args.fingerprint,
+      consent: { acceptedAt: now, noticeVersion: args.consentNoticeVersion },
       completedActions,
       referredByCode: isFriendWelcome ? args.ref : undefined,
       didWin: didWin && prize !== null,
@@ -853,6 +921,14 @@ export const claim = {
 
     const play = await ctx.db.get(args.playId)
     if (!play || !play.didWin || !play.prizeId) throw new Error("CLAIM_INVALID")
+
+    // A claim is where a play stops being anonymous: it writes a name, an
+    // e-mail and a phone number onto this row. Doing that to a play that
+    // recorded no consent would be collecting identified personal data with no
+    // legal basis at all — and it is reachable, because every row written
+    // before `consent` existed has none. The play refuses without consent; so
+    // does the claim, for the same reason.
+    if (!play.consent) throw new Error("CONSENT_REQUIRED")
 
     const existing = await ctx.db
       .query("prizeRedemptions")

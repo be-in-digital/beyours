@@ -24,3 +24,7 @@ export const rateLimitsTable = defineTable({
   count: v.number(),
 })
   .index("by_key", ["key"])
+  // Retention. A row is a one-hour counter, and nothing ever deleted one: a
+  // deployment kept a permanent row per address that ever used the contact
+  // form. `by_key` can only be walked whole; this makes the sweep a range.
+  .index("by_windowStart", ["windowStart"])

@@ -514,7 +514,17 @@ export const importBatch = {
     } = { inserted: 0, skipped: 0, pendingIds: [] }
 
     for (const sub of args.subscribers) {
-      const email = sub.email.toLowerCase()
+      // Through the same normaliser every other path uses. This one lower-cased
+      // and did NOT trim, which is exactly the case its own doc comment warns
+      // about: a CSV column carries a trailing space from every spreadsheet,
+      // and « marie@x.fr » stored beside «  marie@x.fr » is two rows for one
+      // person, only one of which any `by_storeId_email` seek will ever find.
+      // The one that no lookup finds is also the one an erasure request misses.
+      const email = normalizeSubscriberEmail(sub.email)
+      if (!email) {
+        results.skipped++
+        continue
+      }
       const existing = await ctx.db
         .query("emailSubscribers")
         .withIndex("by_storeId_email", (q: any) =>

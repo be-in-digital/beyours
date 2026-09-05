@@ -37,6 +37,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   access_granted: "Accès accordé",
   access_changed: "Accès modifié",
   access_revoked: "Accès retiré",
+  privacy_export: "Export RGPD",
+  privacy_erasure: "Effacement RGPD",
+  privacy_retention_sweep: "Purge automatique",
 }
 
 export function formatActionLabel(action: string): string {

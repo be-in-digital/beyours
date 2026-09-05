@@ -14,6 +14,7 @@ import {
   selectSequentialProgression,
   isActionRequirementMet,
   sanitiseCompletedActions,
+  GAME_CONSENT_NOTICE_VERSIONS,
 } from "../gamePlay"
 
 
@@ -255,6 +256,7 @@ describe("play", () => {
     gameId: "games:1",
     fingerprint: "device-1",
     completedActions: [],
+    consentNoticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
   }
 
   it("resolves a win and records the play", async () => {
@@ -387,6 +389,13 @@ function claimFixtures(playOverrides: Partial<MockDoc> = {}) {
         didWin: true,
         prizeId: "prizes:1",
         completedActions: [],
+        // A claim attaches a name, an e-mail and a phone number to this row.
+        // `claim` refuses to do that to a play whose consent was never
+        // recorded, so a fixture without one is a fixture of a refusal.
+        consent: {
+          acceptedAt: Date.now(),
+          noticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
+        },
         playedAt: Date.now(),
         ...playOverrides,
       },
@@ -411,6 +420,7 @@ describe("anonymous abuse bounds (#323)", () => {
     gameId: "games:1",
     fingerprint: "device-1",
     completedActions: [],
+    consentNoticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
   }
 
   it("refuses a loop that rotates the fingerprint, and stops at the per-QR window", async () => {
@@ -596,6 +606,16 @@ describe("claim", () => {
   it("rejects claims on losing plays", async () => {
     const ctx = claimFixtures({ didWin: false, prizeId: undefined })
     await expect(claim.handler(ctx, args)).rejects.toThrow("CLAIM_INVALID")
+  })
+
+  it("refuses a play that recorded no consent", async () => {
+    // Every row written before `gamePlays.consent` existed has none, and a
+    // claim is the one endpoint that turns such a row into a named person.
+    // Attaching an e-mail and a phone number to it would be collecting
+    // identified personal data with no legal basis at all (art. 6.1).
+    const ctx = claimFixtures({ consent: undefined })
+    await expect(claim.handler(ctx, args)).rejects.toThrow("CONSENT_REQUIRED")
+    expect(ctx.store.prizeRedemptions).toHaveLength(0)
   })
 })
 
@@ -847,6 +867,7 @@ describe("play — the required-actions rule, enforced server-side", () => {
     gameId: "games:1",
     fingerprint: "device-1",
     completedActions: [] as string[],
+    consentNoticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
   }
   const oneAction = [
     {
@@ -948,6 +969,7 @@ describe("play — the establishment's prize budget", () => {
     gameId: "games:1",
     fingerprint: "device-1",
     completedActions: [] as string[],
+    consentNoticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
   }
 
   it("records the prize in the establishment's ledger", async () => {
@@ -1071,6 +1093,7 @@ describe("play — the exemptions, after an adversarial pass got through them", 
     gameId: "games:1",
     fingerprint: "device-1",
     completedActions: [] as string[],
+    consentNoticeVersion: GAME_CONSENT_NOTICE_VERSIONS[0]!,
   }
   const oneAction = [
     {
