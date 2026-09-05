@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty"
 import {
@@ -264,10 +265,40 @@ export function LanguagesContent({ embedded = false }: LanguagesContentProps) {
                   onCheckedChange={setIsDefault}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isRtl">Droite à gauche (RTL)</Label>
+              {/* Right-to-left is disabled on purpose. `isRtl` is stored and
+                  the table below still echoes it as an "RTL" badge, but nothing
+                  lays the storefront out right-to-left: neither app's
+                  `app/layout.tsx` sets a `dir` attribute on the <html> element,
+                  so Arabic and Hebrew render left-to-right. The helper that
+                  would supply the value already exists and has no caller —
+                  `getLocaleDirection` in @be-in-digital/core/i18n. Wiring this
+                  up takes two changes: pass its result to `dir` in both apps'
+                  `app/layout.tsx`, and convert the storefront's physical
+                  spacing utilities (`ml-`/`mr-`/`pl-`/`pr-`, ~156 of them under
+                  `components/`) to the logical `ms-`/`me-`/`ps-`/`pe-` (zero
+                  today) — otherwise the text flips and the layout does not.
+                  Same convention as the email automations: a switch that
+                  controls nothing stays disabled with a stated reason. Delete
+                  the badge, the note and `disabled` once the storefront honours
+                  the direction. */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="isRtl">Droite à gauche (RTL)</Label>
+                    <Badge variant="outline" className="text-xs font-normal">
+                      Indisponible
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Le réglage est enregistré, mais la boutique en ligne ne
+                    s&apos;affiche pas encore de droite à gauche : l&apos;arabe et
+                    l&apos;hébreu
+                    y restent orientés de gauche à droite.
+                  </p>
+                </div>
                 <Switch
                   id="isRtl"
+                  disabled
                   checked={isRtl}
                   onCheckedChange={setIsRtl}
                 />

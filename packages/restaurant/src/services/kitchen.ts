@@ -74,8 +74,11 @@ export const getPriorityLevel = (order: OrderDoc): KitchenTicketPriority => {
     return 'vip'
   }
 
-  // Urgent: delivery orders or scheduled orders
-  if (order.type === 'delivery' || order.scheduledFor) {
+  // Urgent: delivery orders.
+  // `scheduledFor` deliberately does not qualify. An order booked for later is
+  // the least urgent thing in the queue until its slot approaches, so treating
+  // it as urgent pushed it ahead of the orders the kitchen has to cook now.
+  if (order.type === 'delivery') {
     return 'urgent'
   }
 

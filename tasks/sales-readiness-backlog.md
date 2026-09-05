@@ -2150,3 +2150,422 @@ orders that predate it.
 The client-side check keeps failing open, and cannot do otherwise: the sentinel
 lives in the client's own repository, and `BEYOURS_LICENSE_API` overrides the
 host it asks. The gate is a courtesy; the lock is repo and registry access.
+
+---
+
+## LAUNCH-11 · Settle the eleven sold-but-absent capabilities — **decided 5 Sep 2026**
+
+Eleven capabilities, measured at `009af63` by the discovery audit and re-measured
+at `158019f` before any decision was taken. Two of the eleven had moved: **T-4 was
+already fixed** by #340, and **four sub-claims of T-8 and T-10 were wrong** — the
+controls they said did not exist do exist, and report success while changing
+nothing, which is a worse failure than absence. Two findings the audit never
+carded turned out to outrank most of the list.
+
+This is LAUNCH-04 at four times the scale, and it follows LAUNCH-04's rule: build
+it or remove it from the copy; shipping neither is not an option. The owner
+decided each item.
+
+**One constraint shaped every answer.** The guard #350 added — *no plan on sale
+advertises a feature that is only planned* (`planAvailability.test.ts:150`) —
+means `"planned"` is unavailable for anything sold on Essentielle, because
+Essentielle is open. Marking an Essentielle row `"planned"` fails the build unless
+the plan closes, which stops all revenue. So for Essentielle claims the honest
+moves are: reword to what ships, remove the row, or build it. Every decision below
+is one of those three.
+
+### 0 · Uncarded, and the most urgent thing in the batch — **remove**
+
+Every delivered client homepage published three invented five-star testimonials
+signed "Emma L.", "Marc D." and "Sophie R.", each with a generated face from
+`i.pravatar.cc`; a hard-coded `4.5★` on every real dish from the restaurant's own
+catalogue; two invented dishes at 4.7 and 4.8 next to the real ones; and "4.9/5
+Average Rating" / "10K+ Happy Customers" tiles. The About page defaulted to "10K+
+clients satisfaits" and a "4.9/5 note moyenne".
+
+None of it was reachable from the admin — the homepage CMS block exposed a badge
+and a section title, and the schema shape that models editable testimonials
+(`cmsHome.testimonials.items[]`) is dead. Removing invented reviews from a
+restaurant's own site required an engine code change. The product has no `reviews`
+table and no `ratings` table, so every star it drew was a literal somebody typed.
+
+Shipped: both sections deleted in both apps, their CMS block definitions removed,
+`MealCard.rating` made optional so the star renders only when a rating is
+supplied, and the About stats reduced to what the owner actually entered — an
+empty section now disappears rather than publishing a figure nobody measured.
+`tests/storefront/no-fabricated-social-proof.test.ts` holds it in both apps, and
+it bites: 7 of 7 cases fail against the pre-fix tree.
+
+The 50 sales demos carried two smaller versions of the same thing, now closed:
+`demos/admin.html` showed a « Statistiques » nav item wired to nothing, four
+order modes where the product has three (« Click & collect » is not a fourth —
+it is what « À emporter » is called on the pricing page), and a disclaimer
+promising « les statistiques sont réelles »; and `demos/index.html` claimed a
+design « se rebadge à votre nom et votre couleur **en un clic** », which is a
+thing BeInDigital does at build time, not a control an owner has.
+
+**Two guided-tour steps went with it.** « Clients » and « Composants » each
+narrated a full feature and then navigated the owner to a `<ComingSoon/>` —
+those two routes are the only ones in the admin that still render one, and the
+tour opens 1.2 s after a first login, unprompted. `nav-customers` could never
+have highlighted anything either, since the sidebar derives its anchors from
+nav entries and Clients is deliberately kept out of the nav. Held by
+`packages/admin/src/__tests__/tour-destinations.test.ts`, which resolves every
+step's `goTo` against the real route files in both apps, follows the
+`/x → /dashboard/x` redirect hop, and refuses any destination that renders the
+placeholder. Put the Clients step back in the commit that ships the page.
+
+### 1 · Analytics, and the plan gating that does not exist (T-1) — **reword now, build the metrics in their own PR**
+
+`pricing-data.ts` sold « Analytics & suivi des performances » as `essentielle:
+false, premium: true` — Premium's only Gestion-tier differentiator, and the one
+line separating the two plans in that category. `/fonctionnalites` named five
+metrics: chiffre d'affaires, panier moyen, plats populaires, heures de pointe,
+taux de retour. **Three of the five exist nowhere**, `find … -iname '*analytic*'`
+over the engine and the client app returns 0, and the sharper finding is the
+second one: `grep -riE '"essentielle"|"premium"|planSlug'` over `apps/themes/convex`
+and `packages/*/src` returns nothing but email-subscriber tags in test fixtures.
+**There is no plan gating anywhere.** The engine never learns which plan was
+bought, so nothing is withheld from Essentielle either, and the Premium upsell
+buys nothing.
+
+What ships is one dashboard on one query — `api.orders.list`, every order for the
+store pulled into the browser and aggregated client-side — with every time window
+a literal (today, 24h, hier, 7 jours, 30 jours), no period picker, and a nav entry
+carrying no `requiredPermission`, so everyone sees it.
+
+Decision: **reword now**, and the row moves to `essentielle: true, premium: true`,
+because that is the truth — the dashboard is available to everyone. Premium then
+differentiates on the native application alone, which is what #350 already decided
+it is worth. The three missing metrics are decided **build**, deferred to their own
+PR: a server-side aggregate is worth writing on its own merits, since the dashboard
+currently downloads a restaurant's entire order history to draw four cards — the
+same defect NEW-P files against `orders.list`.
+
+Plan gating is **not** being built. It is unnecessary while Premium is closed for
+sale, and when it is wanted, `maintenanceContracts` is already the right home: one
+singleton row per deployment, written by the team, read-only for the client.
+
+### 2 · Customer management (T-2) — **build it**
+
+No `customers` table among the 75 registered. The page is `<ComingSoon title="Clients" />`,
+byte-identical in both apps, and `nav-config.ts:115-116` keeps it out of the nav
+on purpose. The onboarding tour, auto-launched 1.2 s after first login, walks
+every new owner to it anyway: « Clients — Votre carnet d'adresses intelligent !
+Retrouvez chaque client, son historique de commandes, ses coordonnées et ses
+préférences. » Then `goTo("/customers")`.
+
+**Correct the audit's citations before reusing them.** The count is 75 tables, not
+72; the nav comment is at lines 115-116, not 103-104; and `features-data.ts:203` /
+`pricing-data.ts:101` are *loyalty* copy, not CRM — a full sweep found no CRM claim
+in either the feature or the pricing data at all. The sales-side promises are four
+locations on `/decouvrir` and the landing page.
+
+Decision: **build it**, in its own PR, because it is far cheaper than "no
+implementation anywhere" suggests and three surfaces already promise it. Every
+order carries name, email and phone, indexed `by_customerId`.
+`emailSubscribers.metadata` already computes `totalOrders`, `totalSpent`,
+`lastOrderAt`, `averageOrderValue` and `favoriteProducts`, maintained incrementally
+on every order status change and already rendered per person with an event
+timeline. Rule-based segmentation ships with a UI. The storefront half — account,
+orders, addresses, favourites — is built.
+
+What that PR has to settle, and why it is not a copy change: the deliberate
+non-link at `orders.ts:1114-1121` (*"an order is a purchase, not consent to be
+marketed to"*) is a consent decision, not code; the gamification → subscriber link
+does not exist, so a won game's email lands in `gamePlays` and cannot be
+campaigned to; and there is no CSV export anywhere in the admin, while
+`competitor-comparison.tsx:43` sells « Vous possédez vos clients (emails, data) ».
+
+### 3 · Themes by restaurant type (T-3) — **remove the picker; the branding chain is a follow-up**
+
+The `themeId` census was right — five declarations, zero writers, zero readers —
+but "no runtime selector" was wrong, and the truth was worse. `Contenu → Design →
+Thème` shipped a live, nav-linked card grid offering the six sold themes, of which
+**`fine-dining` and `cafe` have no template anywhere in the repository**. Its
+button, « Appliquer le thème sélectionné », was wired to the colour-save handler:
+it wrote three hex strings and let `theme.id` die in local React state.
+
+And the three hex strings reached nothing. `updateBranding` is real, permissioned,
+audited and merges correctly — the break is one link later. Every storefront
+branding read goes through the CMS block (`logo`, `brandName`, `favicon`); there
+are zero reads of the Convex `store.branding` document in
+`apps/themes/{app,components,lib}`, and the palette and fonts are compile-time
+constants. An owner picked a colour, got « Couleurs mises à jour avec succès », and
+their site was unchanged.
+
+What beyours.fr sells is different and honest: **50 templates across five
+verticals**, all 50 applicable, enforced by a test, chosen by an operator at clone
+time. The six-theme picker was the only place the product claimed otherwise.
+
+Decision: **remove the picker**; leave the Couleurs and Typographie controls in
+place but disabled with a stated reason, on the TECH-07b pattern — the write path
+is correct and complete, and deleting the mutation would be the wrong fix. Wiring
+`store.branding` into the storefront is a follow-up, and it has to reconcile the
+two rival branding stores before either can render.
+
+### 4 · The sitemap and the structured data (T-4) — **already fixed, nothing to decide**
+
+#340 rewrote every file the claim named, in both apps, byte-identically. The
+sitemap emits eight URLs and every one is a route the app serves; emitted URLs
+that 404: **zero**; real public routes missing from it: **zero**.
+`buildRestaurantSchema`, `buildMenuSchema` and `<JsonLd>` are called from
+`lib/structured-data.ts` and rendered in four route files per app, held by a test
+that reads those route files off disk. `robots.ts` shares the disallow list, so
+the two cannot drift.
+
+Residue closed here: `lib/store-url.ts` in both apps still built `/s/{slug}` from
+the removed scheme and had zero importers. Deleted. Found in passing and also
+closed: the `(admin)` route group's pages resolve at bare top-level paths
+(`/products`, `/orders`, `/customers`…) which were absent from
+`CRAWLER_DISALLOWED_PATHS`, and the layout gates client-side, so a crawler was
+served a 200 shell.
+
+### 5 · Push notifications (T-5) — **reword; staff push is not built**
+
+Zero lines of push code anywhere: no service worker, no manifest, no VAPID, no
+library in any of the fifteen workspace manifests. What ships is three Web Audio
+beeps on the kitchen display, behind a click-to-unlock overlay, which work only
+while the tab is open.
+
+Eight of the nine mentions are correctly tied to the Premium mobile app and gated
+by `planAvailability`. One was not: a benefit bullet inside *Centralisation des
+Commandes*, `pillar: "gerer"`, no « À venir » badge — sold on Essentielle today.
+Its own long description two lines above was already honest.
+
+Decision: **reword the one line.** Staff-facing web push is buildable without an
+app store and would solve the closed-laptop case the beeps cannot, but nobody has
+asked for it; customer-facing push stays deferred behind the Premium gate and
+ships with the application. Worth recording for whenever it is picked up: iOS
+Safari delivers Web Push only to a home-screen-installed PWA, so it solves the
+kitchen tablet and the desktop, and only partly the owner's phone.
+
+### 6 · Click & collect « avec créneaux horaires » (T-6) — **reword**
+
+Two dead fields, not one. `orders.scheduledAt` had zero writers and zero readers.
+`orders.scheduledFor` has exactly one writer — the Uber Eats importer, constrained
+to platform orders — and exactly one reader, which was backwards: it bumped the
+ticket to `urgent`, making an order for 20 h 00 the most urgent thing in the queue
+at 11 h 00. `orders.create` accepts no time field of any kind, and the checkout
+collects a name, an email and a phone.
+
+There is no slot picker anywhere in the product — except on the sales site, where
+the interactive demo a prospect clicks through had a working one: « Créneau · Dès
+que possible (~30 min) · Dans 1 heure · Ce soir · 20h00 ».
+
+Note the scoping, because it matters: the bare phrase « click & collect » is
+**true** — `type: "pickup"` works end to end — so the ~50 generic mentions stand.
+Only the slot claim was false.
+
+Decision: **reword**, and clean up what the decision implies — the demo dropdown
+is gone, `scheduledAt` is deleted, the inverted priority rule is corrected, and the
+**Click & Collect switch** in two admin screens (which persisted to
+`globalSettings.services.clickAndCollect` and which `ORDER_TYPE_SERVICE` never
+read) is disabled with a stated reason rather than left as a control that does
+nothing.
+
+Building slots means modelling capacity — a future-hours enumerator, slot
+inventory with a transactional check inside `orders.create`, lead time, a KDS that
+surfaces a scheduled ticket at `scheduledFor − prepTime`, and an interaction with
+the 24 h Stripe reconciliation sweep. That is the same cost LAUNCH-04 declined for
+reservations, and deciding it differently here without proven demand would be
+inconsistent.
+
+### 7 · Daily backups and 24/7 monitoring (T-7) — **alert and reword now; build the nightly backup**
+
+Half of this claim was stale and half was worse than stated.
+
+**Monitoring:** #346 shipped a genuine 10-minute uptime prober with a 30-day
+window, and it is careful work — it refuses to invent a `/health` route because
+probing one would report every client down. But it is BeInDigital's internal
+console, behind `requireAdmin`, with no client-facing status page, and **nothing
+alerts**. A restaurant that goes down at 20 h 00 on a Saturday changes one row in
+an activity feed and pages nobody.
+
+**Backups:** not 29 of 100 tables — **22 of 75**. Omitted: `orders`, `payments`,
+`kitchenTickets`, `teamMembers`, `gamePlays`, `prizeRedemptions`, and all sixteen
+`cms*` singleton tables, so a "backup" of a restaurant's website does not contain
+that website's pages. And it is not scheduled: the only caller is a button that
+builds a JSON blob and triggers a browser download to whatever laptop the admin
+was sitting at. If nobody clicks, nothing exists. The product is honest about this
+to the operator's face on import; the pricing page was not.
+
+Worth separating, because the two exposures are not the same size: the CGV defines
+Maintenance as covering « l'hébergement, les mises à jour, **la supervision** et le
+support » — a word the new prober arguably satisfies — and **never mentions
+sauvegardes at all**. The daily-backup promise lived only on the pricing page and
+in the FAQ answer titled « Que comprend exactement la maintenance ? », which is
+the specific version a buyer reads before paying.
+
+Decision: **reword the Sauvegardes tile and the FAQ now** to the export that
+exists, and **build** the alerting and the nightly backup. Both builds are deferred
+to their own PR — the alerting because its destination is an operational choice,
+the backup because expanding table coverage means deciding what restoring trading
+history *means*: re-inserting orders under new ids while Stripe holds the old
+`paymentIntentId` is a reconciliation problem, not a restore, and it forces
+per-table streaming (the export currently builds one JSON blob in memory, capped
+at 50 MB on import). The copy describes what the export carries until that lands.
+
+Correction to the record: **#169 is closed, not reopened** — the id-remap fix
+landed with a 319-line test. What it does not do is carry orders.
+
+### 8 · The fifteen smaller features (T-8) — **reword, and four cheap corrections**
+
+Most of the fifteen were promised only in `_project/FEATURES_DIAGRAM.md`, whose
+own phasing is honest and whose total table flattened it. **Four of the audit's
+claims were wrong**, and in each case what replaced "it does not exist" is a
+control that reports success and changes nothing — the same defect class the
+branding merge fix was written to eliminate (`stores.ts:497`: *"the clear button
+would be another control that reports success and does nothing"*).
+
+- **Couleurs, Typographie, Logo** — the pickers ship and save correctly; nothing
+  renders them. Handled with T-3.
+- **RTL** — the « Droite à gauche » switch persists a boolean whose only reader
+  prints the letters "RTL" in an admin cell. 145 physical direction utilities,
+  zero logical ones, no `dir` on `<html>`, and the `getLocaleDirection` helper
+  that would do it has no callers. Arabic renders left-to-right.
+- **Devise** — the picker saves; all 26 storefront `formatPrice` call sites pass
+  the amount alone, so every price is `fr-FR`/EUR whatever the owner chose. The
+  admin *is* currency-aware, which is why this went unnoticed.
+- **Priority** — three writers hardcode `"normal"` and every ticket shows a
+  permanent grey "Normal" badge carrying zero bits, while a complete, tested
+  classifier (`getPriorityLevel`) sits orphaned in `packages/restaurant`.
+
+Genuinely absent, and reworded rather than built: **Nutritional Information** (a
+dead column, three translated UI strings, no form field, no display),
+**Image Gallery** (41 reads, all `images[0]`; the only writer writes exactly one
+URL, and the tour narrates an "images" field the product form does not have), and
+**Bulk Translation** (`translateUIStrings` orphaned under a comment claiming the
+admin calls it — though the catalogue backfill and the CMS « Traduire tout » both
+genuinely work, so the tour's « traduit toute votre carte » is true).
+
+Two the audit got wrong in the other direction, and worth recording so nobody
+re-files them: **`translationJobs` has had writers since #317** — its real defect
+is zero *readers*, so a quota-failed batch is indistinguishable from a finished
+one; and the **storefront language switcher works**, is mounted in the route-group
+layout and reaches every visitor. The dead pair the audit found
+(`LanguageSwitcher` → `AdminLanguageSwitcher`) is a different, unmounted component.
+
+**Loyalty is the one with commercial weight.** Gamification supports a wheel and a
+scratch card, and nothing carries over between plays. The site sold « Points,
+niveaux, défis, récompenses exclusives », a « Système de points, niveaux et
+récompenses personnalisable » and « Suivi et analyse du comportement de
+fidélisation » — and rendered a finished mockup of a tier system: a « Niveau Gold »
+badge, a progress bar from 320 pts toward « Platinum · 400 pts », and a « Défi du
+jour · Un dessert · +50 pts » card. A prospect was shown a picture of a product
+that exists in no form. The tour and both internal guides were already honest
+about the wheel and the scratch card; the over-claim was entirely on the
+commercial site.
+
+Decision: **reword the loyalty copy** to the mechanic that ships, redraw the
+mockup, and disable the RTL and Devise controls with a stated reason. Building
+points, tiers and challenges is weeks of work on a retention programme nobody has
+scoped.
+
+### 9 · Reviews, SMS, suppliers, purchase orders (T-9) — **the marketing was already clean**
+
+No schema for any of them, confirmed. But `apps/site` sells none of the six: the
+only « avis » on the site is the Google Business Profile *training* deliverable,
+which is correct as written. `apps/docs`, the MCP registry, the tour and the admin
+nav are all accurate, and reservations are fully consistent since #350. The
+promise concentration was internal.
+
+Two things were live defects rather than copy, and both are closed here: the
+fabricated reviews of section 0, and a « **Notifications SMS** — Alertes en temps
+réel pour la livraison » switch in every client's storefront account page, which
+persisted a preference that no code in the repository can honour — there is no
+Twilio, no Vonage, no sender of any kind.
+
+Logged separately rather than fixed here, because it is an inventory defect and
+not a copy one: **nothing decrements stock on an order**. Stock tracking, low-stock
+alerts and auto-disable are real and reach Uber Eats and Deliveroo, but every
+quantity is typed by hand.
+
+### 10 · Two-factor auth and social login (T-10) — **not sold; the docs were the problem**
+
+The technical core held and was understated: `plugins: []` with `twoFactorPlugin`
+commented above it, and the whole `createAuthConfig` function has **zero call
+sites**, so `socialProviders` is a passthrough on a config object that is never
+constructed. But the commercial premise did not hold — a full sweep of `apps/site`
+found no 2FA or social-login claim anywhere. Security is sold as « Hébergement
+sécurisé », « Hébergement & SSL » and « mises à jour de sécurité », all true.
+
+The promises lived in `_project/` and in `apps/docs/guides/authentication.md`,
+which is written in the present tense and whose setup path names an export, three
+options and two import paths that do not exist — a developer following it fails at
+the first import. That guide is rewritten against the code, and `authRoutes` is
+deleted: it was dead, exported from the published package barrel, and **7 of its 8
+paths were wrong**, so anyone who discovered it and wired it up would have shipped
+a sign-in link to a 404.
+
+`twoFactorEnabled` is now optional and commented. A required, non-optional column
+named exactly like a protection — written `false` by `claimFirstAdmin` for every
+deployment's `super_admin`, under a comment asserting it builds every field the
+schema requires — reads as a capability to anyone auditing the schema. Better
+Auth's `twoFactor` storage is already provisioned on every deployment, so enabling
+it later is a plugin registration plus the enrolment and recovery UI; the UI is
+the cost.
+
+### 11 · The "181+ features" headline — **replaced with the measured figure**
+
+`_project/FEATURES_DIAGRAM.md:647` was its only origin, and the 22-row table above
+it sums to **201**. `CLAUDE.md:130` copied the headline over an enumeration of 92.
+Several categories count non-features — six themes as six, seven team roles as
+seven, six social-action types as six. None of the three numbers counts anything
+that was measured.
+
+The public site was never affected: it sells « 10 fonctionnalités » over a
+four-pillar taxonomy with no relationship to the diagram.
+
+Shipped: the diagram states its own arithmetic and carries a banner saying it
+counts designed features, not shipped ones; `CLAUDE.md` carries the audited figure
+— **29 shipping · 23 partial · 41 absent**, of the 92 it enumerates; and
+`_project/PRESENTATION.md` carries a banner naming the four sections that were
+written before the code and never revised against it, including a maintenance
+table with SLAs that are not the offer.
+
+### Deferred to their own PRs, and why
+
+Three builds the owner approved, each held back so a reviewer can see only it:
+
+- **The Clients page** (section 2). Read-only aggregation over data already
+  written, plus the nav entry, the tour anchor and the CSV export. Its real
+  content is the consent decision at `orders.ts:1114-1121`.
+- **The three analytics metrics and a period selector** (section 1). Carries the
+  server-side aggregate that also closes NEW-P.
+- **The nightly backup and the monitoring alert** (section 7). The alert is hours;
+  the backup's cost is deciding what restoring `orders` means.
+
+### Not yours to close
+
+Nothing in this card ends in a third-party console. The alerting build will: a
+destination address, and a rota, are what make « 24/7 » literally true, and no
+amount of code supplies either.
+
+### Found while working this card, and NOT fixed here
+
+**`apps/site` has been red on `main` since #350, and the red is hiding a suite
+that no longer tests anything.** `tests/convex/checkoutReferralIntegrity.test.ts`
+reports **25 failed | 6 passed**, reproduced at `158019f` with no local changes.
+Every failure is the same: the cases call `createCheckoutSession` with
+`plan: "premium"`, and #350 deliberately put the plan-availability refusal ahead
+of every other check, so all 25 die on « L'offre Premium n'est pas encore ouverte
+à la vente » without ever reaching a referral guard. The referral-integrity guards
+are currently unexercised, and CI runs `pnpm test` across every workspace, so this
+is red on the base branch.
+
+Repointing the fixture at `essentielle` was tried and **abandoned deliberately**:
+it takes the failures from 25 to 13, and the remaining 13 are not arithmetic. On
+Essentielle the founders offer waives the 3 500 € creation line, so the order
+amount becomes the maintenance alone — the plan swap changes which *business
+path* the suite exercises, not just its numbers. Deciding what these guards should
+be tested against (list price, founders offer, or both) is a real decision and
+belongs in a PR where a reviewer can see only it. Half-fixing it here would leave
+a suite that is green and tests something nobody chose.
+
+**Nothing decrements stock on an order.** Stock tracking, low-stock alerts and
+auto-disable are real and propagate to Uber Eats and Deliveroo, but
+`grep -c "stock" packages/convex-functions/src/orders.ts` returns 0: every
+quantity is maintained by hand. There is also no `stockMovements` table, so there
+is no consumption history and no input for any reorder logic. An inventory defect,
+not a copy one.

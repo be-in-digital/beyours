@@ -1,10 +1,67 @@
 "use client"
 
+/**
+ * Colours, typography and logo for one establishment — and why none of it
+ * reaches the public site yet.
+ *
+ * WHAT IS CORRECT, AND MUST NOT BE "FIXED" BY DELETING IT: the write path.
+ * `stores.updateBranding` is a real `storeMutation`, gated on `stores:write`,
+ * validated field by field against `BRANDING_FIELDS`, merging rather than
+ * replacing so a partial save stays partial, and audited through
+ * `recordStoreAudit`. Nothing about it is broken. A future reader who finds
+ * these buttons disabled and concludes the mutation is dead code would be
+ * removing the half of the chain that works.
+ *
+ * WHAT IS MISSING: the reader. There are zero reads of the Convex
+ * `store.branding` document in either app — not under `app`, not under
+ * `components`, not under `lib`. Every branding read in the product goes
+ * through the CMS block instead —
+ * `cms.block("branding")` on the `storefront-layout` page — and that is true of
+ * the storefront header, the dynamic favicon, the JSON-LD in
+ * `lib/structured-data.ts`, and even the admin sidebar in
+ * `app/(admin)/layout.tsx`. The storefront's palette and fonts are not read
+ * from anywhere at runtime at all: they are compile-time constants in
+ * `app/globals.css` and `site/fonts.ts` via `next/font/google`. So an owner
+ * picked a colour, was told "Couleurs mises à jour avec succès", and their site
+ * was unchanged.
+ *
+ * WHY THE TABS ARE DISABLED RATHER THAN WIRED HERE: there are two rival stores
+ * for the same facts — the Convex `store.branding` document and the CMS
+ * `branding` block — and they have to be reconciled before either can render.
+ * Choosing which one wins is not a decision this screen can make: the CMS block
+ * already owns the logo across four surfaces and carries drafts, publishing and
+ * media handling; `store.branding` carries colours and fonts, which the CMS has
+ * no field type for and which have to become CSS custom properties before any
+ * component can consume them. Wiring one of them up in isolation would leave a
+ * logo that answers to two screens.
+ *
+ * THE THEME TAB IS GONE, not disabled. It offered six themes — `fast-food`,
+ * `pizzeria`, `chinese`, `fine-dining`, `cafe`, `sushi` — of which two
+ * (`fine-dining`, `cafe`) matched no template anywhere in the repository, and
+ * the other four were loose approximations of template families rather than
+ * anything selectable. Its "Appliquer" button called the colours save: it wrote
+ * three hex strings and let the chosen `theme.id` die in local React state.
+ * `themeId` is in the schema with no writer and no reader. Choosing a design is
+ * an operator running `pnpm template:apply <slug>` when the client repository
+ * is cloned, which `apps/themes/README.md` documents.
+ *
+ * THE LOGO TAB POINTS AT THE CMS rather than duplicating it. Unlike colours and
+ * typography, the logo is not waiting on wiring — a control for it already
+ * ships, works, and drives every surface that shows a logo. This screen's
+ * version was a second, rival input for the same fact, whose value nothing
+ * read. Sending the owner to the one that works is more useful than disabling
+ * ours, so `logoUrl` and `faviconUrl` now have no writer here; they keep their
+ * place in `BRANDING_FIELDS` because deployed stores may already hold them and
+ * `mergeBranding` must keep carrying them through.
+ */
+
 import { useQuery, useMutation } from "convex/react"
 import { toast } from "sonner"
 import { useState, useEffect, useRef } from "react"
-import { PaletteIcon, CheckIcon } from "lucide-react"
+import Link from "next/link"
+import { ExternalLinkIcon } from "lucide-react"
 import {
+  Alert,
   Button,
   Input,
   Label,
@@ -12,29 +69,26 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
 } from "@be-in-digital/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
-import { cn } from "../../lib/utils"
+import { adminRoutes } from "../../config/admin-routes"
 import { ResolvingStore } from "../../components/resolving-store"
-import { brandingControlState } from "../../lib/branding-eligibility"
+import { unappliedBrandingState } from "../../lib/branding-eligibility"
 import { BrandingControl } from "./branding-control"
 
-const themes = [
-  { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
-  { id: "pizzeria", name: "Pizzeria", primary: "#D32F2F", secondary: "#FFEBEE", accent: "#FF5722" },
-  { id: "chinese", name: "Chinois", primary: "#C62828", secondary: "#FFF8E1", accent: "#FFD600" },
-  { id: "fine-dining", name: "Gastronomie", primary: "#1A237E", secondary: "#E8EAF6", accent: "#9FA8DA" },
-  { id: "cafe", name: "Café", primary: "#4E342E", secondary: "#EFEBE9", accent: "#8D6E63" },
-  { id: "sushi", name: "Sushi", primary: "#1B5E20", secondary: "#E8F5E9", accent: "#66BB6A" },
-]
+/**
+ * The CMS page that genuinely owns the logo, favicon and brand name.
+ *
+ * Both apps register this slug (`cms/index.ts`) with a `branding` block, under
+ * the `storefront` group labelled "Vitrine". The slug is spelled here because
+ * `packages/admin` has no view of an app's CMS registry; `design-surface.test.ts`
+ * checks it against both apps so this link cannot start pointing at a page that
+ * no longer exists.
+ */
+const STOREFRONT_LAYOUT_SLUG = "storefront-layout"
 
 interface DesignPageProps {
   embedded?: boolean
@@ -45,23 +99,22 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
   const storeId = useAdminStoreId()
   // `stores:read` gets a role onto this screen; `stores:write` is what
   // `stores.updateBranding` checks on the click. `manager` holds the first and
-  // not the second, so the two sets are not the same people.
+  // not the second, so the two sets are not the same people. On top of that,
+  // no role at all can make these settings reach the site today — see
+  // `unappliedBrandingState`.
   const role = useAdminAuthStore((s) => s.role)
-  const branding = brandingControlState(role)
+  const branding = unappliedBrandingState(role)
   const store = useQuery(
     api?.stores?.getById,
     storeId ? { id: storeId } : "skip"
   )
   const updateBranding = useMutation(api?.stores?.updateBranding)
 
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
   const [primaryColor, setPrimaryColor] = useState("#000000")
   const [secondaryColor, setSecondaryColor] = useState("#ffffff")
   const [accentColor, setAccentColor] = useState("#0066cc")
   const [fontHeading, setFontHeading] = useState("Inter")
   const [fontBody, setFontBody] = useState("Inter")
-  const [logoUrl, setLogoUrl] = useState("")
-  const [faviconUrl, setFaviconUrl] = useState("")
 
   const initialized = useRef(false)
   useEffect(() => {
@@ -71,19 +124,17 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
       setAccentColor(store.branding.accentColor || "#0066cc")
       setFontHeading(store.branding.fontHeading || "Inter")
       setFontBody(store.branding.fontBody || "Inter")
-      setLogoUrl(store.branding.logoUrl || "")
-      setFaviconUrl(store.branding.faviconUrl || "")
       initialized.current = true
     }
   }, [store])
 
-  const handleApplyTheme = (theme: typeof themes[0]) => {
-    setSelectedTheme(theme.id)
-    setPrimaryColor(theme.primary)
-    setSecondaryColor(theme.secondary)
-    setAccentColor(theme.accent)
-  }
-
+  /**
+   * Kept, and kept correct, while the button that calls it is inert.
+   *
+   * The mutation, the permission and the audit entry are all right; only the
+   * reader is missing. Deleting these handlers would mean rebuilding them
+   * against a validator that already accepts exactly these fields.
+   */
   const handleSaveColors = async () => {
     if (!storeId) return
     try {
@@ -112,28 +163,15 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
     }
   }
 
-  const handleSaveLogo = async () => {
-    if (!storeId) return
-    try {
-      await updateBranding({
-        id: storeId,
-        // Sent as written, empty string included. `stores.updateBranding`
-        // merges, so an absent field means "untouched" and would make clearing
-        // a logo impossible; `""` is what tells it to remove the field.
-        branding: { logoUrl, faviconUrl },
-      })
-      toast.success("Logo mis à jour avec succès")
-    } catch (error) {
-      toast.error("Échec de la mise à jour du logo")
-      console.error(error)
-    }
-  }
-
   if (!storeId) return <ResolvingStore />
 
   if (store === undefined) {
     return <LoadingState />
   }
+
+  /** A logo saved on this screen before the CMS block took the job over. */
+  const orphanedLogoUrl: string | undefined =
+    store?.branding?.logoUrl || store?.branding?.faviconUrl
 
   return (
     <div className="space-y-6">
@@ -146,54 +184,34 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
         </div>
       )}
 
-      <Tabs defaultValue="theme" className="space-y-4">
+      <Tabs defaultValue="colors" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="theme">Thème</TabsTrigger>
           <TabsTrigger value="colors">Couleurs</TabsTrigger>
           <TabsTrigger value="typography">Typographie</TabsTrigger>
           <TabsTrigger value="logo">Logo</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="theme" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {themes.map((theme) => (
-              <div
-                key={theme.id}
-                className={cn(
-                  "border border-border/50 rounded-xl p-5 cursor-pointer hover:shadow-sm transition-all",
-                  selectedTheme === theme.id && "ring-2 ring-primary"
-                )}
-                onClick={() => handleApplyTheme(theme)}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium">{theme.name}</h3>
-                  {selectedTheme === theme.id && (
-                    <CheckIcon className="h-4 w-4 text-primary" />
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="h-10 rounded-lg border" style={{ backgroundColor: theme.primary }} />
-                  <div className="h-10 rounded-lg border" style={{ backgroundColor: theme.secondary }} />
-                  <div className="h-10 rounded-lg border" style={{ backgroundColor: theme.accent }} />
-                </div>
-                <div className="mt-3 space-y-0.5 text-xs text-muted-foreground">
-                  <p>Primaire : {theme.primary}</p>
-                  <p>Secondaire : {theme.secondary}</p>
-                  <p>Accent : {theme.accent}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {selectedTheme && (
-            <BrandingControl state={branding}>
-              <Button size="sm" disabled={branding.disabled} onClick={handleSaveColors}>
-                Appliquer le thème sélectionné
-              </Button>
-            </BrandingControl>
-          )}
-        </TabsContent>
-
         <TabsContent value="colors" className="space-y-4">
+          {/*
+            The plain version of the header comment, for the person who has to
+            live with it. No date, and no suggestion that saving would do
+            anything: the button is disabled precisely so that it stops
+            promising a change customers would not see.
+          */}
+          <Alert
+            variant="warning"
+            title="Ces couleurs ne s'appliquent pas encore à votre site"
+            data-testid="branding-colors-unapplied"
+          >
+            <p>
+              Votre site public affiche les couleurs de son modèle de design, et
+              cet écran ne les remplace pas encore. L&apos;enregistrement est
+              donc désactivé : il vous annoncerait un changement que vos clients
+              ne verraient pas. Le modèle, lui, se choisit à l&apos;installation
+              du site — voyez avec votre intégrateur.
+            </p>
+          </Alert>
+
           <div className="border border-border/50 rounded-xl p-6 space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -230,6 +248,28 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
         </TabsContent>
 
         <TabsContent value="typography" className="space-y-4">
+          {/*
+            The last sentence is not padding. The previews below set
+            `fontFamily` inline, so they resolve against the fonts installed on
+            the operator's own machine — an owner typing a font name they have
+            locally sees it change here and nowhere else, which is the most
+            convincing wrong signal on the screen.
+          */}
+          <Alert
+            variant="warning"
+            title="Ces polices ne s'appliquent pas encore à votre site"
+            data-testid="branding-typography-unapplied"
+          >
+            <p>
+              Les titres et le texte de votre site public utilisent les polices
+              de son modèle de design, chargées avec la page.
+              L&apos;enregistrement est désactivé tant que cet écran ne les
+              remplace pas. L&apos;aperçu ci-dessous utilise les polices
+              installées sur votre ordinateur : il ne montre pas ce que verront
+              vos clients.
+            </p>
+          </Alert>
+
           <div className="border border-border/50 rounded-xl p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -256,33 +296,50 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
           </div>
         </TabsContent>
 
+        {/*
+          A signpost, not a form. The CMS `branding` block is what the storefront
+          header, the browser tab icon, the JSON-LD and this dashboard's own
+          sidebar all read; the two URL fields that used to live here were read
+          by nothing.
+        */}
         <TabsContent value="logo" className="space-y-4">
+          <Alert
+            title="Le logo se règle depuis l'écran Contenu"
+            data-testid="branding-logo-elsewhere"
+          >
+            <p>
+              Votre logo, votre favicon et le nom de votre marque se modifient
+              sur la page «&nbsp;Layout du storefront&nbsp;», dans le groupe
+              Vitrine de Contenu&nbsp;› Pages, au bloc «&nbsp;Identité
+              visuelle&nbsp;». C&apos;est de là que votre site, l&apos;icône de
+              l&apos;onglet du navigateur et ce tableau de bord tirent tous leur
+              logo — d&apos;où le réglage unique plutôt qu&apos;un second ici.
+            </p>
+          </Alert>
+
           <div className="border border-border/50 rounded-xl p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="logoUrl">URL du logo</Label>
-                <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
-                {logoUrl && (
-                  <div className="border rounded-lg p-4 flex items-center justify-center bg-muted/50">
-                    <img src={logoUrl} alt="Logo" className="max-h-20" />
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="faviconUrl">URL du favicon</Label>
-                <Input id="faviconUrl" value={faviconUrl} onChange={(e) => setFaviconUrl(e.target.value)} placeholder="https://..." />
-                {faviconUrl && (
-                  <div className="border rounded-lg p-4 flex items-center justify-center bg-muted/50">
-                    <img src={faviconUrl} alt="Favicon" className="h-8 w-8" />
-                  </div>
-                )}
-              </div>
-            </div>
-            <BrandingControl state={branding}>
-              <Button size="sm" disabled={branding.disabled} onClick={handleSaveLogo}>
-                Enregistrer le logo
-              </Button>
-            </BrandingControl>
+            <p className="text-sm text-muted-foreground">
+              Vous pourrez y déposer un fichier plutôt que de coller une adresse,
+              et prévisualiser avant de publier.
+            </p>
+            {/*
+              An establishment that filled the old fields deserves to be told
+              why the logo it saved never appeared, rather than left to conclude
+              its site is broken.
+            */}
+            {orphanedLogoUrl && (
+              <p className="text-sm text-muted-foreground">
+                Une adresse de logo avait été enregistrée sur cet écran&nbsp;:
+                elle n&apos;est utilisée nulle part. Redéposez votre logo sur
+                «&nbsp;Layout du storefront&nbsp;» pour qu&apos;il apparaisse.
+              </p>
+            )}
+            <Button size="sm" asChild>
+              <Link href={adminRoutes.contentPageEdit(STOREFRONT_LAYOUT_SLUG)}>
+                Ouvrir «&nbsp;Layout du storefront&nbsp;»
+                <ExternalLinkIcon className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </TabsContent>
       </Tabs>

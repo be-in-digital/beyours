@@ -18,6 +18,21 @@ function goTo(path: string): () => void {
 // Each page step navigates to the page, then highlights specific
 // UI elements to walk the user through every feature.
 
+/*
+ * Two steps were removed rather than reworded: « Clients » and « Composants ».
+ *
+ * Both narrated a full feature and then navigated the owner to a
+ * `<ComingSoon/>` placeholder — those two routes are the only ones in the admin
+ * that still render one. A guided tour is the first thing a new client sees,
+ * unprompted, 1.2 s after their first login, so a step that ends on "coming
+ * soon" is worse than no step at all.
+ *
+ * `nav-customers` could never have highlighted anything either: the sidebar
+ * derives its tour anchors from nav entries, and "Clients" is deliberately kept
+ * out of the nav until the page exists.
+ *
+ * Put the Clients step back in the commit that ships the page, not before.
+ */
 export const TOUR_STEPS: StepType[] = [
   // ── Welcome ────────────────────────────────────────────────────────
   {
@@ -118,17 +133,6 @@ export const TOUR_STEPS: StepType[] = [
     action: goTo("/categories"),
   },
 
-  // ── Customers ──────────────────────────────────────────────────────
-  {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-customers"]'],
-    content:
-      "Clients — Votre carnet d'adresses intelligent ! " +
-      "Retrouvez chaque client, son historique de commandes, ses coordonnées " +
-      "et ses préférences. Parfait pour fidéliser et personnaliser le service.",
-    action: goTo("/customers"),
-  },
-
   // ── Inventory ──────────────────────────────────────────────────────
   {
     selector: '[data-tour="inventory-status"]',
@@ -195,17 +199,6 @@ export const TOUR_STEPS: StepType[] = [
       "mentions légales, CGV… Un éditeur visuel simple, " +
       "sans aucune ligne de code à écrire. Publiez ou dépubliez en un clic.",
     action: goTo("/content/pages"),
-  },
-
-  // ── Components ─────────────────────────────────────────────────────
-  {
-    selector: '[data-tour="main-content"]',
-    highlightedSelectors: ['[data-tour="nav-content-components"]'],
-    content:
-      "Composants — Des blocs réutilisables pour vos pages : " +
-      "bannières, galeries photo, témoignages, cartes de menu, vidéos… " +
-      "Assemblez-les comme des Lego pour créer des pages uniques.",
-    action: goTo("/content/components"),
   },
 
   // ── Blog ───────────────────────────────────────────────────────────
@@ -285,8 +278,11 @@ export const TOUR_STEPS: StepType[] = [
       "Paramètres — Plusieurs onglets de configuration : " +
       "informations du restaurant, moyens de paiement " +
       "(Stripe, SumUp, PayPal, espèces — Square arrive), options de livraison, " +
-      "horaires et intégrations. Les couleurs, la typographie et le logo " +
-      "se règlent sur l'écran Design, dans le groupe Contenu.",
+      "horaires et intégrations. Votre logo, lui, se règle dans Contenu, " +
+      "sur la page « Layout du storefront » : c'est de là que votre site " +
+      "et cet écran tirent leur logo. L'écran Design propose aussi les " +
+      "couleurs et la typographie, mais elles ne s'appliquent pas encore " +
+      "à votre site — il vous le rappelle sur place.",
     action: goTo("/settings"),
   },
 

@@ -59,3 +59,44 @@ export function brandingControlState(role: Role | undefined): BrandingControlSta
 
   return { disabled: false }
 }
+
+/**
+ * Why a save that the role IS allowed to make would still change nothing.
+ *
+ * `stores.updateBranding` writes `store.branding` correctly; no reader exists.
+ * Every branding read in either app goes through the CMS `branding` block on
+ * the `storefront-layout` page, and the storefront's palette and fonts are
+ * compile-time constants besides. So the colour and typography saves reported
+ * success and left the public site exactly as it was.
+ *
+ * Stated as a setting-level fact rather than a role-level one, because that is
+ * what it is: no role can get around it, the owner included.
+ */
+export const BRANDING_UNAPPLIED_REASON =
+  "Ce réglage n'est pas encore appliqué à votre site public"
+
+/**
+ * A save that is correct, permitted, and pointless.
+ *
+ * The role question is asked first and still wins when it refuses, for two
+ * reasons. It is the more specific answer to "why is this button dead for me":
+ * a manager would not be allowed to save this even once the storefront learns
+ * to read it, so telling them the wiring is at fault would be one more thing to
+ * unlearn later. And it keeps `brandingControlState` on the live path, so the
+ * permission mirror this module exists for cannot quietly rot while the screen
+ * waits for its reader.
+ *
+ * DISABLED RATHER THAN HIDDEN, for the third time on this screen: the fields
+ * hold values an establishment may already have saved, and a tab that vanishes
+ * reads as a feature withdrawn. The tab states its own reason in an `Alert`
+ * above the fields — the tooltip here is the second half of that, for whoever
+ * goes straight for the button.
+ */
+export function unappliedBrandingState(
+  role: Role | undefined
+): BrandingControlState {
+  const byRole = brandingControlState(role)
+  if (byRole.disabled) return byRole
+
+  return { disabled: true, reason: BRANDING_UNAPPLIED_REASON }
+}

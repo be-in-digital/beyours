@@ -401,14 +401,6 @@ export function StorefrontDemo({
                     <Field label="Téléphone" placeholder="06 12 34 56 78" palette={palette} />
                   </div>
                   {mode === "livraison" && <Field label="Adresse de livraison" placeholder={theme.address} palette={palette} />}
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium">Créneau</label>
-                    <select className="w-full rounded-xl border bg-surface-1 px-3 py-2.5 text-sm outline-none" style={{ borderColor: palette.border, color: palette.ink }}>
-                      <option>Dès que possible (~30 min)</option>
-                      <option>Dans 1 heure</option>
-                      <option>Ce soir · 20h00</option>
-                    </select>
-                  </div>
                   <p className="text-xs text-muted-foreground">Démo — aucun paiement réel ne sera effectué.</p>
                 </div>
 

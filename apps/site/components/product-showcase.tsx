@@ -29,7 +29,7 @@ const products = [
   {
     id: "fidelite",
     name: "Fidélité",
-    description: "Programme de récompenses",
+    description: "Jeu concours & lots",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -38,8 +38,8 @@ const products = [
   },
   {
     id: "analytics",
-    name: "Analytics",
-    description: "Données & performance",
+    name: "Suivi des ventes",
+    description: "CA, commandes, panier moyen",
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2" />

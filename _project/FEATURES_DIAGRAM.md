@@ -1,5 +1,20 @@
 # BeYours Engine - Features Diagram
 
+> **This document counts features that were designed, not features that ship.**
+> It is the origin of the "181+ features" headline, and that headline was wrong
+> twice over: its own table below sums to **201**, and neither figure counts
+> anything that was measured against the code. The audit of 1 September 2026
+> went through the 92 features `CLAUDE.md` reproduces from this document and
+> found **29 shipping as described, 23 partial, and 41 absent or unreachable**
+> from `apps/themes` — the application a paying client actually runs.
+>
+> Several categories here also count things that are not features: six themes
+> as six features, seven team roles as seven, six social-action types as six.
+>
+> Keep the diagram — it is a useful map of the intended product, and the
+> "Feature Priority Levels" section at the end records honest phasing. Do not
+> quote a total from it, in a proposal or anywhere else.
+
 ## Complete Features Overview
 
 ```mermaid
@@ -644,7 +659,8 @@ graph TB
 | Maintenance & Updates | 7 |
 | AWS Services | 7 |
 | Advanced Features | 7 |
-| **TOTAL** | **181+ Features** |
+| **TOTAL (designed)** | **201** |
+| **Of those, measured as shipping** | **29 of the 92 `CLAUDE.md` enumerates** |
 
 ---
 
@@ -693,9 +709,9 @@ graph TB
 
 ---
 
-**Total Features**: 181+  
-**Themes**: 6  
-**Languages**: 5  
+**Total features designed**: 201 (29 measured as shipping — see the note at the top)  
+**Themes**: 6 designed; 4 have a template family, `fine-dining` and `cafe` have none  
+**Languages**: unlimited by design; 3 UI locales ship (fr, en, es)  
 **Payment Providers**: 5  
 **Third-Party Platforms**: 3  
 **User Roles**: 7  
