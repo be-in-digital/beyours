@@ -18,20 +18,17 @@ import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { adminRoutes } from "../../config/admin-routes"
+import {
+  formatStatCount,
+  GAME_STATS_WINDOW_SUFFIX,
+  type GameStats,
+} from "./game-stats"
 
 /**
  * Gamification overview: the pulse (stats), the setup surfaces one click
  * away, and the latest plays. Configuration lives on the dedicated pages
  * (Jeux & Lots, Codes QR, Actions, Gagnants) — mirrored in the sidebar.
  */
-
-interface Stats {
-  totalPlays: number
-  totalWins: number
-  winRate: number
-  totalRedeemed: number
-  pendingRedemptions: number
-}
 
 interface GamePlay {
   id: string
@@ -67,7 +64,7 @@ export function GamesPage() {
   const storeId = useAdminStoreId()
 
   const stats = useQuery(api.prizeRedemptions.getStats, storeId ? { storeId } : "skip") as
-    | Stats
+    | GameStats
     | undefined
   const plays = useQuery(api.prizeRedemptions.listPlays, storeId ? { storeId, limit: 8 } : "skip") as
     | GamePlay[]
@@ -109,11 +106,26 @@ export function GamesPage() {
     (p) => p.isActive && ((p.remainingCount ?? p.totalAvailable) === undefined || (p.remainingCount ?? p.totalAvailable ?? 0) > 0)
   ).length
 
+  // The first two describe the window the server measured; "Scans QR" is a
+  // counter on the QR row itself and "Lots à valider" is the live queue, so
+  // neither of those carries the suffix.
   const statCards = [
-    { label: "Parties jouées", value: stats.totalPlays, icon: Gamepad2Icon },
-    { label: "Victoires", value: stats.totalWins, icon: TrophyIcon },
-    { label: "Scans QR", value: totalScans, icon: ScanIcon },
-    { label: "Lots à valider", value: stats.pendingRedemptions, icon: TicketCheckIcon },
+    {
+      label: `Parties jouées${GAME_STATS_WINDOW_SUFFIX}`,
+      value: formatStatCount(stats.totalPlays, stats.truncated),
+      icon: Gamepad2Icon,
+    },
+    {
+      label: `Victoires${GAME_STATS_WINDOW_SUFFIX}`,
+      value: formatStatCount(stats.totalWins, stats.truncated),
+      icon: TrophyIcon,
+    },
+    { label: "Scans QR", value: totalScans.toLocaleString("fr-FR"), icon: ScanIcon },
+    {
+      label: "Lots à valider",
+      value: formatStatCount(stats.pendingRedemptions, stats.truncated),
+      icon: TicketCheckIcon,
+    },
   ]
 
   const setupCards = [

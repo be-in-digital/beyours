@@ -5,6 +5,8 @@
  */
 
 import { v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 
 // === QUERIES ===
 
@@ -30,12 +32,21 @@ export const getForEntity = {
 }
 
 /**
- * Get all translations for a specific language
+ * One page of a store's translations for a language.
+ *
+ * WHY IT PAGES RATHER THAN CAPS. This collected every translated field of every
+ * product, category, menu, block and UI string the establishment has in that
+ * language — one row per field per entity, so it grows with the catalogue and
+ * again with every language added. A `.take()` would have been quieter and
+ * worse: a truncated dictionary is missing translations, which the storefront
+ * renders as untranslated text rather than as an error anybody notices. Paging
+ * makes the caller say how much it wants and tells it when there is more.
  */
 export const getByLanguage = {
   args: {
     storeId: v.id("stores"),
     languageCode: v.string(),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx: any, args: any) => {
     return await ctx.db
@@ -43,7 +54,7 @@ export const getByLanguage = {
       .withIndex("by_storeId_language", (q: any) =>
         q.eq("storeId", args.storeId).eq("languageCode", args.languageCode)
       )
-      .collect()
+      .paginate(clampPagination(args.paginationOpts))
   },
 }
 
