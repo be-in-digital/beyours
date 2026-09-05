@@ -236,6 +236,11 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
   return (
     <GameShell
       storeName={storeName}
+      branding={
+        session && session.status !== "not_found"
+          ? (session as { store?: { branding?: unknown } }).store?.branding
+          : undefined
+      }
       tableNumber={gameSession?.tableNumber}
       onEngineReady={setEngine}
     >

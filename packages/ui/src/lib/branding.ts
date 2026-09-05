@@ -313,6 +313,13 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     const value = formatHsl(tone)
     css += declare("primary", value)
     css += declare("primary-foreground", formatHsl(readableForeground(tone)))
+    // The pressed state is its own colour, not `primary/90`: at 90% opacity a
+    // dark brand blends towards a light page and gets LIGHTER on hover. Seven
+    // points of lightness, away from the page in whichever mode this is.
+    css += declare(
+      "primary-hover",
+      formatHsl({ ...tone, l: clamp(dark ? tone.l + 7 : tone.l - 7, 0, 100) })
+    )
     // `--ring` is the primary in both shipped palettes: the focus ring is the
     // brand colour, and leaving it orange under a red brand is the kind of
     // detail that makes a theme look like a skin.
@@ -361,6 +368,11 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     // one click on a theme card.
     css += declare("accent-foreground", formatHsl(readableOn(surface, accent, dark)))
     css += declare("sidebar-accent", `hsl(${formatHsl(surface)})`)
+    // The accent as the owner actually picked it. `--accent` above is a tint,
+    // because `bg-accent` paints hover surfaces; a cart badge or a "nouveau"
+    // pill needs the saturated version, and without this token the storefront
+    // hard-coded one and the accent field only ever moved hover states.
+    css += declare("accent-solid", formatHsl(accent))
   }
 
   // Typography is one pair of variables rather than two per mode: a font does

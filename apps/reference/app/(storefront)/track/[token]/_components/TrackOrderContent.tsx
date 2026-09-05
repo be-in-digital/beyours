@@ -74,7 +74,7 @@ export default function TrackOrderContent() {
           Ce lien de suivi n&apos;est plus valide.
         </p>
         <Link href="/menu">
-          <Button className="h-14 rounded-2xl bg-[#0D5C3F] px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-[#0A412D]">
+          <Button className="h-14 rounded-2xl bg-primary px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-primary-hover">
             Retour au menu
           </Button>
         </Link>

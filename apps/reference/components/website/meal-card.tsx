@@ -115,19 +115,19 @@ export function MealCard({
                 <div className="mt-auto flex items-center justify-between gap-4">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest leading-none mb-1">Price</span>
-                        <span className="text-xl font-black text-[#0D5C3F] dark:text-emerald-400 leading-none">{formatPrice(Math.round(price * 100))}</span>
+                        <span className="text-xl font-black text-primary dark:text-emerald-400 leading-none">{formatPrice(Math.round(price * 100))}</span>
                     </div>
 
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
                                 onClick={handleAddToCart}
-                                className="h-12 w-12 rounded-2xl bg-[#0D5C3F] text-white hover:bg-orange-500 shadow-lg shadow-emerald-900/10 hover:scale-110 transition-all p-0 border-none"
+                                className="h-12 w-12 rounded-2xl bg-primary text-white hover:bg-orange-500 shadow-lg shadow-emerald-900/10 hover:scale-110 transition-all p-0 border-none"
                             >
                                 <Plus className="h-6 w-6" />
                             </Button>
                         </TooltipTrigger>
-                        <TooltipContent className="bg-[#0D5C3F] text-white border-none font-bold uppercase text-[10px] tracking-widest px-4 py-2 rounded-xl">
+                        <TooltipContent className="bg-primary text-white border-none font-bold uppercase text-[10px] tracking-widest px-4 py-2 rounded-xl">
                             Ajouter au panier
                         </TooltipContent>
                     </Tooltip>

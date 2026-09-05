@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { Volume2Icon, VolumeXIcon } from "lucide-react"
+import { buildBrandingCss } from "@be-in-digital/ui/branding"
+
 import { ParticleEngine, gameSounds } from "./lib"
 
 /**
@@ -12,12 +14,42 @@ import { ParticleEngine, gameSounds } from "./lib"
 
 interface GameShellProps {
   storeName?: string
+  /**
+   * The establishment's saved branding, from `getSession` — which reads it off
+   * the store the scanned QR code belongs to, not off the browser's persisted
+   * storefront selection. A diner scanning at one restaurant must not get the
+   * palette of another they browsed last week.
+   */
+  branding?: unknown
   tableNumber?: string
   onEngineReady?: (engine: ParticleEngine) => void
   children: React.ReactNode
 }
 
-export function GameShell({ storeName, tableNumber, onEngineReady, children }: GameShellProps) {
+export function GameShell({
+  storeName,
+  branding,
+  tableNumber,
+  onEngineReady,
+  children,
+}: GameShellProps) {
+  /*
+   * The establishment's colours and fonts, scoped to the arena.
+   *
+   * `StoreTheme` mounts in the `(storefront)` layout and `app/game/` is a
+   * sibling of it, so nothing branded reached this flow at all: its 29
+   * `font-heading` uses fell back to the engine's Poppins and every token
+   * resolved to the administration's palette.
+   *
+   * Scoped to this element rather than `:root` because the arena is a
+   * deliberately dark stage — purple and gold, not the restaurant's green — and
+   * repainting it in the brand would be replacing a design, not applying one.
+   * What follows the brand here is the type, and any token these screens use.
+   */
+  const brandingCss = buildBrandingCss(branding, {
+    selector: "[data-game-arena]",
+    darkSelector: null,
+  })
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<ParticleEngine | null>(null)
   const [muted, setMuted] = useState(false)
@@ -59,7 +91,11 @@ export function GameShell({ storeName, tableNumber, onEngineReady, children }: G
     // a claim-form input, an anchor, assistive tech) scrolls the header and
     // the top of the wheel off-screen with no way back. `clip` renders the
     // same and cannot be scrolled at all.
-    <div className="relative flex min-h-[100dvh] flex-col overflow-clip bg-[#120d1a] text-white">
+    <div
+      data-game-arena=""
+      className="relative flex min-h-[100dvh] flex-col overflow-clip bg-[#120d1a] text-white"
+    >
+      {brandingCss && <style dangerouslySetInnerHTML={{ __html: brandingCss }} />}
       {/* Ambient stage lighting */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute left-1/2 top-[-20%] h-[60vh] w-[120vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(249,115,22,0.16),transparent)]" />

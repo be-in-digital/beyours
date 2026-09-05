@@ -56,6 +56,16 @@ const DESIGN_PAGE = path.join(ADMIN_SRC, "pages/design/design-page.tsx")
 const source = fs.readFileSync(DESIGN_PAGE, "utf8")
 const read = (file: string): string => fs.readFileSync(file, "utf8")
 
+/** Every `.ts`/`.tsx` under `dir`, for the sweeps that ask about a whole tree. */
+function walkTsx(dir: string): string[] {
+  if (!fs.existsSync(dir)) return []
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name === "node_modules") return []
+    const full = path.join(dir, entry.name)
+    return entry.isDirectory() ? walkTsx(full) : /\.tsx?$/.test(entry.name) ? [full] : []
+  })
+}
+
 const VALIDATED = Object.keys(BRANDING_FIELDS)
 
 /** The `branding: { ... }` object literals the page hands to the mutation. */
@@ -424,6 +434,79 @@ describe("what the screen saves reaches a diner", () => {
     // The two the engine actually bundles through `next/font`.
     expect(source).toContain('"Inter"')
     expect(source).toContain('"Poppins"')
+  })
+
+  it("paints the storefront through tokens, not through literal hex", () => {
+    // THE TEST THAT WAS MISSING, and the gap every other test in this file sat
+    // beside: they all proved the chain end to end and none of them asked
+    // whether the storefront reads the tokens at the end of it. It did not.
+    // 228 literal colour utilities across 34 files — `bg-[#0D5C3F]` 66 times,
+    // `text-[#0D5C3F]` 36, `hover:bg-[#0A412D]` 20 — against eight uses of
+    // `bg/text/border-primary`. So `--primary` became the owner's red exactly
+    // as asserted, and the hero, the menu header, the add-to-cart button and
+    // the checkout button stayed dark green.
+    const BRAND_LITERAL = /(?:bg|text|border|ring|from|to|via|fill|stroke|outline|decoration|caret|accent)-\[#[0-9A-Fa-f]{3,8}\]/g
+    // Uber Eats' green and Deliveroo's teal, on their own partner tiles. A
+    // restaurant's palette must not repaint another company's logo.
+    const THIRD_PARTY = /#(?:06C167|00CCBC)/i
+
+    for (const app of APPS) {
+      const offenders: string[] = []
+      for (const dir of [
+        "app/(storefront)",
+        "components/storefront",
+        "components/website",
+      ]) {
+        for (const file of walkTsx(path.join(REPO, "apps", app, dir))) {
+          for (const hit of read(file).match(BRAND_LITERAL) ?? []) {
+            if (!THIRD_PARTY.test(hit)) {
+              offenders.push(`${path.relative(REPO, file)}: ${hit}`)
+            }
+          }
+        }
+      }
+      expect(offenders, app).toEqual([])
+    }
+  })
+
+  it("gives the storefront its own default palette, scoped and layered", () => {
+    // Scoped, so the administration does not turn green. Layered, so an
+    // establishment's own colours — which `StoreTheme` emits unlayered — beat
+    // it whatever the specificity or the load order.
+    for (const app of APPS) {
+      const css = read(path.join(REPO, "apps", app, GLOBALS))
+      const base = css.slice(css.indexOf("@layer base"))
+      expect(base, `${app}: .storefront-theme is not in @layer base`).toMatch(
+        /@layer base \{[\s\S]*?\.storefront-theme \{/
+      )
+      // The colours a diner saw before this change, unchanged.
+      expect(css).toContain("--primary: 158 75% 21%;")
+      expect(css).toContain("--background: 51 64% 98%;")
+
+      const shell = read(
+        path.join(REPO, "apps", app, "components/storefront/storefront-shell.tsx")
+      )
+      expect(shell, `${app}: nothing carries the scope`).toContain("storefront-theme")
+    }
+  })
+
+  it("drives the two roles the storefront had been spelling by hand", () => {
+    // `--primary-hover` because `primary/90` lightens a dark brand towards the
+    // page instead of darkening it, and `--accent-solid` because `--accent` is
+    // a hover tint — a cart badge needs the colour the owner actually picked.
+    const css = buildBrandingCss(
+      { primaryColor: "#d32f2f", accentColor: "#ff9800" },
+      { darkSelector: null }
+    )
+    expect(css).toContain("--primary-hover:")
+    expect(css).toContain("--accent-solid:36 100% 50%;")
+
+    for (const app of APPS) {
+      const globals = read(path.join(REPO, "apps", app, GLOBALS))
+      for (const token of ["--color-primary-hover", "--color-accent-solid"]) {
+        expect(globals, `${app}: ${token} has no utility`).toContain(token)
+      }
+    }
   })
 
   it("wins the cascade against the engine's own defaults", () => {

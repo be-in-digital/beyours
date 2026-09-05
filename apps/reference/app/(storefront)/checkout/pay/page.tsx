@@ -117,7 +117,7 @@ function CheckoutPayContent() {
           <p className="mb-8 text-lg text-zinc-500">{error}</p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/checkout">
-              <Button className="h-14 rounded-2xl bg-[#0D5C3F] px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-[#0A412D]">
+              <Button className="h-14 rounded-2xl bg-primary px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-primary-hover">
                 Choisir un autre moyen
               </Button>
             </Link>

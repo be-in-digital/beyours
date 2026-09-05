@@ -42,7 +42,7 @@ function CheckoutCancelContent() {
 
         <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
           <Link href="/checkout">
-            <Button className="h-14 rounded-2xl bg-[#0D5C3F] px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-[#0A412D]">
+            <Button className="h-14 rounded-2xl bg-primary px-8 font-black uppercase tracking-widest text-white transition-all hover:bg-primary-hover">
               Réessayer le paiement
             </Button>
           </Link>
