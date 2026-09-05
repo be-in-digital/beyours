@@ -20,6 +20,30 @@
  *
  * These cases hold the rule that replaced it: the customer says which code
  * they hold, the server says what it is worth.
+ *
+ * ## Why these run on Essentielle, when the numbers above are Premium's
+ *
+ * They were written on Premium, and #350 closed Premium for sale — the native
+ * application it includes does not exist, so `createCheckoutSession` now
+ * refuses that plan ahead of every other check, deliberately including on the
+ * test path. Every case here then died on the plan guard instead of reaching
+ * the pricing it asserts, which took `Test` red on `main`.
+ *
+ * Every figure quoted in a comment here — above and throughout — is Premium's,
+ * because Premium is what was measured when each of these defects was found.
+ * Restating them in Essentielle's numbers would make them tidy and false. The
+ * ASSERTIONS are Essentielle's, and they derive from `planPrices` rather than
+ * from any of those figures.
+ *
+ * Moving plans is not free, and the seeding in `seedProgramme` is the cost:
+ * Essentielle is `foundersOffer.plan`, so on a fresh database the first ten
+ * builds have their creation line ZEROED. That offer is deliberately not
+ * stackable with a referral (`convex/stripe.ts`, `!isReferral`), so the cases
+ * carrying a valid code were unaffected — and the thirteen asserting « billed
+ * at list price » were not, because a founders seat is not list price. Rather
+ * than rewrite those thirteen to expect a founders total, which would stop
+ * them testing the referral rule at all, the seats are consumed up front. What
+ * each case exercises is then exactly what it exercised on Premium.
  */
 
 import { convexTest } from "convex-test";
@@ -28,18 +52,19 @@ import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
 import { planPrices } from "../../convex/planPrices";
+import { foundersOffer } from "../../convex/foundersOffer";
 import { VAT } from "../../lib/legal/company";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
-/* Premium/yearly, so the numbers below are the ones that were measured.
-   Premium creation 7 500 € + yearly maintenance 2 000 € = 9 500 € excl. tax. */
+/* Essentielle/yearly — the only plan open for sale since #350.
+   Creation 3 500 € + yearly maintenance 1 000 € = 4 500 € excl. tax. */
 const LIST_TOTAL =
-  planPrices.premium.creation + planPrices.premium.maintenanceYearly;
+  planPrices.essentielle.creation + planPrices.essentielle.maintenanceYearly;
 
 const CHECKOUT = {
-  plan: "premium" as const,
+  plan: "essentielle" as const,
   orderType: "creation" as const,
   buyerType: "business" as const,
   billingPeriod: "yearly" as const,
@@ -73,6 +98,9 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
 });
+
+/** Marks the rows `seedProgramme` writes, so a case can tell them from its own. */
+const FOUNDERS_SEED_RESTAURANT = "Places fondateurs (amorçage)";
 
 async function seedProgramme(
   t: ReturnType<typeof convexTest>,
@@ -118,8 +146,53 @@ async function seedProgramme(
       isActive: opts.isActive ?? true,
       createdAt: Date.now(),
     });
+
+    /* Every founders seat, taken. Essentielle is `foundersOffer.plan`, and on
+       a fresh database `isFounders` would be true for every case here that
+       carries no valid code — zeroing the creation line, so « billed at list
+       price » would read 1 000 € rather than 4 500 €. That is the founders
+       offer working, not the referral rule, and it is not what these cases
+       are about.
+
+       Written straight to the table rather than through ten checkouts: the
+       counter reads rows, and `createCheckoutSession` is rate-limited, so
+       driving it ten times per test would be slow and would exercise the
+       limiter instead. `paid` and not `pending`, so the count does not depend
+       on FOUNDERS_HOLD_MS elapsing. */
+    for (let seat = 0; seat < foundersOffer.totalSlots; seat += 1) {
+      await ctx.db.insert("orders", {
+        customerEmail: `founder${seat}@example.test`,
+        customerFirstName: "Founder",
+        customerLastName: String(seat),
+        customerPhone: "+33600000000",
+        restaurantName: FOUNDERS_SEED_RESTAURANT,
+        city: "Lyon",
+        buyerType: "business" as const,
+        plan: foundersOffer.plan,
+        orderType: "creation" as const,
+        billingPeriod: "yearly" as const,
+        amountCents: planPrices[foundersOffer.plan].maintenanceYearly,
+        status: "paid" as const,
+        isFounders: true,
+        createdAt: Date.now(),
+      });
+    }
+
     return { affiliateUserId, referralCodeId };
   });
+}
+
+/**
+ * The orders a case actually caused.
+ *
+ * `toEqual([])` on the whole table used to say « the refused checkout left
+ * nothing behind ». It cannot any more, because the table is no longer empty
+ * to begin with — so the seeded seats are subtracted rather than the assertion
+ * weakened.
+ */
+async function ordersCreatedByTheCase(t: ReturnType<typeof convexTest>) {
+  const orders = await t.run((ctx) => ctx.db.query("orders").collect());
+  return orders.filter((o) => o.restaurantName !== FOUNDERS_SEED_RESTAURANT);
 }
 
 async function orderAmount(
@@ -151,8 +224,7 @@ describe("the discount is derived, never accepted", () => {
 
     /* And it left nothing behind: a refused forgery must not hold a founders
        slot or show up in the ops console as revenue. */
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await ordersCreatedByTheCase(t)).toEqual([]);
   });
 
   test.each([
@@ -182,10 +254,10 @@ describe("the discount is derived, never accepted", () => {
       referralCode: "BID-HONEST",
     });
 
-    // 9 500 € − 10 % of the 7 500 € creation line = 8 750 €.
-    const expected = LIST_TOTAL - planPrices.premium.creation * 0.1;
+    // 4 500 € − 10 % of the 3 500 € creation line = 4 150 €.
+    const expected = LIST_TOTAL - planPrices.essentielle.creation * 0.1;
     expect(await orderAmount(t, orderId)).toBe(expected);
-    expect(expected).toBe(875000);
+    expect(expected).toBe(415000);
   });
 
   test("an affiliate's override wins over the programme default", async () => {
@@ -198,7 +270,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.25,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.25,
     );
   });
 
@@ -212,7 +284,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -288,7 +360,7 @@ describe("a code that must not discount anything", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals).toHaveLength(1);
@@ -371,7 +443,7 @@ describe("a code only discounts while its contract holds", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -397,8 +469,7 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
     ).rejects.toThrow(/Remise de parrainage invalide/);
 
     // Refused before the order exists — no negative row, no founders slot held.
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await ordersCreatedByTheCase(t)).toEqual([]);
   });
 
   test("no order can ever be written for a negative amount", async () => {
@@ -464,7 +535,7 @@ describe("the commission follows the code, not the caller", () => {
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals[0]!.discountPercent).toBe(15);
     expect(referrals[0]!.discountAmountCents).toBe(
-      planPrices.premium.creation * 0.15,
+      planPrices.essentielle.creation * 0.15,
     );
   });
 });
@@ -516,7 +587,7 @@ describe("validateCode and the checkout cannot drift", () => {
 
     // 5 %, the current value — not the 30 % the page is still displaying.
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.05,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.05,
     );
   });
 });
