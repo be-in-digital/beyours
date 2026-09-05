@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { cn } from "../../lib/utils"
+import { cn } from "@be-in-digital/ui"
 
 interface TicketTimerProps {
   createdAt: number
@@ -29,6 +29,10 @@ export function TicketTimer({ createdAt }: TicketTimerProps) {
 
   // Format elapsed time. Beyond 24h the exact figure is noise ("2237h 47m"):
   // the ticket is stale data, not a rush to prioritize — cap the display.
+  //
+  // The cap lived only in the packaged copy, which nothing rendered; the copy
+  // the apps mounted never had it. Lifting the live screen over the package
+  // would have deleted the fix, so it is restored here and held by a test.
   const formatElapsed = (minutes: number): string => {
     if (minutes < 60) {
       return `${minutes}m`
@@ -53,7 +57,7 @@ export function TicketTimer({ createdAt }: TicketTimerProps) {
   }
 
   return (
-    <div className={cn("text-xs", getColorClass(elapsedMinutes))}>
+    <div className={cn("text-sm", getColorClass(elapsedMinutes))}>
       {formatElapsed(elapsedMinutes)}
     </div>
   )

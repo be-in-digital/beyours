@@ -90,11 +90,7 @@ import { BrandingControl } from "./branding-control"
  */
 const STOREFRONT_LAYOUT_SLUG = "storefront-layout"
 
-interface DesignPageProps {
-  embedded?: boolean
-}
-
-export function DesignPage({ embedded = false }: DesignPageProps) {
+export function DesignPage() {
   const { api } = useAdminApiStore()
   const storeId = useAdminStoreId()
   // `stores:read` gets a role onto this screen; `stores:write` is what
@@ -175,14 +171,12 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
 
   return (
     <div className="space-y-6">
-      {!embedded && (
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Design</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Personnalisez l'apparence de votre établissement
-          </p>
-        </div>
-      )}
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">Design</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Personnalisez l'apparence de votre établissement
+        </p>
+      </div>
 
       <Tabs defaultValue="colors" className="space-y-4">
         <TabsList>

@@ -49,16 +49,21 @@ interface AppSidebarProps {
  * Delegated, not reimplemented. The onboarding tour asks the same question by
  * href (`canRoleSeeNavHref`), and a second copy of this rule is exactly how the
  * tour's `nav-*` ids drifted away from the ones the sidebar emits.
+ *
+ * `modules` is the second gate: `userProfiles.permissions`, the invite dialog's
+ * eight checkboxes, which the server narrows a role by and which this sidebar
+ * used to ignore entirely.
  */
-function canSeeEntry(role: Role, entry: NavEntry): boolean {
-  return canRoleSeeNavHref(role, isCollapsible(entry) ? entry.basePath : entry.href)
+function canSeeEntry(role: Role, modules: string[], entry: NavEntry): boolean {
+  const href = isCollapsible(entry) ? entry.basePath : entry.href
+  return canRoleSeeNavHref(role, href, modules)
 }
-
 export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {
   const pathname = usePathname()
   const { state } = useSidebar()
   const isCollapsed = state === "collapsed"
   const role = useAdminAuthStore((s) => s.role)
+  const modules = useAdminAuthStore((s) => s.permissions)
 
   return (
     <Sidebar collapsible="icon">
@@ -90,7 +95,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
       <SidebarContent>
         {navGroups.map((group) => {
           const visibleItems = group.items.filter((entry) =>
-            canSeeEntry(role as Role, entry)
+            canSeeEntry(role as Role, modules, entry)
           )
           if (visibleItems.length === 0) return null
 
