@@ -104,7 +104,8 @@
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.0",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.7"
+    "vitest": "^3.2.7",
+    "yaml": "^2.9.0"
   },
   "optionalDependencies": {
     "@img/sharp-libvips-linux-arm64": "1.2.4"

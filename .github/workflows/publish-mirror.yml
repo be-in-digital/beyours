@@ -9,6 +9,13 @@ name: Publish mirror
 #   - the template changes      → push to main touching apps/themes/**
 #   - the packages are released → the Release workflow finishes
 #
+# Both of them push to a repository every client site merges from, so both are
+# gated on CI. The `push` and `workflow_dispatch` paths were not: the job
+# carried no `needs:`, and its only `if:` guarded the `workflow_run` path, so a
+# push touching apps/themes/** rsynced to the boilerplate IN PARALLEL with the
+# checks that would have said it was broken. `release.yml` had the same shape
+# and was fixed the same way — see the `verify` job below.
+#
 # Required secret: MIRROR_PUSH_TOKEN, a fine-grained PAT with `contents: write`
 # on beyours-boilerplate. Without it the job stops cleanly — GITHUB_TOKEN is
 # scoped to the current repository and cannot push elsewhere.
@@ -18,6 +25,16 @@ on:
     branches: [main]
     paths:
       - "apps/themes/**"
+      # The publisher's own inputs. The mirror is not only what `apps/themes`
+      # holds — it is that tree AFTER these scripts transform it, plus the root
+      # `packageManager` they copy into it verbatim. A change to any of them
+      # changes what a client receives while `apps/themes` is untouched, and
+      # used to trigger no sync at all. The `packageManager` field is not a
+      # hypothetical: a version mismatch in it is what hung the job and left the
+      # mirror twelve days stale.
+      - "scripts/publish-mirror.mjs"
+      - "scripts/lib/mirror-tree.mjs"
+      - "package.json"
   workflow_run:
     workflows: ["Release"]
     types: [completed]
@@ -31,8 +48,38 @@ on:
 concurrency: publish-mirror
 
 jobs:
+  # The gate, copied from `release.yml`: a reusable-workflow call that runs
+  # `Lint`, `Type Check`, `Test` and `Build` — the four contexts branch
+  # protection requires — on THIS commit, in-line, as nested jobs. Not a
+  # `workflow_run` listener: the mirror must never publish from a SHA it had to
+  # reconstruct from an event payload.
+  #
+  # `Lint` is the one that matters most here. It is where `pnpm check:mirror-css`
+  # runs, and that is the only check in the repository that materialises the
+  # published tree and compiles it — i.e. the only one that looks at what a
+  # client would actually receive. It used to run alongside the push rather
+  # than before it.
+  #
+  # Not gated on `E2E Status`. `e2e.yml` carries no `workflow_call:` trigger, so
+  # it cannot be called this way, and branch protection requires five checks
+  # while this chain covers four. That gap is `release.yml`'s too and is tracked
+  # in #308; closing it means adding `workflow_call:` to `e2e.yml`, which is a
+  # decision about the release chain as a whole rather than about the mirror.
+  verify:
+    name: Verify
+    # Skipped on the `workflow_run` path, and only there. The Release chain has
+    # already run this exact call on the commit it published, and the `if:` on
+    # `publish` below refuses a Release that did not go green. Re-running it
+    # here would also check the WRONG tree: a `workflow_run` job checks out the
+    # default branch's current head, not the SHA the Release ran on.
+    if: github.event_name != 'workflow_run'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
   publish:
     name: Sync the mirror
+    needs: [verify]
     runs-on: ubuntu-latest
     # A sync is a clone, a file copy and a lockfile — two minutes when it works.
     # The ceiling exists because the failure that mattered here did not fail:
@@ -41,8 +88,35 @@ jobs:
     # nor a failure, so the mirror went twelve days without a sync and no run
     # ever said so. A stall must now end as a red job.
     timeout-minutes: 15
-    # On workflow_run, do nothing if the Release failed.
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # One condition per trigger path, and every path is gated:
+    #   workflow_run   → the Release it followed went green (Release itself is
+    #                    gated on the same four checks), and the commit synced
+    #                    is the one Release verified — see the checkout below
+    #   push, dispatch → `verify` above went green on this commit, AND the
+    #                    commit is on `main`
+    #
+    # The ref check is not redundant with `verify`. `uses: ./…/ci.yml` resolves
+    # at the CALLER's ref, so a manual dispatch from a branch runs THAT branch's
+    # ci.yml over THAT branch's tree — a branch that guts ci.yml supplies its
+    # own gate, and with zero required reviews nothing forces the branch through
+    # review first. Even without malice, dispatching from a stale branch to
+    # "re-sync the mirror" would ship that branch to every client site.
+    #
+    # `!cancelled()` is load-bearing rather than decorative. `verify` is
+    # deliberately skipped on the `workflow_run` path, and a job whose `needs:`
+    # was skipped is skipped too unless its `if:` uses a status function. Without
+    # it this whole workflow would silently stop syncing after a Release — a
+    # gate that never publishes looks exactly like a gate that works.
+    if: >-
+      ${{ !cancelled()
+        && (
+          (github.event_name == 'workflow_run'
+            && github.event.workflow_run.conclusion == 'success'
+            && github.event.workflow_run.head_branch == 'main')
+          || (github.event_name != 'workflow_run'
+            && needs.verify.result == 'success'
+            && github.ref == 'refs/heads/main')
+        ) }}
     permissions:
       contents: read
       packages: read
@@ -59,7 +133,19 @@ jobs:
             echo "can_push=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # The commit Release verified, not whatever `main` points at now.
+      #
+      # A `workflow_run` job defaults to the default branch's CURRENT head, so
+      # the sequence was: Release goes green on A; B lands on `main` while
+      # Release is still installing, building and publishing; the mirror then
+      # receives B. The `if:` above proved something about A and shipped B.
+      # `verify` is skipped on this path precisely because Release already ran
+      # it — which is only true of A, so A is what has to be checked out.
+      #
+      # Empty on every other trigger, which leaves the default behaviour.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: pnpm/action-setup@v4
         with:

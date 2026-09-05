@@ -96,6 +96,44 @@ describe("the exclusion rules", () => {
     expect(isExcluded("app/globals.css")).toBe(false)
     expect(isExcluded("scripts/init.mjs")).toBe(false)
   })
+
+  /**
+   * The walk reads the FILESYSTEM and consults no gitignore, so being ignored
+   * by git protects a file from a commit and not from a sync. Both `README.md`
+   * and `publish-mirror.mjs` document running the publisher by hand, and that
+   * path takes no CI gate at all — so one local run used to copy `.env.local`,
+   * holding live Stripe, AWS and Deliveroo keys, into the repository every
+   * client clones from and merges from.
+   *
+   * The root `.gitignore` already states the rule for `.infisical.json`: "or
+   * the mirror would carry the agency's project id into every client repo".
+   * These assertions are that sentence made true.
+   */
+  test.each([
+    [".env", "a dotenv at the root"],
+    [".env.local", "the file a developer actually fills in"],
+    [".env.production", "worse: live keys"],
+    [".env.convex", "the Convex store's values"],
+    ["app/.env.local", "at any depth, not only the root"],
+    [".infisical.json", "the agency's project id"],
+    [".engine-link.json", "points pnpm at a path on one laptop"],
+    ["coverage/lcov.info", "local test output"],
+  ])("%s never reaches a client — %s", (rel) => {
+    expect(isNotShipped(rel)).toBe(true)
+    expect(isExcluded(rel)).toBe(true)
+  })
+
+  /**
+   * The exemption, and the reason the rule is a prefix with a carve-out rather
+   * than a `.env*` glob: these two are how a client learns which variables to
+   * set. Excluding them would also FREEZE them on the mirror — an excluded path
+   * is protected from the prune, so the copy already there could never be
+   * corrected either.
+   */
+  test.each([".env.example", ".env.convex.example"])("%s still ships", (rel) => {
+    expect(isNotShipped(rel)).toBe(false)
+    expect(isExcluded(rel)).toBe(false)
+  })
 })
 
 describe("materialising the mirror", () => {

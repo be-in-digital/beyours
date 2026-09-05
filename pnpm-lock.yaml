@@ -315,6 +315,9 @@ importers:
       vitest:
         specifier: ^3.2.7
         version: 3.2.7(@edge-runtime/vm@5.0.0)(@types/debug@4.1.13)(@types/node@20.19.39)(jiti@2.7.0)(jsdom@28.1.0(@noble/hashes@2.2.0))(lightningcss@1.32.0)(msw@2.14.6(@types/node@20.19.39)(typescript@5.9.3))(terser@5.51.2)(tsx@4.23.0)(yaml@2.9.0)
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
     optionalDependencies:
       '@img/sharp-libvips-linux-arm64':
         specifier: 1.2.4
