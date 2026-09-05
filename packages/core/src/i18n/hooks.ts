@@ -99,7 +99,7 @@ export type UseDirection = () => {
  * Implementation example:
  * ```typescript
  * import { LanguageSwitcher } from '@/components/LanguageSwitcher'
- * import { COMMON_LANGUAGES } from '@be-in-digital/core/i18n'
+ * import { COMMON_LANGUAGES } from '@be-in-digital/core'
  *
  * function Header() {
  *   const { locale, setLocale } = useLocale()
@@ -124,7 +124,7 @@ export type LanguageSwitcherComponent = (props: LanguageSwitcherProps) => React.
  * Implementation example:
  * ```typescript
  * import { I18nProvider } from '@/providers/I18nProvider'
- * import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core/i18n'
+ * import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core'
  *
  * function App({ children }) {
  *   return (

@@ -3,6 +3,12 @@
  * Based on Uber Eats Partner API v2
  */
 
+// The allergen enum has one home — `@be-in-digital/core/allergens` — and is
+// imported, not re-exported: tsup's dts rollup mis-emits a re-exported
+// external type as `typeof <type>`, which makes the published `index.d.ts`
+// fail to compile. Consumers import it from core directly.
+import type { UberEatsAllergenType } from "@be-in-digital/core/allergens"
+
 // === Authentication ===
 
 export interface UberEatsCredentials {
@@ -296,8 +302,15 @@ export interface UberEatsItem {
       lower_range: number
       upper_range: number
     }
+    /**
+     * Uber types `type` as a plain string, so nothing on the wire rejects a
+     * typo. The union is what rejects one here, and it is the same union the
+     * menu sync maps into — see `UBER_EATS_ALLERGEN_TYPE` in
+     * `@be-in-digital/core/allergens`. Declaring it loosely again would be a
+     * second, drifting copy of a vocabulary that already has one home.
+     */
     allergens?: Array<{
-      type: string
+      type: UberEatsAllergenType
     }>
   }
 }

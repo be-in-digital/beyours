@@ -41,6 +41,12 @@ export const kitchenTicketsTable = defineTable({
     v.literal("pickup"),
     v.literal("dine_in")
   ),
+  /**
+   * Copied from the order at release. This is the field the printed ticket
+   * needs: without it a cook holding a `SUR PLACE` slip knows the dish and the
+   * customer's name, and has nowhere to carry the plate.
+   */
+  tableNumber: v.optional(v.string()),
 
   // Lifecycle timestamps (enforced by updateStatus invariants)
   startedAt: v.optional(v.number()),    // set when status -> "in_progress" (if not already set)

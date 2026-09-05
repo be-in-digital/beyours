@@ -7,6 +7,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { isSameAllergenFilter } from '../services/product'
 import type { ProductFilters } from '../types'
 
 /**
@@ -40,15 +41,19 @@ export const useProductFilters = (
   }, [])
 
   const toggleAllergen = useCallback((allergen: string) => {
+    const value = allergen.trim()
+    // An empty chip excludes nothing and would only sit in the filter state.
+    if (!value) return
+
     setFilters((prev) => {
       const allergens = prev.allergens || []
-      const hasAllergen = allergens.includes(allergen)
+      const hasAllergen = allergens.some((a) => isSameAllergenFilter(a, value))
 
       return {
         ...prev,
         allergens: hasAllergen
-          ? allergens.filter((a) => a !== allergen)
-          : [...allergens, allergen],
+          ? allergens.filter((a) => !isSameAllergenFilter(a, value))
+          : [...allergens, value],
       }
     })
   }, [])
