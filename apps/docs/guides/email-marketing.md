@@ -55,7 +55,7 @@ export default function EmailAdmin() {
 
 ```typescript
 import { renderTemplateToEmailHtml, validateCampaign } from "@be-in-digital/marketing";
-import { sendEmail } from "@be-in-digital/core";
+import { getSESService } from "@be-in-digital/core";
 
 // 1. Build email content
 const html = renderTemplateToEmailHtml({
@@ -73,12 +73,13 @@ const html = renderTemplateToEmailHtml({
 const validation = validateCampaign({ subject: "...", blocks: [...] });
 if (!validation.valid) throw new Error(validation.errors.join(", "));
 
-// 3. Send
+// 3. Send — sendEmail is a method on the SES service, not a free function
+const ses = getSESService();
 for (const subscriber of subscribers) {
-  await sendEmail({
+  await ses.sendEmail({
     to: subscriber.email,
     subject: "This Week's Special",
-    htmlBody: html.replace("{{unsubscribe_url}}", getUnsubUrl(subscriber)),
+    html: html.replace("{{unsubscribe_url}}", getUnsubUrl(subscriber)),
   });
 }
 ```
@@ -102,15 +103,16 @@ for (const subscriber of subscribers) {
 
 ```typescript
 import { generateDoubleOptInToken } from "@be-in-digital/marketing";
+import { getSESService } from "@be-in-digital/core";
 
 // 1. Customer signs up
 const token = generateDoubleOptInToken(email);
 
 // 2. Send verification email
-await sendEmail({
+await getSESService().sendEmail({
   to: email,
   subject: "Confirm your subscription",
-  htmlBody: `<a href="https://yourdomain.com/api/email/verify?token=${token}">Confirm</a>`,
+  html: `<a href="https://yourdomain.com/api/email/verify?token=${token}">Confirm</a>`,
 });
 
 // 3. Handle verification

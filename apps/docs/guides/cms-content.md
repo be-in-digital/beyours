@@ -133,13 +133,22 @@ if (!validation.valid) {
 }
 
 // Proceed with upload to S3
-const url = await uploadToS3(file, `cms/${file.name}`, "cms");
+const { url } = await s3.upload(file, { folder: "cms", contentType: file.type });
 ```
+
+`s3` is a `createS3Service(config, client)` instance — see
+[`packages/core`](../packages/core.md#s3-storage). There is no `uploadToS3`
+free function.
 
 ### SVG Sanitization
 
+`sanitizeSvg` ships from its own subpath, not from the package barrel: it parses
+markup through DOMPurify, which needs a DOM, and the barrel is imported by Convex
+isolate modules that have none. Convex-side callers use `containsActiveContent`
+from the barrel instead, which is DOM-free.
+
 ```typescript
-import { sanitizeSvg } from "@be-in-digital/cms";
+import { sanitizeSvg } from "@be-in-digital/cms/sanitize";
 
 // Remove potentially malicious scripts from SVG
 const safeSvg = sanitizeSvg(rawSvgContent);
