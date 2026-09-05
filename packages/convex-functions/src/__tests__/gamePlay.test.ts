@@ -12,7 +12,10 @@ import {
   redeemByCode,
   getSession,
   selectSequentialProgression,
+  isActionRequirementMet,
+  sanitiseCompletedActions,
 } from "../gamePlay"
+import { prizeBudgetKey } from "../prizeBudget"
 
 describe("selectSequentialProgression", () => {
   const ids = ["a1", "a2", "a3"]
@@ -198,7 +201,17 @@ describe("cooldownMsForGame", () => {
 // play
 // ---------------------------------------------------------------------------
 
-function playFixtures(overrides: { winRatio?: number; plays?: MockDoc[]; prizes?: MockDoc[] } = {}) {
+function playFixtures(
+  overrides: {
+    winRatio?: number
+    plays?: MockDoc[]
+    prizes?: MockDoc[]
+    requiredActions?: MockDoc[]
+    rateLimits?: MockDoc[]
+    config?: Record<string, unknown>
+    referrals?: MockDoc[]
+  } = {}
+) {
   return createMockCtx({
     gameQRCodes: [
       { _id: "qr:1", storeId: "stores:1", code: "TABLE1", isActive: true, scannedCount: 0 },
@@ -210,8 +223,12 @@ function playFixtures(overrides: { winRatio?: number; plays?: MockDoc[]; prizes?
         type: "wheel",
         winRatio: overrides.winRatio ?? 100,
         isActive: true,
+        ...(overrides.config ? { config: overrides.config } : {}),
       },
     ],
+    requiredActions: overrides.requiredActions ?? [],
+    rateLimits: overrides.rateLimits ?? [],
+    gameReferrals: overrides.referrals ?? [],
     prizes:
       overrides.prizes ??
       ([
@@ -670,5 +687,311 @@ describe("getSession", () => {
     expect(result.cooldown.active).toBe(true)
     expect(result.cooldown.nextPlayAt).toBeGreaterThan(Date.now())
     expect(result.store.name).toBe("Chez Momo")
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* The two guards NEW-N's residual left open                           */
+/* ------------------------------------------------------------------ */
+
+const ACTIONS = [
+  { id: "requiredActions:1", isRequired: true },
+  { id: "requiredActions:2", isRequired: true },
+  { id: "requiredActions:3", isRequired: false },
+]
+
+describe("isActionRequirementMet", () => {
+  it("admits any play when the store configured no actions", () => {
+    expect(
+      isActionRequirementMet({
+        mode: "sequential",
+        activeActions: [],
+        previouslyCompleted: [],
+        claimedNow: [],
+      })
+    ).toBe(true)
+  })
+
+  describe("sequential — one action per visit, as the player UI shows it", () => {
+    it("refuses a first play that claims nothing", () => {
+      expect(
+        isActionRequirementMet({
+          mode: "sequential",
+          activeActions: ACTIONS,
+          previouslyCompleted: [],
+          claimedNow: [],
+        })
+      ).toBe(false)
+    })
+
+    it("admits the first play when the due action is the one claimed", () => {
+      expect(
+        isActionRequirementMet({
+          mode: "sequential",
+          activeActions: ACTIONS,
+          previouslyCompleted: [],
+          claimedNow: ["requiredActions:1"],
+        })
+      ).toBe(true)
+    })
+
+    it("refuses a claim that skips ahead to a later action", () => {
+      // The UI hands out one action at a time in `sortOrder`. Claiming the
+      // third while the first is undone is not a flow the client can produce.
+      expect(
+        isActionRequirementMet({
+          mode: "sequential",
+          activeActions: ACTIONS,
+          previouslyCompleted: [],
+          claimedNow: ["requiredActions:3"],
+        })
+      ).toBe(false)
+    })
+
+    it("admits a return visit that does the next one", () => {
+      expect(
+        isActionRequirementMet({
+          mode: "sequential",
+          activeActions: ACTIONS,
+          previouslyCompleted: ["requiredActions:1"],
+          claimedNow: ["requiredActions:2"],
+        })
+      ).toBe(true)
+    })
+
+    it("admits an empty claim once every action has been done", () => {
+      // This is the referral stage and the loyal repeat visitor. Both reach the
+      // game with nothing new to do, and refusing them would be the gate
+      // breaking real players — the thing the residual warned about.
+      expect(
+        isActionRequirementMet({
+          mode: "sequential",
+          activeActions: ACTIONS,
+          previouslyCompleted: ACTIONS.map((a) => a.id),
+          claimedNow: [],
+        })
+      ).toBe(true)
+    })
+  })
+
+  describe("all — the legacy mode", () => {
+    it("refuses until every required action is covered", () => {
+      expect(
+        isActionRequirementMet({
+          mode: "all",
+          activeActions: ACTIONS,
+          previouslyCompleted: [],
+          claimedNow: ["requiredActions:1"],
+        })
+      ).toBe(false)
+    })
+
+    it("ignores actions the owner marked optional", () => {
+      expect(
+        isActionRequirementMet({
+          mode: "all",
+          activeActions: ACTIONS,
+          previouslyCompleted: [],
+          claimedNow: ["requiredActions:1", "requiredActions:2"],
+        })
+      ).toBe(true)
+    })
+
+    it("counts what the device did on an earlier visit", () => {
+      // The client resets its local state on every load, so a rule that ignored
+      // history would make an honest player redo work to be believed.
+      expect(
+        isActionRequirementMet({
+          mode: "all",
+          activeActions: ACTIONS,
+          previouslyCompleted: ["requiredActions:1"],
+          claimedNow: ["requiredActions:2"],
+        })
+      ).toBe(true)
+    })
+  })
+})
+
+describe("sanitiseCompletedActions", () => {
+  const active = [
+    { _id: "requiredActions:1", isRequired: true },
+    { _id: "requiredActions:2", isRequired: true },
+  ] as unknown as Parameters<typeof sanitiseCompletedActions>[0]
+
+  it("keeps only ids that name a real active action, once each", () => {
+    expect(
+      sanitiseCompletedActions(active, [
+        "requiredActions:1",
+        "requiredActions:1",
+        "requiredActions:99",
+        "x".repeat(500),
+      ])
+    ).toEqual(["requiredActions:1"])
+  })
+
+  it("filters before it caps, so junk cannot push a real id off the end", () => {
+    const junk = Array.from({ length: 40 }, (_, i) => `invented-${i}`)
+    expect(sanitiseCompletedActions(active, [...junk, "requiredActions:2"])).toEqual([
+      "requiredActions:2",
+    ])
+  })
+})
+
+describe("play — the required-actions rule, enforced server-side", () => {
+  const baseArgs = {
+    code: "TABLE1",
+    gameId: "games:1",
+    fingerprint: "device-1",
+    completedActions: [] as string[],
+  }
+  const oneAction = [
+    {
+      _id: "requiredActions:1",
+      storeId: "stores:1",
+      type: "google_review",
+      name: "Avis Google",
+      isRequired: true,
+      sortOrder: 0,
+      isActive: true,
+    },
+  ]
+
+  it("refuses a play that claims nothing while an action is required", async () => {
+    // Measured before this guard: the same call won a prize. `completedActions`
+    // was written to the row and never read to permit anything, so the social
+    // action the whole pitch rests on was enforced by the client alone.
+    const ctx = playFixtures({ requiredActions: oneAction })
+    await expect(play.handler(ctx, baseArgs)).rejects.toThrow("ACTIONS_INCOMPLETE")
+    expect(ctx.store.gamePlays ?? []).toHaveLength(0)
+  })
+
+  it("admits the player who claims the action that is due", async () => {
+    const ctx = playFixtures({ requiredActions: oneAction })
+    const result = await play.handler(ctx, {
+      ...baseArgs,
+      completedActions: ["requiredActions:1"],
+    })
+    expect(result.didWin).toBe(true)
+    expect(ctx.store.gamePlays[0]?.completedActions).toEqual(["requiredActions:1"])
+  })
+
+  it("refuses an invented id, which sanitising has already discarded", async () => {
+    const ctx = playFixtures({ requiredActions: oneAction })
+    await expect(
+      play.handler(ctx, { ...baseArgs, completedActions: ["requiredActions:made-up"] })
+    ).rejects.toThrow("ACTIONS_INCOMPLETE")
+  })
+
+  it("still admits a referrer spending a bonus, who never sees the actions screen", async () => {
+    // The player UI routes a bonus holder straight to the game whether or not a
+    // cooldown is running. The gate has to agree, or it breaks a real player.
+    const ctx = playFixtures({
+      requiredActions: oneAction,
+      referrals: [
+        {
+          _id: "gameReferrals:1",
+          storeId: "stores:1",
+          code: "SHARE123",
+          referrerFingerprint: "device-1",
+          conversions: 0,
+          pendingBonuses: 1,
+        },
+      ],
+    })
+    const result = await play.handler(ctx, baseArgs)
+    expect(result.didWin).toBe(true)
+  })
+
+  it("still admits a friend arriving on a real referral code", async () => {
+    const ctx = playFixtures({
+      requiredActions: oneAction,
+      referrals: [
+        {
+          _id: "gameReferrals:1",
+          storeId: "stores:1",
+          code: "SHARE123",
+          referrerFingerprint: "device-OTHER",
+          conversions: 0,
+          pendingBonuses: 0,
+        },
+      ],
+    })
+    const result = await play.handler(ctx, { ...baseArgs, ref: "SHARE123" })
+    expect(result.didWin).toBe(true)
+  })
+
+  it("caps the bonuses a referrer can bank, however many friends are invented", async () => {
+    const ctx = playFixtures({
+      referrals: [
+        {
+          _id: "gameReferrals:1",
+          storeId: "stores:1",
+          code: "SHARE123",
+          referrerFingerprint: "device-OTHER",
+          conversions: 0,
+          pendingBonuses: 5,
+        },
+      ],
+    })
+    await play.handler(ctx, { ...baseArgs, ref: "SHARE123" })
+    expect(ctx.store.gameReferrals[0]?.pendingBonuses).toBe(5)
+  })
+})
+
+describe("play — the establishment's prize budget", () => {
+  const baseArgs = {
+    code: "TABLE1",
+    gameId: "games:1",
+    fingerprint: "device-1",
+    completedActions: [] as string[],
+  }
+
+  it("charges the window when a prize is drawn", async () => {
+    const ctx = playFixtures()
+    const result = await play.handler(ctx, baseArgs)
+    expect(result.didWin).toBe(true)
+    const row = ctx.store.rateLimits.find((r) => r.key === prizeBudgetKey("stores:1"))
+    expect(row?.count).toBe(1)
+  })
+
+  it("charges nothing when the play loses", async () => {
+    // A window that counted attempts would let a run of losing spins exhaust a
+    // budget nothing came out of.
+    const ctx = playFixtures({ winRatio: 0 })
+    const result = await play.handler(ctx, baseArgs)
+    expect(result.didWin).toBe(false)
+    expect(ctx.store.rateLimits.find((r) => r.key === prizeBudgetKey("stores:1"))).toBeUndefined()
+  })
+
+  it("stops winning once the window is full, and still lets the player play", async () => {
+    const ctx = playFixtures({
+      config: { prizeBudget: { maxPrizes: 2, windowHours: 24 } },
+      rateLimits: [
+        { _id: "rateLimits:1", key: prizeBudgetKey("stores:1"), windowStart: Date.now(), count: 2 },
+      ],
+    })
+    const result = await play.handler(ctx, baseArgs)
+    // Not an error: refusing would tell a prober where the budget sits and
+    // would punish whoever happened to scan next.
+    expect(result.didWin).toBe(false)
+    expect(result.prize).toBeNull()
+    expect(ctx.store.gamePlays).toHaveLength(1)
+    expect(ctx.store.prizes[0]?.remainingCount).toBeUndefined()
+  })
+
+  it("wins again once the window has run out", async () => {
+    const ctx = playFixtures({
+      config: { prizeBudget: { maxPrizes: 2, windowHours: 1 } },
+      rateLimits: [
+        {
+          _id: "rateLimits:1",
+          key: prizeBudgetKey("stores:1"),
+          windowStart: Date.now() - 2 * 60 * 60_000,
+          count: 2,
+        },
+      ],
+    })
+    const result = await play.handler(ctx, baseArgs)
+    expect(result.didWin).toBe(true)
   })
 })

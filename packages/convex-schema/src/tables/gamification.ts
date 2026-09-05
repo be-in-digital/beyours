@@ -78,6 +78,15 @@ export const gamesTable = defineTable({
     primaryColor: v.optional(v.string()),
     secondaryColor: v.optional(v.string()),
     cooldownHours: v.optional(v.number()),
+    // How many prizes this establishment may issue inside one rolling window.
+    // Absent means the default in `prizeBudget.ts`, which is ON: the store that
+    // never opens this setting is the one the drain was measured against.
+    // The stock on each prize is still the hard limit; this is the softer,
+    // restaurant-wide bound that stops every prize going in one loop.
+    prizeBudget: v.optional(v.object({
+      maxPrizes: v.number(),
+      windowHours: v.number(),
+    })),
     // "sequential" (default) = one action per visit, advancing from one
     // visit to the next. "all" = every required action at once (legacy).
     actionMode: v.optional(v.union(v.literal("all"), v.literal("sequential"))),

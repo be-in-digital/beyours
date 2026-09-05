@@ -1647,33 +1647,76 @@ schedule — each proven by a test.
 ````
 
 ## NEW-N — Anyone can drain a restaurant's entire prize budget in one loop
-**Bounded, not closed — see the residual below.** The prompt is kept for the
-record. `play`, `recordScan`, `ensureReferralCode`, `claim` and `orders.create`
-now consume the limiter, two of `play`'s windows keyed on rows the server
-resolved rather than on anything the caller sends. Measured against the real
-backend: 40 plays rotating the fingerprint, 10 admitted, 30 refused, from 40/0.
+**Closed, with one bound stated rather than fixed — see below.** The prompt is
+kept for the record.
 
-**The residual, because the "Done when" below is not fully met.** The stock
-still empties. The window bounds the RATE, not the budget: against a five-prize
-stock the first ten plays take it, since nothing in a Convex mutation
-distinguishes one person sending ten fingerprints from ten diners, and lowering
-the window far enough to protect the budget would refuse real players first.
-`prize-drain.test.ts` pins that deliberately. Protecting the budget needs
-either a control that binds a play to a person — a sign-in, or an
-anti-automation check at the edge — or an owner-facing cap on prize issuance,
-which is product surface and is nobody's card yet.
+**Round one (#341) bounded the RATE.** `play`, `recordScan`,
+`ensureReferralCode`, `claim` and `orders.create` consume the limiter, two of
+`play`'s windows keyed on rows the server resolved rather than on anything the
+caller sends. Measured against the real backend: 40 plays rotating the
+fingerprint, 10 admitted, 30 refused, from 40/0.
 
-**Two claims in the prompt below are wrong and are left in place as written.**
+**Round two bounded the BUDGET and enforced the actions.** The residual round
+one left was measured before it was fixed: with the windows in place, 500
+anonymous calls spread over 40 table codes still issued **200 prizes in one
+hour**, because `gamePlayPerStore` admits 200 plays an hour and a 100% win
+ratio turns each into a free pizza. Two guards close it.
+
+- **An establishment prize budget** — `packages/convex-functions/src/prizeBudget.ts`,
+  read before the win roll and charged only when a prize is actually drawn.
+  Keyed on `qr.storeId`, so no argument rotates it; owner-facing in *Jeux &
+  Lots*; ON by default at 50 prizes per rolling 24 h, because the store that
+  never opens the setting is the one the drain was measured against. Past the
+  budget the play still resolves and loses, rather than throwing: refusing
+  would tell a prober where the budget sits and would punish whoever scanned
+  next. Same measurement after: **200 prizes → 50**.
+- **The required-actions rule, enforced server-side** — `isActionRequirementMet`
+  in `gamePlay.ts`, throwing `ACTIONS_INCOMPLETE`. It mirrors the rule the
+  player UI already applies (sequential: the action currently due; "all": every
+  action flagged `isRequired`), counts what the device did on earlier visits,
+  and exempts exactly the two paths the UI routes straight to the game — the
+  friend on a real referral code and the referrer spending a bonus, both
+  decided from rows the server resolved. Bonus accrual is now capped at 5, since
+  a bonus play skips both the cooldown and this gate.
+
+**What is still not fixed, and will not be by more of the same.** A stock
+smaller than the budget in force still empties: five prizes behind a fifty-prize
+day go in five plays. Nothing in a Convex mutation distinguishes one person
+sending five fingerprints from five diners, and lowering the rate windows far
+enough to protect five prizes would refuse real players first. What the budget
+buys is a ceiling the owner sets and a bound on the establishment as a whole;
+what it does not buy is identity. Closing that needs a sign-in or an
+anti-automation check at the edge, and this platform has neither.
+`prize-drain.test.ts` pins both halves, in both apps.
+
+**On the two claims the prompt below gets wrong, left in place as written.**
 There is no per-IP limiting to add: a Convex mutation sees `auth`, `db`,
 `scheduler` and `storage`, and #261 already established that adding an
 `httpAction` to recover the address would grow the public surface instead. And
-`completedActions` was never a weak gate — `play` writes it and never reads it
-to permit a draw, so the social actions the whole gamification pitch rests on
-were enforced only by the client UI. It is now filtered to real active
-`requiredActions` and capped, but no gate was added: the friend-welcome, the
-referrer bonus and a store with no actions configured all reach the game with
-nothing done, so a coverage check would refuse real players — and a forgeable
-gate is worse than none, because it invites a trust it cannot carry.
+`completedActions` was not a *weak* gate — until round two it was no gate at
+all: `play` wrote it and never read it to permit a draw, so the social actions
+the whole pitch rests on were enforced by the client alone. Round one's note
+argued a coverage check would refuse real players and that a forgeable gate is
+worse than none. The first half was right about a *blanket* check and is why the
+rule now mirrors the UI's own progression rather than demanding everything. The
+second half is answered by saying so where it cannot be missed: the gate is
+documented in `gamePlay.ts`, in `prizeBudget.ts` and in its tests as a **product
+rule, not a security control** — `getSession` publishes the action ids, and no
+mutation can observe a Google review. A rule the server does not apply at all is
+not the safer of the two options; it is the one that lets a direct call skip
+what every honest player is made to do.
+
+**Uncarded findings from the endpoint inventory this round finally took**, none
+of them NEW-N's and all left open: seven public *actions* carry no rate limit at
+all (`stripe.createCheckoutSession` / `verifyCheckoutSession`,
+`sumup.createCheckout` / `verifyCheckout`, `paypal.createPayPalOrder` /
+`capturePayPalOrder`, `uberDirect.getDeliveryQuote`) because `consumeRateLimit`
+writes to `ctx.db` and an action has none — `uberDirect.getDeliveryQuote` is the
+sharpest, spending money at a vendor and writing a row with no order id to
+narrow who may call it; `apps/site/eslint.config.mjs` never wires the
+`convex/no-unguarded-convex-function` rule, so its eight unauthenticated
+endpoints are unmarked and unenforced; and `orders.getPaymentState` returns an
+order's payment status for any `orderId` with no token, unlike its two siblings.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
