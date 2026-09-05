@@ -9,13 +9,13 @@
  * @example
  * ```ts
  * // Import RBAC
- * import { Role, hasPermission } from '@be-in-digital/core/auth'
+ * import { Role, hasPermission } from '@be-in-digital/core'
  *
  * // Import hooks React
- * import { useAuth, usePermission } from '@be-in-digital/core/auth'
+ * import { useAuth, usePermission } from '@be-in-digital/core'
  *
  * // Import utilitaires serveur
- * import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
+ * import { requireAuth, requirePermission } from '@be-in-digital/core'
  * ```
  */
 

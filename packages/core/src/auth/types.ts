@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import type { AuthUser, AuthSession }             │      │
- * │  │   from '@repo/core/auth'                          │      │
+ * │  │   from '@be-in-digital/core'                          │      │
  * │  │                                                   │      │
  * │  │ function greet(user: AuthUser) {                  │      │
  * │  │   return `Hello ${user.name}`                     │      │

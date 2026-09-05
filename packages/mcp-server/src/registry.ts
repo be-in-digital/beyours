@@ -1,3 +1,8 @@
+import {
+  PACKAGE_VERSIONS,
+  type RegisteredPackage,
+} from "./package-versions.js";
+
 export interface PackageExport {
   name: string;
   type:
@@ -27,9 +32,14 @@ export interface PackageExport {
 }
 
 export interface PackageInfo {
-  name: string;
+  /** Directory name under `packages/`, which is also the key into PACKAGE_VERSIONS. */
+  name: RegisteredPackage;
   scope: string;
   description: string;
+  /**
+   * Always `PACKAGE_VERSIONS[name]`. Never a literal: the nine hand-typed
+   * versions here all said 2.0.1 while admin had reached 8.0.0.
+   */
   version: string;
   category: "frontend" | "backend" | "shared" | "tooling";
   dependencies: string[];
@@ -45,7 +55,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/ui",
     description:
       "React UI component library built on Radix UI and Tailwind CSS. Provides 45+ accessible, themeable components for storefront and admin interfaces.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["ui"],
     category: "frontend",
     dependencies: [
       "lucide-react",
@@ -410,7 +420,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/core",
     description:
       "Core services: authentication with RBAC (7 roles, 15 resources, 10 actions), i18n with GPT auto-translation, AWS (S3 + SES), and Sentry.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["core"],
     category: "shared",
     dependencies: ["zod"],
     peerDependencies: ["react@^19", "react-dom@^19"],
@@ -512,19 +522,36 @@ export const packages: PackageInfo[] = [
         example: "const canCreate = usePermission('product:create')",
       },
       {
-        name: "CanAccess",
-        type: "component",
+        name: "CanAccessProps",
+        type: "type",
         description:
-          "Conditionally render children based on permission",
+          "Props of the permission gate. The component itself is NOT shipped — it needs JSX, so each app implements it over usePermission and types it with CanAccessComponent.",
         importPath: "@be-in-digital/core",
         tags: ["auth", "react", "rbac"],
         example:
-          '<CanAccess permission="product:create"><CreateButton /></CanAccess>',
+          "export function CanAccess({ permission, children, fallback }: CanAccessProps) {\n  const { allowed, loading } = usePermission(permission)\n  if (loading) return null\n  return allowed ? <>{children}</> : fallback ? <>{fallback}</> : null\n}",
       },
       {
-        name: "RoleGate",
-        type: "component",
-        description: "Gate content behind a role requirement",
+        name: "CanAccessComponent",
+        type: "type",
+        description:
+          "Signature the app's CanAccess implementation must satisfy: (props: CanAccessProps) => ReactNode",
+        importPath: "@be-in-digital/core",
+        tags: ["auth", "react", "rbac"],
+      },
+      {
+        name: "RoleGateProps",
+        type: "type",
+        description:
+          "Props of the role gate. As with CanAccess, the component is implemented in the app — the package ships the contract, not the JSX.",
+        importPath: "@be-in-digital/core",
+        tags: ["auth", "react", "rbac"],
+      },
+      {
+        name: "RoleGateComponent",
+        type: "type",
+        description:
+          "Signature the app's RoleGate implementation must satisfy: (props: RoleGateProps) => ReactNode",
         importPath: "@be-in-digital/core",
         tags: ["auth", "react", "rbac"],
       },
@@ -605,23 +632,71 @@ export const packages: PackageInfo[] = [
         tags: ["i18n"],
       },
       {
-        name: "uploadToS3",
+        name: "createS3Service",
         type: "function",
-        description: "Upload file to S3 bucket",
+        description:
+          "Builds the S3 service. The AWS SDK is injected, not imported: pass an S3Operations client so the package stays runtime-agnostic. The returned S3Service carries upload, getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl, exists and getMetadata.",
+        importPath: "@be-in-digital/core",
+        params: {
+          config: {
+            type: "S3Config",
+            description: "Bucket, region and public base URL",
+          },
+          client: {
+            type: "S3Operations",
+            description:
+              "Injected AWS SDK adapter (putObject, deleteObject, headObject, getSignedUrl)",
+          },
+        },
+        returnType: "S3Service",
+        tags: ["aws", "s3", "storage"],
+        example:
+          "const s3 = createS3Service(config, client)\nconst { key, url } = await s3.upload(buffer, { folder: 'products', contentType: 'image/webp' })",
+      },
+      {
+        name: "S3Service",
+        type: "type",
+        description:
+          "The S3 surface returned by createS3Service. There is no free-standing uploadToS3 function — uploading goes through an instance.",
         importPath: "@be-in-digital/core",
         tags: ["aws", "s3", "storage"],
       },
       {
-        name: "sendEmail",
+        name: "createSESService",
         type: "function",
-        description: "Send email via AWS SES",
+        description:
+          "Builds the SES service over an injected SESOperations client. The returned SESService carries sendEmail, sendTemplatedEmail and sendBulkEmail (rate-limited to the SES sandbox ceiling).",
         importPath: "@be-in-digital/core",
+        params: {
+          config: {
+            type: "SESConfig",
+            description: "fromEmail, optional fromName and replyToEmail",
+          },
+          client: {
+            type: "SESOperations",
+            description:
+              "Injected SES adapter — createSESv2Operations(config) builds one over @aws-sdk/client-sesv2",
+          },
+        },
+        returnType: "SESService",
+        tags: ["aws", "ses", "email"],
+        example:
+          "const ses = createSESService(config, createSESv2Operations(awsConfig))\nawait ses.sendEmail({ to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' })",
+      },
+      {
+        name: "getSESService",
+        type: "function",
+        description:
+          "Server-side shortcut: reads the SES configuration from the environment and returns a ready SESService. Use it instead of wiring createSESService by hand in a route handler.",
+        importPath: "@be-in-digital/core",
+        returnType: "SESService",
         tags: ["aws", "ses", "email"],
       },
       {
-        name: "sendTemplatedEmail",
-        type: "function",
-        description: "Send templated email via SES",
+        name: "SESService",
+        type: "type",
+        description:
+          "The SES surface returned by createSESService. sendEmail and sendTemplatedEmail are methods on it, not module-level functions.",
         importPath: "@be-in-digital/core",
         tags: ["aws", "ses", "email"],
       },
@@ -751,7 +826,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/restaurant",
     description:
       "Restaurant business logic: Zustand stores (cart, store, UI, language), services, and React hooks.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["restaurant"],
     category: "frontend",
     dependencies: ["zustand"],
     peerDependencies: ["react@^19"],
@@ -857,7 +932,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/admin",
     description:
       "Complete admin dashboard: 20+ page components, layout, stores, hooks, and formatters for restaurant management.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["admin"],
     category: "frontend",
     dependencies: [],
     installCommand: "pnpm add @be-in-digital/admin",
@@ -1018,7 +1093,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/convex-schema",
     description:
       "Convex database schema: 50+ table definitions, 40+ Zod validators, 100+ TypeScript types.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["convex-schema"],
     category: "shared",
     dependencies: ["convex", "zod"],
     installCommand: "pnpm add @be-in-digital/convex-schema",
@@ -1094,6 +1169,14 @@ export const packages: PackageInfo[] = [
         importPath: "@be-in-digital/convex-schema",
         tags: ["type", "gamification", "enum"],
       },
+      {
+        name: "menuVisionResultSchema",
+        type: "validator",
+        description:
+          "Convex validator for what the vision model returns for a whole menu photo; singleProductVisionSchema covers the one-product case. These are the engine's half of image-to-product — the analysis action itself is app-level Node code.",
+        importPath: "@be-in-digital/convex-schema/validators",
+        tags: ["validation", "ai", "product"],
+      },
     ],
   },
   {
@@ -1101,7 +1184,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/convex-functions",
     description:
       "Convex backend functions: 48 modules covering auth, CRUD, kitchen, payments, gamification, i18n, email, CMS, integrations, and AI.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["convex-functions"],
     category: "backend",
     dependencies: ["convex"],
     installCommand: "pnpm add @be-in-digital/convex-functions",
@@ -1135,11 +1218,30 @@ export const packages: PackageInfo[] = [
         tags: ["backend", "kitchen"],
       },
       {
-        name: "autoTranslate",
+        name: "runTranslationPlan",
         type: "function",
-        description: "GPT-powered auto-translation service",
-        importPath: "@be-in-digital/convex-functions",
+        description:
+          "GPT-powered auto-translation. Deliberately NOT on the package barrel: the module must not pull @be-in-digital/core into the Convex default runtime, so it ships from its own subpath. Pair it with getTranslationPlan and saveDocumentTranslations, and gate writes with touchesTranslatableText.",
+        importPath: "@be-in-digital/convex-functions/autoTranslate",
         tags: ["backend", "i18n", "gpt"],
+        example:
+          'import * as autoTranslate from "@be-in-digital/convex-functions/autoTranslate"',
+      },
+      {
+        name: "touchesTranslatableText",
+        type: "function",
+        description:
+          "True when a patch changes a field that has translations, so the caller knows whether to schedule a re-translation.",
+        importPath: "@be-in-digital/convex-functions/autoTranslate",
+        tags: ["backend", "i18n"],
+      },
+      {
+        name: "getTranslationPlan",
+        type: "function",
+        description:
+          "Convex query definition ({ args, handler }) returning the documents and target languages a translation run has to cover.",
+        importPath: "@be-in-digital/convex-functions/autoTranslate",
+        tags: ["backend", "i18n"],
       },
       {
         name: "games",
@@ -1163,11 +1265,20 @@ export const packages: PackageInfo[] = [
         tags: ["backend", "cms"],
       },
       {
-        name: "imageToProduct",
+        name: "checkImageToProductAccess",
         type: "function",
-        description: "AI: extract products from menu photos",
+        description:
+          "Entitlement guard for image-to-product: says whether the owner's plan still has analysis quota. The analysis action itself is NOT in this package — it is app-level Convex code (`convex/imageToProduct.ts`) because it needs the Node runtime for sharp and the OpenAI vision call. The engine ships the guard, the quota accounting and the result validators.",
         importPath: "@be-in-digital/convex-functions",
-        tags: ["backend", "ai", "product"],
+        tags: ["backend", "ai", "product", "entitlements"],
+      },
+      {
+        name: "reserveImageToProductQuota",
+        type: "function",
+        description:
+          "Takes one image-to-product analysis off the owner's monthly quota before the app-level action runs; releaseImageToProductQuota gives it back when the analysis fails.",
+        importPath: "@be-in-digital/convex-functions",
+        tags: ["backend", "ai", "product", "entitlements"],
       },
     ],
   },
@@ -1176,7 +1287,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/cms",
     description:
       "Custom CMS: page/block registry, field definitions, media management, SVG sanitization, and content validation.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["cms"],
     category: "shared",
     dependencies: [],
     installCommand: "pnpm add @be-in-digital/cms",
@@ -1212,7 +1323,16 @@ export const packages: PackageInfo[] = [
       {
         name: "sanitizeSvg",
         type: "function",
-        description: "Sanitize SVG content for safe rendering",
+        description:
+          "Full SVG sanitization through DOMPurify. It is deliberately kept OFF the package barrel and ships from its own subpath: DOMPurify needs a DOM, and the barrel is imported by Convex isolate modules that have none — re-exporting it once made the whole backend fail to push. Convex-side callers use containsActiveContent from the barrel instead.",
+        importPath: "@be-in-digital/cms/sanitize",
+        tags: ["cms", "security"],
+      },
+      {
+        name: "containsActiveContent",
+        type: "function",
+        description:
+          "DOM-free, dependency-free refusal check for SVG markup carrying script or event handlers. Safe to call from a Convex isolate, unlike sanitizeSvg.",
         importPath: "@be-in-digital/cms",
         tags: ["cms", "security"],
       },
@@ -1230,43 +1350,58 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/integrations",
     description:
       "Third-party integrations: Uber Eats and Deliveroo API clients, menu sync, order handling, webhook security.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["integrations"],
     category: "backend",
     dependencies: [],
     installCommand: "pnpm add @be-in-digital/integrations",
     exports: [
       {
-        name: "uberEats.client",
+        name: "uberEats.fetchUberEats",
         type: "service",
-        description: "Uber Eats API client",
+        description:
+          "Authenticated fetch against the Uber Eats API — handles the OAuth token cache and the retry policy. The namespace is flat: uberEats re-exports client, oauth, mappers, security and menu-sync members side by side, so there is no uberEats.client sub-object.",
         importPath: "@be-in-digital/integrations",
         tags: ["integration", "uber-eats"],
+        example:
+          'import { uberEats } from "@be-in-digital/integrations"\nawait uberEats.fetchUberEats(credentials, "/v1/eats/stores")',
       },
       {
-        name: "uberEats.menuSync",
+        name: "uberEats.pushMenu",
         type: "service",
-        description: "Sync local menu to Uber Eats",
+        description:
+          "Push the local menu to Uber Eats; uberEats.pullMenu reads theirs back for reconciliation.",
         importPath: "@be-in-digital/integrations",
         tags: ["integration", "uber-eats", "menu"],
       },
       {
-        name: "deliveroo.client",
+        name: "uberEats.acceptOrder",
         type: "service",
-        description: "Deliveroo API client",
+        description:
+          "Accept an incoming Uber Eats order. denyOrder, cancelOrder and markOrderAsReady sit beside it in the same namespace.",
+        importPath: "@be-in-digital/integrations",
+        tags: ["integration", "uber-eats", "order"],
+      },
+      {
+        name: "deliveroo.fetchDeliveroo",
+        type: "service",
+        description:
+          "Authenticated fetch against the Deliveroo API, with the same token cache as the Uber Eats client. Flat namespace — there is no deliveroo.client sub-object.",
         importPath: "@be-in-digital/integrations",
         tags: ["integration", "deliveroo"],
       },
       {
-        name: "deliveroo.menuSync",
+        name: "deliveroo.pullMenu",
         type: "service",
-        description: "Sync menu to Deliveroo",
+        description:
+          "Read the Deliveroo menu back for reconciliation. Deliveroo menu *pushes* go through the separate menu-push path.",
         importPath: "@be-in-digital/integrations",
         tags: ["integration", "deliveroo", "menu"],
       },
       {
-        name: "deliveroo.orders",
+        name: "deliveroo.acceptOrder",
         type: "service",
-        description: "Handle Deliveroo orders",
+        description:
+          "Accept an incoming Deliveroo order. confirmOrder, rejectOrder, updatePrepStage, getOrder and sendSyncStatus are the rest of the order surface.",
         importPath: "@be-in-digital/integrations",
         tags: ["integration", "deliveroo", "order"],
       },
@@ -1277,7 +1412,7 @@ export const packages: PackageInfo[] = [
     scope: "@be-in-digital/marketing",
     description:
       "Email marketing: HTML rendering (28 block types), campaign validation, segmentation, double opt-in, statistics, CSV import.",
-    version: "2.0.1",
+    version: PACKAGE_VERSIONS["marketing"],
     category: "shared",
     dependencies: [],
     installCommand: "pnpm add @be-in-digital/marketing",
@@ -1346,12 +1481,40 @@ export function searchPackages(query: string): PackageExport[] {
     }
   }
 
+  // `exp.importPath` is kept as declared. It used to be overwritten with the
+  // package scope here, which silently downgraded every subpath-only export —
+  // `sanitizeSvg` came back as `@be-in-digital/cms` instead of
+  // `@be-in-digital/cms/sanitize`, an import that does not resolve.
   return results
     .sort((a, b) => b.score - a.score)
-    .map(({ score, packageName, ...exp }) => ({
-      ...exp,
-      importPath: packageName,
-    }));
+    .map(({ score, packageName, ...exp }) => {
+      void score;
+      void packageName;
+      return exp;
+    });
+}
+
+/**
+ * The import statement a consumer should write for one export claim.
+ *
+ * A dotted `name` is a member of a namespace re-export (`export * as uberEats`
+ * in `@be-in-digital/integrations`), so the statement imports the namespace and
+ * the member is reached through it — `import { uberEats.pullMenu }` is not
+ * syntax.
+ *
+ * `apps/reference/__tests__/mcp-registry-imports.test.ts` compiles the output of
+ * this function for every claim in the registry, so what the server prints is
+ * what a consumer can paste.
+ */
+export function importStatement(exp: PackageExport): string {
+  return `import { ${importBinding(exp)} } from '${exp.importPath}'`;
+}
+
+/** The identifier an import brings into scope for this claim. */
+export function importBinding(exp: PackageExport): string {
+  const binding = exp.name.split(".")[0];
+  /* c8 ignore next -- name is never empty; split always yields a first element */
+  return binding ?? exp.name;
 }
 
 export function getPackageByName(name: string): PackageInfo | undefined {

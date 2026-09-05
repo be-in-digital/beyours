@@ -5,9 +5,12 @@ import {
   packages,
   searchPackages,
   getPackageByName,
+  importBinding,
+  importStatement,
   type PackageInfo,
   type PackageExport,
 } from "./registry.js";
+import { MCP_SERVER_VERSION } from "./package-versions.js";
 
 function formatPackageList(pkgs: PackageInfo[]): string {
   return pkgs
@@ -52,7 +55,7 @@ function formatPackageDetail(pkg: PackageInfo): string {
     sections.push(`\n### ${type.charAt(0).toUpperCase() + type.slice(1)}s`);
     for (const exp of exports) {
       let line = `- **${exp.name}**: ${exp.description}`;
-      if (exp.importPath) line += ` (\`import from '${exp.importPath}'\`)`;
+      if (exp.importPath) line += ` (\`${importStatement(exp)}\`)`;
       if (exp.example) line += `\n  \`\`\`tsx\n  ${exp.example}\n  \`\`\``;
       if (exp.props) {
         const propLines = Object.entries(exp.props)
@@ -85,7 +88,7 @@ function formatSearchResults(
   }
   const lines = results.map(
     (r) =>
-      `- **${r.name}** (${r.type}) — ${r.description}\n  Import: \`${r.importPath}\`${r.example ? `\n  Example: \`${r.example}\`` : ""}`
+      `- **${r.name}** (${r.type}) — ${r.description}\n  Import: \`${importStatement(r)}\`${r.example ? `\n  Example: \`${r.example}\`` : ""}`
   );
   return `# Search: "${query}"\n${results.length} result(s)\n\n${lines.join("\n\n")}`;
 }
@@ -93,7 +96,7 @@ function formatSearchResults(
 export async function startServer() {
   const server = new McpServer({
     name: "beindigital",
-    version: "1.0.0",
+    version: MCP_SERVER_VERSION,
   });
 
   // --- Resources ---
@@ -201,8 +204,13 @@ export async function startServer() {
             `> ${exp.description}`,
             `- **Type**: ${exp.type}`,
             `- **Package**: ${pkg.scope}`,
-            `- **Import**: \`import { ${exp.name} } from '${exp.importPath}'\``,
+            `- **Import**: \`${importStatement(exp)}\``,
           ];
+          if (exp.name !== importBinding(exp)) {
+            lines.push(
+              `- **Usage**: \`${exp.name}\` — a member of the \`${importBinding(exp)}\` namespace, not a named export of its own`
+            );
+          }
           if (exp.example) {
             lines.push(`\n## Example\n\`\`\`tsx\n${exp.example}\n\`\`\``);
           }

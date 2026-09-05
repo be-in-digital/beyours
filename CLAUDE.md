@@ -208,14 +208,22 @@ const products = useQuery(api.products.list)
 **Admin adds languages dynamically** (unlimited)
 
 ```typescript
-// Auto-translate
-await translateWithGPT(text, "en", "fr", "product name")
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
 
-// Batch translate
-await batchTranslate([items], "en", "es")
+// Auto-translate one string — there is no `translateWithGPT`
+await translateText(text, "en", "fr", "product name", httpClient, apiKey)
+
+// Batch translate; httpClient and apiKey are required here, not optional
+await batchTranslate(items, "en", "es", httpClient, apiKey)
 ```
 
-**Cost**: ~$0.001 per product, $0.01 per page
+`httpClient` is injected for the same reason the AWS services inject theirs: the
+package must stay loadable from the Convex runtime. Note also that the engine's
+own auto-translation pipeline is separate — it lives in
+`@be-in-digital/convex-functions/autoTranslate`, deliberately off that package's
+barrel, and the apps drive it from there.
+
+**Cost**: ~$0.001 per product, $0.01 per page (`estimateTranslationCost`)
 
 ---
 
@@ -259,17 +267,57 @@ cloud providers already exist in `packages/admin/src/lib/kitchen-print.ts` as
 
 ## ☁️ AWS Services
 
+There is **no** `uploadToS3`, `sendEmail` or `sendTemplatedEmail` free function —
+those three names were documented here for a long time and never existed. Both
+services are **factories over an injected AWS client**: you build the SDK client,
+they hold the policy. `packages/core` therefore has no `@aws-sdk/client-s3`
+dependency at all; its one SDK dependency is `@aws-sdk/client-sesv2`, imported
+only by the SES adapter that `createSESv2Operations` lives in.
+
+Everything below comes from the package root, `@be-in-digital/core`; there is no
+`./aws/s3` or `./aws/ses` subpath. The two `./aws/*` subpaths that do exist are
+deliberately import-free so a Convex isolate can pull them in on their own:
+`./aws/folders` (the folder allow-list) and `./aws/media-url`.
+
 ### S3 Storage
 ```typescript
-await uploadToS3(file, key, "products")
-// Folders: products/, branding/, stores/, cms/
+import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
+
+const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
+const { key, url } = await s3.upload(buffer, {
+  folder: "products",       // must be one of S3_FOLDERS
+  contentType: "image/webp",
+})
+// also: getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl,
+//       exists, getMetadata
 ```
+Folders are the allow-list in `@be-in-digital/core/aws/folders`: `products`,
+`categories`, `cms`, `branding`, `stores`, `storefront`, `blogs`, `blog-auto`,
+`email`, `avatars`, `users`. The bucket is private — reads go through the app's
+`/api/files` proxy, and a folder missing from that list yields a URL that 404s.
 
 ### SES Email
 ```typescript
-await sendEmail({ to, subject, htmlBody })
-await sendTemplatedEmail({ to, templateName, templateData })
+import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
+
+const ses = createSESService(config, createSESv2Operations(awsConfig))
+// or, server-side, read the config from the environment:
+const ses = getSESService()
+
+await ses.sendEmail({ to, subject, html })   // the field is `html`, not `htmlBody`
+await ses.sendTemplatedEmail({ to, templateName, templateData })
+await ses.sendBulkEmail({ ... })   // rate-limited to the SES sandbox ceiling
 ```
+`sendEmail` and `sendTemplatedEmail` are **methods on the service instance**, not
+module-level functions.
+
+**How transactional mail actually leaves the product.** Convex has no SES
+credentials, so it POSTs to the app's own `/api/email/send`, which is
+`createEmailRouteHandler({ secret, linkOrigin })` from `@be-in-digital/core` —
+that handler calls `getSESService()`. The two halves share one secret
+(`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
+must present the same one. Bulk campaign sends are the exception: they run in
+Convex Node actions that talk to `@aws-sdk/client-sesv2` directly.
 
 ---
 
@@ -311,17 +359,28 @@ AWS_SES_FROM_EMAIL=
 # OpenAI (Translation)
 OPENAI_API_KEY=sk-...
 
-# Payments
+# Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=
-SUMUP_API_KEY=
+SUMUP_CLIENT_ID=
+SUMUP_CLIENT_SECRET=
 PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
 # SQUARE_ACCESS_TOKEN — no code reads this yet; Square is unimplemented
 
-# Integrations
-UBER_EATS_API_KEY=
-DELIVEROO_API_KEY=
-UBER_DIRECT_CUSTOMER_ID=
+# Integrations — also OAuth pairs, each with its own webhook secret
+UBER_EATS_CLIENT_ID=
+UBER_EATS_CLIENT_SECRET=
+UBER_EATS_WEBHOOK_SECRET=
+DELIVEROO_CLIENT_ID=
+DELIVEROO_CLIENT_SECRET=
+DELIVEROO_WEBHOOK_SECRET=
+UBER_DIRECT_WEBHOOK_SECRET=
 ```
+
+`SUMUP_API_KEY`, `UBER_EATS_API_KEY`, `DELIVEROO_API_KEY` and
+`UBER_DIRECT_CUSTOMER_ID` were listed here for a long time and are read by **no
+code at all** — an operator setting them configured nothing. The authoritative
+list is `packages/core/src/env/schemas.ts`, which the apps enforce at startup.
 
 ---
 
