@@ -48,14 +48,31 @@ code point that NFD does not decompose, so without the ligature step the correct
 French spelling normalises to `ufs` and misses the table.
 
 **An allergen the component does not recognise renders as the owner typed it**,
-with its text visible even when `showLabel` is false. Dropping the badge or
-folding the value into a generic "other" would hide a disclosure, which is the
-hazard the crash was hiding in the first place. Only names of the allergen
-*category* are in the alias table: an ingredient that merely contains one
-("beurre", "crevette", "fruits de mer") is deliberately absent, because naming
-an allergen the owner did not write is worse than leaving the badge unstyled.
-Negations are absent for the same reason — `sans gluten` must never resolve to
-`gluten`.
+with its text visible even when `showLabel` is false, and is announced as the
+restaurant's own wording rather than as an allergen. The obvious prefix is the
+wrong one: an owner writing `sans gluten` into the allergens field would
+otherwise be announced "Allergène : sans gluten" — "Allergen: gluten-free", the
+exact inversion of what they declared. The same held for `halal`, `bio` and
+`fait maison`. A value carrying a negation symbol (`gluten ✗`) is never resolved
+either, because normalisation would otherwise delete the symbol and leave the
+bare allergen behind. A leading hyphen is deliberately *not* treated as
+negation: in a menu it is a bullet, and reading it as a minus would hide a real
+declaration.
+
+Dropping the badge, or folding the value into a generic "other", would hide a
+disclosure — the hazard the crash was hiding in the first place. Only names of
+the allergen *category* are in the alias table: an ingredient that merely
+contains one ("beurre", "crevette", "fruits de mer") is deliberately absent,
+because naming an allergen the owner did not write is worse than leaving the
+badge unstyled. Bare `céréales` went the same way: Annex II says *céréales
+contenant du gluten*, and rice is a cereal.
+
+**`showLabel` now defaults to `true`.** An icon on its own is not a disclosure —
+a carrot for celery, a wine glass for sulphites and sparkles for sesame tell a
+diner nothing, and neither call site passed a label. English `shellfish` is now
+its own entry reading "Crustacés et mollusques" rather than an alias for
+crustaceans, because the word spans Annex II §2 *and* §14 and narrowing it drops
+a mollusc declaration.
 
 **The cast is gone.** `AllergenBadgeProps.allergen` is `Allergen | (string & {})`
 — the type the database actually produces, with autocomplete on the known keys —
@@ -63,8 +80,12 @@ so both call sites now pass the raw value and `import type { Allergen }` is no
 longer needed there.
 
 Two siblings of the same bug went with it. `OrderStatusBadge` indexed its config
-unguarded while the schema union carries eight statuses to its six; it now falls
-back to `pending`. And all three badge lookups — including `StoreStatusBadge`,
+unguarded while the schema union carries eight statuses to its six, so its
+caller papered over the gap by folding `out_for_delivery` and `completed` onto
+`delivered` — a purple "Delivered" badge for an order still in the van, sixteen
+lines above a label reading "En livraison". The component declares all eight
+statuses now and the fold is gone, along with its `as OrderStatus` cast. And all
+three badge lookups — including `StoreStatusBadge`,
 which had the `??` guard already — went through an object literal, so
 `statusConfig["constructor"]` returned a *function* that `??` never catches, and
 `.className` rendered `undefined` into the class attribute. An owner can type
@@ -90,5 +111,21 @@ render(<PriceDisplay amount={12.5} originalAmount={0} />)
 -> <span class="text-lg font-bold">12,50 €</span>0
 ```
 
-The package had one test file covering fifty-eight components. It now has seven,
-holding all of the above.
+Guarding only `originalAmount` would leave the identical hole on the other
+operand, so the whole condition is coerced. The discount is now resolved once,
+to an object or to nothing, which also keeps out the other strings it printed:
+`Infinity` passed a naive `> 0` check and gave "-NaN%", a negative amount gave
+"-150%", and a 0.4% markdown rounded to a meaningless "-0%".
+
+Four more icon-only controls elsewhere in the package were named while the sweep
+was open: the toast dismiss, the admin sidebar's open and close — the hamburger
+being the only route to the admin navigation below `md`, so a blind owner on a
+phone could not open the menu at all — and the filter chip's remove, whose
+`Badge` text is a sibling of the button and so named nothing.
+`PaginationEllipsis` had `aria-hidden` on the element wrapping its own sr-only
+label, which prunes the subtree and killed the very text somebody wrote to name
+it.
+
+The package had one test file covering fifty-eight components. It now has eight,
+holding all of the above — including the cases three adversarial passes proved
+the first round of tests could not see.

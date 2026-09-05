@@ -45,6 +45,10 @@ export interface QuantitySelectorProps
  * kind, so a screen reader announced three unnamed controls — "button",
  * "button", "spin button" — and a blind diner could not tell which one added an
  * item. Icons are `aria-hidden`; the name comes from `aria-label`.
+ *
+ * Naming them is not enough on its own. Pressing plus leaves focus on the
+ * button while the value changes in an input nobody is looking at, so the
+ * press is silent. The live region below announces the new value.
  */
 const QuantitySelector = React.forwardRef<HTMLDivElement, QuantitySelectorProps>(
   (
@@ -123,6 +127,10 @@ const QuantitySelector = React.forwardRef<HTMLDivElement, QuantitySelectorProps>
         >
           <Plus className="h-4 w-4" aria-hidden />
         </Button>
+
+        <span role="status" aria-live="polite" className="sr-only">
+          {`${text.group} : ${value}`}
+        </span>
       </div>
     )
   }

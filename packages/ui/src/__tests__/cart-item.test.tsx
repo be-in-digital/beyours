@@ -30,13 +30,30 @@ function ariaLabels(html: string): string[] {
 }
 
 describe("CartItem — accessible names", () => {
-  it("names the remove button and both quantity buttons", () => {
+  it("scopes every name to the item, so a multi-line cart is operable", () => {
+    // Constant labels give a four-line cart four buttons called "Retirer du
+    // panier". The buttons list a screen reader pulls up shows names, not
+    // surrounding text, so there is no way to tell which one deletes what.
     expect(ariaLabels(render())).toEqual([
-      "Retirer du panier",
-      "Quantité",
-      "Diminuer la quantité",
-      "Augmenter la quantité",
+      "Retirer Pizza Margherita du panier",
+      "Quantité de Pizza Margherita",
+      "Diminuer la quantité de Pizza Margherita",
+      "Augmenter la quantité de Pizza Margherita",
     ])
+  })
+
+  it("gives two lines two distinct sets of names", () => {
+    const first = ariaLabels(render({ name: "Pizza Margherita" }))
+    const second = ariaLabels(render({ name: "Tiramisu" }))
+    expect(new Set([...first, ...second]).size).toBe(first.length + second.length)
+  })
+
+  it("announces the new quantity, which a button press does not", () => {
+    // Focus stays on the button; the count changes in a span nobody is
+    // looking at. Without a live region the press is silent.
+    const html = render({ quantity: 3 })
+    expect(html).toContain('aria-live="polite"')
+    expect(html).toContain("Quantité de Pizza Margherita : 3")
   })
 
   it("leaves no button unnamed", () => {
@@ -48,13 +65,16 @@ describe("CartItem — accessible names", () => {
   })
 
   it("hides the decorative icons from the accessibility tree", () => {
-    expect((render().match(/aria-hidden="true"/g) ?? []).length).toBe(3)
+    // Three icons, plus the visual count that the live region already speaks.
+    expect((render().match(/aria-hidden="true"/g) ?? []).length).toBe(4)
   })
 
   it("accepts overridden labels", () => {
-    const labels = ariaLabels(render({ labels: { remove: "Remove from cart" } }))
-    expect(labels).toContain("Remove from cart")
-    expect(labels).toContain("Diminuer la quantité")
+    const labels = ariaLabels(
+      render({ labels: { remove: (name) => `Remove ${name} from cart` } })
+    )
+    expect(labels).toContain("Remove Pizza Margherita from cart")
+    expect(labels).toContain("Diminuer la quantité de Pizza Margherita")
   })
 
   it("omits the controls that were not wired up", () => {
@@ -81,8 +101,12 @@ describe("CartItem — content", () => {
     expect(shown).toContain("Grande, Extra fromage")
   })
 
-  it("disables the minus button at one item", () => {
-    const [beforePlus] = render({ quantity: 1 }).split("Augmenter")
-    expect(beforePlus).toContain("disabled")
+  it("disables the minus button at one item, and not above it", () => {
+    // `disabled` is also a Tailwind prefix, so match the attribute on the
+    // named button rather than anywhere in the markup.
+    const minusTag = (html: string) =>
+      html.match(/<button[^>]*aria-label="Diminuer[^"]*"[^>]*>/)?.[0] ?? ""
+    expect(minusTag(render({ quantity: 1 }))).toMatch(/ disabled(=|[\s>])/)
+    expect(minusTag(render({ quantity: 2 }))).not.toMatch(/ disabled(=|[\s>])/)
   })
 })

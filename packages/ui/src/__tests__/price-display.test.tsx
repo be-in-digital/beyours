@@ -50,6 +50,67 @@ describe("PriceDisplay — the falsy-number guard", () => {
   })
 })
 
+describe("PriceDisplay — nonsense numbers print nothing, not garbage", () => {
+  // Each of these was a string the storefront printed next to the price.
+  it.each([
+    ["Infinity as the original", { amount: 12.5, originalAmount: Infinity }],
+    ["Infinity as the amount", { amount: Infinity, originalAmount: 10 }],
+    ["NaN as the original", { amount: 12.5, originalAmount: NaN }],
+    ["NaN as the amount", { amount: NaN, originalAmount: 10 }],
+    ["a negative amount", { amount: -5, originalAmount: 10 }],
+    ["-Infinity as the amount", { amount: -Infinity, originalAmount: 10 }],
+    ["a negative original", { amount: 12.5, originalAmount: -20 }],
+    ["-0 as the original", { amount: 12.5, originalAmount: -0 }],
+  ])("shows no discount for %s", (_label, props) => {
+    // Scoped to the discount block: a caller who passes NaN as the *amount*
+    // still gets "NaN €" as the price, which is their bug, not this one.
+    const html = render(props as React.ComponentProps<typeof PriceDisplay>)
+    const afterPrice = html.split("</span>").slice(1).join("</span>")
+    expect(afterPrice).not.toContain("%")
+    expect(afterPrice).not.toContain("NaN")
+    expect(afterPrice).not.toContain("Infinity")
+    expect(html).not.toContain("line-through")
+  })
+
+  it("shows no discount for a markdown that rounds to nothing", () => {
+    // 0.4% off printed "-0%", which reads as a promotion and is not one.
+    const html = render({ amount: 9.96, originalAmount: 10 })
+    expect(html).not.toContain("%")
+    expect(html).not.toContain("line-through")
+  })
+
+  it("is not fooled by a falsy showDiscount that is a number", () => {
+    // The original bug was `{0 && …}` rendering `0`. Hardening only
+    // `originalAmount` left the same hole on the other operand of the chain.
+    const html = render({
+      amount: 10,
+      originalAmount: 20,
+      showDiscount: 0 as unknown as boolean,
+    })
+    expect(html).not.toMatch(/<\/span>0/)
+    expect(text(html)).toBe("10,00 €")
+  })
+})
+
+describe("PriceDisplay — the percentage it prints", () => {
+  it.each([
+    [15, 20, "-25%"],
+    [10, 20, "-50%"],
+    [20, 30, "-33%"],
+    [1, 100, "-99%"],
+    [0, 10, "-100%"],
+  ])("prints %s off %s as %s", (amount, originalAmount, expected) => {
+    expect(text(render({ amount, originalAmount }))).toContain(expected)
+  })
+
+  it("shows no discount for a zero or negative original", () => {
+    // These printed "-Infinity%" and a double minus before the guard.
+    expect(render({ amount: -5, originalAmount: 0 })).not.toContain("%")
+    expect(render({ amount: 12.5, originalAmount: -0 })).not.toContain("--")
+    expect(render({ amount: 0, originalAmount: 0 })).not.toContain("%")
+  })
+})
+
 describe("PriceDisplay — a genuine discount", () => {
   it("still shows the original price and the percentage", () => {
     const shown = text(render({ amount: 15, originalAmount: 20 }))

@@ -12,8 +12,8 @@ import {
   Shell,
   Snail,
   Sparkles,
+  Info,
   Sprout,
-  TriangleAlert,
   Vegan,
   Wheat,
   Wine,
@@ -47,6 +47,9 @@ export const KNOWN_ALLERGENS = [
   "sulphites",
   "lupin",
   "molluscs",
+  // English "shellfish" spans Annex II §2 and §14. It cannot be narrowed to
+  // either without dropping the other, so it declares both.
+  "shellfish",
   // Dietary markers, kept from the component's original union
   "vegetarian",
   "vegan",
@@ -69,18 +72,26 @@ export interface AllergenBadgeProps {
   allergen: Allergen | (string & {})
   className?: string
   /**
-   * Show the name next to the icon. An unrecognised allergen always shows its
-   * name regardless, because its icon carries no meaning on its own.
+   * Show the name next to the icon. Defaults to `true`: an icon on its own is
+   * not a disclosure — a wheat glyph does not tell a diner the dish contains
+   * gluten. Pass `false` only where the name is already stated nearby.
    */
   showLabel?: boolean
   /** Language of the visible and announced text. Defaults to French. */
   locale?: AllergenLocale
 }
 
+type AllergenKind =
+  /** One of the fourteen Annex II allergens. */
+  | "allergen"
+  /** A dietary marker, not an allergen, and never announced as one. */
+  | "diet"
+  /** A name this component does not recognise. It claims nothing about it. */
+  | "unverified"
+
 interface AllergenEntry {
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>
-  /** `diet` markers are not allergens and must not be announced as one. */
-  kind: "allergen" | "diet"
+  kind: Exclude<AllergenKind, "unverified">
   label: Record<AllergenLocale, string>
 }
 
@@ -155,6 +166,11 @@ const allergenConfig: Record<Allergen, AllergenEntry> = {
     kind: "allergen",
     label: { fr: "Mollusques", en: "Molluscs" },
   },
+  shellfish: {
+    icon: Shell,
+    kind: "allergen",
+    label: { fr: "Crustacés et mollusques", en: "Shellfish" },
+  },
   vegetarian: {
     icon: Salad,
     kind: "diet",
@@ -185,8 +201,11 @@ const allergenAliases: Record<string, Allergen> = {
   gluten: "gluten",
   "cereales contenant du gluten": "gluten",
   "cereales de gluten": "gluten",
-  cereales: "gluten",
   "cereals containing gluten": "gluten",
+  "gluten de ble": "gluten",
+  "farine de ble": "gluten",
+  triticale: "gluten",
+  khorasan: "gluten",
   ble: "gluten",
   froment: "gluten",
   seigle: "gluten",
@@ -205,13 +224,15 @@ const allergenAliases: Record<string, Allergen> = {
   crustaces: "crustaceans",
   crustacean: "crustaceans",
   crustaceans: "crustaceans",
-  shellfish: "crustaceans",
+  shellfish: "shellfish",
 
   // eggs
   oeuf: "eggs",
   oeufs: "eggs",
   egg: "eggs",
   eggs: "eggs",
+  "blanc d oeuf": "eggs",
+  "blancs d oeufs": "eggs",
 
   // fish
   poisson: "fish",
@@ -232,12 +253,15 @@ const allergenAliases: Record<string, Allergen> = {
   soy: "soy",
   soya: "soy",
   soybeans: "soy",
+  "lecithine de soja": "soy",
+  "soy lecithin": "soy",
 
   // dairy
   lait: "dairy",
   laits: "dairy",
   lactose: "dairy",
   "produits laitiers": "dairy",
+  "proteines de lait": "dairy",
   "lait et produits laitiers": "dairy",
   milk: "dairy",
   dairy: "dairy",
@@ -260,18 +284,32 @@ const allergenAliases: Record<string, Allergen> = {
   nut: "nuts",
   nuts: "nuts",
   "tree nuts": "nuts",
+  almond: "nuts",
   almonds: "nuts",
+  hazelnut: "nuts",
   hazelnuts: "nuts",
+  walnut: "nuts",
   walnuts: "nuts",
+  cashew: "nuts",
   cashews: "nuts",
+  pistachio: "nuts",
   pistachios: "nuts",
+  pecan: "nuts",
+  pecans: "nuts",
+  "brazil nut": "nuts",
+  "brazil nuts": "nuts",
+  macadamia: "nuts",
 
   // celery
   celeri: "celery",
+  "celeri rave": "celery",
+  "celeri branche": "celery",
   celery: "celery",
+  celeriac: "celery",
 
   // mustard
   moutarde: "mustard",
+  "graines de moutarde": "mustard",
   mustard: "mustard",
 
   // sesame
@@ -283,6 +321,9 @@ const allergenAliases: Record<string, Allergen> = {
   sulfite: "sulphites",
   sulfites: "sulphites",
   "anhydride sulfureux": "sulphites",
+  "dioxyde de soufre": "sulphites",
+  "sulfur dioxide": "sulphites",
+  e220: "sulphites",
   "anhydride sulfureux et sulfites": "sulphites",
   so2: "sulphites",
   sulphite: "sulphites",
@@ -292,6 +333,7 @@ const allergenAliases: Record<string, Allergen> = {
   lupin: "lupin",
   lupins: "lupin",
   lupine: "lupin",
+  "farine de lupin": "lupin",
 
   // molluscs
   mollusque: "molluscs",
@@ -322,8 +364,21 @@ const allergenAliases: Record<string, Allergen> = {
  * NFD does not decompose, so `"Œufs"` — the correct French spelling — would
  * otherwise normalise to `"ufs"` and miss the table entirely.
  */
+/** Zero-width characters a paste from Word or Docs leaves behind. */
+const ZERO_WIDTH = /[\u200b\u200c\u200d\u2060\ufeff]/g
+
+/**
+ * Symbols that negate what follows them. A value carrying one is never
+ * resolved to an allergen: `gluten ✗` means the dish has none, and announcing
+ * "Allergène : Gluten" for it is the inversion this component must never make.
+ * A leading hyphen is deliberately absent — in a menu it is a bullet, not a
+ * minus, and reading it as negation would hide a real declaration.
+ */
+const NEGATION_SYMBOL = /[\u2717\u2718\u274c\u2716\u00d7\u{1F6AB}\u2205\u2298]/u
+
 function normalizeKey(value: string): string {
   return value
+    .replace(ZERO_WIDTH, "")
     .toLowerCase()
     .replace(/\u0153/g, "oe")
     .replace(/\u00e6/g, "ae")
@@ -340,6 +395,7 @@ function normalizeKey(value: string): string {
  * Exported so callers and tests can ask the question without rendering.
  */
 export function normalizeAllergen(value: string): Allergen | null {
+  if (NEGATION_SYMBOL.test(value)) return null
   const key = normalizeKey(value)
   if (!key) return null
   // `allergenAliases` is an object literal, so it inherits `constructor`,
@@ -351,17 +407,28 @@ export function normalizeAllergen(value: string): Allergen | null {
   return allergenAliases[key] ?? null
 }
 
+/**
+ * `unverified` deliberately makes no claim about what the value is.
+ *
+ * The obvious prefix is the wrong one: an owner writing `sans gluten` into the
+ * allergens field would be announced "Allergène : sans gluten" — "Allergen:
+ * gluten-free", the exact inversion of what they declared. The same applies to
+ * `halal`, `bio` or `fait maison`. Reporting the value as the restaurant's own
+ * wording is true whatever it turns out to mean.
+ */
 const ANNOUNCEMENT: Record<
   AllergenLocale,
-  Record<AllergenEntry["kind"], (label: string) => string>
+  Record<AllergenKind, (label: string) => string>
 > = {
   fr: {
     allergen: (label) => `Allergène : ${label}`,
     diet: (label) => `Régime : ${label}`,
+    unverified: (label) => `Mention du restaurant : ${label}`,
   },
   en: {
     allergen: (label) => `Allergen: ${label}`,
     diet: (label) => `Diet: ${label}`,
+    unverified: (label) => `Stated by the restaurant: ${label}`,
   },
 }
 
@@ -381,13 +448,19 @@ const ANNOUNCEMENT: Record<
  * the diner reads exactly what the restaurant declared. Dropping the badge, or
  * swallowing the value into a generic "other", would hide a disclosure — which
  * is the hazard the crash was hiding in the first place. So an unrecognised
- * value keeps its text visible even when `showLabel` is false: its warning
- * icon means nothing on its own.
+ * value keeps its text visible even when `showLabel` is false: its icon means
+ * nothing on its own. And it is announced as the restaurant's own wording, not
+ * as an allergen — see `ANNOUNCEMENT.unverified`.
+ *
+ * There is no `title` here. `aria-label` already names the badge, and a `title`
+ * carrying the same sentence falls through accname to the accessible
+ * *description* — a screen reader then announces "Allergène : Gluten, image,
+ * Allergène : Gluten". The visible label is the tooltip's job now.
  */
 const AllergenBadge: React.FC<AllergenBadgeProps> = ({
   allergen,
   className,
-  showLabel = false,
+  showLabel = true,
   locale = "fr",
 }) => {
   const raw = typeof allergen === "string" ? allergen.trim() : ""
@@ -396,10 +469,11 @@ const AllergenBadge: React.FC<AllergenBadgeProps> = ({
   const known = normalizeAllergen(raw)
   const entry = known ? allergenConfig[known] : undefined
 
-  const Icon = entry?.icon ?? TriangleAlert
-  const label = entry ? entry.label[locale] ?? entry.label.fr : raw
-  const strings = ANNOUNCEMENT[locale] ?? ANNOUNCEMENT.fr
-  const announce = strings[entry?.kind ?? "allergen"](label)
+  // `Object.hasOwn`, not `??`: `ANNOUNCEMENT["constructor"]` is a function.
+  const lang = Object.hasOwn(ANNOUNCEMENT, locale) ? locale : "fr"
+  const Icon = entry?.icon ?? Info
+  const label = entry ? entry.label[lang] : raw
+  const announce = ANNOUNCEMENT[lang][entry?.kind ?? "unverified"](label)
   // An unrecognised allergen has no meaningful icon, so its name always shows.
   const withText = showLabel || !entry
 
@@ -411,7 +485,6 @@ const AllergenBadge: React.FC<AllergenBadgeProps> = ({
         "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs",
         className
       )}
-      title={announce}
     >
       <Icon className="h-3 w-3" aria-hidden />
       {withText && <span>{label}</span>}

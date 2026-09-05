@@ -18,16 +18,18 @@ describe("SpiceLevelIndicator", () => {
   it("names itself for a screen reader", () => {
     const html = render({ level: 3 })
     expect(html).toContain('role="img"')
-    expect(html).toContain('aria-label="Niveau de piment : 3/5"')
+    expect(html).toContain('aria-label="Niveau de piquant : 3/5"')
   })
 
-  it("keeps the title for a mouse user", () => {
-    expect(render({ level: 3 })).toContain('title="Niveau de piment : 3/5"')
+  it("carries no title, so the level is not announced twice", () => {
+    // `aria-label` is the name; a `title` repeating it becomes the accessible
+    // description, and the level is read out again.
+    expect(render({ level: 3 })).not.toContain("title=")
   })
 
   it("reflects a custom maximum in the name", () => {
     expect(render({ level: 2, maxLevel: 3 })).toContain(
-      'aria-label="Niveau de piment : 2/3"'
+      'aria-label="Niveau de piquant : 2/3"'
     )
   })
 

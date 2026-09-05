@@ -38,14 +38,24 @@ describe("OrderStatusBadge", () => {
     expect(renderUnchecked(status)).toContain(label)
   })
 
-  it.each(["out_for_delivery", "completed"])(
-    "renders the schema status %s as pending instead of throwing",
-    (status) => {
-      // These two are in the schema union but not in this component's.
-      expect(() => renderUnchecked(status)).not.toThrow()
-      expect(renderUnchecked(status)).toContain("Pending")
-    }
-  )
+  it("carries the status colour, not `undefined`, in the class", () => {
+    // `.className` is the property whose undefined dereference was the crash.
+    // Asserting only on the label lets a badge with no class at all pass.
+    expect(renderUnchecked("pending")).toContain("bg-yellow-100")
+    expect(renderUnchecked("cancelled")).toContain("bg-red-100")
+    expect(renderUnchecked("out_for_delivery")).toContain("bg-indigo-100")
+  })
+
+  it.each([
+    ["out_for_delivery", "Out for Delivery"],
+    ["completed", "Completed"],
+  ])("labels %s honestly rather than folding it onto delivered", (status, label) => {
+    // The caller used to map both of these to `delivered`, so an order still
+    // in the van showed a purple "Delivered" badge sixteen lines above a
+    // label reading "En livraison". The component declares all eight now.
+    expect(renderUnchecked(status)).toContain(label)
+    expect(renderUnchecked(status)).not.toContain("Delivered")
+  })
 
   it.each(["constructor", "__proto__", "toString", "valueOf"])(
     "does not read %s off Object.prototype",

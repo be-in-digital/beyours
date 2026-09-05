@@ -47,6 +47,14 @@ describe("QuantitySelector — accessible names", () => {
     expect(render()).toContain('role="group"')
   })
 
+  it("announces the new value, which a button press does not", () => {
+    // Focus stays on the button; the value changes in an input nobody is
+    // looking at. Without a live region the press is silent.
+    const html = render({ value: 4 })
+    expect(html).toContain('aria-live="polite"')
+    expect(html).toContain("Quantité : 4")
+  })
+
   it("hides the decorative icons from the accessibility tree", () => {
     const html = render()
     expect((html.match(/aria-hidden="true"/g) ?? []).length).toBe(2)
@@ -78,17 +86,36 @@ describe("QuantitySelector — accessible names", () => {
   })
 })
 
+/**
+ * `disabled` is also a Tailwind prefix — `disabled:opacity-50` — so a bare
+ * `toContain("disabled")` passes on a button that is never disabled. These
+ * match the attribute on the named control instead.
+ */
+function isDisabled(html: string, ariaLabel: string): boolean {
+  const tag = html.match(
+    new RegExp(`<button[^>]*aria-label="${ariaLabel}"[^>]*>`)
+  )?.[0]
+  if (!tag) throw new Error(`no button named ${ariaLabel}`)
+  return / disabled(=|[\s>])/.test(tag)
+}
+
 describe("QuantitySelector — bounds", () => {
-  it("disables the minus button at the minimum", () => {
-    const html = render({ value: 1, min: 1 })
-    const [minus] = html.split("<input")
-    expect(minus).toContain("disabled")
+  it("disables the minus button at the minimum, and not above it", () => {
+    expect(isDisabled(render({ value: 1, min: 1 }), "Diminuer la quantité")).toBe(
+      true
+    )
+    expect(isDisabled(render({ value: 2, min: 1 }), "Diminuer la quantité")).toBe(
+      false
+    )
   })
 
-  it("disables the plus button at the maximum", () => {
-    const html = render({ value: 99, max: 99 })
-    const plus = html.split("<input")[1]
-    expect(plus).toContain("disabled")
+  it("disables the plus button at the maximum, and not below it", () => {
+    expect(isDisabled(render({ value: 99, max: 99 }), "Augmenter la quantité")).toBe(
+      true
+    )
+    expect(isDisabled(render({ value: 98, max: 99 }), "Augmenter la quantité")).toBe(
+      false
+    )
   })
 
   it("publishes min and max on the input for assistive technology", () => {
@@ -98,7 +125,16 @@ describe("QuantitySelector — bounds", () => {
   })
 
   it("disables every control when disabled", () => {
-    const html = render({ disabled: true })
-    expect((html.match(/disabled/g) ?? []).length).toBeGreaterThanOrEqual(3)
+    const html = render({ value: 5, disabled: true })
+    expect(isDisabled(html, "Diminuer la quantité")).toBe(true)
+    expect(isDisabled(html, "Augmenter la quantité")).toBe(true)
+    expect(html).toMatch(/<input[^>]* disabled(=|[\s/>])/)
+  })
+
+  it("leaves every control enabled when it is not", () => {
+    const html = render({ value: 5 })
+    expect(isDisabled(html, "Diminuer la quantité")).toBe(false)
+    expect(isDisabled(html, "Augmenter la quantité")).toBe(false)
+    expect(html).not.toMatch(/<input[^>]* disabled(=|[\s/>])/)
   })
 })

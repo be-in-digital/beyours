@@ -33,6 +33,12 @@ describe("StoreStatusBadge", () => {
     expect(renderUnchecked(status)).toContain(label)
   })
 
+  it("carries the status colour, not `undefined`, in the class", () => {
+    expect(renderUnchecked("open")).toContain("bg-green-100")
+    expect(renderUnchecked("closed")).toContain("bg-red-100")
+    expect(renderUnchecked("draft")).toContain("bg-red-100")
+  })
+
   it("renders a draft as closed instead of throwing", () => {
     expect(() => renderUnchecked("draft")).not.toThrow()
     expect(renderUnchecked("draft")).toContain("Closed")

@@ -9,6 +9,7 @@ export interface SpiceLevelIndicatorProps
   /**
    * Accessible name. Defaults to French, matching the storefront this renders
    * on; pass a string to override, e.g. `` `Spice level: ${level}/5` ``.
+   * "Piquant", not "piment": the scale measures heat, not the vegetable.
    */
   label?: string
 }
@@ -20,12 +21,16 @@ export interface SpiceLevelIndicatorProps
  * non-interactive element and never surfaces on touch — so the spice level was
  * invisible to a screen reader and to a phone. `role="img"` plus `aria-label`
  * names it once; the individual flames are decoration and stay hidden.
+ *
+ * No `title`: it would carry the same sentence as `aria-label`, and accname
+ * then makes it the accessible *description*, so the level is announced twice.
+ * Five flames with three filled already say it to anyone who can see them.
  */
 const SpiceLevelIndicator = React.forwardRef<
   HTMLDivElement,
   SpiceLevelIndicatorProps
 >(({ className, level, maxLevel = 5, label, ...props }, ref) => {
-  const name = label ?? `Niveau de piment : ${level}/${maxLevel}`
+  const name = label ?? `Niveau de piquant : ${level}/${maxLevel}`
 
   return (
     <div
@@ -33,7 +38,6 @@ const SpiceLevelIndicator = React.forwardRef<
       role="img"
       aria-label={name}
       className={cn("flex items-center gap-0.5", className)}
-      title={name}
       {...props}
     >
       {Array.from({ length: maxLevel }, (_, index) => (

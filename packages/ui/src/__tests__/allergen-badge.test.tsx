@@ -61,8 +61,8 @@ describe("AllergenBadge — values measured in this repository", () => {
   })
 
   it("still renders the nine keys the original union declared", () => {
-    // `shellfish` folds onto crustaceans and `dairy` onto lait, but no caller
-    // that worked before may break now.
+    // `dairy` renders as Lait and `shellfish` keeps its own entry, but no
+    // caller that worked before may break now.
     for (const key of [
       "gluten",
       "dairy",
@@ -86,7 +86,7 @@ describe("AllergenBadge — normalisation", () => {
     ["fruits-a-coque", "nuts"],
     ["  fruits  à   coque  ", "nuts"],
     ["Crustacés", "crustaceans"],
-    ["shellfish", "crustaceans"],
+    ["shellfish", "shellfish"],
     // `\u0153` is a ligature, not a decomposable accent: NFD leaves it whole, so
     // an unexpanded "\u0152ufs" normalises to "ufs" and misses the table.
     ["\u0152ufs", "eggs"],
@@ -106,9 +106,32 @@ describe("AllergenBadge — normalisation", () => {
   it("does not invert a negation into a declaration", () => {
     // "sans gluten" is gluten-FREE. Mapping it to `gluten` would tell a diner
     // the dish contains the very thing the owner said it does not.
-    for (const negation of ["sans gluten", "gluten free", "sans lactose"]) {
+    for (const negation of [
+      "sans gluten",
+      "gluten free",
+      "gluten-free",
+      "sans lactose",
+      "0% lactose",
+      "sans arachides",
+      "zéro gluten",
+    ]) {
       expect(normalizeAllergen(negation)).toBeNull()
     }
+  })
+
+  it("does not let a negation symbol resolve to the thing it negates", () => {
+    // `normalizeKey` collapses punctuation, which would delete the negation
+    // and leave the bare allergen behind.
+    for (const negation of ["gluten ✗", "gluten ❌", "✘ lactose", "gluten ✖"]) {
+      expect(normalizeAllergen(negation)).toBeNull()
+    }
+  })
+
+  it("still reads a leading dash as a bullet, not a minus", () => {
+    // Menus list allergens as "- gluten". Treating that as negation would
+    // hide a real declaration — the opposite failure, and the worse one.
+    expect(normalizeAllergen("- gluten")).toBe("gluten")
+    expect(normalizeAllergen("(gluten)")).toBe("gluten")
   })
 
   it("does not guess a category from an ingredient", () => {
@@ -123,6 +146,13 @@ describe("AllergenBadge — normalisation", () => {
     expect(normalizeAllergen("")).toBeNull()
     expect(normalizeAllergen("   ")).toBeNull()
     expect(normalizeAllergen("!!!")).toBeNull()
+    // A paste from Word or Docs leaves these behind; `.trim()` does not.
+    expect(normalizeAllergen("\u200b")).toBeNull()
+    expect(normalizeAllergen("\ufeff \u200b")).toBeNull()
+  })
+
+  it("sees through zero-width characters to the word underneath", () => {
+    expect(normalizeAllergen("glu\u200bten")).toBe("gluten")
   })
 
   it("does not hand back what Object.prototype inherits", () => {
@@ -144,7 +174,9 @@ describe("AllergenBadge — normalisation", () => {
   it("renders an inherited property name as the plain text it is", () => {
     expect(() => render("constructor")).not.toThrow()
     expect(text(render("constructor"))).toContain("constructor")
-    expect(render("__proto__")).toContain('aria-label="Allergène : __proto__"')
+    expect(render("__proto__")).toContain(
+      'aria-label="Mention du restaurant : __proto__"'
+    )
   })
 
   it("resolves every alias to a key the config actually holds", () => {
@@ -172,10 +204,11 @@ describe("AllergenBadge — an allergen it does not recognise", () => {
     )
   })
 
-  it("announces it as an allergen", () => {
-    expect(render("épices du chef")).toContain(
-      'aria-label="Allergène : épices du chef"'
-    )
+  it("does NOT announce it as an allergen", () => {
+    // The whole point: we do not know what this is, so we claim nothing.
+    const html = render("épices du chef")
+    expect(html).toContain('aria-label="Mention du restaurant : épices du chef"')
+    expect(html).not.toContain("Allergène")
   })
 
   it("escapes it instead of rendering it as markup", () => {
@@ -190,6 +223,37 @@ describe("AllergenBadge — an allergen it does not recognise", () => {
   })
 })
 
+describe("AllergenBadge — what it refuses to claim", () => {
+  // The resolver returning null is only half the guarantee. What a diner
+  // HEARS is the other half, and it is the half that was wrong: the fallback
+  // hardcoded an "Allergène :" prefix, so `sans gluten` was announced
+  // "Allergen: gluten-free" under a warning icon.
+  it.each([
+    "sans gluten",
+    "gluten free",
+    "gluten-free",
+    "0% lactose",
+    "sans arachides",
+    "gluten ✗",
+  ])("never announces %s as an allergen", (negation) => {
+    const html = render(negation)
+    expect(html).not.toContain("Allergène")
+    expect(html).toContain(`Mention du restaurant : ${negation}`)
+    expect(text(html)).toContain(negation)
+  })
+
+  it.each(["halal", "casher", "bio", "fait maison", "surgelé"])(
+    "never announces %s as an allergen either",
+    (marker) => {
+      expect(render(marker)).not.toContain("Allergène")
+    }
+  )
+
+  it("still announces a real allergen as one", () => {
+    expect(render("arachides")).toContain('aria-label="Allergène : Arachides"')
+  })
+})
+
 describe("AllergenBadge — accessible name", () => {
   it("names the badge instead of relying on title alone", () => {
     // `title` on a non-interactive div is not a reliable accessible name and
@@ -197,6 +261,28 @@ describe("AllergenBadge — accessible name", () => {
     const html = render("nuts")
     expect(html).toContain('role="img"')
     expect(html).toContain('aria-label="Allergène : Fruits à coque"')
+  })
+
+  it("carries no title, so the name is not announced twice", () => {
+    // With `aria-label` set, a `title` saying the same thing falls through
+    // accname to the accessible description: "Allergène : Fruits à coque,
+    // image, Allergène : Fruits à coque".
+    expect(render("nuts")).not.toContain("title=")
+  })
+
+  it("shows the name by default, because an icon is not a disclosure", () => {
+    // A carrot for celery and a wine glass for sulphites tell a diner
+    // nothing. Every recognised allergen renders its name unless asked not to.
+    for (const [value, label] of [
+      ["céleri", "Céleri"],
+      ["sulfites", "Sulfites"],
+      ["sésame", "Sésame"],
+      ["mollusques", "Mollusques"],
+    ] as const) {
+      expect(text(renderToStaticMarkup(<AllergenBadge allergen={value} />))).toContain(
+        label
+      )
+    }
   })
 
   it("hides the decorative icon from the accessibility tree", () => {
@@ -256,5 +342,32 @@ describe("AllergenBadge — the fourteen allergens INCO 1169/2011 makes mandator
     const keys = annexII.map(([french]) => normalizeAllergen(french))
     expect(new Set(keys).size).toBe(14)
     expect(keys).not.toContain(null)
+  })
+
+  it("keeps crustaceans and molluscs apart, and declares both for shellfish", () => {
+    // English "shellfish" spans §2 and §14. Narrowing it to crustaceans would
+    // drop a mollusc declaration a diner is allergic to.
+    expect(normalizeAllergen("crustacés")).toBe("crustaceans")
+    expect(normalizeAllergen("mollusques")).toBe("molluscs")
+    const shown = text(render("shellfish", { showLabel: true }))
+    expect(shown).toContain("Crustacés et mollusques")
+  })
+
+  it("does not read gluten into a cereal that need not contain it", () => {
+    // Annex II says "céréales contenant du gluten". Rice and maize are
+    // cereals; a bare "céréales" must not put a Gluten badge on a rice bowl.
+    expect(normalizeAllergen("céréales")).toBeNull()
+    expect(normalizeAllergen("céréales contenant du gluten")).toBe("gluten")
+    for (const grain of ["riz", "maïs", "quinoa", "sarrasin"]) {
+      expect(normalizeAllergen(grain)).toBeNull()
+    }
+  })
+
+  it("carries the Annex II names a French label actually prints", () => {
+    expect(normalizeAllergen("dioxyde de soufre")).toBe("sulphites")
+    expect(normalizeAllergen("E220")).toBe("sulphites")
+    expect(normalizeAllergen("lécithine de soja")).toBe("soy")
+    expect(normalizeAllergen("céleri-rave")).toBe("celery")
+    expect(normalizeAllergen("blanc d'oeuf")).toBe("eggs")
   })
 })
