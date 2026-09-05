@@ -10,6 +10,13 @@
 import { v } from "convex/values"
 import type { OrderStatus } from "@be-in-digital/convex-schema"
 import { refusePlatformStatus } from "./platformWebhook"
+import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
+
+/**
+ * Most lines one order may carry. A large catering basket is dozens; five
+ * hundred is a script building one enormous document a line at a time.
+ */
+const MAX_ORDER_LINES = 100
 import {
   canTransitionOrderStatus,
   isOrderTypeOffered,
@@ -412,6 +419,44 @@ export const create = {
     const store = await ctx.db.get(args.storeId) as StoreDoc | null
     if (!store) throw new Error("Store not found")
 
+    // Public by design — a guest checks out without a session — and until now
+    // nothing bounded it: `customerInfo.name` and the two `notes` fields were
+    // unbounded strings, so one request could store a megabyte. Checked here,
+    // before any of the work below, because rejecting an oversized payload
+    // should cost nothing.
+    assertFieldLengths({
+      name: args.customerInfo.name,
+      email: args.customerInfo.email,
+      phone: args.customerInfo.phone,
+      message: args.notes,
+    })
+
+    // Every other string a caller controls. The four above were capped first
+    // and the rest were not, which left the megabyte they were meant to stop
+    // arriving through `deliveryAddress.street` and `items[].notes` instead —
+    // measured at just over 1 MB per stored row. `items` is itself an
+    // unbounded array, so the cap on it is what stops 500 lines becoming one
+    // enormous document; `productName` is re-read from the catalogue below and
+    // never trusted, but it is bounded here so the argument cannot be the
+    // payload either.
+    if (args.items.length > MAX_ORDER_LINES) {
+      throw new Error(
+        `Une commande ne peut pas dépasser ${MAX_ORDER_LINES} lignes.`
+      )
+    }
+    if (args.deliveryAddress) {
+      assertFieldLengths({
+        street: args.deliveryAddress.street,
+        city: args.deliveryAddress.city,
+        postalCode: args.deliveryAddress.postalCode,
+        country: args.deliveryAddress.country,
+        instructions: args.deliveryAddress.instructions,
+      })
+    }
+    for (const line of args.items) {
+      assertFieldLengths({ name: line.productName, lineNote: line.notes })
+    }
+
     // A draft establishment is not a storefront. Keeping drafts out of
     // `stores.list` is how one stops being *reachable*; this is what stops one
     // being *ordered from* — a tab left open before the owner unpublished it, a
@@ -445,6 +490,17 @@ export const create = {
     if (!isOrderTypeOffered(args.type, resolveStoreServices(store, globalSettings))) {
       throw new Error(`This store does not offer ${args.type} orders`)
     }
+
+    // Only now, past every reason an order can be refused. The window is the
+    // restaurant's, and a slot spent on a request that was never going to
+    // become an order would let a loop of invalid ones exhaust it and refuse
+    // the real customer behind them — turning a limiter meant to protect the
+    // restaurant into a way to close its till. So it is consumed once the
+    // order is admissible and about to do work, and a generous window at that:
+    // prices, options and discounts are already recomputed server-side, so
+    // what is left to bound is database and kitchen-ticket noise, not value.
+    // After the idempotency check too, so a retried checkout spends nothing.
+    await consumeRateLimit(ctx, "orderPerStore", args.storeId)
 
     const taxRatePercent = resolveTaxRatePercent({
       globalTaxRate: globalSettings?.taxRate,

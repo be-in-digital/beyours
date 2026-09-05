@@ -897,6 +897,75 @@ describe("create — promotion handling", () => {
     const usage = inserted.find((entry) => entry.table === "promotionUsages")
     expect(usage?.doc.customerEmail).toBe("nadia@example.com")
   })
+
+  // -------------------------------------------------------------------------
+  // Caller-controlled string bounds (#323, adversarial round)
+  // -------------------------------------------------------------------------
+  //
+  // The first round capped `customerInfo.*` and the top-level `notes` and
+  // stopped there, so the megabyte it set out to refuse simply arrived through
+  // one of the fields it had not reached: a 1 MB `deliveryAddress.street` and a
+  // 1 MB `items[].notes` both landed in a stored row, and `items` itself was an
+  // unbounded array — 500 lines built one 50 MB document.
+
+  const MB = "x".repeat(1_000_000)
+
+  it("refuses a megabyte hidden in the delivery address", async () => {
+    const { ctx, inserted } = createPricingCtx()
+    await expect(
+      create.handler(ctx as never, {
+        ...baseArgs,
+        type: "delivery" as const,
+        deliveryAddress: {
+          street: MB,
+          city: "Paris",
+          postalCode: "75011",
+          country: "France",
+        },
+      } as never)
+    ).rejects.toThrow(/street/)
+    expect(orderFrom(inserted)).toBeUndefined()
+  })
+
+  it("refuses a megabyte hidden in an order line's note", async () => {
+    const { ctx, inserted } = createPricingCtx()
+    await expect(
+      create.handler(ctx as never, {
+        ...baseArgs,
+        items: [{ ...baseArgs.items[0], notes: MB }],
+      } as never)
+    ).rejects.toThrow()
+    expect(orderFrom(inserted)).toBeUndefined()
+  })
+
+  it("refuses an order built from hundreds of lines", async () => {
+    const { ctx, inserted } = createPricingCtx()
+    await expect(
+      create.handler(ctx as never, {
+        ...baseArgs,
+        items: Array.from({ length: 500 }, () => ({ ...baseArgs.items[0] })),
+      } as never)
+    ).rejects.toThrow(/lignes/)
+    expect(orderFrom(inserted)).toBeUndefined()
+  })
+
+  it("still takes an ordinary order with an address and a note", async () => {
+    const { ctx, inserted } = createPricingCtx()
+    await create.handler(ctx as never, {
+      ...baseArgs,
+      type: "delivery" as const,
+      deliveryAddress: {
+        street: "12 rue Oberkampf",
+        city: "Paris",
+        postalCode: "75011",
+        country: "France",
+        instructions: "Code 1234, deuxième étage",
+      },
+      items: [{ ...baseArgs.items[0], notes: "Sans oignons" }],
+    } as never)
+    expect(orderFrom(inserted)).toBeDefined()
+  })
+
 })
 
 // ============================================================================

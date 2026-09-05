@@ -1920,6 +1920,33 @@ reason, which is the honest state rather than a switch that controls nothing.
 production access is granted, **no client can email a real consumer** — order
 confirmations included.
 
+**Status, 4 Sep 2026 — the repository half is closed, this card is not.** `ses:check` is
+wired in both apps and covered by `apps/*/scripts/check-ses-status.test.mjs`, and the
+procedure is written step by step in `tasks/client-aws-onboarding-runbook.md`.
+
+**The card's premise has changed, and the sentence above is no longer true as written.**
+It assumes one shared account, where a single unlock covers the fleet. Since #197 every
+client gets its own AWS account, and AWS grants production access **per account** — so
+this is one request per client, each with its own review, filed on day one of onboarding
+rather than once for everyone. `DOMAIN=<client-domain> pnpm ses:check` answers where any
+one account stands without opening the console: exit `0` means that account can email
+real customers, `1` names what blocks it, `2` means it could not tell — and `2` is never
+to be read as ready.
+
+For `beyours.fr` itself there is nothing left to request. The BeYours account's request
+was **refused** (`apps/site/MISE_EN_PROD.md:120`) and the answer was Resend, which
+`apps/site/convex/email/providers.ts` implements behind `EMAIL_PROVIDER=resend`. What
+remains there is configuration, not a request.
+
+Unlike LAUNCH-09, this card has **no wizard**: the runbook is the artefact, and
+`scripts/wizards/` holds no SES onboarding script. Naming one would send an operator to a
+path that does not exist.
+
+**Open exposure, filed as #212.** A client whose request AWS refuses has nowhere to go:
+`EMAIL_PROVIDER` exists only in `apps/site`, while the engine builds an `SESv2Client`
+inline in every sending path. Since the refusal above already happened once, this is worth
+deciding before the first client files a request rather than after one is refused.
+
 ## LAUNCH-07 · Check the Convex spending cap
 A cap set too low disables **every** project on the team, production included. Account
 recovery runs through an owner who is not `developers@beyours.fr`.

@@ -369,7 +369,13 @@ longer sold as automatic.
 ````
 
 ## Batch 10 — Emailing and CRM
-**3/8 done · 2 partial · 3 open.** The heaviest batch; scheduled sending now works, the double opt-in does not.
+**7/8 done · 1 partial (console-side) · nothing open.** Was: the heaviest batch, and the
+double opt-in was dead on arrival — no code anywhere built the `email/confirm` URL, so
+every storefront signup was unreachable. The prompt below is kept for the record; what is
+left is not repository work. AWS grants SES production access **per account**, and every
+client has its own since #197, so it is one console request per client rather than a
+single fleet-wide unlock — filed on day one of onboarding, procedure in
+`tasks/client-aws-onboarding-runbook.md`.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
@@ -1629,7 +1635,33 @@ schedule — each proven by a test.
 ````
 
 ## NEW-N — Anyone can drain a restaurant's entire prize budget in one loop
-**1 blocker.** The rate limiter exists and is wired to two mutations out of everything public.
+**Bounded, not closed — see the residual below.** The prompt is kept for the
+record. `play`, `recordScan`, `ensureReferralCode`, `claim` and `orders.create`
+now consume the limiter, two of `play`'s windows keyed on rows the server
+resolved rather than on anything the caller sends. Measured against the real
+backend: 40 plays rotating the fingerprint, 10 admitted, 30 refused, from 40/0.
+
+**The residual, because the "Done when" below is not fully met.** The stock
+still empties. The window bounds the RATE, not the budget: against a five-prize
+stock the first ten plays take it, since nothing in a Convex mutation
+distinguishes one person sending ten fingerprints from ten diners, and lowering
+the window far enough to protect the budget would refuse real players first.
+`prize-drain.test.ts` pins that deliberately. Protecting the budget needs
+either a control that binds a play to a person — a sign-in, or an
+anti-automation check at the edge — or an owner-facing cap on prize issuance,
+which is product surface and is nobody's card yet.
+
+**Two claims in the prompt below are wrong and are left in place as written.**
+There is no per-IP limiting to add: a Convex mutation sees `auth`, `db`,
+`scheduler` and `storage`, and #261 already established that adding an
+`httpAction` to recover the address would grow the public surface instead. And
+`completedActions` was never a weak gate — `play` writes it and never reads it
+to permit a draw, so the social actions the whole gamification pitch rests on
+were enforced only by the client UI. It is now filtered to real active
+`requiredActions` and capped, but no gate was added: the friend-welcome, the
+referrer bonus and a store with no actions configured all reach the game with
+nothing done, so a coverage check would refuse real players — and a forgeable
+gate is worse than none, because it invites a trust it cannot carry.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,

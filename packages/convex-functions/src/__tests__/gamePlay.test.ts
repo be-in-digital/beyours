@@ -7,6 +7,7 @@ import {
   remainingStock,
   cooldownMsForGame,
   play,
+  recordScan,
   claim,
   redeemByCode,
   getSession,
@@ -268,7 +269,13 @@ describe("play", () => {
     await expect(play.handler(ctx, baseArgs)).rejects.toThrow(/COOLDOWN_ACTIVE:\d+/)
   })
 
-  it("lets another device play despite an existing play", async () => {
+  // Renamed and re-scoped. This case used to be called "lets another device
+  // play despite an existing play" and asserted exactly the defect #323 is
+  // about: that inventing a new `fingerprint` buys another turn. It is still
+  // true for ONE other device, and must stay true — two diners at a table both
+  // get to play — but it is no longer the whole story, and the case below it
+  // pins the part that stops a loop.
+  it("lets a second device play despite an existing play", async () => {
     const ctx = playFixtures({
       plays: [
         {
@@ -376,6 +383,163 @@ function claimFixtures(playOverrides: Partial<MockDoc> = {}) {
     prizeRedemptions: [],
   })
 }
+
+describe("anonymous abuse bounds (#323)", () => {
+  const baseArgs = {
+    code: "TABLE1",
+    gameId: "games:1",
+    fingerprint: "device-1",
+    completedActions: [],
+  }
+
+  it("refuses a loop that rotates the fingerprint, and stops at the per-QR window", async () => {
+    const ctx = playFixtures({
+      prizes: [
+        {
+          _id: "prizes:1",
+          storeId: "stores:1",
+          name: "Pizza offerte",
+          type: "free_product",
+          validityDays: 7,
+          isActive: true,
+          remainingCount: 5,
+        },
+      ],
+    })
+
+    let refused = 0
+    for (let i = 0; i < 40; i++) {
+      try {
+        await play.handler(ctx, { ...baseArgs, fingerprint: `drain-${i}` })
+      } catch {
+        refused++
+      }
+    }
+
+    // 10 admitted (RATE_LIMITS.gamePlayPerQr), 30 refused. Before #323 all 40
+    // were admitted: the cooldown is keyed on a caller-supplied string, so
+    // rotating it defeated it entirely.
+    expect(refused).toBe(30)
+    expect(ctx.store.gamePlays).toHaveLength(10)
+  })
+
+  it("bounds the loop on a key no argument can rotate", async () => {
+    const ctx = playFixtures()
+    for (let i = 0; i < 10; i++) {
+      await play.handler(ctx, { ...baseArgs, fingerprint: `f-${i}` })
+    }
+    // Every argument the caller controls is different here, and it changes
+    // nothing: the key is the QR document the server resolved.
+    await expect(play.handler(ctx, { ...baseArgs, fingerprint: "brand-new" })).rejects.toThrow(
+      /Trop de requetes|Trop de requêtes/
+    )
+  })
+
+  it("does NOT restore the cooldown, and pins that deliberately", async () => {
+    const ctx = playFixtures()
+    await play.handler(ctx, { ...baseArgs, fingerprint: "device-1" })
+    await expect(play.handler(ctx, { ...baseArgs, fingerprint: "device-1" })).rejects.toThrow(
+      /COOLDOWN_ACTIVE/
+    )
+    // A new string, still inside the 24h cooldown: admitted. This is the
+    // residual exposure #323 leaves open. A fingerprint is not an identity and
+    // no limit makes it one. If this case ever starts failing, something has
+    // bound a play to a person — the fix the limiter could not be.
+    const r = await play.handler(ctx, { ...baseArgs, fingerprint: "another-string" })
+    expect(r.didWin).toBe(true)
+  })
+
+  it("keeps only real action ids, and caps how many it will store", async () => {
+    const ctx = playFixtures()
+    ctx.store.requiredActions = [
+      {
+        _id: "requiredActions:1",
+        storeId: "stores:1",
+        type: "google_review",
+        name: "Avis Google",
+        isRequired: true,
+        sortOrder: 0,
+        isActive: true,
+      },
+    ]
+
+    const result = await play.handler(ctx, {
+      ...baseArgs,
+      completedActions: [
+        "requiredActions:1",
+        "requiredActions:1",
+        "requiredActions:999",
+        "x".repeat(500),
+      ],
+    })
+
+    expect(result.didWin).toBe(true)
+    // Persisted verbatim before #323: an unbounded array of unbounded strings.
+    expect(ctx.store.gamePlays[0]?.completedActions).toEqual(["requiredActions:1"])
+  })
+
+  it("drops every claimed action when the store has none configured", async () => {
+    const ctx = playFixtures()
+    await play.handler(ctx, {
+      ...baseArgs,
+      completedActions: ["requiredActions:1", "requiredActions:2"],
+    })
+    expect(ctx.store.gamePlays[0]?.completedActions).toEqual([])
+  })
+
+  it("bounds recordScan, which had no guard of any kind", async () => {
+    const ctx = playFixtures()
+    let refused = 0
+    for (let i = 0; i < 70; i++) {
+      try {
+        await recordScan.handler(ctx, { code: "TABLE1" })
+      } catch {
+        refused++
+      }
+    }
+    // 60 admitted (RATE_LIMITS.gameScanPerQr). Before, one caller could drive a
+    // store's scan counter to any number it liked.
+    expect(refused).toBe(10)
+    expect(ctx.store.gameQRCodes[0]?.scannedCount).toBe(60)
+  })
+
+  it("bounds claim, which mails a prize code to an address the caller chose", async () => {
+    const ctx = playFixtures()
+    const plays = []
+    for (let i = 0; i < 5; i++) {
+      plays.push(await play.handler(ctx, { ...baseArgs, fingerprint: `winner-${i}` }))
+    }
+
+    let refused = 0
+    for (const p of plays) {
+      try {
+        await claim.handler(ctx, {
+          playId: p.playId,
+          firstName: "Marie",
+          lastName: "Dupont",
+          email: "marie@example.fr",
+        })
+      } catch {
+        refused++
+      }
+    }
+    // 3 admitted (RATE_LIMITS.gameClaimPerEmail), matching the contact form.
+    expect(refused).toBe(2)
+  })
+
+  it("refuses an oversized name on a claim rather than storing it", async () => {
+    const ctx = playFixtures()
+    const p = await play.handler(ctx, baseArgs)
+    await expect(
+      claim.handler(ctx, {
+        playId: p.playId,
+        firstName: "x".repeat(200),
+        lastName: "y".repeat(200),
+        email: "marie@example.fr",
+      })
+    ).rejects.toThrow()
+  })
+})
 
 describe("claim", () => {
   const args = {
