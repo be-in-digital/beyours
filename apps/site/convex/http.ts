@@ -1,8 +1,8 @@
 import { httpRouter } from "convex/server";
 import { v } from "convex/values";
-import { httpAction, internalMutation } from "./_generated/server";
+import { httpAction, internalMutation, type ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { recordSaActivity } from "./saActivity";
 import {
@@ -10,6 +10,19 @@ import {
   resolveLicenseEnforcement,
   resolveUnknownKey,
 } from "./maintenance";
+import { isSameMailbox } from "./emailIdentity";
+/* Type-only: erased at compile time, so the SDK never enters this module's
+   bundle. `http.ts` runs in the default Convex runtime, not "use node". */
+import type Stripe from "stripe";
+import {
+  invoicePlanHint,
+  invoiceSubscriptionId,
+  legacyShapeWarning,
+  optionalText,
+  refId,
+  subscriptionPeriod,
+  toMillis,
+} from "./stripeWebhookFacts";
 
 const http = httpRouter();
 
@@ -25,22 +38,84 @@ auth.addHttpRoutes(http);
    5. customer.subscription.deleted
    ═══════════════════════════════════════════════ */
 
+/** How far a delivery's timestamp may be from now. Stripe's own default. */
+const SIGNATURE_TOLERANCE_SECONDS = 300;
+
+/**
+ * How many `v1=` signatures we are willing to check.
+ *
+ * Stripe sends one per active signing secret — two during a roll, briefly more
+ * if several are live. The HMAC is computed once whatever the count, so this
+ * only stops an unbounded list of comparisons being posted at us.
+ */
+const MAX_SIGNATURE_CANDIDATES = 8;
+
+/**
+ * Compare two hex digests without returning early on the first difference.
+ *
+ * The lengths are compared first, which does leak whether a candidate is
+ * digest-shaped at all — unavoidable, and what every implementation does. What
+ * this avoids is a comparison whose duration grows with the number of leading
+ * bytes an attacker got right, which is the part that can be measured.
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let i = 0; i < a.length; i++) {
+    difference |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return difference === 0;
+}
+
+/**
+ * Whether this delivery really came from Stripe.
+ *
+ * Three things this gets right that the previous version did not, each
+ * measured against the real route:
+ *
+ * - **Every `v1=`, not the first.** The header carries ONE SIGNATURE PER
+ *   ACTIVE SIGNING SECRET, so during a secret roll — the routine operation
+ *   Stripe itself recommends — a delivery arrives signed with both the old and
+ *   the new one, in no promised order. Reading only the first meant a rotation
+ *   silently dropped every delivery whose new-secret signature happened to
+ *   come second: `valid signature SECOND -> 400`. That is a self-inflicted
+ *   outage on the money path, triggered by good security hygiene.
+ * - **A timestamp that is actually a number.** `parseInt("abc")` is `NaN`, and
+ *   `NaN > 300` is `false`, so a non-numeric `t` sailed through the replay
+ *   window rather than failing it: `t=abc -> 200`. The control was one
+ *   malformed header away from not existing. (An outsider still needs the
+ *   secret to forge the HMAC over `"abc.<body>"`, so this degraded the
+ *   anti-replay guarantee rather than opening the door outright.)
+ * - **A comparison that does not leak.** `===` on a digest returns as soon as
+ *   two characters differ.
+ */
 async function verifyStripeSignature(
   body: string,
   signature: string,
   secret: string,
 ): Promise<boolean> {
-  const parts = signature.split(",");
-  const ts = parts.find((p) => p.startsWith("t="))?.slice(2);
-  const sig = parts.find((p) => p.startsWith("v1="))?.slice(3);
+  const parts = signature.split(",").map((part) => part.trim());
+  const ts = parts.find((part) => part.startsWith("t="))?.slice(2);
+  const candidates = parts
+    .filter((part) => part.startsWith("v1="))
+    .map((part) => part.slice(3))
+    .slice(0, MAX_SIGNATURE_CANDIDATES);
 
-  if (!ts || !sig) return false;
+  if (!ts || candidates.length === 0) return false;
 
-  // Make sure the timestamp is not too old (5 minutes)
+  /* `Number`, not `parseInt`: `parseInt("12abc")` is 12, which would accept a
+     malformed timestamp as a good one. `Number("12abc")` is NaN, and
+     `Number.isFinite` then refuses it — along with the `NaN` and `Infinity`
+     that made the window unenforceable. */
+  const issuedAt = Number(ts);
+  if (!Number.isFinite(issuedAt)) return false;
+
   const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - parseInt(ts)) > 300) return false;
+  if (Math.abs(now - issuedAt) > SIGNATURE_TOLERANCE_SECONDS) return false;
 
   const encoder = new TextEncoder();
+  /* The raw `t=` string as Stripe signed it, never the parsed number: they
+     differ for any value that round-trips lossily. */
   const payload = `${ts}.${body}`;
   const key = await crypto.subtle.importKey(
     "raw",
@@ -58,20 +133,27 @@ async function verifyStripeSignature(
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-  return expectedSig === sig;
+  /* Every candidate is checked, and the loop does not break on a match: which
+     signature matched is not something the response should be able to tell
+     apart by timing either. */
+  let matched = false;
+  for (const candidate of candidates) {
+    if (constantTimeEquals(expectedSig, candidate)) matched = true;
+  }
+  return matched;
 }
 
-// Loose type for Stripe events
-interface StripeEvent {
-  id: string;
-  type: string;
-  /** Present only on Connect-scoped events: the connected account that
-      triggered it. Absent on our own account's events. */
-  account?: string;
-  data: {
-    object: Record<string, unknown>;
-  };
-}
+/* ── What a handler may do ──
+   These parameters used to be typed `{ runQuery: typeof Function.prototype; … }`.
+   `Function.prototype` is `Function`, so every runQuery/runMutation/scheduler
+   call was unchecked in BOTH directions — the value read back AND the payload
+   written. That is half of why a webhook could read three fields that no
+   longer exist and still type-check. The generated ctx is the real thing;
+   the Pick is kept because it documents what each handler touches. */
+type WebhookCtx = Pick<
+  ActionCtx,
+  "runQuery" | "runMutation" | "runAction" | "scheduler"
+>;
 
 /**
  * Stripe splits webhooks into two scopes, and an endpoint belongs to exactly
@@ -105,7 +187,17 @@ const stripeWebhookHandler = (secretEnvVar: string) =>
       return new Response("Invalid signature", { status: 400 });
     }
 
-    const event: StripeEvent = JSON.parse(body);
+    /* `Stripe.Event` is the SDK's own discriminated union on `type`, so each
+       `case` below narrows `data.object` to the right object and a field that
+       moved between API versions is a compile error rather than `undefined` at
+       runtime.
+
+       This asserts the shape of what STRIPE SENT, which is rendered at the API
+       version set on the webhook endpoint in the dashboard — independent of
+       the SDK's pin, and not something this code can verify. `event.api_version`
+       is the ground truth; where the two can disagree, ./stripeWebhookFacts
+       reads both shapes and says so loudly. */
+    const event = JSON.parse(body) as Stripe.Event;
 
     // Idempotency — skip if already processed. If it exists but is not processed, retry.
     const existing = await ctx.runQuery(
@@ -126,6 +218,21 @@ const stripeWebhookHandler = (secretEnvVar: string) =>
       switch (event.type) {
         case "checkout.session.completed":
           await handleCheckoutCompleted(ctx, event);
+          break;
+        /* A delayed payment method (Klarna, Alma) completes the session BEFORE
+           the money arrives, then settles or fails asynchronously — sometimes
+           days later. Neither of these was handled, so a Klarna sale that
+           later succeeded was never settled at all, and one that failed left
+           an order marked « paid ». Both were required by
+           tasks/web/referral-program-design.md. */
+        case "checkout.session.async_payment_succeeded":
+          await handleCheckoutCompleted(ctx, event);
+          break;
+        case "checkout.session.async_payment_failed":
+          await handleCheckoutFailed(ctx, event);
+          break;
+        case "checkout.session.expired":
+          await handleCheckoutExpired(ctx, event);
           break;
         case "invoice.payment_succeeded":
           await handleInvoiceSucceeded(ctx, event);
@@ -189,16 +296,53 @@ http.route({
 
 /* ── 1. checkout.session.completed ── */
 
+/**
+ * A session settles an order only when Stripe says the money arrived.
+ *
+ * Serves `checkout.session.completed` AND
+ * `checkout.session.async_payment_succeeded`: for an immediate method the
+ * first carries `payment_status: "paid"` and settles; for a delayed one
+ * (Klarna, Alma) the first carries `"unpaid"` and settles nothing, and the
+ * second arrives when the money actually lands.
+ */
 async function handleCheckoutCompleted(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; runAction: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
-  event: StripeEvent,
-) {
+  ctx: WebhookCtx,
+  event:
+    | Stripe.CheckoutSessionCompletedEvent
+    | Stripe.CheckoutSessionAsyncPaymentSucceededEvent,
+): Promise<void> {
   const session = event.data.object;
-  const sessionId = session.id as string;
-  const customerId = session.customer as string | undefined;
-  const customerEmail = (session.customer_details as Record<string, unknown>)?.email as string | undefined
-    ?? session.customer_email as string | undefined;
-  const metadata = session.metadata as Record<string, string> | undefined;
+  const sessionId = session.id;
+
+  /* ── The money question, asked before anything is settled ──
+     `payment_status` was read NOWHERE. A session completed with
+     « unpaid » — which is exactly what Klarna and Alma produce, and both are
+     offered at checkout — marked the order paid, sent the confirmation, wrote
+     a payment row, created the maintenance subscription and consumed a
+     founders slot. Nothing later corrected it: there was no handler for the
+     async events that say how it ended.
+
+     `no_payment_required` is a legitimately settled session (a 100 % coupon),
+     so it settles like « paid ». Anything else waits. */
+  if (
+    session.payment_status !== "paid" &&
+    session.payment_status !== "no_payment_required"
+  ) {
+    console.log(
+      `[STRIPE] Session ${sessionId} complétée mais payment_status=` +
+        `« ${session.payment_status} » — commande laissée en attente ` +
+        `jusqu'à checkout.session.async_payment_succeeded.`,
+    );
+    return;
+  }
+  /* `customer` is `string | Customer | DeletedCustomer | null`: narrowed, not
+     cast, because an expanded object would otherwise be stringified into the
+     id column. Same for `payment_intent` below. */
+  const customerId = refId(session.customer);
+  const customerEmail =
+    optionalText(session.customer_details?.email) ??
+    optionalText(session.customer_email);
+  const metadata = session.metadata ?? undefined;
 
   // Look the order up
   const order = await ctx.runQuery(
@@ -221,8 +365,8 @@ async function handleCheckoutCompleted(
   // Payment method — payment_method_types holds the allowed methods, not the one used.
   // Either use payment_method_collection or infer it: with a single allowed method, that is the one.
   // Otherwise, check whether Stripe reports the method on the charges (not available on the session alone).
-  const paymentMethodTypes = session.payment_method_types as string[] | undefined;
-  let pmt = "card";
+  const paymentMethodTypes = session.payment_method_types;
+  let pmt: string = "card";
   if (paymentMethodTypes && paymentMethodTypes.length === 1) {
     pmt = paymentMethodTypes[0]!;
   }
@@ -249,7 +393,7 @@ async function handleCheckoutCompleted(
       restaurantName: order.restaurantName,
       plan: order.plan,
       orderType: order.orderType,
-      amountCents: (session.amount_total as number) ?? order.amountCents,
+      amountCents: session.amount_total ?? order.amountCents,
       paymentMethod,
       isFounders: order.isFounders ?? false,
     });
@@ -258,7 +402,7 @@ async function handleCheckoutCompleted(
   // Create the payment — idempotent through the payment_intent (an existence
   // guard independent of the status: it still closes the payment row when a
   // replay follows a partial failure of the first pass).
-  const paymentIntent = session.payment_intent as string | undefined;
+  const paymentIntent = refId(session.payment_intent);
   if (paymentIntent) {
     const existingPayment = await ctx.runQuery(
       internal.payments.getByStripePaymentIntentId,
@@ -269,7 +413,7 @@ async function handleCheckoutCompleted(
         orderId: order._id,
         stripePaymentIntentId: paymentIntent,
         stripeSessionId: sessionId,
-        amountCents: (session.amount_total as number) ?? 0,
+        amountCents: session.amount_total ?? 0,
         paymentMethod: pmt,
       });
     }
@@ -328,14 +472,36 @@ async function handleCheckoutCompleted(
 
   // Create the referral when applicable (idempotent on orderId)
   if (metadata?.referralCodeId && metadata?.referrerId) {
+    /* ── The referrer must own the code ──
+       Both values are written by `createCheckoutSession`, which now derives
+       them from the code the customer typed — so they agree by construction.
+       This re-checks it because a Stripe session stays payable for up to 24 h:
+       any session opened before that action stopped accepting a caller-chosen
+       `referrerId` still carries one, and paying it out is the commission half
+       of the same forgery. Cheap, and it fails closed. */
+    const codeOwner = await ctx.runQuery(internal.referralCodes.ownerOf, {
+      referralCodeId: metadata.referralCodeId as Id<"referralCodes">,
+    });
+    if (codeOwner === null || codeOwner !== metadata.referrerId) {
+      console.error(
+        `[REFERRAL] Session ${sessionId} : le code ${metadata.referralCodeId} ` +
+          `n'appartient pas à l'apporteur ${metadata.referrerId} ` +
+          `(propriétaire réel : ${codeOwner ?? "aucun"}) — commission refusée.`,
+      );
+      return;
+    }
+
     // Server-side self-referral guard (an invariant, independent of the front end).
     const referrerEmail = await ctx.runQuery(
       internal.affiliateUsers.getEmailById,
       { affiliateUserId: metadata.referrerId as Id<"affiliateUsers"> },
     );
-    const buyerEmail = (customerEmail ?? order.customerEmail).toLowerCase();
+    const buyerEmail = customerEmail ?? order.customerEmail;
 
-    if (referrerEmail && referrerEmail.toLowerCase() === buyerEmail) {
+    /* On the mailbox, not the string: `apporteur+facture@` is the same inbox
+       as `apporteur@`, and comparing them raw paid the commission anyway.
+       See ./emailIdentity. */
+    if (isSameMailbox(referrerEmail, buyerEmail)) {
       console.log(
         `[REFERRAL] Auto-parrainage détecté au webhook (${buyerEmail}) — referral ignoré`,
       );
@@ -374,30 +540,137 @@ async function handleCheckoutCompleted(
   }
 }
 
+/* ── 1b. checkout.session.async_payment_failed / .expired ── */
+
+/**
+ * The order behind a session, or `null` with the reason logged.
+ *
+ * Shared by the two terminal handlers below, which both only ever need to
+ * move a status.
+ */
+async function orderForSession(
+  ctx: Pick<WebhookCtx, "runQuery">,
+  sessionId: string,
+  eventType: string,
+): Promise<Doc<"orders"> | null> {
+  const order = await ctx.runQuery(internal.orders.getByStripeSessionId, {
+    stripeSessionId: sessionId,
+  });
+  if (!order) {
+    console.error(`${eventType}: aucune commande pour la session ${sessionId}`);
+    return null;
+  }
+  return order;
+}
+
+/**
+ * A delayed payment bounced. The order never was paid, and must not look it.
+ *
+ * Only ever moves a PENDING order: a session that failed after the order was
+ * settled by another event is not this handler's to undo — a refund or a
+ * dispute is (see handleChargeReversal), and those carry the money detail this
+ * one does not have.
+ */
+async function handleCheckoutFailed(
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation">,
+  event: Stripe.CheckoutSessionAsyncPaymentFailedEvent,
+): Promise<void> {
+  const session = event.data.object;
+  const order = await orderForSession(ctx, session.id, event.type);
+  if (!order) return;
+
+  if (order.status !== "pending") {
+    console.log(
+      `[STRIPE] Paiement différé échoué sur la session ${session.id} mais la ` +
+        `commande ${order._id} est « ${order.status} » — laissée telle quelle.`,
+    );
+    return;
+  }
+
+  await ctx.runMutation(internal.orders.updateStatus, {
+    orderId: order._id,
+    status: "failed" as const,
+  });
+  console.log(
+    `[STRIPE] Paiement différé échoué : commande ${order._id} marquée « failed ».`,
+  );
+}
+
+/**
+ * The customer never paid and the session can no longer be paid.
+ *
+ * Cancelling the order is what releases the founders slot it was holding:
+ * `countFoundersSold` counts pending orders, so without this the seat stayed
+ * held for the full FOUNDERS_HOLD_MS window after the session had already
+ * become unpayable.
+ */
+async function handleCheckoutExpired(
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation">,
+  event: Stripe.CheckoutSessionExpiredEvent,
+): Promise<void> {
+  const session = event.data.object;
+  const order = await orderForSession(ctx, session.id, event.type);
+  if (!order) return;
+
+  if (order.status !== "pending") {
+    // A session can expire after being paid through another route; that order
+    // is not ours to cancel.
+    return;
+  }
+
+  await ctx.runMutation(internal.orders.updateStatus, {
+    orderId: order._id,
+    status: "cancelled" as const,
+  });
+  console.log(
+    `[STRIPE] Session ${session.id} expirée : commande ${order._id} annulée ` +
+      `(place fondateurs libérée le cas échéant).`,
+  );
+}
+
 /* ── 2. invoice.payment_succeeded ── */
 
 async function handleInvoiceSucceeded(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
-  event: StripeEvent,
-) {
+  ctx: WebhookCtx,
+  event: Stripe.InvoicePaymentSucceededEvent,
+): Promise<void> {
   const invoice = event.data.object;
-  const invoiceId = invoice.id as string;
-  const invoiceNumber = invoice.number as string | undefined;
-  const subscriptionId = invoice.subscription as string | undefined;
-  const customerId = invoice.customer as string;
-  const customerEmail = invoice.customer_email as string;
-  const amountPaid = invoice.amount_paid as number;
-  const invoicePdf = invoice.invoice_pdf as string | undefined;
-  const hostedUrl = invoice.hosted_invoice_url as string | undefined;
-  const periodStart = invoice.period_start as number | undefined;
-  const periodEnd = invoice.period_end as number | undefined;
+  const invoiceId = invoice.id;
+  const invoiceNumber = optionalText(invoice.number);
+  const subscriptionRef = invoiceSubscriptionId(invoice);
+  if (subscriptionRef.legacy) {
+    console.error(
+      legacyShapeWarning(`Facture ${invoiceId}`, event.api_version),
+    );
+  }
+  const subscriptionId = subscriptionRef.id;
+  const customerId = refId(invoice.customer);
+  const customerEmail = optionalText(invoice.customer_email);
+  const amountPaid = invoice.amount_paid;
+  const invoicePdf = optionalText(invoice.invoice_pdf);
+  const hostedUrl = optionalText(invoice.hosted_invoice_url);
+  const periodStart = invoice.period_start;
+  const periodEnd = invoice.period_end;
   // "subscription_create" = the 1st invoice (already covered by the order
   // confirmation); "subscription_cycle" = a real renewal → dedicated receipt.
-  const billingReason = invoice.billing_reason as string | undefined;
+  const billingReason = invoice.billing_reason;
 
-  // Find the Convex subscription (when one is linked)
+  /* ── Which plan this renewal is for ──
+     The invoice's own metadata wins, and the Convex row is the fallback.
+     That order is deliberate and was arrived at the hard way: Stripe snapshots
+     the subscription metadata onto the invoice at finalization, so it says
+     what THIS invoice billed, while `subscriptions.plan` is written once at
+     creation and never patched again — nothing in this codebase updates it. A
+     client who upgrades essentielle → premium at Stripe therefore has a
+     correct invoice and a stale row, and reading the row first booked their
+     2 400 € renewal as an Essentielle one. That is the very symptom the
+     subscription-id fix was for, reached by another route, and it was silent
+     because it never touched the default.
+
+     The `essentielle` literal is only reached when neither source knows, and
+     it is loud when it is. */
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
-  let plan: "essentielle" | "premium" = "essentielle";
+  let rowPlan: "essentielle" | "premium" | undefined;
 
   if (subscriptionId) {
     const sub = await ctx.runQuery(
@@ -406,8 +679,32 @@ async function handleInvoiceSucceeded(
     );
     if (sub) {
       convexSubscriptionId = sub._id;
-      plan = sub.plan;
+      rowPlan = sub.plan;
     }
+  }
+
+  const invoicePlan = invoicePlanHint(invoice);
+  let plan = invoicePlan ?? rowPlan;
+
+  if (invoicePlan && rowPlan && invoicePlan !== rowPlan) {
+    /* Booked on the invoice, but the divergence is worth a look: the stored
+       subscription is out of date, so every OTHER read of it — the ops
+       console, revenue reporting — is still answering with the old plan. */
+    console.error(
+      `[STRIPE] Facture ${invoiceId} : la facture dit « ${invoicePlan} » et ` +
+        `l'abonnement en base dit « ${rowPlan} ». Facture enregistrée sur ` +
+        `« ${invoicePlan} » ; l'abonnement ${subscriptionId} est à corriger.`,
+    );
+  }
+
+  if (plan === undefined) {
+    console.error(
+      `[STRIPE] Facture ${invoiceId} sans abonnement identifiable ` +
+        `(subscription=${subscriptionId ?? "absent"}) : plan inconnu, ` +
+        `enregistrée en « essentielle » par défaut — à vérifier avant tout ` +
+        `envoi de reçu ou calcul de revenu.`,
+    );
+    plan = "essentielle";
   }
 
   // Check whether the invoice already exists
@@ -430,15 +727,21 @@ async function handleInvoiceSucceeded(
       subscriptionId: convexSubscriptionId,
       stripeInvoiceId: invoiceId,
       invoiceNumber,
-      stripeCustomerId: customerId,
+      /* Both fall back to "" rather than being passed through as undefined:
+         Stripe returns `null` where these validators want the key absent, and
+         `v.string()` rejects both — which made the mutation throw, the handler
+         answer 500, and Stripe retry the event forever. Neither column is an
+         index; an invoice with a blank customer handle is recoverable, a
+         renewal never recorded is not. */
+      stripeCustomerId: customerId ?? "",
       customerEmail: customerEmail ?? "",
       plan,
       amountCents: amountPaid ?? 0,
       status: "paid" as const,
       invoicePdfUrl: invoicePdf,
       hostedInvoiceUrl: hostedUrl,
-      periodStart: periodStart ? periodStart * 1000 : undefined,
-      periodEnd: periodEnd ? periodEnd * 1000 : undefined,
+      periodStart: toMillis(periodStart),
+      periodEnd: toMillis(periodEnd),
       paidAt: Date.now(),
     });
   }
@@ -451,8 +754,8 @@ async function handleInvoiceSucceeded(
       plan,
       amountCents: amountPaid ?? 0,
       invoiceUrl: hostedUrl ?? invoicePdf,
-      periodStartMs: periodStart ? periodStart * 1000 : undefined,
-      periodEndMs: periodEnd ? periodEnd * 1000 : undefined,
+      periodStartMs: toMillis(periodStart),
+      periodEndMs: toMillis(periodEnd),
     });
   }
 }
@@ -460,21 +763,29 @@ async function handleInvoiceSucceeded(
 /* ── 3. invoice.payment_failed ── */
 
 async function handleInvoiceFailed(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype; scheduler: { runAfter: typeof Function.prototype } },
-  event: StripeEvent,
-) {
+  ctx: WebhookCtx,
+  event: Stripe.InvoicePaymentFailedEvent,
+): Promise<void> {
   const invoice = event.data.object;
-  const invoiceId = invoice.id as string;
-  const subscriptionId = invoice.subscription as string | undefined;
-  const customerId = invoice.customer as string;
-  const customerEmail = invoice.customer_email as string;
-  const amountDue = invoice.amount_due as number;
-  const hostedUrl = invoice.hosted_invoice_url as string | undefined;
-  const periodStart = invoice.period_start as number | undefined;
-  const periodEnd = invoice.period_end as number | undefined;
+  const invoiceId = invoice.id;
+  const subscriptionRef = invoiceSubscriptionId(invoice);
+  if (subscriptionRef.legacy) {
+    console.error(
+      legacyShapeWarning(`Facture ${invoiceId}`, event.api_version),
+    );
+  }
+  const subscriptionId = subscriptionRef.id;
+  const customerId = refId(invoice.customer);
+  const customerEmail = optionalText(invoice.customer_email);
+  const amountDue = invoice.amount_due;
+  const hostedUrl = optionalText(invoice.hosted_invoice_url);
+  const periodStart = invoice.period_start;
+  const periodEnd = invoice.period_end;
 
+  // Same resolution order as the succeeded path — a dunning email naming the
+  // wrong plan is the same mis-statement as a receipt naming it.
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
-  let plan: "essentielle" | "premium" = "essentielle";
+  let rowPlan: "essentielle" | "premium" | undefined;
 
   if (subscriptionId) {
     const sub = await ctx.runQuery(
@@ -483,9 +794,10 @@ async function handleInvoiceFailed(
     );
     if (sub) {
       convexSubscriptionId = sub._id;
-      plan = sub.plan;
+      rowPlan = sub.plan;
     }
   }
+  const plan = invoicePlanHint(invoice) ?? rowPlan ?? "essentielle";
 
   const existingInvoice = await ctx.runQuery(
     internal.invoices.getByStripeInvoiceId,
@@ -501,13 +813,19 @@ async function handleInvoiceFailed(
     await ctx.runMutation(internal.invoices.create, {
       subscriptionId: convexSubscriptionId,
       stripeInvoiceId: invoiceId,
-      stripeCustomerId: customerId,
+      /* Both fall back to "" rather than being passed through as undefined:
+         Stripe returns `null` where these validators want the key absent, and
+         `v.string()` rejects both — which made the mutation throw, the handler
+         answer 500, and Stripe retry the event forever. Neither column is an
+         index; an invoice with a blank customer handle is recoverable, a
+         renewal never recorded is not. */
+      stripeCustomerId: customerId ?? "",
       customerEmail: customerEmail ?? "",
       plan,
       amountCents: amountDue ?? 0,
       status: "open" as const,
-      periodStart: periodStart ? periodStart * 1000 : undefined,
-      periodEnd: periodEnd ? periodEnd * 1000 : undefined,
+      periodStart: toMillis(periodStart),
+      periodEnd: toMillis(periodEnd),
     });
   }
 
@@ -526,24 +844,40 @@ async function handleInvoiceFailed(
 /* ── 4. customer.subscription.updated ── */
 
 async function handleSubscriptionUpdated(
-  ctx: { runMutation: typeof Function.prototype },
-  event: StripeEvent,
-) {
+  ctx: Pick<WebhookCtx, "runMutation">,
+  event: Stripe.CustomerSubscriptionUpdatedEvent,
+): Promise<void> {
   const sub = event.data.object;
-  const subscriptionId = sub.id as string;
-  const status = sub.status as string;
-  const currentPeriodStart = sub.current_period_start as number | undefined;
-  const currentPeriodEnd = sub.current_period_end as number | undefined;
+  const subscriptionId = sub.id;
+  const status = sub.status;
+
+  /* The period lives on the ITEMS on this API version. Reading it off the
+     subscription returned `undefined` on every renewal, so `coveredUntil`
+     never advanced and /maintenance/status told a paying client their
+     maintenance had expired a year ago. */
+  const period = subscriptionPeriod(sub);
+  if (period.legacy) {
+    console.error(
+      legacyShapeWarning(`Abonnement ${subscriptionId}`, event.api_version),
+    );
+  }
+  if (period.start === undefined && period.end === undefined) {
+    /* Nothing is written rather than a zero: `updateStatus` patches only the
+       fields it is given, so the last known-good period survives. A `0` would
+       expire a client who is paying. */
+    console.error(
+      `[STRIPE] Abonnement ${subscriptionId} mis à jour sans période ` +
+        `facturable (items.data vide) : période inchangée en base.`,
+    );
+  }
 
   const mappedStatus = mapSubscriptionStatus(status);
 
   await ctx.runMutation(internal.subscriptions.updateStatus, {
     stripeSubscriptionId: subscriptionId,
     status: mappedStatus,
-    currentPeriodStart: currentPeriodStart
-      ? currentPeriodStart * 1000
-      : undefined,
-    currentPeriodEnd: currentPeriodEnd ? currentPeriodEnd * 1000 : undefined,
+    currentPeriodStart: toMillis(period.start),
+    currentPeriodEnd: toMillis(period.end),
   });
 
   console.log(`Subscription ${subscriptionId} updated: ${status}`);
@@ -552,17 +886,17 @@ async function handleSubscriptionUpdated(
 /* ── 5. customer.subscription.deleted ── */
 
 async function handleSubscriptionDeleted(
-  ctx: { runMutation: typeof Function.prototype },
-  event: StripeEvent,
-) {
+  ctx: Pick<WebhookCtx, "runMutation">,
+  event: Stripe.CustomerSubscriptionDeletedEvent,
+): Promise<void> {
   const sub = event.data.object;
-  const subscriptionId = sub.id as string;
-  const canceledAt = sub.canceled_at as number | undefined;
+  const subscriptionId = sub.id;
+  const canceledAt = sub.canceled_at;
 
   await ctx.runMutation(internal.subscriptions.updateStatus, {
     stripeSubscriptionId: subscriptionId,
     status: "canceled" as const,
-    canceledAt: canceledAt ? canceledAt * 1000 : Date.now(),
+    canceledAt: toMillis(canceledAt) ?? Date.now(),
   });
 
   console.log(`Subscription ${subscriptionId} canceled`);
@@ -571,11 +905,11 @@ async function handleSubscriptionDeleted(
 /* ── 6. account.updated (Stripe Connect) ── */
 
 async function handleAccountUpdated(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
-  event: StripeEvent,
-) {
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation">,
+  event: Stripe.AccountUpdatedEvent,
+): Promise<void> {
   const account = event.data.object;
-  const accountId = account.id as string;
+  const accountId = account.id;
 
   const affiliate = await ctx.runQuery(
     internal.affiliateUsers.getByStripeAccountId,
@@ -586,10 +920,11 @@ async function handleAccountUpdated(
     return;
   }
 
-  const payoutsEnabled = account.payouts_enabled as boolean | undefined;
-  const detailsSubmitted = account.details_submitted as boolean | undefined;
-  const capabilities = account.capabilities as Record<string, string> | undefined;
-  const transfersActive = capabilities?.transfers === "active";
+  const payoutsEnabled = account.payouts_enabled;
+  const detailsSubmitted = account.details_submitted;
+  // `capabilities.transfers` is a real literal union on the SDK type, so this
+  // comparison is now checked rather than a string against a cast record.
+  const transfersActive = account.capabilities?.transfers === "active";
 
   const isActive = payoutsEnabled === true && transfersActive;
   const newStatus = isActive
@@ -601,7 +936,7 @@ async function handleAccountUpdated(
   if (newStatus !== affiliate.stripeConnectStatus) {
     await ctx.runMutation(internal.affiliateUsers.updateStripeConnectStatus, {
       affiliateUserId: affiliate._id,
-      stripeConnectStatus: newStatus as "not_started" | "pending" | "active" | "disabled",
+      stripeConnectStatus: newStatus,
     });
     console.log(`Stripe Connect status updated for ${accountId}: ${newStatus}`);
   }
@@ -615,9 +950,9 @@ async function handleAccountUpdated(
  * out any more, so the gate `referrals.ts` reads has to close.
  */
 async function handleAccountDeauthorized(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
-  event: StripeEvent,
-) {
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation">,
+  event: Stripe.AccountApplicationDeauthorizedEvent,
+): Promise<void> {
   // On Connect events the account id is top-level; `data.object` is the
   // application that was deauthorized, not the account.
   const accountId = event.account;
@@ -653,9 +988,9 @@ async function handleAccountDeauthorized(
  * again, so close the gate rather than retrying into a wall.
  */
 async function handlePayoutFailed(
-  ctx: { runQuery: typeof Function.prototype; runMutation: typeof Function.prototype },
-  event: StripeEvent,
-) {
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation">,
+  event: Stripe.PayoutFailedEvent,
+): Promise<void> {
   const accountId = event.account;
   if (!accountId) {
     console.error("payout.failed carried no account id");
@@ -673,8 +1008,8 @@ async function handlePayoutFailed(
 
   const payout = event.data.object;
   console.error(
-    `Payout ${payout.id as string} failed for affiliate ${accountId}: ` +
-      `${(payout.failure_message as string) ?? (payout.failure_code as string) ?? "no reason given"}`,
+    `Payout ${payout.id} failed for affiliate ${accountId}: ` +
+      `${payout.failure_message ?? payout.failure_code ?? "no reason given"}`,
   );
 
   if (affiliate.stripeConnectStatus !== "disabled") {
@@ -693,25 +1028,23 @@ async function handlePayoutFailed(
    manually. */
 
 async function handleChargeReversal(
-  ctx: {
-    runQuery: typeof Function.prototype;
-    runMutation: typeof Function.prototype;
-    runAction: typeof Function.prototype;
-  },
-  event: StripeEvent,
+  ctx: Pick<WebhookCtx, "runQuery" | "runMutation" | "runAction">,
+  event: Stripe.ChargeRefundedEvent | Stripe.ChargeDisputeCreatedEvent,
   reason: string,
-) {
-  const obj = event.data.object;
-
-  // Partial refund: we do not claw the commission back automatically.
-  if (event.type === "charge.refunded" && obj.refunded !== true) {
+): Promise<void> {
+  /* Partial refund: we do not claw the commission back automatically.
+     `refunded` exists on a Charge and not on a Dispute, so this read only
+     compiles inside the narrow — which is exactly what it meant all along,
+     and was unenforced while the object was a bare record. */
+  if (event.type === "charge.refunded" && event.data.object.refunded !== true) {
     console.log(
-      `Remboursement partiel sur ${obj.id as string} — clawback ignoré (manuel)`,
+      `Remboursement partiel sur ${event.data.object.id} — clawback ignoré (manuel)`,
     );
     return;
   }
 
-  const paymentIntent = obj.payment_intent as string | undefined;
+  const obj = event.data.object;
+  const paymentIntent = refId(obj.payment_intent);
   if (!paymentIntent) {
     console.warn(`${event.type}: pas de payment_intent, ignoré`);
     return;
@@ -755,7 +1088,7 @@ async function handleChargeReversal(
 /* ── Helper ── */
 
 function mapSubscriptionStatus(
-  stripeStatus: string,
+  stripeStatus: Stripe.Subscription.Status,
 ): "active" | "past_due" | "canceled" | "unpaid" | "incomplete" {
   switch (stripeStatus) {
     case "active":

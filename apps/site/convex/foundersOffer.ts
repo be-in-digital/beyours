@@ -19,10 +19,28 @@ export const foundersOffer = {
 /* ── How long an unpaid checkout holds its slot ──
    countFoundersSold used to count « paid » orders only, so every checkout
    opened before the first webhook landed still saw 10 free slots and more than
-   10 builds could go out free. A pending order now holds its slot for the
-   lifetime of a Stripe Checkout session; past that the customer can no longer
-   pay it, so the slot returns to the pool on its own. */
-export const FOUNDERS_HOLD_MS = 24 * 60 * 60 * 1000;
+   10 builds could go out free. A pending order holds its slot instead.
+
+   This window used to be 24 h, matching the lifetime of a Stripe Checkout
+   session. That answered the wrong question. « Can this session still be
+   paid? » is about Stripe; « is somebody about to take this seat? » is what
+   the counter asks, and the honest answer is minutes — a card clears in
+   seconds and a redirect takes a couple of minutes. At 24 h the gap was
+   reachable by anyone: `createCheckoutSession` is public and unauthenticated,
+   so ten anonymous calls advertised « 0 places restantes » for a full day and
+   handed `isFounders: false` to every genuine buyer who arrived in it.
+
+   Thirty minutes is generous for a real payment and short enough that such a
+   burst clears on its own. Two other things release a seat sooner or bound the
+   damage: the webhook cancels the order on `checkout.session.expired`, and
+   `orders.create` is rate-limited (see ./rateLimit).
+
+   Releasing early can let the storefront advertise a seat that a slow payment
+   later takes — the harmless direction, and one this window never covered
+   anyway for the delayed methods that settle over days. What actually caps the
+   offer is the Stripe coupon's max_redemptions; this counter only decides what
+   the page says. */
+export const FOUNDERS_HOLD_MS = 30 * 60 * 1000;
 
 /** How the creation line is priced when the founders offer applies. */
 export type FoundersPricingMode =

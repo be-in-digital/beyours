@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { FOUNDERS_HOLD_MS } from "./foundersOffer";
+import { SITE_SUBJECT, consumeRateLimit } from "./rateLimit";
 
 const buyerTypeValidator = v.union(
   v.literal("business"),
@@ -55,6 +56,21 @@ export const create = internalMutation({
     }),
   },
   handler: async (ctx, args) => {
+    /* ── The bound on an unauthenticated checkout ──
+       `stripe.createCheckoutSession` is public, takes no session, and reaches
+       here before it opens a Stripe session — so this row, and the founders
+       hold it carries, could be created in a loop by anyone. Measured: ten
+       anonymous calls put « 0 places restantes » on the launch offer for a
+       day and handed `isFounders: false` to every genuine buyer in that window.
+
+       Consumed HERE rather than in the action so the counter commits in the
+       same transaction as the row it bounds — a limiter that commits
+       separately from the thing it limits has a gap in it (see ./rateLimit).
+       This mutation has exactly one caller, the checkout, so the coupling is
+       to the thing being bounded and not to orders in general. */
+    await consumeRateLimit(ctx, "checkoutPerEmail", args.customerEmail);
+    await consumeRateLimit(ctx, "checkoutSiteWide", SITE_SUBJECT);
+
     const orderId = await ctx.db.insert("orders", {
       ...args,
       status: "pending",
@@ -145,8 +161,9 @@ export const getCheckoutAccess = query({
    read ten free slots, and more than ten builds could go out free. A pending
    order now holds its slot for as long as its Stripe session stays payable
    (FOUNDERS_HOLD_MS); past that the customer can no longer pay it and the slot
-   returns to the pool on its own — there is no checkout.session.expired
-   webhook to release it for us.
+   returns to the pool on its own. `checkout.session.expired` now cancels the
+   order as soon as Stripe reports the session dead, so the time window is the
+   backstop for the sessions no webhook arrives for, not the only release.
    Second layer only: what actually caps the offer is the Stripe coupon's
    max_redemptions (see convex/foundersOffer.ts). This keeps the storefront
    from advertising a slot someone else is already paying for. */

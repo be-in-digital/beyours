@@ -64,6 +64,32 @@ describe("the modules that hold a customer's commercial record", () => {
   });
 });
 
+describe("the module that decides a discount", () => {
+  /* `referralCodes` holds the derivation `createCheckoutSession` now depends
+     on. `resolveForCheckout` — which returns the code id, the affiliate who
+     earns the commission and the percent off — is an internalQuery, and must
+     stay one: the whole point of deriving those three server-side is lost the
+     moment a client can call the thing that derives them. */
+  test("referralCodes exposes exactly the four that earn it", () => {
+    expect(publicFunctionsOf("referralCodes")).toEqual([
+      // The affiliate's own code, read from their session.
+      "customizeMyCode",
+      "generateMyCode",
+      "getMyCode",
+      // Public and unauthenticated by design: the storefront prices a typed-in
+      // code before anyone signs in. A display value only — see
+      // tests/convex/checkoutReferralIntegrity.test.ts.
+      "validateCode",
+    ]);
+  });
+
+  test("resolveForCheckout is not reachable from a browser", () => {
+    expect(publicFunctionsOf("referralCodes")).not.toContain(
+      "resolveForCheckout",
+    );
+  });
+});
+
 describe("the three that were removed", () => {
   test.each([
     ["invoices", "getByEmail"],

@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe, beforeEach, afterEach } from "vitest";
 import schema from "../../convex/schema";
+import { post, sign } from "./helpers/stripeWebhook";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
@@ -35,24 +36,6 @@ afterEach(() => {
   }
 });
 
-/** Same scheme the route verifies: `t=<ts>,v1=<hex hmac of "ts.body">`. */
-async function sign(body: string, secret: string): Promise<string> {
-  const ts = Math.floor(Date.now() / 1000);
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const mac = await crypto.subtle.sign("HMAC", key, enc.encode(`${ts}.${body}`));
-  const hex = Array.from(new Uint8Array(mac))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return `t=${ts},v1=${hex}`;
-}
-
 function connectEvent(type: string, account: string, object: unknown = {}) {
   return JSON.stringify({
     id: `evt_${Math.random().toString(36).slice(2)}`,
@@ -79,21 +62,6 @@ async function seedAffiliate(
       stripeConnectStatus,
       createdAt: Date.now(),
     });
-  });
-}
-
-async function post(
-  t: ReturnType<typeof convexTest>,
-  path: string,
-  body: string,
-  signature?: string,
-) {
-  return await t.fetch(path, {
-    method: "POST",
-    headers: signature
-      ? { "stripe-signature": signature, "content-type": "application/json" }
-      : { "content-type": "application/json" },
-    body,
   });
 }
 

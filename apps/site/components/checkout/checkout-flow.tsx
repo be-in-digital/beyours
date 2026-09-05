@@ -85,16 +85,13 @@ export function CheckoutFlow() {
     try {
       const origin = window.location.origin;
       const referral = store.appliedReferral;
-      const referralArgs = referral
-        ? {
-            referralCode: referral.code,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            referralCodeId: referral.referralCodeId as any,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            referrerId: referral.affiliateUserId as any,
-            discountPercent: referral.discountPercent,
-          }
-        : {};
+      /* The code and nothing else. The percent, the code id and the affiliate
+         id that used to travel with it were attacker-chosen on a public,
+         unauthenticated action — the server now derives all three from this
+         string (see convex/referralCodes.resolveForCheckout). The store still
+         holds them because the summary displays the discount; they are no
+         longer an input to what is charged. */
+      const referralArgs = referral ? { referralCode: referral.code } : {};
       const result = await createCheckout({
         plan: store.plan,
         orderType: store.orderType,

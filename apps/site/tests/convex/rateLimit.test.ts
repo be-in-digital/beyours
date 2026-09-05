@@ -10,6 +10,7 @@ import {
   checkRateLimit,
   rateLimitKey,
 } from "../../convex/rateLimit";
+import { drainScheduled, scheduledCount } from "./helpers/scheduled";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
@@ -21,41 +22,6 @@ const modules = import.meta.glob("../../convex/**/*.ts");
  * — half of them to whatever address the caller typed. And any signed-in
  * account, affiliate or not, could mint unlimited upload URLs.
  */
-
-/** Count the scheduled email jobs of one kind. */
-async function scheduledSends(
-  t: ReturnType<typeof convexTest>,
-  fnSuffix: string,
-): Promise<number> {
-  const jobs = await t.run((ctx) =>
-    ctx.db.system.query("_scheduled_functions").collect(),
-  );
-  return jobs.filter((job) => job.name.includes(fnSuffix)).length;
-}
-
-/**
- * Run every scheduled email job to completion before the test ends.
- *
- * `finishInProgressScheduledFunctions` only waits on jobs that have already
- * started, and `runAfter(0, …)` leaves them `pending` until a timer fires — so
- * a test that returns straight after a submit leaves the email actions running
- * against a harness that is being torn down, which surfaces as "Write outside
- * of transaction" and fails the run. Poll until nothing is left to start.
- */
-async function drainScheduled(t: ReturnType<typeof convexTest>): Promise<void> {
-  for (let i = 0; i < 500; i++) {
-    const remaining = await t.run(async (ctx) => {
-      const jobs = await ctx.db.system.query("_scheduled_functions").collect();
-      return jobs.filter(
-        (job) => job.state.kind === "pending" || job.state.kind === "inProgress",
-      ).length;
-    });
-    if (remaining === 0) return;
-    await t.finishInProgressScheduledFunctions();
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-  throw new Error("drainScheduled: scheduled functions never settled");
-}
 
 describe("rate limit policy", () => {
   test("a fixed window admits up to twice the limit across a boundary", () => {
@@ -173,12 +139,12 @@ describe("contactLeads.submit — the unauthenticated relay", () => {
 
     // The confirmation is the relay vector — it mails an address the caller
     // chose — so it stops well before the submit does.
-    expect(await scheduledSends(t, "sendContactConfirmation")).toBe(
+    expect(await scheduledCount(t, "sendContactConfirmation")).toBe(
       RATE_LIMITS.contactConfirmationSiteWide.limit,
     );
     // The team notification only ever reaches our own inbox, so it rides the
     // submit window and no tighter one.
-    expect(await scheduledSends(t, "sendContactTeamNotification")).toBe(attempts);
+    expect(await scheduledCount(t, "sendContactTeamNotification")).toBe(attempts);
     await drainScheduled(t);
   });
 
@@ -197,7 +163,7 @@ describe("contactLeads.submit — the unauthenticated relay", () => {
     // confirmation window never refuses the submit itself.
     const leads = await t.run((ctx) => ctx.db.query("contactLeads").collect());
     expect(leads).toHaveLength(overshoot);
-    expect(await scheduledSends(t, "sendContactTeamNotification")).toBe(overshoot);
+    expect(await scheduledCount(t, "sendContactTeamNotification")).toBe(overshoot);
     await drainScheduled(t);
   });
 
@@ -216,8 +182,8 @@ describe("contactLeads.submit — the unauthenticated relay", () => {
     expect(leads).toHaveLength(1);
     expect(leads[0].email).toBe("camille@bistrot.fr");
     expect(leads[0].restaurant).toBe("Le Bistrot");
-    expect(await scheduledSends(t, "sendContactConfirmation")).toBe(1);
-    expect(await scheduledSends(t, "sendContactTeamNotification")).toBe(1);
+    expect(await scheduledCount(t, "sendContactConfirmation")).toBe(1);
+    expect(await scheduledCount(t, "sendContactTeamNotification")).toBe(1);
     await drainScheduled(t);
   });
 
@@ -235,7 +201,7 @@ describe("contactLeads.submit — the unauthenticated relay", () => {
     expect(result).toEqual({ ok: true });
     const leads = await t.run((ctx) => ctx.db.query("contactLeads").collect());
     expect(leads).toHaveLength(0);
-    expect(await scheduledSends(t, "sendContact")).toBe(0);
+    expect(await scheduledCount(t, "sendContact")).toBe(0);
   });
 
   test("an oversized honeypot value is dropped rather than reported", async () => {
