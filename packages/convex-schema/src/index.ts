@@ -19,6 +19,13 @@ export * from "./orderStatus"
 // Store publication rule — shared by stores.list, orders.create and the storefront
 export * from "./storeStatus"
 
+// Recurring time windows — shared by product scheduling, happy-hour promotions
+// and the storefront menu, which used to answer the question differently
+export * from "./timeWindow"
+
+// The weekly opening schedule — shared by orders.create and the storefront
+export * from "./openingHours"
+
 // Which services an establishment offers — shared by orders.create and the
 // storefront's order-type selector
 export * from "./storeServices"
