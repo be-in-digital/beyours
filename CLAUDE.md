@@ -117,6 +117,11 @@ needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`
+- `gamePlays.consent` records the diner's agreement (art. 7.1) — when, and to
+  which wording. `gamePlay.play` throws `CONSENT_REQUIRED` without it. The
+  wording lives in `packages/admin/src/game/consent-copy.ts` and owns its own
+  version; `GAME_CONSENT_NOTICE_VERSIONS` in `convex-functions/gamePlay` is the
+  set the server accepts.
 
 ### i18n
 - `languages` (dynamic, unlimited), `translations`, `translationJobs` (GPT)
@@ -159,6 +164,29 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
 - **GPT-3.5-turbo auto-translation** ($0.001/product)
 - Manual translation option
 - Bulk translator
+
+### Personal data (RGPD)
+A French restaurant running this engine is the **data controller**. The engine
+answers all four obligations from `packages/convex-functions/src/privacy.ts`,
+rendered at Dashboard → Organisation → **Données personnelles**:
+
+- **Access and portability** (art. 15, 20) — `exportDataSubject` returns the raw
+  rows as JSON, by e-mail or by device fingerprint.
+- **Erasure** (art. 17) — `previewErasure` then `eraseDataSubject`. Multi-pass:
+  a pass returns `complete: false` and the wrapper reschedules until it is true.
+- **Consent** (art. 7.1) — on `gamePlays`, see above.
+- **Retention** (art. 5.1.e) — the cron **purge expired customer data**, window
+  in `globalSettings.dataRetention`, defaulting to the CNIL's three years.
+
+**A paid order is anonymised, never deleted.** There is no `invoices` table —
+the order IS the accounting record — so the money, lines, VAT and dates stay and
+the customer leaves. Everything else about a diner is deleted outright. Every
+run writes a `privacy_*` line to `systemAuditLog`.
+
+Guarded by `customers:manage`, held by `super_admin` and `client_admin` only —
+deliberately not `customers:read`, which a waiter holds. Operator guide and the
+**seven decisions still owed by the client**:
+`tasks/gdpr-diner-data-runbook.md`.
 
 ### Design (14)
 Design system in `packages/ui`, theming per store via CMS branding settings.

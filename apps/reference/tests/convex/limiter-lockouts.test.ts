@@ -31,7 +31,12 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 
+import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-in-digital/convex-functions/gamePlay"
+
 const modules = import.meta.glob("../../convex/**/*.ts")
+
+/** The play mutation refuses a play whose notice version it does not know. */
+const CONSENT_VERSION = GAME_CONSENT_NOTICE_VERSIONS[0]!
 
 const NOW = 1_700_000_000_000
 
@@ -129,6 +134,7 @@ describe("a free path must not spend the restaurant's window", () => {
     const { gameId } = await seedGame(t, 100)
 
     const winner = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1", gameId, fingerprint: "victim", completedActions: [],
     })
     await t.mutation(api.gamePlay.claim, {
@@ -147,6 +153,7 @@ describe("a free path must not spend the restaurant's window", () => {
     }
 
     const other = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1", gameId, fingerprint: "honest-winner", completedActions: [],
     })
     const claimed = await t.mutation(api.gamePlay.claim, {
@@ -196,6 +203,7 @@ describe("a free path must not spend the restaurant's window", () => {
     )
 
     await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1", gameId, fingerprint: "d1",
       // The cap used to be applied before the filter, so 32 invented ids ahead
       // of the genuine one stored nothing at all — losing the diner's real

@@ -136,6 +136,36 @@ export const gamePlaysTable = defineTable({
   playerLastName: v.optional(v.string()),
   playerPhone: v.optional(v.string()),
   fingerprint: v.optional(v.string()),
+  /**
+   * The diner's consent to this play being recorded (RGPD art. 7.1).
+   *
+   * WHY IT EXISTS: this row stores a device fingerprint, a user agent and —
+   * once a winner claims — a name, an email and a phone number. A fingerprint
+   * plus a user agent is tracking data, and the table recorded no legal basis
+   * for any of it. Art. 7.1 puts the burden on the controller — the
+   * restaurant — to DEMONSTRATE that the diner consented, which needs three
+   * things: that they did, when, and to which wording.
+   *
+   * OPTIONAL, AND THAT IS NOT A LOOPHOLE: every row written before this field
+   * existed has none, and a stored document missing a required field fails
+   * validation on its next write. `gamePlay.play` refuses without it, so no
+   * new row can be written without one — see the `CONSENT_REQUIRED` throw
+   * there. A row with no consent is a legacy row, and the retention sweep is
+   * what carries it away.
+   */
+  consent: v.optional(v.object({
+    /** Server clock at the moment the play was accepted, never the browser's. */
+    acceptedAt: v.number(),
+    /**
+     * Which wording the diner actually saw.
+     *
+     * The notice will be reworded, and a bare boolean would then claim that
+     * every past player agreed to today's text. `GAME_CONSENT_NOTICE_VERSION`
+     * in `@be-in-digital/convex-functions/gamePlay` is the current one; the
+     * wording itself is in `packages/admin/src/game/consent-copy.ts`.
+     */
+    noticeVersion: v.string(),
+  })),
   completedActions: v.array(v.string()), // Action IDs completed
   referredByCode: v.optional(v.string()), // Referrer code if arrived via referral
   didWin: v.boolean(),
@@ -201,3 +231,6 @@ export const gameReferralsTable = defineTable({
 })
   .index("by_code", ["code"])
   .index("by_storeId_referrerFingerprint", ["storeId", "referrerFingerprint"])
+  // Retention: a referrer row is a device fingerprint with a counter, and the
+  // two fingerprint indexes cannot be walked by age.
+  .index("by_storeId_updatedAt", ["storeId", "updatedAt"])

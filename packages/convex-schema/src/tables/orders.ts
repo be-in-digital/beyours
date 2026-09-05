@@ -151,6 +151,20 @@ export const ordersTable = defineTable({
    * backfill is required for `schemaValidation: true`.
    */
   stripeCheckoutSessionId: v.optional(v.string()),
+  /**
+   * When this order stopped naming a person.
+   *
+   * WHY IT IS NEEDED: an anonymised order and an order placed by a walk-in who
+   * gave no details are otherwise the same row — the engine already writes the
+   * second, with `customerInfo: { name: "Anonyme" }` and nothing else. Without
+   * the marker the retention sweep cannot tell "already done" from "never
+   * touched", so it would re-process the same rows every night for ever, and
+   * the report would count them again each time.
+   *
+   * Set by `privacy.ts`. Optional, so no row written before it existed needs a
+   * backfill.
+   */
+  anonymisedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

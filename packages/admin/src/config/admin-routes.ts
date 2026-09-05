@@ -77,6 +77,15 @@ export const adminRoutes = {
   team: "/dashboard/team",
   languages: "/dashboard/languages",
   subscription: "/dashboard/subscription",
+  /**
+   * Answering a customer's RGPD request, and the retention window.
+   *
+   * Under Organisation rather than Settings: it is not a preference. The
+   * establishment is the data controller, and this is where it discharges that
+   * — an access, erasure or portability request, and the period after which
+   * everything else goes on its own.
+   */
+  privacy: "/dashboard/privacy",
   settings: "/dashboard/settings",
   system: "/dashboard/system",
 } as const

@@ -14,6 +14,7 @@ import {
   PenSquare,
   RefreshCw,
   Settings,
+  ShieldCheck,
   ShoppingCart,
   Store,
   Tag,
@@ -242,6 +243,15 @@ export const navGroups: NavGroup[] = [
         href: adminRoutes.subscription,
         icon: CreditCard,
         requiredPermission: "settings:read",
+      },
+      {
+        label: "Données personnelles",
+        href: adminRoutes.privacy,
+        icon: ShieldCheck,
+        // Not `customers:read` — a waiter holds that one. Answering a
+        // data-subject request is the controller's act, so the entry is only
+        // shown to the profile that can actually carry it out.
+        requiredPermission: "customers:manage",
       },
       {
         label: "Paramètres",

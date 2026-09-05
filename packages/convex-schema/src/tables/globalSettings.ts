@@ -89,4 +89,34 @@ export const globalSettingsTable = defineTable({
     lockedAt: v.number(),
     expiresAt: v.number(),
   })),
+
+  // ─── Personal-data retention (RGPD art. 5.1.e) ─────────────────────────────
+  /**
+   * How long this deployment keeps a diner's personal data.
+   *
+   * Deployment-wide rather than per establishment: the data controller is the
+   * business, not one of its dining rooms, and a diner who ordered at two
+   * locations of the same brand is one data subject with one retention clock.
+   *
+   * ABSENT MEANS THE DEFAULT, NOT "OFF". A client who never opens the screen
+   * gets `DEFAULT_CUSTOMER_RETENTION_DAYS` — the CNIL's three years from last
+   * contact — because keeping a diner's address for ever is the unlawful
+   * state, not deleting it. `enabled: false` is a deliberate pause (a
+   * litigation hold, a migration), and it is recorded here so that the reason
+   * an establishment stopped deleting is visible rather than inferred.
+   *
+   * Nothing accounting-bound is lost to it: the sweep ANONYMISES an order and
+   * its payments rather than deleting them, so the ten-year `pièce
+   * justificative` (art. L123-22 Code de commerce) survives without the
+   * customer in it. See `packages/convex-functions/src/privacy.ts`.
+   */
+  dataRetention: v.optional(v.object({
+    /** Days from a diner's last contact. */
+    customerDataDays: v.number(),
+    /** False pauses the sweep. It still reports what it WOULD have done. */
+    enabled: v.boolean(),
+    updatedAt: v.number(),
+    /** Who set it, so the audit trail can answer "who chose this window". */
+    updatedBy: v.optional(v.string()),
+  })),
 })

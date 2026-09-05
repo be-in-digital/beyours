@@ -25,7 +25,12 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 
+import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-in-digital/convex-functions/gamePlay"
+
 const modules = import.meta.glob("../../convex/**/*.ts")
+
+/** The play mutation refuses a play whose notice version it does not know. */
+const CONSENT_VERSION = GAME_CONSENT_NOTICE_VERSIONS[0]!
 
 const NOW = 1_700_000_000_000
 
@@ -127,6 +132,7 @@ describe("the drain the card measured, run against the real backend", () => {
     for (let i = 0; i < 40; i++) {
       try {
         await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: "TABLE1",
           gameId,
           // The only thing that changes, and the only thing that used to matter.
@@ -166,6 +172,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     for (let i = 0; i < 10; i++) {
       await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: `f-${i}`,
@@ -176,6 +183,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: "brand-new",
@@ -190,6 +198,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     for (let i = 0; i < 5; i++) {
       await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: `taker-${i}`,
@@ -225,6 +234,7 @@ describe("the drain the card measured, run against the real backend", () => {
     )
 
     await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "device-1",
