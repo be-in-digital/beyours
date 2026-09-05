@@ -155,7 +155,6 @@ KDS tables:
 - [ ] `kitchenTickets` - Kitchen tickets
   - orderId, storeId, station, status, priority
   - prepTime, assignedTo, timestamps
-- [ ] `printerSettings` - Printer config
   - storeId, name, type (network/usb), ip, port
   - station, autoPrint, status
 

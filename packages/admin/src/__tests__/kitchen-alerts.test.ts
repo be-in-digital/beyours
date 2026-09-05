@@ -11,9 +11,11 @@ import {
  *
  * `stores.soundConfig` had a mutation, a schema field and a reader, and no
  * screen that wrote it — so every kitchen ran on a literal hardcoded inside
- * `KitchenContent`. The catalogue now lives in one place, read by the editor
- * that writes the setting and by the display that plays it, and these are the
- * rules both depend on.
+ * `KitchenContent`. That was the state before #243 and is no longer: the
+ * kitchen tab's "Alertes sonores" card writes the setting through
+ * `stores.updateSoundConfig`. The catalogue lives in one place, read by that
+ * editor and by the display that plays the alerts, and these are the rules both
+ * depend on.
  */
 
 describe("KITCHEN_ALERTS", () => {

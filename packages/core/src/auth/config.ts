@@ -239,28 +239,6 @@ export const emailTemplates = {
 };
 
 /**
- * Redirect URL configuration
- */
-export const authRoutes = {
-  /** Sign-in page */
-  signIn: '/auth/signin',
-  /** Sign-up page */
-  signUp: '/auth/signup',
-  /** Where to land after a successful sign-in */
-  afterSignIn: '/dashboard',
-  /** Where to land after a successful sign-up */
-  afterSignUp: '/onboarding',
-  /** Email verification page */
-  verifyEmail: '/auth/verify-email',
-  /** Password reset page */
-  resetPassword: '/auth/reset-password',
-  /** 2FA setup page */
-  twoFactor: '/settings/security/2fa',
-  /** Auth error page */
-  error: '/auth/error',
-};
-
-/**
  * Standard error messages.
  * Kept in French: they are written to be shown to the end user.
  */

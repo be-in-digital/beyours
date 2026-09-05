@@ -44,19 +44,60 @@ export const getByInternal = {
 
 /**
  * Get mapping by external ID and platform
+ *
+ * This is the lookup that turns a PLU on an incoming platform order into a dish
+ * we can cook, and the answer has to mean that. It used to return the row
+ * without ever dereferencing `internalProductId`, so a mapping left behind by a
+ * deleted product was still truthy: `deliverooWebhook` counted zero unmatched
+ * PLUs and answered `sendSyncStatus(..., "succeeded")` for an order containing a
+ * dish the kitchen no longer has.
+ *
+ * `products.remove` now deletes the mapping, so that particular row can no
+ * longer be created. The dereference stays because the guarantee belongs here:
+ * every other way a product can leave the table — a store cascade, a restore, a
+ * hand-run mutation — arrives at this same query, and "we have a mapping" must
+ * never outlive "we have the dish".
+ *
+ * `getByInternal` is deliberately not given the same treatment: it is keyed on a
+ * product id the caller already holds, so it cannot manufacture a match for a
+ * product nobody asked about.
+ *
+ * It is also scoped to the establishment the order belongs to. A PLU is unique
+ * inside one restaurant, not across a deployment, and the lookup used to span
+ * every restaurant on it: an order for one establishment whose PLU happened to
+ * be mapped in ANOTHER was answered as producible by a kitchen that has never
+ * heard of the dish. The same span made `.unique()` throw the moment two
+ * establishments used the same PLU string — which is exactly what a chain
+ * running one menu across its locations does — and the caller counts a throw as
+ * an unmatched item, so a correct multi-store deployment refused its own
+ * orders.
  */
 export const getByExternal = {
   args: {
+    storeId: v.id("stores"),
     externalId: v.string(),
     platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
   },
-  handler: async (ctx: any, args: { externalId: string; platform: "uberEats" | "deliveroo" }) => {
-    return await ctx.db
+  handler: async (
+    ctx: any,
+    args: { storeId: string; externalId: string; platform: "uberEats" | "deliveroo" }
+  ) => {
+    const mapping = await ctx.db
       .query("externalProductMappings")
-      .withIndex("by_external", (q: any) =>
-        q.eq("platform", args.platform).eq("externalId", args.externalId)
+      .withIndex("by_store_platform_external", (q: any) =>
+        q
+          .eq("storeId", args.storeId)
+          .eq("platform", args.platform)
+          .eq("externalId", args.externalId)
       )
       .unique()
+
+    if (!mapping) return null
+
+    const product = await ctx.db.get(mapping.internalProductId)
+    if (!product) return null
+
+    return mapping
   },
 }
 

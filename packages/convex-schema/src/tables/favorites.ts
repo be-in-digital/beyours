@@ -20,3 +20,9 @@ export const favoritesTable = defineTable({
   // only be scanned whole, because both compound indexes start with `userId`.
   // Deleting an establishment has to reach these rows (#169).
   .index("by_storeId", ["storeId"])
+  // And deleting a single dish has to reach the customers who favourited it.
+  // `productId` is a required column, so a favourite left behind holds an id
+  // that resolves to nothing. Without this index the cleanup would collect
+  // every favourite in the establishment to find the handful pointing at one
+  // product — a whole-store read inside a mutation that deletes one row.
+  .index("by_productId", ["productId"])

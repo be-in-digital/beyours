@@ -40,8 +40,15 @@ export interface AuthUser {
   restaurantId?: string;
   /** Default store id */
   defaultStoreId?: string;
-  /** Whether 2FA is enabled */
-  twoFactorEnabled: boolean;
+  /**
+   * Whether 2FA is enabled.
+   *
+   * Placeholder — two-factor authentication is not implemented, nothing
+   * reads this, and no code path can set it to `true`. Optional so the type
+   * does not oblige a caller to assert a protection that does not exist.
+   * Better Auth owns `user.twoFactorEnabled` once its plugin is registered.
+   */
+  twoFactorEnabled?: boolean;
   /** Created at */
   createdAt: Date;
   /** Last updated at */

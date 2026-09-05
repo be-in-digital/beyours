@@ -124,12 +124,37 @@ export const storesTable = defineTable({
   // Sound alerts configuration for KDS.
   //
   // Read by `KitchenContent` -> `KitchenSoundManager` in both apps: it decides
-  // which alerts sound and how loudly. No editor writes it yet, so every
-  // deployment runs on the component's fallbacks.
+  // which alerts sound and how loudly, and unset it runs on the component's own
+  // fallbacks. Written by `stores.updateSoundConfig`, from the kitchen tab's
+  // "Alertes sonores" card (#243) — the comment here said it had no editor for
+  // some time after it gained one.
   soundConfig: v.optional(v.object({
     newTicket: v.object({ enabled: v.boolean(), volume: v.number() }),
     overdue: v.object({ enabled: v.boolean(), volume: v.number() }),
     printerOffline: v.object({ enabled: v.boolean(), volume: v.number() }),
+  })),
+
+  // How long a finished order stays on the dining-room screen.
+  //
+  // Read by `kitchenTickets.getForDisplay`, which hangs on the wall the
+  // customer is waiting in front of: `autoDismissEnabled` decides whether a
+  // ready ticket is dropped at all, `autoDismissMinutes` how long it survives.
+  // The query falls back to `{ enabled: true, 15 }` when the field is unset, so
+  // an establishment that has never been configured drops an order from the
+  // screen a quarter of an hour after the kitchen calls it ready.
+  //
+  // Written by `stores.updateDisplayConfig`, from the kitchen tab. It was typed
+  // and moved out of the legacy block below in Q-2: it had been filed there on
+  // the claim that nothing read it, and the reader had never gone away.
+  //
+  // Typed rather than `v.any()` because only one shape has ever been stored.
+  // The mutation deleted in 74de4e9 wrote these two fields, the reader has
+  // always destructured these two fields, and `apps/*/lib/admin/types.ts`
+  // declares these two fields — so no document can be holding something a
+  // `v.object` would now refuse on its next write.
+  displayConfig: v.optional(v.object({
+    autoDismissEnabled: v.boolean(),
+    autoDismissMinutes: v.number(),
   })),
 
   // Homepage trending section mode
@@ -138,18 +163,18 @@ export const storesTable = defineTable({
   // Legacy fields (kept for backward compatibility with existing data)
   // Will be removed after data migration
   //
-  // `displayConfig` joined them: it had a mutation and an audit entry, and
-  // nothing anywhere read the stored value. The only screen that wrote it
-  // lived in `apps/themes/components/admin/settings/`, a folder no route
-  // rendered.
+  // `orderConfirmation` and `displayConfig` were both filed here by 74de4e9 on
+  // the same claim — a mutation and an audit entry with nothing reading the
+  // stored value — and both have since left. `orderConfirmation` is typed above
+  // and read by `releaseToKitchen`; `displayConfig` is typed above and has been
+  // read by `kitchenTickets.getForDisplay` the whole time, which is why the
+  // claim was wrong about it from the start (Q-2).
   //
-  // `orderConfirmation` was withdrawn beside it and has come back typed, above
-  // — the workflow it promised is implemented now.
-  //
-  // They stay declared, and optional, because documents already hold them: a
-  // stored field absent from the schema fails validation on the next write to
-  // that document. Nothing writes them now.
-  displayConfig: v.optional(v.any()),
+  // What is left stays declared, and optional, because documents already hold
+  // it: a stored field absent from the schema fails validation on the next
+  // write to that document. `branding` is the exception that is not dead —
+  // `stores.updateBranding` writes it, and that mutation's validator is the one
+  // place its shape is stated.
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),
   settings: v.optional(v.any()),

@@ -41,7 +41,9 @@ import { navGroups, isCollapsible, type NavItem } from "../config/nav-config"
 import { titles } from "../config/route-titles"
 import {
   BRANDING_PERMISSION,
+  BRANDING_UNAPPLIED_REASON,
   brandingControlState,
+  unappliedBrandingState,
 } from "../lib/branding-eligibility"
 
 const ADMIN_SRC = path.join(__dirname, "..")
@@ -93,18 +95,113 @@ describe("the Design page and the branding validator agree", () => {
     expect(readFields().filter((f) => !VALIDATED.includes(f))).toEqual([])
   })
 
-  it("covers every validated field between its three save buttons", () => {
-    // Colours, typography and logo between them own the whole shape. A field in
-    // the validator that no button writes has no way of ever being set.
-    expect(VALIDATED.filter((f) => !sentFields().includes(f))).toEqual([])
+  it("covers every colour and typography field between its two save handlers", () => {
+    // What is left after the logo moved to the CMS. A field in this list that
+    // no handler writes has no way of ever being set.
+    const OWNED = [
+      "primaryColor",
+      "secondaryColor",
+      "accentColor",
+      "fontHeading",
+      "fontBody",
+    ]
+    expect(OWNED.filter((f) => !sentFields().includes(f))).toEqual([])
+  })
+
+  it("leaves the logo to the CMS block rather than writing a rival copy", () => {
+    // `logoUrl`/`faviconUrl` stay in `BRANDING_FIELDS` because deployed stores
+    // may hold them and `mergeBranding` must keep carrying them through. What
+    // must not come back is a second input for a fact the CMS `branding` block
+    // already owns across the storefront header, the favicon, the JSON-LD and
+    // this dashboard's own sidebar.
+    expect(sentFields()).not.toContain("logoUrl")
+    expect(sentFields()).not.toContain("faviconUrl")
+    expect(VALIDATED).toContain("logoUrl")
+    expect(VALIDATED).toContain("faviconUrl")
   })
 
   it("sends a cleared field as an empty string, not as undefined", () => {
     // The mutation merges, so an absent field means "leave it alone". The logo
     // handler used to send `logoUrl || undefined`, which Convex drops from the
     // payload entirely — an owner deleting their logo got a success toast and
-    // kept the logo.
-    expect(source).not.toMatch(/(logoUrl|faviconUrl):\s*\w+\s*\|\|\s*undefined/)
+    // kept the logo. Stated over every payload rather than that one field, so
+    // the trap is closed for whoever writes the next save handler.
+    const literals = [...source.matchAll(/branding:\s*\{([^}]*)\}/g)].map((m) => m[1] as string)
+    for (const body of literals) {
+      expect(body).not.toMatch(/\|\|\s*undefined/)
+    }
+  })
+})
+
+describe("the screen says what it does not do", () => {
+  it("no longer offers themes that no template backs", () => {
+    // Six themes were listed; `fine-dining` and `cafe` matched no directory in
+    // `apps/themes/templates/`, and the "Appliquer" button saved three hex
+    // strings while the chosen id died in local state. Choosing a design is
+    // `pnpm template:apply <slug>` at clone time.
+    for (const id of ["fine-dining", "cafe", "fast-food", "chinese", "sushi"]) {
+      expect(source, `theme "${id}" is back`).not.toContain(`"${id}"`)
+    }
+    expect(source).not.toContain('TabsTrigger value="theme"')
+    expect(source).not.toContain("Appliquer le thème")
+  })
+
+  it("keeps no writer for the `themeId` the schema still carries", () => {
+    // It has neither a reader nor a writer anywhere in the repository. A save
+    // added here would make it a stored value nothing consumes. The header
+    // comment names it, so this asks for a write rather than for the word.
+    expect(sentFields()).not.toContain("themeId")
+    expect(source).not.toMatch(/themeId\s*[:=]/)
+  })
+
+  it("states the reason on the two tabs whose saves are inert", () => {
+    // The `Alert` is the primary signal; the tooltip on `BrandingControl` is
+    // the second half of it. A disabled button with no visible reason is the
+    // failure mode this whole screen is being corrected for.
+    expect(source).toContain('data-testid="branding-colors-unapplied"')
+    expect(source).toContain('data-testid="branding-typography-unapplied"')
+  })
+
+  it("promises no date for the wiring it is waiting on", () => {
+    // "Bientôt" is the word the kitchen tab uses for a provider that is coming;
+    // nobody has committed to a date for this one, so it must not appear.
+    expect(source).not.toMatch(/[Bb]ientôt|prochainement|dans les prochain/)
+  })
+})
+
+describe("the logo tab points somewhere that exists", () => {
+  const CMS_PAGE = "cms/pages/storefront-layout.ts"
+
+  it("links to the CMS page editor rather than duplicating the field", () => {
+    expect(source).toContain('adminRoutes.contentPageEdit(STOREFRONT_LAYOUT_SLUG)')
+    expect(source).toContain('const STOREFRONT_LAYOUT_SLUG = "storefront-layout"')
+    expect(adminRoutes.contentPageEdit("storefront-layout")).toBe(
+      "/dashboard/content/pages/storefront-layout"
+    )
+  })
+
+  for (const app of APPS) {
+    it(`apps/${app} registers that slug with a branding block`, () => {
+      // `packages/admin` cannot see an app's CMS registry, so the slug above is
+      // spelled by hand. This is what stops the link rotting into a 404.
+      const definition = read(path.join(REPO, "apps", app, CMS_PAGE))
+      expect(definition).toContain('slug: "storefront-layout"')
+      expect(definition).toContain('key: "branding"')
+      expect(definition).toContain("logo:")
+      expect(definition).toContain("favicon:")
+
+      const registry = read(path.join(REPO, "apps", app, "cms/index.ts"))
+      expect(registry).toContain('"storefront-layout": storefrontLayoutPage')
+    })
+  }
+
+  it("is reachable from the sidebar it names", () => {
+    // The alert tells the owner "Contenu › Pages". If that entry ever goes, the
+    // instruction becomes a wild goose chase.
+    const entries = navGroups
+      .flatMap((group) => group.items)
+      .filter((entry): entry is NavItem => !isCollapsible(entry))
+    expect(entries.some((e) => e.href === adminRoutes.contentPages)).toBe(true)
   })
 })
 
@@ -216,11 +313,47 @@ describe("the save buttons ask the same question the server does", () => {
     }
   })
 
-  it("routes all four saves through the shared decision", () => {
-    // Four buttons, one rule. The theme tab saves colours too, and it is the
-    // one most easily forgotten.
-    expect([...source.matchAll(/<BrandingControl state=\{branding\}>/g)]).toHaveLength(4)
-    expect([...source.matchAll(/disabled=\{branding\.disabled\}/g)]).toHaveLength(4)
+  it("routes both remaining saves through the shared decision", () => {
+    // Two buttons, one rule. It was four: the theme tab saved colours too, and
+    // the logo tab has since handed its job to the CMS.
+    expect([...source.matchAll(/<BrandingControl state=\{branding\}>/g)]).toHaveLength(2)
+    expect([...source.matchAll(/disabled=\{branding\.disabled\}/g)]).toHaveLength(2)
+  })
+
+  it("asks the role question before the wiring one", () => {
+    // Both facts are true of a manager at once. The role reason is the one the
+    // screen states, because it is the one that will still hold after the
+    // storefront learns to read `store.branding` — telling a manager the
+    // wiring is at fault would be a second thing to unlearn.
+    expect(unappliedBrandingState(Role.MANAGER)).toEqual(
+      brandingControlState(Role.MANAGER)
+    )
+    expect(unappliedBrandingState(undefined).disabled).toBe(true)
+  })
+
+  it("still refuses the owner, and says why", () => {
+    // The point of the whole change: `client_admin` is allowed to write and the
+    // save is disabled anyway, because no role can make it reach the site.
+    for (const role of [Role.SUPER_ADMIN, Role.CLIENT_ADMIN]) {
+      const state = unappliedBrandingState(role)
+      expect(state.disabled, role).toBe(true)
+      expect(state.reason, role).toBe(BRANDING_UNAPPLIED_REASON)
+    }
+  })
+
+  it("states the reason without promising when", () => {
+    // "Pas encore" is a state; a month would be a commitment nobody has made.
+    expect(BRANDING_UNAPPLIED_REASON).toBe(
+      "Ce réglage n'est pas encore appliqué à votre site public"
+    )
+  })
+
+  it("leaves no save on the screen that is live for anybody", () => {
+    // `brandingControlState` is still the first question asked, but nothing on
+    // this screen may be saved today. A button appearing here that skips
+    // `unappliedBrandingState` would be a new lie of the kind just removed.
+    expect(source).not.toContain("brandingControlState(")
+    expect(Object.values(Role).every((r) => unappliedBrandingState(r).disabled)).toBe(true)
   })
 
   it("spells no permission rule of its own", () => {

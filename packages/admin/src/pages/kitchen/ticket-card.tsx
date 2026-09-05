@@ -166,12 +166,27 @@ export function TicketCard({ ticket }: TicketCardProps) {
               <Badge variant="outline" className="text-xs">
                 {ORDER_TYPE_LABELS[ticket.orderType]}
               </Badge>
-              <Badge
-                variant={PRIORITY_CONFIG[ticket.priority].variant}
-                className="text-xs"
-              >
-                {PRIORITY_CONFIG[ticket.priority].label}
-              </Badge>
+              {/* The priority badge renders only above "normal". Every writer
+                  that runs in production hard-codes `priority: "normal"` —
+                  `orders.ts` when it opens a ticket, plus the Uber Eats and the
+                  Deliveroo webhooks — so a grey "Normal" sat on every card of
+                  every service and told the kitchen nothing, while making the
+                  two values that do mean something harder to spot.
+                  `getPriorityLevel` in @be-in-digital/restaurant already
+                  classifies an order (external platform -> vip, delivery ->
+                  urgent) and is unit-tested, but nothing calls it; today the
+                  only non-normal tickets come from `seedKitchenOrders`.
+                  `PRIORITY_CONFIG` deliberately still covers all three values,
+                  so an urgent or VIP ticket stands out the moment any writer
+                  produces one. */}
+              {ticket.priority !== "normal" && (
+                <Badge
+                  variant={PRIORITY_CONFIG[ticket.priority].variant}
+                  className="text-xs"
+                >
+                  {PRIORITY_CONFIG[ticket.priority].label}
+                </Badge>
+              )}
             </div>
           </div>
 

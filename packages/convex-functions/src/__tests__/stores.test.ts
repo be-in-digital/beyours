@@ -12,6 +12,9 @@ import {
   updateHours,
   updatePrintConfig,
   updateSoundConfig,
+  updateDisplayConfig,
+  MIN_AUTO_DISMISS_MINUTES,
+  MAX_AUTO_DISMISS_MINUTES,
 } from "../stores"
 import { REDACTED, SYSTEM_ACTOR } from "../storeAudit"
 
@@ -416,6 +419,101 @@ describe("updateSoundConfig", () => {
     expect(db.patch).toHaveBeenCalledWith("stores:1", expect.objectContaining({
       soundConfig: config,
     }))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// updateDisplayConfig
+// ---------------------------------------------------------------------------
+
+/**
+ * The range guard, at the door it is enforced in.
+ *
+ * `v.number()` accepts `0`, negatives, `NaN` and `Infinity`, and every one of
+ * them makes `getForDisplay` drop every ready ticket from the customer-facing
+ * dining-room screen. The end-to-end proof — that the order stays on the wall
+ * after a refusal — is in `apps/*\/tests/convex/kitchen-display-config.test.ts`,
+ * through the real mutation and the real query. These are the contract: what is
+ * refused, and that a refusal writes nothing.
+ */
+describe("updateDisplayConfig", () => {
+  const valid = { autoDismissEnabled: true, autoDismissMinutes: 30 }
+
+  it("should throw if store not found", async () => {
+    const db = createMockDb()
+    await expect(
+      updateDisplayConfig.handler(createCtx(db), {
+        id: "stores:missing",
+        displayConfig: valid,
+      })
+    ).rejects.toThrow("Store not found")
+  })
+
+  it("patches a window inside the range", async () => {
+    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
+
+    await updateDisplayConfig.handler(createCtx(db), {
+      id: "stores:1",
+      displayConfig: valid,
+    })
+
+    expect(db.patch).toHaveBeenCalledWith(
+      "stores:1",
+      expect.objectContaining({ displayConfig: valid })
+    )
+  })
+
+  it("accepts its own boundaries", async () => {
+    for (const autoDismissMinutes of [
+      MIN_AUTO_DISMISS_MINUTES,
+      MAX_AUTO_DISMISS_MINUTES,
+    ]) {
+      const db = createMockDb({ "stores:1": { _id: "stores:1" } })
+      await updateDisplayConfig.handler(createCtx(db), {
+        id: "stores:1",
+        displayConfig: { autoDismissEnabled: true, autoDismissMinutes },
+      })
+      expect(db.patch).toHaveBeenCalled()
+    }
+  })
+
+  it.each([
+    ["zero", 0],
+    ["a negative", -30],
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+    ["below the minimum", MIN_AUTO_DISMISS_MINUTES - 1],
+    ["above the maximum", MAX_AUTO_DISMISS_MINUTES + 1],
+  ])("refuses %s, and writes nothing", async (_label, autoDismissMinutes) => {
+    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
+
+    await expect(
+      updateDisplayConfig.handler(createCtx(db), {
+        id: "stores:1",
+        displayConfig: { autoDismissEnabled: true, autoDismissMinutes },
+      })
+    ).rejects.toThrow(/invalid_display_config/)
+
+    // Refused, not clamped: nothing reaches the document, so the screen keeps
+    // running on whatever it was already running on.
+    expect(db.patch).not.toHaveBeenCalled()
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+
+  it("still allows the setting to be cleared", async () => {
+    // Clearing is how an owner returns the screen to the query's own default,
+    // and an absent window is not an out-of-range one.
+    const db = createMockDb({ "stores:1": { _id: "stores:1" } })
+
+    await updateDisplayConfig.handler(createCtx(db), {
+      id: "stores:1",
+      displayConfig: undefined,
+    })
+
+    expect(db.patch).toHaveBeenCalledWith(
+      "stores:1",
+      expect.objectContaining({ displayConfig: undefined })
+    )
   })
 })
 

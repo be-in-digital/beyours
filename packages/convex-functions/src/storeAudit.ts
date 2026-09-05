@@ -39,8 +39,9 @@ export type StoreAuditAction =
  * The specific mutation behind an entry, recorded inside `details`.
  *
  * Three actions rather than one per mutation: the reader filters on "what
- * happened to an establishment", and the twelve-way distinction belongs in the
- * detail, not in an index-backed enum that every UI would have to enumerate.
+ * happened to an establishment", and the per-mutation distinction belongs in
+ * the detail, not in an index-backed enum that every UI would have to
+ * enumerate — a list that grows every time a settings tab gains a field.
  */
 export const STORE_AUDIT_OPERATIONS = {
   create: "create",
@@ -52,6 +53,7 @@ export const STORE_AUDIT_OPERATIONS = {
   updatePrintConfig: "updatePrintConfig",
   updateStationMapping: "updateStationMapping",
   updateSoundConfig: "updateSoundConfig",
+  updateDisplayConfig: "updateDisplayConfig",
   updateOrderConfirmation: "updateOrderConfirmation",
   updateOrderMode: "updateOrderMode",
   updateTrendingMode: "updateTrendingMode",
