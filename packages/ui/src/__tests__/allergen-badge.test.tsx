@@ -32,6 +32,15 @@ function render(allergen: string, props: { showLabel?: boolean; locale?: Allerge
   return renderToStaticMarkup(<AllergenBadge allergen={allergen} {...props} />)
 }
 
+/**
+ * The same term with its accents dropped — what an owner types in a hurry.
+ * Derived rather than written out, so the correctly-accented spelling is the
+ * only one in this file and `pnpm check:accents` stays honest.
+ */
+function withoutAccents(term: string) {
+  return term.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+}
+
 /** Strip tags so assertions read the text a diner sees. */
 function text(html: string) {
   return html.replace(/<[^>]*>/g, "")
@@ -177,6 +186,21 @@ describe("AllergenBadge — normalisation", () => {
     expect(render("__proto__")).toContain(
       'aria-label="Mention du restaurant : __proto__"'
     )
+  })
+
+  it("matches the accented French an alias is written in", () => {
+    // The alias table is written in real French and normalised at load, so a
+    // term added with its accent resolves rather than silently never matching
+    // — and no de-accented French sits in a file the accent check reads.
+    expect(normalizeAllergen("noix du Brésil")).toBe("nuts")
+    expect(normalizeAllergen("céleri-rave")).toBe("celery")
+    expect(normalizeAllergen("lécithine de soja")).toBe("soy")
+    expect(normalizeAllergen("blanc d'œuf")).toBe("eggs")
+    expect(normalizeAllergen("épeautre")).toBe("gluten")
+    // and the de-accented spelling a real owner types still lands too
+    expect(normalizeAllergen(withoutAccents("noix du Brésil"))).toBe("nuts")
+    expect(normalizeAllergen(withoutAccents("céleri-rave"))).toBe("celery")
+    expect(normalizeAllergen(withoutAccents("cacahuètes"))).toBe("peanuts")
   })
 
   it("resolves every alias to a key the config actually holds", () => {

@@ -186,9 +186,12 @@ const allergenConfig: Record<Allergen, AllergenEntry> = {
 /**
  * Spellings that unambiguously name one of the entries above.
  *
- * Keys are already normalised — lower case, accents stripped, punctuation
- * collapsed to single spaces — so `Fruits à coque`, `FRUITS A COQUE` and
- * `fruits-a-coque` all land on the same row.
+ * Written in real French, and run through `normalizeKey` at module load to
+ * build the table that is actually consulted — so `Fruits à coque`,
+ * `FRUITS A COQUE` and `fruits-a-coque` all land on the same row. Hand-writing
+ * pre-normalised keys here would mean a `céleri-rave` added with its accent
+ * silently never matches, and would put de-accented French in a source file
+ * the accent check reads.
  *
  * Only names of the allergen *category* belong here. An ingredient that merely
  * contains an allergen ("beurre", "crevette", "fruits de mer") is deliberately
@@ -196,22 +199,22 @@ const allergenConfig: Record<Allergen, AllergenEntry> = {
  * the badge that the owner did not write, and a wrong allergen is worse than an
  * unstyled one. Anything not listed renders as typed.
  */
-const allergenAliases: Record<string, Allergen> = {
+const ALIAS_SOURCE: Record<string, Allergen> = {
   // gluten — Annex II names the cereals explicitly
   gluten: "gluten",
-  "cereales contenant du gluten": "gluten",
-  "cereales de gluten": "gluten",
+  "céréales contenant du gluten": "gluten",
+  "céréales de gluten": "gluten",
   "cereals containing gluten": "gluten",
-  "gluten de ble": "gluten",
-  "farine de ble": "gluten",
+  "gluten de blé": "gluten",
+  "farine de blé": "gluten",
   triticale: "gluten",
   khorasan: "gluten",
-  ble: "gluten",
+  "blé": "gluten",
   froment: "gluten",
   seigle: "gluten",
   orge: "gluten",
   avoine: "gluten",
-  epeautre: "gluten",
+  "épeautre": "gluten",
   kamut: "gluten",
   wheat: "gluten",
   rye: "gluten",
@@ -220,19 +223,19 @@ const allergenAliases: Record<string, Allergen> = {
   spelt: "gluten",
 
   // crustaceans
-  crustace: "crustaceans",
-  crustaces: "crustaceans",
+  "crustacé": "crustaceans",
+  "crustacés": "crustaceans",
   crustacean: "crustaceans",
   crustaceans: "crustaceans",
   shellfish: "shellfish",
 
   // eggs
-  oeuf: "eggs",
-  oeufs: "eggs",
+  "œuf": "eggs",
+  "œufs": "eggs",
   egg: "eggs",
   eggs: "eggs",
-  "blanc d oeuf": "eggs",
-  "blancs d oeufs": "eggs",
+  "blanc d'œuf": "eggs",
+  "blancs d'œufs": "eggs",
 
   // fish
   poisson: "fish",
@@ -242,8 +245,8 @@ const allergenAliases: Record<string, Allergen> = {
   // peanuts
   arachide: "peanuts",
   arachides: "peanuts",
-  cacahuete: "peanuts",
-  cacahuetes: "peanuts",
+  "cacahuète": "peanuts",
+  "cacahuètes": "peanuts",
   peanut: "peanuts",
   peanuts: "peanuts",
   groundnuts: "peanuts",
@@ -253,7 +256,7 @@ const allergenAliases: Record<string, Allergen> = {
   soy: "soy",
   soya: "soy",
   soybeans: "soy",
-  "lecithine de soja": "soy",
+  "lécithine de soja": "soy",
   "soy lecithin": "soy",
 
   // dairy
@@ -261,15 +264,15 @@ const allergenAliases: Record<string, Allergen> = {
   laits: "dairy",
   lactose: "dairy",
   "produits laitiers": "dairy",
-  "proteines de lait": "dairy",
+  "protéines de lait": "dairy",
   "lait et produits laitiers": "dairy",
   milk: "dairy",
   dairy: "dairy",
 
   // tree nuts
-  "fruit a coque": "nuts",
-  "fruits a coque": "nuts",
-  "fruits a coques": "nuts",
+  "fruit à coque": "nuts",
+  "fruits à coque": "nuts",
+  "fruits à coques": "nuts",
   noix: "nuts",
   noisette: "nuts",
   noisettes: "nuts",
@@ -278,8 +281,8 @@ const allergenAliases: Record<string, Allergen> = {
   pistache: "nuts",
   pistaches: "nuts",
   "noix de cajou": "nuts",
-  "noix de pecan": "nuts",
-  "noix du bresil": "nuts",
+  "noix de pécan": "nuts",
+  "noix du Brésil": "nuts",
   "noix de macadamia": "nuts",
   nut: "nuts",
   nuts: "nuts",
@@ -301,9 +304,9 @@ const allergenAliases: Record<string, Allergen> = {
   macadamia: "nuts",
 
   // celery
-  celeri: "celery",
-  "celeri rave": "celery",
-  "celeri branche": "celery",
+  "céleri": "celery",
+  "céleri-rave": "celery",
+  "céleri branche": "celery",
   celery: "celery",
   celeriac: "celery",
 
@@ -313,8 +316,8 @@ const allergenAliases: Record<string, Allergen> = {
   mustard: "mustard",
 
   // sesame
-  sesame: "sesame",
-  "graines de sesame": "sesame",
+  "sésame": "sesame",
+  "graines de sésame": "sesame",
   "sesame seeds": "sesame",
 
   // sulphites
@@ -344,21 +347,21 @@ const allergenAliases: Record<string, Allergen> = {
   mollusks: "molluscs",
 
   // dietary markers
-  vegetarien: "vegetarian",
-  vegetarienne: "vegetarian",
-  vegetariens: "vegetarian",
+  "végétarien": "vegetarian",
+  "végétarienne": "vegetarian",
+  "végétariens": "vegetarian",
   vegetarian: "vegetarian",
   vegan: "vegan",
-  vegetalien: "vegan",
-  vegetalienne: "vegan",
-  vegetaliens: "vegan",
+  "végétalien": "vegan",
+  "végétalienne": "vegan",
+  "végétaliens": "vegan",
 }
 
 /**
  * Lower case, expand ligatures, strip diacritics, collapse anything that is not
  * a letter or a digit into a single space. `"Fruits à coque"`,
  * `"FRUITS A COQUE"` and `"fruits_a_coque"` all come out as
- * `"fruits a coque"`.
+ * `"fruits à coque"`.
  *
  * The ligature step is not decoration: `œ` and `æ` are single code points that
  * NFD does not decompose, so `"Œufs"` — the correct French spelling — would
@@ -387,6 +390,17 @@ function normalizeKey(value: string): string {
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
 }
+
+/**
+ * The table actually consulted: every source spelling above, normalised the
+ * same way the incoming value is, so the two are guaranteed to agree.
+ */
+const allergenAliases: Record<string, Allergen> = Object.fromEntries(
+  Object.entries(ALIAS_SOURCE).map(([term, allergen]) => [
+    normalizeKey(term),
+    allergen,
+  ])
+)
 
 /**
  * Resolve a raw allergen string to one of the known entries, or `null` when
