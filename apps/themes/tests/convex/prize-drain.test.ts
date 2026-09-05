@@ -349,6 +349,55 @@ describe("the drain the card measured, run against the real backend", () => {
     expect((await play("e")).didWin).toBe(true)
   })
 
+  test("an owner tightening then restoring the budget does not refund it", async () => {
+    const t = newHarness()
+    const { storeId, gameId, codes } = await seedGame(t, 100, {
+      prizeBudget: { maxPrizes: 3, windowHours: 24 },
+    })
+    const play = (fingerprint: string) =>
+      t.mutation(api.gamePlay.play, {
+        code: codes[0]!,
+        gameId,
+        fingerprint,
+        completedActions: [],
+      })
+    const setBudget = (maxPrizes: number, windowHours: number) =>
+      t.run(async (ctx) => {
+        const game = (await ctx.db.query("games").first())!
+        await ctx.db.patch(game._id, { config: { prizeBudget: { maxPrizes, windowHours } } })
+      })
+    // The rate windows are not what is under test here.
+    const clearRateLimits = () =>
+      t.run(async (ctx) => {
+        for (const row of await ctx.db.query("rateLimits").collect()) await ctx.db.delete(row._id)
+      })
+
+    for (let i = 0; i < 3; i++) expect((await play(`a-${i}`)).didWin).toBe(true)
+    expect((await play("a-3")).didWin).toBe(false)
+
+    // The owner types the stricter-looking "1 per hour". Pruning the ledger to
+    // the budget in force truncated it here, and restoring the day budget then
+    // issued the whole thing again: 100 prizes against a fifty-prize ceiling in
+    // the measured version, by an owner tightening their own setting.
+    await clearRateLimits()
+    await setBudget(1, 1)
+    await t.run(async (ctx) => {
+      const row = (await ctx.db.query("prizeIssuance").first())!
+      await ctx.db.patch(row._id, {
+        issuedAt: row.issuedAt.map((at: number) => at - 2 * 60 * 60 * 1000),
+      })
+    })
+    expect((await play("b-0")).didWin).toBe(true)
+
+    await clearRateLimits()
+    await setBudget(3, 24)
+    expect((await play("c-0")).didWin).toBe(false)
+
+    const ledger = await t.run((ctx) => ctx.db.query("prizeIssuance").first())
+    expect(ledger?.storeId).toBe(storeId)
+    expect(ledger?.issuedAt).toHaveLength(4)
+  })
+
   test("a second game cannot loosen the establishment's budget", async () => {
     const t = newHarness()
     const { storeId, gameId, codes } = await seedGame(t, 100, {
@@ -519,6 +568,57 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
       completedActions: [actionIds[1]!],
     })
     expect(result.didWin).toBe(true)
+  })
+
+  test("the session stops offering a friend welcome the play would refuse", async () => {
+    const t = newHarness()
+    const { gameId } = await seedGame(t, 100, { requiredActions: 1 })
+    const { code: shareCode } = await t.mutation(api.gamePlay.ensureReferralCode, {
+      code: "TABLE1",
+      fingerprint: "referrer-device",
+    })
+
+    const welcomed: boolean[] = []
+    for (let i = 0; i < 5; i++) {
+      const session = await t.query(api.gamePlay.getSession, {
+        code: "TABLE1",
+        fingerprint: `friend-${i}`,
+        ref: shareCode,
+      })
+      welcomed.push(session.status === "ready" && session.referral.isFriendWelcome)
+      try {
+        await t.mutation(api.gamePlay.play, {
+          code: "TABLE1",
+          gameId,
+          fingerprint: `friend-${i}`,
+          completedActions: [],
+          ref: shareCode,
+        })
+      } catch {
+        // The refusal past the third is the point of the assertion below.
+      }
+    }
+
+    // Before this, the fourth and fifth friends were told the actions could be
+    // skipped, sent straight to the wheel, and had the spin throw an error the
+    // screen was told could not happen.
+    expect(welcomed).toEqual([true, true, true, false, false])
+  })
+
+  test("a fingerprint long enough to be storage is refused", async () => {
+    const t = newHarness()
+    const { gameId } = await seedGame(t)
+    await expect(
+      t.mutation(api.gamePlay.play, {
+        code: "TABLE1",
+        gameId,
+        // `fingerprint` becomes a `rateLimits.key` on an index; 200 000
+        // characters went in before this.
+        fingerprint: "x".repeat(10_000),
+        completedActions: [],
+      })
+    ).rejects.toThrow()
+    expect(await t.run((ctx) => ctx.db.query("rateLimits").collect())).toHaveLength(0)
   })
 
   test("a store with no actions configured is unaffected", async () => {

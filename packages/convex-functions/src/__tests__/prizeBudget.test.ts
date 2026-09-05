@@ -21,8 +21,8 @@ import {
   prizeBudgetAllows,
   readPrizeIssuance,
   recordPrizeIssued,
+  prizeBudgetAllowsAll,
   resolvePrizeBudget,
-  strictestPrizeBudget,
 } from "../prizeBudget"
 
 const T = 1_700_000_000_000
@@ -61,62 +61,62 @@ describe("resolvePrizeBudget", () => {
     })
   })
 
-  it("falls back to the DEFAULT on a non-finite value, never to the bounds", () => {
+  it("discards the WHOLE record when either field is non-finite", () => {
     // The schema types both fields as numbers and rejects a string, so `NaN`
-    // and `±Infinity` are what actually survive to here. Sending a non-finite
-    // `windowHours` to `minWindowHours` was a bug found by an adversarial pass:
-    // the minimum window is the LOOSEST setting, so a stored `NaN` turned
-    // "50 a day" into "50 an hour" — 24 times more generous than the default it
-    // was meant to be falling back to. Probed at 150 prizes in 3 hours.
-    expect(
-      resolvePrizeBudget({
-        config: { prizeBudget: { maxPrizes: Number.NaN, windowHours: Number.NaN } },
-      })
-    ).toEqual(DEFAULT_PRIZE_BUDGET)
-    expect(
-      resolvePrizeBudget({
-        config: { prizeBudget: { maxPrizes: 10, windowHours: Number.POSITIVE_INFINITY } },
-      })
-    ).toEqual({ maxPrizes: 10, windowHours: DEFAULT_PRIZE_BUDGET.windowHours })
+    // and `±Infinity` are what actually survive to here. Falling back per field
+    // looked tidier and landed looser than the default in both directions:
+    // `{1000, NaN}` resolved to 1000 a day (20x the default rate) and
+    // `{NaN, 1}` to 50 an hour — the exact number the round before had just
+    // finished fixing. A record with a corrupt half is not half trustworthy.
+    for (const prizeBudget of [
+      { maxPrizes: Number.NaN, windowHours: Number.NaN },
+      { maxPrizes: 1000, windowHours: Number.NaN },
+      { maxPrizes: Number.NaN, windowHours: 1 },
+      { maxPrizes: 10, windowHours: Number.POSITIVE_INFINITY },
+      { maxPrizes: Number.NEGATIVE_INFINITY, windowHours: 24 },
+    ]) {
+      expect(resolvePrizeBudget({ config: { prizeBudget } })).toEqual(DEFAULT_PRIZE_BUDGET)
+    }
   })
 })
 
-describe("strictestPrizeBudget", () => {
+describe("prizeBudgetAllowsAll", () => {
   const tight = { config: { prizeBudget: { maxPrizes: 2, windowHours: 24 } } }
   const loose = { config: { prizeBudget: { maxPrizes: 50, windowHours: 24 } } }
 
-  it("falls back to the default for an establishment with no active game", () => {
-    expect(strictestPrizeBudget([])).toEqual(DEFAULT_PRIZE_BUDGET)
+  it("applies the default to an establishment with no active game", () => {
+    const spent = Array.from({ length: DEFAULT_PRIZE_BUDGET.maxPrizes }, (_, i) => T + i)
+    expect(prizeBudgetAllowsAll([], [], T)).toBe(true)
+    expect(prizeBudgetAllowsAll([], spent, T + 1)).toBe(false)
   })
 
-  it("takes the tightest of the establishment's games, in either order", () => {
+  it("lets the tightest game refuse, whichever game the caller named", () => {
     // The ledger is per establishment but `play` takes `gameId` from the
     // caller. Reading the rule off that game let an owner who tightened the
     // wheel and left the scratch card on the default get the default: 2 prizes
     // through the tight game, then 48 more through the loose one.
-    expect(strictestPrizeBudget([tight, loose])).toEqual({ maxPrizes: 2, windowHours: 24 })
-    expect(strictestPrizeBudget([loose, tight])).toEqual({ maxPrizes: 2, windowHours: 24 })
+    expect(prizeBudgetAllowsAll([tight, loose], [T, T + 1], T + 2)).toBe(false)
+    expect(prizeBudgetAllowsAll([loose, tight], [T, T + 1], T + 2)).toBe(false)
+    expect(prizeBudgetAllowsAll([tight, loose], [T], T + 1)).toBe(true)
   })
 
-  it("compares as an issuance rate, so a long window can be the tighter one", () => {
-    // "50 a week" is tighter than "2 an hour", and comparing `maxPrizes` alone
-    // would get that backwards.
-    const perWeek = { config: { prizeBudget: { maxPrizes: 50, windowHours: 168 } } }
-    const perHour = { config: { prizeBudget: { maxPrizes: 2, windowHours: 1 } } }
-    expect(strictestPrizeBudget([perHour, perWeek])).toEqual({
-      maxPrizes: 50,
-      windowHours: 168,
-    })
+  it("never lets a long-window game license a burst a short-window one forbids", () => {
+    // The defect this replaced. Picking ONE budget by issuance rate made
+    // `100 per week` (0.6/h) look tighter than `1 per hour` (1/h), and then
+    // permitted a burst of 100 inside the hour the other forbids: measured at
+    // 100 prizes in one hour against a game set to 1. "Tightest governs" is the
+    // intersection of the constraints, not a budget you can pick.
+    const perHour = { config: { prizeBudget: { maxPrizes: 1, windowHours: 1 } } }
+    const perWeek = { config: { prizeBudget: { maxPrizes: 100, windowHours: 168 } } }
+    expect(prizeBudgetAllowsAll([perHour, perWeek], [T], T + 1)).toBe(false)
+    // ...and once the hour has passed, the weekly one is what still binds.
+    expect(prizeBudgetAllowsAll([perHour, perWeek], [T], T + 2 * HOUR)).toBe(true)
   })
 
-  it("breaks a tie on the smaller burst", () => {
-    const a = { config: { prizeBudget: { maxPrizes: 24, windowHours: 24 } } }
-    const b = { config: { prizeBudget: { maxPrizes: 1, windowHours: 1 } } }
-    expect(strictestPrizeBudget([a, b])).toEqual({ maxPrizes: 1, windowHours: 1 })
-  })
-
-  it("treats an unconfigured game as the default, so it can still be the tighter", () => {
-    expect(strictestPrizeBudget([{}, loose])).toEqual(DEFAULT_PRIZE_BUDGET)
+  it("counts an unconfigured game as the default, so it can be the one that refuses", () => {
+    const spent = Array.from({ length: DEFAULT_PRIZE_BUDGET.maxPrizes }, (_, i) => T + i)
+    const generous = { config: { prizeBudget: { maxPrizes: 1000, windowHours: 24 } } }
+    expect(prizeBudgetAllowsAll([{}, generous], spent, T + 1)).toBe(false)
   })
 })
 
@@ -162,28 +162,43 @@ describe("prizeBudgetAllows", () => {
 
 describe("appendPrizeIssuance", () => {
   it("records the prize and keeps the ledger ordered", () => {
-    expect(appendPrizeIssuance([T], BUDGET, T + HOUR)).toEqual([T, T + HOUR])
+    expect(appendPrizeIssuance([T], T + HOUR)).toEqual([T, T + HOUR])
   })
 
-  it("prunes by COUNT, keeping the most recent that could still matter", () => {
-    const full = [T, T + 1, T + 2]
-    expect(appendPrizeIssuance(full, BUDGET, T + 3)).toEqual([T + 1, T + 2, T + 3])
+  it("never prunes by the budget in force, however far the owner tightens it", () => {
+    // The defect this replaced, and it was the ORIGINAL defect returning by
+    // another route. Pruning to `budget.maxPrizes` is enough while that number
+    // only grows; the moment an owner shrinks it, one write destroys the
+    // history a later, wider budget needs. Measured: 50 issued on 50-a-day,
+    // owner types the stricter-looking "1 per hour", one play truncates the
+    // ledger to a single entry, and reverting to 50-a-day issues 49 more inside
+    // the same 24 hours. 100 against a fifty-prize ceiling, by an owner
+    // tightening their own setting.
+    let ledger = Array.from({ length: 50 }, (_, i) => T + i)
+    ledger = appendPrizeIssuance(ledger, T + HOUR)
+    expect(ledger).toHaveLength(51)
+    expect(prizeBudgetAllows(ledger, { maxPrizes: 50, windowHours: 24 }, T + HOUR)).toBe(false)
   })
 
-  it("never prunes by age, so lengthening the window still has history to count", () => {
-    // Pruning by age would have thrown away exactly the entries an owner
-    // widening their window needs, and quietly refunded the budget.
-    const old = [T - 10 * DAY, T - 9 * DAY]
-    const next = appendPrizeIssuance(old, { maxPrizes: 10, windowHours: 1 }, T)
+  it("keeps history a widened window still needs", () => {
+    const old = [T - 3 * DAY, T - 2 * DAY]
+    const next = appendPrizeIssuance(old, T)
     expect(next).toEqual([...old, T])
-    expect(prizeBudgetAllows(next, { maxPrizes: 3, windowHours: 168 }, T)).toBe(true)
-    expect(prizeBudgetAllows(next, { maxPrizes: 2, windowHours: 24 * 11 }, T)).toBe(false)
+    expect(prizeBudgetAllows(next, { maxPrizes: 3, windowHours: 1 }, T)).toBe(true)
+    expect(prizeBudgetAllows(next, { maxPrizes: 3, windowHours: 168 }, T)).toBe(false)
   })
 
-  it("bounds the ledger by the owner's own ceiling", () => {
+  it("bounds the ledger by the LIMITS, which no configuration can move", () => {
     let ledger: number[] = []
-    for (let i = 0; i < 50; i++) ledger = appendPrizeIssuance(ledger, BUDGET, T + i)
-    expect(ledger).toHaveLength(BUDGET.maxPrizes)
+    for (let i = 0; i < PRIZE_BUDGET_LIMITS.maxPrizes + 25; i++) {
+      ledger = appendPrizeIssuance(ledger, T + i)
+    }
+    expect(ledger).toHaveLength(PRIZE_BUDGET_LIMITS.maxPrizes)
+  })
+
+  it("drops what no configurable window could ever count again", () => {
+    const ancient = T - (PRIZE_BUDGET_LIMITS.maxWindowHours + 1) * HOUR
+    expect(appendPrizeIssuance([ancient], T)).toEqual([T])
   })
 })
 
@@ -248,7 +263,7 @@ describe("recordPrizeIssued", () => {
   it("opens a ledger on the first prize", async () => {
     const { ctx, store } = fakeDb()
     const issuance = await readPrizeIssuance(ctx, "stores:1")
-    await recordPrizeIssued(ctx, "stores:1", issuance, BUDGET, T)
+    await recordPrizeIssued(ctx, "stores:1", issuance, T)
     expect(store).toEqual([
       { _id: "prizeIssuance:1", storeId: "stores:1", issuedAt: [T], updatedAt: T },
     ])
@@ -259,7 +274,7 @@ describe("recordPrizeIssued", () => {
       { _id: "prizeIssuance:1", storeId: "stores:1", issuedAt: [T] },
     ])
     const issuance = await readPrizeIssuance(ctx, "stores:1")
-    await recordPrizeIssued(ctx, "stores:1", issuance, BUDGET, T + HOUR)
+    await recordPrizeIssued(ctx, "stores:1", issuance, T + HOUR)
     expect(store[0]?.issuedAt).toEqual([T, T + HOUR])
   })
 
@@ -268,7 +283,7 @@ describe("recordPrizeIssued", () => {
     for (let i = 0; i < BUDGET.maxPrizes; i++) {
       const issuance = await readPrizeIssuance(ctx, "stores:1")
       expect(prizeBudgetAllows(issuance.issuedAt, BUDGET, T + i)).toBe(true)
-      await recordPrizeIssued(ctx, "stores:1", issuance, BUDGET, T + i)
+      await recordPrizeIssued(ctx, "stores:1", issuance, T + i)
     }
     const after = await readPrizeIssuance(ctx, "stores:1")
     expect(prizeBudgetAllows(after.issuedAt, BUDGET, T + 99)).toBe(false)

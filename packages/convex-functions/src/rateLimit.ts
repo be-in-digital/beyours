@@ -240,6 +240,14 @@ export const FIELD_LIMITS = {
   phone: 40,
   subject: 200,
   message: 5_000,
+  /* Gamification. `play` bounded `completedActions` and nothing else, beside a
+     cap that exists precisely to stop a row being used as free storage. A
+     500 KB `userAgent` and a 200 000-character `fingerprint` were both stored,
+     and the fingerprint also becomes a `rateLimits.key` on the `by_key` INDEX.
+     The client sends a UUID and a real user agent, so both of these are
+     generous by an order of magnitude. */
+  fingerprint: 200,
+  userAgent: 512,
 } as const
 
 export class FieldTooLongError extends Error {
@@ -309,6 +317,36 @@ export async function consumeRateLimit(
   } else {
     await ctx.db.insert("rateLimits", { key, ...verdict.next })
   }
+}
+
+/**
+ * Whether one more call would be admitted, without consuming anything.
+ *
+ * For a QUERY, which cannot write and so cannot meter. `getSession` needs it to
+ * stop advertising a friend-welcome that `play` will refuse: the exemption is
+ * metered per referral row, and the session was computing it with no reference
+ * to that window, so the fourth friend on a share link was sent straight to the
+ * wheel and lost a spin to an error the screen had been told was impossible.
+ *
+ * Never use this to guard a mutation. Read-then-write across two calls is a gap
+ * a mutation does not need — `consumeRateLimit` decides and records in one.
+ */
+export async function peekRateLimit(
+  ctx: any,
+  name: RateLimitName,
+  subject: string,
+  now: number = Date.now()
+): Promise<boolean> {
+  const existing = await ctx.db
+    .query("rateLimits")
+    .withIndex("by_key", (q: any) => q.eq("key", rateLimitKey(name, subject)))
+    .first()
+
+  return checkRateLimit(
+    existing ? { windowStart: existing.windowStart, count: existing.count } : null,
+    RATE_LIMITS[name],
+    now
+  ).allowed
 }
 
 /** Args shared by the table wrappers in each app. */

@@ -120,11 +120,15 @@ function clamp(value: number, min: number, max: number): number {
  * that `games.update` taking `config: v.any()` lets anything through. It does
  * not: the schema types `prizeBudget.maxPrizes` and `windowHours` as numbers
  * and rejects a string outright. What survives to here is `NaN` and `±Infinity`,
- * which Convex's Float64 accepts, and those go to the DEFAULT rather than to a
- * bound. Sending a non-finite `windowHours` to `minWindowHours` was a bug: the
- * minimum window is the LOOSEST setting, so a stored `NaN` turned "50 a day"
- * into "50 an hour" — 24 times more generous than the default it was meant to
- * be falling back to.
+ * which Convex's Float64 accepts.
+ *
+ * A non-finite value discards the WHOLE record, both fields, rather than only
+ * the field that is corrupt. Falling back per field looked tidier and was
+ * looser than the default it claimed to be falling back to, in both directions:
+ * `{maxPrizes: 1000, windowHours: NaN}` resolved to 1000 a day, twenty times
+ * the default rate, and `{maxPrizes: NaN, windowHours: 1}` to 50 an hour —
+ * which is the exact number the previous round of this comment cited as the
+ * bug it had just fixed. A record with a corrupt half is not half trustworthy.
  */
 export function resolvePrizeBudget(game: {
   config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } }
@@ -133,54 +137,17 @@ export function resolvePrizeBudget(game: {
   if (!configured) return DEFAULT_PRIZE_BUDGET
   const maxPrizes = configured.maxPrizes ?? DEFAULT_PRIZE_BUDGET.maxPrizes
   const windowHours = configured.windowHours ?? DEFAULT_PRIZE_BUDGET.windowHours
-  return {
-    maxPrizes: Number.isFinite(maxPrizes)
-      ? clamp(maxPrizes, PRIZE_BUDGET_LIMITS.minPrizes, PRIZE_BUDGET_LIMITS.maxPrizes)
-      : DEFAULT_PRIZE_BUDGET.maxPrizes,
-    windowHours: Number.isFinite(windowHours)
-      ? clamp(
-          windowHours,
-          PRIZE_BUDGET_LIMITS.minWindowHours,
-          PRIZE_BUDGET_LIMITS.maxWindowHours
-        )
-      : DEFAULT_PRIZE_BUDGET.windowHours,
+  if (!Number.isFinite(maxPrizes) || !Number.isFinite(windowHours)) {
+    return DEFAULT_PRIZE_BUDGET
   }
-}
-
-/**
- * The budget in force at an establishment, across every game it runs.
- *
- * WHY THIS IS NOT SIMPLY THE PLAYED GAME'S SETTING. The counter is keyed per
- * ESTABLISHMENT — one budget, however many games share it — but `play` takes
- * `gameId` from the caller. A restaurant running a wheel and a scratch card is
- * a supported configuration (`loadActiveGameForQr` picks between them), so if
- * the rule came from whichever game the caller named, an owner who tightened
- * the wheel to two prizes a day and left the scratch card on the default would
- * get the default: the caller picks the loosest. A guard whose strictness the
- * caller chooses is the pattern this whole card exists to remove.
- *
- * So the tightest budget any active game sets governs the establishment.
- * Strictness is compared as an issuance RATE — prizes per hour — because two
- * budgets can differ in both numbers and "50 a week" is tighter than "2 an
- * hour"; ties go to the smaller `maxPrizes`, which is the smaller burst.
- *
- * The cost, stated plainly: an owner running two games can no longer be
- * generous on one and mean on the other — the mean one wins. That surprise is
- * in the safe direction, it is written on the control in the admin, and it is
- * the only reading under which the setting means what it says.
- */
-export function strictestPrizeBudget(
-  games: { config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } } }[]
-): PrizeBudget {
-  const budgets = games.map(resolvePrizeBudget)
-  if (budgets.length === 0) return DEFAULT_PRIZE_BUDGET
-  return budgets.reduce((tightest, candidate) => {
-    const a = candidate.maxPrizes / candidate.windowHours
-    const b = tightest.maxPrizes / tightest.windowHours
-    if (a < b) return candidate
-    if (a > b) return tightest
-    return candidate.maxPrizes < tightest.maxPrizes ? candidate : tightest
-  })
+  return {
+    maxPrizes: clamp(maxPrizes, PRIZE_BUDGET_LIMITS.minPrizes, PRIZE_BUDGET_LIMITS.maxPrizes),
+    windowHours: clamp(
+      windowHours,
+      PRIZE_BUDGET_LIMITS.minWindowHours,
+      PRIZE_BUDGET_LIMITS.maxWindowHours
+    ),
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,20 +182,57 @@ export function prizeBudgetAllows(
 }
 
 /**
+ * Whether EVERY active game of the establishment permits one more prize.
+ *
+ * WHY NOT ONE "TIGHTEST" BUDGET, having tried that and had it measured wrong.
+ * The ledger is per establishment but `play` takes `gameId` from the caller, so
+ * the rule cannot come from the game they named — an owner who tightened the
+ * wheel and left the scratch card on the default would get the default. The
+ * first attempt picked a single budget by comparing issuance RATES, and that
+ * loosens: `1 per hour` has a higher rate than `100 per week`, so the weekly
+ * one was selected as "tighter" and then permitted a burst of 100 inside the
+ * hour the other forbids. Measured live at 100 prizes in one hour against a
+ * game set to 1.
+ *
+ * "The tightest governs" is not a budget you can pick — it is the intersection
+ * of the constraints, so all of them are checked. An establishment with no
+ * active game falls back to the default rather than to no bound at all.
+ *
+ * The cost, unchanged and written on the admin control: an owner running two
+ * games cannot be generous on one and mean on the other. The mean one wins.
+ */
+export function prizeBudgetAllowsAll(
+  games: { config?: { prizeBudget?: { maxPrizes?: number; windowHours?: number } } }[],
+  issuedAt: readonly number[],
+  now: number
+): boolean {
+  const budgets = games.length > 0 ? games.map(resolvePrizeBudget) : [DEFAULT_PRIZE_BUDGET]
+  return budgets.every((budget) => prizeBudgetAllows(issuedAt, budget, now))
+}
+
+/**
  * The ledger after one more prize.
  *
- * Pruned by COUNT, never by age. Keeping the most recent `maxPrizes` entries is
- * exactly enough to answer the question — the limit can never be reached by
- * fewer — and it means an owner who LENGTHENS the window still has the history
- * to count, which pruning by age would have thrown away and quietly refunded.
+ * PRUNED BY THE LIMITS, NEVER BY THE BUDGET IN FORCE. This is the whole point,
+ * and the first version got it wrong in a way that put the original defect
+ * straight back: it kept the most recent `budget.maxPrizes` entries, which is
+ * exactly enough while `maxPrizes` never shrinks, and destroys history the
+ * moment it does. Measured: an owner on 50 a day issues 50, types the
+ * stricter-looking "1 per hour", one play an hour later truncates the ledger
+ * from 50 entries to 1, and reverting to 50 a day issues 49 more inside the
+ * same 24 hours. 100 prizes against a fifty-prize ceiling, by an owner
+ * tightening their own setting.
+ *
+ * So the bounds come from `PRIZE_BUDGET_LIMITS`, which no configuration can
+ * move: nothing older than the longest window an owner may ever set can be
+ * counted again, and nothing beyond the largest `maxPrizes` they may ever set
+ * can change an answer. Both are ceilings on the row's size, not on what it
+ * remembers about any particular budget.
  */
-export function appendPrizeIssuance(
-  issuedAt: readonly number[],
-  budget: PrizeBudget,
-  now: number
-): number[] {
-  const next = [...issuedAt, now].sort((a, b) => a - b)
-  return next.slice(-budget.maxPrizes)
+export function appendPrizeIssuance(issuedAt: readonly number[], now: number): number[] {
+  const cutoff = now - PRIZE_BUDGET_LIMITS.maxWindowHours * HOUR_MS
+  const next = [...issuedAt, now].sort((a, b) => a - b).filter((at) => at > cutoff)
+  return next.slice(-PRIZE_BUDGET_LIMITS.maxPrizes)
 }
 
 /**
@@ -286,11 +290,10 @@ export async function recordPrizeIssued(
   ctx: { db: unknown },
   storeId: string,
   issuance: PrizeIssuance,
-  budget: PrizeBudget,
   now: number = Date.now()
 ): Promise<void> {
   const db = ctx.db as IssuanceDb
-  const issuedAt = appendPrizeIssuance(issuance.issuedAt, budget, now)
+  const issuedAt = appendPrizeIssuance(issuance.issuedAt, now)
   if (issuance.id === null) {
     await db.insert("prizeIssuance", { storeId, issuedAt, updatedAt: now })
   } else {

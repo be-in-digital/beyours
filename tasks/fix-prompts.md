@@ -1724,6 +1724,44 @@ anyone having tried to break the thing:
   client's 33 ids became 32 and the "all" rule demanded all 33, with no error an
   owner could diagnose. The cap is storage-only now.
 
+**Round four, because a second adversarial pass broke round three.** Two of its
+four findings were the ORIGINAL defect returning by another route, which is the
+argument for running the pass twice rather than once:
+
+- **The 100-prize payout came back, owner-triggered.** `appendPrizeIssuance`
+  pruned the ledger to `budget.maxPrizes`, which is enough while that number only
+  grows and destroys history the moment it shrinks. Measured: 50 issued on
+  50-a-day, the owner types the stricter-looking "1 per hour", one play truncates
+  the ledger to a single entry, and reverting to 50-a-day issues 49 more inside
+  the same 24 hours. Pruning is now bounded by `PRIZE_BUDGET_LIMITS`, which no
+  configuration can move.
+- **"The tightest governs" cannot be a budget you pick.** `strictestPrizeBudget`
+  compared issuance RATES, so `100 per week` (0.6/h) beat `1 per hour` (1/h) and
+  then licensed a burst of 100 inside the hour the other forbids — measured live
+  at 100 prizes in one hour against a game set to 1. It is the intersection of
+  the constraints, so `prizeBudgetAllowsAll` checks every active game.
+- **The per-field fallback landed looser than the default.** `{1000, NaN}`
+  resolved to 1000 a day and `{NaN, 1}` to 50 an hour — the exact number round
+  three had just finished fixing. A non-finite value now discards the whole
+  record.
+- **The session advertised a welcome the mutation refuses.** `getSession`
+  computed `isFriendWelcome` with no reference to the window `play` meters it
+  against, so the fourth friend on a share link was sent to the wheel and lost a
+  spin to an error the screen was told could not happen. It reads the window now,
+  through a new `peekRateLimit`.
+- **`play` never bounded `fingerprint` or `userAgent`** — pre-existing, and
+  beside a `completedActions` cap that exists precisely to stop a row being used
+  as storage. A 200 000-character fingerprint was stored AND became a
+  `rateLimits.key` on an index. Both are capped now.
+
+**One weakness measured and deliberately not "fixed".** The friend-welcome meter
+binds per referral row and not in aggregate: `ensureReferralCode` mints 100 codes
+an hour, so 100 codes bought 200 gate-free plays. A store-wide window would bound
+it — and would buy nothing, because the same 200 plays are available with no
+referral at all by echoing the three action ids `getSession` publishes to any
+caller. It would only add a way to refuse real friends at a busy establishment.
+The cost of leaving it is analytics: conversions recorded that did not happen.
+
 **What is still not fixed, and will not be by more of the same.** A stock
 smaller than the budget in force still empties: five prizes behind a fifty-prize
 day go in five plays. Nothing in a Convex mutation distinguishes one person

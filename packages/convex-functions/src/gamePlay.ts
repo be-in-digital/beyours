@@ -6,14 +6,13 @@ import type {
   SchemaMutationCtx,
   SchemaQueryCtx,
 } from "@be-in-digital/convex-schema/dataModel"
-import { RateLimitedError, assertFieldLengths, consumeRateLimit } from "./rateLimit"
 import {
-  appendPrizeIssuance,
-  prizeBudgetAllows,
-  readPrizeIssuance,
-  recordPrizeIssued,
-  strictestPrizeBudget,
-} from "./prizeBudget"
+  RateLimitedError,
+  assertFieldLengths,
+  consumeRateLimit,
+  peekRateLimit,
+} from "./rateLimit"
+import { prizeBudgetAllowsAll, readPrizeIssuance, recordPrizeIssued } from "./prizeBudget"
 
 /**
  * Player-facing gamification flow (public, anonymous players).
@@ -498,7 +497,17 @@ export const getSession = {
         refRow.referrerFingerprint !== args.fingerprint
       ) {
         const latest = await findLatestPlay(ctx, qr.storeId, args.fingerprint)
-        if (latest === null) isFriendWelcome = true
+        // The exemption is metered per referral row, so a session that ignored
+        // that window told the fourth friend on a share link they could skip
+        // the actions, sent them straight to the wheel, and had `play` refuse
+        // the spin with an error the screen was told could not happen.
+        if (latest === null) {
+          isFriendWelcome = await peekRateLimit(
+            ctx,
+            "gameFriendWelcomePerReferral",
+            refRow._id
+          )
+        }
       }
     }
     const myReferral = args.fingerprint
@@ -583,6 +592,11 @@ const playArgs = {
 export const play = {
   args: playArgs,
   handler: async (ctx: SchemaMutationCtx, args: ObjectType<typeof playArgs>) => {
+    // Before anything is metered or written. `fingerprint` becomes a
+    // `rateLimits.key` on an index, so an unbounded one is an unbounded index
+    // entry — and `userAgent` is stored verbatim on every play.
+    assertFieldLengths({ fingerprint: args.fingerprint, userAgent: args.userAgent })
+
     // Dodged by sending a new fingerprint; the two windows after the lookup
     // are not. It does NOT meter code-probing, though its position suggests it
     // might: an unknown code throws, the transaction rolls back, and the row
@@ -687,14 +701,16 @@ export const play = {
     // against an empty stock: the player still plays, and loses. Refusing here
     // would tell a prober where the budget sits and would punish whoever
     // happened to scan next.
-    // Read across every active game, not just the one the caller named: the
-    // ledger is per establishment, so taking the rule from `args.gameId` would
-    // let a caller pick whichever of the owner's games is most generous. An
-    // owner who tightened the wheel and left the scratch card on the default
-    // used to get the default, because the caller chose.
-    const budget = strictestPrizeBudget(await loadActiveGames(ctx, qr.storeId))
+    // Checked against EVERY active game, not one picked for the establishment:
+    // the ledger is per store, so taking the rule from `args.gameId` would let
+    // a caller choose the most generous of the owner's games, and picking a
+    // single "tightest" one by issuance rate turned out to loosen instead.
     const issuance = await readPrizeIssuance(ctx, qr.storeId)
-    const withinBudget = prizeBudgetAllows(issuance.issuedAt, budget, now)
+    const withinBudget = prizeBudgetAllowsAll(
+      await loadActiveGames(ctx, qr.storeId),
+      issuance.issuedAt,
+      now
+    )
 
     const prizes = await loadAvailablePrizes(ctx, qr.storeId)
     const didWin = rollOutcome({
@@ -718,7 +734,7 @@ export const play = {
     // Charged in the same transaction as the decrement above, never before the
     // draw: a window that counted attempts would let a run of losing spins
     // exhaust a budget nothing came out of.
-    if (prize) await recordPrizeIssued(ctx, qr.storeId, issuance, budget, now)
+    if (prize) await recordPrizeIssued(ctx, qr.storeId, issuance, now)
 
     const playId = await ctx.db.insert("gamePlays", {
       storeId: qr.storeId,

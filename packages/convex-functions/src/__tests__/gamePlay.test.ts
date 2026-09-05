@@ -1001,7 +1001,7 @@ describe("play — the establishment's prize budget", () => {
     expect(result.didWin).toBe(true)
   })
 
-  it("takes the tightest budget of the establishment's games, not the one played", async () => {
+  it("lets any of the establishment's games refuse, not just the one played", async () => {
     // `args.gameId` is the caller's. Reading the rule off it let a caller pick
     // whichever of the owner's games was most generous.
     const ctx = playFixtures({
@@ -1022,6 +1022,42 @@ describe("play — the establishment's prize budget", () => {
     })
     const result = await play.handler(ctx, baseArgs)
     expect(result.didWin).toBe(false)
+  })
+
+  it("refuses a burst a short-window game forbids, whatever a long-window one allows", async () => {
+    // Picking ONE budget by issuance rate made "100 per week" look tighter than
+    // "1 per hour" and then licensed 100 prizes inside that hour.
+    const ctx = playFixtures({
+      config: { prizeBudget: { maxPrizes: 1, windowHours: 1 } },
+      extraGames: [
+        {
+          _id: "games:2",
+          storeId: "stores:1",
+          type: "scratch_card",
+          winRatio: 100,
+          isActive: true,
+          config: { prizeBudget: { maxPrizes: 100, windowHours: 168 } },
+        },
+      ],
+      prizeIssuance: [
+        { _id: "prizeIssuance:1", storeId: "stores:1", issuedAt: [Date.now() - 60_000] },
+      ],
+    })
+    expect((await play.handler(ctx, baseArgs)).didWin).toBe(false)
+  })
+
+  it("refuses a fingerprint or user agent long enough to be storage", async () => {
+    // Both were stored verbatim, and `fingerprint` also becomes a
+    // `rateLimits.key` on an index: 200 000 characters went in.
+    const ctx = playFixtures()
+    await expect(
+      play.handler(ctx, { ...baseArgs, fingerprint: "x".repeat(5_000) })
+    ).rejects.toThrow(/fingerprint/)
+    await expect(
+      play.handler(ctx, { ...baseArgs, userAgent: "x".repeat(5_000) })
+    ).rejects.toThrow(/userAgent/)
+    expect(ctx.store.gamePlays ?? []).toHaveLength(0)
+    expect(ctx.store.rateLimits ?? []).toHaveLength(0)
   })
 })
 
@@ -1153,7 +1189,51 @@ describe("play — the exemptions, after an adversarial pass got through them", 
   })
 })
 
-describe("getSession — what a public, unauthenticated query may publish", () => {
+describe("getSession — telling the player only what play will honour", () => {
+  it("stops advertising a friend welcome once the referral's window is spent", async () => {
+    // The session computed `isFriendWelcome` with no reference to the window
+    // `play` meters it against, so the fourth friend on a share link was sent
+    // straight to the wheel and lost a spin to an error the screen had been
+    // told could not happen.
+    const spent = {
+      _id: "rateLimits:1",
+      key: "gameFriendWelcomePerReferral:gameReferrals:1",
+      windowStart: Date.now(),
+      count: 3,
+    }
+    const tables = (rateLimits: MockDoc[]) => ({
+      gameQRCodes: [
+        { _id: "qr:1", storeId: "stores:1", code: "TABLE1", isActive: true, scannedCount: 0 },
+      ],
+      stores: [{ _id: "stores:1", name: "Chez Momo" }],
+      games: [
+        { _id: "games:1", storeId: "stores:1", type: "wheel", winRatio: 30, isActive: true },
+      ],
+      requiredActions: [],
+      prizes: [],
+      gamePlays: [],
+      rateLimits,
+      gameReferrals: [
+        {
+          _id: "gameReferrals:1",
+          storeId: "stores:1",
+          code: "SHARE123",
+          referrerFingerprint: "device-OTHER",
+          conversions: 0,
+          pendingBonuses: 0,
+        },
+      ],
+    })
+    const args = { code: "TABLE1", fingerprint: "friend-1", ref: "SHARE123" }
+
+    const open = await getSession.handler(createMockCtx(tables([])), args)
+    expect(open.status === "ready" && open.referral.isFriendWelcome).toBe(true)
+
+    const closed = await getSession.handler(createMockCtx(tables([spent])), args)
+    expect(closed.status === "ready" && closed.referral.isFriendWelcome).toBe(false)
+  })
+
+
   it("does not publish the establishment's prize budget", async () => {
     // The decision to LOSE rather than refuse past the budget rests on a prober
     // not knowing where the budget sits. `config` was returned verbatim, so
