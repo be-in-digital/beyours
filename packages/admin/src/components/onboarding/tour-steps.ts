@@ -66,8 +66,17 @@ export interface TourStepSpec {
   position?: StepType["position"]
 }
 
-/** Anchors that live in the chrome and are therefore always in the DOM. */
-export const ALWAYS_MOUNTED_ANCHORS = ["sidebar-brand", "main-content"] as const
+/**
+ * Anchors rendered by the admin chrome rather than by a page, so they are in
+ * the DOM whatever the route and whatever the account owns.
+ *
+ * `main-content` used to be in here and is deliberately gone: it wraps the
+ * whole content pane, so a mask cut around it covers the viewport and
+ * spotlights nothing. Membership of this list exempts an anchor from the
+ * "not on a navigating step" and "lives on this page" checks, so it is
+ * verified against the layouts rather than trusted.
+ */
+export const ALWAYS_MOUNTED_ANCHORS = ["sidebar-brand"] as const
 
 export const TOUR_STEP_SPECS: TourStepSpec[] = [
   // ── Welcome ────────────────────────────────────────────────────────
@@ -176,18 +185,11 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
     content:
       "Inventaire — Quatre cartes de résumé cliquables : En stock (vert), " +
       "Stock faible (orange), Rupture (rouge), Non suivi (gris). " +
-      "Cliquez sur une carte pour filtrer instantanément la liste.",
+      "Cliquez sur une carte pour filtrer la liste. " +
+      "Sur chaque produit : ajuster la quantité avec +/−, définir un seuil " +
+      "d'alerte, et activer la désactivation automatique — le produit " +
+      "disparaît du site dès que le stock atteint 0.",
   },
-  {
-    navFor: adminRoutes.inventory,
-    anchor: "main-content",
-    content:
-      "Pour chaque produit, vous pouvez : ajuster la quantité avec +/−, " +
-      "définir un seuil d'alerte de stock bas, activer la désactivation automatique " +
-      "(le produit disparaît du site quand le stock atteint 0) " +
-      "et activer/désactiver le suivi de stock.",
-  },
-
   // ── Messages ───────────────────────────────────────────────────────
   {
     route: adminRoutes.messages,
@@ -361,11 +363,11 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
     route: adminRoutes.dashboard,
     anchor: "sidebar-brand",
     content:
-      "La visite est terminée ! Vous connaissez maintenant " +
-      "chaque page de votre tableau de bord. " +
-      "Commencez par ajouter vos produits, puis explorez à votre rythme. " +
-      'Relancez cette visite quand vous voulez avec "Revoir la visite", ' +
-      "en bas du menu.",
+      "La visite est terminée ! Vous connaissez maintenant les pages " +
+      "auxquelles votre compte donne accès — un cuisinier et un livreur en " +
+      "voient moins qu'un propriétaire, c'est voulu. " +
+      "Explorez à votre rythme, et relancez cette visite quand vous voulez " +
+      'avec "Revoir la visite", en bas du menu.',
     position: "right",
   },
 ]

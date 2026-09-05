@@ -4,7 +4,7 @@ import { CircleHelp } from "lucide-react"
 import { useTour } from "@reactour/tour"
 import { SidebarMenuButton } from "../../ui/sidebar"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
-import { clearTourSeen } from "./tour-provider"
+import { clearTourSeen } from "./tour-storage"
 
 /**
  * Button in sidebar footer to replay the onboarding tour.

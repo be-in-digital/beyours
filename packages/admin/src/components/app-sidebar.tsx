@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { hasPermission, type Role, type Permission } from "@be-in-digital/core"
+import { type Role } from "@be-in-digital/core"
 import { UtensilsCrossed, Store } from "lucide-react"
 import {
   Sidebar,
@@ -32,6 +32,7 @@ import {
   navGroups,
   isCollapsible,
   navTourId,
+  canRoleSeeNavHref,
   ChevronRight,
   type NavEntry,
   type CollapsibleNavItem,
@@ -44,10 +45,13 @@ interface AppSidebarProps {
   brandName?: string
 }
 
+/**
+ * Delegated, not reimplemented. The onboarding tour asks the same question by
+ * href (`canRoleSeeNavHref`), and a second copy of this rule is exactly how the
+ * tour's `nav-*` ids drifted away from the ones the sidebar emits.
+ */
 function canSeeEntry(role: Role, entry: NavEntry): boolean {
-  const permission = entry.requiredPermission
-  if (!permission) return true
-  return hasPermission(role, permission as Permission)
+  return canRoleSeeNavHref(role, isCollapsible(entry) ? entry.basePath : entry.href)
 }
 
 export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {

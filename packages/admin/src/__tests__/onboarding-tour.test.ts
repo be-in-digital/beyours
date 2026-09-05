@@ -33,7 +33,7 @@
  * the comment there asks for exactly this file.
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, afterEach, vi } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
 
@@ -53,6 +53,12 @@ import {
   spotlightOf,
   tourStepsFor,
 } from "../components/onboarding/tour-steps"
+import { shouldOfferTour } from "../components/onboarding/tour-provider"
+import {
+  hasSeenTour,
+  markTourSeen,
+  clearTourSeen,
+} from "../components/onboarding/tour-storage"
 
 const ADMIN_SRC = path.join(__dirname, "..")
 const REPO = path.join(ADMIN_SRC, "../../..")
@@ -65,7 +71,13 @@ function anchorSources(): Map<string, string[]> {
   const roots = [
     path.join(ADMIN_SRC, "pages"),
     path.join(ADMIN_SRC, "components"),
-    ...APPS.map((app) => path.join(REPO, "apps", app, "app")),
+    // Both trees: an app mounts most admin screens from the package, but some
+    // — the kitchen among them — render the app's own component instead, and
+    // scanning only `app/` left six tour destinations unverified.
+    ...APPS.flatMap((app) => [
+      path.join(REPO, "apps", app, "app"),
+      path.join(REPO, "apps", app, "components"),
+    ]),
   ]
   const found = new Map<string, string[]>()
 
@@ -167,6 +179,27 @@ describe("onboarding tour — the spotlight", () => {
     expect(misplaced).toEqual([])
   })
 
+  it("only exempts anchors the chrome really always renders", () => {
+    // Membership of ALWAYS_MOUNTED_ANCHORS waives both the "not on a
+    // navigating step" and the "lives on this page" checks, so an unverified
+    // name in that list is a free escape hatch for any anchor at all.
+    const chrome = [
+      read(path.join(ADMIN_SRC, "components/app-sidebar.tsx")),
+      ...APPS.map((app) => read(path.join(REPO, "apps", app, "app/(admin)/layout.tsx"))),
+    ].join("\n")
+
+    for (const anchor of ALWAYS_MOUNTED_ANCHORS) {
+      expect(chrome, `"${anchor}" is exempted but the chrome does not render it`).toContain(
+        `data-tour="${anchor}"`
+      )
+    }
+    // `main-content` wraps the whole content pane: a mask cut around it covers
+    // the viewport and spotlights nothing, so it is not a legitimate exemption
+    // however reliably it is mounted.
+    expect(ALWAYS_MOUNTED_ANCHORS as readonly string[]).not.toContain("main-content")
+    expect(TOUR_STEP_SPECS.map((s) => s.anchor)).not.toContain("main-content")
+  })
+
   it("keeps the sidebar's id expression in one place", () => {
     // Two inline copies of this template literal in app-sidebar.tsx — one per
     // branch — are what drifted away from the tour in the first place.
@@ -177,6 +210,15 @@ describe("onboarding tour — the spotlight", () => {
       sidebar,
       "app-sidebar.tsx recomputes the tour id inline again — use navTourId()"
     ).not.toMatch(/`nav-\$\{/)
+
+    // Same argument for the visibility rule. The tour asks by href and the
+    // sidebar by entry; two copies of that rule can disagree silently, and the
+    // tour would then skip a menu item the account can plainly see.
+    expect(
+      sidebar,
+      "app-sidebar.tsx reimplements the permission check — delegate to canRoleSeeNavHref()"
+    ).toContain("canRoleSeeNavHref(role,")
+    expect(sidebar).not.toMatch(/hasPermission\(role,/)
   })
 })
 
@@ -298,6 +340,62 @@ describe("onboarding tour — coverage and copy", () => {
     }
   })
 
+  it("opens each page's step with that page's own name", () => {
+    // Swapping two steps' copy outright — Catégories narrating Promotions and
+    // vice versa — left every other assertion green. A page step now has to
+    // announce the menu entry it is standing on.
+    const labelOf = new Map<string, string>()
+    for (const group of navGroups) {
+      for (const entry of group.items) {
+        labelOf.set(isCollapsible(entry) ? entry.basePath : entry.href, entry.label)
+      }
+    }
+
+    const wrong: string[] = []
+    for (const spec of TOUR_STEP_SPECS) {
+      // Detail steps continue a page their predecessor introduced.
+      if (!spec.route || !spec.navFor) continue
+      const label = labelOf.get(spec.navFor)
+      if (!label) continue
+      if (!spec.content.startsWith(label)) {
+        wrong.push(`${spec.navFor}: copy should open with "${label}"`)
+      }
+    }
+    expect(wrong).toEqual([])
+  })
+
+  it("pins which element each detail step spotlights", () => {
+    // The one thing no derived rule catches: a detail step moved onto another
+    // anchor of the SAME page. `dashboard-charts` → `dashboard-recent` leaves
+    // the copy describing the bar chart while the spotlight sits on the recent
+    // orders table, and every other assertion here stays green.
+    //
+    // Changing this table is fine. Changing it by accident is what it stops.
+    const EXPECTED: Record<string, string[]> = {
+      [adminRoutes.dashboard]: ["dashboard-charts", "dashboard-actions"],
+      [adminRoutes.orders]: ["orders-tabs"],
+      [adminRoutes.products]: ["products-filters"],
+    }
+
+    const actual: Record<string, string[]> = {}
+    for (const spec of TOUR_STEP_SPECS) {
+      if (spec.route || !spec.anchor || !spec.navFor) continue
+      actual[spec.navFor] = [...(actual[spec.navFor] ?? []), spec.anchor]
+    }
+    expect(actual).toEqual(EXPECTED)
+
+    // And no PAGE anchor does double duty, which would make the table
+    // ambiguous. `sidebar-brand` is deliberately used twice: it bookends the
+    // tour, opening on the brand and closing on it.
+    const pageAnchors = TOUR_STEP_SPECS.map((s) => s.anchor).filter(
+      (a): a is string =>
+        a !== undefined && !(ALWAYS_MOUNTED_ANCHORS as readonly string[]).includes(a)
+    )
+    expect(pageAnchors.length, "a page anchor is spotlit by two steps").toBe(
+      new Set(pageAnchors).size
+    )
+  })
+
   it("carries real French copy on every step", () => {
     // `content.length > 40` was the whole of the old assertion, so English
     // placeholder text of sufficient length passed.
@@ -311,54 +409,135 @@ describe("onboarding tour — coverage and copy", () => {
     })
   })
 
-  it("names the kitchen's real columns", () => {
-    // The board has three statuses; `kitchen-page.tsx` explains why the fourth
-    // was removed. The copy claimed four, in the same way the Gamification step
-    // claimed four tabs after #159 split that screen into five pages.
-    const kitchen = read(path.join(ADMIN_SRC, "pages/kitchen/kitchen-page.tsx"))
-    const columns = [...kitchen.matchAll(/^\s{2}(\w+): \{ title: "([^"]+)"/gm)].map(
-      (m) => m[2] as string
-    )
-    expect(columns.length).toBeGreaterThan(0)
-
+  it("names the kitchen's real columns, and counts them right", () => {
+    // Read what SHIPS. `packages/admin`'s own `kitchen-page.tsx` is exported
+    // and mounted by neither app — both render their local `KitchenContent` —
+    // so a suite measuring the package file would bless a rename on the screen
+    // an owner actually opens.
+    const NUMBER_WORDS: Record<number, string> = { 2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq" }
     const step = TOUR_STEP_SPECS.find((s) => s.navFor === adminRoutes.kitchen)
     expect(step).toBeDefined()
-    for (const column of columns) {
-      expect(step?.content, `the kitchen step does not name the "${column}" column`).toContain(
-        column
+
+    for (const app of APPS) {
+      const file = path.join(
+        REPO, "apps", app, "components/admin/kitchen/KitchenContent.tsx"
       )
+      expect(fs.existsSync(file), `${app} does not render KitchenContent`).toBe(true)
+      const columns = [...read(file).matchAll(/^\s{2}\w+: \{ title: "([^"]+)"/gm)].map(
+        (m) => m[1] as string
+      )
+      expect(columns.length, `${app}: found no kitchen columns to compare`).toBeGreaterThan(0)
+
+      for (const column of columns) {
+        expect(
+          step?.content,
+          `the kitchen step does not name the "${column}" column`
+        ).toContain(column)
+      }
+      // The original defect was the COUNT, not the names: "4 colonnes …
+      // Terminé" over a three-column board. Naming three and saying four
+      // passed the first version of this assertion.
+      const claimed = NUMBER_WORDS[columns.length]
+      expect(claimed, `no word for ${columns.length} columns`).toBeDefined()
+      expect(
+        step?.content,
+        `the kitchen step should say "${claimed} colonnes" for ${columns.length} columns`
+      ).toContain(`${claimed} colonnes`)
+      for (const [n, word] of Object.entries(NUMBER_WORDS)) {
+        if (Number(n) === columns.length) continue
+        expect(
+          step?.content,
+          `the kitchen step claims "${word} colonnes" but there are ${columns.length}`
+        ).not.toContain(`${word} colonnes`)
+      }
     }
   })
 })
 
 describe("onboarding tour — when it opens", () => {
-  const provider = read(
-    path.join(ADMIN_SRC, "components/onboarding/tour-provider.tsx")
-  )
+  const base = {
+    isAuthenticated: true,
+    isAuthLoading: false,
+    userId: "user_1",
+    stores: [{ _id: "store_1" }],
+    selectedStoreId: "store_1",
+    alreadySeen: false,
+  }
 
-  it("waits for an establishment before offering itself", () => {
+  it("offers itself to an owner who has an establishment", () => {
+    expect(shouldOfferTour(base)).toBe(true)
+  })
+
+  it("does not offer itself to an owner who has none", () => {
     // `StoreGuard` replaces every page except Établissements, Paramètres and
     // Équipe with "Aucun établissement" until one exists — and a brand-new
     // owner, the person this tour opens for, has none. It used to narrate
     // twenty screens of empty state.
-    expect(provider).toContain("resolveStoreSelection")
-    expect(provider).toMatch(/hasStore/)
+    expect(shouldOfferTour({ ...base, stores: [], selectedStoreId: null })).toBe(false)
   })
 
-  it("does not re-offer itself forever where storage throws", () => {
-    // `hasSeenTour` answers false on a throw. Without an in-memory fallback the
-    // tour reopened after every page load in a private window, with a mask that
-    // swallows clicks.
-    expect(provider).toContain("seenInSession")
+  it("waits rather than guessing while the store list is in flight", () => {
+    // An undecided list is not an empty one. Asserting only on "empty" let an
+    // inverted comparison open the tour before the answer arrived.
+    expect(shouldOfferTour({ ...base, stores: undefined })).toBe(false)
   })
 
-  it("forgets one account at a time", () => {
-    const replay = read(
-      path.join(ADMIN_SRC, "components/onboarding/replay-tour-button.tsx")
-    )
-    // It used to loop over every `bid-tour-*` key, so one replay on a shared
-    // back-office tablet re-armed the tour for every colleague.
-    expect(replay).not.toMatch(/Object\.keys\(localStorage\)/)
-    expect(replay).toContain("clearTourSeen")
+  it("does not offer itself twice, or before auth settles", () => {
+    expect(shouldOfferTour({ ...base, alreadySeen: true })).toBe(false)
+    expect(shouldOfferTour({ ...base, isAuthLoading: true })).toBe(false)
+    expect(shouldOfferTour({ ...base, isAuthenticated: false })).toBe(false)
+    expect(shouldOfferTour({ ...base, userId: null })).toBe(false)
+  })
+})
+
+describe("onboarding tour — remembering that it was offered", () => {
+  const KEY = "bid-tour-user_1"
+
+  afterEach(() => {
+    clearTourSeen("user_1")
+    clearTourSeen("user_2")
+    vi.unstubAllGlobals()
+  })
+
+  it("records and reads one account at a time", () => {
+    const store = new Map<string, string>()
+    vi.stubGlobal("localStorage", {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    })
+
+    expect(hasSeenTour("user_1")).toBe(false)
+    markTourSeen("user_1")
+    expect(hasSeenTour("user_1")).toBe(true)
+    expect(store.get(KEY)).toBe("done")
+
+    // The replay button used to loop over every `bid-tour-*` key, so one
+    // replay on a shared back-office tablet re-armed the tour for everyone.
+    markTourSeen("user_2")
+    clearTourSeen("user_1")
+    expect(hasSeenTour("user_1")).toBe(false)
+    expect(hasSeenTour("user_2")).toBe(true)
+  })
+
+  it("still remembers within the session when storage throws", () => {
+    // A private window. `hasSeenTour` answers false on a throw, so without an
+    // in-memory fallback the tour reopened after every page load, with a mask
+    // that swallows clicks.
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("access denied")
+      },
+      setItem: () => {
+        throw new Error("access denied")
+      },
+      removeItem: () => {
+        throw new Error("access denied")
+      },
+    })
+
+    expect(hasSeenTour("user_1")).toBe(false)
+    expect(() => markTourSeen("user_1")).not.toThrow()
+    expect(hasSeenTour("user_1")).toBe(true)
   })
 })

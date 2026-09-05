@@ -11,53 +11,43 @@ import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useOptionalSidebar } from "../../ui/sidebar"
 import { canRoleSeeNavHref } from "../../config/nav-config"
 import { resolveStoreSelection } from "../store-selection"
+import { hasSeenTour, markTourSeen } from "./tour-storage"
 import { tourStepsFor, setTourNavigate } from "./tour-steps"
 
-const STORAGE_PREFIX = "bid-tour-"
 const AUTO_LAUNCH_DELAY_MS = 1200
 
-function storageKey(userId: string): string {
-  return `${STORAGE_PREFIX}${userId}`
-}
-
 /**
- * Whether this account has already been offered the tour.
+ * Whether to open the tour unasked.
  *
- * `seenInSession` is the fallback for a browser that refuses storage — private
- * mode, or a locked-down kiosk. Without it `hasSeenTour` answered `false` on
- * every throw, and the tour reopened 1.2 s after every page load with a mask
- * that swallows clicks. The module-level set does not survive a reload, but it
- * does hold within a session, which is the difference between "asked once" and
- * "unusable".
+ * A predicate rather than a tangle of early returns inside the effect, so the
+ * rule can be tested. The first version of this was asserted at by grepping
+ * the provider's source for `resolveStoreSelection`, which passes just as
+ * happily when the comparison is inverted.
  */
-const seenInSession = new Set<string>()
+export function shouldOfferTour(state: {
+  isAuthenticated: boolean
+  isAuthLoading: boolean
+  userId: string | null | undefined
+  /** `undefined` while `stores.listAll` is still in flight. */
+  stores: readonly { _id: string }[] | undefined
+  selectedStoreId: string | null
+  alreadySeen: boolean
+}): boolean {
+  if (!state.isAuthenticated || state.isAuthLoading || !state.userId) return false
+  if (state.alreadySeen) return false
 
-function hasSeenTour(userId: string): boolean {
-  if (seenInSession.has(userId)) return true
-  try {
-    return localStorage.getItem(storageKey(userId)) === "done"
-  } catch {
-    return false
-  }
-}
-
-function markTourSeen(userId: string): void {
-  seenInSession.add(userId)
-  try {
-    localStorage.setItem(storageKey(userId), "done")
-  } catch {
-    // A browser that refuses storage still gets the in-memory guard above.
-  }
-}
-
-/** Forget this account's completion, so the tour can be replayed. */
-export function clearTourSeen(userId: string): void {
-  seenInSession.delete(userId)
-  try {
-    localStorage.removeItem(storageKey(userId))
-  } catch {
-    // silently ignore
-  }
+  // `StoreGuard` replaces the body of every admin page except Établissements,
+  // Paramètres and Équipe with "Aucun établissement — Créez votre premier
+  // établissement." A brand-new owner has none, and they are precisely who
+  // this tour opens for: it used to walk them through twenty screens of empty
+  // state while describing charts, tickets and stock levels that were not on
+  // screen. `pending` is not `empty` — an undecided list must not launch it
+  // either.
+  const decision = resolveStoreSelection({
+    storeId: state.selectedStoreId,
+    stores: state.stores,
+  })
+  return decision.status !== "empty" && decision.status !== "pending"
 }
 
 /**
@@ -80,42 +70,44 @@ function TourAutoLauncher() {
   }, [router])
 
   /**
-   * Does this deployment have an establishment yet?
+   * Which establishments THIS ACCOUNT holds.
    *
-   * `StoreGuard` replaces the body of every admin page except Établissements,
-   * Paramètres and Équipe with "Aucun établissement — Créez votre premier
-   * établissement." A brand-new owner has none, and they are precisely who this
-   * tour opens for: it used to walk them through twenty screens of empty state
-   * while describing charts, tickets and stock levels that were not on screen.
-   * So the offer waits until there is something to show.
+   * Not "does the deployment have one": `stores.listAll` is wrapped in
+   * `authedQuery` + `requireStaff`, and only `super_admin` sees every store —
+   * a `client_admin` owner gets the ones on their own `storeIds`. That is the
+   * same answer `StoreGuard` acts on, which is what makes the two agree.
+   *
+   * The skip sentinel is the SECOND argument. `useQuery(x)` with `x` the
+   * string `"skip"` does not skip — `convex/react` reads skip from `args[0]`
+   * and would turn the string into a function reference and subscribe to it.
+   * Convex de-duplicates this subscription with `StoreGuard`'s, so asking here
+   * costs nothing extra.
    */
   const api = useAdminApiStore((s) => s.api) as Record<string, Record<string, unknown>> | null
-  // `as never` rather than `as any`: the Convex API is injected at runtime by
-  // the layout's effect, so on the first render `api` is null and this is the
-  // "skip" sentinel. Convex de-duplicates the subscription with `StoreGuard`'s,
-  // so asking here costs nothing extra.
+  const storesQuery = api?.stores?.listAll
   const stores = useQuery(
-    (api?.stores?.listAll ?? "skip") as never
+    (storesQuery ?? "skip") as never,
+    storesQuery ? {} : "skip"
   ) as StoreDoc[] | undefined
-  const storeId = useAdminStoreSelection((s) => s.storeId)
-  const hasStore = resolveStoreSelection({ storeId, stores }).status !== "empty"
-  const storesResolved = stores !== undefined
+  const selectedStoreId = useAdminStoreSelection((s) => s.storeId)
 
-  // Auto-launch, once, for an account that can actually use the admin.
+  const offer = shouldOfferTour({
+    isAuthenticated,
+    isAuthLoading,
+    userId: user?.id,
+    stores,
+    selectedStoreId,
+    alreadySeen: user?.id ? hasSeenTour(user.id) : true,
+  })
+
   useEffect(() => {
-    if (!isAuthenticated || isAuthLoading || !user?.id) return
-    if (!storesResolved || !hasStore) return
-
-    const userId = user.id
+    if (!offer) return
     const timeout = setTimeout(() => {
-      if (!hasSeenTour(userId)) {
-        setCurrentStep(0)
-        setIsOpen(true)
-      }
+      setCurrentStep(0)
+      setIsOpen(true)
     }, AUTO_LAUNCH_DELAY_MS)
-
     return () => clearTimeout(timeout)
-  }, [isAuthenticated, isAuthLoading, user?.id, storesResolved, hasStore, setIsOpen, setCurrentStep])
+  }, [offer, setIsOpen, setCurrentStep])
 
   // Keep sidebar open during tour
   useEffect(() => {
