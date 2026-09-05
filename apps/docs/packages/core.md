@@ -204,9 +204,10 @@ SumUp is connected over OAuth: there is no `SUMUP_API_KEY`.
 
 S3 is a **factory over an injected client**, not a set of free functions: the
 package has no `@aws-sdk/client-s3` dependency at all, so it stays loadable from
-the Convex runtime. There is no `uploadToS3`, `deleteFromS3` or `getSignedUrl`
-export — pass an `S3Operations` adapter to `createS3Service` and use the
-returned instance.
+the Convex runtime, and injecting the client is what makes it testable
+(`packages/core/src/aws/s3/client.ts:112`). There is no `uploadToS3`,
+`deleteFromS3` or `getSignedUrl` export — pass an `S3Operations` adapter to
+`createS3Service` and use the returned instance.
 
 ```typescript
 import { createS3Service, S3_FOLDERS } from "@be-in-digital/core";

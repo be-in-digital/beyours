@@ -529,17 +529,30 @@ export const emailAutomationRunsTable = defineTable({
 
   sentAt: v.number(),
 })
-  .index("by_automationId", ["automationId"])
+  // REMOVED: `by_automationId`. Its only reader was `stepsSentTo`, which used
+  // it to collect every run of the automation and then narrow to one subscriber
+  // in JavaScript; that read now goes through the index below. An index nothing
+  // reads is still a write on every insert.
   .index("by_subscriberId", ["subscriberId"])
   // Deleting a store purges by this — see STORE_SCOPED_TABLES.
   .index("by_storeId", ["storeId"])
-  // The idempotency question, answered with one lookup: has this step of this
-  // automation already reached this subscriber, for this firing?
-  .index("by_automation_subscriber_step", [
+  /**
+   * Both questions the dispatcher asks, answered by one index.
+   *
+   * The write asks "has THIS step already reached this subscriber for this
+   * firing" and equals all four fields. The read (`stepsSentTo`) asks the wider
+   * "which steps have reached them for this firing" and equals the first three.
+   * `occurrenceKey` therefore sits before `stepId`: with the old order the read
+   * could not narrow past `subscriberId` without also naming a step, so it
+   * narrowed on `automationId` alone and filtered the rest in JavaScript —
+   * every run of the automation, for every subscriber who ever entered it, read
+   * once per subscriber per step.
+   */
+  .index("by_automation_subscriber_occurrence_step", [
     "automationId",
     "subscriberId",
-    "stepId",
     "occurrenceKey",
+    "stepId",
   ])
 
 /**
@@ -585,6 +598,22 @@ export const emailEventsTable = defineTable({
   // read every event the campaign has produced, once per subscriber, which is
   // quadratic on the exact campaigns that need resuming.
   .index("by_campaignId_subscriberId", ["campaignId", "subscriberId"])
+  /**
+   * "How many campaign emails has this subscriber had since <date>?" — the
+   * weekly cap's question, narrowed to the week rather than to the subscriber.
+   *
+   * The same quadratic shape the comment above warns about, re-introduced on
+   * the subscriber axis: `sentCountsSince` read `by_subscriberId` and filtered
+   * `type` and `occurredAt` in JavaScript, so a one-week answer cost a
+   * subscriber's whole lifetime of sent + delivered + opened + clicked events,
+   * once per subscriber in a batch of forty. Convex refuses a transaction past
+   * 16,384 documents, so the campaigns of a store with loyal customers stopped
+   * completing at all.
+   *
+   * `occurredAt` last, because the week is a range and Convex allows the range
+   * only on the field after the equalities.
+   */
+  .index("by_subscriber_type_occurredAt", ["subscriberId", "type", "occurredAt"])
 
 /**
  * Email config table

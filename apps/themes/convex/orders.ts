@@ -1,5 +1,6 @@
 import { query, internalMutation, internalQuery, mutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import * as defs from "@be-in-digital/convex-functions/orders";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
@@ -11,6 +12,20 @@ export const list = storeQuery({
   permission: "orders:read",
   args: defs.list.args,
   handler: (ctx, args) => defs.list.handler(ctx, args),
+});
+
+/** The dashboard's aggregates, computed on the server over a window. */
+export const dashboardStats = storeQuery({
+  permission: "orders:read",
+  args: defs.dashboardStats.args,
+  handler: (ctx, args) => defs.dashboardStats.handler(ctx, args),
+});
+
+/** The dashboard's "Dernières commandes" table — ten rows, ten reads. */
+export const recent = storeQuery({
+  permission: "orders:read",
+  args: defs.recent.args,
+  handler: (ctx, args) => defs.recent.handler(ctx, args),
 });
 
 /** Get order by ID with access control (view token, the customer, or the store's staff) */
@@ -71,11 +86,9 @@ export const getById = query({
 // It had no caller. `getMyOrders` below is what the account page uses, and it
 // derives the customer from the session instead of taking it as an argument.
 
-export const getByStatus = storeQuery({
-  permission: "orders:read",
-  args: defs.getByStatus.args,
-  handler: (ctx, args) => defs.getByStatus.handler(ctx, args),
-});
+// REMOVED: `getByStatus` was `list` with the status filter made mandatory,
+// collected whole, and it had no caller. `list` takes an optional `status` and
+// pages; a second unbounded doorway onto the same table is not worth keeping.
 // @public-by-design: same rule as `getById` — the view token issued at checkout,
 // or the customer who placed the order. Returns one opaque token, nothing else.
 export const getTrackingToken = query(defs.getTrackingToken);
@@ -89,7 +102,17 @@ export const getPaymentState = query(defs.getPaymentState);
 // at checkout. The token is the authorisation.
 export const getByViewToken = query(defs.getByViewToken);
 
-/** Get orders for the currently authenticated user (backend deduces user from auth) */
+export const MY_ORDERS_LIMIT = 50;
+
+/**
+ * The signed-in customer's most recent orders.
+ *
+ * Bounded rather than collected: this read that customer's entire history with
+ * no window and no limit, on a live subscription, and a regular's history has
+ * no ceiling of its own. Newest first, because the account page is read from
+ * now backwards — an order from two years ago is not what someone opens this
+ * screen for.
+ */
 // @guarded-inline: derives the customer from the session; never takes an id
 export const getMyOrders = query({
   args: {},
@@ -101,7 +124,7 @@ export const getMyOrders = query({
       .query("orders")
       .withIndex("by_customerId", (q) => q.eq("customerId", identity.subject))
       .order("desc")
-      .collect();
+      .take(MY_ORDERS_LIMIT);
   },
 });
 
@@ -110,12 +133,29 @@ export const getMyOrders = query({
 /**
  * Storefront checkout: the order + kitchen-ticket invariant lives in the
  * defs layer (defs.createWithTicket) — this wrapper is transport only.
+ *
+ * The one thing it adds is the platform push, because booking one needs
+ * `internal.*` and the defs layer cannot reach it. A sale moves
+ * `stock.quantity`, and that number is what Uber Eats and Deliveroo read as
+ * availability: without this a dish sold out on the restaurant's own site went
+ * on being ordered through the platforms until some unrelated catalogue write
+ * happened to book a sync — and nothing sweeps for it, so that window has no
+ * end. The Inventaire screen has booked the same push on every manual stock
+ * edit since the beginning.
  */
 // @public-by-design: guest order access is guarded by the view token issued at checkout
 export const create = mutation({
   args: defs.createWithTicket.args,
-  handler: (ctx, args) => defs.createWithTicket.handler(ctx, args),
+  handler: async (ctx, args) => {
+    const orderId = await defs.createWithTicket.handler(ctx, args);
+    if (await defs.orderMovedTrackedStock(ctx, orderId)) {
+      await scheduleMenuSync(ctx, [args.storeId]);
+    }
+    return orderId;
+  },
 });
+
+import { scheduleMenuSync } from "./lib/menuSync";
 
 const orderStoreId = storeIdFromDocument("Order not found");
 
@@ -154,7 +194,24 @@ async function advanceOrder(
   ctx: MutationCtx,
   args: Parameters<typeof defs.updateStatus.handler>[1]
 ) {
+  // A cancellation gives the order's tracked stock back, and a dish that is
+  // available again has to reach the platforms for the same reason a sold-out
+  // one does. Resolved before the handler runs, while the order still says what
+  // it took and has not yet been marked cancelled — a replayed cancellation
+  // restocks nothing, so it must not book a push either.
+  const order =
+    args.status === "cancelled"
+      ? await ctx.db.get(args.id as Id<"orders">)
+      : null;
+  const restocks =
+    order !== null &&
+    order.status !== "cancelled" &&
+    (await defs.orderMovedTrackedStock(ctx, args.id));
+
   const dispatch = await defs.updateStatus.handler(ctx, args);
+
+  if (restocks && order) await scheduleMenuSync(ctx, [order.storeId]);
+
   if (dispatch) {
     await ctx.scheduler.runAfter(
       0,

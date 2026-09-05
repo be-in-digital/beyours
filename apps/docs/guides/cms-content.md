@@ -133,7 +133,13 @@ if (!validation.valid) {
 }
 
 // Proceed with upload to S3
-const { url } = await s3.upload(file, { folder: "cms", contentType: file.type });
+// `contentType` is required by UploadOptions; `filename` is optional and
+// replaces the generated UUID.
+const { url } = await s3.upload(file, {
+  folder: "cms",
+  filename: file.name,
+  contentType: file.type,
+});
 ```
 
 `s3` is a `createS3Service(config, client)` instance — see

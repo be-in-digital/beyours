@@ -20,11 +20,6 @@
  *
  * These cases hold the rule that replaced it: the customer says which code
  * they hold, the server says what it is worth.
- *
- * The figures above are the historical measurement, taken on Premium. The
- * cases below run on Essentielle: Premium became `coming_soon` in
- * convex/planAvailability.ts, and `createCheckoutSession` now refuses it
- * before it reads a referral code at all. See CHECKOUT and seedProgramme.
  */
 
 import { convexTest } from "convex-test";
@@ -33,21 +28,19 @@ import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
 import { planPrices } from "../../convex/planPrices";
-import { foundersOffer } from "../../convex/foundersOffer";
 import { VAT } from "../../lib/legal/company";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
-/* Essentielle/yearly: creation 3 500 € + yearly maintenance 1 000 €
-   = 4 500 € excl. tax.
+/* Essentielle/yearly. The figures quoted above were measured on Premium, which
+   was open for sale at the time; #350 closed it (convex/planAvailability.ts)
+   and `createCheckoutSession` now refuses it, so every case here died on that
+   refusal before reaching the behaviour it tests. Essentielle is the only open
+   plan, and the rule under test is the plan-independent one — the server
+   derives the discount, whatever is being bought.
 
-   It has to be Essentielle. Premium is `coming_soon` in
-   convex/planAvailability.ts, so `createCheckoutSession` throws
-   « L'offre Premium n'est pas encore ouverte à la vente » before any referral
-   code is read — a checkout that cannot happen proves nothing about the
-   discount. Every figure below is derived from `planPrices`, so a price move
-   does not silently rewrite what these cases assert. */
+   Essentielle creation 3 500 € + yearly maintenance 1 000 € = 4 500 € excl. tax. */
 const LIST_TOTAL =
   planPrices.essentielle.creation + planPrices.essentielle.maintenanceYearly;
 
@@ -131,51 +124,45 @@ async function seedProgramme(
       isActive: opts.isActive ?? true,
       createdAt: Date.now(),
     });
+    return { affiliateUserId, referralCodeId };
+  });
+}
 
-    /* ── Take the founders slots, so the offer is out of the way ──
-       `foundersOffer` gives the Essentielle creation line away entirely
-       (`creationCents: 0`) for the first 10 builds bought WITHOUT a referral
-       code — it is explicitly not stackable with one. Every "billed at list
-       price" case here is exactly that shape, so with slots left they would
-       assert the founders price (the maintenance line alone, 1 000 €) rather
-       than the list price, and prove nothing about referrals.
-
-       Paid rather than pending on purpose: `countFoundersSold` counts paid
-       orders with no time window, so this does not turn on the clock the way
-       a pending order held for FOUNDERS_HOLD_MS would. Reading totalSlots off
-       the offer keeps the seeding right if the slot count ever moves. */
-    for (let slot = 0; slot < foundersOffer.totalSlots; slot += 1) {
+/**
+ * Take the ten founders slots, so a checkout here is billed at list price.
+ *
+ * The founders offer is Essentielle-only and zeroes the creation line for the
+ * first ten builds (convex/foundersOffer.ts), and it does not stack with a
+ * referral — so the moment this suite moved off Premium, every case that bills
+ * *without* a discount started reading 1 000 € (maintenance alone) instead of
+ * 4 500 €. That is the offer working, not a pricing fault, but it is a second
+ * mechanism moving the number this suite exists to pin down.
+ *
+ * Filling the slots puts the checkout in the state it spends all but its first
+ * ten sales in, and leaves the referral arithmetic as the only thing acting on
+ * the price. The offer's own behaviour is covered by `foundersOffer.test.ts`.
+ */
+async function exhaustFoundersSlots(t: ReturnType<typeof convexTest>) {
+  await t.run(async (ctx) => {
+    for (let i = 0; i < 10; i++) {
       await ctx.db.insert("orders", {
-        customerEmail: `founders-${slot}@example.test`,
-        customerFirstName: "Fondateur",
-        customerLastName: String(slot),
+        customerEmail: `founder${i}@example.test`,
+        customerFirstName: "Alex",
+        customerLastName: "Martin",
         customerPhone: "+33600000000",
-        restaurantName: FOUNDERS_SLOT_MARKER,
-        city: "Lyon",
+        restaurantName: `Chez Alex ${i}`,
+        city: "Paris",
         buyerType: "business" as const,
-        plan: foundersOffer.plan,
+        plan: "essentielle" as const,
         orderType: "creation" as const,
         billingPeriod: "yearly" as const,
-        amountCents: planPrices[foundersOffer.plan].maintenanceYearly,
+        amountCents: planPrices.essentielle.maintenanceYearly,
         status: "paid" as const,
         isFounders: true,
         createdAt: Date.now(),
       });
     }
-
-    return { affiliateUserId, referralCodeId };
   });
-}
-
-/* The seeded founders rows are scenery, not something a case under test wrote.
-   They are recognised by this name so the assertions below can still say
-   "the checkout wrote no order" and mean it. */
-const FOUNDERS_SLOT_MARKER = "Créneau fondateur (seed)";
-
-/** The orders a case actually caused, the seeded founders slots aside. */
-async function checkoutOrders(t: ReturnType<typeof convexTest>) {
-  const all = await t.run((ctx) => ctx.db.query("orders").collect());
-  return all.filter((o) => o.restaurantName !== FOUNDERS_SLOT_MARKER);
 }
 
 async function orderAmount(
@@ -207,7 +194,8 @@ describe("the discount is derived, never accepted", () => {
 
     /* And it left nothing behind: a refused forgery must not hold a founders
        slot or show up in the ops console as revenue. */
-    expect(await checkoutOrders(t)).toEqual([]);
+    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
+    expect(orders).toEqual([]);
   });
 
   test.each([
@@ -280,6 +268,8 @@ describe("a code that must not discount anything", () => {
   ])("a %s code is billed at list price and earns no commission", async (_label, seed, code) => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, seed);
+    // No founders slot left, so list price here means list price.
+    await exhaustFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -306,6 +296,8 @@ describe("a code that must not discount anything", () => {
   ])("the affiliate buying as %s gets no discount", async (_label, buyer) => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, { affiliateEmail: "apporteur@example.test" });
+    // No founders slot left, so list price here means list price.
+    await exhaustFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -321,6 +313,8 @@ describe("a code that must not discount anything", () => {
   test("gmail's dots do not buy a second identity either", async () => {
     const t = convexTest(schema, modules);
     await seedProgramme(t, { affiliateEmail: "jean.dupont@gmail.com" });
+    // No founders slot left, so list price here means list price.
+    await exhaustFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -388,6 +382,8 @@ describe("a code only discounts while its contract holds", () => {
        commission with nothing signed. */
     const t = convexTest(schema, modules);
     await seedProgramme(t, { contractStatus });
+    // No founders slot left, so list price here means list price.
+    await exhaustFoundersSlots(t);
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
@@ -452,7 +448,8 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
     ).rejects.toThrow(/Remise de parrainage invalide/);
 
     // Refused before the order exists — no negative row, no founders slot held.
-    expect(await checkoutOrders(t)).toEqual([]);
+    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
+    expect(orders).toEqual([]);
   });
 
   test("no order can ever be written for a negative amount", async () => {
@@ -466,7 +463,7 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
       }),
     ).rejects.toThrow();
 
-    const orders = await checkoutOrders(t);
+    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
     expect(orders.filter((o) => o.amountCents < 0)).toEqual([]);
   });
 });
