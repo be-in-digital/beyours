@@ -56,9 +56,77 @@ export interface BrandingCssOptions {
   darkSelector?: string | null
 }
 
-/** The engine's own ink, from `app/globals.css`. */
-const INK: Hsl = { h: 224, s: 71, l: 4 }
+/**
+ * The two colours anything derived here may be written in.
+ *
+ * `INK` was the engine's own near-black (`224 71% 4%`) and that is 4.5:1 short:
+ * swept over all 16 777 216 hex values, the crossover where neither white nor
+ * that ink reaches AA bottoms out at 4.4897:1 (`#e8194d`), below the bar on
+ * 37 372 colours. The difference is imperceptible and the claim was still
+ * false, so the ink is black — which puts the worst case above 4.5:1 and lets
+ * `readableForeground` mean what its name says.
+ */
+const INK: Hsl = { h: 0, s: 0, l: 0 }
 const PAPER: Hsl = { h: 0, s: 0, l: 100 }
+
+/** WCAG AA for body text, and for a large or non-text element. */
+const AA = 4.5
+const LARGE_AA = 3
+
+/** The integer triple `formatHsl` will emit, so contrast is judged on it. */
+function round({ h, s, l }: Hsl): Hsl {
+  return {
+    h: Math.round(((h % 360) + 360) % 360),
+    s: Math.round(clamp(s, 0, 100)),
+    l: Math.round(clamp(l, 0, 100)),
+  }
+}
+
+/** The engine's dark page, which a dark-mode brand colour sits on. */
+const DARK_PAGE: Hsl = { h: 224, s: 71, l: 4 }
+
+/**
+ * Walk a colour's lightness until it can be read on `surface`.
+ *
+ * The alternative — a fixed lightness per role — is what produced a 3.75:1
+ * accent on the shipped "Chinois" preset: `l:30` is legible under a blue tint
+ * and not under a yellow one, because lightness is not luminance. Stepping is
+ * cheap (at most 100 iterations of arithmetic, at render time on the server)
+ * and it is the only version that holds for every hue.
+ *
+ * Falls back to plain ink or paper when the hue cannot reach AA at any
+ * lightness, which is the honest answer rather than a near-miss.
+ */
+function readableOn(surface: Hsl, hue: Hsl, dark: boolean): Hsl {
+  // Measured on the ROUNDED pair, because integers are what `formatHsl` emits
+  // and therefore what a browser paints. Checking the unrounded candidate put
+  // the worst accent at 4.449:1 — a guarantee that held for a number nobody
+  // ever sees.
+  const target = round(surface)
+  const step = dark ? 1 : -1
+  let l = dark ? 70 : 30
+  for (let i = 0; i <= 100; i++) {
+    const candidate = round({ h: hue.h, s: hue.s, l: clamp(l, 0, 100) })
+    if (contrastRatio(candidate, target) >= AA) return candidate
+    l += step
+    if (l < 0 || l > 100) break
+  }
+  return readableForeground(target)
+}
+
+/**
+ * Lift a dark-mode brand colour until it separates from the dark page.
+ *
+ * 3:1 rather than 4.5:1: this is the colour of a button, a focus ring and a
+ * link — a large or non-text element, which is what WCAG 1.4.11 asks 3:1 of.
+ * Demanding body-text contrast here would wash every dark brand out to a pastel
+ * nobody chose.
+ */
+function lightenUntilVisible(colour: Hsl): Hsl {
+  let { l } = colour
+  while (l < 100 && contrastRatio(round({ ...colour, l }), DARK_PAGE) < LARGE_AA) l += 1
+  return { ...colour, l }
+}
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value))
@@ -230,9 +298,13 @@ function tokens(branding: BrandingValues, dark: boolean): string {
   const body = sanitizeFontStack(branding.fontBody)
 
   // The shipped dark palette lifts the primary five points (53 -> 58) so it
-  // keeps its punch against a near-black background. Same move here.
+  // keeps its punch against a near-black background — but five points is the
+  // right move only for a colour that starts near 53. Applied to a dark brand
+  // it does nothing that matters: the "Gastronomie" preset (`#1A237E`) came
+  // out at 1.72:1 against the dark background, an invisible button. The lift
+  // continues until the colour separates from the page it sits on.
   const shade = (colour: Hsl): Hsl =>
-    dark ? { ...colour, l: clamp(colour.l + 5, 0, 95) } : colour
+    dark ? lightenUntilVisible({ ...colour, l: clamp(colour.l + 5, 0, 95) }) : colour
 
   let css = ""
 
@@ -259,9 +331,20 @@ function tokens(branding: BrandingValues, dark: boolean): string {
   }
 
   if (secondary) {
+    // `bg-secondary` is a surface — a chip, a muted panel — and the shipped
+    // token is `220 14% 96%`. Every preset stores a pale tint here, so the
+    // light value used to be written through as given; the colour PICKER does
+    // not, and `#d32f2f` painted every chip in the product a solid red slab.
+    // The stored colour supplies the hue, the token keeps its role, exactly as
+    // the accent does. Dark mode already did this.
+    // A value that is already a surface is used exactly as given — every preset
+    // stores one, and capping their saturation turned `#fff3e0` from a warm
+    // cream into grey. Only a value that is not a surface is made into one.
     const tone = dark
       ? { h: secondary.h, s: clamp(secondary.s, 0, 28), l: 17 }
-      : secondary
+      : secondary.l >= 85
+        ? secondary
+        : { h: secondary.h, s: clamp(secondary.s, 0, 80), l: 96 }
     css += declare("secondary", formatHsl(tone))
     css += declare("secondary-foreground", formatHsl(readableForeground(tone)))
   }
@@ -271,10 +354,12 @@ function tokens(branding: BrandingValues, dark: boolean): string {
       ? { h: accent.h, s: clamp(accent.s, 0, 40), l: 12 }
       : { h: accent.h, s: clamp(accent.s, 0, 80), l: 97 }
     css += declare("accent", formatHsl(surface))
-    css += declare(
-      "accent-foreground",
-      formatHsl({ h: accent.h, s: accent.s, l: dark ? 70 : 30 })
-    )
+    // Darkened (or lightened) until it can be read on its own surface, rather
+    // than fixed at l:30/l:70. A fixed lightness is a fixed lightness for every
+    // hue, and yellow is not blue: the shipped "Chinois" preset (`#FFD600`)
+    // emitted 3.75:1 that way — worse than the engine default it replaces, from
+    // one click on a theme card.
+    css += declare("accent-foreground", formatHsl(readableOn(surface, accent, dark)))
     css += declare("sidebar-accent", `hsl(${formatHsl(surface)})`)
   }
 

@@ -48,6 +48,20 @@ const SAFE_FONTS = [
   "Courier New",
 ]
 
+/**
+ * The engine's own palette, as hex.
+ *
+ * `app/globals.css` holds it as HSL triples — `--primary: 24 95% 53%`,
+ * `--secondary: 220 14% 96%`, `--accent: 24 80% 97%`. These are the same
+ * colours, and they are what an unbranded site renders, so they are what the
+ * form should start from.
+ */
+const ENGINE_PALETTE: Record<"primary" | "secondary" | "accent", string> = {
+  primary: "#f97015",
+  secondary: "#f3f4f6",
+  accent: "#fdf6f1",
+}
+
 const themes = [
   { id: "fast-food", name: "Fast Food", primary: "#FF6B00", secondary: "#FFF3E0", accent: "#FF9800" },
   { id: "pizzeria", name: "Pizzeria", primary: "#D32F2F", secondary: "#FFEBEE", accent: "#FF5722" },
@@ -76,9 +90,17 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
   const updateBranding = useMutation(api?.stores?.updateBranding)
 
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
-  const [primaryColor, setPrimaryColor] = useState("#000000")
-  const [secondaryColor, setSecondaryColor] = useState("#ffffff")
-  const [accentColor, setAccentColor] = useState("#0066cc")
+  // Seeded with the engine's own palette, not with black/white/blue.
+  //
+  // The three save buttons send whatever is in state, and the form only loads
+  // from the store `if (store?.branding)` — so an establishment that had never
+  // been branded kept the seeds, and an owner who changed ONLY the primary
+  // shipped `--secondary` pure white and every hover tint blue, having chosen
+  // neither. Seeding with the defaults makes the untouched fields save what
+  // the site already renders.
+  const [primaryColor, setPrimaryColor] = useState(ENGINE_PALETTE.primary)
+  const [secondaryColor, setSecondaryColor] = useState(ENGINE_PALETTE.secondary)
+  const [accentColor, setAccentColor] = useState(ENGINE_PALETTE.accent)
   const [fontHeading, setFontHeading] = useState("Inter")
   const [fontBody, setFontBody] = useState("Inter")
   const [logoUrl, setLogoUrl] = useState("")
@@ -87,9 +109,9 @@ export function DesignPage({ embedded = false }: DesignPageProps) {
   const initialized = useRef(false)
   useEffect(() => {
     if (store?.branding && !initialized.current) {
-      setPrimaryColor(store.branding.primaryColor || "#000000")
-      setSecondaryColor(store.branding.secondaryColor || "#ffffff")
-      setAccentColor(store.branding.accentColor || "#0066cc")
+      setPrimaryColor(store.branding.primaryColor || ENGINE_PALETTE.primary)
+      setSecondaryColor(store.branding.secondaryColor || ENGINE_PALETTE.secondary)
+      setAccentColor(store.branding.accentColor || ENGINE_PALETTE.accent)
       setFontHeading(store.branding.fontHeading || "Inter")
       setFontBody(store.branding.fontBody || "Inter")
       setLogoUrl(store.branding.logoUrl || "")

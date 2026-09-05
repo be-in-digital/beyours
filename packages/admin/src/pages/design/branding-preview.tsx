@@ -55,14 +55,21 @@ export function BrandingPreview({
           <p className="font-heading text-lg font-semibold text-foreground">
             Menu du jour
           </p>
-          <p className="text-sm text-muted-foreground">
-            Le texte courant de votre carte s'affiche dans la police du corps.
+          {/*
+            `font-sans` is load-bearing, not decoration. The body font is set on
+            `<body>`, so scoping `--brand-font-body` to this card changes nothing
+            by inheritance — the preview claimed to show the body font and showed
+            the administration's. The utility resolves
+            `var(--brand-font-body, …)`, which the scoped variable does answer.
+          */}
+          <p className="font-sans text-sm text-muted-foreground">
+            Le texte courant de votre carte s&apos;affiche dans la police du corps.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
+            <span className="font-sans inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground">
               Commander
             </span>
-            <span className="inline-flex h-9 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground">
+            <span className="font-sans inline-flex h-9 items-center rounded-md border border-border px-4 text-sm font-medium text-foreground">
               Voir la carte
             </span>
           </div>

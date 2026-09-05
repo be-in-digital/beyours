@@ -100,20 +100,54 @@ describe("readableForeground", () => {
   it("puts ink on a light brand", () => {
     // The case that made this a computation instead of a constant: white on
     // this yellow is 1.07:1 — a button whose label cannot be read at all.
+    //
+    // The ink is black rather than the engine's `224 71% 4%`: that near-black
+    // leaves the worst case at 4.4897:1, below AA on 37 372 of the 16 777 216
+    // colours a picker can produce. The difference is imperceptible and the
+    // guarantee is not.
     const yellow = parseBrandColor("#ffeb3b")!
     expect(contrastRatio(yellow, { h: 0, s: 0, l: 100 })).toBeLessThan(1.5)
-    expect(readableForeground(yellow)).toEqual({ h: 224, s: 71, l: 4 })
+    expect(readableForeground(yellow)).toEqual({ h: 0, s: 0, l: 0 })
   })
 
-  it("always beats 4.5:1, across the hue circle", () => {
-    for (let h = 0; h < 360; h += 15) {
-      for (const l of [20, 35, 50, 65, 80, 95]) {
-        const colour = { h, s: 85, l }
-        expect(
-          contrastRatio(colour, readableForeground(colour)),
-          `h=${h} l=${l}`
-        ).toBeGreaterThanOrEqual(4.5)
+  it("beats 4.5:1 on every colour a picker can produce", () => {
+    // NOT a hue circle at one saturation. The first version of this test swept
+    // `s=85` at six lightnesses and passed while the claim was false: with the
+    // engine's near-black as the ink, the worst case over all 16 777 216 hex
+    // values was 4.4897:1 (`#e8194d`), under the bar on 37 372 of them. The
+    // grid had been chosen where it could not fail.
+    //
+    // Every 4th value per channel — 262 144 colours — plus the exact worst
+    // cases a full sweep found, so a regression that only shows between the
+    // grid lines still has somewhere to land.
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    let worst = Infinity
+    let worstAt = ""
+    for (let r = 0; r < 256; r += 4) {
+      for (let g = 0; g < 256; g += 4) {
+        for (let b = 0; b < 256; b += 4) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const colour = parseBrandColor(value)!
+          const ratio = contrastRatio(colour, readableForeground(colour))
+          if (ratio < worst) {
+            worst = ratio
+            worstAt = value
+          }
+        }
       }
+    }
+    expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it("holds at the worst colours a full sweep found", () => {
+    // Pinned individually: these are the floor, and a change that lifts the
+    // average while dropping one of them is still a regression.
+    for (const value of ["#38860a", "#e8194d", "#006eff", "#0072f1"]) {
+      const colour = parseBrandColor(value)!
+      expect(
+        contrastRatio(colour, readableForeground(colour)),
+        value
+      ).toBeGreaterThanOrEqual(4.5)
     }
   })
 })
@@ -168,7 +202,7 @@ describe("buildBrandingCss", () => {
 
   it("gives the primary a foreground that can be read on it", () => {
     expect(buildBrandingCss({ primaryColor: "#ffeb3b" })).toContain(
-      "--primary-foreground:224 71% 4%;"
+      "--primary-foreground:0 0% 0%;"
     )
     expect(buildBrandingCss({ primaryColor: "#1a237e" })).toContain(
       "--primary-foreground:0 0% 100%;"
@@ -182,6 +216,71 @@ describe("buildBrandingCss", () => {
     const css = buildBrandingCss({ accentColor: "#ff9800" }, { darkSelector: null })
     expect(css).toMatch(/--accent:36 80% 97%;/)
     expect(css).toMatch(/--accent-foreground:36 100% 30%;/)
+  })
+
+  it("keeps a dark brand visible in dark mode", () => {
+    // The shipped dark palette lifts the primary five points, and five points
+    // was copied without its precondition. The "Gastronomie" preset (`#1A237E`)
+    // came out at 1.72:1 against the engine's dark page — a button the same
+    // colour as the background it sits on. WCAG 1.4.11 asks 3:1 of a
+    // non-text element, which is what a button, a focus ring and a link are.
+    const DARK_PAGE = { h: 224, s: 71, l: 4 }
+    for (const value of ["#1a237e", "#4e342e", "#300878", "#1838d0", "#000000"]) {
+      const css = buildBrandingCss({ primaryColor: value })
+      const dark = css.slice(css.indexOf(".dark{"))
+      const m = dark.match(/--primary:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+      const primary = { h: +m[1]!, s: +m[2]!, l: +m[3]! }
+      expect(contrastRatio(primary, DARK_PAGE), `${value} -> ${m[0]}`).toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it("gives the accent a foreground that can be read on it, at every hue", () => {
+    // `--accent-foreground` was fixed at l:30, and lightness is not luminance:
+    // the shipped "Chinois" preset (`#FFD600`) emitted 3.75:1 — worse than the
+    // engine default it replaces, from one click on a theme card.
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    let worst = Infinity
+    let worstAt = ""
+    for (let r = 0; r < 256; r += 16) {
+      for (let g = 0; g < 256; g += 16) {
+        for (let b = 0; b < 256; b += 16) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const css = buildBrandingCss({ accentColor: value }, { darkSelector: null })
+          const a = css.match(/--accent:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+          const f = css.match(/--accent-foreground:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+          const ratio = contrastRatio(
+            { h: +a[1]!, s: +a[2]!, l: +a[3]! },
+            { h: +f[1]!, s: +f[2]!, l: +f[3]! }
+          )
+          if (ratio < worst) {
+            worst = ratio
+            worstAt = value
+          }
+        }
+      }
+    }
+    expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
+    // The preset that measured 3.75:1 before, pinned by name.
+    const chinois = buildBrandingCss({ accentColor: "#FFD600" }, { darkSelector: null })
+    const a = chinois.match(/--accent:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+    const f = chinois.match(/--accent-foreground:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+    expect(
+      contrastRatio({ h: +a[1]!, s: +a[2]!, l: +a[3]! }, { h: +f[1]!, s: +f[2]!, l: +f[3]! })
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it("keeps the secondary a surface even when the picker hands it a slab", () => {
+    // `bg-secondary` is a chip or a muted panel — the shipped token is
+    // `220 14% 96%`. The light value used to be written through as given on the
+    // grounds that every PRESET stores a pale tint; the colour picker does not,
+    // and `#d32f2f` painted every chip in the product solid red.
+    const css = buildBrandingCss({ secondaryColor: "#d32f2f" }, { darkSelector: null })
+    const m = css.match(/--secondary:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+    expect(Number(m[3]), `lightness of ${m[0]}`).toBeGreaterThanOrEqual(90)
+    // A tint the owner did choose is still used exactly as given: capping its
+    // saturation would turn the Fast Food preset's warm cream into grey.
+    expect(buildBrandingCss({ secondaryColor: "#fff3e0" }, { darkSelector: null }))
+      .toContain("--secondary:37 100% 94%;")
   })
 
   it("carries the brand into dark mode instead of leaving the light palette", () => {

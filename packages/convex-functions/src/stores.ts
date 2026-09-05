@@ -476,7 +476,11 @@ export function assertBrandingValues(branding: Record<string, unknown>): void {
     }
     // An empty value clears the field, so it is checked before the scheme.
     if (value === "" || !BRANDING_URL_FIELDS.has(field)) continue
-    if (!/^(https?:\/\/|\/)/.test(value)) {
+    // `^/` alone accepts `//evil.example/x.png`, which a browser resolves as a
+    // protocol-relative URL: a third party's image on every page of the
+    // storefront and in the favicon, chosen by whoever can write branding. A
+    // root-relative path is one slash, and only one.
+    if (!/^(https?:\/\/|\/(?!\/))/.test(value)) {
       throw new Error(
         `Invalid branding: ${field} must be an http(s) or root-relative URL`
       )
