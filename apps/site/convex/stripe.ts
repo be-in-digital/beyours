@@ -16,6 +16,10 @@ import {
   invoiceLegalSettings,
   vatConfigurationProblem,
 } from "./invoiceLegal";
+import {
+  WITHDRAWAL_WAIVER,
+  WITHDRAWAL_WAIVER_REQUIRED,
+} from "../lib/legal/withdrawal-waiver";
 
 /* ── Maps plan + billingPeriod → env var holding the recurring Stripe Price ID ──
    NO hard-coded fallback: a TEST Price ID charged with a Live key would make
@@ -125,6 +129,14 @@ export const createCheckoutSession = action({
     siret: v.optional(v.string()),
     successUrl: v.string(),
     cancelUrl: v.string(),
+    /* ── art. L. 221-28: the express request for immediate performance ──
+       Required, never defaulted. It used to live only in React state
+       (components/checkout/checkout-flow.tsx), which meant two things: the
+       company could produce no evidence of the waiver its own CGV rely on, and
+       the gate was a client-side one on a public action — the deployment URL
+       ships in the browser bundle, so skipping the checkbox was a matter of
+       calling this directly. Same shape as `affiliateSignature.consented`. */
+    withdrawalWaiverConsent: v.boolean(),
     // Referral (optional)
     referralCode: v.optional(v.string()),
     referralCodeId: v.optional(v.id("referralCodes")),
@@ -157,6 +169,16 @@ export const createCheckoutSession = action({
        only fires if the Convex env drifts from the regime afterwards. */
     const vatProblem = vatConfigurationProblem(stripeTaxEnabled());
     if (vatProblem) throw new Error(`[TVA] ${vatProblem}`);
+
+    /* ── The waiver, refused before anything exists ──
+       Third, and above the order insert for the same reason as the two checks
+       above it: a refused sale must leave no row behind for the ops console to
+       count. The consent is recorded on the order below, from the server's own
+       copy of the clause, so what is stored is the wording the company
+       published rather than a string a caller chose. */
+    if (!args.withdrawalWaiverConsent) {
+      throw new Error(WITHDRAWAL_WAIVER_REQUIRED);
+    }
 
     // ── Provisioning guardrail (payment fix) ──
     // NEVER open a checkout session for a plan whose maintenance subscription
@@ -252,6 +274,12 @@ export const createCheckoutSession = action({
       billingPeriod: args.billingPeriod,
       amountCents: finalTotal,
       isFounders,
+      withdrawalWaiver: {
+        consentedAt: Date.now(),
+        version: WITHDRAWAL_WAIVER.version,
+        text: WITHDRAWAL_WAIVER.text,
+        cgvClause: WITHDRAWAL_WAIVER.cgvClause,
+      },
     });
 
     // Referral metadata for the webhook

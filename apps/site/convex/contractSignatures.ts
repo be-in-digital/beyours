@@ -4,9 +4,10 @@ import {
   mutation,
   internalMutation,
   internalQuery,
+  type QueryCtx,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 /* ── Public queries ── */
 
@@ -76,17 +77,22 @@ export const getSignedContractUrl = query({
       .unique();
     if (!affiliate) return null;
 
-    const signatures = await ctx.db
+    /* Same reason as `findSignedSignature` below: on a deployment that ran the
+       old ordering, ten legacy orphans would fill a ten-row window and hide the
+       affiliate's real contract from them. The conditions belong in the query. */
+    const signed = await ctx.db
       .query("contractSignatures")
       .withIndex("by_affiliateUserId", (q) =>
         q.eq("affiliateUserId", affiliate._id),
       )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "signed"),
+          q.neq(q.field("signedDocumentFileId"), undefined),
+        ),
+      )
       .order("desc")
-      .take(10);
-
-    const signed = signatures.find(
-      (s) => s.status === "signed" && s.signedDocumentFileId,
-    );
+      .first();
     if (!signed?.signedDocumentFileId) return null;
 
     const url = await ctx.storage.getUrl(
@@ -183,49 +189,71 @@ export const updateStatus = internalMutation({
   },
 });
 
-/** Activate affiliate after successful signature (webhook handler) */
-export const activateAfterSignature = internalMutation({
+/**
+ * Find the signature already on file for this affiliate and contract version,
+ * or `null`. A signature counts only when it carries its signed document: a row
+ * without one is not evidence of anything.
+ *
+ * Read by the action BEFORE it spends time generating a PDF, and again inside
+ * `recordInAppSignature` — a check outside a transaction is a hint, not a
+ * guard, and only the one inside the mutation decides.
+ *
+ * NOT `.take(n).find(…)`. A deployment that ran the old ordering carries one
+ * orphan — `status: "signed"`, no document — per failed attempt, and they sort
+ * ahead of the real signature. A window of any size is a window the orphans can
+ * fill, so the two conditions go into the query and the database walks past
+ * them.
+ */
+async function findSignedSignature(
+  ctx: QueryCtx,
+  affiliateUserId: Id<"affiliateUsers">,
+  contractVersionId: Id<"contractVersions">,
+): Promise<Doc<"contractSignatures"> | null> {
+  return await ctx.db
+    .query("contractSignatures")
+    .withIndex("by_affiliateUserId_and_contractVersionId", (q) =>
+      q
+        .eq("affiliateUserId", affiliateUserId)
+        .eq("contractVersionId", contractVersionId),
+    )
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("status"), "signed"),
+        q.neq(q.field("signedDocumentFileId"), undefined),
+      ),
+    )
+    .order("desc")
+    .first();
+}
+
+export const findSignedSignatureInternal = internalQuery({
   args: {
-    signatureId: v.id("contractSignatures"),
-    signedAt: v.number(),
-    signerIp: v.optional(v.string()),
-    signedDocumentFileId: v.optional(v.string()),
+    affiliateUserId: v.id("affiliateUsers"),
+    contractVersionId: v.id("contractVersions"),
   },
-  handler: async (ctx, args) => {
-    const signature = await ctx.db.get(args.signatureId);
-    if (!signature) throw new Error("Signature introuvable");
-
-    const affiliate = await ctx.db.get(signature.affiliateUserId);
-    if (!affiliate) throw new Error("Affilié introuvable");
-
-    // Update signature
-    await ctx.db.patch(args.signatureId, {
-      status: "signed",
-      signedAt: args.signedAt,
-      signerIp: args.signerIp,
-      signedDocumentFileId: args.signedDocumentFileId,
-      updatedAt: Date.now(),
-    });
-
-    // Only activate if this signature matches the required version
-    if (
-      signature.contractVersionId === affiliate.requiredContractVersionId
-    ) {
-      await ctx.db.patch(affiliate._id, {
-        contractStatus: "active",
-        acceptedContractVersionId: signature.contractVersionId,
-      });
-    }
-    // If version mismatch → signature is recorded but user stays blocked
-  },
+  handler: async (ctx, args) =>
+    await findSignedSignature(
+      ctx,
+      args.affiliateUserId,
+      args.contractVersionId,
+    ),
 });
 
 /**
- * Record an in-app SES signature (status "signed" + audit trail).
- * The signed PDF is attached and the affiliate activated afterwards via
- * `activateAfterSignature`. Called by the `signAffiliateContract` action.
+ * Write an in-app SES signature — row, document and activation, atomically.
+ *
+ * Called by `signAffiliateContract` ONLY after the PDF has been generated and
+ * stored, which is why `signedDocumentFileId` is required here and optional on
+ * the table: a row this mutation writes always has its document. The action
+ * that used to insert `status: "signed"` first left one orphan per failed
+ * attempt, for ever, because nothing deduplicated them either.
+ *
+ * Idempotent. A retry — a double click, a dropped response, a client that
+ * resends — finds the signature already on file and returns it instead of
+ * adding a second one. The freshly stored PDF of that retry is then unreferenced
+ * and `storageSweep` reclaims it after the TTL.
  */
-export const createInAppSignatureRecord = internalMutation({
+export const recordInAppSignature = internalMutation({
   args: {
     affiliateUserId: v.id("affiliateUsers"),
     contractVersionId: v.id("contractVersions"),
@@ -234,11 +262,23 @@ export const createInAppSignatureRecord = internalMutation({
     signerName: v.string(),
     signerUserAgent: v.optional(v.string()),
     signerIp: v.optional(v.string()),
+    signatureRef: v.string(),
+    signedDocumentFileId: v.string(),
     signedAt: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"contractSignatures">> => {
+    const affiliate = await ctx.db.get(args.affiliateUserId);
+    if (!affiliate) throw new Error("Affilié introuvable");
+
+    const existing = await findSignedSignature(
+      ctx,
+      args.affiliateUserId,
+      args.contractVersionId,
+    );
+    if (existing) return existing._id;
+
     const now = Date.now();
-    return await ctx.db.insert("contractSignatures", {
+    const signatureId = await ctx.db.insert("contractSignatures", {
       affiliateUserId: args.affiliateUserId,
       contractVersionId: args.contractVersionId,
       status: "signed",
@@ -248,9 +288,23 @@ export const createInAppSignatureRecord = internalMutation({
       signerUserAgent: args.signerUserAgent,
       signerIp: args.signerIp,
       signatureMethod: "in_app_ses",
+      signatureRef: args.signatureRef,
+      signedDocumentFileId: args.signedDocumentFileId,
       signedAt: args.signedAt,
       createdAt: now,
       updatedAt: now,
     });
+
+    /* Activate only against the version the affiliate is actually required to
+       sign. On a mismatch the signature is kept and the affiliate stays
+       blocked — the same rule the Yousign path enforced. */
+    if (args.contractVersionId === affiliate.requiredContractVersionId) {
+      await ctx.db.patch(affiliate._id, {
+        contractStatus: "active",
+        acceptedContractVersionId: args.contractVersionId,
+      });
+    }
+
+    return signatureId;
   },
 });

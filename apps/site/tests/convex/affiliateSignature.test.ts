@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
-import { api } from "../../convex/_generated/api";
+import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import schema from "../../convex/schema";
 
@@ -110,5 +110,249 @@ describe("affiliateSignature — signature électronique simple (SES) in-house",
         consented: true,
       }),
     ).rejects.toThrow(/nom complet/i);
+  });
+});
+
+/**
+ * A signer whose name leaves Windows-1252 used to be blocked for ever.
+ *
+ * The PDF was drawn with `StandardFonts.Helvetica`, which is WinAnsi-only,
+ * while `fullName` is free text validated only on length. « Łukasz », « Ayşe »,
+ * « Ștefan » and « Nguyễn » each threw inside `drawText` — and because the
+ * signature row was committed with `status: "signed"` BEFORE the PDF existed,
+ * with no duplicate guard, every retry added another orphan while
+ * `activateAfterSignature` never ran. `contractStatus` stayed
+ * `pending_contract`, every `/parrainage/dashboard*` page redirected, and no
+ * commission could be earned.
+ */
+describe("affiliateSignature — names outside Windows-1252", () => {
+  const NAMES = [
+    ["Polish", "Łukasz Kowalski"],
+    ["Vietnamese", "Nguyễn Văn An"],
+    ["Turkish", "Ayşe Şahin"],
+    ["Romanian", "Ștefan Popescu"],
+    ["Ukrainian", "Дмитро Коваль"],
+    ["French", "Aurélie Lefèvre"],
+  ] as const;
+
+  for (const [language, fullName] of NAMES) {
+    test(`a ${language} signer completes onboarding`, async () => {
+      const t = convexTest(schema, modules);
+      const { userId, contractVersionId, affiliateUserId } = await seed(t);
+      const asUser = t.withIdentity({ subject: userId });
+
+      const { signatureId } = await asUser.action(
+        api.affiliateSignature.signAffiliateContract,
+        { fullName, consented: true, userAgent: "vitest" },
+      );
+
+      const sig = await t.run((ctx) => ctx.db.get(signatureId));
+      expect(sig!.signerName).toBe(fullName);
+      expect(sig!.status).toBe("signed");
+      expect(sig!.signedDocumentFileId).toBeTruthy();
+      expect(sig!.signatureRef).toBeTruthy();
+
+      // The document really exists, and is a PDF rather than an empty blob.
+      const pdfSize = await t.run(async (ctx) => {
+        const blob = await ctx.storage.get(
+          sig!.signedDocumentFileId as Id<"_storage">,
+        );
+        return blob ? (await blob.arrayBuffer()).byteLength : 0;
+      });
+      expect(pdfSize).toBeGreaterThan(1000);
+
+      // And onboarding is actually unblocked, which is the point.
+      const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+      expect(affiliate!.contractStatus).toBe("active");
+      expect(affiliate!.acceptedContractVersionId).toBe(contractVersionId);
+    });
+  }
+
+  test("a name the embedded faces cannot draw still signs", async () => {
+    // CJK is outside the subset, so the glyphs render as `.notdef`. That must
+    // degrade the document, never block the signature: the row holds the exact
+    // string, and the certificate carries the Unicode escapes beside it.
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+
+    const { signatureId } = await t
+      .withIdentity({ subject: userId })
+      .action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "山田 太郎",
+        consented: true,
+      });
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerName).toBe("山田 太郎");
+    expect(sig!.signedDocumentFileId).toBeTruthy();
+    const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+    expect(affiliate!.contractStatus).toBe("active");
+  });
+});
+
+describe("affiliateSignature — no row without a document", () => {
+  test("signing twice returns the signature already on file", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const first = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Łukasz Kowalski", consented: true },
+    );
+    const second = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Łukasz Kowalski", consented: true },
+    );
+    const third = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Quelqu'un D'autre", consented: true },
+    );
+
+    expect(second.signatureId).toBe(first.signatureId);
+    expect(third.signatureId).toBe(first.signatureId);
+
+    const rows = await t.run((ctx) =>
+      ctx.db.query("contractSignatures").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.signerName).toBe("Łukasz Kowalski");
+  });
+
+  test("every signed row carries its document", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    for (const fullName of ["Łukasz Kowalski", "Nguyễn Văn An", "山田 太郎"]) {
+      await asUser
+        .action(api.affiliateSignature.signAffiliateContract, {
+          fullName,
+          consented: true,
+        })
+        .catch(() => undefined);
+    }
+
+    const rows = await t.run((ctx) =>
+      ctx.db.query("contractSignatures").collect(),
+    );
+    const signed = rows.filter((r) => r.status === "signed");
+    expect(signed).toHaveLength(rows.length);
+    for (const row of signed) {
+      expect(row.signedDocumentFileId).toBeTruthy();
+    }
+  });
+
+  test("legacy orphans do not hide the real signature", async () => {
+    // A deployment that ran the old ordering already carries one orphan per
+    // failed attempt: `status: "signed"`, no document, sorting ahead of
+    // everything. A fixed-size window would be filled by them, and the
+    // affiliate would sign again — or lose access to their own contract.
+    const t = convexTest(schema, modules);
+    const { userId, contractVersionId, affiliateUserId } = await seed(t);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 25; i++) {
+        await ctx.db.insert("contractSignatures", {
+          affiliateUserId,
+          contractVersionId,
+          status: "signed" as const,
+          contractSnapshotContent: CONTRACT_CONTENT,
+          contractSnapshotHash: "orphan",
+          signerName: "Łukasz Kowalski",
+          signatureMethod: "in_app_ses" as const,
+          signedAt: Date.now(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+    });
+
+    const asUser = t.withIdentity({ subject: userId });
+    const first = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Łukasz Kowalski", consented: true },
+    );
+    const second = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Łukasz Kowalski", consented: true },
+    );
+
+    expect(second.signatureId).toBe(first.signatureId);
+    const rows = await t.run((ctx) =>
+      ctx.db.query("contractSignatures").collect(),
+    );
+    expect(rows.filter((r) => r.signedDocumentFileId)).toHaveLength(1);
+
+    // And the affiliate can still reach their own signed contract.
+    const dl = await asUser.query(
+      api.contractSignatures.getSignedContractUrl,
+      {},
+    );
+    expect(dl?.url).toBeTruthy();
+  });
+
+  test("the repair marks old orphans failed and leaves real signatures alone", async () => {
+    const t = convexTest(schema, modules);
+    const { userId, contractVersionId, affiliateUserId } = await seed(t);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 3; i++) {
+        await ctx.db.insert("contractSignatures", {
+          affiliateUserId,
+          contractVersionId,
+          status: "signed" as const,
+          contractSnapshotContent: CONTRACT_CONTENT,
+          contractSnapshotHash: "orphan",
+          signerName: "Łukasz Kowalski",
+          signatureMethod: "in_app_ses" as const,
+          signedAt: Date.now(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        });
+      }
+    });
+    const real = await t
+      .withIdentity({ subject: userId })
+      .action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Łukasz Kowalski",
+        consented: true,
+      });
+
+    const first = await t.mutation(
+      internal.migrations.markOrphanSignaturesFailed,
+      {},
+    );
+    expect(first.marked).toBe(3);
+
+    const rows = await t.run((ctx) =>
+      ctx.db.query("contractSignatures").collect(),
+    );
+    expect(rows.filter((r) => r.status === "failed")).toHaveLength(3);
+    const signed = rows.filter((r) => r.status === "signed");
+    expect(signed).toHaveLength(1);
+    expect(signed[0]!._id).toBe(real.signatureId);
+
+    // Idempotent: nothing left to mark on a second run.
+    const second = await t.mutation(
+      internal.migrations.markOrphanSignaturesFailed,
+      {},
+    );
+    expect(second.marked).toBe(0);
+  });
+
+  test("a refusal writes nothing at all", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    await expect(
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Łukasz Kowalski",
+        consented: false,
+      }),
+    ).rejects.toThrow();
+
+    expect(
+      await t.run((ctx) => ctx.db.query("contractSignatures").collect()),
+    ).toEqual([]);
   });
 });

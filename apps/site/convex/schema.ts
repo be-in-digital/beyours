@@ -141,6 +141,11 @@ export default defineSchema({
     // In-house simple electronic signature (SES) — audit trail
     signerName: v.optional(v.string()),
     signerUserAgent: v.optional(v.string()),
+    /* Reference printed on the « certificat de signature » page, minted before
+       the PDF is drawn. It used to be the row's own `_id`, which forced the row
+       to exist before the document — the ordering that produced an orphan on
+       every failed attempt. See convex/affiliateSignature.ts. */
+    signatureRef: v.optional(v.string()),
     signatureMethod: v.optional(
       v.union(v.literal("yousign"), v.literal("in_app_ses")),
     ),
@@ -165,7 +170,15 @@ export default defineSchema({
     plan: v.union(v.literal("essentielle"), v.literal("premium")),
     message: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_email", ["email"]),
+    /* Last time this prospect contacted us — re-submitting the form counts.
+       /confidentialite publishes « Prospects : jusqu'à trois (3) ans à compter
+       du dernier contact », and this is the date that sentence counts from;
+       ./retention falls back to `createdAt` for the rows written before it
+       existed. Optional for that reason, and no migration can invent one. */
+    lastContactAt: v.optional(v.number()),
+  })
+    .index("by_email", ["email"])
+    .index("by_createdAt", ["createdAt"]),
 
   orders: defineTable({
     customerEmail: v.string(),
@@ -204,6 +217,27 @@ export default defineSchema({
        (internal.http.recordSubscriptionOutcome). */
     subscriptionStatus: v.optional(
       v.union(v.literal("active"), v.literal("failed")),
+    ),
+    /* ── art. L. 221-28: the express request for immediate performance ──
+       The CGV say the withdrawal waiver is given by ticking a box at checkout,
+       so the tick has to survive somewhere the company can produce it. Written
+       by `createCheckoutSession`, which refuses the order without it, from
+       lib/legal/withdrawal-waiver.ts — never from a caller-supplied string.
+
+       Optional so the schema still validates the orders taken before this
+       existed; those rows carry no record, which is exactly the gap, and no
+       migration can invent one. Every order created from now on has it. */
+    withdrawalWaiver: v.optional(
+      v.object({
+        /** Server clock at the moment the order was accepted. */
+        consentedAt: v.number(),
+        /** `WITHDRAWAL_WAIVER.version` in force when the box was ticked. */
+        version: v.string(),
+        /** The exact sentence the buyer was shown, stored verbatim. */
+        text: v.string(),
+        /** The CGV clause the tick evidences. */
+        cgvClause: v.string(),
+      }),
     ),
     createdAt: v.number(),
   })

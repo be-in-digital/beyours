@@ -17,18 +17,67 @@
  *
  * Yousign was removed (subscription expired, unused); should we ever move to an
  * ADVANCED/QUALIFIED signature, bring a qualified provider back in.
+ *
+ * TWO PROPERTIES THIS FILE HAS TO HOLD, both learned the hard way.
+ *
+ * 1. EVERY NAME SIGNS. The PDF used to be drawn with `StandardFonts.Helvetica`,
+ *    which encodes Windows-1252 and nothing else, while `fullName` is free text
+ *    checked only for length. « Łukasz », « Ayşe », « Ștefan » and « Nguyễn »
+ *    each made `drawText` throw, so no document was ever produced: the affiliate
+ *    stayed `pending_contract`, every `/parrainage/dashboard*` page redirected,
+ *    and no commission could be earned. A Polish, Turkish, Romanian or
+ *    Vietnamese name was a permanent block on onboarding. The faces in
+ *    ./fonts are embedded for that reason.
+ *
+ * 2. NO ROW WITHOUT A DOCUMENT. An action is not a transaction. The signature
+ *    row used to be committed with `status: "signed"` BEFORE the PDF existed,
+ *    with no duplicate guard, so each failed attempt left another signed-looking
+ *    row carrying no document — corrupting the very audit trail the eIDAS art.
+ *    25 claim above rests on. The document is now produced and stored first, and
+ *    a single mutation writes the row, attaches the file and activates the
+ *    affiliate together. A failure before that point leaves nothing behind; a
+ *    retry after it returns the signature already on file.
  */
 
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { createHash } from "crypto";
+import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+import { createHash, randomUUID } from "crypto";
 import type { Id } from "./_generated/dataModel";
+import {
+  DEJA_VU_SANS_BOLD_BASE64,
+  DEJA_VU_SANS_REGULAR_BASE64,
+  decodeFontBase64,
+  escapeCodePoints,
+  unrepresentableCodePoints,
+} from "./fonts";
 
 const A4 = { w: 595, h: 842 };
 const MARGIN = 50;
+
+/**
+ * Register fontkit on `pdf` and embed the two Unicode faces.
+ *
+ * Lives in this module rather than ./fonts because fontkit is Node-only and
+ * this file is the `"use node"` one. `subset: true` keeps only the glyphs the
+ * document actually draws, so the signed contract stays roughly the size it was
+ * under Helvetica.
+ */
+async function embedUnicodeFonts(
+  pdf: PDFDocument,
+): Promise<{ regular: PDFFont; bold: PDFFont }> {
+  pdf.registerFontkit(fontkit);
+  const [regular, bold] = await Promise.all([
+    pdf.embedFont(decodeFontBase64(DEJA_VU_SANS_REGULAR_BASE64), {
+      subset: true,
+    }),
+    pdf.embedFont(decodeFontBase64(DEJA_VU_SANS_BOLD_BASE64), { subset: true }),
+  ]);
+  return { regular, bold };
+}
 
 function wrap(
   text: string,
@@ -64,8 +113,9 @@ async function generateSignedContractPdf(opts: {
   signerIp?: string | undefined;
 }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
-  const font = await pdf.embedFont(StandardFonts.Helvetica);
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  /* Not `StandardFonts.Helvetica`: it is WinAnsi-only, and a signatory's name is
+     free text. See ./fonts, and property 1 in this file's header. */
+  const { regular: font, bold } = await embedUnicodeFonts(pdf);
 
   const size = 9;
   const lh = size * 1.4;
@@ -140,6 +190,15 @@ async function generateSignedContractPdf(opts: {
 
   const rows: [string, string][] = [
     ["Signataire", opts.signerName],
+    /* The embedded subsets cover Latin, Greek and Cyrillic. A name outside them
+       — CJK, Arabic — draws as `.notdef` boxes rather than throwing, so the
+       exact string is repeated here as Unicode escapes: the certificate stays
+       readable evidence of who signed even when the glyphs are not. */
+    ...(unrepresentableCodePoints(opts.signerName).length > 0
+      ? ([
+          ["Signataire (Unicode)", escapeCodePoints(opts.signerName)],
+        ] as [string, string][])
+      : []),
     ["Email (compte authentifié)", opts.signerEmail],
     ["Date et heure (UTC)", new Date(opts.signedAt).toISOString()],
     ["Consentement", "Accepté explicitement avant signature"],
@@ -220,27 +279,27 @@ export const signAffiliateContract = action({
       affiliateUserId: affiliate._id,
     });
 
+    /* 1. Already signed? Return it rather than minting a second document.
+          Cheap short-circuit only: the authoritative check is inside
+          `recordInAppSignature`, in the same transaction as the insert. */
+    const alreadySigned = await ctx.runQuery(
+      internal.contractSignatures.findSignedSignatureInternal,
+      { affiliateUserId: affiliate._id, contractVersionId: contract._id },
+    );
+    if (alreadySigned) return { signatureId: alreadySigned._id };
+
     const signedAt = Date.now();
     const contentHash = createHash("sha256")
       .update(contract.content, "utf8")
       .digest("hex");
 
-    // 1. Record the signature (status "signed" + audit trail)
-    const signatureId = await ctx.runMutation(
-      internal.contractSignatures.createInAppSignatureRecord,
-      {
-        affiliateUserId: affiliate._id,
-        contractVersionId: contract._id,
-        contractSnapshotContent: contract.content,
-        contractSnapshotHash: contentHash,
-        signerName: fullName,
-        signerUserAgent: args.userAgent,
-        signerIp: args.signerIp,
-        signedAt,
-      },
-    );
+    /* Minted here, not taken from the row's `_id`, so the certificate can name
+       the signature before the row exists. Stored on the row below, which is
+       what makes a PDF traceable back to its record. */
+    const signatureRef = randomUUID();
 
-    // 2. Signed PDF + certificate
+    // 2. Signed PDF + certificate. Nothing has been written yet: a failure
+    //    here — an unrenderable glyph, an out-of-memory save — leaves no row.
     const bytes = await generateSignedContractPdf({
       content: contract.content,
       title: contract.title,
@@ -249,7 +308,7 @@ export const signAffiliateContract = action({
       signerEmail: email ?? "—",
       signedAt,
       contentHash,
-      signatureRef: signatureId,
+      signatureRef,
       userAgent: args.userAgent,
       signerIp: args.signerIp,
     });
@@ -261,13 +320,20 @@ export const signAffiliateContract = action({
       new Blob([buf], { type: "application/pdf" }),
     );
 
-    // 4. Attach the document + activate the affiliate
-    await ctx.runMutation(
-      internal.contractSignatures.activateAfterSignature,
+    // 4. Row + document + activation, in one transaction.
+    const signatureId = await ctx.runMutation(
+      internal.contractSignatures.recordInAppSignature,
       {
-        signatureId,
-        signedAt,
+        affiliateUserId: affiliate._id,
+        contractVersionId: contract._id,
+        contractSnapshotContent: contract.content,
+        contractSnapshotHash: contentHash,
+        signerName: fullName,
+        signerUserAgent: args.userAgent,
+        signerIp: args.signerIp,
+        signatureRef,
         signedDocumentFileId: storageId,
+        signedAt,
       },
     );
 
