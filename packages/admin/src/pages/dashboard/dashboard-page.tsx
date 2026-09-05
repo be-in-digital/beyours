@@ -29,7 +29,9 @@ export function DashboardPage() {
         <OrderBreakdown byType={stats.byType} bySource={stats.bySource} />
       </div>
       <div data-tour="dashboard-recent">
-        <RecentOrdersTable orders={orders.slice(0, 10)} />
+        {/* Already bounded by `orders.recent`; slicing here would be a second
+            bound over rows the server never sent. */}
+        <RecentOrdersTable orders={orders} />
       </div>
       <div data-tour="dashboard-actions">
         <QuickActions />

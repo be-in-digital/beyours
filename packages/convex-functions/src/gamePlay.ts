@@ -795,29 +795,117 @@ export const listRedemptions = {
   },
 }
 
-/** Admin: aggregate gamification stats for the winners dashboard. */
-const getStatsArgs = { storeId: v.id("stores") }
+/**
+ * How far back the gamification counters look, by default.
+ *
+ * Thirty days, the same window the dashboard's own breakdown uses, so the two
+ * admin screens do not quietly disagree about what "recently" means.
+ */
+export const GAME_STATS_WINDOW_MS = 30 * DAY_MS
+
+/**
+ * The most plays one call will read.
+ *
+ * A window alone is not a bound: a busy establishment can produce more plays in
+ * thirty days than Convex will read in one transaction, and one row per QR scan
+ * is the highest-volume write in the product. The cap makes the cost constant
+ * and the screens report `truncated` when they hit it, so a number that is a
+ * floor is never presented as a total.
+ */
+export const GAME_STATS_SCAN_LIMIT = 2_000
+
+/**
+ * The most redemptions each of the three redemption slices will read.
+ *
+ * Lower than the play cap because a redemption needs a win first, so this table
+ * is strictly the rarer of the two. Three slices — redeemed-in-window, pending,
+ * claimed — so the whole handler stays under 5,100 documents against Convex's
+ * 16,384 ceiling, whatever the establishment's history.
+ */
+export const REDEMPTION_SCAN_LIMIT = 1_000
+
+/**
+ * Admin: gamification counters for the games and winners screens.
+ *
+ * WHY IT IS WINDOWED AND CAPPED. This read every play and every redemption the
+ * establishment had ever recorded — two unbounded `.collect()` calls in one
+ * handler — to return five integers. Measured on a seeded store: 8,000
+ * documents read to answer `{"totalPlays":4000, ...}`. `gamePlays` takes a row
+ * per QR scan, so it is the first table in the product to reach Convex's
+ * 16,384-document transaction ceiling, and both screens that show these numbers
+ * die together when it does.
+ *
+ * WHAT CHANGED FOR THE OWNER. The counters now describe a window rather than
+ * all time — the screens label them so. `winRate` over the last month is also
+ * the more useful number: it reflects the ratio the owner has configured now,
+ * not an average across every setting they have ever tried.
+ *
+ * `pendingRedemptions` is the exception and stays a live count, because it is
+ * the queue the staff works from rather than a statistic — "how many prizes are
+ * waiting at the till", not "how many were won last month".
+ *
+ * All four reads are index ranges. Nothing here is read in order to be thrown
+ * away, so the caps below are a ceiling on the pathological case rather than the
+ * thing doing the work.
+ */
+const getStatsArgs = { storeId: v.id("stores"), since: v.optional(v.number()) }
 export const getStats = {
   args: getStatsArgs,
   handler: async (ctx: SchemaQueryCtx, args: ObjectType<typeof getStatsArgs>) => {
+    const now = Date.now()
+    const since = args.since ?? now - GAME_STATS_WINDOW_MS
+
+    // `by_storeId_playedAt` carries the window in the index, so the rows outside
+    // it are never read rather than read and discarded.
     const plays = await ctx.db
       .query("gamePlays")
-      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
-      .collect()
-    const redemptions = await ctx.db
-      .query("prizeRedemptions")
-      .withIndex("by_storeId", (q) => q.eq("storeId", args.storeId))
-      .collect()
+      .withIndex("by_storeId_playedAt", (q) =>
+        q.eq("storeId", args.storeId).gte("playedAt", since)
+      )
+      .order("desc")
+      .take(GAME_STATS_SCAN_LIMIT + 1)
 
-    const wins = plays.filter((p) => p.didWin).length
+    // Prizes handed over inside the window. `redeemedAt` is in the index, so
+    // "this month" is not a filter applied to a year of rows.
+    const redeemed = await ctx.db
+      .query("prizeRedemptions")
+      .withIndex("by_storeId_status_redeemedAt", (q) =>
+        q.eq("storeId", args.storeId).eq("status", "redeemed").gte("redeemedAt", since)
+      )
+      .take(REDEMPTION_SCAN_LIMIT + 1)
+
+    // Prizes still claimable, live rather than windowed: this is the queue the
+    // staff works from. Expired rows never stop being rows, so `expiresAt` is
+    // in the index too — a two-year-old game has far more dead `pending`
+    // redemptions than live ones.
+    const awaiting = await Promise.all(
+      (["pending", "claimed"] as const).map((status) =>
+        ctx.db
+          .query("prizeRedemptions")
+          .withIndex("by_storeId_status_expiresAt", (q) =>
+            q.eq("storeId", args.storeId).eq("status", status).gte("expiresAt", now)
+          )
+          .take(REDEMPTION_SCAN_LIMIT + 1)
+      )
+    )
+    const pending = awaiting.flat()
+
+    const truncated =
+      plays.length > GAME_STATS_SCAN_LIMIT ||
+      redeemed.length > REDEMPTION_SCAN_LIMIT ||
+      awaiting.some((rows) => rows.length > REDEMPTION_SCAN_LIMIT)
+
+    const scannedPlays = plays.slice(0, GAME_STATS_SCAN_LIMIT)
+    const wins = scannedPlays.filter((p) => p.didWin).length
+
     return {
-      totalPlays: plays.length,
+      since,
+      truncated,
+      totalPlays: scannedPlays.length,
       totalWins: wins,
-      winRate: plays.length > 0 ? Math.round((wins / plays.length) * 100) : 0,
-      totalRedeemed: redemptions.filter((r) => r.status === "redeemed").length,
-      pendingRedemptions: redemptions.filter(
-        (r) => isAwaitingRedemption(r) && r.expiresAt >= Date.now()
-      ).length,
+      winRate: scannedPlays.length > 0 ? Math.round((wins / scannedPlays.length) * 100) : 0,
+      totalRedeemed: Math.min(redeemed.length, REDEMPTION_SCAN_LIMIT),
+      pendingRedemptions: Math.min(pending.length, 2 * REDEMPTION_SCAN_LIMIT),
     }
   },
 }
