@@ -14,8 +14,8 @@
  *      cannot resolve them. → versions published to the registry.
  *   2. The monorepo has a single lockfile, at its root. A client repository
  *      needs its own, otherwise `--frozen-lockfile` fails in CI. → generated.
- *   3. `vercel.json` carries a `turbo-ignore`: there is no turbo workspace on
- *      the client side. → dropped.
+ *   3. The root `vercel.json` carries a `turbo-ignore`: there is no turbo
+ *      workspace on the client side. → dropped (`lib/mirror-tree.mjs`).
  *   4. The package name is `@beyours/themes`, scoped to the monorepo.
  *      → `beyours-boilerplate`.
  *   5. `packageManager` is honoured on the mirror and ignored here — inside a
@@ -30,6 +30,9 @@
  * Versions come from the REGISTRY, not from packages/*\/package.json: only the
  * registry says what a client can actually install. A package whose changeset
  * has not been published yet would otherwise resolve to nothing.
+ *
+ * What crosses and what does not is `lib/mirror-tree.mjs`, shared with
+ * `check-mirror-css.mjs` so the tree CI builds is the tree this pushes.
  *
  * The mirror's history is preserved — a plain commit on top, never a
  * force-push. Every client site has a `template` remote pointing at it and
@@ -50,22 +53,19 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
+import { materializeMirror } from "./lib/mirror-tree.mjs"
+
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SOURCE = join(ROOT, "apps/themes")
 const MIRROR_REPO = "be-in-digital/beyours-boilerplate"
 const MIRROR_PKG_NAME = "beyours-boilerplate"
 const REGISTRY = "https://npm.pkg.github.com"
 
-/** Never sent to the mirror: only meaningful inside the monorepo. */
-const NOT_SHIPPED = ["vercel.json", ".turbo", "tsconfig.tsbuildinfo"]
-
-/** Never overwritten on the mirror: belongs to it, or is regenerated. */
-const MIRROR_OWNED = [".git", "node_modules", ".next", "pnpm-lock.yaml", "next-env.d.ts"]
-
 /**
- * The mirror is rebuilt in full on every run (rsync --delete): a commit made
- * directly on it disappears at the next sync. The banner says so where someone
- * will actually read it — at the top of the README.
+ * The mirror is rebuilt in full on every run — anything the source no longer
+ * has is deleted — so a commit made directly on it disappears at the next sync.
+ * The banner says so where someone will actually read it: at the top of the
+ * README.
  */
 const MIRROR_README_BANNER = `<!-- Generated automatically — do not edit here. -->
 
@@ -87,9 +87,25 @@ const run = (cmd, args, opts = {}) =>
   (execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], ...opts }) ?? "").trim()
 
 const log = (msg) => console.log(msg)
+
+/**
+ * Reported, then unwound — never `process.exit`.
+ *
+ * `process.exit` does not run pending `finally` blocks, so every run that
+ * ended inside the `try` below left its clone of the mirror in the temp
+ * directory: the whole tree, on every sync and every `--check`.
+ */
+class Stop extends Error {
+  constructor(message, code) {
+    super(message)
+    this.code = code
+  }
+}
 const fail = (msg) => {
-  console.error(`✗ ${msg}`)
-  process.exit(1)
+  throw new Stop(msg, 1)
+}
+const done = (msg) => {
+  throw new Stop(msg, 0)
 }
 
 // ---------------------------------------------------------------------------
@@ -168,17 +184,18 @@ function mirrorPackageJson(sourcePkgPath, versions) {
 // 3. Sync
 // ---------------------------------------------------------------------------
 
-if (!existsSync(SOURCE)) fail(`source not found: ${SOURCE}`)
-
 const pushToken = process.env.MIRROR_PUSH_TOKEN
-if (!check && !pushToken) {
-  fail("MIRROR_PUSH_TOKEN is missing — cannot push. Re-run with --check for a dry run.")
-}
-
 const work = mkdtempSync(join(tmpdir(), "beyours-mirror-"))
 const clone = join(work, "mirror")
 
+// Every guard from here down runs inside the try, so that reporting one still
+// takes the temp directory with it.
 try {
+  if (!existsSync(SOURCE)) fail(`source not found: ${SOURCE}`)
+  if (!check && !pushToken) {
+    fail("MIRROR_PUSH_TOKEN is missing — cannot push. Re-run with --check for a dry run.")
+  }
+
   const remote = pushToken
     ? `https://x-access-token:${pushToken}@github.com/${MIRROR_REPO}.git`
     : `https://github.com/${MIRROR_REPO}.git`
@@ -192,8 +209,11 @@ try {
   for (const [pkg, range] of Object.entries(versions)) log(`   ${pkg} → ${range}`)
 
   log("→ copying contents")
-  const excludes = [...NOT_SHIPPED, ...MIRROR_OWNED].flatMap((e) => ["--exclude", e])
-  run("rsync", ["-a", "--delete", ...excludes, `${SOURCE}/`, `${clone}/`])
+  // What is shipped, and what the mirror keeps, is decided in
+  // `lib/mirror-tree.mjs` — the same module `check-mirror-css.mjs` builds from,
+  // so the tree this pushes is the tree CI proved.
+  const { copied, deleted } = materializeMirror(SOURCE, clone)
+  log(`   ${copied.length} file(s) shipped, ${deleted.length} removed`)
 
   log("→ rewriting package.json")
   writeFileSync(join(clone, "package.json"), mirrorPackageJson(join(SOURCE, "package.json"), versions))
@@ -208,10 +228,7 @@ try {
   run("pnpm", ["install", "--lockfile-only", "--ignore-scripts"], { cwd: clone, stdio: "inherit" })
 
   const status = run("git", ["status", "--porcelain"], { cwd: clone })
-  if (!status) {
-    log("✓ the mirror is already up to date")
-    process.exit(0)
-  }
+  if (!status) done("✓ the mirror is already up to date")
 
   const changed = status.split("\n").length
   log(`→ ${changed} file(s) to publish`)
@@ -231,6 +248,11 @@ try {
   run("git", ["push", "origin", "HEAD:main"], { cwd: clone })
 
   log(`✓ mirror published — ${MIRROR_REPO}`)
+} catch (error) {
+  if (!(error instanceof Stop)) throw error
+  if (error.code === 0) log(error.message)
+  else console.error(`✗ ${error.message}`)
+  process.exitCode = error.code
 } finally {
   rmSync(work, { recursive: true, force: true })
 }

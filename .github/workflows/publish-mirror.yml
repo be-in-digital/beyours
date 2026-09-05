@@ -34,7 +34,7 @@ jobs:
   publish:
     name: Sync the mirror
     runs-on: ubuntu-latest
-    # A sync is a clone, an rsync and a lockfile — two minutes when it works.
+    # A sync is a clone, a file copy and a lockfile — two minutes when it works.
     # The ceiling exists because the failure that mattered here did not fail:
     # pnpm hit a version it could not switch to, hung, and the job sat until
     # somebody cancelled it fifty minutes later. `cancelled` is neither a pass
