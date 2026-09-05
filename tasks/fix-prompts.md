@@ -1647,33 +1647,159 @@ schedule — each proven by a test.
 ````
 
 ## NEW-N — Anyone can drain a restaurant's entire prize budget in one loop
-**Bounded, not closed — see the residual below.** The prompt is kept for the
-record. `play`, `recordScan`, `ensureReferralCode`, `claim` and `orders.create`
-now consume the limiter, two of `play`'s windows keyed on rows the server
-resolved rather than on anything the caller sends. Measured against the real
-backend: 40 plays rotating the fingerprint, 10 admitted, 30 refused, from 40/0.
+**Closed, with one bound stated rather than fixed — see below.** The prompt is
+kept for the record.
 
-**The residual, because the "Done when" below is not fully met.** The stock
-still empties. The window bounds the RATE, not the budget: against a five-prize
-stock the first ten plays take it, since nothing in a Convex mutation
-distinguishes one person sending ten fingerprints from ten diners, and lowering
-the window far enough to protect the budget would refuse real players first.
-`prize-drain.test.ts` pins that deliberately. Protecting the budget needs
-either a control that binds a play to a person — a sign-in, or an
-anti-automation check at the edge — or an owner-facing cap on prize issuance,
-which is product surface and is nobody's card yet.
+**Round one (#341) bounded the RATE.** `play`, `recordScan`,
+`ensureReferralCode`, `claim` and `orders.create` consume the limiter, two of
+`play`'s windows keyed on rows the server resolved rather than on anything the
+caller sends. Measured against the real backend: 40 plays rotating the
+fingerprint, 10 admitted, 30 refused, from 40/0.
 
-**Two claims in the prompt below are wrong and are left in place as written.**
+**Round two bounded the BUDGET and enforced the actions.** The residual round
+one left was measured before it was fixed: with the windows in place, 500
+anonymous calls spread over 40 table codes still issued **200 prizes in one
+hour**, because `gamePlayPerStore` admits 200 plays an hour and a 100% win
+ratio turns each into a free pizza. Two guards close it.
+
+- **An establishment prize budget** — `packages/convex-functions/src/prizeBudget.ts`,
+  read before the win roll and charged only when a prize is actually drawn.
+  Keyed on `qr.storeId`, so no argument rotates it; owner-facing in *Jeux &
+  Lots*; ON by default at 50 prizes per rolling 24 h, because the store that
+  never opens the setting is the one the drain was measured against. Past the
+  budget the play still resolves and loses, rather than throwing: refusing
+  would tell a prober where the budget sits and would punish whoever scanned
+  next. Same measurement after: **200 prizes → 50**.
+- **The required-actions rule, enforced server-side** — `isActionRequirementMet`
+  in `gamePlay.ts`, throwing `ACTIONS_INCOMPLETE`. It mirrors the rule the
+  player UI already applies (sequential: the action currently due; "all": every
+  action flagged `isRequired`), counts what the device did on earlier visits,
+  and exempts the two paths the UI routes straight to the game — the friend on
+  a real referral code and the referrer spending a bonus, both decided from rows
+  the server resolved.
+
+**Round three, because an adversarial pass broke round two.** Neither guard
+survived first contact, and both were rewritten rather than patched. Written
+down because "it was verified" has been claimed in this backlog before without
+anyone having tried to break the thing:
+
+- **The budget paid out twice, and reset itself.** It counted into a
+  `rateLimits` row, and that table's window is FIXED — opened by the first event,
+  never sliding, read back against whatever `windowMs` the current rule says.
+  Measured: 100 prizes out of "50 per rolling 24 h" in two minutes by waiting out
+  a boundary; 1 200 prizes when a second game with a one-hour window nudged the
+  shared counter hourly; and 50 more handed out the moment an owner *tightened*
+  the setting. It now keeps the issuance TIMESTAMPS, in a `prizeIssuance` table,
+  pruned to the most recent `maxPrizes`. Genuinely rolling, and correct in both
+  directions when the setting moves.
+- **The budget rule was picked by the caller.** `play` took it from
+  `args.gameId`, while the counter is per establishment — so an owner who
+  tightened the wheel and left the scratch card on the default got the default.
+  `strictestPrizeBudget` now reads across every active game and the tightest
+  governs.
+- **`NaN` made the budget 24× looser.** A non-finite `windowHours` was clamped to
+  the MINIMUM window, which is the loosest setting, turning "50 a day" into
+  "50 an hour". Non-finite values now fall back to the default. (The docstring
+  claiming `config: v.any()` lets any garbage through was also wrong — the schema
+  types the field and rejects a string. Only `NaN`/`±Infinity` reach it.)
+- **The public session published the budget.** `getSession` returned
+  `game.config` verbatim, so the exact ceiling the lose-don't-refuse decision
+  depends on hiding was readable by anyone with a table code. Now stripped.
+- **One `?ref` turned the actions gate off entirely.** `isFriendWelcome` rests on
+  `isFirstPlay`, which is per fingerprint, so every rotated fingerprint was a
+  first-timer — and a caller can be their own referrer, since both fingerprints
+  are theirs. Measured: 30 plays refused without `ref`; the same loop with one
+  minted code appended took **120 plays, 0 refusals, 50 prizes, every row with an
+  empty `completedActions`**. The exemption is now metered on the referral ROW
+  (`gameFriendWelcomePerReferral`, 3/day), and past it the friend plays under the
+  same rule as everyone else rather than being turned away.
+- **A banked bonus bought unlimited gate-free plays.** The exemption tested
+  `hasBonus` and never spent it: five banked bought six plays. It now consumes
+  one, exactly as it does for a cooldown.
+- **The bonus cap confiscated earned plays.** `Math.min(5, stored + 1)` clamped
+  the stored value, so a referrer sitting at 8 dropped to 5 on their next
+  conversion. It clamps the increment now.
+- **A store with more than 32 required actions was permanently unplayable.** The
+  storage cap on `completedActions` was applied to the gate too, so the honest
+  client's 33 ids became 32 and the "all" rule demanded all 33, with no error an
+  owner could diagnose. The cap is storage-only now.
+
+**Round four, because a second adversarial pass broke round three.** Two of its
+four findings were the ORIGINAL defect returning by another route, which is the
+argument for running the pass twice rather than once:
+
+- **The 100-prize payout came back, owner-triggered.** `appendPrizeIssuance`
+  pruned the ledger to `budget.maxPrizes`, which is enough while that number only
+  grows and destroys history the moment it shrinks. Measured: 50 issued on
+  50-a-day, the owner types the stricter-looking "1 per hour", one play truncates
+  the ledger to a single entry, and reverting to 50-a-day issues 49 more inside
+  the same 24 hours. Pruning is now bounded by `PRIZE_BUDGET_LIMITS`, which no
+  configuration can move.
+- **"The tightest governs" cannot be a budget you pick.** `strictestPrizeBudget`
+  compared issuance RATES, so `100 per week` (0.6/h) beat `1 per hour` (1/h) and
+  then licensed a burst of 100 inside the hour the other forbids — measured live
+  at 100 prizes in one hour against a game set to 1. It is the intersection of
+  the constraints, so `prizeBudgetAllowsAll` checks every active game.
+- **The per-field fallback landed looser than the default.** `{1000, NaN}`
+  resolved to 1000 a day and `{NaN, 1}` to 50 an hour — the exact number round
+  three had just finished fixing. A non-finite value now discards the whole
+  record.
+- **The session advertised a welcome the mutation refuses.** `getSession`
+  computed `isFriendWelcome` with no reference to the window `play` meters it
+  against, so the fourth friend on a share link was sent to the wheel and lost a
+  spin to an error the screen was told could not happen. It reads the window now,
+  through a new `peekRateLimit`.
+- **`play` never bounded `fingerprint` or `userAgent`** — pre-existing, and
+  beside a `completedActions` cap that exists precisely to stop a row being used
+  as storage. A 200 000-character fingerprint was stored AND became a
+  `rateLimits.key` on an index. Both are capped now.
+
+**One weakness measured and deliberately not "fixed".** The friend-welcome meter
+binds per referral row and not in aggregate: `ensureReferralCode` mints 100 codes
+an hour, so 100 codes bought 200 gate-free plays. A store-wide window would bound
+it — and would buy nothing, because the same 200 plays are available with no
+referral at all by echoing the three action ids `getSession` publishes to any
+caller. It would only add a way to refuse real friends at a busy establishment.
+The cost of leaving it is analytics: conversions recorded that did not happen.
+
+**What is still not fixed, and will not be by more of the same.** A stock
+smaller than the budget in force still empties: five prizes behind a fifty-prize
+day go in five plays. Nothing in a Convex mutation distinguishes one person
+sending five fingerprints from five diners, and lowering the rate windows far
+enough to protect five prizes would refuse real players first. What the budget
+buys is a ceiling the owner sets and a bound on the establishment as a whole;
+what it does not buy is identity. Closing that needs a sign-in or an
+anti-automation check at the edge, and this platform has neither.
+`prize-drain.test.ts` pins both halves, in both apps.
+
+**On the two claims the prompt below gets wrong, left in place as written.**
 There is no per-IP limiting to add: a Convex mutation sees `auth`, `db`,
 `scheduler` and `storage`, and #261 already established that adding an
 `httpAction` to recover the address would grow the public surface instead. And
-`completedActions` was never a weak gate — `play` writes it and never reads it
-to permit a draw, so the social actions the whole gamification pitch rests on
-were enforced only by the client UI. It is now filtered to real active
-`requiredActions` and capped, but no gate was added: the friend-welcome, the
-referrer bonus and a store with no actions configured all reach the game with
-nothing done, so a coverage check would refuse real players — and a forgeable
-gate is worse than none, because it invites a trust it cannot carry.
+`completedActions` was not a *weak* gate — until round two it was no gate at
+all: `play` wrote it and never read it to permit a draw, so the social actions
+the whole pitch rests on were enforced by the client alone. Round one's note
+argued a coverage check would refuse real players and that a forgeable gate is
+worse than none. The first half was right about a *blanket* check and is why the
+rule now mirrors the UI's own progression rather than demanding everything. The
+second half is answered by saying so where it cannot be missed: the gate is
+documented in `gamePlay.ts`, in `prizeBudget.ts` and in its tests as a **product
+rule, not a security control** — `getSession` publishes the action ids, and no
+mutation can observe a Google review. A rule the server does not apply at all is
+not the safer of the two options; it is the one that lets a direct call skip
+what every honest player is made to do.
+
+**Uncarded findings from the endpoint inventory this round finally took**, none
+of them NEW-N's and all left open: seven public *actions* carry no rate limit at
+all (`stripe.createCheckoutSession` / `verifyCheckoutSession`,
+`sumup.createCheckout` / `verifyCheckout`, `paypal.createPayPalOrder` /
+`capturePayPalOrder`, `uberDirect.getDeliveryQuote`) because `consumeRateLimit`
+writes to `ctx.db` and an action has none — `uberDirect.getDeliveryQuote` is the
+sharpest, spending money at a vendor and writing a row with no order id to
+narrow who may call it; `apps/site/eslint.config.mjs` never wires the
+`convex/no-unguarded-convex-function` rule, so its eight unauthenticated
+endpoints are unmarked and unenforced; and `orders.getPaymentState` returns an
+order's payment status for any `orderId` with no token, unlike its two siblings.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,
