@@ -908,7 +908,7 @@ export const packages: PackageInfo[] = [
         name: "PaymentsPage",
         type: "component",
         description:
-          "Payment integrations (Stripe, SumUp, PayPal, Square)",
+          "Payment integrations (Stripe, SumUp, PayPal, cash; Square is announced but unimplemented)",
         importPath: "@be-in-digital/admin/pages",
         tags: ["admin", "page", "payments"],
       },
@@ -1130,7 +1130,7 @@ export const packages: PackageInfo[] = [
       {
         name: "kitchenTickets",
         type: "function",
-        description: "Kitchen ticket creation, printing, status",
+        description: "Kitchen ticket creation, browser printing, status",
         importPath: "@be-in-digital/convex-functions",
         tags: ["backend", "kitchen"],
       },

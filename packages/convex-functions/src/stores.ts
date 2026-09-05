@@ -9,7 +9,7 @@
  */
 
 import { v } from "convex/values"
-import { isPublishedStore } from "@be-in-digital/convex-schema"
+import { assertReservationUrl, isPublishedStore } from "@be-in-digital/convex-schema"
 import { grantCreatedStoreAccess } from "./auth"
 import {
   deleteStoreDependents,
@@ -140,8 +140,12 @@ export const create = {
     }),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
+    reservationUrl: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any) => {
+    /* Reaches an href on the storefront. A Convex validator can only say
+       "string"; the scheme is what makes it safe. */
+    assertReservationUrl(args.reservationUrl)
     const now = Date.now()
     const storeId = await ctx.db.insert("stores", {
       ...args,
@@ -193,6 +197,7 @@ export const update = {
     description: v.optional(v.string()),
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
+    reservationUrl: v.optional(v.string()),
     useGlobalHours: v.optional(v.boolean()),
     status: v.optional(v.union(
       v.literal("draft"),
@@ -203,6 +208,7 @@ export const update = {
   },
   handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
+    assertReservationUrl(fields.reservationUrl)
     const existing = await requireStore(ctx, id)
     const audit = prepareStoreFieldUpdate(existing, STORE_AUDIT_OPERATIONS.update, fields)
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })

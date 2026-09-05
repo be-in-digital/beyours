@@ -8,12 +8,12 @@ BeYours Engine is a collection of 10+ TypeScript packages that work together to 
 
 - **Storefront** — Menu display, cart, checkout, order tracking
 - **Admin Dashboard** — Product management, orders, kitchen, analytics
-- **Kitchen Display System** — Real-time order tickets with thermal printing
+- **Kitchen Display System** — Real-time order tickets with browser printing
 - **Gamification** — QR-based games (Wheel of Fortune, Scratch Cards) to drive engagement
 - **Multi-language** — Automatic translation via GPT-3.5-turbo
 - **Multi-store** — One owner, unlimited locations
 - **Delivery** — Uber Eats, Deliveroo, Uber Direct integration
-- **Payments** — Stripe, SumUp, PayPal, Square
+- **Payments** — Stripe, SumUp, PayPal, cash (Square announced, not implemented)
 
 ## Business Model
 

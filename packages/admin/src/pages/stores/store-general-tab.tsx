@@ -29,6 +29,8 @@ interface StoreGeneralTabProps {
   setPhone: Dispatch<SetStateAction<string>>
   email: string
   setEmail: Dispatch<SetStateAction<string>>
+  reservationUrl: string
+  setReservationUrl: Dispatch<SetStateAction<string>>
   status: StoreStatus
   setStatus: Dispatch<SetStateAction<StoreStatus>>
   address: AddressValue
@@ -47,6 +49,8 @@ export function StoreGeneralTab({
   setPhone,
   email,
   setEmail,
+  reservationUrl,
+  setReservationUrl,
   status,
   setStatus,
   address,
@@ -105,6 +109,28 @@ export function StoreGeneralTab({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* The product has no reservation feature. An establishment that
+              takes bookings runs TheFork or Zenchef already, so the storefront
+              links out to it. Empty renders no button at all — which is the
+              right answer for the many places that book by phone. */}
+          <div className="space-y-2">
+            <Label htmlFor="reservationUrl">Lien de réservation</Label>
+            <Input
+              id="reservationUrl"
+              type="url"
+              inputMode="url"
+              placeholder="https://www.thefork.fr/restaurant/votre-etablissement"
+              value={reservationUrl}
+              onChange={(e) => setReservationUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Collez ici l&apos;adresse de votre outil de réservation (TheFork,
+              Zenchef, Guestonline…). Le bouton « Réserver » apparaîtra sur votre
+              site et ouvrira cet outil. Laissez vide si vous prenez les
+              réservations par téléphone : aucun bouton ne sera affiché.
+            </p>
           </div>
         </CardContent>
       </Card>

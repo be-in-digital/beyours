@@ -136,7 +136,7 @@ Multi-provider payment processing.
 | Stripe | `stripe` | Online payments, subscriptions |
 | SumUp | `sumup` | In-person card terminals |
 | PayPal | `paypal` | PayPal checkout |
-| Square | `square` | POS integration |
+| Square | `square` | Announced, **not implemented** — no code reads a Square credential |
 
 ### Stripe Integration
 
@@ -171,7 +171,6 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 SUMUP_API_KEY=...
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...
-SQUARE_ACCESS_TOKEN=...
 ```
 
 ## AWS Services

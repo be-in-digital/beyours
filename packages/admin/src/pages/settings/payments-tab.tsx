@@ -213,6 +213,17 @@ export function PaymentsTab({
             )}
           </div>
         </div>
+
+        {/* Square is advertised in the guided tour and the docs and has no
+            implementation at all — `refundPolicy` refuses it by name. Named
+            here as forthcoming rather than offered as a third card: a radio
+            option that cannot be selected is worse than a sentence that says
+            when it will be. Same convention as the print providers, which
+            carry `available: false` and a « Bientôt » badge. */}
+        <p className="text-xs text-muted-foreground">
+          Square arrive prochainement. En attendant, encaissez par Stripe ou
+          SumUp — et par PayPal ou en espèces ci-dessous.
+        </p>
       </div>
 
       {/* Other payment methods */}

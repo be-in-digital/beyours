@@ -94,6 +94,18 @@ export const createStoreSchema = z.object({
   }),
   phone: z.string().optional(),
   email: z.string().email("Email invalide").optional(),
+  /* Reaches an href on the storefront, so the scheme is part of the contract:
+     `javascript:` and `data:` both parse as valid URLs and both are stored XSS.
+     Mirrored server-side by `assertReservationUrl` — this schema guards the
+     form, that guards the database. */
+  reservationUrl: z
+    .string()
+    .url("Lien de réservation invalide")
+    .refine(
+      (value) => /^https:\/\//i.test(value),
+      "Le lien de réservation doit commencer par https://",
+    )
+    .optional(),
   useGlobalHours: z.boolean().default(true),
   hours: z.array(z.object({
     day: z.number().min(0).max(6),

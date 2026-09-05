@@ -70,6 +70,15 @@ export function FeatureDeepDives() {
                       {pillars[feature.pillar].label}
                     </span>
 
+                    {/* A deep dive reads as a tour of what you get. This is the
+                        one line that says otherwise, so it sits beside the
+                        pillar label rather than below the fold. */}
+                    {feature.notYetAvailable && (
+                      <span className="mb-4 ml-2 inline-flex items-center rounded-full border border-[color:var(--info-border)] bg-[color:var(--info-soft)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--info)]">
+                        {feature.notYetAvailable.label}
+                      </span>
+                    )}
+
                     <h3 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-3xl lg:text-4xl">
                       {feature.title}
                     </h3>

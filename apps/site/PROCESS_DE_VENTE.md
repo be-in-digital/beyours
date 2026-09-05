@@ -34,8 +34,13 @@ targets: 3-5 customers at 90 days, 25-40 at 12 months.
 - In the meeting: run the demo pre-filled with the restaurant's name, show the
   commission-free storefront, the loyalty wheel, the back office.
 - Qualify: number of locations, Uber Eats volume, who decides, budget.
-- Exit: the likely plan (Essentielle 3 500 € / Premium 7 500 €) + the founders
-  offer if eligible (10 seats at 2 500 €, real-time counter on `/tarifs`).
+- Exit: the plan (Essentielle 3 500 €) + the founders offer if eligible
+  (10 seats at 2 500 €, real-time counter on `/tarifs`).
+- **Do not quote Premium.** It is not on sale: its native iOS/Android
+  application does not exist, and the checkout refuses the plan outright
+  (`convex/planAvailability.ts`). `/tarifs` shows it as « À venir » with a
+  lead-capture call to action — that is the only Premium conversation to have.
+  A prospect who wants the app goes on Essentielle now and upgrades at launch.
 
 ### 3. Proposal
 **Who**: sales · **Tool**: the `/tarifs` page + a quote
@@ -44,14 +49,18 @@ targets: 3-5 customers at 90 days, 25-40 at 12 months.
   MISE_EN_PROD.md). Restaurants recover it, so the net cost to them is the
   ex-VAT figure quoted here.
 - Set the maintenance frame: 1st year included in the build, then
-  1 000 €/year (Essentielle) or 2 000 €/year (Premium), payable monthly.
+  1 000 €/year (Essentielle), payable monthly. The 2 000 €/year Premium figure
+  is not quotable while the plan is closed.
 - Levers: founders offer (in exchange for a case study + a testimonial + the
   right to name them as a reference), build paid in 3-4 installments (Alma/Klarna,
   already at checkout), referral (−10% on the build, 500 € to the referrer).
 - Exit: verbal agreement + a recap email with the order link.
 
 ### 4. Signing & payment
-**Who**: customer · **Tool**: `/checkout?plan=…` → Stripe (already wired)
+**Who**: customer · **Tool**: `/checkout?plan=essentielle` → Stripe (already wired)
+
+- `/checkout?plan=premium` is refused before an order exists, in every
+  environment, test mode included. It is not a link to hand anyone.
 
 - The customer fills in their details (restaurant, city, SIRET) and pays by card,
   Alma or Klarna. The amount is computed server-side, never client-side.

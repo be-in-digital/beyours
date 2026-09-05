@@ -1867,6 +1867,14 @@ Without them the **first Essentielle sale is refused by the code** —
 `STRIPE_PRICE_{ESSENTIELLE,PREMIUM}_{MONTHLY,YEARLY}` is missing. Deliberate and correct
 behaviour: the customer is never charged for a plan that cannot be billed.
 Coupon: `max_redemptions: 10`, `applies_to` the creation product.
+
+**Two of the four prices are Premium's, and Premium is closed** (LAUNCH-04):
+`createCheckoutSession` refuses the plan before it reads any Price ID, so
+`STRIPE_PRICE_PREMIUM_{MONTHLY,YEARLY}` gate nothing today. Create them with the
+others if it is one sitting — but the urgent pair is Essentielle's. Creating
+Premium's prices does **not** reopen the plan; only
+`planAvailability.premium = "open"` does, and that belongs in the commit that
+ships the application.
 While there, fix `tasks/production-checklist.md`, which instructs setting six
 `STRIPE_BID_PRICE_*` variables that no code reads.
 
@@ -1877,18 +1885,115 @@ propagate: engine, commercial site (`apps/site/lib/legal/company.ts` declares
 `VAT.regime = "reel"` while `STRIPE_TAX_ENABLED` is off — `invoiceLegal.ts:117-125`
 detects the contradiction, logs it and **does not block**), and invoices already issued.
 
-## LAUNCH-04 · Settle four sold-but-absent features
-- **Square** — advertised in `CLAUDE.md`, the MCP registry and the onboarding tour;
-  **zero lines of code**. `refundPolicy.ts:151-158` says so itself. Build it, or remove
-  it from the copy.
-- **Auto Blog** — no scheduler (P0-26). Ship the crons, or reposition the offer as
-  manual generation and revisit the price.
-- **Menus / formules** — the `menus` table has one reader, no customer flow and no order
-  field. Build the combo flow, or remove the tab.
-- **"ESC/POS printing"** — it is `iframe.contentWindow.print()` to the OS default
-  printer via a Chrome kiosk script. No ESC/POS bytes, no network or USB transport, and
-  `printerSettings` is a dead table. Rewrite the commercial promise, or ship a real print
-  agent.
+## LAUNCH-04 · Settle the sold-but-absent features — **decided 5 Sep 2026**
+
+Five promises, not four. Auto Blog is struck (both crons ship in `apps/themes`
+and both targets exist), and two more were measured by the sixth pass and belong
+here (#330): the native application and table reservations.
+
+The owner decided each one. What follows is the decision and what shipped for it.
+
+### 1 · Native iOS & Android app (Premium) — **sell it honestly as « à venir »**
+
+Premium's whole €4 000 creation delta and €1 000/yr maintenance delta is the app.
+What exists is `apps/themes/.template/mobile`, one screen reading
+`"App mobile — placeholder"`, outside the pnpm workspace, never built or
+submitted. No PWA either.
+
+The badge existed and gated nothing: `/checkout?plan=premium` — the route
+`PROCESS_DE_VENTE.md` handed buyers — reached `createCheckoutSession`, which
+accepted `plan: "premium"` as a first-class literal.
+
+Shipped: `apps/site/convex/planAvailability.ts` is now the single source both
+the pricing card and the checkout read. The action refuses a closed plan first,
+ahead of every env-dependent check, so it refuses in test mode too. The three
+comparison rows moved from `premium: true` to a new `"planned"` status, the FAQ
+no longer answers « est-elle déjà disponible ? » in the affirmative, the
+`/fonctionnalites` feature carries an « À venir » badge, and the sales playbook
+says not to quote Premium. `tests/convex/planAvailability.test.ts` holds it,
+including a structural rule: **no plan may be open while it still advertises a
+`"planned"` row.**
+
+Flip `planAvailability.premium` to `"open"` in the commit that ships the app.
+
+### 2 · Table reservation — **link out to the establishment's own tool**
+
+No table, no route, no mutation. All 50 demos carried « Réserver une table »,
+44 as a hero CTA; the page wrote to the visitor's `localStorage` with
+always-free slots and a reference number.
+
+Shipped: `stores.reservationUrl` (optional). Set it in Établissements →
+Informations générales and the storefront renders « Réserver », pointing at
+TheFork / Zenchef / Guestonline; leave it empty and no button appears at all,
+which is right for the many places that book by phone. The value reaches an
+`href`, so it is https-only and validated on three sides — the admin form
+(`createStoreSchema`), the mutation (`assertReservationUrl`) and the storefront
+(`isSafeReservationUrl`); `javascript:` and `data:` both parse as valid URLs and
+both are stored XSS. 44 cases in
+`packages/convex-schema/src/__tests__/reservationUrl.test.ts`.
+
+The demos follow: `reserve.html` explains the link-out and offers the phone, and
+the mocked « Réservations » module is gone from `demos/admin.html` — sidebar
+entry, day panel and KPI tile. The real admin has no such module and never did.
+
+### 3 · « ESC/POS printing » — **say what ships; cloud printing later**
+
+`iframe.contentWindow.print()` is the whole transport.
+`printerSettings` has **zero readers and zero writers**; its only non-schema
+reference is a delete cascade for rows nothing creates.
+
+The admin was already honest — `kitchen-print.ts:144` says browser is « le seul
+mode disponible aujourd'hui » — and everything else contradicted it. `CLAUDE.md`,
+the guided tour, `apps/docs/guides/kitchen-display.md` (which shipped a
+fabricated `configurePrinter()` API), `apps/docs/api-reference/rest-api.md` (a
+`POST /api/print` that does not exist) and the schema READMEs now describe the
+browser path. The site's « s'imprime automatiquement » stands: it is true with
+the kiosk script, and it never claimed thermal.
+
+**The thermal path will be cloud printing** — Star CloudPRNT / Epson Server
+Direct Print, where the printer polls an HTTP endpoint. Not a local agent: a
+browser cannot open a raw socket and Convex cannot reach a restaurant's LAN, so
+the alternative is shipping and supporting signed desktop software per OS. The
+three providers already sit in `kitchen-print.ts` as `available: false`. No
+public promise has been made about it, deliberately.
+
+### 4 · Menus / formules — **build the orderable flow, in its own PR**
+
+Not "one reader and no UI": the admin half is **complete** — a « Menus /
+Formules » tab, a 473-line list and a 761-line section builder, Convex CRUD,
+RBAC, cross-store guards. Nothing downstream exists: `api.menus` has zero
+storefront readers and `orders.ts:518` rejects any line without a `productId`.
+`menu.addComboToCart` — « Ajouter la formule au panier » — is translated into
+fr/en/es in both apps and referenced nowhere.
+
+Decision: **build it.** ~25 files, ~1 400–1 700 lines. The cost is not the UI;
+it is VAT allocation across a mixed-rate formule and how category promotions
+apply to dishes bought inside one. Both are money-correctness problems and want
+a PR where a reviewer can see only them.
+
+**Open until that PR lands.** The tour still tells owners they can « proposer des
+offres combinées » and no customer can order one. That gap is deliberate and
+recorded here rather than papered over.
+
+### 5 · Square — **keep it visible, marked « Bientôt »**
+
+Zero lines. The only executable code naming Square is the one that refuses it
+(`refundPolicy.ts:151-158`), and `RefundRoute`'s `api` variant excludes it at the
+type level. Never claimed on beyours.fr — the exposure was in-product and
+agent-facing.
+
+Shipped: Paramètres → Paiements names Square as forthcoming, in the same
+convention as the print providers. The guided tour says « Square arrive ». The
+MCP registry, `CLAUDE.md`, `apps/docs` and the package docs call it announced and
+unimplemented. The Square option was removed from the payments-list **filter** —
+a filter over past payments that can never match is not an announcement — while
+the badge map stays, so a legacy row would still render.
+
+**Not closed by this card:** `apps/docs/guides/payments.md` imports seven
+functions from `@be-in-digital/core`, and `packages/core/src` has no `payments/`
+directory — every one is module-not-found, Square's and the four real providers'
+alike. A warning now sits at the top of that guide; rewriting it is #330
+NEW2-SOLD-3, not this card.
 
 ## LAUNCH-05 · Settle the S3 bucket policy
 Two opposite assumptions coexist (P0-34). Choose private + authenticated proxy, or

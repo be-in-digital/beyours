@@ -38,10 +38,15 @@ const modules = import.meta.glob("../../convex/**/*.ts");
 /** What the regime in force requires of the charging flags. */
 const CHARGING_EXPECTED = VAT.regime === "reel";
 
-/** Premium: outside the founders offer, which is Essentielle-only. */
+/* Essentielle, because Premium is no longer open for sale: the checkout now
+   refuses a plan whose availability is "coming_soon" before it reaches the VAT
+   guard (convex/planAvailability.ts), and these cases would then pass on the
+   wrong refusal. This case originally chose Premium to sit outside the founders
+   offer; with no STRIPE_SECRET_KEY here `resolveFoundersPricing` returns
+   "zero-line" rather than throwing, so Essentielle is just as quiet. */
 function checkoutArgs() {
   return {
-    plan: "premium" as const,
+    plan: "essentielle" as const,
     orderType: "creation" as const,
     buyerType: "business" as const,
     billingPeriod: "yearly" as const,

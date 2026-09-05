@@ -1,6 +1,14 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  /* Same "@/" root as tsconfig and Next. Without it a test cannot import
+     anything under components/, because those files import "@/convex/..." —
+     which is how the pricing page and the checkout guard went untested
+     together for as long as they disagreed. */
+  resolve: {
+    alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
+  },
   test: {
     environment: "edge-runtime",
     // convex-test compiles the whole `convex/` module graph on the first call

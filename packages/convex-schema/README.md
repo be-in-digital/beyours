@@ -182,7 +182,7 @@ The app schema at `apps/reference/convex/schema.ts` is the **source of truth** f
 ### Order Tables
 - `ordersTable` - Complete order lifecycle with multi-source support
 - `kitchenTicketsTable` - Kitchen display with station routing
-- `printerSettingsTable` - ESC/POS thermal printer configuration
+- `printerSettingsTable` - Registered but **unused** (zero readers, zero writers): it belongs to an ESC/POS path that was never built. Live print config is `stores.printConfig`
 - `paymentsTable` - Multi-provider payment tracking
 
 ### i18n Tables
@@ -271,9 +271,11 @@ languageCode: "zh-CN"
 - Manual translation available
 
 #### Kitchen
-- **Auto-print** tickets on order confirmation
+- **Auto-print** tickets on payment, through the browser (`window.print()` from
+  the kitchen screen, with Chrome in `--kiosk-printing` mode)
 - Multi-station support (starters, mains, desserts, etc.)
-- ESC/POS printers (network, USB, Bluetooth)
+- No ESC/POS bytes, no network or USB transport. The thermal path will be cloud
+  printing (Star CloudPRNT / Epson Server Direct Print)
 
 ## Development
 

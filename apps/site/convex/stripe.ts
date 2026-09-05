@@ -6,6 +6,10 @@ import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
+import {
+  isPlanOpenForSale,
+  planClosedForSaleMessage,
+} from "./planAvailability";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
 import { resolveStripeAccess } from "./stripeMode";
 import {
@@ -132,6 +136,17 @@ export const createCheckoutSession = action({
     discountPercent: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
+    /* ── Is this plan even on sale? ──
+       First, ahead of every env-dependent check, because this one does not
+       depend on the environment: a plan that is not open is not open in test
+       mode either, and the keyless path below marks an order paid without ever
+       calling Stripe. `plan` arrives from the query string
+       (components/checkout/checkout-content.tsx), so the pricing page's
+       « À venir » badge gates nothing on its own — this is what gates it. */
+    if (!isPlanOpenForSale(args.plan)) {
+      throw new Error(planClosedForSaleMessage(args.plan));
+    }
+
     /* Refuses before anything exists — the order is created 80 lines below, so
        a deployment without a key leaves no half-sale behind. */
     const stripe = getStripeOrTestMode("ouvrir une session de paiement");

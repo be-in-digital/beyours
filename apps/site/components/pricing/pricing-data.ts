@@ -3,6 +3,7 @@
    ═══════════════════════════════════════════════ */
 
 import { planPrices } from "@/convex/planPrices";
+import { isPlanOpenForSale } from "@/convex/planAvailability";
 
 /* Amounts shown here derive from convex/planPrices.ts (the single source, in
    cents) and are converted to euros for display. Never hard-code an amount
@@ -52,12 +53,15 @@ export const plans: Plan[] = [
     slug: "premium",
     subtitle: "Site web + application mobile",
     description:
-      "L'offre complète pour les restaurants qui veulent une présence digitale totale : site web professionnel et application mobile native.",
+      "Tout ce que contient l'Essentielle, plus une application mobile native iOS & Android. L'offre ouvrira quand l'application sera disponible.",
     creation: eur(planPrices.premium.creation),
     maintenanceMonthly: eur(planPrices.premium.maintenanceMonthly),
     maintenanceYearly: eur(planPrices.premium.maintenanceYearly),
     featured: true,
-    comingSoon: true,
+    /* Derived, never hard-coded: the same constant refuses the plan at
+       checkout (convex/stripe.ts). A badge that can drift from the guard
+       is how /checkout?plan=premium stayed open behind an « À venir » card. */
+    comingSoon: !isPlanOpenForSale("premium"),
     features: [
       "Tout ce qui est inclus dans l'Essentielle",
       "Application mobile native iOS & Android",
@@ -71,8 +75,12 @@ export const plans: Plan[] = [
 
 /* ── Comparison table ── */
 
-/** true = included · false = not included · "soon" = certification under way */
-export type ComparisonStatus = boolean | "soon";
+/** true = included · false = not included · "soon" = built, awaiting a
+    platform's certification · "planned" = announced and sold as part of a
+    plan, not built yet. The two are not interchangeable: "soon" renders the
+    Deliveroo/Uber wording, and a row that is neither included nor honestly
+    marked is the defect this type exists to make impossible. */
+export type ComparisonStatus = boolean | "soon" | "planned";
 
 export interface ComparisonCategory {
   name: string;
@@ -114,9 +122,9 @@ export const comparisonCategories: ComparisonCategory[] = [
   {
     name: "Mobile",
     features: [
-      { label: "Application native iOS & Android", essentielle: false, premium: true },
-      { label: "Notifications push personnalisées", essentielle: false, premium: true },
-      { label: "Expérience de marque unifiée web + mobile", essentielle: false, premium: true },
+      { label: "Application native iOS & Android", essentielle: false, premium: "planned" },
+      { label: "Notifications push personnalisées", essentielle: false, premium: "planned" },
+      { label: "Expérience de marque unifiée web + mobile", essentielle: false, premium: "planned" },
     ],
   },
   {
@@ -247,12 +255,12 @@ export const faqItems = [
   {
     question: "L'application mobile est-elle déjà disponible ?",
     answer:
-      "L'application mobile fait partie de l'offre Premium. Elle est développée en natif pour iOS et Android, avec votre branding, votre programme de fidélité intégré et les notifications push. Le développement est réalisé en même temps que le site web.",
+      "Non, pas encore, et c'est pour cette raison que l'offre Premium n'est pas ouverte à la commande. Elle est prévue en natif pour iOS et Android, avec votre identité, votre programme de fidélité et les notifications push. Nous n'annoncerons pas de date tant que la publication sur l'App Store et Google Play ne sera pas acquise : cette étape ne dépend pas que de nous. Laissez-nous vos coordonnées, vous serez prévenu au lancement.",
   },
   {
     question: "Puis-je commencer avec Essentielle puis passer à Premium ?",
     answer:
-      "Absolument. Vous pouvez démarrer avec l'offre Essentielle et évoluer vers Premium à tout moment. La migration est pensée pour être fluide : votre site reste en ligne et l'application mobile vient s'ajouter à votre écosystème existant.",
+      "Oui, et c'est le chemin que nous recommandons aujourd'hui : démarrez sur l'Essentielle, vous basculerez vers Premium à l'ouverture de l'offre. Il n'y a rien à refaire, votre site reste en ligne et l'application viendra s'y ajouter.",
   },
   {
     question: "Le design personnalisé est-il obligatoire ?",
@@ -262,7 +270,7 @@ export const faqItems = [
   {
     question: "Combien de temps prend le lancement ?",
     answer:
-      "En moyenne, comptez 4 à 6 semaines entre le premier échange et la mise en ligne. Ce délai varie selon la complexité du projet et la réactivité dans les échanges. L'offre Premium peut nécessiter 2 à 3 semaines supplémentaires pour l'application mobile.",
+      "En moyenne, comptez 4 à 6 semaines entre le premier échange et la mise en ligne. Ce délai varie selon la complexité du projet et la réactivité dans les échanges.",
   },
   {
     question: "Les intégrations Uber Eats & Deliveroo sont-elles incluses ?",

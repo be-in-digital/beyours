@@ -370,10 +370,28 @@ batches, handled by someone else.
 > **Closed when.** The billing queries no longer answer an anonymous browser, and removing the Stripe key makes checkout fail instead of giving the product away.
 
 ## Batch 14 — Align the sales pitch with the product
-*1 item · product decision · _1 open_*
+*1 item · product decision · **decided 5 Sep 2026** · _1 open sub-item_*
 
-Last, once you know what actually shipped. Four features are sold and do not exist.
+Ran last, once the other batches had landed. Five promises, not four: Auto Blog
+was struck (its crons ship and both targets exist), and the native app and table
+reservations joined from #330.
 
-- [ ] **#175** 🔴 — **Square** — zero lines of code, advertised in three places · **Auto Blog** — no scheduler · **Menus / formules** — not orderable · **"ESC/POS printing"** — a browser print dialog. Build, or remove from the copy.
+- [x] **#175** ✅ — All five settled by the owner, and the copy now matches the
+  product. **Native app** — Premium sold honestly as « à venir », and refused at
+  checkout by `planAvailability.ts` rather than by a badge · **Reservations** —
+  `stores.reservationUrl` links out to TheFork/Zenchef, https-validated on three
+  sides; the demos' fake booking flow and mocked back-office module are gone ·
+  **ESC/POS** — copy now describes the browser path that ships; cloud printing
+  (Star CloudPRNT / Epson) chosen over a local agent, with no public promise
+  made · **Square** — kept visible, marked « Bientôt ».
+- [ ] **Menus / formules** 🟠 — decided **build**, deferred to its own PR. The
+  admin half is complete; the storefront, cart and order path are not, and
+  `orders.ts:518` rejects any line without a `productId`. The cost is VAT
+  allocation across a mixed-rate formule and the promotion interaction — money
+  correctness, which wants a PR of its own. Until it lands the guided tour still
+  promises « offres combinées » that nobody can order.
 
-> **Closed when.** Every promise in `CLAUDE.md`, on the site and in the onboarding tour maps to something a client can actually use.
+> **Closed when.** The formule flow is orderable. Everything else in `CLAUDE.md`,
+> on the site, in the demos and in the onboarding tour now maps to something a
+> client can use — see `tasks/sales-readiness-backlog.md` → LAUNCH-04 for what
+> was decided and what shipped for each.

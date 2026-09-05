@@ -2,7 +2,7 @@
    Pricing Comparison — comparison table, benefit by benefit
    ═══════════════════════════════════════════════ */
 
-import { comparisonCategories } from "./pricing-data";
+import { comparisonCategories, type ComparisonStatus } from "./pricing-data";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/ui/motion";
 import { SectionBadge } from "@/components/ui/section-badge";
 
@@ -51,8 +51,20 @@ function Soon() {
   );
 }
 
-function StatusCell({ status }: { status: boolean | "soon" }) {
+/* Sold inside Premium, not built yet. Deliberately worded differently from
+   <Soon />: that one waits on a platform, this one waits on us. Premium is not
+   orderable while any of its rows reads this (convex/planAvailability.ts). */
+function Planned() {
+  return (
+    <span className="inline-flex items-center rounded-full border border-[color:var(--border)] bg-surface-2 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground text-center">
+      À venir
+    </span>
+  );
+}
+
+function StatusCell({ status }: { status: ComparisonStatus }) {
   if (status === "soon") return <Soon />;
+  if (status === "planned") return <Planned />;
   return status ? <Check /> : <Cross />;
 }
 

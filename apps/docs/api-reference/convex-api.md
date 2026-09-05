@@ -161,10 +161,10 @@ await updateTicketStatus({
 });
 ```
 
-### `api.kitchenTickets.reprint`
+### `api.kitchenTickets.requestReprint`
 
 ```typescript
-await reprintTicket({ ticketId });
+await requestReprint({ ticketId });
 ```
 
 ## Team

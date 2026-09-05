@@ -66,7 +66,7 @@ export default defineSchema({
 | Table | Description |
 |-------|-------------|
 | `kitchenTicketsTable` | Real-time kitchen tickets |
-| `printerSettingsTable` | Thermal printer configuration |
+| `printerSettingsTable` | Registered, **unused** — zero readers, zero writers. Print config is on `stores.printConfig` |
 
 ### Gamification
 

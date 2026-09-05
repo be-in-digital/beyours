@@ -1,6 +1,16 @@
 # Payments Guide
 
-> Accept payments via Stripe, SumUp, PayPal, and Square.
+> Accept payments via Stripe, SumUp, PayPal and cash.
+
+> [!WARNING]
+> **The code samples below do not compile.** Every `@be-in-digital/core` import
+> in this guide resolves to nothing — `packages/core/src` has no `payments/`
+> directory, so `createStripePayment`, `handleStripeWebhook`,
+> `createSumUpCheckout`, `createPayPalOrder`, `capturePayPalPayment` and
+> `processRefund` are all module-not-found. The real entry points live in
+> `packages/convex-functions/src/` (`payments.ts`, `paymentSettlement.ts`,
+> `refundPolicy.ts`) and in each app's `convex/` wrappers. Rewriting this guide
+> against them is tracked separately; until then, read the source, not this page.
 
 ## Table of Contents
 
@@ -16,13 +26,13 @@
 
 BeYours supports multiple payment providers. Each restaurant can enable the providers they need.
 
-| Provider | Online | In-Person | Subscriptions |
-|----------|--------|-----------|---------------|
-| Stripe | Yes | No | Yes |
-| SumUp | No | Yes | No |
-| PayPal | Yes | No | No |
-| Square | Yes | Yes | No |
-| Cash | No | Yes | No |
+| Provider | Online | In-Person | Subscriptions | Notes |
+|----------|--------|-----------|---------------|-------|
+| Stripe | Yes | No | Yes | |
+| SumUp | No | Yes | No | |
+| PayPal | Yes | No | No | |
+| Square | — | — | — | *(announced, not implemented)* |
+| Cash | No | Yes | No | |
 
 ## Stripe
 
@@ -119,15 +129,16 @@ await capturePayPalPayment(paypalOrder.id);
 
 ## Square
 
-```typescript
-import { createSquarePayment } from "@be-in-digital/core";
+**Not implemented.** There is no Square integration: no SDK, no credential is
+read anywhere, no checkout and no webhook. The only executable code that names
+Square is the one that refuses it —
+`packages/convex-functions/src/refundPolicy.ts` returns
+`{ kind: "unsupported", provider: "square" }`, and `RefundRoute`'s `api` variant
+excludes it at the type level.
 
-const payment = await createSquarePayment({
-  amount: 2499, // cents
-  currency: "EUR",
-  sourceId: nonce, // from Square Web SDK
-});
-```
+Square is presented as forthcoming in the admin (Paramètres → Paiements) and in
+the guided tour. Do not describe it as available, and do not add a
+`SQUARE_ACCESS_TOKEN` to any environment: nothing reads it.
 
 ## Cash Payments
 
