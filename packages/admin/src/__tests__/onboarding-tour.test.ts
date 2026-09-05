@@ -410,23 +410,34 @@ describe("onboarding tour — coverage and copy", () => {
   })
 
   it("names the kitchen's real columns, and counts them right", () => {
-    // Read what SHIPS. `packages/admin`'s own `kitchen-page.tsx` is exported
-    // and mounted by neither app — both render their local `KitchenContent` —
-    // so a suite measuring the package file would bless a rename on the screen
-    // an owner actually opens.
+    // Read what SHIPS. That used to mean the apps' local `KitchenContent`,
+    // because this package's own `kitchen-page.tsx` was exported and mounted by
+    // neither — measuring it would have blessed a rename on a screen no owner
+    // opens. The live screen was lifted here and both apps now render it, so
+    // there is one copy and this is it.
     const NUMBER_WORDS: Record<number, string> = { 2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq" }
     const step = TOUR_STEP_SPECS.find((s) => s.navFor === adminRoutes.kitchen)
     expect(step).toBeDefined()
 
+    // Both apps must still be mounting it, or "what ships" has moved again.
     for (const app of APPS) {
-      const file = path.join(
-        REPO, "apps", app, "components/admin/kitchen/KitchenContent.tsx"
+      const route = read(
+        path.join(REPO, "apps", app, "app/(admin)/dashboard/orders/kitchen/page.tsx")
       )
-      expect(fs.existsSync(file), `${app} does not render KitchenContent`).toBe(true)
+      expect(route, `${app} does not mount the packaged KitchenPage`).toContain(
+        "KitchenPage"
+      )
+      expect(route, `${app} still renders a local kitchen screen`).not.toContain(
+        "@/components/admin/kitchen"
+      )
+    }
+
+    {
+      const file = path.join(ADMIN_SRC, "pages/kitchen/kitchen-page.tsx")
       const columns = [...read(file).matchAll(/^\s{2}\w+: \{ title: "([^"]+)"/gm)].map(
         (m) => m[1] as string
       )
-      expect(columns.length, `${app}: found no kitchen columns to compare`).toBeGreaterThan(0)
+      expect(columns.length, "found no kitchen columns to compare").toBeGreaterThan(0)
 
       for (const column of columns) {
         expect(
