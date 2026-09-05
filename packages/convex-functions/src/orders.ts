@@ -19,6 +19,11 @@ import {
   resolveStoreHours,
 } from "@be-in-digital/convex-schema"
 import {
+  MAX_TABLE_NUMBER_LENGTH,
+  isValidTableNumber,
+  normalizeTableNumber,
+} from "@be-in-digital/core/dining"
+import {
   assertDayStarts,
   computeDashboardStats,
   dashboardWindowStart,
@@ -527,6 +532,8 @@ interface CreateOrderArgs {
   customerInfo: { name: string; email?: string; phone?: string }
   items: OrderItemInput[]
   type: "delivery" | "pickup" | "dine_in"
+  /** Dine-in only; rejected on the other two types. */
+  tableNumber?: string
   deliveryAddress?: {
     street: string
     city: string
@@ -625,6 +632,15 @@ export const create = {
       v.literal("pickup"),
       v.literal("dine_in")
     ),
+    /**
+     * Which table a `dine_in` order is served to.
+     *
+     * Optional even for `dine_in`: the platform webhooks forward `dine_in`
+     * orders that carry no table of their own, and refusing those would lose
+     * the order. The storefront makes it required, because that is the one
+     * place a diner is demonstrably sitting at a table.
+     */
+    tableNumber: v.optional(v.string()),
     deliveryAddress: v.optional(v.object({
       street: v.string(),
       city: v.string(),
@@ -777,6 +793,20 @@ export const create = {
         "service_not_offered",
         `Ce restaurant ne propose pas ${ORDER_TYPE_LABEL[args.type]}.`,
         { orderType: args.type }
+      )
+    }
+
+    // A table number belongs to a dine-in order and nowhere else. Rejecting it
+    // on the other two types is not pedantry: it catches the order whose type
+    // was switched after the table was entered, which would otherwise print a
+    // table on a delivery ticket and send a courier looking for it.
+    const tableNumber = normalizeTableNumber(args.tableNumber)
+    if (tableNumber !== undefined && args.type !== "dine_in") {
+      throw new Error("A table number can only be set on a dine_in order")
+    }
+    if (!isValidTableNumber(tableNumber)) {
+      throw new Error(
+        `Table number must be at most ${MAX_TABLE_NUMBER_LENGTH} characters`
       )
     }
 
@@ -1103,6 +1133,7 @@ export const create = {
       customerId: args.customerId,
       customerInfo: args.customerInfo,
       type: args.type,
+      tableNumber,
       status: "pending",
       items: verifiedItems,
       subtotal,
@@ -2204,6 +2235,7 @@ export async function releaseToKitchen(
       trackingToken,
       customerName: order.customerInfo?.name,
       customerPhone: order.customerInfo?.phone,
+      tableNumber: order.tableNumber,
       deliveryNotes: order.notes,
       allergens: summary.allergens.length > 0 ? summary.allergens : undefined,
     })

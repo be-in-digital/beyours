@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@be-in-digital/ui"
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
+import { AllergenField } from "./allergen-field"
 
 /**
  * Form schema for product editing with euro prices for display.
@@ -182,6 +183,7 @@ export function ProductForm({
   const stockTracked = watch("stock.tracked")
   const options = watch("options")
   const priceEuros = watch("priceEuros")
+  const allergens = watch("allergens")
 
   // ---------------------------------------------------------------------------
   // Platform price override state
@@ -296,9 +298,10 @@ export function ProductForm({
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="options">Options</TabsTrigger>
+          <TabsTrigger value="allergens">Allergènes</TabsTrigger>
           <TabsTrigger value="stock">Stock</TabsTrigger>
           <TabsTrigger value="scheduling">Planification</TabsTrigger>
         </TabsList>
@@ -743,6 +746,20 @@ export function ProductForm({
               </p>
             </div>
           )}
+        </TabsContent>
+
+        {/* Allergens Tab */}
+        <TabsContent value="allergens" className="space-y-4 mt-4">
+          <p className="text-xs text-muted-foreground">
+            Déclarez les allergènes présents dans ce produit. La liste s&apos;affiche
+            sur la fiche du plat, sur le ticket de cuisine et sur les plateformes
+            de livraison.
+          </p>
+
+          <AllergenField
+            value={allergens}
+            onChange={(next) => setValue("allergens", next)}
+          />
         </TabsContent>
 
         {/* Stock Tab */}

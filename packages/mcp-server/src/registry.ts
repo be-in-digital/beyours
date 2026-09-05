@@ -341,9 +341,10 @@ export const packages: PackageInfo[] = [
       {
         name: "AllergenBadge",
         type: "component",
-        description: "Food allergen indicator badge",
+        description:
+          "Food allergen badge. Takes any string from products.allergens — never cast it to Allergen. Recognised names (French or English) render with an icon and their canonical label; an unrecognised one renders as the owner typed it and is announced as the restaurant's own wording, not as an allergen. Vocabulary and matching live in @be-in-digital/core/allergens.",
         importPath: "@be-in-digital/ui/restaurant",
-        tags: ["restaurant", "product"],
+        tags: ["restaurant", "product", "allergens"],
       },
       {
         name: "SpiceLevelIndicator",

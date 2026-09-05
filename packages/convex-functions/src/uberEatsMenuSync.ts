@@ -7,6 +7,11 @@
  * they need access to the generated `api` object for ctx.runQuery/runMutation.
  */
 
+import {
+  toUberEatsAllergens,
+  type UberEatsAllergenType,
+} from "@be-in-digital/core/allergens"
+
 // === Uber Eats Menu Payload type (mirrored from @be-in-digital/integrations) ===
 
 export interface UberEatsMenuPayload {
@@ -37,6 +42,19 @@ export interface UberEatsMenuPayload {
     tax_info?: { tax_rate: number }
     modifier_group_ids?: { ids: string[] }
     quantity_info?: { quantity: { max_permitted: number; min_permitted: number } }
+    /**
+     * Allergen declarations. Uber Eats types `type` as a plain string, so
+     * nothing on the wire rejects a typo — `UberEatsAllergenType` is what
+     * stops one, and every value here comes from
+     * `UBER_EATS_ALLERGEN_TYPE` rather than being written by hand.
+     *
+     * This block was missing from the mirrored type entirely, which is the
+     * structural reason allergens were dropped: the builder had nowhere to
+     * put them, so `product.allergens` was read zero times.
+     */
+    nutritional_info?: {
+      allergens?: Array<{ type: UberEatsAllergenType }>
+    }
     /** Present only when the item is 86'd. `suspend_until` is epoch SECONDS. */
     suspension_info?: {
       suspension: {
@@ -240,6 +258,54 @@ export function isProductOutOfStock(
  * - Prices are in cents; markup is applied via getPlatformPrice()
  * - Uses externalIds when available for modifier group/choice IDs
  */
+/** One product whose allergen declaration could not be sent to Uber Eats. */
+export interface UnsyncableAllergenReport {
+  productId: string
+  productName: string
+  /** The owner's own wording, exactly as stored. */
+  values: string[]
+}
+
+/**
+ * The allergen values that `buildUberEatsMenuPayload` could not put on the
+ * wire, per product.
+ *
+ * Uber's allergen field is an enumerated list, so a name the vocabulary does
+ * not recognise has nowhere to go. That is a real gap in a legal disclosure,
+ * and the previous behaviour — dropping every allergen silently, recognised or
+ * not — is why nobody knew. Reporting it to the owner is what makes it
+ * fixable: they can rename the value to one the vocabulary knows, and it syncs
+ * on the next run.
+ *
+ * Deliberately a separate function rather than a second return value from the
+ * builder: the builder is a pure payload mapper with a settled signature and
+ * twenty-odd tests against it, and the sync action needs this at a different
+ * moment anyway — after a successful upload, when it records the run.
+ *
+ * Only active products are considered, matching what the builder actually
+ * sends. Dietary markers are not reported: `vegan` is correctly excluded from
+ * an allergen field, and warning about it would train an owner to ignore the
+ * warnings that matter.
+ */
+export function collectUnsyncableAllergens(
+  products: ProductRecord[]
+): UnsyncableAllergenReport[] {
+  const reports: UnsyncableAllergenReport[] = []
+
+  for (const product of products) {
+    if (!product.isActive) continue
+    const { unmapped } = toUberEatsAllergens(product.allergens)
+    if (unmapped.length === 0) continue
+    reports.push({
+      productId: product._id,
+      productName: product.name,
+      values: unmapped,
+    })
+  }
+
+  return reports
+}
+
 export function buildUberEatsMenuPayload(
   products: ProductRecord[],
   categories: CategoryRecord[],
@@ -351,6 +417,21 @@ export function buildUberEatsMenuPayload(
 
     if (modifierGroupIds.length > 0) {
       item.modifier_group_ids = { ids: modifierGroupIds }
+    }
+
+    // Allergens. `products.allergens` is free text an owner types, so it is
+    // resolved through the shared vocabulary rather than shipped raw — the
+    // same resolution the dish page and the kitchen ticket use.
+    //
+    // Values the vocabulary does not recognise are NOT sent. There is no
+    // honest way to put them on the wire: Uber's field is an enum, and filing
+    // an unknown value as `OTHER` would show a diner a declaration that names
+    // nothing while implying the dish was checked. They are surfaced back to
+    // the owner instead — see `collectUnsyncableAllergens`, which the sync
+    // action reports so the gap is visible to the person who can fix it.
+    const { allergens } = toUberEatsAllergens(product.allergens)
+    if (allergens.length > 0) {
+      item.nutritional_info = { allergens }
     }
 
     // 86'd dishes stay on the menu but are suspended, so a customer sees

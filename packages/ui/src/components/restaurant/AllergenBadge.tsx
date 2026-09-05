@@ -18,51 +18,41 @@ import {
   Wheat,
   Wine,
 } from "lucide-react"
+import {
+  ALLERGEN_ANNOUNCEMENT,
+  KNOWN_ALLERGENS,
+  normalizeAllergen,
+  resolveAllergens,
+  type Allergen,
+  type AllergenKind,
+  type AllergenLocale,
+} from "@be-in-digital/core/allergens"
 import { cn } from "../../lib/utils"
 
 /**
- * The fourteen allergens Annex II of Regulation (EU) 1169/2011 (INCO) makes a
- * restaurant declare, plus the two dietary markers this component already
- * carried. Keys stay English to match the rest of the design system; the text
- * a diner reads comes from `allergenConfig`, which is bilingual.
+ * The names, the matching and the labels all come from
+ * `@be-in-digital/core/allergens`, which is framework-free so the kitchen
+ * ticket, the admin product form and the Uber Eats menu sync can consult the
+ * same vocabulary this badge does. Those four surfaces each used to carry
+ * their own idea of what an allergen was, which is exactly how they diverged:
+ * one crashed on French, one printed raw strings, one had no input at all and
+ * one dropped the field. Add a name there, not here.
  *
- * This union is a vocabulary, not a constraint. `products.allergens` is
- * `v.array(v.string())` (packages/convex-schema/src/tables/catalog.ts) and an
- * owner types whatever names their dish — so `AllergenBadgeProps.allergen`
- * accepts any string and this list only says which ones we recognise.
+ * What stays here is what only a React component can own: the icon per
+ * allergen, and the markup.
  */
-export const KNOWN_ALLERGENS = [
-  // Annex II
-  "gluten",
-  "crustaceans",
-  "eggs",
-  "fish",
-  "peanuts",
-  "soy",
-  "dairy",
-  "nuts",
-  "celery",
-  "mustard",
-  "sesame",
-  "sulphites",
-  "lupin",
-  "molluscs",
-  // English "shellfish" spans Annex II §2 and §14. It cannot be narrowed to
-  // either without dropping the other, so it declares both.
-  "shellfish",
-  // Dietary markers, kept from the component's original union
-  "vegetarian",
-  "vegan",
-] as const
-
-export type Allergen = (typeof KNOWN_ALLERGENS)[number]
-
-export type AllergenLocale = "fr" | "en"
+export {
+  KNOWN_ALLERGENS,
+  normalizeAllergen,
+  resolveAllergens,
+  type Allergen,
+  type AllergenLocale,
+}
 
 export interface AllergenBadgeProps {
   /**
    * A value straight out of `products.allergens`. Any string is accepted:
-   * one this component recognises renders with its icon and canonical name,
+   * one the vocabulary recognises renders with its icon and canonical name,
    * one it does not renders as the owner wrote it. Never cast to `Allergen`
    * at the call site — that cast is what used to crash this component.
    *
@@ -81,373 +71,39 @@ export interface AllergenBadgeProps {
   locale?: AllergenLocale
 }
 
-type AllergenKind =
-  /** One of the fourteen Annex II allergens. */
-  | "allergen"
-  /** A dietary marker, not an allergen, and never announced as one. */
-  | "diet"
-  /** A name this component does not recognise. It claims nothing about it. */
-  | "unverified"
+type AllergenIcon = React.ComponentType<{
+  className?: string
+  "aria-hidden"?: boolean
+}>
 
-interface AllergenEntry {
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>
-  kind: Exclude<AllergenKind, "unverified">
-  label: Record<AllergenLocale, string>
-}
-
-const allergenConfig: Record<Allergen, AllergenEntry> = {
-  gluten: {
-    icon: Wheat,
-    kind: "allergen",
-    label: { fr: "Gluten", en: "Gluten" },
-  },
-  crustaceans: {
-    icon: Shell,
-    kind: "allergen",
-    label: { fr: "Crustacés", en: "Crustaceans" },
-  },
-  eggs: {
-    icon: Egg,
-    kind: "allergen",
-    label: { fr: "Œufs", en: "Eggs" },
-  },
-  fish: {
-    icon: Fish,
-    kind: "allergen",
-    label: { fr: "Poisson", en: "Fish" },
-  },
-  peanuts: {
-    icon: Bean,
-    kind: "allergen",
-    label: { fr: "Arachides", en: "Peanuts" },
-  },
-  soy: {
-    icon: Sprout,
-    kind: "allergen",
-    label: { fr: "Soja", en: "Soy" },
-  },
-  dairy: {
-    icon: Milk,
-    kind: "allergen",
-    label: { fr: "Lait", en: "Milk" },
-  },
-  nuts: {
-    icon: Nut,
-    kind: "allergen",
-    label: { fr: "Fruits à coque", en: "Nuts" },
-  },
-  celery: {
-    icon: Carrot,
-    kind: "allergen",
-    label: { fr: "Céleri", en: "Celery" },
-  },
-  mustard: {
-    icon: Droplet,
-    kind: "allergen",
-    label: { fr: "Moutarde", en: "Mustard" },
-  },
-  sesame: {
-    icon: Sparkles,
-    kind: "allergen",
-    label: { fr: "Sésame", en: "Sesame" },
-  },
-  sulphites: {
-    icon: Wine,
-    kind: "allergen",
-    label: { fr: "Sulfites", en: "Sulphites" },
-  },
-  lupin: {
-    icon: Flower,
-    kind: "allergen",
-    label: { fr: "Lupin", en: "Lupin" },
-  },
-  molluscs: {
-    icon: Snail,
-    kind: "allergen",
-    label: { fr: "Mollusques", en: "Molluscs" },
-  },
-  shellfish: {
-    icon: Shell,
-    kind: "allergen",
-    label: { fr: "Crustacés et mollusques", en: "Shellfish" },
-  },
-  vegetarian: {
-    icon: Salad,
-    kind: "diet",
-    label: { fr: "Végétarien", en: "Vegetarian" },
-  },
-  vegan: {
-    icon: Vegan,
-    kind: "diet",
-    label: { fr: "Végan", en: "Vegan" },
-  },
+/**
+ * The glyph per allergen. Icons are the one part of the vocabulary that cannot
+ * live in `@be-in-digital/core` — they are React components — so this table is
+ * keyed by `Allergen` and therefore cannot silently fall behind
+ * `KNOWN_ALLERGENS`: adding a name without choosing an icon is a type error.
+ */
+const allergenIcons: Record<Allergen, AllergenIcon> = {
+  gluten: Wheat,
+  crustaceans: Shell,
+  eggs: Egg,
+  fish: Fish,
+  peanuts: Bean,
+  soy: Sprout,
+  dairy: Milk,
+  nuts: Nut,
+  celery: Carrot,
+  mustard: Droplet,
+  sesame: Sparkles,
+  sulphites: Wine,
+  lupin: Flower,
+  molluscs: Snail,
+  shellfish: Shell,
+  vegetarian: Salad,
+  vegan: Vegan,
 }
 
 /**
- * Spellings that unambiguously name one of the entries above.
- *
- * Written in real French, and run through `normalizeKey` at module load to
- * build the table that is actually consulted — so `Fruits à coque`,
- * `FRUITS A COQUE` and `fruits-a-coque` all land on the same row. Hand-writing
- * pre-normalised keys here would mean a `céleri-rave` added with its accent
- * silently never matches, and would put de-accented French in a source file
- * the accent check reads.
- *
- * Only names of the allergen *category* belong here. An ingredient that merely
- * contains an allergen ("beurre", "crevette", "fruits de mer") is deliberately
- * absent: guessing which category an ingredient belongs to would put a name on
- * the badge that the owner did not write, and a wrong allergen is worse than an
- * unstyled one. Anything not listed renders as typed.
- */
-const ALIAS_SOURCE: Record<string, Allergen> = {
-  // gluten — Annex II names the cereals explicitly
-  gluten: "gluten",
-  "céréales contenant du gluten": "gluten",
-  "céréales de gluten": "gluten",
-  "cereals containing gluten": "gluten",
-  "gluten de blé": "gluten",
-  "farine de blé": "gluten",
-  triticale: "gluten",
-  khorasan: "gluten",
-  "blé": "gluten",
-  froment: "gluten",
-  seigle: "gluten",
-  orge: "gluten",
-  avoine: "gluten",
-  "épeautre": "gluten",
-  kamut: "gluten",
-  wheat: "gluten",
-  rye: "gluten",
-  barley: "gluten",
-  oats: "gluten",
-  spelt: "gluten",
-
-  // crustaceans
-  "crustacé": "crustaceans",
-  "crustacés": "crustaceans",
-  crustacean: "crustaceans",
-  crustaceans: "crustaceans",
-  shellfish: "shellfish",
-
-  // eggs
-  "œuf": "eggs",
-  "œufs": "eggs",
-  egg: "eggs",
-  eggs: "eggs",
-  "blanc d'œuf": "eggs",
-  "blancs d'œufs": "eggs",
-
-  // fish
-  poisson: "fish",
-  poissons: "fish",
-  fish: "fish",
-
-  // peanuts
-  arachide: "peanuts",
-  arachides: "peanuts",
-  "cacahuète": "peanuts",
-  "cacahuètes": "peanuts",
-  peanut: "peanuts",
-  peanuts: "peanuts",
-  groundnuts: "peanuts",
-
-  // soy
-  soja: "soy",
-  soy: "soy",
-  soya: "soy",
-  soybeans: "soy",
-  "lécithine de soja": "soy",
-  "soy lecithin": "soy",
-
-  // dairy
-  lait: "dairy",
-  laits: "dairy",
-  lactose: "dairy",
-  "produits laitiers": "dairy",
-  "protéines de lait": "dairy",
-  "lait et produits laitiers": "dairy",
-  milk: "dairy",
-  dairy: "dairy",
-
-  // tree nuts
-  "fruit à coque": "nuts",
-  "fruits à coque": "nuts",
-  "fruits à coques": "nuts",
-  noix: "nuts",
-  noisette: "nuts",
-  noisettes: "nuts",
-  amande: "nuts",
-  amandes: "nuts",
-  pistache: "nuts",
-  pistaches: "nuts",
-  "noix de cajou": "nuts",
-  "noix de pécan": "nuts",
-  "noix du Brésil": "nuts",
-  "noix de macadamia": "nuts",
-  nut: "nuts",
-  nuts: "nuts",
-  "tree nuts": "nuts",
-  almond: "nuts",
-  almonds: "nuts",
-  hazelnut: "nuts",
-  hazelnuts: "nuts",
-  walnut: "nuts",
-  walnuts: "nuts",
-  cashew: "nuts",
-  cashews: "nuts",
-  pistachio: "nuts",
-  pistachios: "nuts",
-  pecan: "nuts",
-  pecans: "nuts",
-  "brazil nut": "nuts",
-  "brazil nuts": "nuts",
-  macadamia: "nuts",
-
-  // celery
-  "céleri": "celery",
-  "céleri-rave": "celery",
-  "céleri branche": "celery",
-  celery: "celery",
-  celeriac: "celery",
-
-  // mustard
-  moutarde: "mustard",
-  "graines de moutarde": "mustard",
-  mustard: "mustard",
-
-  // sesame
-  "sésame": "sesame",
-  "graines de sésame": "sesame",
-  "sesame seeds": "sesame",
-
-  // sulphites
-  sulfite: "sulphites",
-  sulfites: "sulphites",
-  "anhydride sulfureux": "sulphites",
-  "dioxyde de soufre": "sulphites",
-  "sulfur dioxide": "sulphites",
-  e220: "sulphites",
-  "anhydride sulfureux et sulfites": "sulphites",
-  so2: "sulphites",
-  sulphite: "sulphites",
-  sulphites: "sulphites",
-
-  // lupin
-  lupin: "lupin",
-  lupins: "lupin",
-  lupine: "lupin",
-  "farine de lupin": "lupin",
-
-  // molluscs
-  mollusque: "molluscs",
-  mollusques: "molluscs",
-  mollusc: "molluscs",
-  molluscs: "molluscs",
-  mollusk: "molluscs",
-  mollusks: "molluscs",
-
-  // dietary markers
-  "végétarien": "vegetarian",
-  "végétarienne": "vegetarian",
-  "végétariens": "vegetarian",
-  vegetarian: "vegetarian",
-  vegan: "vegan",
-  "végétalien": "vegan",
-  "végétalienne": "vegan",
-  "végétaliens": "vegan",
-}
-
-/**
- * Lower case, expand ligatures, strip diacritics, collapse anything that is not
- * a letter or a digit into a single space. `"Fruits à coque"`,
- * `"FRUITS A COQUE"` and `"fruits_a_coque"` all come out as
- * `"fruits à coque"`.
- *
- * The ligature step is not decoration: `œ` and `æ` are single code points that
- * NFD does not decompose, so `"Œufs"` — the correct French spelling — would
- * otherwise normalise to `"ufs"` and miss the table entirely.
- */
-/** Zero-width characters a paste from Word or Docs leaves behind. */
-const ZERO_WIDTH = /[\u200b\u200c\u200d\u2060\ufeff]/g
-
-/**
- * Symbols that negate what follows them. A value carrying one is never
- * resolved to an allergen: `gluten ✗` means the dish has none, and announcing
- * "Allergène : Gluten" for it is the inversion this component must never make.
- * A leading hyphen is deliberately absent — in a menu it is a bullet, not a
- * minus, and reading it as negation would hide a real declaration.
- */
-const NEGATION_SYMBOL = /[\u2717\u2718\u274c\u2716\u00d7\u{1F6AB}\u2205\u2298]/u
-
-function normalizeKey(value: string): string {
-  return value
-    .replace(ZERO_WIDTH, "")
-    .toLowerCase()
-    .replace(/\u0153/g, "oe")
-    .replace(/\u00e6/g, "ae")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-}
-
-/**
- * The table actually consulted: every source spelling above, normalised the
- * same way the incoming value is, so the two are guaranteed to agree.
- */
-const allergenAliases: Record<string, Allergen> = Object.fromEntries(
-  Object.entries(ALIAS_SOURCE).map(([term, allergen]) => [
-    normalizeKey(term),
-    allergen,
-  ])
-)
-
-/**
- * Resolve a raw allergen string to one of the known entries, or `null` when
- * this component does not recognise it.
- *
- * Exported so callers and tests can ask the question without rendering.
- */
-export function normalizeAllergen(value: string): Allergen | null {
-  if (NEGATION_SYMBOL.test(value)) return null
-  const key = normalizeKey(value)
-  if (!key) return null
-  // `allergenAliases` is an object literal, so it inherits `constructor`,
-  // `toString`, `__proto__` and friends from `Object.prototype`. A plain
-  // `allergenAliases[key]` hands back a *function* for an allergen an owner
-  // can genuinely type, and `?? null` does not catch it. Ask for an own
-  // property.
-  if (!Object.hasOwn(allergenAliases, key)) return null
-  return allergenAliases[key] ?? null
-}
-
-/**
- * `unverified` deliberately makes no claim about what the value is.
- *
- * The obvious prefix is the wrong one: an owner writing `sans gluten` into the
- * allergens field would be announced "Allergène : sans gluten" — "Allergen:
- * gluten-free", the exact inversion of what they declared. The same applies to
- * `halal`, `bio` or `fait maison`. Reporting the value as the restaurant's own
- * wording is true whatever it turns out to mean.
- */
-const ANNOUNCEMENT: Record<
-  AllergenLocale,
-  Record<AllergenKind, (label: string) => string>
-> = {
-  fr: {
-    allergen: (label) => `Allergène : ${label}`,
-    diet: (label) => `Régime : ${label}`,
-    unverified: (label) => `Mention du restaurant : ${label}`,
-  },
-  en: {
-    allergen: (label) => `Allergen: ${label}`,
-    diet: (label) => `Diet: ${label}`,
-    unverified: (label) => `Stated by the restaurant: ${label}`,
-  },
-}
-
-/**
- * An allergen name this component does not recognise renders as the owner
+ * An allergen name the vocabulary does not recognise renders as the owner
  * typed it, rather than throwing.
  *
  * `products.allergens` is `v.array(v.string())`. The values in it are French —
@@ -464,7 +120,7 @@ const ANNOUNCEMENT: Record<
  * is the hazard the crash was hiding in the first place. So an unrecognised
  * value keeps its text visible even when `showLabel` is false: its icon means
  * nothing on its own. And it is announced as the restaurant's own wording, not
- * as an allergen — see `ANNOUNCEMENT.unverified`.
+ * as an allergen — see `ALLERGEN_ANNOUNCEMENT.unverified`.
  *
  * There is no `title` here. `aria-label` already names the badge, and a `title`
  * carrying the same sentence falls through accname to the accessible
@@ -480,16 +136,25 @@ const AllergenBadge: React.FC<AllergenBadgeProps> = ({
   const raw = typeof allergen === "string" ? allergen.trim() : ""
   if (!raw) return null
 
-  const known = normalizeAllergen(raw)
-  const entry = known ? allergenConfig[known] : undefined
+  // An own-property check, not `??`: `ALLERGEN_ANNOUNCEMENT["constructor"]` is
+  // a function. `hasOwnProperty.call` rather than `Object.hasOwn` so this file
+  // compiles under every consumer's tsconfig — it is consumed as raw source.
+  const lang: AllergenLocale = Object.prototype.hasOwnProperty.call(
+    ALLERGEN_ANNOUNCEMENT,
+    locale
+  )
+    ? locale
+    : "fr"
 
-  // `Object.hasOwn`, not `??`: `ANNOUNCEMENT["constructor"]` is a function.
-  const lang = Object.hasOwn(ANNOUNCEMENT, locale) ? locale : "fr"
-  const Icon = entry?.icon ?? Info
-  const label = entry ? entry.label[lang] : raw
-  const announce = ANNOUNCEMENT[lang][entry?.kind ?? "unverified"](label)
+  // One resolution, shared with every other surface that shows this value.
+  const [resolved] = resolveAllergens([raw], lang)
+  if (!resolved) return null
+
+  const kind: AllergenKind = resolved.kind
+  const Icon = resolved.allergen ? allergenIcons[resolved.allergen] : Info
+  const announce = ALLERGEN_ANNOUNCEMENT[lang][kind](resolved.label)
   // An unrecognised allergen has no meaningful icon, so its name always shows.
-  const withText = showLabel || !entry
+  const withText = showLabel || kind === "unverified"
 
   return (
     <div
@@ -501,7 +166,7 @@ const AllergenBadge: React.FC<AllergenBadgeProps> = ({
       )}
     >
       <Icon className="h-3 w-3" aria-hidden />
-      {withText && <span>{label}</span>}
+      {withText && <span>{resolved.label}</span>}
     </div>
   )
 }
