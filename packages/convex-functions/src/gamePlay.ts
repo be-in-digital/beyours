@@ -452,6 +452,17 @@ function isAwaitingRedemption(redemption: Doc<"prizeRedemptions">): boolean {
 }
 
 /**
+ * The establishment's branding, narrowed to what the player screens can paint
+ * with. The QR code names its own store, so this is the right source for the
+ * game's colours — the storefront's persisted selection is a different
+ * question and would give a diner scanning at one restaurant the palette of
+ * another they browsed last week.
+ */
+function brandingOf(store: { branding?: unknown }): unknown {
+  return store.branding ?? null
+}
+
+/**
  * Everything the player UI needs to boot, in one round-trip.
  * `fingerprint` lets the server report the cooldown state up front.
  */
@@ -473,7 +484,11 @@ export const getSession = {
     if (!store) return { status: "not_found" as const }
 
     const game = await loadActiveGameForQr(ctx, qr)
-    if (!game) return { status: "no_game" as const, store: { name: store.name } }
+    if (!game)
+      return {
+        status: "no_game" as const,
+        store: { name: store.name, branding: brandingOf(store) },
+      }
 
     const actions = await loadActiveActions(ctx, qr.storeId)
 
@@ -566,7 +581,7 @@ export const getSession = {
       status: "ready" as const,
       qrCodeId: qr._id,
       tableNumber: qr.tableNumber,
-      store: { id: store._id, name: store.name },
+      store: { id: store._id, name: store.name, branding: brandingOf(store) },
       privacy: { retentionDays },
       game: {
         id: game._id,

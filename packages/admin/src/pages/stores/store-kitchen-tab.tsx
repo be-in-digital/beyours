@@ -1,9 +1,21 @@
 "use client"
 
 import { useState, type Dispatch, type SetStateAction } from "react"
-import { Volume2, VolumeX, Play, Printer, Plus, X, Check, MonitorPlay } from "lucide-react"
+import {
+  Volume2,
+  VolumeX,
+  Play,
+  Printer,
+  Plus,
+  X,
+  Check,
+  AlertTriangle,
+  MonitorPlay,
+} from "lucide-react"
 import {
   Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -239,16 +251,19 @@ export function StoreKitchenTab({
           {orderConfirmation === "manual" && (
             <Alert
               variant="warning"
-              title="Rien ne part en cuisine tant que personne n'a accepté"
               data-testid="order-confirmation-warning"
             >
-              <p>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>
+                Rien ne part en cuisine tant que personne n&apos;a accepté
+              </AlertTitle>
+              <AlertDescription>
                 La commande payée reste en attente : aucun ticket n&apos;est
                 imprimé et l&apos;écran de cuisine ne l&apos;affiche pas.
                 Quelqu&apos;un doit cliquer «&nbsp;Accepter la commande&nbsp;»
                 dans la liste des commandes, à chaque service. Sans cela, le
                 client attend un plat que la cuisine n&apos;a jamais vu.
-              </p>
+              </AlertDescription>
             </Alert>
           )}
         </CardContent>

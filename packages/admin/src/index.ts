@@ -86,7 +86,7 @@ export {
   SidebarMenuItem,
   SidebarMenuButton,
   useSidebar,
-} from "./ui/sidebar"
+} from "@be-in-digital/ui"
 
 // Pages (lazy loaded by consuming apps)
 export { DashboardPage } from "./pages/dashboard"

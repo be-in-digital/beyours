@@ -4,10 +4,13 @@ import { useMutation, useAction } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import type { KitchenTicket, TicketStatus, TicketOrderType as OrderType, TicketPriority as Priority, TicketSource as Source } from "../../lib/types"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { Button } from "@be-in-digital/ui"
-import { Badge } from "@be-in-digital/ui"
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

@@ -12,7 +12,16 @@ import {
   ScanLineIcon,
   Loader2Icon,
 } from "lucide-react"
-import { Badge, Button, Input, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui"
+import {
+  Badge,
+  Button,
+  Input,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"

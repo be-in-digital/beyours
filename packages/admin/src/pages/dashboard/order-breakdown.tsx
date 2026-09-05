@@ -2,13 +2,16 @@
 
 import { PieChart as PieChartIcon } from "lucide-react"
 import { Cell, Pie, PieChart } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "../../ui/chart"
+} from "@be-in-digital/ui"
 
 interface OrderBreakdownProps {
   byType: { name: string; value: number; label: string }[]

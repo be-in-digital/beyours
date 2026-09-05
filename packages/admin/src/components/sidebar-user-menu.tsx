@@ -3,23 +3,23 @@
 import { useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { useSelectAdminStore } from "../hooks/admin-hooks"
-import { Avatar, AvatarFallback, AvatarImage } from "@be-in-digital/ui"
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import { adminRoutes } from "../config/admin-routes"
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "../ui/sidebar"
 
 function getInitials(name?: string, email?: string): string {
   if (name) {

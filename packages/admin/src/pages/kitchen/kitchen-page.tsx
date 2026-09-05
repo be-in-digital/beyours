@@ -5,11 +5,18 @@ import { useQuery, useMutation } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import type { KitchenTicket } from "../../lib/types"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
-import { Card, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { Skeleton } from "@be-in-digital/ui"
-import { Empty, EmptyHeader, EmptyTitle } from "@be-in-digital/ui"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@be-in-digital/ui"
 import {
+  Card,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Select,
   SelectContent,
   SelectItem,

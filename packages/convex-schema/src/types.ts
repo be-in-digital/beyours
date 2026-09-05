@@ -465,9 +465,35 @@ export type FilterParams<T> = {
 
 export type GlobalSettingsDoc = BaseEntity & CreateGlobalSettingsInput
 
+/**
+ * An establishment's visual identity, as the Design screen saves it.
+ *
+ * The authority on this shape is `BRANDING_FIELDS` in
+ * `packages/convex-functions/src/stores.ts` — the validator `updateBranding`
+ * actually enforces. It is restated here because the stored column is
+ * `v.optional(v.any())` and has to stay that way (see the comment on
+ * `stores.branding`): without this type, every reader of an establishment's
+ * palette would be reading `any`, which is how the field went years with a
+ * writer and no reader in the first place.
+ *
+ * Colours are `#rrggbb`; fonts are a CSS family stack. Every field is optional
+ * because an owner sets them a tab at a time, and readers must cope with the
+ * establishment that has set none.
+ */
+export interface StoreBranding {
+  primaryColor?: string
+  secondaryColor?: string
+  accentColor?: string
+  fontHeading?: string
+  fontBody?: string
+  logoUrl?: string
+  faviconUrl?: string
+}
+
 export type StoreDoc = BaseEntity & CreateStoreInput & {
   status: StoreStatus
   themeId?: string
+  branding?: StoreBranding
 }
 
 export type StoreIntegrationDoc = BaseEntity & CreateStoreIntegrationInput & {

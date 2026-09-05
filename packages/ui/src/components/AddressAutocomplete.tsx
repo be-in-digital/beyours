@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useRef, useEffect, useId } from "react"
 import { MapPin } from "lucide-react"
 import { cn } from "../lib/utils"
 import { useGooglePlacesAutocomplete } from "../hooks/useGooglePlacesAutocomplete"
@@ -13,7 +13,6 @@ export interface AddressAutocompleteProps {
   onChange: (value: AddressValue) => void
   apiKey: string
   countries?: string[]
-  placeholder?: string
   disabled?: boolean
   error?: string
   label?: string
@@ -24,97 +23,93 @@ export function AddressAutocomplete({
   onChange,
   apiKey,
   countries = ["fr"],
-  placeholder = "Rechercher une adresse...",
   disabled = false,
   error,
   label,
 }: AddressAutocompleteProps) {
+  // The component can appear more than once on a page (billing and delivery
+  // addresses), so the ids that tie each label to its field have to be unique
+  // per instance rather than hard-coded.
+  const fieldId = useId()
+
+  // Keep a ref to always have the latest value in the callback,
+  // avoiding stale closure issues with Google's async event
+  const valueRef = useRef(value)
+  const onChangeRef = useRef(onChange)
+
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
+
   const { inputRef } = useGooglePlacesAutocomplete({
     apiKey,
     countries,
     onSelect: (parsed) => {
-      onChange({
-        street: parsed.street ?? value.street,
-        city: parsed.city ?? value.city,
-        postalCode: parsed.postalCode ?? value.postalCode,
-        country: parsed.country ?? value.country,
+      const current = valueRef.current
+      onChangeRef.current({
+        street: parsed.street ?? current.street,
+        city: parsed.city ?? current.city,
+        postalCode: parsed.postalCode ?? current.postalCode,
+        country: parsed.country ?? current.country,
         latitude: parsed.latitude,
         longitude: parsed.longitude,
       })
     },
   })
 
-  const inputClassName = cn(
-    "flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+  const fieldClassName = cn(
+    "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
     error && "border-destructive focus-visible:ring-destructive"
   )
 
-  const fieldClassName =
-    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-
-  // Labels have to point at their fields.
-  //
-  // Every label here was a bare <label> and every input had no id, so nothing
-  // tied them together: a screen reader announced five anonymous text boxes,
-  // clicking a label did not focus its field, and `getByLabel` could not find
-  // them — which is how the e2e suite surfaced it.
-  const fieldId = React.useId()
-
   return (
-    <div className="w-full space-y-3">
+    // `role="group"` + `aria-labelledby`, not a bare heading.
+    //
+    // The four fields are one control between them, and `label` names the whole
+    // of it — "Adresse de l'établissement", not any one box. Rendered as a bare
+    // `<p>` it named nothing: assistive technology announced four anonymous
+    // fields, and `getByLabel` could not find the group at all. Binding it here
+    // gives the group the name its caller supplies without mislabelling the
+    // street field, which has its own.
+    //
+    // Not a `<fieldset>`/`<legend>`: a legend folds into the accessible name of
+    // every field inside it, so all four would answer to "Adresse" and any
+    // locator for one of them would match four.
+    <div
+      className="w-full space-y-3"
+      {...(label ? { role: "group", "aria-labelledby": `${fieldId}-group` } : {})}
+    >
       {label && (
-        <label
-          htmlFor={`${fieldId}-search`}
-          className="text-sm font-medium leading-none"
-        >
+        <p id={`${fieldId}-group`} className="text-sm font-medium leading-none">
           {label}
-        </label>
+        </p>
       )}
 
-      {/* Search input with Google Places autocomplete */}
-      <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input
-          id={`${fieldId}-search`}
-          ref={inputRef}
-          type="text"
-          className={inputClassName}
-          placeholder={placeholder}
-          disabled={disabled}
-          defaultValue={value.street ? `${value.street}, ${value.city}` : ""}
-        />
-      </div>
-
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-
-      {/* Detail fields - pre-filled and editable */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {/* Street field IS the autocomplete field */}
         <div className="space-y-1.5 sm:col-span-2">
-          <label
-            htmlFor={`${fieldId}-street`}
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Rue
-          </label>
-          <input
-            id={`${fieldId}-street`}
-            type="text"
-            className={fieldClassName}
-            value={value.street}
-            onChange={(e) => onChange({ ...value, street: e.target.value })}
-            placeholder="123 rue principale"
-            disabled={disabled}
-          />
+          <label className="text-xs font-medium text-muted-foreground" htmlFor={`${fieldId}-street`}>Rue</label>
+          <div className="relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              id={`${fieldId}-street`}
+              type="text"
+              className={cn(fieldClassName, "pl-10")}
+              value={value.street}
+              onChange={(e) => onChange({ ...value, street: e.target.value })}
+              placeholder="2 rue de la Paix"
+              disabled={disabled}
+            />
+          </div>
         </div>
+
         <div className="space-y-1.5">
-          <label
-            htmlFor={`${fieldId}-city`}
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Ville
-          </label>
+          <label className="text-xs font-medium text-muted-foreground" htmlFor={`${fieldId}-city`}>Ville</label>
           <input
             id={`${fieldId}-city`}
             type="text"
@@ -126,14 +121,9 @@ export function AddressAutocomplete({
           />
         </div>
         <div className="space-y-1.5">
-          <label
-            htmlFor={`${fieldId}-postal`}
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Code postal
-          </label>
+          <label className="text-xs font-medium text-muted-foreground" htmlFor={`${fieldId}-postal-code`}>Code postal</label>
           <input
-            id={`${fieldId}-postal`}
+            id={`${fieldId}-postal-code`}
             type="text"
             className={fieldClassName}
             value={value.postalCode}
@@ -143,12 +133,7 @@ export function AddressAutocomplete({
           />
         </div>
         <div className="space-y-1.5 sm:col-span-2">
-          <label
-            htmlFor={`${fieldId}-country`}
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Pays
-          </label>
+          <label className="text-xs font-medium text-muted-foreground" htmlFor={`${fieldId}-country`}>Pays</label>
           <input
             id={`${fieldId}-country`}
             type="text"
@@ -160,6 +145,10 @@ export function AddressAutocomplete({
           />
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
     </div>
   )
 }

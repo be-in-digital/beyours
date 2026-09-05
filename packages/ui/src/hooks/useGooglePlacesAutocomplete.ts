@@ -1,3 +1,11 @@
+/// <reference types="google.maps" />
+//
+// The reference travels with the file because the package is published as
+// TypeScript source: every consumer compiles this hook itself, and the global
+// `google` namespace has to resolve from here rather than from whichever
+// tsconfig happens to be running. `packages/admin` has no `@types/google.maps`
+// of its own and broke the moment it started compiling this file instead of a
+// bundled `.d.ts`.
 "use client"
 
 import { useEffect, useRef, useCallback } from "react"

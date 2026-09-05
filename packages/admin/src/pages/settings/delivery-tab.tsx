@@ -10,8 +10,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  AddressAutocomplete,
+  type AddressValue,
 } from "@be-in-digital/ui"
-import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
 import { centsToEuros } from "../../lib/formatters"
 import { GOOGLE_MAPS_API_KEY } from "./settings-constants"
 import type { SimulationResult } from "./settings-types"

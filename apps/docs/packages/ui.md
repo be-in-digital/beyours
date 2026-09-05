@@ -1,6 +1,8 @@
 # @be-in-digital/ui
 
-> 45+ accessible, themeable React components built on Radix UI and Tailwind CSS.
+> 59 accessible, themeable React components built on Radix UI and Tailwind CSS v4.
+> The engine's one design system — see `packages/ui/COMPONENTS.md` for what it
+> replaced.
 
 ## Table of Contents
 
@@ -25,30 +27,48 @@ pnpm add react@^19 react-dom@^19 react-hook-form@^7 @hookform/resolvers@^3
 
 ## Setup
 
-### 1. Tailwind Configuration
+### 1. Tell Tailwind where the package is
 
-Add the package to your Tailwind content paths:
+There is no `tailwind.config.ts` — this is Tailwind v4, and the source glob goes
+in the stylesheet:
 
-```typescript
-// tailwind.config.ts
-import type { Config } from "tailwindcss";
+```css
+/* app/globals.css */
+@import "tailwindcss";
 
-const config: Config = {
-  content: [
-    "./app/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-    "./node_modules/@be-in-digital/ui/**/*.{js,ts,jsx,tsx}",
-  ],
-};
-
-export default config;
+@source "../node_modules/@be-in-digital/ui/src/**/*";
+@source "../node_modules/@be-in-digital/admin/src/**/*";
 ```
 
-### 2. Import Components
+Two details, both learned the hard way:
+
+- **`node_modules/@be-in-digital/*`, not a relative path into `packages/`.** The
+  same stylesheet ships to the repository a client site is cloned from, where
+  the app *is* the root and `../../../packages` resolves above it — matching
+  nothing, silently, because Tailwind reports no error for a glob that hits no
+  files. The monorepo built 3102 rules and every client built 2526.
+- **`**/*`, not `**/*.{ts,tsx}`.** So the package's source is scanned the way
+  the app's own files are: with no opinion about the extension.
+
+`packages/ui` ships no CSS of its own, so these globs are the only thing that
+puts its classes in your stylesheet. That is also why its `files` field must
+keep `src`.
+
+### 2. Import components
+
+One specifier, always:
 
 ```tsx
 import { Button, Card, Input, Badge } from "@be-in-digital/ui";
 ```
+
+`@be-in-digital/ui/components`, `/restaurant` and `/admin` resolve to the same
+modules and exist only for compatibility. `@be-in-digital/ui/branding` is the
+one subpath worth using: a pure function, importable from a server component
+without pulling the component graph with it.
+
+The package is published as TypeScript source, so add it to `transpilePackages`
+in `next.config.ts`.
 
 ## Components
 

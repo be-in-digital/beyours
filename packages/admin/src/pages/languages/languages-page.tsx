@@ -6,9 +6,9 @@ import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { toast } from "sonner"
 import { useState, type ReactNode } from "react"
 import { PlusIcon, LanguagesIcon, StarIcon, TrashIcon } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
-import { ButtonGroup } from "@be-in-digital/ui"
 import {
+  Button,
+  ButtonGroup,
   Badge,
   Dialog,
   DialogContent,
@@ -17,14 +17,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@be-in-digital/ui"
-import { Input } from "@be-in-digital/ui"
-import { Label } from "@be-in-digital/ui"
-import { Switch } from "@be-in-digital/ui"
-import { LoadingState } from "../../components/loading-state"
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@be-in-digital/ui"
-import {
+  Input,
+  Label,
+  Switch,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Table,
   TableBody,
   TableCell,
@@ -32,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@be-in-digital/ui"
+import { LoadingState } from "../../components/loading-state"
 
 interface Language {
   _id: string

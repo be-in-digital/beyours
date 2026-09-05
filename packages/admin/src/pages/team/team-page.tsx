@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { cn } from "../../lib/utils"
-import { useState, useMemo } from "react"
+import { useId, useState, useMemo } from "react"
 import {
   PlusIcon,
   UserIcon,
@@ -496,6 +496,10 @@ function InviteDialog({
   stores: any[] | undefined
   sendInvitation: any
 }) {
+  // Both dialogs render the same permission list, so the ids that bind each
+  // label to its checkbox have to be unique per instance rather than derived
+  // from the module name alone.
+  const permissionFieldPrefix = useId()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<Role>("waiter")
@@ -652,12 +656,19 @@ function InviteDialog({
             <Label>Permissions</Label>
             <div className="grid grid-cols-2 gap-2 rounded-lg border p-3">
               {PERMISSION_MODULES.map((mod) => (
-                <Checkbox
-                  key={mod.id}
-                  label={mod.label}
-                  checked={permissions.includes(mod.id)}
-                  onCheckedChange={() => togglePermission(mod.id)}
-                />
+                <div key={mod.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`${permissionFieldPrefix}-${mod.id}`}
+                    checked={permissions.includes(mod.id)}
+                    onCheckedChange={() => togglePermission(mod.id)}
+                  />
+                  <Label
+                    htmlFor={`${permissionFieldPrefix}-${mod.id}`}
+                    className="font-normal"
+                  >
+                    {mod.label}
+                  </Label>
+                </div>
               ))}
             </div>
           </div>
@@ -697,6 +708,7 @@ function EditDialog({
   updateMember: any
   stores: any[] | undefined
 }) {
+  const permissionFieldPrefix = useId()
   const [role, setRole] = useState<Role>(member.role)
   const [permissions, setPermissions] = useState<string[]>(member.permissions ?? [])
   const [allStores, setAllStores] = useState(member.allStores ?? false)
@@ -801,12 +813,19 @@ function EditDialog({
             <Label>Permissions</Label>
             <div className="grid grid-cols-2 gap-2 rounded-lg border p-3">
               {PERMISSION_MODULES.map((mod) => (
-                <Checkbox
-                  key={mod.id}
-                  label={mod.label}
-                  checked={permissions.includes(mod.id)}
-                  onCheckedChange={() => togglePermission(mod.id)}
-                />
+                <div key={mod.id} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`${permissionFieldPrefix}-${mod.id}`}
+                    checked={permissions.includes(mod.id)}
+                    onCheckedChange={() => togglePermission(mod.id)}
+                  />
+                  <Label
+                    htmlFor={`${permissionFieldPrefix}-${mod.id}`}
+                    className="font-normal"
+                  >
+                    {mod.label}
+                  </Label>
+                </div>
               ))}
             </div>
           </div>

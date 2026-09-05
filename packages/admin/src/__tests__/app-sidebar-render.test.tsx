@@ -37,7 +37,7 @@ vi.mock("../components/unread-messages-badge", () => ({
 }))
 
 import { AppSidebar } from "../components/app-sidebar"
-import { SidebarProvider } from "../ui/sidebar"
+import { SidebarProvider } from "@be-in-digital/ui"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 
 beforeAll(() => {

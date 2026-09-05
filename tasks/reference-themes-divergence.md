@@ -272,6 +272,85 @@ The lesson for this note: a divergence in a Convex internal function reference
 used to be invisible to every check in the repo. It no longer is — the type
 checker catches it, so it does not need hand-auditing here.
 
+## The design system left both apps (2026-09-05)
+
+`apps/reference/components/ui/` and `apps/themes/components/ui/` no longer
+exist. Neither does `packages/admin/src/ui/`. There is one design system, in
+`packages/ui`, and every consumer imports it from `@be-in-digital/ui`.
+
+This note is the right place to record it because the deleted directories were
+**byte-identical between the two apps** — `diff -rq` printed nothing about 37
+files that were, between them, a second copy of the engine's component library.
+That is the blind spot this document already names ("a byte-identical file is
+invisible to `diff -rq`, even when it is dead on one side"), in its most
+expensive form: not one dead directory, but a whole parallel design system that
+every twin check in the repository agreed was fine.
+
+What it cost while it lived: sixteen of the twenty-six shared component names
+had drifted. The package's default Button was `h-10` with
+`focus-visible:ring-2 ring-offset-2`; the apps' was `h-9` with
+`ring-[3px] focus-visible:border-ring`. So the same storefront rendered buttons
+4px apart with different focus rings depending on which page a diner was on, and
+twelve files per app imported from both systems at once —
+`BlogAutoConfigForm.tsx` took Button, Badge, Input and Separator from the
+package and Label and Switch from the local copy, on one form.
+`packages/admin` was stranger still: 97 files imported the old Button from the
+package while the package's own `src/ui/button.tsx` held the new one with zero
+importers.
+
+The newer generation won. What only the package had was merged back rather than
+dropped — the dialog's `max-h`/`overflow-y-auto` fix (the app copy, which is the
+one that rendered, never had it), the Alert's `warning` and `success` variants,
+and `packages/admin`'s `useOptionalSidebar` and `min-w-0` sidebar inset.
+
+**For a client repository this means 37 fewer files.** `apps/themes` is the tree
+a client site is cloned from, so the next publish removes `components/ui/` from
+every delivered site. A client who had edited one of those files locally loses
+that edit — worth checking before the next mirror publish.
+
+### Do not reintroduce a local `components/ui`
+
+`packages/ui/src/__tests__/design-system-singularity.test.ts` fails if any of
+the three directories comes back, if a file imports `@/components/ui/*` or a
+relative `ui/` path, or if the surviving geometry stops being the newer
+generation. `scripts/check-app-divergence.mjs` cannot help here: it compares the
+two apps against each other, and this fault was identical on both sides.
+
+`apps/*/components/ui/empty.tsx` used to be a one-line re-export bridge to the
+package. It was the only file of its kind and it is gone with the rest. It was a
+transitional device, not a pattern — a bridge is a second name for one module,
+and a second name is where the next fork starts.
+
+### Dead code in `packages/ui`, and why it stays
+
+Twenty of the fifty-nine components have no consumer anywhere:
+
+```
+Container, DataTable, EmptyState, FormField, InputGroup, Navbar, PageHeader,
+Progress, RadioGroup, ScrollArea, Section, Spinner, Toast,
+admin/ActionBar, admin/AdminLayout, admin/FilterBar,
+restaurant/CartItem, restaurant/PriceDisplay, restaurant/ProductCard,
+restaurant/QuantitySelector
+```
+
+Verdict: **keep, and record.** Two different reasons.
+
+`ProductCard` and `QuantitySelector` are the design system's flagship restaurant
+components, and both apps render their own `storefront-product-card.tsx`
+instead. That is a real gap — a design system whose headline components nothing
+uses — but it closes by wiring them into the storefront, which is a storefront
+redesign with its own review, not by deleting them in a refactor.
+
+The other eighteen are the surface of a **published** package. A client site
+runs a pinned `@be-in-digital/ui` and can import any exported name; removing one
+is a breaking major that buys nothing but a shorter barrel.
+
+What must not happen is the list growing. A component with no consumer is a
+component nobody has proven, and the state this convergence undid is what
+happens when that goes unremarked for long enough.
+
+---
+
 ## Verification
 
 ```bash

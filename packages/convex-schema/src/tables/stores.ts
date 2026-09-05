@@ -160,8 +160,7 @@ export const storesTable = defineTable({
   // Homepage trending section mode
   trendingMode: v.optional(v.union(v.literal("manual"), v.literal("automatic"))),
 
-  // Legacy fields (kept for backward compatibility with existing data)
-  // Will be removed after data migration
+  // Untyped blobs (kept for backward compatibility with existing data)
   //
   // `orderConfirmation` and `displayConfig` were both filed here by 74de4e9 on
   // the same claim — a mutation and an audit entry with nothing reading the
@@ -173,8 +172,18 @@ export const storesTable = defineTable({
   // What is left stays declared, and optional, because documents already hold
   // it: a stored field absent from the schema fails validation on the next
   // write to that document. `branding` is the exception that is not dead —
-  // `stores.updateBranding` writes it, and that mutation's validator is the one
-  // place its shape is stated.
+  // `stores.updateBranding` writes it, `BRANDING_FIELDS` is the one place its
+  // shape is stated, and since the design-system convergence it has a reader:
+  // `buildBrandingCss` (`packages/ui/src/lib/branding.ts`) turns the colours
+  // and the two fonts into CSS custom properties and `StoreTheme` paints the
+  // storefront with them, so an establishment's palette is what a diner sees.
+  //
+  // It stays `v.any()` on purpose, and the reason is in the doc comment on
+  // `updateBranding`: Convex validates the whole document on every write, so
+  // narrowing this to `BRANDING_FIELDS` would make one client deployment
+  // holding an undeclared key fail its next unrelated edit — an opening-hours
+  // change refused because of a colour. Narrowing needs an inventory of the
+  // deployed key sets first; until then the writer is the narrow thing.
   branding: v.optional(v.any()),
   integrations: v.optional(v.any()),
   settings: v.optional(v.any()),

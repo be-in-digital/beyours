@@ -1,7 +1,6 @@
 "use client"
 
-import { Button } from "@be-in-digital/ui"
-import { ButtonGroup } from "@be-in-digital/ui"
+import { Button, ButtonGroup } from "@be-in-digital/ui"
 
 /**
  * "Actif", inside the station button.

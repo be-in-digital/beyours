@@ -20,12 +20,10 @@ import {
   SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
-} from "../ui/sidebar"
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "../ui/collapsible"
+} from "@be-in-digital/ui"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { UnreadMessagesBadge } from "./unread-messages-badge"
 import {

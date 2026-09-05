@@ -2,7 +2,9 @@ import * as React from "react"
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
 
 import { cn } from "../lib/utils"
-import { type ButtonProps, buttonVariants } from "./Button"
+import { type VariantProps } from "class-variance-authority"
+
+import { buttonVariants } from "./Button"
 
 function Pagination({ className, ...props }: React.ComponentProps<"nav">) {
   return (
@@ -36,10 +38,16 @@ const PaginationItem = React.forwardRef<
 ))
 PaginationItem.displayName = "PaginationItem"
 
+/**
+ * `ButtonProps` no longer exists — the converged Button is a function component
+ * typed from `React.ComponentProps<"button">`. Its size now comes from the
+ * variants directly, and the native `size` attribute (a number, on `<input>`
+ * and `<select>`) has to be dropped from the element props or the two collide.
+ */
 type PaginationLinkProps = {
   isActive?: boolean
-} & Pick<ButtonProps, "size"> &
-  React.ComponentProps<"button">
+  size?: VariantProps<typeof buttonVariants>["size"]
+} & Omit<React.ComponentProps<"button">, "size">
 
 function PaginationLink({
   className,
