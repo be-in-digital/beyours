@@ -17,6 +17,7 @@
  * −50 € coupon on a 22 € basket promised 50 € off. One implementation now.
  */
 
+import { RefusalError } from "./refusal"
 import { isWithinWindow } from "./timeWindow"
 
 export type PromotionDiscountType =
@@ -110,12 +111,11 @@ export type PromotionRejectionReason =
   | "not_applicable"
 
 /** Thrown when a promotion cannot legally apply to the order. */
-export class PromotionRejectedError extends Error {
+export class PromotionRejectedError extends RefusalError<PromotionRejectionReason> {
   readonly reason: PromotionRejectionReason
 
   constructor(reason: PromotionRejectionReason, message: string) {
-    super(message)
-    this.name = "PromotionRejectedError"
+    super("PromotionRejectedError", reason, message)
     this.reason = reason
   }
 }

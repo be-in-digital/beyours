@@ -195,8 +195,50 @@ describe("a secret can switch a suite on", () => {
     }
   })
 
+  /**
+   * `test` declares no `outputs` — #362 moved `coverage/**` to `test:coverage`,
+   * because `pnpm test` writes no coverage and a cache slot for an artefact no
+   * command produces is a fiction. It is still CACHED: a turbo task without
+   * outputs replays its success and skips the command entirely. That is what
+   * makes `env` rather than `passThroughEnv` the load-bearing choice, so the
+   * assertion is about `cache`, never about the outputs it no longer has.
+   */
   test("the task is cached, which is what makes the distinction matter", () => {
     expect(task.cache).not.toBe(false)
-    expect(task.outputs).toContain("coverage/**")
+  })
+})
+
+/**
+ * `test:coverage` runs the same suites and needs the same variables.
+ *
+ * turbo.json cannot share one list between two tasks, so it is written twice —
+ * and a list written twice drifts. It drifted the moment it existed: #362 split
+ * this task out of `test` while this branch was adding the `env` block to
+ * `test`, and git merged both cleanly into a file where `test` had lost every
+ * declaration and `test:coverage` had gained them. Nothing failed. `pnpm test`
+ * silently went back to stripping the secrets, which is the exact defect the
+ * `env` block exists to fix.
+ *
+ * Equality is asserted rather than each entry, so the next person to add a
+ * variable to one is told about the other.
+ */
+describe("test:coverage carries the same declarations as test", () => {
+  const coverage = readTurboJson().tasks["test:coverage"]
+
+  test("the task exists", () => {
+    expect(coverage, "turbo.json declares no `test:coverage` task").toBeDefined()
+  })
+
+  test("its env list is identical to test's", () => {
+    expect(coverage?.env ?? []).toEqual(testTask().env ?? [])
+  })
+
+  test("it passes through the same variables", () => {
+    expect(coverage?.passThroughEnv ?? []).toEqual(testTask().passThroughEnv ?? [])
+  })
+
+  /** The reason it is a separate task at all. */
+  test("it is the one that writes coverage", () => {
+    expect(coverage?.outputs).toContain("coverage/**")
   })
 })

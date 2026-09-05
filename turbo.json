@@ -58,17 +58,75 @@
       // mappings offline and always ran.
       //
       // `passThroughEnv` would have let the value through and left the second
-      // half open. This task is CACHED (`outputs: coverage/**`), and a
-      // passed-through variable is not part of the cache key — so the first run
-      // after a secret appeared would have replayed the cached result of the run
-      // that skipped everything. In `env` the value is in the key: turning a
-      // secret on changes the hash, the suite genuinely re-runs, and the skip
-      // becomes a pass or a failure.
+      // half open. This task is CACHED — a turbo task with no `outputs` still
+      // replays its success without running the command — and a passed-through
+      // variable is not part of the cache key, so the first run after a secret
+      // appeared would have replayed the result of the run that skipped
+      // everything. In `env` the value is in the key: turning a secret on
+      // changes the hash, the suite genuinely re-runs, and the skip becomes a
+      // pass or a failure.
       //
       // `apps/reference/__tests__/turbo-test-env.test.ts` holds this list to
       // what the suites actually read. Adding `process.env.SOMETHING` to a test
       // without adding it here fails that guard rather than silently reading
       // undefined.
+      "env": [
+        // The Deliveroo scenario suites under `apps/*/e2e/deliveroo` — Vitest,
+        // not Playwright, and the reason this task needed fixing at all.
+        "CONVEX_SITE_URL",
+        "DELIVEROO_CLIENT_ID",
+        "DELIVEROO_CLIENT_SECRET",
+        "DELIVEROO_WEBHOOK_SECRET",
+        "DELIVEROO_SITE_ID",
+        "DELIVEROO_BRAND_ID",
+        "DELIVEROO_E2E_REQUIRE_LIVE",
+        "DELIVEROO_IS_SANDBOX",
+        "SEED_ADMIN_EMAIL",
+        "SEED_PASSWORD",
+        // Uber Eats and the payment providers: sandbox flags and the webhook
+        // secrets the signature suites verify against.
+        "UBER_EATS_CLIENT_ID",
+        "UBER_EATS_CLIENT_SECRET",
+        "UBER_EATS_WEBHOOK_SECRET",
+        "UBER_EATS_SANDBOX_MODE",
+        "PAYPAL_SANDBOX_MODE",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_CONNECT_WEBHOOK_SECRET",
+        // AWS, read by the S3 and SES suites.
+        "AWS_REGION",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
+        "AWS_S3_BUCKET_NAME",
+        "AWS_SES_CONFIGURATION_SET",
+        // The rest.
+        "ADMIN_BOOTSTRAP_TOKEN",
+        "OPENAI_API_KEY",
+        // NEXT_PUBLIC_* already crosses the boundary — turbo passes the prefix
+        // through unconditionally, measured. They are named anyway so they
+        // belong to the CACHE KEY: a suite run against one VAT stance must not
+        // be replayed for another.
+        "NEXT_PUBLIC_CONVEX_URL",
+        "NEXT_PUBLIC_SITE_URL",
+        "NEXT_PUBLIC_TVA_ENABLED"
+      ],
+      "passThroughEnv": ["CI"]
+    },
+    // `pnpm test:coverage` is the only task that writes `coverage/`. It used
+    // to be declared as an output of `test`, which produces nothing — a cache
+    // slot for an artefact no command created, next to a CLAUDE.md line
+    // promising "80%+ coverage" that nothing measured.
+    //
+    // No threshold is enforced. The number is reported, not gated; see
+    // TESTING.md before adding one, because a threshold set above what the
+    // suite currently reaches turns every unrelated pull request red.
+    //
+    // The env list below MUST match `test`'s, and is duplicated because
+    // turbo.json has no way to share one — it runs the same suites, so a
+    // variable stripped here skips the same three Deliveroo suites, just with
+    // a coverage report attached. `turbo-test-env.test.ts` asserts the two
+    // lists are equal, so drift fails rather than being noticed a year later.
+    "test:coverage": {
+      "dependsOn": ["^build"],
       "env": [
         // The Deliveroo scenario suites under `apps/*/e2e/deliveroo` — Vitest,
         // not Playwright, and the reason this task needed fixing at all.

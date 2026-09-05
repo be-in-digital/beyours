@@ -12,6 +12,9 @@ import {
   formatPrice,
   getProductAllergens,
 } from '../services/product'
+// The order mutation's own implementation, imported so these tests assert
+// agreement rather than a literal that used to be right.
+import { isWithinWindow } from '@be-in-digital/convex-schema'
 import type { ProductDoc, CartSelectedOption } from '../types'
 
 describe('Product Service', () => {
@@ -164,6 +167,76 @@ describe('Product Service', () => {
       const sunday = new Date('2024-01-07T12:00:00') // 2024-01-07 is a Sunday
 
       expect(isProductScheduledNow(product, sunday)).toBe(false)
+    })
+
+    /**
+     * The menu and `orders.create` have to give the same answer.
+     *
+     * They did not. This function read `now.getDay()` / `now.getHours()` on the
+     * visitor's own clock and compared "HH:MM" strings with no wrap, so a
+     * 22:00-02:00 late menu was an empty set: `currentTime > availableUntil` is
+     * true from 02:01 until midnight. The dish was greyed out for every hour it
+     * was being served, while the mutation — which handles the crossing and
+     * reads the restaurant's timezone — said it was on. Two opposite failures
+     * out of one seam.
+     *
+     * `isWithinWindow` is the mutation's own implementation, imported from the
+     * package both sides depend on. Asserting against it rather than against a
+     * literal is the point: a copy that agreed today is what produced this.
+     */
+    describe('agrees with the order mutation', () => {
+      const lateMenu = {
+        ...baseProduct,
+        scheduling: { availableFrom: '22:00', availableUntil: '02:00' },
+      }
+      const window = { from: '22:00', until: '02:00' }
+      const PARIS = 'Europe/Paris'
+
+      it('serves a 22:00-02:00 menu at 23:00', () => {
+        const at23 = new Date(Date.UTC(2029, 6, 3, 21, 0, 0))
+        expect(isProductScheduledNow(lateMenu, at23, PARIS)).toBe(true)
+        expect(isWithinWindow(window, at23.getTime(), PARIS)).toBe(true)
+      })
+
+      it('serves it at 01:00, after midnight', () => {
+        const at01 = new Date(Date.UTC(2029, 6, 3, 23, 0, 0))
+        expect(isProductScheduledNow(lateMenu, at01, PARIS)).toBe(true)
+        expect(isWithinWindow(window, at01.getTime(), PARIS)).toBe(true)
+      })
+
+      it('does not serve it at 15:00', () => {
+        const at15 = new Date(Date.UTC(2029, 6, 3, 13, 0, 0))
+        expect(isProductScheduledNow(lateMenu, at15, PARIS)).toBe(false)
+        expect(isWithinWindow(window, at15.getTime(), PARIS)).toBe(false)
+      })
+
+      it('reads the kitchen clock, not the visitor\'s', () => {
+        // 12:00 in Paris is 03:00 in Los Angeles and 20:00 in Tokyo. A lunch
+        // menu is on for all three of them, because the kitchen decides.
+        const lunch = {
+          ...baseProduct,
+          scheduling: { availableFrom: '11:00', availableUntil: '14:00' },
+        }
+        const noonParis = new Date(Date.UTC(2029, 6, 3, 10, 0, 0))
+        expect(isProductScheduledNow(lunch, noonParis, PARIS)).toBe(true)
+        expect(
+          isWithinWindow({ from: '11:00', until: '14:00' }, noonParis.getTime(), PARIS)
+        ).toBe(true)
+      })
+
+      it('carries a Friday-only late menu into Saturday morning', () => {
+        const fridayLate = {
+          ...baseProduct,
+          scheduling: {
+            availableFrom: '22:00',
+            availableUntil: '02:00',
+            availableDays: [5],
+          },
+        }
+        // 01:00 on Saturday in Paris — still Friday's service.
+        const saturday01 = new Date(Date.UTC(2029, 6, 6, 23, 0, 0))
+        expect(isProductScheduledNow(fridayLate, saturday01, PARIS)).toBe(true)
+      })
     })
   })
 

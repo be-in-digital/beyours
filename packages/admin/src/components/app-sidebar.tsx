@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { hasPermission, type Role, type Permission } from "@be-in-digital/core"
+import { type Role } from "@be-in-digital/core"
 import { UtensilsCrossed, Store } from "lucide-react"
 import {
   Sidebar,
@@ -31,6 +31,8 @@ import { UnreadMessagesBadge } from "./unread-messages-badge"
 import {
   navGroups,
   isCollapsible,
+  navTourId,
+  canRoleSeeNavHref,
   ChevronRight,
   type NavEntry,
   type CollapsibleNavItem,
@@ -43,10 +45,13 @@ interface AppSidebarProps {
   brandName?: string
 }
 
+/**
+ * Delegated, not reimplemented. The onboarding tour asks the same question by
+ * href (`canRoleSeeNavHref`), and a second copy of this rule is exactly how the
+ * tour's `nav-*` ids drifted away from the ones the sidebar emits.
+ */
 function canSeeEntry(role: Role, entry: NavEntry): boolean {
-  const permission = entry.requiredPermission
-  if (!permission) return true
-  return hasPermission(role, permission as Permission)
+  return canRoleSeeNavHref(role, isCollapsible(entry) ? entry.basePath : entry.href)
 }
 
 export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" }: AppSidebarProps) {
@@ -109,7 +114,7 @@ export function AppSidebar({ footer, userFooter, logoUrl, brandName = "BeYours" 
                     const isActive =
                       pathname === entry.href ||
                       pathname.startsWith(entry.href + "/")
-                    const tourId = `nav-${entry.href.replace(/^\//, "").replace(/\//g, "-")}`
+                    const tourId = navTourId(entry.href)
 
                     return (
                       <SidebarMenuItem key={entry.href} data-tour={tourId}>
@@ -168,7 +173,7 @@ function CollapsibleNavMenuItem({
   const Icon = item.icon
   const isInSection = pathname.startsWith(item.basePath)
 
-  const tourId = `nav-${item.basePath.replace(/^\//, "").replace(/\//g, "-")}`
+  const tourId = navTourId(item.basePath)
 
   return (
     <Collapsible defaultOpen={isInSection} className="group/collapsible">
