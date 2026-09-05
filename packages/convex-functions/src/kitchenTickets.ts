@@ -11,6 +11,7 @@
 
 import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 
 /**
  * The statuses the kitchen is actually working on.
@@ -102,7 +103,7 @@ export const getByStatus = {
       )
       // Newest first: the history is read backwards from now.
       .order("desc")
-      .paginate(args.paginationOpts)
+      .paginate(clampPagination(args.paginationOpts))
   },
 }
 

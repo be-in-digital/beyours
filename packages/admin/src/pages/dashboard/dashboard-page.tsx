@@ -26,10 +26,16 @@ export function DashboardPage() {
       </div>
       <div data-tour="dashboard-charts" className="space-y-6">
         <OrdersChart data={stats.last7Days} />
-        <OrderBreakdown byType={stats.byType} bySource={stats.bySource} />
+        <OrderBreakdown
+          byType={stats.byType}
+          bySource={stats.bySource}
+          truncated={stats.truncated}
+        />
       </div>
       <div data-tour="dashboard-recent">
-        <RecentOrdersTable orders={orders.slice(0, 10)} />
+        {/* Already bounded by `orders.recent`; slicing here would be a second
+            bound over rows the server never sent. */}
+        <RecentOrdersTable orders={orders} />
       </div>
       <div data-tour="dashboard-actions">
         <QuickActions />

@@ -211,7 +211,26 @@ export const prizeRedemptionsTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_redemptionCode", ["redemptionCode"])
   .index("by_playerEmail", ["playerEmail"])
-  .index("by_storeId_status", ["storeId", "status"])
+  /**
+   * "What is still waiting at the till?" — the badge the staff works from.
+   *
+   * `expiresAt` is in the index rather than checked afterwards because expired
+   * prizes never stop being rows: a store that has run a game for two years has
+   * far more dead `pending` redemptions than live ones, and a count that reads
+   * them all to discard them all grows with the establishment's whole history.
+   * Replaces `by_storeId_status`, whose prefix this is and which no query ever
+   * used.
+   */
+  .index("by_storeId_status_expiresAt", ["storeId", "status", "expiresAt"])
+  /**
+   * "How many prizes were actually handed over this month?"
+   *
+   * `redeemedAt` is set in the same patch that sets `status: "redeemed"` — see
+   * `redeemByCode`, its only writer — so the two never disagree. Without this
+   * the count had to be taken over redemptions *created* in the window, which
+   * is a different question wearing the same label.
+   */
+  .index("by_storeId_status_redeemedAt", ["storeId", "status", "redeemedAt"])
   .index("by_gamePlayId", ["gamePlayId"])
 
 /**
