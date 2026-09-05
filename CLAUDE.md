@@ -281,7 +281,7 @@ Both live in `packages/core/src/i18n/gpt-translation.ts`. There is no
 requires the HTTP client and the API key, they are not optional.
 
 ```typescript
-import { translateText, batchTranslate } from "@be-in-digital/core"
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
 
 // One string. `context` steers the model; the rest have defaults.
 await translateText(text, "en", "fr", "product name", httpClient, apiKey)
@@ -290,7 +290,13 @@ await translateText(text, "en", "fr", "product name", httpClient, apiKey)
 await batchTranslate(items, "en", "es", httpClient, apiKey)
 ```
 
-**Cost**: ~$0.001 per product, $0.01 per page
+`httpClient` is injected for the same reason the AWS services inject theirs: the
+package must stay loadable from the Convex runtime. Note also that the engine's
+own auto-translation pipeline is separate — it lives in
+`@be-in-digital/convex-functions/autoTranslate`, deliberately off that package's
+barrel, and the apps drive it from there.
+
+**Cost**: ~$0.001 per product, $0.01 per page (`estimateTranslationCost`)
 
 ---
 
@@ -334,45 +340,81 @@ cloud providers already exist in `packages/admin/src/lib/kitchen-print.ts` as
 
 ## ☁️ AWS Services
 
+There is **no** `uploadToS3`, `sendEmail` or `sendTemplatedEmail` free function —
+those three names were documented here for a long time and never existed. Both
+services are **factories over an injected AWS client**: you build the SDK client,
+they hold the policy. `packages/core` therefore has no `@aws-sdk/client-s3`
+dependency at all; its one SDK dependency is `@aws-sdk/client-sesv2`, imported
+only by the SES adapter that `createSESv2Operations` lives in.
+
+Everything below comes from the package root, `@be-in-digital/core`; there is no
+`./aws/s3` or `./aws/ses` subpath. The two `./aws/*` subpaths that do exist are
+deliberately import-free so a Convex isolate can pull them in on their own:
+`./aws/folders` (the folder allow-list) and `./aws/media-url`.
+
 ### S3 Storage
 There is no `uploadToS3`. Build the service and call `upload` on it; the
 client is injected, which is what makes it testable.
 
 ```typescript
-import { createS3Service } from "@be-in-digital/core"
+import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
 
-const s3 = createS3Service(config, client)
-const { key, url } = await s3.upload(file, { folder: "products" })
+const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
+const { key, url } = await s3.upload(buffer, {
+  folder: "products",       // any of the eleven in S3_FOLDERS
+  contentType: "image/webp",
+})
+// also: getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl,
+//       exists, getMetadata
 ```
-
 Folders are a closed set of eleven, declared once in
 `packages/core/src/aws/folders.ts` — `products`, `categories`, `cms`,
 `branding`, `stores`, `storefront`, `blogs`, `blog-auto`, `email`, `avatars`,
 `users`. Everything else derives from it: the Zod schema `upload()` parses
-through, the MIME and size tables, and the `/api/files` allowlist. Add a folder
-there and nowhere else. (This entry used to name six and cite the Zod enum,
-which had fallen five behind the list — `upload({ folder: "categories" })`
-type-checked and threw.)
+through (`aws/s3/validation.ts`), the MIME and size tables, and the
+`/api/files` allowlist. Add a folder there and nowhere else.
+
+This entry, and `s3FolderSchema` itself, used to name six. `S3_FOLDERS` is
+where the `S3Folder` type comes from, so all eleven type-checked, and then
+`s3.upload(file, { folder: "categories" })` threw at
+`uploadOptionsSchema.parse()` — the failure `folders.ts`'s own header
+describes: "which is exactly how category, blog and storefront images were
+lost". The schema is now `z.enum(S3_FOLDERS)`, so the two cannot disagree
+again.
 
 The HTTP route `apps/*/app/api/upload/route.ts` deliberately accepts only five
 of them; the rest are written by the presigned Convex flow, authorised
 separately. That narrowing is a security boundary, not drift — do not widen it
 to match.
 
-The bucket is private: `getPublicUrl` returns the CDN or the app's `/api/files`
-proxy, never a direct S3 URL.
+The bucket is private either way: reads go through the app's `/api/files`
+proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 
 ### SES Email
 `sendEmail` and `sendTemplatedEmail` are methods on the SES service
 (`packages/core/src/aws/ses/client.ts:38,45`), not top-level exports.
 
 ```typescript
-import { getSESService } from "@be-in-digital/core"
+import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
 
+const ses = createSESService(config, createSESv2Operations(awsConfig))
+// or, server-side, read the config from the environment:
 const ses = getSESService()
-await ses.sendEmail({ to, subject, htmlBody })
+
+await ses.sendEmail({ to, subject, html })   // the field is `html`, not `htmlBody`
 await ses.sendTemplatedEmail({ to, templateName, templateData })
+await ses.sendBulkEmail({ ... })   // rate-limited to the SES sandbox ceiling
 ```
+`sendEmail` and `sendTemplatedEmail` are **methods on the service instance**, not
+module-level functions.
+
+**How transactional mail actually leaves the product.** Convex has no SES
+credentials, so it POSTs to the app's own `/api/email/send`, which is
+`createEmailRouteHandler({ secret, linkOrigin })` from `@be-in-digital/core` —
+that handler calls `getSESService()`. The two halves share one secret
+(`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
+must present the same one. Bulk campaign sends are the exception: they run in
+Convex Node actions that talk to `@aws-sdk/client-sesv2` directly.
 
 ---
 
@@ -436,7 +478,7 @@ OPENAI_API_KEY=sk-...
 ```bash
 CONVEX_DEPLOYMENT=
 
-# Payments
+# Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...
 STRIPE_WEBHOOK_SECRET=        # whsec_...
 SUMUP_CLIENT_ID=
@@ -446,7 +488,7 @@ PAYPAL_CLIENT_SECRET=
 PAYPAL_SANDBOX_MODE=          # "true" | "false"
 # SQUARE_ACCESS_TOKEN — no code reads this; Square is unimplemented
 
-# Delivery platforms
+# Delivery platforms — also OAuth pairs, each with its own webhook secret
 UBER_EATS_CLIENT_ID=
 UBER_EATS_CLIENT_SECRET=
 UBER_EATS_WEBHOOK_SECRET=
@@ -455,6 +497,11 @@ DELIVEROO_CLIENT_ID=
 DELIVEROO_CLIENT_SECRET=
 DELIVEROO_WEBHOOK_SECRET=
 ```
+
+`SUMUP_API_KEY`, `UBER_EATS_API_KEY`, `DELIVEROO_API_KEY` and
+`UBER_DIRECT_CUSTOMER_ID` were listed here for a long time and are read by **no
+code at all** — an operator setting them configured nothing. The authoritative
+list is `packages/core/src/env/schemas.ts`, which the apps enforce at startup.
 
 `turbo.json` declares no `env` for most tasks, so a non-`NEXT_PUBLIC_` variable
 that is not listed in a task's `env`/`passThroughEnv` never reaches it. Adding a

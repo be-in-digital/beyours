@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import { Role, hasPermission }                    │      │
- * │  │   from '@repo/core/auth'                          │      │
+ * │  │   from '@be-in-digital/core'                          │      │
  * │  │                                                   │      │
  * │  │ if (hasPermission(Role.MANAGER, 'orders:write'))  │      │
  * │  │   processOrder(order)                             │      │

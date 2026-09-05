@@ -28,7 +28,7 @@ Handles the 7 roles and their granular permissions.
 
 **Usage example:**
 ```ts
-import { Role, hasPermission } from '@be-in-digital/core/auth'
+import { Role, hasPermission } from '@be-in-digital/core'
 
 // Check a permission
 hasPermission(Role.MANAGER, 'products:write') // true
@@ -76,7 +76,7 @@ Hooks and utilities for the React frontend.
 **After installing better-auth/react:**
 ```tsx
 import { createAuthClient } from 'better-auth/react'
-import { usePermission, Role } from '@be-in-digital/core/auth'
+import { usePermission, Role } from '@be-in-digital/core'
 
 // Create the client
 const authClient = createAuthClient({
@@ -105,7 +105,7 @@ Middlewares for Server Components and API Routes.
 
 **Example in a Server Component:**
 ```ts
-import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
+import { requireAuth, requirePermission } from '@be-in-digital/core'
 
 export default async function DashboardPage() {
   const session = await requireAuth()
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
 
 **Example in an API Route:**
 ```ts
-import { withAuthRoute } from '@be-in-digital/core/auth'
+import { withAuthRoute } from '@be-in-digital/core'
 
 export const DELETE = withAuthRoute(
   async (req, session) => {
@@ -171,7 +171,7 @@ Create `apps/reference/lib/auth.ts`:
 ```ts
 import { betterAuth } from 'better-auth'
 import { convexAdapter } from '@better-auth/convex'
-import { createAuthConfig } from '@be-in-digital/core/auth'
+import { createAuthConfig } from '@be-in-digital/core'
 
 export const auth = betterAuth(
   createAuthConfig({
@@ -192,7 +192,7 @@ export const authClient = createAuthClient({
 })
 
 // Export the hooks
-export { useAuth, usePermission, useRole } from '@be-in-digital/core/auth'
+export { useAuth, usePermission, useRole } from '@be-in-digital/core'
 ```
 
 ### 4. Add the provider
@@ -215,7 +215,7 @@ export default function RootLayout({ children }) {
 
 ### 5. Protect the pages
 ```tsx
-import { requireAuth, requirePermission } from '@be-in-digital/core/auth'
+import { requireAuth, requirePermission } from '@be-in-digital/core'
 
 export default async function ProductsPage() {
   await requirePermission('products:read')

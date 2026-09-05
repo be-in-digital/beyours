@@ -4,14 +4,20 @@
 
 ## Overview
 
-BeYours supports a multi-store architecture where one restaurant owner can manage unlimited locations. Each store has independent:
+BeYours supports a multi-store architecture where one restaurant owner can manage unlimited locations. Each store can differ on:
 
 - Products and menus
-- Opening hours
-- Delivery zones
-- Payment methods
-- Kitchen settings
+- Opening hours (`useGlobalHours: false` + its own `hours`)
+- Delivery zones and fees (`overrides.deliveryRadius`, `overrides.deliveryFee`)
+- Services offered (`overrides.services`)
+- Kitchen settings and station routing
 - Staff and roles
+
+The model is **inherit-then-override**, not independence: currency, timezone,
+tax rate, default services and default hours live once on `globalSettings`, and
+a store states only what it does differently. That is what lets an owner change
+the hours in one place and have every location that follows them move with it,
+with no migration.
 
 ## Data Model
 
@@ -38,20 +44,33 @@ import { storesTable } from "@be-in-digital/convex-schema/tables";
 // Each store has:
 {
   name: "La Bella - Paris",
-  ownerId: "owner_123",
-  address: { street: "...", city: "Paris", zip: "75001", country: "FR" },
-  phone: "+33 1 23 45 67 89",
-  location: { lat: 48.8566, lng: 2.3522 },
-  openingHours: {
-    monday: { open: "11:00", close: "22:00" },
-    tuesday: { open: "11:00", close: "22:00" },
-    // ...
+  slug: "la-bella-paris",
+  address: {
+    street: "12 rue de Rivoli",
+    city: "Paris",
+    postalCode: "75001",   // not `zip`
+    country: "FR",         // ISO 3166-1 alpha-2, uppercase
+    latitude: 48.8566,     // coordinates live inside `address`
+    longitude: 2.3522,
   },
-  status: "active", // active | paused | closed
-  timezone: "Europe/Paris",
-  currency: "EUR",
+  phone: "+33 1 23 45 67 89",
+  useGlobalHours: false,
+  hours: [                 // an array of days, not a keyed object
+    { day: 1, open: "11:00", close: "22:00", isClosed: false },
+    { day: 2, open: "11:00", close: "22:00", isClosed: false },
+    // 0 = Sunday … 6 = Saturday
+  ],
+  status: "open",          // draft | open | closed | temporarily_unavailable
+  overrides: { /* only what this store does differently */ },
 }
 ```
+
+Three fields people expect and will not find here: **`ownerId`, `timezone` and
+`currency` are not on a store.** Currency, timezone, tax rate, default services
+and the default hours all live on `globalSettings`, and every store inherits
+them; a store departs from that default only through `overrides` (services,
+`minimumOrderAmount`, `deliveryRadius`, `deliveryFee`, `deliveryFreeAbove`) or by
+setting `useGlobalHours: false` and carrying its own `hours`.
 
 ## Working with Stores
 
@@ -69,15 +88,28 @@ const products = useQuery(api.products.listByStore, { storeId });
 
 ### Store Selector
 
+There is no `useStoreConfigStore`. The selection stores hold **only the id** —
+the document is read from Convex by whoever needs it, which is what makes a
+rename or a change of opening hours appear on the next render instead of staying
+frozen in localStorage until the browser is cleared.
+
+There are two of them, under two storage keys, because the admin and the
+storefront are answering different questions. An owner administering Lyon in one
+tab and a visitor browsing Paris in another used to overwrite each other's
+answer, so a visitor's geolocation could silently move the dashboard.
+
 ```typescript
-import { useStoreConfigStore } from "@be-in-digital/restaurant/stores";
+import { useAdminStoreSelection } from "@be-in-digital/restaurant/stores";
+// storefront side: useStorefrontStoreSelection, same shape
 
 function StoreSwitcher() {
-  const { store, setCurrentStore, availableStores } = useStoreConfigStore();
+  const storeId = useAdminStoreSelection((s) => s.storeId);
+  const setStoreId = useAdminStoreSelection((s) => s.setStoreId);
+  const stores = useQuery(api.stores.list);
 
   return (
-    <Select value={store._id} onValueChange={setCurrentStore}>
-      {availableStores.map((s) => (
+    <Select value={storeId ?? undefined} onValueChange={setStoreId}>
+      {stores?.map((s) => (
         <SelectItem key={s._id} value={s._id}>{s.name}</SelectItem>
       ))}
     </Select>
@@ -85,41 +117,68 @@ function StoreSwitcher() {
 }
 ```
 
+Each exposes `{ storeId, setStoreId }` and nothing else — no `store`, no
+`availableStores`, no `isOpen`.
+
 ### Nearest Store (Customer)
+
+`useNearestStore` sorts a list you pass in; it does not fetch the stores itself.
 
 ```typescript
 import { useNearestStore } from "@be-in-digital/restaurant/hooks";
 
-function StoreLocator() {
-  const { nearestStore, distance, isLocating } = useNearestStore();
+function StoreLocator({ stores }: { stores: StoreDoc[] }) {
+  const { nearestStore, storesWithDistance, isLocating, locationError, requestLocation } =
+    useNearestStore(stores, { autoLocate: true });
 
   if (isLocating) return <LoadingSpinner />;
+  if (locationError) return <Button onClick={requestLocation}>Enable location</Button>;
 
   return (
     <div>
-      <p>Your nearest location: {nearestStore.name}</p>
-      <p>{distance} km away</p>
+      <p>Your nearest location: {nearestStore?.name}</p>
+      <p>{storesWithDistance[0]?.distance} km away</p>
     </div>
   );
 }
 ```
 
+Geolocation is **off by default** — it prompts, and on a single-location
+restaurant the answer cannot change anything. `autoLocate` prompts on mount;
+`useGrantedLocation` honours a permission already given without ever asking.
+`distance` is `null` for a store with no coordinates, and those sort last.
+
 ## Store-Level Features
 
 ### Opening Hours
 
+Opening hours are answered by a pure function in the services barrel, not by a
+store:
+
 ```typescript
-// Check if store is currently open
-const { isOpen, nextOpenAt, nextCloseAt } = useStoreConfigStore();
+import { isStoreOpen, resolveStoreHours } from "@be-in-digital/restaurant/services";
+
+// A store may follow the global hours instead of carrying its own
+const hours = resolveStoreHours(store, globalSettings);
+
+const { isOpen, nextChange, currentPeriod } = isStoreOpen(
+  hours,
+  new Date(),
+  globalSettings.timezone, // the restaurant's clock; a store carries no timezone of its own
+);
 ```
+
+Pass the establishment's timezone — it is the restaurant's clock that decides,
+not the visitor's. `isStoreOpen` also reads the **previous day's** row,
+because a service declared on Friday as 18:00–02:00 is still serving at 01:00 on
+Saturday. `getNextOpenTime(hours, now, timeZone)` answers when a closed store
+reopens.
 
 ### Store Status
 
-| Status | Description |
-|--------|-------------|
-| `active` | Open for business |
-| `paused` | Temporarily closed (holiday, maintenance) |
-| `closed` | Permanently closed |
+The real union is `StoreStatus` in `@be-in-digital/convex-schema`. See
+[Store Statuses](#store-statuses) below for the four values — `active` and
+`paused` are not among them.
 
 ### Geolocation
 
