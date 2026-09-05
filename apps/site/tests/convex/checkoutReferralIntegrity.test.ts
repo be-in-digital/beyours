@@ -223,18 +223,89 @@ describe("a code that must not discount anything", () => {
     expect(referrals).toEqual([]);
   });
 
-  test("the affiliate's own purchase gets no discount (self-referral)", async () => {
+  /* The guard compared the two addresses as raw strings, and an adversarial
+     re-check walked through it with one character: `apporteur+facture@` is the
+     same inbox as `apporteur@`, so the affiliate bought their own build at
+     750 € off AND paid themselves a 500 € commission — repeatable, because
+     each invented tag is also a fresh rate-limit subject. */
+  test.each([
+    ["the same address", "apporteur@example.test"],
+    ["a different case", "APPORTEUR@Example.test"],
+    ["a sub-address label", "apporteur+facture@example.test"],
+    ["a label and case", "Apporteur+BeYours@example.test"],
+    ["surrounding whitespace", "  apporteur@example.test  "],
+    ["a fully-qualified domain", "apporteur@example.test."],
+  ])("the affiliate buying as %s gets no discount", async (_label, buyer) => {
     const t = convexTest(schema, modules);
-    await seedProgramme(t, { affiliateEmail: CHECKOUT.customerEmail });
+    await seedProgramme(t, { affiliateEmail: "apporteur@example.test" });
 
     const { orderId } = await t.action(api.stripe.createCheckoutSession, {
       ...CHECKOUT,
+      customerEmail: buyer,
       referralCode: "BID-HONEST",
     });
 
     expect(await orderAmount(t, orderId)).toBe(LIST_TOTAL);
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals).toEqual([]);
+  });
+
+  test("gmail's dots do not buy a second identity either", async () => {
+    const t = convexTest(schema, modules);
+    await seedProgramme(t, { affiliateEmail: "jean.dupont@gmail.com" });
+
+    const { orderId } = await t.action(api.stripe.createCheckoutSession, {
+      ...CHECKOUT,
+      customerEmail: "jeandupont+beyours@gmail.com",
+      referralCode: "BID-HONEST",
+    });
+
+    expect(await orderAmount(t, orderId)).toBe(LIST_TOTAL);
+  });
+
+  test("a genuine third party still gets the discount", async () => {
+    // The guard must refuse the affiliate, not every customer.
+    const t = convexTest(schema, modules);
+    await seedProgramme(t, { affiliateEmail: "apporteur@example.test" });
+
+    const { orderId } = await t.action(api.stripe.createCheckoutSession, {
+      ...CHECKOUT,
+      customerEmail: "chef@trattoria.fr",
+      referralCode: "BID-HONEST",
+    });
+
+    expect(await orderAmount(t, orderId)).toBe(
+      LIST_TOTAL - planPrices.premium.creation * 0.1,
+    );
+    const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
+    expect(referrals).toHaveLength(1);
+  });
+});
+
+describe("the storefront is never shown a code the checkout will refuse", () => {
+  test.each([
+    ["above 100", 9999],
+    ["negative", -5],
+  ])("validateCode reports a %s percent as invalid", async (_label, percent) => {
+    /* This is the one direction the two could still drift: the checkout was
+       bounded and `validateCode` was not, so a misconfigured percent was
+       advertised as a good code and then hard-refused at payment. Telling a
+       customer their code works and then failing the sale is worse than
+       declining it up front. */
+    const t = convexTest(schema, modules);
+    await seedProgramme(t, { discountOverridePercent: percent });
+
+    const shown = await t.query(api.referralCodes.validateCode, {
+      code: "BID-HONEST",
+    });
+    expect(shown.valid).toBe(false);
+
+    await expect(
+      t.action(api.stripe.createCheckoutSession, {
+        ...CHECKOUT,
+        referralCode: "BID-HONEST",
+      }),
+    ).rejects.toThrow(/Remise de parrainage invalide/);
   });
 });
 

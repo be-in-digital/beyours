@@ -183,6 +183,93 @@ describe("subscriptionPeriod", () => {
   });
 });
 
+describe("subscriptionPeriod refuses to invent a number", () => {
+  /* Three shapes that each wrote a bad value into `coveredUntil`, all found by
+     an adversarial re-check of the first fix. `v.number()` accepts NaN and
+     Infinity, and the SDK types these fields non-nullable, so neither the
+     validator nor `tsc` stops any of them. */
+
+  test("a pre-basil payload — items present, period at the top level", () => {
+    /* The fields moved ONTO items in 2025-03-31.basil; the items themselves
+       always existed. So an older endpoint sends a non-empty `items.data` with
+       no period on it, `Math.min(...[undefined])` gave NaN, and the legacy
+       branch below was unreachable in the one real case it was written for —
+       silently, because `legacy` stayed false. */
+    const period = subscriptionPeriod(
+      subscription({
+        items: { object: "list", data: [{ id: "si_1", object: "subscription_item" }] },
+        current_period_start: 100,
+        current_period_end: 200,
+      }),
+    );
+    expect(period).toEqual({ start: 100, end: 200, legacy: true });
+    expect(Number.isNaN(period.end)).toBe(false);
+  });
+
+  test("an item whose period is null yields nothing, never a zero", () => {
+    // `Math.max(null)` is 0, and toMillis(0) is 0 — a real epoch date in the
+    // database, which expires a client whose year is paid for.
+    const period = subscriptionPeriod(
+      subscription({
+        items: {
+          object: "list",
+          data: [
+            {
+              id: "si_1",
+              object: "subscription_item",
+              current_period_start: 100,
+              current_period_end: null,
+            },
+          ],
+        },
+      }),
+    );
+    expect(period.end).toBeUndefined();
+    expect(toMillis(period.end)).toBeUndefined();
+  });
+
+  test("one malformed item does not poison its good siblings", () => {
+    const period = subscriptionPeriod(
+      subscription({
+        items: {
+          object: "list",
+          data: [
+            { id: "a", object: "subscription_item", current_period_start: 100, current_period_end: 900 },
+            { id: "b", object: "subscription_item", current_period_start: null, current_period_end: null },
+          ],
+        },
+      }),
+    );
+    expect(period).toEqual({ start: 100, end: 900, legacy: false });
+  });
+
+  test.each([
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+    ["-Infinity", Number.NEGATIVE_INFINITY],
+  ])("a %s period is discarded, not stored", (_label, value) => {
+    const period = subscriptionPeriod(
+      subscription({
+        items: {
+          object: "list",
+          data: [{ id: "a", object: "subscription_item", current_period_start: value, current_period_end: value }],
+        },
+      }),
+    );
+    expect(period.start).toBeUndefined();
+    expect(period.end).toBeUndefined();
+  });
+
+  test.each([
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+  ])("toMillis refuses %s", (_label, value) => {
+    // A NaN coveredUntil renders as "Invalid Date" in the message a client is
+    // shown, and compares false against every deadline.
+    expect(toMillis(value)).toBeUndefined();
+  });
+});
+
 describe("the null-to-undefined conversions", () => {
   /* Stripe returns `null`; Convex `v.optional(...)` accepts an ABSENT key and
      rejects `null`. Passing one through made the mutation throw, the handler

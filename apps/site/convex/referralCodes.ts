@@ -3,6 +3,7 @@ import { query, mutation, internalQuery, QueryCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   deriveDiscountPercent,
+  isBillableDiscountPercent,
   requireBillableDiscountPercent,
 } from "./referralDiscount";
 import { Doc, Id } from "./_generated/dataModel";
@@ -94,15 +95,32 @@ export const validateCode = query({
       return { valid: false, error: "Code invalide ou désactivé" };
     }
 
+    /* Bounded with the SAME rule the checkout applies. Without this the two
+       could still disagree in one direction: a misconfigured percent (an admin
+       typo in `defaultDiscountPercent`, which `admin.updateSettings` stores
+       unchecked) was advertised here as a valid code and then hard-refused at
+       payment. Telling a customer their code is good and then failing the sale
+       is worse than declining it up front. */
+    const percent = deriveDiscountPercent({
+      overridePercent: found.affiliate.discountOverridePercent,
+      settingsPercent: await settingsDiscountPercent(ctx),
+    });
+    if (!isBillableDiscountPercent(percent)) {
+      console.error(
+        `[REFERRAL] Le code « ${found.code.code} » vaut ${percent} %, hors de ` +
+          `l'intervalle facturable : présenté comme invalide au client. ` +
+          `Corriger defaultDiscountPercent des réglages ou ` +
+          `discountOverridePercent de l'apporteur.`,
+      );
+      return { valid: false, error: "Code invalide ou désactivé" };
+    }
+
     return {
       valid: true,
       code: found.code.code,
       referralCodeId: found.code._id,
       affiliateUserId: found.affiliate._id,
-      discountPercent: deriveDiscountPercent({
-        overridePercent: found.affiliate.discountOverridePercent,
-        settingsPercent: await settingsDiscountPercent(ctx),
-      }),
+      discountPercent: percent,
     };
   },
 });

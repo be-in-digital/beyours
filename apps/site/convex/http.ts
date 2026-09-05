@@ -6,6 +6,7 @@ import { Doc, Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 import { recordSaActivity } from "./saActivity";
 import { entitlementMessage } from "./maintenance";
+import { isSameMailbox } from "./emailIdentity";
 /* Type-only: erased at compile time, so the SDK never enters this module's
    bundle. `http.ts` runs in the default Convex runtime, not "use node". */
 import type Stripe from "stripe";
@@ -422,9 +423,12 @@ async function handleCheckoutCompleted(
       internal.affiliateUsers.getEmailById,
       { affiliateUserId: metadata.referrerId as Id<"affiliateUsers"> },
     );
-    const buyerEmail = (customerEmail ?? order.customerEmail).toLowerCase();
+    const buyerEmail = customerEmail ?? order.customerEmail;
 
-    if (referrerEmail && referrerEmail.toLowerCase() === buyerEmail) {
+    /* On the mailbox, not the string: `apporteur+facture@` is the same inbox
+       as `apporteur@`, and comparing them raw paid the commission anyway.
+       See ./emailIdentity. */
+    if (isSameMailbox(referrerEmail, buyerEmail)) {
       console.log(
         `[REFERRAL] Auto-parrainage détecté au webhook (${buyerEmail}) — referral ignoré`,
       );
@@ -579,13 +583,21 @@ async function handleInvoiceSucceeded(
   const billingReason = invoice.billing_reason;
 
   /* ── Which plan this renewal is for ──
-     The Convex row is authoritative; the metadata Stripe snapshots onto the
-     invoice is the second source. The `essentielle` literal is only reached
-     when neither is available, and it is loud when it is: that silent default
-     is what booked and receipted a Premium client's 2 400 € renewal as an
-     Essentielle one for as long as the subscription id was unreadable. */
+     The invoice's own metadata wins, and the Convex row is the fallback.
+     That order is deliberate and was arrived at the hard way: Stripe snapshots
+     the subscription metadata onto the invoice at finalization, so it says
+     what THIS invoice billed, while `subscriptions.plan` is written once at
+     creation and never patched again — nothing in this codebase updates it. A
+     client who upgrades essentielle → premium at Stripe therefore has a
+     correct invoice and a stale row, and reading the row first booked their
+     2 400 € renewal as an Essentielle one. That is the very symptom the
+     subscription-id fix was for, reached by another route, and it was silent
+     because it never touched the default.
+
+     The `essentielle` literal is only reached when neither source knows, and
+     it is loud when it is. */
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
-  let plan: "essentielle" | "premium" | undefined;
+  let rowPlan: "essentielle" | "premium" | undefined;
 
   if (subscriptionId) {
     const sub = await ctx.runQuery(
@@ -594,12 +606,24 @@ async function handleInvoiceSucceeded(
     );
     if (sub) {
       convexSubscriptionId = sub._id;
-      plan = sub.plan;
+      rowPlan = sub.plan;
     }
   }
-  if (plan === undefined) {
-    plan = invoicePlanHint(invoice);
+
+  const invoicePlan = invoicePlanHint(invoice);
+  let plan = invoicePlan ?? rowPlan;
+
+  if (invoicePlan && rowPlan && invoicePlan !== rowPlan) {
+    /* Booked on the invoice, but the divergence is worth a look: the stored
+       subscription is out of date, so every OTHER read of it — the ops
+       console, revenue reporting — is still answering with the old plan. */
+    console.error(
+      `[STRIPE] Facture ${invoiceId} : la facture dit « ${invoicePlan} » et ` +
+        `l'abonnement en base dit « ${rowPlan} ». Facture enregistrée sur ` +
+        `« ${invoicePlan} » ; l'abonnement ${subscriptionId} est à corriger.`,
+    );
   }
+
   if (plan === undefined) {
     console.error(
       `[STRIPE] Facture ${invoiceId} sans abonnement identifiable ` +
@@ -688,7 +712,7 @@ async function handleInvoiceFailed(
   // Same resolution order as the succeeded path — a dunning email naming the
   // wrong plan is the same mis-statement as a receipt naming it.
   let convexSubscriptionId: Id<"subscriptions"> | undefined;
-  let plan: "essentielle" | "premium" | undefined;
+  let rowPlan: "essentielle" | "premium" | undefined;
 
   if (subscriptionId) {
     const sub = await ctx.runQuery(
@@ -697,10 +721,10 @@ async function handleInvoiceFailed(
     );
     if (sub) {
       convexSubscriptionId = sub._id;
-      plan = sub.plan;
+      rowPlan = sub.plan;
     }
   }
-  plan ??= invoicePlanHint(invoice) ?? "essentielle";
+  const plan = invoicePlanHint(invoice) ?? rowPlan ?? "essentielle";
 
   const existingInvoice = await ctx.runQuery(
     internal.invoices.getByStripeInvoiceId,

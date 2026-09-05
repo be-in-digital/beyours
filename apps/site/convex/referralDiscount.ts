@@ -68,11 +68,16 @@ export function deriveDiscountPercent(input: {
  * {@link deriveDiscountPercent}, refusing the sale when the answer cannot be
  * billed.
  *
- * An out-of-range percent is a configuration fault — `admin.updateSettings`
- * and `discountOverridePercent` are admin-written and unbounded — so it is
- * caught here rather than turned into an invoice. Refusing is the safe
- * direction: a stopped checkout is a support ticket, a negative order is money
- * already gone.
+ * An out-of-range percent is a configuration fault, caught here rather than
+ * turned into an invoice. `admin.updateSettings` writes
+ * `defaultDiscountPercent` behind `requireAdmin` and stores whatever number it
+ * is given, so this is reachable today by a typo. `discountOverridePercent`
+ * has no writer at all right now — `affiliateUsers.updateCommissionOverride`
+ * is an internalMutation with no callers — so for that field this is a guard
+ * against a future one and against rows written by hand or by a migration.
+ *
+ * Refusing is the safe direction: a stopped checkout is a support ticket, a
+ * negative order is money already gone.
  */
 export function requireBillableDiscountPercent(input: {
   overridePercent: number | undefined;

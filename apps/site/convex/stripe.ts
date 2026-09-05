@@ -8,6 +8,7 @@ import { Id } from "./_generated/dataModel";
 import { planPrices } from "./planPrices";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
 import { resolveStripeAccess } from "./stripeMode";
+import { isSameMailbox } from "./emailIdentity";
 import {
   MAINTENANCE_PRICE_ENV,
   CREATION_PRODUCT_ENV,
@@ -136,9 +137,14 @@ export const createCheckoutSession = action({
        against the code.
        All three are now derived from this string by
        `referralCodes.resolveForCheckout`, an internalQuery no client can call.
-       Removing them rather than ignoring them is deliberate — Convex rejects
-       unknown arguments, so an old client that still sends a percent fails
-       loudly instead of being quietly overruled. */
+       Removing them rather than ignoring them is deliberate: Convex refuses an
+       unknown argument, so an old client that still sends a percent fails
+       loudly instead of being quietly overruled. (Refuses ALMOST any — an
+       argument named after an `Object.prototype` member, `__proto__` or
+       `toString`, is accepted and ignored. That costs nothing here, since none
+       of the three removed names is one, and every price is derived rather
+       than read from the arguments; it is recorded so the sentence above is
+       not read as a stronger guarantee than it is.) */
     referralCode: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ url: string | null; orderId: string; testMode: boolean }> => {
@@ -200,12 +206,16 @@ export const createCheckoutSession = action({
         })
       : null;
 
-    /* Anti-self-referral, now comparing against the owner of THIS code rather
-       than against an affiliate id the caller picked. */
-    const selfReferral =
-      resolvedReferral?.referrerEmail != null &&
-      resolvedReferral.referrerEmail.toLowerCase() ===
-        args.customerEmail.toLowerCase();
+    /* Anti-self-referral: against the owner of THIS code rather than an
+       affiliate id the caller picked, and on the MAILBOX rather than the
+       string. A raw comparison was walked through with `+facture` — same
+       inbox, different string, 750 € off and a 500 € commission to the
+       affiliate, repeatable because each tag is also a fresh rate-limit
+       subject. See ./emailIdentity. */
+    const selfReferral = isSameMailbox(
+      resolvedReferral?.referrerEmail,
+      args.customerEmail,
+    );
 
     if (selfReferral) {
       console.log(

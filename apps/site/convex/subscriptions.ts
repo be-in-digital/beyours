@@ -80,6 +80,10 @@ export const create = internalMutation({
   },
 });
 
+/* How many rows sharing one Stripe id we are willing to touch. A pair is the
+   realistic case (one webhook race); the bound only stops an unbounded scan. */
+const MAX_DUPLICATE_ROWS = 16;
+
 export const updateStatus = internalMutation({
   args: {
     stripeSubscriptionId: v.string(),
@@ -89,13 +93,22 @@ export const updateStatus = internalMutation({
     canceledAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const sub = await ctx.db
+    /* Every row carrying this Stripe id, not `.unique()`. Duplicates by
+       `orderId` share one `stripeSubscriptionId`, so the rows `create` and
+       `getByOrderId` already tolerate land here too — and `.unique()` threw,
+       which returned 500 to Stripe, which retried the renewal for three days
+       and never recorded it. That is the same self-sustaining shape the
+       comment on `getByOrderId` describes: the read that was meant to repair
+       the state was the one that could not run.
+       Patching all of them keeps duplicates consistent rather than letting
+       whichever row is read first answer differently. */
+    const subs = await ctx.db
       .query("subscriptions")
       .withIndex("by_stripeSubscriptionId", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
       )
-      .unique();
-    if (!sub) return;
+      .take(MAX_DUPLICATE_ROWS);
+    if (subs.length === 0) return;
 
     const patch: Record<string, unknown> = { status: args.status };
     if (args.currentPeriodStart !== undefined)
@@ -104,10 +117,21 @@ export const updateStatus = internalMutation({
       patch.currentPeriodEnd = args.currentPeriodEnd;
     if (args.canceledAt !== undefined) patch.canceledAt = args.canceledAt;
 
-    await ctx.db.patch(sub._id, patch);
+    for (const sub of subs) {
+      await ctx.db.patch(sub._id, patch);
+    }
   },
 });
 
+/**
+ * The subscription carrying a Stripe id, or null.
+ *
+ * `.first()` rather than `.unique()`, for the reason spelled out on
+ * `updateStatus` above: a duplicate pair makes `.unique()` throw, the webhook
+ * answers 500, and the renewal is never recorded however many times Stripe
+ * retries it. A duplicate is a bookkeeping fault; refusing to read is a
+ * billing one.
+ */
 export const getByStripeSubscriptionId = internalQuery({
   args: { stripeSubscriptionId: v.string() },
   handler: async (ctx, args) => {
@@ -116,7 +140,7 @@ export const getByStripeSubscriptionId = internalQuery({
       .withIndex("by_stripeSubscriptionId", (q) =>
         q.eq("stripeSubscriptionId", args.stripeSubscriptionId),
       )
-      .unique();
+      .first();
   },
 });
 

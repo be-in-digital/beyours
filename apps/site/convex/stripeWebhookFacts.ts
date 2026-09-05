@@ -125,23 +125,48 @@ export interface SubscriptionPeriod {
 export function subscriptionPeriod(
   subscription: Stripe.Subscription,
 ): SubscriptionPeriod {
+  /* Only values that are really numbers. Three ways this bites, all measured:
+
+     - An endpoint pinned below 2025-03-31.basil sends items that EXIST but
+       carry no period — the fields moved onto items in basil, the items
+       themselves always existed. A plain `items.length > 0` therefore took the
+       current branch, `Math.min(...[undefined])` gave NaN, and the legacy
+       branch below was unreachable in the one real case it was written for —
+       silently, because `legacy` stayed false.
+     - `Math.max(null)` is 0, so one item with a null period wrote a literal
+       zero: `coveredUntil` at the epoch, and a client whose year is paid for
+       goes entitled → expired in a single webhook.
+     - One malformed item among good ones dragged the whole span with it.
+
+     `v.number()` accepts NaN and Infinity (IEEE-754 doubles), so neither the
+     validator nor `tsc` — which types these fields non-nullable — stops any of
+     it reaching the database. This filter is the only thing that does. */
   const items = subscription.items?.data ?? [];
-  if (items.length > 0) {
+  const starts = items
+    .map((i) => i.current_period_start)
+    .filter((n): n is number => Number.isFinite(n));
+  const ends = items
+    .map((i) => i.current_period_end)
+    .filter((n): n is number => Number.isFinite(n));
+
+  if (starts.length > 0 || ends.length > 0) {
     return {
-      start: Math.min(...items.map((i) => i.current_period_start)),
-      end: Math.max(...items.map((i) => i.current_period_end)),
+      start: starts.length > 0 ? Math.min(...starts) : undefined,
+      end: ends.length > 0 ? Math.max(...ends) : undefined,
       legacy: false,
     };
   }
 
   const removed = subscription as Stripe.Subscription &
     RemovedSubscriptionFields;
-  if (removed.current_period_start != null || removed.current_period_end != null) {
-    return {
-      start: removed.current_period_start ?? undefined,
-      end: removed.current_period_end ?? undefined,
-      legacy: true,
-    };
+  const legacyStart = Number.isFinite(removed.current_period_start)
+    ? (removed.current_period_start as number)
+    : undefined;
+  const legacyEnd = Number.isFinite(removed.current_period_end)
+    ? (removed.current_period_end as number)
+    : undefined;
+  if (legacyStart !== undefined || legacyEnd !== undefined) {
+    return { start: legacyStart, end: legacyEnd, legacy: true };
   }
 
   return { start: undefined, end: undefined, legacy: false };
@@ -171,7 +196,10 @@ export const STRIPE_PINNED_API_VERSION = "2026-02-25.clover";
 
 /** Milliseconds from Stripe's seconds, or `undefined`. */
 export function toMillis(seconds: number | null | undefined): number | undefined {
-  return seconds == null ? undefined : seconds * 1000;
+  /* `Number.isFinite`, not `!= null`: NaN and Infinity reach the database
+     through `v.number()` unchallenged, and a NaN `coveredUntil` renders as
+     "Invalid Date" in the message a client is shown. */
+  return Number.isFinite(seconds) ? (seconds as number) * 1000 : undefined;
 }
 
 /**

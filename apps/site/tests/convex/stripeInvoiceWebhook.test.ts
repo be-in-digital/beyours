@@ -263,6 +263,114 @@ describe("a renewal invoice finds its subscription", () => {
   });
 });
 
+describe("the plan on a renewal follows the invoice, not a stale row", () => {
+  test("an upgraded client's renewal is booked on the new plan", async () => {
+    /* Nothing in this codebase ever patches `subscriptions.plan` — it is
+       written once at creation. A client who upgrades essentielle → premium at
+       Stripe therefore has a correct invoice and a stale row, and reading the
+       row first booked their 2 400 € renewal as an Essentielle one. Same
+       symptom as the unreadable subscription id, reached another way, and
+       silent because it never touched the default. */
+    const t = testConvex();
+    await seedPremiumSubscription(t, { plan: "essentielle" });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await postSigned(
+      t,
+      ROUTE,
+      event("invoice.payment_succeeded", renewalInvoice()), // metadata says premium
+      SECRET,
+    );
+    expect(res.status).toBe(200);
+
+    const invoices = await t.run((ctx) => ctx.db.query("invoices").collect());
+    expect(invoices[0]!.plan).toBe("premium");
+    expect(invoices[0]!.amountCents).toBe(240000);
+    // And the divergence is reported, because every other read of that
+    // subscription is still answering with the old plan.
+    expect(logged.mock.calls.flat().join(" ")).toContain("est à corriger");
+  });
+
+  test("the row is still used when the invoice carries no plan", async () => {
+    const t = testConvex();
+    const { subscriptionId } = await seedPremiumSubscription(t);
+
+    const noMeta = renewalInvoice();
+    (noMeta.parent as { subscription_details: Record<string, unknown> })
+      .subscription_details.metadata = {};
+
+    const res = await postSigned(
+      t,
+      ROUTE,
+      event("invoice.payment_succeeded", noMeta),
+      SECRET,
+    );
+    expect(res.status).toBe(200);
+
+    const invoices = await t.run((ctx) => ctx.db.query("invoices").collect());
+    expect(invoices[0]!.plan).toBe("premium");
+    expect(invoices[0]!.subscriptionId).toBe(subscriptionId);
+  });
+});
+
+describe("duplicate subscription rows are not a poison pill", () => {
+  /* Two rows sharing one Stripe id made `.unique()` throw, which returned 500,
+     which made Stripe retry the renewal for three days and never record it —
+     the same self-sustaining shape `subscriptions.getByOrderId` already
+     carries a comment about. A duplicate is a bookkeeping fault; refusing to
+     read is a billing one. */
+  async function duplicate(t: ReturnType<typeof convexTest>) {
+    await t.run(async (ctx) => {
+      const sub = (await ctx.db.query("subscriptions").first())!;
+      const { _id, _creationTime, ...rest } = sub;
+      void _id;
+      void _creationTime;
+      await ctx.db.insert("subscriptions", rest);
+    });
+  }
+
+  test("a renewal is still recorded", async () => {
+    const t = testConvex();
+    await seedPremiumSubscription(t);
+    await duplicate(t);
+
+    const res = await postSigned(
+      t,
+      ROUTE,
+      event("invoice.payment_succeeded", renewalInvoice()),
+      SECRET,
+    );
+
+    expect(res.status).toBe(200);
+    const invoices = await t.run((ctx) => ctx.db.query("invoices").collect());
+    expect(invoices).toHaveLength(1);
+    expect(invoices[0]!.plan).toBe("premium");
+  });
+
+  test("a period update reaches every duplicate, not whichever is read first", async () => {
+    const t = testConvex();
+    await seedPremiumSubscription(t);
+    await duplicate(t);
+
+    const newEnd = PERIOD_END + YEAR;
+    const res = await postSigned(
+      t,
+      ROUTE,
+      event(
+        "customer.subscription.updated",
+        updatedSubscription([{ start: PERIOD_END, end: newEnd }]),
+      ),
+      SECRET,
+    );
+    expect(res.status).toBe(200);
+
+    const subs = await t.run((ctx) => ctx.db.query("subscriptions").collect());
+    expect(subs).toHaveLength(2);
+    // Both, so the two rows cannot answer differently afterwards.
+    expect(subs.every((s) => s.currentPeriodEnd === newEnd * 1000)).toBe(true);
+  });
+});
+
 describe("a renewal moves the maintenance period forward", () => {
   test("currentPeriodEnd advances from items.data", async () => {
     const t = testConvex();
@@ -315,6 +423,10 @@ describe("a renewal moves the maintenance period forward", () => {
   });
 
   test("a pre-clover subscription update still advances the period", async () => {
+    /* The REAL pre-basil shape: `items.data` is non-empty — items have always
+       existed — and the period sits at the top level. An earlier version of
+       this case sent no `items` key at all, which Stripe never does, and so
+       passed while the production shape wrote NaN. */
     const t = testConvex();
     await seedPremiumSubscription(t);
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -329,6 +441,10 @@ describe("a renewal moves the maintenance period forward", () => {
           id: "sub_premium_1",
           object: "subscription",
           status: "active",
+          items: {
+            object: "list",
+            data: [{ id: "si_1", object: "subscription_item" }],
+          },
           current_period_start: PERIOD_END,
           current_period_end: newEnd,
         },
@@ -342,7 +458,44 @@ describe("a renewal moves the maintenance period forward", () => {
       async (ctx) => (await ctx.db.query("subscriptions").first())!.currentPeriodEnd,
     );
     expect(after).toBe(newEnd * 1000);
+    expect(Number.isNaN(after)).toBe(false);
     expect(logged.mock.calls.flat().join(" ")).toContain("2024-06-20");
+  });
+
+  test("an item with a null period leaves the stored one alone", async () => {
+    // Never a zero: that is the epoch, and it expires a paying client.
+    const t = testConvex();
+    await seedPremiumSubscription(t);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await postSigned(
+      t,
+      ROUTE,
+      event("customer.subscription.updated", {
+        id: "sub_premium_1",
+        object: "subscription",
+        status: "active",
+        items: {
+          object: "list",
+          data: [
+            {
+              id: "si_1",
+              object: "subscription_item",
+              current_period_start: null,
+              current_period_end: null,
+            },
+          ],
+        },
+      }),
+      SECRET,
+    );
+    expect(res.status).toBe(200);
+
+    const after = await t.run(
+      async (ctx) => (await ctx.db.query("subscriptions").first())!,
+    );
+    expect(after.currentPeriodEnd).toBe(PERIOD_END * 1000);
+    expect(after.currentPeriodEnd).not.toBe(0);
   });
 });
 
