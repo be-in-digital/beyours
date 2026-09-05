@@ -20,6 +20,11 @@
  *
  * These cases hold the rule that replaced it: the customer says which code
  * they hold, the server says what it is worth.
+ *
+ * The figures above are the historical measurement, taken on Premium. The
+ * cases below run on Essentielle: Premium became `coming_soon` in
+ * convex/planAvailability.ts, and `createCheckoutSession` now refuses it
+ * before it reads a referral code at all. See CHECKOUT and seedProgramme.
  */
 
 import { convexTest } from "convex-test";
@@ -28,18 +33,26 @@ import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import { TEST_CHECKOUT_ENV } from "../../convex/stripeMode";
 import { planPrices } from "../../convex/planPrices";
+import { foundersOffer } from "../../convex/foundersOffer";
 import { VAT } from "../../lib/legal/company";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
-/* Premium/yearly, so the numbers below are the ones that were measured.
-   Premium creation 7 500 € + yearly maintenance 2 000 € = 9 500 € excl. tax. */
+/* Essentielle/yearly: creation 3 500 € + yearly maintenance 1 000 €
+   = 4 500 € excl. tax.
+
+   It has to be Essentielle. Premium is `coming_soon` in
+   convex/planAvailability.ts, so `createCheckoutSession` throws
+   « L'offre Premium n'est pas encore ouverte à la vente » before any referral
+   code is read — a checkout that cannot happen proves nothing about the
+   discount. Every figure below is derived from `planPrices`, so a price move
+   does not silently rewrite what these cases assert. */
 const LIST_TOTAL =
-  planPrices.premium.creation + planPrices.premium.maintenanceYearly;
+  planPrices.essentielle.creation + planPrices.essentielle.maintenanceYearly;
 
 const CHECKOUT = {
-  plan: "premium" as const,
+  plan: "essentielle" as const,
   orderType: "creation" as const,
   buyerType: "business" as const,
   billingPeriod: "yearly" as const,
@@ -118,8 +131,51 @@ async function seedProgramme(
       isActive: opts.isActive ?? true,
       createdAt: Date.now(),
     });
+
+    /* ── Take the founders slots, so the offer is out of the way ──
+       `foundersOffer` gives the Essentielle creation line away entirely
+       (`creationCents: 0`) for the first 10 builds bought WITHOUT a referral
+       code — it is explicitly not stackable with one. Every "billed at list
+       price" case here is exactly that shape, so with slots left they would
+       assert the founders price (the maintenance line alone, 1 000 €) rather
+       than the list price, and prove nothing about referrals.
+
+       Paid rather than pending on purpose: `countFoundersSold` counts paid
+       orders with no time window, so this does not turn on the clock the way
+       a pending order held for FOUNDERS_HOLD_MS would. Reading totalSlots off
+       the offer keeps the seeding right if the slot count ever moves. */
+    for (let slot = 0; slot < foundersOffer.totalSlots; slot += 1) {
+      await ctx.db.insert("orders", {
+        customerEmail: `founders-${slot}@example.test`,
+        customerFirstName: "Fondateur",
+        customerLastName: String(slot),
+        customerPhone: "+33600000000",
+        restaurantName: FOUNDERS_SLOT_MARKER,
+        city: "Lyon",
+        buyerType: "business" as const,
+        plan: foundersOffer.plan,
+        orderType: "creation" as const,
+        billingPeriod: "yearly" as const,
+        amountCents: planPrices[foundersOffer.plan].maintenanceYearly,
+        status: "paid" as const,
+        isFounders: true,
+        createdAt: Date.now(),
+      });
+    }
+
     return { affiliateUserId, referralCodeId };
   });
+}
+
+/* The seeded founders rows are scenery, not something a case under test wrote.
+   They are recognised by this name so the assertions below can still say
+   "the checkout wrote no order" and mean it. */
+const FOUNDERS_SLOT_MARKER = "Créneau fondateur (seed)";
+
+/** The orders a case actually caused, the seeded founders slots aside. */
+async function checkoutOrders(t: ReturnType<typeof convexTest>) {
+  const all = await t.run((ctx) => ctx.db.query("orders").collect());
+  return all.filter((o) => o.restaurantName !== FOUNDERS_SLOT_MARKER);
 }
 
 async function orderAmount(
@@ -151,8 +207,7 @@ describe("the discount is derived, never accepted", () => {
 
     /* And it left nothing behind: a refused forgery must not hold a founders
        slot or show up in the ops console as revenue. */
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await checkoutOrders(t)).toEqual([]);
   });
 
   test.each([
@@ -182,10 +237,10 @@ describe("the discount is derived, never accepted", () => {
       referralCode: "BID-HONEST",
     });
 
-    // 9 500 € − 10 % of the 7 500 € creation line = 8 750 €.
-    const expected = LIST_TOTAL - planPrices.premium.creation * 0.1;
+    // 4 500 € − 10 % of the 3 500 € creation line = 4 150 €.
+    const expected = LIST_TOTAL - planPrices.essentielle.creation * 0.1;
     expect(await orderAmount(t, orderId)).toBe(expected);
-    expect(expected).toBe(875000);
+    expect(expected).toBe(415000);
   });
 
   test("an affiliate's override wins over the programme default", async () => {
@@ -198,7 +253,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.25,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.25,
     );
   });
 
@@ -212,7 +267,7 @@ describe("the discount is derived, never accepted", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -288,7 +343,7 @@ describe("a code that must not discount anything", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals).toHaveLength(1);
@@ -371,7 +426,7 @@ describe("a code only discounts while its contract holds", () => {
     });
 
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.1,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.1,
     );
   });
 });
@@ -397,8 +452,7 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
     ).rejects.toThrow(/Remise de parrainage invalide/);
 
     // Refused before the order exists — no negative row, no founders slot held.
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
-    expect(orders).toEqual([]);
+    expect(await checkoutOrders(t)).toEqual([]);
   });
 
   test("no order can ever be written for a negative amount", async () => {
@@ -412,7 +466,7 @@ describe("a misconfigured percent refuses the sale rather than invoicing it", ()
       }),
     ).rejects.toThrow();
 
-    const orders = await t.run((ctx) => ctx.db.query("orders").collect());
+    const orders = await checkoutOrders(t);
     expect(orders.filter((o) => o.amountCents < 0)).toEqual([]);
   });
 });
@@ -464,7 +518,7 @@ describe("the commission follows the code, not the caller", () => {
     const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
     expect(referrals[0]!.discountPercent).toBe(15);
     expect(referrals[0]!.discountAmountCents).toBe(
-      planPrices.premium.creation * 0.15,
+      planPrices.essentielle.creation * 0.15,
     );
   });
 });
@@ -516,7 +570,7 @@ describe("validateCode and the checkout cannot drift", () => {
 
     // 5 %, the current value — not the 30 % the page is still displaying.
     expect(await orderAmount(t, orderId)).toBe(
-      LIST_TOTAL - planPrices.premium.creation * 0.05,
+      LIST_TOTAL - planPrices.essentielle.creation * 0.05,
     );
   });
 });
