@@ -178,7 +178,13 @@ export default defineSchema({
     lastContactAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    /* The sweep in ./retention.ts deletes on `lastContactAt` and must therefore
+       WALK on it. Scanning `by_createdAt` and filtering on a different field
+       starves: a capped page of old rows whose contact date is fresh hides every
+       expired row behind it, and the run reports a clean sweep. Rows written
+       before the field existed sort first, which is the right end. */
+    .index("by_lastContactAt", ["lastContactAt"]),
 
   orders: defineTable({
     customerEmail: v.string(),

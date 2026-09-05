@@ -66,10 +66,17 @@ describe("createCheckoutSession — the withdrawal waiver", () => {
     ).rejects.toThrow(/L\. 221-28/);
   });
 
-  test("leaves no order behind when it refuses", async () => {
+  test("leaves no order and no founders seat behind when it refuses", async () => {
     // Not merely "no paid order": the refusal happens before the row is
     // created, so a skipped consent produces nothing for the ops console to
     // count as revenue — the invariant #252 and #174 already hold.
+    //
+    // The rejection is matched on the ART. L. 221-28 message, not on "it
+    // threw". Without that, the old code passes this case for the wrong
+    // reason: it has no `withdrawalWaiverConsent` argument, so Convex's
+    // validator rejects the call before the handler runs and no order is
+    // written either. A test that green-lights the absence of the fix is worse
+    // than no test.
     const t = convexTest(schema, modules);
 
     await expect(
@@ -77,9 +84,10 @@ describe("createCheckoutSession — the withdrawal waiver", () => {
         ...CHECKOUT,
         withdrawalWaiverConsent: false,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(/L\. 221-28/);
 
     expect(await t.run((ctx) => ctx.db.query("orders").collect())).toEqual([]);
+    expect(await t.query(api.orders.countFoundersSold, {})).toBe(0);
   });
 
   test("records the clause, the wording and a server timestamp", async () => {
@@ -102,9 +110,9 @@ describe("createCheckoutSession — the withdrawal waiver", () => {
   });
 
   test("gives a caller no way to supply its own wording", async () => {
-    // The action takes a boolean, never a clause: the text on the order comes
-    // from the server's own constant. A caller that tries to send one is
-    // refused by the validator, and no order is written.
+    // The action takes a boolean, never a clause. Two halves, and the second is
+    // what makes this fail on the old code: a rogue clause is refused by the
+    // validator, AND an accepted order carries the server's own text.
     const t = convexTest(schema, modules);
 
     await expect(
@@ -116,14 +124,38 @@ describe("createCheckoutSession — the withdrawal waiver", () => {
         typeof t.action<typeof api.stripe.createCheckoutSession>
       >[1]),
     ).rejects.toThrow();
-
     expect(await t.run((ctx) => ctx.db.query("orders").collect())).toEqual([]);
+
+    await t.action(api.stripe.createCheckoutSession, {
+      ...CHECKOUT,
+      withdrawalWaiverConsent: true,
+    });
+    const [order] = await t.run((ctx) => ctx.db.query("orders").collect());
+    expect(order!.withdrawalWaiver!.text).toBe(WITHDRAWAL_WAIVER.text);
+    expect(order!.withdrawalWaiver!.text).not.toMatch(/renonce à tout recours/);
   });
 
-  test("the clause the buyer reads is the clause that is stored", () => {
-    // The checkbox label in components/checkout/checkout-flow.tsx renders
-    // `WITHDRAWAL_WAIVER.text`, and convex/stripe.ts stores the same constant.
-    // What this pins is that the constant still says what the CGV describe.
+  test("the clause the buyer reads is the clause that is stored", async () => {
+    // Read the two sources, rather than asserting a comment about them. If
+    // anyone inlines the sentence at either end, the two can drift and the
+    // audit trail stops describing what the buyer saw — so both files have to
+    // go on referencing the shared constant.
+    const sources = import.meta.glob(
+      ["../../components/checkout/checkout-flow.tsx", "../../convex/stripe.ts"],
+      { query: "?raw", import: "default", eager: true },
+    ) as Record<string, string>;
+    const [checkoutUi, checkoutAction] = Object.keys(sources)
+      .sort()
+      .map((k) => sources[k]!);
+
+    // The label the buyer reads, and the value the server stores.
+    expect(checkoutUi).toMatch(/\{WITHDRAWAL_WAIVER\.text\}/);
+    expect(checkoutAction).toMatch(/text: WITHDRAWAL_WAIVER\.text/);
+    // Neither hard-codes the sentence.
+    expect(checkoutUi).not.toMatch(/perdre mon droit de rétractation/);
+    expect(checkoutAction).not.toMatch(/perdre mon droit de rétractation/);
+
+    // And the constant still says what the CGV describe.
     expect(WITHDRAWAL_WAIVER.text).toMatch(/L\. 221-28/);
     expect(WITHDRAWAL_WAIVER.text).toMatch(/exécution immédiate/);
     expect(WITHDRAWAL_WAIVER.text).toMatch(/droit de rétractation/);

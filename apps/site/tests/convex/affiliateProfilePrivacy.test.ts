@@ -70,14 +70,46 @@ describe("affiliate profiles are not readable by user id", () => {
     ).rejects.toThrow(/no such export/i);
   });
 
-  test("no public query anywhere takes a userId and returns a profile", async () => {
-    // The regression this guards is a re-export under another name. Every
-    // public read of `affiliateUsers` has to derive the row from the session.
-    const publicReaders = Object.keys(
-      (await import("../../convex/affiliateUsers")) as Record<string, unknown>,
-    );
-    expect(publicReaders).toContain("me");
-    expect(publicReaders).not.toContain("getByUserId");
+  test("no public function in the module lets a caller name the person", async () => {
+    // Stronger than "the old export is gone", which a re-export under another
+    // name would walk straight past. Every PUBLIC function in the module is
+    // asked what arguments it declares, and none of them may take a user or
+    // affiliate id: a public read here has to derive its row from the session.
+    const module_ = (await import("../../convex/affiliateUsers")) as Record<
+      string,
+      unknown
+    >;
+
+    const publicNames: string[] = [];
+    for (const [name, value] of Object.entries(module_)) {
+      const fn = value as {
+        isQuery?: boolean;
+        isMutation?: boolean;
+        isAction?: boolean;
+        isPublic?: boolean;
+        exportArgs?: () => string;
+      };
+      const isConvexFunction = Boolean(
+        fn?.isQuery || fn?.isMutation || fn?.isAction,
+      );
+      if (!isConvexFunction || !fn.isPublic) continue;
+      publicNames.push(name);
+
+      const args = JSON.parse(fn.exportArgs?.() ?? "{}") as {
+        value?: Record<string, unknown>;
+      };
+      const declared = Object.keys(args.value ?? {});
+      expect(
+        declared,
+        `public ${name} declares an argument naming whose row to return`,
+      ).not.toContain("userId");
+      expect(declared).not.toContain("affiliateUserId");
+    }
+
+    // The sweep is meaningless if it found nothing to sweep.
+    expect(publicNames).toContain("me");
+    expect(publicNames.length).toBeGreaterThanOrEqual(3);
+    expect(publicNames).not.toContain("getByUserId");
   });
 
   test("an anonymous caller reads nothing from `me`", async () => {

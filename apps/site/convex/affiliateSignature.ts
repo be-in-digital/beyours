@@ -43,6 +43,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { assertFieldLengths } from "./rateLimit";
 import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { createHash, randomUUID } from "crypto";
@@ -79,6 +80,19 @@ async function embedUnicodeFonts(
   return { regular, bold };
 }
 
+/**
+ * Break `text` into lines that fit `maxWidth`.
+ *
+ * Splits on spaces, then breaks whatever is still too wide character by
+ * character: a name with no space in it used to be drawn as one line running
+ * off the right-hand edge, so the certificate showed a truncated signatory. A
+ * signature document may not silently lose the name it certifies.
+ *
+ * The character break has to apply to the FIRST word as well as later ones —
+ * the version that only handled "word that does not fit after something else"
+ * left a single over-long token untouched, which is exactly the input that
+ * motivated it.
+ */
 function wrap(
   text: string,
   font: import("pdf-lib").PDFFont,
@@ -86,15 +100,35 @@ function wrap(
   maxWidth: number,
 ): string[] {
   const lines: string[] = [];
+  const fits = (s: string) => font.widthOfTextAtSize(s, size) <= maxWidth;
+
+  /** Emit whole lines from a chunk too wide to fit; return the remainder. */
+  const breakLong = (chunk: string): string => {
+    while (chunk.length > 1 && !fits(chunk)) {
+      // Binary search the longest prefix that fits: a linear scan back from the
+      // end is O(n) width measurements per line, and these can be long.
+      let lo = 1;
+      let hi = chunk.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        if (fits(chunk.slice(0, mid))) lo = mid;
+        else hi = mid - 1;
+      }
+      lines.push(chunk.slice(0, lo));
+      chunk = chunk.slice(lo);
+    }
+    return chunk;
+  };
+
   let current = "";
   for (const word of text.split(" ")) {
-    const test = current ? `${current} ${word}` : word;
-    if (current && font.widthOfTextAtSize(test, size) > maxWidth) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = test;
+    const candidate = current ? `${current} ${word}` : word;
+    if (fits(candidate)) {
+      current = candidate;
+      continue;
     }
+    if (current) lines.push(current);
+    current = breakLong(word);
   }
   if (current) lines.push(current);
   return lines.length ? lines : [""];
@@ -165,7 +199,7 @@ async function generateSignedContractPdf(opts: {
   }
 
   // ── Signature certificate page ──
-  const cert = pdf.addPage([A4.w, A4.h]);
+  let cert = pdf.addPage([A4.w, A4.h]);
   let cy = A4.h - MARGIN;
   cert.drawText("CERTIFICAT DE SIGNATURE ÉLECTRONIQUE", {
     x: MARGIN,
@@ -208,15 +242,28 @@ async function generateSignedContractPdf(opts: {
     ["Navigateur déclaré", opts.userAgent ?? "—"],
     ["Adresse IP déclarée", opts.signerIp ?? "—"],
   ];
+  /* This loop used to run off the bottom of the page with no break. Because the
+     signatory's name is drawn first and was capped only at a MINIMUM of three
+     characters, a long enough name pushed everything after it below y=0: the
+     email, the UTC timestamp, the consent line, the contract version, the
+     SHA-256 content hash, the signature reference and the eIDAS note all became
+     invisible. That is the whole audit trail this document exists to carry, so
+     the page breaks instead. */
   for (const [label, value] of rows) {
-    cert.drawText(`${label} :`, {
-      x: MARGIN,
-      y: cy,
-      size: 9,
-      font: bold,
-      color: ink,
-    });
-    for (const line of wrap(value, font, 9, maxW - 190)) {
+    for (const [i, line] of wrap(value, font, 9, maxW - 190).entries()) {
+      if (cy < MARGIN + 20) {
+        cert = pdf.addPage([A4.w, A4.h]);
+        cy = A4.h - MARGIN;
+      }
+      if (i === 0) {
+        cert.drawText(`${label} :`, {
+          x: MARGIN,
+          y: cy,
+          size: 9,
+          font: bold,
+          color: ink,
+        });
+      }
       cert.drawText(line, { x: MARGIN + 190, y: cy, size: 9, font, color: ink });
       cy -= 13;
     }
@@ -224,6 +271,10 @@ async function generateSignedContractPdf(opts: {
   }
 
   cy -= 12;
+  if (cy < MARGIN + 60) {
+    cert = pdf.addPage([A4.w, A4.h]);
+    cy = A4.h - MARGIN;
+  }
   const note =
     "L'identité du signataire est établie par l'authentification à son compte apporteur " +
     "(email + mot de passe). L'intégrité du contrat est garantie par l'empreinte SHA-256 " +
@@ -262,6 +313,16 @@ export const signAffiliateContract = action({
     if (fullName.length < 3) {
       throw new Error("Veuillez saisir votre nom complet pour signer.");
     }
+    /* A MAXIMUM too, which this path never had: `fullName`, `userAgent` and
+       `signerIp` are free text that gets drawn on the certificate. The page now
+       breaks rather than dropping the audit fields, but a 20 000-character name
+       is not a name — it is pages of them appended to a legal document. The
+       repo already had the caps; this path simply did not use them. */
+    assertFieldLengths({
+      name: fullName,
+      restaurant: args.userAgent,
+      email: args.signerIp,
+    });
 
     const affiliate = await ctx.runQuery(
       internal.affiliateUsers.getMeInternal,

@@ -42,7 +42,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { requireAdmin } from "./admin";
 import { recordSaActivity } from "./saActivity";
 
@@ -92,10 +92,10 @@ export const DELETIONS_PER_RUN = 200;
 export interface RetentionReport {
   whitelist: number;
   contactLeads: number;
-  /** Orders that never reached `paid`. */
+  /** Orders deleted: no money taken, and nothing referencing them. */
   unpaidOrders: number;
-  /** Paid orders left in place under the accounting obligation. */
-  paidOrdersRetained: number;
+  /** Expired orders kept: paid, or still referenced by an accounting row. */
+  ordersRetained: number;
   /**
    * Tables where the run stopped at a cap with expired rows still to go.
    *
@@ -111,9 +111,14 @@ function emptyReport(): RetentionReport {
     whitelist: 0,
     contactLeads: 0,
     unpaidOrders: 0,
-    paidOrdersRetained: 0,
+    ordersRetained: 0,
     truncated: [],
   };
+}
+
+/** Record a table whose sweep left work behind, once. */
+function note(report: RetentionReport, table: string): void {
+  if (!report.truncated.includes(table)) report.truncated.push(table);
 }
 
 function totalDeleted(report: RetentionReport): number {
@@ -139,26 +144,88 @@ function lastContactOf(row: {
  * Scheduled daily from ./crons.ts. Returns a report rather than nothing so the
  * behaviour is assertable in a test and readable in the Convex logs.
  */
+/**
+ * May this expired order be deleted?
+ *
+ * NOT `status !== "paid"`. `http.ts` sets a refunded charge or a chargeback to
+ * `cancelled` while leaving its `payments`, `invoices` and `subscriptions` rows
+ * in place — so "not paid" would delete an order that WAS paid and invoiced,
+ * which is the ten-year accounting record this module says it keeps. It would
+ * also strand the rows pointing at it: `referrals.orderId`, `payments.orderId`
+ * and `subscriptions.orderId` are `v.id("orders")`, NOT optional, so a deleted
+ * order leaves a document whose schema promises one and whose readers get null.
+ *
+ * The honest predicate is "nothing references it and it never took money".
+ */
+async function orderIsErasable(
+  ctx: QueryCtx,
+  order: Doc<"orders">,
+): Promise<boolean> {
+  if (order.status === "paid") return false;
+
+  const referencedBy = await Promise.all([
+    ctx.db
+      .query("payments")
+      .withIndex("by_orderId", (q) => q.eq("orderId", order._id))
+      .first(),
+    ctx.db
+      .query("invoices")
+      .withIndex("by_orderId", (q) => q.eq("orderId", order._id))
+      .first(),
+    ctx.db
+      .query("subscriptions")
+      .withIndex("by_orderId", (q) => q.eq("orderId", order._id))
+      .first(),
+    ctx.db
+      .query("referrals")
+      .withIndex("by_orderId", (q) => q.eq("orderId", order._id))
+      .first(),
+  ]);
+  if (referencedBy.some((row) => row !== null)) return false;
+
+  /* `saDeployments.orderId` is optional and has no index on it; the fleet is
+     small and this only runs for an order already past three years. */
+  const deployments = await ctx.db.query("saDeployments").take(SCAN_CAP);
+  return !deployments.some((d) => d.orderId === order._id);
+}
+
+/**
+ * Delete prospects whose three years have run out.
+ *
+ * Scheduled daily from ./crons.ts. Returns a report rather than nothing so the
+ * behaviour is assertable in a test and readable in the Convex logs.
+ */
 export const sweepExpiredProspects = internalMutation({
   args: {},
   handler: async (ctx): Promise<RetentionReport> => {
     const cutoff = Date.now() - PROSPECT_RETENTION_MS;
     const report = emptyReport();
 
-    // Oldest first, so a truncated page drains steadily instead of starving.
+    /* Walk the field the predicate reads, oldest first. See the index comment
+       in ./schema.ts: walking `by_createdAt` and deleting on `lastContactAt`
+       starves, and reports a clean sweep while doing it. */
     const waitlist = await ctx.db
       .query("whitelist")
-      .withIndex("by_createdAt")
+      .withIndex("by_lastContactAt")
       .order("asc")
       .take(SCAN_CAP);
     for (const row of waitlist) {
       if (lastContactOf(row) >= cutoff) continue;
       if (report.whitelist >= DELETIONS_PER_RUN) {
-        report.truncated.push("whitelist");
+        note(report, "whitelist");
         break;
       }
       await ctx.db.delete(row._id);
       report.whitelist++;
+    }
+    /* A full page whose LAST row was still expired means there is more behind
+       it that this run never looked at. On an ordered walk that test is exact:
+       if the last row is not expired, nothing after it is either. */
+    if (
+      waitlist.length === SCAN_CAP &&
+      lastContactOf(waitlist[waitlist.length - 1]!) < cutoff
+    ) {
+      note(report, "whitelist");
     }
 
     const leads = await ctx.db
@@ -169,43 +236,55 @@ export const sweepExpiredProspects = internalMutation({
     for (const row of leads) {
       if (row.createdAt >= cutoff) continue;
       if (report.contactLeads >= DELETIONS_PER_RUN) {
-        report.truncated.push("contactLeads");
+        note(report, "contactLeads");
         break;
       }
       /* Every status, `converted` included. A converted lead's own contact
          details are a copy: the client relationship lives in `orders`, which
-         this sweep never touches once it is paid. */
+         this sweep never touches once it has taken money. */
       await ctx.db.delete(row._id);
       report.contactLeads++;
     }
+    if (
+      leads.length === SCAN_CAP &&
+      leads[leads.length - 1]!.createdAt < cutoff
+    ) {
+      note(report, "contactLeads");
+    }
 
-    /* An order that never reached `paid` invoiced nothing, so it is a prospect
-       record rather than an accounting one and falls under the same sentence.
-       No `by_createdAt` index here: creation order is the same order, and the
-       cap makes the scan bounded either way. */
+    /* An order that took no money and that nothing references invoiced nothing,
+       so it is a prospect record rather than an accounting one and falls under
+       the same sentence. No `by_createdAt` index here: creation order is the
+       same order, and the cap bounds the scan either way. */
     const orders = await ctx.db.query("orders").order("asc").take(SCAN_CAP);
     for (const order of orders) {
       if (order.createdAt >= cutoff) continue;
-      if (order.status === "paid") {
-        report.paidOrdersRetained++;
+      if (!(await orderIsErasable(ctx, order))) {
+        report.ordersRetained++;
         continue;
       }
       if (report.unpaidOrders >= DELETIONS_PER_RUN) {
-        if (!report.truncated.includes("orders")) report.truncated.push("orders");
+        note(report, "orders");
         continue;
       }
       await ctx.db.delete(order._id);
       report.unpaidOrders++;
     }
+    if (
+      orders.length === SCAN_CAP &&
+      orders[orders.length - 1]!.createdAt < cutoff
+    ) {
+      note(report, "orders");
+    }
 
-    if (totalDeleted(report) > 0) {
+    if (totalDeleted(report) > 0 || report.truncated.length > 0) {
       await recordSaActivity(ctx, {
         kind: "system",
         action: "retention.prospects",
         summary:
           `Conservation : ${report.whitelist} inscription(s) waitlist, ` +
           `${report.contactLeads} demande(s) de contact et ` +
-          `${report.unpaidOrders} commande(s) non payée(s) supprimées ` +
+          `${report.unpaidOrders} commande(s) sans suite supprimées ` +
           `après 3 ans sans contact.` +
           (report.truncated.length > 0
             ? ` Reliquat à traiter demain : ${report.truncated.join(", ")}.`
@@ -222,11 +301,30 @@ export const sweepExpiredProspects = internalMutation({
 /* Erasure on request (RGPD art. 17)                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * What an erasure removed, and — line by line — everything it did not.
+ *
+ * Every table that still holds the address after the erasure is counted here.
+ * A report that names only what it deleted tells the operator the request was
+ * honoured in full when it was not, and they then tell the data subject the
+ * same thing. Anything added to this interface has to be answered for in
+ * tasks/gdpr-erasure-runbook.md.
+ */
 export interface ErasureReport extends RetentionReport {
   /** Invoices left in place under the accounting obligation. */
   invoicesRetained: number;
   /** Affiliate profiles matching the address, left in place. */
   affiliateProfilesRetained: number;
+  /** Login accounts. Deleting one is an account closure, not a sweep. */
+  usersRetained: number;
+  /** Maintenance subscriptions — a live contractual relationship. */
+  subscriptionsRetained: number;
+  /** Commissions naming this address as the referred customer. */
+  referralsRetained: number;
+  /** Ops activity rows carrying the address, this erasure's own included. */
+  activityRowsRetained: number;
+  /** Client deployments — the contractual relationship, not a prospect. */
+  deploymentsRetained: number;
 }
 
 /**
@@ -260,6 +358,11 @@ async function planErasure(
     ...emptyReport(),
     invoicesRetained: 0,
     affiliateProfilesRetained: 0,
+    usersRetained: 0,
+    subscriptionsRetained: 0,
+    referralsRetained: 0,
+    activityRowsRetained: 0,
+    deploymentsRetained: 0,
   };
 
   const waitlist = assertWithinErasureCap(
@@ -278,13 +381,43 @@ async function planErasure(
     await ctx.db.query("orders").take(ERASURE_SCAN_CAP + 1),
     "orders",
   ).filter((row) => foldEmail(row.customerEmail) === email);
-  const unpaid = orders.filter((o) => o.status !== "paid");
-  report.unpaidOrders = unpaid.length;
-  report.paidOrdersRetained = orders.length - unpaid.length;
+  /* The same predicate the sweep uses, and for the same reasons: a refunded
+     order still carries its invoice, and three of the tables pointing at an
+     order declare `orderId` non-optional. */
+  const erasable: Doc<"orders">[] = [];
+  for (const order of orders) {
+    if (await orderIsErasable(ctx, order)) erasable.push(order);
+  }
+  report.unpaidOrders = erasable.length;
+  report.ordersRetained = orders.length - erasable.length;
 
   report.invoicesRetained = assertWithinErasureCap(
     await ctx.db.query("invoices").take(ERASURE_SCAN_CAP + 1),
     "invoices",
+  ).filter((row) => foldEmail(row.customerEmail) === email).length;
+
+  report.subscriptionsRetained = assertWithinErasureCap(
+    await ctx.db.query("subscriptions").take(ERASURE_SCAN_CAP + 1),
+    "subscriptions",
+  ).filter((row) => foldEmail(row.customerEmail) === email).length;
+
+  report.referralsRetained = assertWithinErasureCap(
+    await ctx.db.query("referrals").take(ERASURE_SCAN_CAP + 1),
+    "referrals",
+  ).filter((row) => foldEmail(row.customerEmail) === email).length;
+
+  report.activityRowsRetained = assertWithinErasureCap(
+    await ctx.db.query("saActivity").take(ERASURE_SCAN_CAP + 1),
+    "saActivity",
+  ).filter(
+    (row) =>
+      typeof row.customerEmail === "string" &&
+      foldEmail(row.customerEmail) === email,
+  ).length;
+
+  report.deploymentsRetained = assertWithinErasureCap(
+    await ctx.db.query("saDeployments").take(ERASURE_SCAN_CAP + 1),
+    "saDeployments",
   ).filter((row) => foldEmail(row.customerEmail) === email).length;
 
   /* An affiliate is a counterparty to a signed mandate, not a prospect: the
@@ -298,6 +431,10 @@ async function planErasure(
   for (const user of users) {
     const address = (user as { email?: unknown }).email;
     if (typeof address !== "string" || foldEmail(address) !== email) continue;
+    /* The login account itself. Closing one is an account deletion — it takes
+       the Convex Auth rows with it and can orphan a signed mandate — so it is
+       reported for the operator to decide, never deleted here. */
+    report.usersRetained++;
     const affiliate = await ctx.db
       .query("affiliateUsers")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
@@ -309,7 +446,7 @@ async function planErasure(
     report,
     whitelistIds: waitlist.map((row) => row._id),
     contactLeadIds: leads.map((row) => row._id),
-    unpaidOrderIds: unpaid.map((row) => row._id),
+    unpaidOrderIds: erasable.map((row) => row._id),
   };
 }
 
@@ -339,11 +476,16 @@ async function eraseDataSubjectFor(
     summary:
       `Effacement RGPD (art. 17) : ${report.whitelist} inscription(s) waitlist, ` +
       `${report.contactLeads} demande(s) de contact, ` +
-      `${report.unpaidOrders} commande(s) non payée(s) supprimées. ` +
-      `Conservés au titre de l'obligation comptable : ` +
-      `${report.paidOrdersRetained} commande(s) payée(s), ` +
-      `${report.invoicesRetained} facture(s). ` +
-      `Profil(s) apporteur non supprimé(s) : ${report.affiliateProfilesRetained}.`,
+      `${report.unpaidOrders} commande(s) sans suite supprimées. ` +
+      `CONSERVÉS — obligation comptable : ${report.ordersRetained} commande(s), ` +
+      `${report.invoicesRetained} facture(s) ; ` +
+      `relation contractuelle : ${report.usersRetained} compte(s), ` +
+      `${report.affiliateProfilesRetained} profil(s) apporteur, ` +
+      `${report.subscriptionsRetained} abonnement(s), ` +
+      `${report.referralsRetained} commission(s), ` +
+      `${report.deploymentsRetained} déploiement(s) ; ` +
+      `journal d'exploitation : ${report.activityRowsRetained} ligne(s). ` +
+      `Voir tasks/gdpr-erasure-runbook.md pour les suites à donner.`,
     actorName,
     customerEmail: email,
   });

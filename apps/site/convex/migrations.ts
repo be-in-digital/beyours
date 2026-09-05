@@ -139,9 +139,13 @@ export const cleanupLegacyUsers = internalMutation({
 export const markOrphanSignaturesFailed = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const rows = await ctx.db.query("contractSignatures").take(5000);
+    const CAP = 5000;
+    const rows = await ctx.db.query("contractSignatures").take(CAP + 1);
+    /* Says so rather than stopping quietly: a deployment past the cap would
+       otherwise be told the repair is complete while orphans remain. */
+    const truncated = rows.length > CAP;
     let marked = 0;
-    for (const row of rows) {
+    for (const row of rows.slice(0, CAP)) {
       if (row.status !== "signed") continue;
       if (row.signedDocumentFileId !== undefined) continue;
       await ctx.db.patch(row._id, {
@@ -150,6 +154,11 @@ export const markOrphanSignaturesFailed = internalMutation({
       });
       marked++;
     }
-    return { marked, total: rows.length };
+    if (truncated) {
+      console.warn(
+        `[markOrphanSignaturesFailed] more than ${CAP} rows: run again, the repair is incomplete`,
+      );
+    }
+    return { marked, scanned: Math.min(rows.length, CAP), truncated };
   },
 });

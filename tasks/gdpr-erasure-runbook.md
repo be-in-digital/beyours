@@ -21,16 +21,21 @@ they are not to be reworded to match the code. The code is what moves.
 
 Runs by itself. It deletes, three years after the last contact:
 
-- `whitelist` rows — the waitlist. Counted from `lastContactAt`, which
-  `whitelist.join` refreshes every time somebody submits the form again; rows
-  written before that field existed fall back to `createdAt`.
+- `whitelist` rows — the waitlist. Counted from `lastContactAt`. **Nothing
+  public advances that field**: a repeat form submission is accepted and
+  dropped, because the endpoint is unauthenticated and the address unverified,
+  so anyone who guessed an address could otherwise postpone its deletion for
+  ever. Rows written before the field existed fall back to `createdAt`.
 - `contactLeads` rows — every status, `converted` included. A converted lead's
   contact details are a copy; the client relationship lives in `orders`.
-- `orders` that never reached `paid` (pending, failed, cancelled). Those
-  invoiced nothing, so they are prospect records rather than accounting ones.
+- `orders` that took no money **and that nothing references**. Not
+  `status !== "paid"`: a refunded charge or a chargeback leaves the order
+  `cancelled` while its payment and invoice stay on the books, and three of the
+  tables pointing at an order declare `orderId` non-optional, so deleting one
+  would strand rows whose schema promises a document.
 
-It never touches a paid order, an invoice, a subscription, a signed contract or
-an affiliate profile. It leaves one `saActivity` row per run that deleted
+It never touches an order that was invoiced, an invoice, a subscription, a
+signed contract or an affiliate profile. It leaves one `saActivity` row per run that deleted
 something (`action: "retention.prospects"`), and nothing on a quiet day — so
 **a month with no rows is normal, a month with no rows AND expired prospects
 still in the table is a bug**.
@@ -101,15 +106,26 @@ should not be a surprise.
 
 ## What erasure deliberately does not do
 
-- **Paid orders and invoices stay.** Ten years, and the report says how many.
-- **An affiliate account stays.** An *apporteur d'affaires* is a counterparty to
-  a signed mandate, not a prospect: the contract, its commissions and the
-  invoices behind them are the evidence of a commercial relationship. Erasing
-  one is a decision about a contract — terminate the mandate first, then treat
-  what remains under the accounting period. The report counts the profiles it
-  left alone so nobody thinks they were missed.
-- **`saDeployments` stay.** A client's deployment record is the contractual
-  relationship, not a prospect record.
+**The report counts every one of these.** A report that named only what it
+deleted would tell you the request was honoured in full when it was not, and you
+would then tell the data subject the same thing. Work the list before you reply.
+
+| Reported as | What it is | What to do |
+| --- | --- | --- |
+| `ordersRetained` | Orders that took money, or that a payment, invoice, subscription, commission or deployment still points at — a refunded order is one of these, and its invoice number is still on the books | Nothing. Ten years. |
+| `invoicesRetained` | Invoices | Nothing. Ten years. |
+| `usersRetained` | The login account itself | Closing it is an account deletion: it takes the Convex Auth rows with it and can orphan a signed mandate. Decide deliberately, then do it in the Convex dashboard. |
+| `affiliateProfilesRetained` | An *apporteur d'affaires* profile | A counterparty to a signed mandate, not a prospect. Terminate the mandate first; what is left then falls under the accounting period. |
+| `subscriptionsRetained` | Live maintenance subscriptions | Cancel the contract first — in Stripe as well. |
+| `referralsRetained` | Commissions naming this address as the referred customer | The affiliate's own invoice evidence. Ten years. |
+| `deploymentsRetained` | Client deployments | The contractual relationship. Follow `client-offboarding-runbook.md`. |
+| `activityRowsRetained` | Ops activity rows carrying the address, including this erasure's own | Internal accountability record. Leave. |
+
+An erasure **refuses outright** rather than half-erasing when any table it reads
+has grown past `ERASURE_SCAN_CAP`. If you see that error, the fix is to move
+those lookups onto indexes and fold the stored addresses — not to raise the
+number and hope.
+
 - **Stripe is not touched.** Customer, invoice and Connect account data live in
   Stripe, under Stripe's own retention. A full erasure has to be repeated there
   by hand — see below.

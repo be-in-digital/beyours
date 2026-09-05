@@ -17,10 +17,24 @@ import {
  * caller's choosing. `contactLeads.submit` next door already answers a bot and
  * a prospect identically for exactly this reason.
  *
- * So a repeat join is now an update, not a refusal. That is also the truthful
- * reading of it: somebody who submits the form again has made contact again,
- * which is what `lastContactAt` records and what the three-year prospect
- * retention published in /confidentialite counts from. See ./retention.
+ * So a repeat join is accepted and DROPPED — the same shape as a first-time
+ * join, and the same shape `contactLeads.submit` gives a honeypot hit.
+ *
+ * Dropped rather than patched, which was the first attempt at this and was
+ * worse than the bug it fixed. Nothing here is authenticated and no address is
+ * verified, so a caller who guesses an address is not its owner: patching let
+ * a stranger overwrite a real prospect's name, phone, restaurant and city, and
+ * — because ./retention.ts counts three years from `lastContactAt` — let them
+ * push that record's deletion date forward for ever, one call at a time. An
+ * unauthenticated write over somebody else's record is not a smaller problem
+ * than the oracle.
+ *
+ * The cost is real and is the right way round: a prospect correcting their own
+ * phone number is silently ignored, and their three years run from their FIRST
+ * submission rather than their latest. The published sentence says « jusqu'à
+ * trois (3) ans », so deleting sooner honours it; deleting later would not.
+ * `lastContactAt` stays in the schema because it is the field that sentence
+ * names, and a future authenticated path — or an operator — may advance it.
  */
 export const join = mutation({
   args: {
@@ -43,36 +57,27 @@ export const join = mutation({
       message: args.message,
     });
 
-    /* The oracle above is only worth probing if it can be probed at scale.
-       Site-wide, so inventing addresses does not buy another quota — the same
-       window `contactLeads.submit` uses, and for the same reason. Refusing is
-       indistinguishable between a known and an unknown address. */
-    await consumeRateLimit(ctx, "contactSiteWide", SITE_SUBJECT);
-
     const email = args.email.trim().toLowerCase();
-    const now = Date.now();
+
+    /* An oracle is only worth probing if it can be probed at scale. Both
+       windows are spent BEFORE the lookup below, so a known and an unknown
+       address leave the counters in identical states — the limiter must not
+       become the oracle the error message used to be.
+
+       Its own windows, not the contact form's: sharing `contactSiteWide` meant
+       forty joins locked every visitor out of the contact form for the hour. */
+    await consumeRateLimit(ctx, "whitelistPerEmail", email);
+    await consumeRateLimit(ctx, "whitelistSiteWide", SITE_SUBJECT);
 
     const existing = await ctx.db
       .query("whitelist")
       .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
-    if (existing) {
-      /* Refresh the details and the contact date. Returns nothing, exactly as
-         the first-time path does: a caller cannot tell the two apart. */
-      await ctx.db.patch(existing._id, {
-        firstName: args.firstName,
-        lastName: args.lastName,
-        phone: args.phone,
-        restaurantName: args.restaurantName,
-        city: args.city,
-        plan: args.plan,
-        message: args.message,
-        lastContactAt: now,
-      });
-      return;
-    }
+    // Already on the list: accepted, and nothing written. See the note above.
+    if (existing) return;
 
+    const now = Date.now();
     await ctx.db.insert("whitelist", {
       ...args,
       email,

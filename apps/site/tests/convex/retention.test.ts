@@ -19,10 +19,12 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
+import { drainScheduled } from "./scheduled";
 import {
   DELETIONS_PER_RUN,
   ERASURE_SCAN_CAP,
   PROSPECT_RETENTION_MS,
+  SCAN_CAP,
 } from "../../convex/retention";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -194,7 +196,7 @@ describe("sweepExpiredProspects — « trois (3) ans à compter du dernier conta
     );
 
     expect(report.unpaidOrders).toBe(3);
-    expect(report.paidOrdersRetained).toBe(1);
+    expect(report.ordersRetained).toBe(1);
     const left = await t.run((ctx) => ctx.db.query("orders").collect());
     expect(left).toHaveLength(1);
     expect(left[0]!.status).toBe("paid");
@@ -217,6 +219,156 @@ describe("sweepExpiredProspects — « trois (3) ans à compter du dernier conta
     );
     expect(activity).toHaveLength(1);
     expect(activity[0]!.action).toBe("retention.prospects");
+  });
+
+  test("keeps an order that was paid, invoiced, then refunded", async () => {
+    // `http.ts` sets a refunded charge or a chargeback to "cancelled" while
+    // leaving the payment and the invoice in place. `status !== "paid"` would
+    // delete the ten-year accounting record this module says it keeps.
+    const t = convexTest(schema, modules);
+    const orderId = await t.run((ctx) =>
+      ctx.db.insert("orders", {
+        ...ORDER,
+        status: "cancelled" as const,
+        createdAt: expired(),
+      }),
+    );
+    await t.run((ctx) =>
+      ctx.db.insert("invoices", {
+        orderId,
+        stripeInvoiceId: "in_refunded",
+        stripeCustomerId: "cus_refunded",
+        customerEmail: ORDER.customerEmail,
+        invoiceNumber: "FA-2023-0001",
+        plan: "essentielle" as const,
+        amountCents: 350_000,
+        status: "paid" as const,
+        createdAt: expired(),
+      }),
+    );
+
+    const report = await t.mutation(
+      internal.retention.sweepExpiredProspects,
+      {},
+    );
+
+    expect(report.unpaidOrders).toBe(0);
+    expect(report.ordersRetained).toBe(1);
+    expect(await t.run((ctx) => ctx.db.get(orderId))).not.toBeNull();
+  });
+
+  test("never strands a row whose orderId the schema says is not optional", async () => {
+    // `referrals.orderId`, `payments.orderId` and `subscriptions.orderId` are
+    // all `v.id("orders")`. Deleting the order leaves a document whose schema
+    // promises one and whose readers get null.
+    const t = convexTest(schema, modules);
+    const affiliateUserId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { email: "apport@x.fr" });
+      return await ctx.db.insert("affiliateUsers", {
+        userId,
+        role: "affiliate" as const,
+        status: "active" as const,
+        contractStatus: "active" as const,
+        stripeConnectStatus: "active" as const,
+        createdAt: expired(),
+      });
+    });
+    const codeId = await t.run((ctx) =>
+      ctx.db.insert("referralCodes", {
+        affiliateUserId,
+        code: "MARC10",
+        isCustom: false,
+        isActive: true,
+        createdAt: expired(),
+      }),
+    );
+    const orderId = await t.run((ctx) =>
+      ctx.db.insert("orders", {
+        ...ORDER,
+        status: "cancelled" as const,
+        createdAt: expired(),
+      }),
+    );
+    await t.run((ctx) =>
+      ctx.db.insert("referrals", {
+        referrerId: affiliateUserId,
+        referralCodeId: codeId,
+        orderId,
+        customerEmail: ORDER.customerEmail,
+        customerName: "Marc Dubois",
+        commissionCents: 50_000,
+        discountPercent: 10,
+        discountAmountCents: 35_000,
+        status: "pending" as const,
+        createdAt: expired(),
+      }),
+    );
+
+    await t.mutation(internal.retention.sweepExpiredProspects, {});
+
+    const referral = await t.run((ctx) =>
+      ctx.db.query("referrals").first(),
+    );
+    expect(referral).not.toBeNull();
+    expect(await t.run((ctx) => ctx.db.get(referral!.orderId))).not.toBeNull();
+  });
+
+  test("does not starve behind a page of recently contacted prospects", async () => {
+    // The predicate reads `lastContactAt`, so the walk must too. Ordering by
+    // `createdAt` let a full page of old rows with fresh contact dates hide
+    // every expired row behind them — and the run reported a clean sweep.
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < SCAN_CAP; i++) {
+        await ctx.db.insert("whitelist", {
+          ...LEAD,
+          email: `frais${i}@bistrot.fr`,
+          createdAt: expired() - i,
+          lastContactAt: recent(),
+        });
+      }
+      await ctx.db.insert("whitelist", {
+        ...LEAD,
+        email: "perdu@bistrot.fr",
+        createdAt: expired(),
+        lastContactAt: expired(),
+      });
+    });
+
+    const report = await t.mutation(
+      internal.retention.sweepExpiredProspects,
+      {},
+    );
+
+    expect(report.whitelist).toBe(1);
+    const left = await t.run((ctx) => ctx.db.query("whitelist").collect());
+    expect(left.some((r) => r.email === "perdu@bistrot.fr")).toBe(false);
+    expect(left).toHaveLength(SCAN_CAP);
+  });
+
+  test("says so when a full page of expired rows was left unexamined", async () => {
+    // Reachable only where an expired row can be RETAINED rather than deleted,
+    // because otherwise the per-run deletion cap trips first. A page full of
+    // expired paid orders deletes nothing and still hides whatever is behind
+    // it — which is exactly the run that must not report a clean sweep.
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 0; i <= SCAN_CAP; i++) {
+        await ctx.db.insert("orders", {
+          ...ORDER,
+          customerEmail: `p${i}@bistrot.fr`,
+          status: "paid" as const,
+          createdAt: expired() - i,
+        });
+      }
+    });
+
+    const report = await t.mutation(
+      internal.retention.sweepExpiredProspects,
+      {},
+    );
+    expect(report.unpaidOrders).toBe(0);
+    expect(report.truncated).toContain("orders");
   });
 
   test("says when it hit a cap and left a backlog", async () => {
@@ -325,7 +477,7 @@ describe("eraseDataSubject — RGPD art. 17", () => {
       whitelist: 1,
       contactLeads: 1,
       unpaidOrders: 1,
-      paidOrdersRetained: 1,
+      ordersRetained: 1,
       invoicesRetained: 1,
     });
 
@@ -583,10 +735,11 @@ describe("whitelist.join — no membership oracle", () => {
     ).resolves.toBeNull();
   });
 
-  test("a repeat join updates the row rather than adding one", async () => {
+  test("a repeat join adds no row and changes none", async () => {
+    // Accepted and dropped, whatever case the address was typed in.
     const t = convexTest(schema, modules);
     await t.mutation(api.whitelist.join, LEAD);
-    const first = await t.run((ctx) => ctx.db.query("whitelist").collect());
+    const before = await t.run((ctx) => ctx.db.query("whitelist").collect());
 
     await t.mutation(api.whitelist.join, {
       ...LEAD,
@@ -594,16 +747,46 @@ describe("whitelist.join — no membership oracle", () => {
       city: "Rennes",
     });
 
-    const rows = await t.run((ctx) => ctx.db.query("whitelist").collect());
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!._id).toBe(first[0]!._id);
-    expect(rows[0]!.city).toBe("Rennes");
-    expect(rows[0]!.email).toBe("marc@bistrot.fr");
+    const after = await t.run((ctx) => ctx.db.query("whitelist").collect());
+    expect(after).toHaveLength(1);
+    expect(after[0]!._id).toBe(before[0]!._id);
+    expect(after[0]!.city).toBe("Nantes");
+    expect(after[0]!.email).toBe("marc@bistrot.fr");
   });
 
-  test("a repeat join is a new contact, and restarts the three years", async () => {
+  test("a stranger cannot overwrite a prospect's record", async () => {
+    // Nothing here is authenticated and no address is verified, so a caller who
+    // guesses an address is not its owner. Patching the row on a repeat join
+    // handed them a write over somebody else's name, phone and restaurant.
     const t = convexTest(schema, modules);
     const rowId = await t.run((ctx) =>
+      ctx.db.insert("whitelist", { ...LEAD, createdAt: recent() }),
+    );
+
+    await t.mutation(api.whitelist.join, {
+      ...LEAD,
+      firstName: "Attaquant",
+      lastName: "Anonyme",
+      phone: "+33600000000",
+      restaurantName: "Vandalisé",
+      city: "Nulle Part",
+      message: "pwned",
+    });
+
+    const row = await t.run((ctx) => ctx.db.get(rowId));
+    expect(row!.firstName).toBe("Marc");
+    expect(row!.lastName).toBe("Dubois");
+    expect(row!.phone).toBe("+33611111111");
+    expect(row!.restaurantName).toBe("Le Bistrot");
+    expect(row!.city).toBe("Nantes");
+  });
+
+  test("a stranger cannot postpone a prospect's deletion", async () => {
+    // The sweep counts three years from `lastContactAt`. If an anonymous join
+    // advanced it, anyone could keep a record alive for ever, one call at a
+    // time — a published retention promise defeated from outside.
+    const t = convexTest(schema, modules);
+    await t.run((ctx) =>
       ctx.db.insert("whitelist", {
         ...LEAD,
         createdAt: expired(),
@@ -612,11 +795,54 @@ describe("whitelist.join — no membership oracle", () => {
     );
 
     await t.mutation(api.whitelist.join, LEAD);
-    await t.mutation(internal.retention.sweepExpiredProspects, {});
+    const report = await t.mutation(
+      internal.retention.sweepExpiredProspects,
+      {},
+    );
 
-    const row = await t.run((ctx) => ctx.db.get(rowId));
-    expect(row).not.toBeNull();
-    expect(row!.lastContactAt).toBeGreaterThan(expired());
+    expect(report.whitelist).toBe(1);
+    expect(await t.run((ctx) => ctx.db.query("whitelist").collect())).toEqual(
+      [],
+    );
+  });
+
+  test("does not spend the contact form's window", async () => {
+    // These shared `contactSiteWide`, so forty anonymous waitlist joins locked
+    // every visitor out of the only way to reach the company for an hour.
+    const t = convexTest(schema, modules);
+    // The whole waitlist budget, spent.
+    for (let i = 0; i < 40; i++) {
+      await t.mutation(api.whitelist.join, {
+        ...LEAD,
+        email: `p${i}@bistrot.fr`,
+      });
+    }
+    await expect(
+      t.mutation(api.whitelist.join, { ...LEAD, email: "p40@bistrot.fr" }),
+    ).rejects.toThrow(/Trop de requêtes/);
+
+    await expect(
+      t.mutation(api.contactLeads.submit, {
+        name: "Marc Dubois",
+        email: "marc@bistrot.fr",
+        message: "Rappelez-moi",
+      }),
+    ).resolves.not.toThrow();
+    // The submit schedules confirmation email; let it settle before teardown.
+    await drainScheduled(t);
+  });
+
+  test("bounds a loop on its own windows", async () => {
+    const t = convexTest(schema, modules);
+    for (let i = 0; i < 3; i++) {
+      await t.mutation(api.whitelist.join, {
+        ...LEAD,
+        email: "boucle@bistrot.fr",
+      });
+    }
+    await expect(
+      t.mutation(api.whitelist.join, { ...LEAD, email: "boucle@bistrot.fr" }),
+    ).rejects.toThrow(/Trop de requêtes/);
   });
 
   test("caps the fields a caller can push into the table", async () => {

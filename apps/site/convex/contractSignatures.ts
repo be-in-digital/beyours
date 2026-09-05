@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import {
   query,
-  mutation,
   internalMutation,
   internalQuery,
   type QueryCtx,
@@ -104,51 +103,18 @@ export const getSignedContractUrl = query({
 
 /* ── Public mutations ── */
 
-/** Create a signature request (called before Yousign API) */
-export const createSignatureRequest = mutation({
-  args: {
-    contractVersionId: v.id("contractVersions"),
-    contractSnapshotContent: v.string(),
-    contractSnapshotHash: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Non authentifié");
+/* ── No public `createSignatureRequest` here, on purpose ──
+   It was a public mutation, reachable by any signed-in account (and
+   `affiliateUsers.createAfterSignup` lets any account give itself an affiliate
+   profile), that inserted a `contractSignatures` row from caller-supplied
+   `contractSnapshotContent` and `contractSnapshotHash` — arbitrary text, stored
+   as the contract someone signed, in the table `getMySignatures` renders and
+   the eIDAS art. 25 claim rests on. It carried no document either, which is the
+   invariant `recordInAppSignature` below exists to hold.
 
-    const affiliate = await ctx.db
-      .query("affiliateUsers")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .unique();
-    if (!affiliate) throw new Error("Profil apporteur introuvable");
-
-    // Check if a pending signature already exists for this version
-    const existing = await ctx.db
-      .query("contractSignatures")
-      .withIndex("by_affiliateUserId_and_contractVersionId", (q) =>
-        q
-          .eq("affiliateUserId", affiliate._id)
-          .eq("contractVersionId", args.contractVersionId),
-      )
-      .order("desc")
-      .take(5);
-
-    const pending = existing.find((s) => s.status === "pending");
-    if (pending) {
-      return pending._id;
-    }
-
-    const now = Date.now();
-    return await ctx.db.insert("contractSignatures", {
-      affiliateUserId: affiliate._id,
-      contractVersionId: args.contractVersionId,
-      status: "pending",
-      contractSnapshotContent: args.contractSnapshotContent,
-      contractSnapshotHash: args.contractSnapshotHash,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-});
+   It was written for the Yousign flow, which was removed, and had no caller.
+   The in-app path mints its snapshot server-side from the active contract
+   version. */
 
 /* ── Internal queries ── */
 
