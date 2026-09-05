@@ -3,24 +3,22 @@ export async function register() {
 
   const { ok, problems } = validateSiteEnv()
 
-  /* The build phase cannot be held to the whole report: the Stripe, AWS and
-     e-mail variables live on the Convex deployment and are absent from every
-     build by design, and CI compiles this app against a deliberate placeholder
-     Convex URL (.github/workflows/ci.yml) precisely so no real deployment gets
-     inlined into a compile check.
+  /* Kept, but it is not what covers the build. Next 16 with Turbopack does not
+     call register() during `next build` at all — measured: a full build with
+     NEXT_PUBLIC_TVA_ENABLED unset emits no [env] line, with or without this
+     branch. So this guard has nothing to skip today; it stays only so that a
+     future Next which does invoke us mid-build reports rather than throws,
+     since the Stripe, AWS and e-mail variables are absent from every build by
+     design and CI compiles against a deliberate placeholder Convex URL.
 
-     What it CAN be held to is the NEXT_PUBLIC_* half, because that half is
-     being frozen into the client bundle right here — a boot check runs against
-     an env that was read long after the bundle quoting the totals was already
-     written. Reported, never fatal, for the reason above; a wrong charging
-     flag also refuses the deployment at boot and refuses the sale at checkout,
-     so this is the earliest warning rather than the only one. */
+     The build-time check that actually runs lives in next.config.ts, which IS
+     evaluated during the build. That is the one that matters for the charging
+     flag: /checkout is prerendered as static content, so its VAT branch is
+     baked into HTML at build time and served from the CDN without ever booting
+     a server — nothing here can stand between that page and the customer. */
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     const inlined = problems.filter((p) => isInlinedAtBuild(p) && p.tier !== 'required')
-    if (inlined.length > 0) {
-      console.warn('[env] build : variables inlinées dans le bundle client à corriger')
-      console.warn(formatSiteEnvReport(inlined))
-    }
+    if (inlined.length > 0) console.warn(formatSiteEnvReport(inlined))
     return
   }
 
