@@ -5,16 +5,18 @@ import { usePaginatedQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import type { KitchenTicket } from "@/lib/admin/types"
-import { Input } from "@/components/ui/input"
 import {
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Button,
+} from "@be-in-digital/ui"
 import { Search } from "lucide-react"
 import { TicketCard } from "./TicketCard"
 

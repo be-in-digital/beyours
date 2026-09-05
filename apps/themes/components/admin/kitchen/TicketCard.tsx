@@ -4,17 +4,20 @@ import { useMutation, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { KitchenTicket, TicketStatus, TicketOrderType as OrderType, TicketPriority as Priority, TicketSource as Source } from "@/lib/admin/types"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@be-in-digital/ui"
 import { TicketTimer } from "./TicketTimer"
 import { Clock, Play, CheckCircle, Package, Printer, X } from "lucide-react"
 

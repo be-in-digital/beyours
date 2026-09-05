@@ -1,8 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
-import { Badge } from "@/components/ui/badge"
+import { Button, ButtonGroup, Badge } from "@be-in-digital/ui"
 
 interface StationFilterProps {
   stations: string[]

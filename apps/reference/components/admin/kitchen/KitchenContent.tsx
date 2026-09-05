@@ -5,17 +5,24 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { KitchenTicket } from "@/lib/admin/types"
 import { useAdminStoreId } from "@/lib/admin/hooks"
-import { Card, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  Card,
+  CardHeader,
+  CardTitle,
+  Skeleton,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { TicketCard } from "./TicketCard"
 import { StationFilter } from "./StationFilter"

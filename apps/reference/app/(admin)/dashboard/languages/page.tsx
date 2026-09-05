@@ -1,6 +1,6 @@
 "use client"
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@be-in-digital/ui"
 import { LanguagesContent, UIOverridesContent } from "@/components/admin/languages"
 
 export default function LanguagesPage() {

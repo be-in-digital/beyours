@@ -5,13 +5,13 @@ import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselPrevious,
-    CarouselNext,
-} from "@/components/ui/carousel"
-import { Skeleton } from "@/components/ui/skeleton"
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+  Skeleton,
+} from "@be-in-digital/ui"
 import { Heading, MealCard } from "@/components/website"
 
 interface TrendingProduct {

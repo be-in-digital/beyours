@@ -19,16 +19,14 @@ import {
   Badge,
   Input,
   Separator,
-} from "@be-in-digital/ui"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import {
+  Label,
+  Switch,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@be-in-digital/ui"
 // ─── Types ───────────────────────────────────────────────────────────────────────
 
 interface AutoBlogAccess {

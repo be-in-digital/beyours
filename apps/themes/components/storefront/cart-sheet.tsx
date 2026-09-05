@@ -23,13 +23,11 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
-import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@/components/ui/sheet"
+} from "@be-in-digital/ui"
 import { useCartStore, formatPrice, useTranslation } from "@be-in-digital/restaurant"
 
 interface CartSheetProps {

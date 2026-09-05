@@ -13,15 +13,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
 } from "@be-in-digital/ui"
 import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import { adminRoutes } from "../config/admin-routes"
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "../ui/sidebar"
 
 function getInitials(name?: string, email?: string): string {
   if (name) {

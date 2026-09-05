@@ -5,7 +5,7 @@ import { useQuery } from "convex/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { useAdminApiStore } from "../stores/admin-api-store"
-import { Skeleton } from "../ui/skeleton"
+import { Skeleton } from "@be-in-digital/ui"
 
 interface AuthGuardProps {
   children: React.ReactNode

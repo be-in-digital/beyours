@@ -4,25 +4,23 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
-import { Separator } from "../ui/separator"
-import { SidebarTrigger } from "../ui/sidebar"
 import {
+  Separator,
+  SidebarTrigger,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "../ui/breadcrumb"
-import { getBreadcrumbData } from "../config/route-titles"
-import { toast } from "sonner"
-import { Globe, Moon, Sun } from "lucide-react"
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@be-in-digital/ui"
+import { getBreadcrumbData } from "../config/route-titles"
+import { toast } from "sonner"
+import { Globe, Moon, Sun } from "lucide-react"
 
 const languages = [
   { code: "fr", label: "Français" },

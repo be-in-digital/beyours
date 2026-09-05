@@ -5,8 +5,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "../../ui/chart"
-import { Card, CardHeader, CardTitle, CardContent } from "@be-in-digital/ui"
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@be-in-digital/ui"
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts"
 import { BarChart3 } from "lucide-react"
 import { formatPrice } from "../../lib/formatters"

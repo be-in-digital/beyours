@@ -19,14 +19,14 @@ import {
 } from "lucide-react"
 import { motion } from "framer-motion"
 import {
-    Carousel,
-    CarouselContent,
-    CarouselItem,
-    CarouselPrevious,
-    CarouselNext,
-} from "@/components/ui/carousel"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+  Button,
+  Badge,
+} from "@be-in-digital/ui"
 import { cn } from "@/lib/utils"
 import {
     Heading,

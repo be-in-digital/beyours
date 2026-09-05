@@ -117,11 +117,17 @@ export function StoresTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40px]">
+              {/*
+                The mixed state is a `checked` value now, not a DOM property.
+                The old Checkbox was a native `<input>` and this reached for
+                `el.indeterminate`; the converged one is a Radix `<button
+                role="checkbox">`, which carries the third state itself and
+                reports it as `aria-checked="mixed"` — which the native input
+                never did, so the header checkbox used to look mixed and
+                announce itself as simply unchecked.
+              */}
               <Checkbox
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) el.indeterminate = someSelected
-                }}
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
                 onCheckedChange={toggleAll}
                 aria-label="Tout sélectionner"
               />

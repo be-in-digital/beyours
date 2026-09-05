@@ -1,20 +1,32 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { AlertCircle, CheckCircle2, Info, AlertTriangle } from "lucide-react"
+
 import { cn } from "../lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default: "bg-card text-card-foreground",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90",
+        // `warning` and `success` came from the old package copy, which also
+        // carried a `title` prop and an icon map for them. Those two are not
+        // ported: one call site used them and the other already writes its own
+        // icon, so the composable form is the one API. The variants themselves
+        // stay, because the product needs them — `store-detail-page.tsx` was
+        // hand-rolling an amber alert out of `variant="default"` plus five
+        // colour overrides, which is what a missing variant looks like.
+        //
+        // Literal colours rather than tokens: `app/globals.css` defines
+        // `--destructive` and the five `--chart-*` and no `--warning` or
+        // `--success`, and inventing tokens here would put them out of reach of
+        // per-establishment branding for no gain.
         warning:
-          "border-yellow-500/50 text-yellow-900 dark:border-yellow-500 [&>svg]:text-yellow-600",
+          "text-amber-900 bg-card [&>svg]:text-amber-600 *:data-[slot=alert-description]:text-amber-800/90 dark:text-amber-200 dark:[&>svg]:text-amber-400",
         success:
-          "border-green-500/50 text-green-900 dark:border-green-500 [&>svg]:text-green-600",
+          "text-emerald-900 bg-card [&>svg]:text-emerald-600 *:data-[slot=alert-description]:text-emerald-800/90 dark:text-emerald-200 dark:[&>svg]:text-emerald-400",
       },
     },
     defaultVariants: {
@@ -23,64 +35,48 @@ const alertVariants = cva(
   }
 )
 
-const variantIcons = {
-  default: Info,
-  destructive: AlertCircle,
-  warning: AlertTriangle,
-  success: CheckCircle2,
+function Alert({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
+  return (
+    <div
+      data-slot="alert"
+      role="alert"
+      className={cn(alertVariants({ variant }), className)}
+      {...props}
+    />
+  )
 }
 
-export interface AlertProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof alertVariants> {
-  title?: string
-  icon?: React.ReactNode
+function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="alert-title"
+      className={cn(
+        "col-start-2 line-clamp-1 min-h-4 font-medium tracking-tight",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
-  ({ className, variant = "default", title, icon, children, ...props }, ref) => {
-    const Icon = variant ? variantIcons[variant] : variantIcons.default
-
-    return (
-      <div
-        ref={ref}
-        role="alert"
-        className={cn(alertVariants({ variant }), className)}
-        {...props}
-      >
-        {icon !== null && (icon || <Icon className="h-4 w-4" />)}
-        <div>
-          {title && <h5 className="mb-1 font-medium leading-none tracking-tight">{title}</h5>}
-          <div className="text-sm [&_p]:leading-relaxed">{children}</div>
-        </div>
-      </div>
-    )
-  }
-)
-Alert.displayName = "Alert"
-
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h5
-    ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
-    {...props}
-  />
-))
-AlertTitle.displayName = "AlertTitle"
-
-const AlertDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
-    {...props}
-  />
-))
-AlertDescription.displayName = "AlertDescription"
+function AlertDescription({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="alert-description"
+      className={cn(
+        "text-muted-foreground col-start-2 grid justify-items-start gap-1 text-sm [&_p]:leading-relaxed",
+        className
+      )}
+      {...props}
+    />
+  )
+}
 
 export { Alert, AlertTitle, AlertDescription, alertVariants }

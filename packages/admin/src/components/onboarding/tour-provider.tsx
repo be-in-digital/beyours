@@ -4,7 +4,7 @@ import { useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { TourProvider as ReactourProvider, useTour } from "@reactour/tour"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
-import { useOptionalSidebar } from "../../ui/sidebar"
+import { useOptionalSidebar } from "@be-in-digital/ui"
 import { TOUR_STEPS, setTourNavigate } from "./tour-steps"
 
 const STORAGE_PREFIX = "bid-tour-"

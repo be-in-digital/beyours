@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { SidebarMenuBadge } from "../ui/sidebar"
+import { SidebarMenuBadge } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../stores/admin-api-store"
 import { useAdminStore } from "../hooks/admin-hooks"
 

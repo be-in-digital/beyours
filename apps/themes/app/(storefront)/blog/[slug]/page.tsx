@@ -25,7 +25,7 @@ import { getStorefrontSeoContext } from "@/lib/structured-data"
 import { JsonLd, buildBreadcrumbSchema } from "@/lib/json-ld"
 import { formatArticleDate } from "@/lib/blog/presentation"
 import { ARTICLE_SANITIZE_PROFILE } from "@/lib/blog/sanitize-profile"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@be-in-digital/ui"
 
 interface Props {
   params: Promise<{ slug: string }>

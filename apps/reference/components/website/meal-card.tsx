@@ -5,16 +5,10 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Star, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge, Button, Tooltip, TooltipContent, TooltipTrigger } from "@be-in-digital/ui"
 import { toast } from "sonner";
 import { useCartStore, formatPrice } from "@be-in-digital/restaurant";
 import { FavoriteButton } from "./favorite-button";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface MealCardProps {
     id?: string | number;

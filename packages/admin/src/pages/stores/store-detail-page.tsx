@@ -179,10 +179,10 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
       </div>
 
       {store.status === "draft" && (
-        <Alert variant="default" className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800 dark:text-amber-400">Établissement en brouillon</AlertTitle>
-          <AlertDescription className="text-amber-700 dark:text-amber-300">
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Établissement en brouillon</AlertTitle>
+          <AlertDescription>
             Cet établissement n&apos;est pas encore visible. Complétez les informations générales, les horaires et les paramètres, puis changez le statut en &quot;Ouvert&quot; dans l&apos;onglet Général pour l&apos;activer.
           </AlertDescription>
         </Alert>

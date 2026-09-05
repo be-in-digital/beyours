@@ -2,7 +2,7 @@
 
 import { CircleHelp } from "lucide-react"
 import { useTour } from "@reactour/tour"
-import { SidebarMenuButton } from "../../ui/sidebar"
+import { SidebarMenuButton } from "@be-in-digital/ui"
 
 const STORAGE_PREFIX = "bid-tour-"
 
