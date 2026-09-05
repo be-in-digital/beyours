@@ -10,6 +10,8 @@
 
 import { v } from "convex/values"
 
+import { resolveWeeklyCap } from "./campaignDelivery"
+
 const eventTypeValidator = v.union(
   v.literal("sent"),
   v.literal("delivered"),
@@ -98,7 +100,8 @@ export const alreadySentTo = {
 }
 
 /**
- * How many campaign emails each of these subscribers received since `since`.
+ * How many campaign emails each of these subscribers received since `since`,
+ * counted no further than `cap`.
  *
  * What `maxEmailsPerWeek` needs, and it counts what was actually SENT rather
  * than a stored tally that could drift — the same source `alreadySentTo` reads,
@@ -106,30 +109,58 @@ export const alreadySentTo = {
  *
  * Asked once per batch, like the idempotency check, rather than once per
  * subscriber.
+ *
+ * Two things keep the cost of that per-subscriber lookup fixed, and both
+ * matter — this query used to have neither, and it was on course to stop email
+ * marketing outright for the stores whose subscribers had been around longest.
+ *
+ * The index does the first. `by_subscriber_type_occurredAt` narrows to this
+ * subscriber's `sent` events inside the window, so the read is proportional to
+ * the answer. Reading `by_subscriberId` and filtering `type` and `occurredAt`
+ * in JavaScript — as this did — makes the read proportional to the
+ * subscriber's entire lifetime history instead: sent, delivered and opened, for
+ * every campaign and every automation, back to the day they subscribed. That
+ * scan only grows, and once a batch of them crosses Convex's per-transaction
+ * read ceiling the campaign throws and every retry throws with it.
+ *
+ * `cap` does the second. The window alone still leaves the read at the mercy of
+ * how much mail a store sent this week, which is precisely what is abnormal
+ * when the cap starts mattering. Stopping the count at `cap` bounds it by a
+ * small constant, and loses nothing: the only question asked of this number is
+ * `withinWeeklyCap(count, cap)`, i.e. `count < cap`, and a count that stopped
+ * at `cap` answers it identically. The number is a cap verdict, not a
+ * statistic — do not repurpose it as one.
  */
 export const sentCountsSince = {
   args: {
     subscriberIds: v.array(v.id("emailSubscribers")),
     since: v.number(),
+    cap: v.number(),
   },
   handler: async (
     ctx: any,
     args: any
   ): Promise<Array<{ subscriberId: string; count: number }>> => {
+    // Through the same function the caller resolved the cap with, so the bound
+    // on the read is the bound on the comparison by construction, and callers
+    // cannot widen it. `v.number()` is a float64: it admits NaN and Infinity,
+    // and `.take(Infinity)` is the unbounded read this query was fixed to stop
+    // making. It admits a non-positive cap too, which would read nothing,
+    // report zero, and wave every subscriber through the guard. Applying it to
+    // an already-resolved cap changes nothing — it is idempotent.
+    const limit = resolveWeeklyCap(args.cap)
     const counts: Array<{ subscriberId: string; count: number }> = []
     for (const subscriberId of args.subscriberIds) {
       const events = await ctx.db
         .query("emailEvents")
-        .withIndex("by_subscriberId", (q: any) =>
-          q.eq("subscriberId", subscriberId)
+        .withIndex("by_subscriber_type_occurredAt", (q: any) =>
+          q
+            .eq("subscriberId", subscriberId)
+            .eq("type", "sent")
+            .gte("occurredAt", args.since)
         )
-        .collect()
-      counts.push({
-        subscriberId,
-        count: events.filter(
-          (e: any) => e.type === "sent" && e.occurredAt >= args.since
-        ).length,
-      })
+        .take(limit)
+      counts.push({ subscriberId, count: events.length })
     }
     return counts
   },

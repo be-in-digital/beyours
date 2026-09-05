@@ -585,6 +585,17 @@ export const emailEventsTable = defineTable({
   // read every event the campaign has produced, once per subscriber, which is
   // quadratic on the exact campaigns that need resuming.
   .index("by_campaignId_subscriberId", ["campaignId", "subscriberId"])
+  // "How many campaign emails has this subscriber had this week?" — the
+  // question `maxEmailsPerWeek` asks, once per subscriber per batch. The same
+  // trap as above, turned onto the subscriber axis: answering it from
+  // `by_subscriberId` reads that subscriber's entire lifetime history — every
+  // sent, delivered and opened event of every campaign and automation — to
+  // count the handful inside a one-week window. A loyal subscriber accumulates
+  // events forever, so the scan grows without bound and eventually crosses the
+  // per-transaction read ceiling, after which no campaign for that store can
+  // complete. `type` sits before `occurredAt` so the range covers only the
+  // `sent` events, which is all the cap counts.
+  .index("by_subscriber_type_occurredAt", ["subscriberId", "type", "occurredAt"])
 
 /**
  * Email config table

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   DEFAULT_MAX_EMAILS_PER_WEEK,
   assignVariant,
+  MAX_EMAILS_PER_WEEK,
   resolveWeeklyCap,
   subjectFor,
   withinWeeklyCap,
@@ -126,6 +127,23 @@ describe("resolveWeeklyCap", () => {
     for (const value of [undefined, null, 0, -1, NaN, "3", {}]) {
       expect(resolveWeeklyCap(value)).toBe(DEFAULT_MAX_EMAILS_PER_WEEK)
     }
+  })
+
+  it("holds the cap to the maximum the settings screen offers", () => {
+    // The screen validates `min(1).max(100)`; `emailConfig.upsert` takes a bare
+    // `v.number()`, so a seed or a restore can store more. The cap is now also
+    // the bound on how many events the send reads per subscriber, and a cap of
+    // a million is not a bound — the batch would cross Convex's read ceiling
+    // just as it did before the index. No supported path produces one of these.
+    expect(resolveWeeklyCap(100)).toBe(100)
+    expect(resolveWeeklyCap(101)).toBe(MAX_EMAILS_PER_WEEK)
+    expect(resolveWeeklyCap(1_000_000)).toBe(MAX_EMAILS_PER_WEEK)
+    expect(resolveWeeklyCap(Infinity)).toBe(DEFAULT_MAX_EMAILS_PER_WEEK)
+  })
+
+  it("resolves to a whole number, because it bounds a read", () => {
+    expect(resolveWeeklyCap(3.7)).toBe(3)
+    expect(resolveWeeklyCap(0.5)).toBe(DEFAULT_MAX_EMAILS_PER_WEEK)
   })
 })
 
