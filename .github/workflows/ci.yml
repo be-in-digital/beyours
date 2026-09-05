@@ -95,6 +95,15 @@ jobs:
       - name: Check app divergence
         run: pnpm check:divergence
 
+      # The one check that looks at what a CLIENT builds rather than at what
+      # this repository builds. `apps/themes` is published verbatim to
+      # `beyours-boilerplate`, where it is the repository root, and a stylesheet
+      # whose `@source` globs point at the monorepo silently loses every rule
+      # the engine packages contribute. Nothing else in CI compiles the
+      # published tree, which is why that shipped twice.
+      - name: Check the client stylesheet
+        run: pnpm check:mirror-css
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

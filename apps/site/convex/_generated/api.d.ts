@@ -46,9 +46,11 @@ import type * as saSales from "../saSales.js";
 import type * as saSeed from "../saSeed.js";
 import type * as storageSweep from "../storageSweep.js";
 import type * as stripe from "../stripe.js";
+import type * as stripeAudit from "../stripeAudit.js";
 import type * as stripeConnect from "../stripeConnect.js";
 import type * as stripeEvents from "../stripeEvents.js";
 import type * as stripeMode from "../stripeMode.js";
+import type * as stripePriceAudit from "../stripePriceAudit.js";
 import type * as subscriptions from "../subscriptions.js";
 import type * as whitelist from "../whitelist.js";
 
@@ -97,9 +99,11 @@ declare const fullApi: ApiFromModules<{
   saSeed: typeof saSeed;
   storageSweep: typeof storageSweep;
   stripe: typeof stripe;
+  stripeAudit: typeof stripeAudit;
   stripeConnect: typeof stripeConnect;
   stripeEvents: typeof stripeEvents;
   stripeMode: typeof stripeMode;
+  stripePriceAudit: typeof stripePriceAudit;
   subscriptions: typeof subscriptions;
   whitelist: typeof whitelist;
 }>;

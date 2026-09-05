@@ -4,10 +4,13 @@ import { expect, test, describe } from "vitest";
 import { internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
 import {
+  LICENSE_ENFORCEMENT_ENV,
   MAINTENANCE_GRACE_MS,
   entitlementMessage,
   newLicenseKey,
   resolveEntitlement,
+  resolveLicenseEnforcement,
+  resolveUnknownKey,
 } from "../../convex/maintenance";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -18,9 +21,17 @@ const DAY = 24 * 60 * 60 * 1000;
 function entitlement(
   status: "active" | "past_due" | "canceled" | "unpaid" | "incomplete",
   currentPeriodEnd?: number,
+  /* Only the cases that exercise the fallback coverage date need to set these;
+     everywhere else `currentPeriodEnd` decides and they are inert. */
+  over: { billingPeriod?: "monthly" | "yearly"; createdAt?: number } = {},
 ) {
   return resolveEntitlement({
-    subscription: { status, currentPeriodEnd },
+    subscription: {
+      status,
+      currentPeriodEnd,
+      billingPeriod: over.billingPeriod ?? "yearly",
+      createdAt: over.createdAt ?? NOW - 365 * DAY,
+    },
     now: NOW,
   });
 }
@@ -48,6 +59,37 @@ describe("resolveEntitlement", () => {
     const e = entitlement("past_due", NOW - MAINTENANCE_GRACE_MS - DAY);
     expect(e.entitled).toBe(false);
     expect(e.reason).toBe("expired");
+  });
+
+  /* A row with no `currentPeriodEnd` used to compute its grace deadline from
+     `now` on every request, so `now <= now + 14 days` held for ever and a
+     failed renewal never expired. The date the subscription was recorded plus
+     one billing period is the same date `stripe.createSubscription` writes, so
+     the fallback matches how the real ones are produced. */
+  test("a failed renewal with no period date still expires", () => {
+    const e = entitlement("past_due", undefined, {
+      billingPeriod: "yearly",
+      createdAt: NOW - 400 * DAY,
+    });
+    expect(e.entitled).toBe(false);
+    expect(e.reason).toBe("expired");
+  });
+
+  test("and is still in grace inside its first period", () => {
+    const e = entitlement("past_due", undefined, {
+      billingPeriod: "yearly",
+      createdAt: NOW - 10 * DAY,
+    });
+    expect(e.entitled).toBe(true);
+    expect(e.reason).toBe("grace");
+  });
+
+  test("a monthly plan is not given a year of grace", () => {
+    const e = entitlement("past_due", undefined, {
+      billingPeriod: "monthly",
+      createdAt: NOW - 100 * DAY,
+    });
+    expect(e.entitled).toBe(false);
   });
 
   /* The year is paid for: cancelling does not claw back the months left. */
@@ -84,6 +126,7 @@ describe("resolveEntitlement", () => {
       entitlement("unpaid"),
       entitlement("past_due", NOW - MAINTENANCE_GRACE_MS - DAY),
       resolveEntitlement({ subscription: null, now: NOW }),
+      resolveUnknownKey("strict"),
     ];
     for (const e of reasons) {
       expect(entitlementMessage(e).length).toBeGreaterThan(10);
@@ -96,6 +139,61 @@ describe("newLicenseKey", () => {
     const a = newLicenseKey();
     expect(a).toMatch(/^bys_[0-9a-f]{32}$/);
     expect(a).not.toBe(newLicenseKey());
+  });
+});
+
+/* ── The enforcement policy (#181) ──
+   A key nobody holds used to entitle whoever presented it, which is what made
+   a maintenance renewal uncollectable. Which of the two answers it gets is now
+   one env var, and these cases pin the reading of it — including, deliberately,
+   that a near miss leaves the gate OPEN. The direction matters: unlike
+   STRIPE_SECRET_KEY, where a fumbled flag must refuse, a fumbled flag here
+   would freeze the updates of clients who pay. */
+describe("resolveLicenseEnforcement", () => {
+  test("a deployment that says nothing forgives", () => {
+    expect(resolveLicenseEnforcement({})).toBe("forgiving");
+  });
+
+  test("the exact word closes the gate", () => {
+    expect(
+      resolveLicenseEnforcement({ [LICENSE_ENFORCEMENT_ENV]: "strict" }),
+    ).toBe("strict");
+  });
+
+  test.each(["Strict", "STRICT", " strict", "strict ", "1", "true", "yes", ""])(
+    "%o is not the word, and forgives",
+    (value) => {
+      expect(
+        resolveLicenseEnforcement({ [LICENSE_ENFORCEMENT_ENV]: value }),
+      ).toBe("forgiving");
+    },
+  );
+});
+
+describe("resolveUnknownKey", () => {
+  test("forgiving lets an unknown key through, and names it", () => {
+    expect(resolveUnknownKey("forgiving")).toEqual({
+      entitled: true,
+      reason: "unregistered",
+      coveredUntil: null,
+    });
+  });
+
+  test("strict refuses it", () => {
+    expect(resolveUnknownKey("strict")).toEqual({
+      entitled: false,
+      reason: "unknown_key",
+      coveredUntil: null,
+    });
+  });
+
+  /* The two are not the same thing and must not read the same to the client:
+     « we have no contract for you » is our bookkeeping, « we do not know this
+     key » is theirs. */
+  test("the two refusals say different things", () => {
+    expect(entitlementMessage(resolveUnknownKey("strict"))).not.toBe(
+      entitlementMessage(resolveUnknownKey("forgiving")),
+    );
   });
 });
 
@@ -224,6 +322,79 @@ describe("byLicenseKey", () => {
       licenseKey: "bys_test",
     });
     expect(result?.entitled).toBe(true);
+  });
+
+  /* The deployment's OWN contract decides when we know which one it is. Without
+     the link, a customer running several restaurants is entitled on all of them
+     by whichever contract is healthiest — including the one they cancelled. */
+  test("a linked order beats the customer's other, healthier contracts", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const lapsed = await ctx.db.insert("orders", order());
+      const paying = await ctx.db.insert("orders", order());
+      await ctx.db.insert("saDeployments", deployment({ orderId: lapsed }));
+      await ctx.db.insert(
+        "subscriptions",
+        subscription(lapsed, {
+          stripeSubscriptionId: "sub_lapsed",
+          status: "canceled",
+          currentPeriodEnd: Date.now() - 60 * DAY,
+        }),
+      );
+      await ctx.db.insert(
+        "subscriptions",
+        subscription(paying, { stripeSubscriptionId: "sub_other_site" }),
+      );
+    });
+
+    const result = await t.query(internal.maintenance.byLicenseKey, {
+      licenseKey: "bys_test",
+    });
+
+    expect(result?.entitled).toBe(false);
+    expect(result?.reason).toBe("cancelled");
+  });
+
+  /* An entitlement read must never throw: an uncaught error is an HTTP 500, and
+     the client's update script reads any non-2xx as « API unreachable » and
+     updates anyway. `subscriptions.create` refuses a second row per order since
+     #343, but orders that predate it still carry one, and a read that throws on
+     them turns a refusal into a free pass. */
+  test("duplicate subscriptions on one order refuse instead of throwing", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const orderId = await ctx.db.insert("orders", order());
+      await ctx.db.insert("saDeployments", deployment({ orderId }));
+      const lapsed = {
+        status: "canceled" as const,
+        currentPeriodEnd: Date.now() - 60 * DAY,
+      };
+      await ctx.db.insert("subscriptions", subscription(orderId, lapsed));
+      await ctx.db.insert("subscriptions", subscription(orderId, lapsed));
+    });
+
+    const result = await t.query(internal.maintenance.byLicenseKey, {
+      licenseKey: "bys_test",
+    });
+
+    expect(result?.entitled).toBe(false);
+  });
+
+  /* Same shape, on the deployments side: a duplicated key answers rather than
+     crashing. It should not happen — every key is a fresh UUID — but the cost
+     of being wrong about that is a gate that opens. */
+  test("two deployments sharing a key still answer", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("saDeployments", deployment());
+      await ctx.db.insert("saDeployments", deployment({ name: "clone" }));
+    });
+
+    const result = await t.query(internal.maintenance.byLicenseKey, {
+      licenseKey: "bys_test",
+    });
+
+    expect(result).not.toBeNull();
   });
 
   test("a deployment with no subscription at all is let through", async () => {

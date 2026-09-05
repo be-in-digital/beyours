@@ -65,8 +65,12 @@ production callback (same path, prod Convex site URL):
 https://<prod-convex-deployment>.convex.site/connect/uber-eats/callback
 ```
 
-(On the test app "Base Theme" this is
-`https://reliable-parrot-452.convex.site/connect/uber-eats/callback`.)
+(On the test app "Base Theme" this was
+`https://reliable-parrot-452.convex.site/connect/uber-eats/callback` —
+`reliable-parrot-452` is a personal dev deployment left on the old `momoseck8`
+team since the 2026-09-01 cutover. It still answers `200` and serves nothing, so
+re-point the test app before trusting a test flow through it. Deployment names:
+[README → Convex deployments](../README.md#convex-deployments).)
 
 ## 3. Deploy
 
