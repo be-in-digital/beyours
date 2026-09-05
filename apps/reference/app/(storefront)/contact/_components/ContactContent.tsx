@@ -110,7 +110,7 @@ export default function ContactPage() {
                         {heroBadge}
                     </Badge>
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[0.9] tracking-tighter mb-8 whitespace-pre-line">
-                        {parseColoredText(heroTitle, "text-orange-500 italic")}
+                        {parseColoredText(heroTitle, "text-orange-600 dark:text-orange-400 italic")}
                     </h1>
                     <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed font-medium">
                         {heroSubtitle}
@@ -168,7 +168,7 @@ export default function ContactPage() {
                                 <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                         <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block" htmlFor="contact-name">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 block" htmlFor="contact-name">
                                                 Nom complet
                                             </label>
                                             <input
@@ -177,11 +177,11 @@ export default function ContactPage() {
                                                 type="text"
                                                 required
                                                 placeholder="Votre nom"
-                                                className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
+                                                className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-500 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block" htmlFor="contact-email">
+                                            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 block" htmlFor="contact-email">
                                                 Email
                                             </label>
                                             <input
@@ -190,12 +190,12 @@ export default function ContactPage() {
                                                 type="email"
                                                 required
                                                 placeholder="votre@email.com"
-                                                className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
+                                                className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-500 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block" htmlFor="contact-phone">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 block" htmlFor="contact-phone">
                                             Téléphone (optionnel)
                                         </label>
                                         <input
@@ -203,11 +203,11 @@ export default function ContactPage() {
                                             id="contact-phone"
                                             type="tel"
                                             placeholder="+33 6 00 00 00 00"
-                                            className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
+                                            className="w-full h-14 px-5 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-500 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block" htmlFor="contact-subject">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 block" htmlFor="contact-subject">
                                             Sujet
                                         </label>
                                         <select
@@ -225,7 +225,7 @@ export default function ContactPage() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 block" htmlFor="contact-message">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2 block" htmlFor="contact-message">
                                             Message
                                         </label>
                                         <textarea
@@ -234,7 +234,7 @@ export default function ContactPage() {
                                             required
                                             rows={5}
                                             placeholder="Comment pouvons-nous vous aider ?"
-                                            className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-300 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors resize-none"
+                                            className="w-full px-5 py-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-100 dark:border-zinc-700 font-bold text-sm placeholder:text-zinc-500 dark:placeholder:text-zinc-600 outline-none focus:border-[#0D5C3F] dark:focus:border-emerald-500 transition-colors resize-none"
                                         />
                                     </div>
                                     <Button

@@ -4,8 +4,53 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
+
+/**
+ * The shape an address has to have before it is allowed onto a mailing list.
+ *
+ * Deliberately the same expression `parseSubscriberCsv` applies to an imported
+ * row. A CSV import already refused `pas-un-email`; `create` — which every
+ * storefront signup goes through — accepted it, wrote it, and told the visitor
+ * to check their inbox. The row was then unmailable in the one way that costs
+ * money: SES bounces it, the bounce counts towards the 5% ratio AWS suspends an
+ * account over, and the restaurant loses its transactional mail along with its
+ * marketing.
+ *
+ * Not a full RFC 5322 parser, and not trying to be — that grammar admits
+ * addresses no mail provider accepts. This rejects what is obviously not an
+ * address, which is what a signup form is for.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Normalise a submitted address, or reject it.
+ *
+ * Trimming is part of the check rather than something the caller is trusted to
+ * have done: a trailing space arrives from every copy-paste, and an untrimmed
+ * address stored alongside its trimmed twin is two rows for one person, only
+ * one of which any lookup will ever find.
+ */
+export function normalizeSubscriberEmail(raw: string): string | null {
+  const email = raw.trim().toLowerCase()
+  return EMAIL_SHAPE.test(email) ? email : null
+}
+
+/**
+ * The two ways a signup is refused, as codes a screen can switch on.
+ *
+ * `ConvexError` rather than a plain `Error` for the reason `lib/convex-error.ts`
+ * documents: Convex redacts a thrown message in production and the browser
+ * receives "Server Error". A footer that cannot tell "you are already on the
+ * list" from "the write failed" has to hedge — which is what it did, telling
+ * everyone "Cet email est déjà inscrit, ou une erreur est survenue". `data`
+ * survives the redaction, so each case can be answered with the truth.
+ */
+export const SUBSCRIBE_REFUSALS = {
+  invalidEmail: "invalid_email",
+  alreadySubscribed: "already_subscribed",
+} as const
 
 const statusValidator = v.union(
   v.literal("pending"),
@@ -151,12 +196,21 @@ export const create = {
     consentSource: v.optional(v.string()),
   },
   handler: async (ctx: any, args: any) => {
-    const email = args.email.toLowerCase()
-
     assertFieldLengths({
       email: args.email,
       name: args.firstName,
     })
+
+    // Before the rate limit, because a malformed address is not an attempt at
+    // anything — spending one of the visitor's five hourly signups on their
+    // typo would lock them out of the correction.
+    const email = normalizeSubscriberEmail(args.email)
+    if (email === null) {
+      throw new ConvexError({
+        code: SUBSCRIBE_REFUSALS.invalidEmail,
+        message: "Adresse email invalide",
+      })
+    }
 
     // Public by necessity — a storefront visitor has no session — so the same
     // two windows the contact form uses apply here. Re-subscribing is normal;
@@ -199,7 +253,10 @@ export const create = {
       // Every other status is a decision already taken — confirmed,
       // unsubscribed, bounced or complained — and none of them should be
       // quietly overwritten by anyone who can type the address into a form.
-      throw new Error("Cet email est déjà inscrit")
+      throw new ConvexError({
+        code: SUBSCRIBE_REFUSALS.alreadySubscribed,
+        message: "Cet email est déjà inscrit",
+      })
     }
 
     // Manual source = admin added, skip double opt-in
