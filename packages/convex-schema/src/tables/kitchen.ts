@@ -114,37 +114,3 @@ export const kitchenTicketsTable = defineTable({
   // would make the nightly job walk the establishment list to find the rows it
   // is about to delete anyway.
   .index("by_status_createdAt", ["status", "createdAt"])
-
-/**
- * Printer Settings table — declared for an ESC/POS path that does not exist.
- *
- * Nothing reads this table and nothing writes it. The only reference outside
- * the schema is the delete cascade in `storeCascade.ts`, which removes rows
- * nothing ever creates. What ships instead is browser printing, configured on
- * `stores.printConfig`.
- *
- * Kept rather than dropped because the thermal path is planned (cloud
- * printing — Star CloudPRNT / Epson Server Direct Print), and these fields are
- * roughly the ones it will need. Do not cite it as evidence that printer
- * configuration exists.
- */
-export const printerSettingsTable = defineTable({
-  storeId: v.id("stores"),
-  name: v.string(),
-  type: v.union(v.literal("network"), v.literal("usb"), v.literal("bluetooth")),
-  connectionInfo: v.object({
-    ipAddress: v.optional(v.string()),
-    port: v.optional(v.number()),
-    usbVendorId: v.optional(v.string()),
-    usbProductId: v.optional(v.string()),
-  }),
-  station: v.optional(v.string()),
-  autoPrint: v.boolean(),
-  paperWidth: v.union(v.literal(58), v.literal(80)),
-  isDefault: v.boolean(),
-  isOnline: v.boolean(),
-  lastSeenAt: v.optional(v.number()),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_storeId", ["storeId"])

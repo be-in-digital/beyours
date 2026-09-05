@@ -118,9 +118,11 @@ neither Neon nor Postgres appears anywhere in the codebase.
   no `users` or `sessions` table to query.
 
 ### Kitchen System
-- `kitchenTickets` (auto-print). `printerSettings` is registered but has **zero
-  readers and zero writers** — it belongs to the unbuilt ESC/POS path, not to
-  the printing that ships. Print config lives on `stores.printConfig`.
+- `kitchenTickets` (auto-print). Print config lives on `stores.printConfig`.
+  There is no `printerSettings` table: it was declared for the unbuilt ESC/POS
+  path, never gained a reader or a writer, and has been removed. The thermal
+  path when it comes is cloud printing, whose shape `stores.printConfig`
+  already carries.
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`

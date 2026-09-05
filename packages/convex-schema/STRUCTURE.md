@@ -45,7 +45,6 @@ The complete Convex database schema, with 17 tables:
 **Orders (3 tables)**
 11. `orders` - Orders
 12. `kitchenTickets` - Kitchen tickets
-13. `printerSettings` - Printers
 
 **Payments (1 table)**
 14. `payments` - Multi-provider payments

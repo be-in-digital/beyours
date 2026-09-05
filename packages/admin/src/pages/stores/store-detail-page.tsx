@@ -108,6 +108,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     soundConfig,
     setSoundConfig,
     handleUpdateSounds,
+    displayConfig,
+    setDisplayConfig,
+    handleUpdateDisplay,
     categories,
     orderConfirmation,
     setOrderConfirmation,
@@ -285,6 +288,9 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             stationMapping={stationMapping}
             setStationMapping={setStationMapping}
             handleUpdateStations={handleUpdateStations}
+            displayConfig={displayConfig}
+            setDisplayConfig={setDisplayConfig}
+            handleUpdateDisplay={handleUpdateDisplay}
           />
         </TabsContent>
 

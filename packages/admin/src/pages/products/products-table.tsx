@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { useAdminApi } from "../../hooks/admin-hooks"
 import { formatPrice } from "../../lib/formatters"
+import { convexErrorMessage } from "../../lib/convex-error"
 import {
   Table,
   TableBody,
@@ -126,7 +127,11 @@ export function ProductsTable({
       setDeleteDialogOpen(false)
       setProductToDelete(null)
     } catch (error) {
-      toast.error("Échec de la suppression du produit")
+      // The refusal names the formule, the promotion or the prize that still
+      // points at this dish, and that sentence is the whole point of refusing.
+      // A generic "deletion failed" toast threw it away and left the owner
+      // clicking the same button again.
+      toast.error(convexErrorMessage(error, "Échec de la suppression du produit"))
       console.error(error)
     }
   }

@@ -1701,8 +1701,14 @@ was proven red against the unfixed code.
   `BYPASS_ROUTES`. Same shape as the bug that was fixed.
 - [ ] **`stores.getById` is public and returns drafts** — address, contact, `orderMode`
   and `overrides` of an unpublished establishment.
-- [ ] **Three dead settings**: `orderConfirmation`, `soundConfig`, `displayConfig` —
+- [x] **Three dead settings**: `orderConfirmation`, `soundConfig`, `displayConfig` —
   mutations and audit entries wired, with no reader or writer.
+  *Wrong on all three, and measurement said so. `soundConfig` is read by
+  `KitchenContent` and written by the kitchen tab since #243; `orderConfirmation`
+  is read by `releaseToKitchen` and written since #164; `displayConfig` is read by
+  `kitchenTickets.getForDisplay` on the customer-facing dining-room screen and had
+  been the whole time — 74de4e9 deleted its mutation on this card, leaving a live
+  setting no owner could change. Writer, schema type and editor restored in Q-2.*
 
 ---
 

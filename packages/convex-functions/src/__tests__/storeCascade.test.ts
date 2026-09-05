@@ -5,48 +5,189 @@ import {
   CASCADE_BATCH_SIZE,
   deleteStoreDependents,
   detachStoreFromProfiles,
+  detachStoreFromBlogAutoConfigs,
 } from "../storeCascade"
 
 /**
- * The cascade's table list, against the schema itself (#169).
+ * The cascade's coverage, against the schema itself (#169).
  *
- * `stores.remove` deleted the store row alone, leaving forty-two `storeId`
- * columns pointing at a document that no longer existed. `v.id("stores")`
+ * `stores.remove` deleted the store row alone, leaving every column that points
+ * at `stores` aimed at a document that no longer existed. `v.id("stores")`
  * validates how an id is encoded, not that it resolves, so nothing complained.
  *
  * A hand-written list of tables rots the moment someone adds a table. This
  * reads the schema and compares, so the next store-scoped table fails here
  * rather than leaving orphans in production.
+ *
+ * It used to read the schema by the field *name* `storeId`, which is not the
+ * same question. Three references were invisible to it — `userProfiles.storeIds`,
+ * `blogAutoConfig.targetStoreIds` and `systemAuditLog.targetStoreId` — and, more
+ * to the point, so was the next column somebody would call `restaurantId` or
+ * `targetStoreId`. The walk below goes by TYPE: it descends the serialised
+ * validator and reports every path that reaches `v.id("stores")`, however it is
+ * nested and whatever it is called.
  */
 
-/**
- * Every table in the schema that carries a `storeId` column.
- *
- * Read off the validator rather than listed here, so the check cannot agree
- * with itself. Forty-two tables at the time of writing, `teamMembers`'
- * optional column included.
- */
-function storeScopedTablesInSchema(): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tables = (schema as any).tables as Record<string, any>
-  return Object.entries(tables)
-    .filter(([, table]) => {
-      const storeId = table.validator?.fields?.storeId
-      // `v.id("stores")`, optional or not — the target table name is in the
-      // serialised form either way.
-      return !!storeId && JSON.stringify(storeId.json ?? {}).includes("stores")
-    })
-    .map(([name]) => name)
+/** One path in the schema that holds a reference to `stores`. */
+interface StoreReference {
+  table: string
+  /** Dotted path to the reference; `[]` marks an array hop. */
+  path: string
 }
 
+/**
+ * Every path in the schema that reaches `v.id("stores")`.
+ *
+ * Walks `validator.json` rather than the live validator objects: the two use
+ * different keys for the same thing (`type` vs `kind`), and reading `.type` off
+ * a live node silently yields `undefined` for every field — a walk that finds
+ * nothing and a test that passes.
+ */
+function storeReferencesInSchema(): StoreReference[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tables = (schema as any).tables as Record<string, any>
+  const found: StoreReference[] = []
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const walk = (node: any, table: string, path: string): void => {
+    if (!node || typeof node !== "object") return
+
+    switch (node.type) {
+      case "id":
+        if (node.tableName === "stores") found.push({ table, path })
+        return
+      case "object":
+        // `value` maps a field name to `{ fieldType, optional }`.
+        for (const [name, field] of Object.entries(node.value ?? {})) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          walk((field as any)?.fieldType, table, path ? `${path}.${name}` : name)
+        }
+        return
+      case "array":
+        // `value` is the element node, unwrapped.
+        walk(node.value, table, `${path}[]`)
+        return
+      case "union":
+        // `value` is an array of unwrapped member nodes.
+        for (const member of node.value ?? []) walk(member, table, path)
+        return
+      case "record":
+        // `keys` is unwrapped; `values` is wrapped like an object field.
+        walk(node.keys, table, `${path}{key}`)
+        walk(node.values?.fieldType, table, `${path}{}`)
+        return
+      default:
+        return
+    }
+  }
+
+  for (const [table, definition] of Object.entries(tables)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    walk((definition as any).validator?.json, table, "")
+  }
+
+  return found
+}
+
+/**
+ * References that are deliberately NOT resolved by deleting the row.
+ *
+ * Every entry names the thing that handles it, so an id cannot be parked here
+ * to quiet the test. A reference that is neither swept by `STORE_SCOPED_TABLES`
+ * nor listed here fails, which is the whole point: the next `restaurantId`
+ * column has to be a decision somebody made, not an omission nobody saw.
+ */
+const DETACHED_STORE_REFERENCES: ReadonlyArray<
+  StoreReference & { handledBy: string }
+> = [
+  {
+    table: "userProfiles",
+    path: "storeIds[]",
+    // Deleting the profile would delete the person. The id is taken out of the
+    // list instead, or an owner loses access to the locations they still have.
+    handledBy: "detachStoreFromProfiles",
+  },
+  {
+    table: "blogAutoConfig",
+    path: "targetStoreIds[]",
+    // The config belongs to one establishment and fans articles out to others.
+    // Its own row goes with its own store; the fan-out ids have to be detached
+    // one by one, from configs that belong to establishments still standing.
+    handledBy: "detachStoreFromBlogAutoConfigs",
+  },
+  {
+    table: "systemAuditLog",
+    path: "targetStoreId",
+    // Dangling on purpose. The `store_deleted` entry is written by `remove`
+    // itself and points at the store that was just deleted; resolving it would
+    // erase the record of the deletion.
+    handledBy: "nothing — the audit trail outlives its subject by design",
+  },
+]
+
+describe("store references in the schema", () => {
+  it("is a walk that actually finds things", () => {
+    // A silent zero here would make every assertion below pass by finding
+    // nothing — which is exactly how the name-matching version stayed green
+    // while three references went unseen.
+    const references = storeReferencesInSchema()
+    expect(references.length).toBeGreaterThan(20)
+    expect(references.some((r) => r.table === "products" && r.path === "storeId")).toBe(true)
+  })
+
+  it("sees references the old name filter could not", () => {
+    // The regression this rewrite exists to prevent. Each of these is a
+    // `v.id("stores")` that is not spelled `storeId`.
+    const references = storeReferencesInSchema()
+    const has = (table: string, path: string) =>
+      references.some((r) => r.table === table && r.path === path)
+
+    expect(has("userProfiles", "storeIds[]")).toBe(true)
+    expect(has("blogAutoConfig", "targetStoreIds[]")).toBe(true)
+    expect(has("systemAuditLog", "targetStoreId")).toBe(true)
+  })
+
+  it("resolves every reference by deleting the row or by detaching it", () => {
+    const swept = new Set(STORE_SCOPED_TABLES.map((entry) => entry.table))
+    const detached = new Set(
+      DETACHED_STORE_REFERENCES.map((entry) => `${entry.table}.${entry.path}`)
+    )
+
+    const unhandled = storeReferencesInSchema().filter((reference) => {
+      // The table's own `storeId` column: the row goes with the store.
+      if (reference.path === "storeId" && swept.has(reference.table)) return false
+      return !detached.has(`${reference.table}.${reference.path}`)
+    })
+
+    expect(unhandled).toEqual([])
+  })
+
+  it("does not carry a detach entry for a reference the schema no longer has", () => {
+    // The mirror of the check above: an entry left behind after a column is
+    // renamed or dropped would blind the guard to whatever replaced it.
+    const references = new Set(
+      storeReferencesInSchema().map((r) => `${r.table}.${r.path}`)
+    )
+    const stale = DETACHED_STORE_REFERENCES.filter(
+      (entry) => !references.has(`${entry.table}.${entry.path}`)
+    )
+
+    expect(stale).toEqual([])
+  })
+})
+
 describe("STORE_SCOPED_TABLES", () => {
-  it("covers every table in the schema that carries a storeId", () => {
-    const inSchema = storeScopedTablesInSchema()
-    // A silent zero here would make this test pass by finding nothing.
-    expect(inSchema.length).toBeGreaterThan(20)
+  it("covers every table whose own storeId column makes it store-scoped", () => {
+    const owned = storeReferencesInSchema()
+      .filter((reference) => reference.path === "storeId")
+      .map((reference) => reference.table)
+    expect(owned.length).toBeGreaterThan(20)
 
     const declared = new Set(STORE_SCOPED_TABLES.map((entry) => entry.table))
-    const missing = inSchema.filter((name) => !declared.has(name))
+    const detachedTables = new Set(DETACHED_STORE_REFERENCES.map((entry) => entry.table))
+    const missing = owned.filter(
+      (name) => !declared.has(name) && !detachedTables.has(name)
+    )
 
     expect(missing).toEqual([])
   })
@@ -250,5 +391,45 @@ describe("detachStoreFromProfiles", () => {
     const { ctx } = createMockDb({ userProfiles: [{ userId: "ana" }] })
 
     await expect(detachStoreFromProfiles(ctx, "s1")).resolves.toBe(0)
+  })
+})
+
+describe("detachStoreFromBlogAutoConfigs", () => {
+  it("takes the id out of every config that fans out to it", async () => {
+    // The config's OWN store is swept by `by_storeId` like any other row. This
+    // is the other reference: the establishments it publishes into. Left
+    // behind, the next generation run writes an article against a restaurant
+    // that is not there.
+    const { ctx, tables } = createMockDb({
+      blogAutoConfig: [
+        { storeId: "s9", targetStoreIds: ["s1", "s2"] },
+        { storeId: "s8", targetStoreIds: ["s1"] },
+        { storeId: "s7", targetStoreIds: ["s3"] },
+      ],
+    })
+
+    const touched = await detachStoreFromBlogAutoConfigs(ctx, "s1")
+
+    expect(touched).toBe(2)
+    expect(tables.blogAutoConfig[0]?.targetStoreIds).toEqual(["s2"])
+    expect(tables.blogAutoConfig[1]?.targetStoreIds).toEqual([])
+    expect(tables.blogAutoConfig[2]?.targetStoreIds).toEqual(["s3"])
+  })
+
+  it("does not rewrite a config that never targeted the store", async () => {
+    const { ctx } = createMockDb({
+      blogAutoConfig: [{ storeId: "s7", targetStoreIds: ["s3"] }],
+    })
+
+    expect(await detachStoreFromBlogAutoConfigs(ctx, "s1")).toBe(0)
+    expect(ctx.db.patch).not.toHaveBeenCalled()
+  })
+
+  it("survives a config with no targetStoreIds at all", async () => {
+    // The column is optional, and most configs publish only to their own
+    // establishment.
+    const { ctx } = createMockDb({ blogAutoConfig: [{ storeId: "s7" }] })
+
+    await expect(detachStoreFromBlogAutoConfigs(ctx, "s1")).resolves.toBe(0)
   })
 })
