@@ -31,6 +31,9 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist node_modules"
   },
+  "dependencies": {
+    "@be-in-digital/core": "workspace:^"
+  },
   "devDependencies": {
     "@types/node": "^20.19.39",
     "tsup": "^8.5.1",

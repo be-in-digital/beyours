@@ -91,6 +91,42 @@ webhook v0.1 hardening + `orders.failure` handling, OAuth provisioning.
   received + accept/ready flow → 200s.
 - Verify webhook signature uses the PROD webhook secret.
 
+## 5. Confirm the allergen enum — OUTSTANDING, and not verifiable from CI
+
+`buildUberEatsMenuPayload` now sends `nutritional_info.allergens`, mapped from
+the canonical vocabulary by `UBER_EATS_ALLERGEN_TYPE` in
+`packages/core/src/allergens/index.ts`. Menus synced before that carried no
+allergen declaration at all, so this is new data on the wire.
+
+**The enum spellings in that table are unverified.** `developer.uber.com` is
+blocked by the CI egress proxy and Uber does not publish the allergen enum
+outside the partner portal. The values used are Uber's own allergen vocabulary
+as far as it is publicly documented — `MILK` rather than `DAIRY`, `TREE_NUTS`
+rather than `NUTS` — but `CRUSTACEANS`, `MOLLUSCS`, `LUPIN` and `SULPHITES`
+are EU-specific and least certain.
+
+Before the first production menu push:
+
+1. Open the Menu API reference in the partner portal and read the accepted
+   values for `nutritional_info.allergens[].type`.
+2. Correct `UBER_EATS_ALLERGEN_TYPE` — one table, and every caller goes
+   through it. `UBER_EATS_ALLERGEN_TYPES` is the union that types it, so a
+   value that is not a declared member will not compile.
+3. Push a menu for one store and read back `GET /eats/stores/{id}/menu` to
+   confirm the allergens survived the round trip rather than being dropped as
+   unrecognised.
+
+A rejected enum member is the good failure — Uber refuses the upload and the
+sync reports an error. The bad one is Uber accepting the payload and silently
+dropping an allergen it did not recognise, which looks identical to success
+and leaves a dish showing no declaration. Step 3 is what distinguishes them,
+so do not skip it.
+
+Related: values the canonical vocabulary itself could not map are never sent
+(there is no honest enum member for them) and are logged by
+`collectUnsyncableAllergens` at sync time, naming the product. Watch the
+Convex logs on the first sync and get those renamed in the dashboard.
+
 ## Reference
 
 - Endpoint map + bodies: see `.context/uber-eats-validation-evidence.md`

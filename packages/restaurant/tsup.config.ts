@@ -19,4 +19,11 @@ export default defineConfig({
   // consumer mixing the root and ./stores gets two independent carts.
   splitting: true,
   external: ['react', 'react-dom', '@be-in-digital/core'],
+  // `@be-in-digital/core/allergens` is a raw-source subpath export — a `.ts`
+  // file. Left external, `dist` would carry a runtime `require` for TypeScript
+  // that a plain Node consumer could not load, and `apps/reference` does not
+  // list the engine packages in `transpilePackages`. Bundling this one subpath
+  // keeps the rest of core external, as it has to be: core's root entry pulls
+  // in the AWS SDK. Same reasoning as `packages/ui/tsup.config.ts`.
+  noExternal: ['@be-in-digital/core/allergens'],
 })

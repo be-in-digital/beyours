@@ -160,7 +160,17 @@ export function TicketCard({ ticket }: TicketCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg">#{ticket.orderNumber}</CardTitle>
+            <CardTitle className="text-lg">
+              #{ticket.orderNumber}
+              {/*
+                The table sits next to the order number, not in a badge row: on
+                a kanban column read from across a kitchen it is the field that
+                decides where the plate goes.
+              */}
+              {ticket.tableNumber && (
+                <span className="ml-2 font-bold">Table {ticket.tableNumber}</span>
+              )}
+            </CardTitle>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline" className="text-xs">
                 {ORDER_TYPE_LABELS[ticket.orderType]}

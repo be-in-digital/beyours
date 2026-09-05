@@ -54,6 +54,8 @@ export type KitchenTicket = {
   estimatedReadyAt?: number
   customerName?: string
   customerPhone?: string
+  /** Dine-in only: the table the order is served to. */
+  tableNumber?: string
   deliveryNotes?: string
   allergens?: string[]
   printStatus: TicketPrintStatus

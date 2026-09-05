@@ -155,6 +155,7 @@ export function KitchenPrintTrigger({
             items={ticket.items}
             customerName={ticket.customerName}
             customerPhone={ticket.customerPhone}
+            tableNumber={ticket.tableNumber}
             deliveryNotes={ticket.deliveryNotes}
             allergens={ticket.allergens}
             estimatedPrepTime={ticket.estimatedPrepTime}

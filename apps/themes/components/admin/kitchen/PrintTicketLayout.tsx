@@ -1,5 +1,7 @@
 "use client"
 
+import { resolveAllergens } from "@be-in-digital/core/allergens"
+
 interface PrintTicketItem {
   productName: string
   quantity: number
@@ -15,7 +17,14 @@ interface PrintTicketLayoutProps {
   items: PrintTicketItem[]
   customerName?: string
   customerPhone?: string
+  /** Dine-in only. The line that tells the cook where the plate goes. */
+  tableNumber?: string
   deliveryNotes?: string
+  /**
+   * Raw values out of `kitchenTickets.allergens`, exactly as the owner stored
+   * them. Resolved here rather than upstream so the ticket can distinguish a
+   * name the vocabulary recognised from one it did not.
+   */
   allergens?: string[]
   estimatedPrepTime?: number
   trackingToken?: string
@@ -50,6 +59,7 @@ export function PrintTicketLayout({
   items,
   customerName,
   customerPhone,
+  tableNumber,
   deliveryNotes,
   allergens,
   estimatedPrepTime,
@@ -58,6 +68,14 @@ export function PrintTicketLayout({
   paperSize,
 }: PrintTicketLayoutProps) {
   const is58mm = paperSize === "58mm"
+
+  // One resolution, the same one the dish page and the Uber Eats sync use.
+  // `resolveAllergens` deduplicates, so a product tagged both `lactose` and
+  // `lait` prints "Lait" once instead of twice.
+  const resolved = resolveAllergens(allergens)
+  const declaredAllergens = resolved.filter((a) => a.kind === "allergen")
+  const unverifiedAllergens = resolved.filter((a) => a.kind === "unverified")
+  const diets = resolved.filter((a) => a.kind === "diet")
 
   return (
     <div
@@ -100,6 +118,26 @@ export function PrintTicketLayout({
         <div style={{ textAlign: "center", marginTop: "1mm" }}>
           {ORDER_TYPE_LABELS[orderType]} | {SOURCE_LABELS[source]}
         </div>
+        {/*
+          The table, as large as the order number. A cook reads this slip at
+          arm's length on a pass; the whole point of a dine-in ticket is
+          knowing which table the plate goes to, and it competes with the
+          order number for attention rather than sitting in the customer
+          block. Printed whenever it is set — an order that has a table has
+          one because it is served at one.
+        */}
+        {tableNumber && (
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "1mm",
+              fontWeight: "bold",
+              fontSize: is58mm ? "16px" : "20px",
+            }}
+          >
+            TABLE {tableNumber}
+          </div>
+        )}
       </div>
 
       {/* Customer info */}
@@ -140,10 +178,39 @@ export function PrintTicketLayout({
       )}
 
       {/* Allergens */}
-      {allergens && allergens.length > 0 && (
+      {(declaredAllergens.length > 0 || unverifiedAllergens.length > 0 || diets.length > 0) && (
         <div style={{ borderTop: "1px dashed #000", paddingTop: "2mm", marginBottom: "2mm" }}>
-          <div style={{ fontWeight: "bold" }}>ALLERGÈNES :</div>
-          <div>{allergens.join(", ")}</div>
+          {declaredAllergens.length > 0 && (
+            <>
+              <div style={{ fontWeight: "bold" }}>ALLERGÈNES :</div>
+              <div>{declaredAllergens.map((a) => a.label).join(", ")}</div>
+            </>
+          )}
+          {/*
+            A name the vocabulary did not recognise is printed, never dropped —
+            it may be the one that matters. But it is printed apart from the
+            recognised ones and in the owner's own words, because the cook has
+            to treat it differently: nothing has checked what it means. Folding
+            it into the line above would let "sans gluten" read as a gluten
+            declaration.
+          */}
+          {unverifiedAllergens.length > 0 && (
+            <div style={{ marginTop: declaredAllergens.length > 0 ? "1mm" : 0 }}>
+              <div style={{ fontWeight: "bold" }}>MENTIONS À VÉRIFIER :</div>
+              <div>{unverifiedAllergens.map((a) => a.label).join(", ")}</div>
+            </div>
+          )}
+          {/*
+            Dietary markers are prep information, not a disclosure. They used to
+            print under the allergen heading, which told a cook that "Végan" was
+            an allergen.
+          */}
+          {diets.length > 0 && (
+            <div style={{ marginTop: "1mm" }}>
+              <div style={{ fontWeight: "bold" }}>RÉGIME :</div>
+              <div>{diets.map((a) => a.label).join(", ")}</div>
+            </div>
+          )}
         </div>
       )}
 
