@@ -43,11 +43,20 @@ site's two are singular.
 
 ## Hosts
 
-| | Today | After the cutover |
+Corrected 5 Sep 2026 to agree with the banner at the top of this file, which it
+contradicted — the table below was read on its own and cost an hour. The
+cutover happened as a **transfer**, so the site's host never changed; the
+"after the cutover" column was a plan, not an outcome.
+
+| | Host today | Formerly, and still answering |
 |---|---|---|
-| Commercial site (`apps/site`) | `https://fearless-poodle-133.convex.site` | `https://dusty-nightingale-945.convex.site` |
-| Engine (`apps/reference`) | `https://robust-elephant-263.convex.site` | `https://optimistic-swordfish-937.convex.site` |
+| Commercial site (`apps/site`) | `https://famous-wildcat-229.convex.site` | `fearless-poodle-133` — serves nothing |
+| Engine (`apps/reference`) | `https://optimistic-swordfish-937.convex.site` | `robust-elephant-263` — serves nothing |
 | A client site | its own `<deployment>.convex.site` | unchanged unless that client moves |
+
+`dusty-nightingale-945` is an empty, unused project — it is the one name here
+that answers `404`. Authoritative inventory: `README.md` → **Convex
+deployments**.
 
 ---
 
@@ -175,10 +184,10 @@ Found while compiling this. Worth correcting alongside the migration.
 | `apps/docs/guides/payments.md:74` | points at `app/api/webhooks/stripe/route.ts` as the handler |
 | `apps/docs/packages/integrations.md:63` | `app.post("/api/webhooks/uber-eats", …)` |
 | `apps/site/MISE_EN_PROD.md:56-60` | **false**: claims a Yousign webhook signature is unverified at `convex/http.ts:476`. There is no Yousign route; Yousign is gone |
-| `tasks/uber-eats-go-live-runbook.md:65,69` | hard-codes `reliable-parrot-452.convex.site/connect/uber-eats/callback` |
+| `tasks/uber-eats-go-live-runbook.md:65,69` | hard-codes `reliable-parrot-452.convex.site/connect/uber-eats/callback` — annotated 5 Sep 2026 as a dead personal dev deployment; the Uber test app still points at it |
 | `tasks/clickup-technique-cards.md:225-228,313` | same Uber URL, plus a stripe-bid URL |
-| `apps/site/.env.production.example:37,42` | the old prod host, both `.cloud` and `.site` |
-| `apps/site/scripts/check-prod-bundle.mjs:26` | hard-codes `fearless-poodle-133`; **the cutover fails this check until updated** |
+| ~~`apps/site/.env.production.example:37,42`~~ | **fixed** — both now name `famous-wildcat-229` (`:47`, `:51`). Verified 5 Sep 2026 |
+| ~~`apps/site/scripts/check-prod-bundle.mjs:26`~~ | **fixed** — `ALLOWED_CONVEX_SUBDOMAIN` is `famous-wildcat-229`. Verified 5 Sep 2026; the row above it claimed the check would fail the cutover, and it no longer does |
 | `tasks/convex-account-cutover-runbook.md` §3 | covers Stripe, Uber Eats, Deliveroo and auth origins — **omits Uber Direct, the SNS re-subscription, SumUp, and the client-fleet `licenseApi` sentinels** |
 
 ## Order
@@ -193,7 +202,7 @@ Found while compiling this. Worth correcting alongside the migration.
 
 ## Sign-off
 
-- [x] **Commercial site: Stripe endpoint created 2026-08-29** — `we_1U9akpA63ZMDexsmVWHwZShf`, on account **Be Yours · sandbox** (`acct_1TzapYA63ZMDexsm`), test mode, the 8 events below, pointing at `dusty-nightingale-945`. `STRIPE_WEBHOOK_SECRET` pushed to that deployment. Verified: a signed `checkout.session.completed` left `pending_webhooks=0`, and an unsigned POST answers `400 Missing stripe-signature header` — the route is live and verifying. `STRIPE_SECRET_KEY` set the same day. End-to-end run observed in the deployment logs: `H(POST /webhooks/stripe)` → `stripeEvents:getByEventId` → `stripeEvents:create` → `orders:getByStripeSessionId` → `stripeEvents:markProcessed`, returning 2xx in 66 ms. The `No order found for session cs_test_…` line is correct for a synthetic `stripe trigger` event, which has no matching order — and the handler still records it processed, so Stripe does not retry. Note the key is **not** what this path needed: it runs only queries and mutations, no action. It is `convex/stripe.ts` and `convex/stripeConnect.ts` that call the Stripe API.
+- [x] **Commercial site: Stripe endpoint created 2026-08-29** — ⚠️ **points at the wrong deployment since the 2026-09-01 transfer.** It was created against `dusty-nightingale-945`, which the cutover plan expected to become the site's production; the transfer kept `famous-wildcat-229` instead, and `dusty-nightingale-945` is now an empty, unused project. Everything verified below was verified there, so it says nothing about the endpoint beyours.fr actually needs. **Re-point this endpoint at `famous-wildcat-229.convex.site/webhooks/stripe` in the Stripe dashboard** (test mode, sandbox account — no live revenue depends on it, which is why this is a chore and not an incident). Original record: `we_1U9akpA63ZMDexsmVWHwZShf`, on account **Be Yours · sandbox** (`acct_1TzapYA63ZMDexsm`), test mode, the 8 events below, pointing at `dusty-nightingale-945`. `STRIPE_WEBHOOK_SECRET` pushed to that deployment. Verified: a signed `checkout.session.completed` left `pending_webhooks=0`, and an unsigned POST answers `400 Missing stripe-signature header` — the route is live and verifying. `STRIPE_SECRET_KEY` set the same day. End-to-end run observed in the deployment logs: `H(POST /webhooks/stripe)` → `stripeEvents:getByEventId` → `stripeEvents:create` → `orders:getByStripeSessionId` → `stripeEvents:markProcessed`, returning 2xx in 66 ms. The `No order found for session cs_test_…` line is correct for a synthetic `stripe trigger` event, which has no matching order — and the handler still records it processed, so Stripe does not retry. Note the key is **not** what this path needed: it runs only queries and mutations, no action. It is `convex/stripe.ts` and `convex/stripeConnect.ts` that call the Stripe API.
 - [ ] Decision recorded on `/maintenance/status`: rewrite each client's sentinel, or keep the old deployment answering
 - [~] **Engine test bench (`optimistic-swordfish-937`) — the two Stripe endpoints created 2026-08-29**, on the same sandbox account, test mode:
       `we_1U9bAyA63ZMDexsmp0Qupkwt` → `/webhooks/stripe`, one event (`checkout.session.completed` — the only one `stripeWebhook.ts` acts on), and

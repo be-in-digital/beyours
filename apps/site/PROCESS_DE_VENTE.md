@@ -82,10 +82,23 @@ This is the 100% manual step. The runbook is already displayed in the console
 6. **Smoke tests**: one purchase + one order end to end under real conditions.
 7. **DNS cutover**: the final domain points at the instance, certificate active.
 8. **Register the customer in the fleet**: `/admin/parametres` → « Provisionner »
-   (customer email, domain, plan, region). **Fill in the `orderId`** to trace
-   payment → deployment.
+   (customer email, domain, plan, region). **Pick the paid order** in
+   « Commande rattachée » — the form now lists them. It is not only traceability:
+   without the link, this site's maintenance is answered by whichever contract
+   its owner holds is healthiest, so a customer running two restaurants is never
+   refused on the one they stopped paying for.
+9. **Hand the site its licence key**: on the deployment's page, panel
+   **Licence**, copy the `pnpm setup -- --license-key … --license-api …` line and
+   run it in the customer's repo — or add both fields to
+   `.beindigital-site.json` if the site is already initialised. The key is
+   stamped on the deployment automatically; it does nothing until it is in the
+   site, because the update scripts only ask when the sentinel carries one.
+   Verify with `pnpm update:engine --check` in the customer's repo.
+   → `tasks/license-key-registration-runbook.md`
 
-- Exit: instance online, recorded in `saDeployments`, status `live`.
+- Exit: instance online, recorded in `saDeployments`, status `live`, and its
+  update scripts answering with a key we issued — without which the annual
+  maintenance is uncollectable (step 7).
 
 ### 6. Kickoff & onboarding
 **Who**: sales + customer · **Tool**: a meeting (Calendly) + delivery
