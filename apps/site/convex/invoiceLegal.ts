@@ -111,11 +111,19 @@ export function invoiceLegalSettings(buyerType: "business" | "personal"): {
  * régime réel that charges no VAT is billing something it owes the state
  * anyway. Returns the problem to report, or null.
  *
- * Fatal at both ends since the regime was settled (#174). `validateSiteEnv`
- * refuses a deployment whose flags contradict it, and `createCheckoutSession`
- * refuses the sale — an invoice is a legal document, and one stating a VAT
- * position the company does not hold cannot be taken back, while a refused
- * sale can be retried once the env is right.
+ * Fatal at both ends since the regime was settled (#174): `validateSiteEnv`
+ * refuses a deployment whose NEXT_PUBLIC_TVA_ENABLED contradicts the regime or
+ * is missing, and this refuses the sale — an invoice is a legal document, and
+ * one stating a VAT position the company does not hold cannot be taken back,
+ * while a refused sale can be retried once the env is right.
+ *
+ * The two ends read two different envs, and only this one can see
+ * STRIPE_TAX_ENABLED: in production it lives on the Convex deployment, where
+ * `validateSiteEnv` — a Next-side function — has no visibility at all. That is
+ * why absence is the case that matters here. `stripeTaxEnabled()` maps an
+ * unset variable to `false`, so a Convex deployment that never heard of the
+ * flag lands in the `reel && !taxCharged` branch below and is refused, rather
+ * than quietly selling without the VAT it owes.
  *
  * The wording says what to fix, not what to decide: the decision is made, and
  * this text is what an operator reads when a deploy or a sale is turned away.
@@ -141,4 +149,46 @@ export function vatConfigurationProblem(taxCharged: boolean): string | null {
     );
   }
   return null;
+}
+
+/**
+ * Flags a checkout whose displayed total cannot match its invoice.
+ *
+ * The two halves of the VAT configuration live in two different envs and never
+ * met. `STRIPE_TAX_ENABLED` is read here, on the Convex deployment;
+ * `NEXT_PUBLIC_TVA_ENABLED` is read in the browser, out of a bundle frozen at
+ * build time. `vatConfigurationProblem` above measures the Convex half against
+ * the regime and `validateSiteEnv` measures the Next half against the same
+ * regime, so both are anchored — but nothing ever compared them to each other,
+ * and each was blind to the env the other one holds.
+ *
+ * The gap that leaves is narrow and expensive: a bundle built with the flag
+ * explicitly wrong, or built before the flag was set, against a Convex
+ * deployment whose own flag is right. Both ends then pass their own check and
+ * disagree in front of the customer — the summary quotes 8 750 €, Stripe
+ * charges 10 500 €, and the first anyone hears of it is the card statement.
+ *
+ * So the caller declares what it displayed, and the sale is refused when that
+ * is not what Stripe is about to charge. `taxDisplayed` is what the client
+ * genuinely rendered rather than what it thinks ought to be true, which is the
+ * only value worth comparing: a browser that lies about it buys itself a
+ * refused sale or a total higher than the one it showed, never a cheaper one.
+ */
+export function taxDisplayMismatch(
+  taxCharged: boolean,
+  taxDisplayed: boolean,
+): string | null {
+  if (taxCharged === taxDisplayed) return null;
+
+  return taxCharged
+    ? "Le récapitulatif affiché ne comporte pas de TVA alors que Stripe la " +
+        "facturerait : le client verrait un total inférieur de 20 % à celui " +
+        "qui lui serait débité. Poser NEXT_PUBLIC_TVA_ENABLED=true côté Next " +
+        "et redéployer — la valeur est figée dans le bundle au build. " +
+        "Voir apps/site/MISE_EN_PROD.md."
+    : "Le récapitulatif affiché comporte une TVA que Stripe ne facturerait " +
+        "pas : le client verrait un total supérieur de 20 % à celui qui lui " +
+        "serait débité. Aligner NEXT_PUBLIC_TVA_ENABLED côté Next et " +
+        "STRIPE_TAX_ENABLED côté Convex sur VAT.regime " +
+        "(lib/legal/company.ts). Voir apps/site/MISE_EN_PROD.md.";
 }

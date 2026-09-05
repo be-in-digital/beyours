@@ -8,6 +8,7 @@ import { useCheckoutStore } from "@/lib/store";
 import {
   FOUNDERS_OFFER,
   getCheckoutTotals,
+  TVA_ENABLED,
   type PaymentMethodSlug,
 } from "@/lib/payment-providers";
 import { FadeIn } from "@/components/ui/motion";
@@ -102,6 +103,12 @@ export function CheckoutFlow() {
         siret: info.siret || undefined,
         successUrl: `${origin}/checkout/success`,
         cancelUrl: `${origin}/checkout/cancel`,
+        /* What OrderSummary just rendered above this button — the same
+           constant, so the two cannot drift. The Convex side compares it with
+           what Stripe is about to charge and refuses the sale if the customer
+           was shown a different total; nothing else can make that comparison,
+           since the two flags live in two envs that never meet. */
+        taxDisplayed: TVA_ENABLED,
         ...referralArgs,
       });
 

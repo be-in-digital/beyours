@@ -1,4 +1,5 @@
 import { planPrices } from "@/convex/planPrices";
+import { VAT } from "@/lib/legal/company";
 
 /* ═══════════════════════════════════════════════
    Payment Providers — Config, matrice, helpers
@@ -68,17 +69,48 @@ export function getInstallmentAmount(
    The company is on the régime réel (VAT.regime in lib/legal/company.ts), so
    this flag belongs at "true", together with STRIPE_TAX_ENABLED on the Convex
    side (see convex/stripe.ts). The two go together and both are measured
-   against the regime, not against each other: `validateSiteEnv` refuses a
-   deployment where they disagree with it, and `createCheckoutSession` refuses
-   the sale rather than issue an invoice stating a VAT position the company
-   does not hold.
+   against the regime, not against each other: `validateSiteEnv` (lib/env.ts)
+   refuses a deployment whose NEXT_PUBLIC_TVA_ENABLED disagrees with it or is
+   simply missing, and `createCheckoutSession` refuses the sale rather than
+   issue an invoice stating a VAT position the company does not hold.
 
    This flag decides what is CHARGED and displayed as a total. What the site
    CLAIMS about the regime — the pricing footnote, the CGV, the legal notice,
    the invoice — is read from VAT.regime instead, because that is a legal fact
    and not a deployment toggle. */
 
-export const TVA_ENABLED = process.env.NEXT_PUBLIC_TVA_ENABLED === "true";
+/**
+ * Read the charging flag, falling back to the declared regime.
+ *
+ * `process.env.X === "true"` was the whole expression here, and it has one
+ * property that made a forgotten variable expensive: an unset flag is
+ * `undefined`, `undefined === "true"` is `false`, and `false` means "quote no
+ * VAT". So a fresh Vercel project — where absent is the default state —
+ * rendered the no-VAT branch of the checkout summary under the régime réel,
+ * showing the buyer 8 750 € while Stripe, tax enabled on its own env, charged
+ * 10 500 €.
+ *
+ * Absent now resolves to the regime instead of to silence. That is not a way
+ * of tolerating the missing variable — `validateSiteEnv` still refuses the
+ * deployment, and it is the caller's job to set it — it is a choice about
+ * which way to be wrong while nobody has: a total that matches the invoice the
+ * company is legally issuing, rather than one that undercuts it by 20 %.
+ *
+ * Only the two exact strings decide anything. A typo ("TRUE", "1", "oui")
+ * falls back with them, and is reported at boot as a format error.
+ */
+export function resolveTvaEnabled(raw: string | undefined): boolean {
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return VAT.regime === "reel";
+}
+
+/* Written as a direct static member access so Next still inlines the value
+   into the client bundle at build time — a computed lookup would not be
+   substituted, and the flag would read as undefined in the browser. */
+export const TVA_ENABLED = resolveTvaEnabled(
+  process.env.NEXT_PUBLIC_TVA_ENABLED,
+);
 export const TVA_RATE_PERCENT = 20;
 
 /* ── Founders offer ──

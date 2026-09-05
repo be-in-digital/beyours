@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { validateSiteEnv, formatSiteEnvReport } from "../lib/env";
+import { resolveTvaEnabled, TVA_ENABLED } from "../lib/payment-providers";
 import { VAT } from "../lib/legal/company";
 import { foundersOffer } from "../convex/foundersOffer";
 import {
@@ -11,10 +12,16 @@ import {
 const CHARGING = String(VAT.regime === "reel");
 const NOT_CHARGING = String(VAT.regime !== "reel");
 
-/** The minimum the Next server needs to serve a correct page. */
+/** The minimum the Next server needs to serve a correct page.
+ *
+ *  The charging flag is part of that minimum and used not to be. It decides
+ *  the total the checkout summary prints, it is frozen into the client bundle
+ *  at build time, and absent it read as "quote no VAT" — so a fixture without
+ *  it described a deployment that shows the wrong price, not a valid one. */
 const VALID = {
   NEXT_PUBLIC_CONVEX_URL: "https://fearless-poodle-133.convex.cloud",
   NEXT_PUBLIC_SITE_URL: "https://beyours.fr",
+  NEXT_PUBLIC_TVA_ENABLED: CHARGING,
 };
 
 describe("validateSiteEnv — required", () => {
@@ -24,14 +31,23 @@ describe("validateSiteEnv — required", () => {
 
   // The gap issue #156 reports: apps/site had no instrumentation at all, so
   // beyours.fr booted with nothing checked.
-  it("refuses an empty env and names both variables", () => {
+  //
+  // This case used to assert that an empty env produces EXACTLY the two
+  // required URLs, and passed — which is how it blessed the defect it was
+  // meant to catch. An empty env is a fresh Vercel project, the state where
+  // the charging flag is missing and the checkout quotes a total 20 % below
+  // the one Stripe debits. The third name is the point of the assertion now.
+  it("refuses an empty env and names the charging flag with the two URLs", () => {
     const { ok, problems } = validateSiteEnv({});
     expect(ok).toBe(false);
     expect(problems.map((p) => p.name).sort()).toEqual([
       "NEXT_PUBLIC_CONVEX_URL",
       "NEXT_PUBLIC_SITE_URL",
+      "NEXT_PUBLIC_TVA_ENABLED",
     ]);
-    expect(problems.every((p) => p.tier === "required")).toBe(true);
+    expect(
+      problems.filter((p) => p.name.endsWith("_URL")).every((p) => p.tier === "required")
+    ).toBe(true);
   });
 
   it("treats an empty string as unset", () => {
@@ -215,9 +231,88 @@ describe("validateSiteEnv — feature groups", () => {
   });
 
   // In production STRIPE_TAX_ENABLED lives on Convex, so a one-sided Next env
-  // is normal and must not be reported.
+  // is normal and must not be reported. Its absence is not unguarded — the
+  // checkout measures it against the same regime (tests/convex/vatGuard).
   it("stays quiet when only the client-side TVA flag is visible", () => {
     expect(validateSiteEnv({ ...VALID, NEXT_PUBLIC_TVA_ENABLED: CHARGING }).ok).toBe(true);
+  });
+
+  /* ── The state that actually occurs ──
+     The regime cross-check used to skip any flag that was not set, so it
+     refused a flag set to the WRONG value and never a forgotten one. Forgotten
+     is the default state of a fresh Vercel project, and the two are not
+     symmetric: this function holds the Next env, so it is the only thing that
+     can see NEXT_PUBLIC_TVA_ENABLED go missing at all. Measured before the
+     fix: no flags at all -> ok = true, problems = []. */
+
+  it("refuses a deployment that never set the client-side charging flag", () => {
+    const { ok, problems } = validateSiteEnv({
+      NEXT_PUBLIC_CONVEX_URL: VALID.NEXT_PUBLIC_CONVEX_URL,
+      NEXT_PUBLIC_SITE_URL: VALID.NEXT_PUBLIC_SITE_URL,
+    });
+    expect(ok).toBe(false);
+    expect(problems.map((p) => p.name)).toContain("NEXT_PUBLIC_TVA_ENABLED");
+  });
+
+  it("says the flag is missing rather than that it holds a wrong value", () => {
+    const { problems } = validateSiteEnv({
+      NEXT_PUBLIC_CONVEX_URL: VALID.NEXT_PUBLIC_CONVEX_URL,
+      NEXT_PUBLIC_SITE_URL: VALID.NEXT_PUBLIC_SITE_URL,
+    });
+    const message = problems.find((p) => p.name === "NEXT_PUBLIC_TVA_ENABLED")?.message;
+    expect(message).toContain("non définie");
+    expect(message).toContain(CHARGING);
+  });
+
+  it("treats an empty string as missing, not as a declared value", () => {
+    const { ok, problems } = validateSiteEnv({ ...VALID, NEXT_PUBLIC_TVA_ENABLED: "" });
+    expect(ok).toBe(false);
+    expect(
+      problems.find((p) => p.name === "NEXT_PUBLIC_TVA_ENABLED")?.message
+    ).toContain("non définie");
+  });
+
+  // The asymmetry, stated as an assertion so it cannot be flattened back into
+  // one loop: the Convex-side flag is invisible here and its absence is not a
+  // problem; the Next-side flag is visible here and its absence is.
+  it("demands the Next-side flag and not the Convex-side one", () => {
+    const names = validateSiteEnv({
+      NEXT_PUBLIC_CONVEX_URL: VALID.NEXT_PUBLIC_CONVEX_URL,
+      NEXT_PUBLIC_SITE_URL: VALID.NEXT_PUBLIC_SITE_URL,
+    }).problems.map((p) => p.name);
+    expect(names).toContain("NEXT_PUBLIC_TVA_ENABLED");
+    expect(names).not.toContain("STRIPE_TAX_ENABLED");
+  });
+});
+
+/* ── The read site ──
+   The guard above reports the missing flag; this is what the storefront does
+   with it in the meantime. `process.env.X === "true"` mapped unset to `false`
+   and `false` to "quote no VAT", so the two states the operator most needs
+   told apart were indistinguishable. */
+
+describe("resolveTvaEnabled — what an unset flag resolves to", () => {
+  it("honours both declared values", () => {
+    expect(resolveTvaEnabled("true")).toBe(true);
+    expect(resolveTvaEnabled("false")).toBe(false);
+  });
+
+  it("falls back to the declared regime rather than to 'no VAT'", () => {
+    expect(resolveTvaEnabled(undefined)).toBe(VAT.regime === "reel");
+  });
+
+  it("treats a typo like a missing value, not like 'false'", () => {
+    for (const junk of ["TRUE", "True", "1", "oui", "", " true "]) {
+      expect(resolveTvaEnabled(junk)).toBe(VAT.regime === "reel");
+    }
+  });
+
+  // What the bundle actually shipped with: the module-level constant the
+  // checkout summary branches on.
+  it("is what TVA_ENABLED holds", () => {
+    expect(TVA_ENABLED).toBe(
+      resolveTvaEnabled(process.env.NEXT_PUBLIC_TVA_ENABLED)
+    );
   });
 });
 

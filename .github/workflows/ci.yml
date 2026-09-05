@@ -220,12 +220,19 @@ jobs:
           secret-path: /platform
           export-type: env
 
-      # These two are STEP-level env, which outranks $GITHUB_ENV. That is what
+      # These are STEP-level env, which outranks $GITHUB_ENV. That is what
       # keeps a real Convex URL from the store out of this compile-check build,
       # where it would be inlined into the bundle.
+      #
+      # NEXT_PUBLIC_TVA_ENABLED is pinned for the opposite reason: it is also
+      # inlined, and apps/site reports an undeclared charging flag in the build
+      # log because that is the moment the value is frozen. A compile check
+      # should compile a bundle whose VAT stance is declared, not one that
+      # happens to be undeclared. It matches VAT.regime in lib/legal/company.ts.
       - name: Build packages
         env:
           NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud
           CONVEX_SITE_URL: https://placeholder.convex.site
+          NEXT_PUBLIC_TVA_ENABLED: "true"
         # All three apps are built: the merge made the graph complete.
         run: pnpm build
