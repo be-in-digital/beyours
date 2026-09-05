@@ -7,8 +7,10 @@ import {
   localizeDocuments,
   mergeUiStrings,
   resolveRequestLocale,
+  resolveEstablishmentLanguages,
   createTranslator,
 } from '../index'
+import type { EstablishmentLanguage } from '../index'
 
 /**
  * Reading a translated catalogue, and reading the locale cookie (#148).
@@ -214,5 +216,92 @@ describe('mergeUiStrings + createTranslator: the override cascade', () => {
   it('leaves a placeholder alone when its parameter is missing', () => {
     const t = translatorFor('fr', 'fr', { fr: { hi: 'Bonjour {name}' } }, {})
     expect(t('hi', { other: 'x' })).toBe('Bonjour {name}')
+  })
+})
+
+describe('resolveEstablishmentLanguages', () => {
+  const row = (
+    code: string,
+    over: Partial<EstablishmentLanguage> = {}
+  ): EstablishmentLanguage => ({
+    code,
+    name: code.toUpperCase(),
+    nativeName: code.toUpperCase(),
+    isDefault: false,
+    isActive: true,
+    ...over,
+  })
+
+  it('takes the establishment default from the flag', () => {
+    const { defaultCode } = resolveEstablishmentLanguages([
+      row('fr', { isDefault: true }),
+      row('en'),
+    ])
+    expect(defaultCode).toBe('fr')
+  })
+
+  it('does NOT take it from array order when nothing is flagged', () => {
+    // The whole of #325 / NEW2-JOURNEY-2. A fresh deployment seeds no
+    // `languages` rows and `languages.create` takes `isDefault` from its
+    // caller, so the first language an admin adds arrives unflagged. Reading
+    // `active[0]` served English to every diner of a French restaurant.
+    const { defaultCode } = resolveEstablishmentLanguages([row('en')], 'fr')
+    expect(defaultCode).toBe('fr')
+  })
+
+  it('keeps the source language selectable when no row carries it', () => {
+    // Otherwise the store offers one entry, the selector hides below two, and
+    // the language the menu is actually written in is reachable by nobody.
+    const { languages } = resolveEstablishmentLanguages([row('en')], 'fr')
+
+    expect(languages.map((l) => l.code)).toEqual(['fr', 'en'])
+    expect(languages[0]?.isDefault).toBe(true)
+    expect(languages).toHaveLength(2)
+  })
+
+  it('names the synthesised row in English and in itself', () => {
+    const { languages } = resolveEstablishmentLanguages([row('en')], 'fr')
+    expect(languages[0]?.name).toBe('French')
+    expect(languages[0]?.nativeName).toBe('français')
+  })
+
+  it('falls back to the bare code for a language Intl cannot name', () => {
+    // The admin can type any code at all, and `Intl.DisplayNames` throws on
+    // one it cannot parse. Showing `zz` beats showing nothing.
+    const { languages } = resolveEstablishmentLanguages([row('en')], 'zz')
+    expect(languages[0]?.code).toBe('zz')
+    expect(languages[0]?.name).toBeTruthy()
+  })
+
+  it('synthesises nothing when the default is already a real row', () => {
+    const rows = [row('fr', { isDefault: true }), row('en')]
+    const { languages } = resolveEstablishmentLanguages(rows, 'fr')
+    expect(languages).toEqual(rows)
+  })
+
+  it('respects an establishment that is genuinely not French', () => {
+    // An English restaurant that flagged English default gets English, and no
+    // French entry is invented for it.
+    const { languages, defaultCode } = resolveEstablishmentLanguages(
+      [row('en', { isDefault: true })],
+      'fr'
+    )
+    expect(defaultCode).toBe('en')
+    expect(languages.map((l) => l.code)).toEqual(['en'])
+  })
+
+  it('drops inactive rows, and ignores a default that was switched off', () => {
+    const { languages, defaultCode } = resolveEstablishmentLanguages(
+      [row('es', { isDefault: true, isActive: false }), row('en')],
+      'fr'
+    )
+    expect(languages.map((l) => l.code)).toEqual(['fr', 'en'])
+    expect(defaultCode).toBe('fr')
+  })
+
+  it('offers the source language when the store has no rows at all', () => {
+    const { languages, defaultCode } = resolveEstablishmentLanguages([], 'fr')
+    expect(defaultCode).toBe('fr')
+    expect(languages.map((l) => l.code)).toEqual(['fr'])
   })
 })

@@ -61,11 +61,14 @@ export {
   localizeDocuments,
   mergeUiStrings,
   resolveRequestLocale,
+  resolveEstablishmentLanguages,
 } from './catalogue'
 export type {
   DocumentTranslationEntry,
   TranslatableDocument,
   LocalizedText,
+  EstablishmentLanguage,
+  ResolvedEstablishmentLanguages,
 } from './catalogue'
 
 // Translator
