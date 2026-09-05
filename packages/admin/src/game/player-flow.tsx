@@ -25,6 +25,8 @@ import { ResultScreen } from "./result-screen"
 import { ClaimForm, type ClaimValues } from "./claim-form"
 import { RewardTicket } from "./reward-ticket"
 import { CooldownScreen } from "./cooldown-screen"
+import { gameConsentNotice, GAME_CONSENT_NOTICE_VERSION } from "./consent-copy"
+import { DEFAULT_CUSTOMER_RETENTION_DAYS } from "@be-in-digital/convex-functions/privacyPolicy"
 
 /**
  * Player flow state machine:
@@ -60,6 +62,15 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
 
   const [phase, setPhase] = useState<GamePhase>("loading")
   const [playResult, setPlayResult] = useState<PlayResult | null>(null)
+  /**
+   * Ticked, for this visit only.
+   *
+   * Not persisted to localStorage on purpose. A remembered tick would present
+   * the next visitor at the same table — the same device — with a consent
+   * already given on their behalf, and consent has to be the act of the person
+   * whose data it is.
+   */
+  const [consentAccepted, setConsentAccepted] = useState(false)
   const [completedActions, setCompletedActions] = useState<string[]>([])
   const [reward, setReward] = useState<{ code: string; expiresAt: number; email: string } | null>(
     null
@@ -158,6 +169,9 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
         completedActions,
         ref,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        // The version this bundle rendered, not one the server handed back:
+        // the row has to record the wording that was actually on screen.
+        consentNoticeVersion: GAME_CONSENT_NOTICE_VERSION,
       })) as PlayResult
       setPlayResult(result)
       return result
@@ -304,6 +318,13 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
                   : undefined
               }
               bonusCount={gameSession.referral.pendingBonuses}
+              consent={gameConsentNotice({
+                storeName: gameSession.store.name,
+                retentionDays:
+                  gameSession.privacy?.retentionDays ?? DEFAULT_CUSTOMER_RETENTION_DAYS,
+              })}
+              consentAccepted={consentAccepted}
+              onConsentChange={setConsentAccepted}
               onStart={() => setPhase(afterWelcome)}
             />
           </motion.div>

@@ -139,6 +139,11 @@ neither Neon nor Postgres appears anywhere in the codebase.
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`
+- `gamePlays.consent` records the diner's agreement (art. 7.1) — when, and to
+  which wording. `gamePlay.play` throws `CONSENT_REQUIRED` without it. The
+  wording lives in `packages/admin/src/game/consent-copy.ts` and owns its own
+  version; `GAME_CONSENT_NOTICE_VERSIONS` in `convex-functions/gamePlay` is the
+  set the server accepts.
 
 ### i18n
 - `languages` (dynamic, unlimited), `translations`, `translationJobs` (GPT)
@@ -206,6 +211,36 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
   it. Prices format as `fr-FR`/EUR whatever the owner picked, and Arabic renders
   left-to-right. Currency is the half-case: the admin's own payment and refund
   screens do format in the currency taken, only the public site does not.
+
+### Personal data (RGPD)
+A French restaurant running this engine is the **data controller**. The engine
+answers all four obligations from `packages/convex-functions/src/privacy.ts`,
+rendered at Dashboard → Organisation → **Données personnelles**:
+
+- **Access and portability** (art. 15, 20) — `exportDataSubject` returns the raw
+  rows as JSON, by e-mail or by device fingerprint.
+- **Erasure** (art. 17) — `previewErasure` then `eraseDataSubject`. Multi-pass:
+  a pass returns `complete: false` and the wrapper reschedules until it is true.
+- **Consent** (art. 7.1) — on `gamePlays`, see above.
+- **Retention** (art. 5.1.e) — the cron **purge expired customer data**, window
+  in `globalSettings.dataRetention`, defaulting to the CNIL's three years.
+
+**A paid order is anonymised, never deleted.** The money, lines, VAT and dates
+stay and the customer leaves. Everything else about a diner is deleted outright.
+Every run writes a `privacy_*` line to `systemAuditLog`.
+
+**The invoice survives, whole.** Since #367 a paid order also issues an
+`invoices` row, and that is a numbered fiscal document in an unbroken series
+(art. 242 nonies A CGI) — never edited, never deleted. It keeps the buyer's
+name, e-mail, phone and address under art. 17.3.b. The erasure reaches it
+through `orders.invoiceId`, **exports** it (art. 15, 20) and **reports** it as
+retained, so the operator can tell the diner what was kept and why. Do not add
+it to the deletion set.
+
+Guarded by `customers:manage`, held by `super_admin` and `client_admin` only —
+deliberately not `customers:read`, which a waiter holds. Operator guide and the
+**nine decisions still owed by the client**:
+`tasks/gdpr-diner-data-runbook.md`.
 
 ### Design
 Design system in `packages/ui`. A site's look is fixed **at clone time** by
@@ -361,27 +396,34 @@ import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
 
 const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
 const { key, url } = await s3.upload(buffer, {
-  folder: "products",       // see the warning below on which folders work
+  folder: "products",       // any of the eleven in S3_FOLDERS
   contentType: "image/webp",
 })
 // also: getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl,
 //       exists, getMetadata
 ```
-**The two folder lists in `packages/core` disagree, and the narrower one wins
-at runtime.** `S3_FOLDERS` (`aws/folders.ts:19`) has eleven entries — `products`,
-`categories`, `cms`, `branding`, `stores`, `storefront`, `blogs`, `blog-auto`,
-`email`, `avatars`, `users` — and is where the `S3Folder` type comes from, so all
-eleven type-check. But `upload()` calls `uploadOptionsSchema.parse()`
-(`aws/s3/client.ts:159`), whose `s3FolderSchema` (`aws/s3/validation.ts:27`) is a
-`z.enum` of six: `products`, `branding`, `stores`, `cms`, `email`, `users`.
+Folders are a closed set of eleven, declared once in
+`packages/core/src/aws/folders.ts` — `products`, `categories`, `cms`,
+`branding`, `stores`, `storefront`, `blogs`, `blog-auto`, `email`, `avatars`,
+`users`. Everything else derives from it: the Zod schema `upload()` parses
+through (`aws/s3/validation.ts`), the MIME and size tables, and the
+`/api/files` allowlist. Add a folder there and nowhere else.
 
-So `s3.upload(file, { folder: "categories" })` compiles and then throws. That is
-the failure `folders.ts`'s own header describes — "which is exactly how category,
-blog and storefront images were lost". Treat the six as what works today, and see
-the note at the end of this file.
+This entry, and `s3FolderSchema` itself, used to name six. `S3_FOLDERS` is
+where the `S3Folder` type comes from, so all eleven type-checked, and then
+`s3.upload(file, { folder: "categories" })` threw at
+`uploadOptionsSchema.parse()` — the failure `folders.ts`'s own header
+describes: "which is exactly how category, blog and storefront images were
+lost". The schema is now `z.enum(S3_FOLDERS)`, so the two cannot disagree
+again.
 
-The bucket is private either way: reads go through the app's `/api/files` proxy,
-and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
+The HTTP route `apps/*/app/api/upload/route.ts` deliberately accepts only five
+of them; the rest are written by the presigned Convex flow, authorised
+separately. That narrowing is a security boundary, not drift — do not widen it
+to match.
+
+The bucket is private either way: reads go through the app's `/api/files`
+proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 
 ### SES Email
 `sendEmail` and `sendTemplatedEmail` are methods on the SES service

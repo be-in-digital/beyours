@@ -15,6 +15,16 @@
 export { GamePlayerFlow } from "./player-flow"
 export { PrizeTicket } from "./prize-ticket"
 
+/**
+ * The lobby, on its own.
+ *
+ * Exported because it is the screen that carries the consent gate, and that
+ * gate has to be provable: `packages/admin` has no jsdom, so the only place
+ * this can be rendered under test is an app. Each app's
+ * `__tests__/game-consent-gate` suite is that test.
+ */
+export { WelcomeScreen } from "./welcome-screen"
+
 export type {
   GamePlayApi,
   PrizeTicketApi,
@@ -27,6 +37,13 @@ export { resolveGameCopy } from "./game-copy"
 export type { ResolvedGameCopy, GameKind } from "./game-copy"
 
 export { prizeEmoji } from "./prize-emoji"
+
+export {
+  gameConsentNotice,
+  formatRetention,
+  GAME_CONSENT_NOTICE_VERSION,
+} from "./consent-copy"
+export type { GameConsentNotice } from "./consent-copy"
 
 export type {
   GamePrize,

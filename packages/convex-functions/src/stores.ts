@@ -12,6 +12,7 @@ import { ConvexError, v } from "convex/values"
 import { assertReservationUrl, isPublishedStore } from "@be-in-digital/convex-schema"
 import { grantCreatedStoreAccess } from "./auth"
 import {
+  assertStoreHasNoInvoices,
   deleteStoreDependents,
   detachStoreFromProfiles,
   detachStoreFromBlogAutoConfigs,
@@ -729,6 +730,14 @@ export const remove = {
     // Read before deleting: once the document is gone the log could only say
     // that *an* establishment was removed, not which one.
     const existing = await requireStore(ctx, args.id)
+
+    // An establishment that has invoiced a sale cannot be erased. The invoices
+    // are kept for ever and reference the orders this cascade would delete, so
+    // going ahead would leave a fiscal archive pointing at nothing. Checked
+    // before the audit entry, so a refusal does not log a deletion that did not
+    // happen.
+    await assertStoreHasNoInvoices(ctx, args.id)
+
     const audit = {
       action: STORE_AUDIT_ACTIONS.deleted,
       operation: STORE_AUDIT_OPERATIONS.remove,

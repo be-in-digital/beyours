@@ -34,6 +34,15 @@ export const systemAuditLogTable = defineTable({
     v.literal("access_granted"),
     v.literal("access_changed"),
     v.literal("access_revoked"),
+    // What was done with a diner's personal data, and by whom. An erasure
+    // that leaves no trace is indistinguishable from one that never ran, and
+    // art. 5.2 puts the burden of showing it ran on the controller. These
+    // entries carry the request's subject in `details` — the folded email or
+    // the fingerprint — because being able to answer "was my request
+    // honoured?" is the whole point of keeping them.
+    v.literal("privacy_export"),
+    v.literal("privacy_erasure"),
+    v.literal("privacy_retention_sweep"),
   ),
   performedBy: v.string(),
   performedAt: v.number(),

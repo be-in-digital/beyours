@@ -119,6 +119,11 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'games:write',
     'customers:read',
     'customers:write',
+    // Answering a diner's RGPD request: hand them everything the deployment
+    // holds on them (art. 15 / 20), or destroy it (art. 17). Deliberately NOT
+    // folded into `customers:read` — a waiter holds that one, and a waiter
+    // should not be able to print a customer's full dossier or erase them.
+    'customers:manage',
     'marketing:read',
     'marketing:write',
     'content:read',
@@ -169,6 +174,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     // Marking a contact message handled needs this. Without it the owner could
     // read their own customers but never act on them.
     'customers:write',
+    // The owner IS the data controller under the RGPD: answering an access,
+    // erasure or portability request is their obligation, so the permission
+    // that carries it stops with them and the super admin.
+    'customers:manage',
     'marketing:read',
     'marketing:write',
     'content:read',

@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { SparklesIcon, Clock3Icon } from "lucide-react"
 import { gameSounds, haptics, type GamePrize } from "./lib"
 import { prizeEmoji } from "./prize-emoji"
+import type { GameConsentNotice } from "./consent-copy"
 
 /**
  * Cinematic lobby: the store's marquee, what's at stake, one glowing CTA.
@@ -17,6 +18,10 @@ interface WelcomeScreenProps {
   hasActions: boolean
   inviteBanner?: string
   bonusCount?: number
+  /** The wording the diner must accept before anything is recorded. */
+  consent: GameConsentNotice
+  consentAccepted: boolean
+  onConsentChange: (accepted: boolean) => void
   onStart: () => void
 }
 
@@ -42,9 +47,16 @@ export function WelcomeScreen({
   hasActions,
   inviteBanner,
   bonusCount,
+  consent,
+  consentAccepted,
+  onConsentChange,
   onStart,
 }: WelcomeScreenProps) {
   const handleStart = () => {
+    // The button is disabled without the tick, but a disabled button is a
+    // presentation detail — the refusal that counts is `gamePlay.play`'s, and
+    // this guard is what keeps the two agreeing if the styling ever drifts.
+    if (!consentAccepted) return
     gameSounds.unlock()
     gameSounds.pop()
     haptics.light()
@@ -138,21 +150,50 @@ export function WelcomeScreen({
         </motion.div>
       )}
 
+      {/*
+        Consent — above the CTA, because it gates it (RGPD art. 7.1).
+
+        Unticked on every mount and never pre-ticked: a box the diner did not
+        touch is not consent (art. 4.11 — "freely given, specific, informed and
+        unambiguous"), and a pre-ticked one is the textbook example of what
+        does not count.
+      */}
+      <motion.div variants={itemVariants} className="mt-8 w-full max-w-xs text-left">
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+          <input
+            type="checkbox"
+            checked={consentAccepted}
+            onChange={(event) => onConsentChange(event.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-amber-400"
+            aria-describedby="game-consent-detail"
+          />
+          <span className="text-[13px] font-medium leading-snug text-white/85">
+            {consent.label}
+          </span>
+        </label>
+        <p id="game-consent-detail" className="mt-2 px-1 text-[11px] leading-relaxed text-white/45">
+          {consent.detail}
+        </p>
+      </motion.div>
+
       {/* CTA */}
-      <motion.div variants={itemVariants} className="mt-10 w-full max-w-xs">
+      <motion.div variants={itemVariants} className="mt-6 w-full max-w-xs">
         <motion.button
           type="button"
           onClick={handleStart}
-          whileTap={{ scale: 0.95 }}
-          className="relative w-full rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-lg font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.5),inset_0_1px_0_rgba(255,255,255,0.4)]"
+          disabled={!consentAccepted}
+          whileTap={consentAccepted ? { scale: 0.95 } : undefined}
+          className="relative w-full rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-lg font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
           C&apos;est parti !
-          <motion.span
-            className="absolute inset-0 rounded-full ring-2 ring-amber-300/70"
-            animate={{ opacity: [0.8, 0, 0.8], scale: [1, 1.14, 1] }}
-            transition={{ duration: 1.7, repeat: Infinity, ease: "easeOut" }}
-            aria-hidden
-          />
+          {consentAccepted && (
+            <motion.span
+              className="absolute inset-0 rounded-full ring-2 ring-amber-300/70"
+              animate={{ opacity: [0.8, 0, 0.8], scale: [1, 1.14, 1] }}
+              transition={{ duration: 1.7, repeat: Infinity, ease: "easeOut" }}
+              aria-hidden
+            />
+          )}
         </motion.button>
         <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-white/40">
           <Clock3Icon className="h-3 w-3" />

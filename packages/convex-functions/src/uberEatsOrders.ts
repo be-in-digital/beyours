@@ -5,7 +5,7 @@
  */
 
 import { v } from "convex/values"
-import { generateOrderNumber } from "./helpers"
+import { allocateOrderNumber } from "./numbering"
 
 /**
  * Save an order from Uber Eats (deduplication by externalOrderId)
@@ -107,12 +107,25 @@ export const saveFromPlatform = {
     scheduledFor?: number
     estimatedPrepTime?: number
   }) => {
-    // Check for existing order by externalOrderId (deduplication)
-    const existingOrder = await ctx.db
-      .query("orders")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-      .filter((q: any) => q.eq(q.field("externalOrderId"), args.externalOrderId))
-      .first()
+    // Deduplication: a platform retrying a delivery must not create a second
+    // order.
+    //
+    // Read through `by_external_order`, never `by_storeId` + `.filter()`. The
+    // filter was a full walk of every order the establishment has ever taken,
+    // which put all of them in the transaction's read set — so this mutation
+    // conflicted with any concurrent order write in that store, and past the
+    // ~16k document read limit it would have started failing permanently, with
+    // no alert. `createFromWebhook` was fixed for exactly this and carries the
+    // same comment; this twin was missed.
+    const existingOrder =
+      (
+        await ctx.db
+          .query("orders")
+          .withIndex("by_external_order", (q: any) =>
+            q.eq("externalOrderId", args.externalOrderId)
+          )
+          .collect()
+      ).find((order: any) => order.storeId === args.storeId) ?? null
 
     const now = Date.now()
 
@@ -126,7 +139,11 @@ export const saveFromPlatform = {
     }
 
     // Create new order
-    const orderNumber = generateOrderNumber()
+    const globalSettings = await ctx.db.query("globalSettings").first()
+    const orderNumber = await allocateOrderNumber(ctx, args.storeId, {
+      now,
+      timezone: globalSettings?.timezone,
+    })
     return await ctx.db.insert("orders", {
       storeId: args.storeId,
       orderNumber,

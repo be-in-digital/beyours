@@ -119,3 +119,4 @@ export {
   EmailConfigPage,
 } from "./pages/email"
 export { SystemPage } from "./pages/system"
+export { PrivacyPage } from "./pages/privacy"

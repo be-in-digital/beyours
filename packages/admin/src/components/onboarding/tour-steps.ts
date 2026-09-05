@@ -339,6 +339,18 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
       "découvrez les fonctionnalités incluses et les options de mise à niveau.",
   },
 
+  // ── Personal data (RGPD) ───────────────────────────────────────────
+  {
+    route: adminRoutes.privacy,
+    navFor: adminRoutes.privacy,
+    content:
+      "Données personnelles — L'écran RGPD. Un client demande ses données ou " +
+      "leur effacement : retrouvez-le par e-mail, lisez l'aperçu, puis exportez " +
+      "ou effacez. Une commande payée est anonymisée et non supprimée — elle " +
+      "reste votre pièce comptable. Vous fixez ici la durée de conservation ; " +
+      "au-delà, le ménage se fait chaque nuit tout seul.",
+  },
+
   // ── Settings ───────────────────────────────────────────────────────
   {
     route: adminRoutes.settings,

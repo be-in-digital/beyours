@@ -35,6 +35,8 @@ export interface GamePlayApi {
       completedActions: string[]
       ref?: string
       userAgent?: string
+      /** Which consent notice was on screen. No version, no play. */
+      consentNoticeVersion?: string
     },
     unknown
   >
