@@ -169,6 +169,15 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
         setCooldownAt(Number(cooldownMatch[1]))
         setPhase("cooldown")
       }
+      // The server now applies the required-actions rule too, so a session that
+      // went stale between load and spin — the owner activated an action while
+      // the page was open — comes back here instead of leaving a dead wheel.
+      // Sending the player to the actions screen shows them the one thing left
+      // to do; `getSession` is live, so it already carries the new action.
+      if (message.includes("ACTIONS_INCOMPLETE")) {
+        setCompletedActions([])
+        setPhase("actions")
+      }
       return null
     }
   }, [gameSession, fingerprint, playMutation, code, completedActions, ref])
