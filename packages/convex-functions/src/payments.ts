@@ -5,6 +5,8 @@
  */
 
 import { v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 import { planRefund } from "./refundPolicy"
 import { paymentStatusAfterSettlement } from "./paymentSettlement"
 
@@ -38,17 +40,90 @@ export const getByOrder = {
   },
 }
 
+/** The filters `/dashboard/payments` offers, as the query understands them. */
+const PAYMENT_STATUS = v.union(
+  v.literal("pending"),
+  v.literal("processing"),
+  v.literal("succeeded"),
+  v.literal("failed"),
+  v.literal("refunded"),
+  v.literal("partially_refunded")
+)
+
+/** Square is announced, not built — it can appear on no past payment. */
+const PAYMENT_PROVIDER = v.union(
+  v.literal("stripe"),
+  v.literal("sumup"),
+  v.literal("paypal"),
+  v.literal("square"),
+  v.literal("cash")
+)
+
 /**
- * Get payments by store
+ * One page of a store's payments, newest first, filtered where it is asked.
+ *
+ * WHY IT IS PAGINATED. This returned every payment the establishment had ever
+ * taken, and `/dashboard/payments` then applied both of its filters in the
+ * browser. Measured on a seeded store: 4,000 rows in the table, 4,000 rows
+ * returned. Convex aborts a transaction that reads more than 16,384 documents,
+ * so the screen was on a path to throwing on every load — at 40 payments a day,
+ * inside about fourteen months — with no admin action able to clear it.
+ *
+ * WHY THE FILTERS MOVED TO THE SERVER. A filter applied after the read saves
+ * nothing: the cost is the read. Both of them are equalities on indexed fields,
+ * so all four combinations — neither, status, provider, both — resolve to an
+ * exact index range here, and the page reads only the rows it shows.
  */
 export const getByStore = {
-  args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: { storeId: string }) => {
-    return await ctx.db
-      .query("payments")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-      .order("desc")
-      .collect()
+  args: {
+    storeId: v.id("stores"),
+    status: v.optional(PAYMENT_STATUS),
+    provider: v.optional(PAYMENT_PROVIDER),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      status?: string
+      provider?: string
+      paginationOpts: { numItems: number; cursor: string | null }
+    }
+  ) => {
+    // Clamped: `paginationOptsValidator` lets the caller name any page size,
+    // and a page of a million rows is the transaction this query was rewritten
+    // to stop being.
+    const page = clampPagination(args.paginationOpts)
+    const newestFirst = (query: any) => query.order("desc").paginate(page)
+
+    if (args.provider) {
+      // `by_storeId_provider_status` carries provider before status, so this
+      // covers "provider alone" and "provider and status" from one index.
+      return await newestFirst(
+        ctx.db
+          .query("payments")
+          .withIndex("by_storeId_provider_status", (q: any) => {
+            const scoped = q.eq("storeId", args.storeId).eq("provider", args.provider)
+            return args.status ? scoped.eq("status", args.status) : scoped
+          })
+      )
+    }
+
+    if (args.status) {
+      return await newestFirst(
+        ctx.db
+          .query("payments")
+          .withIndex("by_storeId_status", (q: any) =>
+            q.eq("storeId", args.storeId).eq("status", args.status)
+          )
+      )
+    }
+
+    return await newestFirst(
+      ctx.db
+        .query("payments")
+        .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+    )
   },
 }
 
