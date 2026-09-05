@@ -221,8 +221,8 @@ export function PaymentsTab({
             when it will be. Same convention as the print providers, which
             carry `available: false` and a « Bientôt » badge. */}
         <p className="text-xs text-muted-foreground">
-          Square arrive prochainement. En attendant, encaissez par Stripe ou
-          SumUp — et par PayPal ou en espèces ci-dessous.
+          Square : bientôt disponible. Nous l&apos;ajouterons ici dès que
+          l&apos;intégration sera prête.
         </p>
       </div>
 
