@@ -255,15 +255,19 @@ export function SolutionSection() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[color:var(--olive)]/95 via-[color:var(--olive)]/70 to-[color:var(--olive)]/30" />
             <div className="relative">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary-300">
+              <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary-300">
                 Mobile
+                <span className="rounded-full border border-white/30 px-1.5 py-0.5 text-[9px] tracking-wide text-white/80">
+                  À venir
+                </span>
               </span>
               <h3 className="mt-2 font-display text-lg font-semibold text-white">
                 Une app à votre marque
               </h3>
               <p className="mt-1.5 max-w-md text-sm leading-relaxed text-[color:var(--primary-100)]/85">
                 Notifications push, commande en un geste : vos habitués vous
-                gardent dans leur poche.
+                gardent dans leur poche. Elle fera l&apos;offre Premium, qui
+                ouvrira à sa sortie sur l&apos;App Store et Google Play.
               </p>
             </div>
           </StaggerItem>

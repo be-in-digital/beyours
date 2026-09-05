@@ -6,7 +6,8 @@ from the **discovery audit of 1 Sep 2026**, which asked a different question —
 conversation opened on this repository.
 
 Batches 01, 02, 03, 04 and 06 are closed and have no prompt here — batch 01 on 4 Sep 2026
-when #180 closed, batch 06 the same day with #311. The discovery prompts are grouped under
+when #180 closed, batch 06 the same day with #311. Batch 14 was decided on 5 Sep 2026;
+its prompt is kept below for the record but should not be re-run. The discovery prompts are grouped under
 *New findings* at the end of the file, and six of them are blockers.
 
 > **The discovery audit is complete.** All eight scopes have reported. The headline number
@@ -540,7 +541,12 @@ the repo.
 ````
 
 ## Batch 14 — Align the sales pitch with the product
-**0/1 done · 1 open.** Four features are sold and do not exist. Last, once you know what shipped.
+**Decided 5 Sep 2026 — the copy is aligned; one build is deferred.** Five promises,
+not four: Auto Blog was struck (its crons ship), and the native app and table
+reservations joined from #330. The owner's decision for each is recorded in
+`tasks/sales-readiness-backlog.md` → LAUNCH-04. The prompt below is kept for the
+record; do not re-run it. What remains is the **formule flow**, decided *build*
+and deferred to its own PR — see batch 14 in `tasks/battle-plan.md`.
 
 ````
 Read `tasks/fix-prompts.md` and follow its "Shared brief" section in full — method, traps,

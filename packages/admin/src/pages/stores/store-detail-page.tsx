@@ -28,6 +28,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     phone,
     setPhone,
     email,
+    reservationUrl,
+    setReservationUrl,
     setEmail,
     status,
     setStatus,
@@ -202,6 +204,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             phone={phone}
             setPhone={setPhone}
             email={email}
+            reservationUrl={reservationUrl}
+            setReservationUrl={setReservationUrl}
             setEmail={setEmail}
             status={status}
             setStatus={setStatus}

@@ -49,6 +49,12 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   stripe: { label: "Stripe", color: "bg-purple-100 text-purple-800" },
   sumup: { label: "SumUp", color: "bg-blue-100 text-blue-800" },
   paypal: { label: "PayPal", color: "bg-sky-100 text-sky-800" },
+  /* Kept: a payment row can only carry a provider the schema allows, and
+     "square" is one of them. Nothing writes such a row today, but a badge
+     that renders "undefined" for a row that does exist is worse than one
+     that is never used. The matching filter option was removed — Square is
+     announced as forthcoming in Paramètres, and a filter over past
+     payments that can never match anything is not an announcement. */
   square: { label: "Square", color: "bg-gray-100 text-gray-800" },
   cash: { label: "Espèces", color: "bg-green-100 text-green-800" },
 }
@@ -133,7 +139,6 @@ export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
               <SelectItem value="stripe">Stripe</SelectItem>
               <SelectItem value="sumup">SumUp</SelectItem>
               <SelectItem value="paypal">PayPal</SelectItem>
-              <SelectItem value="square">Square</SelectItem>
               <SelectItem value="cash">Espèces</SelectItem>
             </SelectContent>
           </Select>

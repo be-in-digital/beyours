@@ -82,7 +82,8 @@ export const TOUR_STEPS: StepType[] = [
       "4 colonnes Kanban : En attente → En cours → Prêt → Terminé. " +
       "Chaque ticket affiche le n° de commande, les articles et un chrono. " +
       "Filtrez par poste (entrées, grillades, desserts…) en haut. " +
-      "Impression thermique automatique à chaque nouvelle commande.",
+      "Et si vous activez l'impression dans les réglages de l'établissement, " +
+      "chaque commande payée sort toute seule sur l'imprimante du poste.",
     action: goTo("/orders/kitchen"),
   },
 
@@ -283,7 +284,7 @@ export const TOUR_STEPS: StepType[] = [
     content:
       "Paramètres — Plusieurs onglets de configuration : " +
       "informations du restaurant, moyens de paiement " +
-      "(Stripe, SumUp, PayPal, Square), options de livraison, " +
+      "(Stripe, SumUp, PayPal, espèces — Square arrive), options de livraison, " +
       "horaires et intégrations. Les couleurs, la typographie et le logo " +
       "se règlent sur l'écran Design, dans le groupe Contenu.",
     action: goTo("/settings"),

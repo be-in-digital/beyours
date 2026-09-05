@@ -1,13 +1,13 @@
 # Kitchen Display System Guide
 
-> Real-time order display with ESC/POS thermal printing and multi-station support.
+> Real-time order display with browser ticket printing and multi-station routing.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Setup](#setup)
 - [Kitchen Display](#kitchen-display)
-- [Thermal Printing](#thermal-printing)
+- [Ticket Printing](#ticket-printing)
 - [Multi-Station Routing](#multi-station-routing)
 - [Ticket Lifecycle](#ticket-lifecycle)
 
@@ -78,56 +78,46 @@ The `KitchenPage` component displays tickets in real-time:
 - **Priority indicators** — Color-coded by urgency
 - **Sound alerts** — Audio notification for new tickets
 
-## Thermal Printing
+## Ticket Printing
 
-### Printer Configuration
+What ships is **browser printing**, and only that. The kitchen screen renders
+the ticket into a hidden iframe and calls `print()`
+(`components/admin/kitchen/KitchenPrintTrigger.tsx`). Paired with
+`scripts/kiosk-print.sh`, which launches Chrome with `--kiosk-printing`, no
+dialog appears and the slip goes straight to the station's default printer. Set
+a thermal printer as the OS default and you get a thermal ticket — through the
+vendor driver, not through ESC/POS bytes this codebase emits.
 
-```typescript
-// Admin: Configure printer
-await configurePrinter({
-  storeId: store._id,
-  name: "Kitchen Printer 1",
-  type: "network", // "network" | "usb"
-  address: "192.168.1.100", // IP for network printers
-  port: 9100,
-  paperWidth: 80, // mm (58 or 80)
-  autoPrint: true, // Auto-print on new orders
-});
-```
+There is no `configurePrinter()`, no `POST /api/print`, no port 9100, no USB
+transport and no printer status polling. The `printerSettings` table is
+registered in the schema and has zero readers and zero writers; it belongs to a
+path that was never built. Live configuration is `stores.printConfig`, edited in
+Établissements → Cuisine.
 
-### ESC/POS Commands
+### Turning it on
 
-The system generates ESC/POS commands for thermal printers:
-
-```
-┌────────────────────────────┐
-│     LA BELLA PIZZERIA      │
-│                            │
-│ Order #045          Table 3│
-│ ─────────────────────────  │
-│ 2x Margherita       €25.98│
-│   + Extra cheese            │
-│ 1x Pasta Carbonara  €14.99│
-│ ─────────────────────────  │
-│ Total:              €40.97 │
-│                            │
-│ 15:32 - 01/04/2026         │
-│                            │
-│        [BARCODE]           │
-└────────────────────────────┘
-```
-
-### Auto-Print
-
-When enabled, tickets are automatically printed when:
-1. A new order is confirmed
-2. An order is modified
-3. Staff requests a reprint
+Printing is off until an owner enables it: `DEFAULT_PRINT_CONFIG.enabled` is
+`false` (`packages/admin/src/lib/kitchen-print.ts`). Once on, every paid order
+is queued, claimed by exactly one tablet, and retried on failure.
 
 ```typescript
-// Reprint a ticket
-await reprintTicket(ticketId);
+// Reprint from the kitchen screen
+await requestReprint({ ticketId });
 ```
+
+One limitation worth stating, because the code states it too: no browser reports
+whether the cook printed or pressed Cancel. `onafterprint` fires identically for
+both, so a cancelled dialog is recorded as printed.
+
+### What comes next
+
+The thermal path will be **cloud printing** — Star CloudPRNT and Epson Server
+Direct Print, where the printer polls an HTTP endpoint and the server answers
+with the bytes. A browser cannot open a raw socket and Convex cannot reach a
+restaurant's LAN, so the alternative would be a signed desktop agent per
+operating system; cloud printing gets real ESC/POS output without it. The three
+providers are already catalogued in `packages/admin/src/lib/kitchen-print.ts`
+with `available: false`.
 
 ## Multi-Station Routing
 

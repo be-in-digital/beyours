@@ -120,7 +120,7 @@ February 14, 2026
 - **Translations**: Smart upsert (update/insert depending on existence)
 
 ### ✅ Multi-provider support
-- **Payments**: Stripe, SumUp, PayPal, Square, Cash
+- **Payments**: Stripe, SumUp, PayPal, Cash (Square announced, not implemented)
 - **Roles**: Owner, Manager, Staff, Kitchen, Delivery
 - **Order types**: Delivery, Pickup, Dine-in
 - **Statuses**: 7 statuses for orders, 4 for kitchen tickets

@@ -437,12 +437,12 @@ function AllFeaturesGrid() {
   return (
     <div className="mt-16">
       <p className="text-center text-sm font-semibold uppercase tracking-widest text-primary">
-        Tout est inclus dans l&apos;offre Essentielle
+        Inclus dans l&apos;offre Essentielle, sauf mention contraire
       </p>
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => {
           const Icon = FEATURE_ICONS[f.id] ?? Store;
-          const soon = f.id === "integration-plateformes";
+          const soon = f.notYetAvailable;
           return (
             <div
               key={f.id}
@@ -456,7 +456,7 @@ function AllFeaturesGrid() {
               {soon && (
                 <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[color:var(--info)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--info-foreground)]">
                   <Timer className="h-3 w-3" />
-                  Uber en attente
+                  {soon.label}
                 </span>
               )}
               <span

@@ -132,7 +132,7 @@ STRIPE_WEBHOOK_SECRET=
 SUMUP_API_KEY=
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
-SQUARE_ACCESS_TOKEN=
+# No SQUARE_* variable: Square has no implementation to configure.
 
 # Translation
 OPENAI_API_KEY=

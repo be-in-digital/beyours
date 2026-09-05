@@ -77,6 +77,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const [description, setDescription] = useState("")
   const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
+  const [reservationUrl, setReservationUrl] = useState("")
   const [status, setStatus] = useState<"draft" | "open" | "closed" | "temporarily_unavailable">("draft")
   const [address, setAddress] = useState<AddressValue>({
     street: "",
@@ -151,6 +152,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     setDescription(store.description || "")
     setPhone(store.phone || "")
     setEmail(store.email || "")
+    setReservationUrl(store.reservationUrl || "")
     setStatus(store.status as "draft" | "open" | "closed" | "temporarily_unavailable")
 
     if (store.address) {
@@ -275,6 +277,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         description: description || undefined,
         phone: phone || undefined,
         email: email || undefined,
+        reservationUrl: reservationUrl.trim() || undefined,
         status,
         useGlobalHours,
       })
@@ -767,6 +770,8 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     setPhone,
     email,
     setEmail,
+    reservationUrl,
+    setReservationUrl,
     status,
     setStatus,
     address,

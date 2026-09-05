@@ -23,5 +23,9 @@ export * from "./storeStatus"
 // storefront's order-type selector
 export * from "./storeServices"
 
+// Where « Réserver une table » points — shared by the admin form, the mutation
+// that writes it and the storefront that renders it into an href
+export * from "./reservationUrl"
+
 // Typed data model (type-only): SchemaDataModel, Doc<>, SchemaQueryCtx…
 export * from "./dataModel"

@@ -36,7 +36,7 @@
 - **Registry**: GitHub Packages (private)
 
 ### Integrations
-- **Payments**: Stripe, SumUp, PayPal, Square
+- **Payments**: Stripe, SumUp, PayPal, Cash — Square is announced, not built
 - **Delivery**: Uber Direct
 - **Platforms**: Uber Eats, Deliveroo
 - **Translation**: GPT-3.5-turbo
@@ -111,7 +111,9 @@ needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 - `users`, `sessions`, `stores`, `products`, `menus`, `orders`
 
 ### Kitchen System
-- `kitchenTickets`, `printerSettings` (auto-print)
+- `kitchenTickets` (auto-print). `printerSettings` is registered but has **zero
+  readers and zero writers** — it belongs to the unbuilt ESC/POS path, not to
+  the printing that ships. Print config lives on `stores.printConfig`.
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`
@@ -136,11 +138,13 @@ Catalog, categories, options, pricing, stock, scheduling
 ### Orders (8)
 Creation, tracking, statuses, types (delivery/pickup/dine-in)
 
-### Kitchen Display System (12)
-Real-time display, auto-print tickets, multi-station, prize scanner
+### Kitchen Display System
+Real-time display, auto-print tickets (browser), multi-station, prize scanner
 
-### Payments (8)
-Stripe, SumUp, PayPal, Square, Cash, tracking, refunds
+### Payments
+Stripe, SumUp, PayPal, Cash, tracking, refunds. **Square is not
+implemented** — `refundPolicy.ts` refuses it by name. It is presented as
+forthcoming in the admin and in the guided tour; do not describe it as available.
 
 ### Third-Party Integrations (10)
 Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
@@ -228,14 +232,28 @@ await batchTranslate([items], "en", "es")
 
 ## 🖨️ Kitchen Printing
 
-**Auto-print tickets** when order confirmed
+**Auto-print tickets** when an order is paid — through the browser, which is the
+only transport that ships.
 
-```typescript
-// ESC/POS thermal printers
-// Network or USB
-// Multi-station support
-// Reprint button for staff
 ```
+Browser print — the kitchen screen prints to the station's own printer
+  KitchenPrintTrigger renders the ticket into a hidden iframe and calls
+  print(); apps/*/scripts/kiosk-print.sh runs Chrome with --kiosk-printing so
+  no dialog appears. A thermal printer set as the OS default gives a thermal
+  ticket — via the OS driver, not via ESC/POS bytes we emit.
+Multi-station routing  — stores.stationMapping
+Reprint button         — kitchenTickets.requestReprint
+Claim lock + retries   — one tablet wins a ticket; failures retry (#164)
+```
+
+**Not implemented, and not to be described as if it were:** ESC/POS byte
+generation, network (port 9100) or USB transport, printer status polling. A
+browser cannot open a raw socket and Convex cannot reach a restaurant's LAN, so
+the thermal path will be **cloud printing** (Star CloudPRNT / Epson Server Direct
+Print — the printer polls an HTTP endpoint), not a local print agent. The three
+cloud providers already exist in `packages/admin/src/lib/kitchen-print.ts` as
+`available: false`. Decision recorded in `tasks/sales-readiness-backlog.md`
+(LAUNCH-04).
 
 ---
 
@@ -297,7 +315,7 @@ OPENAI_API_KEY=sk-...
 STRIPE_SECRET_KEY=
 SUMUP_API_KEY=
 PAYPAL_CLIENT_ID=
-SQUARE_ACCESS_TOKEN=
+# SQUARE_ACCESS_TOKEN — no code reads this yet; Square is unimplemented
 
 # Integrations
 UBER_EATS_API_KEY=

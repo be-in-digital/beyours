@@ -116,8 +116,17 @@ export const kitchenTicketsTable = defineTable({
   .index("by_status_createdAt", ["status", "createdAt"])
 
 /**
- * Printer Settings table
- * ESC/POS thermal printer configuration
+ * Printer Settings table — declared for an ESC/POS path that does not exist.
+ *
+ * Nothing reads this table and nothing writes it. The only reference outside
+ * the schema is the delete cascade in `storeCascade.ts`, which removes rows
+ * nothing ever creates. What ships instead is browser printing, configured on
+ * `stores.printConfig`.
+ *
+ * Kept rather than dropped because the thermal path is planned (cloud
+ * printing — Star CloudPRNT / Epson Server Direct Print), and these fields are
+ * roughly the ones it will need. Do not cite it as evidence that printer
+ * configuration exists.
  */
 export const printerSettingsTable = defineTable({
   storeId: v.id("stores"),
