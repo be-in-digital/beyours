@@ -46,6 +46,26 @@ const CONSUMERS = [
   "packages/admin/src",
 ]
 
+/**
+ * Every name a module exports, in both spellings that matter here: the
+ * `export function X` form and the `function X` + `export { X }` form that
+ * every shadcn component uses. Reading only the first is how the collision
+ * check below silently found nothing.
+ */
+function exportedNames(src: string): Set<string> {
+  const names = new Set<string>()
+  for (const m of src.matchAll(/^export (?:function|const|class) (\w+)/gm)) {
+    names.add(m[1]!)
+  }
+  for (const m of src.matchAll(/^export \{([^}]*)\}/gm)) {
+    for (const raw of m[1]!.split(",")) {
+      const name = raw.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop()?.trim()
+      if (name) names.add(name)
+    }
+  }
+  return names
+}
+
 function walk(dir: string): string[] {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -73,6 +93,81 @@ describe("the design system has one home", () => {
         const src = fs.readFileSync(file, "utf8")
         if (/from ["']@\/components\/ui|from ["'](?:\.\.\/)+ui\/|from ["']\.\/ui\//.test(src)) {
           offenders.push(path.relative(REPO, file))
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("defines no variants of its own", () => {
+    // The sharpest of these checks, and the one the others missed. A second
+    // design system does not have to reappear at a path this file knows about
+    // or behind an import specifier it recognises: a `cva()` in any consumer
+    // file is a component with its own geometry, whatever it is called and
+    // wherever it lives. A scratch `packages/admin/src/components/design/
+    // button.tsx` — old geometry, `h-10`, the deleted ring-offset focus
+    // treatment — passed every other assertion here.
+    //
+    // Zero is the honest bar. Variants belong to the design system; a consumer
+    // that needs a new one needs it in `packages/ui`.
+    const offenders: string[] = []
+    for (const dir of CONSUMERS) {
+      for (const file of walk(path.join(REPO, dir))) {
+        if (/\bcva\(/.test(fs.readFileSync(file, "utf8"))) {
+          offenders.push(path.relative(REPO, file))
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it("has no second implementation of a name it exports", () => {
+    // The name check behind the variant one: a component defined in an app or
+    // in `packages/admin` under a name the design system already exports is
+    // the fork in its earliest form, before anyone notices the two look
+    // different.
+    //
+    // One pair is known and allowed, with its reason. Do not add a row here to
+    // silence a finding — converge it or rename it.
+    const ALLOWED = new Map<string, string>([
+      [
+        "EmptyState",
+        // Two genuinely different components sharing a name. The apps' takes a
+        // `LucideIcon` and an `{ label, onClick }` action and has three
+        // consumers; the package's takes `ReactNode`s, draws a dashed border,
+        // and has none. The one that renders is the app's. This is the fork
+        // pattern, caught early: it closes by converging the two or renaming
+        // one, not by deleting the dead half — see the dead-code verdict in
+        // `tasks/reference-themes-divergence.md`.
+        "apps/*/components/admin/EmptyState.tsx",
+      ],
+    ])
+
+    const exported = new Set<string>()
+    for (const file of walk(path.join(UI_SRC, "components"))) {
+      for (const name of exportedNames(fs.readFileSync(file, "utf8"))) {
+        if (/^[A-Z]/.test(name) || name.endsWith("Variants")) exported.add(name)
+      }
+    }
+    // The set has to be non-trivial, or this test passes by finding nothing.
+    // It read `^export function` only at first, which misses the form every
+    // shadcn file uses — `function Button()` with `export { Button }` at the
+    // bottom — so `Button` itself was not in it.
+    expect(exported.has("Button"), "the export scan found no Button").toBe(true)
+    expect(exported.size).toBeGreaterThan(80)
+
+    const offenders: string[] = []
+    for (const dir of CONSUMERS) {
+      for (const file of walk(path.join(REPO, dir))) {
+        const src = fs.readFileSync(file, "utf8")
+        // A re-export is not a second implementation; a local definition is.
+        for (const name of exportedNames(src)) {
+          if (!exported.has(name) || ALLOWED.has(name)) continue
+          const defined = new RegExp(
+            `^(?:export )?(?:function|const|class) ${name}\\b`,
+            "m"
+          ).test(src)
+          if (defined) offenders.push(`${name} in ${path.relative(REPO, file)}`)
         }
       }
     }
