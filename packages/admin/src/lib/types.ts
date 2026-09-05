@@ -3,6 +3,78 @@
  * Mirrors the Convex schema types without importing Convex directly
  */
 
+/**
+ * Kitchen tickets.
+ *
+ * Lifted here with the KDS itself: the screen used to live in both apps and
+ * read these types from `apps/*\/lib/admin/types.ts`, so a schema change had
+ * to be made in three places. Ids are plain strings — this file mirrors the
+ * schema without importing Convex, so the package stays buildable on its own.
+ */
+
+export type TicketItem = {
+  productName: string
+  quantity: number
+  options: string[]
+  notes?: string
+}
+
+export type TicketStatus = "pending" | "in_progress" | "ready" | "completed" | "cancelled"
+export type TicketSource = "website" | "uber_eats" | "deliveroo" | "pos"
+export type TicketOrderType = "delivery" | "pickup" | "dine_in"
+export type TicketPriority = "normal" | "urgent" | "vip"
+/**
+ * `printing` is a claim held by one tablet, not a state the kitchen cares
+ * about: two screens on the same pass both read `pending` and both printed
+ * the slip, so a ticket is now taken before it is rendered (#164).
+ */
+export type TicketPrintStatus =
+  | "pending"
+  | "printing"
+  | "printed"
+  | "failed"
+  | "not_required"
+
+export type KitchenTicket = {
+  _id: string
+  _creationTime: number
+  storeId: string
+  orderId: string
+  station?: string
+  status: TicketStatus
+  priority: TicketPriority
+  items: TicketItem[]
+  assignedTo?: string
+  estimatedPrepTime?: number
+  source: TicketSource
+  orderNumber: string
+  orderType: TicketOrderType
+  startedAt?: number
+  readyAt?: number
+  completedAt?: number
+  pickedUpAt?: number
+  cancelledAt?: number
+  trackingToken: string
+  estimatedReadyAt?: number
+  customerName?: string
+  customerPhone?: string
+  /** Dine-in only: the table the order is served to. */
+  tableNumber?: string
+  deliveryNotes?: string
+  allergens?: string[]
+  printStatus: TicketPrintStatus
+  printAttempts: number
+  printRequestedAt?: number
+  printClaimedAt?: number
+  printTrigger?: "confirmed" | "ready" | "reprint"
+  lastPrintAt?: number
+  printFailedAt?: number
+  lastPrintError?: string
+  printCount?: number
+  createdAt: number
+  updatedAt: number
+}
+
 // === Order Types ===
 
 export type OrderStatus =

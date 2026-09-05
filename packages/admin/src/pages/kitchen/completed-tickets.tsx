@@ -2,21 +2,20 @@
 
 import { useState, useMemo } from "react"
 import { usePaginatedQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
-import type { KitchenTicket } from "@/lib/admin/types"
-import { Input } from "@/components/ui/input"
+import { useAdminApiStore } from "../../stores/admin-api-store"
+import type { KitchenTicket } from "../../lib/types"
+import { Input } from "@be-in-digital/ui"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
+} from "@be-in-digital/ui"
+import { Empty, EmptyHeader, EmptyTitle } from "@be-in-digital/ui"
+import { Button } from "@be-in-digital/ui"
 import { Search } from "lucide-react"
-import { TicketCard } from "./TicketCard"
+import { TicketCard } from "./ticket-card"
 
 /** One page of history. Large enough to fill the grid, small enough to be cheap. */
 const COMPLETED_PAGE_SIZE = 50
@@ -40,10 +39,11 @@ const ORDER_TYPE_OPTIONS: { value: OrderType; label: string }[] = [
 ]
 
 interface CompletedTicketsProps {
-  storeId: Id<"stores">
+  storeId: string
 }
 
 export function CompletedTickets({ storeId }: CompletedTicketsProps) {
+  const { api } = useAdminApiStore()
   const [search, setSearch] = useState("")
   const [sourceFilter, setSourceFilter] = useState<Source>("all")
   const [typeFilter, setTypeFilter] = useState<OrderType>("all")

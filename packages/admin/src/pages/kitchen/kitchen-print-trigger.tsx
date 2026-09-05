@@ -2,11 +2,10 @@
 
 import { useEffect, useRef, useCallback } from "react"
 import { useQuery, useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
+import { useAdminApiStore } from "../../stores/admin-api-store"
 import { createRoot } from "react-dom/client"
 import { flushSync } from "react-dom"
-import { PrintTicketLayout } from "./PrintTicketLayout"
+import { PrintTicketLayout } from "./print-ticket-layout"
 
 interface PrintConfig {
   provider: "browser" | "star_cloud" | "epson_cloud" | "sunmi_cloud"
@@ -18,7 +17,7 @@ interface PrintConfig {
 }
 
 interface KitchenPrintTriggerProps {
-  storeId: Id<"stores">
+  storeId: string
   printConfig: PrintConfig
   storeName: string
   onToast: (msg: string, type: "success" | "error" | "info") => void
@@ -39,6 +38,7 @@ export function KitchenPrintTrigger({
   storeName,
   onToast,
 }: KitchenPrintTriggerProps) {
+  const { api } = useAdminApiStore()
   const printQueue = useQuery(api.kitchenTickets.getPrintQueue, { storeId })
   const claimForPrint = useMutation(api.kitchenTickets.claimForPrint)
   const markPrintSent = useMutation(api.kitchenTickets.markPrintSent)
@@ -73,7 +73,7 @@ export function KitchenPrintTrigger({
       // walk to the next candidate instead of printing it again.
       for (const candidate of printQueue) {
         const won = await claimForPrint({
-          id: candidate._id as Id<"kitchenTickets">,
+          id: candidate._id,
         })
         if (won) {
           winner = candidate
@@ -174,7 +174,7 @@ export function KitchenPrintTrigger({
       if (!rootEl.textContent?.includes(ticket.orderNumber)) {
         root.unmount()
         await markPrintFailed({
-          id: ticket._id as Id<"kitchenTickets">,
+          id: ticket._id,
           reason: "Rendered ticket was blank — nothing sent to the printer",
           claimId: claimId ?? undefined,
         })
@@ -201,12 +201,12 @@ export function KitchenPrintTrigger({
         // unhandled would strand the ticket in `printing` until the TTL.
         if (success) {
           markPrintSent({
-            id: ticket._id as Id<"kitchenTickets">,
+            id: ticket._id,
             claimId: claimId ?? undefined,
           }).catch((err) => console.error("markPrintSent failed:", err))
         } else {
           markPrintFailed({
-            id: ticket._id as Id<"kitchenTickets">,
+            id: ticket._id,
             reason: "Print dialog timeout (20s)",
             claimId: claimId ?? undefined,
           }).catch((err) => console.error("markPrintFailed failed:", err))
@@ -233,7 +233,7 @@ export function KitchenPrintTrigger({
     } catch (err) {
       console.error("Print error:", err)
       await markPrintFailed({
-        id: ticket._id as Id<"kitchenTickets">,
+        id: ticket._id,
         reason: String(err),
         claimId: claimId ?? undefined,
       })
