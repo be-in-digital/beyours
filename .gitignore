@@ -11,7 +11,9 @@ node_modules/
 !.yarn/versions
 
 # testing
-/coverage
+# Vitest writes coverage/ into every workspace that runs test:coverage,
+# not just the root.
+coverage/
 
 # Playwright / E2E (reports, results, browser auth state — must never be committed)
 playwright-report/
