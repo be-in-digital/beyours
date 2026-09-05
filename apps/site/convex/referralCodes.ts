@@ -7,6 +7,10 @@ import {
   requireBillableDiscountPercent,
 } from "./referralDiscount";
 import { Doc, Id } from "./_generated/dataModel";
+import {
+  affiliateStandingRefusal,
+  isUngrandfathered,
+} from "./affiliateStanding";
 
 /* ── Helpers ── */
 
@@ -43,7 +47,33 @@ async function lookupUsableCode(
   if (!referralCode || !referralCode.isActive) return null;
 
   const affiliate = await ctx.db.get(referralCode.affiliateUserId);
-  if (!affiliate || affiliate.status !== "active") return null;
+  if (!affiliate) return null;
+
+  /* `status` is about the ACCOUNT; the contract is what makes a commission
+     payable, and it used to be checked nowhere on this path. Any signed-in
+     account can grant itself `status: "active"` through the public
+     `affiliateUsers.createAfterSignup`, so asking only that made the whole
+     programme self-service: sign up, mint a code, take 750 € off a friend's
+     build and accrue a 500 € commission with nothing signed. See
+     ./affiliateStanding. */
+  const refusal = affiliateStandingRefusal(affiliate);
+  if (refusal) {
+    console.log(
+      `[REFERRAL] Code « ${referralCode.code} » inutilisable : ${refusal}.`,
+    );
+    return null;
+  }
+
+  /* Permitted, but worth saying out loud: this row predates the contract
+     system and the front end already refuses it a dashboard. Running
+     `migrations.addContractStatusToAffiliates` is what settles it either way. */
+  if (isUngrandfathered(affiliate)) {
+    console.error(
+      `[REFERRAL] L'apporteur ${affiliate._id} n'a pas de contractStatus — ` +
+        `accepté au titre de l'antériorité. Lancer ` +
+        `migrations.addContractStatusToAffiliates pour régulariser.`,
+    );
+  }
 
   return { code: referralCode, affiliate };
 }

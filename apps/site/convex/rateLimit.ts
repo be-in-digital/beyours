@@ -122,6 +122,24 @@ export const RATE_LIMITS = {
     foldSubjectCase: false,
   },
   /**
+   * One prospect joining the waitlist. Mirrors `contactPerEmail`, and exists
+   * for the same reason: a genuine correction is a couple of submits, a loop is
+   * not. Keyed on the address the caller typed, whether or not it is on the
+   * list, so the counter cannot answer "is this address registered?".
+   */
+  whitelistPerEmail: { limit: 3, windowMs: HOUR, foldSubjectCase: true },
+  /**
+   * Every waitlist join reaching the site.
+   *
+   * SEPARATE from `contactSiteWide`, and that separation is the point. Sharing
+   * that window made forty anonymous waitlist joins spend the contact form's
+   * entire hourly budget, so one loop took down the only way a prospect can
+   * reach the company. A shared global window turns any flood into a lockout of
+   * an unrelated surface; two windows keep the blast radius on the endpoint
+   * being abused.
+   */
+  whitelistSiteWide: { limit: 40, windowMs: HOUR, foldSubjectCase: false },
+  /**
    * Checkouts opened from one email address.
    *
    * `stripe.createCheckoutSession` is public and unauthenticated: it creates

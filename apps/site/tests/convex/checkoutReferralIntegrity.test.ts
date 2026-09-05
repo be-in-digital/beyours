@@ -51,6 +51,10 @@ const CHECKOUT = {
   city: "Lyon",
   successUrl: "https://beyours.fr/checkout/success",
   cancelUrl: "https://beyours.fr/checkout",
+  /* Required since #349: the express request for immediate performance
+     (art. L. 221-28). The handler refuses a checkout without it, so every
+     case here has to carry it to reach the behaviour it is testing. */
+  withdrawalWaiverConsent: true,
 };
 
 beforeEach(() => {
@@ -76,6 +80,7 @@ async function seedProgramme(
     defaultDiscountPercent?: number;
     affiliateEmail?: string;
     commissionOverrideCents?: number;
+    contractStatus?: "pending_contract" | "active" | "blocked_new_version";
   } = {},
 ) {
   return await t.run(async (ctx) => {
@@ -93,6 +98,10 @@ async function seedProgramme(
       userId,
       role: "affiliate" as const,
       status: opts.affiliateStatus ?? ("active" as const),
+      /* Signed, unless a case says otherwise. This defaulted to absent, which
+         is the grandfathered path — so every case here was exercising the
+         legacy allowance rather than a real affiliate. */
+      contractStatus: opts.contractStatus ?? ("active" as const),
       stripeConnectStatus: "active" as const,
       discountOverridePercent: opts.discountOverridePercent,
       commissionOverrideCents: opts.commissionOverrideCents,
@@ -306,6 +315,60 @@ describe("the storefront is never shown a code the checkout will refuse", () => 
         referralCode: "BID-HONEST",
       }),
     ).rejects.toThrow(/Remise de parrainage invalide/);
+  });
+});
+
+describe("a code only discounts while its contract holds", () => {
+  test.each([
+    ["never signed the contract", "pending_contract" as const],
+    ["is on a superseded version", "blocked_new_version" as const],
+  ])("an affiliate who %s earns nothing", async (_label, contractStatus) => {
+    /* `affiliateUsers.createAfterSignup` is public and grants
+       `status: "active"`, so without this the programme was self-service: sign
+       up, mint a code, take 750 € off a friend's build and accrue a 500 €
+       commission with nothing signed. */
+    const t = convexTest(schema, modules);
+    await seedProgramme(t, { contractStatus });
+
+    const { orderId } = await t.action(api.stripe.createCheckoutSession, {
+      ...CHECKOUT,
+      referralCode: "BID-HONEST",
+    });
+
+    expect(await orderAmount(t, orderId)).toBe(LIST_TOTAL);
+    const referrals = await t.run((ctx) => ctx.db.query("referrals").collect());
+    expect(referrals).toEqual([]);
+  });
+
+  test("the storefront is told so too, not just the checkout", async () => {
+    const t = convexTest(schema, modules);
+    await seedProgramme(t, { contractStatus: "pending_contract" });
+
+    const shown = await t.query(api.referralCodes.validateCode, {
+      code: "BID-HONEST",
+    });
+    expect(shown.valid).toBe(false);
+  });
+
+  test("a row predating the contract system still works", async () => {
+    /* Absent is grandfathered on purpose — `createAfterSignup` cannot produce
+       it, and refusing it would kill a real affiliate's code if the migration
+       has not been run. See convex/affiliateStanding.ts. */
+    const t = convexTest(schema, modules);
+    await seedProgramme(t);
+    await t.run(async (ctx) => {
+      const affiliate = await ctx.db.query("affiliateUsers").first();
+      await ctx.db.patch(affiliate!._id, { contractStatus: undefined });
+    });
+
+    const { orderId } = await t.action(api.stripe.createCheckoutSession, {
+      ...CHECKOUT,
+      referralCode: "BID-HONEST",
+    });
+
+    expect(await orderAmount(t, orderId)).toBe(
+      LIST_TOTAL - planPrices.premium.creation * 0.1,
+    );
   });
 });
 

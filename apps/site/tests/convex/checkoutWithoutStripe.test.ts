@@ -33,6 +33,7 @@ const CHECKOUT = {
   siret: "12345678901234",
   successUrl: "https://beyours.fr/checkout/success",
   cancelUrl: "https://beyours.fr/checkout",
+  withdrawalWaiverConsent: true,
 };
 
 beforeEach(() => {
