@@ -132,11 +132,45 @@ export function entitlementMessage(e: Entitlement): string {
   }
 }
 
+/* How many of a customer's subscriptions one lookup reads.
+   Bounded so the biggest account cannot blow the read limit, and taken NEWEST
+   FIRST: the row that still entitles is a recent one, the dead ones are
+   history. The old bound kept the OLDEST 20, so a client with more than 20
+   finished contracts had their live subscription fall outside the window and
+   was refused an update they had paid for. */
+const MAX_SUBSCRIPTIONS_SCANNED = 200;
+
+/**
+ * The most favourable verdict among several subscriptions, or null for none.
+ *
+ * A lookup can turn up more than one row: several sites on one email, contracts
+ * that ended, and — for orders that predate the guard in ./subscriptions — a
+ * duplicate written by two concurrent webhook deliveries. None of those may
+ * cost a paying client their updates, so the best row decides.
+ */
+function mostFavourable(
+  subscriptions: Doc<"subscriptions">[],
+  now: number,
+): Entitlement | null {
+  return (
+    subscriptions
+      .map((subscription) => resolveEntitlement({ subscription, now }))
+      .sort(
+        (a, b) =>
+          Number(b.entitled) - Number(a.entitled) ||
+          (b.coveredUntil ?? 0) - (a.coveredUntil ?? 0),
+      )[0] ?? null
+  );
+}
+
 /**
  * Resolves a site's entitlement from its license key.
  * Prefers the subscription linked to the deployment's order; falls back to the
- * customer's subscriptions and keeps the most favourable, so a client running
- * several sites is never blocked by whichever row happened to come first.
+ * customer's subscriptions. Either way the most favourable row wins, so a
+ * client running several sites is never blocked by whichever one happened to
+ * come first — and neither reads with `.unique()`, so an order carrying
+ * duplicate rows answers instead of throwing a 500 the client update scripts
+ * would read as « API unreachable, update anyway ».
  */
 export const byLicenseKey = internalQuery({
   args: { licenseKey: v.string() },
@@ -154,12 +188,10 @@ export const byLicenseKey = internalQuery({
       const linked = await ctx.db
         .query("subscriptions")
         .withIndex("by_orderId", (q) => q.eq("orderId", deployment.orderId!))
-        .unique();
-      if (linked) {
-        return {
-          site: deployment.name,
-          ...resolveEntitlement({ subscription: linked, now }),
-        };
+        .take(MAX_SUBSCRIPTIONS_SCANNED);
+      const verdict = mostFavourable(linked, now);
+      if (verdict) {
+        return { site: deployment.name, ...verdict };
       }
     }
 
@@ -168,19 +200,13 @@ export const byLicenseKey = internalQuery({
       .withIndex("by_customerEmail", (q) =>
         q.eq("customerEmail", deployment.customerEmail),
       )
-      .take(20);
-
-    const best = owned
-      .map((s) => resolveEntitlement({ subscription: s, now }))
-      .sort(
-        (a, b) =>
-          Number(b.entitled) - Number(a.entitled) ||
-          (b.coveredUntil ?? 0) - (a.coveredUntil ?? 0),
-      )[0];
+      .order("desc")
+      .take(MAX_SUBSCRIPTIONS_SCANNED);
 
     return {
       site: deployment.name,
-      ...(best ?? resolveEntitlement({ subscription: null, now })),
+      ...(mostFavourable(owned, now) ??
+        resolveEntitlement({ subscription: null, now })),
     };
   },
 });

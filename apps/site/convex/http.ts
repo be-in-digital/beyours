@@ -273,7 +273,11 @@ async function handleCheckoutCompleted(
 
   // ── Maintenance subscription (recurring billing) ──
   // Idempotent: the subscription is only created when none exists yet for this
-  // order (a replay does not duplicate it). Wrapped in a try/catch: a failure
+  // order (a replay does not duplicate it). This check is the cheap first line
+  // and nothing more — it reads in its own transaction, so two deliveries
+  // racing each other both pass it; the guard that holds is the one inside
+  // subscriptions.create, where the write happens.
+  // Wrapped in a try/catch: a failure
   // AFTER the payment was collected (e.g. a missing live Price ID) must NOT
   // return 500 — Stripe would replay the event in a loop and stack up effects.
   // We record the failure on the order + in the ops activity feed, then return
