@@ -72,6 +72,18 @@ export interface OrderTotalsInput {
   lines?: TaxedLine[]
   /** Delivery fee in cents. */
   deliveryFee?: number
+  /**
+   * The rate that applies to the delivery fee, as a percentage.
+   *
+   * Absent means "no rate has been decided", and the fee is then left OUT of
+   * the breakdown entirely rather than silently declared at the food's rate.
+   * That is deliberate: which rate a delivery charge carries in France depends
+   * on whether it is an accessory to the meal or a separate service, and
+   * guessing it wrong misdeclares VAT on every delivery the establishment
+   * makes. `globalSettings.deliveryTaxRate` is where an owner states it; until
+   * they do, the invoice says the fee is not broken down instead of pretending.
+   */
+  deliveryTaxRatePercent?: number
   /** Discount in cents, already resolved from the promotion. */
   discount?: number
 }
@@ -114,8 +126,21 @@ export function taxIncludedIn(grossAmount: number, ratePercent: number): number 
  * goods, so it appears in the breakdown and never in the sum — the rate cannot
  * change what is charged, only how it is declared.
  *
- * Delivery is not broken down: the fee is quoted as a single amount by the
- * courier and no rate is attached to it anywhere in the product.
+ * WHAT THE BREAKDOWN NOW COVERS, AND WHY IT HAD TO CHANGE. It used to be built
+ * from the lines alone, which was fine while it only fed a display and wrong
+ * the moment an invoice was printed from it:
+ *
+ *  - **The discount never reached it.** On a 20,00 € basket at 10 % with a
+ *    5,00 € coupon, the breakdown declared 1,82 € of VAT on 20,00 € while the
+ *    customer had paid 15,00 € and owed 1,36 €. A discount reduces the taxable
+ *    base, so it is apportioned across the rate buckets in proportion to what
+ *    each contributes, and the tax is recomputed inside the reduced base.
+ *  - **The delivery fee was left out silently.** It still is — but only when
+ *    no rate has been given for it, and now the caller has a way to give one.
+ *    See `deliveryTaxRatePercent`.
+ *
+ * The total is untouched by any of this. What is charged has not moved; what is
+ * *declared* has stopped being wrong.
  */
 export function computeOrderTotals(input: OrderTotalsInput): OrderTotals {
   const subtotal = input.subtotal
@@ -136,13 +161,54 @@ export function computeOrderTotals(input: OrderTotalsInput): OrderTotals {
     grossByRate.set(rate, (grossByRate.get(rate) ?? 0) + line.subtotal)
   }
 
-  const taxBreakdown: TaxBreakdownEntry[] = [...grossByRate.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .map(([ratePercent, grossAmount]) => ({
-      ratePercent,
-      grossAmount,
-      taxAmount: taxIncludedIn(grossAmount, ratePercent),
-    }))
+  // Delivery is its own taxable supply, at its own rate — which may be one the
+  // food already uses, in which case the two merge into a single entry.
+  const deliveryRate = input.deliveryTaxRatePercent
+  if (
+    deliveryFee > 0 &&
+    typeof deliveryRate === "number" &&
+    Number.isFinite(deliveryRate) &&
+    deliveryRate > 0
+  ) {
+    grossByRate.set(deliveryRate, (grossByRate.get(deliveryRate) ?? 0) + deliveryFee)
+  }
+
+  // Apportion the discount over the taxed buckets, largest bucket absorbing the
+  // rounding remainder so the parts still sum to the whole. A discount larger
+  // than everything taxed leaves nothing to declare rather than a negative base.
+  const taxedGross = [...grossByRate.values()].reduce((sum, gross) => sum + gross, 0)
+  const discountOnTaxed = Math.min(discount, taxedGross)
+
+  const entries = [...grossByRate.entries()].sort((a, b) => a[0] - b[0])
+  const taxBreakdown: TaxBreakdownEntry[] = []
+
+  if (taxedGross > 0 && discountOnTaxed > 0) {
+    let apportioned = 0
+    const shares = entries.map(([ratePercent, gross], index) => {
+      const isLast = index === entries.length - 1
+      const share = isLast
+        ? discountOnTaxed - apportioned
+        : Math.round((discountOnTaxed * gross) / taxedGross)
+      apportioned += share
+      return { ratePercent, gross, share }
+    })
+    for (const { ratePercent, gross, share } of shares) {
+      const grossAmount = Math.max(0, gross - share)
+      taxBreakdown.push({
+        ratePercent,
+        grossAmount,
+        taxAmount: taxIncludedIn(grossAmount, ratePercent),
+      })
+    }
+  } else {
+    for (const [ratePercent, grossAmount] of entries) {
+      taxBreakdown.push({
+        ratePercent,
+        grossAmount,
+        taxAmount: taxIncludedIn(grossAmount, ratePercent),
+      })
+    }
+  }
 
   const taxAmount = taxBreakdown.reduce((sum, entry) => sum + entry.taxAmount, 0)
   const total = Math.max(0, subtotal + deliveryFee - discount)

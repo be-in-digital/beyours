@@ -43,6 +43,10 @@
     "./paymentSettlement": "./src/paymentSettlement.ts",
     "./stripeChargeRouting": "./src/stripeChargeRouting.ts",
     "./refundPolicy": "./src/refundPolicy.ts",
+    "./invoices": "./src/invoices.ts",
+    "./numbering": "./src/numbering.ts",
+    "./orderSource": "./src/orderSource.ts",
+    "./orderConfirmation": "./src/orderConfirmation.ts",
     "./orderTotals": "./src/orderTotals.ts",
     "./orderLine": "./src/orderLine.ts",
     "./promotionDiscount": "./src/promotionDiscount.ts",
@@ -99,7 +103,9 @@
     "./blogAutoSchedule": "./src/blogAutoSchedule.ts",
     "./blogAutoPlanner": "./src/blogAutoPlanner.ts",
     "./platformWebhook": "./src/platformWebhook.ts",
-    "./platformWebhookFailures": "./src/platformWebhookFailures.ts"
+    "./platformWebhookFailures": "./src/platformWebhookFailures.ts",
+    "./privacyPolicy": "./src/privacyPolicy.ts",
+    "./privacy": "./src/privacy.ts"
   },
   "scripts": {
     "lint": "eslint src/",

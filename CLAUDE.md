@@ -9,6 +9,19 @@
 - **Multi-store**: 1 restaurant owner = 1-∞ locations (unlimited)
 - **Pricing**: Per store
 - **Maintenance**: 1 year included, then annual renewal
+- **No plan gating exists.** Two offers are sold — Essentielle and Premium — and
+  the engine never learns which one was bought: no plan literal, no `planSlug`,
+  no entitlement read anywhere in `apps/themes/convex` or `packages/*/src`.
+  `apps/site/convex/planAvailability.ts` decides which plan may be **bought**, not
+  what a bought plan unlocks. Do not write copy that implies a feature is withheld
+  from a tier. If gating is ever wanted, `maintenanceContracts` is the right home:
+  one singleton row per deployment, written by the team, read-only for the client.
+- **A delivered site never invents its own social proof.** No `reviews` table and
+  no `ratings` table exist, so nothing can produce a star. Never ship a hard-coded
+  testimonial, rating, review count or customer count in `apps/themes` — not even
+  as a placeholder a client is "expected to overwrite". A figure about an
+  establishment is the establishment's to state. Held by
+  `tests/storefront/no-fabricated-social-proof.test.ts` in both apps.
 
 ---
 
@@ -118,12 +131,19 @@ neither Neon nor Postgres appears anywhere in the codebase.
   no `users` or `sessions` table to query.
 
 ### Kitchen System
-- `kitchenTickets` (auto-print). `printerSettings` is registered but has **zero
-  readers and zero writers** — it belongs to the unbuilt ESC/POS path, not to
-  the printing that ships. Print config lives on `stores.printConfig`.
+- `kitchenTickets` (auto-print). Print config lives on `stores.printConfig`.
+  There is no `printerSettings` table: it was declared for the unbuilt ESC/POS
+  path, never gained a reader or a writer, and has been removed. The thermal
+  path when it comes is cloud printing, whose shape `stores.printConfig`
+  already carries.
 
 ### Gamification
 - `gameQRCodes`, `requiredActions`, `games` (win ratio), `prizes`, `gamePlays`, `prizeRedemptions`
+- `gamePlays.consent` records the diner's agreement (art. 7.1) — when, and to
+  which wording. `gamePlay.play` throws `CONSENT_REQUIRED` without it. The
+  wording lives in `packages/admin/src/game/consent-copy.ts` and owns its own
+  version; `GAME_CONSENT_NOTICE_VERSIONS` in `convex-functions/gamePlay` is the
+  set the server accepts.
 
 ### i18n
 - `languages` (dynamic, unlimited), `translations`, `translationJobs` (GPT)
@@ -137,7 +157,15 @@ neither Neon nor Postgres appears anywhere in the codebase.
 
 ---
 
-## 🎯 Key Features (181+)
+## 🎯 Key Features — 29 shipping · 23 partial · 41 absent
+
+This section used to be headed "181+", a number copied from
+`_project/FEATURES_DIAGRAM.md` whose own table sums to 201 and which counts
+things that are not features (six themes as six, seven team roles as seven).
+Neither figure was ever measured. The discovery audit of 1 September 2026 went
+through the 92 features enumerated below and found **29 shipping as described,
+23 partial, and 41 absent or unreachable** from `apps/themes` — the application
+a paying client actually runs. Quote that, or quote nothing.
 
 ### Multi-Store (5)
 Store config, hours, geolocation, status
@@ -168,11 +196,72 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
 - **Admin adds ANY language**
 - **GPT-3.5-turbo auto-translation** ($0.001/product)
 - Manual translation option
-- Bulk translator
+- Bulk translation of the **catalogue** — adding a language backfills products,
+  categories and menus, and the CMS page editor has a « Traduire tout ». There is
+  no bulk translator for **UI strings**: `translateUIStrings` used to exist in
+  both apps' `convex/autoTranslate.ts`, with zero callers and a docblock claiming
+  the admin languages page called it, and has been deleted. UI strings are
+  translated one at a time through the « Traductions UI » tab of the admin
+  languages screen (`translations.upsert`).
+- `translationJobs` rows are written but **read by nothing**, so a batch that
+  stops on the daily quota looks exactly like one that finished.
+- **RTL, currency and date locale do not reach the storefront.** The « Droite à
+  gauche » switch and the « Devise » picker are therefore **disabled with a
+  stated reason**; the value is still stored, and nothing on the storefront reads
+  it. Prices format as `fr-FR`/EUR whatever the owner picked, and Arabic renders
+  left-to-right. Currency is the half-case: the admin's own payment and refund
+  screens do format in the currency taken, only the public site does not.
 
-### Design (14)
-Design system in `packages/ui`, theming per store via CMS branding settings.
-(Note: no predefined-theme package exists — `packages/themes` was an empty stub and has been removed.)
+### Personal data (RGPD)
+A French restaurant running this engine is the **data controller**. The engine
+answers all four obligations from `packages/convex-functions/src/privacy.ts`,
+rendered at Dashboard → Organisation → **Données personnelles**:
+
+- **Access and portability** (art. 15, 20) — `exportDataSubject` returns the raw
+  rows as JSON, by e-mail or by device fingerprint.
+- **Erasure** (art. 17) — `previewErasure` then `eraseDataSubject`. Multi-pass:
+  a pass returns `complete: false` and the wrapper reschedules until it is true.
+- **Consent** (art. 7.1) — on `gamePlays`, see above.
+- **Retention** (art. 5.1.e) — the cron **purge expired customer data**, window
+  in `globalSettings.dataRetention`, defaulting to the CNIL's three years.
+
+**A paid order is anonymised, never deleted.** The money, lines, VAT and dates
+stay and the customer leaves. Everything else about a diner is deleted outright.
+Every run writes a `privacy_*` line to `systemAuditLog`.
+
+**The invoice survives, whole.** Since #367 a paid order also issues an
+`invoices` row, and that is a numbered fiscal document in an unbroken series
+(art. 242 nonies A CGI) — never edited, never deleted. It keeps the buyer's
+name, e-mail, phone and address under art. 17.3.b. The erasure reaches it
+through `orders.invoiceId`, **exports** it (art. 15, 20) and **reports** it as
+retained, so the operator can tell the diner what was kept and why. Do not add
+it to the deletion set.
+
+Guarded by `customers:manage`, held by `super_admin` and `client_admin` only —
+deliberately not `customers:read`, which a waiter holds. Operator guide and the
+**nine decisions still owed by the client**:
+`tasks/gdpr-diner-data-runbook.md`.
+
+### Design
+Design system in `packages/ui`. A site's look is fixed **at clone time** by
+`pnpm template:apply <slug>` — 5 verticals, 51 templates under
+`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). The
+storefront's palette and fonts are compile-time constants in
+`apps/*/app/globals.css` and `apps/*/site/fonts.ts`.
+
+Logo, favicon and brand name are per store, through the CMS `branding` block on
+the `storefront-layout` page — the only branding the storefront header, the
+favicon, the JSON-LD and the admin sidebar actually read.
+
+**Per-store colours and typography are NOT applied.** `stores.updateBranding`
+writes `store.branding` correctly and *nothing reads it*, so the Design screen's
+Couleurs and Typographie tabs are disabled with a stated reason until
+`store.branding` and the CMS `branding` block are reconciled. Do not "fix" this
+by deleting the mutation — the write path is the half that works.
+
+There is no runtime theme selector, and `themeId` is a schema field with zero
+writers and zero readers. (No predefined-theme package exists either —
+`packages/themes` was an empty stub and has been removed.)
 
 ### Testing
 - Vitest unit tests. **Coverage is measured on demand, not gated** —
@@ -227,7 +316,7 @@ Both live in `packages/core/src/i18n/gpt-translation.ts`. There is no
 requires the HTTP client and the API key, they are not optional.
 
 ```typescript
-import { translateText, batchTranslate } from "@be-in-digital/core"
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
 
 // One string. `context` steers the model; the rest have defaults.
 await translateText(text, "en", "fr", "product name", httpClient, apiKey)
@@ -236,7 +325,13 @@ await translateText(text, "en", "fr", "product name", httpClient, apiKey)
 await batchTranslate(items, "en", "es", httpClient, apiKey)
 ```
 
-**Cost**: ~$0.001 per product, $0.01 per page
+`httpClient` is injected for the same reason the AWS services inject theirs: the
+package must stay loadable from the Convex runtime. Note also that the engine's
+own auto-translation pipeline is separate — it lives in
+`@be-in-digital/convex-functions/autoTranslate`, deliberately off that package's
+barrel, and the apps drive it from there.
+
+**Cost**: ~$0.001 per product, $0.01 per page (`estimateTranslationCost`)
 
 ---
 
@@ -280,33 +375,81 @@ cloud providers already exist in `packages/admin/src/lib/kitchen-print.ts` as
 
 ## ☁️ AWS Services
 
+There is **no** `uploadToS3`, `sendEmail` or `sendTemplatedEmail` free function —
+those three names were documented here for a long time and never existed. Both
+services are **factories over an injected AWS client**: you build the SDK client,
+they hold the policy. `packages/core` therefore has no `@aws-sdk/client-s3`
+dependency at all; its one SDK dependency is `@aws-sdk/client-sesv2`, imported
+only by the SES adapter that `createSESv2Operations` lives in.
+
+Everything below comes from the package root, `@be-in-digital/core`; there is no
+`./aws/s3` or `./aws/ses` subpath. The two `./aws/*` subpaths that do exist are
+deliberately import-free so a Convex isolate can pull them in on their own:
+`./aws/folders` (the folder allow-list) and `./aws/media-url`.
+
 ### S3 Storage
 There is no `uploadToS3`. Build the service and call `upload` on it; the
 client is injected, which is what makes it testable.
 
 ```typescript
-import { createS3Service } from "@be-in-digital/core"
+import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
 
-const s3 = createS3Service(config, client)
-const { key, url } = await s3.upload(file, { folder: "products" })
+const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
+const { key, url } = await s3.upload(buffer, {
+  folder: "products",       // any of the eleven in S3_FOLDERS
+  contentType: "image/webp",
+})
+// also: getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl,
+//       exists, getMetadata
 ```
+Folders are a closed set of eleven, declared once in
+`packages/core/src/aws/folders.ts` — `products`, `categories`, `cms`,
+`branding`, `stores`, `storefront`, `blogs`, `blog-auto`, `email`, `avatars`,
+`users`. Everything else derives from it: the Zod schema `upload()` parses
+through (`aws/s3/validation.ts`), the MIME and size tables, and the
+`/api/files` allowlist. Add a folder there and nowhere else.
 
-Folders are a closed set — `products`, `branding`, `stores`, `cms`, `email`,
-`users` (`packages/core/src/aws/s3/validation.ts:27`). The bucket is private:
-`getPublicUrl` returns the CDN or the app's `/api/files` proxy, never a direct
-S3 URL.
+This entry, and `s3FolderSchema` itself, used to name six. `S3_FOLDERS` is
+where the `S3Folder` type comes from, so all eleven type-checked, and then
+`s3.upload(file, { folder: "categories" })` threw at
+`uploadOptionsSchema.parse()` — the failure `folders.ts`'s own header
+describes: "which is exactly how category, blog and storefront images were
+lost". The schema is now `z.enum(S3_FOLDERS)`, so the two cannot disagree
+again.
+
+The HTTP route `apps/*/app/api/upload/route.ts` deliberately accepts only five
+of them; the rest are written by the presigned Convex flow, authorised
+separately. That narrowing is a security boundary, not drift — do not widen it
+to match.
+
+The bucket is private either way: reads go through the app's `/api/files`
+proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 
 ### SES Email
 `sendEmail` and `sendTemplatedEmail` are methods on the SES service
 (`packages/core/src/aws/ses/client.ts:38,45`), not top-level exports.
 
 ```typescript
-import { getSESService } from "@be-in-digital/core"
+import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
 
+const ses = createSESService(config, createSESv2Operations(awsConfig))
+// or, server-side, read the config from the environment:
 const ses = getSESService()
-await ses.sendEmail({ to, subject, htmlBody })
+
+await ses.sendEmail({ to, subject, html })   // the field is `html`, not `htmlBody`
 await ses.sendTemplatedEmail({ to, templateName, templateData })
+await ses.sendBulkEmail({ ... })   // rate-limited to the SES sandbox ceiling
 ```
+`sendEmail` and `sendTemplatedEmail` are **methods on the service instance**, not
+module-level functions.
+
+**How transactional mail actually leaves the product.** Convex has no SES
+credentials, so it POSTs to the app's own `/api/email/send`, which is
+`createEmailRouteHandler({ secret, linkOrigin })` from `@be-in-digital/core` —
+that handler calls `getSESService()`. The two halves share one secret
+(`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
+must present the same one. Bulk campaign sends are the exception: they run in
+Convex Node actions that talk to `@aws-sdk/client-sesv2` directly.
 
 ---
 
@@ -370,7 +513,7 @@ OPENAI_API_KEY=sk-...
 ```bash
 CONVEX_DEPLOYMENT=
 
-# Payments
+# Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...
 STRIPE_WEBHOOK_SECRET=        # whsec_...
 SUMUP_CLIENT_ID=
@@ -380,7 +523,7 @@ PAYPAL_CLIENT_SECRET=
 PAYPAL_SANDBOX_MODE=          # "true" | "false"
 # SQUARE_ACCESS_TOKEN — no code reads this; Square is unimplemented
 
-# Delivery platforms
+# Delivery platforms — also OAuth pairs, each with its own webhook secret
 UBER_EATS_CLIENT_ID=
 UBER_EATS_CLIENT_SECRET=
 UBER_EATS_WEBHOOK_SECRET=
@@ -389,6 +532,11 @@ DELIVEROO_CLIENT_ID=
 DELIVEROO_CLIENT_SECRET=
 DELIVEROO_WEBHOOK_SECRET=
 ```
+
+`SUMUP_API_KEY`, `UBER_EATS_API_KEY`, `DELIVEROO_API_KEY` and
+`UBER_DIRECT_CUSTOMER_ID` were listed here for a long time and are read by **no
+code at all** — an operator setting them configured nothing. The authoritative
+list is `packages/core/src/env/schemas.ts`, which the apps enforce at startup.
 
 `turbo.json` declares no `env` for most tasks, so a non-`NEXT_PUBLIC_` variable
 that is not listed in a task's `env`/`passThroughEnv` never reaches it. Adding a

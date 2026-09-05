@@ -36,7 +36,6 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "orders", index: "by_storeId" },
   { table: "payments", index: "by_storeId" },
   { table: "kitchenTickets", index: "by_storeId" },
-  { table: "printerSettings", index: "by_storeId" },
   { table: "deliveryQuotes", index: "by_storeId" },
   { table: "promotions", index: "by_storeId" },
   { table: "promotionUsages", index: "by_storeId" },
@@ -81,6 +80,59 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "blogAutoConfig", index: "by_storeId" },
   { table: "blogAutoQueue", index: "by_storeId" },
 ]
+
+/**
+ * Store-scoped tables that must NOT be cascaded, and why.
+ *
+ * This list is not a loophole. `storeCascade.test.ts` compares
+ * `STORE_SCOPED_TABLES` against the schema and a new table carrying a
+ * `storeId` still fails that test until it appears in one list or the other —
+ * so the decision has to be made and written down, which is the point.
+ *
+ * - **invoices** — a *facture* is a fiscal archive, not operational data. It is
+ *   never edited and never deleted; deleting one would put a hole in a series
+ *   art. 242 nonies A requires to be unbroken. It also does not need the store
+ *   row: the seller identity, the establishment's name and address, the buyer
+ *   and the lines are all snapshotted onto the document at issue, so an invoice
+ *   whose establishment is gone still reads correctly.
+ *
+ *   `assertStoreHasNoInvoices` is what stops an establishment being deleted out
+ *   from under one. Nothing here silently keeps rows behind an owner's back.
+ */
+export const STORE_SCOPED_TABLES_NEVER_CASCADED: ReadonlyArray<string> = [
+  "invoices",
+]
+
+/**
+ * Refuse to delete an establishment that has issued invoices.
+ *
+ * Deleting it would take its ORDERS with it, and every invoice references the
+ * order it was issued for — so the archive would survive with its references
+ * dangling, which is worse than either keeping the establishment or being told
+ * plainly that it cannot go.
+ *
+ * A draft establishment, or one that never took a paid order, has no invoices
+ * and deletes exactly as before.
+ */
+export async function assertStoreHasNoInvoices(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown
+): Promise<void> {
+  const issued = await ctx.db
+    .query("invoices")
+    .withIndex("by_storeId_issuedAt", (q: { eq: (f: string, v: unknown) => unknown }) =>
+      q.eq("storeId", storeId)
+    )
+    .first()
+
+  if (issued) {
+    throw new Error(
+      "Cet établissement a émis des factures : il ne peut pas être supprimé. " +
+        "Les factures sont des documents comptables conservés de façon définitive."
+    )
+  }
+}
 
 /**
  * How many dependent documents one transaction will delete.
@@ -140,6 +192,41 @@ export async function deleteStoreDependents(
   }
 
   return { deleted, hasMore: false }
+}
+
+/**
+ * Take the establishment out of every Auto Blog config that targets it.
+ *
+ * `blogAutoConfig` carries two references to `stores`: the `storeId` it belongs
+ * to, which the sweep above deletes the row by, and `targetStoreIds` — the other
+ * establishments the same config fans articles out to. Only the first was ever
+ * handled, so a config owned by store A that publishes into store B kept B's id
+ * forever after B was deleted, and the next generation run wrote an article
+ * against an establishment that is not there.
+ *
+ * It was invisible because the guard that keeps this list honest matched on the
+ * field *name* `storeId`; `targetStoreIds` is the same type and a different
+ * word. The guard reads types now, which is what surfaced this.
+ */
+export async function detachStoreFromBlogAutoConfigs(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown
+): Promise<number> {
+  const configs = await ctx.db.query("blogAutoConfig").collect()
+  let touched = 0
+
+  for (const config of configs) {
+    const targetStoreIds: unknown[] = config.targetStoreIds ?? []
+    if (!targetStoreIds.includes(storeId)) continue
+    await ctx.db.patch(config._id, {
+      targetStoreIds: targetStoreIds.filter((id) => id !== storeId),
+      updatedAt: Date.now(),
+    })
+    touched++
+  }
+
+  return touched
 }
 
 /**

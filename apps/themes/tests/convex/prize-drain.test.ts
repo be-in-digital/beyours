@@ -37,7 +37,12 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 
+import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-in-digital/convex-functions/gamePlay"
+
 const modules = import.meta.glob("../../convex/**/*.ts")
+
+/** The play mutation refuses a play whose notice version it does not know. */
+const CONSENT_VERSION = GAME_CONSENT_NOTICE_VERSIONS[0]!
 
 const NOW = 1_700_000_000_000
 
@@ -51,6 +56,23 @@ function newHarness() {
 
 afterEach(async () => {
   for (const t of harnesses) {
+    // Let whatever is already RUNNING finish first.
+    //
+    // The loop below cancels `inProgress` jobs as well as pending ones, and
+    // cancelling a job mid-run is what `convexTest` raises
+    // "Unexpected scheduled function state after it finished running: canceled"
+    // over — an unhandled rejection that turns a fully green run red, blaming
+    // whichever file happened to be executing rather than the one that queued
+    // the work. It stayed hidden while the only scheduled work was the 5s menu
+    // sync, which is always still `pending`; the order confirmation goes on at
+    // `runAfter(0)` from every payment path, so under parallel load it is
+    // routinely mid-flight when this runs.
+    //
+    // `finishInProgressScheduledFunctions`, not `finishAllScheduledFunctions`:
+    // the second one advances the clock and fires the delayed menu syncs, which
+    // is the disease the comment above describes. This one only waits for what
+    // was already running.
+    await t.finishInProgressScheduledFunctions()
     await t.run(async (ctx) => {
       const pending = await ctx.db.system.query("_scheduled_functions").collect()
       for (const job of pending) {
@@ -171,6 +193,7 @@ describe("the drain the card measured, run against the real backend", () => {
     for (let i = 0; i < 40; i++) {
       try {
         await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: "TABLE1",
           gameId,
           // The only thing that changes, and the only thing that used to matter.
@@ -210,6 +233,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     for (let i = 0; i < 10; i++) {
       await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: `f-${i}`,
@@ -220,6 +244,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: "brand-new",
@@ -240,6 +265,7 @@ describe("the drain the card measured, run against the real backend", () => {
     for (let i = 0; i < 500; i++) {
       try {
         const r = await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: codes[i % codes.length]!,
           gameId,
           fingerprint: `drain-${i}`,
@@ -268,6 +294,7 @@ describe("the drain the card measured, run against the real backend", () => {
     const outcomes: boolean[] = []
     for (let i = 0; i < 5; i++) {
       const r = await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: codes[0]!,
         gameId,
         fingerprint: `taker-${i}`,
@@ -297,6 +324,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     for (let i = 0; i < 3; i++) {
       const r = await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: codes[0]!,
         gameId,
         fingerprint: `loser-${i}`,
@@ -319,6 +347,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     const play = (fingerprint: string) =>
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: codes[0]!,
         gameId,
         fingerprint,
@@ -356,6 +385,7 @@ describe("the drain the card measured, run against the real backend", () => {
     })
     const play = (fingerprint: string) =>
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: codes[0]!,
         gameId,
         fingerprint,
@@ -425,6 +455,7 @@ describe("the drain the card measured, run against the real backend", () => {
       wins.push(
         (
           await t.mutation(api.gamePlay.play, {
+            consentNoticeVersion: CONSENT_VERSION,
             code: codes[0]!,
             gameId: id,
             fingerprint: `f-${wins.length}`,
@@ -443,6 +474,7 @@ describe("the drain the card measured, run against the real backend", () => {
 
     for (let i = 0; i < 5; i++) {
       await t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: codes[0]!,
         gameId,
         fingerprint: `taker-${i}`,
@@ -469,6 +501,7 @@ describe("the drain the card measured, run against the real backend", () => {
     const actionId = actionIds[0]!
 
     await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "device-1",
@@ -494,6 +527,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     // Measured before NEW-N: this exact call returned `didWin: true`.
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: "lazy-diner",
@@ -513,6 +547,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
 
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: "lazy-diner",
@@ -526,6 +561,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     const { gameId, actionIds } = await seedGame(t, 5, { requiredActions: 2 })
 
     const result = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "honest-diner",
@@ -539,6 +575,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     const { gameId, actionIds } = await seedGame(t, 5, { requiredActions: 2 })
 
     await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "honest-diner",
@@ -554,6 +591,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     // Re-claiming the one already done does not advance the progression.
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         fingerprint: "honest-diner",
@@ -562,6 +600,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     ).rejects.toThrow(/ACTIONS_INCOMPLETE/)
 
     const result = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "honest-diner",
@@ -588,6 +627,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
       welcomed.push(session.status === "ready" && session.referral.isFriendWelcome)
       try {
         await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: "TABLE1",
           gameId,
           fingerprint: `friend-${i}`,
@@ -610,6 +650,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     const { gameId } = await seedGame(t)
     await expect(
       t.mutation(api.gamePlay.play, {
+        consentNoticeVersion: CONSENT_VERSION,
         code: "TABLE1",
         gameId,
         // `fingerprint` becomes a `rateLimits.key` on an index; 200 000
@@ -625,6 +666,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     const t = newHarness()
     const { gameId } = await seedGame(t, 5)
     const result = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "device-1",
@@ -644,6 +686,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     })
 
     const result = await t.mutation(api.gamePlay.play, {
+      consentNoticeVersion: CONSENT_VERSION,
       code: "TABLE1",
       gameId,
       fingerprint: "friend-device",
@@ -670,6 +713,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     for (let i = 0; i < 8; i++) {
       try {
         await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: "TABLE1",
           gameId,
           fingerprint: `friend-${i}`,
@@ -698,6 +742,7 @@ describe("the social actions the whole pitch rests on, enforced server-side", ()
     for (let i = 0; i < 8; i++) {
       try {
         await t.mutation(api.gamePlay.play, {
+          consentNoticeVersion: CONSENT_VERSION,
           code: "TABLE1",
           gameId,
           fingerprint: `friend-${i}`,

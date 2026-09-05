@@ -67,6 +67,16 @@ export type {
   KitchenAlertSetting,
   KitchenSoundConfig,
 } from "./lib/kitchen-alerts"
+// The dining-room screen's auto-dismiss window, shared with the editor that
+// writes it so the form cannot open on numbers the screen is not running on.
+export {
+  DEFAULT_DISPLAY_CONFIG,
+  MIN_AUTO_DISMISS_MINUTES,
+  MAX_AUTO_DISMISS_MINUTES,
+  resolveDisplayConfig,
+  clampAutoDismissMinutes,
+} from "./lib/kitchen-display"
+export type { KitchenDisplayConfig } from "./lib/kitchen-display"
 
 // Sidebar UI primitives (for layout composition)
 export {
@@ -109,3 +119,4 @@ export {
   EmailConfigPage,
 } from "./pages/email"
 export { SystemPage } from "./pages/system"
+export { PrivacyPage } from "./pages/privacy"

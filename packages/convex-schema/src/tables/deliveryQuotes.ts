@@ -37,3 +37,8 @@ export const deliveryQuotesTable = defineTable({
 })
   .index("by_estimateId", ["estimateId"])
   .index("by_storeId", ["storeId"])
+  // Retention. A quote holds the coordinates of somebody's front door and is
+  // spent minutes after it is issued. An unconsumed one is attached to no order
+  // and therefore reachable by no data-subject request — the clock is the only
+  // thing that can carry it away.
+  .index("by_expiresAt", ["expiresAt"])

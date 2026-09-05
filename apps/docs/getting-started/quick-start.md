@@ -64,16 +64,26 @@ export default defineSchema({
 
 Create `app/(storefront)/menu/page.tsx`:
 
+`ProductCard` is a **UI** component, not a restaurant one: it lives in
+`packages/ui/src/components/restaurant/` and ships from the
+`@be-in-digital/ui/restaurant` subpath (the root barrel re-exports it too).
+`@be-in-digital/restaurant` has no React components at all — it is stores,
+services, hooks and types.
+
+Its props are flat values, not a product document: `name`, `description`,
+`price`, `image`, `badge`, `onAddToCart`, `disabled`.
+
 ```tsx
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Container, Section, PageHeader } from "@be-in-digital/ui";
-import { ProductCard } from "@be-in-digital/restaurant";
+import { ProductCard } from "@be-in-digital/ui/restaurant";
 import { useCartStore } from "@be-in-digital/restaurant/stores";
+import { formatPrice } from "@be-in-digital/admin/lib";
 
 export default function MenuPage() {
   const products = useQuery(api.products.list);
-  const addToCart = useCartStore((s) => s.addItem);
+  const addItem = useCartStore((s) => s.addItem);
 
   return (
     <Container>
@@ -86,8 +96,20 @@ export default function MenuPage() {
           {products?.map((product) => (
             <ProductCard
               key={product._id}
-              product={product}
-              onAddToCart={() => addToCart(product)}
+              name={product.name}
+              description={product.description}
+              price={formatPrice(product.price)}
+              image={product.imageUrl}
+              onAddToCart={() =>
+                addItem({
+                  productId: product._id,
+                  name: product.name,
+                  price: product.price, // cents, tax included
+                  quantity: 1,
+                  options: [],
+                  imageUrl: product.imageUrl,
+                })
+              }
             />
           ))}
         </div>
@@ -97,19 +119,44 @@ export default function MenuPage() {
 }
 ```
 
+`addItem` takes a `NewCartItem` — the cart's own line shape — not a product
+document. It assigns the `lineId` itself, because one pizza with extra cheese
+and one plain are two lines of the same product and a caller that invented the
+identity could merge them.
+
 ## 5. Add Cart Functionality
 
 Create `app/(storefront)/cart/page.tsx`:
+
+Two things the cart store does *not* have: a `total` field and an `item.id`.
+Totals are **getters** that take the tax rate and delivery fee as arguments
+(`getSubtotal`, `getTotal`, `getItemCount`, `getSummary`), because a basket
+mixing food at 10 % and alcohol at 20 % has no single stored total. And every
+action names a **line**, not a product — `item.lineId`.
+
+The cart is persisted, so guard on `useCartHydrated()` before reading
+`items.length`: on the first render after a page load the store is still empty,
+and a redirect that acts on that sends a customer with a full basket back to
+`/cart`.
 
 ```tsx
 "use client";
 
 import { Container, Section, Button, Badge } from "@be-in-digital/ui";
 import { useCartStore } from "@be-in-digital/restaurant/stores";
+import { useCartHydrated, useCartSummary } from "@be-in-digital/restaurant/hooks";
 import { formatPrice } from "@be-in-digital/admin/lib";
 
+const TAX_RATE = 10;
+const DELIVERY_FEE = 0;
+
 export default function CartPage() {
-  const { items, total, removeItem, clearCart } = useCartStore();
+  const hydrated = useCartHydrated();
+  const items = useCartStore((s) => s.items);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const summary = useCartSummary(TAX_RATE, DELIVERY_FEE);
+
+  if (!hydrated) return null;
 
   return (
     <Container>
@@ -120,7 +167,7 @@ export default function CartPage() {
         ) : (
           <>
             {items.map((item) => (
-              <div key={item.id} className="flex justify-between py-4 border-b">
+              <div key={item.lineId} className="flex justify-between py-4 border-b">
                 <div>
                   <p className="font-medium">{item.name}</p>
                   <Badge variant="secondary">x{item.quantity}</Badge>
@@ -130,7 +177,7 @@ export default function CartPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(item.lineId)}
                   >
                     Remove
                   </Button>
@@ -139,7 +186,7 @@ export default function CartPage() {
             ))}
             <div className="flex justify-between mt-6 text-lg font-bold">
               <span>Total</span>
-              <span>{formatPrice(total)}</span>
+              <span>{formatPrice(summary.total)}</span>
             </div>
             <Button className="w-full mt-4" size="lg">
               Proceed to Checkout
@@ -151,6 +198,9 @@ export default function CartPage() {
   );
 }
 ```
+
+`formatPrice` takes **cents** and renders them in `fr-FR`, defaulting to EUR —
+every price in the engine is an integer number of cents.
 
 ## 6. Run the App
 

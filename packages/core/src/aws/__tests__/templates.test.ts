@@ -16,53 +16,86 @@ import {
 } from '../ses/templates'
 
 describe('Email Templates', () => {
+  /**
+   * These assertions used to bless the defect they were written over.
+   *
+   * The old fixture passed `total: 34.0` and `price: 12.5` and expected
+   * `34.00€` back — amounts in EUROS, while every amount in `orders` is in
+   * CENTS. The template was never called by anything, so the mismatch cost
+   * nothing; wiring it up as it stood would have told a diner their 34 €
+   * dinner came to 3 400,00 €. The test asserted the wrong unit, and a green
+   * test on top of the bug is why it survived. It now asserts cents.
+   */
   describe('orderConfirmationTemplate', () => {
     const mockData: OrderConfirmationData = {
-      orderNumber: 'ORD-12345',
-      customerName: 'John Doe',
+      orderNumber: 'ORD-2026-0001',
+      customerName: 'Camille Martin',
+      type: 'delivery',
+      store: {
+        name: 'Chez Luigi',
+        address: {
+          street: '12 rue des Lilas',
+          city: 'Lyon',
+          postalCode: '69003',
+        },
+        phone: '04 78 00 00 00',
+      },
       items: [
-        { name: 'Pizza Margherita', quantity: 2, price: 12.5 },
-        { name: 'Coca Cola', quantity: 3, price: 3.0 },
+        { name: 'Pizza Margherita', quantity: 2, subtotal: 2500 },
+        { name: 'Coca Cola', quantity: 3, subtotal: 900 },
       ],
-      total: 34.0,
-      address: '123 Main Street, Paris, France',
+      subtotal: 3400,
+      taxAmount: 309,
+      total: 3400,
+      deliveryAddress: {
+        street: '5 avenue de la Gare',
+        city: 'Lyon',
+        postalCode: '69002',
+      },
     }
 
-    it('generates the right subject', () => {
+    it('names the establishment and the order in the subject', () => {
       const subject = orderConfirmationTemplate.subject(mockData)
-      expect(subject).toBe('Commande confirmée - #ORD-12345')
+      expect(subject).toBe(
+        'Chez Luigi : votre commande ORD-2026-0001 est confirmée'
+      )
     })
 
     it('generates valid HTML', () => {
       const html = orderConfirmationTemplate.html(mockData)
 
       expect(html).toContain('<!DOCTYPE html>')
-      expect(html).toContain('ORD-12345')
-      expect(html).toContain('John Doe')
+      expect(html).toContain('ORD-2026-0001')
+      expect(html).toContain('Camille Martin')
+      expect(html).toContain('Chez Luigi')
       expect(html).toContain('Pizza Margherita')
       expect(html).toContain('Coca Cola')
-      expect(html).toContain('34.00€')
-      expect(html).toContain('123 Main Street, Paris, France')
+      expect(html).toContain('5 avenue de la Gare, 69002 Lyon')
+    })
+
+    it('renders cents as euros, not as euros again', () => {
+      const html = orderConfirmationTemplate.html(mockData)
+
+      // 3400 cents is 34,00 € — not 3 400,00 €, which is what reading the
+      // stored amount as euros produced.
+      expect(html).toContain('34,00\u00A0€')
+      expect(html).not.toContain('3 400,00')
     })
 
     it('generates the right plain text', () => {
       const text = orderConfirmationTemplate.text(mockData)
 
-      expect(text).toContain('Commande confirmée')
-      expect(text).toContain('ORD-12345')
-      expect(text).toContain('John Doe')
-      expect(text).toContain('Pizza Margherita x 2 - 12.50€')
-      expect(text).toContain('Total : 34.00€')
+      expect(text).toContain('votre commande ORD-2026-0001')
+      expect(text).toContain('Camille Martin')
+      expect(text).toContain('2 × Pizza Margherita  25,00\u00A0€')
+      expect(text).toContain('Total payé : 34,00\u00A0€')
     })
 
-    it('interpolates the data correctly', () => {
-      const html = orderConfirmationTemplate.html(mockData)
+    it('states the VAT contained in the total rather than adding it', () => {
+      const text = orderConfirmationTemplate.text(mockData)
 
-      // Check that the quantities and prices are right
-      expect(html).toContain('x 2')
-      expect(html).toContain('x 3')
-      expect(html).toContain('12.50')
-      expect(html).toContain('3.00')
+      expect(text).toContain('dont TVA : 3,09\u00A0€')
+      expect(text).toContain('Total payé : 34,00\u00A0€')
     })
   })
 
@@ -208,9 +241,12 @@ describe('Email Templates', () => {
         {
           orderNumber: 'TEST',
           customerName: 'Test',
+          type: 'pickup',
+          store: { name: 'Test' },
           items: [],
+          subtotal: 0,
+          taxAmount: 0,
           total: 0,
-          address: 'Test',
         },
         {
           userName: 'Test',
@@ -230,10 +266,10 @@ describe('Email Templates', () => {
         const html = template.html(mockDatas[index] as any)
 
         expect(html).toContain('<!DOCTYPE html>')
-        expect(html).toContain('<html>')
+        expect(html).toMatch(/<html(\s[^>]*)?>/)
         expect(html).toContain('</html>')
         expect(html).toContain('<head>')
-        expect(html).toContain('<body>')
+        expect(html).toMatch(/<body(\s[^>]*)?>/)
         expect(html).toContain('charset="utf-8"')
       })
     })

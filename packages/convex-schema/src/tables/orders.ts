@@ -7,7 +7,11 @@ import { v } from "convex/values"
  */
 export const ordersTable = defineTable({
   storeId: v.id("stores"),
-  orderNumber: v.string(), // ex: "ORD-2026-0001"
+  // Sequential per establishment per year — `ORD-2026-00412`, allocated by
+  // `numbering.allocateOrderNumber`. It used to be `ORD-${year}-${Math.random()}`
+  // while this comment promised the sequence, which is how the gap between the
+  // documented format and the produced one survived.
+  orderNumber: v.string(),
   customerId: v.optional(v.string()), // Reference to Better Auth component user
   customerInfo: v.object({
     name: v.string(),
@@ -19,6 +23,16 @@ export const ordersTable = defineTable({
     v.literal("pickup"),
     v.literal("dine_in")
   ),
+  /**
+   * Which table the order goes to. Set for `dine_in` orders placed from the
+   * storefront; absent otherwise, and absent on the platform `dine_in` orders
+   * Uber Eats and Deliveroo forward, which carry no table of their own.
+   *
+   * A label rather than a number — dining rooms use `A3` and `Terrasse 4` as
+   * readily as `12`. Same representation as `gameQRCodes.tableNumber`; see
+   * `@be-in-digital/core/dining` for why they are not the same field.
+   */
+  tableNumber: v.optional(v.string()),
   status: v.union(
     v.literal("pending"),
     v.literal("confirmed"),
@@ -42,11 +56,50 @@ export const ordersTable = defineTable({
       priceModifier: v.number(),
     })),
     subtotal: v.number(),
+    /**
+     * The VAT rate this line was priced at, as a percentage.
+     *
+     * Read live from `products.taxRate` when the order is priced and never
+     * recorded, so a product retaxed afterwards restated the VAT on every past
+     * order — and would restate an invoice already issued. Optional: absent on
+     * every order written before this existed, and on platform orders, which
+     * carry no tax of ours at all.
+     */
+    taxRatePercent: v.optional(v.number()),
     notes: v.optional(v.string()),
     externalId: v.optional(v.string()), // External platform item ID
   })),
   subtotal: v.number(),
   taxAmount: v.number(),
+  /**
+   * What each VAT rate contributed, as the order was priced.
+   *
+   * `computeOrderTotals` has always produced this — a basket mixing food at
+   * 10 % and alcohol at 20 % cannot be described by one rate — and the create
+   * path threw it away, keeping only the single `taxAmount` above. That was
+   * enough for the total and not enough for anything that has to *declare* the
+   * tax: a receipt, and an invoice, both of which must show the taxable amount
+   * and the tax per rate.
+   *
+   * Stored rather than recomputed on demand, because recomputing means reading
+   * each line's product for its rate today, and a receipt has to say what was
+   * charged then. A product repriced, retaxed or deleted after the order must
+   * not change what the diner was billed.
+   *
+   * Optional: every order written before this field existed has none, and the
+   * marketplace paths (`createFromWebhook`, `saveFromPlatform`) write no tax at
+   * all because Uber Eats and Deliveroo account for it themselves. Both read as
+   * "no breakdown recorded", which is the truth, so no backfill is required for
+   * `schemaValidation: true`.
+   */
+  taxBreakdown: v.optional(v.array(v.object({
+    /** e.g. 10 for 10 %. */
+    ratePercent: v.number(),
+    /** Tax-inclusive amount taxed at this rate, in cents. */
+    grossAmount: v.number(),
+    /** Tax contained in `grossAmount`, in cents. */
+    taxAmount: v.number(),
+  }))),
   deliveryFee: v.optional(v.number()),
   // Uber Direct delivery tracking
   uberDirectEstimateId: v.optional(v.string()),
@@ -110,7 +163,6 @@ export const ordersTable = defineTable({
     v.literal("dine_in")
   )),
   isRemake: v.optional(v.boolean()), // Flag for remake orders from delivery platforms
-  scheduledAt: v.optional(v.number()), // Alternative field for platform scheduled orders
   platformSyncStatus: v.optional(v.union(
     v.literal("pending"),
     v.literal("synced"),
@@ -151,6 +203,50 @@ export const ordersTable = defineTable({
    * backfill is required for `schemaValidation: true`.
    */
   stripeCheckoutSessionId: v.optional(v.string()),
+  /**
+   * When this order stopped naming a person.
+   *
+   * WHY IT IS NEEDED: an anonymised order and an order placed by a walk-in who
+   * gave no details are otherwise the same row — the engine already writes the
+   * second, with `customerInfo: { name: "Anonyme" }` and nothing else. Without
+   * the marker the retention sweep cannot tell "already done" from "never
+   * touched", so it would re-process the same rows every night for ever, and
+   * the report would count them again each time.
+   *
+   * Set by `privacy.ts`. Optional, so no row written before it existed needs a
+   * backfill.
+   */
+  anonymisedAt: v.optional(v.number()),
+  /**
+   * When the diner's confirmation email was handed to the sender.
+   *
+   * WHY IT IS STORED: `recordPaymentStatus` patches `paymentStatus` with no
+   * "was it already paid" guard, on purpose — a replayed Stripe webhook and the
+   * success page racing it both settle the same order, and the kitchen release
+   * downstream is idempotent through the ticket it looks for. An email has no
+   * such artefact to look for. Without this field the diner gets one
+   * confirmation per settlement attempt.
+   *
+   * It records the DISPATCH, not the delivery: the mutation claims the send
+   * transactionally and the action that talks to SES runs afterwards and may
+   * still fail. That is the honest guarantee — at most one attempt per order —
+   * and it is the one worth having, because the failure the diner notices is
+   * three identical receipts, not a missing retry.
+   *
+   * Optional: unset means "no confirmation has been dispatched", which is true
+   * of every order written before this existed, so no backfill is needed.
+   */
+  confirmationEmailAt: v.optional(v.number()),
+  /**
+   * The invoice issued for this order, once the sale became definitive.
+   *
+   * Read before issuing, so a replayed webhook settling the same order twice
+   * finds it set and issues nothing — the read is what puts the field in the
+   * transaction's read set, so the losing attempt is retried and sees it.
+   * Absent means no invoice: an unpaid order, a cancelled one, or a marketplace
+   * order that Uber Eats or Deliveroo invoiced themselves.
+   */
+  invoiceId: v.optional(v.id("invoices")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

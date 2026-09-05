@@ -90,3 +90,7 @@ export const promotionUsagesTable = defineTable({
   .index("by_promotionId", ["promotionId"])
   .index("by_promotionId_customerEmail", ["promotionId", "customerEmail"])
   .index("by_storeId", ["storeId"])
+  // Retention and erasure. `by_promotionId_customerEmail` puts the promotion
+  // first, so it cannot answer "this address, anywhere in this establishment" —
+  // which is the only question a data-subject request asks.
+  .index("by_storeId_usedAt", ["storeId", "usedAt"])

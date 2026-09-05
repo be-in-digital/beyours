@@ -19,6 +19,11 @@ import {
   resolveStoreHours,
 } from "@be-in-digital/convex-schema"
 import {
+  MAX_TABLE_NUMBER_LENGTH,
+  isValidTableNumber,
+  normalizeTableNumber,
+} from "@be-in-digital/core/dining"
+import {
   assertDayStarts,
   computeDashboardStats,
   dashboardWindowStart,
@@ -45,7 +50,13 @@ import {
   reverseMetadataIncremental,
   updateMetadataIncremental,
 } from "./emailSubscribers"
-import { generateOrderNumber } from "./helpers"
+import { allocateOrderNumber } from "./numbering"
+import { isMarketplaceOrder } from "./orderSource"
+import {
+  planOrderConfirmation,
+  type OrderConfirmationDispatch,
+} from "./orderConfirmation"
+import { issueInvoiceForOrder } from "./invoices"
 import {
   resolvePromotionDiscount,
   PromotionRejectedError,
@@ -516,6 +527,8 @@ interface OrderItemInput {
     priceModifier: number
   }>
   subtotal: number
+  /** The VAT rate this line was priced at, as a percentage. */
+  taxRatePercent?: number
   notes?: string
   externalId?: string
 }
@@ -527,6 +540,8 @@ interface CreateOrderArgs {
   customerInfo: { name: string; email?: string; phone?: string }
   items: OrderItemInput[]
   type: "delivery" | "pickup" | "dine_in"
+  /** Dine-in only; rejected on the other two types. */
+  tableNumber?: string
   deliveryAddress?: {
     street: string
     city: string
@@ -567,6 +582,12 @@ interface StoreDoc {
 
 interface GlobalSettingsDoc {
   taxRate?: number
+  /**
+   * The rate a delivery charge carries. Unset means "not decided", and the fee
+   * is then left out of the VAT breakdown rather than declared at the food's
+   * rate — see `orderTotals.deliveryTaxRatePercent`.
+   */
+  deliveryTaxRate?: number
   timezone?: string
   /** The deployment-wide week, for every location on `useGlobalHours`. */
   hours?: BusinessHours[]
@@ -625,6 +646,15 @@ export const create = {
       v.literal("pickup"),
       v.literal("dine_in")
     ),
+    /**
+     * Which table a `dine_in` order is served to.
+     *
+     * Optional even for `dine_in`: the platform webhooks forward `dine_in`
+     * orders that carry no table of their own, and refusing those would lose
+     * the order. The storefront makes it required, because that is the one
+     * place a diner is demonstrably sitting at a table.
+     */
+    tableNumber: v.optional(v.string()),
     deliveryAddress: v.optional(v.object({
       street: v.string(),
       city: v.string(),
@@ -780,6 +810,20 @@ export const create = {
       )
     }
 
+    // A table number belongs to a dine-in order and nowhere else. Rejecting it
+    // on the other two types is not pedantry: it catches the order whose type
+    // was switched after the table was entered, which would otherwise print a
+    // table on a delivery ticket and send a courier looking for it.
+    const tableNumber = normalizeTableNumber(args.tableNumber)
+    if (tableNumber !== undefined && args.type !== "dine_in") {
+      throw new Error("A table number can only be set on a dine_in order")
+    }
+    if (!isValidTableNumber(tableNumber)) {
+      throw new Error(
+        `Table number must be at most ${MAX_TABLE_NUMBER_LENGTH} characters`
+      )
+    }
+
     // Only now, past every reason an order can be refused. The window is the
     // restaurant's, and a slot spent on a request that was never going to
     // become an order would let a loop of invalid ones exhaust it and refuse
@@ -882,6 +926,11 @@ export const create = {
         unitPrice: line.unitPrice,
         selectedOptions: line.selectedOptions,
         subtotal: line.subtotal,
+        // The rate this line was actually taxed at, kept on the line. It was
+        // read from `products.taxRate` and never recorded, so a product retaxed
+        // afterwards would restate the VAT on an invoice already issued.
+        taxRatePercent:
+          typeof product.taxRate === "number" ? product.taxRate : taxRatePercent,
         notes: item.notes,
         externalId: item.externalId,
       })
@@ -979,15 +1028,6 @@ export const create = {
       }
     }
 
-    // The tax is *inside* the subtotal, so it is known before the discount and
-    // does not move the total. It is computed here because the promotion
-    // resolver is told what the order is worth, tax included.
-    const taxAmount = computeOrderTotals({
-      subtotal,
-      taxRatePercent,
-      lines: taxedLines,
-    }).taxAmount
-
     // Recompute the discount from the stored promotion. The client never gets a
     // say: it used to pass `discountAmount`, which was applied verbatim and let
     // a forged value produce a 0 € order that still reached the kitchen.
@@ -1084,15 +1124,38 @@ export const create = {
       }
     }
 
-    const { total } = computeOrderTotals({
+    // What is charged, and what of it is tax. One call, after the discount is
+    // known.
+    //
+    // The tax used to be computed twice — once before the discount for a
+    // `taxAmount` that was stored, and again afterwards for the `total`. The
+    // comment on the first call said it ran early "because the promotion
+    // resolver is told what the order is worth, tax included", and the resolver
+    // takes `subtotal`; nothing read the early figure but the database. So the
+    // order recorded the VAT contained in the FULL basket while the customer
+    // paid the discounted one — an over-declaration, harmless on a summary and
+    // not harmless on the invoice now issued from it.
+    //
+    // The breakdown is kept as well as the total. It was computed and thrown
+    // away, which left the order unable to say what it had charged at each
+    // rate — the one thing a receipt and an invoice both have to state.
+    const { total, taxAmount, taxBreakdown } = computeOrderTotals({
       subtotal,
       taxRatePercent,
       lines: taxedLines,
       deliveryFee,
+      deliveryTaxRatePercent: globalSettings?.deliveryTaxRate,
       discount,
     })
 
-    const orderNumber = generateOrderNumber()
+    // Sequential, per establishment, per year — and allocated inside this
+    // mutation, which is what makes it gapless: if anything below throws, the
+    // whole transaction is discarded and the number goes to the next order
+    // rather than being burned.
+    const orderNumber = await allocateOrderNumber(ctx, args.storeId, {
+      now,
+      timezone: globalSettings?.timezone,
+    })
 
     // Generate view token for public order confirmation access
     const viewToken = crypto.randomUUID()
@@ -1103,10 +1166,14 @@ export const create = {
       customerId: args.customerId,
       customerInfo: args.customerInfo,
       type: args.type,
+      tableNumber,
       status: "pending",
       items: verifiedItems,
       subtotal,
       taxAmount,
+      // Empty when nothing is taxed; stored as undefined rather than [] so
+      // "no rate applied" and "written before the field existed" read alike.
+      taxBreakdown: taxBreakdown.length > 0 ? taxBreakdown : undefined,
       deliveryFee: args.type === "delivery" && deliveryFee > 0 ? deliveryFee : undefined,
       deliveryFeeMode: args.type === "delivery" ? deliveryFeeMode : undefined,
       uberDirectEstimateId: args.uberDirectEstimateId,
@@ -1216,8 +1283,9 @@ export const markCashPaid = {
     if (!order) throw new Error("Order not found")
 
     if (order.paymentStatus === "paid") {
-      // Two members of staff pressing the same button is not a second payment.
-      return null
+      // Two members of staff pressing the same button is not a second payment,
+      // and not a second receipt either.
+      return { paymentId: null, confirmation: null }
     }
     if (order.paymentStatus === "refunded" || order.paymentStatus === "partially_refunded") {
       throw new Error("Cette commande a déjà été remboursée.")
@@ -1256,7 +1324,15 @@ export const markCashPaid = {
     // to be the one that never reached the pass.
     await releaseToKitchen(ctx, args.orderId)
 
-    return paymentId
+    // The sale is definitive, so it gets its invoice — in this transaction,
+    // which is what keeps the series gapless.
+    await issueInvoiceForOrder(ctx, args.orderId, { now })
+
+    // And so does the diner. Same seam, same reason: the confirmation belongs
+    // where "this order has been paid for" is decided, not in each wrapper.
+    const confirmation = await planOrderConfirmation(ctx, args.orderId)
+
+    return { paymentId, confirmation }
   },
 }
 
@@ -1294,46 +1370,40 @@ export const recordPaymentStatus = {
   handler: async (
     ctx: any,
     args: { id: string; paymentStatus: string }
-  ): Promise<void> => {
+  ): Promise<OrderConfirmationDispatch | null> => {
     await ctx.db.patch(args.id, {
       paymentStatus: args.paymentStatus,
       updatedAt: Date.now(),
     })
 
-    if (args.paymentStatus === "paid") {
-      await releaseToKitchen(ctx, args.id)
-    }
+    if (args.paymentStatus !== "paid") return null
+
+    await releaseToKitchen(ctx, args.id)
+
+    // Every card path lands here, so the invoice is issued here rather than in
+    // the four provider wrappers. Idempotent through `order.invoiceId`, which
+    // is what a replayed webhook racing the success page needs it to be, and
+    // allocated inside this transaction so a failure burns no number.
+    await issueInvoiceForOrder(ctx, args.id)
+
+    // The diner gets told at the same seam the kitchen does, and for the same
+    // reason: four provider paths land here, and a rule that lives in one
+    // caller is a rule the other three skip.
+    //
+    // Returned rather than sent: this layer has no `internal.*` to schedule
+    // with. `planOrderConfirmation` has already claimed the send on the order,
+    // so a replayed webhook reaching here a second time returns null and the
+    // diner gets one confirmation, not one per settlement attempt.
+    return await planOrderConfirmation(ctx, args.id)
   },
 }
 
-/**
- * The sources where the customer paid a MARKETPLACE, not the restaurant.
- *
- * An Uber Eats or Deliveroo order is created with `paymentStatus: "paid"` and
- * never gets a `payments` row — there is nothing to write one from, and the
- * `payments.provider` union has no value for a platform. The money went to
- * Uber or Deliveroo, who remit it later and who refund the customer
- * themselves when the order is rejected.
- *
- * `source` is the discriminator rather than the absence of a `payments` row.
- * A direct card order is marked paid and settled in TWO separate mutations —
- * `orders.internalUpdatePaymentStatus` then `payments.internalSettle`, in each
- * app's `convex/stripe.ts` and `convex/stripeWebhook.ts` — so between the two a
- * genuine Stripe order is "paid" with zero payment rows. Reading marketplace
- * from that window would drop the refund flag on a real customer's money.
- * Absence is also what a genuine data bug looks like, and that must stay loud.
- *
- * Listed as marketplace rather than as "not website, not pos" on purpose: a
- * source nobody has classified yet falls through to DIRECT. A false "refund
- * owed" is visible and correctable; a missing one silently keeps a customer's
- * money, which is the whole defect #128 closed.
- */
-const MARKETPLACE_ORDER_SOURCES: readonly string[] = ["uber_eats", "deliveroo"]
+// `isMarketplaceOrder` and the source list it reads now live in
+// `./orderSource`, so `invoices.ts` can ask the same question without the two
+// files importing each other. Re-exported here because that is where every
+// caller and the package barrel already look for it.
+export { MARKETPLACE_ORDER_SOURCES, isMarketplaceOrder } from "./orderSource"
 
-/** Whether the restaurant was paid by a marketplace instead of by the customer. */
-export function isMarketplaceOrder(source: unknown): boolean {
-  return typeof source === "string" && MARKETPLACE_ORDER_SOURCES.includes(source)
-}
 
 /**
  * What cancelling an order must write to `paymentStatus` — or nothing at all.
@@ -1715,7 +1785,11 @@ export const createFromWebhook = {
     }
 
     const now = Date.now()
-    const orderNumber = generateOrderNumber()
+    const globalSettings = await ctx.db.query("globalSettings").first()
+    const orderNumber = await allocateOrderNumber(ctx, args.storeId, {
+      now,
+      timezone: globalSettings?.timezone,
+    })
 
     const mappedItems = args.items.map((item: WebhookItem) => {
       const modifierTotal = item.modifiers?.reduce(
@@ -2204,6 +2278,7 @@ export async function releaseToKitchen(
       trackingToken,
       customerName: order.customerInfo?.name,
       customerPhone: order.customerInfo?.phone,
+      tableNumber: order.tableNumber,
       deliveryNotes: order.notes,
       allergens: summary.allergens.length > 0 ? summary.allergens : undefined,
     })

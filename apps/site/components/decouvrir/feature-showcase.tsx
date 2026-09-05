@@ -263,20 +263,25 @@ function CountUp({
 }
 
 function PilotagePanel() {
-  const kpis = [
+  const kpis: {
+    label: string;
+    value: number;
+    prefix?: string;
+    suffix?: string;
+  }[] = [
     { label: "Commandes ce mois", value: 342, suffix: "" },
     { label: "Panier moyen", value: 27, suffix: " €" },
-    { label: "Nouveaux avis Google", value: 58, prefix: "+" },
+    { label: "Commandes à traiter", value: 12, suffix: "" },
     { label: "CA en direct", value: 9240, suffix: " €" },
   ];
   return (
     <PanelLayout
       title="Tout votre restaurant, sur un écran"
-      body="Chiffre d'affaires, panier moyen, plats populaires, avis collectés : vous pilotez à la donnée, pas au ressenti. Vue en temps réel, sans compétence technique."
+      body="Chiffre d'affaires, commandes, panier moyen, commandes à traiter : vous pilotez à la donnée, pas au ressenti. Vue en temps réel, sans compétence technique."
       points={[
-        "KPIs essentiels en un coup d'œil",
-        "Tendances par période et par plat",
-        "Décisions basées sur des chiffres, pas des intuitions",
+        "Les chiffres du jour en un coup d'œil, comparés à la veille",
+        "Le chiffre d'affaires des 7 derniers jours en graphique",
+        "Répartition des commandes par type et par canal de vente",
       ]}
       visual={
         <div className="rounded-2xl border border-[color:var(--border)] bg-background p-5">
@@ -388,7 +393,7 @@ function FidelitePanel() {
   return (
     <PanelLayout
       title="Le jeu qui fait revenir vos clients"
-      body="Roue de la fortune et carte à gratter, connectées à votre programme de fidélité. Chaque partie vous rapporte un avis, un abonné ou un client dans votre base. Vous pilotez le taux de gain."
+      body="Roue de la fortune et carte à gratter, branchées sur votre site et votre base clients. Chaque partie vous rapporte un avis, un abonné ou un client dans votre base. Vous pilotez le taux de gain."
       points={[
         "Roue et carte à gratter incluses",
         "Débloquées par un avis Google ou un abonnement",

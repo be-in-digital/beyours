@@ -60,10 +60,6 @@ const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }>
   cash: { label: "Espèces", color: "bg-green-100 text-green-800" },
 }
 
-interface PaymentsPageProps {
-  embedded?: boolean
-}
-
 /**
  * The two guards, then the ledger.
  *
@@ -72,24 +68,22 @@ interface PaymentsPageProps {
  * in a child that is not mounted until there is something to query with — the
  * same shape `MessagesPage` uses, and for the same reason.
  */
-export function PaymentsPage({ embedded = false }: PaymentsPageProps) {
+export function PaymentsPage() {
   const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
 
   if (!storeId || !api) return <ResolvingStore />
 
-  return <PaymentsLedger api={api} storeId={storeId} embedded={embedded} />
+  return <PaymentsLedger api={api} storeId={storeId} />
 }
 
 function PaymentsLedger({
   api,
   storeId,
-  embedded,
 }: {
   // The Convex API is injected at runtime and has no static type here.
   api: any
   storeId: string
-  embedded: boolean
 }) {
   // `payments:read` gets a role onto this screen; `payments:refund` is what the
   // server checks on the click. They are not the same set of people.
@@ -124,14 +118,12 @@ function PaymentsLedger({
 
   return (
     <div className="space-y-6">
-      {!embedded && (
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Consultez les transactions et gérez les remboursements.
-          </p>
-        </div>
-      )}
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">Paiements</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Consultez les transactions et gérez les remboursements.
+        </p>
+      </div>
 
       {/* Filters */}
       <div className="flex items-center gap-4">

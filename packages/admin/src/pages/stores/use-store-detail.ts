@@ -6,6 +6,7 @@ import { useState, use, useEffect } from "react"
 import { type AddressValue } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
+import { convexErrorMessage } from "../../lib/convex-error"
 import type { DayHours, StoreOverrides, StoreIntegration } from "./store-detail-types"
 import {
   DEFAULT_SOUND_CONFIG,
@@ -14,6 +15,12 @@ import {
   resolveSoundConfig,
   type KitchenSoundConfig,
 } from "../../lib/kitchen-alerts"
+import {
+  DEFAULT_DISPLAY_CONFIG,
+  clampAutoDismissMinutes,
+  resolveDisplayConfig,
+  type KitchenDisplayConfig,
+} from "../../lib/kitchen-display"
 import {
   DEFAULT_ORDER_CONFIRMATION,
   DEFAULT_PRINT_CONFIG,
@@ -65,6 +72,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const updateHours = useMutation(api.stores.updateHours)
   const updateOverrides = useMutation(api.stores.updateOverrides)
   const updateSoundConfig = useMutation(api.stores.updateSoundConfig)
+  const updateDisplayConfig = useMutation(api.stores.updateDisplayConfig)
   const updatePrintConfig = useMutation(api.stores.updatePrintConfig)
   const updateStationMapping = useMutation(api.stores.updateStationMapping)
   const updateOrderConfirmation = useMutation(api.stores.updateOrderConfirmation)
@@ -89,6 +97,8 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   // Kitchen tab state
   const [soundConfig, setSoundConfig] =
     useState<KitchenSoundConfig>(DEFAULT_SOUND_CONFIG)
+  const [displayConfig, setDisplayConfig] =
+    useState<KitchenDisplayConfig>(DEFAULT_DISPLAY_CONFIG)
   const [printConfig, setPrintConfig] =
     useState<KitchenPrintConfig>(DEFAULT_PRINT_CONFIG)
   const [orderConfirmation, setOrderConfirmation] =
@@ -170,6 +180,11 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     // fallbacks, so the form opens on what the kitchen is currently hearing
     // rather than on zeroes.
     setSoundConfig(resolveSoundConfig(store.soundConfig as never))
+
+    // And for the dining-room screen, whose fallback is the one a customer
+    // notices: unset means their order leaves the wall fifteen minutes after
+    // the kitchen calls it ready. The form opens on that, not on a blank.
+    setDisplayConfig(resolveDisplayConfig(store.displayConfig as never))
 
     // Same reasoning for printing, with the opposite default: an establishment
     // that has never been configured has printing OFF, and the form has to say
@@ -339,6 +354,50 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       toast.success("Alertes sonores mises à jour")
     } catch (error) {
       toast.error("Échec de la mise à jour des alertes")
+      console.error(error)
+    }
+  }
+
+  /**
+   * Write `stores.displayConfig` — how long a finished order stays on the
+   * customer-facing screen in the dining room.
+   *
+   * Saved on its own, like the alerts: `getForDisplay` is the only reader, the
+   * screen it feeds is the one the customer is watching, and a window changed
+   * by accident while tuning volumes is a change nobody in the kitchen would
+   * connect to the order that disappeared.
+   */
+  const handleUpdateDisplay = async () => {
+    try {
+      // `stores.updateDisplayConfig` REFUSES a window outside 1..240, and
+      // `NaN` and `Infinity` with it — that is the guard that holds. Clamping
+      // here is not a second line of defence, it is the form keeping its word:
+      // a half-typed or emptied number input reads as `NaN`, and sending it
+      // would come back as a refusal the owner cannot act on.
+      //
+      // The clamped value goes back into state as well as into the payload, so
+      // the field shows the number that was actually saved rather than the one
+      // that was typed over it.
+      const autoDismissMinutes = clampAutoDismissMinutes(
+        displayConfig.autoDismissMinutes
+      )
+      setDisplayConfig((current) => ({ ...current, autoDismissMinutes }))
+
+      await updateDisplayConfig({
+        id: storeId as string,
+        displayConfig: {
+          autoDismissEnabled: displayConfig.autoDismissEnabled,
+          autoDismissMinutes,
+        },
+      })
+      toast.success("Écran de salle mis à jour")
+    } catch (error) {
+      // Surface the mutation's own refusal — `invalid_display_config` carries
+      // an owner-facing message — rather than replacing every failure with the
+      // same generic line. Same handling as `products-table`'s delete.
+      toast.error(
+        convexErrorMessage(error, "Échec de la mise à jour de l'écran de salle")
+      )
       console.error(error)
     }
   }
@@ -779,6 +838,9 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     soundConfig,
     setSoundConfig,
     handleUpdateSounds,
+    displayConfig,
+    setDisplayConfig,
+    handleUpdateDisplay,
     categories,
     orderConfirmation,
     setOrderConfirmation,

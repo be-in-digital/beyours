@@ -12,7 +12,7 @@ src/
 │   ├── teamMembers.ts
 │   ├── catalog.ts       # categories, products, menus
 │   ├── orders.ts
-│   ├── kitchen.ts       # kitchenTickets, printerSettings
+│   ├── kitchen.ts       # kitchenTickets
 │   ├── payments.ts
 │   ├── i18n.ts          # languages, translations, translationJobs
 │   ├── gamification.ts  # gameQRCodes, requiredActions, games, prizes, gamePlays, prizeRedemptions
@@ -56,7 +56,6 @@ import {
   menusTable,
   ordersTable,
   kitchenTicketsTable,
-  printerSettingsTable,
   paymentsTable,
   languagesTable,
   translationsTable,
@@ -78,7 +77,6 @@ export default defineSchema({
   menus: menusTable,
   orders: ordersTable,
   kitchenTickets: kitchenTicketsTable,
-  printerSettings: printerSettingsTable,
   payments: paymentsTable,
   languages: languagesTable,
   translations: translationsTable,
@@ -117,12 +115,23 @@ const result = createStoreSchema.parse(data)
 
 ### Import Types
 
+Document types carry a `Doc` suffix. `StoreDoc` is the shape as **stored** in
+Convex — `BaseEntity` (`_id`, `_creationTime`, `createdAt`, `updatedAt`) merged
+with the validated creation input and the fields the mutation adds. It is not
+the same shape as `CreateStoreInput`, which is what the Zod validator infers
+from what a caller sends.
+
 ```typescript
-import type { Store, Product, Order } from "@be-in-digital/convex-schema/types"
+import type { StoreDoc, ProductDoc, OrderDoc } from "@be-in-digital/convex-schema/types"
 
 // Use for type safety
-const store: Store = { ... }
+const store: StoreDoc = { ... }
 ```
+
+There is no `Store`, `Product` or `Order` type — those names have never
+existed. The full list is in `src/types.ts`: a `…Doc` per table, a
+`Create…Input` / `Update…Input` per validator, and the shared unions
+(`OrderStatus`, `StoreStatus`, `PaymentProvider`, `GameType`…).
 
 ## Exports
 
@@ -141,17 +150,23 @@ import {
   // ...
 
   // Types
-  type Store,
-  type Product,
+  type StoreDoc,
+  type ProductDoc,
   // ...
 } from "@be-in-digital/convex-schema"
 ```
+
+The root barrel re-exports `./tables`, `./validators`, `./types` and
+`./dataModel` in full, plus the composed `schema` and the shared rules
+(`orderStatus`, `storeStatus`, `storeServices`, `reservationUrl`). Anything
+reachable from a subpath is reachable from the root under the same name.
 
 ### Subpath Exports
 
 - `@be-in-digital/convex-schema/tables` - All table definitions
 - `@be-in-digital/convex-schema/validators` - Zod validators
 - `@be-in-digital/convex-schema/types` - TypeScript types
+- `@be-in-digital/convex-schema/dataModel` - Typed data model (`SchemaDataModel`, `Doc<>`, `DocId<>`, `SchemaQueryCtx`…)
 
 ## Important Notes
 
@@ -182,7 +197,6 @@ The app schema at `apps/reference/convex/schema.ts` is the **source of truth** f
 ### Order Tables
 - `ordersTable` - Complete order lifecycle with multi-source support
 - `kitchenTicketsTable` - Kitchen display with station routing
-- `printerSettingsTable` - Registered but **unused** (zero readers, zero writers): it belongs to an ESC/POS path that was never built. Live print config is `stores.printConfig`
 - `paymentsTable` - Multi-provider payment tracking
 
 ### i18n Tables

@@ -1,6 +1,10 @@
 # @be-in-digital/core
 
-> Authentication, internationalization, payment processing, and AWS services — the foundation layer.
+> Authentication, RBAC, internationalization, AWS services and environment
+> validation — the foundation layer.
+
+The source is exactly five directories: `auth/`, `aws/`, `env/`, `i18n/`,
+`sentry/`. Anything not in one of those is not in this package.
 
 ## Table of Contents
 
@@ -21,52 +25,49 @@ pnpm add @be-in-digital/core
 
 Built on **Better Auth** + Convex.
 
+> [!IMPORTANT]
+> The session layer here is a **placeholder**. `useAuth`, `AuthProvider` and
+> `getServerSession` — and therefore `requireAuth`, `getServerUser` and every
+> `require*Guard` built on top of them — throw `"Better Auth non installé"` when
+> called. They fix the shape of the eventual API; they do not run. Apps wire
+> Better Auth directly (`better-auth/react` + `@convex-dev/better-auth`) and
+> enforce permissions in Convex. See the
+> [Authentication guide](../guides/authentication.md).
+>
+> The RBAC half of this directory is different: pure, tested, and used
+> everywhere. See [RBAC](#rbac) below.
+
 ### Setup
 
 ```typescript
-import { authConfig, useAuth, AuthProvider } from "@be-in-digital/core";
+import { createAuthConfig, Role, hasPermission } from "@be-in-digital/core";
 ```
 
-### AuthProvider
-
-Wrap your app with `AuthProvider`:
-
-```tsx
-// app/layout.tsx
-import { AuthProvider } from "@be-in-digital/core";
-
-export default function RootLayout({ children }) {
-  return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
-  );
-}
-```
-
-### useAuth Hook
+`createAuthConfig` (**not** `authConfig` — no such export) builds a
+`BetterAuthConfig` object from `{ baseUrl, secret, convexUrl, socialProviders? }`:
 
 ```typescript
-import { useAuth } from "@be-in-digital/core";
+import { createAuthConfig } from "@be-in-digital/core";
 
-function MyComponent() {
-  const { user, isAuthenticated, signIn, signOut, isLoading } = useAuth();
-
-  if (isLoading) return <LoadingSpinner />;
-  if (!isAuthenticated) return <SignInForm />;
-
-  return <p>Welcome, {user.name}</p>;
-}
+const config = createAuthConfig({
+  baseUrl: process.env.NEXT_PUBLIC_APP_URL!,
+  secret: process.env.BETTER_AUTH_SECRET!,
+  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
+});
 ```
 
-### Protected Routes
+Its `database` field is the literal `{ type: "convex", url }` — a stand-in for
+the Convex adapter, not the adapter — and its `plugins` array is empty. It has no
+call site in the engine.
 
-```typescript
-import { requireAuth } from "@be-in-digital/core";
+### Also exported here
 
-// In a Server Component or API route
-const user = await requireAuth();
-```
+`validatePassword`, `validateEmail`, `authHooks`, `emailTemplates`,
+`authRoutes`, `authErrors`, and the constants `DEFAULT_SESSION_EXPIRY`,
+`DEFAULT_SESSION_REFRESH`, `MIN_PASSWORD_LENGTH` — all real. Plus the types
+`AuthUser`, `AuthSession`, `AuthSessionData`, `BetterAuthConfig`,
+`CanAccessProps`, `RoleGateProps` and friends: several React pieces ship as
+**types only**, to be implemented in the app where JSX is available.
 
 ## Internationalization (i18n)
 
@@ -74,178 +75,247 @@ Dynamic, unlimited languages with GPT-3.5-turbo auto-translation.
 
 ### Configuration
 
+The constant is `DEFAULT_I18N_CONFIG`; `I18nConfig` is the type it satisfies.
+There is no `i18nConfig` export, and no `TranslationProvider`:
+
 ```typescript
-import { i18nConfig, useTranslation, TranslationProvider } from "@be-in-digital/core";
+import { DEFAULT_I18N_CONFIG, COMMON_LANGUAGES } from "@be-in-digital/core";
+import type { I18nConfig, I18nProviderComponent, I18nProviderProps } from "@be-in-digital/core";
 ```
+
+`I18nProviderComponent` and `I18nProviderProps` are **types**. The provider
+itself has to be written in the app, for the same reason as `CanAccessProps`:
+this package ships no JSX. `packages/core/src/i18n/examples.ts` puts it plainly —
+"The core package only provides types, not the implementation."
 
 ### useTranslation Hook
 
+Same story: `@be-in-digital/core` exports the type `UseTranslation`, and the
+running hook lives in `@be-in-digital/restaurant`, on top of the language store.
+
 ```typescript
-import { useTranslation } from "@be-in-digital/core";
+import { useTranslation } from "@be-in-digital/restaurant";
 
 function ProductCard({ product }) {
-  const { t, locale, setLocale, availableLocales } = useTranslation();
+  const { t, locale, defaultLocale, isReady } = useTranslation();
 
   return (
     <div>
-      <h2>{t(product.name)}</h2>
-      <p>{t(product.description)}</p>
+      <h2>{t("product.title")}</h2>
     </div>
   );
 }
 ```
 
+`t` resolves a key: override → static JSON → default locale → the key itself.
+Setting the locale is a store action (`useLanguageStore`), not part of this
+return. See the [i18n guide](../guides/i18n-translation.md).
+
 ### Auto-Translation
 
+The export is `translateText`, not `translateWithGPT`. It imports no SDK and
+reads no environment — the HTTP client and the key are injected, which is what
+keeps the package loadable from the Convex runtime.
+
 ```typescript
-import { translateWithGPT, batchTranslate } from "@be-in-digital/core";
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core";
 
 // Single translation
-const translated = await translateWithGPT(
+const translated = await translateText(
   "Margherita Pizza",
-  "en",      // source
-  "fr",      // target
-  "product name"  // context hint
+  "en",           // source
+  "fr",           // target
+  "product name", // context hint (optional)
+  httpClient,     // typed optional, but throws without it
+  apiKey,         // idem
 );
 // → "Pizza Margherita"
 
-// Batch translation
-await batchTranslate(products, "en", "es");
+// Batch: items are { text, key? }, and the client and key are REQUIRED here
+await batchTranslate(
+  products.map((p) => ({ text: p.name, key: p._id })),
+  "en",
+  "es",
+  httpClient,
+  apiKey,
+);
 // Cost: ~$0.001 per product
 ```
 
 ### Language Storage
 
-Languages are stored via cookies (primary) with localStorage fallback:
+Languages are stored via cookies (primary) with localStorage fallback. There is
+no `getLocale`; reading is split by where you are, and returns `null` rather than
+a fallback:
 
 ```typescript
-import { getLocale, setLocale } from "@be-in-digital/core";
+import {
+  getLocaleFromCookie,       // server: takes the request's cookie header
+  getLocaleFromLocalStorage, // client: no argument
+  detectLocale,              // walks the whole priority chain
+  resolveRequestLocale,      // the store's active languages are the allow-list
+  setLocale,                 // writes cookie + localStorage together
+} from "@be-in-digital/core";
 
-const currentLocale = getLocale(); // "fr"
+const currentLocale = getLocaleFromLocalStorage(); // "fr" | null
 setLocale("en");
 ```
 
 ## Payments
 
-Multi-provider payment processing.
+**Payments are not part of this package.** There is no `payments/` directory in
+`packages/core/src`, and no `createStripePayment`, `handleStripeWebhook`,
+`createSumUpCheckout`, `createPayPalOrder`, `capturePayPalPayment` or
+`processRefund` anywhere in the engine.
 
-### Supported Providers
+The payment code is Convex:
 
-| Provider | Module | Use Case |
-|----------|--------|----------|
-| Stripe | `stripe` | Online payments, subscriptions |
-| SumUp | `sumup` | In-person card terminals |
-| PayPal | `paypal` | PayPal checkout |
-| Square | `square` | Announced, **not implemented** — no code reads a Square credential |
+| What | Where |
+|------|-------|
+| Query/mutation definitions (`settlePayment`, `reserveRefund`, …) | `@be-in-digital/convex-functions/payments` |
+| Refund decisions (`planRefund`, `routeRefund`) | `@be-in-digital/convex-functions/refundPolicy` |
+| Settlement binding (`assertSettlesOrder`) | `@be-in-digital/convex-functions/paymentSettlement` |
+| Provider SDK calls and webhooks | each app's `convex/stripe.ts`, `sumup.ts`, `paypal.ts`, `stripeWebhook.ts` |
 
-### Stripe Integration
+Square is announced but **not implemented** — no code reads a Square credential,
+and `routeRefund` returns `{ kind: "unsupported", provider: "square" }`.
 
-```typescript
-import { createStripePayment, handleStripeWebhook } from "@be-in-digital/core";
+See the [Payments guide](../guides/payments.md).
 
-// Create payment intent
-const paymentIntent = await createStripePayment({
-  amount: 2499, // in cents
-  currency: "eur",
-  metadata: { orderId: "order_123" },
-});
-
-// Handle webhook
-export async function POST(req: Request) {
-  return handleStripeWebhook(req, {
-    onPaymentSuccess: async (event) => {
-      // Update order status
-    },
-    onPaymentFailed: async (event) => {
-      // Handle failure
-    },
-  });
-}
-```
-
-### Environment Variables
+What this package *does* contribute is the environment schema those providers are
+read through — `siteEnvSchema`, via `getSiteEnv()`:
 
 ```env
 STRIPE_SECRET_KEY=sk_...
+STRIPE_PUBLISHABLE_KEY=pk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-SUMUP_API_KEY=...
 PAYPAL_CLIENT_ID=...
 PAYPAL_CLIENT_SECRET=...
+PAYPAL_SANDBOX_MODE=true
+SUMUP_CLIENT_ID=...
+SUMUP_CLIENT_SECRET=...
 ```
+
+SumUp is connected over OAuth: there is no `SUMUP_API_KEY`.
 
 ## AWS Services
 
 ### S3 Storage
 
-There are no `uploadToS3` / `deleteFromS3` / `getSignedUrl` exports. S3 is a
-service object built with an injected client, which is what makes it testable
-(`packages/core/src/aws/s3/client.ts:112`).
+S3 is a **factory over an injected client**, not a set of free functions: the
+package has no `@aws-sdk/client-s3` dependency at all, so it stays loadable from
+the Convex runtime, and injecting the client is what makes it testable
+(`packages/core/src/aws/s3/client.ts:112`). There is no `uploadToS3`,
+`deleteFromS3` or `getSignedUrl` export — pass an `S3Operations` adapter to
+`createS3Service` and use the returned instance.
 
 ```typescript
-import { createS3Service } from "@be-in-digital/core";
+import { createS3Service, S3_FOLDERS } from "@be-in-digital/core";
+import type { S3Operations } from "@be-in-digital/core";
 
+declare const client: S3Operations; // your adapter over @aws-sdk/client-s3
 const s3 = createS3Service(config, client);
 
-// Upload a file
-const { key, url } = await s3.upload(file, { folder: "products" });
+// Upload a file — the key is generated from the folder and content type
+const { key, url } = await s3.upload(file, {
+  folder: "products",
+  contentType: "image/webp",
+});
 
-// Presigned URL for a private object
-const { url: signed } = await s3.getPresignedDownloadUrl(key);
+// Presigned URLs (the bucket is private)
+const upload = await s3.getPresignedUploadUrl({ folder: "products", contentType: "image/webp" });
+const download = await s3.getPresignedDownloadUrl(key);
 
 // Delete
 await s3.delete(key);
 ```
 
-**S3 Folders:**
+**S3 folders** are the allow-list in `@be-in-digital/core/aws/folders`. It is the
+single source of truth: the `/api/files` proxy serves a folder only if it appears
+here, so an upload into an unlisted folder produces a URL that 404s.
 
 | Folder | Content |
 |--------|---------|
 | `products/` | Product images |
+| `categories/` | Category images |
+| `cms/` | CMS media uploads |
 | `branding/` | Logos, brand assets |
 | `stores/` | Store photos |
-| `cms/` | CMS media uploads |
+| `storefront/` | Storefront imagery |
+| `blogs/`, `blog-auto/` | Blog images, hand-written and generated |
+| `email/` | Email campaign assets |
+| `avatars/`, `users/` | Account images |
 
 ### SES Email
 
+Same shape as S3: `sendEmail` and `sendTemplatedEmail` are **methods on the
+service**, not module-level exports.
+
 ```typescript
-import { sendEmail, sendTemplatedEmail } from "@be-in-digital/core";
+import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core";
+
+const ses = createSESService(config, createSESv2Operations(awsConfig));
+// or, server-side, build it from the environment:
+const ses = getSESService();
 
 // Simple email
-await sendEmail({
+await ses.sendEmail({
   to: "customer@example.com",
   subject: "Order Confirmed",
-  htmlBody: "<h1>Your order is confirmed!</h1>",
+  html: "<h1>Your order is confirmed!</h1>",
 });
 
 // Templated email
-await sendTemplatedEmail({
+await ses.sendTemplatedEmail({
   to: "customer@example.com",
   templateName: "order-confirmation",
   templateData: { orderNumber: "ORD-123", total: "24.99" },
 });
 ```
 
+Transactional mail leaves the product through the app's `/api/email/send` route,
+which is `createEmailRouteHandler({ secret, linkOrigin })` from this package:
+Convex holds no SES credentials, so it POSTs there instead. Bulk campaign sends
+are the exception and use `@aws-sdk/client-sesv2` directly from a Convex Node
+action.
+
 ## RBAC
 
 Role-based access control for admin operations.
 
 ```typescript
-import { checkPermission, UserRole } from "@be-in-digital/core";
+import { hasPermission, Role } from "@be-in-digital/core";
 
-// Roles: owner, admin, manager, staff
-const canManageProducts = checkPermission(user.role, "products:write");
-const canViewOrders = checkPermission(user.role, "orders:read");
+// Roles: super_admin, client_admin, manager, kitchen, waiter, delivery, customer
+const canManageProducts = hasPermission(user.role, "products:write");
+const canViewOrders = hasPermission(user.role, "orders:read");
+
+// Also available: hasAnyPermission, hasAllPermissions, getRolePermissions,
+// parseRole, isValidRole, and the requirePermission* guards.
 ```
+
+A `Permission` is the template literal `` `${Resource}:${Action}` `` — both are
+exported enums, so a typo is a compile error rather than a silent `false`.
 
 ### Permission Matrix
 
-| Permission | Owner | Admin | Manager | Staff |
-|-----------|-------|-------|---------|-------|
-| `products:write` | Yes | Yes | Yes | No |
-| `orders:read` | Yes | Yes | Yes | Yes |
-| `orders:refund` | Yes | Yes | No | No |
-| `settings:write` | Yes | Yes | No | No |
-| `users:manage` | Yes | No | No | No |
+The columns are the `Role` enum's seven members — there is no `owner`, `admin` or
+`staff` role, and `users:manage` is not a permission (`Resource` has no `users`
+member; team management is `team:*`).
+
+| Permission | client_admin | manager | kitchen | waiter | delivery | customer |
+|-----------|--------------|---------|---------|--------|----------|----------|
+| `products:write` | Yes | Yes | No | No | No | No |
+| `orders:read` | Yes | Yes | Yes | Yes | Yes | No |
+| `payments:refund` | Yes | No | No | No | No | No |
+| `settings:write` | Yes | No | No | No | No | No |
+| `team:write` | Yes | No | No | No | No | No |
+
+`super_admin` holds everything `client_admin` does plus exactly four:
+`stores:delete`, `stores:manage`, `kitchen:manage` and `analytics:view_all`. The
+full matrix is `ROLE_PERMISSIONS` in
+`packages/core/src/auth/rbac.ts`, and the
+[Authentication guide](../guides/authentication.md) reproduces it.
 
 ## Environment Validation
 

@@ -35,3 +35,7 @@ export const customerAddressesTable = defineTable({
 })
   .index("by_userId", ["userId"])
   .index("by_userId_localId", ["userId", "importedFromLocalId"])
+  // Retention. The table has no `storeId`, so a store cascade never reaches it
+  // and only time can. Both existing indexes start with `userId`, which cannot
+  // answer "everything older than three years".
+  .index("by_updatedAt", ["updatedAt"])

@@ -7,7 +7,7 @@
  * │                                                             │
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
- * │  │ import { createAuthConfig } from '@repo/core/auth'│      │
+ * │  │ import { createAuthConfig } from '@be-in-digital/core'│      │
  * │  │                                                   │      │
  * │  │ const config = createAuthConfig({                 │      │
  * │  │   baseUrl: 'https://myrestaurant.com',            │      │
@@ -236,28 +236,6 @@ export const emailTemplates = {
     subject: 'Votre lien de connexion - BeYours',
     templateName: 'magic-link',
   },
-};
-
-/**
- * Redirect URL configuration
- */
-export const authRoutes = {
-  /** Sign-in page */
-  signIn: '/auth/signin',
-  /** Sign-up page */
-  signUp: '/auth/signup',
-  /** Where to land after a successful sign-in */
-  afterSignIn: '/dashboard',
-  /** Where to land after a successful sign-up */
-  afterSignUp: '/onboarding',
-  /** Email verification page */
-  verifyEmail: '/auth/verify-email',
-  /** Password reset page */
-  resetPassword: '/auth/reset-password',
-  /** 2FA setup page */
-  twoFactor: '/settings/security/2fa',
-  /** Auth error page */
-  error: '/auth/error',
 };
 
 /**

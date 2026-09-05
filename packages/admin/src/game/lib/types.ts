@@ -85,6 +85,14 @@ export interface GameSession {
   progression: ActionProgression
   referral: ReferralState
   cooldown: { active: boolean; nextPlayAt?: number }
+  /**
+   * What the consent notice has to be able to say.
+   *
+   * Optional because a deployment running an older backend answers without it,
+   * and the flow falls back to the CNIL default rather than rendering a notice
+   * with a hole in it.
+   */
+  privacy?: { retentionDays: number }
 }
 
 export interface PlayResult {

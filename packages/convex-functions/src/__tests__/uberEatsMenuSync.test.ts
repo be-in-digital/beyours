@@ -3,7 +3,11 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { buildUberEatsMenuPayload, isProductOutOfStock } from '../uberEatsMenuSync'
+import {
+  buildUberEatsMenuPayload,
+  collectUnsyncableAllergens,
+  isProductOutOfStock,
+} from '../uberEatsMenuSync'
 import type { ProductRecord, CategoryRecord } from '../uberEatsMenuSync'
 
 const STORE_ID = '480eab8c-cc25-4c2b-b92f-70d7a1984f97'
@@ -600,5 +604,93 @@ describe('isProductOutOfStock', () => {
     [{ stock: { tracked: true, quantity: -1, lowStockThreshold: 2 } }, true],
   ])('%o → %s', (product, expected) => {
     expect(isProductOutOfStock(product as Pick<ProductRecord, 'stock'>)).toBe(expected)
+  })
+})
+
+/**
+ * Allergens used to be declared on `ProductRecord`, declared on the wire type
+ * in `@be-in-digital/integrations`, and read zero times in between — every
+ * dish went to Uber Eats with no allergen declaration at all, and nothing
+ * reported it. These tests hold that seam shut.
+ */
+describe('buildUberEatsMenuPayload — allergens', () => {
+  const category = createMockCategory({ _id: 'cat-1', name: 'Desserts' })
+
+  function itemFor(product: ProductRecord) {
+    const payload = buildUberEatsMenuPayload([product], [category])
+    return payload.items.find((i) => i.id === `item-${product._id}`)
+  }
+
+  it('sends the allergens an owner declared in French', () => {
+    // The value a French owner actually types has to arrive as Uber's enum.
+    const item = itemFor(
+      createMockProduct({
+        _id: 'prod-1',
+        categoryId: 'cat-1',
+        allergens: ['fruits à coque', 'gluten', 'lactose'],
+      })
+    )
+    expect(item?.nutritional_info?.allergens).toEqual([
+      { type: 'TREE_NUTS' },
+      { type: 'GLUTEN' },
+      { type: 'MILK' },
+    ])
+  })
+
+  it('omits the block entirely when nothing is declared', () => {
+    // An absent declaration must not be sent as an empty one.
+    expect(itemFor(createMockProduct({ categoryId: 'cat-1' }))?.nutritional_info).toBeUndefined()
+    expect(
+      itemFor(createMockProduct({ categoryId: 'cat-1', allergens: [] }))?.nutritional_info
+    ).toBeUndefined()
+  })
+
+  it('does not send a dietary marker as an allergen', () => {
+    const item = itemFor(
+      createMockProduct({ categoryId: 'cat-1', allergens: ['vegan', 'gluten'] })
+    )
+    expect(item?.nutritional_info?.allergens).toEqual([{ type: 'GLUTEN' }])
+  })
+
+  it('does not send a value the vocabulary cannot map', () => {
+    // Filing it as OTHER would show a diner a declaration naming nothing.
+    const item = itemFor(
+      createMockProduct({ categoryId: 'cat-1', allergens: ['sauce secrète'] })
+    )
+    expect(item?.nutritional_info).toBeUndefined()
+  })
+
+  it('still sends the mappable allergens alongside one it cannot map', () => {
+    const item = itemFor(
+      createMockProduct({ categoryId: 'cat-1', allergens: ['sauce secrète', 'moutarde'] })
+    )
+    expect(item?.nutritional_info?.allergens).toEqual([{ type: 'MUSTARD' }])
+  })
+})
+
+describe('collectUnsyncableAllergens', () => {
+  it('names the product and the owner’s own wording', () => {
+    const reports = collectUnsyncableAllergens([
+      createMockProduct({ _id: 'p1', name: 'Tarte maison', allergens: ['sauce secrète'] }),
+    ])
+    expect(reports).toEqual([
+      { productId: 'p1', productName: 'Tarte maison', values: ['sauce secrète'] },
+    ])
+  })
+
+  it('reports nothing when every declaration mapped', () => {
+    expect(
+      collectUnsyncableAllergens([
+        createMockProduct({ allergens: ['gluten', 'arachides', 'vegan'] }),
+      ])
+    ).toEqual([])
+  })
+
+  it('ignores inactive products, which are not synced', () => {
+    expect(
+      collectUnsyncableAllergens([
+        createMockProduct({ isActive: false, allergens: ['sauce secrète'] }),
+      ])
+    ).toEqual([])
   })
 })

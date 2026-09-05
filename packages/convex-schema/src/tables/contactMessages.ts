@@ -16,3 +16,7 @@ export const contactMessagesTable = defineTable({
   createdAt: v.number(),
 }).index("by_storeId", ["storeId"])
   .index("by_storeId_status", ["storeId", "status"])
+  // Retention: the messages of one establishment, oldest first. Without a time
+  // key the sweep would read every message a restaurant has ever received in
+  // order to find the three that expired.
+  .index("by_storeId_createdAt", ["storeId", "createdAt"])

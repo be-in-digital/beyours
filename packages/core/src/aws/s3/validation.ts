@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import { validateMimeType, validateFileSize }     │      │
- * │  │   from '@repo/core/aws'                           │      │
+ * │  │   from '@be-in-digital/core'                           │      │
  * │  │                                                   │      │
  * │  │ validateMimeType('products', 'image/webp')        │      │
  * │  │ validateFileSize('products', 1024 * 500)          │      │
@@ -18,13 +18,26 @@
  */
 
 import { z } from 'zod'
-import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from '../types'
+import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES, S3_FOLDERS } from '../types'
 import type { S3Folder } from '../types'
 
 /**
- * Schema for the S3 folders
+ * The folders an upload may target.
+ *
+ * Derived from `S3_FOLDERS`, never restated. It used to be a hand-written
+ * `z.enum` of six, and the list grew to eleven without it: `upload()` and
+ * `getPresignedUploadUrl()` both parse through this schema, so
+ * `categories`, `storefront`, `blogs`, `blog-auto` and `avatars` type-checked
+ * as `S3Folder` and threw at runtime. Deriving it makes that drift
+ * unrepresentable.
+ *
+ * This is the whole set on purpose. A path that means to accept fewer — the
+ * HTTP route in `apps/*\/app/api/upload/route.ts` takes five, because the rest
+ * are written by the presigned Convex flow under its own authorisation —
+ * narrows it at that path, where the reason for narrowing is visible. It does
+ * not narrow it here, where every caller would silently inherit it.
  */
-export const s3FolderSchema = z.enum(['products', 'branding', 'stores', 'cms', 'email', 'users'])
+export const s3FolderSchema = z.enum(S3_FOLDERS)
 
 /**
  * Schema for the upload options
