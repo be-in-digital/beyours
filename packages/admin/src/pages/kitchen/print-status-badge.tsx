@@ -1,16 +1,16 @@
 "use client"
 
 import { useQuery } from "convex/react"
-import { api } from "@/convex/_generated/api"
-import type { Id } from "@/convex/_generated/dataModel"
-import { Badge } from "@/components/ui/badge"
+import { useAdminApiStore } from "../../stores/admin-api-store"
+import { Badge } from "@be-in-digital/ui"
 import { AlertTriangle, Printer } from "lucide-react"
 
 interface PrintStatusBadgeProps {
-  storeId: Id<"stores">
+  storeId: string
 }
 
 export function PrintStatusBadge({ storeId }: PrintStatusBadgeProps) {
+  const { api } = useAdminApiStore()
   const overdueCount = useQuery(api.kitchenTickets.getOverdueCount, { storeId })
   const printStuckCount = useQuery(api.kitchenTickets.getPrintStuckCount, { storeId })
 
