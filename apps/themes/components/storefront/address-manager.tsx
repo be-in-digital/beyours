@@ -23,7 +23,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { type SavedAddress } from "@/lib/stores/addresses-store"
 import { useAddresses } from "@/lib/hooks/use-addresses"
 import { authClient } from "@/lib/auth-client"

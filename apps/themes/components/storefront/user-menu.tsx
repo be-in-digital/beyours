@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { authClient } from "@/lib/auth-client"
 import {
   User,

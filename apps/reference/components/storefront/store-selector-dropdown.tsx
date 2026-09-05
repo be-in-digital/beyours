@@ -12,7 +12,7 @@ import {
   Empty,
   EmptyHeader,
   EmptyTitle,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import {
   useStorefrontStoreSelection,
   useCartStore,

@@ -9,7 +9,7 @@ import {
   useTranslation,
 } from "@be-in-digital/restaurant"
 import type { ProductDoc } from "@be-in-digital/restaurant"
-import { Badge } from "@be-in-digital/ui/components"
+import { Badge } from "@be-in-digital/ui"
 
 interface StorefrontProductCardProps {
   product: ProductDoc

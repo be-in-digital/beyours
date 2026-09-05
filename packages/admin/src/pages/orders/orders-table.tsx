@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Badge } from "@be-in-digital/ui"
 import {
+  Badge,
   Table,
   TableBody,
   TableCell,

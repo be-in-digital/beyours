@@ -2,9 +2,7 @@
 
 import { useMutation } from "convex/react"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { Button } from "@be-in-digital/ui"
-import { Badge } from "@be-in-digital/ui"
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@be-in-digital/ui"
 import { TicketTimer } from "./ticket-timer"
 import { Clock, Play, CheckCircle, Package } from "lucide-react"
 import { useAdminApiStore } from "../../stores/admin-api-store"

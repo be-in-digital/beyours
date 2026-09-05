@@ -10,7 +10,7 @@ import {
   X,
   Loader2,
 } from "lucide-react"
-import { Input, Separator } from "@be-in-digital/ui/components"
+import { Input, Separator } from "@be-in-digital/ui"
 import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 import { computeOrderTotals } from "@be-in-digital/convex-functions/orderTotals"
 

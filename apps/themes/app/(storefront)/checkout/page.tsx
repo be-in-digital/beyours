@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react"
-import { Button } from "@be-in-digital/ui/components"
+import { Button } from "@be-in-digital/ui"
 import { useCartStore, formatPrice,
   cartSignature,
   resolveCheckoutAttempt,

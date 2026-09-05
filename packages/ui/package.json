@@ -10,33 +10,26 @@
     "directory": "packages/ui"
   },
   "files": [
-    "dist",
     "src"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    },
+    ".": "./src/index.ts",
     "./branding": "./src/lib/branding.ts",
     "./components": "./src/components/index.ts",
     "./restaurant": "./src/components/restaurant/index.ts",
     "./admin": "./src/components/admin/index.ts"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "clean": "rm -rf dist node_modules"
+    "clean": "rm -rf node_modules"
   },
   "dependencies": {
+    "@types/google.maps": "^3.58.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
@@ -50,11 +43,9 @@
     "react-hook-form": "^7.0.0"
   },
   "devDependencies": {
-    "@types/google.maps": "^3.58.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "jsdom": "^28.1.0",
-    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
   }

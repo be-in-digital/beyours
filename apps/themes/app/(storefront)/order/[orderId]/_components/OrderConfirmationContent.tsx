@@ -7,9 +7,7 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { CheckCircle, Package, ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
-import { Badge, Separator, Skeleton } from "@be-in-digital/ui/components"
-import { OrderStatusBadge } from "@be-in-digital/ui/restaurant"
-import type { OrderStatus } from "@be-in-digital/ui/restaurant"
+import { Badge, Separator, Skeleton, OrderStatusBadge, type OrderStatus } from "@be-in-digital/ui"
 import { formatPrice } from "@be-in-digital/restaurant"
 
 function toDisplayStatus(status: string): OrderStatus {

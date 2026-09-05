@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { useSelectAdminStore } from "../hooks/admin-hooks"
-import { Avatar, AvatarFallback, AvatarImage } from "@be-in-digital/ui"
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

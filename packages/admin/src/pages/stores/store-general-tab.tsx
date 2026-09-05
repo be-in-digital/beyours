@@ -1,18 +1,22 @@
 "use client"
 
 import type { Dispatch, SetStateAction } from "react"
-import { Button } from "@be-in-digital/ui"
-import { Input } from "@be-in-digital/ui"
-import { Label } from "@be-in-digital/ui"
 import {
+  Button,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  AddressAutocomplete,
+  type AddressValue,
 } from "@be-in-digital/ui"
-import { Card, CardContent, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 

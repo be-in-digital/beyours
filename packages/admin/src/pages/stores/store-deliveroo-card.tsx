@@ -2,27 +2,27 @@
 
 import type { Dispatch, SetStateAction } from "react"
 import { RefreshCw, Loader2, HelpCircle, ExternalLink, Download, MoreHorizontal, Trash2 } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
-import { Input } from "@be-in-digital/ui"
-import { Label } from "@be-in-digital/ui"
 import {
+  Button,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
-import { Switch } from "@be-in-digital/ui"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { Badge } from "@be-in-digital/ui"
-import {
+  Switch,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui"
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,

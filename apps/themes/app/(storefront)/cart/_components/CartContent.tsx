@@ -29,7 +29,7 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
 import type { OrderType } from "@be-in-digital/restaurant"
 import { useStoreId } from "@/lib/hooks/use-store-id"

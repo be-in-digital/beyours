@@ -23,7 +23,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import {
   Sheet,
   SheetContent,

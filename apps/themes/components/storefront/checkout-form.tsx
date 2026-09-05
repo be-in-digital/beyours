@@ -23,7 +23,7 @@ import {
   Input,
   Label,
   Separator,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { useCartStore } from "@be-in-digital/restaurant"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"

@@ -6,7 +6,15 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { ArrowLeft, Package, ShoppingBag, Loader2 } from "lucide-react"
-import { Badge, Skeleton, Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@be-in-digital/ui/components"
+import {
+  Badge,
+  Skeleton,
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@be-in-digital/ui"
 import { formatPrice } from "@be-in-digital/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"

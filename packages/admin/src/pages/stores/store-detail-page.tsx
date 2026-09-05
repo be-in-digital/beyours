@@ -1,9 +1,16 @@
 "use client"
 
 import { ArrowLeft, AlertTriangle } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@be-in-digital/ui"
-import { Alert, AlertDescription, AlertTitle } from "@be-in-digital/ui"
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { centsToEuros } from "../../lib/formatters"

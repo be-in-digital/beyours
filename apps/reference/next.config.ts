@@ -38,7 +38,26 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  transpilePackages: ["@convex-dev/better-auth"],
+  // The engine packages are published as TypeScript source (`files: ["src"]`)
+  // and resolved from `src` by their own `exports` map, so Next has to compile
+  // them. This app gets away without it today only because pnpm symlinks
+  // `node_modules/@be-in-digital/*` to `packages/*` and the resolved path then
+  // falls outside `node_modules`. A client site installs a real directory, so
+  // the mechanism that works here is not the one that works there — and the
+  // asymmetry means the bench cannot catch it breaking. Same list as
+  // `apps/themes/next.config.ts`.
+  transpilePackages: [
+    "@be-in-digital/admin",
+    "@be-in-digital/cms",
+    "@be-in-digital/convex-functions",
+    "@be-in-digital/convex-schema",
+    "@be-in-digital/core",
+    "@be-in-digital/integrations",
+    "@be-in-digital/marketing",
+    "@be-in-digital/restaurant",
+    "@be-in-digital/ui",
+    "@convex-dev/better-auth",
+  ],
   async headers() {
     return [
       // /api/files serves user-supplied bytes and answers with its own, far

@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { useCartStore, useTranslation } from "@be-in-digital/restaurant"
 import { useCmsPage } from "@/lib/cms/useCmsPage"
 import { CartSheet } from "./cart-sheet"

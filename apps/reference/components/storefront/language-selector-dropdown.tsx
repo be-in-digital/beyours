@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import { COMMON_LANGUAGES, type LanguageConfig } from "@be-in-digital/core"
 import { useLanguageStore, useTranslation } from "@be-in-digital/restaurant"
 

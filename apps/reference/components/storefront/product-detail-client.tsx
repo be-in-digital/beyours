@@ -7,9 +7,10 @@ import {
   Badge,
   Separator,
   Label,
-} from "@be-in-digital/ui/components"
-import { AllergenBadge, SpiceLevelIndicator } from "@be-in-digital/ui/restaurant"
-import type { Allergen } from "@be-in-digital/ui/restaurant"
+  AllergenBadge,
+  SpiceLevelIndicator,
+  type Allergen,
+} from "@be-in-digital/ui"
 import {
   useCartStore,
   formatPrice,

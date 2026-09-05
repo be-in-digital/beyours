@@ -17,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui/components"
+} from "@be-in-digital/ui"
 import {
   filterProducts,
   sortProducts,

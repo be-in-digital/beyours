@@ -1,12 +1,18 @@
 "use client"
 
 import type { Dispatch, SetStateAction } from "react"
-import { Button } from "@be-in-digital/ui"
-import { Input } from "@be-in-digital/ui"
-import { Label } from "@be-in-digital/ui"
-import { Switch } from "@be-in-digital/ui"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@be-in-digital/ui"
-import { Badge } from "@be-in-digital/ui"
+import {
+  Button,
+  Input,
+  Label,
+  Switch,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Badge,
+} from "@be-in-digital/ui"
 
 interface GlobalServices {
   dineIn?: boolean

@@ -36,8 +36,9 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  AddressAutocomplete,
+  type AddressValue,
 } from "@be-in-digital/ui"
-import { AddressAutocomplete, type AddressValue } from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { slugify } from "../../lib/formatters"
