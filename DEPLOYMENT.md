@@ -268,7 +268,8 @@ NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
 client actually receives:
 
 ```bash
-pnpm check:mirror-build   # packs the engine, installs the tarballs, tsc --noEmit
+pnpm check:mirror-build   # packs the engine, installs the tarballs,
+                          # then typechecks AND runs the template's tests
 ```
 
 Nothing else compiles the published shape. CI builds `apps/themes` through the
@@ -278,6 +279,15 @@ boilerplate run 71 CI failures to 1 success while every required check here was
 green (#321). It is deliberately not in CI — it builds and installs the whole
 engine — and it is a pre-flight, not a substitute for cloning the boilerplate after
 a release: it proves the code is consistent, not that the upload happened.
+
+**It runs the tests as well as `tsc`, and both halves are needed.** Four engine
+packages ship raw `src/*.ts` rather than a build. A typecheck reads that happily,
+so the first release cut with this check in place passed it and still turned the
+boilerplate red: Vitest does not transform `node_modules`, and a client's own
+`pnpm test` died on `ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` and `React is
+not defined`. Anything in the template that transforms code has to be told the
+engine packages are source — `next.config.ts` does it with `transpilePackages`,
+`vitest.config.ts` with `server.deps.inline` plus `esbuild.jsx`.
 
 Four operational facts:
 
