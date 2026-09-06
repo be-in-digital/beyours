@@ -57,7 +57,7 @@ import {
   describeUnresolvable,
   engineImportsIn,
   EXPORTS_UNKNOWN,
-  exportsOfTarball,
+  tarballContents,
   unresolvableImports,
 } from "./lib/engine-exports.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
@@ -128,8 +128,8 @@ function publishedVersion(pkg) {
 }
 
 /**
- * The `exports` map of the version a client would actually install, read from
- * the published TARBALL.
+ * What the version a client would actually install carries: its `exports` map
+ * and its file list, both read from the published TARBALL.
  *
  * Not from `npm view`: GitHub Packages omits `exports` from the abbreviated
  * packument that command reads, so the lookup answered empty for every engine
@@ -137,31 +137,37 @@ function publishedVersion(pkg) {
  * path allowed", and the gate flagged nothing while `admin@8.0.0` shipped
  * without the `./game` the template imports (#380). The tarball is what a
  * client installs and the registry cannot abbreviate it, so `npm pack` it and
- * read the manifest inside.
+ * read the archive inside.
+ *
+ * Both halves come from the one read, and are passed on together, because a
+ * subpath fails in two ways: absent from the map, or present and pointing at a
+ * file the archive never carried. Reading the map without the file list would
+ * answer the first question and silently drop the second.
  *
  * Three answers, kept distinct on purpose:
- *   - a map (or string) — checked subpath by subpath;
+ *   - a map (or string) — checked subpath by subpath, target by target;
  *   - `undefined` — the manifest genuinely declares no `exports`, which Node
  *     resolves legacily: any path allowed, nothing to verify;
  *   - `EXPORTS_UNKNOWN` — the tarball could not be fetched or read. That is a
  *     question with no answer, not an answer: `unresolvableImports` flags it
  *     and the sync refuses to run, because conflating "could not read the map"
- *     with "has no map" is exactly the defect this replaces.
+ *     with "has no map" is exactly the defect this replaces. `files` is left
+ *     undefined with it: nothing was read, so nothing is known to be missing.
  *
  * Each tarball is unpacked under `work`, so it is swept by the one `finally`
  * at the bottom along with the clone — the same reason nothing here calls
  * `process.exit`. It is therefore only callable once `work` exists, which is
  * to say from inside that try.
  */
-function publishedExports(pkg, version) {
+function publishedTarball(pkg, version) {
   const dir = mkdtempSync(join(work, "pack-"))
   try {
     run("npm", ["pack", `${pkg}@${version}`, `--registry=${REGISTRY}`, "--pack-destination", dir])
     const tarball = readdirSync(dir).find((name) => name.endsWith(".tgz"))
     if (!tarball) throw new Error(`npm pack wrote no tarball for ${pkg}@${version}`)
-    return exportsOfTarball(join(dir, tarball))
+    return tarballContents(join(dir, tarball))
   } catch {
-    return EXPORTS_UNKNOWN
+    return { exports: EXPORTS_UNKNOWN, files: undefined }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
@@ -260,11 +266,14 @@ try {
   // link; a client installs the tarballs pinned above. A subpath added to a
   // package's `exports` without a version bump exists in the first and not in
   // the second, so all four required checks stay green while the published
-  // template cannot build. See `lib/engine-exports.mjs` for the measurement.
+  // template cannot build. The tarball answers the second question too — does
+  // the file each subpath points at actually ship — because a declaration the
+  // build never emitted breaks the same client one step further along. See
+  // `lib/engine-exports.mjs` for the measurement.
   const published = {}
   for (const [pkg, range] of Object.entries(versions)) {
     const version = range.replace(/^\^/, "")
-    published[pkg] = { version, exports: publishedExports(pkg, version) }
+    published[pkg] = { version, ...publishedTarball(pkg, version) }
   }
   const unresolvable = unresolvableImports(engineImportsIn(SOURCE), published)
   if (unresolvable.length > 0) fail(describeUnresolvable(unresolvable))
