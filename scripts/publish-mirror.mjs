@@ -48,7 +48,7 @@
  */
 
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -56,6 +56,8 @@ import { fileURLToPath } from "node:url"
 import {
   describeUnresolvable,
   engineImportsIn,
+  EXPORTS_UNKNOWN,
+  exportsOfTarball,
   unresolvableImports,
 } from "./lib/engine-exports.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
@@ -126,19 +128,43 @@ function publishedVersion(pkg) {
 }
 
 /**
- * The `exports` map of the version a client would actually install.
+ * The `exports` map of the version a client would actually install, read from
+ * the published TARBALL.
  *
- * `undefined` means the package declares no `exports` at all, which is a valid
- * state Node resolves legacily — `exportsResolve` treats it as "cannot be
- * wrong". A FAILED lookup is different and must not be confused with it, so it
- * throws rather than returning `undefined`: not knowing is not the same as
- * being fine, and this guard exists precisely to stop the mirror shipping on an
- * assumption.
+ * Not from `npm view`: GitHub Packages omits `exports` from the abbreviated
+ * packument that command reads, so the lookup answered empty for every engine
+ * package, the emptiness was taken for "declares no exports → legacy → any
+ * path allowed", and the gate flagged nothing while `admin@8.0.0` shipped
+ * without the `./game` the template imports (#380). The tarball is what a
+ * client installs and the registry cannot abbreviate it, so `npm pack` it and
+ * read the manifest inside.
+ *
+ * Three answers, kept distinct on purpose:
+ *   - a map (or string) — checked subpath by subpath;
+ *   - `undefined` — the manifest genuinely declares no `exports`, which Node
+ *     resolves legacily: any path allowed, nothing to verify;
+ *   - `EXPORTS_UNKNOWN` — the tarball could not be fetched or read. That is a
+ *     question with no answer, not an answer: `unresolvableImports` flags it
+ *     and the sync refuses to run, because conflating "could not read the map"
+ *     with "has no map" is exactly the defect this replaces.
+ *
+ * Each tarball is unpacked under `work`, so it is swept by the one `finally`
+ * at the bottom along with the clone — the same reason nothing here calls
+ * `process.exit`. It is therefore only callable once `work` exists, which is
+ * to say from inside that try.
  */
 function publishedExports(pkg, version) {
-  const raw = run("npm", ["view", `${pkg}@${version}`, "exports", "--json", `--registry=${REGISTRY}`])
-  if (!raw) return undefined
-  return JSON.parse(raw)
+  const dir = mkdtempSync(join(work, "pack-"))
+  try {
+    run("npm", ["pack", `${pkg}@${version}`, `--registry=${REGISTRY}`, "--pack-destination", dir])
+    const tarball = readdirSync(dir).find((name) => name.endsWith(".tgz"))
+    if (!tarball) throw new Error(`npm pack wrote no tarball for ${pkg}@${version}`)
+    return exportsOfTarball(join(dir, tarball))
+  } catch {
+    return EXPORTS_UNKNOWN
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 function resolveVersions(deps) {

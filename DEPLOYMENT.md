@@ -264,8 +264,21 @@ run. Locally:
 NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
 ```
 
-Three operational facts:
+Four operational facts:
 
+- **A sync refuses to run if the pinned versions cannot resolve what the template
+  imports.** CI builds `apps/themes` against `packages/*` at HEAD through the
+  workspace link; a client installs the tarballs pinned from the registry. A
+  subpath added to a package's `exports` without a version bump exists in the
+  first and not the second, so every required check stays green while a client
+  clone dies at `next build` with `ERR_PACKAGE_PATH_NOT_EXPORTED`. The gate reads
+  each published `exports` map out of the **tarball** (`npm pack`), because GitHub
+  Packages omits the field from the packument `npm view` reads — trusting that
+  silence is what made this check a no-op until #380. A lookup that fails is
+  reported as unknown and also stops the sync: if it says the exports could not be
+  read, check `NODE_AUTH_TOKEN` and the registry rather than the template. The fix
+  for a genuine mismatch is to release the engine first, never to delete the
+  import.
 - **The mirror is rebuilt in full on every run: a commit made directly on it
   disappears.** All changes belong here, in `apps/themes`.
 - **Its history is preserved — never a force-push.** Every client site has a
