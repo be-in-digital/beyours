@@ -206,7 +206,14 @@ describe("materialising the mirror", () => {
 describe("the publisher and the checker cannot drift apart", () => {
   const read = (rel: string): string => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8")
 
-  test.each(["scripts/publish-mirror.mjs", "scripts/check-mirror-css.mjs"])(
+  test.each([
+    "scripts/publish-mirror.mjs",
+    "scripts/check-mirror-css.mjs",
+    // The third consumer: it compiles the published tree against packed
+    // tarballs. Materialising a tree of its own would mean it proved something
+    // about a tree no client receives — the same defect, one level up.
+    "scripts/check-mirror-build.mjs",
+  ])(
     "%s materialises the tree with the shared module",
     (script) => {
       expect(read(script)).toContain('from "./lib/mirror-tree.mjs"')

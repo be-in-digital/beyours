@@ -31,9 +31,12 @@ on:
       # changes what a client receives while `apps/themes` is untouched, and
       # used to trigger no sync at all. The `packageManager` field is not a
       # hypothetical: a version mismatch in it is what hung the job and left the
-      # mirror twelve days stale.
+      # mirror twelve days stale. `engine-exports.mjs` is the gate that decides
+      # whether a sync may run at all, which is the same kind of input: a fix
+      # to it must get the chance to run.
       - "scripts/publish-mirror.mjs"
       - "scripts/lib/mirror-tree.mjs"
+      - "scripts/lib/engine-exports.mjs"
       - "package.json"
   workflow_run:
     workflows: ["Release"]

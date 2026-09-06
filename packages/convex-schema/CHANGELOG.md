@@ -1,5 +1,580 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 4.0.0
+
+### Major Changes
+
+- 60dbd7d: Let a refused diner read why, and make three checkout guards able to hold
+
+  `orders.create` is sound: it recomputes every price server-side, dedupes on an
+  idempotency key, validates availability, options, quantity and scheduling,
+  enforces the minimum order and the delivery radius, and gates on the store's
+  service switches. What was left is that its refusals could not be read, and that
+  three of its guards could never fire.
+
+  **Every checkout refusal reached the diner as "Server Error".** Convex redacts
+  the message of a thrown `Error` in production; only `ConvexError` carries its
+  `data` to the browser. The repository states the rule itself, at
+  `packages/convex-functions/src/auth.ts:45` and again in
+  `invitation-acceptance.test.ts` — and the fix had been applied to the
+  **authorization** path and never to the customer checkout path:
+
+  ```
+  $ grep -c 'throw new LineRejectedError' packages/convex-functions/src/orderLine.ts   -> 8
+  $ grep -c 'throw new Error('            packages/convex-functions/src/orders.ts     -> 15
+  $ grep -c ConvexError packages/convex-functions/src/orders.ts                       -> 0
+  ```
+
+  So eight carefully written French sentences — `« Pizza » est épuisé.`,
+  `« Pizza » exige un choix : Taille.`, the minimum order, the delivery radius, a
+  service the restaurant does not run — all became two English words at the moment
+  of payment. The diner was blocked with no reason and no action, and abandoned.
+  It made the whole server-side validation effort invisible.
+
+  New `RefusalError` (`packages/convex-functions/src/refusal.ts`) extends
+  `ConvexError<{ code, message, … }>` — the flat payload `auth.ts` established and
+  `lib/convex-error.ts` already reads in both apps. `LineRejectedError`,
+  `OrderZoneRejectedError`, `QuoteRejectedError`, `PromotionRejectedError`,
+  `FieldTooLongError` and `RateLimitedError` extend it, so every existing throw
+  site and every `instanceof` catch is unchanged and the payload now survives the
+  wire. `ConvexError` overwrites `message` with the JSON of `data`; the base
+  restores the sentence, because a good deal of the storefront and of the suite
+  reads `error.message`. Ten plain throws in `orders.ts` became a new
+  `OrderRefusedError`, and the checkout page reads `convexErrorMessage(error, …)`
+  instead of `error.message`.
+
+  Three of those messages were in **English** — "This store is not open for
+  orders", "This store is not accepting orders right now", "This store does not
+  offer delivery orders" — the only English copy a diner could be shown on this
+  path. They are French now, like the rest of the storefront.
+
+  **Tracked stock was never decremented by an order.**
+
+  ```
+  PROBE: stock before = {"tracked":true,"quantity":2}
+  PROBE: order 1 -> stock {"tracked":true,"quantity":2}
+  PROBE: order 2 -> stock {"tracked":true,"quantity":2}
+  PROBE: 4 portions sold out of a tracked stock of 2
+  ```
+
+  The `insufficient_stock` guard and its message are correct, and could only ever
+  fire if the owner retyped the quantity in the dashboard after every single
+  order. A restaurant tracking ten portions of the daily special sold fifty and
+  found out in the kitchen. `autoDisableWhenEmpty` hung off the same manual
+  `updateStock` mutation, so a dish that ran out never came off the menu on its
+  own either.
+
+  `orders.create` now sells the stock the order takes, in the same mutation as the
+  order and its kitchen ticket — one transaction, so two checkouts racing for the
+  last portion are serialised by the same read-write conflict that protects the
+  promotion counter. The auto-disable rule moved out of `updateStock`'s handler
+  into a pure `stockPatch`, shared by both callers. A basket is counted as a
+  basket: two lines of the same dish were each checked against the stored
+  quantity, so a stock of 3 accepted 2 + 2.
+
+  **Opening hours were enforced in the browser only.**
+
+  ```
+  PROBE: every day marked isClosed -> order created
+  PROBE: 04:00 order accepted (hours 11:00-14:00)
+  ```
+
+  `isOrderableStore` returns `store?.status === "open"` and its own comment
+  concedes that hours are "a separate question, answered in the storefront".
+  Nothing flips `status` on a schedule — there is no such cron — so the weekly week
+  the dashboard writes was honoured by exactly one thing: a `toast.error` on the
+  checkout page. A tab left open past closing, a cart restored from localStorage
+  or a direct call produced a paid order and a kitchen ticket at 4 a.m. in an
+  empty building. The hole had been closed one level up for the manual `closed`
+  status and left open for the weekly schedule, which is the one restaurants
+  actually rely on.
+
+  New `isWithinBusinessHours` and `resolveStoreHours` in
+  `@be-in-digital/convex-schema` — the only package `convex-functions` and
+  `restaurant` can both import, which is why `storeStatus` and `storeServices` are
+  there already. `orders.create` refuses an order outside the resolved week, on the
+  establishment's clock and honouring `useGlobalHours`; `isStoreOpen` and
+  `useStoreStatus` delegate their boolean to the same function, so the button the
+  storefront disables and the order the mutation refuses cannot drift apart. An
+  empty week is not a closure — `stores.create` seeds a full one, so an empty array
+  means nobody declared anything, and `status` decides as it always has.
+
+  **The menu and the order mutation disagreed about scheduling windows.**
+
+  ```
+  PROBE @23:00  client(menu) = false  server(order) = true
+  PROBE @01:00  client(menu) = false  server(order) = true
+  PROBE tz      client = true (UTC)   server = false (Europe/Paris)
+  ```
+
+  The server handled midnight-crossing windows and took a timezone;
+  `isProductScheduledNow` did neither — `now.getDay()` / `now.getHours()` on the
+  visitor's own clock, and `currentTime > availableUntil` reading a 22:00→02:00
+  late menu as an empty set. Two opposite failures out of one seam: the late menu
+  was greyed out for every hour it was actually served, and a diner in another
+  timezone saw a dish, added it, and was refused at payment — with the unreadable
+  error above. `timeWindow` moved to `@be-in-digital/convex-schema` and
+  `isProductScheduledNow` renders from it; `isProductAvailable`, the product card,
+  the grid, the menu and the favourites grid all take the establishment's
+  timezone, which `useStoreStatus` now returns.
+
+  **`/cart` showed "Votre Box est vide" before the persisted cart hydrated.**
+  `useCartHydrated` exists for exactly this and documents the failure mode; it had
+  been applied to `/checkout`, twice, and to neither read in `CartContent`. A diner
+  who reloaded or arrived from a bookmark got a full-screen dead-end hero on first
+  paint.
+
+  **Four things adversarial verification of the above turned up, all fixed here.**
+
+  Two were regressions this change introduced. `isOvernight` compared the raw
+  `"HH:MM"` strings while `parseClockTime` accepts `H:MM`, so the two disagreed
+  about what a time is — in both directions. `"17:00" <= "9:00"` is
+  lexicographically true, so a 9-to-5 bakery written `9:00` read as an overnight
+  service and took orders at four in the morning; `"2:00" <= "18:00"` is false, so
+  a food truck written `18:00 – 2:00` read as a window no minute is inside and
+  could not sell at any hour of its own service. Both functions compare parsed
+  minutes now, and an unreadable time closes the shop rather than waving an order
+  through — the same call `storeStatus` makes next door, where forgetting hides a
+  restaurant rather than letting one take orders it cannot honour. `isStoreOpen`
+  also reported "open, no current service, opens again in two hours" when the two
+  reading frames fell back differently on a timezone `Intl` rejects; it asks
+  `isWithinBusinessHoursAt` about its own clock now. The rule is shared, the clock
+  is each caller's.
+
+  Two were consequences of selling stock for the first time. A cancelled order
+  gave nothing back — a restaurant that cancelled three orders was left showing
+  three portions it still had, with the dish possibly off the menu and a full tray
+  behind the counter — so `updateStatus` returns what the order took, once, which
+  `cancelled` being terminal is what makes safe. And the sale told the delivery
+  platforms nothing: `stock.quantity` is what suspends an item on Uber Eats and
+  builds the Deliveroo availability delta, the Inventaire screen has booked that
+  push on every manual edit since the beginning, and there is no sweep to catch a
+  missed one. Both apps' `products.ts` and `menus.ts` carried their own copy of
+  `scheduleMenuSync`; it is one module now, and the order path is its third
+  caller.
+
+  One more, on the same path and the same shape: `/checkout/success` rendered
+  `error.message` from the payment-verification actions straight onto the screen a
+  diner sees _after_ being charged — `[CONVEX A(stripe:verifyCheckoutSession)]
+Server Error`. `SettlementRejectedError` joins the family, so the sentence that
+  says a payment does not settle this order arrives intact.
+
+  Held by tests that stay: `openingHours.test.ts` and the cross-checked window
+  cases in `product-service.test.ts` for the rules, `refusal.test.ts` (including a
+  `convexToJson`/`jsonToConvex` round trip of every payload) and `stockPatch.test.ts`
+  for the pieces, and `checkout-refusals.test.ts`, `order-opening-hours.test.ts`
+  and `cart-hydration.test.ts` in both apps for the wiring — including the
+  restock, the platform push, and the two malformed-hour outages above. Assertions that matched
+  a thrown English message now match `data.code`: the copy is French and gets
+  edited, the code is the contract.
+
+- ab869a8: Let a paid order print itself, and stop the kitchen screen going dark
+
+  Four defects met in the same place, and three of them had been closed once by
+  deleting the thing that revealed them.
+
+  **The kitchen cooked orders nobody had paid for.** `createWithTicket` inserted
+  the order and its ticket in one transaction, before any provider redirect: a
+  customer who reached Stripe and closed the tab left a slip on the pass, and
+  nothing retracted it. The rule is now "a _paid_ order feeds the kitchen", and
+  it lives in `releaseToKitchen` rather than in any one caller — every payment
+  path reaches it through `orders.recordPaymentStatus` (Stripe webhook, Stripe
+  success-page verify, PayPal capture, SumUp verify) or `markCashPaid`. It is
+  idempotent, so a webhook racing its own success page still produces one ticket.
+
+  **`orderConfirmation` is a promise the product can keep now.** It was withdrawn
+  for offering a workflow nothing implemented. `releaseToKitchen` reads it:
+  `"auto"` — and unset, which is every existing establishment — releases on
+  payment; `"manual"` holds the order until staff accept it, which is what
+  `orders.updateStatus` to `confirmed` now does.
+
+  **Automatic printing was dead product-wide.** `stores.updatePrintConfig` had no
+  caller in `packages/admin` or either app, so every establishment ran with
+  `printConfig === undefined`, `kitchenTickets.create` stamped every slip
+  `printStatus: "not_required"`, and `getPrintQueue` was permanently empty. The
+  editor is back, in `packages/admin` this time, on the store-detail screen both
+  apps already render. Beside it: the print reliability work — `claimForPrint`
+  takes a ticket in one transaction so two tablets on the same pass cannot both
+  print it; `getPrintQueue` returns failed slips again once their retry delay has
+  passed, so `printAttempts` is finally read by something; and the trigger commits
+  its render with `flushSync` and refuses to print a slip whose content is not
+  there, because a blank page filed as "printed" leaves the queue and is never
+  seen again.
+
+  **The KDS query was unbounded and nothing was ever deleted.** `getByStore`
+  subscribed to every ticket a store had ever had; `getByStatus` behind the
+  "Terminées" tab did the same for the class that only grows. Both are bounded
+  now — the live read to the three active statuses, the completed tab to a page at
+  a time — and `purgeExpiredTickets` runs nightly, because bounding a read while
+  the table grows for ever only moves the failure.
+
+  **A customer's allergy reached the validator and stopped there.** The Uber Eats
+  mapper extracts `special_instructions` and `customer_request.allergy` into
+  `notes`; `createFromWebhook`'s item validator had no field for it and the
+  webhook passed `notes: undefined` one line before the insert. Both carry it now,
+  through one shared `toKitchenTicketItemsFromPlatform` rather than the same
+  mapping hand-written in two byte-identical files.
+
+  Two things the ticket never carried and the product depended on: `allergens`,
+  gathered from the products ordered, which the printed slip has always had a
+  block for and only demo data ever filled; and `estimatedPrepTime`, without which
+  `estimatedReadyAt` was never set and the overdue alarm could not fire for a real
+  order. Stations are routed as well — `stationMapping` sends a category to a
+  pass, and an order is split into one ticket per station it touches, so the cold
+  station is not handed a slip for a pizza.
+
+  Breaking: `kitchenTickets.getByStatus` now takes `paginationOpts` and returns
+  Convex's `PaginationResult` — `{ page, isDone, continueCursor }` — rather than
+  an array, so a caller reads `result.page` and drives it with
+  `usePaginatedQuery`. `printStatus` gains a `"printing"` literal, and
+  `markPrintSent` / `markPrintFailed` take an optional `claimId`.
+
+- 91d388a: Stop a product deletion from breaking Deliveroo and bricking the menu that used it
+
+  `products.remove` was `handler: async (ctx, args) => { await ctx.db.delete(args.id) }`
+  and nothing else, while thirteen columns across nine tables pointed at
+  `products`. Two of them are REQUIRED — `externalProductMappings.internalProductId`
+  and `favorites.productId` — so those rows survived holding an id that resolves to
+  nothing and could not be repaired field by field. Measured before the fix:
+
+  ```
+  menu still holds the dead id: ["10002;products"]
+  that product now resolves to: null
+  favorites rows left: 1, externalProductMappings rows left: 1
+  favorites[0].productId resolves to: null
+  ```
+
+  **Deliveroo was told a deleted dish had synced.** Proven end to end through the
+  real signed webhook route, with only `globalThis.fetch` standing in for
+  Deliveroo's servers:
+
+  ```
+  --- ordered dish was DELETED, its PLU was mapped ---
+  [Sync Debug] Item PLUs: Tiramisu:PLU-TIRAMISU
+  [Sync Debug] hasMissingPLU=false, hasMismatch=false
+  sync_status body: {"status":"succeeded","occurred_at":"..."}
+  ```
+
+  `getByExternal` returned the surviving mapping without ever dereferencing
+  `internalProductId`, so the webhook's PLU loop counted zero unmatched items and
+  answered `sendSyncStatus(..., "succeeded")` for an order the kitchen cannot
+  cook. **And the formule became permanently uneditable**: `menus.update`
+  re-validates every stored section as a unit, so one dead id refused every
+  subsequent write — including the one removing that section.
+
+  **The decision is per referencing table, and it splits on authorship**, which is
+  the reasoning `categories.remove` already established: a cascade destroys an
+  afternoon's work on a click meant to tidy up.
+  - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
+    Each is a selling decision the owner made, and each has a screen to unmake it
+    on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
+    Midi"._
+  - **Cascaded** — `externalProductMappings` and `favorites` (machine-kept rows
+    that mean nothing without the dish), `orphanProducts` (the platform match is
+    void, so the import returns to `pending` for review), and the
+    `linkedProductId` provenance link on twins in other establishments.
+  - **Left alone** — `orders.items[].productId`. What was sold is history, the
+    column is already optional, and rewriting it would falsify the receipt.
+
+  `favorites` gained a `by_productId` index. Every index on that table started at
+  `userId`, so reaching the customers who favourited one dish would have meant
+  collecting the whole establishment's favourites inside a mutation that deletes a
+  single row — the same reason `by_storeId` was added to it for the store cascade.
+
+  The refusals are `ConvexError`, not plain `Error`: Convex redacts a plain
+  error's message in production, so a carefully counted refusal would have reached
+  the owner as "Server Error" and read as a bug in the product — the same
+  reasoning `auth.ts`'s `denied()` records. The products table was throwing that
+  sentence away too, showing a generic _Échec de la suppression du produit_; it
+  now shows the reason, through a `convexErrorMessage` reader added to this
+  package.
+
+  **`getByExternal` dereferences the product**, and keeps doing so after the
+  caller was fixed. `products.remove` can no longer create such a row, but a store
+  cascade, a restore or a hand-run mutation all arrive at this same query, and "we
+  have a mapping" must never outlive "we have the dish". `getByInternal` is
+  deliberately left alone: it is keyed on a product id the caller already holds,
+  so it cannot manufacture a match for a product nobody asked about.
+
+  **Two more routes to the same `succeeded` were found by an adversarial pass and
+  closed.** Both produce the identical customer-visible outcome, reached without
+  deleting anything.
+
+  The webhook accepted `pos_item_id` **or** `plu` **or** `external_reference_id`
+  as a POS identifier when testing for "no identifier at all", but the check that
+  looks the identifier up in our own mappings read `pos_item_id` alone. A line
+  identified by either of the other two skipped the database check entirely. All
+  four sites now resolve the identifier through one `posItemId()` helper, which
+  uses `||` rather than `??` because an empty string is not an identifier — with
+  `??` a line carrying `pos_item_id: ""` alongside a real `plu` stopped at the
+  empty one and a dish we can cook was refused.
+
+  And **the mapping lookup spanned the whole deployment.** A PLU is unique inside
+  one restaurant, not across an account, so an order for one establishment whose
+  PLU happened to be mapped in ANOTHER was answered as producible by a kitchen
+  that has never heard of the dish. The same span made `.unique()` throw the
+  moment two establishments shared a PLU string — which is exactly what a chain
+  running one menu across its locations does — and the caller counts a throw as an
+  unmatched item, so a correct multi-store deployment refused its own orders.
+  `getByExternal` now takes the establishment and reads a new
+  `by_store_platform_external` index. Both directions are pinned by tests that
+  were confirmed to fail without the change: the cross-tenant line answered
+  `succeeded`, and the shared-PLU chain answered `failed`.
+
+  **The store-cascade guard now sees foreign keys by type, not by name.** It read
+  `validator.fields.storeId` — the field literally called `storeId` — which is not
+  the same question as "what points at `stores`". Measured over the compiled
+  validators: 46 FK columns, 43 named `storeId`, three invisible. More to the
+  point, so was the next column somebody would call `restaurantId`, which is the
+  exact failure the guard exists to prevent. It now walks the serialised validator
+  by type and reports every path reaching `v.id("stores")`, however nested and
+  whatever it is called. Verified by injecting `restaurantId: v.optional(v.id("stores"))`
+  into an existing table: the guard fails, where the name filter passed it
+  silently.
+
+  Walking `validator.json` rather than the live validator objects is not a
+  preference — the two use different keys for the same thing (`type` vs `kind`),
+  and reading `.type` off a live node yields `undefined` for every field: a walk
+  that finds nothing and a test that passes.
+
+  That walk immediately found a live orphan. **`blogAutoConfig.targetStoreIds` is
+  now detached on store deletion**, by `detachStoreFromBlogAutoConfigs`. A config
+  belonging to establishment A that fans articles out to establishment B kept B's
+  dead id forever after B was deleted; only the config's own `storeId` was ever
+  handled. Every reference the guard finds must now be resolved either by the row
+  being swept or by a named entry in `DETACHED_STORE_REFERENCES` that says what
+  handles it — so a dangling id cannot be parked there to quiet the test.
+  `systemAuditLog.targetStoreId` is listed as dangling on purpose: the
+  `store_deleted` entry points at the store that was just deleted, and resolving
+  it would erase the record of the deletion.
+
+  **Breaking: the `printerSettings` table and `printerSettingsTable` export are
+  gone.** Ten required fields, zero readers and zero writers anywhere in the
+  repository since it was declared — the only reference outside the schema was the
+  delete cascade, removing rows nothing could ever create. Its own comment kept it
+  on the grounds that the planned thermal path would need "roughly" these fields,
+  but those fields are ESC/POS-shaped (`ipAddress`, `port`, `usbVendorId`,
+  `type: network | usb | bluetooth`) and that path is explicitly ruled out: the
+  thermal path when it comes is cloud printing, whose shape `stores.printConfig`
+  already carries. Auto-print runs on `stores.printConfig` today. Nothing can have
+  written a row, so nothing is lost. The documentation that described it — in
+  `CLAUDE.md`, both package READMEs, `STRUCTURE.md`, `EXAMPLES.md`, the docs app
+  and `IMPLEMENTATION_STEPS.md` — was corrected with it, including a `SUMMARY.md`
+  line advertising a `printerSettings.ts` function module that never existed.
+
+### Minor Changes
+
+- bd7a656: Wire up dine-in table numbers, and make the four allergen surfaces agree
+
+  Two product surfaces were designed, translated, and never connected.
+
+  ## A dine-in order now carries the table it is served to
+
+  "Sur place" was offered in the order-type selector and accepted by
+  `orders.create`, and nothing anywhere carried a table number — zero occurrences
+  in `tables/orders.ts`, `tables/kitchen.ts`, the storefront, the kitchen
+  components or the order functions. The printed slip gave a cook the dish and
+  the customer's name, so staff had a plate and nowhere to take it. One of the
+  three advertised order types was unusable. The tell was `checkout.tableNumber`:
+  shipped and translated into `fr`, `en` and `es`, and read by no code at all.
+
+  `orders.tableNumber` and `kitchenTickets.tableNumber` are new
+  `v.optional(v.string())` columns. `orders.create` accepts a table, normalises
+  it, and `releaseToKitchen` copies it onto every ticket the order produces; the
+  slip prints `TABLE <n>` at the same size as the order number, and the kitchen
+  display card shows it beside the order number.
+
+  It is a **label**, not a number — dining rooms use `A3` and `Terrasse 4` as
+  readily as `12`, and parsing the field as an integer would reject half of them.
+
+  It deliberately does **not** share a foreign key with `gameQRCodes.tableNumber`,
+  which names the same real-world thing. There is no `tables` table, and adding
+  one would make dine-in service depend on the gamification QR codes being
+  configured — a restaurant can serve _sur place_ without ever running the wheel
+  of fortune. The two share a representation instead:
+  `@be-in-digital/core/dining` normalises and bounds a table label for both.
+
+  Required at the storefront, optional on the server. Uber Eats and Deliveroo
+  forward `dine_in` orders that carry no table of their own, and refusing those
+  would lose the order outright. A table number on a `delivery` or `pickup` order
+  is rejected, which catches the order whose type was switched after the table
+  was typed.
+
+  While wiring it, the checkout form turned out to carry its **own** two-option
+  fulfilment toggle that knew nothing about the store's services: a cart set to
+  `dine_in` showed "À emporter" selected, and one click silently rewrote the type
+  to `pickup`. The customer sat at a table and the kitchen was told to bag the
+  order. The toggle now offers the same three types the cart does, filtered by
+  the same predicate the server validates against, and selects exactly.
+
+  ## One allergen vocabulary instead of four
+
+  The chain was broken at every link, and each surface had drifted because each
+  carried its own idea of what an allergen was:
+  - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
+    was in the array is what a cook read before plating;
+  - the admin product form had **no allergen control at all**, only a zod field
+    and a `[]` default, so a restaurateur could not declare one through the
+    normal product editor;
+  - the only production writer was therefore the AI image-to-product flow, whose
+    prompt is written in French, feeding an unvalidated comma-separated text box;
+  - `uberEatsMenuSync` declared `allergens?: string[]` and never mapped it, so
+    every dish synced to Uber Eats went out with no allergen declaration.
+
+  For an EU food business under INCO 1169/2011 that is a regulatory surface.
+
+  `@be-in-digital/core/allergens` is now the single source of truth: the
+  fourteen Annex II allergens plus `shellfish` and the two dietary markers, the
+  alias table that matches French and English spellings through accents,
+  ligatures and punctuation, the localised labels, and the Uber Eats mapping.
+  It is framework-free and exported as raw source, so the design system, both
+  apps, the admin package and the Convex runtime can all consult it.
+
+  The representation decision, made once and applied everywhere: **allergens stay
+  free text** — refusing a name we do not know would push a real declaration off
+  the menu — **but every surface resolves through this vocabulary, and a value it
+  does not recognise is treated explicitly as unverified rather than passed off
+  as checked.**
+
+  So: the badge renders it as the owner typed it and announces it as the
+  restaurant's own wording; the kitchen slip prints it under `MENTIONS À
+VÉRIFIER :` rather than folded into the allergen line, because a cook has to
+  treat it differently; the admin marks the chip `non vérifiée` and states the
+  consequence; and Uber Eats is not sent it at all, since filing an unknown value
+  as `OTHER` would show a diner a declaration that names nothing. Those are
+  reported to the owner instead of dropped in silence.
+
+  Dietary markers are no longer treated as allergens anywhere: `vegan` printed
+  under `ALLERGÈNES :` told a cook it was one.
+
+  `packages/admin` gains one allergen control, shared by the product form (a new
+  `Allergènes` tab) and the AI review card, so the two cannot disagree again.
+
+  ### Known limitation
+
+  `UBER_EATS_ALLERGEN_TYPE` maps every canonical key to an Uber Eats enum member,
+  but those spellings are **not verified against Uber's live menu schema** —
+  `developer.uber.com` is unreachable from CI and Uber does not publish the enum
+  outside the partner portal. The mapping is total and typed, so correcting it is
+  a one-table change that every caller inherits. Confirm it during Uber Eats
+  onboarding; see `tasks/uber-eats-go-live-runbook.md`.
+
+- 91d388a: Give the dining-room screen a dismissal window the owner can set
+
+  `stores.displayConfig` decides how long a finished order stays on the
+  customer-facing screen in the dining room. `kitchenTickets.getForDisplay` has
+  read it since that screen shipped — `autoDismissEnabled` decides whether a ready
+  order is dropped at all, `autoDismissMinutes` how long it survives — and nothing
+  wrote it. Measured:
+
+  ```
+  STORED  displayConfig -> {"autoDismissEnabled":false,"autoDismissMinutes":15}  ready count = 1
+  DEFAULT displayConfig -> {"autoDismissEnabled":true,"autoDismissMinutes":15}   ready count = 0
+  writers via db.patch|insert|replace : 0
+  readers of store.displayConfig      : 3
+  ```
+
+  So every establishment ran on the query's own fallback: **an order the customer
+  is still waiting for disappeared from the wall they are watching, fifteen
+  minutes after the kitchen called it ready, with no setting anywhere to change
+  it.**
+
+  The mutation had been deleted, and the field filed under "legacy", on the claim
+  that nothing read the stored value. Three places in the repository stated that
+  claim — the schema comment, the `updateSoundConfig` docblock, and
+  `kitchen-sound-config.test.ts`, which certified it as a test — and the reader had
+  never gone away. All three are corrected. So are four more found alongside them:
+  both package CHANGELOGs (annotated rather than rewritten, as this repository's
+  convention has it), `kitchen-alerts.ts` and its test, which still said
+  `soundConfig` had no editor after #243 gave it one, and the audit line in
+  `tasks/sales-readiness-backlog.md` that the claim originally came from.
+
+  `updateDisplayConfig` is restored on the `updateSoundConfig` model, the field is
+  typed rather than `v.any()`, and the editor is a fifth **Écran de salle** card on
+  the kitchen tab, placed last because that tab is ordered as a service runs
+  through it and the dining-room screen is downstream of everything.
+
+  **The mutation refuses a window it cannot honour.** `v.number()` accepts `NaN`,
+  `Infinity`, zero and negatives, and `getForDisplay` turns whatever is stored into
+  `readyAt > now - minutes * 60_000`: `NaN` makes every comparison false, zero and
+  negatives keep only tickets that became ready in the future — each of them
+  emptying the ready column, which is the failure this setting exists to prevent,
+  reached from the other side. `Infinity` is the odd one out, measured rather than
+  assumed: it stores and round-trips, and quietly becomes a second, undeclared way
+  to say "never dismiss" when `autoDismissEnabled: false` is the declared one. All
+  are refused rather than clamped — silently storing a number other than the one
+  sent is how a setting comes to disagree with the screen it governs, and it would
+  put a value nobody typed into the audit trail. The editor clamps its own input to
+  the same range, and a test pins the two ranges together so they cannot drift.
+
+- cde4410: One design system, and per-store theming that reaches a diner
+
+  Two structural defects, resolved together because the first cannot work until
+  the second is settled: theming has to drive one design system.
+
+  **Per-store branding painted nothing.** The Design screen has always written
+  `stores.branding` — colours, typography, logo — and nothing read the colours
+  back. `--primary` had exactly one definition per app, the literal `24 95% 53%`
+  in `app/globals.css`, so every establishment the engine has delivered shipped
+  the same orange. `buildBrandingCss` turns the stored blob into design tokens
+  and `StoreTheme` paints the storefront with them, following the same
+  establishment the rest of the storefront follows. Colours are re-emitted from
+  parsed numbers and font families rebuilt from an allowed character set, because
+  `updateBranding` validates a type and a length, not grammar. The foreground on
+  a brand colour is chosen by contrast ratio rather than fixed to white — white
+  on `#ffeb3b` is 1.07:1, a button whose label cannot be read.
+
+  **The design system was forked five ways.** `packages/ui` (50 components),
+  `apps/reference/components/ui` (37), `apps/themes/components/ui` (37,
+  byte-identical to reference), `packages/admin/src/ui` (9). Sixteen of the
+  twenty-six shared names had drifted: a default Button was `h-10` in the package
+  and `h-9` in the apps, with different focus rings, so one storefront rendered
+  two button heights depending on the page. There is now one implementation, in
+  `packages/ui`, on the newer shadcn generation, reached through one specifier.
+
+  Breaking changes for `@be-in-digital/ui`:
+  - `Input`, `Textarea` and `Checkbox` are bare primitives. The composed-field
+    API (`label`, `error`, `description` props and a wrapping `div`) is gone —
+    pair them with a `Label`, which is what every call site but two already did.
+  - `Breadcrumb` is the composable seven-part set. The data-driven component that
+    took `items` is gone, and with it the `BreadcrumbItem` _type_ — that name is
+    now a component.
+  - `Alert` keeps `warning` and `success` but loses its `title` prop and its
+    automatic icon map; use `AlertTitle`, `AlertDescription` and your own icon.
+  - `Button` sizes shift to the current generation (`default` 40px → 36px) and
+    gain `xs`, `icon-xs`, `icon-lg`. `Card`, `Switch`, `Label`, `Badge`,
+    `Skeleton`, `Table` and `Tooltip` change geometry with them.
+  - `ButtonProps`, `InputProps` and the other per-component prop interfaces are
+    no longer exported; the components are typed from `React.ComponentProps`.
+  - The package is published as TypeScript source. `exports` points at `src`,
+    there is no `dist`, and consumers must transpile it. This is what restores
+    the `"use client"` boundaries the bundler was stripping.
+
+  `@be-in-digital/admin` no longer carries its own copy of nine primitives, and
+  re-exports the sidebar from `@be-in-digital/ui`.
+
+  `@be-in-digital/convex-schema` gains a typed `StoreBranding` and
+  `StoreDoc.branding`, which were implicitly `any`.
+
+### Patch Changes
+
+- 009af63: Restore the accents on French copy that the twin comparison could not see
+
+  The accent guard compared `apps/reference` against `apps/themes`, so a word
+  de-accented identically in both was invisible to it: "doit etre dans le futur",
+  "n'est pas configure" and "l'import reel" all passed a green check. It now
+  measures each string against a list of French spellings instead of against the
+  other app, which does not care how many copies of a fault exist.
+
+  That found 128 de-accented words across 40 files, all of them user-facing:
+  "Article supprime", "Commande acceptee sur Uber Eats", "Publiee le",
+  "La quantite doit etre positive", "Selectionnez au moins un element a migrer".
+  Validator messages, kitchen tickets, the blog editor and the system pages are
+  all affected, and the strings ship to every client.
+
+  `createMigrationRequest`'s test asserted the misspelling (`/au moins un
+element/`), so it has been rewritten to assert the corrected message.
+
 ## 3.0.0
 
 ### Major Changes

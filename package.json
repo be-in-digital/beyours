@@ -10,6 +10,7 @@
     "check:claude-md": "node scripts/check-claude-md.mjs",
     "check:divergence": "node scripts/check-app-divergence.mjs",
     "check:mirror-css": "node scripts/check-mirror-css.mjs",
+    "check:mirror-build": "node scripts/check-mirror-build.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",

@@ -264,8 +264,36 @@ run. Locally:
 NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
 ```
 
-Three operational facts:
+**Before cutting a release, and again after publishing one**, compile the tree a
+client actually receives:
 
+```bash
+pnpm check:mirror-build   # packs the engine, installs the tarballs, tsc --noEmit
+```
+
+Nothing else compiles the published shape. CI builds `apps/themes` through the
+workspace link; `check:mirror-css` materialises the client tree but *symlinks*
+`packages/<name>`, so neither ever sees a pinned version. That gap is what let the
+boilerplate run 71 CI failures to 1 success while every required check here was
+green (#321). It is deliberately not in CI — it builds and installs the whole
+engine — and it is a pre-flight, not a substitute for cloning the boilerplate after
+a release: it proves the code is consistent, not that the upload happened.
+
+Four operational facts:
+
+- **A sync refuses to run if the pinned versions cannot resolve what the template
+  imports.** CI builds `apps/themes` against `packages/*` at HEAD through the
+  workspace link; a client installs the tarballs pinned from the registry. A
+  subpath added to a package's `exports` without a version bump exists in the
+  first and not the second, so every required check stays green while a client
+  clone dies at `next build` with `ERR_PACKAGE_PATH_NOT_EXPORTED`. The gate reads
+  each published `exports` map out of the **tarball** (`npm pack`), because GitHub
+  Packages omits the field from the packument `npm view` reads — trusting that
+  silence is what made this check a no-op until #380. A lookup that fails is
+  reported as unknown and also stops the sync: if it says the exports could not be
+  read, check `NODE_AUTH_TOKEN` and the registry rather than the template. The fix
+  for a genuine mismatch is to release the engine first, never to delete the
+  import.
 - **The mirror is rebuilt in full on every run: a commit made directly on it
   disappears.** All changes belong here, in `apps/themes`.
 - **Its history is preserved — never a force-push.** Every client site has a
