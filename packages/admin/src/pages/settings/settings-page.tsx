@@ -1,6 +1,6 @@
 "use client"
 
-import { SettingsIcon, Clock, Truck, Plug2, CreditCard } from "lucide-react"
+import { SettingsIcon, Clock, Truck, Plug2, CreditCard, ReceiptText } from "lucide-react"
 import {
   Tabs,
   TabsContent,
@@ -10,6 +10,7 @@ import {
 import { LoadingState } from "../../components/loading-state"
 import { useSettingsForm } from "./use-settings-form"
 import { GeneralTab } from "./general-tab"
+import { BillingTab } from "./billing-tab"
 import { HoursTab } from "./hours-tab"
 import { DeliveryTab } from "./delivery-tab"
 import { PaymentsTab } from "./payments-tab"
@@ -36,6 +37,10 @@ export function SettingsPage() {
     clickAndCollect,
     setClickAndCollect,
     handleSaveGeneral,
+    // Billing identity
+    sellerForm,
+    setSellerForm,
+    handleSaveBilling,
     // Hours
     hours,
     updateHour,
@@ -112,18 +117,25 @@ export function SettingsPage() {
       </div>
 
       <Tabs
-        defaultValue={
-          typeof window !== "undefined" &&
-          new URLSearchParams(window.location.search).get("tab") === "payments"
-            ? "payments"
+        defaultValue={(() => {
+          const requested =
+            typeof window !== "undefined"
+              ? new URLSearchParams(window.location.search).get("tab")
+              : null
+          return requested === "payments" || requested === "billing"
+            ? requested
             : "general"
-        }
+        })()}
         className="space-y-4"
       >
         <TabsList>
           <TabsTrigger value="general">
             <SettingsIcon className="h-4 w-4 mr-2" />
             Général
+          </TabsTrigger>
+          <TabsTrigger value="billing">
+            <ReceiptText className="h-4 w-4 mr-2" />
+            Facturation
           </TabsTrigger>
           <TabsTrigger value="hours">
             <Clock className="h-4 w-4 mr-2" />
@@ -163,6 +175,15 @@ export function SettingsPage() {
             clickAndCollect={clickAndCollect}
             setClickAndCollect={setClickAndCollect}
             handleSaveGeneral={handleSaveGeneral}
+          />
+        </TabsContent>
+
+        {/* Billing identity Tab (#375) */}
+        <TabsContent value="billing" className="space-y-4">
+          <BillingTab
+            sellerForm={sellerForm}
+            setSellerForm={setSellerForm}
+            handleSaveBilling={handleSaveBilling}
           />
         </TabsContent>
 

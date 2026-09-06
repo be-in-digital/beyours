@@ -5,6 +5,9 @@ import { useQuery, useMutation, useAction } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Card,
   CardContent,
@@ -34,6 +37,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { adminRoutes } from "../../config/admin-routes"
 import type {
+  InvoiceRefusalReason,
   Order,
   OrderStatus,
   OrderType,
@@ -43,7 +47,12 @@ import type {
   Payment,
   BadgeVariant,
 } from "../../lib/types"
-import { ORDER_STATUS_CONFIG, ORDER_PAYMENT_STATUS_CONFIG } from "../../lib/vocabulary"
+import { hasPermission, type Role } from "@be-in-digital/core"
+import {
+  ORDER_STATUS_CONFIG,
+  ORDER_PAYMENT_STATUS_CONFIG,
+  INVOICE_REFUSAL_LABELS,
+} from "../../lib/vocabulary"
 import { refundControlState } from "../../lib/refund-eligibility"
 import { RefundControl } from "../payments/refund-control"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
@@ -330,6 +339,49 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
   const refund = refundControlState(primaryPayment, role)
 
   /**
+   * The catch-up issuance for a paid order with no invoice and nothing
+   * refusing one — an order that settled while `globalSettings.seller` was
+   * still incomplete, or before invoicing shipped. The automatic path only
+   * runs at settlement, so once the owner completes the identity the backlog
+   * would otherwise stay invoiceless for ever, silently (#375).
+   * `invoices.issueForOrder` is idempotent and re-checks every refusal
+   * server-side; `payments:write` is the permission it enforces.
+   */
+  const issueInvoice = useMutation(api?.invoices?.issueForOrder ?? ("skip" as never))
+  const [isIssuingInvoice, setIsIssuingInvoice] = useState(false)
+  // Explicit nulls mean `orders.getById` computed the surface and nothing
+  // refuses an invoice; absent fields mean a query that computed nothing.
+  const invoiceSurfaceComputed =
+    order?.invoiceNumber !== undefined || order?.invoiceRefusal !== undefined
+  const invoiceIssuableNow =
+    invoiceSurfaceComputed &&
+    order?.invoiceNumber == null &&
+    order?.invoiceRefusal == null
+  const canIssueInvoice = hasPermission(role as Role, "payments:write")
+
+  const handleIssueInvoice = async () => {
+    if (!order) return
+    setIsIssuingInvoice(true)
+    try {
+      const result = await issueInvoice({ orderId: order._id })
+      if (result?.issued) {
+        toast.success(`Facture ${result.number} émise`)
+      } else {
+        toast.error(
+          result?.reason
+            ? INVOICE_REFUSAL_LABELS[result.reason as InvoiceRefusalReason]
+            : "Émission refusée"
+        )
+      }
+    } catch (error) {
+      toast.error("Échec de l'émission de la facture")
+      console.error(error)
+    } finally {
+      setIsIssuingInvoice(false)
+    }
+  }
+
+  /**
    * Cancelling a paid order leaves the money with the restaurant: the payment
    * rows are untouched and the order parks on `refund_pending`. Nothing else
    * on this page says so — the operator would see a cancelled order and assume
@@ -521,6 +573,12 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                   <div className="text-sm font-medium">{order.customerInfo.phone}</div>
                 </div>
               )}
+              {order.type === "dine_in" && order.tableNumber && (
+                <div>
+                  <div className="text-xs text-muted-foreground">Table</div>
+                  <div className="text-sm font-medium">{order.tableNumber}</div>
+                </div>
+              )}
               {order.deliveryAddress && (
                 <div>
                   <div className="text-xs text-muted-foreground">Adresse de livraison</div>
@@ -641,6 +699,66 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* Invoice — the fiscal document, the reason none exists, or the
+              catch-up for a backlog order nothing refuses any more. Rendered
+              only when `orders.getById` computed the surface: an order read
+              through `list`/`recent` says nothing rather than something
+              wrong (#375). */}
+          {order.paymentStatus === "paid" && invoiceSurfaceComputed && (
+              <Card className="border-border/50">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Facture
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {invoiceIssuableNow ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Aucune facture n&apos;a été émise pour cette commande.
+                        Rien ne s&apos;oppose à son émission aujourd&apos;hui.
+                      </p>
+                      {canIssueInvoice && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          disabled={isIssuingInvoice}
+                          onClick={handleIssueInvoice}
+                        >
+                          Générer la facture
+                        </Button>
+                      )}
+                    </div>
+                  ) : order.invoiceRefusal != null ? (
+                    <Alert variant="warning">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle>Facture non émise</AlertTitle>
+                      <AlertDescription>
+                        {INVOICE_REFUSAL_LABELS[order.invoiceRefusal]}
+                        {order.invoiceRefusal === "seller_incomplete" && (
+                          <>
+                            {" "}
+                            <Link
+                              href={`${adminRoutes.settings}?tab=billing`}
+                              className="font-medium underline underline-offset-2"
+                            >
+                              Compléter l&apos;identité de l&apos;établissement
+                            </Link>
+                          </>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Numéro</div>
+                      <div className="text-sm font-medium">{order.invoiceNumber}</div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
           {/* Timestamps */}
           <Card className="border-border/50">

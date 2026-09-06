@@ -71,6 +71,24 @@ export function useSettingsForm() {
   } | null>(null)
   const getDeliveryQuote = useAction(api.uberDirect.getDeliveryQuote)
 
+  // Billing identity tab state (#375). One object: the tab edits the block
+  // every invoice is issued under, and the save sends it whole. Everything is
+  // a string here — parsing happens at save time, like the other tabs.
+  const [sellerForm, setSellerForm] = useState({
+    legalName: "",
+    legalForm: "",
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "",
+    siren: "",
+    siret: "",
+    vatNumber: "",
+    rcs: "",
+    shareCapital: "",
+    legalMentions: "",
+  })
+
   // Payments tab state
   const [cardProvider, setCardProvider] = useState<"stripe" | "sumup">("stripe")
   const [paypalEnabled, setPaypalEnabled] = useState(false)
@@ -127,6 +145,27 @@ export function useSettingsForm() {
       )
       setDeliveryPercentage((settings.delivery as any).percentage?.toString() ?? "")
       setDeliveryMaxFee((settings.delivery as any).maxFee ? centsToEuros((settings.delivery as any).maxFee).toString() : "")
+
+      // Billing identity
+      if (settings.seller) {
+        setSellerForm({
+          legalName: settings.seller.legalName ?? "",
+          legalForm: settings.seller.legalForm ?? "",
+          street: settings.seller.address?.street ?? "",
+          city: settings.seller.address?.city ?? "",
+          postalCode: settings.seller.address?.postalCode ?? "",
+          country: settings.seller.address?.country ?? "",
+          siren: settings.seller.siren ?? "",
+          siret: settings.seller.siret ?? "",
+          vatNumber: settings.seller.vatNumber ?? "",
+          rcs: settings.seller.rcs ?? "",
+          shareCapital:
+            settings.seller.shareCapital != null
+              ? centsToEuros(settings.seller.shareCapital).toString()
+              : "",
+          legalMentions: settings.seller.legalMentions ?? "",
+        })
+      }
 
       // Payments
       if (settings.payments) {
@@ -230,6 +269,66 @@ export function useSettingsForm() {
         minimumOrderAmount: parsedMinOrder !== undefined ? eurosToCents(parsedMinOrder) : undefined,
       })
       toast.success("Paramètres généraux enregistrés")
+    } catch (error) {
+      toast.error("Échec de l'enregistrement")
+      console.error(error)
+    }
+  }
+
+  /**
+   * Save the billing identity (#375). The one field completeness turns on is
+   * the legal name — `invoices.sellerIsComplete` — so an empty one is refused
+   * here with the reason, instead of saving a block that changes nothing.
+   * The address travels all-or-nothing because the schema requires street,
+   * city and postal code together once the object exists.
+   */
+  const handleSaveBilling = async () => {
+    const legalName = sellerForm.legalName.trim()
+    if (!legalName) {
+      toast.error("La raison sociale est requise : sans elle, aucune facture n'est émise")
+      return
+    }
+
+    const street = sellerForm.street.trim()
+    const city = sellerForm.city.trim()
+    const postalCode = sellerForm.postalCode.trim()
+    const country = sellerForm.country.trim()
+    // `country` counts as "the owner typed an address": without it in this
+    // test, a country-only save succeeded and silently dropped the value.
+    if ((street || city || postalCode || country) && !(street && city && postalCode)) {
+      toast.error("Adresse incomplète : rue, ville et code postal vont ensemble")
+      return
+    }
+
+    const parsedCapital = sellerForm.shareCapital
+      ? parseFloat(sellerForm.shareCapital)
+      : undefined
+    if (
+      sellerForm.shareCapital &&
+      (parsedCapital === undefined || isNaN(parsedCapital) || parsedCapital < 0)
+    ) {
+      toast.error("Capital social invalide")
+      return
+    }
+
+    try {
+      await updateSettings({
+        seller: {
+          legalName,
+          legalForm: sellerForm.legalForm.trim() || undefined,
+          address: street
+            ? { street, city, postalCode, country: country || undefined }
+            : undefined,
+          siren: sellerForm.siren.trim() || undefined,
+          siret: sellerForm.siret.trim() || undefined,
+          vatNumber: sellerForm.vatNumber.trim() || undefined,
+          rcs: sellerForm.rcs.trim() || undefined,
+          shareCapital:
+            parsedCapital !== undefined ? eurosToCents(parsedCapital) : undefined,
+          legalMentions: sellerForm.legalMentions.trim() || undefined,
+        },
+      })
+      toast.success("Identité de facturation enregistrée")
     } catch (error) {
       toast.error("Échec de l'enregistrement")
       console.error(error)
@@ -517,6 +616,10 @@ export function useSettingsForm() {
     clickAndCollect,
     setClickAndCollect,
     handleSaveGeneral,
+    // Billing identity
+    sellerForm,
+    setSellerForm,
+    handleSaveBilling,
     // Hours
     hours,
     updateHour,

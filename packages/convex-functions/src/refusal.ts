@@ -66,3 +66,25 @@ export class RefusalError<Code extends string = string> extends ConvexError<
     this.message = message
   }
 }
+
+/**
+ * The deployment cannot take a card at all — no Stripe key, SumUp not
+ * connected, or a connection state the charge path refuses to honour.
+ *
+ * Thrown only by the diner-facing "start a card payment" actions in both apps'
+ * `convex/stripe.ts` and `convex/sumup.ts`. Their configuration throws were
+ * plain `Error`s, which production redacts to "Server Error", so a diner on a
+ * fresh deployment — where card was the pre-selected tile — read the generic
+ * « Erreur lors de la commande. Veuillez réessayer. » and retried a payment
+ * that could never work (#374). The staff-facing paths (verify, refund,
+ * reconcile) keep their plain errors: their reader is a log, not a diner.
+ */
+export class CardPaymentUnavailableError extends RefusalError<"card_payment_unavailable"> {
+  constructor() {
+    super(
+      "CardPaymentUnavailableError",
+      "card_payment_unavailable",
+      "Le paiement par carte est indisponible pour le moment. Choisissez un autre moyen de paiement."
+    )
+  }
+}

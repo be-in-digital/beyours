@@ -7,6 +7,7 @@
 import { v } from "convex/values"
 
 import { effectiveDeliveryFeeMode } from "./deliveryQuote"
+import { resolveStripeCharge } from "./stripeChargeRouting"
 
 /**
  * Percentage delivery pricing bills a share of an Uber Direct quote. Stored
@@ -48,6 +49,77 @@ export const get = {
   },
 }
 
+/**
+ * Can this deployment actually take a card right now?
+ *
+ * `payments.cardProvider` declares WHICH provider, never WHETHER it works: the
+ * signal that decides whether a card attempt can succeed is the platform key
+ * (Stripe) or the connection row (SumUp), and neither reaches the storefront.
+ * So the checkout pre-selected a card tile every fresh deployment could not
+ * serve, and the natural first journey was a failed card submit (#374).
+ *
+ * Pure so the rule can be pinned without a ctx; the def below is what the
+ * apps mount. It answers exactly the checks the charge-starting actions make:
+ * `createCheckoutSession` refuses without `STRIPE_SECRET_KEY` and on a
+ * connection state `resolveStripeCharge` will not honour; SumUp's
+ * `createCheckout` refuses unless the connection is `connected` with a stored
+ * token. Keep the two in step — a tile offered here and refused there is this
+ * defect again.
+ */
+export function resolveCardPaymentAvailability(input: {
+  cardProvider: "stripe" | "sumup"
+  stripeSecretKeyPresent: boolean
+  connection: { status: string; encryptedAccessToken?: string } | null
+}): boolean {
+  if (input.cardProvider === "sumup") {
+    return (
+      input.connection?.status === "connected" &&
+      Boolean(input.connection?.encryptedAccessToken)
+    )
+  }
+  if (!input.stripeSecretKeyPresent) return false
+  try {
+    resolveStripeCharge(input.connection)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The query def behind the storefront's `paymentAvailability.get`.
+ *
+ * Answers only a boolean — deliberately: this is readable before any sign-in,
+ * and "a card can be taken" is all the checkout needs to stop pre-selecting a
+ * dead tile. The key itself, the connection row and its token never leave the
+ * server.
+ */
+export const cardPaymentAvailability = {
+  args: {},
+  handler: async (ctx: any): Promise<{ card: boolean }> => {
+    const settings = await ctx.db.query("globalSettings").first()
+    const cardProvider: "stripe" | "sumup" =
+      settings?.payments?.cardProvider === "sumup" ? "sumup" : "stripe"
+    const connection = await ctx.db
+      .query("paymentConnections")
+      .withIndex("by_provider", (q: any) => q.eq("provider", cardProvider))
+      .first()
+    // Mirrors `getSiteEnv()`'s own validation, which the charge action reads
+    // the key through: a pasted publishable `pk_…` key makes that call throw,
+    // so a key that does not start with `sk_` must read as unavailable here —
+    // not as an active tile in front of a redacted crash.
+    const stripeKey = process.env.STRIPE_SECRET_KEY
+    return {
+      card: resolveCardPaymentAvailability({
+        cardProvider,
+        stripeSecretKeyPresent:
+          typeof stripeKey === "string" && stripeKey.startsWith("sk_"),
+        connection,
+      }),
+    }
+  },
+}
+
 // === MUTATIONS ===
 
 /**
@@ -85,6 +157,28 @@ export const upsert = {
       paypal: v.boolean(),
       paypalEmail: v.optional(v.string()),
       cash: v.boolean(),
+    })),
+    // The fiscal identity invoices are issued under — the exact shape the
+    // schema declares. Until #375 no mutation accepted it, so
+    // `seller_incomplete` was permanent on every deployment: the settings
+    // screen collects it now, and this is the validator that lets the save
+    // through. Absence stays legal — `invoices.sellerIsComplete` is what
+    // decides completeness, not this validator.
+    seller: v.optional(v.object({
+      legalName: v.optional(v.string()),
+      legalForm: v.optional(v.string()),
+      address: v.optional(v.object({
+        street: v.string(),
+        city: v.string(),
+        postalCode: v.string(),
+        country: v.optional(v.string()),
+      })),
+      siren: v.optional(v.string()),
+      siret: v.optional(v.string()),
+      vatNumber: v.optional(v.string()),
+      rcs: v.optional(v.string()),
+      shareCapital: v.optional(v.number()),
+      legalMentions: v.optional(v.string()),
     })),
     integrations: v.optional(v.object({
       uberDirect: v.optional(v.object({
@@ -168,6 +262,7 @@ export const upsert = {
         args.integrations
       ),
       payments: args.payments ?? { cardProvider: "stripe", paypal: false, cash: false },
+      seller: args.seller,
       integrations: args.integrations ?? {},
       updatedAt: Date.now(),
     })

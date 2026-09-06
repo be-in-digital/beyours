@@ -4,6 +4,7 @@ import {
   invoiceRefusal,
   issueCreditNoteForInvoice,
   issueInvoiceForOrder,
+  orderInvoiceSurface,
   sellerIsComplete,
 } from "../invoices"
 import { markCashPaid, recordPaymentStatus } from "../orders"
@@ -503,5 +504,56 @@ describe("documentsForOrder", () => {
     const { ctx } = createCtx(docs({ paymentStatus: "pending" }))
 
     expect(await documentsForOrder(ctx, "orders:1")).toEqual([])
+  })
+})
+
+describe("orderInvoiceSurface", () => {
+  // #375: the refusal was answered and then discarded by every caller, so a
+  // seller-incomplete deployment took money with no invoice and no warning.
+  // This is the piece `orders.getById` spreads onto the order the admin reads.
+  it("carries the refusal a seller-incomplete deployment gives a paid order", async () => {
+    const { ctx } = createCtx(docs({}, { seller: undefined }))
+
+    const order = await ctx.db.get("orders:1")
+    expect(await orderInvoiceSurface(ctx, order)).toEqual({
+      invoiceNumber: null,
+      invoiceRefusal: "seller_incomplete",
+    })
+  })
+
+  it("names the issued document instead, once there is one", async () => {
+    const { ctx } = createCtx(docs())
+    await issueInvoiceForOrder(ctx, "orders:1", { now: NOW })
+
+    const order = await ctx.db.get("orders:1")
+    expect(await orderInvoiceSurface(ctx, order)).toEqual({
+      invoiceNumber: "FA-2026-000001",
+      invoiceRefusal: null,
+    })
+  })
+
+  it("answers nothing at all for a paid order that could be invoiced right now", async () => {
+    // A legacy order paid before invoicing shipped, on a complete deployment:
+    // no document, no refusal — `invoices.issueForOrder` is the catch-up.
+    const { ctx } = createCtx(docs())
+
+    const order = await ctx.db.get("orders:1")
+    expect(await orderInvoiceSurface(ctx, order)).toEqual({
+      invoiceNumber: null,
+      invoiceRefusal: null,
+    })
+  })
+
+  it("recomputes on every read, so completing the identity clears the refusal by itself", async () => {
+    const { ctx } = createCtx(docs({}, { seller: undefined }))
+    const order = await ctx.db.get("orders:1")
+
+    expect((await orderInvoiceSurface(ctx, order))?.invoiceRefusal).toBe(
+      "seller_incomplete"
+    )
+
+    await ctx.db.patch("globalSettings:1", { seller: { legalName: "SARL Chez Luigi" } })
+
+    expect((await orderInvoiceSurface(ctx, order))?.invoiceRefusal).toBeNull()
   })
 })

@@ -90,6 +90,9 @@
         "UBER_EATS_WEBHOOK_SECRET",
         "UBER_EATS_SANDBOX_MODE",
         "PAYPAL_SANDBOX_MODE",
+        // Read by the cardPaymentAvailability suite: the def mirrors the
+        // charge action's own key check, so the test sets and reads it.
+        "STRIPE_SECRET_KEY",
         "STRIPE_WEBHOOK_SECRET",
         "STRIPE_CONNECT_WEBHOOK_SECRET",
         // AWS, read by the S3 and SES suites.
@@ -147,6 +150,9 @@
         "UBER_EATS_WEBHOOK_SECRET",
         "UBER_EATS_SANDBOX_MODE",
         "PAYPAL_SANDBOX_MODE",
+        // Read by the cardPaymentAvailability suite: the def mirrors the
+        // charge action's own key check, so the test sets and reads it.
+        "STRIPE_SECRET_KEY",
         "STRIPE_WEBHOOK_SECRET",
         "STRIPE_CONNECT_WEBHOOK_SECRET",
         // AWS, read by the S3 and SES suites.
