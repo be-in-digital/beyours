@@ -264,6 +264,21 @@ run. Locally:
 NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
 ```
 
+**Before cutting a release, and again after publishing one**, compile the tree a
+client actually receives:
+
+```bash
+pnpm check:mirror-build   # packs the engine, installs the tarballs, tsc --noEmit
+```
+
+Nothing else compiles the published shape. CI builds `apps/themes` through the
+workspace link; `check:mirror-css` materialises the client tree but *symlinks*
+`packages/<name>`, so neither ever sees a pinned version. That gap is what let the
+boilerplate run 71 CI failures to 1 success while every required check here was
+green (#321). It is deliberately not in CI — it builds and installs the whole
+engine — and it is a pre-flight, not a substitute for cloning the boilerplate after
+a release: it proves the code is consistent, not that the upload happened.
+
 Four operational facts:
 
 - **A sync refuses to run if the pinned versions cannot resolve what the template
