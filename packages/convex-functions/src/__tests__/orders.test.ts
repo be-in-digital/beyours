@@ -388,6 +388,80 @@ describe("createWithTicket", () => {
 
     expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
   })
+
+  /**
+   * #374 — the seam between idempotence and a payment-method switch. On a
+   * store with cash enabled and no card provider, card was the pre-selected
+   * tile, so the natural first journey was a failed card submit followed by a
+   * cash confirmation on the SAME attempt. The reuse kept "card": release
+   * refused an unpaid card order, the admin's cash button only shows for
+   * cash, and nothing could ever settle or cook the order.
+   */
+  it("re-methods the reused order when a retry switches card to cash, and releases it", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    const cardAttempt = { ...checkoutArgs, idempotencyKey: "attempt-1" }
+    const orderId = await createWithTicket.handler(ctx, cardAttempt as never)
+
+    expect(inserted.find((entry) => entry.table === "kitchenTickets")).toBeUndefined()
+
+    const retried = await createWithTicket.handler(ctx, {
+      ...cardAttempt,
+      paymentMethod: "cash",
+    } as never)
+
+    // #161 holds: one order, no duplicate.
+    expect(retried).toBe(orderId)
+    expect(inserted.filter((entry) => entry.table === "orders")).toHaveLength(1)
+
+    // The diner's last confirmed choice is the truth, and the release rule is
+    // re-applied to it: cash settles on handover, so the slip reaches the pass.
+    const order = await ctx.db.get(orderId)
+    expect(order?.paymentMethod).toBe("cash")
+    expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
+  })
+
+  it("never re-methods an order the kitchen has already been fed", async () => {
+    // The reverse direction, hardened after adversarial review: a cash order
+    // releases its ticket at creation, and a stale tab retrying the same
+    // attempt as card would flip a cooking, unpaid order into the stranded
+    // state this fix removes — method card, release refused, cash button gone.
+    const { ctx, inserted } = createOrchestrationCtx()
+    const cashAttempt = { ...checkoutArgs, paymentMethod: "cash", idempotencyKey: "attempt-1" }
+    const orderId = await createWithTicket.handler(ctx, cashAttempt as never)
+
+    expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
+
+    const retried = await createWithTicket.handler(ctx, {
+      ...cashAttempt,
+      paymentMethod: "card",
+    } as never)
+
+    expect(retried).toBe(orderId)
+    const order = await ctx.db.get(orderId)
+    expect(order?.paymentMethod).toBe("cash")
+    expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
+  })
+
+  it("never re-methods an order whose payment has progressed past pending", async () => {
+    const { ctx, inserted } = createOrchestrationCtx()
+    const cardAttempt = { ...checkoutArgs, idempotencyKey: "attempt-1" }
+    const orderId = await createWithTicket.handler(ctx, cardAttempt as never)
+
+    await recordPaymentStatus.handler(ctx, { id: orderId, paymentStatus: "paid" })
+
+    const retried = await createWithTicket.handler(ctx, {
+      ...cardAttempt,
+      paymentMethod: "cash",
+    } as never)
+
+    expect(retried).toBe(orderId)
+    const order = await ctx.db.get(orderId)
+    // Paid as a card order: the stored method describes what actually
+    // happened, and a late retry must not rewrite history.
+    expect(order?.paymentMethod).toBe("card")
+    expect(order?.paymentStatus).toBe("paid")
+    expect(inserted.filter((entry) => entry.table === "kitchenTickets")).toHaveLength(1)
+  })
 })
 
 // ============================================================================

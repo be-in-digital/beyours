@@ -1,6 +1,7 @@
 "use client"
 
 import { DashboardHeader } from "./dashboard-header"
+import { SellerIncompleteBanner } from "./seller-incomplete-banner"
 import { StatCardsGrid } from "./stat-cards-grid"
 import { OrdersChart } from "./orders-chart"
 import { OrderBreakdown } from "./order-breakdown"
@@ -21,6 +22,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <DashboardHeader />
+      <SellerIncompleteBanner />
       <div data-tour="dashboard-stats">
         <StatCardsGrid today={stats.today} yesterday={stats.yesterday} />
       </div>

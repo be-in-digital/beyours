@@ -9,6 +9,7 @@
  */
 
 import type {
+  InvoiceRefusalReason,
   OrderStatus,
   OrderType,
   OrderPaymentStatus,
@@ -53,6 +54,25 @@ export const ORDER_PAYMENT_STATUS_CONFIG: Record<OrderPaymentStatus, StatusBadge
     className: "bg-amber-100 text-amber-800",
     label: "Remboursement à effectuer",
   },
+}
+
+/**
+ * Why a paid order carries no invoice, as the order detail page says it.
+ *
+ * The engine computes the reason (`orderInvoiceSurface`, spread onto
+ * `orders.getById`); this map is the French for it. The page shows a refusal
+ * on any PAID order with no invoice number — which includes a marketplace
+ * order cancelled after settlement, whose payment stays "paid" — so every
+ * member of the union needs its sentence.
+ */
+export const INVOICE_REFUSAL_LABELS: Record<InvoiceRefusalReason, string> = {
+  seller_incomplete:
+    "Identité vendeur incomplète : la raison sociale de l'établissement n'est pas renseignée. Chaque commande encaissée reste sans facture tant qu'elle manque.",
+  marketplace:
+    "Commande encaissée par la plateforme, qui facture le client elle-même.",
+  not_paid: "La commande n'est pas encore payée.",
+  cancelled: "La commande est annulée.",
+  already_issued: "Une facture existe déjà pour cette commande.",
 }
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {

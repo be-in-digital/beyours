@@ -95,6 +95,34 @@ export function invoiceRefusal(
   return null
 }
 
+/**
+ * What the admin's order screen says about this order's invoice.
+ *
+ * Either the number of the issued document, or the reason none exists —
+ * computed fresh from `invoiceRefusal` on every read rather than persisted,
+ * so it can never go stale when the owner completes the seller identity.
+ * `orders.getById` in both apps spreads this onto the order it returns; that
+ * is the surface issue #375 was about, where a seller-incomplete deployment
+ * took money for weeks with no invoice and no warning anywhere (art. 242
+ * nonies A CGI).
+ */
+export async function orderInvoiceSurface(
+  ctx: any,
+  order: InvoiceableOrder & { invoiceId?: string }
+): Promise<{ invoiceNumber: string | null; invoiceRefusal: InvoiceRefusal | null }> {
+  if (order.invoiceId) {
+    const invoice = await ctx.db.get(order.invoiceId)
+    if (invoice) {
+      return { invoiceNumber: String(invoice.number), invoiceRefusal: null }
+    }
+  }
+  const globalSettings = await ctx.db.query("globalSettings").first()
+  return {
+    invoiceNumber: null,
+    invoiceRefusal: invoiceRefusal(order, globalSettings?.seller),
+  }
+}
+
 /** Chosen options as they should read on a line of the document. */
 function optionLabels(item: any): string[] {
   const options = Array.isArray(item?.selectedOptions) ? item.selectedOptions : []
@@ -142,7 +170,11 @@ export type IssueResult =
  *
  * Never throws for a business reason — the caller is on the path that marks
  * money as received, and a missing SIREN must not fail a payment. It answers
- * with the reason instead, and the admin surfaces it.
+ * with the reason instead, and the admin surfaces it: `orderInvoiceSurface`
+ * puts the number-or-reason on the order `orders.getById` returns, the order
+ * detail page renders « Facture non émise » with the reason, and the
+ * dashboard banner warns while `globalSettings.seller` is incomplete. (#375
+ * is what happens when this sentence is written before those surfaces exist.)
  */
 export async function issueInvoiceForOrder(
   ctx: any,

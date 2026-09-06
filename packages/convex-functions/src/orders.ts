@@ -691,7 +691,46 @@ export const create = {
           q.eq("storeId", args.storeId).eq("idempotencyKey", args.idempotencyKey)
         )
         .first()
-      if (existing) return existing._id
+      if (existing) {
+        // A retry on the same attempt may carry a different payment method:
+        // the natural first-order path on a store with no card provider is a
+        // failed card submit followed by a cash confirmation, and the reuse
+        // used to keep "card". From there nothing could ever settle the order
+        // — release refused it as an unpaid card order, and the admin's cash
+        // button only shows for cash — so a confirmed diner sat in front of an
+        // accepted order the kitchen never saw (#374). The diner's last
+        // confirmed choice is the truth, but only while the payment is still
+        // pending: once money has moved (paid, refunded, even failed), the
+        // stored method describes what actually happened and stays.
+        // `createWithTicket` re-runs `releaseToKitchen` right after this
+        // returns, which is what re-applies the method-dependent release rule
+        // to the reused order.
+        if (
+          args.paymentMethod &&
+          args.paymentMethod !== existing.paymentMethod &&
+          (existing.paymentStatus === "pending" ||
+            existing.paymentStatus === undefined)
+        ) {
+          // …but never once the pass has seen it. A cash order releases its
+          // ticket at creation, so a stale tab retrying the same attempt as
+          // card would flip a cooking, unpaid order to a method whose release
+          // is refused and whose cash button is gone — the very strand this
+          // branch exists to remove, rebuilt in the other direction. The
+          // method the kitchen was fed under is the one that stands; a diner
+          // who really wants to switch can retry again while nothing cooks.
+          const ticket = await ctx.db
+            .query("kitchenTickets")
+            .withIndex("by_orderId", (q: any) => q.eq("orderId", existing._id))
+            .first()
+          if (!ticket) {
+            await ctx.db.patch(existing._id, {
+              paymentMethod: args.paymentMethod,
+              updatedAt: now,
+            })
+          }
+        }
+        return existing._id
+      }
     }
 
     // Get store and global settings for tax rate and delivery config
@@ -2302,11 +2341,12 @@ export const createWithTicket = {
   handler: async (ctx: any, args: CreateOrderArgs): Promise<string> => {
     const orderId = await create.handler(ctx, args)
 
-    // `create` always writes `paymentStatus: "pending"`, so this releases
-    // nothing today — it asks rather than assumes, so that an order arriving
-    // paid through this path in future reaches the kitchen instead of waiting
-    // for a webhook that will never come. Cheap: one read of a document the
-    // mutation has already written.
+    // Card and PayPal orders leave here `pending` and release on provider
+    // confirmation; a cash order settles on handover, so this call is what
+    // puts it on the pass in auto mode. It also runs on an idempotent reuse,
+    // deliberately: a retry that switched the method to cash (#374) releases
+    // here, and every path is safe to re-ask because `releaseToKitchen`
+    // refuses a second ticket.
     await releaseToKitchen(ctx, orderId)
 
     return orderId

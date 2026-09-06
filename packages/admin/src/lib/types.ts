@@ -1,7 +1,10 @@
 /**
  * Shared type definitions for admin pages
  * Mirrors the Convex schema types without importing Convex directly
+ * (type-only imports from the engine are fine — they are erased at build).
  */
+
+import type { InvoiceRefusal } from "@be-in-digital/convex-functions/invoices"
 
 /**
  * Kitchen tickets.
@@ -150,6 +153,12 @@ export type UberDirectStatus =
   | "COMPLETED"
   | "FAILED"
 
+/**
+ * Why a paid order carries no invoice — the engine's own union, re-exported
+ * so it cannot drift from what `orderInvoiceSurface` actually reports.
+ */
+export type InvoiceRefusalReason = InvoiceRefusal
+
 export interface Order {
   _id: string
   orderNumber: string
@@ -177,6 +186,15 @@ export interface Order {
   paymentMethod?: string
   paymentStatus: OrderPaymentStatus
   source: OrderSource
+  /** Dine-in only: the table the diner typed at checkout. */
+  tableNumber?: string
+  /**
+   * From `orderInvoiceSurface`, spread onto the order by `orders.getById`:
+   * the issued invoice's number, or the reason none exists (#375). Optional
+   * because other order queries (`list`, `recent`) return the raw document.
+   */
+  invoiceNumber?: string | null
+  invoiceRefusal?: InvoiceRefusalReason | null
   notes?: string
   estimatedPrepTime?: number
   estimatedDeliveryTime?: number
