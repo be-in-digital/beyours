@@ -16,6 +16,20 @@ name: Publish mirror
 # checks that would have said it was broken. `release.yml` had the same shape
 # and was fixed the same way — see the `verify` job below.
 #
+# Since #308 the gate is the whole of what branch protection requires, E2E
+# included. Measured on merge `aa026e6`: the mirror had shipped 35 seconds
+# after the merge and the suite reported 11m02s later, so a regression the
+# suite catches was already on the distribution mirror before it was caught
+# (#307). The sync now waits for it.
+#
+# Which sharpened what each trigger is FOR. The `push` path owns every change to
+# what a client receives — that is what its `paths:` filter enumerates — and it
+# is the gated one. The `workflow_run` path owns exactly one thing, the pinned
+# versions moving, and now refuses to do anything else: a Release that published
+# nothing leaves it alone rather than letting it re-ship the same template
+# ungated, minutes before the gated run finishes. See "Did that Release publish
+# anything?" below.
+#
 # Required secret: MIRROR_PUSH_TOKEN, a fine-grained PAT with `contents: write`
 # on beyours-boilerplate. Without it the job stops cleanly — GITHUB_TOKEN is
 # scoped to the current repository and cannot push elsewhere.
@@ -37,6 +51,11 @@ on:
       - "scripts/publish-mirror.mjs"
       - "scripts/lib/mirror-tree.mjs"
       - "scripts/lib/engine-exports.mjs"
+      # The registry lookup that decides which VERSION each engine dependency is
+      # pinned to, and the overrides carried across with it. Both change what a
+      # client installs from an untouched `apps/themes`.
+      - "scripts/lib/registry.mjs"
+      - "scripts/lib/mirror-overrides.mjs"
       - "package.json"
   workflow_run:
     workflows: ["Release"]
@@ -63,11 +82,8 @@ jobs:
   # client would actually receive. It used to run alongside the push rather
   # than before it.
   #
-  # Not gated on `E2E Status`. `e2e.yml` carries no `workflow_call:` trigger, so
-  # it cannot be called this way, and branch protection requires five checks
-  # while this chain covers four. That gap is `release.yml`'s too and is tracked
-  # in #308; closing it means adding `workflow_call:` to `e2e.yml`, which is a
-  # decision about the release chain as a whole rather than about the mirror.
+  # `E2E Status` is the fifth, and it is `e2e` below — a second call, because
+  # `e2e.yml` gained `workflow_call:` in the same change (#307, #308).
   verify:
     name: Verify
     # Skipped on the `workflow_run` path, and only there. The Release chain has
@@ -80,9 +96,43 @@ jobs:
       contents: read
     uses: ./.github/workflows/ci.yml
 
+  # `E2E Status`, the fifth required check, on the tree about to be shipped.
+  #
+  # `themes` only, and that is the point rather than a saving: this workflow
+  # ships `apps/themes` and nothing else, so the bench's suite would be four
+  # more runners answering a question the mirror never asked. It is half the
+  # cost of `both` for the whole of the answer.
+  #
+  # What it proves is bounded, and worth stating plainly: the suite runs
+  # `apps/themes` against `packages/*` at HEAD through the workspace link, while
+  # the mirror pins the versions the REGISTRY serves. So this catches a
+  # regression in the template's own code and cannot catch one that only appears
+  # once the published tarballs are installed — that is `check:pending-release`
+  # and the subpath gate in `publish-mirror.mjs`, and #209 for the rest.
+  #
+  # Skipped on the `workflow_run` path for the same reason `verify` is: the
+  # Release chain has already run this call on the commit it published, and
+  # re-running it here would check the wrong tree. Skipped on a `--check`
+  # dispatch too — that path reports drift and pushes nothing, so it has nothing
+  # to gate, and a twelve-minute suite to answer "is the mirror stale?" is a
+  # tool nobody would reach for twice.
+  #
+  # The latency is real and was the open question in #307: a template change
+  # used to reach the boilerplate 35 seconds after the merge and now waits for
+  # the suite, about twelve minutes. That is the cost of the sync not being the
+  # first thing to know a change is broken.
+  e2e:
+    name: Verify E2E
+    if: github.event_name != 'workflow_run' && inputs.check_only != true
+    permissions:
+      contents: read
+    uses: ./.github/workflows/e2e.yml
+    with:
+      apps: themes
+
   publish:
     name: Sync the mirror
-    needs: [verify]
+    needs: [verify, e2e]
     runs-on: ubuntu-latest
     # A sync is a clone, a file copy and a lockfile — two minutes when it works.
     # The ceiling exists because the failure that mattered here did not fail:
@@ -92,11 +142,18 @@ jobs:
     # ever said so. A stall must now end as a red job.
     timeout-minutes: 15
     # One condition per trigger path, and every path is gated:
-    #   workflow_run   → the Release it followed went green (Release itself is
-    #                    gated on the same four checks), and the commit synced
-    #                    is the one Release verified — see the checkout below
-    #   push, dispatch → `verify` above went green on this commit, AND the
-    #                    commit is on `main`
+    #   workflow_run   → the Release it followed went green, and the commit
+    #                    synced is the one Release verified — see the checkout
+    #                    below. A step there narrows it further to a Release
+    #                    that PUBLISHED, which is the only kind that ran the
+    #                    E2E suite and the only kind this path exists for
+    #   push, dispatch → `verify` AND `e2e` above went green on this commit, AND
+    #                    the commit is on `main`
+    #
+    # `e2e` is read by what it did NOT do, because `skipped` is a legitimate
+    # answer here — a `--check` dispatch skips it deliberately — while `failure`
+    # and `cancelled` are not. A suite the concurrency group cancelled has not
+    # passed.
     #
     # The ref check is not redundant with `verify`. `uses: ./…/ci.yml` resolves
     # at the CALLER's ref, so a manual dispatch from a branch runs THAT branch's
@@ -105,11 +162,12 @@ jobs:
     # review first. Even without malice, dispatching from a stale branch to
     # "re-sync the mirror" would ship that branch to every client site.
     #
-    # `!cancelled()` is load-bearing rather than decorative. `verify` is
-    # deliberately skipped on the `workflow_run` path, and a job whose `needs:`
-    # was skipped is skipped too unless its `if:` uses a status function. Without
-    # it this whole workflow would silently stop syncing after a Release — a
-    # gate that never publishes looks exactly like a gate that works.
+    # `!cancelled()` is load-bearing rather than decorative. `verify` and `e2e`
+    # are deliberately skipped on the `workflow_run` path, and a job whose
+    # `needs:` was skipped is skipped too unless its `if:` uses a status
+    # function. Without it this whole workflow would silently stop syncing after
+    # a Release — a gate that never publishes looks exactly like a gate that
+    # works.
     if: >-
       ${{ !cancelled()
         && (
@@ -118,6 +176,8 @@ jobs:
             && github.event.workflow_run.head_branch == 'main')
           || (github.event_name != 'workflow_run'
             && needs.verify.result == 'success'
+            && needs.e2e.result != 'failure'
+            && needs.e2e.result != 'cancelled'
             && github.ref == 'refs/heads/main')
         ) }}
     permissions:
@@ -149,6 +209,46 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
+          # Tags, because the step below reads them. A depth-1 clone fetches
+          # none by default.
+          fetch-tags: true
+
+      # The hole the E2E gate would otherwise leave open, and it is not
+      # hypothetical — it is the exact case #307 is about.
+      #
+      # A merge touching `apps/themes/**` starts BOTH paths. The `push` one
+      # waits for `e2e` (~13 min) and refuses a red suite. The Release it also
+      # started publishes nothing (a template change moves no package version),
+      # goes green in ~5 minutes on `verify` alone, and this `workflow_run` path
+      # then syncs the same tree with no E2E behind it at all. The gate above
+      # would be doing its job while the sync went out beside it.
+      #
+      # So this path is held to what it exists for: a Release that ACTUALLY
+      # published. `changeset publish` tags each package it publishes and
+      # release.yml pushes those tags — the same invariant that workflow's own
+      # last step asserts ("if a version was published, its tag must exist
+      # here"). Tags at this commit therefore mean the Release published, and a
+      # Release that published ran the E2E suite, because `plan` said it would.
+      #
+      # Nothing is lost by stopping otherwise. Every input that changes what a
+      # client receives is in this workflow's `paths:` filter, so a template
+      # change always has a `push` run of its own — a gated one. What stops here
+      # is the second, ungated delivery of a tree that run is already handling.
+      # A `push` run that was cancelled or died can be re-sent with
+      # `workflow_dispatch`.
+      - name: Did that Release publish anything?
+        id: released
+        if: github.event_name == 'workflow_run'
+        run: |
+          set -euo pipefail
+          tags=$(git tag --points-at HEAD)
+          if [ -z "$tags" ]; then
+            echo "::notice::That Release published nothing — no tags at $(git rev-parse --short HEAD). The push path owns any template change, and it waits for the E2E suite. Skipping."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Released:"; echo "$tags" | sed "s/^/  /"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: pnpm/action-setup@v4
         with:
@@ -161,6 +261,9 @@ jobs:
           scope: "@be-in-digital"
 
       - name: Sync
+        # On `workflow_run`, only for a Release that published — see above.
+        # Every other trigger reaches here having passed `verify` and `e2e`.
+        if: github.event_name != 'workflow_run' || steps.released.outputs.published == 'true'
         env:
           # Registry read: the packages are published by this repository, so
           # GITHUB_TOKEN is enough with `packages: read`.

@@ -14,20 +14,12 @@ jobs:
   # Reusing ci.yml rather than restating its four jobs here — a copy would drift
   # from the checks branch protection actually requires.
   #
-  # ⚠️ It has drifted anyway, and not through a copied job list. This call
-  # covers `Lint`, `Type Check`, `Test` and `Build` — measured on run
-  # 33761018116, where `verify` expanded to exactly those four. On 03/09/2026
-  # `E2E Status` was added to ruleset 22177735, so branch protection now
-  # requires **five** checks and this chain gates on four of them. `E2E Status`
-  # lives in e2e.yml, which the release chain never calls, so a red or
-  # still-running E2E suite does not stop a publish. Measured on the same
-  # commit: Release finished 6m45s before the suite reported.
-  #
-  # Nothing has shipped over a red E2E — the merge queue keeps main green in
-  # the normal case, and that run published nothing because the pull request
-  # carried no changeset. It is a structural gap, and it is open: #308 holds
-  # the options and the trade-offs. Do not read the paragraph above as saying
-  # this chain gates on everything branch protection does. It does not.
+  # The fifth check now lives here too. This call covers `Lint`, `Type Check`,
+  # `Test` and `Build` — measured on run 33761018116, where `verify` expanded to
+  # exactly those four — and the `e2e` call below supplies `E2E Status`, which was
+  # added to ruleset 22177735 on 03/09/2026 and which this chain gated on for
+  # four days without saying so (#308). Measured on `aa026e6`: Release finished
+  # 6m45s before the suite reported.
   #
   # The cost of the call is that CI runs twice on a push to main: once from its
   # own trigger, once through this one. That is deliberate. The alternative,
@@ -40,10 +32,94 @@ jobs:
       contents: read
     uses: ./.github/workflows/ci.yml
 
+  # Whether there is anything to gate.
+  #
+  # Paying the E2E suite twice on every push to main — eight sharded runners,
+  # about twelve minutes — buys nothing on a push that publishes nothing, and
+  # almost every push publishes nothing: of the 293 commits on `main` between
+  # 01/07/2026 and 07/09/2026, **12 moved a `packages/*` version**. The other
+  # 281 would have waited twelve minutes for `changeset publish` to print
+  # "No unpublished projects to publish".
+  #
+  # So the chain asks the question `changeset publish` itself asks — is this
+  # version already on the registry? — in about five seconds, and gates only
+  # when the answer is no. A lookup that fails answers "would publish", so a
+  # broken token gates rather than waves through.
+  #
+  # `packages: read` is the whole permission: this reads the registry, it does
+  # not touch it.
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      publishing: ${{ steps.plan.outputs.publishing }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@be-in-digital"
+
+      - name: Will this publish anything?
+        id: plan
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/publish-plan.mjs
+
+  # The fifth required check, on the commit about to be published.
+  #
+  # Both suites, not one: a release ships `packages/*`, which both applications
+  # consume, so the answer the publish needs is the same one branch protection
+  # asks for on a pull request. `e2e.yml` gained `workflow_call:` for this —
+  # until then it could not be called at all, which is the whole of #308.
+  #
+  # Skipped when `plan` says nothing will publish. That is not a hole: a run
+  # that publishes nothing has nothing to gate, and `main` still gets its own
+  # `E2E Tests` run from e2e.yml's `push` trigger either way — this call is the
+  # one the publish waits for.
+  e2e:
+    name: Verify E2E
+    needs: [plan]
+    if: needs.plan.outputs.publishing == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/e2e.yml
+    with:
+      apps: both
+
   release:
     name: Release
-    needs: [verify]
+    needs: [plan, verify, e2e]
     runs-on: ubuntu-latest
+    # `e2e` is skipped on the 96% of pushes that publish nothing, and a
+    # job whose `needs:` was skipped is skipped too unless its `if:` uses a
+    # status function — the same trap `publish-mirror.yml` documents. So
+    # `!cancelled()` first, then each dependency by result:
+    #
+    #   plan    must have PASSED — a plan that errored has not said "nothing to
+    #           publish", it has said nothing, and `e2e` skips itself on an
+    #           unset output, which would otherwise read as "no gate needed"
+    #   verify  must have PASSED — it runs unconditionally
+    #   e2e     must not have FAILED or been CANCELLED — `skipped` is the
+    #           ordinary answer and means there was nothing to gate
+    #
+    # Naming `cancelled` explicitly matters: a suite the concurrency group
+    # cancelled has not passed, and the old `E2E Status` job was announcing
+    # exactly that as a success until #276.
+    if: >-
+      ${{ !cancelled()
+        && needs.plan.result == 'success'
+        && needs.verify.result == 'success'
+        && needs.e2e.result != 'failure'
+        && needs.e2e.result != 'cancelled' }}
     permissions:
       # `contents` for the tags `changeset publish` writes. No `pull-requests`:
       # this workflow does not open one, and cannot - see the publish step.

@@ -56,7 +56,8 @@ From the repository root, all through Turbo:
 | `pnpm test:ui` · `pnpm test:e2e:ui` · `pnpm test:e2e:debug` | Interactive runners, filtered to `@beyours/reference` |
 | `pnpm lint` · `pnpm type-check` | Quality, across the 13 workspaces |
 | `pnpm check:divergence` | The twin-app guard (§8) |
-| `pnpm check:accents` · `pnpm check:claude-md` · `pnpm check:mirror-css` | The other three guards folded into `Lint` |
+| `pnpm check:accents` · `pnpm check:claude-md` · `pnpm check:mirror-css` | Three more guards folded into `Lint` |
+| `pnpm check:pending-release` · `pnpm check:source-drift` | The two release guards folded into `Lint` (§4) |
 
 Turbo caches `test`; a second run with no changes re-executes nothing. `test:e2e` is
 declared `"cache": false`.
@@ -152,7 +153,7 @@ push/PR" is wrong about this repository.
 It defines four jobs, and the job names are the check names branch protection
 requires: **`Lint`**, **`Type Check`**, **`Test`**, **`Build`**.
 
-`Lint` is more than ESLint. Four repository guards are folded into it on purpose —
+`Lint` is more than ESLint. Six repository guards are folded into it on purpose —
 `Lint` is already a required context, so they become blocking without anyone touching
 repository settings:
 
@@ -162,6 +163,23 @@ repository settings:
 | Check app divergence | `pnpm check:divergence` | The twin-app contract (§8) |
 | Check `CLAUDE.md`'s commands and documents | `pnpm check:claude-md` | The first file every contributor and every agent reads. It resolves every `pnpm <script>` in a fenced block against the right `package.json`, and asserts that every document named under *Additional Documentation* exists on disk. It checks **existence**, not truth — but existence is what broke, twice. |
 | Check the client stylesheet | `pnpm check:mirror-css` | The **published** tree — `apps/themes` becomes the repository root in the mirror, and a stylesheet whose `@source` globs point at the monorepo silently loses every rule the engine packages contribute. Nothing else in CI compiles that tree. |
+| Report unreleased engine fixes | `pnpm check:pending-release` | The changesets sitting on `main` that no release has carried yet. **Reports, never gates** — batching fixes into one release is the intended workflow, so it escalates to a `::warning::` only past `--max-age-days` (7). |
+| Check engine source has a release to travel in | `pnpm check:source-drift` | The other half, and the half that cannot resolve itself: a package whose `src/` moved since its last version bump with **no** changeset naming it. `changeset publish` answers `already published` and skips it, so that source reaches no client — not later, at all. **This one gates.** |
+
+The last two are a pair and the difference between them is the whole point. A
+changeset that exists is released by the next release; a changeset that does not
+exist is released by nothing, ever. #209 records `integrations`, `marketing` and `ui`
+serving a July build for two months in exactly that state, with the whole Uber Direct
+module (~950 lines) never reaching a client site — invisible because `apps/themes`
+links the engine with `workspace:^` and compiles against the current source, so every
+check here was green by construction.
+
+`check:source-drift` needs full history (`fetch-depth: 0`, which `Lint` already
+fetches) to find the commit that last moved each version. Without it the check reports
+`unknown` rather than guessing — a check that cannot answer must not read as a check
+that answered "fine". If a refactor genuinely owes nobody a release note,
+`pnpm changeset --empty` is the honest answer: it records that the source moved and
+that nothing was owed, which is a different statement from silence.
 
 ### The fifth check: `E2E Status`, never `E2E Tests`
 
@@ -235,11 +253,27 @@ prospective merged state and runs the same checks against it.
 > `pnpm audit` are deliberately **not** required, is
 > [`tasks/ci-required-checks-runbook.md`](tasks/ci-required-checks-runbook.md) §5–§6.
 
-**The release chain gates on four of the five.** `release.yml` calls `ci.yml` through
-`workflow_call`, which covers `Lint`, `Type Check`, `Test` and `Build`. `E2E Status`
-lives in `e2e.yml`, which the release chain never calls, so a red or still-running
-E2E suite does not stop a publish. This is a known structural gap, recorded in the
-workflow's own header comment and tracked as #308.
+**The release chain gates on all five, and pays for the fifth only when it matters.**
+`release.yml` calls `ci.yml` through `workflow_call`, which covers `Lint`,
+`Type Check`, `Test` and `Build`, and calls `e2e.yml` the same way for `E2E Status`
+(#307, #308). Until 07/09/2026 it could not: `e2e.yml` carried no `workflow_call:`
+trigger, so a red or still-running suite did not stop a publish — measured on
+`aa026e6`, where *Release* finished 6m45s and the mirror sync 11m02s before the suite
+reported.
+
+The E2E call is conditional, and the condition is *will this push publish anything*.
+A `Plan` job asks the registry the same question `changeset publish` asks — is this
+version already published? — and the suite is called only when the answer is no. That
+is measured rather than assumed: of the 293 commits on `main` between 01/07/2026 and
+07/09/2026, **12 moved a `packages/*` version**, so an unconditional gate would bill
+eight sharded runners on 96% of pushes for a run that ends in "No unpublished projects
+to publish". A registry lookup that fails reports "would publish", so a broken token
+gates rather than waves through.
+
+`publish-mirror.yml` gates the same way on its `push` and `workflow_dispatch` paths,
+calling the `themes` suite alone — it ships `apps/themes` and nothing else. It skips
+the call on `--check` dispatches, which push nothing, and on the `workflow_run` path,
+where *Release* has already run it on the commit being synced.
 
 **A job that fails in ~3 seconds having run zero steps is a billing block, not a
 defect.** The Actions minutes have run out twice; every workflow on every branch dies

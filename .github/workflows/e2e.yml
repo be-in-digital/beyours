@@ -49,6 +49,38 @@ on:
           - both
           - reference
           - themes
+  # Callable, so the release chain can gate on the suite instead of racing it.
+  #
+  # `E2E Status` was added to ruleset 22177735 on 03/09/2026, making five
+  # required checks. `release.yml` and `publish-mirror.yml` both gate on
+  # `uses: ./.github/workflows/ci.yml`, which supplies four of them, and this
+  # workflow carried no `workflow_call:` — so it could not be the fifth by
+  # construction. Measured on `aa026e6`: `Release` finished 6m45s and the
+  # mirror sync 11m02s before the suite reported (#307, #308).
+  #
+  # The `apps` input is the same choice `workflow_dispatch` offers, for the same
+  # reason: what a caller needs to be sure of differs. A publish ships
+  # `packages/*` to both apps and asks for `both`; the mirror ships `apps/themes`
+  # alone and asks for `themes`, which is half the runners for the whole of the
+  # answer it needs.
+  #
+  # Job names gain the caller's prefix (`Verify E2E / E2E Status`), so nothing
+  # here can be mistaken for the `E2E Status` context branch protection requires
+  # — that one keeps coming from this workflow's own `push` and `pull_request`
+  # runs. `ci.yml` has been called this way since #368 with the same result.
+  #
+  # Neither caller passes `secrets: inherit`, which is deliberate and matches
+  # how `ci.yml` is called: the only secret this workflow reads is TURBO_TOKEN,
+  # an empty one degrades to the local cache rather than failing (measured — see
+  # the `env:` block below), and `inherit` would hand a suite that runs
+  # downloaded test code the mirror's push token for no gain. Since #276 the
+  # suite provisions its own Convex backend and needs no secret at all.
+  workflow_call:
+    inputs:
+      apps:
+        description: Which suites to run
+        type: string
+        default: both
 
 concurrency:
   # One run per ref, and the older one loses.
@@ -61,6 +93,13 @@ concurrency:
   #
   # `merge_group` is the exception: the queue is waiting on that run to decide
   # whether the batch may land, and a cancelled job is a failed one.
+  #
+  # On a `workflow_call` the whole expression is evaluated in the CALLER's
+  # context — `github.workflow` is the caller's name and `github.event_name` the
+  # event that started it. That is safe here and deliberately checked: the two
+  # callers group themselves as `Release-<ref>` and the literal `publish-mirror`,
+  # neither of which this expression can produce, so a called run can never
+  # queue behind a slot its own caller is holding.
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
@@ -126,7 +165,17 @@ jobs:
           set -euo pipefail
           apps='["reference"]'
 
-          if [ "$EVENT" = "workflow_dispatch" ]; then
+          # An explicit choice wins, whoever made it.
+          #
+          # `inputs` is empty on `push`, `pull_request` and `merge_group`, and
+          # carries a value on the two triggers that offer one — a dispatch and
+          # a `workflow_call`. Keying off the value rather than off
+          # `github.event_name` is what makes the call work at all: a called
+          # workflow reports the CALLER's event, so a mirror sync dispatched by
+          # hand arrives here as `workflow_dispatch` carrying the `apps` its
+          # caller passed, and a release arrives as `push`. Reading the value is
+          # right in both; reading the event name is wrong in both.
+          if [ -n "$CHOICE" ]; then
             case "$CHOICE" in
               both)      apps='["reference","themes"]' ;;
               reference) apps='["reference"]' ;;

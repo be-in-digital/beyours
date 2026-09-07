@@ -253,15 +253,36 @@ type ReleaseConclusion =
   | "startup_failure"
   | ""
 
+type JobResult = "success" | "failure" | "skipped" | "cancelled"
+
 type Scenario = {
   event: "push" | "workflow_dispatch" | "workflow_run"
-  verify: "success" | "failure" | "skipped" | "cancelled"
+  verify: JobResult
+  /**
+   * `needs.e2e.result` — the fifth required check, added to both publishing
+   * chains in #307/#308.
+   *
+   * Defaults to whatever `verify` is, which is not a shortcut: on
+   * `publish-mirror.yml` the two jobs carry the same skip condition apart from
+   * a `--check` dispatch, so a scenario that does not say otherwise is one
+   * where they agree. Every case where they DIVERGE says so explicitly, and
+   * those are the interesting ones — a green `verify` beside a red suite is
+   * exactly what this gate exists to refuse.
+   */
+  e2e?: JobResult
+  /** `needs.plan.result` — release.yml only; decides whether E2E runs at all. */
+  plan?: JobResult
   releaseConclusion?: ReleaseConclusion
   /** The branch `Release` ran on, for the `workflow_run` path. */
   releaseBranch?: string
   /** The ref the run itself is on, for the push and dispatch paths. */
   ref?: string
   cancelled?: boolean
+}
+
+/** Every `needs:` result the scenario implies, for the implicit-success rule. */
+function resultsOf(scenario: Scenario): JobResult[] {
+  return [scenario.verify, scenario.e2e ?? scenario.verify, ...(scenario.plan ? [scenario.plan] : [])]
 }
 
 /**
@@ -274,7 +295,12 @@ type Scenario = {
 const STATUS_FUNCTIONS = /\b(success|always|cancelled|failure)\(\)/
 
 function jobRuns(expression: string, scenario: Scenario): boolean {
-  const impliedSuccess = STATUS_FUNCTIONS.test(expression) || scenario.verify === "success"
+  // ALL of them, not just `verify`. GitHub's implicit `success()` is over the
+  // whole `needs:` list, so a chain that grew a second dependency and lost its
+  // status function would be modelled wrongly by a rule that still only looked
+  // at the first one.
+  const impliedSuccess =
+    STATUS_FUNCTIONS.test(expression) || resultsOf(scenario).every((result) => result === "success")
   return impliedSuccess && evaluate(expression, scenario)
 }
 
@@ -285,6 +311,10 @@ function evaluate(expression: string, scenario: Scenario): boolean {
     "github.event.workflow_run.head_branch": scenario.releaseBranch ?? "",
     "github.ref": scenario.ref ?? "refs/heads/main",
     "needs.verify.result": scenario.verify,
+    "needs.e2e.result": scenario.e2e ?? scenario.verify,
+    // Absent from publish-mirror.yml's condition; naming it here anyway costs
+    // nothing and lets one evaluator read both chains.
+    "needs.plan.result": scenario.plan ?? "success",
   }
 
   const tokens = expression
@@ -388,6 +418,35 @@ describe("the mirror publishes on exactly the runs that passed CI", () => {
       { event: "workflow_dispatch", verify: "success", ref: "refs/heads/feature/x" },
       false,
     ],
+    // ── The E2E gate (#307, #308) ────────────────────────────────────────
+    //
+    // Every case below holds `verify` at success, so the only thing deciding
+    // the outcome is the suite. Before this gate existed the mirror shipped
+    // 35 seconds after the merge and the suite reported 11m02s later; all four
+    // of these would have published.
+    [
+      "a push to main whose CI went green but whose E2E suite went red",
+      { event: "push", verify: "success", e2e: "failure" },
+      false,
+    ],
+    [
+      "a push to main whose E2E suite was cancelled — not a pass",
+      { event: "push", verify: "success", e2e: "cancelled", cancelled: false },
+      false,
+    ],
+    [
+      // The `--check` dispatch skips the suite deliberately: it reports drift
+      // and pushes nothing, so it has nothing to gate. `skipped` must stay a
+      // legitimate answer, or a dry run would be the one thing that cannot run.
+      "a --check dispatch, where the suite is skipped on purpose",
+      { event: "workflow_dispatch", verify: "success", e2e: "skipped" },
+      true,
+    ],
+    [
+      "a manual dispatch from a branch whose E2E went green — still refused, wrong ref",
+      { event: "workflow_dispatch", verify: "success", e2e: "success", ref: "refs/heads/feature/x" },
+      false,
+    ],
     ["a successful Release, where verify is skipped on purpose", afterRelease("success"), true],
     [
       // `release.yml` triggers on main only today. One trigger line away, this
@@ -419,6 +478,99 @@ describe("the mirror publishes on exactly the runs that passed CI", () => {
 
   test.each(cases)("%s", (_label, scenario, expected) => {
     expect(jobRuns(condition, scenario)).toBe(expected)
+  })
+})
+
+/**
+ * The `if:` on `release.yml`'s release job, evaluated.
+ *
+ * Same reasoning as the block above, and one wrinkle of its own. The E2E call
+ * here is CONDITIONAL — `plan` asks the registry whether this push will publish
+ * anything, and skips the suite when it will not, because 12 of the 293 commits
+ * on `main` between 01/07/2026 and 07/09/2026 moved a package version and the
+ * other 281 would have waited twelve minutes to publish nothing.
+ *
+ * That makes `skipped` a legitimate answer from `e2e` and creates a failure
+ * mode with no counterpart in the mirror chain: a `plan` that ERRORED has not
+ * said "nothing to publish", it has said nothing — and `e2e` skips itself on an
+ * unset output, which reads identically. Without `needs.plan.result ==
+ * 'success'` the release would then publish having gated on nothing at all.
+ * That case is the last one below, and it fails the suite if the clause is
+ * dropped.
+ */
+describe("the release publishes on exactly the runs that passed CI", () => {
+  const condition = readWorkflow("release.yml").jobs?.release?.if
+  if (typeof condition !== "string") throw new Error("the release job has no if:")
+
+  const push = (over: Partial<Scenario> = {}): Scenario => ({
+    event: "push",
+    verify: "success",
+    plan: "success",
+    e2e: "success",
+    ...over,
+  })
+
+  const cases: Array<[string, Scenario, boolean]> = [
+    ["a push that publishes, with everything green", push(), true],
+    [
+      // The 96% case: nothing to publish, so no suite was called. The job still
+      // runs and `changeset publish` prints "No unpublished projects to publish".
+      "a push that publishes nothing, so the suite was skipped",
+      push({ e2e: "skipped" }),
+      true,
+    ],
+    ["a push that publishes over a red E2E suite", push({ e2e: "failure" }), false],
+    ["a push whose E2E suite was cancelled", push({ e2e: "cancelled" }), false],
+    ["a push whose CI went red", push({ verify: "failure", e2e: "skipped" }), false],
+    ["a push whose CI was skipped", push({ verify: "skipped", e2e: "skipped" }), false],
+    ["a run cancelled outright", push({ cancelled: true }), false],
+    ...(["failure", "cancelled", "skipped"] as const).map(
+      (plan): [string, Scenario, boolean] => [
+        // A plan that did not succeed cannot be read as "nothing to gate".
+        `a push whose plan ${plan === "skipped" ? "was skipped" : plan === "failure" ? "errored" : "was cancelled"}`,
+        push({ plan, e2e: "skipped" }),
+        false,
+      ],
+    ),
+  ]
+
+  test.each(cases)("%s", (_label, scenario, expected) => {
+    expect(jobRuns(condition, scenario)).toBe(expected)
+  })
+})
+
+/**
+ * `e2e.yml` is only usable as a gate because it declares `workflow_call:`, and
+ * it did not until #307/#308 — which is the whole reason the release chain
+ * gated on four of the five required checks for four days. Removing the trigger
+ * again would not fail the `needs:` assertions above; both callers would still
+ * name the job. It would just stop resolving.
+ */
+describe("e2e.yml stays callable as a gate", () => {
+  const e2e = readWorkflow("e2e.yml")
+
+  test("it declares workflow_call", () => {
+    expect(Object.keys((e2e.on ?? {}) as Record<string, unknown>)).toContain("workflow_call")
+  })
+
+  test("it still produces the required context", () => {
+    expect(Object.values(e2e.jobs ?? {}).map((j) => j.name)).toContain("E2E Status")
+  })
+
+  test("both publishing chains wait on a job that calls it", () => {
+    for (const [file, jobId] of [
+      ["publish-mirror.yml", "publish"],
+      ["release.yml", "release"],
+    ] as const) {
+      const wf = readWorkflow(file)
+      const job = wf.jobs?.[jobId] ?? {}
+      const needs = typeof job.needs === "string" ? [job.needs] : (job.needs ?? [])
+      const gates = needs.filter((id) => wf.jobs?.[id]?.uses?.endsWith(".github/workflows/e2e.yml"))
+      expect(
+        gates,
+        `none of [${needs.join(", ")}] calls ./.github/workflows/e2e.yml, so ${file}:${jobId} publishes without E2E Status`,
+      ).not.toHaveLength(0)
+    }
   })
 })
 

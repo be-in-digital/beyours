@@ -21,11 +21,18 @@
  *   5. `packageManager` is honoured on the mirror and ignored here — inside a
  *      workspace only the root's counts. It must therefore name the pnpm this
  *      job actually has. → taken from the monorepo root.
+ *   6. `pnpm.overrides` are honoured on the mirror and, for the same reason,
+ *      read from the root here. `apps/themes` carried one entry and the root
+ *      carries 22, so a client's lockfile resolved without nineteen security
+ *      floors this repository enforces on itself. → merged in, root winning
+ *      (`lib/mirror-overrides.mjs`).
  *
- * None of those five is theoretical: the first sync, done by hand on
+ * None of those six is theoretical: the first sync, done by hand on
  * 2026-08-16, missed the first four and left the mirror uninstallable for
  * twenty minutes. The fifth stopped the mirror dead for the twelve days after
- * that — see `mirrorPackageManager`.
+ * that — see `mirrorPackageManager`. The sixth broke nothing at all, which is
+ * why it took until #289 to see it: the mirror installed, the site built, and
+ * only the resolved versions differed.
  *
  * Versions come from the REGISTRY, not from packages/*\/package.json: only the
  * registry says what a client can actually install. A package whose changeset
@@ -60,13 +67,22 @@ import {
   tarballContents,
   unresolvableImports,
 } from "./lib/engine-exports.mjs"
+import {
+  describeMissing,
+  divergentBuildAllowList,
+  mergeOverrides,
+  missingFromLockfile,
+  parseLockfileOverrides,
+} from "./lib/mirror-overrides.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
+// The same lookup `publish-plan.mjs` gates the release on. One copy, so the
+// mirror cannot pin a version the gate never asked about.
+import { publishedVersion, REGISTRY } from "./lib/registry.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SOURCE = join(ROOT, "apps/themes")
 const MIRROR_REPO = "be-in-digital/beyours-boilerplate"
 const MIRROR_PKG_NAME = "beyours-boilerplate"
-const REGISTRY = "https://npm.pkg.github.com"
 
 /**
  * The mirror is rebuilt in full on every run — anything the source no longer
@@ -118,14 +134,6 @@ const done = (msg) => {
 // ---------------------------------------------------------------------------
 // 1. Published versions
 // ---------------------------------------------------------------------------
-
-function publishedVersion(pkg) {
-  try {
-    return run("npm", ["view", pkg, "version", `--registry=${REGISTRY}`])
-  } catch {
-    return null
-  }
-}
 
 /**
  * What the version a client would actually install carries: its `exports` map
@@ -217,8 +225,58 @@ function mirrorPackageManager() {
   return declared
 }
 
+/**
+ * The security floors the monorepo enforces on itself, carried to the mirror.
+ *
+ * pnpm reads `pnpm.overrides` from the WORKSPACE ROOT only. Here that is
+ * `/package.json` and its 22 entries reach `apps/themes` like everything else;
+ * on the mirror the copied `apps/themes/package.json` IS the root, and it
+ * carried one. `pnpm install --lockfile-only` below then resolved every client
+ * site's lockfile without the other 21 (#289).
+ *
+ * Rules and what is deliberately left behind: `lib/mirror-overrides.mjs`.
+ * Whether pnpm actually took them is checked after the install, against the
+ * lockfile it wrote — the gap is silent otherwise, which is the whole reason it
+ * survived this long.
+ *
+ * @returns the merged block, so the caller can verify the lockfile against it.
+ */
+function mirrorOverrides(pkg, rootManifest) {
+  const { overrides, carried, overruled } = mergeOverrides(rootManifest, pkg)
+
+  const divergent = divergentBuildAllowList(rootManifest, pkg)
+  if (divergent.rootOnly.length > 0 || divergent.templateOnly.length > 0) {
+    // Not merged automatically: this list is what may run install scripts on a
+    // client's machine, and widening it is a decision, not a sync. Failing is
+    // how the decision gets made instead of skipped.
+    fail(
+      "pnpm.onlyBuiltDependencies differs between the monorepo root and " +
+        "apps/themes, so a client's install would run a different set of build " +
+        "scripts from this workspace's.\n" +
+        `  only at the root:      ${divergent.rootOnly.join(", ") || "—"}\n` +
+        `  only in apps/themes:   ${divergent.templateOnly.join(", ") || "—"}\n` +
+        "Reconcile the two lists — it grants the right to execute code, so it is " +
+        "carried by hand rather than by this script."
+    )
+  }
+
+  pkg.pnpm = { ...pkg.pnpm, overrides }
+
+  log(`   ${Object.keys(overrides).length} override(s), ${carried.length} carried from the root`)
+  for (const entry of overruled) {
+    log(
+      `   ! ${entry.key}: apps/themes says ${entry.template}, the root says ${entry.root} — ` +
+        "the root wins here as it already does in the workspace; the template's line is dead"
+    )
+  }
+
+  return overrides
+}
+
 function mirrorPackageJson(sourcePkgPath, versions) {
   const pkg = JSON.parse(readFileSync(sourcePkgPath, "utf8"))
+  const rootManifest = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"))
+
   pkg.name = MIRROR_PKG_NAME
   pkg.packageManager = mirrorPackageManager()
   for (const [dep, range] of Object.entries(versions)) {
@@ -230,7 +288,9 @@ function mirrorPackageJson(sourcePkgPath, versions) {
   if (stillWorkspace.length) {
     fail(`dependencies still on workspace:  ${stillWorkspace.join(", ")}`)
   }
-  return JSON.stringify(pkg, null, 2) + "\n"
+  const overrides = mirrorOverrides(pkg, rootManifest)
+
+  return { contents: JSON.stringify(pkg, null, 2) + "\n", overrides }
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +347,8 @@ try {
   log(`   ${copied.length} file(s) shipped, ${deleted.length} removed`)
 
   log("→ rewriting package.json")
-  writeFileSync(join(clone, "package.json"), mirrorPackageJson(join(SOURCE, "package.json"), versions))
+  const { contents, overrides } = mirrorPackageJson(join(SOURCE, "package.json"), versions)
+  writeFileSync(join(clone, "package.json"), contents)
 
   log("→ prepending the \"generated repository\" banner to the README")
   const readme = join(clone, "README.md")
@@ -297,6 +358,20 @@ try {
 
   log("→ updating the lockfile")
   run("pnpm", ["install", "--lockfile-only", "--ignore-scripts"], { cwd: clone, stdio: "inherit" })
+
+  // The one comparison nothing was making. A lockfile resolved against the
+  // wrong override set installs, builds and looks identical — so the floors
+  // have to be read back out of what pnpm actually wrote, not assumed from
+  // what was written into the manifest a moment ago.
+  log("→ checking the lockfile took the overrides")
+  const lockfile = join(clone, "pnpm-lock.yaml")
+  if (!existsSync(lockfile)) {
+    fail("pnpm wrote no lockfile — a client repository cannot install without one.")
+  }
+  const written = parseLockfileOverrides(readFileSync(lockfile, "utf8"))
+  const missing = missingFromLockfile(overrides, written)
+  if (missing.length > 0) fail(describeMissing(missing))
+  log(`   ${Object.keys(overrides).length} override(s) present in pnpm-lock.yaml`)
 
   const status = run("git", ["status", "--porcelain"], { cwd: clone })
   if (!status) done("✓ the mirror is already up to date")

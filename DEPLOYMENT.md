@@ -228,11 +228,12 @@ merged version bump releases itself. With nothing to do it prints "No unpublishe
 projects to publish" and exits 0. The manual versioning step is written up in
 [`apps/docs/deployment/github-packages.md`](apps/docs/deployment/github-packages.md).
 
-**The release chain gates on four of the five required checks.** `release.yml` calls
-`ci.yml` through `workflow_call`, covering `Lint`, `Type Check`, `Test` and `Build`.
-`E2E Status` lives in `e2e.yml`, which the chain never calls, so a red or
-still-running E2E suite does not stop a publish. Recorded in the workflow header and
-tracked as #308. See [`TESTING.md`](TESTING.md#4-ci).
+**The release chain gates on all five required checks.** `release.yml` calls
+`ci.yml` through `workflow_call`, covering `Lint`, `Type Check`, `Test` and `Build`,
+and calls `e2e.yml` the same way for `E2E Status` (#307, #308). The E2E call is made
+only when the push will actually publish — a `Plan` job asks the registry the question
+`changeset publish` asks, and 12 of the 293 commits on `main` between 01/07/2026 and
+07/09/2026 would have answered yes. See [`TESTING.md`](TESTING.md#4-ci).
 
 All three apps are excluded from versioning (`.changeset/config.json`): they are not
 published, they are deployed.
@@ -246,7 +247,7 @@ Clients do not clone this repository. They clone
 subdirectory of a monorepo — git clones whole repositories. The mirror is the
 shippable cut of `apps/themes`.
 
-`scripts/publish-mirror.mjs` rewrites the four things that only make sense here:
+`scripts/publish-mirror.mjs` rewrites the six things that only make sense here:
 
 | | In `apps/themes` | In the mirror |
 | --- | --- | --- |
@@ -254,11 +255,39 @@ shippable cut of `apps/themes`.
 | Lockfile | the root one | its own, regenerated |
 | `vercel.json` | `turbo-ignore` | absent — no turbo workspace client-side |
 | `name` | `@beyours/themes` | `beyours-boilerplate` |
+| `packageManager` | inert — only the root's counts | the monorepo root's, verbatim |
+| `pnpm.overrides` | inert — only the root's counts | the root's 22, merged in |
+
+The last two are the same lesson twice: pnpm honours those fields from the
+**workspace root** only, so inside this repository `apps/themes`'s own copies do
+nothing — `pnpm install` says so in as many words — and on the mirror they become
+the ones that count. `packageManager` cost twelve days of a frozen mirror when it
+disagreed. `pnpm.overrides` cost nothing visible, which is why it took longer to
+find: the mirror carried one entry against the root's 22, so every client site
+resolved its lockfile without nineteen security floors this repository enforces on
+itself, and the mirror still installed and still built (#289). The publisher now
+merges the root's block in — root winning, since that is already what pnpm applies
+here — and reads the floors back out of the lockfile pnpm wrote, because a lockfile
+resolved against the wrong override set looks exactly like one resolved against the
+right one.
 
 `publish-mirror.yml` fires on two events, because the mirror drifts in two ways: a
-template change (push to `main` touching `apps/themes/**`) and a package
-republication (completion of *Release*). `workflow_dispatch` offers an on-demand dry
-run. Locally:
+template change (push to `main` touching `apps/themes/**`, or any of the publisher's
+own inputs) and a package republication (completion of *Release*).
+`workflow_dispatch` offers an on-demand dry run.
+
+**Both paths are gated on the E2E suite, by different routes** (#307). The `push`
+path calls `e2e.yml` for the `themes` suite and waits for it — a template change now
+reaches the boilerplate in about twelve minutes rather than the thirty-five seconds
+measured on `aa026e6`, which is the point: the sync was arriving before the only job
+that exercises the product. The `workflow_run` path is gated on *Release*, which gates
+itself on E2E when it publishes — so that path is now held to a Release that actually
+published, detected by the tags `changeset publish` writes. Without that narrowing a
+template change would go out twice: once through the gated `push` run, and once
+through the Release its own merge started, which publishes nothing and goes green in
+five minutes.
+
+Locally:
 
 ```bash
 NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
@@ -378,6 +407,14 @@ client-side**: `update-template.mjs` runs a bare `git fetch template` and nothin
 checks the contract before pulling commits, so an expired site that runs the command
 gets everything. The business model is written; its guard is not.
 
+**A site created before 07/09/2026 has none of the security floors** (#289). They
+arrive through `pnpm update:template` — the merge touches `package.json` and
+`pnpm install` re-resolves the lockfile against the 22 overrides instead of one — but
+only once that site runs it. Nothing pushes them, so the sites that most need telling
+are exactly the ones that update least often. Sites in maintenance should be run
+through the update; sites out of maintenance should be told the floors exist and are
+not reaching them.
+
 ---
 
 ## 8. Rolling back beyours.fr
@@ -463,7 +500,6 @@ Stated because a deployment document that omits them is how they stay open.
 
 - **The maintenance freeze has no enforcement** (§7).
 - **Offboarding revokes nothing automatically** (§7).
-- **The release chain does not gate on `E2E Status`** (§5, #308).
 - **Six superseded Convex deployments are still up.** Five answer `200` and serve
   nothing; decommissioning them is
   [`convex-account-cutover-runbook.md`](tasks/convex-account-cutover-runbook.md) §4,
