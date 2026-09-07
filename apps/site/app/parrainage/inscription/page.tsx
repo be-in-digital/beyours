@@ -12,7 +12,6 @@ export default function InscriptionPage() {
   const { signIn } = useAuthActions();
   const { isAuthenticated } = useConvexAuth();
   const createAfterSignup = useMutation(api.affiliateUsers.createAfterSignup);
-  const generateCode = useMutation(api.referralCodes.generateMyCode);
   const { isSubmitting, setIsSubmitting, error, setError } =
     useAffiliateAuth();
   const router = useRouter();
@@ -27,7 +26,14 @@ export default function InscriptionPage() {
     };
   }, []);
 
-  // Once auth succeeds → create the affiliate profile + code → contract
+  /* Once auth succeeds → create the affiliate profile → contract.
+
+     No code is minted here. This called `generateMyCode` between the profile
+     and the redirect, which is `pending_contract` — the exact state
+     `assertMayHoldACode` refuses, so the call could only throw. It threw into
+     a `catch` that redirected anyway, so onboarding looked fine and the
+     affiliate simply never had a code. The signature mints it now, in the same
+     transaction that activates them (convex/contractSignatures.ts). */
   useEffect(() => {
     if (isAuthenticated && !hasCreated.current) {
       if (signupTimeout.current) clearTimeout(signupTimeout.current);
@@ -35,15 +41,13 @@ export default function InscriptionPage() {
       (async () => {
         try {
           await createAfterSignup();
-          await generateCode();
-          router.push("/parrainage/contrat");
         } catch (err) {
           console.error("Post-signup error:", err);
-          router.push("/parrainage/contrat");
         }
+        router.push("/parrainage/contrat");
       })();
     }
-  }, [isAuthenticated, createAfterSignup, generateCode, router]);
+  }, [isAuthenticated, createAfterSignup, router]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
