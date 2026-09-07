@@ -25,8 +25,18 @@
  * release never publishes". This is the check that makes it close: a mismatch
  * stops the publish instead of reaching a client.
  *
+ * Two halves, because a subpath can fail in two ways. The map may not carry it
+ * at all — the drift above — or the map may carry it and point at a file the
+ * tarball never shipped, which resolves in the map and dies just as hard one
+ * step later. That second half is not hypothetical either: `restaurant`
+ * declared `./stores`, `./services` and `./hooks` while the build bundled only
+ * `src/index.ts`, and `core`'s `./auth/rbac` pointed into `src/` while the
+ * tarball carried only `dist/` (both in those packages' CHANGELOGs). So
+ * `tarballContents` returns the archive's file list alongside the map, and
+ * `unshippedTargets` checks what each declaration points at.
+ *
  * Network-free on purpose — the caller fetches the published tarballs and this
- * module reads them (`exportsOfTarball`), so all of it is testable against a
+ * module reads them (`tarballContents`), so all of it is testable against a
  * fixture tarball, without a registry.
  */
 
@@ -105,41 +115,155 @@ function tarField(header, at, length) {
 }
 
 /**
- * The `exports` field of the `package/package.json` inside an npm tarball —
- * the one place the registry cannot abbreviate.
+ * The `path` record of a pax extended header, which overrides the next entry's
+ * name.
+ *
+ * Needed for the file list, not for the manifest: npm writes the manifest at
+ * the short, fixed `package/package.json`, but node-tar switches to a pax
+ * header for any path the 100-byte ustar name field cannot hold, and the
+ * truncated name it leaves behind would read as a file the tarball does not
+ * carry. That is a false "declared but not shipped" on a package that is
+ * correctly built — the one failure mode this gate must not have.
+ *
+ * Records are `"<byte length> <key>=<value>\n"`, and the length counts the
+ * whole record, so this walks bytes rather than characters: a non-ASCII path
+ * makes the two disagree.
+ */
+function paxPath(block) {
+  for (let at = 0; at < block.length && block[at] !== 0; ) {
+    const space = block.indexOf(0x20, at)
+    if (space === -1) break
+    const length = Number.parseInt(block.toString("ascii", at, space), 10)
+    if (!Number.isInteger(length) || length <= 0 || at + length > block.length) break
+    const equals = block.indexOf(0x3d, space + 1)
+    if (equals !== -1 && equals < at + length) {
+      if (block.toString("ascii", space + 1, equals) === "path") {
+        // -1 drops the record's trailing newline.
+        return block.toString("utf8", equals + 1, at + length - 1)
+      }
+    }
+    at += length
+  }
+  return null
+}
+
+/**
+ * What an npm tarball carries: the `exports` map its manifest declares, and
+ * the paths of every file inside it.
  *
  * `npm view <pkg> exports` is NOT equivalent: GitHub Packages serves an
  * abbreviated packument without the field, so the lookup answers empty for
  * every engine package whatever the tarball says (#380). The tarball is the
  * artefact a client installs, so its manifest is the ground truth this whole
- * module exists to check.
+ * module exists to check — and so is its file list, because a manifest can
+ * name a file the archive does not hold.
  *
- * Returns the parsed `exports` value, or `undefined` when the manifest
- * genuinely declares none — the legacy shape `exportsResolve` allows. Throws
- * on anything unreadable (not gzip, no manifest inside, manifest not JSON):
- * the caller maps that to `EXPORTS_UNKNOWN`, never to "fine".
+ * `files` is a Set of package-relative paths written the way `exports` targets
+ * are, `./dist/index.js`, so a target is checked by a plain lookup. Entries
+ * are the archive's own: npm roots everything at `package/`, that prefix is
+ * stripped, and directory entries are dropped because no export target may
+ * resolve to one.
+ *
+ * `exports` is the parsed value, or `undefined` when the manifest genuinely
+ * declares none — the legacy shape `exportsResolve` allows. Throws on anything
+ * unreadable (not gzip, no manifest inside, manifest not JSON): the caller
+ * maps that to `EXPORTS_UNKNOWN`, never to "fine".
  *
  * The tar walk is deliberately minimal: 512-byte headers, an octal size, data
- * padded to the block. Entries it does not care about — pax extended headers
- * included — are skipped by size, which is all tar requires. npm writes the
- * manifest at the short, fixed path `package/package.json`, so the ustar
- * name field always carries it whole.
+ * padded to the block. It reads the two extensions that rename an entry — pax
+ * `x` (what node-tar writes past 100 bytes) and GNU `L` — because a name read
+ * short would look like a missing file; everything else it does not care about
+ * is skipped by size, which is all tar requires.
  */
-export function exportsOfTarball(tgzPath) {
+export function tarballContents(tgzPath) {
   const archive = gunzipSync(readFileSync(tgzPath))
+  const files = new Set()
+  let manifest
+  let renamed = null
+
   for (let at = 0; at + 512 <= archive.length; ) {
     const header = archive.subarray(at, at + 512)
     if (header.every((byte) => byte === 0)) break // end-of-archive marker
+    const type = String.fromCharCode(header[156])
+    const size = Number.parseInt(tarField(header, 124, 12).trim() || "0", 8) || 0
+    const body = archive.subarray(at + 512, at + 512 + size)
+    at += 512 + Math.ceil(size / 512) * 512
+
+    // Both of these name the entry that FOLLOWS them; `g` is the global
+    // variant, which names nothing.
+    if (type === "x" || type === "X") {
+      renamed = paxPath(body) ?? renamed
+      continue
+    }
+    if (type === "L") {
+      renamed = tarField(body, 0, body.length)
+      continue
+    }
+    if (type === "g" || type === "K") continue
+
     const name = tarField(header, 0, 100)
     const prefix = tarField(header, 345, 155)
-    const size = parseInt(tarField(header, 124, 12).trim() || "0", 8)
-    at += 512
-    if ((prefix ? `${prefix}/${name}` : name) === "package/package.json") {
-      return JSON.parse(archive.subarray(at, at + size).toString("utf8")).exports
-    }
-    at += Math.ceil(size / 512) * 512
+    const stored = renamed ?? (prefix ? `${prefix}/${name}` : name)
+    renamed = null
+
+    if (type === "5" || stored.endsWith("/")) continue // a directory, never a target
+    if (!stored.startsWith("package/")) continue // npm roots every entry there
+    const shipped = `./${stored.slice("package/".length)}`
+
+    files.add(shipped)
+    if (shipped === "./package.json") manifest = JSON.parse(body.toString("utf8"))
   }
-  throw new Error(`${tgzPath} carries no package/package.json`)
+
+  if (manifest === undefined) throw new Error(`${tgzPath} carries no package/package.json`)
+  return { exports: manifest.exports, files }
+}
+
+/**
+ * The map entry Node would pick for `subpath`, and what its `*` stood for.
+ *
+ * An exact key always beats a pattern; between patterns Node takes the most
+ * specific, which is the longest text before the `*` and then the longest
+ * after it. Picking the same one matters beyond a yes/no answer: it decides
+ * which target `unshippedTargets` goes looking for, and checking a pattern
+ * Node would not have used is how a correctly-built package turns red.
+ *
+ * Returns `{ entry, star }`, or `null` when the map does not carry it.
+ */
+function resolvedEntry(map, subpath) {
+  if (typeof map === "string") return subpath === "." ? { entry: map, star: null } : null
+  if (typeof map !== "object" || map === null) return null
+
+  const keys = Object.keys(map)
+  // Node also accepts a map whose keys are all CONDITIONS rather than
+  // subpaths — `{ "import": …, "require": … }` — as sugar for `{ ".": … }`.
+  // (Mixing the two forms is an error Node refuses, so one non-"." key is
+  // enough to tell them apart; `{}` exports nothing, not even ".".)
+  if (!keys.some((key) => key.startsWith("."))) {
+    return keys.length > 0 && subpath === "." ? { entry: map, star: null } : null
+  }
+  if (Object.prototype.hasOwnProperty.call(map, subpath)) return { entry: map[subpath], star: null }
+
+  let best = null
+  for (const pattern of keys) {
+    const star = pattern.indexOf("*")
+    if (star === -1) continue
+    const before = pattern.slice(0, star)
+    const after = pattern.slice(star + 1)
+    if (subpath.length < before.length + after.length) continue
+    if (!subpath.startsWith(before) || !subpath.endsWith(after)) continue
+    if (
+      best === null ||
+      before.length > best.before.length ||
+      (before.length === best.before.length && after.length > best.after.length)
+    ) {
+      best = { pattern, before, after }
+    }
+  }
+  if (best === null) return null
+  return {
+    entry: map[best.pattern],
+    star: subpath.slice(best.before.length, subpath.length - best.after.length),
+  }
 }
 
 /**
@@ -152,6 +276,9 @@ export function exportsOfTarball(tgzPath) {
  * third used to be folded into the second, and that fold is how the gate
  * shipped `admin@8.0.0` without `./game` while reporting nothing (#380).
  *
+ * This answers the map question only. A subpath the map carries can still
+ * point at a file the tarball omits — see `unshippedTargets`.
+ *
  * Handles the one wildcard form Node supports, `"./x/*"`, which matches a
  * single `*` standing for any remaining path.
  */
@@ -162,42 +289,93 @@ export function exportsResolve(map, subpath) {
     // allows any path into the package. Unverifiable here and not a defect.
     return true
   }
-  if (typeof map === "string") return subpath === "."
-  const keys = Object.keys(map)
-  // Node also accepts a map whose keys are all CONDITIONS rather than
-  // subpaths — `{ "import": …, "require": … }` — as sugar for `{ ".": … }`.
-  // (Mixing the two forms is an error Node refuses, so one non-"." key is
-  // enough to tell them apart; `{}` exports nothing, not even ".".)
-  if (!keys.some((key) => key.startsWith("."))) {
-    return keys.length > 0 && subpath === "."
-  }
-  if (Object.prototype.hasOwnProperty.call(map, subpath)) return true
+  return resolvedEntry(map, subpath) !== null
+}
 
-  for (const pattern of Object.keys(map)) {
-    const star = pattern.indexOf("*")
-    if (star === -1) continue
-    const before = pattern.slice(0, star)
-    const after = pattern.slice(star + 1)
-    if (
-      subpath.length >= before.length + after.length &&
-      subpath.startsWith(before) &&
-      subpath.endsWith(after)
-    ) {
-      return true
-    }
+/** Every string an entry can resolve to, flattening conditions and fallbacks. */
+function targetLeaves(entry, out = []) {
+  if (typeof entry === "string") out.push(entry)
+  else if (Array.isArray(entry)) for (const alternative of entry) targetLeaves(alternative, out)
+  else if (entry !== null && typeof entry === "object") {
+    for (const value of Object.values(entry)) targetLeaves(value, out)
   }
-  return false
+  // Anything else — `null` above all, which blocks a subpath on purpose —
+  // points at no file, so there is nothing to look for.
+  return out
+}
+
+/** `./a/./b.js` and `./a/b.js` are the same file; the file list holds the second. */
+function normalizeTarget(target) {
+  const segments = target.split("/").filter((segment) => segment !== "" && segment !== ".")
+  return `./${segments.join("/")}`
+}
+
+/**
+ * The files a resolvable subpath points at and the tarball does not carry.
+ *
+ * The gap this closes: `exportsResolve` answers "is it in the map", and a
+ * package can declare `"./stores": "./dist/stores.js"` while the build never
+ * emits `dist/stores.js` or `files` excludes it. Resolution succeeds, the gate
+ * stays green, and the client's `next build` dies one step further along —
+ * `ERR_MODULE_NOT_FOUND` instead of `ERR_PACKAGE_PATH_NOT_EXPORTED`, same
+ * broken delivery. Both recorded occurrences are in the CHANGELOGs of
+ * `restaurant` (c1af162) and `core`.
+ *
+ * Three decisions, because this gate blocks the sync to the repository every
+ * client clones, so a wrong red stops all delivery and is worse than a miss:
+ *
+ *   - CONDITIONS AND FALLBACKS. An entry can be `{ types, import, require }`,
+ *     nested, or an array of alternatives. This flags a subpath only when NONE
+ *     of its leaves is shipped — proof that no consumer resolves it, whichever
+ *     condition its bundler activates. The strict reading, demanding every
+ *     leaf, would also catch a half-built entry (`.mjs` shipped, `.d.ts` not),
+ *     but it decides for the client which conditions matter, and this module
+ *     cannot know that. Both recorded occurrences ship no leaf at all, so the
+ *     provable rule catches the real ones. Tighten it the day a partial build
+ *     actually reaches a client.
+ *   - WILDCARDS. `"./aws/*": "./src/aws/*.ts"` is checked against the import
+ *     that matched it, substituting the `*` exactly as Node does — every
+ *     occurrence, from the pattern Node itself would have picked. So
+ *     `./aws/folders` looks for `./src/aws/folders.ts` and nothing broader.
+ *   - WHAT IS NOT CHECKABLE IS NOT FLAGGED. No file list, an unread map, a
+ *     legacy package with no `exports`, a `null` (blocked) entry, or a target
+ *     that is a bare specifier rather than a `./` path — each returns nothing.
+ *     Silence here is "cannot prove it missing", never "it is fine": the map
+ *     half still ran, and a lookup that failed outright is already flagged as
+ *     `EXPORTS_UNKNOWN`.
+ *
+ * @returns the missing targets, or `[]` when there is nothing to report
+ */
+export function unshippedTargets(map, subpath, files) {
+  if (files === undefined || files === null) return []
+  if (map === EXPORTS_UNKNOWN || map === undefined || map === null) return []
+
+  const match = resolvedEntry(map, subpath)
+  if (match === null) return [] // not exported at all — the other half's problem
+
+  const targets = targetLeaves(match.entry)
+    .map((target) => (match.star === null ? target : target.replaceAll("*", match.star)))
+    // A target may be a bare specifier pointing into another package, which
+    // this tarball is not expected to carry.
+    .filter((target) => target.startsWith("./") && !target.split("/").includes(".."))
+  if (targets.length === 0) return []
+
+  const shipped = files instanceof Set ? files : new Set(files)
+  const missing = targets.filter((target) => !shipped.has(normalizeTarget(target)))
+  return missing.length === targets.length ? missing : []
 }
 
 /**
  * Which imports the pinned versions cannot resolve.
  *
  * @param imports  from `engineImportsIn`
- * @param published `pkg -> { version, exports }` as read from the registry,
- *                  where `exports` may be `EXPORTS_UNKNOWN` when the tarball
- *                  could not be fetched or read. A package missing from this
- *                  map, or one whose exports are unknown, is reported rather
- *                  than skipped: not knowing is not the same as being fine.
+ * @param published `pkg -> { version, exports, files }` as read from the
+ *                  registry, where `exports` may be `EXPORTS_UNKNOWN` when the
+ *                  tarball could not be fetched or read, and `files` is the
+ *                  archive's contents from the same read. A package missing
+ *                  from this map, or one whose exports are unknown, is
+ *                  reported rather than skipped: not knowing is not the same
+ *                  as being fine.
  * @returns one entry per unresolvable import, ready to print
  */
 export function unresolvableImports(imports, published) {
@@ -227,6 +405,17 @@ export function unresolvableImports(imports, published) {
           version: entry.version,
           reason: "not exported by the published version",
         })
+        continue
+      }
+      const missing = unshippedTargets(entry.exports, subpath, entry.files)
+      if (missing.length > 0) {
+        problems.push({
+          pkg,
+          subpath,
+          version: entry.version,
+          reason: "declared but not shipped",
+          targets: missing,
+        })
       }
     }
   }
@@ -236,6 +425,9 @@ export function unresolvableImports(imports, published) {
 /** The failure message, written to be actionable without opening this file. */
 export function describeUnresolvable(problems) {
   const unread = (p) => p.reason === "exports could not be read from the published tarball"
+  const unshipped = (p) => p.reason === "declared but not shipped"
+  const behind = (p) => p.reason === "not exported by the published version" || p.version === null
+
   const lines = [
     "the mirror would ship imports its pinned engine versions cannot resolve:",
     "",
@@ -243,9 +435,14 @@ export function describeUnresolvable(problems) {
   for (const p of problems) {
     if (p.version === null) lines.push(`  ${p.pkg} — ${p.reason}`)
     else if (unread(p)) lines.push(`  ${p.pkg}@${p.version} — ${p.reason}`)
-    else lines.push(`  ${p.pkg}@${p.version} does not export ${p.subpath}`)
+    else if (unshipped(p)) {
+      lines.push(
+        `  ${p.pkg}@${p.version} declares ${p.subpath}, but the tarball ships` +
+          ` none of: ${p.targets.join(", ")}`,
+      )
+    } else lines.push(`  ${p.pkg}@${p.version} does not export ${p.subpath}`)
   }
-  if (problems.some((p) => !unread(p))) {
+  if (problems.some(behind)) {
     lines.push(
       "",
       "A client would install this without complaint and then fail to build with",
@@ -257,6 +454,20 @@ export function describeUnresolvable(problems) {
       "merge it, and let Release publish — then re-run this sync. Do not work",
       "around it by removing the import; the import is correct, the mirror's",
       "dependency range is what is behind.",
+    )
+  }
+  if (problems.some(unshipped)) {
+    lines.push(
+      "",
+      "Where a subpath is declared but not shipped, the version is not behind —",
+      "the BUILD is, and releasing again would publish the same hole. The tarball",
+      "carries the exports map naming that file and not the file itself, so a",
+      "client installs it, resolves the subpath, and dies on ERR_MODULE_NOT_FOUND.",
+      "Fix it in the package: give the entry point to the build, or add the",
+      "directory it lands in to `files` in that package's package.json — then",
+      "release. Twice already: `restaurant` declared ./stores, ./services and",
+      "./hooks while the build bundled only src/index.ts, and `core`'s",
+      "./auth/rbac pointed into src/ while the tarball carried only dist/.",
     )
   }
   if (problems.some(unread)) {

@@ -8,9 +8,10 @@ import {
   describeUnresolvable,
   engineImportsIn,
   EXPORTS_UNKNOWN,
-  exportsOfTarball,
   exportsResolve,
+  tarballContents,
   unresolvableImports,
+  unshippedTargets,
 } from "../../../scripts/lib/engine-exports.mjs"
 
 /**
@@ -53,6 +54,18 @@ function tree(files: Record<string, string>): string {
   return root
 }
 
+/** Every literal file a manifest's `exports` names; wildcards name no one file. */
+function declaredTargets(entry: unknown, out: string[] = []): string[] {
+  if (typeof entry === "string") {
+    if (entry.startsWith("./") && !entry.includes("*")) out.push(entry)
+  } else if (Array.isArray(entry)) {
+    for (const alternative of entry) declaredTargets(alternative, out)
+  } else if (entry !== null && typeof entry === "object") {
+    for (const value of Object.values(entry)) declaredTargets(value, out)
+  }
+  return out
+}
+
 /**
  * A REAL tarball, built by the same `npm pack` the publisher runs — not an
  * injected map. That distinction is the whole lesson of #380: the 67 tests
@@ -62,10 +75,20 @@ function tree(files: Record<string, string>): string {
  * registry → tarball → manifest → resolution. GitHub Packages omits `exports`
  * from the packument `npm view` reads, so the tarball is the only artefact
  * that tells the truth, and these fixtures are genuine ones: whatever npm
- * writes into an archive (pax headers included), `exportsOfTarball` is proven
+ * writes into an archive (pax headers included), `tarballContents` is proven
  * here to read back.
+ *
+ * By default the fixture SHIPS WHAT IT DECLARES: every literal target in its
+ * `exports` is written into the archive, so a fixture is a correctly-built
+ * package unless a test says otherwise. `omit` takes files back out — that is
+ * a build that forgot an entry point, or a `files` field that excludes it —
+ * and `ship` adds ones no literal target names, wildcard targets above all.
+ * Paths are written the way `exports` targets are, `./dist/stores.js`.
  */
-function packFixture(manifest: Record<string, unknown>): string {
+function packFixture(
+  manifest: Record<string, unknown>,
+  { ship = [], omit = [] }: { ship?: string[]; omit?: string[] } = {},
+): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tarball-fixture-"))
   const source = path.join(dir, "source")
   fs.mkdirSync(source)
@@ -73,7 +96,15 @@ function packFixture(manifest: Record<string, unknown>): string {
     path.join(source, "package.json"),
     JSON.stringify({ version: "0.0.0-fixture", ...manifest }, null, 2),
   )
-  fs.writeFileSync(path.join(source, "index.js"), "")
+
+  const shipped = new Set(["./index.js", ...declaredTargets(manifest.exports), ...ship])
+  for (const rel of omit) shipped.delete(rel)
+  for (const rel of shipped) {
+    const full = path.join(source, rel)
+    fs.mkdirSync(path.dirname(full), { recursive: true })
+    fs.writeFileSync(full, "")
+  }
+
   execFileSync("npm", ["pack", source, "--pack-destination", dir], {
     cwd: dir,
     stdio: ["ignore", "pipe", "pipe"],
@@ -192,7 +223,7 @@ describe("reading the published exports from the tarball", () => {
       name: "@be-in-digital/fixture-strict",
       exports: { ".": "./index.js", "./game": "./game.js", "./aws/*": "./aws/*.js" },
     })
-    expect(exportsOfTarball(tarball)).toEqual({
+    expect(tarballContents(tarball).exports).toEqual({
       ".": "./index.js",
       "./game": "./game.js",
       "./aws/*": "./aws/*.js",
@@ -207,16 +238,263 @@ describe("reading the published exports from the tarball", () => {
    */
   test("a manifest with no exports field reads as undefined, the legacy shape", () => {
     const tarball = packFixture({ name: "@be-in-digital/fixture-legacy" })
-    expect(exportsOfTarball(tarball)).toBeUndefined()
-    expect(exportsResolve(exportsOfTarball(tarball), "./anything")).toBe(true)
+    expect(tarballContents(tarball).exports).toBeUndefined()
+    expect(exportsResolve(tarballContents(tarball).exports, "./anything")).toBe(true)
   })
 
   test("garbage throws rather than answering", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "tarball-garbage-"))
     const notGzip = path.join(dir, "not-a-tarball.tgz")
     fs.writeFileSync(notGzip, "this is not a gzip stream")
-    expect(() => exportsOfTarball(notGzip)).toThrow()
-    expect(() => exportsOfTarball(path.join(dir, "absent.tgz"))).toThrow()
+    expect(() => tarballContents(notGzip)).toThrow()
+    expect(() => tarballContents(path.join(dir, "absent.tgz"))).toThrow()
+  })
+})
+
+describe("reading what the tarball ships", () => {
+  test("the file list is the archive's own, package-relative, files only", () => {
+    const tarball = packFixture({
+      name: "@be-in-digital/fixture-files",
+      exports: { ".": "./dist/index.js" },
+    })
+
+    const { files } = tarballContents(tarball)
+    // Written the way an `exports` target is, so a target is a plain lookup.
+    expect(files.has("./dist/index.js")).toBe(true)
+    expect(files.has("./package.json")).toBe(true)
+    // Directory entries are dropped: no export target may resolve to one.
+    expect(files.has("./dist/")).toBe(false)
+    expect(files.has("./dist")).toBe(false)
+  })
+
+  /**
+   * node-tar writes a pax extended header for any path the 100-byte ustar name
+   * field cannot hold, and the header that follows it carries a TRUNCATED
+   * name. Read short, that entry stops matching the target that declares it,
+   * and a correctly-built package goes red — the one failure this gate cannot
+   * afford, since a wrong red stops every client's delivery. `npm pack` writes
+   * a real pax header here: the single path component is 123 bytes, which no
+   * prefix split can rescue.
+   */
+  test("a path too long for the ustar header is read back whole", () => {
+    const long = `./dist/${"a".repeat(120)}.js`
+    const tarball = packFixture({
+      name: "@be-in-digital/fixture-long",
+      exports: { "./long": long },
+    })
+
+    const { exports, files } = tarballContents(tarball)
+    expect(files.has(long)).toBe(true)
+    expect(unshippedTargets(exports, "./long", files)).toEqual([])
+  })
+})
+
+/**
+ * The other half of the gate. `exportsResolve` answers "is the subpath in the
+ * map"; a package can carry it and point at a file the tarball never shipped,
+ * because the build did not emit that entry point or `files` excluded its
+ * directory. Resolution succeeds, the gate stays green, and the client's
+ * `next build` dies one step further along on ERR_MODULE_NOT_FOUND — the same
+ * broken delivery the map half exists to stop.
+ *
+ * Recorded twice: `@be-in-digital/restaurant` c1af162 ("The build only bundled
+ * `src/index.ts`, so those three `exports` entries pointed at files that never
+ * existed — in the workspace and in the published tarball alike") and
+ * `@be-in-digital/core`, whose `./auth/rbac` pointed at `src/auth/rbac.ts`
+ * while the tarball shipped only `dist/`.
+ */
+describe("a subpath declared but not shipped", () => {
+  test("the missing file is named, and told apart from a missing release", () => {
+    const root = tree({
+      "app/page.tsx": `import { useStore } from "@be-in-digital/fixture/stores"`,
+    })
+    const tarball = packFixture(
+      {
+        name: "@be-in-digital/fixture",
+        exports: { ".": "./dist/index.js", "./stores": "./dist/stores.js" },
+      },
+      { omit: ["./dist/stores.js"] },
+    )
+
+    const published = {
+      "@be-in-digital/fixture": { version: "6.0.0", ...tarballContents(tarball) },
+    }
+    const problems = unresolvableImports(engineImportsIn(root), published)
+
+    expect(problems).toEqual([
+      {
+        pkg: "@be-in-digital/fixture",
+        subpath: "./stores",
+        version: "6.0.0",
+        reason: "declared but not shipped",
+        targets: ["./dist/stores.js"],
+      },
+    ])
+
+    const message = describeUnresolvable(problems)
+    expect(message).toContain("./dist/stores.js")
+    // The remedy is a build, not a release: publishing again ships the same
+    // hole, so the message must not send anyone to write a changeset.
+    expect(message).toContain("ERR_MODULE_NOT_FOUND")
+    expect(message).toContain("`files`")
+    expect(message).not.toContain("ERR_PACKAGE_PATH_NOT_EXPORTED")
+    expect(message).not.toContain("releasing the engine")
+  })
+
+  /**
+   * The recorded occurrence, reduced. `restaurant` declared `./stores`,
+   * `./services` and `./hooks` — three conditional entries, nine targets —
+   * while the build bundled only `src/index.ts`. The root entry is built, so
+   * the gate must report the three holes and leave the package's working half
+   * alone.
+   */
+  test("the restaurant c1af162 shape: three entries, not one leaf between them", () => {
+    const conditions = (name: string) => ({
+      types: `./dist/${name}/index.d.ts`,
+      import: `./dist/${name}/index.mjs`,
+      require: `./dist/${name}/index.js`,
+    })
+    const unbuilt = ["stores", "services", "hooks"]
+    const tarball = packFixture(
+      {
+        name: "@be-in-digital/restaurant",
+        exports: {
+          ".": {
+            types: "./dist/index.d.ts",
+            import: "./dist/index.mjs",
+            require: "./dist/index.js",
+          },
+          "./stores": conditions("stores"),
+          "./services": conditions("services"),
+          "./hooks": conditions("hooks"),
+        },
+      },
+      { omit: unbuilt.flatMap((name) => Object.values(conditions(name))) },
+    )
+
+    const problems = unresolvableImports(
+      new Map([
+        ["@be-in-digital/restaurant", new Set([".", "./stores", "./services", "./hooks"])],
+      ]),
+      { "@be-in-digital/restaurant": { version: "6.0.0", ...tarballContents(tarball) } },
+    )
+
+    expect(problems.map((p) => p.subpath).sort()).toEqual(["./hooks", "./services", "./stores"])
+    expect(problems.every((p) => p.reason === "declared but not shipped")).toBe(true)
+    // Every condition of an unbuilt entry is named, so whoever reads the
+    // failure knows the entry point is missing rather than one file of it.
+    expect(problems.map((p) => p.targets?.length)).toEqual([3, 3, 3])
+  })
+
+  /**
+   * The documented limit, held deliberately. Both recorded occurrences shipped
+   * NO leaf for the subpath they declared, which is proof no consumer can
+   * resolve it whatever condition its bundler activates. A half-built entry —
+   * the runtime file shipped, the `.d.ts` not — is left alone: which condition
+   * a client's toolchain selects is not something this module can know, and it
+   * would be deciding that on a guess. A wrong red here stops the sync to the
+   * repository every client clones. Tighten it the day a partial build
+   * actually reaches a client.
+   */
+  test("an entry with one leaf shipped is left alone; with none, both are named", () => {
+    const manifest = {
+      name: "@be-in-digital/fixture",
+      exports: { "./x": { types: "./dist/x.d.ts", import: "./dist/x.mjs" } },
+    }
+
+    const half = tarballContents(packFixture(manifest, { omit: ["./dist/x.d.ts"] }))
+    expect(unshippedTargets(half.exports, "./x", half.files)).toEqual([])
+
+    const none = tarballContents(
+      packFixture(manifest, { omit: ["./dist/x.d.ts", "./dist/x.mjs"] }),
+    )
+    expect(unshippedTargets(none.exports, "./x", none.files)).toEqual([
+      "./dist/x.d.ts",
+      "./dist/x.mjs",
+    ])
+  })
+
+  /**
+   * A wildcard target names no one file, so it is expanded against the import
+   * that matched it — every `*` substituted, exactly as Node substitutes them.
+   * Checking it as a literal would ask the tarball for a path called `*` and
+   * go red on every package that uses the form.
+   */
+  test("a wildcard target is expanded against the import that matched it", () => {
+    const tarball = packFixture(
+      { name: "@be-in-digital/fixture", exports: { "./aws/*": "./src/aws/*.ts" } },
+      { ship: ["./src/aws/folders.ts"] },
+    )
+
+    const { exports, files } = tarballContents(tarball)
+    expect(unshippedTargets(exports, "./aws/folders", files)).toEqual([])
+    expect(unshippedTargets(exports, "./aws/media-url", files)).toEqual([
+      "./src/aws/media-url.ts",
+    ])
+  })
+
+  /**
+   * When two patterns match, Node resolves the more specific one, so that is
+   * the target to look for. Checking `./aws/*` here would ask for
+   * `./src/aws/ses/order.ts`, which nothing ships and nothing loads: a red on
+   * a package that is fine.
+   */
+  test("the pattern Node would pick decides which file is looked for", () => {
+    const map = { "./aws/*": "./src/aws/*.ts", "./aws/ses/*": "./src/ses/*.ts" }
+
+    expect(unshippedTargets(map, "./aws/ses/order", new Set(["./src/ses/order.ts"]))).toEqual([])
+    expect(unshippedTargets(map, "./aws/ses/order", new Set(["./src/aws/ses/order.ts"]))).toEqual([
+      "./src/ses/order.ts",
+    ])
+  })
+
+  /**
+   * Silence here means "cannot prove it missing", never "it is fine" — the map
+   * half has already run on all of these, and a lookup that failed outright is
+   * flagged as EXPORTS_UNKNOWN before this is ever asked.
+   */
+  test("what cannot be checked is not flagged", () => {
+    const map = { "./a": "./dist/a.js", "./blocked": null, "./external": "other-package/thing" }
+    const files = new Set(["./dist/a.js"])
+
+    // No file list at all — an injected fixture, or a read that never happened.
+    expect(unshippedTargets(map, "./a", undefined)).toEqual([])
+    // A blocked subpath, and a target inside another package, name no file here.
+    expect(unshippedTargets(map, "./blocked", files)).toEqual([])
+    expect(unshippedTargets(map, "./external", files)).toEqual([])
+    // A legacy package resolves any path; an unread map is a different report.
+    expect(unshippedTargets(undefined, "./anything", files)).toEqual([])
+    expect(unshippedTargets(EXPORTS_UNKNOWN, "./anything", files)).toEqual([])
+  })
+
+  test("a subpath the map does not carry stays the other half's problem", () => {
+    const map = { ".": "./dist/index.js" }
+
+    expect(exportsResolve(map, "./game")).toBe(false)
+    expect(unshippedTargets(map, "./game", new Set(["./dist/index.js"]))).toEqual([])
+  })
+
+  test("a mixed report keeps the build remedy apart from the release remedy", () => {
+    const message = describeUnresolvable([
+      {
+        pkg: "@be-in-digital/admin",
+        subpath: "./game",
+        version: "8.0.0",
+        reason: "not exported by the published version",
+      },
+      {
+        pkg: "@be-in-digital/restaurant",
+        subpath: "./stores",
+        version: "6.0.0",
+        reason: "declared but not shipped",
+        targets: ["./dist/stores.js"],
+      },
+    ])
+
+    expect(message).toContain("@be-in-digital/admin@8.0.0 does not export ./game")
+    expect(message).toContain("releasing the engine")
+    expect(message).toContain("@be-in-digital/restaurant@6.0.0 declares ./stores")
+    expect(message).toContain("the BUILD is")
   })
 })
 
@@ -359,7 +637,7 @@ describe("the real resolution path, against a fixture tarball", () => {
     })
 
     const published = {
-      "@be-in-digital/fixture": { version: "1.0.0", exports: exportsOfTarball(tarball) },
+      "@be-in-digital/fixture": { version: "1.0.0", ...tarballContents(tarball) },
     }
     expect(unresolvableImports(engineImportsIn(root), published)).toEqual([
       {
@@ -400,7 +678,7 @@ describe("the real resolution path, against a fixture tarball", () => {
     })
     const problems = unresolvableImports(
       new Map([["@be-in-digital/admin", adminImports as Set<string>]]),
-      { "@be-in-digital/admin": { version: "8.0.0", exports: exportsOfTarball(publishedAdmin) } },
+      { "@be-in-digital/admin": { version: "8.0.0", ...tarballContents(publishedAdmin) } },
     )
 
     expect(problems).toContainEqual({
@@ -412,16 +690,74 @@ describe("the real resolution path, against a fixture tarball", () => {
   })
 
   /**
+   * The `@be-in-digital/core` occurrence, replayed against its REAL exports
+   * map: `./auth/rbac` pointed at `src/auth/rbac.ts` while the tarball shipped
+   * only `dist/`, so the subpath resolved in the map and no file answered it
+   * (`packages/core/CHANGELOG.md`). The map is read from the package rather
+   * than transcribed, so the replay follows those subpaths if they ever move
+   * into `dist/`; what it pins is that narrowing `files` back to `["dist"]`
+   * goes red instead of shipping. `apps/themes` imports six such subpaths.
+   *
+   * Deliberately not built from `packages/core`'s own tarball: that would go
+   * red whenever `dist/` is missing, which is an unbuilt checkout and not a
+   * defect, and a gate that cries wolf locally is a gate people route around.
+   */
+  test("core's files-narrowed-to-dist regression, against its real exports map", () => {
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(REPO_ROOT, "packages/core/package.json"), "utf8"),
+    ) as { version: string; exports?: unknown }
+    const intoSrc = declaredTargets(manifest.exports).filter((target) =>
+      target.startsWith("./src/"),
+    )
+    expect(
+      intoSrc,
+      "core exports nothing out of src/ any more — update this replay",
+    ).not.toHaveLength(0)
+
+    const tarball = packFixture(
+      { name: "@be-in-digital/core", exports: manifest.exports },
+      { omit: intoSrc },
+    )
+    const imported = engineImportsIn(path.join(REPO_ROOT, "apps/themes")).get(
+      "@be-in-digital/core",
+    )
+    expect(imported, "apps/themes no longer imports @be-in-digital/core").toBeDefined()
+
+    const problems = unresolvableImports(
+      new Map([["@be-in-digital/core", imported as Set<string>]]),
+      { "@be-in-digital/core": { version: manifest.version, ...tarballContents(tarball) } },
+    )
+
+    expect(problems).toContainEqual({
+      pkg: "@be-in-digital/core",
+      subpath: "./auth/rbac",
+      version: manifest.version,
+      reason: "declared but not shipped",
+      targets: ["./src/auth/rbac.ts"],
+    })
+    // The subpaths that `files` field DOES ship stay clean: the gate reports
+    // the hole, not the package.
+    expect(problems.map((problem) => problem.subpath)).not.toContain("./sentry")
+  })
+
+  /**
    * And the other half of "red today, green after the release": the same real
    * imports, against tarballs carrying the `exports` maps of the WORKSPACE
    * manifests — which is exactly what `changeset publish` ships. If this
    * fails, the next release will not fix the template: some shipped module
    * imports a subpath that does not exist even at HEAD, and no version bump
    * closes that.
+   *
+   * The fixtures ship what they declare, so this also proves the shipped-file
+   * half runs clean over all nine real maps — nine packages, ninety-odd
+   * subpaths, no false red. What it cannot prove is that each package's BUILD
+   * emits those files; only a real tarball says that, and the mirror job packs
+   * real tarballs.
    */
   test("the template's real imports resolve against what the release will publish", () => {
     const imports = engineImportsIn(path.join(REPO_ROOT, "apps/themes"))
-    const published: Record<string, { version: string; exports: unknown }> = {}
+    const published: Record<string, { version: string; exports: unknown; files: Set<string> }> =
+      {}
     for (const pkg of imports.keys()) {
       const manifest = JSON.parse(
         fs.readFileSync(
@@ -430,7 +766,7 @@ describe("the real resolution path, against a fixture tarball", () => {
         ),
       ) as { version: string; exports?: unknown }
       const tarball = packFixture({ name: pkg, exports: manifest.exports })
-      published[pkg] = { version: manifest.version, exports: exportsOfTarball(tarball) }
+      published[pkg] = { version: manifest.version, ...tarballContents(tarball) }
     }
 
     expect(describeUnresolvable(unresolvableImports(imports, published))).toBe(
@@ -460,19 +796,29 @@ describe("the publisher runs the guard", () => {
 
   /**
    * Where the exports come FROM is the fix of #380 and these hold it: the
-   * tarball (`npm pack`), read by `exportsOfTarball` — never `npm view`,
+   * tarball (`npm pack`), read by `tarballContents` — never `npm view`,
    * whose packument GitHub Packages serves without the field, silently, for
    * every engine package. The one `npm view` left asks for the version, which
    * that packument does carry.
    */
   test("it reads the published exports from the tarball, not from npm view", () => {
-    expect(publisher).toContain("exportsOfTarball")
+    expect(publisher).toContain("tarballContents")
     expect(publisher).toMatch(/"pack"/)
     expect(publisher).not.toMatch(/"view"[^\]]*"exports"/)
   })
 
   test("a failed lookup flows as EXPORTS_UNKNOWN, never as undefined", () => {
     expect(publisher).toContain("EXPORTS_UNKNOWN")
+  })
+
+  /**
+   * Both halves of the read, passed on together. Taking the map and dropping
+   * the file list would answer "is the subpath exported" and lose "does its
+   * file ship" — the gap the `declared but not shipped` report exists for, and
+   * the same shape of silent skip as #380.
+   */
+  test("it carries the tarball's file list into the check, not just the map", () => {
+    expect(publisher).toContain("published[pkg] = { version, ...publishedTarball(pkg, version) }")
   })
 
   /**
