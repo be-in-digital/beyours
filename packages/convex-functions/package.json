@@ -23,6 +23,7 @@
     "./storeIntegrations": "./src/storeIntegrations.ts",
     "./stores": "./src/stores.ts",
     "./backupRemap": "./src/backupRemap.ts",
+    "./backupTables": "./src/backupTables.ts",
     "./storeAudit": "./src/storeAudit.ts",
     "./snsSignature": "./src/snsSignature.ts",
     "./accessAudit": "./src/accessAudit.ts",

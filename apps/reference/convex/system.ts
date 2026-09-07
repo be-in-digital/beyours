@@ -3,6 +3,13 @@ import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { getAuthUser } from "@be-in-digital/convex-functions/auth"
 import * as maintenanceDefs from "@be-in-digital/convex-functions/maintenance"
+import {
+  BACKUP_TABLES,
+  DEFERRED_REMAP_TABLES,
+  EXCLUDED_TABLES,
+  EXPORTED_TABLES,
+  EXPORT_ONLY_TABLES,
+} from "@be-in-digital/convex-functions/backupTables"
 import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
 import { migrations } from "./migrations/index"
 
@@ -463,35 +470,13 @@ export const exportBackup = action({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const settings: any = await ctx.runQuery(internal.systemInternal.getSettingsInternal, {})
 
-      // Deterministic table export order (respects dependencies)
-      // Configuration and catalogue only. `orders`, `payments`, `invoices` and
-      // `numberSequences` are deliberately absent and must stay absent: a
-      // restore deletes and re-inserts every table it names, with new `_id`s,
-      // and a fiscal series or a counter that a restore can rewrite is not one.
-      const tableNames = [
-        "globalSettings",
-        "stores",
-        "languages",
-        "categories",
-        "products",
-        "menus",
-        "cmsPages",
-        "cmsBlocks",
-        "cmsMedia",
-        "blogCategories",
-        "blogTags",
-        "blogArticles",
-        "blogArticleTags",
-        "gameQRCodes",
-        "requiredActions",
-        "games",
-        "prizes",
-        "promotions",
-        "emailConfig",
-        "emailTemplates",
-        "emailSegments",
-        "emailSubscribers",
-      ] as const
+      /* One list, in `@be-in-digital/convex-functions/backupTables`, shared with
+         the import allow-list in `systemInternal.ts`. It used to be written out
+         twice and the two had to agree by hand; between them they named 22 of
+         this schema's 77 tables, omitting the orders, the payments, the
+         translations and all sixteen CMS singletons — so a "backup" of a
+         restaurant's website did not contain that website's pages (#169). */
+      const tableNames = EXPORTED_TABLES
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: Record<string, any[]> = {}
@@ -513,6 +498,20 @@ export const exportBackup = action({
         exportedBy: user.userId,
         tables: Object.keys(data),
         tableRowCounts: tableSummary,
+        /* What the file carries but a restore will not put back, and what it
+           does not carry at all — both stated in the file itself. An operator
+           reading a backup could not previously tell "absent because it is not
+           the establishment's" from "absent because someone forgot", and that
+           ambiguity is the defect #169 names. */
+        restoredTables: [...BACKUP_TABLES],
+        archivedNotRestored: EXPORT_ONLY_TABLES.map((table) => ({
+          table,
+          reason:
+            table === "systemAuditLog"
+              ? "Journal d'audit : conservé dans la sauvegarde, jamais réécrit par une restauration."
+              : "Document fiscal numéroté (art. 242 nonies A CGI) : conservé dans la sauvegarde, jamais réécrit par une restauration.",
+        })),
+        excludedTables: EXCLUDED_TABLES,
         note: "Images S3 non incluses — seules les references/URLs sont sauvegardees",
       }
 
@@ -601,31 +600,13 @@ export const importBackup = action({
         lockedBy: user.userId,
       })
 
-      // Import order (respects dependencies)
-      const importOrder = [
-        "globalSettings",
-        "stores",
-        "languages",
-        "categories",
-        "products",
-        "menus",
-        "cmsPages",
-        "cmsBlocks",
-        "cmsMedia",
-        "blogCategories",
-        "blogTags",
-        "blogArticles",
-        "blogArticleTags",
-        "gameQRCodes",
-        "requiredActions",
-        "games",
-        "prizes",
-        "promotions",
-        "emailConfig",
-        "emailTemplates",
-        "emailSegments",
-        "emailSubscribers",
-      ]
+      /* The same list the export walks, minus the archive. `EXPORT_ONLY_TABLES`
+         are in the file and never re-inserted: a numbered fiscal series that a
+         restore can rewrite is not a series (art. 242 nonies A CGI), and
+         `tables/invoices.ts` states that rule in the schema itself. Leaving them
+         out is also what keeps `orders.invoiceId` resolving after a restore —
+         the invoice rows are never deleted, so their ids never change. */
+      const importOrder = BACKUP_TABLES
 
       // The id map, carried table by table.
       //
@@ -651,6 +632,22 @@ export const importBackup = action({
         Object.assign(idMap, result.idMap)
       }
 
+      /* The foreign-key graph has a cycle, so no order can satisfy every edge.
+         `stores.stationMapping[].categoryId` points at `categories`, which
+         cannot come first because it points back at `stores` — so the kitchen
+         routing came back naming categories that no longer existed. Silently:
+         every ticket fell through to the single-station behaviour and nobody
+         was told the routing had been lost. One more pass with the FULL map
+         closes it. */
+      let deferredRemaps = 0
+      for (const tableName of DEFERRED_REMAP_TABLES) {
+        const pass: { patched: number } = await ctx.runMutation(
+          internal.systemInternal.remapDeferredReferences,
+          { tableName, idMap }
+        )
+        deferredRemaps += pass.patched
+      }
+
       // `userProfiles` is not in the backup — it holds identities, not
       // restaurant data — so its `storeIds` still name the deployment's stores
       // from before the restore. Left alone, every store-scoped screen refuses
@@ -659,6 +656,14 @@ export const importBackup = action({
         await ctx.runMutation(internal.systemInternal.remapProfileStores, {
           idMap,
         })
+
+      /* A backup carries personal data — orders, payments, kitchen tickets,
+         subscribers — and can be older than the retention window it is restored
+         into. Re-running the purge is what stops a restore resurrecting what
+         the establishment was obliged to remove (art. 5.1.e). Scheduled rather
+         than awaited: the sweep reschedules itself until it is done, and a
+         restore must not wait on it. */
+      await ctx.scheduler.runAfter(0, internal.privacy.sweepExpiredCustomerData, {})
 
       await ctx.runMutation(internal.system._releaseSystemLock, {})
       await ctx.runMutation(internal.system._recordAuditEntry, {
@@ -675,12 +680,13 @@ export const importBackup = action({
         remappedIds: Object.keys(idMap).length,
         remappedProfiles: profiles.updated,
         droppedProfileStores: profiles.dropped,
-        // Said unconditionally, because it is unconditionally true: the backup
-        // carries the restaurant's configuration and catalogue, not its trading
-        // history. Those tables keep pointing at ids the restore replaced, and
-        // no import can repair them.
+        deferredRemaps,
+        /* What a restore does NOT put back, said every time rather than left to
+           be discovered. The old wording named orders, payments, tickets and
+           team members; all four are restored now, and the one thing still
+           deliberately untouched is the fiscal archive. */
         message:
-          "Import terminé. Commandes, paiements, tickets de cuisine et membres d'équipe ne sont ni exportés ni importés : leurs références aux établissements restaurés ne sont pas rétablies." +
+          "Import terminé. Les factures et leur numérotation sont conservées telles quelles : un document fiscal numéroté ne peut pas être réécrit par une restauration (art. 242 nonies A CGI)." +
           (profiles.dropped > 0
             ? ` ${profiles.dropped} accès à un établissement absent de la sauvegarde ont été retirés des profils.`
             : ""),

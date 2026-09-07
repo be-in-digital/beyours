@@ -151,7 +151,10 @@ export function BackupSection() {
             Sauvegarde & Restauration
           </CardTitle>
           <CardDescription>
-            Exportez ou importez vos données. Les images S3 ne sont pas incluses — seules les references/URLs sont sauvegardees.
+            Exportez ou importez vos données : établissements, carte, contenus du
+            site, traductions, commandes, paiements et tickets de cuisine. Les
+            images ne sont pas incluses — seules leurs références et leurs URL le
+            sont.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -185,7 +188,28 @@ export function BackupSection() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            L'import effectué d'abord un aperçu (dry run) avant toute modification.
+            Un aperçu (dry run) précède toute modification.
+          </p>
+
+          {/*
+            Said on the screen rather than discovered after a restore. The
+            manifest carries the same two lists, table by table with a reason
+            each; this is the short version an operator reads before clicking.
+            « Ce que la sauvegarde ne contient pas » used to be answerable only
+            by reading the export's source.
+          */}
+          <p className="text-xs text-muted-foreground">
+            Les <strong>factures et leur numérotation</strong> sont incluses dans
+            le fichier mais jamais réécrites par une restauration : un document
+            fiscal numéroté ne peut pas l'être (art. 242 nonies A CGI).
+          </p>
+
+          <p className="text-xs text-muted-foreground">
+            Ne sont pas sauvegardés : les <strong>identifiants de paiement</strong>{" "}
+            et les connexions aux plateformes (à reconnecter après une
+            restauration), les <strong>comptes utilisateurs</strong>, et les
+            données techniques temporaires. Le détail figure dans le fichier
+            exporté.
           </p>
         </CardContent>
       </Card>
