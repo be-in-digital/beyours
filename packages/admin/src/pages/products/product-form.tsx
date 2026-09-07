@@ -24,6 +24,7 @@ import {
 } from "@be-in-digital/ui"
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
 import { AllergenField } from "./allergen-field"
+import { addChoiceAt, removeChoiceAt } from "./product-options"
 
 /**
  * Form schema for product editing with euro prices for display.
@@ -275,24 +276,23 @@ export function ProductForm({
 
   // Add choice to option
   const addChoice = (optionIndex: number) => {
-    const currentOptions = [...(options || [])]
-    const option = currentOptions[optionIndex]
-    if (!option) return
-    option.choices.push({
+    const currentOptions = options || []
+    const next = addChoiceAt(currentOptions, optionIndex, {
       id: `choice_${Date.now()}`,
       name: "",
       priceModifier: 0,
     })
-    setValue("options", currentOptions)
+    // Identity means the index named no group and nothing changed.
+    if (next === currentOptions) return
+    setValue("options", next)
   }
 
   // Remove choice from option
   const removeChoice = (optionIndex: number, choiceIndex: number) => {
-    const currentOptions = [...(options || [])]
-    const option = currentOptions[optionIndex]
-    if (!option) return
-    option.choices = option.choices.filter((_, i) => i !== choiceIndex)
-    setValue("options", currentOptions)
+    const currentOptions = options || []
+    const next = removeChoiceAt(currentOptions, optionIndex, choiceIndex)
+    if (next === currentOptions) return
+    setValue("options", next)
   }
 
   return (
