@@ -27,6 +27,11 @@
       "import": "./dist/env/index.mjs",
       "require": "./dist/env/index.js"
     },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "import": "./dist/email/index.mjs",
+      "require": "./dist/email/index.js"
+    },
     "./sentry": {
       "types": "./dist/sentry/index.d.ts",
       "import": "./dist/sentry/index.mjs",
@@ -37,7 +42,8 @@
     "./auth/rbac": "./src/auth/rbac.ts",
     "./aws/ses/order-confirmation": "./src/aws/ses/order-confirmation.ts",
     "./aws/media-url": "./src/aws/media-url.ts",
-    "./aws/folders": "./src/aws/folders.ts"
+    "./aws/folders": "./src/aws/folders.ts",
+    "./email/providers": "./src/email/providers.ts"
   },
   "scripts": {
     "build": "tsup",

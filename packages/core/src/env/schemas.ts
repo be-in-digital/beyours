@@ -181,6 +181,25 @@ const siteOptionalShape = {
       ),
   ),
 
+  // Which transport carries this deployment's email. SES when unset, so an
+  // existing client does not move.
+  //
+  // It exists because every client owns its AWS account and files its own SES
+  // production-access request, and approval is not guaranteed — one has been
+  // refused. Such a deployment had no path to sending email at all until #212.
+  // An unknown value is refused rather than silently falling back to SES: a
+  // typo that kept sending through the provider the operator is trying to leave
+  // is indistinguishable from a working migration.
+  EMAIL_PROVIDER: opt(z.enum(['ses', 'resend'])),
+  // Required once EMAIL_PROVIDER=resend, which the schema cannot express as an
+  // all-or-nothing group (the rule is conditional, not symmetric).
+  // `resolveEmailProvider` reports the incomplete case at send time instead.
+  RESEND_API_KEY: opt(z.string().startsWith('re_')),
+  // The sender verified at Resend. Falls back to AWS_SES_FROM_EMAIL, so an
+  // operator who flips the switch and changes nothing else keeps sending from
+  // the address they already verified.
+  RESEND_FROM_EMAIL: opt(z.string().email()),
+
   // Sentry source-map upload (build time) — all three or none, see
   // SITE_FEATURE_GROUPS. The token is a secret and belongs on the build host,
   // never in a NEXT_PUBLIC_ variable.

@@ -219,6 +219,14 @@ const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] 
     vars: ['UNSPLASH_ACCESS_KEY'],
   },
   {
+    // Offered rather than hidden: this is the escape hatch for a client whose
+    // AWS SES production-access request was refused, and an operator who does
+    // not know it exists cannot ask for it. Leaving all three unset keeps SES.
+    feature: 'Resend (alternative à SES si la demande AWS est refusée)',
+    tier: 'site',
+    vars: ['EMAIL_PROVIDER', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL'],
+  },
+  {
     // BeYours' own billing, not the restaurant's. Set on the deployment that
     // sells the maintenance renewal.
     feature: 'BeYours billing (renouvellement de maintenance)',
@@ -264,6 +272,12 @@ const CONVEX_KEYS: readonly string[] = [
   'AWS_SES_FROM_NAME',
   'AWS_SES_REPLY_TO_EMAIL',
   'AWS_SES_CONFIGURATION_SET',
+  // Which transport carries the mail. The Convex actions send directly, so
+  // setting this on the web side alone would change nothing about where a
+  // confirmation, an invitation or a campaign actually goes.
+  'EMAIL_PROVIDER',
+  'RESEND_API_KEY',
+  'RESEND_FROM_EMAIL',
   // Translation
   'OPENAI_API_KEY',
   // Payments

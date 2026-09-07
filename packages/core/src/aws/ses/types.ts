@@ -82,6 +82,26 @@ export interface SESOperations {
     html: string
     text?: string
     replyTo?: string
+    /**
+     * Extra headers, forwarded verbatim.
+     *
+     * Bulk mail to Gmail and Yahoo has needed `List-Unsubscribe` and
+     * `List-Unsubscribe-Post` since February 2024; without them it is filtered
+     * or refused, which looks exactly like "our campaigns get no opens". The
+     * campaign path used to reach past this interface to a raw
+     * `SendEmailCommand` to set them. Optional, so every existing caller and
+     * every existing implementation is unaffected.
+     */
+    headers?: Record<string, string>
+    /**
+     * SES configuration set — open/click tracking, named per AWS account.
+     *
+     * Omitted rather than passed empty when there is none: an empty name is
+     * not "no tracking" to SES, it is a name that does not exist, and it fails
+     * the send. See `sesSending.resolveConfigurationSet`. A transport with no
+     * equivalent (Resend) drops it rather than pretending to honour it.
+     */
+    configurationSet?: string
   }): Promise<SendEmailResult>
 
   /**

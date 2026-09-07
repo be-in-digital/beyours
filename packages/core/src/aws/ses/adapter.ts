@@ -9,6 +9,11 @@ import type { AWSConfig, SESConfig } from '../types'
 import { createSESService } from './client'
 import type { SESService } from './client'
 import { getSiteEnv } from '../../env'
+import {
+  createResendOperations,
+  resolveEmailProvider,
+  type EmailProviderEnv,
+} from '../../email/providers'
 
 /**
  * Creates SES operations using AWS SDK v3
@@ -34,6 +39,12 @@ export function createSESv2Operations(config: AWSConfig): SESOperations {
           ToAddresses: toAddresses,
         },
         ReplyToAddresses: params.replyTo ? [params.replyTo] : undefined,
+        // Spread, not set to undefined: SES treats a present-but-empty
+        // configuration set name as one that does not exist and fails the
+        // send, so the key has to be ABSENT when there is none.
+        ...(params.configurationSet
+          ? { ConfigurationSetName: params.configurationSet }
+          : {}),
         Content: {
           Simple: {
             Subject: { Data: params.subject, Charset: 'UTF-8' },
@@ -41,6 +52,14 @@ export function createSESv2Operations(config: AWSConfig): SESOperations {
               Html: params.html ? { Data: params.html, Charset: 'UTF-8' } : undefined,
               Text: params.text ? { Data: params.text, Charset: 'UTF-8' } : undefined,
             },
+            ...(params.headers
+              ? {
+                  Headers: Object.entries(params.headers).map(([Name, Value]) => ({
+                    Name,
+                    Value,
+                  })),
+                }
+              : {}),
           },
         },
       })
@@ -121,12 +140,54 @@ export function getSESConfig(): SESConfig {
 }
 
 /**
- * Creates a fully configured SES service from environment variables
- * @returns Initialized SES service ready to send emails
- * @throws {Error} If environment variables are not properly configured
+ * The email service this deployment is configured for.
+ *
+ * SES unless `EMAIL_PROVIDER` says otherwise. That switch used to be read in
+ * `apps/site` only, so a client whose AWS SES production-access request was
+ * refused — and one has been — had no path to sending email at all. See #212
+ * and `email/providers`.
+ *
+ * The provider decides the TRANSPORT and nothing else: `createSESService`
+ * still wraps it, so the validation, the sender formatting, the sandbox rate
+ * limit and the bulk batching are the same whichever way the mail leaves.
+ *
+ * @throws {Error} if the selected provider is not configured. Callers here are
+ * boot-time or request-time paths where a misconfiguration must be loud; the
+ * Convex actions use `resolveEmailProvider` directly, which reports instead.
+ */
+export function getEmailService(): SESService {
+  const resolution = resolveEmailProvider(
+    process.env as EmailProviderEnv,
+    createSESv2Operations
+  )
+  if (!resolution.ok) throw new Error(resolution.reason)
+
+  if (resolution.transport.name === 'resend') {
+    const site = getSiteEnv()
+    return createSESService(
+      {
+        // Region and credentials are SES's; on Resend they are unread, and
+        // there may not be any. The sender is the half that matters.
+        region: site.AWS_REGION ?? 'eu-west-3',
+        accessKeyId: site.AWS_ACCESS_KEY_ID ?? '',
+        secretAccessKey: site.AWS_SECRET_ACCESS_KEY ?? '',
+        fromEmail: resolution.from,
+        fromName: site.AWS_SES_FROM_NAME,
+        replyToEmail: site.AWS_SES_REPLY_TO_EMAIL,
+      },
+      createResendOperations({ apiKey: process.env.RESEND_API_KEY! })
+    )
+  }
+
+  const config = getSESConfig()
+  return createSESService(config, createSESv2Operations(config))
+}
+
+/**
+ * @deprecated Use {@link getEmailService}. Kept because the name is spelled in
+ * `route-handler.ts` and in the docs; it now honours `EMAIL_PROVIDER` too, so
+ * "SES" in the name is no longer the whole truth.
  */
 export function getSESService(): SESService {
-  const config = getSESConfig()
-  const operations = createSESv2Operations(config)
-  return createSESService(config, operations)
+  return getEmailService()
 }

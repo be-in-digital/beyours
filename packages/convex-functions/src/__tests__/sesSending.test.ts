@@ -51,9 +51,9 @@ describe("resolveConfigurationSet", () => {
 })
 
 describe("configurationSetFields", () => {
-  it("carries the name into the command when one is configured", () => {
+  it("carries the name into the message when one is configured", () => {
     expect(configurationSetFields("luigi-email-tracking")).toEqual({
-      ConfigurationSetName: "luigi-email-tracking",
+      configurationSet: "luigi-email-tracking",
     })
   })
 
@@ -63,19 +63,16 @@ describe("configurationSetFields", () => {
     // click events.
     const fields = configurationSetFields(undefined)
     expect(fields).toEqual({})
-    expect("ConfigurationSetName" in fields).toBe(false)
+    expect("configurationSet" in fields).toBe(false)
     expect(Object.keys(fields)).toEqual([])
   })
 
-  it("spreads into a command without leaving a hole", () => {
-    const withSet = { Destination: {}, ...configurationSetFields("set-a") }
-    const without = { Destination: {}, ...configurationSetFields("") }
+  it("spreads into a message without leaving a hole", () => {
+    const withSet = { to: "a@x.fr", ...configurationSetFields("set-a") }
+    const without = { to: "a@x.fr", ...configurationSetFields("") }
 
-    expect(Object.keys(withSet).sort()).toEqual([
-      "ConfigurationSetName",
-      "Destination",
-    ])
-    expect(Object.keys(without)).toEqual(["Destination"])
+    expect(Object.keys(withSet).sort()).toEqual(["configurationSet", "to"])
+    expect(Object.keys(without)).toEqual(["to"])
   })
 })
 

@@ -135,6 +135,27 @@ function scheduledNames(t: ReturnType<typeof convexTest>) {
   })
 }
 
+/**
+ * Drop what `subscribe` queued.
+ *
+ * `emailSubscribers.subscribe` schedules `sendConfirmation`, so a test that
+ * ALSO invokes the action by hand gets two runs of it — and which of them
+ * reaches the transport before the assertion is a race. It used to be won
+ * consistently by the explicit call, so `toHaveLength(1)` passed; #212 shortened
+ * the path to the provider by one hop and the scheduled run started arriving
+ * first, which is a fact about the test rather than about the product. Nothing
+ * outside the tests calls `sendConfirmation` directly — the scheduler is its
+ * only caller.
+ */
+async function dropScheduled(t: ReturnType<typeof convexTest>) {
+  await t.run(async (ctx) => {
+    const jobs = await ctx.db.system.query("_scheduled_functions").collect()
+    for (const job of jobs) {
+      if (job.state.kind === "pending") await ctx.scheduler.cancel(job._id)
+    }
+  })
+}
+
 function onlySubscriber(t: ReturnType<typeof convexTest>) {
   return t.run(async (ctx) => (await ctx.db.query("emailSubscribers").collect())[0])
 }
@@ -165,6 +186,7 @@ describe("signing up from the storefront", () => {
       email: "yanis@resto.example",
     })
     const subscriber = await onlySubscriber(t)
+    await dropScheduled(t)
 
     await t.action(internal.emailAutomationActions.sendConfirmation, {
       subscriberId: subscriber!._id,

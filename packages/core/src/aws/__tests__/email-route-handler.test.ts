@@ -10,7 +10,11 @@ import { createEmailRouteHandler, MIN_EMAIL_API_SECRET_BYTES } from '../ses/rout
 
 const sendEmail = vi.fn()
 
+// `getEmailService` since #212: the route no longer assumes SES, it asks which
+// transport the deployment is configured for. The alias is kept mocked too,
+// because it is still the name spelled in the docs and in older call sites.
 vi.mock('../ses/adapter', () => ({
+  getEmailService: () => ({ sendEmail }),
   getSESService: () => ({ sendEmail }),
 }))
 
