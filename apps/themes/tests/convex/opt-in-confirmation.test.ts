@@ -80,6 +80,25 @@ beforeEach(() => {
   sesSends.length = 0
   vi.stubEnv("CONVEX_SITE_URL", SITE_URL)
   vi.stubEnv("AWS_SES_FROM_EMAIL", "no-reply@chez-luigi.fr")
+  /*
+   * The credentials, stubbed because the send path now RESOLVES a provider
+   * before it composes anything and refuses when the deployment has none.
+   *
+   * That refusal is the point of #212: a client whose SES production-access
+   * request was turned down should be told so, not handed an opaque signature
+   * error from the SDK four calls later. The inline `SESv2Client` this
+   * replaced read the same variables through a `!` and never looked, so a
+   * suite with no credentials used to reach the mock regardless.
+   *
+   * So these are fixtures describing a configured deployment, not inputs the
+   * suite depends on — hence `vi.stubEnv` rather than assigning onto the
+   * environment object, which the guard in `__tests__/turbo-test-env.test.ts`
+   * would read as a dependency and demand be declared in turbo.json. The SDK
+   * itself is mocked above; nothing here signs anything.
+   */
+  vi.stubEnv("AWS_REGION", "eu-west-3")
+  vi.stubEnv("AWS_ACCESS_KEY_ID", "AKIA-test")
+  vi.stubEnv("AWS_SECRET_ACCESS_KEY", "secret-test")
 })
 
 /**
