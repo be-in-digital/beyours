@@ -39,7 +39,13 @@ type Job = {
   steps?: Step[]
   permissions?: unknown
 }
-type Workflow = { name?: string; on?: unknown; jobs?: Record<string, Job> }
+type Concurrency = string | { group?: string; "cancel-in-progress"?: unknown }
+type Workflow = {
+  name?: string
+  on?: unknown
+  concurrency?: Concurrency
+  jobs?: Record<string, Job>
+}
 
 function readWorkflow(file: string): Workflow {
   return parse(fs.readFileSync(path.join(WORKFLOW_DIR, file), "utf8")) as Workflow
@@ -619,4 +625,105 @@ describe("the CI the mirror ships to clients stays intact", () => {
     const setup = fs.readFileSync(path.join(REPO_ROOT, "apps/themes/docs/SETUP-CI.md"), "utf8")
     expect(setup).toContain("Lint + Test + Build")
   })
+})
+
+/**
+ * No caller may put two of the workflows it calls into the same concurrency
+ * group.
+ *
+ * On a `workflow_call` the called workflow's `concurrency:` expression is
+ * evaluated in the CALLER's context: `github.workflow` is the caller's name,
+ * `github.event_name` the event that started the caller, `github.ref` the
+ * caller's ref. Nothing in those tokens distinguishes WHICH workflow was
+ * called. So two called workflows carrying the same expression are not merely
+ * similar — they compute one identical string and share one slot.
+ *
+ * `ci.yml` and `e2e.yml` did, both spelling it
+ * `${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}`, and
+ * `publish-mirror.yml` calls both. With `cancel-in-progress: true` the second
+ * call evicted the first: on `d89ade46` the mirror's four `Verify` jobs were
+ * cancelled one second after creation, before a runner had picked them up, and
+ * `publish` skipped on `needs.verify.result == 'cancelled'`. The release chain
+ * carried the identical defect and did not fire, because its `e2e` job skips
+ * when the registry says there is nothing to publish — so the first release
+ * that actually published would have been the one to silently not publish.
+ *
+ * `cancel-in-progress: false` is not the safe side of this and the rule does
+ * not exempt it. Two calls sharing a group then QUEUE against each other while
+ * the caller waits on both, which is a deadlock rather than a cancellation.
+ * Either way the answer is one group per called workflow, so the assertion is
+ * unconditional.
+ *
+ * What is asserted is the rule, not the pair: any caller, any two of its calls.
+ * A sixth workflow copying the same four-token expression — the obvious thing
+ * to do, since it reads as correct and is the same line the other five carry —
+ * fails here rather than in a mirror sync nobody watched.
+ */
+describe("two workflows called by one caller cannot share a concurrency slot", () => {
+  const LOCAL_CALL = /^\.\/\.github\/workflows\/(.+\.ya?ml)$/
+
+  /** The group expression, whitespace-normalised, or null when unset. */
+  function groupOf(file: string): string | null {
+    const { concurrency } = readWorkflow(file)
+    const raw = typeof concurrency === "string" ? concurrency : concurrency?.group
+    if (!raw) return null
+    // `${{ github.ref }}` and `${{github.ref}}` are the same expression and
+    // would collide identically at runtime, so compare them as equal here.
+    return raw.replace(/\s+/g, " ").trim()
+  }
+
+  /** Which local reusable workflows this file calls, deduplicated. */
+  function callsOf(file: string): string[] {
+    const jobs = Object.values(readWorkflow(file).jobs ?? {})
+    const called = jobs
+      .map((job) => job.uses?.match(LOCAL_CALL)?.[1])
+      .filter((f): f is string => Boolean(f))
+    return [...new Set(called)].sort()
+  }
+
+  const CALLERS = WORKFLOW_FILES.filter((f) => callsOf(f).length > 1)
+
+  test("some caller calls more than one workflow, or this suite proves nothing", () => {
+    expect(CALLERS.length).toBeGreaterThan(0)
+  })
+
+  test.each(CALLERS)("%s gives each workflow it calls its own group", (caller) => {
+    const seen = new Map<string, string>()
+    for (const called of callsOf(caller)) {
+      const group = groupOf(called)
+      if (group === null) continue
+      const other = seen.get(group)
+      expect(
+        other,
+        `${caller} calls both ${other} and ${called}, and they compute the same ` +
+          `concurrency group \`${group}\` — on a workflow_call every token in it ` +
+          `resolves in ${caller}'s context, so one of the two calls will cancel ` +
+          `or block the other. Give each called workflow a distinct literal ` +
+          `prefix in its group.`,
+      ).toBeUndefined()
+      seen.set(group, called)
+    }
+  })
+
+  /**
+   * The other half of the same trap, and the one the original comment in
+   * `e2e.yml` did reason about correctly: a called workflow must not land in
+   * the group its own CALLER is already holding, or the call waits for a run
+   * that is waiting for the call.
+   */
+  test.each(WORKFLOW_FILES.filter((f) => callsOf(f).length > 0))(
+    "%s does not share its own group with anything it calls",
+    (caller) => {
+      const mine = groupOf(caller)
+      if (mine === null) return
+      for (const called of callsOf(caller)) {
+        expect(
+          groupOf(called),
+          `${caller} holds concurrency group \`${mine}\` and calls ${called}, ` +
+            `which computes the same group in ${caller}'s context — the call ` +
+            `would queue behind the run that is waiting for it.`,
+        ).not.toBe(mine)
+      }
+    },
+  )
 })

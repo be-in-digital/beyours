@@ -96,11 +96,21 @@ concurrency:
   #
   # On a `workflow_call` the whole expression is evaluated in the CALLER's
   # context — `github.workflow` is the caller's name and `github.event_name` the
-  # event that started it. That is safe here and deliberately checked: the two
-  # callers group themselves as `Release-<ref>` and the literal `publish-mirror`,
-  # neither of which this expression can produce, so a called run can never
-  # queue behind a slot its own caller is holding.
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # event that started it. That was checked against the two CALLERS' own groups,
+  # `Release-<ref>` and the literal `publish-mirror`, neither of which this
+  # expression can produce. It was not checked against the other workflow the
+  # same caller calls, and that is the collision that happened: `ci.yml` carried
+  # this identical expression, so a caller invoking both put them in one group
+  # with `cancel-in-progress: true`, and this call cancelled that one. Measured
+  # on `d89ade46`: the mirror's four `Verify` jobs cancelled a second after
+  # creation, `publish` skipped on `needs.verify.result == 'cancelled'`, and the
+  # release chain held the same bug unfired only because `e2e` skips when there
+  # is nothing to publish.
+  #
+  # The `e2e-` prefix is what separates the two. It must stay different from
+  # `ci.yml`'s, and `workflow-publish-gates.test.ts` asserts that no two
+  # reusable workflows a caller invokes together can produce the same group.
+  group: e2e-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 # Turborepo's remote cache, shared by every job here.
