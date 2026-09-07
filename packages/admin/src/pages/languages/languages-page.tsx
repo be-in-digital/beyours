@@ -98,8 +98,20 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
    *
    * The incremental translator only fires on a write, so without this a
    * restaurant that adds Spanish after filling its menu waits for someone to
-   * re-save sixty dishes one by one. Three batch jobs, one per catalogue
-   * table, whose progress the owner can follow in `translationJobs`.
+   * re-save sixty dishes one by one. Three batch jobs, one per catalogue table.
+   *
+   * THE TOAST BELOW IS THE ONLY THING THE OWNER EVER SEES. Each job writes a
+   * `translationJobs` row and keeps it honest — `completedItems` advances per
+   * chunk, and a run stopped by the daily quota lands on `failed` with a
+   * reason rather than on `completed` — but no query anywhere reads that table
+   * (`storeCascade` deletes from it; nothing else touches it outside tests).
+   * So on this screen a batch that ran out of budget at item 40 of 300 is
+   * indistinguishable from one that finished, and the missing translations
+   * surface on the storefront instead.
+   *
+   * The row is not the missing half: a query over `by_storeId` and somewhere
+   * on this page to render it is. Until that exists, do not describe this
+   * back-fill as followable — in a comment, in the admin, or in the tour.
    */
   const backfillCatalogue = async (
     store: string,

@@ -287,11 +287,13 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
     navFor: adminRoutes.design,
     content:
       "Design — Trois onglets : Couleurs, Typographie et Logo. " +
-      "Les couleurs et la typographie ne s'appliquent pas encore à votre " +
-      "site public : l'enregistrement y est désactivé, et l'écran vous " +
-      "l'explique sur place. Votre site affiche la palette et les polices " +
-      "de son modèle de design, choisi à l'installation. Le logo, lui, se " +
-      "règle dans Contenu › Pages, sur « Layout du storefront ».",
+      "Vos couleurs et vos polices s'appliquent à votre site public — " +
+      "l'aperçu montre le rendu avant d'enregistrer, et ce que vous laissez " +
+      "tel quel garde l'apparence de votre modèle de design. " +
+      "Une police ne s'affiche que si l'appareil du visiteur la possède ; " +
+      "Inter et Poppins sont fournies et fonctionnent partout. " +
+      "Le logo, lui, se règle dans Contenu › Pages, sur « Layout du " +
+      "storefront ». Seul le propriétaire peut enregistrer ces réglages.",
   },
 
   // ── Stores ─────────────────────────────────────────────────────────
