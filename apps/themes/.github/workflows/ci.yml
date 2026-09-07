@@ -433,17 +433,36 @@ jobs:
         # skipped, they are never declared — and every test that signs in can
         # self-skip when SEED_PASSWORD is empty.
         #
-        # The floor is deliberately loose. Upstream this same assertion carries
-        # per-project floors derived from a measured run; this suite has never
-        # completed once, so there is no measurement to derive them from, and a
-        # floor guessed too high would redden every pull request on day one.
-        # After the first green run, read the "Playwright executed" table in the
-        # log and tighten this to `--min <~75% of total>
-        # --projects setup:1,public:<~80%>,admin:<~80%>`.
+        # The floors below are measured, not guessed. This comment used to say
+        # the suite had never completed once and to keep `--min 100` until it
+        # had; it has now, on 07/09/2026, under these exact conditions —
+        # production build, local Convex backend, seeded users, CI=true, one
+        # worker:
+        #
+        #     setup     1 ran,   0 skipped
+        #     public   80 ran,   0 skipped
+        #     admin   469 ran,   8 skipped
+        #     total   550 ran,   8 skipped   (558 declared)
+        #
+        # So: ~75% of the total and ~80% of each project, which is the rule the
+        # earlier version of this comment prescribed.
+        #
+        # The headroom is not decoration. The eight skips are data-dependent —
+        # "when the inbox has one", "or empty state", "when enough items" — so
+        # their number moves with what the seed happens to produce, and a floor
+        # set at the measured count would redden a run for having seeded one
+        # fewer order. 94 admin tests of slack absorbs that and still catches
+        # what this step exists for: `admin` and `setup` vanishing entirely with
+        # the backend, or every signing-in test self-skipping without
+        # SEED_PASSWORD. Both leave counts far below these floors, not just
+        # under them.
+        #
+        # Raise them when the suite grows; a floor that never moves stops
+        # meaning anything.
         if: always()
         run: |
           node scripts/assert-e2e-ran.mjs playwright-report/report.json \
-            --min 100 --projects setup,public,admin
+            --min 412 --projects setup:1,public:64,admin:375
 
       - name: Upload Playwright report
         # always(), not failure(): a run that passed over 13 of 56 spec files
