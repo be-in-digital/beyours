@@ -201,15 +201,142 @@ describe('S3 Service', () => {
     })
   })
 
+  /**
+   * `setup-aws.sh` turns bucket versioning ON, and on a versioned bucket a
+   * plain `DeleteObject` deletes NOTHING: it writes a delete marker and retains
+   * every prior version, billable and readable by anyone who can name a version
+   * id. The media library said « définitivement supprimé » and kept every byte,
+   * so an RGPD erasure request was answered falsely.
+   *
+   * These assert the fix at the only place it can be asserted without a bucket:
+   * which calls leave the service, and what it reports having done.
+   */
   describe('delete', () => {
-    it('deletes a file', async () => {
+    /** Two prior versions and the delete marker written over them. */
+    const VERSIONS = [
+      { key: 'products/test.jpg', versionId: 'v3', isDeleteMarker: true },
+      { key: 'products/test.jpg', versionId: 'v2', isDeleteMarker: false },
+      { key: 'products/test.jpg', versionId: 'v1', isDeleteMarker: false },
+    ]
+
+    /** An adapter whose IAM policy carries the version permissions. */
+    function versionAware(versions = VERSIONS): S3Operations {
+      return {
+        ...mockClient,
+        listObjectVersions: vi.fn().mockResolvedValue({ versions }),
+        deleteObjectVersion: vi.fn().mockResolvedValue(undefined),
+      }
+    }
+
+    it('removes every version and the delete marker, by id', async () => {
+      const client = versionAware()
+      const service = createS3Service(mockConfig, client)
+
+      const result = await service.delete('products/test.jpg')
+
+      expect(result).toEqual({ outcome: 'purged', versionsDeleted: 3 })
+      for (const versionId of ['v1', 'v2', 'v3']) {
+        expect(client.deleteObjectVersion).toHaveBeenCalledWith({
+          key: 'products/test.jpg',
+          versionId,
+        })
+      }
+    })
+
+    it('does not touch a neighbour whose key merely starts the same', async () => {
+      // The S3 API is prefix-based and `products/test.jpg` is a prefix of
+      // `products/test.jpg.bak`. Purging by prefix would delete a file nobody
+      // asked to delete.
+      const client = versionAware([
+        ...VERSIONS,
+        { key: 'products/test.jpg.bak', versionId: 'bak1', isDeleteMarker: false },
+      ])
+      const service = createS3Service(mockConfig, client)
+
+      const result = await service.delete('products/test.jpg')
+
+      expect(result.versionsDeleted).toBe(3)
+      expect(client.deleteObjectVersion).not.toHaveBeenCalledWith(
+        expect.objectContaining({ versionId: 'bak1' })
+      )
+    })
+
+    it('walks a truncated listing to the end', async () => {
+      const listObjectVersions = vi
+        .fn()
+        .mockResolvedValueOnce({
+          versions: [VERSIONS[0]],
+          nextKeyMarker: 'products/test.jpg',
+          nextVersionIdMarker: 'v3',
+        })
+        .mockResolvedValueOnce({ versions: [VERSIONS[1], VERSIONS[2]] })
+      const client: S3Operations = {
+        ...mockClient,
+        listObjectVersions,
+        deleteObjectVersion: vi.fn().mockResolvedValue(undefined),
+      }
+      const service = createS3Service(mockConfig, client)
+
+      const result = await service.delete('products/test.jpg')
+
+      expect(result.versionsDeleted).toBe(3)
+      expect(listObjectVersions).toHaveBeenNthCalledWith(2, {
+        prefix: 'products/test.jpg',
+        keyMarker: 'products/test.jpg',
+        versionIdMarker: 'v3',
+      })
+    })
+
+    it('reports a delete marker rather than pretending, when the adapter cannot purge', async () => {
+      // Every client provisioned before `s3:DeleteObjectVersion` was added to
+      // the IAM policy is in this state. Throwing here would break them; saying
+      // nothing would repeat the original lie.
       const service = createS3Service(mockConfig, mockClient)
 
-      await service.delete('products/test.jpg')
+      const result = await service.delete('products/test.jpg')
 
+      expect(result).toEqual({
+        outcome: 'delete-marker',
+        versionsDeleted: 0,
+        reason: 'unsupported-adapter',
+      })
       expect(mockClient.deleteObject).toHaveBeenCalledWith({
         key: 'products/test.jpg',
       })
+    })
+
+    it('falls back, and says why, when the listing is refused', async () => {
+      const client: S3Operations = {
+        ...mockClient,
+        listObjectVersions: vi.fn().mockRejectedValue(new Error('AccessDenied')),
+        deleteObjectVersion: vi.fn().mockResolvedValue(undefined),
+      }
+      const service = createS3Service(mockConfig, client)
+
+      const result = await service.delete('products/test.jpg')
+
+      // A delete that throws leaves the row deleted and the object present with
+      // nobody told, which is strictly worse than a marker plus an honest
+      // outcome.
+      expect(result).toEqual({
+        outcome: 'delete-marker',
+        versionsDeleted: 0,
+        reason: 'listing-refused',
+      })
+      expect(client.deleteObject).toHaveBeenCalled()
+    })
+
+    it('still issues the plain delete after a purge', async () => {
+      // Between the listing and the last version delete another writer may have
+      // added a version, and on an unversioned bucket the listing comes back
+      // empty while the object exists.
+      const client = versionAware([])
+      const service = createS3Service(mockConfig, client)
+
+      const result = await service.delete('products/test.jpg')
+
+      expect(result).toEqual({ outcome: 'purged', versionsDeleted: 0 })
+      expect(client.deleteObject).toHaveBeenCalledWith({ key: 'products/test.jpg' })
     })
 
     it('rejects an empty key', async () => {

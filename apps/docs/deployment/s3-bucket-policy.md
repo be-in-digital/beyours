@@ -38,7 +38,8 @@ S3 endpoint form is gone, and nothing should reintroduce it.
 
 **Block all public access** — the AWS default — and attach no bucket policy
 granting `s3:GetObject` to `*`. The deployment's IAM user needs
-`s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::<bucket>/*`.
+`s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on `arn:aws:s3:::<bucket>/*`,
+plus the three version permissions the next section explains.
 
 `scripts/setup-aws.sh` does this for you, and since #198 it also **removes** a
 public-read policy left by an earlier run of itself. It only deletes a policy
@@ -58,6 +59,56 @@ library), and only for `PUT`:
   }
 ]
 ```
+
+
+## Versioning, and what it does to a delete
+
+`setup-aws.sh` turns bucket **versioning** on. That is worth having — a client
+who overwrites the wrong photograph can be given the old one back — and it
+changes what a delete means, in a way that is easy to get wrong and was:
+
+> On a versioned bucket, `DeleteObject` **without a `VersionId` deletes
+> nothing.** It writes a *delete marker* over the key. Every prior version stays
+> in the bucket: still billed, still readable by anyone who can name a version
+> id, and invisible to an ordinary listing.
+
+So the media library said « définitivement supprimé », the offboarding runbook
+ticked an erasure box, and every byte was still there. Issue
+[#331](https://github.com/be-in-digital/beyours/issues/331).
+
+Three things close that, and all three are applied by `setup-aws.sh`:
+
+1. **The app purges by version id.** `convex/cmsMediaDelete.ts` lists a key's
+   versions and deletes each one, delete markers included — a marker *is* a
+   version, so removing only the object versions leaves the key hidden with its
+   marker still billed, and removing only the marker un-deletes the file. The
+   same logic is in `S3Service.delete` for anything going through
+   `@be-in-digital/core`.
+2. **Three IAM actions**, without which the app can only write markers:
+   `s3:ListBucketVersions` (on the bucket), `s3:GetObjectVersion` and
+   `s3:DeleteObjectVersion` (on `/*`). A deployment provisioned before these
+   were added falls back to a delete marker and says so — `purgeS3Objects`
+   returns `deleteMarkersOnly > 0` and logs the permission names. Re-run the
+   script for that client.
+3. **Two lifecycle rules**, as the floor under both:
+
+   | Rule | What it collects |
+   |---|---|
+   | `NoncurrentVersionExpiration` — 30 days, keep the newest 3 | versions of a file that was overwritten rather than deleted, and anything a purge could not reach |
+   | `ExpiredObjectDeleteMarker` | the marker left over a key whose versions have all expired |
+
+   Neither substitutes for the other. Expiring the versions alone leaves the
+   marker; expiring the marker alone makes the newest remaining version current
+   again — i.e. un-deletes the file.
+
+   30 days rather than 1 because versioning is also an accident-recovery
+   control. An erasure *request* is not served by waiting: the app purges by
+   version id for that, and `NewerNoncurrentVersions: 3` keeps the window from
+   meaning "hold 400 revisions of a logo for a month".
+
+**The rules only count from the day they are applied.** Anything deleted on a
+bucket that predates them is still there, as a noncurrent version behind a
+marker. `tasks/client-offboarding-runbook.md` carries the by-hand check.
 
 ## Adding a CDN (optional)
 

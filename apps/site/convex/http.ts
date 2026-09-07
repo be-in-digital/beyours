@@ -11,6 +11,7 @@ import {
   resolveUnknownKey,
 } from "./maintenance";
 import { isSameMailbox } from "./emailIdentity";
+import { captureBackendError } from "./errorReporting";
 /* Type-only: erased at compile time, so the SDK never enters this module's
    bundle. `http.ts` runs in the default Convex runtime, not "use node". */
 import type Stripe from "stripe";
@@ -178,6 +179,17 @@ const stripeWebhookHandler = (secretEnvVar: string) =>
     const webhookSecret = process.env[secretEnvVar];
     if (!webhookSecret) {
       console.error(`${secretEnvVar} not configured`);
+      /* Reported, not only logged. This is the shape of the outage nobody
+         notices: the endpoint answers 500 to every delivery, Stripe retries for
+         three days and gives up, and the only trace is a log line that expires.
+         Fatal rather than error because no delivery can succeed until someone
+         sets the variable — it is not one failed event, it is all of them. */
+      await captureBackendError(ctx, {
+        error: new Error(`${secretEnvVar} is not set on this deployment`),
+        source: "stripeWebhook",
+        level: "fatal",
+        tags: { stage: "configuration", secretEnvVar },
+      });
       return new Response("Webhook secret not configured", { status: 500 });
     }
 
@@ -274,6 +286,21 @@ const stripeWebhookHandler = (secretEnvVar: string) =>
       });
     } catch (err) {
       console.error(`Error processing ${event.type}:`, err);
+      /* The whole failure record used to be the line above. A renewal charge
+         that fails to record here leaves the subscription row stale and the
+         customer's next contact is about something else entirely; three days
+         later Stripe stops retrying and the log window has rolled over.
+
+         `eventId` and `eventType` are the two handles that make the incident
+         replayable from the Stripe dashboard. The signature and the raw body
+         are deliberately not attached — `redactSentryExtra` would filter the
+         first by name and the second is a customer's billing details. */
+      await captureBackendError(ctx, {
+        error: err,
+        source: "stripeWebhook",
+        tags: { eventType: event.type, secretEnvVar },
+        extra: { eventId: event.id, livemode: event.livemode },
+      });
       return new Response("Processing error", { status: 500 });
     }
 

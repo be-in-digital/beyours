@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { expect, test, describe } from "vitest";
+import { afterEach, expect, test, describe } from "vitest";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import schema from "../../convex/schema";
@@ -15,6 +15,46 @@ import {
 } from "../../convex/saMonitoring";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
+
+const harnesses: ReturnType<typeof convexTest>[] = [];
+
+function newHarness() {
+  const t = convexTest(schema, modules);
+  harnesses.push(t);
+  return t;
+}
+
+/**
+ * Cancel whatever a test left on the scheduler.
+ *
+ * `recordProbeResults` now schedules an alert on a health TRANSITION, and every
+ * test here that records a round produces one. A test finishes in milliseconds
+ * and leaves the job pending; whatever fires it next writes against a
+ * transaction that closed, and because nothing awaits it that arrives as an
+ * unhandled rejection — twelve of them in this file, measured.
+ *
+ * That does not fail a single test: every assertion still passes and the run
+ * still exits 1, which is how it reaches CI as a green suite with a red exit
+ * code. Cancel rather than run: `sendDeploymentHealthAlert` is a Node action
+ * that would try to reach SES.
+ */
+afterEach(async () => {
+  for (const t of harnesses) {
+    // Let whatever is already RUNNING finish first: cancelling a job that has
+    // started is not a no-op, and convex-test raises its own invariant error
+    // when it finds one canceled after it ran. The alert action is harmless to
+    // run — `deliver()` returns `{ sent: false }` and warns when no e-mail
+    // transport is configured, which is the state of every test.
+    await t.finishInProgressScheduledFunctions();
+    await t.run(async (ctx) => {
+      const pending = await ctx.db.system.query("_scheduled_functions").collect();
+      for (const job of pending) {
+        if (job.state.kind === "pending") await ctx.scheduler.cancel(job._id);
+      }
+    });
+  }
+  harnesses.length = 0;
+});
 
 /* The monitoring console used to report two numbers nobody had measured:
    `uptime30d` was the constant `saFleet.create` stamped at provisioning, and
@@ -95,7 +135,12 @@ async function record(
   t: ReturnType<typeof convexTest>,
   deploymentId: Id<"saDeployments">,
   checkedAt: number,
-  statuses: { kind: "http" | "convex"; status: "up" | "degraded" | "down" }[],
+  statuses: {
+    kind: "http" | "convex";
+    status: "up" | "degraded" | "down";
+    /** What the probe said. Only a failing check carries one in production. */
+    message?: string;
+  }[],
 ) {
   await t.mutation(internal.saMonitoring.recordProbeResults, {
     deploymentId,
@@ -106,6 +151,7 @@ async function record(
       status: s.status,
       statusCode: s.kind === "http" ? (s.status === "down" ? 503 : 200) : undefined,
       latencyMs: s.status === "down" ? undefined : 210,
+      ...(s.message ? { message: s.message } : {}),
     })),
   });
 }
@@ -248,7 +294,7 @@ describe("uptime is computed from the recorded checks", () => {
 
 describe("the producer writes what the console reads back", () => {
   test("the system writer needs no admin identity", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const id = await seedDeployment(t);
 
     // This is the whole point: a cron carries no identity. The old writer was
@@ -263,7 +309,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("it recomputes uptime over the recorded window", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const id = await seedDeployment(t);
     const now = Date.now();
@@ -280,7 +326,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("checks older than the window stop counting", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const id = await seedDeployment(t);
     const now = Date.now();
@@ -300,7 +346,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("health follows the rounds, blip then outage", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const id = await seedDeployment(t);
     const now = Date.now();
@@ -322,7 +368,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("a round with no http check keeps the last measured uptime", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const id = await seedDeployment(t, {
       convexUrl: "https://swift-otter-101.convex.cloud",
@@ -343,7 +389,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("only health transitions reach the activity feed", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const id = await seedDeployment(t);
     const now = Date.now();
 
@@ -363,7 +409,7 @@ describe("the producer writes what the console reads back", () => {
   });
 
   test("a deployment deleted mid-round is dropped, not thrown on", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const id = await seedDeployment(t);
     await t.run(async (ctx) => ctx.db.delete(id));
 
@@ -380,7 +426,7 @@ describe("the producer writes what the console reads back", () => {
 
 describe("a deployment nothing has probed claims nothing", () => {
   test("going live does not invent a health", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const id = await seedDeployment(t, { status: "provisioning" });
 
@@ -397,7 +443,7 @@ describe("a deployment nothing has probed claims nothing", () => {
   });
 
   test("the fleet uptime is null rather than a flattering default", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     await seedDeployment(t, { uptime30d: 100 });
 
@@ -411,7 +457,7 @@ describe("a deployment nothing has probed claims nothing", () => {
   });
 
   test("an unprobed deployment does not dilute a measured average", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const admin = await asAdmin(t);
     const measured = await seedDeployment(t, { name: "mesuré" });
     await seedDeployment(t, { name: "jamais-sondé", uptime30d: 100 });
@@ -429,7 +475,7 @@ describe("a deployment nothing has probed claims nothing", () => {
 
 describe("target selection", () => {
   test("only live and degraded deployments are probed", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const live = await seedDeployment(t, { status: "live", name: "live" });
     const degraded = await seedDeployment(t, {
       status: "degraded",
@@ -451,7 +497,7 @@ describe("target selection", () => {
   });
 
   test("an explicitly named deployment is probed whatever its status", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const suspended = await seedDeployment(t, { status: "suspended" });
 
     const targets = await t.query(internal.saMonitoring.probeTargets, {
@@ -462,7 +508,7 @@ describe("target selection", () => {
   });
 
   test("targets carry what the probe needs and nothing else", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     await seedDeployment(t, {
       domain: "lebistrot.fr",
       convexUrl: "https://swift-otter-101.convex.cloud",
@@ -478,7 +524,7 @@ describe("target selection", () => {
 
 describe("the console's own surface still requires an admin", () => {
   test("the overview and the feed refuse an anonymous caller", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     await seedDeployment(t);
 
     await expect(t.query(api.saMonitoring.overview, {})).rejects.toThrow();
@@ -488,7 +534,7 @@ describe("the console's own surface still requires an admin", () => {
   });
 
   test("« Sonder maintenant » is gated before it reaches the network", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     await seedDeployment(t);
 
     // An action cannot call requireAdmin, so it delegates to admin.assertAdmin
@@ -499,7 +545,7 @@ describe("the console's own surface still requires an admin", () => {
   });
 
   test("a signed-in non-admin is refused too", async () => {
-    const t = convexTest(schema, modules);
+    const t = newHarness();
     const userId = await t.run(async (ctx) =>
       ctx.db.insert("users", { email: "apporteur@example.com" }),
     );
@@ -517,6 +563,126 @@ describe("the console's own surface still requires an admin", () => {
     await expect(
       affiliate.action(api.saMonitoring.probeNow, {}),
     ).rejects.toThrow(/autoris/i);
+  });
+});
+
+/**
+ * A health transition has to reach a human.
+ *
+ * #346 shipped a real prober — two targets per deployment, every ten minutes,
+ * thirty days of history — and it alerted nobody. On a transition it wrote one
+ * row to an internal activity feed and stopped, under the reasoning that
+ * *"still down" is not news*: true for a feed, fatal for a guarantee. A
+ * restaurant that went down at 20 h 00 on a Saturday paged no one, while
+ * « Monitoring 24/7 » was on the pricing page and « la supervision » is in the
+ * CGV's own definition of Maintenance. Issue #366.
+ *
+ * The seam is the scheduler: the alert is queued rather than awaited, because a
+ * slow mail server must never hold up a round that is measuring twenty other
+ * deployments.
+ *
+ * The state machine these ride on is `deriveHealth`, which reads the last TWO
+ * rounds: one failing round is `degraded`, two consecutive ones are `down`. So
+ * an outage legitimately produces two alerts — the wobble and the escalation —
+ * and they are different news.
+ */
+describe("a health transition alerts somebody", () => {
+  /** The alert jobs one test queued, oldest first. */
+  async function alerts(t: ReturnType<typeof convexTest>) {
+    const jobs = await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect(),
+    );
+    return jobs.filter((job) => job.name.includes("sendDeploymentHealthAlert"));
+  }
+
+  /** What one queued alert was called with. */
+  function argsOf(job: { args: unknown[] }): Record<string, unknown> {
+    return job.args[0] as Record<string, unknown>;
+  }
+
+  test("queues an alert when a site starts failing, naming what failed", async () => {
+    const t = newHarness();
+    const dep = await seedDeployment(t, { name: "Chez Test" });
+
+    await record(t, dep, Date.now() - 600_000, [
+      { kind: "http", status: "down", message: "Délai dépassé (10 s)" },
+    ]);
+
+    const queued = await alerts(t);
+    expect(queued).toHaveLength(1);
+    const args = argsOf(queued[0]!);
+    expect(args.restaurantName).toBe("Chez Test");
+    expect(args.previousHealth).toBe("unknown");
+    expect(args.health).toBe("degraded");
+    /* The round's own message, not a re-probe: a second request would race the
+       outage it is describing, and the prober already truncated this one. */
+    expect(args.message).toBe("http : Délai dépassé (10 s)");
+  });
+
+  test("alerts again when a wobble becomes an outage", async () => {
+    const t = newHarness();
+    const dep = await seedDeployment(t, { name: "Chez Test" });
+    const start = Date.now() - 3_600_000;
+
+    await record(t, dep, start, [{ kind: "http", status: "down" }]);
+    await record(t, dep, start + 600_000, [{ kind: "http", status: "down" }]);
+
+    const queued = await alerts(t);
+    expect(queued).toHaveLength(2);
+    expect(argsOf(queued[1]!).previousHealth).toBe("degraded");
+    expect(argsOf(queued[1]!).health).toBe("down");
+  });
+
+  test("does not re-alert while it stays down", async () => {
+    // The reasoning that produced the original defect, kept: a round every ten
+    // minutes would be 144 e-mails a day per failing deployment.
+    const t = newHarness();
+    const dep = await seedDeployment(t, { name: "Chez Test" });
+    const start = Date.now() - 3_600_000;
+
+    for (let i = 0; i < 5; i++) {
+      await record(t, dep, start + i * 600_000, [{ kind: "http", status: "down" }]);
+    }
+
+    // Two transitions in five rounds: unknown → degraded → down, then silence.
+    expect(await alerts(t)).toHaveLength(2);
+  });
+
+  test("alerts on the recovery too", async () => {
+    /* A recovery is as much news as a failure: without it the only way to learn
+       a site came back is to go and look, and an operator who has been paged
+       needs the all-clear more than a second alarm. */
+    const t = newHarness();
+    const dep = await seedDeployment(t, { name: "Chez Test" });
+    const start = Date.now() - 3_600_000;
+
+    await record(t, dep, start, [{ kind: "http", status: "down" }]);
+    await record(t, dep, start + 600_000, [{ kind: "http", status: "down" }]);
+    await record(t, dep, start + 1_200_000, [{ kind: "http", status: "up" }]);
+
+    const queued = await alerts(t);
+    expect(queued).toHaveLength(3);
+    const recovery = argsOf(queued[2]!);
+    expect(recovery.previousHealth).toBe("down");
+    expect(recovery.health).toBe("healthy");
+    // Nothing to quote on a round where every check passed.
+    expect(recovery.message).toBeUndefined();
+  });
+
+  test("stays quiet on a round that changes nothing", async () => {
+    const t = newHarness();
+    const dep = await seedDeployment(t, { name: "Chez Test" });
+    const start = Date.now() - 3_600_000;
+
+    // The first round is a transition out of `unknown`, so it alerts once.
+    await record(t, dep, start, [{ kind: "http", status: "up" }]);
+    expect(await alerts(t)).toHaveLength(1);
+
+    // Three more healthy rounds say nothing new.
+    for (let i = 1; i <= 3; i++) {
+      await record(t, dep, start + i * 600_000, [{ kind: "http", status: "up" }]);
+    }
+    expect(await alerts(t)).toHaveLength(1);
   });
 });
 

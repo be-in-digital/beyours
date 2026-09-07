@@ -15,6 +15,7 @@
  */
 
 import { VAT } from './legal/company'
+import { isSentryDsn } from './observability/sentry'
 
 export type EnvTier = 'required' | 'format' | 'feature'
 
@@ -143,6 +144,28 @@ const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'BOOKING_URL', check: isUrl },
   { name: 'CALENDLY_URL', check: isUrl },
   { name: 'LIVE_URL', check: isUrl },
+  /* Error tracking. Unset is a legitimate state — CI, local development, and a
+     deployment whose Sentry project has not been created — so these are
+     optional and a missing DSN says nothing.
+
+     What is worth catching is a DSN that is SET and unusable. `isUrl` would
+     accept `https://sentry.io/my-project` happily; `Sentry.init` would then
+     take it, report nothing, and the operator would believe monitoring is
+     live. `isSentryDsn` is the same gate `resolveSentryOptions` applies before
+     it initialises anything, so the two cannot disagree about what a DSN is. */
+  {
+    name: 'NEXT_PUBLIC_SENTRY_DSN',
+    check: (v) => (isSentryDsn(v) ? null : 'doit être un DSN Sentry (https://<clé>@<hôte>/<projet>)'),
+  },
+  {
+    name: 'NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE',
+    check: (v) => {
+      const parsed = Number(v)
+      return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+        ? null
+        : 'doit être un nombre entre 0 et 1'
+    },
+  },
 ]
 
 /** All-or-nothing groups: half of one of these is worse than none of it. */

@@ -470,11 +470,21 @@ Stated because a deployment document that omits them is how they stay open.
   and it is not done.
 - **`dusty-nightingale-945`** is a redundant empty project that someone will one day
   mistake for production.
-- **There is no automated backup.** Eight cron jobs are registered in
-  `apps/*/convex/crons.ts` and none of them is a backup; what exists is a manual
-  export in the admin that states it excludes S3 objects. Daily backups are
-  nevertheless billed on beyours.fr — see
-  [`FEATURES.md`](FEATURES.md#5-sold-and-absent--the-ledger-re-checked), T-7.
+- **The nightly backup shares a blast radius with the data it protects.** It
+  runs now — `nightly backup` at 01:30 UTC in `apps/*/convex/crons.ts`, every
+  restorable table plus the fiscal archive, written to `backups/` and expired at
+  30 days by an S3 lifecycle rule. What it does not do is leave the client's own
+  AWS account, because that account is theirs by design
+  ([`aws-ownership.md`](apps/docs/deployment/aws-ownership.md)). It therefore
+  defends against a bad import, a deleted establishment or a Convex incident,
+  and **not** against losing the AWS account. A genuinely independent copy means
+  a BeInDigital-owned bucket, which reverses that ownership decision and raises
+  a GDPR sub-processor question — a commercial call, tracked in
+  [`sales-readiness-backlog.md`](tasks/sales-readiness-backlog.md) LAUNCH-11 §7.
+- **A restore has never been rehearsed on a live client deployment.** The path is
+  covered by tests and the id-remap is proven, but a backup nobody has restored
+  is a backup nobody has restored. The drill is
+  [`backup-restore-rehearsal.md`](apps/docs/deployment/backup-restore-rehearsal.md).
 - **`TURBO_TOKEN` may not exist yet.** Until it does the remote cache wiring is
   inert, which was measured rather than assumed: an empty token exits 0 and an
   invalid one still completed 7 tasks out of 7 by falling back to the local cache. A

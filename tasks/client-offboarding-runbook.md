@@ -79,14 +79,41 @@ A departure and an erasure request are different jobs. This section is the
 second one, and it is the one where "the row is gone" has, until now, not meant
 "the file is gone".
 
-- [x] **A media deleted from the library takes its S3 objects with it.**
-      `cmsMedia.deleteMedia` schedules `cmsMediaDelete.purgeS3Objects`, which
-      removes the source and every generated variant (`thumb`, `card`, `og`).
-      Before this, `DeleteObjectCommand` appeared nowhere in the repository: the
-      admin reported "définitivement supprimé" and deleted a database row. If
-      you have ever told a client a deleted photograph was gone, it was not —
-      files deleted before this landed are still in the bucket and have to be
-      removed by hand.
+- [x] **A media deleted from the library takes its S3 objects with it —
+      every version of them.** `cmsMedia.deleteMedia` schedules
+      `cmsMediaDelete.purgeS3Objects`, which removes the source and every
+      generated variant (`thumb`, `card`, `og`).
+
+      This box was ticked once before, and it was wrong twice over. First
+      `DeleteObjectCommand` appeared nowhere in the repository: the admin
+      reported "définitivement supprimé" and deleted a database row. Then the
+      command was added without a `VersionId` — and `setup-aws.sh` enables
+      bucket **versioning**, on which a `DeleteObject` with no version id
+      deletes *nothing*. It writes a delete marker over the key and retains
+      every prior version: still billed, still readable by anyone who can name
+      a version id. The purge now enumerates a key's versions and deletes each
+      one by id, delete markers included.
+
+      > ⚠️ **Two permissions decide whether this is true on a given
+      > deployment.** `s3:DeleteObjectVersion` and `s3:ListBucketVersions`
+      > reached the IAM policy with this change. A client provisioned before it
+      > has neither, and `purgeS3Objects` falls back to a delete marker and
+      > returns `deleteMarkersOnly > 0` with a `console.error` naming the
+      > permissions. **Re-run `scripts/setup-aws.sh` for that client** — it also
+      > installs the two lifecycle rules (`NoncurrentVersionExpiration`,
+      > `ExpiredObjectDeleteMarker`) that collect what the old behaviour left
+      > behind, over 30 days.
+
+      **Everything deleted before those rules existed is still in the bucket**,
+      as a noncurrent version behind a delete marker, and the lifecycle rules
+      only start counting from the day they are applied. If an erasure request
+      covers a file deleted in that period, verify it by hand:
+
+      ```bash
+      aws s3api list-object-versions --bucket "$BUCKET" --prefix "cms/<mediaId>/"
+      # then, per version and per delete marker:
+      aws s3api delete-object --bucket "$BUCKET" --key "<key>" --version-id "<id>"
+      ```
 - [ ] **Deleting the *établissement* does not.** `storeCascade` drops the
       `cmsMedia` rows for a store in bulk and never touches S3, so a store
       deletion still orphans every object it owned. Under the shared-bucket
@@ -116,7 +143,9 @@ Stated plainly, so nobody reads the tick as a guarantee:
 |---|---|
 | The deployment is marked gone | yes |
 | Revocation is recorded as outstanding until ticked | yes |
-| Deleting one media deletes its S3 objects | yes |
+| Deleting one media deletes its S3 objects | yes — every version, where the IAM policy allows it |
+| A client provisioned before #331 purges versions | **no — re-run setup-aws.sh; until then, delete markers only** |
+| Objects deleted before #331 are gone | **no — noncurrent versions, collected by lifecycle over 30 days** |
 | Deleting an establishment deletes its S3 objects | **no — rows only, see 2 bis** |
 | The credentials are actually revoked | **no — this list, by hand** |
 | The tick is verified against reality | **no — it is an attestation** |
@@ -126,4 +155,4 @@ Stated plainly, so nobody reads the tick as a guarantee:
 *Related: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md)
 (the other end of the lifecycle), [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) (one AWS
 account per client), issue #199 (this gap), #200 (per-client AWS), #181 (licence
-keys).*
+keys), #331 (versioned deletes).*

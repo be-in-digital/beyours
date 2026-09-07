@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { buildContentSecurityPolicy } from "./lib/security/content-security-policy";
 import { validateSiteEnv, formatSiteEnvReport, isInlinedAtBuild } from "./lib/env";
@@ -13,6 +14,10 @@ const contentSecurityPolicy = buildContentSecurityPolicy({
   isDevelopment: process.env.NODE_ENV !== "production",
   convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
   bookingOrigin: BOOKING_ORIGIN,
+  /* Read here for the same reason as the Convex URL: this is the environment
+     that inlines the DSN into the client bundle, so the endpoint the browser
+     SDK posts to and the endpoint `connect-src` allows come from one value. */
+  sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 
 /**
@@ -114,11 +119,52 @@ const nextConfig: NextConfig = {
   },
 };
 
+/**
+ * Sentry wraps the config even when this deployment has no Sentry project.
+ *
+ * The wrapper is what instruments the server build and injects the release into
+ * the client bundle; `Sentry.init` alone does not. With no DSN nothing is sent
+ * anyway, so the cost of leaving it on is a slightly longer build.
+ *
+ * Source-map upload is the part that needs credentials, and it is switched off
+ * unless all three are present. Without them a build would emit maps it cannot
+ * upload and warn about it on every CI run.
+ */
+const sentryOptions = {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  sourcemaps: {
+    disable: !(
+      process.env.SENTRY_ORG &&
+      process.env.SENTRY_PROJECT &&
+      process.env.SENTRY_AUTH_TOKEN
+    ),
+  },
+
+  // Nearly every page here is statically rendered and code-split; without this
+  // the maps for a lazily loaded route are left behind and its stack traces
+  // stay minified — which on this app means the checkout bundle.
+  widenClientFileUpload: true,
+
+  // Nothing about this repo leaves the build host unless a client opts in.
+  telemetry: false,
+  // The plugin is chatty on every build; keep it to CI, where a failed upload
+  // is worth reading.
+  silent: !process.env.CI,
+};
+
 /* The phase comes from Next itself. `process.env.NEXT_PHASE` is NOT set when
    this file is evaluated — measured: gating on it silenced the report during a
    real `next build` — so the phase argument is the only reliable signal, and it
-   is the documented one. */
+   is the documented one.
+
+   The Sentry wrapper is applied to the returned object rather than to the
+   exported function: Next calls a function export with the phase, and handing
+   it a wrapped function instead of a wrapped config loses the phase argument
+   that `reportInlinedEnv` above depends on. */
 export default function config(phase: string): NextConfig {
   if (phase === PHASE_PRODUCTION_BUILD) reportInlinedEnv();
-  return nextConfig;
+  return withSentryConfig(nextConfig, sentryOptions);
 }

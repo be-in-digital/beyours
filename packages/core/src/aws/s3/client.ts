@@ -23,6 +23,8 @@ import { randomUUID } from 'crypto'
 import { type S3Config, MAX_FILE_SIZES } from '../types'
 import { buildMediaUrl } from '../media-url'
 import type {
+  DeleteResult,
+  ObjectVersion,
   S3Operations,
   UploadOptions,
   UploadResult,
@@ -76,10 +78,26 @@ export interface S3Service {
   ): Promise<PresignedDownloadResult>
 
   /**
-   * Deletes a file from S3
+   * Removes a file from S3 — every version of it, on a versioned bucket.
+   *
+   * `setup-aws.sh` turns bucket versioning ON. On such a bucket a plain
+   * `DeleteObject` **deletes nothing**: it writes a delete marker over the key
+   * and retains every prior version, which stays billable and stays readable by
+   * anyone who can name a version id. So « définitivement supprimé » in the
+   * media library kept every byte, and an RGPD erasure request was answered
+   * falsely — that is the defect this method exists to close.
+   *
+   * The purge enumerates the key's versions and removes each one by id. When
+   * the injected adapter cannot do that — because the IAM policy of a
+   * previously provisioned client predates `s3:DeleteObjectVersion` — it falls
+   * back to the delete marker and REPORTS that it did, in the returned
+   * `outcome`. A caller may then tell the truth about what happened instead of
+   * inheriting the old lie.
+   *
    * @param key - S3 key of the file
+   * @returns what actually happened, and how many versions went with it
    */
-  delete(key: string): Promise<void>
+  delete(key: string): Promise<DeleteResult>
 
   /**
    * Builds the public URL of a file
@@ -240,7 +258,40 @@ export function createS3Service(
       // Validate the key
       s3KeySchema.parse(key)
 
+      const versions = await collectVersions(client, key)
+
+      if (versions === null) {
+        /* No version operations on this adapter. The delete marker is the best
+           this client can do, and saying so is the point: the bytes are still
+           there, and the lifecycle rules `setup-aws.sh` installs
+           (`NoncurrentVersionExpiration` + `ExpiredObjectDeleteMarker`) are
+           what eventually collect them. */
+        await client.deleteObject({ key })
+        return { outcome: 'delete-marker', versionsDeleted: 0, reason: 'unsupported-adapter' }
+      }
+
+      if (versions === 'refused') {
+        await client.deleteObject({ key })
+        return { outcome: 'delete-marker', versionsDeleted: 0, reason: 'listing-refused' }
+      }
+
+      /* Delete markers are deleted too, and by id. A delete marker IS a version:
+         removing only the object versions leaves the key hidden but its marker
+         billed, and removing only the marker un-deletes the file. */
+      let versionsDeleted = 0
+      for (const version of versions) {
+        await client.deleteObjectVersion!({ key, versionId: version.versionId })
+        versionsDeleted += 1
+      }
+
+      /* Unconditional, and not a tidy-up: between the listing above and this
+         line another writer may have added a version, and on an unversioned
+         bucket — or a suspended one — the listing legitimately comes back empty
+         while the object exists. A `DeleteObject` costs nothing when there is
+         nothing to delete. */
       await client.deleteObject({ key })
+
+      return { outcome: 'purged', versionsDeleted }
     },
 
     getPublicUrl(key) {
@@ -269,4 +320,59 @@ export function createS3Service(
       return await client.headObject({ key })
     },
   }
+}
+
+/** How many version pages one purge will walk before it gives up. */
+const MAX_VERSION_PAGES = 100
+
+/**
+ * Every stored version of exactly one key, or why there is no list.
+ *
+ * `null` — the adapter has no version operations at all.
+ * `'refused'` — the listing threw, which on a versioned bucket almost always
+ * means the IAM policy predates `s3:ListBucketVersions`. Treated as "cannot
+ * purge" rather than propagated: a delete that throws leaves the row deleted and
+ * the object present with nobody told, which is strictly worse than a delete
+ * marker plus an honest outcome.
+ *
+ * The result is filtered to an EXACT key match because the S3 API is
+ * prefix-based and `cms/42.webp` is a prefix of `cms/42.webp.bak`. Purging by
+ * prefix would delete a neighbouring file that merely starts with the same
+ * characters.
+ */
+async function collectVersions(
+  client: S3Operations,
+  key: string
+): Promise<ObjectVersion[] | null | 'refused'> {
+  if (!client.listObjectVersions || !client.deleteObjectVersion) return null
+
+  const found: ObjectVersion[] = []
+  let keyMarker: string | undefined
+  let versionIdMarker: string | undefined
+
+  try {
+    for (let page = 0; page < MAX_VERSION_PAGES; page += 1) {
+      const result = await client.listObjectVersions({
+        prefix: key,
+        ...(keyMarker ? { keyMarker } : {}),
+        ...(versionIdMarker ? { versionIdMarker } : {}),
+      })
+
+      for (const version of result.versions) {
+        if (version.key === key) found.push(version)
+      }
+
+      if (!result.nextKeyMarker && !result.nextVersionIdMarker) return found
+      keyMarker = result.nextKeyMarker
+      versionIdMarker = result.nextVersionIdMarker
+    }
+  } catch {
+    return 'refused'
+  }
+
+  /* A key with more than 100 pages of versions (S3 returns up to 1 000 per
+     page) is not a photograph that was re-uploaded a few times; it is a runaway
+     writer. Purging what was found is still right, and the ceiling stops one
+     delete from running for the whole of an action's budget. */
+  return found
 }

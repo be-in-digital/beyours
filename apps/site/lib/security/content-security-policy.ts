@@ -51,6 +51,8 @@
  * with them.
  */
 
+import { sentryIngestOrigin } from "../observability/sentry";
+
 /**
  * Where the Convex backend is allowed to be.
  *
@@ -118,12 +120,26 @@ export interface ContentSecurityPolicyOptions {
    * the same string.
    */
   bookingOrigin: string;
+  /**
+   * Raw `NEXT_PUBLIC_SENTRY_DSN`. The browser SDK POSTs every event to the
+   * ingest host inside it, and `connect-src 'self'` blocks that — silently, in
+   * the console, with the SDK reporting success. A deployment with no DSN adds
+   * no entry, which is the normal state of CI and of local development.
+   */
+  sentryDsn?: string;
 }
 
 export function buildContentSecurityPolicy(
   options: ContentSecurityPolicyOptions,
 ): string {
-  const { isDevelopment, convexUrl, bookingOrigin } = options;
+  const { isDevelopment, convexUrl, bookingOrigin, sentryDsn } = options;
+
+  /* Derived from the DSN rather than written out, so the host events are sent
+     to and the host the policy allows cannot be two different strings. A
+     malformed DSN yields nothing here and is reported by `resolveSentryOptions`
+     at boot; two components shouting about one fault teaches nobody which to
+     fix. */
+  const sentryOrigin = sentryIngestOrigin(sentryDsn);
 
   /* The booking modal (`components/booking-modal.tsx`) is the only third-party
      script on the site. `@calcom/embed-react` appends a
@@ -171,6 +187,9 @@ export function buildContentSecurityPolicy(
       ...CONVEX_CLOUD,
       ...extraConvexOrigins(convexUrl),
       bookingOrigin,
+      // The Sentry ingest endpoint the browser SDK POSTs envelopes to. Absent
+      // when this deployment has no Sentry project.
+      ...(sentryOrigin ? [sentryOrigin] : []),
       // ws: is the HMR socket.
       ...(isDevelopment ? ["ws:"] : []),
     ],

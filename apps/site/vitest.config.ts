@@ -13,6 +13,11 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./", import.meta.url)),
     },
   },
+  /* The automatic JSX runtime. `tests/error-boundaries.test.tsx` renders the
+     five `error.tsx` files to static markup to prove each one is wired to the
+     reporter; without this esbuild emits `React.createElement` into modules
+     that never import React. */
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "edge-runtime",
     // convex-test compiles the whole `convex/` module graph on the first call
@@ -20,6 +25,6 @@ export default defineConfig({
     // and reports as a timed-out affiliate flow. The tests are milliseconds
     // once the graph is warm.
     testTimeout: 30_000,
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.{ts,tsx}"],
   },
 });

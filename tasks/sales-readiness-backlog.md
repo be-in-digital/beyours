@@ -2436,6 +2436,43 @@ at 50 MB on import). The copy describes what the export carries until that lands
 Correction to the record: **#169 is closed, not reopened** — the id-remap fix
 landed with a 319-line test. What it does not do is carry orders.
 
+#### Both builds shipped — 7 Sep 2026 (#331)
+
+The copy was rewritten a second time in the same commit, which is what that
+"until that lands" was owed.
+
+- **Alerting.** The transition branch at `saMonitoring.ts` schedules
+  `email/send.sendDeploymentHealthAlert` to `BID_NOTIFY_EMAIL`, in both
+  directions — a recovery is as much news as a failure. Not sent to the
+  restaurateur: the prober lives in the site's Convex and the client's System
+  screen in theirs, so a client-facing channel has to be designed rather than
+  bolted onto a `deliver()` call. **A destination is still not a rota.** An
+  address makes the alert exist; only a named person on call makes « 24/7 »
+  literally true, and that remains owed.
+- **Coverage.** 53 restorable tables, 3 archived-not-restored, 21 excluded with
+  a reason each, in one list
+  (`packages/convex-functions/src/backupTables.ts`) that both the export and the
+  import read. The count in this section — 22 of 75 — was measured against a
+  schema that has 77 tables.
+- **Orders.** Restored, and the reconciliation worry above turned out to be
+  narrower than it reads: `orders` and `payments` carry their provider ids as
+  ordinary fields, so a re-inserted row still names the same payment intent. The
+  streaming concern is real and unaddressed — the export still builds one blob
+  in memory — and is what will cap this at a deployment large enough to hit it.
+- **Invoices** are exported and never re-imported. `tables/invoices.ts` had
+  already stated the rule in the schema (art. 242 nonies A CGI); the export now
+  honours both halves of it instead of dropping the archive to avoid the
+  question.
+- **Off-site.** The client's own bucket under `backups/`, 30 days by lifecycle
+  rule. The ownership question this section did not raise is now written down
+  where it is load-bearing: a backup in the client's account **shares a blast
+  radius with the data it protects**. It defends against a bad import, a deleted
+  establishment or a Convex incident, not against losing the AWS account. A
+  BeInDigital-owned bucket is the fix and reverses `aws-ownership.md`. **Still
+  owed, still commercial.**
+- **Rehearsal.** `apps/docs/deployment/backup-restore-rehearsal.md`, quarterly.
+  Not yet run against a live client's file.
+
 ### 8 · The fifteen smaller features (T-8) — **reword, and four cheap corrections**
 
 Most of the fifteen were promised only in `_project/FEATURES_DIAGRAM.md`, whose
