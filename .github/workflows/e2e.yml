@@ -27,6 +27,28 @@ on:
   # to answer here too — a queue whose required checks never run is a queue that
   # never merges anything.
   merge_group:
+  # On demand, for either suite or both.
+  #
+  # Until now this workflow could only be run by opening a pull request or
+  # pushing to `main`. That is a poor tool for the two things people actually
+  # want from an e2e suite outside review: re-running one that looks flaky, and
+  # exercising a change to the workflow itself before it lands. The second is
+  # not hypothetical — the pull request adding the `themes` leg could not run
+  # its own new leg, because a stacked base does not match `branches: [main]`.
+  #
+  # GitHub only offers this from the default branch, so it does not rescue a
+  # branch; it makes `main` operable, which is where the template's suite now
+  # runs anyway.
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: Which suites to run
+        type: choice
+        default: both
+        options:
+          - both
+          - reference
+          - themes
 
 concurrency:
   # One run per ref, and the older one loses.
@@ -63,9 +85,75 @@ env:
   TURBO_TEAM: be-in-digital
 
 jobs:
-  e2e:
-    name: E2E Tests (${{ matrix.shard }}/4)
+  # Which suites this run covers.
+  #
+  # `apps/reference` and `apps/themes` are twins — `check:divergence` holds
+  # their `e2e/` trees identical — so on a pull request the bench alone is a
+  # faithful reading of the specs, and running both would double the bill for a
+  # second opinion on the same tests. What the bench cannot speak for is the
+  # *template's own configuration*: it has no `app/(test)/layout.tsx`, so it
+  # serves the Playwright harness routes that the template 404s in production.
+  # That asymmetry shipped three broken specs to every client and went unseen
+  # for as long as the template's suite ran nowhere (#329).
+  #
+  # So the template runs where a regression is worth a job rather than a
+  # rebase: on `main`, after the merge. The mirror will run it again downstream
+  # in `beyours-boilerplate`; this is the same answer, in the repository the
+  # change was made in, and minutes earlier.
+  #
+  # Also on a pull request that edits THIS FILE, so a change to the matrix is
+  # tested by the pull request making it rather than discovered on main.
+  suites:
+    name: Pick the suites to run
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      apps: ${{ steps.pick.outputs.apps }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The pull-request branch needs its base to diff against.
+          fetch-depth: 0
+
+      - name: Pick
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+          CHOICE: ${{ inputs.apps }}
+        run: |
+          set -euo pipefail
+          apps='["reference"]'
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            case "$CHOICE" in
+              both)      apps='["reference","themes"]' ;;
+              reference) apps='["reference"]' ;;
+              themes)    apps='["themes"]' ;;
+              *)
+                echo "::error::Unknown apps input '$CHOICE'."
+                exit 1
+                ;;
+            esac
+          elif [ "$EVENT" = "push" ]; then
+            apps='["reference","themes"]'
+          elif [ "$EVENT" = "pull_request" ]; then
+            # `origin/$BASE...HEAD` is the merge base, so this lists what the
+            # branch changed and not what main moved on underneath it.
+            if git diff --name-only "origin/${BASE}...HEAD" \
+                 | grep -qx '.github/workflows/e2e.yml'; then
+              apps='["reference","themes"]'
+            fi
+          fi
+
+          echo "apps=$apps" >> "$GITHUB_OUTPUT"
+          echo "Running: $apps"
+
+  e2e:
+    name: E2E Tests (${{ matrix.app }} ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    needs: [suites]
     # Four shards, each with its own Convex backend and its own Next server.
     #
     # The suite is 541 tests at one worker — 16 minutes of Playwright inside a
@@ -84,6 +172,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        app: ${{ fromJSON(needs.suites.outputs.apps) }}
         shard: [1, 2, 3, 4]
     # Measured, not estimated: a healthy shard runs ~15 minutes end to end
     # (02:17:56 -> 02:32:45 on the run that first went red), of which ~3 are the
@@ -131,7 +220,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm --filter @beyours/reference exec playwright install --with-deps chromium
+        run: pnpm --filter @beyours/${{ matrix.app }} exec playwright install --with-deps chromium
 
       - name: Cache the Convex backend binary
         uses: actions/cache@v4
@@ -166,9 +255,14 @@ jobs:
           path: ~/.npm
           # convex.json names the packages; package.json pins them. A change to
           # either has to fetch again, so both are in the key.
-          key: convex-external-deps-${{ hashFiles('apps/reference/convex.json', 'apps/reference/package.json') }}
+          #
+          # `format()`, not a nested `${{ }}`: inside an expression the braces
+          # are already open, and `hashFiles('apps/${{ matrix.app }}/...')` is a
+          # parse error rather than a path — it would take the workflow down on
+          # every run, not just this step.
+          key: convex-external-deps-${{ matrix.app }}-${{ hashFiles(format('apps/{0}/convex.json', matrix.app), format('apps/{0}/package.json', matrix.app)) }}
           restore-keys: |
-            convex-external-deps-
+            convex-external-deps-${{ matrix.app }}-
 
       - name: Pre-fetch the Convex external dependencies
         run: |
@@ -176,7 +270,7 @@ jobs:
 
           # Read the package set from convex.json rather than restating it, so
           # this cannot drift from what the backend will actually install.
-          SPECS="$(cd apps/reference && node -e '
+          SPECS="$(cd apps/${{ matrix.app }} && node -e '
             const fs = require("fs")
             const cfg = JSON.parse(fs.readFileSync("convex.json", "utf8"))
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
@@ -283,7 +377,18 @@ jobs:
           #
           # CONVEX_DEPLOYMENT is deliberately absent: the Convex CLI refuses to
           # run when it is set alongside CONVEX_SELF_HOSTED_URL.
-          cat > apps/reference/.env.local <<EOF
+          #
+          # NEXT_PUBLIC_ENABLE_TEST_ROUTES opens the Playwright harness routes
+          # under app/(test). It matters only for `themes`, whose
+          # app/(test)/layout.tsx sends them to notFound() in a production build
+          # without it — the bench has no such layout and ignores the flag. Set
+          # for both anyway: a value that is inert on one app is cheaper than a
+          # conditional, and the alternative is what #329 was, three specs
+          # failing on a 404 that is the guard working as designed.
+          #
+          # This is written on the runner for a build nobody serves. A client's
+          # deployment never sees it, so their harness routes stay 404.
+          cat > apps/${{ matrix.app }}/.env.local <<EOF
           NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:${CONVEX_PORT}
           NEXT_PUBLIC_CONVEX_SITE_URL=http://127.0.0.1:${CONVEX_SITE_PORT}
           CONVEX_SITE_URL=http://127.0.0.1:${CONVEX_SITE_PORT}
@@ -306,28 +411,29 @@ jobs:
           OPENAI_API_KEY=sk-placeholder
           SEED_ADMIN_EMAIL=test.owner@beindigital.fr
           SEED_PASSWORD=e2e-seed-password-not-for-production
+          NEXT_PUBLIC_ENABLE_TEST_ROUTES=true
           EOF
 
           # Nothing above reaches S3, SES or OpenAI. They only have to be
           # present and well-formed: instrumentation.ts validates the required
           # tier at startup and refuses to serve without it.
-          echo "Wrote apps/reference/.env.local ($(grep -c . apps/reference/.env.local) values)"
+          echo "Wrote apps/${{ matrix.app }}/.env.local ($(grep -c . apps/${{ matrix.app }}/.env.local) values)"
 
       - name: Build application
-        # The e2e suite targets the reference app: no need to build the
-        # commercial site or the client template here.
+        # One app per leg, and `...` pulls in the engine packages it depends on.
+        # Nothing here builds the other app or the commercial site.
         #
         # Before the Convex deploy, not after. `convex deploy` bundles
-        # apps/reference/convex, which imports @be-in-digital/cms and friends,
+        # apps/${{ matrix.app }}/convex, which imports @be-in-digital/cms and friends,
         # and those are workspace packages consumed from `dist` — which does not
         # exist until this step builds them. A fresh runner has never built
         # them, so deploying first fails with "Could not resolve
         # @be-in-digital/cms ... ./dist/index.mjs was not found". Every local
         # run had a dist lying around from an earlier build and never saw it.
-        run: pnpm build --filter=@beyours/reference...
+        run: pnpm build --filter=@beyours/${{ matrix.app }}...
 
       - name: Deploy Convex functions
-        working-directory: apps/reference
+        working-directory: apps/${{ matrix.app }}
         run: |
           set -euo pipefail
 
@@ -456,7 +562,7 @@ jobs:
           npx convex env set SITE_URL http://localhost:3000
 
       - name: Seed test users
-        working-directory: apps/reference
+        working-directory: apps/${{ matrix.app }}
         run: |
           set -euo pipefail
 
@@ -530,25 +636,31 @@ jobs:
         # are merged in `e2e-report`, which is also where the report a human
         # opens is produced.
         run: >
-          pnpm test:e2e --filter=@beyours/reference --
+          pnpm test:e2e --filter=@beyours/${{ matrix.app }} --
           --shard=${{ matrix.shard }}/4 --reporter=blob
         env:
           CI: true
 
       - name: Upload this shard's blob report
+        # The app is in the name, not only the shard. `e2e-report` collects
+        # these with a glob and merges whatever it finds into one report, so two
+        # apps sharing a `blob-report-<shard>` namespace would be merged into
+        # each other — one report holding both suites, asserted against one
+        # app's floors. Nothing would fail; the numbers would simply stop
+        # meaning anything.
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: blob-report-${{ matrix.shard }}
-          path: apps/reference/blob-report/
+          name: blob-report-${{ matrix.app }}-${{ matrix.shard }}
+          path: apps/${{ matrix.app }}/blob-report/
           retention-days: 1
 
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.shard }}
-          path: apps/reference/test-results/
+          name: test-results-${{ matrix.app }}-${{ matrix.shard }}
+          path: apps/${{ matrix.app }}/test-results/
           retention-days: 7
 
       - name: Convex backend log
@@ -566,11 +678,23 @@ jobs:
   # `always()`, because a failed shard is precisely when the report is worth
   # having.
   e2e-report:
-    name: E2E Report
+    name: E2E Report (${{ matrix.app }})
     runs-on: ubuntu-latest
-    needs: [e2e]
-    if: always()
+    needs: [suites, e2e]
+    # `always()` so a failed shard still produces the report — that is precisely
+    # when it is worth having. Guarded on `suites` all the same: its output is
+    # this job's matrix, and `fromJSON` of an unset output is a workflow parse
+    # error rather than an empty matrix. Skipping here instead leaves
+    # `E2E Status` to fail on `skipped`, which reads as what happened.
+    if: always() && needs.suites.result == 'success'
     timeout-minutes: 15
+    # One report per app, never one report over both. The floors below are
+    # per-suite counts; a merged pair would clear either app's floor on the
+    # strength of the other's tests.
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.suites.outputs.apps) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -592,12 +716,14 @@ jobs:
       - name: Collect every shard's blob
         uses: actions/download-artifact@v4
         with:
-          pattern: blob-report-*
+          # This app's four, not every app's. The glob is why the upload step
+          # puts the app in the artifact name.
+          pattern: blob-report-${{ matrix.app }}-*
           merge-multiple: true
-          path: apps/reference/all-blob-reports
+          path: apps/${{ matrix.app }}/all-blob-reports
 
       - name: Merge them into one report
-        working-directory: apps/reference
+        working-directory: apps/${{ matrix.app }}
         # The JSON lands outside `playwright-report/`: the html reporter owns
         # that directory and empties it, and the assertion needs a file that
         # survives being written next to it.
@@ -622,21 +748,41 @@ jobs:
         # `upload-artifact` treats "no files found" as a warning, so "some of
         # the run is missing" is the shape a real failure takes here.
         #
-        # Measured on run 33750984671: setup 4, public 75, admin 463 — 542. The
-        # floors sit below that with room for the ~62 tests that can legitimately
-        # self-skip on thin fixtures (9 did on that run), and above what any
-        # three shards can produce, so losing one blob fails.
+        # Per app, because the two suites are not the same size. Both sets were
+        # measured, not estimated:
+        #
+        #   reference — run 33750984671: setup 4, public 75, admin 463 = 542
+        #   themes    — 07/09/2026:      setup 1, public 80, admin 469 = 550
+        #
+        # The floors sit below each measurement with room for the tests that
+        # legitimately self-skip on thin fixtures (9 on that reference run, 8 on
+        # the themes one), and above what any three shards can produce — so
+        # losing one blob fails, which is the failure this job exists to catch.
+        #
+        # `case`, not a matrix `include`: an include entry whose key matches no
+        # existing combination is appended as an extra job rather than ignored,
+        # so listing floors for an app the matrix did not select would silently
+        # add a leg. Here an unknown app fails loudly instead.
         run: |
+          set -euo pipefail
+          case "${{ matrix.app }}" in
+            reference) floors="--min 400 --projects setup:1,public:60,admin:380" ;;
+            themes)    floors="--min 412 --projects setup:1,public:64,admin:375" ;;
+            *)
+              echo "::error::No measured floors for app '${{ matrix.app }}'. Add them here rather than letting the assertion pass on a default."
+              exit 1
+              ;;
+          esac
+          # shellcheck disable=SC2086 # word splitting is the point
           node scripts/assert-e2e-ran.mjs \
-            apps/reference/merged-report.json \
-            --min 400 --projects setup:1,public:60,admin:380
+            apps/${{ matrix.app }}/merged-report.json $floors
 
       - name: Upload the merged report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: apps/reference/playwright-report/
+          name: playwright-report-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/playwright-report/
           retention-days: 7
 
   # Reports what the E2E job actually did.
@@ -654,8 +800,11 @@ jobs:
     steps:
       - name: Check E2E result
         env:
-          # A matrix result is the aggregate: `success` only when all four
-          # shards succeeded.
+          # A matrix result is the aggregate: `success` only when every leg
+          # succeeded — four shards on a pull request, eight on `main`, where
+          # the template's suite runs too. It is also `skipped` when the
+          # `suites` job failed and no leg ever started, which the branch below
+          # already treats as a failure.
           E2E_RESULT: ${{ needs.e2e.result }}
           # And the report job carries the assertion that the run was real, so a
           # gate that ignored it would go green over an empty suite again.
