@@ -2352,3 +2352,45 @@ export const createWithTicket = {
     return orderId
   },
 }
+
+/**
+ * The Stripe Checkout Session of an order that is no longer a card order.
+ *
+ * WHY THIS EXISTS: #374 lets a diner who abandoned Stripe confirm « Espèces »
+ * on the same checkout attempt, and re-methods the reused order to cash. Stripe
+ * was never told. The session stayed payable for ~24 h behind the tab the diner
+ * had left open, so once the counter had taken the notes the SAME order could
+ * still be collected a second time by card — one meal, charged twice (#378).
+ *
+ * Expiring it is the fix that stops that happening at all, rather than catching
+ * it afterwards. A mutation cannot call Stripe, so this answers with the id and
+ * the wrapper schedules the action — the same division `planOrderConfirmation`
+ * makes, and for the same reason: this layer has no `internal.*` of its own.
+ *
+ * `stripeCheckoutSessionId` is deliberately LEFT ON THE ORDER. It is the only
+ * pointer `reconcilePendingCheckouts` has, and the one case where expiry fails
+ * is a session Stripe refuses to expire because it has already been paid —
+ * exactly the case where that pointer is what recovers the money. The cost is
+ * that a diner who retries the same attempt again books a second expiry call,
+ * which Stripe answers as a no-op.
+ *
+ * Answers null for every order that never had a session: cash from the start,
+ * PayPal, and every platform order.
+ */
+export const abandonedCheckoutSession = async (
+  ctx: any,
+  orderId: string
+): Promise<string | null> => {
+  const order = await ctx.db.get(orderId)
+  if (!order) return null
+
+  const sessionId = order.stripeCheckoutSessionId
+  if (typeof sessionId !== "string" || sessionId.trim() === "") return null
+
+  // "card" is the only method that session settles, so it is the only method
+  // that still needs it. An order carrying no method at all is a platform
+  // order, which never had one.
+  if (!order.paymentMethod || order.paymentMethod === "card") return null
+
+  return sessionId
+}

@@ -193,6 +193,15 @@ export const create = {
  *  - The row is inserted directly as "succeeded". The old `create` then
  *    `updateStatus` pair was a second read-then-write window, and the reason a
  *    row could sit at "pending" forever when the second call never landed.
+ *
+ * A fourth guard was added later, and it is a different question from all
+ * three: `by_externalId` recognises a charge it has already seen, and cannot
+ * recognise an order somebody ELSE has already collected. Cash carries no
+ * reference and two providers mint unrelated ones, so those rows never collide
+ * — which is how one meal was collected twice, in cash at the counter and
+ * again by a Stripe session left live behind an abandoned checkout (#378). The
+ * order-level check below is what makes "one order, one collection" a property
+ * of the ledger rather than of five call sites remembering to ask a guard.
  */
 export const settlePayment = {
   args: {
@@ -250,6 +259,46 @@ export const settlePayment = {
     const match = existing.find((p: any) => p.orderId === args.orderId)
     if (match) {
       return { paymentId: match._id, created: false }
+    }
+
+    // Below this line a NEW collection is about to be written, and an order is
+    // collected once.
+    //
+    // WHY THIS IS NOT THE CHECK ABOVE: `byExternalId` answers "have I seen this
+    // charge before". It cannot answer "has this order already been paid by
+    // someone else" — a cash row carries no `externalId` at all, and two
+    // providers mint unrelated references, so the two never collide. That gap
+    // is the whole of #378: a diner abandons Stripe, confirms « Espèces » on
+    // the same attempt (#374 re-methods the reused order), staff take the notes
+    // — and the Stripe session stays live for ~24 h. Completing it wrote a
+    // second `succeeded` row on top of the cash one. The order still read
+    // « Payé », both rows were independently refundable, and one meal had been
+    // charged twice with nothing anywhere saying so.
+    //
+    // `assertSettlesOrder` refuses that from the order's stored method, before
+    // the provider path ever reaches here. This is the same rule stated where
+    // it cannot be stepped around: five call sites remember to ask the guard,
+    // and the sixth one written next year would not have to. The ledger is the
+    // thing that must be unable to hold two collections of one order.
+    //
+    // `refunded` is deliberately not counted: that money went back, so a fresh
+    // collection is a real one. `partially_refunded` is, because part of it is
+    // still held.
+    const onOrder = await ctx.db
+      .query("payments")
+      .withIndex("by_orderId", (q: any) => q.eq("orderId", args.orderId))
+      .collect()
+
+    const collected = onOrder.find(
+      (p: any) =>
+        p.provider !== args.provider &&
+        (p.status === "succeeded" || p.status === "partially_refunded")
+    )
+    if (collected) {
+      throw new Error(
+        `Cette commande a déjà été encaissée (${collected.provider}) : ` +
+          `un règlement ${args.provider} en ferait un double encaissement.`
+      )
     }
 
     const now = Date.now()
