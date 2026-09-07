@@ -7,7 +7,7 @@
  */
 
 export const PACKAGE_VERSIONS = {
-  "admin": "9.0.0",
+  "admin": "9.0.1",
   "cms": "3.1.0",
   "convex-functions": "4.0.0",
   "convex-schema": "4.0.0",
