@@ -165,16 +165,31 @@ repository settings:
 
 ### The fifth check: `E2E Status`, never `E2E Tests`
 
-`e2e.yml` runs the reference app's Playwright suite in **four shards**, each with its
-own `convex-local-backend` downloaded and started on the runner — no Convex account,
-no `E2E_*` secrets. It then merges the four blob reports and asserts the run was
-real. Three jobs:
+`e2e.yml` runs a Playwright suite in **four shards**, each with its own
+`convex-local-backend` downloaded and started on the runner — no Convex account, no
+`E2E_*` secrets. It then merges that app's four blob reports and asserts the run was
+real. Four jobs:
 
 | Job | Name | Role |
 | --- | --- | --- |
-| `e2e` | `E2E Tests (n/4)` | The shards. `fail-fast: false`, `timeout-minutes: 40`. |
-| `e2e-report` | `E2E Report` | Merges the blobs, then runs `scripts/assert-e2e-ran.mjs`. |
+| `suites` | `Pick the suites to run` | Emits the app list the matrix expands over. |
+| `e2e` | `E2E Tests (<app> n/4)` | The shards. `fail-fast: false`, `timeout-minutes: 40`. |
+| `e2e-report` | `E2E Report (<app>)` | Merges that app's blobs, then runs `scripts/assert-e2e-ran.mjs`. |
 | `e2e-status` | `E2E Status` | The aggregate. **This is the required check.** |
+
+**Which apps.** `apps/reference` on every trigger; `apps/themes` additionally on
+pushes to `main`, and on a pull request that edits `e2e.yml` itself. The twin-app
+contract (§8) holds both `e2e/` trees identical, so on a pull request the bench is a
+faithful reading of the *specs* and running both would buy a second opinion on the
+same tests. What it cannot speak for is the template's own **configuration** — it has
+no `app/(test)/layout.tsx`, so it serves harness routes the template 404s in
+production. That asymmetry shipped three broken specs to every client and went unseen
+for as long as the template's suite ran nowhere (#329), which is why the template now
+runs where a regression costs a job rather than a rebase.
+
+Artifacts carry the app in their name (`blob-report-<app>-<shard>`), and
+`e2e-report` collects `blob-report-<app>-*`. Without that, one merge would hold both
+suites and each app's floors would be cleared on the strength of the other's tests.
 
 **The required check is `E2E Status`.** Requiring a *shard* would be the old trap: a
 job that does not run reports `skipped`, and GitHub counts a skip as satisfied.
@@ -187,14 +202,23 @@ exits 0 with nothing to run, so the job asserts **floors per project**, not one 
 number:
 
 ```yaml
-node scripts/assert-e2e-ran.mjs apps/reference/merged-report.json \
-  --min 400 --projects setup:1,public:60,admin:380
+node scripts/assert-e2e-ran.mjs apps/<app>/merged-report.json $floors
 ```
 
-A single `--min 100` against a 542-test suite was measured accepting 442 missing
-tests. The floors sit below the measured run (setup 4, public 75, admin 463) with
-room for the ~62 tests that can legitimately self-skip on thin fixtures, and above
-what any three shards can produce — so losing one blob fails.
+Both floor sets are measured, never estimated:
+
+| App | Measured run | Floors |
+| --- | --- | --- |
+| `reference` | setup 4, public 75, admin 463 — 542 | `--min 400 --projects setup:1,public:60,admin:380` |
+| `themes` | setup 1, public 80, admin 469 — 550 | `--min 412 --projects setup:1,public:64,admin:375` |
+
+A single `--min 100` against the 542-test suite was measured accepting 442 missing
+tests. Each set sits below its measured run — with room for the tests that can
+legitimately self-skip on thin fixtures, 9 and 8 respectively — and above what any
+three shards can produce, so losing one blob fails. The template carries the same
+floors in its own `ci.yml`, where the suite is unsharded.
+
+Raise them when a suite grows; a floor that never moves stops meaning anything.
 
 ### What blocks a merge
 

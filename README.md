@@ -355,7 +355,9 @@ prospective merged state and runs these same checks against it, which is the
 same guarantee without asking every author to rebase behind every merge.
 
 The required E2E check is `E2E Status`, never `E2E Tests`. `E2E Status` is a
-one-step aggregate over the four shards and the report job, and it fails on
+one-step aggregate over every shard and report job — four shards on a pull
+request, eight on `main`, where the client template's suite runs too — and it
+fails on
 anything that is not a real pass — `failure`, `cancelled` and `skipped` alike.
 Requiring a *shard* instead would be the old trap: a job that does not run
 reports `skipped`, and GitHub counts a skip as satisfied.
