@@ -751,7 +751,11 @@ export const create = {
       name: args.customerInfo.name,
       email: args.customerInfo.email,
       phone: args.customerInfo.phone,
-      message: args.notes,
+      // `orderNote`, not `message`: the note is a sentence to a cook printed
+      // on an 80mm slip, not a contact-form body. It was capped at the
+      // latter's 5 000 characters because this mutation had no cap of its own
+      // and there was no field on the storefront that could reach it.
+      orderNote: args.notes,
     })
 
     // Every other string a caller controls. The four above were capped first

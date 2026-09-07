@@ -50,6 +50,21 @@ export const get = {
 }
 
 /**
+ * Which provider takes a card payment — or `none`, when the establishment does
+ * not accept cards at all.
+ *
+ * `none` is stored, chosen by the owner in Réglages → Paiements. It is not a
+ * fallback for a missing value: an unset `payments` block still means "Stripe,
+ * not yet configured", which reads as unavailable through the key check below.
+ */
+export type CardProvider = "stripe" | "sumup" | "none"
+
+/** Read a stored `cardProvider` as one of the three, defaulting to Stripe. */
+export function normalizeCardProvider(value: unknown): CardProvider {
+  return value === "sumup" || value === "none" ? value : "stripe"
+}
+
+/**
  * Can this deployment actually take a card right now?
  *
  * `payments.cardProvider` declares WHICH provider, never WHETHER it works: the
@@ -67,10 +82,13 @@ export const get = {
  * defect again.
  */
 export function resolveCardPaymentAvailability(input: {
-  cardProvider: "stripe" | "sumup"
+  cardProvider: CardProvider
   stripeSecretKeyPresent: boolean
   connection: { status: string; encryptedAccessToken?: string } | null
 }): boolean {
+  // The owner's own answer, and the only one no amount of detection can
+  // infer: a cash-only establishment with Stripe perfectly well connected.
+  if (input.cardProvider === "none") return false
   if (input.cardProvider === "sumup") {
     return (
       input.connection?.status === "connected" &&
@@ -89,21 +107,36 @@ export function resolveCardPaymentAvailability(input: {
 /**
  * The query def behind the storefront's `paymentAvailability.get`.
  *
- * Answers only a boolean — deliberately: this is readable before any sign-in,
- * and "a card can be taken" is all the checkout needs to stop pre-selecting a
- * dead tile. The key itself, the connection row and its token never leave the
- * server.
+ * Answers two booleans — deliberately no more: this is readable before any
+ * sign-in, and the key itself, the connection row and its token never leave
+ * the server.
+ *
+ *   `card`        — can a card be taken right now? What stops the checkout
+ *                   pre-selecting a dead tile (#374).
+ *   `cardOffered` — does this establishment take cards at all? An owner's
+ *                   public business decision, not configuration: a cash-only
+ *                   food truck needs the tile GONE, not greyed out under
+ *                   « Indisponible pour le moment », which reads as a fault
+ *                   that might clear (#376).
  */
 export const cardPaymentAvailability = {
   args: {},
-  handler: async (ctx: any): Promise<{ card: boolean }> => {
+  handler: async (
+    ctx: any
+  ): Promise<{ card: boolean; cardOffered: boolean }> => {
     const settings = await ctx.db.query("globalSettings").first()
-    const cardProvider: "stripe" | "sumup" =
-      settings?.payments?.cardProvider === "sumup" ? "sumup" : "stripe"
-    const connection = await ctx.db
-      .query("paymentConnections")
-      .withIndex("by_provider", (q: any) => q.eq("provider", cardProvider))
-      .first()
+    // `none` is a third answer, not an absent one. This used to read
+    // `=== "sumup" ? "sumup" : "stripe"`, which folded every other value —
+    // including an owner's explicit "we do not take cards" — onto Stripe.
+    const cardProvider = normalizeCardProvider(settings?.payments?.cardProvider)
+    const cardOffered = cardProvider !== "none"
+    // No provider means no connection row to look for.
+    const connection = cardOffered
+      ? await ctx.db
+          .query("paymentConnections")
+          .withIndex("by_provider", (q: any) => q.eq("provider", cardProvider))
+          .first()
+      : null
     // Mirrors `getSiteEnv()`'s own validation, which the charge action reads
     // the key through: a pasted publishable `pk_…` key makes that call throw,
     // so a key that does not start with `sk_` must read as unavailable here —
@@ -116,6 +149,7 @@ export const cardPaymentAvailability = {
           typeof stripeKey === "string" && stripeKey.startsWith("sk_"),
         connection,
       }),
+      cardOffered,
     }
   },
 }
@@ -153,7 +187,12 @@ export const upsert = {
       radius: v.optional(v.number()),
     })),
     payments: v.optional(v.object({
-      cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
+      // `none` — the establishment does not take cards. See the schema.
+      cardProvider: v.union(
+        v.literal("stripe"),
+        v.literal("sumup"),
+        v.literal("none")
+      ),
       paypal: v.boolean(),
       paypalEmail: v.optional(v.string()),
       cash: v.boolean(),
