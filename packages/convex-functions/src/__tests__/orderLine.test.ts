@@ -354,13 +354,52 @@ describe("options", () => {
     ).toBe("too_many_choices")
   })
 
-  it("treats a group with no declared maximum as a single choice", () => {
+  /**
+   * REWRITTEN. This case used to read "treats a group with no declared maximum
+   * as a single choice" and asserted `too_many_choices` — it blessed the
+   * defect. Three other surfaces read an absent maximum as no maximum: the
+   * storefront renders an uncapped checkbox group (a radio only at
+   * `maxSelections === 1`), the admin's input offers « Illimité » as its
+   * placeholder, and both platform syncs publish `choices.length`. Only this
+   * check said one, and it said it at the moment of payment — so a diner who
+   * ticked the two sauces the menu had just offered was refused, by a sentence
+   * naming a maximum the owner never set.
+   */
+  it("lets a group with no declared maximum take every choice offered", () => {
     const product = pizza({
       options: [
         {
           id: "opt_sauce",
           name: "Sauce",
           required: false,
+          choices: [
+            { id: "ch_bbq", name: "BBQ", priceModifier: 50 },
+            { id: "ch_algerienne", name: "Algérienne", priceModifier: 50 },
+          ],
+        },
+      ],
+    })
+
+    const line = verifyOrderLine({
+      product,
+      quantity: 1,
+      selectedOptions: [pick("Sauce", "BBQ"), pick("Sauce", "Algérienne")],
+      now: NOON_UTC,
+    })
+
+    expect(line.selectedOptions).toHaveLength(2)
+    // Both modifiers are charged: an accepted choice is a priced choice.
+    expect(line.subtotal).toBe(1200 + 50 + 50)
+  })
+
+  it("still enforces a maximum the owner did set", () => {
+    const product = pizza({
+      options: [
+        {
+          id: "opt_sauce",
+          name: "Sauce",
+          required: false,
+          maxSelections: 1,
           choices: [
             { id: "ch_bbq", name: "BBQ", priceModifier: 50 },
             { id: "ch_algerienne", name: "Algérienne", priceModifier: 50 },

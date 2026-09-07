@@ -221,10 +221,17 @@ function assertOptionGroups(
       )
     }
 
-    // No `maxSelections` means the group takes one choice — the same reading
-    // the storefront applies when it turns the group into radio buttons.
-    const max = option.maxSelections ?? 1
-    if (picked.length > max) {
+    // No `maxSelections` means no limit. The comment here used to claim this
+    // was "the same reading the storefront applies when it turns the group
+    // into radio buttons" and read `?? 1` — but the storefront only makes a
+    // group radio at `maxSelections === 1`; with none set it renders an
+    // uncapped checkbox group, the admin's own input placeholders « Illimité »,
+    // and both platform syncs publish `option.choices.length`. Three surfaces
+    // said unlimited and this one said one, so a diner who ticked two sauces
+    // the storefront offered was refused at the moment of payment, by a
+    // sentence naming a maximum nobody had configured.
+    const max = option.maxSelections
+    if (max !== undefined && picked.length > max) {
       throw new LineRejectedError(
         "too_many_choices",
         product.name,

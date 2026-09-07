@@ -403,6 +403,7 @@ export default function CheckoutPage() {
     email?: string
     phone?: string
     paymentMethod: "card" | "paypal" | "cash"
+    notes?: string
     tableNumber?: string
     deliveryAddress?: {
       street: string
@@ -501,6 +502,10 @@ export default function CheckoutPage() {
         })),
         type: orderType,
         paymentMethod: data.paymentMethod,
+        // The diner's note to the kitchen — an allergy, most of the time. It
+        // rides the order through `releaseToKitchen` onto the ticket, which
+        // has had a line for it all along and never had anything to print.
+        notes: data.notes,
         // The server recomputes the discount from this promotion. The
         // `appliedPromo.discountAmount` computed above is for display only and
         // is deliberately not sent — it used to be, and was trusted verbatim.
@@ -639,6 +644,10 @@ export default function CheckoutPage() {
               } : undefined}
               onAddressChange={handleAddressChange}
               services={services}
+              // Only for a guest: a signed-in diner has no use for it, and the
+              // form only renders it when cash is the sole path and an account
+              // is what is missing.
+              signInAction={!session ? <SignInDialog /> : undefined}
             />
           </div>
 

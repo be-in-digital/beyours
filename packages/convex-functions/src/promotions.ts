@@ -6,6 +6,49 @@
 
 import { v } from "convex/values"
 
+import { RefusalError } from "./refusal"
+import {
+  UNHONOURABLE_DISCOUNT_TYPE_MESSAGE,
+  isHonourableDiscountType,
+} from "./promotionDiscount"
+
+/** A promotion this deployment cannot save, and why. */
+export type PromotionConfigRefusalReason =
+  | "discount_type_unhonourable"
+  | "coupon_code_taken"
+
+export class PromotionConfigRefusedError extends RefusalError<PromotionConfigRefusalReason> {
+  /** Named like `PromotionRejectedError`'s, so both refusals read alike. */
+  readonly reason: PromotionConfigRefusalReason
+
+  constructor(reason: PromotionConfigRefusalReason, message: string) {
+    super("PromotionConfigRefusedError", reason, message)
+    this.reason = reason
+  }
+}
+
+/**
+ * Refuse a discount type the order path can never honour.
+ *
+ * WHY AT CREATION: the form sold « Produit offert » and « Offre BOGO (1+1) »,
+ * `create` stored them, and `resolvePromotionDiscount` threw `not_applicable`
+ * at the first redemption. An owner built a campaign, printed flyers for it,
+ * and learned it was decorative from a diner at the till. Accepted-then-dead
+ * is the worst of the three possible answers; refusing here is the honest one,
+ * and it names what to use instead.
+ *
+ * The list itself lives with the resolver that enforces it, so the two cannot
+ * drift — a type implemented there becomes creatable here on the same commit.
+ */
+function assertHonourableDiscountType(discountType: string): void {
+  if (!isHonourableDiscountType(discountType)) {
+    throw new PromotionConfigRefusedError(
+      "discount_type_unhonourable",
+      UNHONOURABLE_DISCOUNT_TYPE_MESSAGE
+    )
+  }
+}
+
 const triggerModeValidator = v.union(v.literal("coupon"), v.literal("auto"))
 
 const discountTypeValidator = v.union(
@@ -141,6 +184,8 @@ export const create = {
     isActive: v.boolean(),
   },
   handler: async (ctx: any, args: any) => {
+    assertHonourableDiscountType(args.discountType)
+
     // Normalize coupon code to uppercase
     const couponCode = args.couponCode ? args.couponCode.toUpperCase() : undefined
 
@@ -153,7 +198,13 @@ export const create = {
         )
         .first()
       if (existing) {
-        throw new Error("Ce code promo existe déjà")
+        // A `ConvexError`, not a bare `Error`: Convex redacts the latter in
+        // production and the admin read "Server Error" where this sentence
+        // should have been.
+        throw new PromotionConfigRefusedError(
+          "coupon_code_taken",
+          "Ce code promo existe déjà"
+        )
       }
     }
 
@@ -202,6 +253,13 @@ export const update = {
     const existing = await ctx.db.get(id)
     if (!existing) throw new Error("Promotion not found")
 
+    // The type the promotion would carry once saved — the patched one, or the
+    // stored one when the caller is not touching it. A row created before the
+    // guard existed therefore cannot be edited while keeping its dead type;
+    // it can still be deactivated (`toggleStatus`) or deleted (`remove`),
+    // neither of which routes through here.
+    assertHonourableDiscountType(fields.discountType ?? existing.discountType)
+
     // Normalize coupon code to uppercase if provided
     if (fields.couponCode !== undefined) {
       fields.couponCode = fields.couponCode ? fields.couponCode.toUpperCase() : undefined
@@ -217,7 +275,10 @@ export const update = {
         )
         .first()
       if (duplicate && duplicate._id !== id) {
-        throw new Error("Ce code promo existe déjà")
+        throw new PromotionConfigRefusedError(
+          "coupon_code_taken",
+          "Ce code promo existe déjà"
+        )
       }
     }
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { Loader2, Plus, X } from "lucide-react"
 import {
   Button,
@@ -25,80 +24,7 @@ import {
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
 import { AllergenField } from "./allergen-field"
 import { addChoiceAt, removeChoiceAt } from "./product-options"
-
-/**
- * Form schema for product editing with euro prices for display.
- * Avoids .default() to prevent type mismatch with @hookform/resolvers v5.
- */
-/** Optional number that treats NaN (from empty inputs with valueAsNumber) as undefined */
-const optionalNumber = (schema: z.ZodNumber) =>
-  schema.optional().or(z.nan().transform(() => undefined))
-
-/**
- * A number the server requires.
- *
- * `valueAsNumber` yields NaN for an empty input, and `optionalNumber` turned
- * that into `undefined` — which the Convex validator refuses, because the
- * column is `v.number()`. Clearing the VAT field therefore failed the whole
- * save under a generic "Échec de la mise à jour du produit" toast, with no
- * indication of which field was at fault. NaN is a missing value, and it is
- * reported here, on the field.
- */
-const requiredNumber = (schema: z.ZodNumber, message: string) =>
-  z.union([schema, z.nan()]).refine((value) => !Number.isNaN(value), { message })
-
-const productFormSchema = z.object({
-  categoryId: z.string().min(1, "Category is required"),
-  name: z.string().min(1, "Name is required").max(200),
-  slug: z.string().min(1, "Slug is required").max(100).regex(/^[a-z0-9-]+$/),
-  description: z.string().max(2000).optional(),
-  priceEuros: z.number().min(0, "Price must be positive"),
-  compareAtPriceEuros: optionalNumber(z.number().min(0)),
-  taxRate: requiredNumber(
-    z.number().min(0, "Le taux de TVA ne peut pas être négatif").max(100, "Le taux de TVA ne peut pas dépasser 100 %"),
-    "Le taux de TVA est requis"
-  ),
-  preparationTime: optionalNumber(z.number().int().min(1).max(240)),
-  sku: z.string().max(50).optional(),
-  images: z.array(z.string()).optional(),
-  options: z.array(z.object({
-    id: z.string().min(1),
-    name: z.string().min(1),
-    required: z.boolean(),
-    maxSelections: z.number().int().min(1).optional(),
-    externalIds: z.object({
-      uberEatsId: z.string().optional(),
-      deliverooId: z.string().optional(),
-    }).optional(),
-    choices: z.array(z.object({
-      id: z.string().min(1),
-      name: z.string().min(1),
-      priceModifier: z.number(),
-      externalIds: z.object({
-        uberEatsId: z.string().optional(),
-        deliverooId: z.string().optional(),
-      }).optional(),
-    })),
-  })).optional(),
-  allergens: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
-  stock: z.object({
-    tracked: z.boolean(),
-    quantity: z.number().int().min(0),
-    lowStockThreshold: z.number().int().min(0),
-  }).optional(),
-  scheduling: z.object({
-    availableFrom: z.string().optional(),
-    availableUntil: z.string().optional(),
-    availableDays: z.array(z.number().min(0).max(6)).optional(),
-  }).optional(),
-  spiceLevel: optionalNumber(z.number().int().min(0).max(5)),
-  isActive: z.boolean().optional(),
-  isFeatured: z.boolean().optional(),
-  sortOrder: optionalNumber(z.number().int().min(0)),
-})
-
-type ProductFormData = z.infer<typeof productFormSchema>
+import { productFormSchema, type ProductFormData } from "./product-form-schema"
 
 interface Category {
   _id: string
@@ -665,15 +591,40 @@ export function ProductForm({
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-xs">Sélections max</Label>
+                          <Label
+                            htmlFor={`option-${optionIndex}-max`}
+                            className="text-xs"
+                          >
+                            Sélections max
+                          </Label>
                           <Input
+                            id={`option-${optionIndex}-max`}
                             type="number"
+                            min={1}
                             {...register(`options.${optionIndex}.maxSelections`, {
                               valueAsNumber: true,
                             })}
                             placeholder="Illimité"
                             className="w-24 h-8 text-xs"
+                            aria-invalid={
+                              errors.options?.[optionIndex]?.maxSelections
+                                ? true
+                                : undefined
+                            }
                           />
+                          {/*
+                            A blocked submit has to say which field blocked it.
+                            An invalid value here — 0, or −3 — refuses the whole
+                            product, and every other numeric field on this form
+                            prints its own message while this one printed
+                            nothing at all.
+                          */}
+                          {errors.options?.[optionIndex]?.maxSelections && (
+                            <p className="text-xs text-destructive">
+                              {errors.options[optionIndex]?.maxSelections?.message ??
+                                "Indiquez un nombre de choix supérieur à 0, ou laissez vide."}
+                            </p>
+                          )}
                         </div>
                       </div>
 

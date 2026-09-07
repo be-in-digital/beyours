@@ -69,6 +69,8 @@ export function SettingsPage() {
     setSimulationResult,
     // Payments
     cardProvider,
+    cardEnabled,
+    setCardEnabled,
     setCardProvider,
     stripeConnection,
     sumupConnection,
@@ -228,6 +230,8 @@ export function SettingsPage() {
         <TabsContent value="payments" className="space-y-4">
           <PaymentsTab
             cardProvider={cardProvider}
+            cardEnabled={cardEnabled}
+            setCardEnabled={setCardEnabled}
             setCardProvider={setCardProvider}
             stripeConnection={stripeConnection}
             sumupConnection={sumupConnection}
