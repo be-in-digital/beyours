@@ -10,7 +10,10 @@ import { Doc, Id } from "./_generated/dataModel";
 import {
   affiliateStandingRefusal,
   isUngrandfathered,
+  type StandingRefusal,
 } from "./affiliateStanding";
+import { affiliateProgramEnabled } from "./affiliateSettings";
+import { PROGRAM_DISABLED_REASON } from "./affiliateProgram";
 
 /* ── Helpers ── */
 
@@ -38,6 +41,17 @@ async function lookupUsableCode(
   ctx: QueryCtx,
   rawCode: string,
 ): Promise<{ code: Doc<"referralCodes">; affiliate: Doc<"affiliateUsers"> } | null> {
+  /* The kill-switch, first: it is about the PROGRAMME, so it does not depend on
+     which code was typed or who owns it. Refusing here is what makes it reach
+     both readers at once — `validateCode` answers « invalide » and
+     `resolveForCheckout` answers `null`, so the checkout bills the list price
+     exactly as it would for a code nobody holds. `programEnabled` had no reader
+     at all on this path; see ./affiliateProgram for what it now stops. */
+  if (!(await affiliateProgramEnabled(ctx))) {
+    console.log(`[REFERRAL] ${PROGRAM_DISABLED_REASON} — code refusé.`);
+    return null;
+  }
+
   const normalizedCode = rawCode.toUpperCase().trim();
 
   const referralCode = await ctx.db
@@ -76,6 +90,32 @@ async function lookupUsableCode(
   }
 
   return { code: referralCode, affiliate };
+}
+
+/* ── Who may hold a code ──
+
+   `lookupUsableCode` refuses to price a code whose owner has not signed, which
+   closed the money half of the self-service hole. This closes the other half:
+   minting the code in the first place. Both public mutations below asked only
+   for an affiliate profile, and `affiliateUsers.createAfterSignup` hands one to
+   any signed-in account — so an unsigned account could still mint « BID-XXXXX »,
+   publish it, and hand out a code that silently prices at nothing. The refusal
+   belongs where the code is created, not only where it is read.
+
+   The message names the reason: the contract page is one click away, and « code
+   invalide » would send the affiliate to support instead. */
+const CODE_REFUSALS: Record<StandingRefusal, string> = {
+  account_not_active:
+    "Votre compte apporteur n'est pas actif : contactez-nous avant de générer un code.",
+  contract_pending:
+    "Signez le contrat d'apporteur d'affaires avant de générer un code de parrainage.",
+  contract_superseded:
+    "Une nouvelle version du contrat est à signer avant de générer un code de parrainage.",
+};
+
+function assertMayHoldACode(affiliate: Doc<"affiliateUsers">): void {
+  const refusal = affiliateStandingRefusal(affiliate);
+  if (refusal) throw new Error(CODE_REFUSALS[refusal]);
 }
 
 /** The programme-wide discount, or `undefined` when no settings row exists. */
@@ -168,6 +208,7 @@ export const generateMyCode = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     if (!affiliate) throw new Error("Profil apporteur introuvable");
+    assertMayHoldACode(affiliate);
 
     // Make sure they do not already have an active code
     const existing = await ctx.db
@@ -219,6 +260,7 @@ export const customizeMyCode = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     if (!affiliate) throw new Error("Profil apporteur introuvable");
+    assertMayHoldACode(affiliate);
 
     const normalizedCode = args.code.toUpperCase().trim();
 

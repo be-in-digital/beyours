@@ -7,6 +7,15 @@ import {
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { SITE_SUBJECT, consumeRateLimit } from "./rateLimit";
+import {
+  affiliateProgramEnabled,
+  readAffiliateSettings,
+} from "./affiliateSettings";
+import { PROGRAM_DISABLED_REASON } from "./affiliateProgram";
+import {
+  affiliateStandingRefusal,
+  isUngrandfathered,
+} from "./affiliateStanding";
 
 /* ── Internal queries ── */
 
@@ -41,6 +50,23 @@ export const createFromCheckout = internalMutation({
       .unique();
     if (existing) return existing._id;
 
+    /* ── The programme's kill-switch ──
+       A Stripe session stays payable for up to 24 h, so a sale discounted
+       while the programme was on can settle after it has been switched off:
+       `resolveForCheckout` refuses the code at checkout, but this runs from the
+       webhook, against metadata written before the switch was thrown. The
+       commission is therefore RECORDED and held rather than dropped — the
+       customer did get the discount, and losing that fact would leave nothing
+       for an operator to reconcile — but it never reaches a state any payout
+       path reads. See ./affiliateProgram. */
+    const programOff = !(await affiliateProgramEnabled(ctx));
+    if (programOff) {
+      console.error(
+        `[REFERRAL] ${PROGRAM_DISABLED_REASON} — commission de la commande ` +
+          `${args.orderId} enregistrée bloquée, à arbitrer manuellement.`,
+      );
+    }
+
     // « Nouveau Client » dedup (art. 3.2): if the email is already a customer (an
     // earlier paid order) or an already-known contact, hold it for human review
     // instead of letting the commission through.
@@ -58,17 +84,26 @@ export const createFromCheckout = internalMutation({
     const alreadyKnown = hadPriorPaidOrder || knownLead.length > 0;
 
     const now = Date.now();
-    const flagged = alreadyKnown
+    const flagged = programOff
       ? {
           status: "blocked" as const,
           blockedAt: now,
-          statusReason:
-            "Client potentiellement déjà connu — vérifier l'éligibilité « Nouveau Client » (art. 3.2)",
-          adminNote: hadPriorPaidOrder
-            ? "Commande antérieure payée avec le même email."
-            : "Email déjà présent dans les contacts (lead).",
+          statusReason: PROGRAM_DISABLED_REASON,
+          adminNote:
+            "Session de paiement ouverte avant la désactivation du programme : " +
+            "la remise a été accordée, la commission reste à arbitrer.",
         }
-      : { status: "pending" as const };
+      : alreadyKnown
+        ? {
+            status: "blocked" as const,
+            blockedAt: now,
+            statusReason:
+              "Client potentiellement déjà connu — vérifier l'éligibilité « Nouveau Client » (art. 3.2)",
+            adminNote: hadPriorPaidOrder
+              ? "Commande antérieure payée avec le même email."
+              : "Email déjà présent dans les contacts (lead).",
+          }
+        : { status: "pending" as const };
 
     return await ctx.db.insert("referrals", {
       referrerId: args.referrerId,
@@ -88,9 +123,12 @@ export const createFromCheckout = internalMutation({
 export const validatePendingReferrals = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const settings = await ctx.db.query("affiliateSettings").take(1);
-    const delayDays = settings[0]?.validationDelayDays ?? 14;
-    const cutoff = Date.now() - delayDays * 24 * 60 * 60 * 1000;
+    /* Deliberately NOT gated on `programEnabled`: this step moves no money, it
+       only ages a commission that was already accrued, and freezing it would
+       silently rewrite what is owed for work already done. The two gates that
+       matter are `markValidatedAsPayable` and `processPayouts` below. */
+    const { validationDelayDays } = await readAffiliateSettings(ctx);
+    const cutoff = Date.now() - validationDelayDays * 24 * 60 * 60 * 1000;
 
     const pendingReferrals = await ctx.db
       .query("referrals")
@@ -136,9 +174,34 @@ export const getPayableReferrals = internalQuery({
   },
 });
 
+/**
+ * Moves `validated` commissions to `payable` — the last state before money
+ * actually leaves.
+ *
+ * Two gates were missing here and both let money out.
+ *
+ * The KILL-SWITCH. `programEnabled` was read by nothing: an operator who
+ * switched the programme off on Sunday still had commissions marked payable at
+ * 03:30 and wired at 10:00 on Monday.
+ *
+ * The CONTRACT. This asked for Stripe Connect, a SIRET and an invoice — three
+ * questions about how to pay someone, and none about whether they are owed
+ * anything. `affiliateUsers.createAfterSignup` is public and hands any
+ * signed-in account `status: "active"`, so the account check that WAS here
+ * proved nothing; the affiliate contract is the legal basis for the commission
+ * (art. 4), and it went unchecked all the way to the transfer. The rule is the
+ * one ./affiliateStanding already states for the discount half, deliberately
+ * shared: the code that discounts a sale and the cron that pays for it must not
+ * be able to disagree about who is in good standing.
+ */
 export const markValidatedAsPayable = internalMutation({
   args: {},
   handler: async (ctx) => {
+    if (!(await affiliateProgramEnabled(ctx))) {
+      console.log(`[REFERRAL] ${PROGRAM_DISABLED_REASON} — aucun paiement dû.`);
+      return;
+    }
+
     const validated = await ctx.db
       .query("referrals")
       .withIndex("by_status", (q) => q.eq("status", "validated"))
@@ -147,9 +210,27 @@ export const markValidatedAsPayable = internalMutation({
     let marked = 0;
     for (const referral of validated) {
       const affiliate = await ctx.db.get(referral.referrerId);
+      if (!affiliate) continue;
+
+      // The contract, before anything about how to pay (art. 4).
+      const refusal = affiliateStandingRefusal(affiliate);
+      if (refusal) {
+        console.log(
+          `[REFERRAL] Commission ${referral._id} non payable : ${refusal}.`,
+        );
+        continue;
+      }
+      if (isUngrandfathered(affiliate)) {
+        console.error(
+          `[REFERRAL] L'apporteur ${affiliate._id} n'a pas de contractStatus — ` +
+            `commission ${referral._id} rendue payable au titre de ` +
+            `l'antériorité. Lancer migrations.addContractStatusToAffiliates.`,
+        );
+      }
+
       // No payout without a SIRET (professional) and the affiliate's invoice (art. 4.2).
       if (
-        affiliate?.stripeConnectStatus === "active" &&
+        affiliate.stripeConnectStatus === "active" &&
         affiliate.siret &&
         referral.invoiceStorageId
       ) {

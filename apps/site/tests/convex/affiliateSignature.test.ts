@@ -7,8 +7,44 @@ import { PDFDocument } from "pdf-lib";
 import { inflateSync } from "node:zlib";
 import type { Id } from "../../convex/_generated/dataModel";
 import schema from "../../convex/schema";
+import { MAX_SIGNATURE_CLOCK_SKEW_MS } from "../../convex/contractSignatures";
+import {
+  SIGNER_IP_SECRET_ENV,
+  SIGNER_IP_SECRET_MIN_LENGTH,
+  mintSignerIpAttestation,
+} from "../../lib/security/signer-attestation";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
+
+/* ── The signer's IP ──
+   `signerIp` used to be a plain argument of the public action: the address
+   printed on the signature certificate was whatever the signer sent. What the
+   action takes now is an attestation the NEXT server minted over the address it
+   observed, and it records only what verifies against the deployment's secret.
+   See tests/signer-attestation.test.ts for the crypto and
+   lib/security/signer-attestation.ts for why the observation has to cross the
+   gap this way. */
+const SIGNER_IP_SECRET = "s".repeat(SIGNER_IP_SECRET_MIN_LENGTH);
+
+/** Run `body` on a deployment that holds the shared secret. */
+async function withSignerIpSecret<T>(
+  secret: string | undefined,
+  body: () => Promise<T>,
+): Promise<T> {
+  const saved = process.env[SIGNER_IP_SECRET_ENV];
+  if (secret === undefined) delete process.env[SIGNER_IP_SECRET_ENV];
+  else process.env[SIGNER_IP_SECRET_ENV] = secret;
+  try {
+    return await body();
+  } finally {
+    if (saved === undefined) delete process.env[SIGNER_IP_SECRET_ENV];
+    else process.env[SIGNER_IP_SECRET_ENV] = saved;
+  }
+}
+
+/** What `/api/signer-ip` hands the page for an address it saw. */
+const observedIp = async (ip: string, secret = SIGNER_IP_SECRET) =>
+  (await mintSignerIpAttestation(ip, { secret, now: Date.now() }))!;
 
 /**
  * Every text-positioning y-coordinate the document actually emits.
@@ -397,14 +433,13 @@ describe("affiliateSignature — no row without a document", () => {
 
     // At the cap: accepted, and every audit field still lands on a page.
     const longButLegal = `Łukasz ${"Kowalski ".repeat(12)}`.slice(0, 118).trim();
-    const { signatureId } = await asUser.action(
-      api.affiliateSignature.signAffiliateContract,
-      {
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
         fullName: longButLegal,
         consented: true,
         userAgent: "Mozilla ".repeat(20),
-        signerIp: "203.0.113.42",
-      },
+        signerIpAttestation: await observedIp("203.0.113.42"),
+      }),
     );
 
     const sig = await t.run((ctx) => ctx.db.get(signatureId));
@@ -547,5 +582,194 @@ describe("affiliateSignature — no row without a document", () => {
     expect(
       await t.run((ctx) => ctx.db.query("contractSignatures").collect()),
     ).toEqual([]);
+  });
+});
+
+/**
+ * The two audit values that used to come from whoever asked.
+ *
+ * Measured before the fix, as any signed-in account holding an affiliate
+ * profile (`affiliateUsers.createAfterSignup` is public, so that is anyone):
+ *
+ *     signAffiliateContract({ …, signerIp: "8.8.8.8" })
+ *       -> contractSignatures.signerIp === "8.8.8.8"
+ *     contractSignatures.updateStatus({ signatureId, status: "signed",
+ *                                       signedAt: 0, signerIp: "8.8.8.8" })
+ *       -> the row is backdated to 1 January 1970, from another address
+ *
+ * Both rows sit on the « certificat de signature » page beside the SHA-256
+ * digest and the authenticated account — the parts that ARE evidence. A trail
+ * whose timestamp and location are set by the party it is evidence against
+ * proves nothing, and reads exactly like one that does.
+ */
+describe("affiliateSignature — a record the signer cannot write", () => {
+  test("a signed record carries the address the server observed", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const before = Date.now();
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: await observedIp("203.0.113.42"),
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBe("203.0.113.42");
+    // And the timestamp is the server's own clock, taken during this call.
+    expect(sig!.signedAt).toBeGreaterThanOrEqual(before);
+    expect(sig!.signedAt).toBeLessThanOrEqual(Date.now());
+  });
+
+  test("an address the caller made up is recorded as no address", async () => {
+    // The forgery this whole mechanism exists for: a well-formed attestation
+    // whose IP was swapped after minting. The signature still completes — the
+    // account, the consent, the timestamp and the digest are what it rests on —
+    // and the certificate says « non établie » rather than naming Google's DNS.
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const honest = await observedIp("203.0.113.42");
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: { ...honest, ip: "8.8.8.8" },
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBeUndefined();
+    expect(sig!.status).toBe("signed");
+    expect(sig!.signedDocumentFileId).toBeTruthy();
+  });
+
+  test("an attestation minted under another secret is refused too", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const elsewhere = await observedIp("203.0.113.42", "z".repeat(64));
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: elsewhere,
+      }),
+    );
+
+    expect((await t.run((ctx) => ctx.db.get(signatureId)))!.signerIp).toBeUndefined();
+  });
+
+  test("with no secret on the deployment, no address is recorded and signing still works", async () => {
+    // Fail-closed and non-blocking: a missing env var must not be an onboarding
+    // outage, and must not be a reason to record an unverified address either.
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const { signatureId } = await withSignerIpSecret(undefined, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: await observedIp("203.0.113.42"),
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBeUndefined();
+    expect(sig!.status).toBe("signed");
+    expect(
+      (await t.run((ctx) => ctx.db.get(affiliateUserId)))!.contractStatus,
+    ).toBe("active");
+  });
+
+  test("the action no longer accepts a bare `signerIp`", async () => {
+    // Removed rather than ignored: Convex refuses an unknown argument, so a
+    // stale bundle still sending one fails loudly instead of being quietly
+    // overruled — the same rule `createCheckoutSession` follows for the
+    // referral percent it used to bill.
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+
+    await expect(
+      t.withIdentity({ subject: userId }).action(
+        makeFunctionReference<"action">(
+          "affiliateSignature:signAffiliateContract",
+        ),
+        { fullName: "Jean Dupont", consented: true, signerIp: "8.8.8.8" },
+      ),
+    ).rejects.toThrow(/signerIp/);
+
+    expect(
+      await t.run((ctx) => ctx.db.query("contractSignatures").collect()),
+    ).toEqual([]);
+  });
+
+  test("no internal mutation can backdate or relocate a signature", async () => {
+    // `contractSignatures.updateStatus` patched a caller's `signedAt` and
+    // `signerIp` straight onto the row, and could set `status: "signed"` with no
+    // document. It was the Yousign webhook's writer and outlived that flow with
+    // no caller at all.
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const { signatureId } = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Jean Dupont", consented: true },
+    );
+    const signedAt = (await t.run((ctx) => ctx.db.get(signatureId)))!.signedAt;
+
+    await expect(
+      t.mutation(
+        makeFunctionReference<"mutation">("contractSignatures:updateStatus"),
+        {
+          signatureId,
+          status: "signed",
+          signedAt: 0,
+          signerIp: "8.8.8.8",
+        },
+      ),
+    ).rejects.toThrow(/no such export/i);
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signedAt).toBe(signedAt);
+    expect(sig!.signerIp).toBeUndefined();
+  });
+
+  test("the writer that remains refuses a timestamp that is not the server's", async () => {
+    // `recordInAppSignature` still takes `signedAt`, because the certificate is
+    // drawn before the transaction and both have to print the same instant. It
+    // is internal — no client reaches it — and this is what keeps "it is the
+    // server's clock" enforced rather than merely conventional.
+    const t = convexTest(schema, modules);
+    const { contractVersionId, affiliateUserId } = await seed(t);
+
+    const write = (signedAt: number) =>
+      t.mutation(internal.contractSignatures.recordInAppSignature, {
+        affiliateUserId,
+        contractVersionId,
+        contractSnapshotContent: CONTRACT_CONTENT,
+        contractSnapshotHash: "0".repeat(64),
+        signerName: "Jean Dupont",
+        signatureRef: "ref",
+        signedDocumentFileId: "kg2fake",
+        signedAt,
+      });
+
+    await expect(write(0)).rejects.toThrow(/[Hh]orodatage/);
+    await expect(
+      write(Date.now() + MAX_SIGNATURE_CLOCK_SKEW_MS + 60_000),
+    ).rejects.toThrow(/[Hh]orodatage/);
+    expect(
+      await t.run((ctx) => ctx.db.query("contractSignatures").collect()),
+    ).toEqual([]);
+
+    await expect(write(Date.now())).resolves.toBeDefined();
   });
 });
