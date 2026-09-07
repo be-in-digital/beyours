@@ -101,3 +101,30 @@ describe("buildContentSecurityPolicy — what it must keep allowing", () => {
     }
   });
 });
+
+describe("buildContentSecurityPolicy — the Sentry ingest endpoint", () => {
+  /* The failure this guards against has no error message anywhere: the browser
+     SDK initialises, captures, and every send is refused by `connect-src
+     'self'`. Monitoring looks configured and reports nothing — which is worse
+     than having none, because it is believed. */
+  const DSN = "https://abc123@o1.ingest.sentry.io/4505";
+
+  it("allows the origin the browser SDK posts envelopes to", () => {
+    const policy = buildContentSecurityPolicy({ ...PROD, sentryDsn: DSN });
+    expect(directive(policy, "connect-src")).toContain("https://o1.ingest.sentry.io");
+  });
+
+  it("adds nothing when the deployment has no Sentry project", () => {
+    expect(buildContentSecurityPolicy(PROD)).not.toContain("sentry");
+  });
+
+  it("adds nothing for a DSN that is set but unusable", () => {
+    // `https://sentry.io/my-project` is a URL and not a DSN. It must not widen
+    // the policy on the strength of looking plausible.
+    const policy = buildContentSecurityPolicy({
+      ...PROD,
+      sentryDsn: "https://sentry.io/my-project",
+    });
+    expect(policy).not.toContain("sentry.io");
+  });
+});

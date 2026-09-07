@@ -18,6 +18,7 @@ import type * as contractContent from "../contractContent.js";
 import type * as contractSignatures from "../contractSignatures.js";
 import type * as contractVersions from "../contractVersions.js";
 import type * as crons from "../crons.js";
+import type * as errorReporting from "../errorReporting.js";
 import type * as email_layout from "../email/layout.js";
 import type * as email_providers from "../email/providers.js";
 import type * as email_send from "../email/send.js";
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   contractSignatures: typeof contractSignatures;
   contractVersions: typeof contractVersions;
   crons: typeof crons;
+  errorReporting: typeof errorReporting;
   "email/layout": typeof email_layout;
   "email/providers": typeof email_providers;
   "email/send": typeof email_send;

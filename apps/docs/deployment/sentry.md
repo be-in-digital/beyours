@@ -158,10 +158,8 @@ traced request.
 
 - **Session Replay.** It records the DOM — a checkout form included — and adds
   weight to a mobile-first storefront. Worth having, worth deciding on its own.
-- **`apps/site`.** The commercial site depends on none of the engine packages
-  and has its own env validator; it is BeYours-level, not client-level, and
-  needs its own decision.
-(**Convex used to be on this list.** It is not any more — see below.)
+(**Convex used to be on this list**, and so was `apps/site`. Neither is any
+more — see the two sections below.)
 
 ## The Convex backend
 
@@ -219,6 +217,68 @@ a log with a deploy in front of you. This is a second destination, not a
 replacement. One trap: from a **mutation** the report is scheduled inside the
 mutation's transaction, so a mutation that rethrows rolls its own report back.
 Report those from the action or `httpAction` above them.
+
+## beyours.fr — `apps/site`
+
+The commercial site is the app that takes the money, runs the internal ops
+console and the affiliate portal, and it had **zero error tracking on either
+half**: no dependency, no config, no `error.tsx` anywhere in a tree where
+`apps/reference` carries four, and — on the Convex side — a Stripe webhook whose
+entire failure record was one `console.error` into a log window that expires. A
+renewal charge that failed to record was seen by nobody, and Stripe stops
+retrying after three days.
+
+Both halves are wired now, and the shape mirrors the engine's exactly. What
+differs is the source of the options.
+
+| File | Role |
+|---|---|
+| `instrumentation-client.ts` | browser `Sentry.init` + App Router navigation tracing |
+| `sentry.server.config.ts` | Node runtime `Sentry.init` |
+| `sentry.edge.config.ts` | edge runtime `Sentry.init` |
+| `instrumentation.ts` | imports the two above, exports `onRequestError` |
+| `app/error.tsx`, `app/global-error.tsx` | root and root-layout boundaries |
+| `app/(landing)/error.tsx`, `app/admin/error.tsx`, `app/parrainage/error.tsx` | one per route group whose layout carries chrome |
+| `convex/errorReporting.ts` | the backend reporter, wired into both Stripe webhook 500 paths |
+
+### Why it does not import `@be-in-digital/core/sentry`
+
+Because `apps/site` depends on none of the engine packages, and that rule is not
+stylistic: the ten `@be-in-digital/*` packages ship from a private GitHub
+registry, so one import here would put a `read:packages` token between this
+repository and every Vercel build of the commercial site. `lib/env.ts` already
+carries the same duplication for the same reason.
+
+`lib/observability/sentry.ts` is the local equivalent. It is deliberately
+smaller: the engine reports from a hundred call sites and needs a recursive,
+fail-closed redactor for arbitrarily nested context, whereas here the reporting
+call sites are countable and `reportError` accepts a FLAT record of primitives —
+so the argument validator refuses nesting and one pass over the keys is a
+complete guard. The two may drift on shape. They must not drift on the redaction
+lists, and `tests/convex/errorReporting.test.ts` pins the behaviour that matters.
+
+### One project, not per-client
+
+Everything above about per-client isolation is about *client* deployments.
+beyours.fr is one deployment and gets one project, which is also why its
+`connect-src` can name the ingest origin: `next.config.ts` derives it from
+`NEXT_PUBLIC_SENTRY_DSN` and passes it to `buildContentSecurityPolicy`. Without
+that entry the browser SDK initialises, captures, and has every send refused by
+the policy — monitoring that looks configured and reports nothing.
+
+### Turning it on
+
+```bash
+# Vercel (both halves of the Next.js build)
+NEXT_PUBLIC_SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project>
+
+# The Convex deployment holds its own store; nothing in .env reaches it
+npx convex env set SENTRY_DSN "https://<key>@<org>.ingest.sentry.io/<project>"
+```
+
+Unset is a legitimate state and costs nothing. `lib/env.ts` checks the DSN's
+*shape* when it is set, because a project page URL pasted in its place is
+accepted by every URL validator and reports nothing.
 
 ## Liveness
 

@@ -1,4 +1,18 @@
+import * as Sentry from '@sentry/nextjs'
+
 export async function register() {
+  /* Sentry before the env check, not after: when a deployment refuses to boot
+     for a missing variable, the throw below is exactly the event that has to
+     reach the project. Wiring it after the validation would report every
+     failure except the one that stops the site from starting. */
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./sentry.server.config')
+  }
+
+  if (process.env.NEXT_RUNTIME === 'edge') {
+    await import('./sentry.edge.config')
+  }
+
   const { validateSiteEnv, formatSiteEnvReport, isInlinedAtBuild } = await import('./lib/env')
 
   const { ok, problems } = validateSiteEnv()
@@ -35,3 +49,12 @@ export async function register() {
     )
   }
 }
+
+/**
+ * Next hands every server-side request error to this hook — a failing server
+ * component, route handler or server action. Without it those errors reach the
+ * Vercel log and Sentry not at all, which is most of what actually breaks in
+ * production: the affiliate portal's server components, `/api/signer-ip`, and
+ * every `generateMetadata` on the 50 template pages.
+ */
+export const onRequestError = Sentry.captureRequestError
