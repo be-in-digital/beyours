@@ -236,6 +236,13 @@ export const FIELD_LIMITS = {
   country: 100,
   instructions: 500,
   lineNote: 500,
+  /* The diner's own note to the kitchen, from the storefront checkout — "sans
+     oignon", "allergie aux arachides". Sized like the two above and for the
+     same reason: it is a sentence to a cook, and it is printed on an 80mm
+     slip. It used to be capped as a `message` (5 000), which was the contact
+     form's limit reused because `orders.create` had no cap of its own; there
+     was no field on the storefront to reach it, so nothing ever sent one. */
+  orderNote: 500,
   name: 120,
   email: 254, // RFC 5321's maximum path length.
   phone: 40,

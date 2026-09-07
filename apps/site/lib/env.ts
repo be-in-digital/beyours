@@ -48,6 +48,11 @@ const startsWith =
   (v) =>
     v.startsWith(prefix) ? null : `doit commencer par "${prefix}"`
 
+const atLeast =
+  (length: number): Check =>
+  (v) =>
+    v.trim().length >= length ? null : `doit faire au moins ${length} caractères`
+
 const isOneOf =
   (...allowed: string[]): Check =>
   (v) =>
@@ -97,6 +102,17 @@ const CREATION_PRODUCTS = [
 /** Checked only when set — most of these are Convex-side in production. */
 const OPTIONAL: { name: string; check: Check }[] = [
   { name: 'NEXT_PUBLIC_CONVEX_SITE_URL', check: isUrl },
+  /* Shared with the CONVEX deployment — set the SAME value on both, or on
+     neither. A Convex action cannot see the request's IP, so the affiliate
+     contract's signature certificate would otherwise carry whatever address the
+     signer sent. `/api/signer-ip` observes it here and HMACs it with this
+     secret; convex/affiliateSignature.ts verifies that before recording it.
+     Unset, the signature is recorded with no address rather than an unverified
+     one, and signing still works — so this is optional, not required.
+     Name pinned in tests/env.test.ts, like the Stripe ids above: this module
+     stays dependency-free and does not import it from the module that uses it.
+     `openssl rand -base64 32`. */
+  { name: 'SIGNER_IP_SECRET', check: atLeast(32) },
   { name: 'CONVEX_SITE_URL', check: isUrl },
   { name: 'SITE_URL', check: isUrl },
   { name: 'NEXT_PUBLIC_TVA_ENABLED', check: isBool },

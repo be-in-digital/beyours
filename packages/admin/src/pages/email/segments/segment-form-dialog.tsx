@@ -115,12 +115,23 @@ export function SegmentFormDialog({ segment, open, onOpenChange }: SegmentFormDi
   const debouncedRules = useDebounce(rules, 500)
   const debouncedOperator = useDebounce(ruleOperator, 500)
 
-  const previewCount = useQuery(
+  /**
+   * The preview, over the first `scanned` active subscribers.
+   *
+   * A segment rule is not indexable — the owner picks the field and the
+   * operator — so the preview reads rows and decides in JavaScript, and the
+   * server bounds how many rows it will read. This used to collect the whole
+   * active list on every keystroke, which stopped working entirely once the
+   * list passed Convex's 16,384-document limit. `truncated` says the count
+   * describes a sample, and the line below says so too rather than presenting
+   * it as the answer.
+   */
+  const preview = useQuery(
     api?.emailSegments?.countMatchingSubscribers,
     storeId && debouncedRules.length > 0 && debouncedRules.every((r) => r.field && r.operator && r.value)
       ? { storeId, rules: debouncedRules, ruleOperator: debouncedOperator }
       : "skip"
-  ) as number | undefined
+  ) as { count: number; scanned: number; truncated: boolean } | undefined
 
   const updateRule = (id: string, patch: Partial<SegmentRule>) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
@@ -314,9 +325,13 @@ export function SegmentFormDialog({ segment, open, onOpenChange }: SegmentFormDi
           <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-3">
             <Users className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              {previewCount === undefined
+              {preview === undefined
                 ? "Calcul en cours..."
-                : `${previewCount} abonné${previewCount > 1 ? "s" : ""} correspond${previewCount <= 1 ? "" : "ent"} à ces critères`}
+                : `${preview.count} abonné${preview.count > 1 ? "s" : ""} correspond${preview.count <= 1 ? "" : "ent"} à ces critères${
+                    preview.truncated
+                      ? ` (sur les ${preview.scanned.toLocaleString("fr-FR")} premiers abonnés actifs)`
+                      : ""
+                  }`}
             </span>
           </div>
         </div>

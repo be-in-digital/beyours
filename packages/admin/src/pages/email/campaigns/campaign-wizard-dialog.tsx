@@ -92,10 +92,17 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
     storeId && step >= 2 ? { storeId } : "skip"
   ) as Segment[] | undefined
 
+  /**
+   * The audience size, counted through the index rather than downloaded.
+   *
+   * `countByStatus` reads `by_storeId_status` up to a cap; `truncated` says the
+   * figure is a floor, which is the honest thing to show an owner about to mail
+   * a list larger than the server was willing to count.
+   */
   const subscriberCounts = useQuery(
     api?.emailSubscribers?.countByStatus,
     storeId && step >= 2 ? { storeId } : "skip"
-  ) as { active: number; total: number } | undefined
+  ) as { active: number; total: number; truncated: boolean } | undefined
 
   const subscriberCount = subscriberCounts?.active
 
@@ -311,8 +318,19 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
               <div className="rounded-lg bg-muted px-4 py-3 text-sm">
                 <span className="text-muted-foreground">Destinataires estimés : </span>
                 <span className="font-semibold">
-                  {audienceCount === undefined ? "..." : audienceCount.toLocaleString()} abonnés actifs
+                  {audienceCount === undefined
+                    ? "..."
+                    : `${audienceCount.toLocaleString("fr-FR")}${
+                        !form.segmentId && subscriberCounts?.truncated ? "+" : ""
+                      }`}{" "}
+                  abonnés actifs
                 </span>
+                {!form.segmentId && subscriberCounts?.truncated && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Votre liste dépasse ce que le décompte lit en une fois : l&apos;envoi
+                    couvrira tous les abonnés actifs, pas seulement ce chiffre.
+                  </p>
+                )}
               </div>
             </div>
           )}

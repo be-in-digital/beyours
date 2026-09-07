@@ -51,20 +51,32 @@ Use it for intent. Use this file for state.
 
 ## 3. The audit ledger
 
-The most recent systematic measurement is the **discovery audit of 1 September
-2026**, recorded at [`tasks/fix-prompts.md:16-19`](tasks/fix-prompts.md):
+The most recent systematic measurement is
+[`tasks/feature-audit-2026-09-07.md`](tasks/feature-audit-2026-09-07.md), taken at
+`cdc6c81`: **70 ship, 6 are partial, and 17 are absent**, of 93 features. It lists
+every row with the evidence for its verdict, so it can be checked rather than
+believed, and `pnpm check:claude-md` fails when the commit it names stops being an
+ancestor of `HEAD`.
+
+It supersedes the **discovery audit of 1 September 2026**
+([`tasks/fix-prompts.md:16-19`](tasks/fix-prompts.md)), taken at `009af63`:
 
 > of the 92 features `CLAUDE.md` enumerates, **29 ship as described, 23 are partial,
 > and 41 are absent or unreachable** from `apps/themes` — the app a paying client
 > actually runs.
 
-Two caveats, both worth carrying:
+That figure was still headed as current in `CLAUDE.md` on 7 September, thirty-four
+commits after it was taken, under the words "Quote that, or quote nothing". Both
+halves of that were the problem: the count was six days stale, and the instruction to
+quote it was binding.
 
-- Those three numbers sum to **93**, against a stated total of 92. The discrepancy is
-  in the source; it is quoted here as written rather than silently adjusted.
-- The audit was taken at commit `009af63`. Several of its findings have since been
-  fixed, and this file says which — see §5, where each is re-checked at `158019f`.
-  Do not cite the audit for the state of an individual feature; cite the code.
+Two caveats on the older audit, both worth carrying:
+
+- Its three numbers sum to **93**, against a stated total of 92. The 7 September
+  audit resolves this: it is the integrations row, where `FEATURES_DIAGRAM.md`'s
+  summary table says 10 and its diagram declares 11 leaves. Counting the leaves
+  reproduces the 93.
+- Do not cite either audit for the state of an individual feature; cite the code.
 
 The card-level ledger is [`tasks/sales-readiness-backlog.md`](tasks/sales-readiness-backlog.md)
 — 35 `P0` cards, 12 `TECH` cards and 10 `LAUNCH` cards, each self-contained with
@@ -123,7 +135,12 @@ multi-image uploader and no gallery.
 `cancelled` — `packages/convex-schema/src/tables/orders.ts:23-30`), three service
 types (`delivery`, `pickup`, `dine_in`), four sources (`website`, `uber_eats`,
 `deliveroo`, `pos`), delivery fees in fixed or percentage mode, promotions applied at
-order time, VAT, and cash marked paid at the counter.
+order time, VAT, and cash marked paid at the counter. Since #376 the storefront
+checkout also carries the diner's own note — the allergy field — which reaches the
+kitchen ticket through `orders.notes` → `kitchenTickets.deliveryNotes` and is capped
+at `FIELD_LIMITS.orderNote` on both ends
+(`packages/convex-functions/src/rateLimit.ts`). Every part of that path existed
+before; the input did not, in either app, so the ticket's note line was always blank.
 
 **Not built — scheduled orders.** `orders.scheduledFor` exists in the schema, but
 `orders.create` **takes no `scheduledFor` argument** (see its validator block,
@@ -171,7 +188,11 @@ ticket writers hardcode `priority: "normal"`
 ### Payments
 
 **Ships:** Stripe, SumUp, PayPal and cash, with payment tracking, webhook
-verification, deduplication (`paymentEvents`), settlement binding and refunds. The
+verification, deduplication (`paymentEvents`), settlement binding and refunds. Cards
+can also be switched **off**: `payments.cardProvider` admits `none` since #376, which
+removes the card tile from the checkout rather than greying it — the state a cash-only
+food truck needs, and the one no auto-detection can infer. `paymentAvailability.get`
+answers both questions separately (`card`, `cardOffered`). The
 refund route is decided by `routeRefund`
 (`packages/convex-functions/src/refundPolicy.ts:143`), and the only screen carrying a
 working refund dialog is `/dashboard/payments`
@@ -277,7 +298,11 @@ campaigns`, every minute). `packages/marketing/src` holds the renderer, the CSV
 parser, segment filtering and stats; the Convex side is
 `packages/convex-functions/src/email*.ts` and `sesSending.ts`.
 
-**Not built:** SMS. No table, no provider, no code.
+**Not built:** SMS. No table, no provider, no code. Also not built: **campaign
+conversion and attributed revenue**. Nothing writes a `converted` email event and
+no order records the campaign that led to it, so the two figures have no producer;
+the campaign stats dialog says « Non suivi » rather than the hard `0 €` it used to
+render beside real send and open counts.
 
 ### Design and theming
 
@@ -288,11 +313,26 @@ components under `src/components/`); a per-store branding editor at
 applied at clone time by `pnpm template:apply <slug>` (see
 [`ARCHITECTURE.md`](ARCHITECTURE.md#the-design-templates)).
 
+**Colours and typography now reach a diner** — re-checked at `cdc6c81`, because
+#353 landed after this file's `158019f` pin and reversed what stood here.
+`stores.updateBranding` writes `store.branding`, `buildBrandingCss`
+(`packages/ui/src/lib/branding.ts`) derives design tokens from it, and `StoreTheme`
+in each app's `app/(storefront)/layout.tsx` emits them unlayered so they beat the
+template's defaults in `globals.css`'s `@layer base`. The template chosen at clone
+time is the starting point, not the ceiling. `stores:write` is the only gate left, so
+a `manager` sees the screen and cannot save from it.
+
+**Partial — font selection.** The stored family reaches the page through that same
+chain, and nothing fetches a webfont: only Inter and Poppins are bundled, so any
+other family renders on a device that already has it and falls back everywhere else.
+The screen states this rather than leaving it to be discovered.
+
 **Not built:** a runtime theme selector. Theme choice is a developer running a script
-in the client's repository, not a setting an owner can change. Also not built: custom
-CSS, layout options, font selection and colour customisation as *end-user controls* —
-there is no field and no screen for any of the four beyond the branding editor's
-fixed set.
+in the client's repository, not a setting an owner can change — `themeId` still has
+zero readers and zero writers, held there by `design-surface.test.ts`. Also not
+built: custom CSS and layout options — no field and no screen for either, and in the
+case of custom CSS deliberately so, since nothing interpolates a stored string into
+the emitted stylesheet.
 
 > `packages/themes` does not exist. It was an empty stub and was removed. Templates
 > live in `apps/themes/templates/`.
@@ -385,6 +425,23 @@ findings; do not re-open them without reading the card.
 4. **Menus / formules — build the orderable flow, in its own PR** (#352). See §4,
    Products. Open.
 5. **Square — keep it visible, marked « Bientôt ».** See §4, Payments.
+
+Decided since, on the same principle — an offer the product cannot honour is worse
+than an offer it does not make:
+
+6. **« Produit offert » and « Offre BOGO (1+1) » — refused at creation** (#376).
+   `resolvePromotionDiscount` threw `not_applicable` on both at order time and always
+   had: they alter the item list rather than the order total, and no code path builds
+   those items. The promotion form sold them anyway and `promotions.create` stored
+   them, so an owner configured a campaign, printed the flyers, and learned it was
+   decorative from a diner at the till. The list of types an order can actually be
+   given now lives with the resolver that enforces it
+   (`HONOURABLE_DISCOUNT_TYPES`, `packages/convex-functions/src/promotionDiscount.ts`),
+   the form takes its options from that list, and `create`/`update` refuse anything
+   outside it with a sentence naming what to use instead. Implement either type in the
+   resolver and the option returns on the same commit. Rows stored before the guard
+   are still listed and still deletable; their value column reads « Aucune remise
+   appliquée ».
 
 ---
 

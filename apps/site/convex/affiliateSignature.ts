@@ -55,6 +55,12 @@ import {
   escapeCodePoints,
   unrepresentableCodePoints,
 } from "./fonts";
+import {
+  IP_NOT_ESTABLISHED,
+  attestationRefusalMessage,
+  readSignerIpSecret,
+  verifySignerIpAttestation,
+} from "../lib/security/signer-attestation";
 
 const A4 = { w: 595, h: 842 };
 const MARGIN = 50;
@@ -239,8 +245,18 @@ async function generateSignedContractPdf(opts: {
     ["Contrat", `${opts.title} — version ${opts.version}`],
     ["Empreinte SHA-256 du contenu", opts.contentHash],
     ["Référence de signature", opts.signatureRef],
+    /* « Déclaré » because it is: a user-agent is the client's own statement
+       about itself and can be nothing else. « Constatée » on the next row is
+       the opposite claim and is now true — see the action's
+       `signerIpAttestation`. The two words carry the distinction, and the note
+       at the foot of this page spells it out.
+
+       Kept short deliberately: labels are drawn unwrapped in a 190 pt column
+       (the value column starts at MARGIN + 190), so a long one would run under
+       the value beside it. The longest existing label, « Empreinte SHA-256 du
+       contenu », is the budget. */
     ["Navigateur déclaré", opts.userAgent ?? "—"],
-    ["Adresse IP déclarée", opts.signerIp ?? "—"],
+    ["Adresse IP constatée", opts.signerIp ?? IP_NOT_ESTABLISHED],
   ];
   /* This loop used to run off the bottom of the page with no break. Because the
      signatory's name is drawn first and was capped only at a MINIMUM of three
@@ -279,6 +295,10 @@ async function generateSignedContractPdf(opts: {
     "L'identité du signataire est établie par l'authentification à son compte apporteur " +
     "(email + mot de passe). L'intégrité du contrat est garantie par l'empreinte SHA-256 " +
     "ci-dessus : toute modification ultérieure du contenu invaliderait cette empreinte. " +
+    "L'horodatage et l'adresse IP ci-dessus sont relevés par les serveurs de Be in Digital, " +
+    "jamais transmis par le signataire ; la mention « " +
+    IP_NOT_ESTABLISHED +
+    " » signifie que l'adresse n'a pas pu être relevée, et non qu'elle a été omise. " +
     "Ce certificat et le contrat forment un tout indissociable, conservé par Be in Digital.";
   for (const line of wrap(note, font, 8, maxW)) {
     cert.drawText(line, { x: MARGIN, y: cy, size: 8, font, color: grey });
@@ -298,7 +318,24 @@ export const signAffiliateContract = action({
     fullName: v.string(),
     consented: v.boolean(),
     userAgent: v.optional(v.string()),
-    signerIp: v.optional(v.string()),
+    /* ── The signer's IP, attested rather than asserted ──
+       This used to be `signerIp: v.optional(v.string())`: a public action
+       taking the address it would then print on a legal document, from the
+       party that document is evidence against. `/api/signer-ip` filled it in
+       the page, and nothing checked that the caller had gone anywhere near
+       that route — `signerIp: "8.8.8.8"` was recorded verbatim.
+       What arrives now is what the NEXT server observed, signed with a secret
+       the browser does not hold, and it is verified below before anything is
+       drawn. Removed rather than ignored: Convex refuses an unknown argument,
+       so a stale bundle still sending `signerIp` fails loudly instead of
+       quietly recording nothing. See lib/security/signer-attestation.ts. */
+    signerIpAttestation: v.optional(
+      v.object({
+        ip: v.string(),
+        issuedAt: v.number(),
+        mac: v.string(),
+      }),
+    ),
   },
   handler: async (
     ctx,
@@ -313,16 +350,32 @@ export const signAffiliateContract = action({
     if (fullName.length < 3) {
       throw new Error("Veuillez saisir votre nom complet pour signer.");
     }
-    /* A MAXIMUM too, which this path never had: `fullName`, `userAgent` and
-       `signerIp` are free text that gets drawn on the certificate. The page now
-       breaks rather than dropping the audit fields, but a 20 000-character name
-       is not a name — it is pages of them appended to a legal document. The
-       repo already had the caps; this path simply did not use them. */
+    /* A MAXIMUM too, which this path never had: `fullName` and `userAgent` are
+       free text that gets drawn on the certificate. The page now breaks rather
+       than dropping the audit fields, but a 20 000-character name is not a
+       name — it is pages of them appended to a legal document. The repo already
+       had the caps; this path simply did not use them. (The address is no
+       longer in this list because it is no longer free text: `normaliseIp`
+       bounds it to 64 characters of an address alphabet before it is signed.) */
     assertFieldLengths({
       name: fullName,
       restaurant: args.userAgent,
-      email: args.signerIp,
     });
+
+    /* ── What the server saw, or nothing ──
+       Verified here, before the PDF is drawn, so the certificate and the row
+       carry the same established address. A refusal is logged and costs the
+       trail one corroborating row; it never blocks the signature, because the
+       identity (an authenticated account), the consent, the server timestamp
+       and the SHA-256 digest are what the signature actually rests on. */
+    const ipVerdict = await verifySignerIpAttestation(args.signerIpAttestation, {
+      secret: readSignerIpSecret(process.env),
+      now: Date.now(),
+    });
+    if (ipVerdict.refusal) {
+      console.warn(`[SIGNATURE] ${attestationRefusalMessage(ipVerdict.refusal)}`);
+    }
+    const signerIp = ipVerdict.ip ?? undefined;
 
     const affiliate = await ctx.runQuery(
       internal.affiliateUsers.getMeInternal,
@@ -371,7 +424,7 @@ export const signAffiliateContract = action({
       contentHash,
       signatureRef,
       userAgent: args.userAgent,
-      signerIp: args.signerIp,
+      signerIp,
     });
 
     // 3. Store the signed document (clean ArrayBuffer copy for BlobPart)
@@ -391,7 +444,7 @@ export const signAffiliateContract = action({
         contractSnapshotHash: contentHash,
         signerName: fullName,
         signerUserAgent: args.userAgent,
-        signerIp: args.signerIp,
+        signerIp,
         signatureRef,
         signedDocumentFileId: storageId,
         signedAt,

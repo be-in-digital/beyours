@@ -1,39 +1,42 @@
 "use client"
 
 /**
- * Colours, typography and logo for one establishment — and why none of it
- * reaches the public site yet.
+ * Colours, typography and logo for one establishment — and which of the three
+ * this screen owns.
  *
- * WHAT IS CORRECT, AND MUST NOT BE "FIXED" BY DELETING IT: the write path.
- * `stores.updateBranding` is a real `storeMutation`, gated on `stores:write`,
- * validated field by field against `BRANDING_FIELDS`, merging rather than
- * replacing so a partial save stays partial, and audited through
- * `recordStoreAudit`. Nothing about it is broken. A future reader who finds
- * these buttons disabled and concludes the mutation is dead code would be
- * removing the half of the chain that works.
+ * COLOURS AND TYPOGRAPHY REACH A DINER. `stores.updateBranding` writes
+ * `store.branding`; `buildBrandingCss` (`packages/ui/src/lib/branding.ts`)
+ * derives design tokens from it; and `StoreTheme`, mounted in each app's
+ * `app/(storefront)/layout.tsx`, emits them as an unlayered `<style>` that
+ * outranks the engine defaults sitting in `globals.css`'s `@layer base`. So a
+ * saved primary paints the public site, per establishment, and an
+ * establishment that set nothing still renders those defaults.
  *
- * WHAT IS MISSING: the reader. There are zero reads of the Convex
- * `store.branding` document in either app — not under `app`, not under
- * `components`, not under `lib`. Every branding read in the product goes
- * through the CMS block instead —
- * `cms.block("branding")` on the `storefront-layout` page — and that is true of
- * the storefront header, the dynamic favicon, the JSON-LD in
- * `lib/structured-data.ts`, and even the admin sidebar in
- * `app/(admin)/layout.tsx`. The storefront's palette and fonts are not read
- * from anywhere at runtime at all: they are compile-time constants in
- * `app/globals.css` and `site/fonts.ts` via `next/font/google`. So an owner
- * picked a colour, was told "Couleurs mises à jour avec succès", and their site
- * was unchanged.
+ * That was NOT true until #353, and the difference is worth naming because the
+ * old state is what most of the surrounding code was written against: for
+ * months the write path shipped alone, the toast said "Couleurs mises à jour
+ * avec succès", and the site did not change. A comment, a disabled control or
+ * a test here that reads as "saved but not applied" is a leftover of that
+ * period, not a live constraint. `design-surface.test.ts` walks the chain from
+ * a saved field to a painted token with one case per validated field, so a
+ * deriver that quietly stops reading one cannot hide behind the others.
  *
- * WHY THE TABS ARE DISABLED RATHER THAN WIRED HERE: there are two rival stores
- * for the same facts — the Convex `store.branding` document and the CMS
- * `branding` block — and they have to be reconciled before either can render.
- * Choosing which one wins is not a decision this screen can make: the CMS block
- * already owns the logo across four surfaces and carries drafts, publishing and
- * media handling; `store.branding` carries colours and fonts, which the CMS has
- * no field type for and which have to become CSS custom properties before any
- * component can consume them. Wiring one of them up in isolation would leave a
- * logo that answers to two screens.
+ * THE LOGO IS NOT THIS SCREEN'S, and that is the settled design rather than a
+ * gap. The CMS `branding` block on the `storefront-layout` page is the only
+ * source for the storefront header, the dynamic favicon, the JSON-LD in
+ * `lib/structured-data.ts` and this dashboard's own sidebar in
+ * `app/(admin)/layout.tsx` — `branding.logoUrl` and `faviconUrl` are read by
+ * none of them. The Logo tab is therefore a signpost, not a second form. The
+ * two fields keep their place in `BRANDING_FIELDS` so `mergeBranding` carries
+ * through what deployed stores already hold, and a store still holding one is
+ * told on the tab that it is unused rather than left to conclude its site is
+ * broken.
+ *
+ * THE ONLY GATE LEFT IS THE ROLE. `brandingControlState` renders the saves
+ * inert for a role without `stores:write`: `manager` reaches this screen on
+ * `stores:read` and stops there. The second gate — which disabled every role,
+ * the owner included, because nothing read the result — came off with #353,
+ * and `branding-eligibility.ts` records at its foot why it is not coming back.
  *
  * THE THEME TAB IS GONE, not disabled. It offered six themes — `fast-food`,
  * `pizzeria`, `chinese`, `fine-dining`, `cafe`, `sushi` — of which two
@@ -41,18 +44,11 @@
  * the other four were loose approximations of template families rather than
  * anything selectable. Its "Appliquer" button called the colours save: it wrote
  * three hex strings and let the chosen `theme.id` die in local React state.
- * `themeId` is in the schema with no writer and no reader. Choosing a design is
- * an operator running `pnpm template:apply <slug>` when the client repository
- * is cloned, which `apps/themes/README.md` documents.
- *
- * THE LOGO TAB POINTS AT THE CMS rather than duplicating it. Unlike colours and
- * typography, the logo is not waiting on wiring — a control for it already
- * ships, works, and drives every surface that shows a logo. This screen's
- * version was a second, rival input for the same fact, whose value nothing
- * read. Sending the owner to the one that works is more useful than disabling
- * ours, so `logoUrl` and `faviconUrl` now have no writer here; they keep their
- * place in `BRANDING_FIELDS` because deployed stores may already hold them and
- * `mergeBranding` must keep carrying them through.
+ * `themeId` is still in the schema with no writer and no reader, and
+ * `design-surface.test.ts` keeps it that way. Choosing a design remains an
+ * operator running `pnpm template:apply <slug>` when the client repository is
+ * cloned, which `apps/themes/README.md` documents — per-store colours layer
+ * over that choice, they do not replace it.
  */
 
 import { useQuery, useMutation } from "convex/react"
@@ -165,11 +161,14 @@ export function DesignPage() {
   }, [store])
 
   /**
-   * Kept, and kept correct, while the button that calls it is inert.
+   * Each save sends its own tab's fields and no others.
    *
-   * The mutation, the permission and the audit entry are all right; only the
-   * reader is missing. Deleting these handlers would mean rebuilding them
-   * against a validator that already accepts exactly these fields.
+   * Safe only because `updateBranding` merges into the stored blob rather than
+   * replacing it — send the whole form from either handler and the two tabs
+   * start overwriting each other with stale state. Between them the two must
+   * still cover every colour and typography field the validator names, or a
+   * setting exists that nothing can save; `design-surface.test.ts` asserts both
+   * halves of that.
    */
   const handleSaveColors = async () => {
     if (!storeId) return

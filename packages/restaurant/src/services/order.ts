@@ -6,6 +6,7 @@
  */
 
 import type { OrderStatus, CartItem } from '../types'
+import { ORDER_STATUS_VOCABULARY } from '@be-in-digital/core/status-labels'
 import {
   canTransitionOrderStatus,
   getNextOrderStatuses,
@@ -80,22 +81,17 @@ export const getOrderStatusColor = (status: OrderStatus): string => {
 }
 
 /**
- * Get human-readable label for order status
+ * The source-language word for an order status.
+ *
+ * Delegates to `@be-in-digital/core/status-labels`, for the same reason the
+ * transition table above delegates to the schema package: this file used to
+ * carry its own map, in English, one package away from the badge that carried
+ * a second English map of the same eight words. A caller that reaches for this
+ * on a French screen gets French — and `useOrderStatusLabels` translates the
+ * same vocabulary for the locale actually being rendered.
  */
-export const getOrderStatusLabel = (status: OrderStatus): string => {
-  const labelMap: Record<OrderStatus, string> = {
-    pending: 'Pending',
-    confirmed: 'Confirmed',
-    preparing: 'Preparing',
-    ready: 'Ready',
-    out_for_delivery: 'Out for Delivery',
-    delivered: 'Delivered',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-  }
-
-  return labelMap[status] || status
-}
+export const getOrderStatusLabel = (status: OrderStatus): string =>
+  ORDER_STATUS_VOCABULARY[status]?.label ?? status
 
 /**
  * Check if order is still active (not completed or cancelled)

@@ -103,7 +103,23 @@ export const globalSettingsTable = defineTable({
 
   // Payment configuration
   payments: v.optional(v.object({
-    cardProvider: v.union(v.literal("stripe"), v.literal("sumup")),
+    /**
+     * Which card provider takes the money — or `none`, meaning this
+     * establishment does not accept cards at all.
+     *
+     * `none` exists because the union did not: a cash-only food truck (one of
+     * the five verticals this engine is sold for) had a card tile it could not
+     * remove, pre-selected, leading to a pending order nobody could pay
+     * (#376). Auto-detection (#379) closes the *misconfigured* case — a
+     * provider named here with nothing keyed reads as unavailable — and this
+     * closes the *deliberate* one, which no amount of detection can infer:
+     * an owner with Stripe connected who takes cash at the window only.
+     */
+    cardProvider: v.union(
+      v.literal("stripe"),
+      v.literal("sumup"),
+      v.literal("none")
+    ),
     paypal: v.boolean(),
     paypalEmail: v.optional(v.string()), // PayPal Business email used as payee
     cash: v.boolean(), // Only available for click & collect and dine-in orders

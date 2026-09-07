@@ -33,6 +33,7 @@
       "require": "./dist/sentry/index.js"
     },
     "./allergens": "./src/allergens/index.ts",
+    "./status-labels": "./src/i18n/status-labels.ts",
     "./dining": "./src/dining/table-number.ts",
     "./auth/rbac": "./src/auth/rbac.ts",
     "./aws/ses/order-confirmation": "./src/aws/ses/order-confirmation.ts",

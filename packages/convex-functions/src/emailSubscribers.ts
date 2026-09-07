@@ -5,6 +5,8 @@
  */
 
 import { ConvexError, v } from "convex/values"
+import { paginationOptsValidator } from "convex/server"
+import { clampPagination } from "./pagination"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
 
 /**
@@ -82,32 +84,55 @@ const metadataValidator = v.object({
 
 // === QUERIES ===
 
+/**
+ * One page of the mailing list, newest signup first.
+ *
+ * This collected every subscriber the establishment had ever had, on a live
+ * `useQuery` behind the Abonnés screen, and then narrowed the result in
+ * JavaScript. Convex refuses a transaction that reads more than 16,384
+ * documents, so the screen stopped loading — permanently, with no admin action
+ * that clears it — at the point the mailing list succeeded. Since #316 every
+ * storefront signup, every order and every game play adds a row, so that point
+ * arrives by growing, not by doing anything wrong.
+ *
+ * `status` is an equality the schema indexes, so the status tab reads the page
+ * it shows. `source` is NOT: no index carries it, and a post-`paginate` filter
+ * would return a page of two rows out of fifteen and call it a page. The screen
+ * narrows source — and the search box — over the rows it has loaded, and says
+ * so; « Charger plus » widens what they can see. Same shape as
+ * `/dashboard/orders`.
+ */
 export const list = {
   args: {
     storeId: v.id("stores"),
     status: v.optional(statusValidator),
-    source: v.optional(sourceValidator),
+    paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx: any, args: any) => {
-    // Use the compound index when filtering by status
-    let results
+  handler: async (
+    ctx: any,
+    args: {
+      storeId: string
+      status?: string
+      paginationOpts: { numItems: number; cursor: string | null }
+    }
+  ) => {
+    const page = clampPagination(args.paginationOpts)
+
     if (args.status) {
-      results = await ctx.db
+      return await ctx.db
         .query("emailSubscribers")
         .withIndex("by_storeId_status", (q: any) =>
           q.eq("storeId", args.storeId).eq("status", args.status)
         )
-        .collect()
-    } else {
-      results = await ctx.db
-        .query("emailSubscribers")
-        .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-        .collect()
+        .order("desc")
+        .paginate(page)
     }
-    if (args.source) {
-      results = results.filter((s: any) => s.source === args.source)
-    }
-    return results
+
+    return await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .order("desc")
+      .paginate(page)
   },
 }
 
@@ -165,20 +190,71 @@ export const getByEmail = {
   },
 }
 
+/** The five states a subscriber can be in, in the order the screens read them. */
+export const SUBSCRIBER_STATUSES = [
+  "active",
+  "pending",
+  "unsubscribed",
+  "bounced",
+  "complained",
+] as const
+
+/**
+ * The most rows `countByStatus` will read per status.
+ *
+ * Convex has no count: a total is however many documents you were willing to
+ * read. This query is a live `useQuery` behind the email dashboard and inside
+ * the campaign wizard, so it re-runs on every signup — the old shape collected
+ * the whole list each time and, past 16,384 rows, took both screens down for
+ * good.
+ *
+ * Five statuses at this ceiling is 10,005 documents in the worst case, well
+ * under the transaction limit, and nothing like it in practice: `active`
+ * dominates a real list and the other four are small. Where a status does reach
+ * the ceiling the count is a floor, and the answer says `truncated` so the
+ * screen can render « 2 000+ » rather than a number it has not counted.
+ */
+export const SUBSCRIBER_COUNT_SCAN_LIMIT = 2_000
+
+/**
+ * How many subscribers the establishment has, per status.
+ *
+ * Counted through `by_storeId_status` — one index range per status, capped —
+ * rather than by collecting the table and calling `.filter().length` five
+ * times. A count that costs the whole table is the defect this screen died of.
+ */
 export const countByStatus = {
   args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: any) => {
-    const all = await ctx.db
-      .query("emailSubscribers")
-      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
-      .collect()
+  handler: async (ctx: any, args: { storeId: string }) => {
+    const counts: Record<string, number> = {}
+    let truncated = false
+    let total = 0
+
+    for (const status of SUBSCRIBER_STATUSES) {
+      // One more than the cap, so a full read is distinguishable from a list
+      // that happens to be exactly the cap long.
+      const rows = await ctx.db
+        .query("emailSubscribers")
+        .withIndex("by_storeId_status", (q: any) =>
+          q.eq("storeId", args.storeId).eq("status", status)
+        )
+        .take(SUBSCRIBER_COUNT_SCAN_LIMIT + 1)
+
+      const capped = Math.min(rows.length, SUBSCRIBER_COUNT_SCAN_LIMIT)
+      if (rows.length > SUBSCRIBER_COUNT_SCAN_LIMIT) truncated = true
+      counts[status] = capped
+      total += capped
+    }
+
     return {
-      total: all.length,
-      active: all.filter((s: any) => s.status === "active").length,
-      pending: all.filter((s: any) => s.status === "pending").length,
-      unsubscribed: all.filter((s: any) => s.status === "unsubscribed").length,
-      bounced: all.filter((s: any) => s.status === "bounced").length,
-      complained: all.filter((s: any) => s.status === "complained").length,
+      total,
+      active: counts.active ?? 0,
+      pending: counts.pending ?? 0,
+      unsubscribed: counts.unsubscribed ?? 0,
+      bounced: counts.bounced ?? 0,
+      complained: counts.complained ?? 0,
+      /** At least one status hit the cap: every figure here is a floor. */
+      truncated,
     }
   },
 }

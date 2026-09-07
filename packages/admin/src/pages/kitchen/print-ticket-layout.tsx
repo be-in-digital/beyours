@@ -19,6 +19,15 @@ interface PrintTicketLayoutProps {
   customerPhone?: string
   /** Dine-in only. The line that tells the cook where the plate goes. */
   tableNumber?: string
+  /**
+   * The note that came with the order.
+   *
+   * Named for delivery instructions, because that is all it used to carry —
+   * `kitchenTickets.deliveryNotes`, fed from `orders.notes`. The storefront
+   * now has a field for it, and what a diner types there is usually an allergy
+   * ("allergie aux arachides, sauce à part"), on an order of any type. So the
+   * heading follows the order type rather than always announcing a delivery.
+   */
   deliveryNotes?: string
   /**
    * Raw values out of `kitchenTickets.allergens`, exactly as the owner stored
@@ -169,10 +178,17 @@ export function PrintTicketLayout({
         ))}
       </div>
 
-      {/* Delivery notes */}
+      {/*
+        The customer's note. Printed above the allergen block and never folded
+        into it: the allergens there are the ones the OWNER declared on the
+        dish, checked against a vocabulary; this is free text from the diner,
+        which nothing has verified. A cook has to be able to tell them apart.
+      */}
       {deliveryNotes && (
         <div style={{ borderTop: "1px dashed #000", paddingTop: "2mm", marginBottom: "2mm" }}>
-          <div style={{ fontWeight: "bold" }}>Instructions livraison:</div>
+          <div style={{ fontWeight: "bold" }}>
+            {orderType === "delivery" ? "INSTRUCTIONS LIVRAISON :" : "NOTE CLIENT :"}
+          </div>
           <div>{deliveryNotes}</div>
         </div>
       )}

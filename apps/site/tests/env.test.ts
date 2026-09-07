@@ -7,6 +7,10 @@ import {
   CREATION_PRODUCT_ENV,
   MAINTENANCE_PRICE_ENV,
 } from "../convex/stripePriceAudit";
+import {
+  SIGNER_IP_SECRET_ENV,
+  SIGNER_IP_SECRET_MIN_LENGTH,
+} from "../lib/security/signer-attestation";
 
 /** What the regime in force requires of both charging flags. */
 const CHARGING = String(VAT.regime === "reel");
@@ -472,6 +476,40 @@ describe("validateSiteEnv knows every variable the Convex maps name", () => {
     const { ok, problems } = validateSiteEnv({ ...VALID, [name]: "price_x" });
     expect(ok).toBe(false);
     expect(problems.some((p) => p.tier === "feature")).toBe(true);
+  });
+});
+
+/* The one secret shared between THIS server and the Convex deployment. A
+   Convex action cannot see the request's IP, so the affiliate signature's
+   « Adresse IP » row is observed by /api/signer-ip and HMAC'd with this;
+   convex/affiliateSignature.ts verifies it before recording anything. Same
+   pinning as the Stripe ids above: lib/env.ts holds the name as a literal so it
+   stays dependency-free, and this keeps the two from drifting apart. */
+describe("validateSiteEnv guards the signer-IP secret", () => {
+  it("knows it by the name the code reads", () => {
+    const short = "x".repeat(SIGNER_IP_SECRET_MIN_LENGTH - 1);
+    const { ok, problems } = validateSiteEnv({
+      ...VALID,
+      [SIGNER_IP_SECRET_ENV]: short,
+    });
+    expect(ok).toBe(false);
+    expect(problems.map((p) => p.name)).toEqual([SIGNER_IP_SECRET_ENV]);
+    expect(problems[0].tier).toBe("format");
+  });
+
+  it("accepts one long enough to be a secret", () => {
+    expect(
+      validateSiteEnv({
+        ...VALID,
+        [SIGNER_IP_SECRET_ENV]: "s".repeat(SIGNER_IP_SECRET_MIN_LENGTH),
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("is optional — a deployment without it still boots", () => {
+    // Unset, the signature is recorded with no address rather than an
+    // unverified one. That is a thinner audit trail, not a broken deployment.
+    expect(validateSiteEnv(VALID).ok).toBe(true);
   });
 });
 

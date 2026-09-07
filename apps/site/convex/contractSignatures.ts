@@ -127,33 +127,20 @@ export const getById = internalQuery({
 
 /* ── Internal mutations ── */
 
-export const updateStatus = internalMutation({
-  args: {
-    signatureId: v.id("contractSignatures"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("signed"),
-      v.literal("declined"),
-      v.literal("expired"),
-      v.literal("canceled"),
-      v.literal("failed"),
-    ),
-    signedAt: v.optional(v.number()),
-    signerIp: v.optional(v.string()),
-    signedDocumentFileId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const patch: Record<string, unknown> = {
-      status: args.status,
-      updatedAt: Date.now(),
-    };
-    if (args.signedAt) patch.signedAt = args.signedAt;
-    if (args.signerIp) patch.signerIp = args.signerIp;
-    if (args.signedDocumentFileId)
-      patch.signedDocumentFileId = args.signedDocumentFileId;
-    await ctx.db.patch(args.signatureId, patch);
-  },
-});
+/* ── No `updateStatus` here either, on purpose ──
+   It took `signedAt` and `signerIp` from its caller and patched them straight
+   onto the row — the two fields the eIDAS art. 25 trail rests on, taken from
+   whoever asked. It could set `status: "signed"` with no document, undoing the
+   invariant `recordInAppSignature` below exists to hold, and it could backdate
+   or forward-date a signature to any instant.
+
+   It was the Yousign webhook's writer, it survived the removal of that flow
+   with no caller left, and it was the last place in this file where an audit
+   value came from outside. The in-app path stamps the timestamp from the
+   server's own clock and takes the address only from an attestation the Next
+   server signed (lib/security/signer-attestation.ts). If a provider flow ever
+   comes back, its writer records what the PROVIDER attested, not what the
+   request body said. */
 
 /**
  * Find the signature already on file for this affiliate and contract version,
@@ -206,6 +193,14 @@ export const findSignedSignatureInternal = internalQuery({
 });
 
 /**
+ * How far `recordInAppSignature`'s `signedAt` may sit from the server's clock.
+ *
+ * The action stamps it from the same clock a fraction of a second earlier, so
+ * anything outside this is a bug or a caller that should not exist.
+ */
+export const MAX_SIGNATURE_CLOCK_SKEW_MS = 10 * 60 * 1000;
+
+/**
  * Write an in-app SES signature — row, document and activation, atomically.
  *
  * Called by `signAffiliateContract` ONLY after the PDF has been generated and
@@ -244,6 +239,20 @@ export const recordInAppSignature = internalMutation({
     if (existing) return existing._id;
 
     const now = Date.now();
+    /* `signedAt` is passed in rather than stamped here because the certificate
+       page is drawn BEFORE this transaction and prints the same instant: the
+       document and the row have to agree, and only the action knows what it
+       drew. It is the action's own `Date.now()` — this mutation is internal, so
+       no client reaches it — and this is what keeps that true rather than
+       merely conventional. The window is the whole PDF generation and one
+       storage write; ten minutes is orders of magnitude more than that, and
+       still far too narrow to backdate anything. */
+    if (Math.abs(now - args.signedAt) > MAX_SIGNATURE_CLOCK_SKEW_MS) {
+      throw new Error(
+        "Horodatage de signature hors de l'intervalle admissible : " +
+          "il doit être celui du serveur au moment de la signature.",
+      );
+    }
     const signatureId = await ctx.db.insert("contractSignatures", {
       affiliateUserId: args.affiliateUserId,
       contractVersionId: args.contractVersionId,

@@ -48,6 +48,13 @@ const PRODUCTS = path.join(ADMIN_SRC, "pages", "products")
 const read = (file: string): string => fs.readFileSync(file, "utf8")
 
 const productForm = read(path.join(PRODUCTS, "product-form.tsx"))
+// The schema moved out of the component into its own module so its guards
+// could be parsed rather than only read (see product-form-schema.test.ts).
+// The sweep below follows it: it measures what the form DECLARES against what
+// the form RENDERS, and those are now two files.
+const productFormSchemaSource = read(
+  path.join(PRODUCTS, "product-form-schema.ts")
+)
 const allergenField = read(path.join(PRODUCTS, "allergen-field.tsx"))
 const allergenSelection = read(path.join(PRODUCTS, "allergen-selection.ts"))
 const suggestionCard = read(
@@ -69,20 +76,23 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 // Sweep: a field the schema declares must be a field the form can edit
 // ---------------------------------------------------------------------------
 
-const SCHEMA_MARKER = "const productFormSchema = z.object({"
+const SCHEMA_MARKER = "export const productFormSchema = z.object({"
 
 /** The body of `productFormSchema`, from its opening brace to its match. */
 function schemaBody(): string {
-  const start = productForm.indexOf(SCHEMA_MARKER)
-  expect(start, "productFormSchema not found in product-form.tsx").toBeGreaterThan(-1)
+  const start = productFormSchemaSource.indexOf(SCHEMA_MARKER)
+  expect(
+    start,
+    "productFormSchema not found in product-form-schema.ts"
+  ).toBeGreaterThan(-1)
   const open = start + SCHEMA_MARKER.length - 1
   let depth = 0
-  for (let i = open; i < productForm.length; i++) {
-    const c = productForm[i]
+  for (let i = open; i < productFormSchemaSource.length; i++) {
+    const c = productFormSchemaSource[i]
     if (c === "{" || c === "(" || c === "[") depth++
     else if (c === "}" || c === ")" || c === "]") {
       depth--
-      if (depth === 0) return productForm.slice(open + 1, i)
+      if (depth === 0) return productFormSchemaSource.slice(open + 1, i)
     }
   }
   throw new Error("productFormSchema is not balanced")
