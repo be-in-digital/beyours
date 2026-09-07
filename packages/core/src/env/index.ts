@@ -27,3 +27,5 @@ export type {
   SandboxFlagRule,
   SandboxFlagProblem,
 } from './sandbox'
+export { envManifest, optionalSiteVars, UNGROUPED_OPTIONAL_VARS } from './manifest'
+export type { EnvManifest, EnvManifestGroup, EnvManifestTier } from './manifest'

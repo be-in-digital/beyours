@@ -404,15 +404,15 @@ export function CheckoutForm({
               onClick={() => setOrderType(opt.type)}
               className={`group flex h-24 flex-col items-center justify-center gap-2 rounded-[2rem] border-2 transition-all ${
                 isSelected
-                  ? "border-primary bg-primary text-white shadow-xl shadow-emerald-900/10"
-                  : "border-zinc-100 bg-white text-zinc-500 dark:text-zinc-400 hover:border-zinc-200"
+                  ? "border-primary bg-primary text-primary-foreground shadow-xl shadow-primary/10"
+                  : "border-border bg-white text-muted-foreground hover:border-border"
               }`}
             >
               <Icon
                 className={`h-6 w-6 transition-colors ${
                   isSelected
-                    ? "text-orange-400"
-                    : "text-zinc-500 group-hover:text-zinc-700"
+                    ? "text-accent-foreground"
+                    : "text-muted-foreground group-hover:text-foreground"
                 }`}
               />
               <span className="text-[10px] font-black uppercase tracking-widest">
@@ -463,14 +463,14 @@ export function CheckoutForm({
       <div className="overflow-hidden rounded-[2.5rem] border-none bg-white p-2 shadow-xl shadow-black/[0.03]">
         <div className="p-8">
           <div className="mb-2 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
               <Mail className="h-5 w-5" />
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-800">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">
               Contact
             </h2>
           </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Renseignez vos coordonnées pour la confirmation de commande.
           </p>
         </div>
@@ -487,7 +487,7 @@ export function CheckoutForm({
               id="name"
               {...register("name")}
               placeholder="Jean Dupont"
-              className="h-14 rounded-2xl border-transparent bg-zinc-50 px-6 text-sm font-medium transition-all focus:bg-white focus:ring-emerald-500/20"
+              className="h-14 rounded-2xl border-transparent bg-muted px-6 text-sm font-medium transition-all focus:bg-white focus:ring-primary/20"
             />
             {errors.name && (
               <p className="ml-1 text-xs font-medium text-rose-500">
@@ -509,7 +509,7 @@ export function CheckoutForm({
                 type="email"
                 {...register("email")}
                 placeholder="jean.dupont@exemple.fr"
-                className="h-14 rounded-2xl border-transparent bg-zinc-50 px-6 text-sm font-medium transition-all focus:bg-white focus:ring-emerald-500/20"
+                className="h-14 rounded-2xl border-transparent bg-muted px-6 text-sm font-medium transition-all focus:bg-white focus:ring-primary/20"
               />
               {errors.email && (
                 <p className="ml-1 text-xs font-medium text-rose-500">
@@ -529,7 +529,7 @@ export function CheckoutForm({
                 type="tel"
                 {...register("phone")}
                 placeholder="+33 6 00 00 00 00"
-                className="h-14 rounded-2xl border-transparent bg-zinc-50 px-6 text-sm font-medium transition-all focus:bg-white focus:ring-emerald-500/20"
+                className="h-14 rounded-2xl border-transparent bg-muted px-6 text-sm font-medium transition-all focus:bg-white focus:ring-primary/20"
               />
             </div>
           </div>
@@ -541,14 +541,14 @@ export function CheckoutForm({
         <div className="overflow-hidden rounded-[2.5rem] border-none bg-white p-2 shadow-xl shadow-black/[0.03]">
           <div className="p-8">
             <div className="mb-2 flex items-center gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                 <MapPin className="h-5 w-5" />
               </div>
-              <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-800">
+              <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">
                 Livraison
               </h2>
             </div>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Où souhaitez-vous recevoir votre commande ?
             </p>
           </div>
@@ -564,15 +564,15 @@ export function CheckoutForm({
                     onClick={() => setSelectedAddressId(addr.id)}
                     className={`flex w-full items-center gap-3 rounded-2xl border-2 px-5 py-4 text-left text-sm transition-all ${
                       selectedAddressId === addr.id
-                        ? "border-emerald-500 bg-emerald-50/30"
-                        : "border-zinc-100 hover:border-zinc-200"
+                        ? "border-primary bg-accent/30"
+                        : "border-border hover:border-border"
                     }`}
                   >
                     <div
                       className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
                         selectedAddressId === addr.id
-                          ? "border-emerald-500 bg-emerald-500"
-                          : "border-zinc-300"
+                          ? "border-primary bg-primary"
+                          : "border-border"
                       }`}
                     >
                       {selectedAddressId === addr.id && (
@@ -583,12 +583,12 @@ export function CheckoutForm({
                       {addr.label && (
                         <span className="font-bold">{addr.label} — </span>
                       )}
-                      <span className="font-medium text-zinc-600">
+                      <span className="font-medium text-muted-foreground">
                         {addr.street}, {addr.postalCode} {addr.city}
                       </span>
                     </div>
                     {selectedAddressId === addr.id && (
-                      <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-emerald-500" />
+                      <CheckCircle2 className="ml-auto h-5 w-5 shrink-0 text-success" />
                     )}
                   </button>
                 ))}
@@ -598,22 +598,22 @@ export function CheckoutForm({
                   onClick={() => setSelectedAddressId("manual")}
                   className={`flex w-full items-center gap-3 rounded-2xl border-2 px-5 py-4 text-left text-sm transition-all ${
                     selectedAddressId === "manual"
-                      ? "border-emerald-500 bg-emerald-50/30"
-                      : "border-zinc-100 hover:border-zinc-200"
+                      ? "border-primary bg-accent/30"
+                      : "border-border hover:border-border"
                   }`}
                 >
                   <div
                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
                       selectedAddressId === "manual"
-                        ? "border-emerald-500 bg-emerald-500"
-                        : "border-zinc-300"
+                        ? "border-primary bg-primary"
+                        : "border-border"
                     }`}
                   >
                     {selectedAddressId === "manual" && (
                       <div className="h-2 w-2 rounded-full bg-white" />
                     )}
                   </div>
-                  <span className="font-bold text-zinc-600">
+                  <span className="font-bold text-muted-foreground">
                     Nouvelle adresse
                   </span>
                 </button>
@@ -631,12 +631,12 @@ export function CheckoutForm({
                     Rechercher une adresse
                   </Label>
                   <div className="relative">
-                    <MapPin className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-emerald-600" />
+                    <MapPin className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-accent-foreground" />
                     <input
                       ref={addressInputRef}
                       type="text"
                       placeholder="Ex : 12 rue de la Paix, Paris..."
-                      className="storefront-pac-input h-14 w-full rounded-2xl border-2 border-zinc-100 bg-zinc-50 pl-12 pr-6 text-sm font-medium transition-all placeholder:text-zinc-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      className="storefront-pac-input h-14 w-full rounded-2xl border-2 border-border bg-muted pl-12 pr-6 text-sm font-medium transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -646,7 +646,7 @@ export function CheckoutForm({
                   <button
                     type="button"
                     onClick={() => setAddressMode("manual")}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-zinc-200 px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 transition-all hover:border-zinc-300 hover:text-zinc-500"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border px-4 py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground transition-all hover:border-border hover:text-muted-foreground"
                   >
                     <MapPinOff className="h-3.5 w-3.5" />
                     Je ne trouve pas mon adresse
@@ -655,12 +655,12 @@ export function CheckoutForm({
 
                 {/* Detail fields — shown after Google select or manual mode */}
                 {showAddressFields && (
-                  <div className="space-y-4 rounded-2xl border-2 border-emerald-100 bg-emerald-50/30 p-5">
+                  <div className="space-y-4 rounded-2xl border-2 border-primary/20 bg-accent/30 p-5">
                     {addressMode === "selected" && (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-accent-foreground">
                             Adresse sélectionnée
                           </span>
                         </div>
@@ -670,7 +670,7 @@ export function CheckoutForm({
                             setAddressMode("search")
                             setManualAddress({ street: "", city: "", postalCode: "", country: "France" })
                           }}
-                          className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 transition-colors hover:text-zinc-600"
+                          className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:text-muted-foreground"
                         >
                           Modifier
                         </button>
@@ -678,7 +678,7 @@ export function CheckoutForm({
                     )}
                     {addressMode === "manual" && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                           Saisie manuelle
                         </span>
                         <button
@@ -687,7 +687,7 @@ export function CheckoutForm({
                             setAddressMode("search")
                             setManualAddress({ street: "", city: "", postalCode: "", country: "France" })
                           }}
-                          className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 transition-colors hover:text-emerald-700"
+                          className="text-[10px] font-bold uppercase tracking-widest text-accent-foreground transition-colors hover:text-accent-foreground"
                         >
                           Revenir à la recherche
                         </button>
@@ -703,7 +703,7 @@ export function CheckoutForm({
                         onChange={(e) => setManualAddress((p) => ({ ...p, street: e.target.value }))}
                         placeholder="123 rue de la Paix"
                         readOnly={addressMode === "selected"}
-                        className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-emerald-500/20"
+                        className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-primary/20"
                       />
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -716,7 +716,7 @@ export function CheckoutForm({
                           onChange={(e) => setManualAddress((p) => ({ ...p, city: e.target.value }))}
                           placeholder="Paris"
                           readOnly={addressMode === "selected"}
-                          className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-emerald-500/20"
+                          className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-primary/20"
                         />
                       </div>
                       <div className="space-y-2">
@@ -728,7 +728,7 @@ export function CheckoutForm({
                           onChange={(e) => setManualAddress((p) => ({ ...p, postalCode: e.target.value }))}
                           placeholder="75001"
                           readOnly={addressMode === "selected"}
-                          className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-emerald-500/20"
+                          className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-primary/20"
                         />
                       </div>
                     </div>
@@ -740,7 +740,7 @@ export function CheckoutForm({
                         value={manualAddress.country}
                         onChange={(e) => setManualAddress((p) => ({ ...p, country: e.target.value }))}
                         readOnly={addressMode === "selected"}
-                        className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-emerald-500/20"
+                        className="h-14 rounded-2xl border-transparent bg-white px-6 text-sm font-medium transition-all focus:ring-primary/20"
                       />
                     </div>
                   </div>
@@ -806,14 +806,14 @@ export function CheckoutForm({
       <div className="overflow-hidden rounded-[2.5rem] border-none bg-white p-2 shadow-xl shadow-black/[0.03]">
         <div className="p-8">
           <div className="mb-2 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground">
               <CreditCard className="h-5 w-5" />
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-800">
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-foreground">
               Paiement
             </h2>
           </div>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Choisissez votre moyen de paiement préféré.
           </p>
         </div>
@@ -834,25 +834,29 @@ export function CheckoutForm({
                 disabled={cardUnavailable}
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
                   cardUnavailable
-                    ? "border-zinc-100 bg-zinc-50 opacity-60 cursor-not-allowed"
+                    ? "border-border bg-muted opacity-60 cursor-not-allowed"
                     : effectivePaymentMethod === "card"
-                      ? "border-emerald-500 bg-emerald-50/30"
-                      : "border-zinc-100 hover:border-zinc-200"
+                      ? "border-primary bg-accent/30"
+                      : "border-border hover:border-border"
                 }`}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100">
-                  <CreditCard className={`h-6 w-6 ${cardUnavailable ? "text-zinc-500 dark:text-zinc-400" : "text-zinc-600"}`} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  {/* The unavailable tile already carries `opacity-60`, so the
+                      icon needs no second dimming of its own — the ternary that
+                      used to be here chose between two greys that #41 maps to
+                      the same token. */}
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className={`font-bold ${cardUnavailable ? "text-zinc-500 dark:text-zinc-400" : "text-zinc-800"}`}>Carte bancaire</p>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                  <p className={`font-bold ${cardUnavailable ? "text-muted-foreground" : "text-foreground"}`}>Carte bancaire</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                     {cardUnavailable
                       ? "Indisponible pour le moment"
                       : payments?.cardProvider === "sumup" ? "SumUp" : "Visa, Master, Amex"}
                   </p>
                 </div>
                 {effectivePaymentMethod === "card" && !cardUnavailable && (
-                  <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
+                  <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
                 )}
               </button>
             )}
@@ -864,21 +868,21 @@ export function CheckoutForm({
                 onClick={() => setPaymentMethod("paypal")}
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
                   effectivePaymentMethod === "paypal"
-                    ? "border-emerald-500 bg-emerald-50/30"
-                    : "border-zinc-100 hover:border-zinc-200"
+                    ? "border-primary bg-accent/30"
+                    : "border-border hover:border-border"
                 }`}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
                   <span className="text-lg font-black text-blue-600">P</span>
                 </div>
                 <div>
-                  <p className="font-bold text-zinc-800">PayPal</p>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                  <p className="font-bold text-foreground">PayPal</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                     Paiement sécurisé
                   </p>
                 </div>
                 {effectivePaymentMethod === "paypal" && (
-                  <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
+                  <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
                 )}
               </button>
             )}
@@ -891,23 +895,23 @@ export function CheckoutForm({
                 disabled={!isAuthenticated}
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
                   !isAuthenticated
-                    ? "border-zinc-100 bg-zinc-50 opacity-60 cursor-not-allowed"
+                    ? "border-border bg-muted opacity-60 cursor-not-allowed"
                     : effectivePaymentMethod === "cash"
-                      ? "border-emerald-500 bg-emerald-50/30"
-                      : "border-zinc-100 hover:border-zinc-200"
+                      ? "border-primary bg-accent/30"
+                      : "border-border hover:border-border"
                 }`}
               >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isAuthenticated ? "bg-emerald-50" : "bg-zinc-100"}`}>
-                  <Banknote className={`h-6 w-6 ${isAuthenticated ? "text-emerald-600" : "text-zinc-500 dark:text-zinc-400"}`} />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isAuthenticated ? "bg-accent" : "bg-muted"}`}>
+                  <Banknote className={`h-6 w-6 ${isAuthenticated ? "text-accent-foreground" : "text-muted-foreground"}`} />
                 </div>
                 <div>
-                  <p className={`font-bold ${isAuthenticated ? "text-zinc-800" : "text-zinc-500 dark:text-zinc-400"}`}>Espèces</p>
-                  <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                  <p className={`font-bold ${isAuthenticated ? "text-foreground" : "text-muted-foreground"}`}>Espèces</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                     {isAuthenticated ? "Paiement au retrait" : "Connectez-vous pour payer en espèces"}
                   </p>
                 </div>
                 {effectivePaymentMethod === "cash" && isAuthenticated && (
-                  <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-500" />
+                  <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
                 )}
               </button>
             )}
@@ -917,6 +921,11 @@ export function CheckoutForm({
             what to do about it — a disabled button in front of an empty grid
             tells a diner nothing, and it is the last screen before they give
             up. A cash-only establishment reaches this on every guest checkout.
+
+            The amber stays literal through #41's tokenisation: it means
+            "warning", not "brand", so a template must not recolour it — the
+            same reasoning that kept the order-status pill and the cancelled
+            red out of the sweep.
           */}
           {noPaymentMethod && (
             <div
@@ -932,7 +941,7 @@ export function CheckoutForm({
             </div>
           )}
 
-          <p className="mt-3 text-[10px] font-medium italic text-zinc-500 dark:text-zinc-400">
+          <p className="mt-3 text-[10px] font-medium italic text-muted-foreground">
             Le paiement sera traité de manière sécurisée au moment de la validation.
           </p>
         </div>
@@ -941,7 +950,7 @@ export function CheckoutForm({
           <Button
             type="submit"
             disabled={isSubmitting || !effectivePaymentMethod}
-            className="group h-16 w-full rounded-2xl bg-primary text-lg font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-900/10 transition-all hover:bg-primary-hover"
+            className="group h-16 w-full rounded-2xl bg-primary text-lg font-black uppercase tracking-widest text-white shadow-xl shadow-primary/10 transition-all hover:bg-primary-hover"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">

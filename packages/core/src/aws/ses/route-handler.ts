@@ -7,7 +7,7 @@ import { createHash, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import { passwordResetTemplate, verifyEmailTemplate, welcomeTemplate } from './templates'
 import type { SESPasswordResetData, VerifyEmailData, WelcomeData } from './templates'
-import { getSESService } from './adapter'
+import { getEmailService } from './adapter'
 
 /**
  * Schema for email request validation
@@ -195,7 +195,7 @@ export function createEmailRouteHandler(config: EmailRouteConfig) {
         return Response.json({ error: 'Invalid request' }, { status: 400 })
       }
 
-      const sesService = getSESService()
+      const sesService = getEmailService()
 
       // Generate email content based on type
       let subject: string

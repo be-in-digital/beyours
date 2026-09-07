@@ -40,18 +40,24 @@ export function resolveConfigurationSet(
 }
 
 /**
- * The `ConfigurationSetName` field, ready to spread into a `SendEmailCommand`.
+ * The configuration-set field, ready to spread into an `EmailMessage`.
  *
  * Returns an empty object when no set is configured, so the key is **absent**
- * from the command rather than present and undefined. Omission is the
+ * from the message rather than present and undefined. Omission is the
  * documented way to send without a configuration set; a client whose account
  * has none still gets their campaign, minus the tracking events.
+ *
+ * It used to spell `ConfigurationSetName` and be spread into a raw
+ * `SendEmailCommand`. Since #212 the sends go through a transport that may not
+ * be SES at all — Resend has no configuration sets and drops the field — so
+ * the name is the message's, and mapping it onto the AWS command is the SES
+ * adapter's job, in the one module that speaks to the SDK.
  */
 export function configurationSetFields(
   raw: string | undefined | null
-): { ConfigurationSetName?: string } {
+): { configurationSet?: string } {
   const name = resolveConfigurationSet(raw)
-  return name === undefined ? {} : { ConfigurationSetName: name }
+  return name === undefined ? {} : { configurationSet: name }
 }
 
 /**

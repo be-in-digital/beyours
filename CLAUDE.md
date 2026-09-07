@@ -481,12 +481,29 @@ await ses.sendBulkEmail({ ... })   // rate-limited to the SES sandbox ceiling
 module-level functions.
 
 **How transactional mail actually leaves the product.** Convex has no SES
-credentials, so it POSTs to the app's own `/api/email/send`, which is
-`createEmailRouteHandler({ secret, linkOrigin })` from `@be-in-digital/core` —
-that handler calls `getSESService()`. The two halves share one secret
+credentials for the password-reset path, so it POSTs to the app's own
+`/api/email/send`, which is `createEmailRouteHandler({ secret, linkOrigin })`
+from `@be-in-digital/core` — that handler calls `getEmailService()`
+(`getSESService` is a deprecated alias). The two halves share one secret
 (`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
-must present the same one. Bulk campaign sends are the exception: they run in
-Convex Node actions that talk to `@aws-sdk/client-sesv2` directly.
+must present the same one. Campaigns, automations, invitations, order
+confirmations and migration notices are the exception: they run in Convex Node
+actions and send from there.
+
+**SES is the default transport, not the only one.** `EMAIL_PROVIDER=resend`
+points a deployment at Resend instead — the whole deployment, both halves —
+because every client owns its AWS account, files its own SES production-access
+request, and approval is not guaranteed; one has been refused, and such a
+client could not send at all. The decision lives in
+`packages/core/src/email/providers.ts`, which imports no AWS SDK: SES is the
+injected `SESOperations`, Resend is plain `fetch`, and both go through
+`createSESService`, so validation, rate limiting and bulk batching are the same
+either way. An unknown provider name is refused rather than falling back.
+Set `EMAIL_PROVIDER`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on **both** the
+Next.js env and the Convex deployment (`pnpm env:sync` carries them). Resend has
+no configuration sets, so a client who moves loses open/click tracking, not
+their mail. No Convex action constructs an `SESv2Client` any more —
+`convex/emailTransport.ts` is the one seam.
 
 ---
 
@@ -549,6 +566,13 @@ OPENAI_API_KEY=sk-...
 
 ```bash
 CONVEX_DEPLOYMENT=
+
+# Email transport. SES when unset; `resend` is the escape hatch for a client
+# whose AWS SES production-access request was refused. Set all three on the
+# Convex deployment too — the actions send from there.
+EMAIL_PROVIDER=               # "ses" (default) | "resend"
+RESEND_API_KEY=               # re_...
+RESEND_FROM_EMAIL=            # verified at Resend; falls back to AWS_SES_FROM_EMAIL
 
 # Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...

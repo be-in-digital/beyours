@@ -272,6 +272,41 @@ The lesson for this note: a divergence in a Convex internal function reference
 used to be invisible to every check in the repo. It no longer is — the type
 checker catches it, so it does not need hand-auditing here.
 
+**`grep '^Files '` threw away half the output.** The comparison above was run as
+`diff -rq apps/reference apps/themes | grep '^Files '`, which keeps only
+*"Files X and Y differ"*. A file present in one app only is reported as
+`Only in …` and was filtered out before anything could classify it. Two
+template-only admin components reached the end of the pass unexamined that way,
+and #263 asked — rather than guessed — whether they were deliberate template
+material like `StatusBadge`, `DateDisplay` and `ComingSoon`, or leftovers.
+
+They were leftovers, and reachability was not the argument that settled it:
+
+- **`components/admin/SidebarUserMenu.tsx`** was a *stale copy*. The layout
+  renders `SidebarUserMenu` from `@be-in-digital/admin`, and the package version
+  has since gained a fix the local copy never did: it clears the selected
+  establishment on sign-out, because it outlived the session and the next person
+  to use that browser was greeted by name with the previous user's restaurant.
+  A template-only component is a starting point a client developer is invited to
+  reach for. Leaving this one there offered them a copy with a fixed privacy
+  defect back in it — which is worse than dead code, and is the difference
+  between it and its three protected neighbours (those are barrel exports the
+  template actually renders).
+
+- **`components/admin/AdminLanguageSwitcher.tsx`** would have been inert if it
+  had been mounted. It drives `useLanguageStore`, which **nothing in
+  `packages/admin` reads** — the admin's own strings are French in the source.
+  Mounting it would have given an owner a language picker that saves a choice
+  and changes nothing on screen: the same shape as the RTL switch and the
+  currency picker, which are disabled with a stated reason precisely so nobody
+  mistakes a stored value for a working feature. Translating the admin is a real
+  piece of work; this file was not a head start on it.
+
+Both were removed rather than documented. What is worth keeping is the method:
+**if you are hunting dead code rather than divergence, ask what happens when the
+file is used, not whether it is reachable.** A reachability argument would have
+deleted `getMyMemberships` too.
+
 ## The design system left both apps (2026-09-05)
 
 `apps/reference/components/ui/` and `apps/themes/components/ui/` no longer

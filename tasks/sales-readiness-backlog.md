@@ -10,6 +10,12 @@ It doubles as the ClickUp description and the GitHub issue body.
 - **`TECH` — 12 cards.** P1 findings grouped by domain.
 - **`LAUNCH` — 10 cards.** Operator actions and product decisions, outside the repo.
 
+Six further build-vs-remove decisions, measured on 7 Sep 2026 and deliberately
+left undecided, are in [`b10-owner-decisions.md`](./b10-owner-decisions.md):
+the dead `cms*` tables (#330), menus/formules (#352), the Clients page (#364),
+the three sales metrics (#365), the automations editor (#270) and the platform
+connect/accept screen (#274).
+
 Domain issues #94–113 stay open and act as parents.
 `apps/reference/…` paths are the engine; every client app cloned from `apps/themes/`
 has the same file in the same place unless stated otherwise.
