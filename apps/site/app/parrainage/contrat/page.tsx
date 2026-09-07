@@ -103,13 +103,22 @@ export default function ContratPage() {
         postalCode: postalCode.trim() || undefined,
       });
 
-      // Best-effort IP for the audit trail (read server-side, non-blocking).
-      let signerIp: string | undefined;
+      /* The audit trail's IP row, minted server-side and passed through
+         opaquely. This page cannot produce one and must not try: `/api/signer-ip`
+         reads the address from the proxy header and signs it, and the Convex
+         action verifies that signature before printing anything on the
+         certificate. Best-effort — a failure here costs the trail one
+         corroborating row, not the signature. */
+      let signerIpAttestation:
+        | { ip: string; issuedAt: number; mac: string }
+        | undefined;
       try {
         const ipRes = await fetch("/api/signer-ip");
         if (ipRes.ok) {
-          const ipJson = (await ipRes.json()) as { ip: string | null };
-          signerIp = ipJson.ip ?? undefined;
+          const ipJson = (await ipRes.json()) as {
+            attestation: { ip: string; issuedAt: number; mac: string } | null;
+          };
+          signerIpAttestation = ipJson.attestation ?? undefined;
         }
       } catch {
         // ignore
@@ -120,7 +129,7 @@ export default function ContratPage() {
         consented,
         userAgent:
           typeof navigator !== "undefined" ? navigator.userAgent : undefined,
-        signerIp,
+        signerIpAttestation,
       });
 
       // Signing activates the affiliate (contractStatus → "active"):

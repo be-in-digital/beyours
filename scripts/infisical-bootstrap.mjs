@@ -27,6 +27,10 @@
  * Requires the Infisical CLI and INFISICAL_PROJECT_ID (see
  * apps/docs/deployment/infisical.md). `folders` and `check` also need you to be
  * logged in (`infisical login`) or to have INFISICAL_TOKEN set.
+ *
+ * `check` answers in its exit code, and the two failures are different things:
+ * 0 complete · 1 the store answered and is missing keys · 2 usage · 3 the store
+ * or the session is down. `.github/workflows/env-store-health.yml` reads them.
  */
 
 import fs from "node:fs"
@@ -58,6 +62,20 @@ const SCOPES = {
       "STRIPE_BID_SECRET_KEY",
       "STRIPE_BID_WEBHOOK_SECRET",
       "STRIPE_BID_PRICE_MAINTENANCE",
+      // The six Auto Blog plan prices. `bidSubscription.ts` reads all seven
+      // STRIPE_BID_PRICE_* names — `buildPriceMap` for the webhook, which turns
+      // a Stripe price back into a plan, and `resolvePriceIdFromPlan` for
+      // checkout — and only _MAINTENANCE was ever written down. So `migrate`
+      // filed the other six under "in no spec, NOT PUSHED", `check` never
+      // reported them missing, and the paid Auto Blog tier could not be
+      // provisioned through this chain at all. Same Stripe account as the rest
+      // of the BID block: BeYours' own, not the restaurant's.
+      "STRIPE_BID_PRICE_STARTER",
+      "STRIPE_BID_PRICE_PRO",
+      "STRIPE_BID_PRICE_ENTERPRISE",
+      "STRIPE_BID_PRICE_STARTER_ANNUAL",
+      "STRIPE_BID_PRICE_PRO_ANNUAL",
+      "STRIPE_BID_PRICE_ENTERPRISE_ANNUAL",
       "BID_NOTIFY_EMAIL",
     ],
   },
@@ -88,7 +106,10 @@ const SCOPES = {
 }
 
 /**
- * Variables a deployment owns, that no store should ever hold.
+ * Variables a deployment owns, that no SHARED folder should ever hold and that
+ * nothing may copy from one deployment to another.
+ *
+ * Two families, one rule.
  *
  * `@convex-dev/auth` generates JWT_PRIVATE_KEY and JWKS with its own CLI and
  * writes them straight onto the deployment; the auth server reads them and no
@@ -96,10 +117,56 @@ const SCOPES = {
  * exactly like orphans in an audit, and they are the one pair you must not
  * remove — without them nobody can sign in.
  *
- * They must not travel through Infisical either: they are per-deployment, and
- * pushing one deployment's key onto another would invalidate every session.
+ * The other five are the ones `GENERATORS` below knows how to mint: a random
+ * value whose only correct scope is the single backend it was minted for. The
+ * ownership table in apps/docs/deployment/infisical.md has always said so, and
+ * until the 4 Sep 2026 audit nothing enforced it: `/themes` was found holding
+ * generated secrets among the 17 keys `setup-convex-env.sh --infisical` would
+ * have pushed onto every client deployment provisioned from that folder. Two
+ * restaurants sharing one ENCRYPTION_KEY means either one's leak decrypts the
+ * other's stored OAuth tokens.
+ *
+ * Enforced in three places, because the chain has three links: `migrate` never
+ * pushes one INTO the store, `check` reports one found in a shared folder, and
+ * `setup-convex-env.sh` never pushes one OUT of the store onto a deployment.
+ * That last copy of the list lives inside `apps/themes`, which is cloned to
+ * clients where this file does not exist; `setup-convex-env.test.mjs` holds the
+ * two together.
  */
-const DEPLOYMENT_OWNED = new Set(["JWT_PRIVATE_KEY", "JWKS"])
+const DEPLOYMENT_OWNED = new Set([
+  "JWT_PRIVATE_KEY",
+  "JWKS",
+  "BETTER_AUTH_SECRET",
+  "EMAIL_API_SECRET",
+  "ENCRYPTION_KEY",
+  "ADMIN_BOOTSTRAP_TOKEN",
+  "SEED_PASSWORD",
+])
+
+/**
+ * Folders whose values are DEFAULTS or SHARED credentials, never one running
+ * backend's own. `/reference`, `/site` and `/demo` are each a single real
+ * environment and are entitled to their own generated secrets; `/platform` is
+ * copied to every deployment by definition, and `/themes` is what a client
+ * clone starts from — a generated secret in either is one secret for everybody.
+ */
+const SHARED_FOLDERS = new Set(["/platform", "/themes"])
+
+/**
+ * Exit codes, because two failures of `check` need two answers.
+ *
+ * "The store cannot be reached" and "the store answered, and it is missing
+ * keys" were both exit 1, so the daily health workflow could not tell an
+ * Infisical outage from the long-standing fact that some folders are not filled
+ * in yet. One is an incident, the other is a backlog item; collapsing them
+ * means either paging on the backlog or sleeping through the incident.
+ *
+ * Read by .github/workflows/env-store-health.yml. Keep them in step.
+ */
+const EXIT_OK = 0
+const EXIT_INCOMPLETE = 1 // the store answered; its contents are not what the specs say
+const EXIT_USAGE = 2 // bad flags — a mistake in the command, not in the store
+const EXIT_STORE_DOWN = 3 // no CLI, no session, or a folder that would not read
 
 /* ── argument handling ───────────────────────────────────────────────────── */
 
@@ -125,7 +192,7 @@ const scopeNames = ONLY ? [ONLY] : Object.keys(SCOPES)
 for (const name of scopeNames) {
   if (!SCOPES[name]) {
     console.error(`Unknown scope "${name}". Known: ${Object.keys(SCOPES).join(", ")}`)
-    process.exit(2)
+    process.exit(EXIT_USAGE)
   }
 }
 
@@ -170,7 +237,7 @@ function requireCli() {
   } catch {
     console.error("The Infisical CLI is not on PATH.")
     console.error("  brew install infisical/get-cli/infisical")
-    process.exit(1)
+    process.exit(EXIT_STORE_DOWN)
   }
 }
 
@@ -248,7 +315,7 @@ function cmdFolders() {
       if (/login session|unauthori[sz]ed|401|authentication/i.test(msg)) {
         console.log()
         console.log(AUTH_HELP)
-        process.exitCode = 1
+        process.exitCode = EXIT_STORE_DOWN
         return
       }
       if (/exist/i.test(msg)) console.log(`  /${folder} already there`)
@@ -259,7 +326,9 @@ function cmdFolders() {
 
 function cmdCheck() {
   requireCli()
-  let problems = 0
+  let incomplete = 0
+  let unreachable = 0
+  let leaked = 0
 
   // Read /platform once. A BeYours-owned key is not missing from /ci just
   // because it lives where it belongs: the workflows load /platform and then
@@ -269,22 +338,31 @@ function cmdCheck() {
 
   for (const name of scopeNames) {
     const scope = SCOPES[name]
-    const want = expectedKeys(name)
+    // A shared folder is not expected to HOLD a per-deployment secret — it is
+    // expected not to. Its spec still lists five of them, because the spec
+    // describes what a deployment needs, so leaving them in `want` would have
+    // `check` demand the very keys the block below refuses.
+    const want = SHARED_FOLDERS.has(scope.path)
+      ? expectedKeys(name).filter((k) => !DEPLOYMENT_OWNED.has(k))
+      : expectedKeys(name)
     const { keys: have, error } = storedKeys(scope.path)
     console.log(`\n${scope.path}  (${ENV})`)
     if (error === "auth") {
       console.log()
       console.log(AUTH_HELP)
-      process.exitCode = 1
+      process.exitCode = EXIT_STORE_DOWN
       return
     }
     if (error) {
-      problems++
-      console.log(
-        error === "missing"
-          ? `  folder missing — run: node scripts/infisical-bootstrap.mjs folders --env=${ENV}`
-          : `  unreadable: ${error}`,
-      )
+      // A folder nobody created yet is a gap in the store's contents; anything
+      // else that would not read is the store, or the session, being down.
+      if (error === "missing") {
+        incomplete++
+        console.log(`  folder missing — run: node scripts/infisical-bootstrap.mjs folders --env=${ENV}`)
+      } else {
+        unreachable++
+        console.log(`  unreadable: ${error}`)
+      }
       continue
     }
     const viaPlatform =
@@ -292,25 +370,52 @@ function cmdCheck() {
     const missing = want.filter((k) => !have.includes(k) && !viaPlatform.includes(k))
     // A BeYours-owned key is never "extra" wherever it turns up. Reporting the
     // shared set as strays in every folder would bury the ones that are.
-    const extra = have.filter((k) => !want.includes(k) && !platformKeys.has(k))
+    // Nor is a per-deployment secret merely "extra" — the block below has a
+    // much sharper thing to say about it, and reporting it twice under two
+    // headings reads as two problems.
+    const extra = have.filter(
+      (k) => !want.includes(k) && !platformKeys.has(k) && !DEPLOYMENT_OWNED.has(k),
+    )
+    // A per-deployment secret sitting in a folder that is copied to everybody.
+    // It reads as "complete" by every other measure here — the key is in the
+    // spec, the folder holds it — which is exactly why it went unnoticed until
+    // an audit ran a dry push and read the names back.
+    const shared = SHARED_FOLDERS.has(scope.path)
+      ? have.filter((k) => DEPLOYMENT_OWNED.has(k))
+      : []
     console.log(
       `  ${have.length} stored, ${want.length} expected` +
         (viaPlatform.length ? `, ${viaPlatform.length} supplied by /platform` : ""),
     )
     if (missing.length) {
-      problems++
+      incomplete++
       console.log(`  MISSING (${missing.length}):`)
       for (const k of missing) console.log(`    - ${k}`)
     }
-    if (extra.length) {
-      console.log(`  not in any spec (${extra.length}): ${extra.join(", ")}`)
+    if (shared.length) {
+      leaked++
+      console.log(`  MUST NOT BE HERE (${shared.length}) — generated per deployment:`)
+      for (const k of shared) console.log(`    - ${k}`)
+      console.log(`  ${scope.path} is copied to every deployment that reads it, so one`)
+      console.log("  value here is one value for everybody. setup-convex-env.sh refuses")
+      console.log("  to push them, so nothing is propagating today — but delete them,")
+      console.log("  and generate each deployment's own with `seed` against its folder.")
     }
-    if (!missing.length && !extra.length) console.log("  complete")
+    if (!missing.length && !extra.length && !shared.length) console.log("  complete")
+    else if (extra.length) console.log(`  not in any spec (${extra.length}): ${extra.join(", ")}`)
   }
   console.log()
-  if (problems) {
-    console.log(`${problems} scope(s) incomplete. \`plan\` prints how to fill them.`)
-    process.exitCode = 1
+  // Down beats incomplete: a folder that would not answer cannot be judged
+  // complete or otherwise, so reporting "incomplete" for it would be a guess.
+  if (unreachable) {
+    console.log(`${unreachable} scope(s) unreadable — the store or the session is down.`)
+    process.exitCode = EXIT_STORE_DOWN
+  } else if (incomplete || leaked) {
+    if (incomplete) console.log(`${incomplete} scope(s) incomplete. \`plan\` prints how to fill them.`)
+    if (leaked) console.log(`${leaked} shared folder(s) hold a per-deployment secret. Delete them.`)
+    process.exitCode = EXIT_INCOMPLETE
+  } else {
+    process.exitCode = EXIT_OK
   }
 }
 
@@ -319,7 +424,7 @@ function cmdPlan() {
 How the values get there. Run these yourself — nothing here is executed for
 you, and no value is ever printed by this script.
 
-Values live in three places today, so there are three moves.
+Values live in two places today, so there are two moves.
 
 1. Convex deployment envs — the biggest half.
 
@@ -340,11 +445,14 @@ Values live in three places today, so there are three moves.
        --projectId=$INFISICAL_PROJECT_ID --env=${ENV} --path=/site
      rm -f /tmp/from-vercel.env
 
-3. GitHub Secrets — NOT retrievable. GitHub is write-only by design, so the
-   13 E2E_* values cannot be pulled back out. Take them from the portals they
-   came from, or regenerate them, and set them at --path=/ci. Regenerating is
-   the better answer for anything that is a credential: it costs one rotation
-   and ends the question of who has seen the old value.
+There is no third. This section used to name 13 E2E_* GitHub Secrets and a
+/ci folder to put them in; the folder is gone and the secrets never existed.
+Since #276 the e2e job starts its own Convex backend on the runner and reads no
+application secret at all, and this repository stores exactly four secrets —
+INFISICAL_CLIENT_ID, INFISICAL_CLIENT_SECRET, MIRROR_PUSH_TOKEN, TURBO_TOKEN.
+GitHub is still write-only, so if you ever do need a value back out of it, take
+it from the portal it came from or regenerate it: one rotation ends the question
+of who has seen the old value.
 
 Then verify against the repo's own spec, which is what makes the store
 trustworthy for a build:
@@ -398,7 +506,7 @@ function cmdMigrate() {
     console.error(
       "migrate needs --scope=<name> and one of --from-convex=<deployment|prod> / --from-file=<dotenv>",
     )
-    process.exit(2)
+    process.exit(EXIT_USAGE)
   }
   const target = SCOPES[ONLY]
   const dir = path.join(ROOT, flag("dir", CONVEX_DIR[ONLY] ?? "apps/reference"))
@@ -469,11 +577,19 @@ function cmdMigrate() {
   const platformKeys = new Set(expectedKeys("platform"))
   const targetKeys = new Set(expectedKeys(ONLY))
   const buckets = new Map([["/platform", []], [target.path, []]])
-  const unknown = []
+  const owned = []
+  const strays = []
   for (const [key, value] of pairs) {
-    if (platformKeys.has(key)) buckets.get("/platform").push([key, value])
+    // Ownership is decided BEFORE the spec lookup, and that order is the fix.
+    // Five of these names ARE in the specs — BETTER_AUTH_SECRET and
+    // ENCRYPTION_KEY are in every app's .env.example — so a routing that asked
+    // "is it in the spec?" first filed them under the scope and pushed them.
+    // That is how `/themes` came to hold one deployment's generated secrets as
+    // the defaults every client clone would start from.
+    if (DEPLOYMENT_OWNED.has(key)) owned.push(key)
+    else if (platformKeys.has(key)) buckets.get("/platform").push([key, value])
     else if (targetKeys.has(key)) buckets.get(target.path).push([key, value])
-    else unknown.push(key)
+    else strays.push(key)
   }
 
   console.log(`\nRead ${pairs.length} variables from ${source ?? fromFile}. Routing:`)
@@ -481,12 +597,11 @@ function cmdMigrate() {
     console.log(`\n  ${dest}  (${list.length})`)
     for (const [k] of list) console.log(`    ${k}`)
   }
-  const owned = unknown.filter((k) => DEPLOYMENT_OWNED.has(k))
-  const strays = unknown.filter((k) => !DEPLOYMENT_OWNED.has(k))
   if (owned.length) {
     console.log(`\n  NOT PUSHED — the deployment owns these (${owned.length}): ${owned.join(", ")}`)
-    console.log("  Generated by the auth tooling, per deployment. Never store them,")
-    console.log("  never copy them between deployments, and never delete them.")
+    console.log("  Generated for ONE backend — by the auth tooling, or by `seed` on the")
+    console.log("  deployment itself. Never store them here, never copy them between")
+    console.log("  deployments, and never delete them from the deployment that holds them.")
   }
   if (strays.length) {
     console.log(`\n  NOT PUSHED — in no spec (${strays.length}): ${strays.join(", ")}`)
@@ -545,6 +660,16 @@ const GENERATORS = {
   SEED_PASSWORD: () => `seed-${crypto.randomBytes(9).toString("base64url")}`,
 }
 
+// Anything this script can mint is per-deployment by construction, so the two
+// lists cannot be allowed to disagree. Stated as a check rather than as a
+// derivation because DEPLOYMENT_OWNED is read far above and also carries the
+// auth pair, which has no generator here.
+for (const key of Object.keys(GENERATORS)) {
+  if (!DEPLOYMENT_OWNED.has(key)) {
+    throw new Error(`${key} has a generator but is not in DEPLOYMENT_OWNED — see that comment.`)
+  }
+}
+
 /** KEY=VALUE pairs from a spec, with the value kept verbatim. */
 function specPairs(rel) {
   const file = path.join(ROOT, rel)
@@ -585,14 +710,21 @@ function cmdSeed() {
 
   for (const name of scopeNames) {
     const scope = SCOPES[name]
+    // A generated secret belongs to one backend. /reference, /site and /demo
+    // each ARE one backend; /platform and /themes are copied to every
+    // deployment that reads them, so minting one there mints it for everybody.
+    // Seeding /themes is how seventeen of them got into the store in the first
+    // place.
+    const isShared = SHARED_FOLDERS.has(scope.path)
     const { keys: have = [] } = storedKeys(scope.path)
     const seen = new Set()
-    const take = [], generate = [], skip = []
+    const take = [], generate = [], skip = [], refused = []
     for (const spec of scope.specs) {
       for (const [k, v] of specPairs(spec)) {
         if (seen.has(k)) continue
         seen.add(k)
         if (have.includes(k)) { skip.push(k); continue }
+        if (isShared && DEPLOYMENT_OWNED.has(k)) { refused.push(k); continue }
         if (GENERATORS[k]) generate.push(k)
         else if (!defaultsAllowed) continue
         else if (!v || IS_PLACEHOLDER.test(v)) continue
@@ -604,6 +736,11 @@ function cmdSeed() {
       (skip.length ? `   already there, untouched: ${skip.length}` : ""))
     for (const [k, v] of take) console.log(`    ${k}=${v}`)
     for (const k of generate) console.log(`    ${k}=<generated>`)
+    if (refused.length) {
+      console.log(`  refused — per-deployment, and this folder is shared (${refused.length}):`)
+      console.log(`    ${refused.join(", ")}`)
+      console.log("  Seed them on the folder of the ONE environment that owns them.")
+    }
 
     if (!apply || (!take.length && !generate.length)) continue
     const lines = [
@@ -672,7 +809,7 @@ function cmdRun() {
   const command = sep === -1 ? [] : argv.slice(sep + 1)
   if (!ONLY || !command.length) {
     console.error("Usage: run --scope=<name> [--env=dev] -- <command...>")
-    process.exit(2)
+    process.exit(EXIT_USAGE)
   }
   const scope = SCOPES[ONLY]
   // `infisical run` takes one path, so /platform is exported first and passed
@@ -715,5 +852,8 @@ switch (command) {
   case "scopes": cmdScopes(); break
   default:
     console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed|run> [--env=dev] [--scope=name]")
-    process.exit(2)
+    console.error("")
+    console.error(`Exit codes: ${EXIT_OK} complete · ${EXIT_INCOMPLETE} store incomplete · ` +
+      `${EXIT_USAGE} usage · ${EXIT_STORE_DOWN} store unreachable`)
+    process.exit(EXIT_USAGE)
 }

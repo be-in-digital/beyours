@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -18,12 +18,14 @@ import {
   CheckCircle2,
   Banknote,
   Utensils,
+  AlertTriangle,
 } from "lucide-react"
 import {
   Button,
   Input,
   Label,
   Separator,
+  Textarea,
 } from "@be-in-digital/ui"
 import {
   resolvePaymentMethod,
@@ -36,6 +38,10 @@ import {
   MAX_TABLE_NUMBER_LENGTH,
   normalizeTableNumber,
 } from "@be-in-digital/core/dining"
+// The server's own cap on the note, read from the server. A textarea that
+// accepts more than `orders.create` stores turns a diner's allergy warning
+// into a refused order at the moment of payment.
+import { FIELD_LIMITS } from "@be-in-digital/convex-functions/rateLimit"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"
 import type { SavedAddress } from "@/lib/stores/addresses-store"
@@ -46,6 +52,23 @@ const checkoutSchema = z.object({
   name: z.string().min(2, "Le nom est requis"),
   email: z.string().email("Email invalide").or(z.literal("")).optional(),
   phone: z.string().optional(),
+  /**
+   * What the diner needs the kitchen to know — an allergy, above all.
+   *
+   * The whole pipeline behind this field already existed: `orders.create`
+   * takes `notes`, the order carries it, `releaseToKitchen` copies it onto the
+   * ticket and the printed slip has a line for it. There was simply no input
+   * anywhere on the storefront, so the line was always blank and a diner with
+   * a nut allergy had no way to say so (#376). Optional, and capped at what
+   * the server stores.
+   */
+  notes: z
+    .string()
+    .max(
+      FIELD_LIMITS.orderNote,
+      `Note trop longue (${FIELD_LIMITS.orderNote} caractères maximum)`
+    )
+    .optional(),
 })
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>
@@ -64,6 +87,8 @@ interface CheckoutFormProps {
     email?: string
     phone?: string
     paymentMethod: PaymentMethod
+    /** The diner's note to the kitchen — allergies included. */
+    notes?: string
     /** Set only for `dine_in`; the server rejects it on the other types. */
     tableNumber?: string
     deliveryAddress?: {
@@ -99,6 +124,17 @@ interface CheckoutFormProps {
    * server validates against.
    */
   services?: StoreServices | null
+  /**
+   * A way to sign in, rendered where the diner discovers they need one.
+   *
+   * Cash requires an account — a recorded decision, so the till knows who to
+   * call — and a cash-only establishment therefore leaves a guest with no
+   * selectable tile at all. The form used to answer that with a disabled
+   * button reading « Choisissez un moyen de paiement », in front of nothing to
+   * choose (#376). The dialog itself belongs to the app, not to this
+   * component, so it arrives as a node.
+   */
+  signInAction?: ReactNode
 }
 
 const fulfillmentOptions: {
@@ -119,6 +155,7 @@ export function CheckoutForm({
   user,
   onAddressChange,
   services,
+  signInAction,
 }: CheckoutFormProps) {
   const orderType = useCartStore((s) => s.orderType)
   const setOrderType = useCartStore((s) => s.setOrderType)
@@ -141,6 +178,13 @@ export function CheckoutForm({
   // only declares WHICH provider; on a fresh deployment nothing is keyed and
   // every card attempt fails, so the tile must not be the default (#374).
   const cardAvailability = useQuery(api.paymentAvailability.get)
+  // Two different answers, and the checkout owes the diner a different screen
+  // for each. `card === false` with `cardOffered === true` is a deployment
+  // that means to take cards and cannot right now — a greyed tile saying so.
+  // `cardOffered === false` is an owner who does not take cards at all: the
+  // tile has no business being on the page. `undefined` while the query is in
+  // flight keeps today's behaviour, which is to show it.
+  const cardOffered = cardAvailability?.cardOffered !== false
 
   const [selectedAddressId, setSelectedAddressId] = useState<
     string | "manual"
@@ -178,6 +222,7 @@ export function CheckoutForm({
   // tile no card provider could honour (#374).
   const paymentContext: PaymentMethodContext = {
     cardAvailable: cardAvailability?.card,
+    cardOffered,
     paypalEnabled: payments?.paypal === true,
     cashEnabled: payments?.cash === true,
     isDelivery,
@@ -188,11 +233,20 @@ export function CheckoutForm({
     paymentContext
   )
   const cardUnavailable = cardAvailability?.card === false
+  // The one blocked state that has a way out the diner can take right now:
+  // cash is offered on this order type and only an account is missing.
+  const cashNeedsAccount =
+    payments?.cash === true && !isDelivery && !isAuthenticated
+  // Nothing selectable, and the answers are in — `undefined` is still loading,
+  // and a notice shown then would flash on every cold checkout.
+  const noPaymentMethod =
+    !effectivePaymentMethod && cardAvailability !== undefined
 
   const {
     register,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
@@ -200,6 +254,7 @@ export function CheckoutForm({
       name: user?.name ?? "",
       email: user?.email ?? "",
       phone: user?.phone ?? "",
+      notes: "",
     },
   })
 
@@ -210,9 +265,12 @@ export function CheckoutForm({
         name: user.name ?? "",
         email: user.email ?? "",
         phone: user.phone ?? "",
+        // Kept: signing in mid-checkout must not silently drop an allergy the
+        // diner has already typed.
+        notes: getValues("notes") ?? "",
       })
     }
-  }, [user?.name, user?.email, user?.phone, reset])
+  }, [user?.name, user?.email, user?.phone, reset, getValues])
 
   // Notify parent when the delivery address changes
   useEffect(() => {
@@ -308,6 +366,9 @@ export function CheckoutForm({
       name: data.name,
       email: data.email || undefined,
       phone: data.phone || undefined,
+      // Trimmed, and dropped when it is only whitespace: an empty `Note:` line
+      // on a kitchen slip is noise a cook has to read past.
+      notes: data.notes?.trim() || undefined,
       paymentMethod: effectivePaymentMethod,
       // Sent only for dine-in. Switching the type away from `sur place` must
       // not leave a stale table on the order — the server rejects one on a
@@ -690,6 +751,57 @@ export function CheckoutForm({
         </div>
       )}
 
+      {/* Allergies and instructions for the kitchen */}
+      <div className="overflow-hidden rounded-[2.5rem] border-none bg-white p-2 shadow-xl shadow-black/[0.03]">
+        <div className="p-8">
+          <div className="mb-2 flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tighter text-zinc-800">
+              Allergies &amp; instructions
+            </h2>
+          </div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Une allergie, une intolérance, une préférence&nbsp;? Dites-le à la
+            cuisine.
+          </p>
+        </div>
+
+        <div className="space-y-2 px-8 pb-8">
+          <Label
+            htmlFor="notes"
+            className="ml-1 text-[10px] font-black uppercase tracking-widest"
+          >
+            Note pour la cuisine
+          </Label>
+          <Textarea
+            id="notes"
+            rows={3}
+            maxLength={FIELD_LIMITS.orderNote}
+            {...register("notes")}
+            placeholder="Ex : allergie aux arachides, sauce à part, sans oignon…"
+            aria-describedby={errors.notes ? "notes-error" : "notes-hint"}
+            aria-invalid={errors.notes ? true : undefined}
+            className="min-h-[96px] rounded-2xl border-transparent bg-zinc-50 px-6 py-4 text-sm font-medium transition-all focus:bg-white focus:ring-emerald-500/20"
+          />
+          {errors.notes ? (
+            <p
+              id="notes-error"
+              role="alert"
+              className="ml-1 text-xs font-medium text-rose-500"
+            >
+              {errors.notes.message}
+            </p>
+          ) : (
+            <p id="notes-hint" className="ml-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Cette note est imprimée sur le ticket de cuisine. Elle ne remplace
+              pas un échange avec le restaurant en cas d&apos;allergie grave.
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Payment section + Submit */}
       <div className="overflow-hidden rounded-[2.5rem] border-none bg-white p-2 shadow-xl shadow-black/[0.03]">
         <div className="p-8">
@@ -708,36 +820,46 @@ export function CheckoutForm({
 
         <div className="px-8 pb-4">
           <div className="grid grid-cols-1 gap-3">
-            {/* Card — shown always, selectable only when the deployment can
-                actually charge one. Pre-selecting a dead card tile is what
-                sent every fresh deployment's first order into #374. */}
-            <button
-              type="button"
-              onClick={() => !cardUnavailable && setPaymentMethod("card")}
-              disabled={cardUnavailable}
-              className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
-                cardUnavailable
-                  ? "border-border bg-muted opacity-60 cursor-not-allowed"
-                  : effectivePaymentMethod === "card"
-                    ? "border-primary bg-accent/30"
-                    : "border-border hover:border-border"
-              }`}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                <CreditCard className={`h-6 w-6 ${cardUnavailable ? "text-muted-foreground" : "text-muted-foreground"}`} />
-              </div>
-              <div>
-                <p className={`font-bold ${cardUnavailable ? "text-muted-foreground" : "text-foreground"}`}>Carte bancaire</p>
-                <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {cardUnavailable
-                    ? "Indisponible pour le moment"
-                    : payments?.cardProvider === "sumup" ? "SumUp" : "Visa, Master, Amex"}
-                </p>
-              </div>
-              {effectivePaymentMethod === "card" && !cardUnavailable && (
-                <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
-              )}
-            </button>
+            {/* Card — rendered when the establishment takes cards at all,
+                selectable only when it can actually charge one. Pre-selecting
+                a dead card tile is what sent every fresh deployment's first
+                order into #374; rendering one an owner has switched off is
+                what left a cash-only food truck with a payment method it could
+                never honour (#376). Two different states, two different
+                answers: greyed for the first, absent for the second. */}
+            {cardOffered && (
+              <button
+                type="button"
+                onClick={() => !cardUnavailable && setPaymentMethod("card")}
+                disabled={cardUnavailable}
+                className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
+                  cardUnavailable
+                    ? "border-border bg-muted opacity-60 cursor-not-allowed"
+                    : effectivePaymentMethod === "card"
+                      ? "border-primary bg-accent/30"
+                      : "border-border hover:border-border"
+                }`}
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                  {/* The unavailable tile already carries `opacity-60`, so the
+                      icon needs no second dimming of its own — the ternary that
+                      used to be here chose between two greys that #41 maps to
+                      the same token. */}
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className={`font-bold ${cardUnavailable ? "text-muted-foreground" : "text-foreground"}`}>Carte bancaire</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {cardUnavailable
+                      ? "Indisponible pour le moment"
+                      : payments?.cardProvider === "sumup" ? "SumUp" : "Visa, Master, Amex"}
+                  </p>
+                </div>
+                {effectivePaymentMethod === "card" && !cardUnavailable && (
+                  <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
+                )}
+              </button>
+            )}
 
             {/* PayPal — if enabled */}
             {payments?.paypal && (
@@ -794,6 +916,31 @@ export function CheckoutForm({
               </button>
             )}
           </div>
+          {/*
+            No tile is selectable. Say which of the two situations this is and
+            what to do about it — a disabled button in front of an empty grid
+            tells a diner nothing, and it is the last screen before they give
+            up. A cash-only establishment reaches this on every guest checkout.
+
+            The amber stays literal through #41's tokenisation: it means
+            "warning", not "brand", so a template must not recolour it — the
+            same reasoning that kept the order-status pill and the cancelled
+            red out of the sweep.
+          */}
+          {noPaymentMethod && (
+            <div
+              role="alert"
+              className="mt-3 space-y-3 rounded-2xl border-2 border-amber-200 bg-amber-50/60 p-5"
+            >
+              <p className="text-sm font-medium text-amber-900">
+                {cashNeedsAccount
+                  ? "Le paiement en espèces sur place est le seul moyen disponible ici. Connectez-vous pour confirmer votre commande : nous avons besoin d'un nom et d'un contact pour la préparer."
+                  : "Aucun moyen de paiement n'est disponible en ligne pour le moment. Contactez le restaurant pour commander."}
+              </p>
+              {cashNeedsAccount && signInAction}
+            </div>
+          )}
+
           <p className="mt-3 text-[10px] font-medium italic text-muted-foreground">
             Le paiement sera traité de manière sécurisée au moment de la validation.
           </p>
@@ -818,7 +965,12 @@ export function CheckoutForm({
                     ? "Payer avec PayPal"
                     : effectivePaymentMethod === "cash"
                       ? "Confirmer la commande"
-                      : "Choisissez un moyen de paiement"}
+                      : /* Not "choose a payment method": on a cash-only
+                           establishment there is nothing on this screen to
+                           choose, and the button said so to every guest. */
+                        cashNeedsAccount
+                        ? "Connectez-vous pour continuer"
+                        : "Aucun paiement disponible"}
                 <ArrowRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
               </>
             )}

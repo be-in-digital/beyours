@@ -103,6 +103,15 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
   (`convex/affiliateSignature.ts`); only vestigial schema fields remain. This
   line asked for HMAC verification of a route that does not exist, and carried a
   red "security hole" label while doing so.
+- [ ] 🟠 **[config] `SIGNER_IP_SECRET` on both envs**: the same value on Vercel
+  **and** on the Convex deployment (`openssl rand -base64 32`). It is what lets
+  Convex trust the signer's IP: the address is observed by the Next server
+  (`/api/signer-ip`) and HMAC'd, because a Convex action cannot see the
+  request's IP at all. Unset, contracts still sign — the certificate simply
+  records « Adresse IP : non établie », which is the honest answer and was NOT
+  what the old code did: it printed whatever the caller sent, next to fields
+  that are real evidence. Optional, therefore, but the eIDAS art. 25 trail is
+  thinner without it.
 - [ ] 🟠 **[decision] Customer contract**: YouSign signing is wired for the
   **introducers**. Decide whether the **customer engagement** (build + maintenance)
   goes through a signed contract before go-live, and wire the same flow if it does.

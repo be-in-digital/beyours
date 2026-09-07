@@ -5,6 +5,8 @@ import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { resolveStripeAccess } from "./stripeMode";
+import { PROGRAM_DISABLED_REASON, programIsEnabled } from "./affiliateProgram";
+import { affiliateStandingRefusal } from "./affiliateStanding";
 
 /**
  * Stripe when a key is configured, `null` when there is none.
@@ -255,6 +257,21 @@ export const checkAccountStatus = action({
 export const processPayouts = internalAction({
   args: {},
   handler: async (ctx) => {
+    /* ── The kill-switch, before Stripe is even constructed ──
+       `markValidatedAsPayable` also refuses while the programme is off, but a
+       row that reached `payable` BEFORE the switch was thrown is already
+       sitting in the queue this reads. Both crons run twice a week against the
+       same rows; the switch has to stop the one that actually wires money, not
+       only the one that queues it. `programEnabled` was read by neither. */
+    const settings = await ctx.runQuery(
+      internal.affiliateSettings.getInternal,
+      {},
+    );
+    if (!programIsEnabled(settings)) {
+      console.log(`[REFERRAL] ${PROGRAM_DISABLED_REASON} — aucun virement.`);
+      return;
+    }
+
     const stripe = getStripeOrTestMode("verser les commissions dues");
     if (!stripe) {
       console.log("[TEST MODE] Skipping payout processing");
@@ -271,9 +288,24 @@ export const processPayouts = internalAction({
       const affiliate = await ctx.runQuery(internal.affiliateUsers.getById, {
         affiliateUserId: referral.referrerId,
       });
+      if (!affiliate) continue;
+
+      /* The contract, read again at the moment of the transfer. Standing can
+         change between the two crons — `contractVersions.activate` moves every
+         active affiliate to `blocked_new_version`, and an account can be
+         suspended on a Tuesday — and the last check before money leaves should
+         be against the state now, not the state that queued the row. Same rule
+         as the discount path and the payable cron; see ./affiliateStanding. */
+      const refusal = affiliateStandingRefusal(affiliate);
+      if (refusal) {
+        console.log(
+          `[REFERRAL] Virement de la commission ${referral._id} suspendu : ${refusal}.`,
+        );
+        continue;
+      }
 
       if (
-        !affiliate?.stripeConnectAccountId ||
+        !affiliate.stripeConnectAccountId ||
         affiliate.stripeConnectStatus !== "active"
       ) {
         continue;

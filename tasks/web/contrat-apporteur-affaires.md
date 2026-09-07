@@ -42,7 +42,7 @@ Mise en place d'un **contrat d'apporteur d'affaires** complet en droit français
 | `contractSnapshotContent` | string | Texte exact du contrat envoyé |
 | `contractSnapshotHash` | string | SHA-256 du snapshot |
 | `signedDocumentFileId` | optional string | Référence au PDF signé |
-| `signerIp` | optional string | IP du signataire |
+| `signerIp` | optional string | IP du signataire, **constatée par le serveur Next** (`/api/signer-ip`) et signée en HMAC avant d'être acceptée par l'action Convex — voir `lib/security/signer-attestation.ts`. Absente si le déploiement n'a pas de `SIGNER_IP_SECRET` : le certificat porte alors « non établie », jamais une adresse non vérifiée. |
 | `signedAt` | optional number | Timestamp signature |
 | `createdAt` | number | Timestamp création |
 | `updatedAt` | number | Timestamp dernière mise à jour |

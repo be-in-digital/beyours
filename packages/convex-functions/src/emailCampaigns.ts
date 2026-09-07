@@ -250,6 +250,20 @@ export const saveSendCursor = {
 }
 
 /**
+ * The establishments the scheduled-campaign sweep will walk in one pass.
+ *
+ * A deployment is one restaurant owner and their locations, so this is a
+ * ceiling on a list that is a handful long — not a page size anybody is
+ * expected to reach. It exists because the sweep runs every minute and an
+ * unbounded read on the busiest schedule in the product is how the cron would
+ * start failing silently.
+ */
+export const DUE_STORE_SCAN_LIMIT = 200
+
+/** The most `scheduled` campaigns the sweep reads per establishment. */
+export const DUE_CAMPAIGN_SCAN_LIMIT = 100
+
+/**
  * The campaigns whose scheduled time has arrived.
  *
  * `schedule` set `status: "scheduled"` and `scheduledAt`, the wizard offered a
@@ -260,18 +274,38 @@ export const saveSendCursor = {
  * Store-scoped queries cannot serve this — the sweep runs for the deployment,
  * not for one restaurant — so it walks `by_storeId_status` per store. The caller
  * is a cron with no identity; see `crons.ts`.
+ *
+ * That paragraph was true of the intent and false of the code: what shipped was
+ * `.filter(q => q.eq(q.field("status"), "scheduled")).collect()`, which is not
+ * an index at all. A Convex `.filter` narrows rows the database has already
+ * read, so the sweep scanned every campaign the establishment had ever written
+ * — draft, sent, cancelled — once a minute, for ever, to find the nearly always
+ * empty set of due ones. The walk below is the one the paragraph describes.
  */
 export const dueForSending = {
   args: { now: v.number() },
-  handler: async (ctx: any, args: any) => {
-    const scheduled = await ctx.db
-      .query("emailCampaigns")
-      .filter((q: any) => q.eq(q.field("status"), "scheduled"))
-      .collect()
+  handler: async (ctx: any, args: { now: number }) => {
+    const stores = await ctx.db.query("stores").take(DUE_STORE_SCAN_LIMIT)
 
-    return scheduled
-      .filter((c: any) => c.scheduledAt !== undefined && c.scheduledAt <= args.now)
-      .map((c: any) => c._id)
+    const due: string[] = []
+    for (const store of stores) {
+      const scheduled = await ctx.db
+        .query("emailCampaigns")
+        .withIndex("by_storeId_status", (q: any) =>
+          q.eq("storeId", store._id).eq("status", "scheduled")
+        )
+        .take(DUE_CAMPAIGN_SCAN_LIMIT)
+
+      for (const campaign of scheduled) {
+        // A `scheduled` row with no time on it is not due against anything;
+        // sending it now would be a decision the owner never made.
+        if (campaign.scheduledAt === undefined) continue
+        if (campaign.scheduledAt > args.now) continue
+        due.push(campaign._id)
+      }
+    }
+
+    return due
   },
 }
 
@@ -326,23 +360,19 @@ export const resetStats = {
 }
 
 /**
- * Increment revenue stat atomically.
+ * REMOVED: `incrementRevenue`.
+ *
+ * It patched `stats.revenue` and `stats.converted`, and it had zero call sites
+ * in either app. Nothing else produces those two figures either: no path in the
+ * product writes a `converted` email event, and no order carries the campaign
+ * that led to it — the attribution a "revenu attribué" number is made of does
+ * not exist in this schema. So the campaign stats dialog rendered a hard
+ * « 0,00 € » and « 0 conversions » next to real send and open counts, for every
+ * campaign, for ever, and an owner reading it concluded their mailing sold
+ * nothing.
+ *
+ * The dialog now says the two are not tracked rather than reporting a zero it
+ * cannot stand behind. `stats.converted` and `stats.revenue` stay in the schema
+ * — existing rows carry them, and `incrementStats` still accepts `converted` —
+ * so wiring a real producer later means adding the producer, not a migration.
  */
-export const incrementRevenue = {
-  args: {
-    id: v.id("emailCampaigns"),
-    amount: v.number(), // in cents
-  },
-  handler: async (ctx: any, args: any) => {
-    const campaign = await ctx.db.get(args.id)
-    if (!campaign) return
-    await ctx.db.patch(args.id, {
-      stats: {
-        ...campaign.stats,
-        revenue: (campaign.stats.revenue ?? 0) + args.amount,
-        converted: (campaign.stats.converted ?? 0) + 1,
-      },
-      updatedAt: Date.now(),
-    })
-  },
-}

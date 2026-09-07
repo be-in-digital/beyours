@@ -8,26 +8,19 @@ import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { CheckCircle, Package, ArrowLeft, ExternalLink, Loader2 } from "lucide-react"
 import { Badge, Separator, Skeleton, OrderStatusBadge } from "@be-in-digital/ui"
-import { formatPrice } from "@be-in-digital/restaurant"
-
-function getStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    pending: "En attente",
-    confirmed: "Confirmée",
-    preparing: "En préparation",
-    ready: "Prête",
-    out_for_delivery: "En livraison",
-    delivered: "Livrée",
-    completed: "Terminée",
-    cancelled: "Annulée",
-  }
-  return labels[status] ?? status
-}
+import { formatPrice, useOrderStatusLabels } from "@be-in-digital/restaurant"
 
 function OrderConfirmationContent() {
   const { orderId } = useParams<{ orderId: string }>()
   const searchParams = useSearchParams()
   const viewToken = searchParams.get("token") ?? undefined
+
+  // The eight status words, in the language this page is being read in. They
+  // used to be a private map here AND eight hardcoded English labels inside
+  // `OrderStatusBadge`, so the same order read « Preparing » on the badge and
+  // « En préparation » two lines below it, and neither followed the language
+  // the diner had chosen. One vocabulary now, translated once.
+  const statusLabels = useOrderStatusLabels()
 
   const order = useQuery(api.orders.getById, {
     id: orderId as Id<"orders">,
@@ -149,7 +142,7 @@ function OrderConfirmationContent() {
           <div className="rounded-[2rem] bg-white border border-border shadow-2xl shadow-black/[0.04] p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-black uppercase tracking-tighter">Détails</h2>
-              <OrderStatusBadge status={order.status} />
+              <OrderStatusBadge status={order.status} labels={statusLabels} />
             </div>
 
             <div className="space-y-4 text-sm">
@@ -165,7 +158,7 @@ function OrderConfirmationContent() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Statut</span>
-                <span className="font-bold text-foreground">{getStatusLabel(order.status)}</span>
+                <span className="font-bold text-foreground">{statusLabels[order.status] ?? order.status}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">Client</span>

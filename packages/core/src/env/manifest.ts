@@ -229,12 +229,23 @@ const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] 
   {
     // BeYours' own billing, not the restaurant's. Set on the deployment that
     // sells the maintenance renewal.
-    feature: 'BeYours billing (renouvellement de maintenance)',
+    feature: 'BeYours billing (maintenance + abonnements Auto Blog)',
     tier: 'site',
     vars: [
       'STRIPE_BID_SECRET_KEY',
       'STRIPE_BID_WEBHOOK_SECRET',
       'STRIPE_BID_PRICE_MAINTENANCE',
+      // The six Auto Blog plan prices, monthly and annual. Not an
+      // all-or-nothing group: boot deliberately does not enforce "all six or
+      // none", so `requiredTogether` stays empty for them — but a wizard that
+      // never offers them leaves the operator to discover the names from the
+      // source.
+      'STRIPE_BID_PRICE_STARTER',
+      'STRIPE_BID_PRICE_PRO',
+      'STRIPE_BID_PRICE_ENTERPRISE',
+      'STRIPE_BID_PRICE_STARTER_ANNUAL',
+      'STRIPE_BID_PRICE_PRO_ANNUAL',
+      'STRIPE_BID_PRICE_ENTERPRISE_ANNUAL',
       'BID_APP_URL',
       'BID_NOTIFY_EMAIL',
     ],
@@ -306,6 +317,16 @@ const CONVEX_KEYS: readonly string[] = [
   'STRIPE_BID_SECRET_KEY',
   'STRIPE_BID_WEBHOOK_SECRET',
   'STRIPE_BID_PRICE_MAINTENANCE',
+  // `bidSubscription.ts` resolves a plan to a price from `process.env` inside
+  // Convex, so all six have to cross with the rest. Left out, checkout reads
+  // `undefined` for the plan the customer picked — a money path failing
+  // silently, which is the exact class of bug this manifest exists to prevent.
+  'STRIPE_BID_PRICE_STARTER',
+  'STRIPE_BID_PRICE_PRO',
+  'STRIPE_BID_PRICE_ENTERPRISE',
+  'STRIPE_BID_PRICE_STARTER_ANNUAL',
+  'STRIPE_BID_PRICE_PRO_ANNUAL',
+  'STRIPE_BID_PRICE_ENTERPRISE_ANNUAL',
   'BID_APP_URL',
   'BID_NOTIFY_EMAIL',
 ]

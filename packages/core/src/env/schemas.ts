@@ -249,6 +249,22 @@ const siteOptionalShape = {
   STRIPE_BID_SECRET_KEY: opt(z.string().startsWith('sk_')),
   STRIPE_BID_WEBHOOK_SECRET: opt(z.string().startsWith('whsec_')),
   STRIPE_BID_PRICE_MAINTENANCE: opt(z.string().min(1)),
+  // The six Auto Blog plan prices, monthly and annual. `bidSubscription.ts`
+  // reads all six from `process.env` — checkout resolves a plan to a price,
+  // the webhook resolves a price back to a plan — and none of them was
+  // declared anywhere until 07/09/2026, which is why the paid tier could not
+  // be provisioned by following the documentation.
+  //
+  // Declared, not grouped: `SITE_FEATURE_GROUPS` would refuse to boot a
+  // deployment holding some of them, and a missing one breaks only its own
+  // plan's checkout. The .env examples say "all six or none"; boot does not
+  // enforce it, on purpose.
+  STRIPE_BID_PRICE_STARTER: opt(z.string().min(1)),
+  STRIPE_BID_PRICE_PRO: opt(z.string().min(1)),
+  STRIPE_BID_PRICE_ENTERPRISE: opt(z.string().min(1)),
+  STRIPE_BID_PRICE_STARTER_ANNUAL: opt(z.string().min(1)),
+  STRIPE_BID_PRICE_PRO_ANNUAL: opt(z.string().min(1)),
+  STRIPE_BID_PRICE_ENTERPRISE_ANNUAL: opt(z.string().min(1)),
   // Absolute app URL used to build checkout redirect and customer-email links.
   BID_APP_URL: opt(z.string().url()),
   BID_NOTIFY_EMAIL: opt(z.string().email()),

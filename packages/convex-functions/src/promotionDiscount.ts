@@ -27,6 +27,49 @@ export type PromotionDiscountType =
   | "free_delivery"
   | "bogo"
 
+/**
+ * The discount types this resolver can actually turn into money.
+ *
+ * `free_product` and `bogo` are deliberately absent: they alter the item list
+ * rather than the order total, and no code path builds those items. They are
+ * listed as unhonourable below rather than simply missing, so that the place
+ * that REFUSES them at creation and the place that refuses them at order time
+ * read the same list. They used to disagree — the promotion form sold both,
+ * `promotions.create` stored both, and an owner found out at the first
+ * redemption, having already printed the flyers.
+ */
+export const HONOURABLE_DISCOUNT_TYPES = [
+  "percentage",
+  "fixed_amount",
+  "free_delivery",
+] as const satisfies readonly PromotionDiscountType[]
+
+/** The two the order path cannot honour. See above. */
+export const UNHONOURABLE_DISCOUNT_TYPES = [
+  "free_product",
+  "bogo",
+] as const satisfies readonly PromotionDiscountType[]
+
+/** Whether a discount type is one an order can actually be given. */
+export function isHonourableDiscountType(
+  discountType: string
+): discountType is (typeof HONOURABLE_DISCOUNT_TYPES)[number] {
+  return (HONOURABLE_DISCOUNT_TYPES as readonly string[]).includes(discountType)
+}
+
+/**
+ * Why a promotion of an unhonourable type cannot be saved.
+ *
+ * One sentence, used by `promotions.create`, `promotions.update` and the admin
+ * form, so an owner reads the same explanation wherever they meet the refusal
+ * — and it names what to do instead, because "1 acheté 1 offert" is expressible
+ * today as a percentage or a fixed amount scoped to the products concerned.
+ */
+export const UNHONOURABLE_DISCOUNT_TYPE_MESSAGE =
+  "« Produit offert » et « Offre BOGO » ne sont pas encore applicables à une " +
+  "commande : aucune remise ne serait accordée au client. Utilisez un " +
+  "pourcentage ou un montant fixe, en limitant la portée aux produits concernés."
+
 /** What a promotion applies to. */
 export type PromotionScope = "order" | "product" | "category"
 
@@ -319,8 +362,13 @@ export function resolvePromotionDiscount(
     case "free_product":
     case "bogo": {
       // These alter the item list rather than the order total, and no code path
-      // builds those items today. Granting 0 is the honest outcome: silently
+      // builds those items today. Refusing is the honest outcome: silently
       // discounting would invent a rebate the promotion never described.
+      //
+      // Since #376 this is the second line of defence, not the first —
+      // `promotions.create` and `promotions.update` refuse the type outright,
+      // so no new promotion can reach here. What can still reach here is a row
+      // stored before that guard existed, which is exactly why the case stays.
       throw new PromotionRejectedError(
         "not_applicable",
         "Ce type de promotion n'est pas encore pris en charge à la commande."

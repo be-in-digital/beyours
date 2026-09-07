@@ -16,6 +16,7 @@
 import { describe, expect, it } from "vitest"
 import { alreadySentTo } from "../emailEvents"
 import { dueForSending } from "../emailCampaigns"
+import { createCountingDb } from "./support/countingDb"
 
 const CAMPAIGN = "campaigns:a"
 const OTHER_CAMPAIGN = "campaigns:b"
@@ -99,20 +100,27 @@ describe("alreadySentTo", () => {
   })
 })
 
-/** A ctx whose `emailCampaigns` table is the array handed in. */
-function campaignsCtx(campaigns: Array<Record<string, unknown>>) {
-  return {
-    db: {
-      query: () => ({
-        filter: () => ({
-          collect: async () => campaigns.filter((c) => c.status === "scheduled"),
-        }),
-      }),
-    },
-  }
-}
-
 const NOON = 1_700_000_000_000
+const STORE = "stores:1"
+
+/**
+ * A deployment holding these campaigns, on the real schema.
+ *
+ * `countingDb` rather than a hand-rolled double, and deliberately: the previous
+ * one here answered `.filter().collect()` with the rows the test wanted, which
+ * is exactly what an unindexed full scan looks like from the inside. It could
+ * not tell the sweep's `by_storeId_status` walk from the table scan it
+ * replaced, and it was green for the whole time the scan was shipping.
+ */
+function campaignsCtx(
+  campaigns: Array<Record<string, unknown>>,
+  stores: Array<Record<string, unknown>> = [{ _id: STORE, name: "Chez Luigi" }]
+) {
+  return createCountingDb({
+    stores,
+    emailCampaigns: campaigns.map((c) => ({ storeId: STORE, ...c })),
+  })
+}
 
 describe("dueForSending", () => {
   it("returns the campaigns whose moment has passed", async () => {
@@ -141,5 +149,22 @@ describe("dueForSending", () => {
     // A paused campaign in particular: the owner stopped it on purpose, and the
     // cron must not undo that a minute later.
     expect(await dueForSending.handler(ctx, { now: NOON })).toEqual([])
+    // And none of them is read: the sweep seeks the `scheduled` range of each
+    // store rather than reading the campaign history to reject it.
+    expect(ctx.reads()).toBe(1) // the one store
+  })
+
+  it("finds a due campaign in every establishment, not just the first", async () => {
+    const ctx = createCountingDb({
+      stores: [
+        { _id: "stores:1", name: "Chez Luigi" },
+        { _id: "stores:2", name: "Luigi Gare" },
+      ],
+      emailCampaigns: [
+        { _id: "c1", storeId: "stores:1", status: "scheduled", scheduledAt: NOON - 1 },
+        { _id: "c2", storeId: "stores:2", status: "scheduled", scheduledAt: NOON - 1 },
+      ],
+    })
+    expect(await dueForSending.handler(ctx, { now: NOON })).toEqual(["c1", "c2"])
   })
 })

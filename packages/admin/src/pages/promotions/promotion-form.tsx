@@ -23,9 +23,34 @@ import {
   SearchInput,
 } from "@be-in-digital/ui"
 import { RefreshCw, X, Package, FolderOpen } from "lucide-react"
+import {
+  HONOURABLE_DISCOUNT_TYPES,
+  UNHONOURABLE_DISCOUNT_TYPE_MESSAGE,
+  isHonourableDiscountType,
+} from "@be-in-digital/convex-functions/promotionDiscount"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../lib/convex-error"
 import { eurosToCents, centsToEuros, formatPrice } from "../../lib/formatters"
+
+/**
+ * The discount types this form may offer.
+ *
+ * Exactly the ones `resolvePromotionDiscount` can turn into money, read from
+ * the resolver itself so the two cannot drift. « Produit offert » and « Offre
+ * BOGO (1+1) » used to sit in this list: they were stored happily and then
+ * refused at the first redemption, so an owner built a campaign and printed
+ * the flyers for a discount no diner could ever be given (#376). The server
+ * now refuses them at creation; this stops the form asking for a refusal.
+ */
+const DISCOUNT_TYPE_LABELS: Record<
+  (typeof HONOURABLE_DISCOUNT_TYPES)[number],
+  string
+> = {
+  percentage: "Pourcentage (%)",
+  fixed_amount: "Montant fixe (€)",
+  free_delivery: "Livraison offerte",
+}
 
 const DAYS_OF_WEEK = [
   { value: 1, label: "Lun" },
@@ -42,7 +67,7 @@ const promotionSchema = z.object({
   description: z.string().max(500).optional(),
   triggerMode: z.enum(["coupon", "auto"]),
   couponCode: z.string().max(30).optional(),
-  discountType: z.enum(["percentage", "fixed_amount", "free_product", "free_delivery", "bogo"]),
+  discountType: z.enum(HONOURABLE_DISCOUNT_TYPES),
   discountValue: z.number().min(0).optional(),
   maxDiscountAmount: z.number().min(0).optional(),
   scope: z.enum(["order", "product", "category"]),
@@ -59,9 +84,6 @@ const promotionSchema = z.object({
   // Target selections
   targetProductIds: z.array(z.string()).optional(),
   targetCategoryIds: z.array(z.string()).optional(),
-  // BOGO fields
-  bogoTriggerQuantity: z.number().min(1).optional(),
-  bogoRewardQuantity: z.number().min(1).optional(),
 })
 
 type PromotionFormData = z.infer<typeof promotionSchema>
@@ -120,7 +142,12 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
       description: promotion?.description ?? "",
       triggerMode: promotion?.triggerMode ?? "coupon",
       couponCode: promotion?.couponCode ?? "",
-      discountType: promotion?.discountType ?? "percentage",
+      // A promotion stored before the guard landed carries a type the server
+      // now refuses. The form opens on the nearest type that works rather than
+      // on a Select with no matching option, and the banner below says why.
+      discountType: isHonourableDiscountType(promotion?.discountType)
+        ? promotion.discountType
+        : "percentage",
       discountValue: promotion?.discountType === "fixed_amount"
         ? centsToEuros(promotion?.discountValue ?? 0)
         : (promotion?.discountValue ?? 0),
@@ -142,8 +169,6 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
       isActive: promotion?.isActive ?? true,
       targetProductIds: promotion?.targetProductIds ?? [],
       targetCategoryIds: promotion?.targetCategoryIds ?? [],
-      bogoTriggerQuantity: promotion?.bogoTriggerQuantity ?? 2,
-      bogoRewardQuantity: promotion?.bogoRewardQuantity ?? 1,
     },
   })
 
@@ -274,8 +299,6 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
         maxTotalUsage: data.maxTotalUsage || undefined,
         maxUsagePerCustomer: data.maxUsagePerCustomer || undefined,
         isActive: data.isActive,
-        bogoTriggerQuantity: data.discountType === "bogo" ? data.bogoTriggerQuantity : undefined,
-        bogoRewardQuantity: data.discountType === "bogo" ? data.bogoRewardQuantity : undefined,
       }
 
       if (isEditMode) {
@@ -288,7 +311,15 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
 
       onSuccess?.()
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Erreur inconnue"
+      // `error.message` alone reads "Server Error" in production: Convex
+      // redacts a thrown `Error` and only a `ConvexError` keeps its payload.
+      // Every refusal this mutation can give — a duplicate coupon code, a
+      // discount type no order can honour — is a French sentence the owner is
+      // meant to act on, so it is read out of `data`.
+      const message = convexErrorMessage(
+        error,
+        error instanceof Error ? error.message : "Erreur inconnue"
+      )
       toast.error(isEditMode ? `Échec de la mise à jour : ${message}` : `Échec de la création : ${message}`)
     }
   }
@@ -382,6 +413,22 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
         <fieldset className="space-y-4">
           <legend className="text-sm font-semibold text-foreground mb-1">Réduction</legend>
 
+          {/*
+            A promotion created before « Produit offert » and « Offre BOGO »
+            were withdrawn. It has never granted a discount — the order path
+            refuses both types — and saving it requires choosing one that
+            works. Said here, on the field concerned, rather than as a refusal
+            the owner meets only after filling the form in.
+          */}
+          {isEditMode && !isHonourableDiscountType(promotion?.discountType) && (
+            <p
+              role="alert"
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+            >
+              {UNHONOURABLE_DISCOUNT_TYPE_MESSAGE}
+            </p>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="discountType">Type de réduction *</Label>
             <Select
@@ -392,11 +439,11 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="percentage">Pourcentage (%)</SelectItem>
-                <SelectItem value="fixed_amount">Montant fixe (€)</SelectItem>
-                <SelectItem value="free_product">Produit offert</SelectItem>
-                <SelectItem value="free_delivery">Livraison offerte</SelectItem>
-                <SelectItem value="bogo">Offre BOGO (1+1)</SelectItem>
+                {HONOURABLE_DISCOUNT_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {DISCOUNT_TYPE_LABELS[type]}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -437,30 +484,6 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
             </div>
           )}
 
-          {discountType === "bogo" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bogoTriggerQuantity">Quantité achetée</Label>
-                <Input
-                  id="bogoTriggerQuantity"
-                  type="number"
-                  min="1"
-                  {...register("bogoTriggerQuantity", { valueAsNumber: true })}
-                  placeholder="2"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bogoRewardQuantity">Quantité offerte</Label>
-                <Input
-                  id="bogoRewardQuantity"
-                  type="number"
-                  min="1"
-                  {...register("bogoRewardQuantity", { valueAsNumber: true })}
-                  placeholder="1"
-                />
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label>Portée *</Label>

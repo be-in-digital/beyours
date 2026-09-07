@@ -77,13 +77,31 @@ export function EmailDashboardPage() {
     storeId ? { storeId } : "skip"
   ) as Automation[] | undefined
 
+  /**
+   * The subscriber figures, counted through `by_storeId_status` up to a cap.
+   *
+   * This used to collect the whole mailing list to call `.length` on it five
+   * times, on a live subscription that re-ran on every signup — so the screen
+   * stopped loading for good once the list passed Convex's 16,384-document
+   * limit. `truncated` says the figures are floors, and the cards render them
+   * as « 2 000+ » rather than as totals nobody counted.
+   */
   const subscriberCounts = useQuery(
     api?.emailSubscribers?.countByStatus,
     storeId ? { storeId } : "skip"
-  ) as { total: number; active: number; pending: number; unsubscribed: number; bounced: number } | undefined
+  ) as
+    | {
+        total: number
+        active: number
+        pending: number
+        unsubscribed: number
+        bounced: number
+        complained: number
+        truncated: boolean
+      }
+    | undefined
 
   const activeSubscriberCount = subscriberCounts?.active
-  const pendingSubscriberCount = subscriberCounts?.pending
 
   // Compute stats from last 30 days campaigns
   const stats = useMemo(() => {
@@ -153,7 +171,7 @@ export function EmailDashboardPage() {
       {stats && (
         <EmailKpiCards
           activeSubscribers={activeSubscriberCount ?? 0}
-          pendingSubscribers={pendingSubscriberCount ?? 0}
+          subscribersTruncated={subscriberCounts?.truncated ?? false}
           campaignsSent={stats.campaignsSent}
           avgOpenRate={stats.avgOpenRate}
           avgClickRate={stats.avgClickRate}
