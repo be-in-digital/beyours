@@ -26,6 +26,10 @@ export const create = internalMutation({
     status: statusValidator,
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
+    /* Whether anything can actually be charged when the trial ends. Optional
+       so an older caller (or a replay) is not a type error; absent is treated
+       as « not known to be missing » rather than as a failure to report. */
+    hasDefaultPaymentMethod: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     /* ── One subscription per order, guarded where the write happens ──
@@ -73,8 +77,30 @@ export const create = internalMutation({
       return existing._id;
     }
 
+    /* A maintenance subscription is `charge_automatically`. With no reusable
+       payment method on the customer, its first renewal invoice — 240 to
+       2 400 € — fails, dunning starts, and `/maintenance/status` eventually
+       cuts the client's updates: a year after they paid, over a card nobody
+       ever asked them for. Alma and Klarna settle the first payment and cannot
+       be reused off-session, so this is a legitimate outcome of a BNPL sale,
+       not a bug to swallow — it just has to be somewhere an operator sees it
+       while there is still a year to act. */
+    if (args.hasDefaultPaymentMethod === false) {
+      await recordSaActivity(ctx, {
+        kind: "commerce",
+        action: "subscription_without_payment_method",
+        summary:
+          `Abonnement de maintenance créé sans moyen de paiement réutilisable pour la commande ${args.orderId} ` +
+          `(${args.stripeSubscriptionId}). Paiement initial réglé en BNPL (Alma/Klarna), qui ne peut pas être ` +
+          `représenté hors session : le premier renouvellement échouera. Récupérer une carte auprès du client ` +
+          `avant la fin de la période d'essai.`,
+        customerEmail: args.customerEmail,
+      });
+    }
+
+    const { hasDefaultPaymentMethod: _reported, ...row } = args;
     return await ctx.db.insert("subscriptions", {
-      ...args,
+      ...row,
       createdAt: Date.now(),
     });
   },
@@ -170,3 +196,56 @@ export const getByOrderId = internalQuery({
    `getByEmail` returned a customer's plan, status and Stripe ids for any email
    passed in. Same shape as the invoices one it sat beside, same absent caller.
    See ./invoices for the rule the client area follows instead. */
+
+/**
+ * Records that a refunded sale's subscription was stopped.
+ *
+ * Separate from the status patch so the ops feed carries one line per real
+ * cancellation, and so a replayed webhook — which finds the row already
+ * `canceled` and returns before reaching here — does not write a second.
+ */
+export const recordCancellation = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    stripeSubscriptionId: v.string(),
+    customerEmail: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await recordSaActivity(ctx, {
+      kind: "commerce",
+      action: "subscription_cancelled_after_reversal",
+      summary:
+        `Abonnement de maintenance ${args.stripeSubscriptionId} annulé pour la commande ${args.orderId} ` +
+        `— ${args.reason}. La vente est défaite : plus aucun prélèvement de maintenance.`,
+      customerEmail: args.customerEmail,
+    });
+  },
+});
+
+/**
+ * Records a cancellation Stripe refused.
+ *
+ * The local row stays as it was on purpose: saying « canceled » here while
+ * Stripe still holds a live subscription would hide the one thing an operator
+ * has to act on — the client is still going to be charged.
+ */
+export const recordCancellationFailure = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    stripeSubscriptionId: v.string(),
+    customerEmail: v.string(),
+    detail: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await recordSaActivity(ctx, {
+      kind: "incident",
+      action: "subscription_cancellation_failed",
+      summary:
+        `Annulation de l'abonnement ${args.stripeSubscriptionId} (commande ${args.orderId}) refusée par Stripe ` +
+        `— ${args.detail}. La vente est remboursée mais l'abonnement tourne toujours : ` +
+        `l'annuler à la main dans Stripe, sinon le client sera prélevé.`,
+      customerEmail: args.customerEmail,
+    });
+  },
+});

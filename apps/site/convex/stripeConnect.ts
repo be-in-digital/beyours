@@ -279,18 +279,44 @@ export const processPayouts = internalAction({
         continue;
       }
 
+      /* ── Claim it before spending anything ──
+         Two runs of this cron overlapping used to wire the same commission
+         twice: both read it as payable, both transferred, and only the second
+         transfer id was ever recorded (#322). The claim is serializable, so
+         exactly one run gets past here for a given referral. */
+      const claimed = await ctx.runMutation(internal.referrals.claimForPayout, {
+        referralId: referral._id,
+      });
+      if (!claimed) {
+        console.log(
+          `Referral ${referral._id} déjà pris en charge par un autre passage — ignoré`,
+        );
+        continue;
+      }
+
       try {
-        const transfer = await stripe.transfers.create({
-          amount: referral.commissionCents,
-          currency: "eur",
-          destination: affiliate.stripeConnectAccountId,
-          description: `Commission parrainage - Commande ${referral.orderId}`,
-          metadata: {
-            referralId: String(referral._id),
-            orderId: String(referral.orderId),
-            affiliateUserId: String(referral.referrerId),
+        const transfer = await stripe.transfers.create(
+          {
+            amount: referral.commissionCents,
+            currency: "eur",
+            destination: affiliate.stripeConnectAccountId,
+            description: `Commission parrainage - Commande ${referral.orderId}`,
+            metadata: {
+              referralId: String(referral._id),
+              orderId: String(referral.orderId),
+              affiliateUserId: String(referral.referrerId),
+            },
           },
-        });
+          /* The second guard, and the one the claim cannot provide: a run that
+             died between claiming and recording would be released back to
+             payable and try again, against a Stripe that had already moved the
+             money. Derived from the referral id — one commission, one transfer,
+             whatever happens on this side. Everything in the body above is a
+             pure function of that same referral, so a replay presents identical
+             parameters and Stripe answers with the original transfer rather
+             than refusing the key. */
+          { idempotencyKey: `referral-payout-${referral._id}` },
+        );
 
         await ctx.runMutation(internal.referrals.markPaid, {
           referralId: referral._id,
@@ -320,6 +346,14 @@ export const processPayouts = internalAction({
         );
       } catch (err) {
         console.error(`Payout failed for referral ${referral._id}:`, err);
+        /* Hand the claim back, or the commission sits in `paying` where no run
+           looks and the affiliate is simply never paid. The idempotency key
+           above is what makes retrying safe: if Stripe did move the money
+           before failing us, the next attempt replays that transfer instead of
+           making a second one. */
+        await ctx.runMutation(internal.referrals.releasePayoutClaim, {
+          referralId: referral._id,
+        });
       }
     }
 
@@ -374,6 +408,29 @@ export const reverseReferralCommission = internalAction({
         referralId: referral._id,
         reason: args.reason,
         adminNote,
+      });
+      return;
+    }
+
+    /* ── Claimed by a payout run, outcome unknown ──
+       `paying` means a run took this commission and has not come back. The
+       transfer may have reached Stripe and not been recorded here, so neither
+       "reverse it" nor "nothing to reverse" is true, and there is no way to
+       ask: Stripe has no lookup by idempotency key. Cancelling silently would
+       book a clawback over money that may already be sitting in the
+       affiliate's account.
+
+       So it is cancelled — the commission is not owed, the sale is undone —
+       with the uncertainty written where an operator will read it rather than
+       resolved by guessing. The window is the few seconds between the claim
+       and `markPaid`; this is what happens when a refund lands inside it. */
+    if (referral.status === "paying") {
+      await ctx.runMutation(internal.referrals.cancelReferral, {
+        referralId: referral._id,
+        reason: args.reason,
+        adminNote:
+          "Commission annulée alors qu'un virement était en cours (statut « paying ») : " +
+          "vérifier dans Stripe si le transfert est parti et, le cas échéant, le reprendre à la main.",
       });
       return;
     }
