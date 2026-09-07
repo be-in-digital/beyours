@@ -245,8 +245,8 @@ function MenuContent() {
             onClick={() => handleCategorySelect(null)}
             className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all duration-300 border-2 shrink-0 h-14 ${
               !categorySlug
-                ? "bg-primary border-primary text-white shadow-[0_10px_20px_-5px_rgba(13,92,63,0.25)]"
-                : "bg-white border-border text-muted-foreground hover:border-border hover:bg-muted"
+                ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/25"
+                : "bg-card border-border text-muted-foreground hover:border-border hover:bg-muted"
             }`}
           >
             <span className="text-xl leading-none">✨</span>
@@ -258,8 +258,8 @@ function MenuContent() {
               onClick={() => handleCategorySelect(cat.slug)}
               className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all duration-300 border-2 shrink-0 h-14 ${
                 categorySlug === cat.slug
-                  ? "bg-primary border-primary text-white shadow-[0_10px_20px_-5px_rgba(13,92,63,0.25)]"
-                  : "bg-white border-border text-muted-foreground hover:border-border hover:bg-muted"
+                  ? "bg-primary border-primary text-primary-foreground shadow-lg shadow-primary/25"
+                  : "bg-card border-border text-muted-foreground hover:border-border hover:bg-muted"
               }`}
             >
               {cat.name}

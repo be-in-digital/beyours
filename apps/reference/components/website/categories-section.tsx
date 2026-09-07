@@ -7,9 +7,15 @@ import { useStoreId } from "@/lib/hooks/use-store-id"
 import { Skeleton } from "@be-in-digital/ui"
 import { Heading, CategoryCard } from "@/components/website"
 
+/**
+ * A six-hue rotation, one per category card. Decorative, not brand — the point
+ * is that adjacent cards differ, which is why the sweep in #41 had to leave it
+ * alone: mapping the first two onto `--primary` made categories 1 and 2
+ * identical and turned a rotation into a repetition.
+ */
 const CATEGORY_COLORS = [
-    { color: "from-primary/20 to-primary/5", borderColor: "border-primary/20" },
-    { color: "from-primary/20 to-primary/5", borderColor: "border-primary/20" },
+    { color: "from-orange-500/20 to-orange-500/5", borderColor: "border-orange-200" },
+    { color: "from-emerald-500/20 to-emerald-500/5", borderColor: "border-emerald-200" },
     { color: "from-blue-500/20 to-blue-500/5", borderColor: "border-blue-200" },
     { color: "from-pink-500/20 to-pink-500/5", borderColor: "border-pink-200" },
     { color: "from-yellow-500/20 to-yellow-500/5", borderColor: "border-yellow-200" },

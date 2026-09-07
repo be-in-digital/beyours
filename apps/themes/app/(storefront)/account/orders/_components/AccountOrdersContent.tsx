@@ -19,14 +19,33 @@ import { formatPrice } from "@be-in-digital/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
+/**
+ * The pill on a customer's order history.
+ *
+ * Deliberately NOT tokenised, and the one place in the storefront where that is
+ * the right answer. These colours are not the brand — they are the difference
+ * between "your order is on its way" and "your order arrived", read at a glance
+ * down a list. Mapping them to `--primary` like the rest of #41 made
+ * `delivered` and `pending` render identically, which is worse than a pill
+ * that does not follow the template.
+ *
+ * `cancelled` was already literal red for exactly this reason and the sweep
+ * left it alone; the other three now match its reasoning rather than
+ * contradicting it. `packages/ui`'s `OrderStatusBadge` makes the same choice,
+ * with a distinct hue per status.
+ *
+ * All three coloured pills pass WCAG AA against their own tint, measured:
+ * emerald-700 on emerald-100 is 4.84:1, amber-800 on amber-100 6.37:1,
+ * red-700 on red-100 5.30:1.
+ */
 function getStatusStyle(status: string) {
   switch (status) {
     case "completed":
     case "delivered":
-      return "bg-accent text-accent-foreground"
+      return "bg-emerald-100 text-emerald-700"
     case "pending":
     case "confirmed":
-      return "bg-accent text-accent-foreground"
+      return "bg-amber-100 text-amber-800"
     case "cancelled":
       return "bg-red-100 text-red-700"
     default:
