@@ -178,7 +178,8 @@ real. Four jobs:
 | `e2e-status` | `E2E Status` | The aggregate. **This is the required check.** |
 
 **Which apps.** `apps/reference` on every trigger; `apps/themes` additionally on
-pushes to `main`, and on a pull request that edits `e2e.yml` itself. The twin-app
+pushes to `main`, and on a pull request that edits `e2e.yml` itself. `workflow_dispatch`
+runs either or both on demand — from `main` only, as GitHub requires. The twin-app
 contract (§8) holds both `e2e/` trees identical, so on a pull request the bench is a
 faithful reading of the *specs* and running both would buy a second opinion on the
 same tests. What it cannot speak for is the template's own **configuration** — it has

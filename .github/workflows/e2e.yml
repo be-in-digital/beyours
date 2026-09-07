@@ -27,6 +27,28 @@ on:
   # to answer here too — a queue whose required checks never run is a queue that
   # never merges anything.
   merge_group:
+  # On demand, for either suite or both.
+  #
+  # Until now this workflow could only be run by opening a pull request or
+  # pushing to `main`. That is a poor tool for the two things people actually
+  # want from an e2e suite outside review: re-running one that looks flaky, and
+  # exercising a change to the workflow itself before it lands. The second is
+  # not hypothetical — the pull request adding the `themes` leg could not run
+  # its own new leg, because a stacked base does not match `branches: [main]`.
+  #
+  # GitHub only offers this from the default branch, so it does not rescue a
+  # branch; it makes `main` operable, which is where the template's suite now
+  # runs anyway.
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: Which suites to run
+        type: choice
+        default: both
+        options:
+          - both
+          - reference
+          - themes
 
 concurrency:
   # One run per ref, and the older one loses.
@@ -99,11 +121,22 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.base_ref }}
+          CHOICE: ${{ inputs.apps }}
         run: |
           set -euo pipefail
           apps='["reference"]'
 
-          if [ "$EVENT" = "push" ]; then
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            case "$CHOICE" in
+              both)      apps='["reference","themes"]' ;;
+              reference) apps='["reference"]' ;;
+              themes)    apps='["themes"]' ;;
+              *)
+                echo "::error::Unknown apps input '$CHOICE'."
+                exit 1
+                ;;
+            esac
+          elif [ "$EVENT" = "push" ]; then
             apps='["reference","themes"]'
           elif [ "$EVENT" = "pull_request" ]; then
             # `origin/$BASE...HEAD` is the merge base, so this lists what the
