@@ -1,4 +1,4 @@
-import { query, mutation, action, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server"
+import { query, mutation, action, internalAction, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { getAuthUser } from "@be-in-digital/convex-functions/auth"
@@ -456,15 +456,29 @@ export const checkForUpdates = action({
   },
 })
 
-/** Export a full backup as JSON */
-// @guarded-inline: getAuthUser + hasPermission on system:backup
-export const exportBackup = action({
-  args: {},
-  handler: async (ctx) => {
-    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
-    if (!hasPermission(user.role, PERM_SYSTEM_BACKUP)) {
-      throw new Error('Permission "system:backup" requise')
-    }
+/**
+ * Build a backup, with no identity of any kind.
+ *
+ * The guarded `exportBackup` below is the button; this is the work. They were
+ * one function, and that made a nightly backup impossible to write: the guard
+ * calls `getAuthUserInternal`, which throws `"Not authenticated"` under a cron —
+ * a scheduled job runs with NO user identity, a rule `crons.ts` states in its
+ * own header (*"the nightly menu push already died that way once"*). So the
+ * only caller `exportBackup` ever had was a button that built a Blob and
+ * downloaded it to whatever laptop the administrator was sitting at. No cron,
+ * no off-site copy, no retention — while the maintenance fee was sold on
+ * « Sauvegardes automatiques quotidiennes de vos données et contenus » (#366).
+ *
+ * `performedBy` is a label for the audit entry, not a permission: an
+ * `internalAction` is unreachable from a browser, and the two call sites are
+ * the guarded wrapper (which passes the operator's id) and the cron (which
+ * passes `"cron"`).
+ */
+export const buildBackup = internalAction({
+  args: { performedBy: v.string() },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: async (ctx, args): Promise<{ manifest: any; data: Record<string, any[]> }> => {
+    const user = { userId: args.performedBy }
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -515,7 +529,17 @@ export const exportBackup = action({
         note: "Images S3 non incluses — seules les references/URLs sont sauvegardees",
       }
 
-      await ctx.runMutation(internal.system._setLastBackupAt, {})
+      /* Best-effort, and only this one. `_setLastBackupAt` throws when the
+         deployment has no `globalSettings` row — a legitimate state on a site
+         that has not been through setup yet, and one the nightly cron would
+         otherwise hit every night forever, turning a successful export into a
+         failed job. The stamp is a convenience on the System screen; the export
+         it would date has already been built. */
+      try {
+        await ctx.runMutation(internal.system._setLastBackupAt, {})
+      } catch (stampError) {
+        console.error("[backup] could not stamp lastBackupAt:", stampError)
+      }
       await ctx.runMutation(internal.system._recordAuditEntry, {
         action: "backup_export",
         performedBy: user.userId,
@@ -533,6 +557,23 @@ export const exportBackup = action({
       })
       throw error
     }
+  },
+})
+
+/** Export a full backup as JSON — the admin button. */
+// @guarded-inline: getAuthUser + hasPermission on system:backup
+export const exportBackup = action({
+  args: {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  handler: async (ctx): Promise<{ manifest: any; data: Record<string, any[]> }> => {
+    const user: ActionAuthUser = await ctx.runQuery(internal.systemInternal.getAuthUserInternal, {})
+    if (!hasPermission(user.role, PERM_SYSTEM_BACKUP)) {
+      throw new Error('Permission "system:backup" requise')
+    }
+
+    return await ctx.runAction(internal.system.buildBackup, {
+      performedBy: user.userId,
+    })
   },
 })
 

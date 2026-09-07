@@ -104,6 +104,12 @@
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
+        // The Convex-side Sentry DSN. The reporting suites set it to a fixture
+        // DSN and read it back through `resolveSentryOptions`, so it has to
+        // survive the boundary — an undeclared variable reads `undefined`, the
+        // resolver returns `null`, and every assertion about a report leaving
+        // the process would pass while nothing left.
+        "SENTRY_DSN",
         // NEXT_PUBLIC_* already crosses the boundary — turbo passes the prefix
         // through unconditionally, measured. They are named anyway so they
         // belong to the CACHE KEY: a suite run against one VAT stance must not
@@ -164,6 +170,12 @@
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
+        // The Convex-side Sentry DSN. The reporting suites set it to a fixture
+        // DSN and read it back through `resolveSentryOptions`, so it has to
+        // survive the boundary — an undeclared variable reads `undefined`, the
+        // resolver returns `null`, and every assertion about a report leaving
+        // the process would pass while nothing left.
+        "SENTRY_DSN",
         // NEXT_PUBLIC_* already crosses the boundary — turbo passes the prefix
         // through unconditionally, measured. They are named anyway so they
         // belong to the CACHE KEY: a suite run against one VAT stance must not

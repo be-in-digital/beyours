@@ -472,9 +472,51 @@ export const recordProbeResults = internalMutation({
         customerEmail: dep.customerEmail,
         deploymentId: dep._id,
       });
+
+      /* And a message to a human, which is the whole difference between a feed
+         and a guarantee. Writing the row was all this branch did: a restaurant
+         that went down at 20 h 00 on a Saturday paged no one, while « Monitoring
+         24/7 » was on the pricing page and « la supervision » is in the CGV's
+         own definition of Maintenance (#366).
+
+         Sent in BOTH directions. A recovery is as much news as a failure —
+         without it the only way to learn a site came back is to go and look.
+
+         Scheduled rather than awaited: this is a mutation inside a probe round,
+         SES is an `internalAction` in the Node runtime, and a slow mail server
+         must never hold up the round that is measuring twenty other
+         deployments. The report rides on this mutation committing, which is
+         correct — a round that rolls back did not observe the transition it
+         would be reporting. */
+      const failing = firstFailure(args.results);
+      await ctx.scheduler.runAfter(0, internal.email.send.sendDeploymentHealthAlert, {
+        restaurantName: dep.restaurantName,
+        domain: dep.domain,
+        previousHealth: dep.health,
+        health,
+        ...(uptime !== null && uptime !== undefined ? { uptime30d: uptime } : {}),
+        ...(failing ? { message: failing } : {}),
+        changedAtMs: checkedAt,
+      });
     }
   },
 });
+
+/**
+ * What to quote in the alert: the first check of this round that was not `up`.
+ *
+ * The round's own message, not a re-probe — a second request would race the
+ * outage it is describing, and the prober already truncated this one to 200
+ * characters. `undefined` on a recovery round, where every check passed and
+ * there is nothing to quote.
+ */
+function firstFailure(
+  results: ReadonlyArray<{ status: string; kind: string; message?: string }>,
+): string | undefined {
+  const failing = results.find((r) => r.status !== "up");
+  if (!failing) return undefined;
+  return failing.message ? `${failing.kind} : ${failing.message}` : undefined;
+}
 
 /** Truncated so a verbose upstream error cannot dominate a check row. */
 function probeErrorMessage(err: unknown): string {

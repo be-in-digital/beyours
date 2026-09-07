@@ -362,3 +362,107 @@ export function affiliateCommissionEmail(data: AffiliateCommissionData): BuiltEm
     ].filter(Boolean)),
   }
 }
+
+// ── 8. Monitoring: a client site changed health ──────────────────────────────
+
+/**
+ * The e-mail #346's prober never sent.
+ *
+ * That prober is good work: two targets per deployment, every ten minutes,
+ * thirty days of history, and it refuses to invent a `/health` route it cannot
+ * rely on. It alerts nobody. On a health transition it wrote one row to an
+ * internal activity feed, under the reasoning that *"still down" is not news* —
+ * true for a feed, fatal for a guarantee. A restaurant that goes down at 20 h 00
+ * on a Saturday paged no one, while « Monitoring 24/7 » was on the pricing page
+ * and « la supervision » is in the CGV's definition of Maintenance. Issue #366.
+ *
+ * Sent on the TRANSITION, in both directions. A recovery is as much news as a
+ * failure: without it the only way to know a site came back is to go and look,
+ * and an operator who has been paged needs the all-clear more than they need a
+ * second alarm.
+ */
+export interface DeploymentHealthData {
+  restaurantName: string
+  domain: string
+  /** Where it was, and where it is now. */
+  previousHealth: string
+  health: string
+  /** Rolling 30-day availability, when the round produced one. */
+  uptime30d?: number
+  /** What the failing probe said, truncated by the prober. */
+  message?: string
+  changedAtMs: number
+  consoleUrl: string
+  logoUrl: string
+}
+
+/** Human wording for the four values `saDeployments.health` can hold. */
+const HEALTH_FR: Record<string, string> = {
+  healthy: "en ligne",
+  degraded: "dégradé",
+  down: "hors ligne",
+  unknown: "inconnu",
+}
+
+const healthLabel = (value: string): string => HEALTH_FR[value] ?? value
+
+export function deploymentHealthEmail(data: DeploymentHealthData): BuiltEmail {
+  const recovered = data.health === "healthy"
+  const rows: Array<[string, string]> = [
+    ["Établissement", escapeHtml(data.restaurantName)],
+    ["Domaine", escapeHtml(data.domain)],
+    ["État", `${healthLabel(data.previousHealth)} → ${healthLabel(data.health)}`],
+    ["Constaté le", dateFr(data.changedAtMs)],
+  ]
+  if (data.uptime30d !== undefined) {
+    rows.push(["Disponibilité 30 j", `${data.uptime30d.toFixed(2)} %`])
+  }
+
+  /* Escaped here rather than trusted. The name comes from `saDeployments`,
+     which the team types into the console — so it is not attacker-controlled
+     today, and every other template in this file escapes anyway. A rule that
+     holds only where someone remembered is not a rule. */
+  const name = escapeHtml(data.restaurantName)
+
+  const contentHtml = [
+    heading(
+      recovered
+        ? `${name} est de nouveau en ligne`
+        : `${name} est ${healthLabel(data.health)}`,
+    ),
+    detailRows(rows),
+    ...(data.message && !recovered ? [infoBox(escapeHtml(data.message))] : []),
+    button("Ouvrir la console", data.consoleUrl),
+    muted(
+      "Cet e-mail est envoyé à chaque changement d'état, dans les deux sens. Une sonde qui reste au rouge ne le renvoie pas.",
+    ),
+  ].join("")
+
+  return {
+    // The prefix is what an inbox rule and a phone notification match on, so
+    // it stays first and stays stable.
+    subject: `[Monitoring] ${data.restaurantName} — ${healthLabel(data.health)}`,
+    html: emailShell({
+      preheader: `${name} : ${healthLabel(data.previousHealth)} → ${healthLabel(data.health)}`,
+      logoUrl: data.logoUrl,
+      contentHtml,
+      footerLines: ["Notification interne BeYours — supervision"],
+    }),
+    text: textDoc(
+      [
+        recovered
+          ? `${data.restaurantName} est de nouveau en ligne`
+          : `${data.restaurantName} est ${healthLabel(data.health)}`,
+        "",
+        `Domaine : ${data.domain}`,
+        `État : ${healthLabel(data.previousHealth)} → ${healthLabel(data.health)}`,
+        data.uptime30d !== undefined ? `Disponibilité 30 j : ${data.uptime30d.toFixed(2)} %` : "",
+        `Constaté le : ${dateFr(data.changedAtMs)}`,
+        data.message && !recovered ? `` : "",
+        data.message && !recovered ? `Détail : ${data.message}` : "",
+        "",
+        `Console : ${data.consoleUrl}`,
+      ].filter(Boolean),
+    ),
+  }
+}

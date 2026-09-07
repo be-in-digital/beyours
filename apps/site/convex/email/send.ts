@@ -22,6 +22,7 @@ import {
   affiliateWelcomeEmail,
   contactConfirmationEmail,
   contactTeamNotificationEmail,
+  deploymentHealthEmail,
   orderConfirmationEmail,
   paymentFailedEmail,
   renewalReceiptEmail,
@@ -221,6 +222,62 @@ export const sendContactTeamNotification = internalAction({
         restaurant: args.restaurant,
         message: args.message,
         submittedAtMs: args.submittedAtMs,
+        logoUrl: logoUrl(),
+      }),
+    );
+  },
+});
+
+/**
+ * The alert the availability prober never sent.
+ *
+ * `saMonitoring` has probed every client deployment every ten minutes since
+ * #346 and, on a health transition, written one row to an internal activity
+ * feed. Nothing more. A restaurant that went down at 20 h 00 on a Saturday
+ * paged no one, while « Monitoring 24/7 » was on the pricing page and « la
+ * supervision » is in the CGV's own definition of Maintenance (#366).
+ *
+ * Addressed to the team inbox, which is what `BID_NOTIFY_EMAIL` already is.
+ * **A destination is not a rota**: an address makes the alert exist, and only a
+ * named person on call makes « 24/7 » literally true. That half is not code and
+ * is recorded in `tasks/sales-readiness-backlog.md`.
+ *
+ * Deliberately NOT sent to the restaurateur. The prober lives in this
+ * deployment and the client's System screen lives in theirs, so telling a
+ * client their own site is down is a cross-deployment channel that has to be
+ * designed rather than bolted onto a `deliver()` call — and an e-mail from us
+ * saying "your site is down" that arrives before we have looked at it is worse
+ * than useful.
+ */
+export const sendDeploymentHealthAlert = internalAction({
+  args: {
+    restaurantName: v.string(),
+    domain: v.string(),
+    previousHealth: v.string(),
+    health: v.string(),
+    uptime30d: v.optional(v.number()),
+    message: v.optional(v.string()),
+    changedAtMs: v.number(),
+  },
+  handler: async (_ctx, args) => {
+    const to = teamEmail();
+    if (!to) {
+      console.warn(
+        "[email] BID_NOTIFY_EMAIL non configuré — alerte de supervision non envoyée",
+      );
+      return { sent: false };
+    }
+    return deliver(
+      to,
+      deploymentHealthEmail({
+        restaurantName: args.restaurantName,
+        domain: args.domain,
+        previousHealth: args.previousHealth,
+        health: args.health,
+        ...(args.uptime30d !== undefined ? { uptime30d: args.uptime30d } : {}),
+        ...(args.message ? { message: args.message } : {}),
+        changedAtMs: args.changedAtMs,
+        consoleUrl: `${appUrl()}/admin/monitoring`,
         logoUrl: logoUrl(),
       }),
     );

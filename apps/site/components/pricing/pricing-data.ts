@@ -156,25 +156,41 @@ export const maintenanceIncluded = [
     description: "Assistance par email pour toutes vos questions et demandes.",
     icon: "headset",
   },
-  /* Both of these described a mechanism rather than the one that runs.
-     Availability is genuinely measured — a probe hits the site and its backend
-     every ten minutes and keeps thirty days of history — so the tile now says
-     what is measured instead of implying somebody is watching a screen.
-     "Sauvegardes automatiques quotidiennes de vos données et contenus" was
-     false on all three counts: the export is manual, it runs when an
-     administrator asks for it, and it carries the establishment's
-     configuration and catalogue rather than its order history. Update this
-     copy in the commit that ships the nightly job, not before. */
+  /* Both of these were rewritten once to describe the mechanism that actually
+     ran rather than the one that had been sold, and both are rewritten again
+     here because that mechanism has changed — in the same commit, which is the
+     rule that note left behind.
+
+     Availability: the probe was already real (every ten minutes, the site and
+     its backend, thirty days of history). What was missing was the half that
+     makes it a guarantee — it wrote a row to an internal feed and alerted
+     nobody, so a restaurant that went down on a Saturday evening paged no one.
+     A health change now e-mails the team, in both directions.
+
+     Backups: "Sauvegardes automatiques quotidiennes de vos données et
+     contenus" was false on all three counts — the export was manual, it ran
+     when an administrator asked, and it carried the configuration and
+     catalogue rather than the order history. All three are true now: a cron at
+     1 h 30 UTC, an off-site copy in the client's own bucket kept thirty days,
+     and the pages, the translations and the orders in it. What it still does
+     NOT carry is the media itself (references and URLs only) and, by law, a
+     restorable copy of the numbered invoices — so the tile says the first and
+     does not claim the second. Coverage:
+     `packages/convex-functions/src/backupTables.ts`.
+
+     Six tiles, not seven: the on-demand export is a sentence inside the backup
+     tile rather than a tile of its own, because the grid is 3 columns and a
+     seventh would sit alone on a third row. */
   {
     title: "Disponibilité surveillée",
     description:
-      "Votre site et son serveur sont testés toutes les 10 minutes, 24 h/24.",
+      "Votre site et son serveur sont testés toutes les 10 minutes, 24 h/24. Toute interruption déclenche une alerte chez nous.",
     icon: "activity",
   },
   {
-    title: "Export de vos données",
+    title: "Sauvegardes quotidiennes",
     description:
-      "Exportez à tout moment vos établissements, votre carte et vos contenus depuis votre tableau de bord.",
+      "Chaque nuit, une copie de vos établissements, de votre carte, de vos contenus et de vos commandes est archivée 30 jours. Export à la demande depuis votre tableau de bord.",
     icon: "database",
   },
   {
@@ -233,10 +249,16 @@ export const faqItems = [
     answer:
       "Oui, la première année de maintenance est obligatoire. Elle garantit un lancement réussi, un suivi technique de qualité et un accompagnement dans la prise en main de votre solution. Au-delà de la première année, la maintenance reste fortement recommandée mais n'est plus obligatoire.",
   },
+  /* The other half of the copy the nightly job pays for. This answer named the
+     export and stopped there, because that was all that existed; it now names
+     the nightly backup and its window, and says plainly what the backup does
+     not carry. A client reading "sauvegardes" and discovering after an incident
+     that their photographs were not in it is the failure the tile above and
+     this answer exist to prevent. */
   {
     question: "Que comprend exactement la maintenance ?",
     answer:
-      "La maintenance inclut l'hébergement sécurisé, les mises à jour techniques et de sécurité, la surveillance de la disponibilité de votre site, l'export de vos données depuis votre tableau de bord, le support technique par email et les évolutions mineures (ajustements de contenu, corrections). Les refontes complètes, nouvelles fonctionnalités majeures et créations graphiques avancées ne sont pas incluses et font l'objet d'un devis séparé.",
+      "La maintenance inclut l'hébergement sécurisé, les mises à jour techniques et de sécurité, la surveillance de la disponibilité de votre site avec alerte en cas d'interruption, une sauvegarde quotidienne de vos données conservée 30 jours, l'export de vos données à la demande depuis votre tableau de bord, le support technique par email et les évolutions mineures (ajustements de contenu, corrections). La sauvegarde couvre vos établissements, votre carte, vos contenus, vos traductions et vos commandes ; les images restent dans votre espace de stockage et ne sont pas dupliquées. Les refontes complètes, nouvelles fonctionnalités majeures et créations graphiques avancées ne sont pas incluses et font l'objet d'un devis séparé.",
   },
   {
     question: "Puis-je payer mensuellement ou annuellement ?",

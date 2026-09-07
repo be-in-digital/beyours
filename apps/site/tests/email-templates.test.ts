@@ -5,6 +5,7 @@ import {
   affiliateWelcomeEmail,
   contactConfirmationEmail,
   contactTeamNotificationEmail,
+  deploymentHealthEmail,
   orderConfirmationEmail,
   paymentFailedEmail,
   renewalReceiptEmail,
@@ -142,5 +143,57 @@ describe("affiliate emails", () => {
     });
     expectWellFormed(email);
     expect(email.html).toContain("500,00 €");
+  });
+});
+
+describe("deploymentHealthEmail", () => {
+  const base = {
+    restaurantName: "Chez Mario",
+    domain: "chez-mario.fr",
+    changedAtMs: Date.UTC(2026, 8, 7, 20, 4),
+    consoleUrl: "https://beyours.fr/admin/monitoring",
+    logoUrl: LOGO,
+  };
+
+  it("says which way it went, in the subject", () => {
+    // The subject is what an inbox rule and a phone notification match on, so
+    // the prefix stays first and the state is readable without opening it.
+    const down = deploymentHealthEmail({
+      ...base,
+      previousHealth: "healthy",
+      health: "down",
+      message: "http : Délai dépassé (10 s)",
+      uptime30d: 99.42,
+    });
+
+    expectWellFormed(down);
+    expect(down.subject).toBe("[Monitoring] Chez Mario — hors ligne");
+    expect(down.html).toContain("chez-mario.fr");
+    expect(down.html).toContain("99.42 %");
+    expect(down.text).toContain("Délai dépassé");
+  });
+
+  it("reads as an all-clear on the way back up", () => {
+    const up = deploymentHealthEmail({
+      ...base,
+      previousHealth: "down",
+      health: "healthy",
+    });
+
+    expectWellFormed(up);
+    expect(up.subject).toBe("[Monitoring] Chez Mario — en ligne");
+    expect(up.html).toContain("de nouveau en ligne");
+  });
+
+  it("escapes an establishment name that carries markup", () => {
+    const alert = deploymentHealthEmail({
+      ...base,
+      restaurantName: '<script>alert(1)</script>',
+      previousHealth: "healthy",
+      health: "down",
+    });
+
+    expect(alert.html).not.toContain("<script>alert(1)</script>");
+    expect(alert.html).toContain("&lt;script&gt;");
   });
 });

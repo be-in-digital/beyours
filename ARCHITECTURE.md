@@ -265,10 +265,17 @@ export const list = query(defs.list)
 (`grep -rhoE "^export const [a-zA-Z0-9_]+" apps/reference/convex/*.ts | wc -l`). The
 27 August 2026 audit swept 482; the surface has grown since.
 
-Eight cron jobs are registered in `apps/*/convex/crons.ts`: invitation sweep,
+Ten cron jobs are registered in `apps/*/convex/crons.ts`: invitation sweep,
 scheduled-campaign dispatch, win-back automation, payment-event sweep, Stripe
-checkout reconciliation, kitchen-ticket purge, Auto Blog planning and Auto Blog
-execution. **None of them is a backup.**
+checkout reconciliation, kitchen-ticket purge, expired-customer-data purge, the
+**nightly backup**, Auto Blog planning and Auto Blog execution.
+
+The backup is the one that used not to exist — `grep backup` here returned
+nothing, while `exportBackup`'s only caller was a button that downloaded a Blob
+to whatever laptop the administrator was sitting at (#366). It runs at 01:30 UTC,
+before the three destructive nightly jobs, so a copy exists of what they are
+about to carry away. What it carries is one list, shared by the export and the
+import: `packages/convex-functions/src/backupTables.ts`.
 
 ---
 

@@ -303,6 +303,18 @@ log_success "CORS configured (PUT only)"
 #     listed as deleted and still costs a request to enumerate;
 #   - expiring the marker alone UN-DELETES the file, because the newest
 #     remaining version becomes current again.
+#
+# The fourth rule is the retention of the NIGHTLY BACKUP that convex/crons.ts
+# now writes under backups/ (issue #366). Thirty daily copies, expired by the
+# bucket rather than by a cron: a lifecycle rule keeps working while the
+# deployment is down, which is the circumstance a backup exists for. Its
+# noncurrent window is 1 day rather than 30 - each night writes a NEW key, so a
+# noncurrent version of a backup only exists if one was overwritten, and keeping
+# those for a month would silently triple what the retention says.
+#
+# `backups/` is deliberately NOT one of the eleven S3_FOLDERS. That constant
+# drives the /api/files proxy's allow-list, and a backup reachable over HTTP is
+# the whole database served to whoever guesses a key.
 log_info "Setting lifecycle rules..."
 aws s3api put-bucket-lifecycle-configuration \
   --bucket "$BUCKET_NAME" \
@@ -332,10 +344,21 @@ aws s3api put-bucket-lifecycle-configuration \
         "Expiration": {
           "ExpiredObjectDeleteMarker": true
         }
+      },
+      {
+        "ID": "ExpireNightlyBackups",
+        "Status": "Enabled",
+        "Filter": {"Prefix": "backups/"},
+        "Expiration": {
+          "Days": 30
+        },
+        "NoncurrentVersionExpiration": {
+          "NoncurrentDays": 1
+        }
       }
     ]
   }'
-log_success "Lifecycle rules set (incomplete uploads, noncurrent versions, delete markers)"
+log_success "Lifecycle rules set (incomplete uploads, noncurrent versions, delete markers, nightly backups)"
 
 # Create folder structure
 log_info "Creating folder structure..."
@@ -606,7 +629,7 @@ echo "  Region: $REGION"
 echo "  Folders: products/, branding/, stores/, cms/, blog/"
 echo "  Encryption: AES256"
 echo "  Versioning: Enabled"
-echo "  Lifecycle: incomplete uploads 7d, noncurrent versions 30d (keep 3), delete markers expired"
+echo "  Lifecycle: incomplete uploads 7d, noncurrent versions 30d (keep 3), delete markers expired, backups/ 30d"
 echo ""
 
 echo -e "${GREEN}SES:${NC}"
