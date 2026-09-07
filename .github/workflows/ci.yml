@@ -29,7 +29,17 @@ concurrency:
   #
   # `merge_group` is the exception: the queue is waiting on that run to decide
   # whether the batch may land, and a cancelled job is a failed one.
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  #
+  # The `ci-` prefix is load-bearing, and it is not cosmetic. On a
+  # `workflow_call` this whole expression is evaluated in the CALLER's context,
+  # so `github.workflow` is the caller's name — which means two DIFFERENT
+  # reusable workflows called by the same caller produce the same string and
+  # land in the same group. `e2e.yml` carried this exact expression, and on the
+  # first push that called both, the E2E call evicted this one: four `Verify`
+  # jobs cancelled one second after creation, and the mirror's `publish` skipped
+  # because `needs.verify.result` was `cancelled`. The prefix is what keeps a
+  # sibling call out of this slot; it must stay different from `e2e.yml`'s.
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 # Turborepo's remote cache, shared by every job here.
