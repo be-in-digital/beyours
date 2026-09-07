@@ -1,5 +1,185 @@
 # @be-in-digital/admin
 
+## 10.0.0
+
+### Major Changes
+
+- 895d200: Bound the four queries that grow with the mailing list and the order book
+
+  **Convex refuses a transaction that reads more than 16,384 documents, and each
+  of these was a live `useQuery`.** They do not degrade: at the row count where a
+  restaurant's mailing list or order book has become worth having, the screen
+  behind them throws on every load, permanently, and no admin action clears it.
+  #316 made every storefront signup, order and game play add a subscriber, so the
+  list grows on its own. Measured on the read-counting double:
+
+  ```
+                                          20,000 rows     before -> after
+  PROBE emailSubscribers.list             subscribers     20,000 ->     15
+  PROBE emailSubscribers.countByStatus    subscribers     20,000 -> 10,005
+  PROBE emailSegments.countMatching…      subscribers      4,000 ->  2,001
+  PROBE products.getTrending              orders          20,008 ->  1,008
+  ```
+
+  (`countByStatus` reads five index ranges of 2,000 rather than one table of
+  20,000, and the segment preview's 4,000 is the active fifth of that seed — both
+  were already past the ceiling on a list two or three times this size, which is
+  one good year.) `dueForSending` is not in the table because the double cannot
+  show its defect: a Convex `.filter` reads every row it rejects, and the double
+  applies the predicate before counting. On the real backend the sweep read every
+  campaign the establishment had ever written, once a minute, to find the almost
+  always empty set of due ones.
+
+  **The audience page reads a page.** `emailSubscribers.list` takes
+  `paginationOpts` and resolves the status tab through `by_storeId_status`; the
+  page is clamped to `MAX_PAGE_SIZE`, so `{ numItems: 1_000_000 }` from anyone
+  holding `marketing:read` cannot reinstate the transaction the pagination
+  prevents. `source` is gone from its arguments: no index carries it, and
+  filtering after `.paginate()` returns two rows out of fifteen and calls it a
+  page. The screen narrows source and search over the rows it has loaded and says
+  so in the placeholder and the empty state, and « Charger plus » widens what they
+  can see — the shape `/dashboard/orders` already uses.
+
+  **The counts are counted, not downloaded.** Convex has no count, so a total is
+  however many documents you were willing to read: `countByStatus` walks one
+  `by_storeId_status` range per status, stopped at `SUBSCRIBER_COUNT_SCAN_LIMIT`,
+  and `countMatchingSubscribers` reads at most `SEGMENT_PREVIEW_SCAN_LIMIT` active
+  subscribers before applying rules that no index can answer. Both report whether
+  they were capped: the dashboard renders « 2 000+ » and the segment dialog says
+  which population its count describes, rather than presenting a floor as a total.
+  `countMatchingSubscribers` now returns `{ count, scanned, truncated }` — a bare
+  number could not say which of the two it was.
+
+  **The homepage carousel ranks a window.** `products.getTrending` is the public
+  storefront's own subscription, one per open tab, re-run on every new order, and
+  it collected a month of orders to return three products. It now reads the
+  `TRENDING_ORDER_SCAN_LIMIT` most recent orders of the window, newest first — so
+  what the cap drops is the far end of the month, not this week — with a separate
+  budget for the product lookups a reworked catalogue can otherwise stretch, and a
+  clamped `limit`, because a public query is handed whatever a visitor sends.
+
+  **And the cron stops scanning the archive every minute.** `dueForSending`'s
+  docblock described an indexed per-store walk; what shipped was
+  `.filter(q => q.eq(q.field("status"), "scheduled")).collect()`, and a Convex
+  `.filter` narrows rows the database has already read. It walks
+  `by_storeId_status` per establishment now, which is what the paragraph always
+  claimed.
+
+  **`incrementRevenue` is removed, and the dialog stops reporting a zero it cannot
+  stand behind.** It had zero call sites, and nothing produces the figures it
+  patched: no path writes a `converted` email event, and no order records the
+  campaign that led to it. The campaign stats dialog rendered a hard « 0,00 € »
+  and « 0 conversions » beside real send and open counts, for every campaign, for
+  ever, and an owner reading it concluded their mailing sold nothing. Both tiles
+  now say « Non suivi » with the reason underneath. `stats.converted` and
+  `stats.revenue` stay in the schema, so wiring a real producer later is a
+  producer, not a migration.
+
+  Probes: 15 read-count cases in `queryBounds.test.ts`, seeding 20,000 rows — more
+  than Convex will read in one transaction — and asserting the number of documents
+  the query asks for rather than the answer it returns, because an answer is right
+  on ten rows and right again on ten million. Two of them assert the count does
+  not move at all as the table grows. The index-faithful double refuses an index
+  the schema does not declare and an equality off the index prefix, so "narrow it
+  in JavaScript instead" cannot pass either. 8 companion cases in each app's
+  `query-bounds.test.ts` run the same paths through the real schema and the real
+  auth wrappers, and `dueForSending`'s own tests moved off a hand-rolled `db` that
+  answered `.filter().collect()` with the rows the test wanted — it could not tell
+  the indexed walk from the table scan it replaced, and was green for the whole
+  time that scan was shipping.
+
+  Closes #327.
+
+### Minor Changes
+
+- 16521f2: Fix the diner's broken first-day moments
+
+  Five defects a client meets on their first day of service (#376). Each was
+  reproduced with a throwaway probe before being touched, and each leaves a
+  permanent test behind in the package that owns the behaviour.
+
+  **1. The storefront had no way to declare an allergy.** The whole pipeline
+  existed except the input: `orders.create` takes `notes`, the order carries it,
+  `releaseToKitchen` copies it onto the ticket, and the printed slip has a line
+  for it. `grep -c notes checkout-form.tsx` answered 0, byte-identically in both
+  apps, so the line was forever blank. The checkout now carries an
+  « Allergies & instructions » field, capped by `FIELD_LIMITS.orderNote` — read
+  from the server, so the input and the mutation cannot disagree. Two things the
+  note reached only halfway are fixed with it: the printed slip announced it as
+  « Instructions livraison: » even on a dine-in ticket, and the kitchen _screen_
+  never showed it at all, so a kitchen working off the display — which is the
+  display this product ships — could not see it.
+
+  **2. Product creation dead-ended in silence when « Sélections max » was left
+  empty.** `maxSelections` was the one number on the form not wrapped in the
+  file's own `optionalNumber` guard, so `valueAsNumber` turned an empty box into
+  NaN, zod refused it, react-hook-form blocked the submit of the whole product,
+  and nothing on screen said which field was at fault. The schema moved into
+  `product-form-schema.ts` so its guards can be parsed rather than only read, the
+  field renders its own error, and a sweep asserts every optional number on the
+  form survives NaN.
+
+  A second defect sat underneath it: the placeholder promises « Illimité », the
+  storefront renders an uncapped checkbox group, and both platform syncs publish
+  `choices.length` — while `orderLine.ts` read an absent maximum as **one**, under
+  a comment claiming to match the storefront. So a diner who ticked the two sauces
+  the menu offered was refused at the moment of payment, by a sentence naming a
+  maximum nobody had configured. Absent now means unlimited on all four surfaces.
+  The test that blessed the old reading is rewritten and says so.
+
+  **3. The promotion form sold two discount types no order could ever be given.**
+  `resolvePromotionDiscount` threw `not_applicable` on `free_product` and `bogo`
+  at order time and always had; `promotions.create` stored them happily. An owner
+  built a campaign and printed flyers for it. Both are now refused at creation and
+  at update, with a `ConvexError` naming what to use instead, and the form takes
+  its options from `HONOURABLE_DISCOUNT_TYPES` — the resolver's own list — so
+  implementing either type returns the option on the same commit. Rows stored
+  before the guard stay listed, deletable, and honest: their value column reads
+  « Aucune remise appliquée ». `promotions`' two duplicate-coupon-code refusals
+  became `ConvexError`s in the same pass; as plain `Error`s the admin read
+  "Server Error" where the French sentence should have been.
+
+  **4. Two badges on French storefront screens spoke hardcoded English.**
+  `OrderStatusBadge` and `StoreStatusBadge` held eleven English labels between
+  them and took no label from outside, so a diner following their order read
+  « Preparing » and « Out for Delivery » between French sentences. The vocabulary
+  now lives once in `@be-in-digital/core/status-labels` — the source-language word
+  and the catalogue key, per status — the badges take a `labels` override, and
+  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-in-digital/restaurant`
+  resolve it through `t()` for the locale being rendered. Two further copies of
+  the same eight words are gone with it: a private map in the order page and
+  `getOrderStatusLabel`'s English map. `order.delivered` was missing from the
+  catalogues and is added in fr, en and es.
+
+  **5. The card path could not be turned off.** `payments.cardProvider` was a
+  `stripe | sumup` union with no third answer, and the checkout rendered the card
+  tile unconditionally — so a cash-only food truck, one of the five verticals this
+  engine is sold for, shipped with a pre-selected payment method it could not
+  honour. `none` is now a stored value; `cardPaymentAvailability` answers `card`
+  and `cardOffered` as two separate questions, because a provider that is merely
+  unconfigured owes the diner a greyed tile saying so while an owner who does not
+  take cards owes them no tile at all. Réglages → Paiements carries the switch,
+  and warns when the last method is turned off.
+
+  The guest dead-end behind it is closed too. Cash requires an account by recorded
+  decision, so a cash-only establishment left every guest facing an empty grid
+  under a disabled button reading « Choisissez un moyen de paiement ». The
+  checkout now says which of the two situations it is and renders the sign-in
+  where the diner is blocked. The test that asserted that button is rewritten.
+
+  Closes #376.
+
+### Patch Changes
+
+- Updated dependencies [895d200]
+- Updated dependencies [16521f2]
+- Updated dependencies [cdc6c81]
+  - @be-in-digital/convex-functions@5.0.0
+  - @be-in-digital/convex-schema@4.1.0
+  - @be-in-digital/restaurant@3.1.0
+  - @be-in-digital/core@2.5.0
+  - @be-in-digital/ui@3.1.0
+
 ## 9.0.1
 
 ### Patch Changes
