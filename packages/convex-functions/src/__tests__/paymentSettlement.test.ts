@@ -420,6 +420,159 @@ describe("readStripeCheckoutSession", () => {
 // What a settlement does to the ORDER
 // ============================================================================
 
+// ============================================================================
+// One order is collected once — #378
+// ============================================================================
+
+describe("collection through a method the order has left", () => {
+  /** A card claim, as Stripe reports one: minor units, our order id. */
+  function card(over: Partial<SettlementClaim> = {}): SettlementClaim {
+    return { provider: "stripe", reference: "orders:1", amountMinor: 11_500, currency: "EUR", ...over }
+  }
+
+  it("refuses a card settlement on an order already paid in cash", () => {
+    // THE BUG. A diner abandons Stripe, confirms « Espèces » on the same
+    // checkout attempt (#374 re-methods the reused order), and staff take the
+    // notes. The Stripe session stays payable for ~24 h; completing it settled
+    // the SAME order a second time. Identity, currency and amount all match —
+    // it is genuinely this order at this total — so nothing above this check
+    // could refuse it, and `paymentStatusAfterSettlement` answers null for an
+    // already-paid order so even the order looked untouched.
+    const error = rejection(() =>
+      assertSettlesOrder(card(), {
+        ...ORDER,
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+      })
+    )
+
+    expect(error.reason).toBe("method_mismatch")
+    expect(error.provider).toBe("stripe")
+    expect(error.message).toContain("déjà")
+  })
+
+  it("still settles a card payment that arrives FIRST", () => {
+    // The guard has to be about the method in force at settlement time, not
+    // about ordering. A rule satisfied by refusing everything would take the
+    // diner's money and record nothing.
+    expect(() =>
+      assertSettlesOrder(card(), {
+        ...ORDER,
+        paymentMethod: "card",
+        paymentStatus: "pending",
+      })
+    ).not.toThrow()
+  })
+
+  it("lets a replayed webhook through on the order it itself paid", () => {
+    // Stripe redelivers for up to three days and the return page settles the
+    // same charge from a different event. Both arrive on an order that is
+    // already `paid` by card. Throwing here would be a 500 answered with three
+    // days of retries — and `settlePayment` already makes the second write a
+    // no-op, which is where deduplication belongs.
+    expect(() =>
+      assertSettlesOrder(card(), {
+        ...ORDER,
+        paymentMethod: "card",
+        paymentStatus: "paid",
+      })
+    ).not.toThrow()
+  })
+
+  it("settles a card order through either card provider", () => {
+    // A deployment picks one of Stripe and SumUp, and which one is a store
+    // setting the order does not record. Both are "card".
+    expect(() =>
+      assertSettlesOrder(claim({ provider: "sumup" }), {
+        ...ORDER,
+        paymentMethod: "card",
+        paymentStatus: "paid",
+      })
+    ).not.toThrow()
+  })
+
+  it("refuses a card settlement on a PayPal order, and the reverse", () => {
+    expect(
+      rejection(() =>
+        assertSettlesOrder(card(), {
+          ...ORDER,
+          paymentMethod: "paypal",
+          paymentStatus: "paid",
+        })
+      ).reason
+    ).toBe("method_mismatch")
+
+    expect(
+      rejection(() =>
+        assertSettlesOrder(claim({ provider: "paypal" }), {
+          ...ORDER,
+          paymentMethod: "card",
+          paymentStatus: "paid",
+        })
+      ).reason
+    ).toBe("method_mismatch")
+  })
+
+  it("counts every status in which money has already moved", () => {
+    // `refund_pending` is paid-then-cancelled and `partially_refunded` still
+    // holds part of the money. A second collection on top of either is a second
+    // collection, so all three refuse alike.
+    for (const paymentStatus of ["paid", "refund_pending", "refunded", "partially_refunded"]) {
+      expect(
+        rejection(() =>
+          assertSettlesOrder(card(), { ...ORDER, paymentMethod: "cash", paymentStatus })
+        ).reason
+      ).toBe("method_mismatch")
+    }
+  })
+
+  it("settles a cash-labelled order that nothing has collected yet", () => {
+    // The lesser variant of #378: the order was re-methoded to cash and no
+    // notes were taken. The card money HAS left the diner's account by the time
+    // this runs, so refusing it would strand a real payment. The session expiry
+    // is what stops this happening at all; the guard only refuses a SECOND
+    // collection.
+    expect(() =>
+      assertSettlesOrder(card(), {
+        ...ORDER,
+        paymentMethod: "cash",
+        paymentStatus: "pending",
+      })
+    ).not.toThrow()
+  })
+
+  it("waves through an order that records no method at all", () => {
+    // Uber Eats and Deliveroo orders carry none, and neither does anything
+    // written before the field existed. A guard may not refuse on evidence it
+    // does not have.
+    for (const paymentMethod of [undefined, null, ""]) {
+      expect(() =>
+        assertSettlesOrder(card(), { ...ORDER, paymentMethod, paymentStatus: "paid" })
+      ).not.toThrow()
+    }
+  })
+
+  it("waves through when the order's payment status is unknown", () => {
+    expect(() =>
+      assertSettlesOrder(card(), { ...ORDER, paymentMethod: "cash" })
+    ).not.toThrow()
+  })
+
+  it("checks the method last, so a mismatched amount is still reported as one", () => {
+    // Both are refusals; the reason is what an operator reads to know which
+    // problem they have.
+    expect(
+      rejection(() =>
+        assertSettlesOrder(card({ amountMinor: 1 }), {
+          ...ORDER,
+          paymentMethod: "cash",
+          paymentStatus: "paid",
+        })
+      ).reason
+    ).toBe("amount_mismatch")
+  })
+})
+
 describe("paymentStatusAfterSettlement", () => {
   it("marks a pending order paid", () => {
     expect(

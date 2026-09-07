@@ -25,6 +25,14 @@
  * All three providers now route through `assertSettlesOrder` before anything is
  * marked paid: SumUp and PayPal from their verification actions, Stripe from
  * both the return page and the webhook.
+ *
+ * The fourth check came last and for a third reason. Identity, currency and
+ * amount all pass on a payment that is genuinely for this order at this total —
+ * including a SECOND one, arriving through a method that is no longer the
+ * order's. That is how one meal was collected twice, in cash at the counter and
+ * again by a Stripe session left live behind an abandoned checkout (#378). The
+ * method check refuses that, and only that: it needs money to have moved
+ * already, so it can never refuse the payment that settles an order first.
  */
 
 import { RefusalError } from "./refusal"
@@ -68,7 +76,49 @@ export interface OrderToSettle {
   total: number
   /** Expected currency. Defaults to EUR, the only one the checkout creates. */
   currency?: string
+  /**
+   * The method the order is on RIGHT NOW — `orders.paymentMethod`, as the diner
+   * last confirmed it: "card", "cash", "paypal".
+   *
+   * Optional because platform orders (Uber Eats, Deliveroo) carry none, and
+   * neither does any order written before the field existed. Absent reads as
+   * "no method recorded", which is the truth, and waves the settlement through:
+   * a guard may not invent the fact it is checking.
+   */
+  paymentMethod?: string | null
+  /**
+   * The order's payment status right now — `orders.paymentStatus`.
+   *
+   * Together with `paymentMethod` this is what says whether the order has
+   * ALREADY been collected, and through what. See `assertSettlesOrder` step 4.
+   */
+  paymentStatus?: string | null
 }
+
+/**
+ * The `orders.paymentMethod` each provider settles.
+ *
+ * `stripe` and `sumup` both settle a "card" order — a deployment picks one card
+ * provider, and which one is a store setting, not something the order records,
+ * so the two are indistinguishable here and deliberately so. PayPal is its own
+ * method. Nothing here settles a "cash" order: cash is taken by a member of
+ * staff through `markCashPaid`, which writes its row directly and never comes
+ * through this guard.
+ */
+const ORDER_METHOD_BY_PROVIDER: Record<PaymentProvider, string> = {
+  stripe: "card",
+  sumup: "card",
+  paypal: "paypal",
+}
+
+/**
+ * The `orders.paymentStatus` values that mean money has already moved.
+ *
+ * `refund_pending` and the two refunded states belong here as much as "paid"
+ * does: all three describe an order that WAS collected, and a second collection
+ * on top of any of them is a second collection.
+ */
+const ALREADY_COLLECTED = ["paid", "refund_pending", "refunded", "partially_refunded"]
 
 export type SettlementRejectionReason =
   | "reference_missing"
@@ -76,6 +126,7 @@ export type SettlementRejectionReason =
   | "amount_missing"
   | "amount_mismatch"
   | "currency_mismatch"
+  | "method_mismatch"
 
 /**
  * Thrown when a payment does not legitimately settle the given order.
@@ -142,7 +193,8 @@ export function toMinorUnits(value: number | string | null | undefined): number 
  * Throw unless the provider's payment genuinely settles this order.
  *
  * Checked in order: the reference identifies this order, the currency matches,
- * and the amount settled equals the order total to the cent.
+ * the amount settled equals the order total to the cent, and this order has not
+ * already been collected through a different method.
  */
 export function assertSettlesOrder(
   claim: SettlementClaim,
@@ -204,6 +256,43 @@ export function assertSettlesOrder(
       "amount_mismatch",
       provider,
       `${provider}: montant réglé ${settledMinor} c, total de la commande ${order.total} c.`
+    )
+  }
+
+  // 4. Method — one order is collected ONCE, by one method.
+  //
+  // WHY: the three checks above bind the claim to the order's identity and to
+  // its money, and all three pass on a payment that is genuinely for this order
+  // at this total — including a SECOND one. A diner who abandons Stripe,
+  // confirms « Espèces » on the same checkout attempt (#374 re-methods the
+  // reused order) and has the notes taken at the counter leaves a live Stripe
+  // session behind for ~24 h. Completing it later settled the same order a
+  // second time: `paymentStatusAfterSettlement` answers `null` for an
+  // already-paid order so the order looked untouched, while `settlePayment`
+  // deduplicates on `externalId` alone and a cash row and a payment-intent row
+  // never collide. Two `succeeded` rows, both independently refundable, one
+  // meal charged twice, and nothing anywhere said so (#378).
+  //
+  // The rule is about the method IN FORCE AT SETTLEMENT TIME, not about
+  // ordering: a card payment that arrives first settles normally, because
+  // nothing has collected yet. It is only once money HAS moved that the stored
+  // method decides who is allowed to have moved it — which is also what keeps a
+  // replayed webhook harmless, since a card order paid by card still names a
+  // method this provider can have collected.
+  //
+  // Both facts must be known to refuse. An order carrying no method (platform
+  // orders) or no status is waved through: a guard that refuses on absent
+  // evidence refuses real payments, and the money has already left the diner's
+  // account by the time this runs.
+  const settledMethod = order.paymentMethod
+  const collected =
+    !!order.paymentStatus && ALREADY_COLLECTED.includes(order.paymentStatus)
+
+  if (collected && !!settledMethod && settledMethod !== ORDER_METHOD_BY_PROVIDER[provider]) {
+    throw new SettlementRejectedError(
+      "method_mismatch",
+      provider,
+      `Cette commande a déjà été réglée (${settledMethod}) : le paiement ${provider} ne peut pas l'encaisser une seconde fois.`
     )
   }
 }
