@@ -100,19 +100,31 @@ export function CampaignStatsDialog({ campaign, open, onOpenChange }: CampaignSt
             </div>
           </div>
 
-          {/* Revenue */}
+          {/*
+            Conversion and attributed revenue are NOT tracked.
+
+            Nothing in the product produces either figure: no path writes a
+            `converted` email event, and an order carries no record of the
+            campaign that led to it — the attribution a "revenu attribué"
+            number is made of does not exist in this schema. So these two tiles
+            rendered a hard « 0 » and « 0,00 € » beside real send and open
+            counts, for every campaign, for ever, and an owner reading them
+            concluded their mailing had sold nothing.
+
+            Stated rather than zeroed. When a producer is wired — a click
+            carrying the campaign through to checkout, and an order that
+            records it — this becomes two figures again.
+          */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Conversion</p>
             <div className="grid grid-cols-2 gap-3">
-              <StatItem
-                label="Conversions"
-                value={stats.converted.toLocaleString()}
-              />
-              <StatItem
-                label="Revenu attribué"
-                value={`${(stats.revenue / 100).toFixed(2)} €`}
-              />
+              <StatItem label="Conversions" value="Non suivi" />
+              <StatItem label="Revenu attribué" value="Non suivi" />
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Les commandes ne sont pas encore rattachées à la campagne qui les a
+              déclenchées : ces deux indicateurs ne sont pas mesurés.
+            </p>
           </div>
         </div>
       </DialogContent>

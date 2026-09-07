@@ -21,6 +21,17 @@ export interface PaymentMethodContext {
    * card-first default without a tile flicker.
    */
   cardAvailable: boolean | undefined
+  /**
+   * Whether the establishment takes cards AT ALL — the owner's own answer,
+   * stored as `payments.cardProvider: "none"`.
+   *
+   * Distinct from `cardAvailable`, which is about whether a provider is
+   * configured and working. A cash-only food truck is not misconfigured: it
+   * has no card tile, so there is nothing for the checkout to fall back to
+   * and nothing to grey out. Optional, defaulting to offered, so a caller
+   * that has not asked keeps the previous behaviour.
+   */
+  cardOffered?: boolean
   /** `globalSettings.payments.paypal` — the PayPal tile's own gate. */
   paypalEnabled: boolean
   /** `globalSettings.payments.cash` — the Espèces tile's own gate. */
@@ -31,14 +42,22 @@ export interface PaymentMethodContext {
   isAuthenticated: boolean
 }
 
-/** The same conditions the tiles render with — one predicate, not three. */
+/**
+ * The same conditions the tiles render with — one predicate, not three.
+ *
+ * `card` answers to two facts, not one: whether the establishment offers cards
+ * at all, and whether a card can actually be taken right now. The first is the
+ * owner's decision and hides the tile; the second is configuration and greys
+ * it. Folding them together is what left a cash-only establishment with a
+ * pre-selected tile it could never honour (#376).
+ */
 export function isPaymentMethodSelectable(
   method: CheckoutPaymentMethod,
   context: PaymentMethodContext
 ): boolean {
   switch (method) {
     case "card":
-      return context.cardAvailable !== false
+      return context.cardOffered !== false && context.cardAvailable !== false
     case "paypal":
       return context.paypalEnabled
     case "cash":

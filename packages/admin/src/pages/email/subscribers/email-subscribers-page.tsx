@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, usePaginatedQuery } from "convex/react"
 import { toast } from "sonner"
 import { useState, useMemo } from "react"
 import {
@@ -43,9 +43,11 @@ import {
   EmptyDescription,
 } from "@be-in-digital/ui"
 import { LoadingState } from "../../../components/loading-state"
+import { ResolvingStore } from "../../../components/resolving-store"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { ADMIN_PAGE_SIZE } from "../../../lib/constants"
 import { formatShortDate } from "../../../lib/formatters"
 import { SubscriberForm } from "./subscriber-form"
 import { SubscriberDetailDialog } from "./subscriber-detail-dialog"
@@ -53,6 +55,17 @@ import { CsvImportDialog } from "./csv-import-dialog"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Subscriber = any
+
+interface SubscriberCounts {
+  total: number
+  active: number
+  pending: number
+  unsubscribed: number
+  bounced: number
+  complained: number
+  /** Some status hit the server's scan ceiling: every figure is a floor. */
+  truncated: boolean
+}
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
@@ -79,10 +92,35 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "Manuel",
 }
 
+/** Whole-list counts, rendered as the floor they are when the server capped them. */
+function countLabel(value: number | undefined, truncated: boolean | undefined): string {
+  if (value === undefined) return "…"
+  return `${value.toLocaleString("fr-FR")}${truncated ? "+" : ""}`
+}
+
+/**
+ * `usePaginatedQuery` needs a real function reference on its first render and
+ * `api` is injected by the admin layout a render later, so the query lives in a
+ * child that is not mounted until there is something to query with — the same
+ * shape `OrdersPage` uses.
+ */
 export function EmailSubscribersPage() {
-  const { api } = useAdminApiStore()
+  const api = useAdminApiStore((s) => s.api)
   const storeId = useAdminStoreId()
 
+  if (!storeId || !api) return <ResolvingStore />
+
+  return <SubscribersList api={api} storeId={storeId} />
+}
+
+function SubscribersList({
+  api,
+  storeId,
+}: {
+  // The Convex API is injected at runtime and has no static type here.
+  api: any
+  storeId: string
+}) {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [detailSubscriber, setDetailSubscriber] = useState<Subscriber | null>(null)
@@ -93,34 +131,58 @@ export function EmailSubscribersPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [sourceFilter, setSourceFilter] = useState("all")
 
-  const subscribers = useQuery(
-    api?.emailSubscribers?.list,
-    storeId ? { storeId } : "skip"
-  ) as Subscriber[] | undefined
+  /**
+   * One page of the mailing list, narrowed by status on the server.
+   *
+   * This screen used to subscribe to every subscriber the establishment had
+   * ever had and do the filtering, the counting and the paging in the browser.
+   * A mailing list only grows — since #316 every storefront signup, order and
+   * game play adds a row — so past Convex's 16,384-document transaction limit
+   * the page stopped loading altogether, permanently, exactly when the list had
+   * become worth having. Status is an equality the schema indexes, so each
+   * filter now reads the page it shows.
+   */
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.emailSubscribers.list,
+    statusFilter === "all" ? { storeId } : { storeId, status: statusFilter },
+    { initialNumItems: ADMIN_PAGE_SIZE }
+  )
 
-  const removeMutation = useMutation(api?.emailSubscribers?.remove)
+  /** The whole-list figures, counted through the index rather than downloaded. */
+  const counts = useQuery(api.emailSubscribers.countByStatus, { storeId }) as
+    | SubscriberCounts
+    | undefined
 
+  const removeMutation = useMutation(api.emailSubscribers.remove)
+
+  const subscribers = results as Subscriber[]
+
+  /**
+   * Source and search narrow the rows already loaded, not the whole table.
+   *
+   * Neither can be answered from an index: no index carries `source`, and a
+   * substring match on an address cannot use one at all. « Charger plus »
+   * widens what they can see, and the placeholder and the empty state say so —
+   * a paginated list that answers "Aucun abonné" is claiming something about
+   * the whole list it has not looked at.
+   */
+  const narrowing = sourceFilter !== "all" || search.trim().length > 0
   const filtered = useMemo(() => {
-    if (!subscribers) return []
     let result = subscribers
-
-    if (statusFilter !== "all") {
-      result = result.filter((s: Subscriber) => s.status === statusFilter)
-    }
     if (sourceFilter !== "all") {
       result = result.filter((s: Subscriber) => s.source === sourceFilter)
     }
-    if (search.trim()) {
-      const q = search.toLowerCase()
+    const needle = search.trim().toLowerCase()
+    if (needle) {
       result = result.filter(
         (s: Subscriber) =>
-          s.email.toLowerCase().includes(q) ||
-          (s.firstName && s.firstName.toLowerCase().includes(q)) ||
-          (s.lastName && s.lastName.toLowerCase().includes(q))
+          s.email.toLowerCase().includes(needle) ||
+          (s.firstName && s.firstName.toLowerCase().includes(needle)) ||
+          (s.lastName && s.lastName.toLowerCase().includes(needle))
       )
     }
     return result
-  }, [subscribers, statusFilter, sourceFilter, search])
+  }, [subscribers, sourceFilter, search])
 
   const handleDelete = async () => {
     if (!deletingId) return
@@ -129,29 +191,16 @@ export function EmailSubscribersPage() {
       await removeMutation({ id: deletingId })
       toast.success("Abonné supprimé")
       setDeletingId(null)
-    } catch (error: unknown) {
+    } catch {
       toast.error("Échec de la suppression")
     } finally {
       setIsDeleting(false)
     }
   }
 
-  if (!storeId) {
-    return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon"><Users /></EmptyMedia>
-          <EmptyTitle>Aucun établissement sélectionné</EmptyTitle>
-          <EmptyDescription>Sélectionnez un établissement pour gérer vos abonnés</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    )
-  }
+  const moreToLoad = status === "CanLoadMore" || status === "LoadingMore"
 
-  if (subscribers === undefined) return <LoadingState />
-
-  const activeCount = subscribers.filter((s: Subscriber) => s.status === "active").length
-  const pendingCount = subscribers.filter((s: Subscriber) => s.status === "pending").length
+  if (status === "LoadingFirstPage") return <LoadingState />
 
   return (
     <div className="space-y-4">
@@ -160,8 +209,10 @@ export function EmailSubscribersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Abonnés</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {activeCount} actif{activeCount > 1 ? "s" : ""}
-            {pendingCount > 0 && ` · ${pendingCount} en attente de confirmation`}
+            {countLabel(counts?.active, counts?.truncated)} actif
+            {(counts?.active ?? 0) > 1 ? "s" : ""}
+            {(counts?.pending ?? 0) > 0 &&
+              ` · ${countLabel(counts?.pending, counts?.truncated)} en attente de confirmation`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -195,7 +246,7 @@ export function EmailSubscribersPage() {
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <SearchInput
-          placeholder="Rechercher un abonné..."
+          placeholder="Rechercher parmi les abonnés chargés (email ou nom)..."
           value={search}
           onValueChange={setSearch}
           className="flex-1 sm:max-w-sm"
@@ -237,8 +288,10 @@ export function EmailSubscribersPage() {
             <EmptyMedia variant="icon"><Users /></EmptyMedia>
             <EmptyTitle>Aucun abonné</EmptyTitle>
             <EmptyDescription>
-              {search || statusFilter !== "all" || sourceFilter !== "all"
-                ? "Aucun résultat pour ces filtres"
+              {narrowing
+                ? moreToLoad
+                  ? "Aucun résultat parmi les abonnés chargés. Cliquez sur « Charger plus » pour chercher plus loin."
+                  : "Aucun abonné ne correspond à ces filtres."
                 : "Importez votre liste ou ajoutez votre premier abonné"}
             </EmptyDescription>
           </EmptyHeader>
@@ -321,6 +374,19 @@ export function EmailSubscribersPage() {
           </Table>
         </div>
       )}
+
+      {moreToLoad ? (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={status === "LoadingMore"}
+            onClick={() => loadMore(ADMIN_PAGE_SIZE)}
+          >
+            {status === "LoadingMore" ? "Chargement…" : "Charger plus"}
+          </Button>
+        </div>
+      ) : null}
 
       {/* Subscriber detail dialog */}
       <SubscriberDetailDialog

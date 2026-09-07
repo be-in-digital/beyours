@@ -86,6 +86,16 @@ interface Promotion {
   updatedAt: number
 }
 
+/**
+ * Legacy types are still listed, and still labelled.
+ *
+ * « Produit offert » and « Offre BOGO » can no longer be created — the order
+ * path cannot honour either, so `promotions.create` refuses them and the form
+ * no longer offers them (#376). Rows stored before that guard exist, and this
+ * table has to render them: hiding them would leave an owner with a promotion
+ * they can see the effects of and cannot find. `formatDiscountValue` says, in
+ * the value column, that they grant nothing.
+ */
 const DISCOUNT_TYPE_LABELS: Record<DiscountType, string> = {
   percentage: "Pourcentage",
   fixed_amount: "Montant fixe",
@@ -118,12 +128,14 @@ function formatDiscountValue(promo: Promotion): string {
       return `${promo.discountValue ?? 0}%`
     case "fixed_amount":
       return formatPrice(promo.discountValue ?? 0)
-    case "free_product":
-      return "Produit offert"
     case "free_delivery":
       return "Livraison offerte"
+    // Neither of these two ever granted a discount: the order path refuses
+    // both, and always did. The table used to print « Produit offert » and
+    // « BOGO » in the value column, which read as a working campaign.
+    case "free_product":
     case "bogo":
-      return "BOGO"
+      return "Aucune remise appliquée"
     default:
       return "-"
   }

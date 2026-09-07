@@ -123,6 +123,18 @@ describe("the machinery the packaged fork had lost", () => {
     }
   })
 
+  it("puts the diner's own note on the card, not only on the paper", () => {
+    // `kitchenTickets.deliveryNotes` reached the printed slip and stopped
+    // there, so a kitchen working off the screen — which is the display this
+    // product ships — never saw it. Since the storefront gained a field for
+    // it (#376) what arrives is usually an allergy.
+    const card = fs.readFileSync(path.join(KITCHEN, "ticket-card.tsx"), "utf8")
+    expect(card).toContain("ticket.deliveryNotes")
+    expect(card).toContain("Note client")
+    // And a delivery order still reads as delivery instructions.
+    expect(card).toContain("Instructions livraison")
+  })
+
   it("renders three active columns, not four", () => {
     const src = page()
     expect(src).toContain('ACTIVE_STATUSES: ActiveStatus[] = ["pending", "in_progress", "ready"]')

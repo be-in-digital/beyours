@@ -47,8 +47,28 @@ export const getById = {
 }
 
 /**
- * Count subscribers matching segment rules — used for debounced preview in UI
- * Applies rules server-side for accuracy
+ * The most active subscribers the segment preview will read.
+ *
+ * A segment rule is written against whatever field the owner picked —
+ * `metadata.totalSpent`, `tags`, `city` — with operators like « contient ».
+ * None of that is indexable, so the preview has to read rows and decide in
+ * JavaScript, and the only honest bound is on how many rows it reads.
+ *
+ * This is a debounced live `useQuery`: it re-runs every time the owner edits a
+ * rule. Collecting the whole active list per keystroke is what made the segment
+ * editor unusable on a list that had grown, and past 16,384 rows it made the
+ * dialog throw instead of previewing anything at all. The answer says how far
+ * it looked so the dialog can present the count as the sample it is.
+ */
+export const SEGMENT_PREVIEW_SCAN_LIMIT = 2_000
+
+/**
+ * How many active subscribers match these rules, out of the first
+ * `SEGMENT_PREVIEW_SCAN_LIMIT`.
+ *
+ * Returns `{ count, scanned, truncated }` rather than a bare number: a bare
+ * number cannot say whether it describes the list or the first two thousand of
+ * it, and the dialog has to be able to say which.
  */
 export const countMatchingSubscribers = {
   args: {
@@ -56,24 +76,34 @@ export const countMatchingSubscribers = {
     rules: v.array(ruleValidator),
     ruleOperator: ruleOperatorValidator,
   },
-  handler: async (ctx: any, args: any) => {
-    const all = await ctx.db
+  handler: async (
+    ctx: any,
+    args: { storeId: string; rules: any[]; ruleOperator: "and" | "or" }
+  ) => {
+    // One more than the cap, so a list that stops exactly at it is not reported
+    // as truncated.
+    const rows = await ctx.db
       .query("emailSubscribers")
       .withIndex("by_storeId_status", (q: any) =>
         q.eq("storeId", args.storeId).eq("status", "active")
       )
-      .collect()
+      .take(SEGMENT_PREVIEW_SCAN_LIMIT + 1)
 
-    if (args.rules.length === 0) return all.length
+    const truncated = rows.length > SEGMENT_PREVIEW_SCAN_LIMIT
+    const scanned = truncated ? rows.slice(0, SEGMENT_PREVIEW_SCAN_LIMIT) : rows
 
-    const count = all.filter((subscriber: any) => {
+    if (args.rules.length === 0) {
+      return { count: scanned.length, scanned: scanned.length, truncated }
+    }
+
+    const count = scanned.filter((subscriber: any) => {
       const results = args.rules.map((rule: any) => evaluateRule(subscriber, rule))
       return args.ruleOperator === "and"
         ? results.every(Boolean)
         : results.some(Boolean)
     }).length
 
-    return count
+    return { count, scanned: scanned.length, truncated }
   },
 }
 

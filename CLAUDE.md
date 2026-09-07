@@ -49,7 +49,9 @@
 - **Registry**: GitHub Packages (private)
 
 ### Integrations
-- **Payments**: Stripe, SumUp, PayPal, Cash — Square is announced, not built
+- **Payments**: Stripe, SumUp, PayPal, Cash — Square is announced, not built.
+  `payments.cardProvider` also admits `none`, which is how a cash-only
+  establishment removes the card tile from the checkout rather than greying it.
 - **Delivery**: Uber Direct
 - **Platforms**: Uber Eats, Deliveroo
 - **Translation**: GPT-3.5-turbo
@@ -183,6 +185,21 @@ Real-time display, auto-print tickets (browser), multi-station, prize scanner
 Stripe, SumUp, PayPal, Cash, tracking, refunds. **Square is not
 implemented** — `refundPolicy.ts` refuses it by name. It is presented as
 forthcoming in the admin and in the guided tour; do not describe it as available.
+
+`payments.cardProvider` is `stripe | sumup | none`. `none` is the owner saying
+"we do not take cards" and the checkout removes the tile entirely;
+`paymentAvailability.get` answers `card` (can one be taken right now — greys the
+tile) and `cardOffered` (does this establishment take cards at all — removes it)
+as two separate questions, because a misconfigured provider and a deliberate
+refusal owe the diner different screens.
+
+**A promotion type the order path cannot honour is refused at creation.**
+`free_product` and `bogo` alter the item list rather than the order total and no
+code path builds those items, so `promotions.create` and `promotions.update`
+refuse them and the admin form does not offer them. The list lives once, with
+the resolver that enforces it: `HONOURABLE_DISCOUNT_TYPES` in
+`packages/convex-functions/src/promotionDiscount.ts`. Implement one there and it
+becomes creatable on the same commit.
 
 ### Third-Party Integrations (10)
 Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)

@@ -6,6 +6,7 @@
 
 import { ConvexError, v } from "convex/values"
 import { requireStorePermission } from "./auth"
+import { clampPageSize } from "./pagination"
 
 // === QUERIES ===
 
@@ -122,7 +123,36 @@ export const getManualTrending = {
 }
 
 /**
- * Get trending products based on 30-day order volume (automatic mode).
+ * The most orders `getTrending` will read to rank a homepage carousel.
+ *
+ * This is the public storefront's own query — one live subscription per open
+ * tab, re-run whenever any order in the store changes — and it used to
+ * `.collect()` every order of the last thirty days to return three products.
+ * On a store taking 200 orders a day that is 6,000 documents scanned per
+ * diner per new order, and past Convex's 16,384-document limit the homepage
+ * simply stopped rendering: the busier the restaurant, the surer the failure.
+ *
+ * Newest-first, so what the cap drops is the far end of the month rather than
+ * this week. "What is selling" is a question about recent trade, and the
+ * thousand most recent orders answer it as well as thirty days of them do.
+ */
+export const TRENDING_ORDER_SCAN_LIMIT = 1_000
+
+/**
+ * The most products it will fetch while filling the carousel.
+ *
+ * The ranking is over product ids, and a product that has since been
+ * de-listed is skipped — so a catalogue that has been reworked can make the
+ * walk fetch far more rows than the carousel shows. The carousel is at most
+ * `MAX_TRENDING_PRODUCTS`; this is the budget for finding that many.
+ */
+export const TRENDING_PRODUCT_LOOKUP_LIMIT = 100
+
+/** The largest carousel any caller may ask for. */
+export const MAX_TRENDING_PRODUCTS = 24
+
+/**
+ * Get trending products based on recent order volume (automatic mode).
  * Only counts validated orders (confirmed, preparing, ready, out_for_delivery, delivered, completed).
  * Excludes pending and cancelled orders.
  */
@@ -131,8 +161,11 @@ export const getTrending = {
     storeId: v.id("stores"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx: any, args: any) => {
-    const max = args.limit ?? 8
+  handler: async (ctx: any, args: { storeId: string; limit?: number }) => {
+    // Clamped rather than trusted: this is a public query, and `v.number()`
+    // accepts NaN and 1,000,000 alike. An unclamped `limit` turns the lookup
+    // walk below back into the unbounded read the scan limit just removed.
+    const max = clampPageSize(args.limit, 8, MAX_TRENDING_PRODUCTS)
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
 
     const validStatuses = new Set([
@@ -144,19 +177,20 @@ export const getTrending = {
       "completed",
     ])
 
-    // Fetch orders from the last 30 days
+    // The most recent orders of the last thirty days, newest first.
     const orders = await ctx.db
       .query("orders")
       .withIndex("by_storeId_createdAt", (q: any) =>
         q.eq("storeId", args.storeId).gte("createdAt", thirtyDaysAgo)
       )
-      .collect()
+      .order("desc")
+      .take(TRENDING_ORDER_SCAN_LIMIT)
 
     // Aggregate product quantities from validated orders only
     const salesMap = new Map<string, number>()
     for (const order of orders) {
       if (!validStatuses.has(order.status)) continue
-      for (const item of order.items) {
+      for (const item of order.items ?? []) {
         if (!item.productId) continue
         salesMap.set(
           item.productId,
@@ -170,8 +204,11 @@ export const getTrending = {
 
     // Load products and filter out inactive ones
     const trending = []
+    let lookups = 0
     for (const [productId] of sorted) {
       if (trending.length >= max) break
+      if (lookups >= TRENDING_PRODUCT_LOOKUP_LIMIT) break
+      lookups++
       const product = await ctx.db.get(productId)
       if (product && product.isActive) {
         trending.push(product)

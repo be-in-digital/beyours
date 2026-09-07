@@ -89,8 +89,15 @@ export function useSettingsForm() {
     legalMentions: "",
   })
 
-  // Payments tab state
+  // Payments tab state.
+  //
+  // Two pieces of state for one stored field: `cardProvider` is what gets
+  // saved, and `cardEnabled` is the owner's answer to "do you take cards at
+  // all". Keeping the provider while the switch is off is what lets an owner
+  // turn cards back on without reconnecting Stripe — the stored value becomes
+  // `none` and the choice survives in the form until they leave the screen.
   const [cardProvider, setCardProvider] = useState<"stripe" | "sumup">("stripe")
+  const [cardEnabled, setCardEnabled] = useState(true)
   const [paypalEnabled, setPaypalEnabled] = useState(false)
   const [paypalEmail, setPaypalEmail] = useState("")
   const [cashEnabled, setCashEnabled] = useState(false)
@@ -169,7 +176,11 @@ export function useSettingsForm() {
 
       // Payments
       if (settings.payments) {
-        setCardProvider(settings.payments.cardProvider ?? "stripe")
+        const stored = settings.payments.cardProvider ?? "stripe"
+        setCardEnabled(stored !== "none")
+        // `none` says nothing about which provider to come back to, so the
+        // picker opens on Stripe — the default a new deployment carries.
+        setCardProvider(stored === "sumup" ? "sumup" : "stripe")
         setPaypalEnabled(settings.payments.paypal ?? false)
         setPaypalEmail((settings.payments as any).paypalEmail ?? "")
         setCashEnabled(settings.payments.cash ?? false)
@@ -476,7 +487,8 @@ export function useSettingsForm() {
     try {
       await updateSettings({
         payments: {
-          cardProvider,
+          // `none` is what turns the storefront's card tile off entirely.
+          cardProvider: cardEnabled ? cardProvider : "none",
           paypal: paypalEnabled && !!paypalEmail.trim(),
           paypalEmail: paypalEmail.trim() || undefined,
           cash: cashEnabled,
@@ -649,6 +661,8 @@ export function useSettingsForm() {
     // Payments
     cardProvider,
     setCardProvider,
+    cardEnabled,
+    setCardEnabled,
     stripeConnection,
     sumupConnection,
     paypalConnection,

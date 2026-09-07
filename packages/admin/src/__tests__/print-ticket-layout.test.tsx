@@ -147,3 +147,56 @@ describe("the whole dine-in slip", () => {
     expect(sectionAfter(markup, "ALLERGÈNES :")).toBe("Arachides")
   })
 })
+
+/**
+ * The diner's own note (#376, item 1).
+ *
+ * The slip has always had a line for it and it was always blank: the
+ * storefront had no field, so `orders.notes` was never set on a website order.
+ * With a field in front of a diner what arrives here is usually an allergy —
+ * on an order of any type — so the heading no longer announces a delivery on
+ * a slip for a table.
+ */
+describe("the note that came with the order", () => {
+  it("prints under a neutral heading on a dine-in slip", () => {
+    const markup = render({
+      orderType: "dine_in",
+      deliveryNotes: "Allergie aux arachides",
+    })
+    expect(markup).toContain("NOTE CLIENT :")
+    expect(markup).toContain("Allergie aux arachides")
+    // The cook is at a pass, not on a scooter.
+    expect(markup).not.toContain("INSTRUCTIONS LIVRAISON")
+  })
+
+  it("prints under a delivery heading on a delivery slip", () => {
+    const markup = render({
+      orderType: "delivery",
+      deliveryNotes: "2e étage, code 4578",
+    })
+    expect(markup).toContain("INSTRUCTIONS LIVRAISON :")
+    expect(markup).toContain("2e étage, code 4578")
+  })
+
+  it("prints nothing at all when there is no note", () => {
+    const markup = render({ orderType: "pickup" })
+    expect(markup).not.toContain("NOTE CLIENT")
+    expect(markup).not.toContain("INSTRUCTIONS LIVRAISON")
+  })
+
+  it("keeps the diner's words apart from the declared allergens", () => {
+    // The allergens below are the OWNER's declaration, checked against a
+    // vocabulary. This is free text nothing has verified. Folding one into
+    // the other would let "sans arachides" read as a declaration.
+    const markup = render({
+      orderType: "dine_in",
+      deliveryNotes: "Sans arachides s'il vous plaît",
+      allergens: ["gluten"],
+    })
+    expect(sectionAfter(markup, "ALLERGÈNES :")).toBe("Gluten")
+    expect(markup).toContain("NOTE CLIENT :")
+    expect(markup.indexOf("NOTE CLIENT :")).toBeLessThan(
+      markup.indexOf("ALLERGÈNES :")
+    )
+  })
+})

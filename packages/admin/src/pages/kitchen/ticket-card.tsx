@@ -269,6 +269,28 @@ export function TicketCard({ ticket }: TicketCardProps) {
           ))}
         </div>
 
+        {/*
+          The note the customer sent with the order.
+          
+          It reached the printed slip and stopped there — a kitchen working off
+          the screen, which is the display this product ships, never saw it.
+          Since the storefront gained a field for it (#376) what arrives here
+          is usually an allergy, so it is called out rather than set in the
+          muted style the per-line notes use.
+        */}
+        {ticket.deliveryNotes && (
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-900 dark:text-amber-200">
+              {ticket.orderType === "delivery"
+                ? "Instructions livraison"
+                : "Note client"}
+            </div>
+            <div className="text-sm text-amber-900 dark:text-amber-100">
+              {ticket.deliveryNotes}
+            </div>
+          </div>
+        )}
+
         {/* Estimated prep time */}
         {ticket.estimatedPrepTime && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">

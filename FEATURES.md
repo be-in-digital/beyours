@@ -123,7 +123,12 @@ multi-image uploader and no gallery.
 `cancelled` — `packages/convex-schema/src/tables/orders.ts:23-30`), three service
 types (`delivery`, `pickup`, `dine_in`), four sources (`website`, `uber_eats`,
 `deliveroo`, `pos`), delivery fees in fixed or percentage mode, promotions applied at
-order time, VAT, and cash marked paid at the counter.
+order time, VAT, and cash marked paid at the counter. Since #376 the storefront
+checkout also carries the diner's own note — the allergy field — which reaches the
+kitchen ticket through `orders.notes` → `kitchenTickets.deliveryNotes` and is capped
+at `FIELD_LIMITS.orderNote` on both ends
+(`packages/convex-functions/src/rateLimit.ts`). Every part of that path existed
+before; the input did not, in either app, so the ticket's note line was always blank.
 
 **Not built — scheduled orders.** `orders.scheduledFor` exists in the schema, but
 `orders.create` **takes no `scheduledFor` argument** (see its validator block,
@@ -171,7 +176,11 @@ ticket writers hardcode `priority: "normal"`
 ### Payments
 
 **Ships:** Stripe, SumUp, PayPal and cash, with payment tracking, webhook
-verification, deduplication (`paymentEvents`), settlement binding and refunds. The
+verification, deduplication (`paymentEvents`), settlement binding and refunds. Cards
+can also be switched **off**: `payments.cardProvider` admits `none` since #376, which
+removes the card tile from the checkout rather than greying it — the state a cash-only
+food truck needs, and the one no auto-detection can infer. `paymentAvailability.get`
+answers both questions separately (`card`, `cardOffered`). The
 refund route is decided by `routeRefund`
 (`packages/convex-functions/src/refundPolicy.ts:143`), and the only screen carrying a
 working refund dialog is `/dashboard/payments`
@@ -277,7 +286,11 @@ campaigns`, every minute). `packages/marketing/src` holds the renderer, the CSV
 parser, segment filtering and stats; the Convex side is
 `packages/convex-functions/src/email*.ts` and `sesSending.ts`.
 
-**Not built:** SMS. No table, no provider, no code.
+**Not built:** SMS. No table, no provider, no code. Also not built: **campaign
+conversion and attributed revenue**. Nothing writes a `converted` email event and
+no order records the campaign that led to it, so the two figures have no producer;
+the campaign stats dialog says « Non suivi » rather than the hard `0 €` it used to
+render beside real send and open counts.
 
 ### Design and theming
 
@@ -385,6 +398,23 @@ findings; do not re-open them without reading the card.
 4. **Menus / formules — build the orderable flow, in its own PR** (#352). See §4,
    Products. Open.
 5. **Square — keep it visible, marked « Bientôt ».** See §4, Payments.
+
+Decided since, on the same principle — an offer the product cannot honour is worse
+than an offer it does not make:
+
+6. **« Produit offert » and « Offre BOGO (1+1) » — refused at creation** (#376).
+   `resolvePromotionDiscount` threw `not_applicable` on both at order time and always
+   had: they alter the item list rather than the order total, and no code path builds
+   those items. The promotion form sold them anyway and `promotions.create` stored
+   them, so an owner configured a campaign, printed the flyers, and learned it was
+   decorative from a diner at the till. The list of types an order can actually be
+   given now lives with the resolver that enforces it
+   (`HONOURABLE_DISCOUNT_TYPES`, `packages/convex-functions/src/promotionDiscount.ts`),
+   the form takes its options from that list, and `create`/`update` refuse anything
+   outside it with a sentence naming what to use instead. Implement either type in the
+   resolver and the option returns on the same commit. Rows stored before the guard
+   are still listed and still deletable; their value column reads « Aucune remise
+   appliquée ».
 
 ---
 
