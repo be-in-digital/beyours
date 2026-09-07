@@ -1,8 +1,10 @@
 # Unbounded Convex queries — what was fixed, and what is left
 
 Source cards: **NEW-P** (four unbounded queries on the four screens an owner opens
-most) and **NEW-J-1** (`emailEvents.sentCountsSince`) in `tasks/fix-prompts.md`.
-Measured at commit `009af63`; re-measured here before and after each fix.
+most) and **NEW-J-1** (`emailEvents.sentCountsSince`) in `tasks/fix-prompts.md`,
+then **NEW2-ADMIN-1 / NEW2-DATA-6 / -7 / -8** (issue #327), which took five of the
+entries this document had listed as "not fixed". Measured at commit `009af63`;
+re-measured here before and after each fix.
 
 ## Why any of this matters
 
@@ -26,6 +28,11 @@ Measurements are document reads, taken with the counting `ctx.db` double in
 | **P-3** `payments.getByStore` | `/dashboard/payments` | 4,000 payments → 4,000 rows | one page: 15 reads, both filters indexed |
 | **P-4** `emailAutomationRuns.stepsSentTo` | automation dispatch | 2,000 reads to return 4 step ids | 4 reads |
 | **J-1** `emailEvents.sentCountsSince` | campaign send | 18,000 reads to answer about 0 events — past the ceiling | bounded by the week and the cap |
+| **#327** `emailSubscribers.list` | Abonnés | 20,000 subscribers → 20,000 rows, then filtered on `source` in JavaScript | one page: 15 reads, status tab indexed |
+| **#327** `emailSubscribers.countByStatus` | email dashboard, campaign wizard, Abonnés | 20,000 reads to return six integers | five capped index ranges: 10,005 reads, `truncated` reported |
+| **#327** `emailSegments.countMatchingSubscribers` | segment preview | the whole active list, per keystroke | capped at 2,001 reads, `{ count, scanned, truncated }` |
+| **#327** `products.getTrending` | public homepage, per open tab | 20,008 reads to return 8 products | the 1,000 newest orders of the window: 1,008 reads |
+| **#327** `emailCampaigns.dueForSending` | cron, every minute | unindexed `.filter().collect()` over every campaign ever written | `by_storeId_status` per establishment |
 
 Also fixed, from the "verify each" list on the card:
 
@@ -76,6 +83,23 @@ Also fixed, from the "verify each" list on the card:
   server.** "Today" is the restaurant's day: a service that closes at 01:00 in
   Paris is still on yesterday's takings, and a server deriving midnight itself
   would move the boundary by an hour or two depending on the season.
+- **The Abonnés screen pages**, the same way, and its source filter and search
+  narrow the rows already loaded — no index carries `source`, and a substring
+  match on an address could not use one. The placeholder and the empty state say
+  which subscribers are being searched.
+- **Subscriber counts print a trailing `+` past their cap.** Convex has no count:
+  a total is however many documents you were willing to read, and collecting the
+  list to measure it is the defect. The email dashboard, the campaign wizard and
+  the Abonnés header therefore show a floor, marked as one, rather than a total
+  nobody counted. The segment preview says which population its count describes.
+- **The homepage's automatic trending carousel ranks the 1,000 most recent orders
+  of the last thirty days**, not all of them. Newest-first, so what the cap drops
+  is the far end of the month rather than this week.
+- **The campaign stats dialog says « Non suivi » for conversions and attributed
+  revenue.** Nothing produces either figure — no `converted` event writer, and no
+  order carries the campaign that led to it — so the tiles reported a hard zero
+  beside real send and open counts. `incrementRevenue`, which had zero call
+  sites, is removed with them.
 
 ### Schema changes
 
@@ -133,12 +157,15 @@ entries.
 
 ### Tests
 
-- `packages/convex-functions/src/__tests__/queryBounds.test.ts` — 36 cases
-  asserting **document read counts** rather than answers, because a test that
-  checks the answer passes on ten rows and passes again on ten million. Verified
-  by injection: restoring the `.collect()` in `orders.list` fails two cases
-  ("expected 500 to be less than or equal to 15"), and restoring the JavaScript
-  filter in `stepsSentTo` fails one ("expected 8000 to be 4").
+- `packages/convex-functions/src/__tests__/queryBounds.test.ts` — 51 cases (36
+  for NEW-P and J-1, 15 for #327) asserting **document read counts** rather than
+  answers, because a test that checks the answer passes on ten rows and passes
+  again on ten million. Verified by injection: restoring the `.collect()` in
+  `orders.list` fails two cases ("expected 500 to be less than or equal to 15"),
+  and restoring the JavaScript filter in `stepsSentTo` fails one ("expected 8000
+  to be 4"). The #327 cases seed 20,000 rows — more than Convex will read in one
+  transaction — and two of them assert the read count does not move at all as the
+  table grows.
 - `packages/convex-functions/src/__tests__/support/countingDb.ts` — the double.
   It reads the real declared indexes out of `@be-in-digital/convex-schema` and
   enforces Convex's own rule (equalities cover a prefix; a range bound only on the
@@ -147,10 +174,10 @@ entries.
 - `packages/admin/src/__tests__/dashboard-windows.test.ts` — 12 cases on the half of the
   dashboard that stayed in the browser: the local-midnight boundaries (including
   the DST case a fixed 24-hour subtraction gets wrong) and the French labels.
-- `apps/{reference,themes}/tests/convex/query-bounds.test.ts` — 17 cases each,
+- `apps/{reference,themes}/tests/convex/query-bounds.test.ts` — 25 cases each,
   byte-identical, driving the real API through the real schema. This is the layer
   that proves the five new, renamed and widened indexes exist in what the apps
-  deploy.
+  deploy, and that the #327 paths reach them through the real auth wrappers.
 
 ---
 
@@ -159,8 +186,9 @@ entries.
 The card's list was what one pass reached. A full sweep of every `.collect()` in
 `packages/convex-functions/src`, `apps/*/convex` and `apps/site/convex` found
 **187 calls, of which 97 are unbounded**. The ones below are real and uncarded.
-None of them is on the four screens NEW-P names, which is why they are listed
-rather than fixed.
+None of them was on the four screens NEW-P names, which is why they were listed
+rather than fixed. Five have since been taken by #327 and moved to the table
+above; what follows is what is left.
 
 Ordered by how fast the table grows.
 
@@ -168,13 +196,8 @@ Ordered by how fast the table grows.
 
 | Query | File | Note |
 | --- | --- | --- |
-| `emailSubscribers.countByStatus` | `emailSubscribers.ts:174` | materialises the whole mailing list for six counters; `by_storeId_status` exists and is unused |
-| `emailSubscribers.list` | `emailSubscribers.ts:100,105` | the whole list, then filtered on `source` in JavaScript |
-| `emailSegments.countMatchingSubscribers` | `emailSegments.ts:65` | the entire active list, evaluated rule by rule |
 | `emailCampaigns.list` / `listByStatus` | `emailCampaigns.ts:50,86` | `sent` accumulates forever |
-| `emailCampaigns.dueForSending` | `emailCampaigns.ts:270` | full-table scan across every store, on a cron, with a Convex `.filter()` and no index |
 | `gamePlay.findLatestPlay` / `completedActionIdsFor` | `gamePlay.ts:157,177` | every play this device ever made, on a public storefront read; `["storeId","fingerprint","playedAt"]` would fit |
-| `products.getTrending` | `products.ts:153` | a 30-day window but every order inside it |
 | `favorites.listByUser` / `clearAll` | `favorites.ts:18,84` | one customer's favourites across every store |
 | `orphanProducts.listByStorePlatform` / `listPending` | `orphanProducts.ts:23,38` | grows with every unmatched item each menu sync produces; nothing prunes them |
 | `externalProductMappings.*` | `externalProductMappings.ts:23,150` | one row per product per platform |
@@ -210,9 +233,11 @@ Separately from the counts above, **46 sites** are
 does not carry — the shape of three of the five defects fixed here. Several have
 an index that already exists and is not used: `cms.by_storeId_pageSlug`,
 `cms.by_storeId_pageSlug_blockKey_isDraft` (four call sites),
-`cmsMedia.by_storeId_kind`, `cmsMedia.by_storeId_folder`, and
-`emailSubscribers.by_storeId_status`. `prizeRedemptions.by_storeId_status` was on
-that list too; it is now wired, widened into `by_storeId_status_expiresAt`.
+`cmsMedia.by_storeId_kind` and `cmsMedia.by_storeId_folder`.
+`prizeRedemptions.by_storeId_status` was on that list too; it is now wired,
+widened into `by_storeId_status_expiresAt`, and
+`emailSubscribers.by_storeId_status` is now what `list` and `countByStatus`
+read.
 
 A further **6 sites** apply `limit` with `.slice()` after a full `.collect()`
 where `.take(n)` on the same index would be exact.
@@ -266,11 +291,12 @@ platformReleases.by_releasedAt       cmsBlogPosts.by_slug
 ```
 
 Several of these are the fix to an entry in the sweep above rather than something
-to delete — `stores.by_status` is what `stores.list` needs, `products.by_storeId_isActive`
-is what `getFeatured` needs, `emailSubscribers.by_storeId_status` is what
-`countByStatus` needs. Deciding delete-or-wire per index is a job of its own —
+to delete — `stores.by_status` is what `stores.list` needs and
+`products.by_storeId_isActive` is what `getFeatured` needs. Deciding
+delete-or-wire per index is a job of its own —
 `prizeRedemptions.by_storeId_status` was on this list and is now wired, widened
-into `by_storeId_status_expiresAt`.
+into `by_storeId_status_expiresAt`, and `emailSubscribers.by_storeId_status` was
+the index `countByStatus` needed and now uses.
 
 `apps/site` has its own schema (52 indexes, 11 dead by the same measure); it is
 outside this card's scope and was not re-verified index by index here.
@@ -288,3 +314,12 @@ owner rather than to this change:
 - **`DASHBOARD_ORDER_SCAN_LIMIT` (5,000).** At 60 orders a day that is 83 days,
   well past the 30-day window it bounds. An establishment busy enough to truncate
   it wants a rollup table, not a bigger cap.
+- **The subscriber-count caps** (`SUBSCRIBER_COUNT_SCAN_LIMIT` 2,000 per status,
+  five of them; `SEGMENT_PREVIEW_SCAN_LIMIT` 2,000). Both are live subscriptions
+  that re-run on every signup, and both keep the whole handler an order of
+  magnitude under the ceiling. A restaurant that routinely mails more than 2,000
+  people wants a maintained counter — one row per store, patched by every status
+  transition — which is a schema change with a backfill, not a cap.
+- **`TRENDING_ORDER_SCAN_LIMIT` (1,000) and the 30-day window it sits inside.**
+  What "en ce moment" means is a business question nobody has answered; a
+  thousand orders is roughly a busy fortnight.
