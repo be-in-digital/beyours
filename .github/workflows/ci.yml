@@ -59,6 +59,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Full history, for `Report unreleased engine fixes` below: it dates
+          # each changeset by the commit that added it, and the default depth-1
+          # clone holds no such commit. The check degrades to "age unknown"
+          # rather than failing without this, but the age is half its point,
+          # and 160 commits of history is a rounding error to fetch.
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -111,6 +118,24 @@ jobs:
       # published tree, which is why that shipped twice.
       - name: Check the client stylesheet
         run: pnpm check:mirror-css
+
+      # Merging a fix to `packages/*` feels like shipping it. It is not:
+      # `apps/themes` links the engine with `workspace:^` and compiles against
+      # the current source, so this repository goes green the moment the fix
+      # lands, while a client installs the published tarball and gets nothing
+      # until a release is cut. Nothing said so, and the gap is not theoretical
+      # in either direction — #209 records two months of it, with the whole
+      # Uber Direct module never reaching a client, and on 07/09/2026 a few
+      # hours of it made the mirror's red run read as a fix failing when the
+      # fix had simply never shipped (#387, #388).
+      #
+      # It reports, it does not gate. Batching a few fixes into one release is
+      # the intended workflow, so failing on a changeset hours old would punish
+      # the normal case; what was missing is the fact, not a barrier. Past
+      # `--max-age-days` it escalates to a ::warning:: annotation, and `--fail`
+      # would make that blocking — nothing passes it today. See #389.
+      - name: Report unreleased engine fixes
+        run: pnpm check:pending-release
 
   type-check:
     name: Type Check
