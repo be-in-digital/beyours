@@ -67,7 +67,6 @@
     "./userProfiles": "./src/userProfiles.ts",
     "./externalProductMappings": "./src/externalProductMappings.ts",
     "./orphanProducts": "./src/orphanProducts.ts",
-    "./uberEatsOrders": "./src/uberEatsOrders.ts",
     "./uberEatsMenuSync": "./src/uberEatsMenuSync.ts",
     "./deliverooMenuSync": "./src/deliverooMenuSync.ts",
     "./paymentConnections": "./src/paymentConnections.ts",

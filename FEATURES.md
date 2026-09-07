@@ -127,8 +127,9 @@ order time, VAT, and cash marked paid at the counter.
 
 **Not built — scheduled orders.** `orders.scheduledFor` exists in the schema, but
 `orders.create` **takes no `scheduledFor` argument** (see its validator block,
-`packages/convex-functions/src/orders.ts:349` onwards) and the field's only writer is
-the Uber Eats importer (`packages/convex-functions/src/uberEatsOrders.ts:149`). No
+`packages/convex-functions/src/orders.ts:349` onwards) and the field now has **no
+writer at all**: its only one was `uberEatsOrders.saveFromPlatform`, a dead
+importer with zero callers that was deleted with #313. No
 customer can choose a pickup time — which is the core of a click-and-collect offer,
 and beyours.fr sells "click & collect intégré" (`pricing-data.ts:108`).
 

@@ -384,8 +384,29 @@ export const emailCampaignsTable = defineTable({
     v.literal("sending"),
     v.literal("sent"),
     v.literal("paused"),
-    v.literal("cancelled")
+    v.literal("cancelled"),
+    /**
+     * The send could not run, and stopped.
+     *
+     * WHY THIS EXISTS: the batch action had one way of reacting to a missing
+     * template, a missing configuration or a missing segment — `console.error`
+     * and `return`. The campaign stayed at `sending` for ever, the owner's
+     * screen showed "En cours" against a send that had stopped, and the only
+     * trace was a line in a log the restaurant cannot read. A campaign that
+     * cannot finish has to say so on the screen the owner is looking at, which
+     * is what this status and `failureReason` are for.
+     */
+    v.literal("failed")
   ),
+
+  /**
+   * Why the send stopped, in a sentence the owner can act on.
+   *
+   * Only ever set alongside `status: "failed"`, and cleared when the campaign
+   * is relaunched. Optional because every campaign written before this existed
+   * has none.
+   */
+  failureReason: v.optional(v.string()),
 
   // null = all active subscribers
   segmentId: v.optional(v.id("emailSegments")),

@@ -58,6 +58,12 @@ import {
 } from "./orderConfirmation"
 import { issueInvoiceForOrder } from "./invoices"
 import {
+  assertOrderHasNoInvoice,
+  assertOrderHasNoLivePayment,
+  deleteOrderDependents,
+  releasePromotionForOrder,
+} from "./orderCascade"
+import {
   resolvePromotionDiscount,
   PromotionRejectedError,
   type DiscountableLine,
@@ -1530,6 +1536,18 @@ export const updateStatus = {
         await moveTrackedStock(ctx, order.items ?? [], 1, now)
       }
 
+      // Give the coupon back too. The stock was restored here and the promotion
+      // was not, so a cancelled couponed order burned the diner's one use and a
+      // slot of the campaign's budget on an order that did not happen — with no
+      // screen anywhere to correct either number.
+      //
+      // Once only, for the same reason the stock restore is: `cancelled` is
+      // terminal, reachable from `pending` and `confirmed` alone, and a replayed
+      // status returns above before reaching here. A marketplace order carries
+      // no promotion — `createFromWebhook` has no promotion path — so this is a
+      // no-op there rather than a special case.
+      await releasePromotionForOrder(ctx, order, now)
+
       // Cancelling an order does not move money, and must not claim to.
       //
       // This block used to set the order AND every succeeded payment to
@@ -1682,11 +1700,28 @@ export interface PostOrderDispatch {
 }
 
 /**
- * Delete an order
+ * Delete an order, and everything that only existed because of it.
+ *
+ * This was `ctx.db.delete(args.id)` with nothing else in the handler, against a
+ * row three tables reference REQUIRED. What it refuses, what it carries away
+ * and why each is on the side it is on: `orderCascade.ts`.
+ *
+ * No screen calls this today. That is the reason to guard it now rather than
+ * later — it is live under `orders:delete`, and the person who wires the first
+ * button to it will not be reading this file.
  */
 export const remove = {
   args: { id: v.id("orders") },
   handler: async (ctx: any, args: { id: string }) => {
+    const order = await ctx.db.get(args.id)
+    // Already gone. Not an error: a retried call must not fail louder than the
+    // first one succeeded.
+    if (!order) return
+
+    await assertOrderHasNoInvoice(ctx, order)
+    await assertOrderHasNoLivePayment(ctx, order)
+
+    await deleteOrderDependents(ctx, order, Date.now())
     await ctx.db.delete(args.id)
   },
 }
@@ -2008,6 +2043,14 @@ export const updateFromWebhook = {
       if (owed) {
         updates.paymentStatus = owed
       }
+
+      // The promotion, released here as well. `updateStatus` is a SEPARATE
+      // handler and a platform cancellation never reaches it — the comment
+      // further down records what believing otherwise already cost once, a
+      // kitchen ticket left live on the pass. A marketplace order carries no
+      // promotion today, so this is a no-op; it is here so that a direct order
+      // that ever reached this handler is not the exception that gets it wrong.
+      await releasePromotionForOrder(ctx, order, args.updatedAt)
     }
 
     await ctx.db.patch(order._id as string, updates)
