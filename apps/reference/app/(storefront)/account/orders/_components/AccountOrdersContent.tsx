@@ -23,14 +23,14 @@ function getStatusStyle(status: string) {
   switch (status) {
     case "completed":
     case "delivered":
-      return "bg-emerald-100 text-emerald-700"
+      return "bg-accent text-accent-foreground"
     case "pending":
     case "confirmed":
-      return "bg-orange-100 text-orange-700"
+      return "bg-accent text-accent-foreground"
     case "cancelled":
       return "bg-red-100 text-red-700"
     default:
-      return "bg-zinc-100 text-zinc-500"
+      return "bg-muted text-muted-foreground"
   }
 }
 
@@ -77,12 +77,12 @@ export default function AccountOrdersContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-zinc-900 font-sans overflow-x-hidden pt-20 transition-colors duration-500">
+    <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden pt-20 transition-colors duration-500">
       {/* Hero header */}
       <section className="pt-24 pb-20 px-6 md:px-12 bg-primary relative overflow-hidden rounded-b-[4rem] md:rounded-b-[8rem]">
         <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
           <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-white/20 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-emerald-400/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px]" />
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10 text-center">
@@ -97,7 +97,7 @@ export default function AccountOrdersContent() {
             Historique
           </Badge>
           <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-none mb-8 italic">
-            Mes <span className="text-orange-600 dark:text-orange-400 not-italic">Commandes</span>
+            Mes <span className="text-accent-foreground not-italic">Commandes</span>
           </h1>
           <p className="text-xl text-white/80 max-w-2xl mx-auto font-medium">
             Suivez et gérez vos commandes récentes
@@ -109,13 +109,13 @@ export default function AccountOrdersContent() {
         {/* Loading */}
         {orders === undefined && (
           <div className="py-20 flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent-foreground" />
           </div>
         )}
 
         {/* Empty */}
         {orders && orders.length === 0 && (
-          <Empty className="rounded-3xl bg-white shadow-sm border border-zinc-100 p-12">
+          <Empty className="rounded-3xl bg-white shadow-sm border border-border p-12">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <Package className="h-5 w-5" />
@@ -149,22 +149,22 @@ export default function AccountOrdersContent() {
                   key={order._id}
                   href={`/order/${order._id}${order.viewToken ? `?token=${order.viewToken}` : ""}`}
                 >
-                  <div className="group rounded-2xl bg-white border border-zinc-100 p-4 hover:border-emerald-100 hover:bg-emerald-50/30 transition-all flex items-center justify-between shadow-sm">
+                  <div className="group rounded-2xl bg-white border border-border p-4 hover:border-primary/20 hover:bg-accent/30 transition-all flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-zinc-100 flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:bg-white group-hover:text-primary transition-colors">
+                      <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-white group-hover:text-accent-foreground transition-colors">
                         <ShoppingBag className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="font-black text-zinc-900 leading-tight">
+                        <p className="font-black text-foreground leading-tight">
                           {order.orderNumber}
                         </p>
-                        <p className="text-xs text-zinc-500 font-medium">
+                        <p className="text-xs text-muted-foreground font-medium">
                           {date} — {order.items.length} article{order.items.length > 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-black text-primary">
+                      <p className="font-black text-accent-foreground">
                         {formatPrice(order.total)}
                       </p>
                       <Badge

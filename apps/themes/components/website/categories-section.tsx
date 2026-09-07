@@ -8,8 +8,8 @@ import { Skeleton } from "@be-in-digital/ui"
 import { Heading, CategoryCard } from "@/components/website"
 
 const CATEGORY_COLORS = [
-    { color: "from-orange-500/20 to-orange-500/5", borderColor: "border-orange-200" },
-    { color: "from-emerald-500/20 to-emerald-500/5", borderColor: "border-emerald-200" },
+    { color: "from-primary/20 to-primary/5", borderColor: "border-primary/20" },
+    { color: "from-primary/20 to-primary/5", borderColor: "border-primary/20" },
     { color: "from-blue-500/20 to-blue-500/5", borderColor: "border-blue-200" },
     { color: "from-pink-500/20 to-pink-500/5", borderColor: "border-pink-200" },
     { color: "from-yellow-500/20 to-yellow-500/5", borderColor: "border-yellow-200" },
