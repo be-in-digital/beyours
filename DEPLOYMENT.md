@@ -407,6 +407,14 @@ client-side**: `update-template.mjs` runs a bare `git fetch template` and nothin
 checks the contract before pulling commits, so an expired site that runs the command
 gets everything. The business model is written; its guard is not.
 
+**A site created before 07/09/2026 has none of the security floors** (#289). They
+arrive through `pnpm update:template` — the merge touches `package.json` and
+`pnpm install` re-resolves the lockfile against the 22 overrides instead of one — but
+only once that site runs it. Nothing pushes them, so the sites that most need telling
+are exactly the ones that update least often. Sites in maintenance should be run
+through the update; sites out of maintenance should be told the floors exist and are
+not reaching them.
+
 ---
 
 ## 8. Rolling back beyours.fr
