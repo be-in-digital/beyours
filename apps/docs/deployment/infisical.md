@@ -32,7 +32,7 @@ the propagation step into a command.
 | `UBER_EATS_CLIENT_ID` / `_CLIENT_SECRET` / `_WEBHOOK_SECRET` | one partner app, registered by the agency |
 | `UBER_DIRECT_WEBHOOK_SECRET` | rides on the same Uber app |
 | `DELIVEROO_CLIENT_ID` / `_CLIENT_SECRET` / `_WEBHOOK_SECRET` | one partner app, registered by the agency |
-| `STRIPE_BID_SECRET_KEY` / `_WEBHOOK_SECRET` / `STRIPE_BID_PRICE_MAINTENANCE` | what BeYours charges *the restaurateur* — our Stripe account, not theirs |
+| `STRIPE_BID_SECRET_KEY` / `_WEBHOOK_SECRET` / the seven `STRIPE_BID_PRICE_*` | what BeYours charges *the restaurateur* — our Stripe account, not theirs |
 | `BID_NOTIFY_EMAIL` | our inbox |
 
 **Not shared — and these are the trap, because they sit in the same blocks of
@@ -45,7 +45,19 @@ the propagation step into a command.
 | `BID_APP_URL` | the client's own URL |
 | `STRIPE_*` without the `BID` (`STRIPE_SECRET_KEY`…) | the restaurant's own Stripe account |
 | `AWS_*` | every restaurant owns its AWS account — [`aws-ownership.md`](./aws-ownership.md) |
-| `BETTER_AUTH_SECRET`, `EMAIL_API_SECRET`, `ENCRYPTION_KEY`, `ADMIN_BOOTSTRAP_TOKEN` | generated per deployment. Sharing one would make a single client's leak everybody's, and rotating `ENCRYPTION_KEY` forces **every** merchant back through the OAuth connect flow |
+| `BETTER_AUTH_SECRET`, `EMAIL_API_SECRET`, `ENCRYPTION_KEY`, `ADMIN_BOOTSTRAP_TOKEN`, `SEED_PASSWORD` | generated per deployment. Sharing one would make a single client's leak everybody's, and rotating `ENCRYPTION_KEY` forces **every** merchant back through the OAuth connect flow |
+| `JWT_PRIVATE_KEY`, `JWKS` | written straight onto the deployment by the auth tooling. No application code names them, so they look like orphans in an audit and are the one pair you must not remove |
+
+> ⚠️ **That rule is now enforced, and it was not before.** Those seven names are
+> `DEPLOYMENT_OWNED` in `scripts/infisical-bootstrap.mjs`. `migrate` refuses to
+> put one into the store, `seed` refuses to mint one into `/platform` or
+> `/themes`, `check` reports one it finds there, and
+> `setup-convex-env.sh --infisical` refuses to push one onto a deployment. The
+> 4 Sep 2026 audit found them sitting in `/themes` — the folder a client clone
+> starts from — among the 17 keys that folder would have pushed, and a witness
+> dry run answering `would set JWT_PRIVATE_KEY / JWKS / ENCRYPTION_KEY /
+> BETTER_AUTH_SECRET`. Nothing was propagating them yet. Delete them from any
+> shared folder you find them in.
 
 > ⚠️ The Package-Level table in
 > [`environment-variables.md`](./environment-variables.md) still lists `AWS_*`
@@ -64,11 +76,15 @@ Created on 2026-09-01 — four folders, in **each** of the three environments (`
 
 | Folder | Holds | Keys | Source of the list |
 |---|---|---:|---|
-| `/platform` | BeYours' own credentials, identical everywhere | 12 | `packages/core/.env.example` + the BID block |
+| `/platform` | BeYours' own credentials, identical everywhere | 18 | `packages/core/.env.example` + the BID block |
 | `/site` | `apps/site`, the commercial site | 29 | `apps/site/.env.example` |
-| `/reference` | `apps/reference`, the bench CI builds and e2e-tests | 62 | `apps/reference/.env.example` |
-| `/themes` | `apps/themes`, the **defaults a client clone starts from** | 66 | its two `.env*.example` |
-| `/demo` | the **one running demo instance**, shared by every template's demo | 66 | the same two |
+| `/reference` | `apps/reference`, the bench CI builds and e2e-tests | 68 | `apps/reference/.env.example` |
+| `/themes` | `apps/themes`, the **defaults a client clone starts from** | 73 | its two `.env*.example` |
+| `/demo` | the **one running demo instance**, shared by every template's demo | 73 | the same two |
+
+`node scripts/infisical-bootstrap.mjs scopes` prints those lists and their
+counts. Read it rather than this table if the two disagree — the specs are the
+source, this is a copy.
 
 There was a fifth folder, `/ci`, holding the names GitHub Actions read. It is
 gone: since [#276](https://github.com/be-in-digital/beyours/pull/276) the e2e job
@@ -78,7 +94,7 @@ provisioning well.
 
 ### `/themes` and `/demo` are not the same thing
 
-They carry the same 66 variable names and mean opposite things.
+They carry the same 73 variable names and mean opposite things.
 
 `/themes` holds **defaults**: what a client's cloned repository starts from
 before anyone fills it in. Nothing runs on those values.
@@ -98,22 +114,34 @@ buys at the other end of the relationship.
 ### Loading the values
 
 They are not in this repo — there is no `.env` file anywhere in the working
-tree. They live in three places, and each moves differently:
+tree. They live in two places, and each moves differently:
 
 | Where | How it comes out |
 |---|---|
 | Convex deployment envs | `npx convex env list [--prod]` → a dotenv file |
 | Vercel | `vercel env pull` |
-| GitHub Secrets | **it does not.** GitHub is write-only by design |
 
-`plan` prints the exact commands. For the GitHub half, take the values from the
-portals they came from, or regenerate them — regenerating costs one rotation and
-ends the question of who has seen the old value.
+There is no GitHub half. `plan` used to name 13 `E2E_*` repository secrets to
+take out of GitHub by hand; they do not exist and never did — this repository
+stores four secrets (`INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`,
+`MIRROR_PUSH_TOKEN`, `TURBO_TOKEN`), and since #276 the e2e job reads no
+application secret at all. GitHub is still write-only, so anything that ever
+does land there comes back out of its own portal or gets regenerated.
 
-`migrate` does the Convex half in one move, and does the part that is easy to
-get wrong by hand: it **routes each key to its owner**. A key BeYours owns goes
-to `/platform` wherever it was found on the deployment; the rest goes to the
-scope you named; anything in no spec is listed and deliberately not pushed.
+`migrate` does the Convex half in one move, and does the two parts that are easy
+to get wrong by hand.
+
+It **routes each key to its owner**: a key BeYours owns goes to `/platform`
+wherever it was found on the deployment; the rest goes to the scope you named;
+anything in no spec is listed and deliberately not pushed.
+
+And it **refuses the seven `DEPLOYMENT_OWNED` names outright**, before it looks
+at any spec — that order is the fix. Five of them (`BETTER_AUTH_SECRET`,
+`ENCRYPTION_KEY`, `EMAIL_API_SECRET`, `ADMIN_BOOTSTRAP_TOKEN`, `SEED_PASSWORD`)
+*are* in every app's `.env.example`, so a routing that asked "is it in the spec?"
+first filed them under the scope and pushed them. That is how `/themes` came to
+hold one deployment's generated secrets as the defaults every clone starts from.
+
 It is a dry run unless you pass `--apply`, it writes its intermediate file with
 mode 600 into a temp dir it deletes afterwards, and it never prints a value.
 
@@ -266,6 +294,23 @@ folder and it gets placeholders or nothing. Check before switching anything over
 pnpm env:check --env=prod
 ```
 
+`check` answers in its exit code, and the two failures are different problems:
+
+| Code | Means | What it is |
+|---:|---|---|
+| 0 | every folder matches its spec | — |
+| 1 | the store answered; keys are missing, or a shared folder holds a per-deployment secret | a backlog item |
+| 2 | bad flags | a mistake in the command |
+| 3 | no CLI, no session, or a folder that would not read | an incident: the rotation chain is broken *now* |
+
+They were one code until 07/09/2026, which is why nothing could be automated on
+top: an outage and a half-filled folder looked identical.
+[`env-store-health.yml`](../../../.github/workflows/env-store-health.yml) runs
+`check --env=prod` every morning and reads them — 1 becomes a `::warning::` and
+a green run, 3 becomes an `::error::` and a red one. It is deliberately **not**
+a required check and must never become one: a merge must not depend on a third
+party's uptime, which is the same trade `ci.yml` refuses above.
+
 ## Builds
 
 One CI job reads the store, and it is not the one you would expect.
@@ -291,7 +336,10 @@ Three mechanics keep this safe rather than clever:
   credentials may arrive in either order without a failed run in between.
 - **`continue-on-error`.** `Build` is a required check on `main` and what the
   store adds is an enhancement. An Infisical outage, a rotated identity or a
-  typo in a variable must not become "nobody can merge".
+  typo in a variable must not become "nobody can merge". What it also did was
+  make the failure invisible — a yellow step inside a green job nobody opens —
+  so a following step now prints a `::warning::` when the load fails. Still not
+  a failure; just no longer silent.
 - **Step-level `env:` outranks `$GITHUB_ENV`.** The build's
   `NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud` is step-level on
   purpose: a real Convex URL from the store cannot leak into that compile-check
@@ -310,7 +358,23 @@ cd <client-repo>
 pnpm convex:env:infisical -- --dry-run     # names only, writes nothing
 pnpm convex:env:infisical                  # onto the dev deployment
 bash scripts/setup-convex-env.sh --infisical --prod
+bash scripts/setup-convex-env.sh --infisical --path=/demo   # another folder
 ```
+
+**It reads `/platform` by default, and refuses `/`.** Until 07/09/2026 the
+default was `/`, the root folder — which holds zero keys in every environment,
+because every secret lives one level down. So the documented rotation printed
+`0 variables set on Convex` per client, exited 0, and propagated nothing: every
+restaurant kept the revoked credential. A folder that exports no key is now a
+hard error, for the same reason — reading nothing is never a successful push.
+`apps/themes/scripts/setup-convex-env.test.mjs` holds both behaviours, with a
+stub CLI and values the test controls.
+
+**It never pushes a `DEPLOYMENT_OWNED` name out of the store**, and names the
+ones it skipped in its summary. Those seven still come from `.env.convex` —
+that file *is* one deployment's own half, and `.env.convex.example` asks for
+four of them by name — except `JWT_PRIVATE_KEY` and `JWKS`, which no file may
+carry from anywhere.
 
 [`setup-convex-env.sh`](../../../apps/themes/scripts/setup-convex-env.sh) merges
 two sources: Infisical first, then `.env.convex` for everything the shared store
@@ -351,11 +415,29 @@ Done (2026-09-01):
       credentials from Infisical* — `HAS_INFISICAL: true`, universal auth
       accepted, step green. The machine identity works from CI.
 
+Done (2026-09-07, [#328](https://github.com/be-in-digital/beyours/issues/328)) —
+the chain was measured end to end and three of its links were carrying nothing,
+or too much:
+
+- [x] The bridge reads `/platform` by default and refuses `/`; a zero-key export
+      is a hard error. Before this, the documented rotation propagated nothing.
+- [x] The seven `DEPLOYMENT_OWNED` names cannot travel: not into the store
+      (`migrate`), not into a shared folder (`seed`), not out onto a deployment
+      (`setup-convex-env.sh`), and `check` reports one it finds.
+- [x] The six `STRIPE_BID_PRICE_*` plan keys are in the specs, so the paid Auto
+      Blog tier can be provisioned through this chain at all.
+- [x] `check` splits its exit codes, `ci.yml` annotates a failed load, and
+      `env-store-health.yml` asks the store every morning.
+- [x] `tasks/secret-rotation-runbook.md` §A.3 rewritten: Infisical first, and
+      the thirteen `E2E_*` GitHub Secrets it used to list are gone — they never
+      existed.
+
 Left:
 
-1. **The folders are empty.** `node scripts/infisical-bootstrap.mjs plan` prints
-   how values get in, folder by folder. `/platform` first — 12 keys, and the
-   ones whose rotation hurts most.
+1. **The folders are not filled in.** `node scripts/infisical-bootstrap.mjs plan`
+   prints how values get in, folder by folder. `/platform` first — 18 keys, and
+   the ones whose rotation hurts most. `pnpm env:check --env=prod` says what is
+   actually there today; this document cannot.
 2. **Take the Deliveroo pair from the portal, not from a running deployment.**
    §A.1 of the rotation runbook has to happen first: a compromised value copied
    into a tidy store is still compromised, and now it is compromised in the

@@ -1,0 +1,142 @@
+name: Env store health
+
+# Asks the Infisical store, once a day, whether it can still answer.
+#
+# Nothing else does. `ci.yml`'s build job reads /platform behind
+# `continue-on-error`, so an outage there degrades a build silently; the
+# annotation it now prints is only seen by whoever opens that run. And
+# `setup-convex-env.sh` is run by hand, in a client repo, at rotation time —
+# which is the worst possible moment to discover that the machine identity
+# expired three weeks ago.
+#
+# NOT a required check, and it must never become one. It reads a store that
+# lives outside this repository: making a merge depend on a third party's
+# uptime is exactly the trade `ci.yml` refuses. It reports, that is all.
+on:
+  schedule:
+    # 06:15 UTC — after the nightly security scan, before the working day, and
+    # off the hour because everyone else's cron is on it.
+    - cron: "15 6 * * *"
+  # So a rotation can be verified on the spot rather than waited out.
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Infisical environment slug to check"
+        required: false
+        default: prod
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check the store answers
+    runs-on: ubuntu-latest
+    env:
+      # Same two gates as ci.yml, for the same reason: a step's `if:` cannot
+      # read `secrets`, a job's `env:` can. Without them this workflow would go
+      # red every morning on a repository that has not wired the store up yet,
+      # which trains everyone to ignore it before it has ever said anything.
+      HAS_INFISICAL: ${{ secrets.INFISICAL_CLIENT_ID != '' && secrets.INFISICAL_CLIENT_SECRET != '' }}
+      INFISICAL_ENV_SLUG: ${{ github.event.inputs.environment || vars.INFISICAL_ENV || 'prod' }}
+    steps:
+      - name: Skip when the store is not wired up yet
+        if: vars.INFISICAL_ENABLED != 'true' || env.HAS_INFISICAL != 'true'
+        run: |
+          echo "::notice title=Skipped::INFISICAL_ENABLED or the machine identity is not set; nothing to check."
+          echo "Store not configured — nothing checked." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout code
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The CLI, not the secrets-action: this job asks a question about the
+      # store rather than consuming its values, and `check` needs to talk to
+      # several folders.
+      #
+      # It comes from Infisical's own apt repository, which is their documented
+      # path and is NOT pinned the way `ci.yml` pins the secrets-action to a
+      # commit SHA. The difference is deliberate: that action is handed the
+      # machine identity, this step runs before any credential exists in the
+      # job, and this job is read-only and blocks nothing. Pin it to a released
+      # binary the day it does more than ask a question.
+      - name: Install the Infisical CLI
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get update
+          sudo apt-get install -y infisical
+          infisical --version
+
+      - name: Log in as the CI machine identity
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(infisical login --method=universal-auth \
+            --client-id="$INFISICAL_CLIENT_ID" \
+            --client-secret="$INFISICAL_CLIENT_SECRET" --silent --plain)
+          # ::add-mask:: first, so the token cannot appear in any later log line
+          # even if a command decides to echo its environment.
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # `check` distinguishes its two failures in its exit code, which is the
+      # whole reason this workflow can say something useful:
+      #
+      #   0  every folder complete
+      #   1  the store answered, and its contents do not match the specs
+      #   3  the store, or the session, is down
+      #
+      # 1 is a backlog item — the folders have been partly empty since the store
+      # was created, and a red build every morning for a known state is how a
+      # signal gets muted. 3 is an incident: it means the chain that propagates
+      # a rotated credential is broken right now, and nobody would find out
+      # until the next rotation.
+      #
+      # No `pnpm install` anywhere above: the script imports node builtins only,
+      # so this job is a checkout, a node and a CLI. `report.txt` holds key
+      # names, not values — `check` throws every value away unread.
+      - name: Ask the store, and grade the answer
+        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        run: |
+          set +e
+          node scripts/infisical-bootstrap.mjs check --env="$INFISICAL_ENV_SLUG" | tee report.txt
+          code=${PIPESTATUS[0]}
+          set -e
+
+          {
+            echo "## Infisical \`$INFISICAL_ENV_SLUG\` — exit $code"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          case "$code" in
+            0)
+              echo "::notice title=Store healthy::Every folder in $INFISICAL_ENV_SLUG matches its spec."
+              ;;
+            1)
+              echo "::warning title=Store incomplete::$INFISICAL_ENV_SLUG is missing keys, or a shared folder holds a per-deployment secret. Not an outage — see the job summary for the names. \`pnpm env:plan\` prints how to fill them."
+              ;;
+            3)
+              echo "::error title=Store unreachable::The Infisical store or the CI machine identity did not answer for $INFISICAL_ENV_SLUG. Until this is fixed, a rotated credential cannot reach any client deployment — tasks/secret-rotation-runbook.md A.1 depends on it."
+              exit 1
+              ;;
+            *)
+              echo "::error title=Check failed::infisical-bootstrap.mjs exited $code, which it is not supposed to. See the job summary."
+              exit 1
+              ;;
+          esac

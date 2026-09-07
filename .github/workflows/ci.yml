@@ -250,6 +250,7 @@ jobs:
       # build compiles perfectly without. An Infisical outage, a rotated
       # identity or a typo in a variable must not become "nobody can merge".
       - name: Load the shared credentials from Infisical
+        id: infisical
         if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
         continue-on-error: true
         uses: Infisical/secrets-action@6cd3f7c0e4cc0d2395ee4ef414eb6eeb5d3e73db # v1.0.17
@@ -261,6 +262,22 @@ jobs:
           env-slug: ${{ vars.INFISICAL_ENV || 'prod' }}
           secret-path: /platform
           export-type: env
+
+      # `continue-on-error` above is deliberate and stays. What it also did was
+      # make the failure invisible: the step goes yellow inside a green job,
+      # nobody opens a green job, and the store could be unreachable for weeks
+      # while every build quietly compiled without source maps. An annotation
+      # is the smallest thing that shows up without blocking anything — it
+      # renders on the run summary and on the pull request.
+      #
+      # Still not a failure, on purpose: the store is an enhancement to this
+      # job, `Build` is a required check, and an Infisical outage must never
+      # become "nobody can merge". env-store-health.yml is where a real outage
+      # is meant to be caught; this is the passing mention.
+      - name: Say so if the store did not answer
+        if: always() && steps.infisical.outcome == 'failure'
+        run: |
+          echo "::warning title=Infisical unreachable::The build ran WITHOUT the shared credentials from /platform. Nothing is broken — source maps are simply not uploaded — but the store, the machine identity or the variable is wrong. See .github/workflows/env-store-health.yml and apps/docs/deployment/infisical.md."
 
       # These are STEP-level env, which outranks $GITHUB_ENV. That is what
       # keeps a real Convex URL from the store out of this compile-check build,
