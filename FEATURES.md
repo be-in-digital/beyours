@@ -277,7 +277,11 @@ campaigns`, every minute). `packages/marketing/src` holds the renderer, the CSV
 parser, segment filtering and stats; the Convex side is
 `packages/convex-functions/src/email*.ts` and `sesSending.ts`.
 
-**Not built:** SMS. No table, no provider, no code.
+**Not built:** SMS. No table, no provider, no code. Also not built: **campaign
+conversion and attributed revenue**. Nothing writes a `converted` email event and
+no order records the campaign that led to it, so the two figures have no producer;
+the campaign stats dialog says « Non suivi » rather than the hard `0 €` it used to
+render beside real send and open counts.
 
 ### Design and theming
 

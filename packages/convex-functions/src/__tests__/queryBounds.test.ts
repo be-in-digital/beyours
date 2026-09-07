@@ -20,6 +20,11 @@
  * declared indexes out of `@be-in-digital/convex-schema` and enforces Convex's
  * own rule about equalities and range bounds, so "narrow it in JavaScript
  * instead" — the shape three of these defects actually had — cannot pass either.
+ *
+ * B4 added four more of the same shape, on the screens a restaurant reaches by
+ * succeeding rather than by ageing: the mailing list (#316 made every signup,
+ * order and game play add a row), and the storefront homepage, whose trending
+ * carousel read a month of orders per open tab.
  */
 
 import { describe, it, expect } from "vitest"
@@ -36,6 +41,22 @@ import { stepsSentTo, record as recordRun } from "../emailAutomationRuns"
 import { sentCountsSince } from "../emailEvents"
 import { getByLanguage } from "../translations"
 import { remove as removePromotion, purgeUsages, PROMOTION_USAGE_BATCH } from "../promotions"
+import {
+  list as subscribersList,
+  countByStatus,
+  SUBSCRIBER_COUNT_SCAN_LIMIT,
+} from "../emailSubscribers"
+import {
+  countMatchingSubscribers,
+  SEGMENT_PREVIEW_SCAN_LIMIT,
+} from "../emailSegments"
+import { dueForSending } from "../emailCampaigns"
+import {
+  getTrending,
+  TRENDING_ORDER_SCAN_LIMIT,
+  TRENDING_PRODUCT_LOOKUP_LIMIT,
+  MAX_TRENDING_PRODUCTS,
+} from "../products"
 import { MAX_PAGE_SIZE } from "../pagination"
 import { createCountingDb } from "./support/countingDb"
 
@@ -543,6 +564,319 @@ describe("promotions.remove", () => {
     const ctx = usedPromotion(3)
     const result = await removePromotion.handler(ctx, { id: "promotions:1" })
     expect(result).toEqual({ deleted: 3, hasMore: false })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// B4 — the mailing list, and the homepage that reads the order book
+// ---------------------------------------------------------------------------
+
+/**
+ * A list that has succeeded: past the transaction ceiling, and still growing.
+ *
+ * 20,000 is deliberately more than Convex will read in one transaction. Every
+ * query below used to `.collect()` this, so at this size they did not run
+ * slowly — they threw, on every load, for ever, with no admin action that
+ * clears it. #316 made every storefront signup, order and game play add a row,
+ * so a restaurant arrives here by doing well.
+ */
+const HUGE_LIST = 20_000
+
+const SUBSCRIBER_STATUSES = [
+  "active",
+  "pending",
+  "unsubscribed",
+  "bounced",
+  "complained",
+] as const
+
+function busySubscribers(count: number, spread = true) {
+  const now = Date.now()
+  return Array.from({ length: count }, (_, i) => ({
+    _id: `emailSubscribers:${i}`,
+    storeId: STORE,
+    email: `diner${i}@example.fr`,
+    status: spread ? SUBSCRIBER_STATUSES[i % SUBSCRIBER_STATUSES.length]! : "active",
+    source: i % 3 === 0 ? "import" : "storefront_form",
+    tags: i % 4 === 0 ? ["vip"] : [],
+    consentAt: now,
+    consentSource: "checkout",
+    bounceCount: 0,
+    metadata: {
+      totalOrders: i % 10,
+      totalSpent: (i % 10) * 1_000,
+      averageOrderValue: 1_000,
+      favoriteProducts: [],
+      orderTypes: [],
+      city: i % 2 === 0 ? "Paris" : "Lyon",
+    },
+    createdAt: now - i * 1_000,
+    updatedAt: now,
+  }))
+}
+
+describe("emailSubscribers.list", () => {
+  it("reads a page, whatever the list has grown to", async () => {
+    for (const rows of [500, HUGE_LIST]) {
+      const ctx = createCountingDb({ emailSubscribers: busySubscribers(rows) })
+      const page = await subscribersList.handler(ctx, {
+        storeId: STORE,
+        paginationOpts: { numItems: PAGE, cursor: null },
+      })
+      expect(page.page).toHaveLength(PAGE)
+      expect(ctx.reads()).toBeLessThanOrEqual(PAGE)
+    }
+  })
+
+  it("narrows a status tab through the index rather than in JavaScript", async () => {
+    const ctx = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST) })
+    const page = await subscribersList.handler(ctx, {
+      storeId: STORE,
+      status: "bounced",
+      paginationOpts: { numItems: PAGE, cursor: null },
+    })
+    expect(page.page.every((s: { status: string }) => s.status === "bounced")).toBe(true)
+    // The 16,000 rows the tab rejects are never read.
+    expect(ctx.reads()).toBeLessThanOrEqual(PAGE)
+  })
+
+  it("walks the list a page at a time without repeating itself", async () => {
+    const ctx = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST) })
+    const first = await subscribersList.handler(ctx, {
+      storeId: STORE,
+      paginationOpts: { numItems: PAGE, cursor: null },
+    })
+    const second = await subscribersList.handler(ctx, {
+      storeId: STORE,
+      paginationOpts: { numItems: PAGE, cursor: first.continueCursor },
+    })
+    const firstIds = new Set(first.page.map((s: { _id: string }) => s._id))
+    expect(second.page.some((s: { _id: string }) => firstIds.has(s._id))).toBe(false)
+    expect(first.isDone).toBe(false)
+  })
+
+  it("refuses to serve a page the size of the list because a caller asked", async () => {
+    const ctx = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST) })
+    const page = await subscribersList.handler(ctx, {
+      storeId: STORE,
+      paginationOpts: { numItems: 1_000_000, cursor: null },
+    })
+    expect(page.page.length).toBeLessThanOrEqual(MAX_PAGE_SIZE)
+    expect(ctx.reads()).toBeLessThanOrEqual(MAX_PAGE_SIZE)
+  })
+})
+
+describe("emailSubscribers.countByStatus", () => {
+  it("counts through the index instead of downloading the list to measure it", async () => {
+    const ctx = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST) })
+    const counts = await countByStatus.handler(ctx, { storeId: STORE })
+
+    // Five index ranges, each stopped one past its cap — not 20,000 rows.
+    expect(ctx.reads()).toBeLessThanOrEqual(
+      SUBSCRIBER_STATUSES.length * (SUBSCRIBER_COUNT_SCAN_LIMIT + 1)
+    )
+    expect(ctx.reads()).toBeLessThan(16_384)
+    // Every status holds 4,000 of the seed, so every one of them is a floor.
+    expect(counts.active).toBe(SUBSCRIBER_COUNT_SCAN_LIMIT)
+    expect(counts.truncated).toBe(true)
+  })
+
+  it("stays flat as the list grows", async () => {
+    const small = createCountingDb({ emailSubscribers: busySubscribers(12_000) })
+    await countByStatus.handler(small, { storeId: STORE })
+    const large = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST) })
+    await countByStatus.handler(large, { storeId: STORE })
+    expect(large.reads()).toBe(small.reads())
+  })
+
+  it("is exact, and says so, on a list smaller than the cap", async () => {
+    const ctx = createCountingDb({
+      emailSubscribers: [
+        { _id: "emailSubscribers:1", storeId: STORE, status: "active" },
+        { _id: "emailSubscribers:2", storeId: STORE, status: "active" },
+        { _id: "emailSubscribers:3", storeId: STORE, status: "pending" },
+        { _id: "emailSubscribers:4", storeId: STORE, status: "bounced" },
+        // Another restaurant's list is not this one's count.
+        { _id: "emailSubscribers:5", storeId: "stores:2", status: "active" },
+      ],
+    })
+    const counts = await countByStatus.handler(ctx, { storeId: STORE })
+    expect(counts).toEqual({
+      total: 4,
+      active: 2,
+      pending: 1,
+      unsubscribed: 0,
+      bounced: 1,
+      complained: 0,
+      truncated: false,
+    })
+  })
+})
+
+describe("emailSegments.countMatchingSubscribers", () => {
+  it("previews over a bounded sample rather than the whole active list", async () => {
+    const ctx = createCountingDb({ emailSubscribers: busySubscribers(HUGE_LIST, false) })
+    const preview = await countMatchingSubscribers.handler(ctx, {
+      storeId: STORE,
+      rules: [{ id: "r1", field: "metadata.totalSpent", operator: "gte", value: "5000" }],
+      ruleOperator: "and",
+    })
+    expect(ctx.reads()).toBeLessThanOrEqual(SEGMENT_PREVIEW_SCAN_LIMIT + 1)
+    expect(preview.scanned).toBe(SEGMENT_PREVIEW_SCAN_LIMIT)
+    // The count describes the sample, and the answer says which.
+    expect(preview.truncated).toBe(true)
+    expect(preview.count).toBeLessThanOrEqual(SEGMENT_PREVIEW_SCAN_LIMIT)
+  })
+
+  it("still answers the question the dialog asks, on a list it can read whole", async () => {
+    const ctx = createCountingDb({
+      emailSubscribers: [
+        { _id: "emailSubscribers:1", storeId: STORE, status: "active", tags: ["vip"], metadata: { totalSpent: 9_000 } },
+        { _id: "emailSubscribers:2", storeId: STORE, status: "active", tags: [], metadata: { totalSpent: 100 } },
+        // Not active: a segment is an audience, and this one is unmailable.
+        { _id: "emailSubscribers:3", storeId: STORE, status: "unsubscribed", tags: ["vip"], metadata: { totalSpent: 9_000 } },
+      ],
+    })
+    const preview = await countMatchingSubscribers.handler(ctx, {
+      storeId: STORE,
+      rules: [{ id: "r1", field: "tags", operator: "contains", value: "vip" }],
+      ruleOperator: "and",
+    })
+    expect(preview).toEqual({ count: 1, scanned: 2, truncated: false })
+  })
+})
+
+describe("products.getTrending", () => {
+  /** A month of trade, every order carrying two lines. */
+  function busySoldOrders(count: number, distinctProducts = 40) {
+    const now = Date.now()
+    return Array.from({ length: count }, (_, i) => ({
+      _id: `orders:${i}`,
+      storeId: STORE,
+      status: i % 9 === 0 ? "cancelled" : "completed",
+      createdAt: now - i * 60_000,
+      items: [
+        { productId: `products:${i % distinctProducts}`, quantity: 1 },
+        { productId: `products:${(i * 7) % distinctProducts}`, quantity: 2 },
+      ],
+    }))
+  }
+
+  function catalogue(count: number, activeEvery = 1) {
+    return Array.from({ length: count }, (_, i) => ({
+      _id: `products:${i}`,
+      storeId: STORE,
+      name: `Plat ${i}`,
+      price: 1_200,
+      isActive: i % activeEvery === 0,
+    }))
+  }
+
+  it("ranks from a window of recent orders, not from every order of the month", async () => {
+    const ctx = createCountingDb({
+      orders: busySoldOrders(HUGE_LIST),
+      products: catalogue(40),
+    })
+    const trending = await getTrending.handler(ctx, { storeId: STORE })
+
+    expect(trending).toHaveLength(8)
+    // The 20,000 orders in the window are not the bound; the scan limit is.
+    expect(ctx.reads()).toBeLessThanOrEqual(
+      TRENDING_ORDER_SCAN_LIMIT + MAX_TRENDING_PRODUCTS
+    )
+    expect(ctx.reads()).toBeLessThan(16_384)
+  })
+
+  it("stays flat as the restaurant gets busier", async () => {
+    const quiet = createCountingDb({ orders: busySoldOrders(6_000), products: catalogue(40) })
+    await getTrending.handler(quiet, { storeId: STORE })
+    const busy = createCountingDb({ orders: busySoldOrders(HUGE_LIST), products: catalogue(40) })
+    await getTrending.handler(busy, { storeId: STORE })
+    expect(busy.reads()).toBe(quiet.reads())
+  })
+
+  it("reads the newest orders, so what the cap drops is the far end of the month", async () => {
+    const now = Date.now()
+    const ctx = createCountingDb({
+      orders: [
+        // This week fills the scan window on its own.
+        ...Array.from({ length: TRENDING_ORDER_SCAN_LIMIT }, (_, i) => ({
+          _id: `orders:new-${i}`,
+          storeId: STORE,
+          status: "completed",
+          createdAt: now - i * 60_000,
+          items: [{ productId: "products:fresh", quantity: 1 }],
+        })),
+        // Three weeks ago, and by volume the runaway best-seller of the month.
+        // Reading newest-first is what keeps a dish nobody has ordered since
+        // out of a carousel headed "en ce moment".
+        ...Array.from({ length: TRENDING_ORDER_SCAN_LIMIT }, (_, i) => ({
+          _id: `orders:old-${i}`,
+          storeId: STORE,
+          status: "completed",
+          createdAt: now - 20 * DAY - i * 60_000,
+          items: [{ productId: "products:stale", quantity: 50 }],
+        })),
+      ],
+      products: [
+        { _id: "products:stale", storeId: STORE, name: "Plat d'antan", isActive: true },
+        { _id: "products:fresh", storeId: STORE, name: "Plat du jour", isActive: true },
+      ],
+    })
+
+    const trending = await getTrending.handler(ctx, { storeId: STORE })
+    expect(trending.map((p: { _id: string }) => p._id)).toEqual(["products:fresh"])
+  })
+
+  it("gives up looking rather than walking a reworked catalogue to the end", async () => {
+    // Every ranked product de-listed: the ranking is long, and nothing in it
+    // can fill the carousel. The lookup budget is what stops the walk.
+    const ctx = createCountingDb({
+      orders: busySoldOrders(2_000, 400),
+      products: catalogue(400, 100_000), // only products:0 is active
+    })
+    const trending = await getTrending.handler(ctx, { storeId: STORE })
+    expect(trending.length).toBeLessThanOrEqual(MAX_TRENDING_PRODUCTS)
+    expect(ctx.reads()).toBeLessThanOrEqual(
+      TRENDING_ORDER_SCAN_LIMIT + TRENDING_PRODUCT_LOOKUP_LIMIT
+    )
+  })
+
+  it("refuses a carousel the size of the catalogue because a visitor asked", async () => {
+    // Public storefront query: `v.number()` takes 1,000,000 and NaN alike.
+    const ctx = createCountingDb({
+      orders: busySoldOrders(2_000, 400),
+      products: catalogue(400),
+    })
+    const trending = await getTrending.handler(ctx, { storeId: STORE, limit: 1_000_000 })
+    expect(trending.length).toBeLessThanOrEqual(MAX_TRENDING_PRODUCTS)
+
+    const nan = createCountingDb({ orders: busySoldOrders(100), products: catalogue(40) })
+    expect(await getTrending.handler(nan, { storeId: STORE, limit: Number.NaN })).toHaveLength(8)
+  })
+})
+
+describe("emailCampaigns.dueForSending", () => {
+  it("seeks the scheduled campaigns instead of scanning the archive every minute", async () => {
+    const now = Date.now()
+    const ctx = createCountingDb({
+      stores: [{ _id: STORE, name: "Chez Luigi" }],
+      emailCampaigns: [
+        ...Array.from({ length: BUSY }, (_, i) => ({
+          _id: `emailCampaigns:${i}`,
+          storeId: STORE,
+          status: i % 2 === 0 ? "sent" : "draft",
+          scheduledAt: now - DAY,
+        })),
+        { _id: "emailCampaigns:due", storeId: STORE, status: "scheduled", scheduledAt: now - 60_000 },
+        { _id: "emailCampaigns:later", storeId: STORE, status: "scheduled", scheduledAt: now + DAY },
+      ],
+    })
+
+    expect(await dueForSending.handler(ctx, { now })).toEqual(["emailCampaigns:due"])
+    // One store plus its two scheduled rows. The 6,000 sent and draft campaigns
+    // are never read — this runs once a minute, for ever.
+    expect(ctx.reads()).toBe(3)
   })
 })
 
