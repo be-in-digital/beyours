@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { query, mutation, internalQuery, QueryCtx } from "./_generated/server";
+import {
+  query,
+  mutation,
+  internalQuery,
+  MutationCtx,
+  QueryCtx,
+} from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   deriveDiscountPercent,
@@ -118,6 +124,63 @@ function assertMayHoldACode(affiliate: Doc<"affiliateUsers">): void {
   if (refusal) throw new Error(CODE_REFUSALS[refusal]);
 }
 
+/* ── Minting, in one place ──
+   Two callers: `generateMyCode` below, and `contractSignatures
+   .recordInAppSignature` at the moment a signature activates an affiliate.
+   The second exists BECAUSE of the refusal above. The code was minted at
+   signup — `/parrainage/inscription` called `generateMyCode` between
+   `createAfterSignup` and the redirect to the contract page — which is
+   `pending_contract`, which `assertMayHoldACode` now refuses. Gating the mint
+   without moving it left every new affiliate signed, activated and holding no
+   code at all, with nothing in the dashboard able to create one.
+
+   Deliberately NOT gated on `programEnabled`: `generateMyCode` is not either,
+   and the two paths that mint have to agree. See ./affiliateProgram for what
+   the switch does gate — pricing a code, accruing a commission, paying one.
+
+   Idempotent: an affiliate already holding an active code gets that one back,
+   so re-signing a superseded contract version mints no second code and does
+   not disturb a custom one they have been publishing. */
+export async function mintCodeFor(
+  ctx: MutationCtx,
+  affiliateUserId: Id<"affiliateUsers">,
+): Promise<Doc<"referralCodes"> | null> {
+  const existing = await ctx.db
+    .query("referralCodes")
+    .withIndex("by_affiliateUserId", (q) =>
+      q.eq("affiliateUserId", affiliateUserId),
+    )
+    .filter((q) => q.eq(q.field("isActive"), true))
+    .unique();
+  if (existing) return existing;
+
+  let code: string;
+  let attempts = 0;
+  do {
+    code = generateCode();
+    const taken = await ctx.db
+      .query("referralCodes")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .unique();
+    if (!taken) break;
+    attempts++;
+  } while (attempts < 10);
+
+  if (attempts >= 10) {
+    throw new Error("Impossible de générer un code unique");
+  }
+
+  const codeId = await ctx.db.insert("referralCodes", {
+    affiliateUserId,
+    code,
+    isCustom: false,
+    isActive: true,
+    createdAt: Date.now(),
+  });
+
+  return await ctx.db.get(codeId);
+}
+
 /** The programme-wide discount, or `undefined` when no settings row exists. */
 async function settingsDiscountPercent(
   ctx: QueryCtx,
@@ -210,42 +273,11 @@ export const generateMyCode = mutation({
     if (!affiliate) throw new Error("Profil apporteur introuvable");
     assertMayHoldACode(affiliate);
 
-    // Make sure they do not already have an active code
-    const existing = await ctx.db
-      .query("referralCodes")
-      .withIndex("by_affiliateUserId", (q) =>
-        q.eq("affiliateUserId", affiliate._id),
-      )
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .unique();
-    if (existing) return existing;
-
-    // Generate a unique code
-    let code: string;
-    let attempts = 0;
-    do {
-      code = generateCode();
-      const exists = await ctx.db
-        .query("referralCodes")
-        .withIndex("by_code", (q) => q.eq("code", code))
-        .unique();
-      if (!exists) break;
-      attempts++;
-    } while (attempts < 10);
-
-    if (attempts >= 10) {
-      throw new Error("Impossible de générer un code unique");
-    }
-
-    const codeId = await ctx.db.insert("referralCodes", {
-      affiliateUserId: affiliate._id,
-      code,
-      isCustom: false,
-      isActive: true,
-      createdAt: Date.now(),
-    });
-
-    return await ctx.db.get(codeId);
+    /* Still public, and now the RECOVERY path rather than the normal one: the
+       signature mints the code (./contractSignatures.ts). This is what a
+       signed affiliate holding none — a mint that failed, or one that predates
+       it moving — presses in the dashboard. */
+    return await mintCodeFor(ctx, affiliate._id);
   },
 });
 

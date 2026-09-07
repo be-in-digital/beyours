@@ -773,3 +773,190 @@ describe("affiliateSignature — a record the signer cannot write", () => {
     await expect(write(Date.now())).resolves.toBeDefined();
   });
 });
+
+/**
+ * Onboarding ends with a code, or it has not ended.
+ *
+ * `referralCodes.assertMayHoldACode` refuses to mint for an affiliate who has
+ * not signed — correctly, since a code an unsigned affiliate can publish is a
+ * discount and a commission with no contract behind either. But the mint was
+ * still happening at SIGNUP: `/parrainage/inscription` called `generateMyCode`
+ * between `createAfterSignup` and the redirect to the contract page, while the
+ * affiliate is `pending_contract`. So the call could only throw — into a
+ * `catch` that redirected anyway. Walking the real flow measured it:
+ *
+ *     createAfterSignup       contractStatus=pending_contract
+ *     generateMyCode          throws « Signez le contrat… »
+ *     signAffiliateContract   contractStatus=active
+ *     getMyCode               null
+ *     referralCodes rows      0
+ *
+ * Signed, activated, and holding nothing — with no button anywhere in the
+ * dashboard that creates one. The mint moved to the signature, which is where
+ * entitlement to a code begins, and these cases hold it there.
+ */
+describe("affiliateSignature — signing mints the referral code", () => {
+  test("the whole onboarding walk ends with a usable code", async () => {
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    // Signup mints nothing: this is the call the page used to make, and it is
+    // refused for exactly the reason it should be.
+    await expect(
+      asUser.mutation(api.referralCodes.generateMyCode, {}),
+    ).rejects.toThrow(/contrat/i);
+    expect(await t.run((ctx) => ctx.db.query("referralCodes").collect())).toEqual(
+      [],
+    );
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+
+    const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+    expect(affiliate!.contractStatus).toBe("active");
+
+    // What the dashboard reads — the assertion that failed before the fix.
+    const mine = await asUser.query(api.referralCodes.getMyCode, {});
+    expect(mine).not.toBeNull();
+    expect(mine!.code).toMatch(/^BID-[A-Z2-9]{5}$/);
+    expect(mine!.affiliateUserId).toBe(affiliateUserId);
+    expect(mine!.isActive).toBe(true);
+  });
+
+  test("the code is minted with the activation, not beside it", async () => {
+    /* A signature that does not activate — the affiliate signed a version they
+       are not the one required to sign — mints nothing either. The code and
+       the activation are one decision. */
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+
+    await t.run(async (ctx) => {
+      const other = await ctx.db.insert("contractVersions", {
+        version: "0.9",
+        title: "Contrat apporteur d'affaires",
+        content: CONTRACT_CONTENT,
+        contentHash: "seedhash-old",
+        status: "archived" as const,
+        createdAt: Date.now(),
+      });
+      await ctx.db.patch(affiliateUserId, { requiredContractVersionId: other });
+    });
+
+    await t
+      .withIdentity({ subject: userId })
+      .action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+      });
+
+    const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+    expect(affiliate!.contractStatus).toBe("pending_contract");
+    expect(affiliate!.acceptedContractVersionId).toBeUndefined();
+    expect(await t.run((ctx) => ctx.db.query("referralCodes").collect())).toEqual(
+      [],
+    );
+  });
+
+  test("signing twice does not mint a second code", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+
+    expect(
+      await t.run((ctx) => ctx.db.query("referralCodes").collect()),
+    ).toHaveLength(1);
+  });
+
+  test("re-signing a superseded version keeps the code already published", async () => {
+    /* `contractVersions.activate` moves every active affiliate to
+       `blocked_new_version` and they sign again. A custom code they have been
+       handing out for months must survive that untouched. */
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId, contractVersionId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+    const custom = await asUser.mutation(api.referralCodes.customizeMyCode, {
+      code: "GIULIA",
+    });
+
+    const v2 = await t.run(async (ctx) => {
+      await ctx.db.patch(contractVersionId, { status: "archived" as const });
+      const id = await ctx.db.insert("contractVersions", {
+        version: "2.0",
+        title: "Contrat apporteur d'affaires",
+        content: CONTRACT_CONTENT + "\nArticle 3 — Nouveau",
+        contentHash: "seedhash2",
+        status: "active" as const,
+        createdAt: Date.now(),
+        activatedAt: Date.now(),
+      });
+      await ctx.db.patch(affiliateUserId, {
+        contractStatus: "blocked_new_version" as const,
+        requiredContractVersionId: id,
+      });
+      return id;
+    });
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+
+    const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+    expect(affiliate!.contractStatus).toBe("active");
+    expect(affiliate!.acceptedContractVersionId).toBe(v2);
+
+    const active = await asUser.query(api.referralCodes.getMyCode, {});
+    expect(active!._id).toBe(custom!._id);
+    expect(active!.code).toBe("GIULIA");
+  });
+
+  test("`generateMyCode` still recovers an affiliate left without one", async () => {
+    /* The dashboard's « Générer mon code ». It covers the affiliates who
+       onboarded while the mint was still attempted at signup — signed,
+       activated, holding nothing — for whom the page previously drew an empty
+       code chip and offered no way out. */
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+
+    // Put them back in the state that onboarding used to leave behind.
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("referralCodes").collect()) {
+        await ctx.db.delete(row._id);
+      }
+    });
+    expect(await asUser.query(api.referralCodes.getMyCode, {})).toBeNull();
+
+    const minted = await asUser.mutation(api.referralCodes.generateMyCode, {});
+    expect(minted?.code).toMatch(/^BID-[A-Z2-9]{5}$/);
+    expect(minted?.affiliateUserId).toBe(affiliateUserId);
+
+    // And it is idempotent: pressing twice does not mint a second.
+    await asUser.mutation(api.referralCodes.generateMyCode, {});
+    expect(
+      await t.run((ctx) => ctx.db.query("referralCodes").collect()),
+    ).toHaveLength(1);
+  });
+});

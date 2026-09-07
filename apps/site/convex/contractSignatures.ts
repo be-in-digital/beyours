@@ -7,6 +7,7 @@ import {
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { mintCodeFor } from "./referralCodes";
 
 /* ── Public queries ── */
 
@@ -278,6 +279,20 @@ export const recordInAppSignature = internalMutation({
         contractStatus: "active",
         acceptedContractVersionId: args.contractVersionId,
       });
+
+      /* And the referral code, here, because this is where entitlement to one
+         begins. `/parrainage/inscription` used to mint it between
+         `createAfterSignup` and the redirect to this page — while the
+         affiliate was `pending_contract`, which is exactly what
+         `referralCodes.assertMayHoldACode` refuses. Gating that mint without
+         moving it left every new affiliate signed, activated and holding no
+         code, with nothing in the dashboard able to create one.
+
+         In the same transaction as the activation on purpose: an affiliate is
+         never activated without their code, and a signature that fails leaves
+         neither behind. Idempotent, so re-signing a superseded version keeps
+         the code they already publish. */
+      await mintCodeFor(ctx, affiliate._id);
     }
 
     return signatureId;
