@@ -103,11 +103,36 @@ Worth knowing before writing code that touches media:
   then unreachable. That is what happened to `categories`, `blogs`, `blog-auto`,
   `storefront` and `avatars`, which `convex/storageUpload.ts` accepted while the
   proxy refused them.
+- **Two of those folders need a session to read.** `users/` and `avatars/` hold
+  what an account holder uploaded about themselves; the other nine hold the
+  restaurant's own published media, which a storefront visitor with no session
+  has to be able to render. The split is declared as `PRIVATE_S3_FOLDERS` beside
+  the folder list, and `GET /api/files` refuses a private key to an anonymous
+  caller with a 404 — the same answer as a key that does not exist, so the
+  refusal leaks nothing.
+
+  Their responses carry `Cache-Control: private, no-store` rather than the
+  year-long `public, immutable` the storefront's media gets. That is not a
+  detail: a `public` response invites any shared cache — a CDN, a corporate
+  proxy — to keep the bytes and hand them to the next caller, who has no
+  session, which would undo the gate entirely.
+
+  The gate is *signed in*, not *signed in as the owner*. Keys are a flat
+  `users/<uuid>.<ext>` with no account in them, so ownership cannot be decided
+  from the request; it would need a new key shape and a migration of the objects
+  already stored. What it buys is that a leaked URL stops being a credential.
+
+  **A CDN in front of the bucket bypasses this.** Deployments that set
+  `AWS_S3_PUBLIC_BASE_URL` never reach the proxy, so the gate does not apply —
+  configure the CDN to refuse those two prefixes, or leave the variable unset.
 
 ## Related
 
 - Issues [#158](https://github.com/be-in-digital/beyours/issues/158) (P0-34) and
   [#176](https://github.com/be-in-digital/beyours/issues/176) (LANCEMENT-05).
+- The `users/` and `avatars/` gate is
+  [#188](https://github.com/be-in-digital/beyours/issues/188), decided as
+  option 2 (prefix split) of the three that issue offered.
 - [Environment variables](./environment-variables.md)
 - Hardening of the proxy's `Content-Type` handling and of the upload role check
   is tracked separately in

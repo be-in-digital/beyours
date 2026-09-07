@@ -68,52 +68,6 @@ export const getByUser = {
 }
 
 /**
- * Get team members by role
- */
-export const getByRole = {
-  args: {
-    storeId: v.id("stores"),
-    role: v.union(
-      v.literal("manager"),
-      v.literal("kitchen"),
-      v.literal("waiter"),
-      v.literal("delivery")
-    ),
-  },
-  handler: async (ctx: any, args: any) => {
-    return await ctx.db
-      .query("teamMembers")
-      .withIndex("by_storeId_role", (q: any) =>
-        q.eq("storeId", args.storeId).eq("role", args.role)
-      )
-      .collect()
-  },
-}
-
-/**
- * Find team member by email (for duplicate check)
- */
-export const getByEmail = {
-  args: {
-    email: v.string(),
-    storeId: v.optional(v.id("stores")),
-  },
-  handler: async (ctx: any, args: any) => {
-    const members = await ctx.db
-      .query("teamMembers")
-      .withIndex("by_email", (q: any) => q.eq("email", args.email))
-      .collect()
-
-    if (args.storeId) {
-      return members.filter(
-        (m: any) => m.storeId === args.storeId || m.allStores === true
-      )
-    }
-    return members
-  },
-}
-
-/**
  * Find team member by invitation token
  */
 // === MUTATIONS ===
@@ -244,46 +198,22 @@ export const resendInvitation = {
 }
 
 /**
- * Create a team member directly (legacy, for backward compat)
+ * There is deliberately no `create`.
+ *
+ * The mutation that used to sit here took `userId` and `invitationStatus` from
+ * the caller, so whoever could manage a roster could insert a row bound to an
+ * account of their choosing, pre-marked "accepted", with no invitation and no
+ * email. That row is not inert: `membershipUpdateEffect` derives a profile's
+ * role from the highest-ranked active membership and its permissions by union,
+ * so a planted row widens the person's rights the next time `update` runs on
+ * any of their memberships.
+ *
+ * Members are minted one way only — `teamMembersEmail.sendInvitationEmail`
+ * mints the token, sends the mail, and reaches the roster through
+ * `inviteInternal`; `acceptInvitation` then derives the identity from the
+ * session. Identity is never an argument. See #281, and #275 for the two
+ * mutations removed before it.
  */
-export const create = {
-  args: {
-    storeId: v.optional(v.id("stores")),
-    allStores: v.optional(v.boolean()),
-    userId: v.optional(v.string()),
-    name: v.optional(v.string()),
-    email: v.optional(v.string()),
-    role: v.union(
-      v.literal("manager"),
-      v.literal("kitchen"),
-      v.literal("waiter"),
-      v.literal("delivery")
-    ),
-    permissions: v.array(v.string()),
-    invitationStatus: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("accepted"),
-      v.literal("expired")
-    )),
-    isActive: v.boolean(),
-  },
-  handler: async (ctx: any, args: any) => {
-    const now = Date.now()
-    return await ctx.db.insert("teamMembers", {
-      storeId: args.storeId,
-      allStores: args.allStores ?? false,
-      userId: args.userId,
-      name: args.name ?? "",
-      email: args.email ?? "",
-      role: args.role,
-      permissions: args.permissions,
-      invitationStatus: args.invitationStatus ?? "accepted",
-      isActive: args.isActive,
-      createdAt: now,
-      updatedAt: now,
-    })
-  },
-}
 
 /**
  * Update team member (role, permissions, store assignment)
