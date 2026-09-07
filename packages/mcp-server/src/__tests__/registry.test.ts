@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { packages, importStatement, importBinding } from "../registry.js";
-import { PACKAGE_VERSIONS } from "../package-versions.js";
+import { MCP_SERVER_VERSION, PACKAGE_VERSIONS } from "../package-versions.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packagesDir = resolve(here, "..", "..", "..");
@@ -98,6 +98,17 @@ describe("registry versions", () => {
     for (const pkg of packages) {
       expect(pkg.version).toBe(PACKAGE_VERSIONS[pkg.name]);
     }
+  });
+
+  it("reports its own version, and not the one it was generated before", () => {
+    // MCP_SERVER_VERSION is what `server.ts` hands a client over the wire, and
+    // it is generated from this package's own package.json — but it was the one
+    // entry in the file nothing compared. The other nine are asserted above, so
+    // a stale generated file was caught for every package except the one doing
+    // the reporting. A release that bumps this package and forgets
+    // `sync:versions` would have gone out announcing the version before it.
+    // If this fails, run: pnpm --filter @be-in-digital/mcp-server sync:versions
+    expect(MCP_SERVER_VERSION).toBe(readManifest("mcp-server").version);
   });
 });
 

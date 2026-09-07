@@ -60,11 +60,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Full history, for `Report unreleased engine fixes` below: it dates
-          # each changeset by the commit that added it, and the default depth-1
-          # clone holds no such commit. The check degrades to "age unknown"
-          # rather than failing without this, but the age is half its point,
-          # and 160 commits of history is a rounding error to fetch.
+          # Full history, for the two release checks below. `Report unreleased
+          # engine fixes` dates each changeset by the commit that added it, and
+          # the default depth-1 clone holds no such commit; `Check engine source
+          # has a release to travel in` diffs each package against the commit
+          # that last moved its version, which is older still. Both degrade to
+          # "unknown" rather than failing without this, and both are worth less
+          # for it. 160 commits of history is a rounding error to fetch.
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -136,6 +138,28 @@ jobs:
       # would make that blocking — nothing passes it today. See #389.
       - name: Report unreleased engine fixes
         run: pnpm check:pending-release
+
+      # The other half of the same problem, and the half that cannot resolve
+      # itself. Above: a changeset exists and is waiting, which the next release
+      # consumes. Here: a package's `src/` has moved since its last version bump
+      # and NO changeset names it — so `changeset publish` answers
+      # `already published`, skips it, and the registry keeps serving an older
+      # build under a version number the repository has since changed. Nothing
+      # releases that. Ever.
+      #
+      # This one therefore gates. #209 records `integrations`, `marketing` and
+      # `ui` in exactly that state for two months, with the whole Uber Direct
+      # module (~950 lines) never reaching a client site — and it was invisible
+      # because `apps/themes` links the engine with `workspace:^` and compiles
+      # against the current source, so every check here was green by
+      # construction. The fix is one command on the pull request that introduced
+      # the change, which is the only moment anyone still knows what it was.
+      #
+      # It needs the `fetch-depth: 0` above: the version bump it diffs from is
+      # older than a depth-1 clone's single commit, and a check that cannot see
+      # the bump reports `unknown` rather than guessing.
+      - name: Check engine source has a release to travel in
+        run: pnpm check:source-drift
 
   type-check:
     name: Type Check
