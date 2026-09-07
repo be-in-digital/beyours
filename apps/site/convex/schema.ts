@@ -69,6 +69,11 @@ export default defineSchema({
       v.literal("pending"),
       v.literal("validated"),
       v.literal("payable"),
+      /* Claimed by a payout run and not yet confirmed paid. It exists so a
+         second run cannot pick the same commission up: `getPayableReferrals`
+         reads `payable` only, so a claimed row is invisible to it. A run that
+         fails puts the row back to `payable` — see stripeConnect.processPayouts. */
+      v.literal("paying"),
       v.literal("paid"),
       v.literal("cancelled"),
       v.literal("blocked"),

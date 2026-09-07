@@ -164,6 +164,51 @@ export const markValidatedAsPayable = internalMutation({
   },
 });
 
+/**
+ * Claims a payable commission for one payout run, or refuses.
+ *
+ * WHY. `processPayouts` transferred first and marked paid afterwards, with no
+ * key on the transfer. Two overlapping runs — and the cron is Mon+Thu, so a
+ * retry overlapping a run is not hypothetical — both read the same referral as
+ * payable and both called `transfers.create`: one commission, wired twice, one
+ * transfer id orphaned because only the second was recorded (#322).
+ *
+ * The claim is the first of two guards. It is a mutation, so it is
+ * serializable: of two runs reaching the same row, exactly one sees `payable`
+ * and the other is refused. The second guard is the idempotency key on the
+ * transfer itself, which covers the case this cannot — the same run retried
+ * after dying between the claim and the transfer.
+ *
+ * Returns whether the caller now owns the payout. Never throws: a refusal is
+ * an ordinary outcome of two runs meeting, not an error.
+ */
+export const claimForPayout = internalMutation({
+  args: { referralId: v.id("referrals") },
+  handler: async (ctx, args): Promise<boolean> => {
+    const referral = await ctx.db.get(args.referralId);
+    if (!referral || referral.status !== "payable") return false;
+    await ctx.db.patch(args.referralId, { status: "paying" });
+    return true;
+  },
+});
+
+/**
+ * Hands a claimed commission back when the payout did not happen.
+ *
+ * Without this a failed transfer would strand the row in `paying`, where no
+ * run looks — the affiliate would simply never be paid, and nothing would say
+ * so. Only ever moves `paying` back, so a row that reached `paid` in the
+ * meantime is left alone.
+ */
+export const releasePayoutClaim = internalMutation({
+  args: { referralId: v.id("referrals") },
+  handler: async (ctx, args) => {
+    const referral = await ctx.db.get(args.referralId);
+    if (referral?.status !== "paying") return;
+    await ctx.db.patch(args.referralId, { status: "payable" });
+  },
+});
+
 export const markPaid = internalMutation({
   args: {
     referralId: v.id("referrals"),
@@ -249,10 +294,16 @@ export const getMyStats = query({
     const pendingCount = referrals.filter(
       (r) => r.status === "pending",
     ).length;
+    /* `paying` counts with the commissions still owed, not with the paid ones:
+       the transfer is claimed but unconfirmed, and a failed run puts the row
+       back to `payable`. Leaving it out of both sets — which is what happens if
+       these filters are not told about it — makes an affiliate's earnings
+       silently drop by one commission for as long as a payout is in flight. */
     const validatedCount = referrals.filter(
       (r) =>
         r.status === "validated" ||
         r.status === "payable" ||
+        r.status === "paying" ||
         r.status === "paid",
     ).length;
     const paidCount = referrals.filter((r) => r.status === "paid").length;
@@ -264,7 +315,8 @@ export const getMyStats = query({
         (r) =>
           r.status === "pending" ||
           r.status === "validated" ||
-          r.status === "payable",
+          r.status === "payable" ||
+          r.status === "paying",
       )
       .reduce((sum, r) => sum + r.commissionCents, 0);
 
@@ -345,7 +397,15 @@ export const attachReferralInvoice = mutation({
     if (!referral || referral.referrerId !== affiliate._id) {
       throw new Error("Commission introuvable");
     }
-    if (referral.status === "paid" || referral.status === "cancelled") {
+    /* `paying` refuses too: the invoice is a precondition of the payout
+       (`markValidatedAsPayable`), so by then one exists and a transfer is
+       already in flight against it. Swapping it underneath would leave the
+       money moved on the strength of a document nobody kept. */
+    if (
+      referral.status === "paid" ||
+      referral.status === "paying" ||
+      referral.status === "cancelled"
+    ) {
       throw new Error("Cette commission n'accepte plus de facture");
     }
 

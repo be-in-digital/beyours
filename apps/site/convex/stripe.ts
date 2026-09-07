@@ -459,6 +459,26 @@ export const createCheckoutSession = action({
       payment_method_types: paymentMethodTypes,
       customer_email: args.customerEmail,
       customer_creation: "always",
+      /* ── Keep the card, or nothing can bill the maintenance ──
+         This is a one-off `payment` session; the maintenance subscription it
+         provisions is `charge_automatically`. Without this, NOTHING attached a
+         reusable payment method to the customer, so every first renewal
+         invoice — 240 to 2 400 € — landed on a customer with no card, failed,
+         and dunned a client a year after they bought (#322).
+
+         Stated per METHOD, not as `payment_intent_data.setup_future_usage`.
+         That form applies to the whole intent, and Stripe removes from
+         Checkout every method that cannot honour it — which would silently
+         drop Alma and Klarna, the BNPL options this page deliberately offers.
+         Per-method saves the card when a card is used and leaves BNPL on the
+         page untouched.
+
+         BNPL therefore still ends with no reusable method. That is a property
+         of Alma and Klarna, not something to work around here: the gap is made
+         VISIBLE at provisioning time instead — see `createSubscription`. */
+      payment_method_options: {
+        card: { setup_future_usage: "off_session" },
+      },
       client_reference_id: orderId,
       // Issues a real PDF invoice for the initial payment (build + 1st year of
       // maintenance). Without this, a Checkout in "payment" mode only produces a
@@ -536,6 +556,38 @@ export const createCheckoutSession = action({
   },
 });
 
+/**
+ * The payment method a renewal can actually be charged to, or null.
+ *
+ * Null is a real answer, not a failure. Alma and Klarna settle the first
+ * payment and cannot be reused off-session, so a BNPL buyer legitimately
+ * leaves no reusable method behind — the caller records that rather than
+ * pretending the subscription is billable.
+ *
+ * Never throws: this runs after the money is collected, on a webhook that must
+ * not 500 (see `handleCheckoutCompleted`). A Stripe read that fails here costs
+ * the default payment method, and the caller reports that; it must not cost
+ * the subscription itself.
+ */
+async function resolveReusablePaymentMethod(
+  stripe: Stripe,
+  paymentIntentId: string | undefined,
+): Promise<string | null> {
+  if (!paymentIntentId) return null;
+  try {
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const method = intent.payment_method;
+    return typeof method === "string" ? method : (method?.id ?? null);
+  } catch (err) {
+    console.error(
+      `[STRIPE] Lecture du PaymentIntent ${paymentIntentId} impossible — ` +
+        `l'abonnement sera créé sans moyen de paiement par défaut:`,
+      err,
+    );
+    return null;
+  }
+}
+
 /* ═══════════════════════════════════════════════
    Create the maintenance subscription after the 1st payment
    Called by the checkout.session.completed webhook
@@ -550,6 +602,11 @@ export const createSubscription = internalAction({
     billingPeriod: v.union(v.literal("monthly"), v.literal("yearly")),
     /* Decides whether the renewal invoices carry the late payment terms. */
     buyerType: v.union(v.literal("business"), v.literal("personal")),
+    /* The intent that collected the first period. Its payment method is what
+       every renewal after it will be charged to — see below. Optional because
+       a replay of an older event carries no such field, and a subscription
+       that already exists must still be adoptable. */
+    stripePaymentIntentId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<void> => {
     const stripe = getStripeOrTestMode("créer l'abonnement de maintenance");
@@ -580,8 +637,37 @@ export const createSubscription = internalAction({
        Stripe has no footer field on a subscription — the setting lives on the
        customer and applies to every invoice raised for them from now on. Set
        before the subscription so the first renewal already has it. */
+
+    /* ── The card the renewals will be charged to ──
+       The Checkout session saves it off-session (`payment_method_options.card`
+       there); this is what makes it BILLABLE. Both halves are needed: Stripe
+       attaches a saved method to the customer but does not make it the default
+       any invoice charges, so without this the renewal still finds nothing.
+
+       Read off the PaymentIntent rather than listing the customer's methods:
+       it names the method that actually paid for this order, which is the one
+       the buyer consented to keep.
+
+       On the CUSTOMER, deliberately, and not in the subscription parameters.
+       Stripe bills a subscription that names no `default_payment_method`
+       against `customer.invoice_settings.default_payment_method`, so the
+       effect is the same — and the parameters stay a pure function of the
+       order. `maintenanceIdempotencyKey` depends on that: Stripe refuses a
+       repeated key whose body changed, so a replay that resolved the method
+       differently (an unreadable intent, say) would turn a harmless retry into
+       a hard failure. See ./maintenanceSubscription. */
+    const defaultPaymentMethod = await resolveReusablePaymentMethod(
+      stripe,
+      args.stripePaymentIntentId,
+    );
+
     await stripe.customers.update(args.stripeCustomerId, {
-      invoice_settings: invoiceLegalSettings(args.buyerType),
+      invoice_settings: {
+        ...invoiceLegalSettings(args.buyerType),
+        ...(defaultPaymentMethod
+          ? { default_payment_method: defaultPaymentMethod }
+          : {}),
+      },
     });
 
     /* ── Does Stripe already bill this order? ──
@@ -643,6 +729,12 @@ export const createSubscription = internalAction({
       status: "active",
       currentPeriodStart: periodStartMs,
       currentPeriodEnd: periodEndMs,
+      /* A subscription with nothing to charge is not an error — Alma and
+         Klarna cannot be reused off-session — but it IS a sale that will dun a
+         client at the end of the trial unless somebody collects a card first.
+         Reported where ops look rather than left to be discovered by the
+         failed invoice. */
+      hasDefaultPaymentMethod: defaultPaymentMethod !== null,
     });
 
     console.log(
@@ -650,6 +742,95 @@ export const createSubscription = internalAction({
         (periodEndMs
           ? ` (trial until ${new Date(periodEndMs).toISOString()})`
           : ""),
+    );
+  },
+});
+
+/* ═══════════════════════════════════════════════
+   Cancel the maintenance subscription when the sale is undone
+   ═══════════════════════════════════════════════ */
+
+/**
+ * Stops billing the maintenance for an order whose payment was reversed.
+ *
+ * WHY THIS EXISTS. `handleChargeReversal` marked the payment refunded, the
+ * order cancelled and clawed the referral commission back — and left the
+ * subscription running. Nothing in this app could cancel one: a refunded
+ * ex-client kept a live `charge_automatically` subscription and was either
+ * dunned or charged outright at the end of the trial, for a sale that had been
+ * undone (#322). The money had already gone back; only the billing
+ * relationship stayed.
+ *
+ * Never throws. It is called from a Stripe webhook that must answer 200 — a
+ * 500 there makes Stripe replay the refund event for three days, re-running
+ * every effect around it. A cancellation that fails is reported to ops and
+ * retried by hand, which is strictly better than a retry storm.
+ */
+export const cancelSubscriptionForOrder = internalAction({
+  args: {
+    orderId: v.id("orders"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    const subscription = await ctx.runQuery(internal.subscriptions.getByOrderId, {
+      orderId: args.orderId,
+    });
+    if (!subscription) {
+      // A sale refunded before provisioning ever ran. Nothing to stop.
+      console.log(
+        `[STRIPE] Aucun abonnement à annuler pour la commande ${args.orderId}`,
+      );
+      return;
+    }
+    if (subscription.status === "canceled") return;
+
+    const stripe = getStripeOrTestMode("annuler l'abonnement de maintenance");
+
+    /* The local row is closed whether or not Stripe could be reached. Leaving
+       it "active" would tell every screen the client is still under
+       maintenance — and `/maintenance/status` reads it, so a refunded client
+       would keep pulling updates. */
+    if (stripe) {
+      try {
+        await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
+      } catch (err) {
+        /* Already gone at Stripe is the one benign failure: the end state we
+           want is the state we are in, so record it and carry on closing the
+           row. Anything else is reported and left for a human. */
+        const code = (err as { code?: string } | null)?.code;
+        if (code !== "resource_missing") {
+          console.error(
+            `[STRIPE] Annulation de l'abonnement ${subscription.stripeSubscriptionId} ` +
+              `(commande ${args.orderId}) impossible — à annuler à la main:`,
+            err,
+          );
+          await ctx.runMutation(internal.subscriptions.recordCancellationFailure, {
+            orderId: args.orderId,
+            stripeSubscriptionId: subscription.stripeSubscriptionId,
+            customerEmail: subscription.customerEmail,
+            detail: err instanceof Error ? err.message : String(err),
+          });
+          return;
+        }
+      }
+    }
+
+    await ctx.runMutation(internal.subscriptions.updateStatus, {
+      stripeSubscriptionId: subscription.stripeSubscriptionId,
+      status: "canceled" as const,
+      canceledAt: Date.now(),
+    });
+
+    await ctx.runMutation(internal.subscriptions.recordCancellation, {
+      orderId: args.orderId,
+      stripeSubscriptionId: subscription.stripeSubscriptionId,
+      customerEmail: subscription.customerEmail,
+      reason: args.reason,
+    });
+
+    console.log(
+      `[STRIPE] Abonnement ${subscription.stripeSubscriptionId} annulé ` +
+        `(commande ${args.orderId}) — ${args.reason}`,
     );
   },
 });

@@ -447,6 +447,10 @@ async function handleCheckoutCompleted(
           plan,
           billingPeriod,
           buyerType: order.buyerType,
+          /* The intent that just collected the first period. Its payment
+             method becomes what the renewals are charged to — without it the
+             subscription bills a customer with no card (#322). */
+          stripePaymentIntentId: paymentIntent ?? undefined,
         });
         await ctx.runMutation(internal.http.recordSubscriptionOutcome, {
           orderId: order._id,
@@ -1067,6 +1071,18 @@ async function handleChargeReversal(
   await ctx.runMutation(internal.orders.updateStatus, {
     orderId: payment.orderId,
     status: "cancelled" as const,
+  });
+
+  /* ── Stop billing the maintenance ──
+     The sale is undone; the subscription that bills it must go with it.
+     Without this the money went back and the `charge_automatically`
+     subscription stayed live, so a refunded ex-client was dunned — or charged
+     outright at the end of the trial — for a sale that no longer existed
+     (#322). Ordered before the commission clawback because it is the half that
+     keeps taking money from a customer. */
+  await ctx.runAction(internal.stripe.cancelSubscriptionForOrder, {
+    orderId: payment.orderId,
+    reason,
   });
 
   // Reverse / cancel the referral commission where applicable.
