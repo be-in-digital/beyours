@@ -219,6 +219,16 @@ describe('siteEnvOptionalSchema', () => {
       'STRIPE_BID_SECRET_KEY',
       'STRIPE_BID_WEBHOOK_SECRET',
       'STRIPE_BID_PRICE_MAINTENANCE',
+      // The six Auto Blog plan prices. `bidSubscription.ts` reads all seven
+      // STRIPE_BID_PRICE_* names; six of them were declared nowhere at all
+      // until 07/09/2026, so the paid tier was unprovisionable through the
+      // documented chain (issue #328).
+      'STRIPE_BID_PRICE_STARTER',
+      'STRIPE_BID_PRICE_PRO',
+      'STRIPE_BID_PRICE_ENTERPRISE',
+      'STRIPE_BID_PRICE_STARTER_ANNUAL',
+      'STRIPE_BID_PRICE_PRO_ANNUAL',
+      'STRIPE_BID_PRICE_ENTERPRISE_ANNUAL',
     ]) {
       expect(declared).toContain(name)
     }
