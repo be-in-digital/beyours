@@ -36,9 +36,25 @@ export const stepsSentTo = {
      * for the next subscriber. Convex aborts a transaction past 16,384
      * documents, which is a two-year-old mailing list.
      *
-     * The write path at `record` below has always used this index. The read is
-     * now on the same one: three equalities leave only the steps of this one
-     * firing, so the cost is the length of the sequence and nothing else.
+     * This index is not one `record` inherited: #370 created it by re-ordering
+     * the write path's own `by_automation_subscriber_step`, whose columns ended
+     * `stepId, occurrenceKey`. With `stepId` third, a read that does not know
+     * which step it is looking for could not narrow past `subscriberId` at all
+     * — which is why it narrowed on `automationId` and filtered. Moving
+     * `occurrenceKey` ahead of `stepId` is the fix; the rename records it, and
+     * both paths moved onto the new index together.
+     *
+     * So the column order here is load-bearing, not incidental history. Three
+     * equalities leave only the steps of this one firing, so the read costs the
+     * length of the sequence and nothing else, and `record` still equals all
+     * four. Restore the old order and this read is back to a scan of every run
+     * the automation ever wrote. Two tests stand where that would land:
+     * `__tests__/queryBounds.test.ts` counts the documents the handler
+     * materialises (four steps, four reads — not 8,000) against a double that
+     * reads the declared indexes, so a prefix this index cannot serve fails
+     * there rather than quietly filtering; and `tests/convex/query-bounds.test.ts`
+     * in both apps deploys the real schema, so a rename that lands in only one
+     * of these two files fails there.
      */
     const runs = await ctx.db
       .query("emailAutomationRuns")

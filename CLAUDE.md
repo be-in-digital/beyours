@@ -157,15 +157,28 @@ neither Neon nor Postgres appears anywhere in the codebase.
 
 ---
 
-## 🎯 Key Features — 29 shipping · 23 partial · 41 absent
+## 🎯 Key Features — 70 shipping · 6 partial · 17 absent, at `cdc6c81`
 
 This section used to be headed "181+", a number copied from
 `_project/FEATURES_DIAGRAM.md` whose own table sums to 201 and which counts
 things that are not features (six themes as six, seven team roles as seven).
-Neither figure was ever measured. The discovery audit of 1 September 2026 went
-through the 92 features enumerated below and found **29 shipping as described,
-23 partial, and 41 absent or unreachable** from `apps/themes` — the application
-a paying client actually runs. Quote that, or quote nothing.
+Neither figure was ever measured.
+
+**The figure above was measured on 7 September 2026, against the tree at
+`cdc6c81`, and it is true of that commit and of no other.** It counts the 93
+leaf features of the nine `FEATURES_DIAGRAM` categories this section reproduces:
+**70 ship, 6 are partial, and 17 are absent** from `apps/themes` — the
+application a paying client actually runs. Every row is listed with its evidence
+in `tasks/feature-audit-2026-09-07.md`, so the count can be checked rather than
+believed.
+
+It replaces **29 shipping · 23 partial · 41 absent**, measured at `009af63` on
+1 September 2026 and quoted here as binding for six days after thirty-four
+commits had moved it. `pnpm check:claude-md` now fails when the commit named
+above is not an ancestor of `HEAD` — which proves the pin is real, and proves
+nothing at all about whether the count still is. **Re-measure before you quote
+it, and redo the ledger when you do.** A figure with no commit attached is not
+a measurement; do not restore one.
 
 ### Multi-Store (5)
 Store config, hours, geolocation, status
@@ -245,19 +258,26 @@ deliberately not `customers:read`, which a waiter holds. Operator guide and the
 ### Design
 Design system in `packages/ui`. A site's look is fixed **at clone time** by
 `pnpm template:apply <slug>` — 5 verticals, 51 templates under
-`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). The
-storefront's palette and fonts are compile-time constants in
-`apps/*/app/globals.css` and `apps/*/site/fonts.ts`.
+`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). Those are
+the storefront's *defaults*, compile-time constants in `apps/*/app/globals.css`
+and `apps/*/site/fonts.ts`; per-store branding overrides them at runtime — see
+below.
 
 Logo, favicon and brand name are per store, through the CMS `branding` block on
 the `storefront-layout` page — the only branding the storefront header, the
 favicon, the JSON-LD and the admin sidebar actually read.
 
-**Per-store colours and typography are NOT applied.** `stores.updateBranding`
-writes `store.branding` correctly and *nothing reads it*, so the Design screen's
-Couleurs and Typographie tabs are disabled with a stated reason until
-`store.branding` and the CMS `branding` block are reconciled. Do not "fix" this
-by deleting the mutation — the write path is the half that works.
+**Per-store colours and typography reach a diner, since #353.**
+`stores.updateBranding` writes `store.branding`; `buildBrandingCss`
+(`packages/ui/src/lib/branding.ts`) derives design tokens from it; and
+`StoreTheme`, mounted in each app's `app/(storefront)/layout.tsx`, emits them
+unlayered so they beat the template's defaults in `globals.css`'s `@layer base`.
+So the template above is the starting point, not the ceiling. Only the role
+gates the Design screen now — `stores:write`, which `manager` does not hold.
+
+Typography carries one real limit, and the screen states it: nothing fetches a
+webfont, so a family other than the bundled Inter and Poppins renders only on a
+device that already has it.
 
 There is no runtime theme selector, and `themeId` is a schema field with zero
 writers and zero readers. (No predefined-theme package exists either —
