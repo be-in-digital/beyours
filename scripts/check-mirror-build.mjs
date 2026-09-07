@@ -35,7 +35,19 @@
  * nobody ever receives. `lib/mirror-tree.mjs` — the module the publisher
  * itself copies with — materialises the shippable tree. Every engine
  * dependency is then pinned to its tarball, transitive ones included via
- * `pnpm.overrides`, and `tsc --noEmit` runs over the result.
+ * `pnpm.overrides`, and the result is both typechecked and RUN: `tsc --noEmit`,
+ * then the template's own test suite.
+ *
+ * BOTH HALVES ARE LOAD-BEARING, and the second one is here because the first
+ * release cut with this check in place passed it and still shipped a red
+ * boilerplate. Four engine packages (`admin`, `convex-functions`,
+ * `convex-schema`, `ui`) publish raw `src/*.ts` rather than a build. `tsc`
+ * reads that happily; Vitest refuses to transform it inside `node_modules`, so
+ * a client's own `pnpm test` died with
+ * ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING and a bare `React is not
+ * defined` while this check was green. A check that never executes the
+ * published tree cannot see a module that resolves, typechecks, and then fails
+ * to load.
  *
  * Packages are built first, because three of them (`core`, `restaurant`,
  * `cms`) publish `dist` and a tarball packed before the build would be empty
@@ -44,9 +56,9 @@
  * WHAT IT CANNOT SEE. Anything registry-side: a botched publish, a missing
  * tarball, an auth failure. It proves the CODE is consistent, not that the
  * upload happened — so it is a pre-flight, not a replacement for cloning
- * `beyours-boilerplate` and building it after a release. It also stops at
- * `tsc`: `next build` needs an application env and `convex deploy` needs a
- * live backend, neither of which belongs in a check.
+ * `beyours-boilerplate` and building it after a release. It also stops short
+ * of `next build` and `convex deploy`, which need an application env and a
+ * live backend respectively — neither belongs in a check.
  *
  * Deliberately NOT wired into CI: it builds and installs the whole engine, and
  * paying that on every run is a decision about CI time rather than about
@@ -139,13 +151,14 @@ try {
   log("→ installing (tarballs, the way a client resolves them)")
   run("pnpm", ["install", "--ignore-scripts", "--no-frozen-lockfile"], { cwd: tree, stdio: "inherit" })
 
+  const failed = []
+
   log("→ typechecking the published tree")
   try {
     run("npx", ["tsc", "--noEmit"], { cwd: tree, stdio: "inherit" })
   } catch {
-    console.error(
+    failed.push(
       [
-        "",
         "✗ the published tree does not typecheck.",
         "",
         "The template compiles here through the workspace link and would NOT compile",
@@ -157,10 +170,44 @@ try {
         "the import hides the defect and ships the same broken template.",
       ].join("\n"),
     )
-    process.exitCode = 1
   }
 
-  if (process.exitCode !== 1) log("\n✓ the published tree typechecks against the packed engine")
+  // A typecheck is not enough, and that is the lesson of the 2026-09-06
+  // release. `tsc` reads a package published as raw `src/*.ts` perfectly
+  // happily, so this check went green while the boilerplate's own CI died on
+  // ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING and a bare `React is not
+  // defined`. Four engine packages ship TypeScript rather than a build, Vitest
+  // does not transform `node_modules`, and nothing here had executed a single
+  // line of the published tree. Running the template's own suite is what makes
+  // this check see a module that resolves, typechecks, and cannot be loaded.
+  log("→ running the template's own tests against the published tree")
+  try {
+    run("pnpm", ["test"], { cwd: tree, stdio: "inherit" })
+  } catch {
+    failed.push(
+      [
+        "✗ the published tree does not pass its own tests.",
+        "",
+        "This is the half a typecheck cannot see: a module that resolves and",
+        "typechecks can still fail to LOAD for a client. The engine packages ship",
+        "TypeScript source rather than a build, so everything that has to transform",
+        "them must be told they are not ordinary `node_modules` — `next.config.ts`",
+        "says so with `transpilePackages`, and every other runner in the template",
+        "needs its own equivalent (Vitest: `test.server.deps.inline`).",
+        "",
+        "ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING, or a bare `React is not",
+        "defined` from a path inside `node_modules/@be-in-digital/`, is that and",
+        "nothing else.",
+      ].join("\n"),
+    )
+  }
+
+  if (failed.length) {
+    console.error("\n" + failed.join("\n\n"))
+    process.exitCode = 1
+  } else {
+    log("\n✓ the published tree typechecks and passes its tests against the packed engine")
+  }
   if (keep) log(`\ntree kept at ${tree}`)
 } finally {
   if (!keep) rmSync(work, { recursive: true, force: true })
