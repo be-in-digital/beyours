@@ -13,7 +13,8 @@ const statusValidator = v.union(
   v.literal("sending"),
   v.literal("sent"),
   v.literal("paused"),
-  v.literal("cancelled")
+  v.literal("cancelled"),
+  v.literal("failed")
 )
 
 const statsValidator = v.object({
@@ -178,7 +179,7 @@ export const cancel = {
   handler: async (ctx: any, args: any) => {
     const campaign = await ctx.db.get(args.id)
     if (!campaign) throw new Error("Campagne introuvable")
-    if (!["draft", "scheduled", "paused"].includes(campaign.status)) {
+    if (!["draft", "scheduled", "paused", "failed"].includes(campaign.status)) {
       throw new Error("Cette campagne ne peut pas être annulée")
     }
     await ctx.db.patch(args.id, {
@@ -208,11 +209,18 @@ export const markSending = {
   handler: async (ctx: any, args: any) => {
     const campaign = await ctx.db.get(args.id)
     if (!campaign) throw new Error("Campagne introuvable")
-    if (!["draft", "scheduled", "paused"].includes(campaign.status)) {
+    // `failed` is relaunchable, and that is the point of having it: the owner
+    // fixes what the reason names — restores the template, re-creates the
+    // segment — and presses "Relancer". The cursor is untouched, so the send
+    // resumes where it stopped rather than mailing the first batch twice.
+    if (!["draft", "scheduled", "paused", "failed"].includes(campaign.status)) {
       throw new Error("Cette campagne ne peut pas être envoyée dans son état actuel")
     }
     await ctx.db.patch(args.id, {
       status: "sending",
+      // Cleared here rather than left to rot: a stale reason under a running
+      // campaign reads as a live problem.
+      failureReason: undefined,
       sentAt: Date.now(),
       updatedAt: Date.now(),
     })
@@ -230,6 +238,44 @@ export const markSent = {
     await ctx.db.patch(args.id, {
       status: "sent",
       completedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+  },
+}
+
+/**
+ * Stop the send and say why, on the screen the owner is looking at.
+ *
+ * WHY THIS EXISTS: `sendBatch` had exactly one reaction to a template, a config
+ * or a segment it could not read — `console.error` and `return`. The campaign
+ * stayed at `sending` for ever. The owner saw "En cours" against a send that had
+ * stopped hours earlier, the only trace was a log line no restaurant can read,
+ * and "Relancer" restarted a send that would stop again at the same place.
+ *
+ * `reason` is the sentence shown under the campaign's name, so it has to name
+ * the thing to fix — the template that is missing, the segment that is gone —
+ * not "an error occurred".
+ *
+ * Internal: the send action is the only caller, and a campaign nobody sends
+ * cannot fail.
+ */
+export const markFailed = {
+  args: {
+    id: v.id("emailCampaigns"),
+    reason: v.string(),
+  },
+  handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) return
+
+    // Only a send in flight can fail. A campaign the owner paused or cancelled
+    // between two batches has already been given a state by a human, and a late
+    // batch must not overwrite it.
+    if (campaign.status !== "sending") return
+
+    await ctx.db.patch(args.id, {
+      status: "failed",
+      failureReason: args.reason,
       updatedAt: Date.now(),
     })
   },

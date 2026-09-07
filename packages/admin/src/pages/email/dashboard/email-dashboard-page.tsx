@@ -36,6 +36,7 @@ const CAMPAIGN_STATUS_LABELS: Record<string, string> = {
   sent: "Envoyée",
   paused: "En pause",
   cancelled: "Annulée",
+  failed: "Échouée",
 }
 
 const CAMPAIGN_STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -45,6 +46,7 @@ const CAMPAIGN_STATUS_VARIANTS: Record<string, "default" | "secondary" | "destru
   sent: "default",
   paused: "secondary",
   cancelled: "destructive",
+  failed: "destructive",
 }
 
 const AUTOMATION_TRIGGER_LABELS: Record<string, string> = {

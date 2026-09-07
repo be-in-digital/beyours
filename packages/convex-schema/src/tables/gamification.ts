@@ -190,6 +190,27 @@ export const gamePlaysTable = defineTable({
   .index("by_storeId_playedAt", ["storeId", "playedAt"])
   .index("by_qrCodeId", ["qrCodeId"])
   .index("by_storeId_fingerprint", ["storeId", "fingerprint"])
+  /**
+   * "Has this game ever been played?" — asked by `games.remove` before it
+   * deletes anything.
+   *
+   * `gameId` is REQUIRED here, so a deleted game leaves every play it produced
+   * holding an id that resolves to nothing, and `v.id("games")` validates how
+   * an id is encoded rather than whether it still exists. Nothing complained.
+   * The guard needs one row to refuse on, and reading the establishment's whole
+   * play history to find it would make a delete cost more the longer the game
+   * has been running.
+   */
+  .index("by_gameId", ["gameId"])
+  /**
+   * The same question for `prizes.remove`, over the optional `prizeId` a
+   * winning play records.
+   *
+   * Optional, so it could be nulled rather than refused — and must not be: that
+   * field IS the record of what the diner won. Erasing it to make a delete
+   * succeed would rewrite the history the guard exists to protect.
+   */
+  .index("by_prizeId", ["prizeId"])
 
 /**
  * Prize Issuance table
@@ -262,6 +283,17 @@ export const prizeRedemptionsTable = defineTable({
    */
   .index("by_storeId_status_redeemedAt", ["storeId", "status", "redeemedAt"])
   .index("by_gamePlayId", ["gamePlayId"])
+  /**
+   * "Is anyone still owed this prize?" — asked by `prizes.remove`.
+   *
+   * `prizeId` is REQUIRED, and this is the reference that cost a diner a prize
+   * they had actually won: deleting the prize left the redemption standing at
+   * `pending`, with a redemption code the staff scanner resolves to nothing.
+   * `by_storeId_status_expiresAt` cannot answer it — the prize is not in that
+   * index, so the check would have to read every outstanding redemption in the
+   * establishment and compare in JavaScript.
+   */
+  .index("by_prizeId", ["prizeId"])
 
 /**
  * Game Referrals table

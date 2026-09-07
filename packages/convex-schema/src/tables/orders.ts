@@ -87,9 +87,9 @@ export const ordersTable = defineTable({
    * not change what the diner was billed.
    *
    * Optional: every order written before this field existed has none, and the
-   * marketplace paths (`createFromWebhook`, `saveFromPlatform`) write no tax at
-   * all because Uber Eats and Deliveroo account for it themselves. Both read as
-   * "no breakdown recorded", which is the truth, so no backfill is required for
+   * marketplace path (`createFromWebhook`) writes no tax at all because Uber
+   * Eats and Deliveroo account for it themselves. Both read as "no breakdown
+   * recorded", which is the truth, so no backfill is required for
    * `schemaValidation: true`.
    */
   taxBreakdown: v.optional(v.array(v.object({

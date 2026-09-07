@@ -94,3 +94,13 @@ export const promotionUsagesTable = defineTable({
   // first, so it cannot answer "this address, anywhere in this establishment" —
   // which is the only question a data-subject request asks.
   .index("by_storeId_usedAt", ["storeId", "usedAt"])
+  /**
+   * "Which use did this order burn?" — asked when the order is cancelled or
+   * deleted, so the diner gets their one use back.
+   *
+   * The row is written at checkout and was never unwritten: a cancelled
+   * couponed order spent the customer's single use and a slot of the campaign
+   * budget on an order that did not happen. Neither existing index can find it
+   * — both start at the promotion, and the cancellation knows the order.
+   */
+  .index("by_orderId", ["orderId"])

@@ -67,7 +67,14 @@ import { CampaignStatsDialog } from "./campaign-stats-dialog"
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Campaign = any
 
-type CampaignStatus = "draft" | "scheduled" | "sending" | "sent" | "paused" | "cancelled"
+type CampaignStatus =
+  | "draft"
+  | "scheduled"
+  | "sending"
+  | "sent"
+  | "paused"
+  | "cancelled"
+  | "failed"
 
 const STATUS_LABELS: Record<CampaignStatus, string> = {
   draft: "Brouillon",
@@ -76,6 +83,10 @@ const STATUS_LABELS: Record<CampaignStatus, string> = {
   sent: "Envoyée",
   paused: "En pause",
   cancelled: "Annulée",
+  // The send stopped and could not continue. `campaign.failureReason` says
+  // what to fix, and is shown under the badge — a status word on its own would
+  // be no better than the log line this replaced.
+  failed: "Échouée",
 }
 
 const STATUS_VARIANTS: Record<CampaignStatus, "default" | "secondary" | "destructive" | "outline"> = {
@@ -85,6 +96,7 @@ const STATUS_VARIANTS: Record<CampaignStatus, "default" | "secondary" | "destruc
   sent: "default",
   paused: "secondary",
   cancelled: "destructive",
+  failed: "destructive",
 }
 
 export function EmailCampaignsPage() {
@@ -400,6 +412,11 @@ export function EmailCampaignsPage() {
                       <Badge variant={STATUS_VARIANTS[campaign.status as CampaignStatus] ?? "outline"}>
                         {STATUS_LABELS[campaign.status as CampaignStatus] ?? campaign.status}
                       </Badge>
+                      {campaign.status === "failed" && campaign.failureReason && (
+                        <p className="mt-1 max-w-[260px] text-xs text-muted-foreground">
+                          {campaign.failureReason}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm">
                       {campaign.stats?.sent > 0
@@ -474,8 +491,10 @@ export function EmailCampaignsPage() {
                               Mettre en pause
                             </DropdownMenuItem>
                           )}
-                          {/* Resume — while paused */}
-                          {campaign.status === "paused" && (
+                          {/* Resume — while paused, or after a failed send the
+                              owner has fixed. The cursor is kept, so it picks
+                              up where it stopped. */}
+                          {["paused", "failed"].includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => handleSend(campaign)}
                               disabled={sendingId === campaign._id}
@@ -485,14 +504,14 @@ export function EmailCampaignsPage() {
                             </DropdownMenuItem>
                           )}
                           {/* Cancel */}
-                          {["draft", "scheduled", "paused"].includes(campaign.status) && (
+                          {["draft", "scheduled", "paused", "failed"].includes(campaign.status) && (
                             <DropdownMenuItem onClick={() => handleCancel(campaign._id)}>
                               <XCircle className="mr-2 h-4 w-4" />
                               Annuler
                             </DropdownMenuItem>
                           )}
                           {/* Delete */}
-                          {["draft", "cancelled"].includes(campaign.status) && (
+                          {["draft", "cancelled", "failed"].includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => setDeletingId(campaign._id)}
                               className="text-destructive"
