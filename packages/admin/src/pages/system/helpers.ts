@@ -40,6 +40,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   privacy_export: "Export RGPD",
   privacy_erasure: "Effacement RGPD",
   privacy_retention_sweep: "Purge automatique",
+  payment_collection_refused: "Encaissement refusé",
 }
 
 export function formatActionLabel(action: string): string {

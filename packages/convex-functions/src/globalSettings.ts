@@ -85,10 +85,37 @@ export function resolveCardPaymentAvailability(input: {
   cardProvider: CardProvider
   stripeSecretKeyPresent: boolean
   connection: { status: string; encryptedAccessToken?: string } | null
+  /**
+   * What the provider said last time anything asked it — see
+   * `globalSettings.cardProviderHealth`. Absent means nobody has asked, which
+   * is not the same as a refusal and must not read as one.
+   */
+  providerHealth?: { provider: string; usable: boolean } | null
 }): boolean {
   // The owner's own answer, and the only one no amount of detection can
   // infer: a cash-only establishment with Stripe perfectly well connected.
   if (input.cardProvider === "none") return false
+
+  // A verdict the PROVIDER gave, and the only thing that can answer the
+  // question `startsWith("sk_")` was pretending to answer: whether the
+  // credentials work. A well-formed key that Stripe rejects — revoked, rolled,
+  // belonging to another account — armed the tile and sent every diner into
+  // the redacted "Server Error" #374 removed (#411). Read before the provider
+  // branches because it applies to both, and only when it is about the
+  // provider actually in use: a leftover Stripe verdict must not disarm a
+  // deployment that has since moved to SumUp.
+  //
+  // It does NOT catch a test key on a live deployment. Stripe accepts an
+  // `sk_test_` key and answers 200, so no health check can see that; it is a
+  // different question and nothing here asks it.
+  if (
+    input.providerHealth &&
+    input.providerHealth.provider === input.cardProvider &&
+    !input.providerHealth.usable
+  ) {
+    return false
+  }
+
   if (input.cardProvider === "sumup") {
     return (
       input.connection?.status === "connected" &&
@@ -148,8 +175,109 @@ export const cardPaymentAvailability = {
         stripeSecretKeyPresent:
           typeof stripeKey === "string" && stripeKey.startsWith("sk_"),
         connection,
+        // The shape check above says the string LOOKS like a key. Only the
+        // provider can say whether it works, so what it said is read here.
+        providerHealth: cardOffered
+          ? await readCardProviderHealth(ctx, cardProvider)
+          : null,
       }),
       cardOffered,
+    }
+  },
+}
+
+/** How much of a provider's refusal message is worth keeping. */
+export const MAX_HEALTH_DETAIL_CHARS = 500
+
+/**
+ * Read the stored verdict for one card provider, if there is one.
+ *
+ * Its own table, not a field on `globalSettings` — see
+ * `packages/convex-schema/src/tables/cardProviderHealth.ts` for why both
+ * halves of that mattered.
+ */
+export async function readCardProviderHealth(
+  ctx: any,
+  provider: string
+): Promise<{ provider: string; usable: boolean } | null> {
+  return await ctx.db
+    .query("cardProviderHealth")
+    .withIndex("by_provider", (q: any) => q.eq("provider", provider))
+    .first()
+}
+
+/**
+ * Write down what the card provider said about our credentials.
+ *
+ * WHY THIS EXISTS: `cardPaymentAvailability` is a query and a query cannot
+ * call Stripe, so the only check it could make was on the SHAPE of the key —
+ * `startsWith("sk_")`. A well-formed key the API rejects passed that, armed
+ * the checkout's card tile, and sent the diner into the redacted "Server
+ * Error" that #374 exists to remove (#411). The verdict has to be recorded by
+ * something that CAN ask, and read here.
+ *
+ * Two writers, deliberately. The hourly probe asks on purpose, which is what
+ * bounds RECOVERY: once a verdict disarms the tile, no diner can reach the
+ * checkout path, so the checkout cannot be what discovers that the key has
+ * been put right. The checkout is what bounds DETECTION — it reports what it
+ * learnt for free, so a key revoked between two probes costs one diner rather
+ * than an hour of them.
+ *
+ * ONLY ON A CHANGE. `globalSettings` and this table are read on the order
+ * path, and Convex conflicts a write with every concurrent transaction that
+ * read the document: rewriting a row on every successful checkout would make
+ * a busy service lose OCC rounds over bookkeeping. So `checkedAt` means "when
+ * this verdict was recorded", which is when it last moved — the probe proves
+ * freshness by running, not by writing.
+ *
+ * Never throws. Its callers are a money path and a cron, and neither may fail
+ * over bookkeeping about a check.
+ */
+export const recordCardProviderHealth = {
+  args: {
+    provider: v.union(v.literal("stripe"), v.literal("sumup")),
+    usable: v.boolean(),
+    detail: v.optional(v.string()),
+  },
+  handler: async (
+    ctx: any,
+    args: { provider: string; usable: boolean; detail?: string }
+  ): Promise<void> => {
+    try {
+      const existing = await ctx.db
+        .query("cardProviderHealth")
+        .withIndex("by_provider", (q: any) => q.eq("provider", args.provider))
+        .first()
+
+      const detail = args.detail
+        ? args.detail.slice(0, MAX_HEALTH_DETAIL_CHARS)
+        : undefined
+
+      if (existing) {
+        // Same answer as last time: say nothing. See the docblock — this row
+        // is read on the order path.
+        if (existing.usable === args.usable && existing.detail === detail) {
+          return
+        }
+        await ctx.db.patch(existing._id, {
+          usable: args.usable,
+          checkedAt: Date.now(),
+          detail,
+        })
+        return
+      }
+
+      await ctx.db.insert("cardProviderHealth", {
+        provider: args.provider,
+        usable: args.usable,
+        checkedAt: Date.now(),
+        ...(detail ? { detail } : {}),
+      })
+    } catch (failure) {
+      console.error(
+        "[globalSettings] could not record card provider health:",
+        failure
+      )
     }
   },
 }

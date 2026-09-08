@@ -273,6 +273,27 @@ describe("the maintenance subscription can actually be billed", () => {
    * subscription is still created — refusing it would refuse the sale — but
    * the gap has to reach an operator while there is still a year to fix it.
    */
+  /**
+   * The summary an operator reads has to name the CAUSE, and these three are
+   * not the same thing (#411, B2-F5).
+   *
+   * `resolveReusablePaymentMethod` answers "nothing to charge" in three
+   * unrelated situations — a genuine BNPL sale, a `paymentIntents.retrieve`
+   * that threw, and an event carrying no intent id at all — and the feed
+   * asserted the first for all three. An operator reading « Paiement initial
+   * réglé en BNPL (Alma/Klarna) » about a Stripe outage goes to ask a customer
+   * for a card they may well have already given, and never learns that a card
+   * IS on the intent and simply was not attached. A report that names the
+   * wrong cause is worse than one that names none.
+   */
+  async function reportedSummary(t: ReturnType<typeof convexTest>) {
+    const activity = await t.run((ctx) => ctx.db.query("saActivity").collect());
+    const line = activity.find(
+      (a) => a.action === "subscription_without_payment_method",
+    );
+    return line?.summary ?? "";
+  }
+
   test("a BNPL sale is provisioned, and reported as unbillable", async () => {
     const t = convexTest(schema, modules);
     const orderId = await seedOrder(t);
@@ -295,6 +316,10 @@ describe("the maintenance subscription can actually be billed", () => {
     expect(
       activity.map((a) => a.action),
     ).toContain("subscription_without_payment_method");
+
+    // The intent WAS read and carries no reusable method. This is the one case
+    // that genuinely is BNPL, and the only one allowed to say so.
+    expect(await reportedSummary(t)).toContain("BNPL");
   });
 
   /**
@@ -323,6 +348,70 @@ describe("the maintenance subscription can actually be billed", () => {
     expect(
       activity.map((a) => a.action),
     ).toContain("subscription_without_payment_method");
+  });
+
+  test("an unreadable intent is not reported as a BNPL sale", async () => {
+    // THE BUG. Nothing about a failed Stripe read says how the customer paid.
+    const t = convexTest(schema, modules);
+    const orderId = await seedOrder(t);
+    stripeFake.intentReadFails = true;
+
+    await t.action(internal.stripe.createSubscription, {
+      orderId,
+      stripeCustomerId: "cus_3",
+      customerEmail: "chef@trattoria.fr",
+      plan: "premium",
+      billingPeriod: "yearly",
+      buyerType: "business",
+      stripePaymentIntentId: "pi_unreadable",
+    });
+
+    const summary = await reportedSummary(t);
+    expect(summary).not.toContain("BNPL");
+    expect(summary).not.toContain("Alma");
+    expect(summary).toContain("PaymentIntent");
+    // And it asks for the thing that actually helps: go and look at Stripe.
+    expect(summary).toContain("tableau de bord Stripe");
+  });
+
+  test("an event carrying no intent id is not reported as a BNPL sale either", async () => {
+    // A replay of an older delivery carries no `stripePaymentIntentId`. That
+    // said nothing about the payment method, and was reported as BNPL too.
+    const t = convexTest(schema, modules);
+    const orderId = await seedOrder(t);
+
+    await t.action(internal.stripe.createSubscription, {
+      orderId,
+      stripeCustomerId: "cus_4",
+      customerEmail: "chef@trattoria.fr",
+      plan: "premium",
+      billingPeriod: "yearly",
+      buyerType: "business",
+    });
+
+    const summary = await reportedSummary(t);
+    expect(summary).not.toContain("BNPL");
+    expect(summary).toContain("aucun PaymentIntent");
+  });
+
+  test("says nothing at all when a card was attached", async () => {
+    // The ordinary outcome. A feed line here would be noise in the one place
+    // that has to stay readable.
+    const t = convexTest(schema, modules);
+    const orderId = await seedOrder(t);
+    stripeFake.intents.set("pi_card", { id: "pi_card", payment_method: "pm_1" });
+
+    await t.action(internal.stripe.createSubscription, {
+      orderId,
+      stripeCustomerId: "cus_5",
+      customerEmail: "chef@trattoria.fr",
+      plan: "premium",
+      billingPeriod: "yearly",
+      buyerType: "business",
+      stripePaymentIntentId: "pi_card",
+    });
+
+    expect(await reportedSummary(t)).toBe("");
   });
 });
 
@@ -443,6 +532,89 @@ describe("a full refund stops the maintenance billing", () => {
     expect(
       activity.map((a) => a.action),
     ).toContain("subscription_cancellation_failed");
+  });
+
+  /**
+   * A deployment with no Stripe key at all (#411, B2-F3).
+   *
+   * THE BUG. #384's cancel call reaches `getStripeOrTestMode`, which throws
+   * `StripeNotConfiguredError` when there is neither a key nor the deliberate
+   * test flag. That throw left the action, left `handleChargeReversal`, and
+   * left the route as a 500 — measured: `[PROBE] charge.refunded HTTP status =
+   * 500`. Stripe then retried `charge.refunded` for three days, replaying a
+   * reversal that had ALREADY marked the payment refunded, cancelled the order
+   * and clawed the commission back, and nobody was told.
+   *
+   * Refusing was pointless on its own terms as well: with no key there is
+   * nothing to send a cancellation to.
+   */
+  test("no Stripe key answers 2xx and reports the subscription for a human", async () => {
+    const t = convexTest(schema, modules);
+    await seedPaidSaleWithSubscription(t);
+    // Neither a key nor the deliberate no-payment flag.
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.BEYOURS_TEST_CHECKOUT;
+
+    const response = await postSigned(
+      t,
+      ROUTE,
+      chargeRefunded("pi_refunded"),
+      SECRET,
+    );
+    expect(response.status).toBe(200);
+    await drainScheduled(t);
+
+    // The reversal itself still happened.
+    const payments = await t.run((ctx) => ctx.db.query("payments").collect());
+    expect(payments[0]?.status).toBe("refunded");
+
+    // Reported, because if the key was REMOVED after this subscription was
+    // created then Stripe may still be billing it and a human has to cancel it
+    // by hand.
+    const activity = await t.run((ctx) => ctx.db.query("saActivity").collect());
+    expect(activity.map((a) => a.action)).toContain(
+      "subscription_cancellation_failed",
+    );
+
+    // AND closed locally. `resolveEntitlement` reads `active` as entitled
+    // whatever the period end, so a row left alone here would serve a refunded
+    // client « Maintenance à jour » and engine updates for ever.
+    const subs = await t.run((ctx) => ctx.db.query("subscriptions").collect());
+    expect(subs[0]?.status).toBe("canceled");
+    expect(subs[0]?.canceledAt).toBeDefined();
+  });
+
+  test("a refunded client on a keyless deployment stops being entitled", async () => {
+    // The consequence stated end to end, through the query `/maintenance/status`
+    // actually calls.
+    const t = convexTest(schema, modules);
+    await seedPaidSaleWithSubscription(t);
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.BEYOURS_TEST_CHECKOUT;
+
+    await postSigned(t, ROUTE, chargeRefunded("pi_refunded"), SECRET);
+    await drainScheduled(t);
+
+    const sub = await t.run((ctx) => ctx.db.query("subscriptions").first());
+    expect(sub?.status).not.toBe("active");
+  });
+
+  test("the delivery is retired, so Stripe stops retrying it", async () => {
+    // The other half of the 500: the event row stayed unprocessed, so every
+    // retry for three days was re-admitted and ran the whole reversal again.
+    const t = convexTest(schema, modules);
+    await seedPaidSaleWithSubscription(t);
+    delete process.env.STRIPE_SECRET_KEY;
+    delete process.env.BEYOURS_TEST_CHECKOUT;
+
+    await postSigned(t, ROUTE, chargeRefunded("pi_refunded"), SECRET);
+    await drainScheduled(t);
+
+    const events = await t.run((ctx) =>
+      ctx.db.query("stripe_events").collect(),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]?.processed).toBe(true);
   });
 
   /** A subscription Stripe has already lost is the state we wanted anyway. */

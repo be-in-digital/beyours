@@ -118,6 +118,13 @@ export const REFERRAL_STATUS: Record<string, Meta> = {
   pending: { label: "En attente", variant: "warning" },
   validated: { label: "Validé", variant: "info" },
   payable: { label: "À verser", variant: "primary" },
+  /* Claimed by a payout run, transfer not yet confirmed. #384 added it to the
+     schema and to the affiliate's own totals and gave it no label here, so
+     `badgeFrom`'s fallback rendered the raw English literal `paying` in a grey
+     "unknown" badge, in a French console, for the whole window in which a
+     commission is in flight (#411). `referral-status-vocabulary.test.ts` now
+     fails a build over the next one. */
+  paying: { label: "Versement en cours", variant: "info" },
   paid: { label: "Payé", variant: "success" },
   cancelled: { label: "Annulé", variant: "muted" },
   blocked: { label: "Bloqué", variant: "danger" },
