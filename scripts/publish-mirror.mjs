@@ -41,6 +41,16 @@
  * What crosses and what does not is `lib/mirror-tree.mjs`, shared with
  * `check-mirror-css.mjs` so the tree CI builds is the tree this pushes.
  *
+ * Three gates stand between the rewrite and the push, in widening order:
+ * `lib/engine-exports.mjs` asks whether each engine subpath the tree imports
+ * resolves in the published tarball and whether its file ships; then
+ * `lib/mirror-overrides.mjs` reads the security floors back out of the lockfile
+ * pnpm actually wrote; then `lib/mirror-typecheck.mjs` installs the pinned
+ * versions in a sandbox and COMPILES the tree against them. The last one exists
+ * because the first two reason about packaging and a symbol added inside a
+ * module without a version bump leaves the packaging perfect — #408 shipped
+ * exactly that, and the boilerplate has been red on `TS2339` ever since.
+ *
  * The mirror's history is preserved — a plain commit on top, never a
  * force-push. Every client site has a `template` remote pointing at it and
  * merges from it: rewriting history would break `pnpm update:template`
@@ -55,7 +65,7 @@
  */
 
 import { execFileSync } from "node:child_process"
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -75,6 +85,11 @@ import {
   parseLockfileOverrides,
 } from "./lib/mirror-overrides.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
+import {
+  assertTypecheckScript,
+  checkPinnedTree,
+  describePinnedTreeFailure,
+} from "./lib/mirror-typecheck.mjs"
 // The same lookup `publish-plan.mjs` gates the release on. One copy, so the
 // mirror cannot pin a version the gate never asked about.
 import { publishedVersion, REGISTRY } from "./lib/registry.mjs"
@@ -372,6 +387,52 @@ try {
   const missing = missingFromLockfile(overrides, written)
   if (missing.length > 0) fail(describeMissing(missing))
   log(`   ${Object.keys(overrides).length} override(s) present in pnpm-lock.yaml`)
+
+  // The gate the two above cannot be: a compiler, reading the published
+  // modules rather than reasoning about their packaging.
+  //
+  // `unresolvableImports` asks whether each subpath resolves and whether its
+  // target ships. Both are questions about the module. A symbol added inside a
+  // module without a version bump answers yes to both and still breaks every
+  // client — which is #408: `convex-functions@5.0.0` ships
+  // `src/emailCampaigns.ts` and exports `./emailCampaigns`, the tree reads
+  // `defs.markFailed` off it, the gate above reported "9 package(s)
+  // verified", and the boilerplate has been red ever since. See
+  // `lib/mirror-typecheck.mjs`.
+  //
+  // In a SANDBOX, not in the clone. The clone is what gets committed and
+  // pushed to the repository every client site merges from, and an install
+  // leaves `node_modules` and build state in it; that they are gitignored
+  // today is not a property worth betting a client's repository on. The
+  // sandbox is the same tree by construction — the same `materializeMirror`
+  // call over the same source, the same rewritten package.json string, and the
+  // lockfile the clone just generated.
+  //
+  // Before the "already up to date" exit below rather than after it, because
+  // the question is not only "is what we are about to push sound" but "is what
+  // a client is running right now sound". A sync with nothing to publish, over
+  // a delivered template that cannot compile, is exactly the state #408
+  // describes and exactly the state that reported success throughout.
+  //
+  // WHAT REFUSING COSTS, stated plainly because it is easy to discover the hard
+  // way: this gate does not block only the change that outran the release. It
+  // blocks EVERY change while the published engine is behind — an unrelated
+  // storefront hotfix included. That is deliberate. A hotfix delivered on top
+  // of a template a client cannot compile is not delivered; it is queued behind
+  // a release, and the release is the fix. `pnpm check:pending-release` names
+  // the changesets waiting, and the refusal message points at it. Where that
+  // trade is genuinely wrong for an incident, the answer is to cut the release,
+  // never to skip this.
+  log("→ compiling the tree against the versions it pins")
+  const badScript = assertTypecheckScript(JSON.parse(contents).scripts)
+  if (badScript) fail(badScript)
+  const sandbox = join(work, "typecheck")
+  materializeMirror(SOURCE, sandbox, { prune: false })
+  writeFileSync(join(sandbox, "package.json"), contents)
+  copyFileSync(lockfile, join(sandbox, "pnpm-lock.yaml"))
+  const compiled = checkPinnedTree(sandbox)
+  if (!compiled.ok) fail(describePinnedTreeFailure(compiled))
+  log("   installs from the registry and typechecks")
 
   const status = run("git", ["status", "--porcelain"], { cwd: clone })
   if (!status) done("✓ the mirror is already up to date")

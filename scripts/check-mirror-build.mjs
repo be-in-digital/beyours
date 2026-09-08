@@ -4,13 +4,18 @@
  * TARBALLS — the artefact a client actually installs — and fails if it does
  * not typecheck.
  *
- * WHY THIS EXISTS. Nothing else in this repository ever compiles the published
- * shape. CI builds `apps/themes` through the pnpm workspace link, against
- * `packages/*` at HEAD. A client installs what the registry holds. The two are
- * routinely different code, and the difference is invisible here:
- * `check-mirror-css.mjs` does materialise the client tree, but it assembles
- * `node_modules` by SYMLINKING `packages/<name>`, so it never sees a pinned
- * version either — it is measuring the stylesheet, not the resolution.
+ * WHY THIS EXISTS. No CHECK in this repository compiles the published shape.
+ * CI builds `apps/themes` through the pnpm workspace link, against `packages/*`
+ * at HEAD. A client installs what the registry holds. The two are routinely
+ * different code, and the difference is invisible here: `check-mirror-css.mjs`
+ * does materialise the client tree, but it assembles `node_modules` by
+ * SYMLINKING `packages/<name>`, so it never sees a pinned version either — it
+ * is measuring the stylesheet, not the resolution.
+ *
+ * The sync compiles it (`lib/mirror-typecheck.mjs`), which is the last line
+ * rather than the first: it runs after the merge, against what the registry
+ * already serves, and all it can do by then is refuse to deliver. This runs
+ * before, against the code you are about to publish.
  *
  * The cost of that gap, measured: `be-in-digital/beyours-boilerplate` ran 71
  * failures to 1 success over its last 100 CI runs, failing Typecheck with
@@ -22,11 +27,13 @@
  * breakage into existing client sites. It was the third occurrence of the
  * class (#209, #283 are earlier ones).
  *
- * `publish-mirror.mjs`'s gate now refuses a sync whose pinned versions cannot
- * resolve what the tree imports, which stops the mirror SHIPPING it. This is
- * the other half: it tells you the same thing before the release, by building
- * the thing rather than reasoning about its `exports` map. A subpath that
- * resolves but whose file was never shipped fails here and passes there.
+ * `publish-mirror.mjs` refuses such a sync twice over — its pinned versions
+ * must resolve what the tree imports, and the tree must then COMPILE against
+ * them — which stops the mirror shipping it. Both of those measure what is
+ * already published. This measures what is about to be: the tarballs are packed
+ * from `packages/*` at HEAD, so a break introduced by the release you are
+ * cutting shows up here and cannot show up there until the release has gone
+ * out. Run it before, and again after.
  *
  * HOW. `pnpm pack` every engine package — NOT `npm pack`: only pnpm rewrites
  * `workspace:*`/`workspace:^` to a concrete version, and `pnpm publish` is what
@@ -35,8 +42,8 @@
  * nobody ever receives. `lib/mirror-tree.mjs` — the module the publisher
  * itself copies with — materialises the shippable tree. Every engine
  * dependency is then pinned to its tarball, transitive ones included via
- * `pnpm.overrides`, and the result is both typechecked and RUN: `tsc --noEmit`,
- * then the template's own test suite.
+ * `pnpm.overrides`, and the result is both typechecked and RUN — the template's
+ * own `pnpm typecheck`, then its own test suite.
  *
  * BOTH HALVES ARE LOAD-BEARING, and the second one is here because the first
  * release cut with this check in place passed it and still shipped a red
@@ -153,9 +160,16 @@ try {
 
   const failed = []
 
+  // The template's own script, not a bare `tsc --noEmit`, and for the same
+  // reason `lib/mirror-typecheck.mjs` runs it in the sync: `apps/themes`
+  // defines it as `tsc --noEmit && tsc --noEmit -p convex/tsconfig.json`, and
+  // the root project EXCLUDES `convex/` — it reaches a backend module only
+  // where app code transitively imports one. A bare `tsc` here checked the
+  // backend by accident, and would have stopped doing so the moment a
+  // `convex/` module lost its last importer.
   log("→ typechecking the published tree")
   try {
-    run("npx", ["tsc", "--noEmit"], { cwd: tree, stdio: "inherit" })
+    run("pnpm", ["run", "typecheck"], { cwd: tree, stdio: "inherit" })
   } catch {
     failed.push(
       [
@@ -168,6 +182,11 @@ try {
         "",
         "Fix the package, not the import: add a changeset, release, and re-run. Removing",
         "the import hides the defect and ships the same broken template.",
+        "",
+        "A symbol MISSING FROM A MODULE the package does ship reads the same way here",
+        "and is invisible to every other check — `exports` map and file list are both",
+        "perfect. That is #408, and it is why the sync compiles too, against the",
+        "REGISTRY versions rather than these locally packed ones.",
       ].join("\n"),
     )
   }
