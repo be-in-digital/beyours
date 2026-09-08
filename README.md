@@ -192,6 +192,13 @@ Locally:
 NODE_AUTH_TOKEN=<PAT read:packages> node scripts/publish-mirror.mjs --check
 ```
 
+Either way the sync **compiles before it publishes**: it stages the mirror in a
+sandbox, installs the engine packages from the registry at the versions it is
+about to pin, and runs the template's own `pnpm typecheck`. A red one refuses the
+sync, because this repository's four required checks build `apps/themes` against
+`packages/*` at HEAD and a client installs something else entirely — see
+[`DEPLOYMENT.md`](DEPLOYMENT.md#6-the-distribution-mirror).
+
 ⚠️ The mirror is rebuilt in full on every run: **a commit made directly on it
 disappears**. Its history, however, is preserved — never a force-push, because
 every client site has a `template` remote pointing at it and merges from it.

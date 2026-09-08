@@ -45,12 +45,14 @@ on:
       # changes what a client receives while `apps/themes` is untouched, and
       # used to trigger no sync at all. The `packageManager` field is not a
       # hypothetical: a version mismatch in it is what hung the job and left the
-      # mirror twelve days stale. `engine-exports.mjs` is the gate that decides
-      # whether a sync may run at all, which is the same kind of input: a fix
-      # to it must get the chance to run.
+      # mirror twelve days stale. `engine-exports.mjs` and
+      # `mirror-typecheck.mjs` are the gates that decide whether a sync may run
+      # at all, which is the same kind of input: a fix to one must get the
+      # chance to run.
       - "scripts/publish-mirror.mjs"
       - "scripts/lib/mirror-tree.mjs"
       - "scripts/lib/engine-exports.mjs"
+      - "scripts/lib/mirror-typecheck.mjs"
       # The registry lookup that decides which VERSION each engine dependency is
       # pinned to, and the overrides carried across with it. Both change what a
       # client installs from an untouched `apps/themes`.
@@ -77,10 +79,15 @@ jobs:
   # reconstruct from an event payload.
   #
   # `Lint` is the one that matters most here. It is where `pnpm check:mirror-css`
-  # runs, and that is the only check in the repository that materialises the
-  # published tree and compiles it — i.e. the only one that looks at what a
-  # client would actually receive. It used to run alongside the push rather
-  # than before it.
+  # runs, and that is the only REQUIRED check that materialises the published
+  # tree and compiles it — i.e. the only one branch protection makes look at
+  # what a client would actually receive. It used to run alongside the push
+  # rather than before it.
+  #
+  # It compiles the stylesheet, against symlinked `packages/<name>`. The
+  # TypeScript half needs the registry, so it lives in the sync itself, after
+  # the pinning: see "compiling the tree against the versions it pins" in
+  # `publish-mirror.mjs`.
   #
   # `E2E Status` is the fifth, and it is `e2e` below — a second call, because
   # `e2e.yml` gained `workflow_call:` in the same change (#307, #308).
@@ -107,8 +114,9 @@ jobs:
   # `apps/themes` against `packages/*` at HEAD through the workspace link, while
   # the mirror pins the versions the REGISTRY serves. So this catches a
   # regression in the template's own code and cannot catch one that only appears
-  # once the published tarballs are installed — that is `check:pending-release`
-  # and the subpath gate in `publish-mirror.mjs`, and #209 for the rest.
+  # once the published tarballs are installed — that is `check:pending-release`,
+  # the subpath gate in `publish-mirror.mjs` and, since #408, its compile gate,
+  # which installs the pinned versions and typechecks against them.
   #
   # Skipped on the `workflow_run` path for the same reason `verify` is: the
   # Release chain has already run this call on the commit it published, and
@@ -134,13 +142,20 @@ jobs:
     name: Sync the mirror
     needs: [verify, e2e]
     runs-on: ubuntu-latest
-    # A sync is a clone, a file copy and a lockfile — two minutes when it works.
+    # A sync is a clone, a file copy, a lockfile and — since the compile gate —
+    # an install and a typecheck of the staged tree: measured at 4s and 46s on a
+    # warm machine, a few minutes on a cold runner. Call it five.
+    #
     # The ceiling exists because the failure that mattered here did not fail:
     # pnpm hit a version it could not switch to, hung, and the job sat until
     # somebody cancelled it fifty minutes later. `cancelled` is neither a pass
     # nor a failure, so the mirror went twelve days without a sync and no run
     # ever said so. A stall must now end as a red job.
-    timeout-minutes: 15
+    #
+    # 15 until the compile gate joined it. Raised only to 20, not doubled: the
+    # ceiling is a stall detector, and one a healthy run cannot approach is the
+    # only kind that detects anything.
+    timeout-minutes: 20
     # One condition per trigger path, and every path is gated:
     #   workflow_run   → the Release it followed went green, and the commit
     #                    synced is the one Release verified — see the checkout
@@ -254,11 +269,19 @@ jobs:
         with:
           version: 10.4.1
 
+      # `cache: pnpm` for the store, keyed on this repository's lockfile. The
+      # sync installs the MIRROR's lockfile, not this one, so the key is only
+      # ever approximately right — but the store is content-addressed and the
+      # two dependency sets are nearly identical, so a hit still spares the
+      # compile gate a cold download of the whole template. Without it that
+      # install is a full download on every single sync, which is what puts a
+      # healthy run anywhere near the stall ceiling above.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
           scope: "@be-in-digital"
+          cache: "pnpm"
 
       - name: Sync
         # On `workflow_run`, only for a Release that published — see above.

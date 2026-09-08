@@ -301,13 +301,19 @@ pnpm check:mirror-build   # packs the engine, installs the tarballs,
                           # then typechecks AND runs the template's tests
 ```
 
-Nothing else compiles the published shape. CI builds `apps/themes` through the
-workspace link; `check:mirror-css` materialises the client tree but *symlinks*
-`packages/<name>`, so neither ever sees a pinned version. That gap is what let the
-boilerplate run 71 CI failures to 1 success while every required check here was
-green (#321). It is deliberately not in CI — it builds and installs the whole
-engine — and it is a pre-flight, not a substitute for cloning the boilerplate after
-a release: it proves the code is consistent, not that the upload happened.
+CI builds `apps/themes` through the workspace link; `check:mirror-css`
+materialises the client tree but *symlinks* `packages/<name>`, so neither ever
+sees a pinned version. That gap is what let the boilerplate run 71 CI failures to
+1 success while every required check here was green (#321). The sync now closes
+it on the delivery path — see the first operational fact below — and this stays
+the pre-flight, answering the same question **before** a release rather than
+during one, and answering more of it: it packs `packages/*` at HEAD, so it
+measures the code you are about to publish rather than the code already
+published, and it runs the template's test suite as well as `tsc`.
+
+It is deliberately not in CI — it builds and installs the whole engine — and it
+is not a substitute for cloning the boilerplate after a release either: it proves
+the code is consistent, not that the upload happened.
 
 **It runs the tests as well as `tsc`, and both halves are needed.** Four engine
 packages ship raw `src/*.ts` rather than a build. A typecheck reads that happily,
@@ -318,7 +324,25 @@ not defined`. Anything in the template that transforms code has to be told the
 engine packages are source — `next.config.ts` does it with `transpilePackages`,
 `vitest.config.ts` with `server.deps.inline` plus `esbuild.jsx`.
 
-Four operational facts:
+Five operational facts:
+
+- **A sync refuses to publish a tree that does not compile against the versions it
+  pins.** After generating the mirror's lockfile, the publisher stages the same
+  tree in a sandbox, runs `pnpm install --frozen-lockfile` — resolving the engine
+  packages **from the registry**, which nothing else in this repository does — and
+  then the template's own `pnpm typecheck`. Red refuses the sync.
+
+  This is the gate the next one cannot be. It asks whether a subpath resolves and
+  whether its file ships: both are questions about the *module*. A symbol added
+  inside a module without a version bump answers yes to both and still breaks every
+  client — `convex-functions@5.0.0` exports `./emailCampaigns` and ships the file,
+  the template reads `defs.markFailed` off it, and `markFailed` only exists at HEAD.
+  The exports gate reported `9 package(s) verified`, the sync went out, and the
+  boilerplate failed its own Typecheck with `TS2339` on every run for days (#408).
+  Only a compiler reads a module's contents.
+
+  The sandbox matters: an install leaves `node_modules` and build state behind, and
+  the clone is what gets pushed to the repository every client site merges from.
 
 - **A sync refuses to run if the pinned versions cannot resolve what the template
   imports.** CI builds `apps/themes` against `packages/*` at HEAD through the
@@ -340,14 +364,17 @@ Four operational facts:
 - **Required secret: `MIRROR_PUSH_TOKEN`**, a fine-grained PAT with `contents: write`
   on `beyours-boilerplate`. Without it the job runs as a dry run and reports drift
   without pushing — `GITHUB_TOKEN` is scoped to the current repository only. The job
-  has a 15-minute ceiling because the failure that mattered once did not fail: pnpm
+  has a 20-minute ceiling because the failure that mattered once did not fail: pnpm
   hung, the job sat until somebody cancelled it fifty minutes later, and `cancelled`
   is neither a pass nor a failure — the mirror went twelve days without a sync and no
-  run ever said so.
+  run ever said so. It was 15 until the compile gate above joined the job and added a
+  measured 50 seconds on a warm machine, a few minutes on a cold runner.
 
-`pnpm check:mirror-css`, which runs inside the required `Lint` job, is the only check
-that compiles what a **client** builds rather than what this repository builds. See
-[`TESTING.md`](TESTING.md#4-ci).
+`pnpm check:mirror-css`, which runs inside the required `Lint` job, is the only
+**required** check that compiles what a client builds rather than what this
+repository builds — and it compiles the stylesheet, against symlinked packages. The
+TypeScript half is answered on the delivery path instead, by the sync's own compile
+gate, because it needs the registry. See [`TESTING.md`](TESTING.md#4-ci).
 
 ---
 
