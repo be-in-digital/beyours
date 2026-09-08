@@ -378,11 +378,96 @@ export const update = {
   },
 }
 
+/**
+ * How many rows pointing at a subscriber one pass clears.
+ *
+ * `emailEvents` takes a row per message, open and click, so a subscriber who
+ * has been on the list for years carries hundreds — and a Convex mutation is
+ * one transaction with a bounded budget. 512 matches `PROMOTION_USAGE_BATCH`,
+ * for the same reasons set out there.
+ */
+export const SUBSCRIBER_DEPENDENT_BATCH = 512
+
+/** Tables holding a REQUIRED `subscriberId`, cleared before the subscriber is. */
+const SUBSCRIBER_DEPENDENTS = ["emailAutomationRuns", "emailEvents"] as const
+
+export interface SubscriberRemovalResult {
+  /** Dependent rows cleared in this pass. */
+  deleted: number
+  /** False while rows still point at the subscriber, which is still there. */
+  complete: boolean
+}
+
+/**
+ * Delete a subscriber, and everything whose schema promises they exist.
+ *
+ * WHAT WENT WRONG (#412 P3-F2). This was a bare `ctx.db.delete(args.id)`,
+ * behind a live button on the subscribers screen, over TWO non-optional foreign
+ * keys: `emailAutomationRuns.subscriberId` and `emailEvents.subscriberId`.
+ * `v.id()` validates how an id is ENCODED, never that it still points at
+ * anything, so nothing complained — and both tables were left holding a promise
+ * the database could no longer keep. `privacy.ts` has cleared exactly these two
+ * tables, in exactly this order, since the erasure path was written, and says
+ * why in `eraseSubscriberDependents`; this delete was the one path that did not
+ * call it.
+ *
+ * A CASCADE, not a refusal, and deliberately: every one of those rows is
+ * personal data ABOUT the person being removed — which message reached them,
+ * when they opened it, which automation step they were at. Keeping them after
+ * the owner has removed the person is the outcome art. 17 exists to prevent,
+ * and it is the outcome `previewErasure` would then have to report as residue.
+ *
+ * MULTI-PASS, like the erasure it mirrors. The dependents go first, a batch at
+ * a time; the subscriber goes only on the pass that finishes them, so a
+ * half-drained delete never leaves the two tables pointing at nothing.
+ * `complete: false` is the caller's signal to schedule the next pass — see
+ * `purgeRemoval`.
+ */
 export const remove = {
   args: { id: v.id("emailSubscribers") },
-  handler: async (ctx: any, args: any) => {
+  handler: async (ctx: any, args: any): Promise<SubscriberRemovalResult> => {
+    const subscriber = await ctx.db.get(args.id)
+    // Idempotent: a rescheduled pass can arrive after the last one finished.
+    if (!subscriber) return { deleted: 0, complete: true }
+
+    let budget = SUBSCRIBER_DEPENDENT_BATCH
+    let deleted = 0
+
+    for (const table of SUBSCRIBER_DEPENDENTS) {
+      if (budget <= 0) return { deleted, complete: false }
+
+      // `take(budget + 1)`: the extra row is how we learn there is more to do
+      // without paying for a count.
+      const dependents = await ctx.db
+        .query(table)
+        .withIndex("by_subscriberId", (q: any) => q.eq("subscriberId", args.id))
+        .take(budget + 1)
+
+      const hasMore = dependents.length > budget
+      const batch = hasMore ? dependents.slice(0, budget) : dependents
+      for (const row of batch) {
+        await ctx.db.delete(row._id)
+      }
+      deleted += batch.length
+      budget -= batch.length
+      if (hasMore) return { deleted, complete: false }
+    }
+
     await ctx.db.delete(args.id)
+    return { deleted, complete: true }
   },
+}
+
+/**
+ * The rest of the removal, one batch per run, until the subscriber is gone.
+ *
+ * Internal only, and it is the same handler: the subscriber survives every pass
+ * but the last, so re-running `remove` is exactly what finishing means.
+ */
+export const purgeRemoval = {
+  args: { id: v.id("emailSubscribers") },
+  handler: async (ctx: any, args: any): Promise<SubscriberRemovalResult> =>
+    await remove.handler(ctx, args),
 }
 
 export const confirmDoubleOptIn = {

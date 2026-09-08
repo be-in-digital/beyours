@@ -58,6 +58,7 @@ import {
   MAX_TRENDING_PRODUCTS,
 } from "../products"
 import { MAX_PAGE_SIZE } from "../pagination"
+import { getBySiteId, getByBrandId } from "../storeIntegrations"
 import { createCountingDb } from "./support/countingDb"
 
 const STORE = "stores:1"
@@ -523,6 +524,18 @@ describe("translations.getByLanguage", () => {
   })
 })
 
+/**
+ * REWRITTEN for #412 P3-F4. Three cases here asserted that deleting a coupon
+ * with 6,000 redemptions removed the promotion in the first transaction and
+ * drained its ledger afterwards — "the offer stops working immediately even
+ * though its record is still going". They were green, and they were blessing
+ * the defect: the same delete left every order that coupon had discounted
+ * naming a row that no longer resolved, with the discount still on the order
+ * and on its invoice. `promotions.remove` refuses a redeemed promotion now, so
+ * the batching it needed is unreachable from there; `purgeUsages` stays for the
+ * drains a client deployment may already have scheduled, and is still held to
+ * its budget below.
+ */
 describe("promotions.remove", () => {
   function usedPromotion(uses: number) {
     return createCountingDb({
@@ -536,20 +549,25 @@ describe("promotions.remove", () => {
     })
   }
 
-  it("does not try to delete a popular coupon's whole history in one transaction", async () => {
+  it("refuses a popular coupon without reading its whole history", async () => {
     const ctx = usedPromotion(BUSY)
-    const result = await removePromotion.handler(ctx, { id: "promotions:1" })
-    expect(result.hasMore).toBe(true)
-    expect(ctx.reads()).toBeLessThanOrEqual(PROMOTION_USAGE_BATCH + 1)
-    // The offer stops working immediately even though its record is still going.
-    expect(ctx.store.promotions).toHaveLength(0)
+    await expect(removePromotion.handler(ctx, { id: "promotions:1" })).rejects.toThrow()
+    // One `get` for the promotion, one `.first()` for the ledger. A refusal must
+    // not cost more the longer the coupon has been working.
+    expect(ctx.reads()).toBeLessThanOrEqual(2)
+    expect(ctx.store.promotions).toHaveLength(1)
+    expect(ctx.store.promotionUsages).toHaveLength(BUSY)
   })
 
-  it("clears the rest a batch at a time until nothing is left", async () => {
+  it("drains a ledger left behind by an older delete, a batch at a time", async () => {
+    // `purgeUsages` is reached only by a job scheduled before this guard
+    // shipped. Its budget is what keeps that drain inside one transaction.
     const ctx = usedPromotion(PROMOTION_USAGE_BATCH + 10)
-    await removePromotion.handler(ctx, { id: "promotions:1" })
+    const first = await purgeUsages.handler(ctx, { promotionId: "promotions:1" })
+    expect(first.hasMore).toBe(true)
+    expect(ctx.reads()).toBeLessThanOrEqual(PROMOTION_USAGE_BATCH + 1)
 
-    let passes = 0
+    let passes = 1
     let hasMore = true
     while (hasMore && passes < 10) {
       const result = await purgeUsages.handler(ctx, { promotionId: "promotions:1" })
@@ -560,10 +578,11 @@ describe("promotions.remove", () => {
     expect(ctx.store.promotionUsages).toHaveLength(0)
   })
 
-  it("finishes in one transaction when the coupon was barely used", async () => {
-    const ctx = usedPromotion(3)
+  it("deletes a coupon nobody ever redeemed", async () => {
+    const ctx = usedPromotion(0)
     const result = await removePromotion.handler(ctx, { id: "promotions:1" })
-    expect(result).toEqual({ deleted: 3, hasMore: false })
+    expect(result).toEqual({ deleted: 0, hasMore: false })
+    expect(ctx.store.promotions).toHaveLength(0)
   })
 })
 
@@ -938,6 +957,210 @@ describe("countingDb", () => {
     expect(() => ctx.db.query("thisTableWillNeverExist")).toThrow(
       /not declared in/
     )
+  })
+
+  /**
+   * WHAT IT COUNTS (#412 P3-F6).
+   *
+   * The four cases above hold the double to the schema. None of them held it
+   * to the one number it exists to report, and on that number it was wrong in
+   * the single shape every assertion in this file is aimed at.
+   *
+   * `.filter()` in Convex is a POST-SCAN predicate: the stream still reads
+   * every document of the scanned range and charges each one against the
+   * 16,384-document transaction limit, and the predicate only decides what
+   * comes back. The double narrowed its candidate array inside `filter` and
+   * then counted what survived — so `.filter().collect()` over 6,000 rows
+   * scored the handful it returned, and `.filter().first()` over a table where
+   * nothing matched scored ZERO for the most expensive query Convex will run.
+   * That is `dueForSending`'s own defect (#327), and it is the failure the
+   * hand-rolled double this one replaced was thrown out for: "it answered
+   * `.filter().collect()` with the rows the test wanted".
+   *
+   * It was masked, not hidden: `filter` took a plain JavaScript predicate while
+   * every real handler passes Convex's `FilterBuilder`, so a reintroduced
+   * `.filter()` threw `TypeError` instead of under-counting — and the obvious
+   * repair, teaching it the builder, would have turned that crash into a
+   * silently green full-table scan.
+   */
+  describe("counts what Convex scans, not what the query returns", () => {
+    const SCANNED = 6_000
+
+    /** One `scheduled` campaign hiding at the end of a table of `sent` ones. */
+    const haystack = () =>
+      createCountingDb({
+        emailCampaigns: Array.from({ length: SCANNED }, (_, i) => ({
+          _id: `emailCampaigns:${i}`,
+          storeId: STORE,
+          status: i === SCANNED - 1 ? "scheduled" : "sent",
+          scheduledAt: 1,
+        })),
+      })
+
+    it("speaks Convex's filter syntax rather than a JavaScript predicate", async () => {
+      const ctx = haystack()
+      const rows = await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+        .collect()
+      expect(rows).toHaveLength(1)
+    })
+
+    it("charges the whole table for a .filter().collect()", async () => {
+      const ctx = haystack()
+      await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+        .collect()
+      expect(ctx.reads()).toBe(SCANNED)
+    })
+
+    it("charges the whole table for a .filter().first() that matches nothing", async () => {
+      // The worst shape there is, and the one the old counter scored zero.
+      const ctx = haystack()
+      const found = await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) => q.eq(q.field("status"), "paused"))
+        .first()
+      expect(found).toBeNull()
+      expect(ctx.reads()).toBe(SCANNED)
+    })
+
+    it("charges as far as the match for a .filter().first() that finds one", async () => {
+      const ctx = haystack()
+      await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+        .first()
+      expect(ctx.reads()).toBe(SCANNED)
+    })
+
+    it("charges only the index range when the narrowing is an index seek", async () => {
+      // The point of the distinction: the fix for every query in this file is
+      // to move the narrowing into `withIndex`, and that must still score low.
+      const ctx = createCountingDb({
+        emailCampaigns: Array.from({ length: SCANNED }, (_, i) => ({
+          _id: `emailCampaigns:${i}`,
+          storeId: i === 0 ? STORE : "stores:other",
+          status: "scheduled",
+          scheduledAt: 1,
+        })),
+      })
+      await ctx.db
+        .query("emailCampaigns")
+        .withIndex("by_storeId_status", (q: { eq: (f: string, v: unknown) => unknown }) =>
+          q.eq("storeId", STORE).eq("status", "scheduled")
+        )
+        .collect()
+      expect(ctx.reads()).toBe(1)
+    })
+
+    it("stops a .filter().take(n) at the n-th match, and charges what it walked", async () => {
+      const ctx = createCountingDb({
+        emailCampaigns: Array.from({ length: 100 }, (_, i) => ({
+          _id: `emailCampaigns:${i}`,
+          storeId: STORE,
+          // Every tenth one matches: two matches are 11 documents in.
+          status: i % 10 === 0 ? "scheduled" : "sent",
+          scheduledAt: 1,
+        })),
+      })
+      const rows = await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) => q.eq(q.field("status"), "scheduled"))
+        .take(2)
+      expect(rows).toHaveLength(2)
+      expect(ctx.reads()).toBe(11)
+    })
+
+    it("builds and/or/neq the way Convex does", async () => {
+      const ctx = createCountingDb({
+        emailCampaigns: [
+          { _id: "emailCampaigns:1", storeId: STORE, status: "sent", scheduledAt: 10 },
+          { _id: "emailCampaigns:2", storeId: STORE, status: "draft", scheduledAt: 20 },
+          { _id: "emailCampaigns:3", storeId: "stores:other", status: "sent", scheduledAt: 30 },
+        ],
+      })
+      const rows = await ctx.db
+        .query("emailCampaigns")
+        .filter((q: any) =>
+          q.and(
+            q.eq(q.field("storeId"), STORE),
+            q.or(q.eq(q.field("status"), "sent"), q.gte(q.field("scheduledAt"), 20)),
+            q.neq(q.field("_id"), "emailCampaigns:404")
+          )
+        )
+        .collect()
+      expect(rows.map((row: { _id: string }) => row._id)).toEqual([
+        "emailCampaigns:1",
+        "emailCampaigns:2",
+      ])
+      // Three documents scanned to return two.
+      expect(ctx.reads()).toBe(3)
+    })
+
+    /**
+     * The instrument, pointed at a live handler.
+     *
+     * Both platform webhooks resolve their store through these two on every
+     * delivery, and both were a bare `.query().filter().first()` — the shape
+     * above, on a path that runs whenever Uber Eats or Deliveroo says anything.
+     * Nothing could see it: the old counter scored a miss at zero reads.
+     *
+     * The narrowing is in `withIndex` now, on `by_platform_enabled`, whose
+     * first field is `platform`. Put the bare filter back and these fail.
+     */
+    describe("storeIntegrations, the first live path this caught", () => {
+      const integrations = (count: number) =>
+        Array.from({ length: count }, (_, i) => ({
+          _id: `storeIntegrations:${i}`,
+          storeId: `stores:${i}`,
+          platform: i % 2 === 0 ? "uberEats" : "deliveroo",
+          platformStoreId: `site-${i}`,
+          brandId: `brand-${i}`,
+          enabled: true,
+        }))
+
+      it("getBySiteId reads one platform's rows, not the table", async () => {
+        const ctx = createCountingDb({ storeIntegrations: integrations(400) })
+        const found = await getBySiteId.handler(ctx, {
+          platform: "deliveroo",
+          platformStoreId: "site-399",
+        })
+        expect(found?._id).toBe("storeIntegrations:399")
+        // 200 deliveroo rows, not 400.
+        expect(ctx.reads()).toBeLessThanOrEqual(200)
+      })
+
+      it("getBySiteId does not read the table to answer a miss", async () => {
+        // The expensive case: `.first()` pulls until something matches, so a
+        // miss costs the whole scanned range.
+        const ctx = createCountingDb({ storeIntegrations: integrations(400) })
+        expect(
+          await getBySiteId.handler(ctx, { platform: "deliveroo", platformStoreId: "nope" })
+        ).toBeNull()
+        expect(ctx.reads()).toBeLessThanOrEqual(200)
+      })
+
+      it("getByBrandId is the same shape and the same bound", async () => {
+        const ctx = createCountingDb({ storeIntegrations: integrations(400) })
+        expect(
+          await getByBrandId.handler(ctx, { platform: "uberEats", brandId: "nope" })
+        ).toBeNull()
+        expect(ctx.reads()).toBeLessThanOrEqual(200)
+      })
+    })
+
+    it("refuses a filter that is not a FilterBuilder expression", () => {
+      // A plain JavaScript predicate is what the double used to take. Accepting
+      // it silently would let a test narrow rows the counter never charged for.
+      const ctx = createCountingDb({ emailCampaigns: [] })
+      expect(() =>
+        ctx.db
+          .query("emailCampaigns")
+          .filter((doc: unknown) => (doc as { status?: string }).status === "sent")
+      ).toThrow(/FilterBuilder expression/)
+    })
   })
 })
 

@@ -102,7 +102,30 @@ export const remove = storeMutation({
   permission: "marketing:write",
   storeIdFrom: emailSubscribersStoreId,
   args: defs.remove.args,
-  handler: (ctx, args) => defs.remove.handler(ctx, args),
+  handler: async (ctx, args) => {
+    const result = await defs.remove.handler(ctx, args);
+    // The subscriber's events and automation runs go first — both columns are
+    // REQUIRED — and a long-standing subscriber can carry more of them than one
+    // transaction may touch. The subscriber survives until the pass that
+    // finishes them, so this drains rather than leaving half a person behind.
+    if (!result.complete) {
+      await ctx.scheduler.runAfter(0, internal.emailSubscribers.purgeRemoval, {
+        id: args.id,
+      });
+    }
+    return result;
+  },
+});
+
+export const purgeRemoval = internalMutation({
+  args: defs.purgeRemoval.args,
+  handler: async (ctx, args) => {
+    const result = await defs.purgeRemoval.handler(ctx, args);
+    if (!result.complete) {
+      await ctx.scheduler.runAfter(0, internal.emailSubscribers.purgeRemoval, args);
+    }
+    return result;
+  },
 });
 
 export const addTag = storeMutation({

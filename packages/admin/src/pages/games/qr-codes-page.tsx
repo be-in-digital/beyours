@@ -11,6 +11,8 @@ import {
   CopyIcon,
   DownloadIcon,
   ScanIcon,
+  PowerIcon,
+  PowerOffIcon,
 } from "lucide-react"
 import {
   Badge,
@@ -40,6 +42,7 @@ import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 /**
  * QR codes to print and place on tables. Each card shows the real QR
@@ -89,9 +92,11 @@ function useQrDataUrl(code: string): string | null {
 function QRCodeCard({
   qr,
   onDelete,
+  onSetActive,
 }: {
   qr: QRCode
   onDelete: (id: string) => void
+  onSetActive: (id: string, isActive: boolean) => void
 }) {
   const dataUrl = useQrDataUrl(qr.code)
 
@@ -154,6 +159,11 @@ function QRCodeCard({
             <ScanIcon className="h-3 w-3" />
             {qr.scannedCount ?? 0} scan{(qr.scannedCount ?? 0) > 1 ? "s" : ""}
           </Badge>
+          {!qr.isActive && (
+            <Badge variant="outline" className="text-[10px]">
+              Désactivé
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -167,6 +177,27 @@ function QRCodeCard({
           PNG
         </Button>
       </div>
+
+      {/* A code that has been played cannot be deleted — the plays are the
+          establishment's record of where consent was given. This is what the
+          refusal tells the owner to do instead, so it has to be here. */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onSetActive(qr._id, !qr.isActive)}
+      >
+        {qr.isActive ? (
+          <>
+            <PowerOffIcon className="mr-1.5 h-3.5 w-3.5" />
+            Désactiver
+          </>
+        ) : (
+          <>
+            <PowerIcon className="mr-1.5 h-3.5 w-3.5" />
+            Réactiver
+          </>
+        )}
+      </Button>
     </div>
   )
 }
@@ -189,6 +220,7 @@ export function GameQrCodesPage() {
 
   const createQRCode = useMutation(api.gameQRCodes.create)
   const removeQRCode = useMutation(api.gameQRCodes.remove)
+  const setQRCodeActive = useMutation(api.gameQRCodes.setActive)
 
   const generateCode = () => {
     setCode(crypto.randomUUID().slice(0, 12).toUpperCase())
@@ -216,13 +248,29 @@ export function GameQrCodesPage() {
     }
   }
 
+  const handleSetActive = async (id: string, isActive: boolean) => {
+    try {
+      await setQRCodeActive({ id, isActive })
+      toast.success(
+        isActive
+          ? "Code QR réactivé"
+          : "Code QR désactivé — le QR imprimé ne fonctionne plus, les parties déjà jouées restent"
+      )
+    } catch (error) {
+      toast.error(convexErrorMessage(error, "Échec de la mise à jour du code QR"))
+      console.error(error)
+    }
+  }
+
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
     try {
       await removeQRCode({ id })
       toast.success("Code QR supprimé")
     } catch (error) {
-      toast.error("Échec de la suppression")
+      // The refusal says the code has been played and that deactivating it
+      // retires it without touching those plays. Retrying cannot help.
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
       console.error(error)
     } finally {
       setIsDeleting(false)
@@ -335,7 +383,12 @@ export function GameQrCodesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {qrCodes.map((qr) => (
-            <QRCodeCard key={qr._id} qr={qr} onDelete={setDeletingId} />
+            <QRCodeCard
+              key={qr._id}
+              qr={qr}
+              onDelete={setDeletingId}
+              onSetActive={(id, isActive) => void handleSetActive(id, isActive)}
+            />
           ))}
         </div>
       )}
@@ -345,7 +398,7 @@ export function GameQrCodesPage() {
         onOpenChange={(open) => !open && setDeletingId(null)}
         onConfirm={() => deletingId && void handleDelete(deletingId)}
         title="Supprimer ce code QR ?"
-        description="Le QR imprimé ne fonctionnera plus. Cette action est irréversible."
+        description="Le QR imprimé ne fonctionnera plus. Cette action est irréversible. Si des parties ont déjà été jouées avec ce code, désactivez-le plutôt : elles restent, et le QR cesse aussitôt de fonctionner."
         isDeleting={isDeleting}
       />
     </div>

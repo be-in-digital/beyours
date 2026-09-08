@@ -30,6 +30,14 @@
  * `gamePlays.by_prizeId`, `prizeRedemptions.by_prizeId`,
  * `promotionUsages.by_orderId` — are therefore proved by these tests to be
  * declared, not merely spelled correctly.
+ *
+ * #412 ADDED FIVE MORE, found by asking the same question of the removes #400
+ * did not reach. Same rule, applied the same way: what the machine wrote about
+ * a person is cleaned up with them, and what HAPPENED refuses. So a subscriber
+ * takes their events and automation runs with them, while a campaign that has
+ * already reached somebody, a QR code that has been played, a formule a prize
+ * gives away, a coupon an order was discounted by and an automation that has
+ * mailed anyone all refuse and say what to do instead.
  */
 
 import { describe, it, expect } from "vitest"
@@ -38,6 +46,12 @@ import { remove as removeGame } from "../games"
 import { remove as removeTemplate } from "../emailTemplates"
 import { remove as removeSegment } from "../emailSegments"
 import { remove as removeOrder, updateStatus } from "../orders"
+import { remove as removeSubscriber, SUBSCRIBER_DEPENDENT_BATCH } from "../emailSubscribers"
+import { remove as removeCampaign } from "../emailCampaigns"
+import { remove as removeQRCode, setActive as setQRCodeActive } from "../gameQRCodes"
+import { remove as removeMenu, purgeTranslations } from "../menus"
+import { remove as removePromotion } from "../promotions"
+import { remove as removeAutomation } from "../emailAutomations"
 import * as convexFunctions from "../index"
 import { createCountingDb } from "./support/countingDb"
 
@@ -798,5 +812,438 @@ describe("#313 the dead Uber Eats importer stays deleted", () => {
     // wrong way to create a marketplace order.
     expect(Object.keys(convexFunctions)).not.toContain("uberEatsOrders")
     expect(Object.keys(convexFunctions)).toContain("orders")
+  })
+})
+
+// ---------------------------------------------------------------------------
+// #412 P3-F2 — emailSubscribers.ts:381
+// ---------------------------------------------------------------------------
+
+describe("#412 P3-F2 emailSubscribers.remove — a person's rows go with them", () => {
+  const subscriber = {
+    _id: "emailSubscribers:1",
+    storeId: STORE,
+    email: "diner@example.fr",
+    status: "active",
+    source: "storefront_form",
+    createdAt: NOW,
+    updatedAt: NOW,
+  }
+
+  const runs = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      _id: `emailAutomationRuns:${i}`,
+      storeId: STORE,
+      automationId: "emailAutomations:1",
+      subscriberId: "emailSubscribers:1",
+      stepId: `step-${i}`,
+      sentAt: NOW,
+    }))
+
+  const events = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      _id: `emailEvents:${i}`,
+      storeId: STORE,
+      campaignId: "emailCampaigns:1",
+      subscriberId: "emailSubscribers:1",
+      type: "sent",
+      occurredAt: NOW,
+    }))
+
+  it("leaves nothing holding a subscriberId that resolves to nothing", async () => {
+    // Both columns are REQUIRED. Deleting the subscriber alone left two tables
+    // promising a row the database no longer had.
+    const ctx = createCountingDb({
+      emailSubscribers: [subscriber],
+      emailAutomationRuns: runs(2),
+      emailEvents: events(3),
+    })
+
+    const result = await removeSubscriber.handler(ctx, { id: "emailSubscribers:1" })
+
+    expect(result).toEqual({ deleted: 5, complete: true })
+    expect(rows(ctx, "emailSubscribers")).toHaveLength(0)
+    expect(rows(ctx, "emailAutomationRuns")).toHaveLength(0)
+    expect(rows(ctx, "emailEvents")).toHaveLength(0)
+  })
+
+  it("keeps the subscriber until the pass that finishes their rows", async () => {
+    // The half-drained state is the dangerous one: a subscriber deleted on the
+    // first pass would leave every remaining event pointing at nothing for as
+    // long as the drain took.
+    const ctx = createCountingDb({
+      emailSubscribers: [subscriber],
+      emailAutomationRuns: [],
+      emailEvents: events(SUBSCRIBER_DEPENDENT_BATCH + 7),
+    })
+
+    const first = await removeSubscriber.handler(ctx, { id: "emailSubscribers:1" })
+    expect(first.complete).toBe(false)
+    expect(rows(ctx, "emailSubscribers")).toHaveLength(1)
+    expect(ctx.reads()).toBeLessThanOrEqual(SUBSCRIBER_DEPENDENT_BATCH + 2)
+
+    const second = await removeSubscriber.handler(ctx, { id: "emailSubscribers:1" })
+    expect(second.complete).toBe(true)
+    expect(rows(ctx, "emailSubscribers")).toHaveLength(0)
+    expect(rows(ctx, "emailEvents")).toHaveLength(0)
+  })
+
+  it("does not touch another subscriber's rows", async () => {
+    const ctx = createCountingDb({
+      emailSubscribers: [subscriber, { ...subscriber, _id: "emailSubscribers:2", email: "b@example.fr" }],
+      emailAutomationRuns: [],
+      emailEvents: [
+        ...events(1),
+        { _id: "emailEvents:other", storeId: STORE, subscriberId: "emailSubscribers:2", type: "sent", occurredAt: NOW },
+      ],
+    })
+
+    await removeSubscriber.handler(ctx, { id: "emailSubscribers:1" })
+
+    expect(rows(ctx, "emailEvents").map((row) => row._id)).toEqual(["emailEvents:other"])
+    expect(rows(ctx, "emailSubscribers")).toHaveLength(1)
+  })
+
+  it("is idempotent, because the drain re-runs it", async () => {
+    const ctx = createCountingDb({ emailSubscribers: [] })
+    await expect(
+      removeSubscriber.handler(ctx, { id: "emailSubscribers:404" })
+    ).resolves.toEqual({ deleted: 0, complete: true })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// #412 P3-F3 — emailCampaigns.ts:151
+// ---------------------------------------------------------------------------
+
+describe("#412 P3-F3 emailCampaigns.remove — the record of who was reached", () => {
+  const campaign = {
+    _id: "emailCampaigns:1",
+    storeId: STORE,
+    name: "Promo été",
+    subject: "-20%",
+    status: "failed",
+  }
+
+  it("refuses a campaign that has already reached part of the list", async () => {
+    // `failed` only ever follows `sending`, so this campaign has mailed a
+    // prefix of the list. The events keyed to it are what makes « Relancer »
+    // resume instead of starting again; deleting the campaign makes them
+    // unaddressable, and rebuilding it mails those people twice.
+    const ctx = createCountingDb({
+      emailCampaigns: [campaign],
+      emailEvents: [
+        {
+          _id: "emailEvents:1",
+          storeId: STORE,
+          campaignId: "emailCampaigns:1",
+          subscriberId: "emailSubscribers:1",
+          type: "sent",
+          occurredAt: NOW,
+        },
+      ],
+    })
+
+    const refusal = await refusalFrom(() =>
+      removeCampaign.handler(ctx, { id: "emailCampaigns:1" })
+    )
+
+    expect(refusal.code).toBe("campaign_already_sent")
+    // `failed` is one of the two statuses the screen offers « Relancer » for.
+    expect(refusal.message).toContain("Relancer")
+    expect(rows(ctx, "emailCampaigns")).toHaveLength(1)
+    // And the record itself is untouched — this is a refusal, not a cascade.
+    expect(rows(ctx, "emailEvents")).toHaveLength(1)
+  })
+
+  it("does not name « Relancer » on a campaign the screen cannot relaunch", async () => {
+    // A campaign cancelled mid-list is refused too, and the screen renders
+    // « Relancer » for `paused` and `failed` only. Sending the owner after a
+    // control that is not there is the dead end this guard exists to avoid.
+    const ctx = createCountingDb({
+      emailCampaigns: [{ ...campaign, status: "cancelled" }],
+      emailEvents: [
+        {
+          _id: "emailEvents:1",
+          storeId: STORE,
+          campaignId: "emailCampaigns:1",
+          subscriberId: "emailSubscribers:1",
+          type: "sent",
+          occurredAt: NOW,
+        },
+      ],
+    })
+
+    const refusal = await refusalFrom(() =>
+      removeCampaign.handler(ctx, { id: "emailCampaigns:1" })
+    )
+
+    expect(refusal.code).toBe("campaign_already_sent")
+    expect(refusal.message).not.toContain("Relancer")
+    expect(refusal.message).toContain("historique")
+  })
+
+  it("still deletes a campaign nobody ever received", async () => {
+    const ctx = createCountingDb({
+      emailCampaigns: [{ ...campaign, status: "draft" }],
+      emailEvents: [],
+    })
+    await removeCampaign.handler(ctx, { id: "emailCampaigns:1" })
+    expect(rows(ctx, "emailCampaigns")).toHaveLength(0)
+  })
+
+  it("costs one index lookup however big the campaign was", async () => {
+    const ctx = createCountingDb({
+      emailCampaigns: [campaign],
+      emailEvents: Array.from({ length: 5_000 }, (_, i) => ({
+        _id: `emailEvents:${i}`,
+        storeId: STORE,
+        campaignId: "emailCampaigns:1",
+        subscriberId: `emailSubscribers:${i}`,
+        type: "sent",
+        occurredAt: NOW,
+      })),
+    })
+
+    await refusalFrom(() => removeCampaign.handler(ctx, { id: "emailCampaigns:1" }))
+
+    // The campaign, and one event. Not the 5,000 it produced.
+    expect(ctx.reads()).toBe(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// #412 P3-F4 — gameQRCodes.ts:22, menus.ts:273, promotions.ts:354,
+//              emailAutomations.ts:124
+// ---------------------------------------------------------------------------
+
+describe("#412 P3-F4 gameQRCodes.remove — where the consent was given", () => {
+  const qrCode = {
+    _id: "gameQRCodes:1",
+    storeId: STORE,
+    code: "TABLE12",
+    tableNumber: "12",
+    isActive: true,
+    scannedCount: 7,
+    createdAt: NOW,
+    updatedAt: NOW,
+  }
+
+  it("refuses a code that has been played, and keeps the play", async () => {
+    // `gamePlays.qrCodeId` has no reader anywhere, which is exactly why this
+    // went unnoticed: nothing crashed. What was lost is the only field saying
+    // WHERE a diner's consent under art. 7.1 was collected.
+    const ctx = createCountingDb({
+      gameQRCodes: [qrCode],
+      gamePlays: [
+        {
+          _id: "gamePlays:1",
+          storeId: STORE,
+          gameId: "games:1",
+          qrCodeId: "gameQRCodes:1",
+          playedAt: NOW,
+        },
+      ],
+    })
+
+    const refusal = await refusalFrom(() => removeQRCode.handler(ctx, { id: "gameQRCodes:1" }))
+
+    expect(refusal.code).toBe("qr_code_has_plays")
+    expect(refusal.message).toContain("TABLE12")
+    expect(refusal.message).toContain("Désactivez-le")
+    expect(rows(ctx, "gameQRCodes")).toHaveLength(1)
+    expect(rows(ctx, "gamePlays")[0].qrCodeId).toBe("gameQRCodes:1")
+  })
+
+  it("still deletes a code nobody has played", async () => {
+    const ctx = createCountingDb({ gameQRCodes: [qrCode], gamePlays: [] })
+    await removeQRCode.handler(ctx, { id: "gameQRCodes:1" })
+    expect(rows(ctx, "gameQRCodes")).toHaveLength(0)
+  })
+
+  it("offers the way out the refusal names", async () => {
+    // A refusal whose alternative does not exist is a dead end.
+    const ctx = createCountingDb({ gameQRCodes: [qrCode] })
+    await setQRCodeActive.handler(ctx, { id: "gameQRCodes:1", isActive: false })
+    expect(rows(ctx, "gameQRCodes")[0].isActive).toBe(false)
+  })
+})
+
+describe("#412 P3-F4 menus.remove", () => {
+  const menu = { _id: "menus:1", storeId: STORE, name: "Formule midi", price: 1590 }
+
+  it("refuses while a prize gives the formule away", async () => {
+    const ctx = createCountingDb({
+      menus: [menu],
+      prizes: [{ _id: "prizes:1", storeId: STORE, name: "Menu offert", type: "free_menu", menuId: "menus:1" }],
+      translations: [],
+    })
+
+    const refusal = await refusalFrom(() => removeMenu.handler(ctx, { id: "menus:1" }))
+
+    expect(refusal.code).toBe("menu_in_prize")
+    expect(refusal.message).toContain("« Menu offert »")
+    expect(rows(ctx, "menus")).toHaveLength(1)
+  })
+
+  it("takes the menu's own translations with it, and only those", async () => {
+    // `translations.entityId` is a `v.string()`, so no validator could ever see
+    // that it was a foreign key. The rows are the menu's name and description
+    // in the owner's other languages and are of no use to anything else.
+    const ctx = createCountingDb({
+      menus: [menu],
+      prizes: [],
+      translations: [
+        { _id: "translations:1", storeId: STORE, entityType: "menus", entityId: "menus:1", field: "name", languageCode: "en", value: "Lunch set", isAutoTranslated: true, updatedAt: NOW },
+        { _id: "translations:2", storeId: STORE, entityType: "menus", entityId: "menus:2", field: "name", languageCode: "en", value: "Other", isAutoTranslated: true, updatedAt: NOW },
+        { _id: "translations:3", storeId: STORE, entityType: "products", entityId: "menus:1", field: "name", languageCode: "en", value: "Not a menu", isAutoTranslated: true, updatedAt: NOW },
+      ],
+    })
+
+    const result = await removeMenu.handler(ctx, { id: "menus:1" })
+
+    expect(result).toEqual({ deleted: 1, hasMore: false })
+    expect(rows(ctx, "menus")).toHaveLength(0)
+    expect(rows(ctx, "translations").map((row) => row._id)).toEqual([
+      "translations:2",
+      "translations:3",
+    ])
+  })
+
+  it("reports more to do rather than clearing a long list in one transaction", async () => {
+    const ctx = createCountingDb({
+      menus: [menu],
+      prizes: [],
+      translations: Array.from({ length: 300 }, (_, i) => ({
+        _id: `translations:${i}`,
+        storeId: STORE,
+        entityType: "menus",
+        entityId: "menus:1",
+        field: `field-${i}`,
+        languageCode: "en",
+        value: "x",
+        isAutoTranslated: true,
+        updatedAt: NOW,
+      })),
+    })
+
+    const first = await removeMenu.handler(ctx, { id: "menus:1" })
+    expect(first.hasMore).toBe(true)
+
+    const rest = await purgeTranslations.handler(ctx, { menuId: "menus:1", storeId: STORE })
+    expect(rest.hasMore).toBe(false)
+    expect(rows(ctx, "translations")).toHaveLength(0)
+  })
+})
+
+describe("#412 P3-F4 promotions.remove — the order still names it", () => {
+  it("refuses a coupon an order was discounted by", async () => {
+    // `orders.promotionId` is optional and, until `by_promotionId` was declared
+    // for this guard, unseekable — so a deleted promotion left every order it
+    // discounted naming nothing, with the discount still on the order and on
+    // the invoice issued for it.
+    const ctx = createCountingDb({
+      promotions: [{ _id: "promotions:1", storeId: STORE, name: "Bienvenue", code: "BIENVENUE" }],
+      promotionUsages: [
+        {
+          _id: "promotionUsages:1",
+          storeId: STORE,
+          promotionId: "promotions:1",
+          orderId: "orders:1",
+          customerEmail: "diner@example.fr",
+          usedAt: NOW,
+        },
+      ],
+      orders: [{ _id: "orders:1", storeId: STORE, promotionId: "promotions:1", discountAmount: 300, total: 1200 }],
+    })
+
+    const refusal = await refusalFrom(() => removePromotion.handler(ctx, { id: "promotions:1" }))
+
+    expect(refusal.code).toBe("promotion_in_order")
+    expect(refusal.message).toContain("Désactivez-la")
+    expect(rows(ctx, "promotions")).toHaveLength(1)
+    // The ledger it used to erase is still there, and so is the order's link.
+    expect(rows(ctx, "promotionUsages")).toHaveLength(1)
+    expect(rows(ctx, "orders")[0].promotionId).toBe("promotions:1")
+  })
+
+  it("refuses on the order alone, after retention has cleared the ledger", async () => {
+    // The reason the guard reads `orders` and not only `promotionUsages`: the
+    // retention cron and an art. 17 erasure both clear usage rows, while a paid
+    // order is ANONYMISED and keeps its `promotionId` and its discount. A proxy
+    // would have made a three-year-old coupon deletable again.
+    const ctx = createCountingDb({
+      promotions: [{ _id: "promotions:1", storeId: STORE, name: "Bienvenue", code: "BIENVENUE" }],
+      promotionUsages: [],
+      orders: [{ _id: "orders:1", storeId: STORE, promotionId: "promotions:1", discountAmount: 300, total: 1200 }],
+    })
+
+    const refusal = await refusalFrom(() => removePromotion.handler(ctx, { id: "promotions:1" }))
+
+    expect(refusal.code).toBe("promotion_in_order")
+    expect(rows(ctx, "promotions")).toHaveLength(1)
+  })
+
+  it("refuses on the ledger alone, when a usage row outlived its order", async () => {
+    // `promotionUsages.orderId` is optional and `promotionId` is REQUIRED, so a
+    // usage row with no order is still a reference the delete would strand.
+    const ctx = createCountingDb({
+      promotions: [{ _id: "promotions:1", storeId: STORE, name: "Bienvenue", code: "BIENVENUE" }],
+      promotionUsages: [
+        { _id: "promotionUsages:1", storeId: STORE, promotionId: "promotions:1", customerEmail: "a@b.fr", usedAt: NOW },
+      ],
+      orders: [],
+    })
+
+    const refusal = await refusalFrom(() => removePromotion.handler(ctx, { id: "promotions:1" }))
+    expect(refusal.code).toBe("promotion_in_order")
+  })
+
+  it("still deletes a coupon nobody ever redeemed", async () => {
+    const ctx = createCountingDb({
+      promotions: [{ _id: "promotions:1", storeId: STORE, name: "Jamais utilisée", code: "OOPS" }],
+      promotionUsages: [],
+      orders: [],
+    })
+    await removePromotion.handler(ctx, { id: "promotions:1" })
+    expect(rows(ctx, "promotions")).toHaveLength(0)
+  })
+})
+
+describe("#412 P3-F4 emailAutomations.remove", () => {
+  it("refuses while its runs record who it has already mailed", async () => {
+    // No screen calls this today. That is the reason to guard it now: it is
+    // live on the API under `marketing:write`, and `emailAutomationRuns` is
+    // both the record of what was sent and the dedupe that stops a rescheduled
+    // step sending it again.
+    const ctx = createCountingDb({
+      emailAutomations: [{ _id: "emailAutomations:1", storeId: STORE, name: "Bienvenue", steps: [] }],
+      emailAutomationRuns: [
+        {
+          _id: "emailAutomationRuns:1",
+          storeId: STORE,
+          automationId: "emailAutomations:1",
+          subscriberId: "emailSubscribers:1",
+          stepId: "s1",
+          sentAt: NOW,
+        },
+      ],
+    })
+
+    const refusal = await refusalFrom(() =>
+      removeAutomation.handler(ctx, { id: "emailAutomations:1" })
+    )
+
+    expect(refusal.code).toBe("automation_has_runs")
+    expect(rows(ctx, "emailAutomations")).toHaveLength(1)
+  })
+
+  it("still deletes an automation that never ran", async () => {
+    const ctx = createCountingDb({
+      emailAutomations: [{ _id: "emailAutomations:1", storeId: STORE, name: "Jamais lancée", steps: [] }],
+      emailAutomationRuns: [],
+    })
+    await removeAutomation.handler(ctx, { id: "emailAutomations:1" })
+    expect(rows(ctx, "emailAutomations")).toHaveLength(0)
   })
 })

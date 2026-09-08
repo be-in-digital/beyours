@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 const triggerValidator = v.union(
   v.literal("welcome"),
@@ -121,9 +121,52 @@ export const update = {
   },
 }
 
+/**
+ * Delete an automation — unless it has already mailed somebody.
+ *
+ * WHAT WENT WRONG (#412 P3-F4). A bare `ctx.db.delete(args.id)` over
+ * `emailAutomationRuns.automationId`, which is REQUIRED. Those rows are the
+ * record of which step reached which subscriber, and the dedupe that stops a
+ * retried or rescheduled step mailing the same person the same message twice.
+ * They also outlive the trigger by design — an automation's later steps are
+ * scheduled days out — so deleting the automation strands every one of them and
+ * silently drops every step still in flight: a subscriber gets step 1 and never
+ * step 2, with nothing anywhere saying why.
+ *
+ * There is no automation editor in the product, so this delete has no UI caller
+ * today. It is public on the API under `marketing:write` all the same, and the
+ * person who wires the first button to it will not be reading this file.
+ *
+ * The way out is `pause`, which already exists here and which `listActive` and
+ * `listActiveByTrigger` both respect, so a paused automation fires nothing.
+ *
+ * The read goes through the `automationId` prefix of
+ * `by_automation_subscriber_occurrence_step`. `by_automationId` is deliberately
+ * NOT re-added — see the note on its removal in the schema.
+ */
 export const remove = {
   args: { id: v.id("emailAutomations") },
   handler: async (ctx: any, args: any) => {
+    const automation = await ctx.db.get(args.id)
+    if (!automation) throw new Error("Automatisation introuvable")
+
+    const run = await ctx.db
+      .query("emailAutomationRuns")
+      .withIndex("by_automation_subscriber_occurrence_step", (q: any) =>
+        q.eq("automationId", args.id)
+      )
+      .first()
+
+    if (run) {
+      throw new ConvexError({
+        code: "automation_has_runs",
+        message:
+          `« ${automation.name} » a déjà envoyé des emails : la supprimer effacerait ` +
+          "la trace de qui a reçu quoi, et les étapes encore programmées " +
+          "n'arriveraient jamais. Mettez-la en pause pour l'arrêter.",
+      })
+    }
+
     await ctx.db.delete(args.id)
   },
 }

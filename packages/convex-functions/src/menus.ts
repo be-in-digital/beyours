@@ -5,7 +5,7 @@
  * Menus use typed sections: fixed product, pick from products, or pick from category.
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 /**
  * Shared section validator (mirrors menuSectionValidator in convex-schema)
@@ -268,11 +268,104 @@ export const toggleStatus = {
 }
 
 /**
- * Delete a menu
+ * How many translation rows one pass of a menu delete clears.
+ *
+ * A menu is translated field by field, per language, so the row count is
+ * (fields x languages) — dozens, not thousands. The cap is there so the number
+ * cannot become unbounded if either side grows, and `hasMore` is the caller's
+ * signal to schedule the next pass.
+ */
+export const MENU_TRANSLATION_BATCH = 256
+
+export interface MenuPurgeResult {
+  /** Translation rows cleared in this pass. */
+  deleted: number
+  /** Whether another pass is needed. */
+  hasMore: boolean
+}
+
+/** Clear up to `budget` translation rows belonging to one menu. */
+async function deleteTranslationBatch(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown,
+  menuId: unknown,
+  budget: number = MENU_TRANSLATION_BATCH
+): Promise<MenuPurgeResult> {
+  // `take(budget + 1)`: the extra row is how we learn there is more to do
+  // without paying for a count.
+  const translations = await ctx.db
+    .query("translations")
+    .withIndex("by_storeId_entity", (q: any) =>
+      q.eq("storeId", storeId).eq("entityType", "menus").eq("entityId", menuId)
+    )
+    .take(budget + 1)
+
+  const hasMore = translations.length > budget
+  const batch = hasMore ? translations.slice(0, budget) : translations
+  for (const translation of batch) {
+    await ctx.db.delete(translation._id)
+  }
+  return { deleted: batch.length, hasMore }
+}
+
+/**
+ * Delete a menu, and the translations that only ever described it.
+ *
+ * WHAT WENT WRONG (#412 P3-F4). A bare `ctx.db.delete(args.id)`, leaving two
+ * kinds of row behind.
+ *
+ *  - REFUSED — `prizes.menuId`. A « Menu offert » prize names the formule it
+ *    gives away, and a prize is what a diner has been promised. Deleting the
+ *    menu under it leaves the prize naming nothing, which is the same shape
+ *    `products.remove` already refuses for a dish that a formule, a promotion
+ *    or a prize still points at. Prizes are read through the establishment's
+ *    own list, as `products.remove` reads menus and promotions: dozens of rows,
+ *    and no index that would be written on every insert to serve one delete.
+ *  - CASCADED — `translations`, keyed `entityType: "menus"` with the menu's id
+ *    as `entityId`. `entityId` is a `v.string()`, so the schema cannot see that
+ *    it is a foreign key and nothing ever complained; the rows are the menu's
+ *    own name and description in every language the owner added, they are of no
+ *    use to anything else, and nothing but a whole-store delete ever cleared
+ *    them. They go with it.
  */
 export const remove = {
   args: { id: v.id("menus") },
-  handler: async (ctx: any, args: any) => {
+  handler: async (ctx: any, args: any): Promise<MenuPurgeResult> => {
+    const menu = await ctx.db.get(args.id)
+    if (!menu) throw new Error("Menu not found")
+
+    const prizes = await ctx.db
+      .query("prizes")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", menu.storeId))
+      .collect()
+
+    const blockingPrizes = prizes.filter((prize: any) => prize.menuId === args.id)
+    if (blockingPrizes.length > 0) {
+      const plural = blockingPrizes.length > 1
+      const names = blockingPrizes.map((prize: any) => `« ${prize.name} »`).join(", ")
+      throw new ConvexError({
+        code: "menu_in_prize",
+        message:
+          `Cette formule est offerte par ${blockingPrizes.length} lot${plural ? "s" : ""} : ` +
+          `${names}. Changez ${plural ? "ces lots" : "ce lot"} avant de supprimer la formule.`,
+      })
+    }
+
+    const result = await deleteTranslationBatch(ctx, menu.storeId, args.id)
     await ctx.db.delete(args.id)
+    return result
   },
+}
+
+/**
+ * The rest of the translation sweep, one batch per run.
+ *
+ * Internal only: it takes an id that no longer resolves — the menu row goes in
+ * the first transaction — and it is nobody's to call but the scheduler's.
+ */
+export const purgeTranslations = {
+  args: { menuId: v.id("menus"), storeId: v.id("stores") },
+  handler: async (ctx: any, args: any): Promise<MenuPurgeResult> =>
+    await deleteTranslationBatch(ctx, args.storeId, args.menuId),
 }

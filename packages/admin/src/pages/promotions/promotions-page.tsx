@@ -53,6 +53,7 @@ import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { formatShortDate, formatPrice } from "../../lib/formatters"
 import { PromotionForm } from "./promotion-form"
 import { ResolvingStore } from "../../components/resolving-store"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 type DiscountType = "percentage" | "fixed_amount" | "free_product" | "free_delivery" | "bogo"
 type TriggerMode = "coupon" | "auto"
@@ -237,7 +238,10 @@ export function PromotionsPage() {
       toast.success("Promotion supprimée")
       setDeletingId(null)
     } catch (error: unknown) {
-      toast.error("Échec de la suppression")
+      // The refusal names the orders this coupon discounted and says to
+      // deactivate it instead.
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     } finally {
       setIsDeleting(false)
     }

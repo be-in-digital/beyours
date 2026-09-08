@@ -47,6 +47,7 @@ import { useAdminApiStore } from "../../stores/admin-api-store"
 import { buildStoreCreateArgs } from "./store-create-args"
 import { StoresTable } from "./stores-table"
 import { StoresPagination } from "./stores-pagination"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 type StoreStatus = "open" | "closed" | "temporarily_unavailable"
 
@@ -203,7 +204,7 @@ export function StoresPage() {
         setSelectedIds(new Set())
       }
     } catch (error) {
-      toast.error("Échec de la suppression")
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
       console.error(error)
     }
   }

@@ -27,6 +27,7 @@ import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../../lib/convex-error"
 import { formatShortDate } from "../../../lib/formatters"
 import { SegmentFormDialog } from "./segment-form-dialog"
 
@@ -63,7 +64,10 @@ export function EmailSegmentsPage() {
       toast.success("Segment supprimé")
       setDeletingId(null)
     } catch (error: unknown) {
-      toast.error("Échec de la suppression")
+      // Same as the models list: the names of the campaigns still filtering on
+      // this segment are what makes the refusal actionable.
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     } finally {
       setIsDeleting(false)
     }

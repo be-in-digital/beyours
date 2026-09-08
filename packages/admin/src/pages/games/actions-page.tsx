@@ -42,6 +42,7 @@ import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 /**
  * Required social actions CRUD — the quests players complete to unlock a play
@@ -163,7 +164,7 @@ export function GameActionsPage() {
       await removeAction({ id })
       toast.success("Action supprimée")
     } catch (error) {
-      toast.error("Échec de la suppression")
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
       console.error(error)
     } finally {
       setIsDeleting(false)

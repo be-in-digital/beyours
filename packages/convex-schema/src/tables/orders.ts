@@ -271,6 +271,23 @@ export const ordersTable = defineTable({
   .index("by_external_order", ["externalOrderId"])
   .index("by_uberDirectDeliveryId", ["uberDirectDeliveryId"])
   .index("by_storeId_idempotencyKey", ["storeId", "idempotencyKey"])
+  /**
+   * "Is any order still discounted by this promotion?" — `promotions.remove`'s
+   * question, and there was no way to ask it.
+   *
+   * `promotionId` is optional and, until this index, could not be seeked at all:
+   * deleting a coupon left every order it discounted naming a row that no longer
+   * resolved, with the discount still on the order and on the numbered invoice
+   * issued for it. The delete could not see them and nothing else looked.
+   *
+   * It is a write on every order insert, which this file does not spend
+   * lightly. The cheaper proxy — `promotionUsages`, which already has
+   * `by_promotionId` — is not equivalent: the retention cron and an art. 17
+   * erasure both clear usage rows, while an order is ANONYMISED and keeps its
+   * `promotionId`. Proxying would have made a three-year-old coupon deletable
+   * again and re-created the exact dangling reference the guard exists to stop.
+   */
+  .index("by_promotionId", ["promotionId"])
   // Reconciliation reads exactly one slice: orders still unpaid, created inside
   // the window where asking the provider is still meaningful. Without this the
   // sweep would be a full walk of every order the store has ever taken, run on

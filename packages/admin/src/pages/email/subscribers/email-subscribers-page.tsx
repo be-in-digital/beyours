@@ -52,6 +52,7 @@ import { formatShortDate } from "../../../lib/formatters"
 import { SubscriberForm } from "./subscriber-form"
 import { SubscriberDetailDialog } from "./subscriber-detail-dialog"
 import { CsvImportDialog } from "./csv-import-dialog"
+import { convexErrorMessage } from "../../../lib/convex-error"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Subscriber = any
@@ -188,11 +189,20 @@ function SubscribersList({
     if (!deletingId) return
     setIsDeleting(true)
     try {
-      await removeMutation({ id: deletingId })
-      toast.success("Abonné supprimé")
+      // The removal clears the subscriber's events and automation runs first
+      // and only then the subscriber, so a long-standing address can need more
+      // than one transaction. Saying « supprimé » on the pass that did not
+      // finish leaves the owner looking at a row that is still on the list.
+      const result = await removeMutation({ id: deletingId })
+      toast.success(
+        result?.complete === false
+          ? "Suppression en cours — cet abonné a beaucoup d'historique, il disparaîtra de la liste dans un instant"
+          : "Abonné supprimé"
+      )
       setDeletingId(null)
-    } catch {
-      toast.error("Échec de la suppression")
+    } catch (error: unknown) {
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     } finally {
       setIsDeleting(false)
     }

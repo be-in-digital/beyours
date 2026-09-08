@@ -39,6 +39,7 @@ import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 /**
  * Games & prizes configuration — what customers can play and win.
@@ -184,7 +185,11 @@ export function GameCatalogPage() {
       await removeGame({ id })
       toast.success("Jeu supprimé")
     } catch (error) {
-      toast.error("Suppression impossible — réessayez")
+      // The refusal names the plays — the establishment's own record of what it
+      // ran, consent included — and tells the owner to deactivate instead.
+      // « Suppression impossible — réessayez » threw that away and invited the
+      // one action the server had just refused.
+      toast.error(convexErrorMessage(error, "Suppression impossible — réessayez"))
       console.error(error)
     } finally {
       setIsDeleting(false)
@@ -198,7 +203,9 @@ export function GameCatalogPage() {
       await removePrize({ id })
       toast.success("Lot supprimé")
     } catch (error) {
-      toast.error("Suppression impossible — réessayez")
+      // Same seam: the refusal says a diner is holding this prize and that
+      // deactivating it keeps their code valid. Retrying cannot help.
+      toast.error(convexErrorMessage(error, "Suppression impossible — réessayez"))
       console.error(error)
     } finally {
       setIsDeleting(false)

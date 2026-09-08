@@ -59,6 +59,19 @@ export const getByStorePlatform = {
 
 /**
  * Get integration by platformStoreId (site_id for Deliveroo)
+ *
+ * `withIndex` on the platform, THEN a filter for the id. It was a bare
+ * `.query().filter().first()` — the shape Convex charges the whole table for,
+ * because `.filter()` is applied after the scan and `.first()` keeps pulling
+ * until something matches, so a miss reads every row there is. That was
+ * invisible until the read-counting double stopped counting matches and started
+ * counting documents walked (#412 P3-F6), and this is the first live path it
+ * caught: both platform webhooks resolve their store through here on every
+ * delivery.
+ *
+ * `by_platform_enabled` is the index because `platform` is its first field;
+ * nothing new is declared. The scan that remains is one platform's rows for one
+ * deployment — a handful — instead of the table.
  */
 export const getBySiteId = {
   args: {
@@ -68,18 +81,16 @@ export const getBySiteId = {
   handler: async (ctx: any, args: { platform: "uberEats" | "deliveroo"; platformStoreId: string }) => {
     return await ctx.db
       .query("storeIntegrations")
-      .filter((q: any) =>
-        q.and(
-          q.eq(q.field("platform"), args.platform),
-          q.eq(q.field("platformStoreId"), args.platformStoreId)
-        )
-      )
+      .withIndex("by_platform_enabled", (q: any) => q.eq("platform", args.platform))
+      .filter((q: any) => q.eq(q.field("platformStoreId"), args.platformStoreId))
       .first()
   },
 }
 
 /**
  * Get integration by brandId (for Deliveroo)
+ *
+ * Same shape and same fix as `getBySiteId` above.
  */
 export const getByBrandId = {
   args: {
@@ -89,12 +100,8 @@ export const getByBrandId = {
   handler: async (ctx: any, args: { platform: "uberEats" | "deliveroo"; brandId: string }) => {
     return await ctx.db
       .query("storeIntegrations")
-      .filter((q: any) =>
-        q.and(
-          q.eq(q.field("platform"), args.platform),
-          q.eq(q.field("brandId"), args.brandId)
-        )
-      )
+      .withIndex("by_platform_enabled", (q: any) => q.eq("platform", args.platform))
+      .filter((q: any) => q.eq(q.field("brandId"), args.brandId))
       .first()
   },
 }

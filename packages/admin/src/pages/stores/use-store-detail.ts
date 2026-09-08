@@ -678,7 +678,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       setUberEatsPrepTime("")
       toast.success("Intégration Uber Eats supprimée")
     } catch (error) {
-      toast.error("Échec de la suppression")
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
       console.error(error)
     } finally {
       setIsRemovingIntegration(false)
@@ -807,7 +807,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       setDeliverooPrepTime("")
       toast.success("Intégration Deliveroo supprimée")
     } catch (error) {
-      toast.error("Échec de la suppression")
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
       console.error(error)
     } finally {
       setIsRemovingIntegration(false)

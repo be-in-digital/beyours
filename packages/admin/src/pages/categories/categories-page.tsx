@@ -32,6 +32,7 @@ import { CategoryForm } from "./category-form"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { ResolvingStore } from "../../components/resolving-store"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 export function CategoriesPage() {
   const { api } = useAdminApiStore()
@@ -112,7 +113,7 @@ export function CategoriesPage() {
       toast.success("Catégorie supprimée avec succès")
       setDeletingId(null)
     } catch (error) {
-      toast.error("Échec de la suppression de la catégorie")
+      toast.error(convexErrorMessage(error, "Échec de la suppression de la catégorie"))
       console.error(error)
     }
   }
