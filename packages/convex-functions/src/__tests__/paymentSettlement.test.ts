@@ -5,6 +5,10 @@ import {
   readPayPalCapture,
   readStripeCheckoutSession,
   paymentStatusAfterSettlement,
+  orderAlreadyCollected,
+  deliberateSettlementRefusal,
+  isDeliberateSettlementRefusal,
+  DoubleCollectionError,
   SettlementRejectedError,
   type SettlementClaim,
   type OrderToSettle,
@@ -470,6 +474,15 @@ describe("collection through a method the order has left", () => {
     // already `paid` by card. Throwing here would be a 500 answered with three
     // days of retries — and `settlePayment` already makes the second write a
     // no-op, which is where deduplication belongs.
+    //
+    // READ THIS WITH #411 IN MIND. A SECOND card session on the same order
+    // presents itself to this function in exactly the shape below — card
+    // claim, card order, already paid — and is waved through for the same
+    // reason. That is not a hole in this check; it is the limit of what this
+    // function is given. It sees one claim and one order and no charges, so it
+    // cannot tell a redelivery of the charge that paid the order from a
+    // different charge that is about to pay it again. Only the ledger can, and
+    // `payments.settlePayment` is where it does.
     expect(() =>
       assertSettlesOrder(card(), {
         ...ORDER,
@@ -481,7 +494,10 @@ describe("collection through a method the order has left", () => {
 
   it("settles a card order through either card provider", () => {
     // A deployment picks one of Stripe and SumUp, and which one is a store
-    // setting the order does not record. Both are "card".
+    // setting the order does not record. Both are "card". Which is also why
+    // this check cannot separate two card collections from each other — see
+    // the replay case above, and `payments.settlePayment` for the rule that
+    // can (#411).
     expect(() =>
       assertSettlesOrder(claim({ provider: "sumup" }), {
         ...ORDER,
@@ -649,5 +665,145 @@ describe("paymentStatusAfterSettlement", () => {
     expect(
       paymentStatusAfterSettlement({ status: "pending", paymentStatus: "failed" })
     ).toBe("paid")
+  })
+})
+// ============================================================================
+// orderAlreadyCollected — the list, shared instead of copied
+// ============================================================================
+
+describe("orderAlreadyCollected", () => {
+  it("counts every status in which money has already moved", () => {
+    for (const status of ["paid", "refund_pending", "refunded", "partially_refunded"]) {
+      expect(orderAlreadyCollected(status), status).toBe(true)
+    }
+  })
+
+  it("does not count an order nothing has collected yet", () => {
+    expect(orderAlreadyCollected("pending")).toBe(false)
+    expect(orderAlreadyCollected("failed")).toBe(false)
+  })
+
+  it("says no when there is no status to read", () => {
+    // A guard may not invent the fact it is checking. Absent evidence is not
+    // evidence of a collection, and refusing on it would refuse real payments.
+    expect(orderAlreadyCollected(undefined)).toBe(false)
+    expect(orderAlreadyCollected(null)).toBe(false)
+    expect(orderAlreadyCollected("")).toBe(false)
+  })
+
+  it("is the same list `assertSettlesOrder` refuses on", () => {
+    // Guards the guard: the predicate and the check that uses it were three
+    // hand-written copies of one list before this existed.
+    for (const status of ["paid", "refund_pending", "refunded", "partially_refunded"]) {
+      expect(
+        rejection(() =>
+          assertSettlesOrder(
+            { provider: "stripe", reference: "orders:1", amountMinor: 11_500, currency: "EUR" },
+            { ...ORDER, paymentMethod: "cash", paymentStatus: status }
+          )
+        ).reason,
+        status
+      ).toBe("method_mismatch")
+    }
+  })
+})
+
+// ============================================================================
+// Telling a refusal from a failure
+// ============================================================================
+
+describe("deliberateSettlementRefusal", () => {
+  /**
+   * THE BUG IT EXISTS FOR (#411, B2-F2). The Stripe webhook answered 500 to
+   * every throw, refusals included. A refusal is permanent — retrying delivers
+   * the same answer — so Stripe retried for three days, the delivery stayed
+   * unprocessed, and the only trace was a `console.error` in one client's
+   * Convex dashboard. Nobody was told a diner had been charged twice.
+   *
+   * The reader has to work ACROSS A CONVEX BOUNDARY, which is the part that is
+   * easy to get wrong: these refusals are thrown inside a mutation and caught
+   * in the `httpAction` above it. Convex rebuilds the error there from its
+   * `data`, so the caller holds a `ConvexError` and never an instance of the
+   * class that threw. `instanceof` is false at exactly the call site that
+   * matters, and it fails closed into "unknown error, answer 500" — the loop
+   * this is meant to end.
+   */
+  it("recognises a settlement rejection", () => {
+    const error = new SettlementRejectedError(
+      "amount_mismatch",
+      "stripe",
+      "stripe: montant réglé 100 c, total de la commande 11500 c."
+    )
+    expect(deliberateSettlementRefusal(error)).toEqual({
+      code: "amount_mismatch",
+      message: "stripe: montant réglé 100 c, total de la commande 11500 c.",
+    })
+  })
+
+  it("recognises a double collection", () => {
+    const error = new DoubleCollectionError(
+      "order_already_collected",
+      "Cette commande a déjà été encaissée (stripe)."
+    )
+    expect(isDeliberateSettlementRefusal(error)).toBe(true)
+    expect(deliberateSettlementRefusal(error)?.code).toBe(
+      "order_already_collected"
+    )
+  })
+
+  it("reads a refusal that crossed a function boundary as an object", () => {
+    // What a caller one layer up actually holds: the data, on something that
+    // is not an instance of anything in this module.
+    const acrossTheWire = Object.assign(new Error("Server Error"), {
+      data: { code: "order_already_collected", message: "déjà encaissée" },
+    })
+    expect(deliberateSettlementRefusal(acrossTheWire)).toEqual({
+      code: "order_already_collected",
+      message: "déjà encaissée",
+    })
+  })
+
+  it("reads a refusal whose data arrived as JSON, which is what convex-test hands back", () => {
+    const serialized = Object.assign(new Error("Server Error"), {
+      data: JSON.stringify({ code: "method_mismatch", message: "déjà réglée" }),
+    })
+    expect(deliberateSettlementRefusal(serialized)?.code).toBe("method_mismatch")
+  })
+
+  it("refuses to call a plain failure a refusal", () => {
+    // The half that matters most: a bug, an outage or a timeout must still
+    // answer 500 so the provider retries it. Reading those as refusals would
+    // mark a lost delivery processed and never look at it again.
+    expect(isDeliberateSettlementRefusal(new TypeError("undefined is not a function"))).toBe(false)
+    expect(isDeliberateSettlementRefusal(new Error("Payment amount must be positive"))).toBe(false)
+    expect(isDeliberateSettlementRefusal(null)).toBe(false)
+    expect(isDeliberateSettlementRefusal(undefined)).toBe(false)
+    expect(isDeliberateSettlementRefusal("boom")).toBe(false)
+  })
+
+  it("refuses a ConvexError carrying some other code", () => {
+    // A `RefusalError` from the order path — a sold-out dish, a delivery
+    // radius — is not a settlement refusal, and answering 200 to one would
+    // drop a delivery that had genuinely failed.
+    const other = Object.assign(new Error("épuisé"), {
+      data: { code: "out_of_stock", message: "« Pizza » est épuisé." },
+    })
+    expect(isDeliberateSettlementRefusal(other)).toBe(false)
+  })
+
+  it("does not choke on data that is not JSON, or not an object", () => {
+    for (const data of ["not json at all", 42, [1, 2, 3], true]) {
+      expect(
+        isDeliberateSettlementRefusal(Object.assign(new Error("x"), { data }))
+      ).toBe(false)
+    }
+  })
+
+  it("carries the French sentence through, because that is what gets recorded", () => {
+    const error = new DoubleCollectionError(
+      "charge_settles_another_order",
+      "Ce paiement stripe règle déjà la commande orders:9."
+    )
+    expect(deliberateSettlementRefusal(error)?.message).toContain("orders:9")
   })
 })

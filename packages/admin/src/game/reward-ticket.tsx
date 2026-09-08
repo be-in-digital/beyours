@@ -65,7 +65,7 @@ export function RewardTicket({ code, expiresAt, prize, storeName, email }: Rewar
           <div className="relative overflow-hidden rounded-[calc(1.5rem-3px)] bg-[#fdfaf3] text-[#1c1427]">
             {/* Top: prize */}
             <div className="px-6 pb-5 pt-6 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-600">
+              <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-700">
                 Ticket gagnant
               </p>
               <div className="mt-3 text-4xl" aria-hidden>
@@ -74,7 +74,7 @@ export function RewardTicket({ code, expiresAt, prize, storeName, email }: Rewar
               <p className="mt-2 font-heading text-xl font-bold leading-tight">
                 {prize?.name ?? "Votre lot"}
               </p>
-              {storeName && <p className="mt-1 text-xs text-[#1c1427]/50">chez {storeName}</p>}
+              {storeName && <p className="mt-1 text-xs text-[#1c1427]/70">chez {storeName}</p>}
             </div>
 
             {/* Perforation */}
@@ -92,16 +92,16 @@ export function RewardTicket({ code, expiresAt, prize, storeName, email }: Rewar
                   // optimise here and cannot fetch it.
                   <img src={qrDataUrl} alt={`QR code du lot ${code}`} className="h-full w-full" />
                 ) : (
-                  <span className="text-xs text-[#1c1427]/40">QR indisponible</span>
+                  <span className="text-xs text-[#1c1427]/70">QR indisponible</span>
                 )}
               </div>
-              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#1c1427]/45">
+              <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#1c1427]/70">
                 Code à présenter
               </p>
               <p className="mt-1 font-mono text-[26px] font-bold tracking-[0.35em] text-[#1c1427]">
                 {code}
               </p>
-              <p className="mt-3 text-[11px] text-[#1c1427]/50">
+              <p className="mt-3 text-[11px] text-[#1c1427]/70">
                 Valable jusqu&apos;au {expiryDate}
                 {lessThanADay && remaining > 0 && (
                   <span className="ml-1 font-mono font-semibold text-amber-700">
@@ -126,7 +126,7 @@ export function RewardTicket({ code, expiresAt, prize, storeName, email }: Rewar
           </p>
         </motion.div>
 
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-white/40">
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-white/70">
           Présentez ce code au personnel lors de votre prochaine visite.
           <br />
           Une seule utilisation, sur place.

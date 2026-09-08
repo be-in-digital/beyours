@@ -55,8 +55,20 @@ export const getStats = query({
       activeAffiliates: affiliates.filter((a) => a.status === "active").length,
       totalReferrals: referrals.length,
       pendingReferrals: referrals.filter((r) => r.status === "pending").length,
+      /* `paying` counts here for the same reason it counts in the affiliate's
+         own totals (convex/referrals.ts): a commission claimed by a payout run
+         is owed, not paid, and a failed run puts it back to `payable`. Left
+         out of both sets — which is what happened when #384 added the state
+         and told none of the reading surfaces — a commission in flight was in
+         none of the three counters on this dashboard, while
+         `pendingCommissions` below (which excludes rather than includes) DID
+         count it. Two numbers on one screen disagreeing about the same money
+         (#411). */
       validatedReferrals: referrals.filter(
-        (r) => r.status === "validated" || r.status === "payable",
+        (r) =>
+          r.status === "validated" ||
+          r.status === "payable" ||
+          r.status === "paying",
       ).length,
       paidReferrals: referrals.filter((r) => r.status === "paid").length,
       totalCommissions: referrals
@@ -98,12 +110,18 @@ export const listAffiliates = query({
         totalEarned: referrals
           .filter((r) => r.status === "paid")
           .reduce((sum, r) => sum + r.commissionCents, 0),
+        /* `paying` is owed, not paid: it belongs with the pending set, and a
+           failed payout run puts the row back to `payable`. Omitted, a
+           commission in flight appeared in NEITHER bucket on this row, so an
+           affiliate's earnings silently dropped by one commission for as long
+           as a transfer was moving (#411). */
         pendingEarnings: referrals
           .filter(
             (r) =>
               r.status === "pending" ||
               r.status === "validated" ||
-              r.status === "payable",
+              r.status === "payable" ||
+              r.status === "paying",
           )
           .reduce((sum, r) => sum + r.commissionCents, 0),
       });
@@ -113,18 +131,29 @@ export const listAffiliates = query({
   },
 });
 
+/**
+ * The referral states the console may filter on.
+ *
+ * Exported, and named, so `tests/referral-status-vocabulary.test.ts` can check
+ * it against the schema's own union. #384 added `paying` to the schema and to
+ * three arithmetic call sites and to none of the reading surfaces, so a
+ * commission in flight could not be listed here at all — not even by editing
+ * the URL by hand — and rendered as a raw English literal where it did appear
+ * (#411).
+ */
+export const REFERRAL_STATUS_VALIDATOR = v.union(
+  v.literal("pending"),
+  v.literal("validated"),
+  v.literal("payable"),
+  v.literal("paying"),
+  v.literal("paid"),
+  v.literal("cancelled"),
+  v.literal("blocked"),
+);
+
 export const listReferrals = query({
   args: {
-    status: v.optional(
-      v.union(
-        v.literal("pending"),
-        v.literal("validated"),
-        v.literal("payable"),
-        v.literal("paid"),
-        v.literal("cancelled"),
-        v.literal("blocked"),
-      ),
-    ),
+    status: v.optional(REFERRAL_STATUS_VALIDATOR),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);

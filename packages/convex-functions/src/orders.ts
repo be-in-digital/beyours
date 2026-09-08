@@ -57,6 +57,7 @@ import {
   type OrderConfirmationDispatch,
 } from "./orderConfirmation"
 import { issueInvoiceForOrder } from "./invoices"
+import { collectionOnOrder } from "./paymentLedger"
 import {
   assertOrderHasNoInvoice,
   assertOrderHasNoLivePayment,
@@ -1346,6 +1347,20 @@ export const markCashPaid = {
     if (order.paymentStatus === "refund_pending") {
       throw new Error(
         "Cette commande est annulée et en attente de remboursement."
+      )
+    }
+
+    // The order's own status is not the whole truth, and this is the third
+    // writer that used to trust it alone. A settlement writes the payment row
+    // and the order status in two transactions, so between them an order reads
+    // `pending` with a `succeeded` row already against it — and the four
+    // checks above would wave the notes through, leaving one meal collected
+    // twice with nothing anywhere saying so (#411). `collectionOnOrder` asks
+    // the ledger, which is where the answer actually is.
+    const alreadyCollected = await collectionOnOrder(ctx, args.orderId)
+    if (alreadyCollected) {
+      throw new Error(
+        `Cette commande a déjà été encaissée (${alreadyCollected.provider}).`
       )
     }
 

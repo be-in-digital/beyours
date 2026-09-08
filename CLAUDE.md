@@ -284,11 +284,26 @@ Logo, favicon and brand name are per store, through the CMS `branding` block on
 the `storefront-layout` page — the only branding the storefront header, the
 favicon, the JSON-LD and the admin sidebar actually read.
 
-**Per-store colours and typography reach a diner, since #353.**
-`stores.updateBranding` writes `store.branding`; `buildBrandingCss`
-(`packages/ui/src/lib/branding.ts`) derives design tokens from it; and
-`StoreTheme`, mounted in each app's `app/(storefront)/layout.tsx`, emits them
-unlayered so they beat the template's defaults in `globals.css`'s `@layer base`.
+**Per-store colours and typography reach a diner, since #353 — and actually
+reached one only from #410.** `stores.updateBranding` writes `store.branding`;
+`buildBrandingCss` (`packages/ui/src/lib/branding.ts`) derives design tokens
+from it; and `StoreTheme`, mounted in each app's `app/(storefront)/layout.tsx`,
+emits them unlayered so they beat the defaults in `globals.css`'s `@layer base`.
+Unlayered is only half of it, and the missing half cost the feature its whole
+point: a layer settles a conflict **on one element**, and `globals.css` declares
+the storefront palette on `.storefront-theme`, a `<div>` in
+`components/storefront/storefront-shell.tsx`, while `StoreTheme` writes to
+`:root` and `.dark` on `<html>`. A property declared on an element beats the one
+it would have inherited, so nine tokens were overwritten straight back to the
+engine green. Measured in Chromium: a store that picked `#d32f2f` had a red
+admin and a green storefront. `buildBrandingCss` now takes `scopes`, and the
+storefront passes `[".storefront-theme"]` (`STOREFRONT_SCOPES`).
+
+The 51 vertical templates still have the identical defect — `site/theme.css`
+also targets `:root` and `.dark` — so `pnpm template:apply` repaints the admin
+and the sign-in pages and not the storefront. Recorded in
+`tasks/wcag-contrast-audit-2026-09-08.md`; not fixed.
+
 So the template above is the starting point, not the ceiling. Only the role
 gates the Design screen now — `stores:write`, which `manager` does not hold.
 

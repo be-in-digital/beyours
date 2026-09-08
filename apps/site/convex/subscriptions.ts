@@ -15,6 +15,50 @@ const statusValidator = v.union(
   v.literal("incomplete"),
 );
 
+/**
+ * Why a maintenance subscription has nothing to charge.
+ *
+ * WHY THREE AND NOT A BOOLEAN: the caller used to report
+ * `hasDefaultPaymentMethod: false`, and `resolveReusablePaymentMethod` answers
+ * `null` for three unrelated reasons — a genuine BNPL sale, a
+ * `paymentIntents.retrieve` that threw, and an event that carried no intent id
+ * at all. The feed asserted the first one for all three, so an operator read
+ * « Paiement initial réglé en BNPL (Alma/Klarna) » about a Stripe outage and
+ * went looking for a card the customer may well have already given (#411). A
+ * report that names the wrong cause is worse than one that names none.
+ */
+export const UNBILLABLE_REASONS = ["bnpl", "unreadable", "no_intent"] as const
+
+export type UnbillableReason = (typeof UNBILLABLE_REASONS)[number]
+
+const unbillableReasonValidator = v.union(
+  v.literal("bnpl"),
+  v.literal("unreadable"),
+  v.literal("no_intent"),
+);
+
+/**
+ * What the ops feed says about each, and what it asks for.
+ *
+ * French, like every other line in that feed: its readers are the BeInDigital
+ * team. Each one ends on the action, because the entry exists to be acted on.
+ */
+const UNBILLABLE_REASON_SUMMARY: Record<UnbillableReason, string> = {
+  bnpl:
+    "Paiement initial réglé en BNPL (Alma/Klarna), qui ne peut pas être représenté hors session : " +
+    "le premier renouvellement échouera. Récupérer une carte auprès du client avant la fin de la " +
+    "période d'essai.",
+  unreadable:
+    "Le PaymentIntent du paiement initial n'a pas pu être lu chez Stripe : aucun moyen de paiement " +
+    "n'a été rattaché au client, et le mode de règlement reste inconnu. Vérifier le paiement dans " +
+    "le tableau de bord Stripe — s'il a été réglé par carte, rattacher cette carte au client ; " +
+    "sinon en demander une.",
+  no_intent:
+    "L'événement Stripe ne portait aucun PaymentIntent — un rejeu d'un événement antérieur, en " +
+    "général — donc rien n'a pu être rattaché au client. Retrouver le paiement initial dans le " +
+    "tableau de bord Stripe et rattacher son moyen de paiement au client.",
+};
+
 export const create = internalMutation({
   args: {
     orderId: v.id("orders"),
@@ -26,10 +70,11 @@ export const create = internalMutation({
     status: statusValidator,
     currentPeriodStart: v.optional(v.number()),
     currentPeriodEnd: v.optional(v.number()),
-    /* Whether anything can actually be charged when the trial ends. Optional
-       so an older caller (or a replay) is not a type error; absent is treated
-       as « not known to be missing » rather than as a failure to report. */
-    hasDefaultPaymentMethod: v.optional(v.boolean()),
+    /* Why nothing can be charged when the trial ends, when that is the case.
+       Optional so an older caller (or a replay) is not a type error; absent is
+       « a reusable method was attached », which is the ordinary outcome and
+       reports nothing. See `UNBILLABLE_REASON_SUMMARY`. */
+    unbillableReason: v.optional(unbillableReasonValidator),
   },
   handler: async (ctx, args) => {
     /* ── One subscription per order, guarded where the write happens ──
@@ -81,24 +126,21 @@ export const create = internalMutation({
        payment method on the customer, its first renewal invoice — 240 to
        2 400 € — fails, dunning starts, and `/maintenance/status` eventually
        cuts the client's updates: a year after they paid, over a card nobody
-       ever asked them for. Alma and Klarna settle the first payment and cannot
-       be reused off-session, so this is a legitimate outcome of a BNPL sale,
-       not a bug to swallow — it just has to be somewhere an operator sees it
-       while there is still a year to act. */
-    if (args.hasDefaultPaymentMethod === false) {
+       ever asked them for. That has to be somewhere an operator sees it while
+       there is still a year to act — and it has to say which of the three
+       things happened, because they need three different responses. */
+    if (args.unbillableReason) {
       await recordSaActivity(ctx, {
         kind: "commerce",
         action: "subscription_without_payment_method",
         summary:
           `Abonnement de maintenance créé sans moyen de paiement réutilisable pour la commande ${args.orderId} ` +
-          `(${args.stripeSubscriptionId}). Paiement initial réglé en BNPL (Alma/Klarna), qui ne peut pas être ` +
-          `représenté hors session : le premier renouvellement échouera. Récupérer une carte auprès du client ` +
-          `avant la fin de la période d'essai.`,
+          `(${args.stripeSubscriptionId}). ${UNBILLABLE_REASON_SUMMARY[args.unbillableReason]}`,
         customerEmail: args.customerEmail,
       });
     }
 
-    const { hasDefaultPaymentMethod: _reported, ...row } = args;
+    const { unbillableReason: _reported, ...row } = args;
     return await ctx.db.insert("subscriptions", {
       ...row,
       createdAt: Date.now(),
@@ -242,7 +284,7 @@ export const recordCancellationFailure = internalMutation({
       kind: "incident",
       action: "subscription_cancellation_failed",
       summary:
-        `Annulation de l'abonnement ${args.stripeSubscriptionId} (commande ${args.orderId}) refusée par Stripe ` +
+        `Annulation de l'abonnement ${args.stripeSubscriptionId} (commande ${args.orderId}) impossible ` +
         `— ${args.detail}. La vente est remboursée mais l'abonnement tourne toujours : ` +
         `l'annuler à la main dans Stripe, sinon le client sera prélevé.`,
       customerEmail: args.customerEmail,

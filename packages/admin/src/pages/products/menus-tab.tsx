@@ -324,7 +324,7 @@ export function MenusTab() {
                       <TableCell>
                         <div className="flex gap-1">
                           {menu.platformVisibility?.uberEats && (
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-100 text-green-700">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-green-100 text-green-800">
                               UE
                             </span>
                           )}

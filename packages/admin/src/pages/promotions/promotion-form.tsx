@@ -539,8 +539,8 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                       key={product._id}
                       className={`flex items-center gap-3 px-2.5 py-2 rounded-md cursor-pointer transition-colors text-sm ${
                         selectedProductIds.includes(product._id)
-                          ? "bg-primary/10 border border-primary/20"
-                          : "hover:bg-muted border border-transparent"
+                          ? "bg-muted border border-primary/40"
+                          : "hover:bg-accent border border-transparent"
                       }`}
                     >
                       <Checkbox
@@ -555,7 +555,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                             <span className="text-xs text-muted-foreground line-through">
                               {formatPrice(product.price)}
                             </span>
-                            <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                            <span className="text-xs font-medium text-success">
                               {formatPrice(discounted)}
                             </span>
                           </span>

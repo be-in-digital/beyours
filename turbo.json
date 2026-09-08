@@ -104,6 +104,13 @@
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
+        // The commercial site's deliberate no-payment path. Declared so the
+        // suites that need it OFF can actually turn it off: `checkoutSavedCard`
+        // exercises the live Stripe branch, which returns early when this is
+        // "true", and an undeclared variable cannot be deleted from an
+        // environment it never reached. Its value is not a fixture — a
+        // developer with it set locally must get the same result as CI.
+        "BEYOURS_TEST_CHECKOUT",
         // The Convex-side Sentry DSN. The reporting suites set it to a fixture
         // DSN and read it back through `resolveSentryOptions`, so it has to
         // survive the boundary — an undeclared variable reads `undefined`, the
@@ -170,6 +177,13 @@
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
+        // The commercial site's deliberate no-payment path. Declared so the
+        // suites that need it OFF can actually turn it off: `checkoutSavedCard`
+        // exercises the live Stripe branch, which returns early when this is
+        // "true", and an undeclared variable cannot be deleted from an
+        // environment it never reached. Its value is not a fixture — a
+        // developer with it set locally must get the same result as CI.
+        "BEYOURS_TEST_CHECKOUT",
         // The Convex-side Sentry DSN. The reporting suites set it to a fixture
         // DSN and read it back through `resolveSentryOptions`, so it has to
         // survive the boundary — an undeclared variable reads `undefined`, the

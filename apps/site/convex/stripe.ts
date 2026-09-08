@@ -11,7 +11,8 @@ import {
   planClosedForSaleMessage,
 } from "./planAvailability";
 import { foundersOffer, resolveFoundersPricing } from "./foundersOffer";
-import { resolveStripeAccess } from "./stripeMode";
+import { resolveStripeAccess, StripeNotConfiguredError } from "./stripeMode";
+import type { UnbillableReason } from "./subscriptions";
 import { isSameMailbox } from "./emailIdentity";
 import {
   MAINTENANCE_PRICE_ENV,
@@ -572,19 +573,31 @@ export const createCheckoutSession = action({
 async function resolveReusablePaymentMethod(
   stripe: Stripe,
   paymentIntentId: string | undefined,
-): Promise<string | null> {
-  if (!paymentIntentId) return null;
+): Promise<
+  | { method: string; reason?: undefined }
+  | { method: null; reason: UnbillableReason }
+> {
+  /* Three ways to end up with nothing, and they are NOT the same fact.
+     Answering `null` to all three is what let the ops feed report a Stripe
+     outage as « Paiement initial réglé en BNPL (Alma/Klarna) » (#411). The
+     caller writes that line, so it is given the cause rather than left to
+     assume the most flattering one. */
+  if (!paymentIntentId) return { method: null, reason: "no_intent" };
   try {
     const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
     const method = intent.payment_method;
-    return typeof method === "string" ? method : (method?.id ?? null);
+    const id = typeof method === "string" ? method : (method?.id ?? null);
+    /* The intent WAS read and carries no reusable method. Alma and Klarna
+       settle a payment and cannot be represented off-session, so this is the
+       one case that genuinely is BNPL. */
+    return id ? { method: id } : { method: null, reason: "bnpl" };
   } catch (err) {
     console.error(
       `[STRIPE] Lecture du PaymentIntent ${paymentIntentId} impossible — ` +
         `l'abonnement sera créé sans moyen de paiement par défaut:`,
       err,
     );
-    return null;
+    return { method: null, reason: "unreadable" };
   }
 }
 
@@ -656,7 +669,7 @@ export const createSubscription = internalAction({
        repeated key whose body changed, so a replay that resolved the method
        differently (an unreadable intent, say) would turn a harmless retry into
        a hard failure. See ./maintenanceSubscription. */
-    const defaultPaymentMethod = await resolveReusablePaymentMethod(
+    const reusable = await resolveReusablePaymentMethod(
       stripe,
       args.stripePaymentIntentId,
     );
@@ -664,8 +677,8 @@ export const createSubscription = internalAction({
     await stripe.customers.update(args.stripeCustomerId, {
       invoice_settings: {
         ...invoiceLegalSettings(args.buyerType),
-        ...(defaultPaymentMethod
-          ? { default_payment_method: defaultPaymentMethod }
+        ...(reusable.method
+          ? { default_payment_method: reusable.method }
           : {}),
       },
     });
@@ -733,8 +746,11 @@ export const createSubscription = internalAction({
          Klarna cannot be reused off-session — but it IS a sale that will dun a
          client at the end of the trial unless somebody collects a card first.
          Reported where ops look rather than left to be discovered by the
-         failed invoice. */
-      hasDefaultPaymentMethod: defaultPaymentMethod !== null,
+         failed invoice, and reported with the CAUSE: an unreadable intent and
+         a BNPL sale need different things done about them (#411). */
+      ...(reusable.method === null
+        ? { unbillableReason: reusable.reason }
+        : {}),
     });
 
     console.log(
@@ -784,7 +800,48 @@ export const cancelSubscriptionForOrder = internalAction({
     }
     if (subscription.status === "canceled") return;
 
-    const stripe = getStripeOrTestMode("annuler l'abonnement de maintenance");
+    /* ── An unconfigured Stripe is not a reason to fail the webhook ──
+       `getStripeOrTestMode` throws `StripeNotConfiguredError` on a deployment
+       carrying neither a key nor the deliberate test flag, and that throw used
+       to leave this action — and therefore `handleChargeReversal`, and
+       therefore the whole webhook route, which answered 500. Stripe then
+       retried `charge.refunded` for three days, replaying a reversal that had
+       ALREADY marked the payment refunded, cancelled the order and clawed the
+       commission back, and no operator was told any of it (#411).
+
+       Refusing here is also pointless on its own terms: there is no key, so
+       there is nothing to send a cancellation to.
+
+       THE ROW IS STILL CLOSED, and this branch differs from the Stripe-refusal
+       one below on purpose. There, Stripe answered: the subscription
+       demonstrably exists and is demonstrably still billing, so a row reading
+       `canceled` would be a lie nobody would ever look at again. Here nothing
+       answered, and the one thing we do know is that the sale has been
+       refunded. `maintenance.resolveEntitlement` reads `active` as entitled
+       regardless of the period end, so leaving the row alone would serve a
+       refunded — or charged-back — client « Maintenance à jour » and engine
+       updates for ever. The incident line is what covers the other half: if a
+       key was REMOVED after this subscription was created, Stripe may still be
+       billing it, and a human has to go and cancel it by hand. */
+    let stripe: Stripe | null;
+    try {
+      stripe = getStripeOrTestMode("annuler l'abonnement de maintenance");
+    } catch (err) {
+      if (!(err instanceof StripeNotConfiguredError)) throw err;
+      console.error(
+        `[STRIPE] Aucune clé Stripe sur ce déploiement — l'abonnement ` +
+          `${subscription.stripeSubscriptionId} (commande ${args.orderId}) n'a pas pu ` +
+          `être annulé chez Stripe. À vérifier et annuler à la main:`,
+        err,
+      );
+      await ctx.runMutation(internal.subscriptions.recordCancellationFailure, {
+        orderId: args.orderId,
+        stripeSubscriptionId: subscription.stripeSubscriptionId,
+        customerEmail: subscription.customerEmail,
+        detail: err.message,
+      });
+      stripe = null;
+    }
 
     /* The local row is closed whether or not Stripe could be reached. Leaving
        it "active" would tell every screen the client is still under

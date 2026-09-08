@@ -88,3 +88,28 @@ export class CardPaymentUnavailableError extends RefusalError<"card_payment_unav
     )
   }
 }
+
+/**
+ * The order this checkout is for has already been collected.
+ *
+ * Thrown by `stripe.createCheckoutSession` before a session is opened.
+ * `orders.create` is idempotent on the diner's key, so a back-navigation and a
+ * resubmit reuse the SAME order — and a card session opened on one that is
+ * already paid takes the money a second time. The ledger refuses the second
+ * payment row afterwards (#411), which keeps the books straight and leaves the
+ * diner debited and waiting for a refund; this is what stops the charge.
+ *
+ * A `ConvexError` for the same reason as `CardPaymentUnavailableError`: a
+ * plain `Error` reaches the checkout as a redacted "Server Error" behind the
+ * generic retry toast, and telling a diner to retry a payment they have
+ * already made is the worst thing this screen could say.
+ */
+export class OrderAlreadyPaidError extends RefusalError<"order_already_paid"> {
+  constructor() {
+    super(
+      "OrderAlreadyPaidError",
+      "order_already_paid",
+      "Cette commande a déjà été réglée : il n'y a rien de plus à payer."
+    )
+  }
+}

@@ -583,8 +583,13 @@ export function GameCatalogPage() {
               return (
                 <div
                   key={prize._id}
+                  /*
+                   * Tinted, not faded. `opacity-60` multiplied every ratio on
+                   * the card, and the "Épuisé" badge — which only ever renders
+                   * on a card in this state — measured 3.29:1 through it.
+                   */
                   className={`border border-border/50 rounded-lg p-4 space-y-2.5 ${
-                    !prize.isActive || outOfStock ? "opacity-60" : ""
+                    !prize.isActive || outOfStock ? "bg-muted/50" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -618,7 +623,7 @@ export function GameCatalogPage() {
                     </Badge>
                     <Badge
                       variant={outOfStock ? "outline" : "secondary"}
-                      className={`text-[10px] ${outOfStock ? "bg-red-50 text-red-700 border-red-200" : ""}`}
+                      className={`text-[10px] ${outOfStock ? "bg-destructive text-destructive-foreground border-destructive" : ""}`}
                     >
                       {stock === undefined ? "Illimité" : outOfStock ? "Épuisé" : `${stock} restant${stock > 1 ? "s" : ""}`}
                     </Badge>

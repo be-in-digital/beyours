@@ -395,7 +395,16 @@ describe("what the screen saves reaches a diner", () => {
       )
       // Server-resolved, so a returning visitor does not watch the engine
       // orange repaint into their restaurant's red after hydration.
-      expect(layout).toContain("buildBrandingCss(store?.branding)")
+      expect(layout).toContain("buildBrandingCss(store?.branding,")
+      // And scoped to the element the storefront palette is declared on. Custom
+      // properties resolve per element and a declaration on the element beats
+      // the one it would inherit, so tokens written only to `:root`/`.dark`
+      // stopped at `<html>` and `.storefront-theme` painted the engine green
+      // back over them. Measured: `#d32f2f` gave a red admin and a green
+      // storefront. #410.
+      expect(layout, "the storefront scope is not passed").toContain(
+        "STOREFRONT_SCOPES"
+      )
       expect(fs.existsSync(path.join(REPO, "apps", app, STORE_THEME))).toBe(true)
     })
 
@@ -470,9 +479,11 @@ describe("what the screen saves reaches a diner", () => {
   })
 
   it("gives the storefront its own default palette, scoped and layered", () => {
-    // Scoped, so the administration does not turn green. Layered, so an
-    // establishment's own colours — which `StoreTheme` emits unlayered — beat
-    // it whatever the specificity or the load order.
+    // Scoped, so the administration does not turn green. Layered because an
+    // establishment's own colours are emitted unlayered — though layering is
+    // only half of what makes them win: the layer settles the conflict on ONE
+    // element, and this scope sits on a different one, which is why
+    // `buildBrandingCss` is also given the scope to write to. See #410.
     for (const app of APPS) {
       const css = read(path.join(REPO, "apps", app, GLOBALS))
       const base = css.slice(css.indexOf("@layer base"))
@@ -510,12 +521,13 @@ describe("what the screen saves reaches a diner", () => {
   })
 
   it("wins the cascade against the engine's own defaults", () => {
-    // The reason the injected rules take effect at all. `globals.css` keeps
-    // its literal `--primary: 24 95% 53%` — it has to, it is what an
-    // establishment that set nothing still renders — but it declares it inside
-    // `@layer base`, and every UNLAYERED rule beats every layered one whatever
-    // the document order. Emitting this stylesheet into a layer, or moving the
-    // defaults out of one, would silently restore the orange.
+    // The reason the injected rules take effect at all. `globals.css` keeps a
+    // literal `--primary` — it has to, it is what an establishment that set
+    // nothing still renders; #410 darkened it to `24 95% 37%` because
+    // `#f97015` could carry neither a white label nor a word of text — but it
+    // declares it inside `@layer base`, and every UNLAYERED rule beats every
+    // layered one whatever the document order. Emitting this stylesheet into a
+    // layer, or moving the defaults out of one, would silently restore it.
     const css = buildBrandingCss({ primaryColor: SAMPLES.primaryColor })
     expect(css).not.toContain("@layer")
 

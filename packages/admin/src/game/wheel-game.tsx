@@ -636,7 +636,7 @@ export function WheelGame({ segments, onSpin, onLanded, disabled }: WheelGamePro
           onPointerCancel={handleChargeEnd}
           disabled={disabled || spinning || phase === "done"}
           whileTap={{ scale: 0.94 }}
-          className="relative w-full touch-none select-none rounded-full bg-gradient-to-b from-amber-400 to-orange-600 px-10 py-4 font-heading text-lg font-bold uppercase tracking-widest text-white shadow-[0_8px_28px_rgba(249,115,22,0.45),inset_0_1px_0_rgba(255,255,255,0.4)] transition-opacity disabled:opacity-40"
+          className="relative w-full touch-none select-none rounded-full bg-gradient-to-b from-amber-400 to-orange-600 px-10 py-4 font-heading text-lg font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_8px_28px_rgba(249,115,22,0.45),inset_0_1px_0_rgba(255,255,255,0.4)] transition-opacity disabled:opacity-40"
         >
           {phase === "charging"
             ? "Relâchez !"

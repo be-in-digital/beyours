@@ -40,6 +40,7 @@
     "./dashboardStats": "./src/dashboardStats.ts",
     "./kitchenTickets": "./src/kitchenTickets.ts",
     "./payments": "./src/payments.ts",
+    "./paymentLedger": "./src/paymentLedger.ts",
     "./paymentEvents": "./src/paymentEvents.ts",
     "./paymentSettlement": "./src/paymentSettlement.ts",
     "./stripeChargeRouting": "./src/stripeChargeRouting.ts",

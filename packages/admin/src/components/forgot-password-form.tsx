@@ -72,7 +72,7 @@ export function ForgotPasswordForm({
         ) : (
           <>
             {error && (
-              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+              <div className="mb-4 rounded-lg bg-destructive/5 p-3 text-sm text-destructive">
                 {error}
               </div>
             )}

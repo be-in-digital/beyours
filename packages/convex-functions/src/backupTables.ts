@@ -245,6 +245,12 @@ export const EXCLUDED_TABLES: readonly ExcludedTable[] = [
     table: "paymentEvents",
     reason: "Fenêtre anti-doublon des webhooks, 30 jours. Se reconstitue seule.",
   },
+  {
+    table: "cardProviderHealth",
+    reason:
+      "Verdict du fournisseur sur la clé de CE déploiement. Se reconstitue à la " +
+      "prochaine vérification horaire, et n'aurait aucun sens restauré ailleurs.",
+  },
   { table: "oauthStates", reason: "États OAuth éphémères, valables quelques minutes." },
   { table: "rateLimits", reason: "Compteurs de limitation de débit, éphémères." },
   { table: "deliveryQuotes", reason: "Devis de livraison expirés côté transporteur." },

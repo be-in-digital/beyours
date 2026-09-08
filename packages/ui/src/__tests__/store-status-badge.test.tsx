@@ -51,6 +51,25 @@ describe("StoreStatusBadge", () => {
     }
   })
 
+  it("never lets the colour be the only thing that distinguishes a status", () => {
+    // WCAG 1.4.1, and the case that matters most on a storefront: green for
+    // open, red for closed, orange for paused is precisely the triple a
+    // red-green colour blindness flattens. This badge passes today because it
+    // prints the word as well, and this case exists so that stays true — the
+    // header's own store panel had the same job and did it with a bare
+    // coloured dot until it was fixed. Guard, not a fix.
+    const seen = new Set<string>()
+
+    for (const status of ["open", "closed", "temporarily_unavailable"]) {
+      const text = renderUnchecked(status).replace(/<[^>]*>/g, "").trim()
+
+      expect(text).not.toBe("")
+      seen.add(text)
+    }
+
+    expect(seen.size).toBe(3)
+  })
+
   it("carries the status colour, not `undefined`, in the class", () => {
     expect(renderUnchecked("open")).toContain("bg-green-100")
     expect(renderUnchecked("closed")).toContain("bg-red-100")

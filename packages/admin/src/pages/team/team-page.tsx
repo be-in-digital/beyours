@@ -451,7 +451,7 @@ export function TeamPage() {
 function MemberStatus({ member }: { member: any }) {
   if (member.invitationStatus === "pending") {
     return (
-      <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
+      <Badge variant="outline" className="text-xs bg-warning text-warning-foreground border-warning">
         <SendIcon className="mr-1 h-3 w-3" />
         En attente
       </Badge>
@@ -460,7 +460,7 @@ function MemberStatus({ member }: { member: any }) {
 
   if (member.invitationStatus === "expired") {
     return (
-      <Badge variant="outline" className="text-xs text-red-600 border-red-300 bg-red-50">
+      <Badge variant="outline" className="text-xs bg-destructive text-destructive-foreground border-destructive">
         Expire
       </Badge>
     )
@@ -475,7 +475,7 @@ function MemberStatus({ member }: { member: any }) {
   }
 
   return (
-    <Badge variant="outline" className="text-xs text-green-600 border-green-300 bg-green-50">
+    <Badge variant="outline" className="text-xs bg-success text-success-foreground border-success">
       Actif
     </Badge>
   )

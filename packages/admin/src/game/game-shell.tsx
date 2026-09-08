@@ -129,7 +129,7 @@ export function GameShell({
             </p>
           )}
           {tableNumber && (
-            <p className="text-[11px] text-white/40">Table {tableNumber}</p>
+            <p className="text-[11px] text-white/70">Table {tableNumber}</p>
           )}
         </div>
         <button

@@ -43,6 +43,14 @@ export const systemAuditLogTable = defineTable({
     v.literal("privacy_export"),
     v.literal("privacy_erasure"),
     v.literal("privacy_retention_sweep"),
+    // A provider took money for an order that had already been collected, and
+    // the ledger refused to hold the second row. The refusal is correct and it
+    // is not the end of the matter: the charge exists at the provider and the
+    // diner is owed it back. Nothing else in this deployment records that —
+    // the payments table deliberately does not, since the whole point was to
+    // refuse the row — so this entry is the only place a human learns a refund
+    // is due. See `payments.recordRefusedCollection` (#411).
+    v.literal("payment_collection_refused"),
   ),
   performedBy: v.string(),
   performedAt: v.number(),

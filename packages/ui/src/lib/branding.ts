@@ -47,6 +47,25 @@ export interface BrandingCssOptions {
   /** Selector carrying the light-mode tokens. Defaults to `:root`. */
   selector?: string
   /**
+   * Extra selectors that must receive the same tokens, because they redefine
+   * them on an element of their own.
+   *
+   * WHY THIS IS NOT OPTIONAL POLISH. Custom properties are resolved per
+   * element, and a declaration ON an element always beats one it would have
+   * INHERITED — layers and specificity settle conflicts within one element,
+   * not across the tree. `globals.css` sets the storefront palette on
+   * `.storefront-theme`, which is a `<div>` inside `<html>`; this stylesheet
+   * targets `:root` and `.dark`, which are `<html>`. So every token the
+   * storefront scope names — `--primary`, `--primary-foreground`,
+   * `--accent`, `--background` and the rest — was overwritten right back to
+   * the engine green before it reached a diner. Measured in Chromium: an
+   * establishment that picked `#d32f2f` got a red admin and a green
+   * storefront, which is the whole feature not working on the one page it was
+   * built for. Passing `[".storefront-theme"]` puts the tokens on that element
+   * too, unlayered, so they win there as well. #410.
+   */
+  scopes?: string[]
+  /**
    * Selector carrying the dark-mode tokens. Defaults to `.dark`, which is what
    * `next-themes` puts on `<html>` in both apps.
    *
@@ -55,6 +74,15 @@ export interface BrandingCssOptions {
    */
   darkSelector?: string | null
 }
+
+/**
+ * NOTE ON ROUNDING, which every `readableForeground` call below observes.
+ * `formatHsl` emits whole degrees and whole percents, so the colour a browser
+ * paints is the ROUNDED one. Choosing a label for the unrounded candidate is a
+ * guarantee about a number nobody ever sees: it left the sidebar's selected
+ * item at 4.4911:1 on `#a05010`. Every call site therefore rounds first, the
+ * same way `readableOn` measures on the rounded pair.
+ */
 
 /**
  * The two colours anything derived here may be written in.
@@ -84,6 +112,26 @@ function round({ h, s, l }: Hsl): Hsl {
 
 /** The engine's dark page, which a dark-mode brand colour sits on. */
 const DARK_PAGE: Hsl = { h: 224, s: 71, l: 4 }
+
+/**
+ * The LIGHTEST dark ground a derived colour can land on.
+ *
+ * There is more than one now: the engine's `.dark` is `224 71% 4%` and the
+ * storefront's is `158 24% 7%`, and this stylesheet is emitted for both. A
+ * lighter ground is the harder case — the ratio falls as the page rises — so
+ * every dark-mode guarantee is measured against this one, which makes it true
+ * of the darker page as well.
+ */
+const DARK_PAGE_LIGHTEST: Hsl = { h: 158, s: 24, l: 7 }
+
+/**
+ * The engine's light page (`--background`, `0 0% 99%`).
+ *
+ * Named for the same reason `DARK_PAGE` is: a colour that has to be READ has
+ * to be walked against the surface it will be read on, and "light" is not a
+ * surface.
+ */
+const LIGHT_PAGE: Hsl = { h: 0, s: 0, l: 99 }
 
 /**
  * Walk a colour's lightness until it can be read on `surface`.
@@ -124,7 +172,7 @@ function readableOn(surface: Hsl, hue: Hsl, dark: boolean): Hsl {
  */
 function lightenUntilVisible(colour: Hsl): Hsl {
   let { l } = colour
-  while (l < 100 && contrastRatio(round({ ...colour, l }), DARK_PAGE) < LARGE_AA) l += 1
+  while (l < 100 && contrastRatio(round({ ...colour, l }), DARK_PAGE_LIGHTEST) < LARGE_AA) l += 1
   return { ...colour, l }
 }
 
@@ -312,7 +360,7 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     const tone = shade(primary)
     const value = formatHsl(tone)
     css += declare("primary", value)
-    css += declare("primary-foreground", formatHsl(readableForeground(tone)))
+    css += declare("primary-foreground", formatHsl(readableForeground(round(tone))))
     // The pressed state is its own colour, not `primary/90`: at 90% opacity a
     // dark brand blends towards a light page and gets LIGHTER on hover. Seven
     // points of lightness, away from the page in whichever mode this is.
@@ -324,6 +372,19 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     // brand colour, and leaving it orange under a red brand is the kind of
     // detail that makes a theme look like a skin.
     css += declare("ring", value)
+    // `--primary-ink` is the brand colour a WORD can be written in.
+    //
+    // `--primary` is a FILL — a button, a badge, a bar — and it is the colour
+    // the owner picked, unchanged, because that is the point of picking it.
+    // `text-primary` asks the same value to be readable ON the page, which is
+    // a different question with a different answer: `#f97015`, the engine's own
+    // orange, measures 2.85:1 against white. So the ink is the same hue walked
+    // until it can be read on the page it sits on — the identical treatment
+    // `--accent-foreground` already gets, and for the identical reason. #410.
+    css += declare(
+      "primary-ink",
+      formatHsl(readableOn(dark ? DARK_PAGE_LIGHTEST : LIGHT_PAGE, primary, dark))
+    )
     // `--chart-1` is the primary softened and lifted in both shipped palettes
     // (`24 95% 53%` -> `24 90% 58%`), so the dashboard's first series follows
     // the brand instead of staying orange under a red one.
@@ -334,6 +395,14 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     // The sidebar tokens are spelled as full `hsl()` values in `globals.css`,
     // not as triples, so they are emitted in that form.
     css += declare("sidebar-primary", `hsl(${value})`)
+    // And its label. `--sidebar-primary-foreground` was a fixed white in both
+    // shipped palettes, which is wrong for a light brand exactly as it was
+    // wrong for `--primary-foreground`: on the engine's own dark-mode orange it
+    // measured 2.57:1. Derived from the same tone, so it inverts with it.
+    css += declare(
+      "sidebar-primary-foreground",
+      `hsl(${formatHsl(readableForeground(round(tone)))})`
+    )
     css += declare("sidebar-ring", `hsl(${value})`)
   }
 
@@ -353,7 +422,7 @@ function tokens(branding: BrandingValues, dark: boolean): string {
         ? secondary
         : { h: secondary.h, s: clamp(secondary.s, 0, 80), l: 96 }
     css += declare("secondary", formatHsl(tone))
-    css += declare("secondary-foreground", formatHsl(readableForeground(tone)))
+    css += declare("secondary-foreground", formatHsl(readableForeground(round(tone))))
   }
 
   if (accent) {
@@ -373,6 +442,10 @@ function tokens(branding: BrandingValues, dark: boolean): string {
     // pill needs the saturated version, and without this token the storefront
     // hard-coded one and the accent field only ever moved hover states.
     css += declare("accent-solid", formatHsl(accent))
+    // And the label that goes on it. `bg-accent-solid` is the cart badge and
+    // the "nouveau" pill, and the storefront wrote `text-white` on it — 2.78:1
+    // on the shipped orange, and worse on any lighter accent an owner picks.
+    css += declare("accent-solid-foreground", formatHsl(readableForeground(round(accent))))
   }
 
   // Typography is one pair of variables rather than two per mode: a font does
@@ -408,16 +481,20 @@ export function buildBrandingCss(
   if (!branding || typeof branding !== "object" || Array.isArray(branding)) {
     return ""
   }
-  const { selector = ":root", darkSelector = ".dark" } = options
+  const { selector = ":root", darkSelector = ".dark", scopes = [] } = options
+  const lightSelector = [selector, ...scopes].join(",")
+  const darkSelectorList = darkSelector
+    ? [darkSelector, ...scopes.map((scope) => `${darkSelector} ${scope}`)].join(",")
+    : null
   const values = branding as BrandingValues
 
   const light = tokens(values, false)
   if (light === "") return ""
 
-  let css = `${selector}{${light}}`
-  if (darkSelector) {
+  let css = `${lightSelector}{${light}}`
+  if (darkSelectorList) {
     const dark = tokens(values, true)
-    if (dark !== "") css += `${darkSelector}{${dark}}`
+    if (dark !== "") css += `${darkSelectorList}{${dark}}`
   }
   return css
 }

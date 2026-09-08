@@ -242,20 +242,27 @@ function AffiliatesTab() {
 
 /* ── Onglet Parrainages ── */
 
+/**
+ * The filter list, derived from the badge vocabulary rather than retyped.
+ *
+ * These were two hand-written copies of the same seven states, and #384 added
+ * an eighth to neither: a commission whose transfer was in flight showed as a
+ * grey `paying` badge and could not be filtered for (#411). Derived, a status
+ * is added in one place — `REFERRAL_STATUS` — and appears in both.
+ */
 const REFERRAL_FILTERS: { value: string; label: string }[] = [
   { value: "", label: "Tous les statuts" },
-  { value: "pending", label: "En attente" },
-  { value: "validated", label: "Validé" },
-  { value: "payable", label: "À verser" },
-  { value: "paid", label: "Payé" },
-  { value: "cancelled", label: "Annulé" },
-  { value: "blocked", label: "Bloqué" },
+  ...Object.entries(REFERRAL_STATUS).map(([value, meta]) => ({
+    value,
+    label: meta.label,
+  })),
 ];
 
 type ReferralStatus =
   | "pending"
   | "validated"
   | "payable"
+  | "paying"
   | "paid"
   | "cancelled"
   | "blocked";
