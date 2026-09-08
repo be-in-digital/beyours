@@ -273,7 +273,7 @@ export function DeliveryTab({
                 </div>
 
                 <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
-                  <span className="text-amber-600 dark:text-amber-400 text-sm mt-0.5">⚠</span>
+                  <span className="text-amber-700 dark:text-amber-400 text-sm mt-0.5">⚠</span>
                   <p className="text-xs text-amber-700 dark:text-amber-300">
                     Estimation indicative. Le prix réel peut varier selon la demande et la disponibilité des coursiers.
                   </p>

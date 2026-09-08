@@ -114,7 +114,7 @@ export function WelcomeScreen({
       {/* Prize showcase */}
       {prizes.length > 0 && (
         <motion.div variants={itemVariants} className="mt-8 w-full">
-          <p className="mb-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/40">
+          <p className="mb-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/70">
             <SparklesIcon className="h-3 w-3 text-amber-300" />
             À gagner ce soir
             <SparklesIcon className="h-3 w-3 text-amber-300" />
@@ -142,7 +142,7 @@ export function WelcomeScreen({
             ))}
           </div>
           {prizes.length > 3 && (
-            <p className="mt-2 text-[11px] text-white/35">
+            <p className="mt-2 text-[11px] text-white/70">
               + {prizes.length - 3} autre{prizes.length - 3 > 1 ? "s" : ""} lot
               {prizes.length - 3 > 1 ? "s" : ""}…
             </p>
@@ -171,7 +171,7 @@ export function WelcomeScreen({
             {consent.label}
           </span>
         </label>
-        <p id="game-consent-detail" className="mt-2 px-1 text-[11px] leading-relaxed text-white/45">
+        <p id="game-consent-detail" className="mt-2 px-1 text-[11px] leading-relaxed text-white/70">
           {consent.detail}
         </p>
       </motion.div>
@@ -183,7 +183,7 @@ export function WelcomeScreen({
           onClick={handleStart}
           disabled={!consentAccepted}
           whileTap={consentAccepted ? { scale: 0.95 } : undefined}
-          className="relative w-full rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-lg font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          className="relative w-full rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-lg font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5),inset_0_1px_0_rgba(255,255,255,0.4)] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
           C&apos;est parti !
           {consentAccepted && (
@@ -195,7 +195,7 @@ export function WelcomeScreen({
             />
           )}
         </motion.button>
-        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-white/40">
+        <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-white/70">
           <Clock3Icon className="h-3 w-3" />
           1 partie par personne toutes les 24h
           {hasActions ? " · quelques étapes pour débloquer" : ""}

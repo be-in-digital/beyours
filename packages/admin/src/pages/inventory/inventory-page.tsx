@@ -381,7 +381,14 @@ export function InventoryPage() {
                     return (
                       <TableRow
                         key={product._id}
-                        className={isUntracked ? "opacity-50" : undefined}
+                        /*
+                         * An untracked row is tinted, not faded. `opacity-50`
+                         * multiplies every ratio in the row: the "N/A" image
+                         * placeholder measured 1.92:1 in light mode and 2.38:1
+                         * in dark, against 4.58:1 and 5.77:1 at full strength.
+                         * The "Non suivi" badge already names the state.
+                         */
+                        className={isUntracked ? "bg-muted/40" : undefined}
                       >
                         {/* Image */}
                         <TableCell>
@@ -568,19 +575,19 @@ function StockStatusBadge({ status }: { status: StockStatus }) {
   switch (status) {
     case "in_stock":
       return (
-        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
+        <Badge className="bg-success text-success-foreground hover:bg-success text-xs">
           En stock
         </Badge>
       )
     case "low_stock":
       return (
-        <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-xs">
+        <Badge className="bg-warning text-warning-foreground hover:bg-warning text-xs">
           Stock faible
         </Badge>
       )
     case "out_of_stock":
       return (
-        <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs">
+        <Badge className="bg-destructive text-destructive-foreground hover:bg-destructive text-xs">
           Rupture
         </Badge>
       )

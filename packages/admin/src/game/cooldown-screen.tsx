@@ -90,7 +90,7 @@ export function CooldownScreen({ nextPlayAt, onExpired }: CooldownScreenProps) {
       <MotionLink
         href="/"
         whileTap={{ scale: 0.96 }}
-        className="mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.4)]"
+        className="mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.4)]"
       >
         <UtensilsIcon className="h-4 w-4" />
         Voir la carte

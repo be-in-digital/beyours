@@ -137,20 +137,20 @@ export function PrizeTicket({ code, api }: PrizeTicketProps) {
                 {ticket.status === "cancelled" && <StatusStamp label="ANNULÉ" tone="red" />}
 
                 <div className="px-6 pb-5 pt-6 text-center">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-600">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-700">
                     Ticket gagnant
                   </p>
                   <p className="mt-3 font-heading text-xl font-bold leading-tight">
                     {ticket.prize?.name ?? "Lot"}
                   </p>
                   {ticket.prize?.description && (
-                    <p className="mt-1 text-xs text-[#1c1427]/55">{ticket.prize.description}</p>
+                    <p className="mt-1 text-xs text-[#1c1427]/70">{ticket.prize.description}</p>
                   )}
                   {ticket.store && (
-                    <p className="mt-1.5 text-xs text-[#1c1427]/50">chez {ticket.store.name}</p>
+                    <p className="mt-1.5 text-xs text-[#1c1427]/70">chez {ticket.store.name}</p>
                   )}
                   {ticket.playerFirstName && (
-                    <p className="mt-2 inline-block rounded-full bg-[#1c1427]/[0.06] px-3 py-1 text-[11px] font-medium text-[#1c1427]/60">
+                    <p className="mt-2 inline-block rounded-full bg-[#1c1427]/[0.06] px-3 py-1 text-[11px] font-medium text-[#1c1427]/70">
                       Pour {ticket.playerFirstName}
                     </p>
                   )}
@@ -163,22 +163,29 @@ export function PrizeTicket({ code, api }: PrizeTicketProps) {
                 </div>
 
                 <div className="px-6 pb-6 pt-5 text-center">
-                  <div
-                    className={`mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border border-[#1c1427]/10 bg-white p-2.5 shadow-inner ${
-                      !isActive || justRedeemed ? "opacity-30 grayscale" : ""
-                    }`}
-                  >
+                  {/*
+                   * A spent ticket dims its QR CODE, not the box around it: an
+                   * element opacity multiplies every ratio inside it, and at
+                   * `opacity-30` the "QR indisponible" fallback measured 1.29:1
+                   * against the white it sits on. Greying the image alone says
+                   * the same thing and leaves the words legible.
+                   */}
+                  <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-2xl border border-[#1c1427]/10 bg-white p-2.5 shadow-inner">
                     {qrDataUrl ? (
                       // A data: URI generated in the browser — next/image has nothing to
                       // optimise here and cannot fetch it.
-                      <img src={qrDataUrl} alt={`QR code du lot ${code}`} className="h-full w-full" />
+                      <img
+                        src={qrDataUrl}
+                        alt={`QR code du lot ${code}`}
+                        className={`h-full w-full ${!isActive || justRedeemed ? "opacity-30 grayscale" : ""}`}
+                      />
                     ) : (
-                      <span className="text-xs text-[#1c1427]/40">QR indisponible</span>
+                      <span className="text-xs text-[#1c1427]/70">QR indisponible</span>
                     )}
                   </div>
                   <p className="mt-4 font-mono text-2xl font-bold tracking-[0.35em]">{ticket.code}</p>
                   {isActive && !justRedeemed && (
-                    <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-[#1c1427]/50">
+                    <p className="mt-2 flex items-center justify-center gap-1 text-[11px] text-[#1c1427]/70">
                       <Clock3Icon className="h-3 w-3" />
                       Valable jusqu&apos;au{" "}
                       {new Date(ticket.expiresAt).toLocaleDateString("fr-FR", {
@@ -224,7 +231,7 @@ export function PrizeTicket({ code, api }: PrizeTicketProps) {
                   type="button"
                   onClick={handleRedeem}
                   disabled={redeeming}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 py-3.5 font-heading text-sm font-bold uppercase tracking-widest text-white shadow-[0_8px_25px_rgba(16,185,129,0.35)] disabled:opacity-60"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-emerald-400 to-emerald-600 py-3.5 font-heading text-sm font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_8px_25px_rgba(16,185,129,0.35)] disabled:opacity-60"
                 >
                   {redeeming ? (
                     <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -251,7 +258,7 @@ export function PrizeTicket({ code, api }: PrizeTicketProps) {
               </motion.p>
             )}
 
-            <p className="mt-5 text-center text-[11px] text-white/35">
+            <p className="mt-5 text-center text-[11px] text-white/70">
               Une seule utilisation, sur place, sur présentation de ce ticket.
             </p>
           </motion.div>

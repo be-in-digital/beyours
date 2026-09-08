@@ -54,7 +54,7 @@ export function ClaimForm({ prize, onSubmit }: ClaimFormProps) {
   })
 
   const inputClass = (hasError: boolean) =>
-    `w-full rounded-2xl border bg-white/[0.06] px-4 py-3.5 text-[15px] text-white placeholder:text-white/30 outline-none backdrop-blur transition-colors focus:border-amber-300/70 focus:bg-white/[0.09] ${
+    `w-full rounded-2xl border bg-white/[0.06] px-4 py-3.5 text-[15px] text-white placeholder:text-white/60 outline-none backdrop-blur transition-colors focus:border-amber-300/70 focus:bg-white/[0.09] ${
       hasError ? "border-red-400/60" : "border-white/10"
     }`
 
@@ -144,7 +144,7 @@ export function ClaimForm({ prize, onSubmit }: ClaimFormProps) {
             type="submit"
             disabled={isSubmitting}
             whileTap={{ scale: 0.96 }}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)] disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5)] disabled:opacity-60"
           >
             {isSubmitting ? (
               <>
@@ -154,7 +154,7 @@ export function ClaimForm({ prize, onSubmit }: ClaimFormProps) {
               "Recevoir mon code"
             )}
           </motion.button>
-          <p className="mt-3 text-center text-[11px] leading-relaxed text-white/35">
+          <p className="mt-3 text-center text-[11px] leading-relaxed text-white/70">
             Vos coordonnées servent uniquement à vous remettre votre lot.
           </p>
         </div>

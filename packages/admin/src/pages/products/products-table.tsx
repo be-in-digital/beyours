@@ -89,7 +89,7 @@ export function ProductsTable({
     switch (source) {
       case "uber_eats":
         return (
-          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700">
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">
             Uber Eats
           </span>
         )

@@ -317,7 +317,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      className="min-h-16 px-4 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -340,7 +340,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                 <Button
                   onClick={() => handleCancel()}
                   variant="outline"
-                  className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                  className="min-h-16 px-4 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -352,7 +352,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
             <div className="flex gap-2">
               <Button
                 onClick={handleStatusChange}
-                className="flex-1 min-h-16 text-lg bg-green-600 hover:bg-green-700 text-white"
+                className="flex-1 min-h-16 text-lg bg-green-700 hover:bg-green-800 text-white"
               >
                 <ActionIcon className="mr-2 h-5 w-5" />
                 {action.label}
@@ -362,7 +362,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      className="min-h-16 px-4 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                     >
                       <X className="h-5 w-5" />
                     </Button>
@@ -385,7 +385,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                 <Button
                   onClick={() => handleCancel()}
                   variant="outline"
-                  className="min-h-16 px-4 border-red-300 text-red-500 hover:bg-red-50 hover:text-red-600"
+                  className="min-h-16 px-4 border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                 >
                   <X className="h-5 w-5" />
                 </Button>
@@ -396,7 +396,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
           {ticket.status === "ready" && (
             <Button
               onClick={handleStatusChange}
-              className="w-full min-h-16 text-lg bg-orange-600 hover:bg-orange-700 text-white"
+              className="w-full min-h-16 text-lg bg-orange-700 hover:bg-orange-800 text-white"
             >
               <ActionIcon className="mr-2 h-5 w-5" />
               {action.label}

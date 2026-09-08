@@ -138,7 +138,7 @@ export function ActionsScreen({
                       ? "bg-gradient-to-b from-amber-400 to-orange-500 text-[#3A1D00]"
                       : done
                         ? "bg-emerald-400/20 text-emerald-300"
-                        : "bg-white/[0.06] text-white/30"
+                        : "bg-white/[0.06] text-white/70"
                   }`}
                   aria-label={chipMeta.label}
                 >
@@ -223,7 +223,7 @@ export function ActionsScreen({
           </motion.button>
 
           {currentStatus === "todo" && (
-            <p className="mt-4 max-w-[15rem] text-center text-[11px] leading-relaxed text-white/35">
+            <p className="mt-4 max-w-[15rem] text-center text-[11px] leading-relaxed text-white/70">
               On valide à votre retour. Vos données ne sont jamais lues.
             </p>
           )}
@@ -246,7 +246,7 @@ export function ActionsScreen({
             }
             className={`flex w-full items-center justify-center gap-2 rounded-full py-4 font-heading text-base font-bold uppercase tracking-widest transition-all ${
               canPlay
-                ? "bg-gradient-to-b from-amber-400 to-orange-600 text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
+                ? "bg-gradient-to-b from-amber-400 to-orange-600 text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
                 : "cursor-not-allowed bg-white/10 text-white/35"
             }`}
           >
@@ -389,7 +389,7 @@ function AllActionsView({
               </div>
               <div className="relative min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-white/90">{action.name}</p>
-                <p className="mt-0.5 truncate text-xs text-white/45">
+                <p className="mt-0.5 truncate text-xs text-white/70">
                   {status === "verifying"
                     ? `Vérification… ${remaining}s`
                     : status === "done"
@@ -397,7 +397,7 @@ function AllActionsView({
                       : (action.description ?? meta.label)}
                 </p>
               </div>
-              <div className="relative shrink-0 text-white/30">
+              <div className="relative shrink-0 text-white/70">
                 {status === "todo" &&
                   (action.url ? (
                     <ExternalLinkIcon className="h-4 w-4" />
@@ -408,7 +408,7 @@ function AllActionsView({
                   <span className="font-mono text-sm font-bold text-amber-300">{remaining}</span>
                 )}
                 {!action.isRequired && status === "todo" && (
-                  <span className="absolute -top-2 right-0 text-[9px] text-white/25">bonus</span>
+                  <span className="absolute -top-2 right-0 text-[9px] text-white/70">bonus</span>
                 )}
               </div>
             </motion.button>
@@ -429,7 +429,7 @@ function AllActionsView({
           }
           className={`flex w-full items-center justify-center gap-2 rounded-full py-4 font-heading text-base font-bold uppercase tracking-widest transition-all ${
             allRequiredDone
-              ? "bg-gradient-to-b from-amber-400 to-orange-600 text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
+              ? "bg-gradient-to-b from-amber-400 to-orange-600 text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
               : "cursor-not-allowed bg-white/10 text-white/35"
           }`}
         >

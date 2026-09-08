@@ -315,13 +315,26 @@ applied at clone time by `pnpm template:apply <slug>` (see
 [`ARCHITECTURE.md`](ARCHITECTURE.md#the-design-templates)).
 
 **Colours and typography now reach a diner** — re-checked at `cdc6c81`, because
-#353 landed after this file's `158019f` pin and reversed what stood here.
-`stores.updateBranding` writes `store.branding`, `buildBrandingCss`
+#353 landed after this file's `158019f` pin and reversed what stood here; and
+corrected again at #410, which measured it in a browser and found the last leg
+missing. `stores.updateBranding` writes `store.branding`, `buildBrandingCss`
 (`packages/ui/src/lib/branding.ts`) derives design tokens from it, and `StoreTheme`
 in each app's `app/(storefront)/layout.tsx` emits them unlayered so they beat the
-template's defaults in `globals.css`'s `@layer base`. The template chosen at clone
+defaults in `globals.css`'s `@layer base`. Unlayered was not enough: a layer
+settles a conflict on ONE element, and the storefront palette is declared on
+`.storefront-theme` — a `<div>` — while these tokens were written to `<html>`.
+A store that picked `#d32f2f` rendered `rgb(211, 49, 49)` in its admin and
+`rgb(13, 94, 64)`, the engine green, on its storefront. `buildBrandingCss` now
+takes `scopes` and the storefront passes its own. The template chosen at clone
 time is the starting point, not the ceiling. `stores:write` is the only gate left, so
 a `manager` sees the screen and cannot save from it.
+
+**Not built — a vertical template does not reach the storefront.** The same
+cascade defect, in the other half of the design system: `site/theme.css`, written
+by `pnpm template:apply <slug>`, declares its 29 tokens on `:root` and `.dark`,
+so it repaints the admin and the sign-in pages and leaves the storefront on the
+engine's green. Measured with `templates/pizzeria-milano` in Chromium. See
+`tasks/wcag-contrast-audit-2026-09-08.md`.
 
 **Partial — font selection.** The stored family reaches the page through that same
 chain, and nothing fetches a webfont: only Inter and Poppins are bundled, so any

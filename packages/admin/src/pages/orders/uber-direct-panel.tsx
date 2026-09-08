@@ -194,7 +194,7 @@ export function UberDirectPanel({
           <button
             type="button"
             onClick={() => setConfirmCancel(true)}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/5"
           >
             <X className="h-4 w-4" />
             Annuler la course
