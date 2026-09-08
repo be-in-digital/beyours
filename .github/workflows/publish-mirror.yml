@@ -143,8 +143,10 @@ jobs:
     needs: [verify, e2e]
     runs-on: ubuntu-latest
     # A sync is a clone, a file copy, a lockfile and — since the compile gate —
-    # an install and a typecheck of the staged tree: measured at 4s and 46s on a
-    # warm machine, a few minutes on a cold runner. Call it five.
+    # an install and a typecheck of the staged tree. Measured warm: 4s and 46s.
+    # The runner is not warm on a first run and the tree is ~1.1 GB of
+    # node_modules, which is what the `cache: pnpm` below is for; budget a few
+    # minutes when it misses.
     #
     # The ceiling exists because the failure that mattered here did not fail:
     # pnpm hit a version it could not switch to, hung, and the job sat until

@@ -196,7 +196,11 @@ Either way the sync **compiles before it publishes**: it stages the mirror in a
 sandbox, installs the engine packages from the registry at the versions it is
 about to pin, and runs the template's own `pnpm typecheck`. A red one refuses the
 sync, because this repository's four required checks build `apps/themes` against
-`packages/*` at HEAD and a client installs something else entirely — see
+`packages/*` at HEAD and a client installs something else entirely. `--check`
+takes that gate too, so the dry run also installs the template. While the
+published engine is behind, the refusal holds for *every* template change, not
+only the one that outran the release — cut the release
+(`pnpm check:pending-release`) rather than skipping it. See
 [`DEPLOYMENT.md`](DEPLOYMENT.md#6-the-distribution-mirror).
 
 ⚠️ The mirror is rebuilt in full on every run: **a commit made directly on it

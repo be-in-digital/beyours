@@ -20,12 +20,26 @@
  *   does not exist on type 'typeof import(".../emailCampaigns")'
  *
  * A named export is invisible to any check that reasons about `exports` maps
- * and file lists, because nothing about the packaging is wrong. Only a
- * compiler reads the module's contents — which is why this gate subsumes the
- * two narrower ones rather than sitting beside them: everything they catch
- * (`ERR_PACKAGE_PATH_NOT_EXPORTED`, a declared-but-unshipped target) is also a
- * `tsc` error. They stay because they are cheap and name the cause precisely;
- * this is the one that is complete.
+ * and file lists, because nothing about the packaging is wrong. Only a compiler
+ * reads a module's contents.
+ *
+ * IT DOES NOT SUBSUME THE OTHER TWO, and the tempting claim that it does is
+ * false — measured, on this tree. `engineImportsIn` walks every `.ts .tsx .mts
+ * .cts .js .jsx .mjs .cjs` file the mirror ships. `pnpm typecheck` reads 576 of
+ * them and never opens 115: the 87 under `tests/` and 2 under `.template/` that
+ * `tsconfig.json` excludes, plus all 26 `.js`/`.mjs`/`.cjs`, which no `include`
+ * glob names and which `checkJs` (off) would be needed for. Two engine
+ * specifiers live only in that gap today —
+ * `@be-in-digital/convex-functions/eslint/convex-auth` in the mirror's own
+ * `eslint.config.mjs`, and `@be-in-digital/core/status-labels` in
+ * `tests/i18n/catalogue-keys.test.ts`. Drop either subpath from a published
+ * `exports` map and a client's `pnpm lint` or `pnpm test` dies on
+ * `ERR_PACKAGE_PATH_NOT_EXPORTED` while this gate stays green.
+ *
+ * The exports gate is what covers that, so it runs first and stays. Three
+ * overlapping gates, none of them complete on its own — which is the honest
+ * description, and the one a reader has to have before deciding any of them is
+ * redundant.
  *
  * WHAT IT RUNS, and why it is the template's own script rather than a `tsc`
  * this module spells out itself:
@@ -38,9 +52,11 @@
  *   2. `pnpm run typecheck` — the template's own script, which is
  *      `tsc --noEmit && tsc --noEmit -p convex/tsconfig.json`. Two projects,
  *      because the root `tsconfig.json` EXCLUDES `convex/`: it reaches a
- *      backend module only when app code transitively imports one, so its
- *      coverage of `convex/` is incidental. The second invocation is what
- *      compiles all of it.
+ *      backend module only where app code transitively imports one. Today that
+ *      is 144 of the 145 backend files, so the second invocation adds exactly
+ *      one — `convex/convex.config.ts`. It is insurance against that ratio
+ *      changing, not the bulk of the coverage; and it is the template's own
+ *      script either way.
  *
  *      Spelling those two commands out here instead would mean keeping pace
  *      with the template by hand, and quietly under-checking the day it gains
@@ -65,15 +81,46 @@
 import { execFileSync } from "node:child_process"
 
 /**
+ * One command the gate runs, and what to say when it fails.
+ *
+ * @typedef {object} PinnedTreeStep
+ * @property {string} name    short handle, also what the message switches on
+ * @property {string} cmd
+ * @property {string[]} args
+ * @property {string} failed  the first line of the failure message
+ * @property {RegExp} [environmentFailure]  output that means the RUNNER failed,
+ *           not the tree — retried once, then reported as `ran: false`
+ */
+
+/**
+ * A step that did not pass.
+ *
+ * `ran` is what separates "the command disagreed with the tree" from "the
+ * command never reached a verdict"; absent means it ran.
+ *
+ * @typedef {object} PinnedTreeFailure
+ * @property {false} ok
+ * @property {PinnedTreeStep} step
+ * @property {boolean} [ran]
+ * @property {string} output
+ */
+
+/** @typedef {{ ok: true }} PinnedTreePass */
+
+/** @typedef {(step: PinnedTreeStep, cwd: string) => { ok: boolean, ran?: boolean, output: string }} StepRunner */
+
+/**
  * The commands, in order, that prove a pinned tree is one a client can build.
+ *
+ * @type {PinnedTreeStep[]}
  *
  * `--ignore-scripts` on the install for the same reason
  * `check-mirror-build.mjs` uses it: nothing here needs a native build, and a
  * sync job holding a push token should not run arbitrary lifecycle scripts
  * from the dependency graph. It also skips the template's own `preinstall`,
- * which exists to tell a human setting up a client site that they forgot
- * NODE_AUTH_TOKEN — a message with no reader inside a sync that has already
- * used that token nine times to read the registry.
+ * whose job is to turn a missing NODE_AUTH_TOKEN into a sentence instead of a
+ * 401 — so `environmentFailure` below has to say that itself, since this step
+ * is exactly where a sync would hit it.
  */
 export const PINNED_TREE_STEPS = [
   {
@@ -81,6 +128,16 @@ export const PINNED_TREE_STEPS = [
     cmd: "pnpm",
     args: ["install", "--frozen-lockfile", "--ignore-scripts"],
     failed: "the lockfile this sync generated does not install",
+    // A registry that refused, timed out or 502'd, and a token that is absent
+    // or expired, all fail this step — and none of them says anything about the
+    // lockfile. Without this the operator is told to "check the pinned versions
+    // and the overrides" while the actual answer is that the network is down,
+    // and one hiccup at GitHub Packages stops delivery to every client site.
+    //
+    // Only on the install. A compiler that exits non-zero has JUDGED the tree,
+    // and a line number in its output must never be read as an HTTP status.
+    environmentFailure:
+      /ERR_PNPM_(FETCH|META_FETCH)|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|socket hang up|\bE40[13]\b|\bERR_INVALID_THIS\b|status code 5\d\d|Unauthorized|Forbidden/i,
   },
   {
     name: "typecheck",
@@ -154,15 +211,30 @@ function execCapture(step, cwd) {
  * and reporting its noise alongside the real cause is how a two-line diagnosis
  * turns into a hundred.
  *
- * @param tree  a materialised mirror tree — the shipped files, the rewritten
- *              package.json, and the lockfile the sync generated
- * @returns `{ ok: true }`, or `{ ok: false, step, ran, output }` — where `ran`
- *          is false for a step that never reached a verdict at all
+ * @param {string} tree  a materialised mirror tree — the shipped files, the
+ *                        rewritten package.json, and the lockfile the sync
+ *                        generated
+ * @param {{ steps?: PinnedTreeStep[], run?: StepRunner }} [options]
+ * @returns {PinnedTreePass | PinnedTreeFailure} — `ran` is false for a step
+ *          that never reached a verdict at all
  */
 export function checkPinnedTree(tree, { steps = PINNED_TREE_STEPS, run = execCapture } = {}) {
   for (const step of steps) {
-    const { ok, ran, output } = run(step, tree)
-    if (!ok) return { ok: false, step, ran: ran !== false, output }
+    let result = run(step, tree)
+
+    // A step that failed on the environment gets one more go, and is then
+    // reported as an environment failure rather than as a broken tree. Both
+    // halves matter: refusing a sync over a single 502 stops delivery to every
+    // client site, and mis-naming the cause sends whoever reads it to release a
+    // package that was never broken.
+    if (!result.ok && result.ran !== false && step.environmentFailure?.test(result.output)) {
+      result = run(step, tree)
+      if (!result.ok && step.environmentFailure.test(result.output)) {
+        return { ok: false, step, ran: false, output: result.output }
+      }
+    }
+
+    if (!result.ok) return { ok: false, step, ran: result.ran !== false, output: result.output }
   }
   return { ok: true }
 }
@@ -181,6 +253,9 @@ function tail(output) {
  * repeating here, because the tempting fix is the wrong one: the import is
  * correct and the mirror's pinned version is behind. Deleting the import to
  * get green ships a template missing the feature.
+ *
+ * @param {{ step: PinnedTreeStep, ran?: boolean, output: string }} failure
+ * @returns {string}
  */
 export function describePinnedTreeFailure({ step, ran, output }) {
   // A command that never reached a verdict says nothing about the tree, and
@@ -192,10 +267,14 @@ export function describePinnedTreeFailure({ step, ran, output }) {
       "",
       tail(output),
       "",
-      "This is the environment, not the template: pnpm missing from PATH, the",
-      "registry unreachable, or a runner out of memory or disk. Nothing here says",
-      "the tree is broken and nothing says it is fine — fix the runner and re-run",
-      "rather than reading the silence either way.",
+      "This is the environment, not the template: the registry unreachable or",
+      "refusing, NODE_AUTH_TOKEN absent or expired (the template's own preinstall",
+      "guard is skipped here, so a 401 arrives bare), pnpm missing from PATH, or a",
+      "runner out of memory or disk. A network-shaped failure was already retried",
+      "once and failed the same way.",
+      "",
+      "Nothing here says the tree is broken and nothing says it is fine — fix the",
+      "runner and re-run rather than reading the silence either way.",
     ].join("\n")
   }
 
@@ -231,21 +310,52 @@ export function describePinnedTreeFailure({ step, ran, output }) {
   return lines.join("\n")
 }
 
+/** Shell constructs that throw away the exit status of whatever precedes them. */
+const SWALLOWS_FAILURE = /\|\|\s*(true\b|:\s|:$|exit\s+0\b|echo\b)/
+
+/** Flags that make `tsc` print something and check nothing. */
+const COMPILES_NOTHING = /(^|\s)--?(version|help|init|showConfig)(\s|$)/
+
+/** Wrappers and env assignments that stand in front of the real command. */
+const NOT_THE_COMMAND = /^(npx|pnpm|yarn|bun|exec|dlx|run|x|-{1,2}[\w-]+|[A-Za-z_][A-Za-z0-9_]*=.*)$/
+
 /**
- * Refuse a mirror with no compiler behind its `typecheck` script.
+ * True when this one command actually runs the compiler over a project.
+ *
+ * The command, not a mention of it: `echo tsc` and `true # tsc` both contain
+ * the word and compile nothing, which is the whole reason a substring test is
+ * not enough.
+ */
+function invokesCompiler(segment) {
+  const tokens = segment.split(/\s+/).filter(Boolean)
+  const at = tokens.findIndex((token) => !NOT_THE_COMMAND.test(token))
+  if (at === -1) return false
+  const command = tokens[at].split("/").pop()
+  if (command !== "tsc" && command !== "tsc.cmd") return false
+  return !COMPILES_NOTHING.test(" " + tokens.slice(at + 1).join(" ") + " ")
+}
+
+/**
+ * Refuse a mirror whose `typecheck` script would not fail on a broken tree.
  *
  * The gate runs the template's own script rather than a `tsc` of its own, so
  * that it cannot drift from what a client's CI runs. This is the floor under
- * that indirection: a missing or compiler-free `typecheck` turns the whole
- * gate into a green no-op, and `pnpm run` on an absent script exits non-zero
- * with a message about scripts rather than about the template.
+ * that indirection, and it has to be a real floor: an adversarial pass on this
+ * file got the #408 tree published again through a `typecheck` of `echo tsc`,
+ * and `tsc --noEmit || true` is the version somebody writes for real, at 2am,
+ * to unblock a red CI. Both used to pass a substring test for "tsc".
  *
- * Deliberately no stricter than that. Which projects the script covers is
+ * So: at least one command in the script must BE `tsc` — after stepping over
+ * `npx`, `pnpm exec` and env assignments — with none of the flags that print
+ * instead of compiling; and nothing in the script may discard an exit status.
+ *
+ * Deliberately no stricter than that. WHICH projects the script covers is
  * asserted by a test over `apps/themes/package.json`, where a wrong answer
  * costs a red test; asserting it here would cost a refused sync, and a wrong
- * red stops delivery to every client.
+ * red stops delivery to every client site.
  *
- * @returns null when the script is sound, or the reason it is not
+ * @param {Record<string, string> | undefined} scripts  the mirror's `scripts` block
+ * @returns {string | null} null when the script is sound, or the reason it is not
  */
 export function assertTypecheckScript(scripts) {
   const script = scripts?.typecheck
@@ -255,11 +365,29 @@ export function assertTypecheckScript(scripts) {
       "It is `apps/themes`'s own script and the one a client's CI runs; restore it."
     )
   }
-  if (!script.includes("tsc")) {
+
+  if (SWALLOWS_FAILURE.test(script)) {
     return (
-      "the mirror's `typecheck` script runs no compiler, so the gate below it would\n" +
-      `pass on anything:\n  ${script}`
+      "the mirror's `typecheck` script discards the compiler's exit status, so the\n" +
+      `gate above it would pass on a tree that does not compile:\n  ${script}\n` +
+      "Remove the `|| true` (or `|| :`, `|| exit 0`, `|| echo …`). A typecheck that\n" +
+      "cannot fail is the same as no typecheck, and this one decides what reaches\n" +
+      "every client site."
     )
   }
+
+  const commands = script
+    .split(/&&|\|\||;|\n|\|/)
+    .map((segment) => segment.replace(/#.*$/, "").trim())
+    .filter(Boolean)
+  if (!commands.some(invokesCompiler)) {
+    return (
+      "the mirror's `typecheck` script runs no compiler, so the gate above it would\n" +
+      `pass on anything:\n  ${script}\n` +
+      "It must invoke `tsc` as a command — mentioning it in an `echo` or a comment,\n" +
+      "or running it with --version, compiles nothing."
+    )
+  }
+
   return null
 }

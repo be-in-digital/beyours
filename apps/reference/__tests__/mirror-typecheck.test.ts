@@ -39,19 +39,35 @@ import {
 
 const REPO_ROOT = path.join(__dirname, "../../..")
 
+type Step = { name: string; cmd: string; args: string[]; failed: string }
+type Result = { ok: boolean; ran?: boolean; output: string }
+
 /** A runner that answers from a table, so sequencing is testable in memory. */
-const runnerFor = (results: Record<string, { ok: boolean; output: string }>) => {
+const runnerFor = (results: Record<string, Result>) => {
   const seen: string[] = []
-  const run = (step: { name: string }) => {
+  const run = (step: Step, _cwd: string): Result => {
     seen.push(step.name)
     return results[step.name] ?? { ok: true, output: "" }
   }
   return { run, seen }
 }
 
+/**
+ * The failure `checkPinnedTree` returned, or a test failure saying it did not.
+ *
+ * `{ ok: true } | { ok: false, step, … }` is a discriminated union, and nothing
+ * below wants to repeat the narrowing: a test that asserted `ok === false` and
+ * then read `.step` off the union would not compile, and casting it away would
+ * throw an unhelpful `undefined` when the gate wrongly passed.
+ */
+const refused = (result: ReturnType<typeof checkPinnedTree>) => {
+  if (result.ok) throw new Error("expected the gate to refuse this tree, and it did not")
+  return result
+}
+
 describe("the steps a pinned tree has to pass", () => {
   test("the install resolves from the registry rather than only writing a lockfile", () => {
-    const install = PINNED_TREE_STEPS.find((step) => step.name === "install")
+    const install = PINNED_TREE_STEPS.find((step: Step) => step.name === "install")
     expect(install).toBeDefined()
     expect(install!.args).toContain("install")
     // `--lockfile-only` is what the sync already ran a few lines earlier. It
@@ -68,13 +84,26 @@ describe("the steps a pinned tree has to pass", () => {
   })
 
   test("the typecheck runs the template's own script", () => {
-    const typecheck = PINNED_TREE_STEPS.find((step) => step.name === "typecheck")
+    const typecheck = PINNED_TREE_STEPS.find((step: Step) => step.name === "typecheck")
     expect(typecheck).toBeDefined()
     expect(typecheck!.args).toEqual(["run", "typecheck"])
   })
 
   test("it installs before it compiles", () => {
-    expect(PINNED_TREE_STEPS.map((step) => step.name)).toEqual(["install", "typecheck"])
+    expect(PINNED_TREE_STEPS.map((step: Step) => step.name)).toEqual(["install", "typecheck"])
+  })
+
+  /**
+   * The field nothing used to assert, and the cheapest way to neuter the gate.
+   *
+   * An adversarial pass on this change edited `cmd: "pnpm"` to `cmd: "true"` on
+   * both steps, left `args` and `failed` untouched, and got the #408 tree
+   * republished to the mirror with all 27 tests green and the publisher logging
+   * `installs from the registry and typechecks`. Every other assertion in this
+   * file read a field that edit did not touch.
+   */
+  test("both steps run pnpm, not something that exits 0", () => {
+    expect(PINNED_TREE_STEPS.map((step: Step) => step.cmd)).toEqual(["pnpm", "pnpm"])
   })
 })
 
@@ -87,9 +116,7 @@ describe("checkPinnedTree", () => {
 
   test("it stops at the first failure", () => {
     const { run, seen } = runnerFor({ install: { ok: false, output: "ERR_PNPM_OUTDATED_LOCKFILE" } })
-    const result = checkPinnedTree("/tree", { run })
-    expect(result.ok).toBe(false)
-    expect(result.step.name).toBe("install")
+    expect(refused(checkPinnedTree("/tree", { run })).step.name).toBe("install")
     // A typecheck run against a failed install measures nothing and buries the
     // cause under its own noise.
     expect(seen).toEqual(["install"])
@@ -106,12 +133,10 @@ describe("checkPinnedTree", () => {
    */
   test("a command that could not run is not reported as a broken tree", () => {
     const { run } = runnerFor({})
-    const spawnFailed = (step: { name: string }) =>
-      step.name === "install"
-        ? { ok: false, ran: false, output: "spawn pnpm ENOENT" }
-        : run(step, "/tree")
-    const result = checkPinnedTree("/tree", { run: spawnFailed })
-    expect(result).toMatchObject({ ok: false, ran: false })
+    const spawnFailed = (step: Step, cwd: string): Result =>
+      step.name === "install" ? { ok: false, ran: false, output: "spawn pnpm ENOENT" } : run(step, cwd)
+    const result = refused(checkPinnedTree("/tree", { run: spawnFailed }))
+    expect(result.ran).toBe(false)
     const message = describePinnedTreeFailure(result)
     expect(message).toContain("could not run its own compile gate")
     expect(message).toContain("spawn pnpm ENOENT")
@@ -121,7 +146,7 @@ describe("checkPinnedTree", () => {
 
   test("a command that did run and disagreed keeps its verdict", () => {
     const { run } = runnerFor({ typecheck: { ok: false, output: "error TS2339" } })
-    expect(checkPinnedTree("/tree", { run })).toMatchObject({ ok: false, ran: true })
+    expect(refused(checkPinnedTree("/tree", { run })).ran).toBe(true)
   })
 
   /**
@@ -130,23 +155,27 @@ describe("checkPinnedTree", () => {
    * tells them apart.
    */
   test("the default runner tells a missing binary from a failing command", () => {
-    const absent = checkPinnedTree(os.tmpdir(), {
-      steps: [{ name: "typecheck", cmd: "beyours-no-such-binary", args: [], failed: "x" }],
-    })
-    expect(absent).toMatchObject({ ok: false, ran: false })
+    const absent = refused(
+      checkPinnedTree(os.tmpdir(), {
+        steps: [{ name: "typecheck", cmd: "beyours-no-such-binary", args: [], failed: "x" }],
+      }),
+    )
+    expect(absent.ran).toBe(false)
     expect(absent.output).toContain("ENOENT")
 
-    const exited = checkPinnedTree(os.tmpdir(), {
-      steps: [
-        {
-          name: "typecheck",
-          cmd: process.execPath,
-          args: ["-e", "console.error('error TS2339: nope'); process.exit(2)"],
-          failed: "x",
-        },
-      ],
-    })
-    expect(exited).toMatchObject({ ok: false, ran: true })
+    const exited = refused(
+      checkPinnedTree(os.tmpdir(), {
+        steps: [
+          {
+            name: "typecheck",
+            cmd: process.execPath,
+            args: ["-e", "console.error('error TS2339: nope'); process.exit(2)"],
+            failed: "x",
+          },
+        ],
+      }),
+    )
+    expect(exited.ran).toBe(true)
     expect(exited.output).toContain("TS2339")
   })
 
@@ -170,11 +199,66 @@ describe("checkPinnedTree", () => {
     expect(noisy).toEqual({ ok: true })
   })
 
+  /**
+   * A registry hiccup is not a broken lockfile, and must not be reported as one.
+   *
+   * The install step fails identically for "the lockfile disagrees with the
+   * manifest" and for "GitHub Packages returned 502" — and the second is not
+   * this tree's fault. Told the first story, an operator goes looking at pinned
+   * versions and overrides that are perfectly fine, while delivery to every
+   * client site stays stopped.
+   */
+  test("a network failure is retried once, then reported as the environment", () => {
+    let attempts = 0
+    const flaky = (step: Step): Result => {
+      if (step.name !== "install") return { ok: true, output: "" }
+      attempts += 1
+      return { ok: false, output: "ERR_PNPM_META_FETCH_FAIL  GET …: status code 502" }
+    }
+    const result = refused(checkPinnedTree("/tree", { run: flaky }))
+    expect(attempts).toBe(2)
+    expect(result.ran).toBe(false)
+    const message = describePinnedTreeFailure(result)
+    expect(message).toContain("could not run its own compile gate")
+    expect(message).toContain("NODE_AUTH_TOKEN")
+    // Never the lockfile story, which would send someone after a defect that is
+    // not there.
+    expect(message).not.toContain("check the pinned versions")
+  })
+
+  test("a network failure that clears on the retry lets the sync through", () => {
+    let attempts = 0
+    const flaky = (step: Step): Result => {
+      if (step.name !== "install") return { ok: true, output: "" }
+      attempts += 1
+      return attempts === 1 ? { ok: false, output: "ECONNRESET" } : { ok: true, output: "" }
+    }
+    expect(checkPinnedTree("/tree", { run: flaky })).toEqual({ ok: true })
+    expect(attempts).toBe(2)
+  })
+
+  /**
+   * The compiler gets no such benefit of the doubt. `tsc` exiting non-zero has
+   * JUDGED the tree, and its output is full of line and column numbers — one of
+   * which must never be read as an HTTP status and retried away.
+   */
+  test("a compiler verdict is never reclassified, whatever numbers it prints", () => {
+    let attempts = 0
+    const run = (step: Step): Result => {
+      if (step.name !== "typecheck") return { ok: true, output: "" }
+      attempts += 1
+      return { ok: false, output: "convex/orders.ts(503,401): error TS2339: nope" }
+    }
+    const result = refused(checkPinnedTree("/tree", { run }))
+    expect(attempts).toBe(1)
+    expect(result.ran).toBe(true)
+    expect(describePinnedTreeFailure(result)).toContain("changeset")
+  })
+
   test("it carries the failing command's own output back", () => {
     const compilerSaid = "convex/emailCampaigns.ts(136,49): error TS2339: Property 'markFailed' does not exist"
     const { run } = runnerFor({ typecheck: { ok: false, output: compilerSaid } })
-    const result = checkPinnedTree("/tree", { run })
-    expect(result.ok).toBe(false)
+    const result = refused(checkPinnedTree("/tree", { run }))
     expect(result.step.name).toBe("typecheck")
     expect(result.output).toBe(compilerSaid)
   })
@@ -182,8 +266,8 @@ describe("checkPinnedTree", () => {
 
 describe("describePinnedTreeFailure", () => {
   const failure = (name: string, output: string) => {
-    const step = PINNED_TREE_STEPS.find((s) => s.name === name)!
-    return describePinnedTreeFailure({ step, output })
+    const step = PINNED_TREE_STEPS.find((s: Step) => s.name === name)!
+    return describePinnedTreeFailure({ step, ran: true, output })
   }
 
   test("a typecheck failure quotes the compiler and names the remedy", () => {
@@ -240,6 +324,40 @@ describe("assertTypecheckScript", () => {
     // this is the floor under that indirection: without it, a `typecheck`
     // reduced to `echo ok` turns the whole gate into a green no-op.
     expect(assertTypecheckScript({ typecheck: "echo ok" })).toContain("runs no compiler")
+  })
+
+  /**
+   * Every one of these passed the first version of this guard, which tested the
+   * script for the substring "tsc". An adversarial pass on this change found
+   * them; `tsc --noEmit || true` is the one somebody writes for real, to unblock
+   * a red CI, and it turns the gate into a green no-op over a broken template.
+   */
+  test.each([
+    ["tsc --noEmit || true", "discards"],
+    ["tsc --noEmit || :", "discards"],
+    ["tsc --noEmit || exit 0", "discards"],
+    ["tsc --noEmit || echo failed", "discards"],
+    ["echo tsc", "runs no compiler"],
+    ["true # tsc", "runs no compiler"],
+    ["exit 0 # tsc --noEmit", "runs no compiler"],
+    ["echo 'skipping tsc for now'", "runs no compiler"],
+    ["tsc --version", "runs no compiler"],
+  ])("a script that compiles nothing is refused: %s", (script, because) => {
+    expect(assertTypecheckScript({ typecheck: script })).toContain(because)
+  })
+
+  /**
+   * The other half. A guard that refuses a sound script costs a refused sync,
+   * which stops delivery to every client site — strictly worse than the miss.
+   */
+  test.each([
+    "tsc --noEmit && tsc --noEmit -p convex/tsconfig.json",
+    "npx tsc --noEmit",
+    "pnpm exec tsc -p tsconfig.json",
+    "NODE_OPTIONS=--max-old-space-size=4096 tsc --noEmit",
+    "tsc -p tsconfig.json && tsc -p convex/tsconfig.json",
+  ])("a script that does compile is accepted: %s", (script) => {
+    expect(assertTypecheckScript({ typecheck: script })).toBeNull()
   })
 })
 
@@ -345,8 +463,7 @@ describe("a real compiler, against a dependency missing a named export", () => {
   test("the version without the symbol is refused, and the message names it", () => {
     const tree = stage(shipped)
     try {
-      const result = checkPinnedTree(tree, { steps: TYPECHECK_ONLY })
-      expect(result.ok).toBe(false)
+      const result = refused(checkPinnedTree(tree, { steps: TYPECHECK_ONLY }))
       expect(result.output).toContain("TS2339")
       expect(result.output).toContain("markFailed")
       expect(describePinnedTreeFailure(result)).toContain("markFailed")

@@ -413,6 +413,16 @@ try {
   // a client is running right now sound". A sync with nothing to publish, over
   // a delivered template that cannot compile, is exactly the state #408
   // describes and exactly the state that reported success throughout.
+  //
+  // WHAT REFUSING COSTS, stated plainly because it is easy to discover the hard
+  // way: this gate does not block only the change that outran the release. It
+  // blocks EVERY change while the published engine is behind — an unrelated
+  // storefront hotfix included. That is deliberate. A hotfix delivered on top
+  // of a template a client cannot compile is not delivered; it is queued behind
+  // a release, and the release is the fix. `pnpm check:pending-release` names
+  // the changesets waiting, and the refusal message points at it. Where that
+  // trade is genuinely wrong for an incident, the answer is to cut the release,
+  // never to skip this.
   log("→ compiling the tree against the versions it pins")
   const badScript = assertTypecheckScript(JSON.parse(contents).scripts)
   if (badScript) fail(badScript)

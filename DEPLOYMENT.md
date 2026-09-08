@@ -293,6 +293,12 @@ Locally:
 NODE_AUTH_TOKEN=<PAT with read:packages> node scripts/publish-mirror.mjs --check
 ```
 
+`--check` reports drift without pushing, and it takes the compile gate too — so
+it answers "would this sync be accepted?", not just "is the mirror stale?". That
+costs a real install of the template (~1.1 GB of `node_modules`) into a temp
+directory it then deletes. The workflow's no-`MIRROR_PUSH_TOKEN` fallback runs
+this path, so a repository without that secret pays it on every trigger.
+
 **Before cutting a release, and again after publishing one**, compile the tree a
 client actually receives:
 
@@ -343,6 +349,21 @@ Five operational facts:
 
   The sandbox matters: an install leaves `node_modules` and build state behind, and
   the clone is what gets pushed to the repository every client site merges from.
+
+  **It refuses every change, not only the one that outran the release.** While the
+  published engine is behind the template, an unrelated storefront hotfix does not
+  reach clients either. That is the intended trade — a hotfix on top of a template
+  a client cannot compile is not delivered, it is queued behind a release — but it
+  is a real cost during an incident, and the way out is always to cut the release,
+  never to skip the gate. `pnpm check:pending-release` names the changesets waiting.
+
+  It is not a complete check and does not replace the one below it. `tsconfig.json`
+  excludes `tests/` and `.template/`, and no `include` glob names `.js`/`.mjs`, so
+  115 of the 691 files the mirror ships are never compiled — among them the
+  mirror's own `eslint.config.mjs`, which imports
+  `@be-in-digital/convex-functions/eslint/convex-auth`. A subpath lost from *that*
+  import breaks a client's `pnpm lint` with this gate green; the exports gate below
+  is what catches it. Three overlapping gates, none complete alone.
 
 - **A sync refuses to run if the pinned versions cannot resolve what the template
   imports.** CI builds `apps/themes` against `packages/*` at HEAD through the
