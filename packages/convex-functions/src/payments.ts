@@ -8,8 +8,12 @@ import { v } from "convex/values"
 import { paginationOptsValidator } from "convex/server"
 import { clampPagination } from "./pagination"
 import { planRefund } from "./refundPolicy"
-import { paymentStatusAfterSettlement } from "./paymentSettlement"
+import {
+  DoubleCollectionError,
+  paymentStatusAfterSettlement,
+} from "./paymentSettlement"
 import { recordPaymentStatus } from "./orders"
+import { collectionOnOrder } from "./paymentLedger"
 import type { OrderConfirmationDispatch } from "./orderConfirmation"
 
 /** The providers whose events can settle or reverse a charge on their own. */
@@ -202,6 +206,17 @@ export const create = {
  * again by a Stripe session left live behind an abandoned checkout (#378). The
  * order-level check below is what makes "one order, one collection" a property
  * of the ledger rather than of five call sites remembering to ask a guard.
+ *
+ * That fourth guard was first written as `p.provider !== args.provider`, and
+ * that clause was a hole the width of the whole product. Two live Stripe
+ * sessions on one order — a stale tab, a back-navigation, a retry — are two
+ * DIFFERENT charges from the SAME provider, so the clause read them as the
+ * same collection and let the second row in. Both referenced the order, the
+ * currency and the total, so `assertSettlesOrder` passed both; both were
+ * `card`, so #378's method check did not separate them. A 1 200 € order
+ * collected 2 400 €, in two `succeeded` rows, each independently refundable
+ * (#411). The clause is gone: by the time execution reaches it, the same charge
+ * has already returned above, so anything still on the order is another one.
  */
 export const settlePayment = {
   args: {
@@ -251,8 +266,10 @@ export const settlePayment = {
     // duplicate a compound index would have missed.
     const cross = existing.find((p: any) => p.orderId !== args.orderId)
     if (cross) {
-      throw new Error(
-        `Ce paiement ${args.provider} règle déjà la commande ${cross.orderId}.`
+      throw new DoubleCollectionError(
+        "charge_settles_another_order",
+        `Ce paiement ${args.provider} règle déjà la commande ${cross.orderId}.`,
+        { provider: args.provider, settledOrderId: String(cross.orderId) }
       )
     }
 
@@ -265,39 +282,48 @@ export const settlePayment = {
     // collected once.
     //
     // WHY THIS IS NOT THE CHECK ABOVE: `byExternalId` answers "have I seen this
-    // charge before". It cannot answer "has this order already been paid by
-    // someone else" — a cash row carries no `externalId` at all, and two
-    // providers mint unrelated references, so the two never collide. That gap
-    // is the whole of #378: a diner abandons Stripe, confirms « Espèces » on
-    // the same attempt (#374 re-methods the reused order), staff take the notes
-    // — and the Stripe session stays live for ~24 h. Completing it wrote a
-    // second `succeeded` row on top of the cash one. The order still read
-    // « Payé », both rows were independently refundable, and one meal had been
-    // charged twice with nothing anywhere saying so.
+    // charge before". It cannot answer "has this order already been collected
+    // by some other charge" — a cash row carries no `externalId` at all, two
+    // providers mint unrelated references, and one provider mints a fresh one
+    // per checkout session. None of those ever collide. That gap is #378 and
+    // #411 both:
     //
-    // `assertSettlesOrder` refuses that from the order's stored method, before
-    // the provider path ever reaches here. This is the same rule stated where
-    // it cannot be stepped around: five call sites remember to ask the guard,
-    // and the sixth one written next year would not have to. The ledger is the
-    // thing that must be unable to hold two collections of one order.
+    //   #378 — a diner abandons Stripe, confirms « Espèces » on the same
+    //   attempt (#374 re-methods the reused order), staff take the notes, and
+    //   the Stripe session stays live for ~24 h. Completing it wrote a second
+    //   `succeeded` row on top of the cash one.
+    //
+    //   #411 — a diner opens checkout twice and leaves two live Stripe
+    //   sessions on one order. Completing both wrote two `succeeded` rows, and
+    //   nothing above could tell them apart: same order, same currency, same
+    //   total, same method, same provider, two payment intents.
+    //
+    // Either way the order still read « Payé », both rows were independently
+    // refundable, and one meal had been charged twice with nothing anywhere
+    // saying so.
+    //
+    // THE PREDICATE IS ABOUT THE CHARGE, NOT THE PROVIDER. It used to carry
+    // `p.provider !== args.provider`, which made #411 invisible — the two
+    // Stripe sessions are both `stripe`. It cannot be reinstated: execution
+    // only reaches this line when `byExternalId` found no row for THIS charge
+    // on THIS order, so every row still standing here belongs to another
+    // charge, whoever minted it.
     //
     // `refunded` is deliberately not counted: that money went back, so a fresh
     // collection is a real one. `partially_refunded` is, because part of it is
     // still held.
-    const onOrder = await ctx.db
-      .query("payments")
-      .withIndex("by_orderId", (q: any) => q.eq("orderId", args.orderId))
-      .collect()
-
-    const collected = onOrder.find(
-      (p: any) =>
-        p.provider !== args.provider &&
-        (p.status === "succeeded" || p.status === "partially_refunded")
-    )
+    const collected = await collectionOnOrder(ctx, args.orderId)
     if (collected) {
-      throw new Error(
+      throw new DoubleCollectionError(
+        "order_already_collected",
         `Cette commande a déjà été encaissée (${collected.provider}) : ` +
-          `un règlement ${args.provider} en ferait un double encaissement.`
+          `un règlement ${args.provider} en ferait un double encaissement.`,
+        {
+          provider: args.provider,
+          collectedBy: String(collected.provider),
+          collectedExternalId: String(collected.externalId ?? ""),
+          externalId,
+        }
       )
     }
 
@@ -366,6 +392,28 @@ export const updateStatus = {
         "Un remboursement ne peut pas être enregistré par une mise à jour de statut : " +
           "utilisez le remboursement, qui appelle le fournisseur avant d'écrire quoi que ce soit."
       )
+    }
+
+    // Promoting a row to `succeeded` IS a collection, and this is the second
+    // writer that reached the payments table without asking whether the order
+    // already held one. `create` inserts at `pending` under `payments:write`
+    // and this promotes it, so the pair could put a second `succeeded` row on
+    // an order the provider paths would have refused — the whole of #411,
+    // through a surface nothing calls. The check is the same one, in the same
+    // place, as the four provider paths make.
+    if (status === "succeeded") {
+      const row = await ctx.db.get(id)
+      if (!row) throw new Error("Payment not found")
+
+      const collected = await collectionOnOrder(ctx, row.orderId)
+      if (collected && collected._id !== id) {
+        throw new DoubleCollectionError(
+          "order_already_collected",
+          `Cette commande a déjà été encaissée (${collected.provider}) : ` +
+            `un second règlement en ferait un double encaissement.`,
+          { collectedBy: String(collected.provider) }
+        )
+      }
     }
 
     const updates: Record<string, unknown> = {
@@ -809,6 +857,111 @@ export const settleFromChargeEvent = {
  * to whatever the provider had confirmed at the moment the event was minted
  * would hand that amount back out to be spent twice.
  */
+/** How much of a refusal message we keep. Enough to act on, bounded. */
+export const MAX_REFUSAL_DETAIL_CHARS = 2_000
+
+/**
+ * Record a collection this deployment refused, so somebody gives the money back.
+ *
+ * WHY THIS EXISTS: `settlePayment` refusing a second collection is right, and
+ * on its own it is not enough. The provider does not tell us about a charge it
+ * did not take — by the time the refusal fires, the diner's account has been
+ * debited a second time. Refusing the row keeps the LEDGER honest; it does not
+ * make the diner whole, and nothing else in the deployment was left holding
+ * that fact. The Stripe webhook answered 500, Stripe retried for three days,
+ * and the only trace was a `console.error` in one client's Convex dashboard —
+ * which is to say, nobody was told (#411).
+ *
+ * `systemAuditLog` rather than a table of its own: this is exactly what that
+ * log is for, an operator opens it from Dashboard → Système, and the entry is
+ * durable — `paymentEvents` would have been the tempting home and it is swept
+ * after thirty days, which is shorter than the time a mis-charged diner takes
+ * to notice.
+ *
+ * `result: "failure"` is about the collection, not about this function. The
+ * money moved and it should not have.
+ *
+ * Never throws, and that is load-bearing: its only caller is the failure branch
+ * of a webhook, and a recording that can itself fail the handler turns one
+ * refused collection into a retry storm — the same rule
+ * `platformWebhookFailures.record` follows, for the same reason.
+ */
+export const recordRefusedCollection = {
+  args: {
+    provider: v.string(),
+    /** The refusal code, from `paymentSettlement`'s two reason unions. */
+    code: v.string(),
+    /** The French sentence the refusal carried. */
+    message: v.string(),
+    /** The provider's own reference for the charge that was refused. */
+    externalId: v.optional(v.string()),
+    /** The provider delivery this arrived on, when there was one. */
+    eventType: v.optional(v.string()),
+    /**
+     * The order and the establishment, as STRINGS.
+     *
+     * NOT `v.id("orders")` / `v.id("stores")`, and that is the whole point.
+     * Convex validates arguments BEFORE the handler runs, so the `try/catch`
+     * below — whose entire contract is "this can never fail its caller" —
+     * cannot catch a validator error. The only caller is the failure branch of
+     * a webhook, and its `storeId` comes from provider metadata: a session
+     * created outside `createCheckoutSession`, or an id from a re-created
+     * deployment, throws out of the catch block, past the 200, and back into
+     * the three-day retry loop this exists to end — with nothing recorded.
+     *
+     * They are identifiers in a log line, never dereferenced, so a string is
+     * all this needs. `targetStoreId` is only set when the value resolves.
+     */
+    orderId: v.optional(v.string()),
+    storeId: v.optional(v.string()),
+  },
+  handler: async (
+    ctx: any,
+    args: {
+      provider: string
+      code: string
+      message: string
+      externalId?: string
+      eventType?: string
+      orderId?: string
+      storeId?: string
+    }
+  ): Promise<void> => {
+    try {
+      // `targetStoreId` is a real reference and the column is typed as one, so
+      // it is set only when the string actually resolves to a store. A value
+      // that does not is still kept, in `details`, where it is a clue rather
+      // than a dangling pointer.
+      const store = args.storeId
+        ? await ctx.db.get(args.storeId as any).catch(() => null)
+        : null
+
+      await ctx.db.insert("systemAuditLog", {
+        action: "payment_collection_refused" as const,
+        // No identity to name: a webhook runs with none, and the provider is
+        // the honest answer to "who did this".
+        performedBy: args.provider,
+        performedAt: Date.now(),
+        ...(store ? { targetStoreId: args.storeId } : {}),
+        details: JSON.stringify({
+          code: args.code,
+          provider: args.provider,
+          ...(args.eventType ? { eventType: args.eventType } : {}),
+          ...(args.orderId ? { orderId: args.orderId } : {}),
+          ...(args.storeId ? { storeId: args.storeId } : {}),
+          ...(args.externalId ? { externalId: args.externalId } : {}),
+        }).slice(0, MAX_REFUSAL_DETAIL_CHARS),
+        result: "failure" as const,
+        errorMessage: args.message.slice(0, MAX_REFUSAL_DETAIL_CHARS),
+      })
+    } catch (failure) {
+      // The refusal itself has already been logged by the caller. This one is
+      // about the recording, and it must not replace it.
+      console.error("[payments] could not record a refused collection:", failure)
+    }
+  },
+}
+
 export const recordProviderRefund = {
   args: {
     provider: PROVIDER_EVENT_SOURCE,

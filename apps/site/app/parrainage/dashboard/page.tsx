@@ -7,21 +7,20 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { InvoiceUpload } from "@/components/parrainage/invoice-upload";
 import { COMPANY } from "@/lib/legal";
+import { AFFILIATE_REFERRAL_STATUS } from "@/lib/referral-status";
 
 function formatCents(cents: number) {
   return `${(cents / 100).toFixed(0)} €`;
 }
 
 function statusBadge(status: string) {
-  const map: Record<string, { label: string; cls: string }> = {
-    pending: { label: "En attente", cls: "bg-warning-soft text-warning-strong border-warning-border" },
-    validated: { label: "Validé", cls: "bg-info-soft text-info-strong border-info-border" },
-    payable: { label: "À verser", cls: "bg-primary/10 text-primary border-primary/20" },
-    paid: { label: "Payé", cls: "bg-success-soft text-success-strong border-success-border" },
-    cancelled: { label: "Annulé", cls: "bg-danger-soft text-danger-strong border-danger-border" },
-    blocked: { label: "Bloqué", cls: "bg-danger-soft text-danger-strong border-danger-border" },
+  /* The vocabulary lives in `lib/referral-status.ts`, not here: a map declared
+     inside a page is one no test can import, and that is how #384's `paying`
+     reached an affiliate as a raw English literal (#411). */
+  const s = AFFILIATE_REFERRAL_STATUS[status] ?? {
+    label: status,
+    cls: "bg-secondary text-muted-foreground border-border",
   };
-  const s = map[status] ?? { label: status, cls: "bg-secondary text-muted-foreground border-border" };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${s.cls}`}>
       {s.label}

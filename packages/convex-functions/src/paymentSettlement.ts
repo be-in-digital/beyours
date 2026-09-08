@@ -33,6 +33,21 @@
  * again by a Stripe session left live behind an abandoned checkout (#378). The
  * method check refuses that, and only that: it needs money to have moved
  * already, so it can never refuse the payment that settles an order first.
+ *
+ * WHAT THIS FILE CANNOT DO, and where the rest of the rule lives. The method
+ * check separates a card collection from a cash one because the order records
+ * WHICH method it is on. It cannot separate two CARD collections: both name
+ * "card", so a diner who opened checkout twice — a stale tab, a
+ * back-navigation, a retry — left two live Stripe sessions against one order,
+ * and both passed every check here. A 1 200 € order collected 2 400 € (#411).
+ *
+ * That question is about the charges already on the order, and this module is
+ * given none of them: it is a pure function over one claim and one order. The
+ * ledger is where it is answered — `payments.settlePayment` sees every row and
+ * refuses the second collection there, as `DoubleCollectionError` below. This
+ * file owns the vocabulary both refusals share, so a caller can tell a
+ * deliberate, permanent refusal from a transient failure without importing two
+ * modules; `isDeliberateSettlementRefusal` is that reader.
  */
 
 import { RefusalError } from "./refusal"
@@ -127,6 +142,153 @@ export type SettlementRejectionReason =
   | "amount_mismatch"
   | "currency_mismatch"
   | "method_mismatch"
+
+/**
+ * Whether the order's own status says money has already been collected for it.
+ *
+ * Exported because four places need the same answer and used to hold copies of
+ * the list: this guard's step 4, and the three checkout paths that must not
+ * send a diner to pay an order whose money has already been taken.
+ *
+ * `refunded` counts, and that is deliberate — it is what makes the three
+ * diner-facing gates agree with `orders.markCashPaid`, which has refused a
+ * refunded order since it was written. A refunded order is closed business:
+ * taking money on it again should be a new order, not a second attempt at the
+ * old one. `payments.settlePayment` asks a narrower question underneath, about
+ * the ROWS rather than the order — money on this order right now — and there a
+ * refunded row holds nothing. The two are layered, not in conflict: the
+ * stricter gate runs first, so the narrower one is only ever the last resort
+ * for a settlement that arrived anyway.
+ */
+export function orderAlreadyCollected(paymentStatus?: string | null): boolean {
+  return !!paymentStatus && ALREADY_COLLECTED.includes(paymentStatus)
+}
+
+/**
+ * Why the ledger refused to hold a collection.
+ *
+ *  - `order_already_collected` — a DIFFERENT charge has already collected this
+ *    order. Two live Stripe sessions on one order is the case that named it
+ *    (#411); cash at the counter plus a live session is the case that came
+ *    first (#378).
+ *  - `charge_settles_another_order` — this provider reference is already on
+ *    file against a different order. The cross-order replay.
+ */
+export type DoubleCollectionReason =
+  | "order_already_collected"
+  | "charge_settles_another_order"
+
+/**
+ * Thrown by `payments.settlePayment` when writing this row would make one order
+ * collected twice.
+ *
+ * WHY IT IS NOT `SettlementRejectedError`: that one is a statement about a
+ * CLAIM — the reference, the currency, the amount, the method — and it can be
+ * evaluated with nothing but the order in hand. This one is a statement about
+ * the LEDGER, and only the ledger can make it: it takes every payment row on
+ * the order to know that some other charge got there first. Keeping them
+ * distinct is what lets a caller say which of the two it hit.
+ *
+ * What every caller must understand about it: **the money has already moved**.
+ * A provider does not tell us about a charge it did not take. Refusing the row
+ * is refusing to make the SECOND collection refundable twice over — it is not
+ * undoing it. Whoever catches this owes the diner a refund, which is why it is
+ * recorded rather than only thrown.
+ *
+ * And it is permanent. Retrying delivers the same answer, so a webhook that
+ * answers 500 to it buys three days of Stripe retries and nothing else.
+ */
+export class DoubleCollectionError extends RefusalError<DoubleCollectionReason> {
+  readonly reason: DoubleCollectionReason
+
+  constructor(
+    reason: DoubleCollectionReason,
+    message: string,
+    details?: Record<string, string | number>
+  ) {
+    super("DoubleCollectionError", reason, message, details)
+    this.reason = reason
+  }
+}
+
+/**
+ * Every code a settlement path raises on purpose, as opposed to by failing.
+ *
+ * A `Record` over the two reason unions rather than a `string[]`, and the
+ * difference is the whole guarantee. A list of strings lets a ninth reason be
+ * added to a union and forgotten here, where it reads as "not deliberate" —
+ * which is a 500 answered with three days of provider retries, silently, for
+ * exactly the kind of refusal this file exists to make final. As a `Record`
+ * the omission does not compile.
+ */
+const DELIBERATE_REFUSAL_CODES: Record<
+  SettlementRejectionReason | DoubleCollectionReason,
+  true
+> = {
+  reference_missing: true,
+  reference_mismatch: true,
+  amount_missing: true,
+  amount_mismatch: true,
+  currency_mismatch: true,
+  method_mismatch: true,
+  order_already_collected: true,
+  charge_settles_another_order: true,
+}
+
+/**
+ * Read the refusal a thrown value carries, if it carries one.
+ *
+ * NOT `instanceof`, deliberately, and this is the part that is easy to get
+ * wrong. Every settlement refusal is raised inside a Convex mutation and caught
+ * one layer up, in an action or an `httpAction`. Convex serialises a
+ * `ConvexError` across that boundary and rebuilds it there from its `data`
+ * alone — the caller gets a `ConvexError`, never an instance of the subclass
+ * that threw. `instanceof DoubleCollectionError` is false at every call site
+ * that matters, and it fails CLOSED into "unknown error, answer 500", which is
+ * exactly the retry loop this exists to stop.
+ *
+ * `data` arrives as an object from the real client and as its JSON from
+ * `convex-test`, so both are accepted — the same rule, and for the same reason,
+ * as each app's `lib/convex-error.ts`.
+ */
+export function deliberateSettlementRefusal(
+  error: unknown
+): { code: string; message: string } | null {
+  const raw = (error as { data?: unknown } | null | undefined)?.data
+  if (raw === null || raw === undefined) return null
+
+  let data: unknown = raw
+  if (typeof raw === "string") {
+    try {
+      data = JSON.parse(raw)
+    } catch {
+      return null
+    }
+  }
+
+  if (typeof data !== "object" || data === null) return null
+  const code = (data as { code?: unknown }).code
+  if (
+    typeof code !== "string" ||
+    !Object.prototype.hasOwnProperty.call(DELIBERATE_REFUSAL_CODES, code)
+  ) {
+    return null
+  }
+
+  const message = (data as { message?: unknown }).message
+  return { code, message: typeof message === "string" ? message : code }
+}
+
+/**
+ * Whether this is a refusal the code chose, rather than something that broke.
+ *
+ * The distinction a provider webhook has to make: a refusal is final and must
+ * be answered 2xx and recorded, while a failure is transient and must be
+ * answered 5xx so the provider retries it.
+ */
+export function isDeliberateSettlementRefusal(error: unknown): boolean {
+  return deliberateSettlementRefusal(error) !== null
+}
 
 /**
  * Thrown when a payment does not legitimately settle the given order.
@@ -285,8 +447,7 @@ export function assertSettlesOrder(
   // evidence refuses real payments, and the money has already left the diner's
   // account by the time this runs.
   const settledMethod = order.paymentMethod
-  const collected =
-    !!order.paymentStatus && ALREADY_COLLECTED.includes(order.paymentStatus)
+  const collected = orderAlreadyCollected(order.paymentStatus)
 
   if (collected && !!settledMethod && settledMethod !== ORDER_METHOD_BY_PROVIDER[provider]) {
     throw new SettlementRejectedError(
