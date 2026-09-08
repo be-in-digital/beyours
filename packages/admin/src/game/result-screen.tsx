@@ -74,7 +74,7 @@ export function ResultScreen({
           <MotionLink
             href="/"
             whileTap={{ scale: 0.96 }}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.4)]"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.4)]"
           >
             <UtensilsIcon className="h-4 w-4" />
             Voir la carte
@@ -82,7 +82,7 @@ export function ResultScreen({
           <button
             type="button"
             onClick={onFinishLose}
-            className="w-full py-2 text-xs font-medium text-white/40 transition-colors hover:text-white/60"
+            className="w-full py-2 text-xs font-medium text-white/70 transition-colors hover:text-white"
           >
             Quand pourrai-je rejouer ?
           </button>
@@ -201,7 +201,7 @@ export function ResultScreen({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1.35 }}
         whileTap={{ scale: 0.95 }}
-        className="relative mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
+        className="relative mt-9 flex w-full max-w-xs items-center justify-center gap-2 rounded-full bg-gradient-to-b from-amber-400 to-orange-600 py-4 font-heading text-base font-bold uppercase tracking-widest text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
       >
         <GiftIcon className="h-4 w-4" />
         Récupérer mon lot

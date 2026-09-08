@@ -273,7 +273,7 @@ export function GamePlayerFlow({ qrCode, api, copy }: GamePlayerFlowProps) {
             >
               🎡
             </motion.div>
-            <p className="mt-4 text-sm text-white/45">Préparation du jeu…</p>
+            <p className="mt-4 text-sm text-white/70">Préparation du jeu…</p>
           </motion.div>
         )}
 

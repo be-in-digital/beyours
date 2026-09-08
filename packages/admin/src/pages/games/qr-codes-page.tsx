@@ -134,9 +134,15 @@ function QRCodeCard({
         </Button>
       </div>
 
-      <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-md border border-border/50 bg-white p-1.5">
+      {/*
+        * The white plate exists so a scanner can read the QR; it is not a
+        * surface for anything else. `--muted-foreground` inverts with the
+        * theme, so the placeholder icon measured 2.54:1 on that fixed white in
+        * dark mode. The placeholder gets a themed ground instead.
+        */}
+      <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-md border border-border/50 bg-muted p-1.5">
         {dataUrl ? (
-          <img src={dataUrl} alt={`QR code ${qr.code}`} className="h-full w-full" />
+          <img src={dataUrl} alt={`QR code ${qr.code}`} className="h-full w-full bg-white" />
         ) : (
           <QrCodeIcon className="h-8 w-8 text-muted-foreground" />
         )}

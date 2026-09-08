@@ -69,6 +69,59 @@ describe("the ticket timer", () => {
   it("does not cap one minute early", () => {
     expect(render(<TicketTimer createdAt={minutesAgo(24 * 60 - 1)} />).textContent).toBe("23h 59m")
   })
+
+  /**
+   * WCAG 1.4.1, on the screen where getting it wrong costs a real order.
+   *
+   * The three urgency bands were a hue and nothing else — muted, yellow-600,
+   * red-600 — so "this ticket is late" was said in colour alone to a kitchen
+   * reading the board from across the room. The elapsed figure is not the
+   * redundant cue people assume: "14m" and "25m" are both just numbers unless
+   * you already know where this kitchen's thresholds sit.
+   *
+   * Each band now carries a distinct shape, and the two that mean something
+   * carry a name. The assertions below are on the SHAPE, not on the colour:
+   * a fix that only recoloured would still leave the screen unreadable to the
+   * roughly one man in twelve who cannot separate that yellow from that red.
+   */
+  const iconOf = (minutes: number): SVGElement | null =>
+    render(<TicketTimer createdAt={minutesAgo(minutes)} />).querySelector("svg")
+
+  it("marks a late ticket with a shape, not only with red", () => {
+    expect(iconOf(25)).not.toBeNull()
+  })
+
+  it("marks a watched ticket with a DIFFERENT shape from a late one", () => {
+    // Two markers that differ only in colour would fail 1.4.1 exactly as the
+    // two text colours did.
+    const watched = iconOf(14)
+    const late = iconOf(25)
+    expect(watched).not.toBeNull()
+    expect(late).not.toBeNull()
+    expect(watched!.getAttribute("class")).not.toBe(late!.getAttribute("class"))
+  })
+
+  it("leaves a ticket inside the normal window unmarked", () => {
+    // The marker has to mean something. A badge on every card is no badge.
+    expect(iconOf(3)).toBeNull()
+    expect(iconOf(9)).toBeNull()
+  })
+
+  it("names each band for a screen reader", () => {
+    const named = (minutes: number): string | null =>
+      render(<TicketTimer createdAt={minutesAgo(minutes)} />)
+        .querySelector("[aria-label]")
+        ?.getAttribute("aria-label") ?? null
+
+    expect(named(14)).toMatch(/surveiller/i)
+    expect(named(25)).toMatch(/retard/i)
+  })
+
+  it("keeps the elapsed figure as the only text it prints", () => {
+    // The marker is an SVG on purpose: an sr-only span would land inside the
+    // string the four assertions above compare exactly.
+    expect(render(<TicketTimer createdAt={minutesAgo(25)} />).textContent).toBe("25m")
+  })
 })
 
 describe("the station filter", () => {

@@ -19,6 +19,25 @@ import {
   sanitizeFontStack,
 } from "../lib/branding"
 
+/**
+ * The budget the two exhaustive sweeps below are given, and why they need one.
+ *
+ * They are the guard this file exists for — 262 144 colours through
+ * `readableForeground`, 4 096 through the accent derivation — and they were
+ * RED IN CI for a reason that had nothing to do with contrast: the assertion
+ * completed in 5 791 ms on the runner, and `packages/ui/vitest.config.ts` sets
+ * no `testTimeout`, so Vitest's 5 000 ms default judged them. A guard that
+ * reads as red for the wrong reason is a guard people learn to ignore, and
+ * coarsening the grid instead would have thrown away the coverage the sweep is
+ * for — the first version of this test swept where it could not fail and
+ * passed while the claim was false.
+ *
+ * 30 seconds is five times the slowest run measured and still short enough to
+ * catch a genuine hang. It is stated per test rather than in the config so an
+ * ordinary unit test in this package keeps failing fast at the default.
+ */
+const SWEEP_BUDGET_MS = 30_000
+
 /** `#f97015` is `hsl(24 95% 53%)`, the orange every delivered site ships with. */
 const ENGINE_ORANGE = "#f97015"
 
@@ -38,8 +57,11 @@ describe("parseBrandColor", () => {
   })
 
   it("round-trips the engine's own orange to its token", () => {
-    // The value in `app/globals.css`. If this drifts, the deriver and the
-    // stylesheet have stopped describing the same colour.
+    // The hex an owner types and the triple a token is written in have to be
+    // the same colour. `app/globals.css` no longer carries this exact value —
+    // #410 darkened `--primary` to `24 95% 37%` because `#f97015` measures
+    // 2.85:1 on white and could carry neither a label nor a word of text — so
+    // this pins the CONVERSION, which is what it was ever able to check.
     expect(formatHsl(parseBrandColor(ENGINE_ORANGE)!)).toBe("24 95% 53%")
   })
 
@@ -137,7 +159,7 @@ describe("readableForeground", () => {
       }
     }
     expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
-  })
+  }, SWEEP_BUDGET_MS)
 
   it("holds at the worst colours a full sweep found", () => {
     // Pinned individually: these are the floor, and a change that lifts the
@@ -267,7 +289,140 @@ describe("buildBrandingCss", () => {
     expect(
       contrastRatio({ h: +a[1]!, s: +a[2]!, l: +a[3]! }, { h: +f[1]!, s: +f[2]!, l: +f[3]! })
     ).toBeGreaterThanOrEqual(4.5)
-  })
+  }, SWEEP_BUDGET_MS)
+
+  it("gives the accent solid a label that can be read on it", () => {
+    // `bg-accent-solid` is the cart badge and the "nouveau" pill, and the
+    // storefront wrote `text-white` on it: 2.78:1 on the shipped orange, and
+    // 1.1:1 on a yellow an owner is free to pick. #410.
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    let worst = Infinity
+    let worstAt = ""
+    for (let r = 0; r < 256; r += 16) {
+      for (let g = 0; g < 256; g += 16) {
+        for (let b = 0; b < 256; b += 16) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const css = buildBrandingCss({ accentColor: value }, { darkSelector: null })
+          const solid = css.match(/--accent-solid:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+          const label = css.match(/--accent-solid-foreground:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+          const ratio = contrastRatio(
+            { h: +solid[1]!, s: +solid[2]!, l: +solid[3]! },
+            { h: +label[1]!, s: +label[2]!, l: +label[3]! }
+          )
+          if (ratio < worst) {
+            worst = ratio
+            worstAt = value
+          }
+        }
+      }
+    }
+    expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
+  }, SWEEP_BUDGET_MS)
+
+  it("gives every emitted fill a label that can be read on the colour painted", () => {
+    // The guarantee that matters is about the triples in the stylesheet, not
+    // about the unrounded candidates behind them: `formatHsl` emits whole
+    // percents, and choosing a label for the unrounded value left one pair at
+    // 4.4911:1. Both schemes, because the dark one lifts the fill.
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    const worst: Record<string, { ratio: number; at: string }> = {}
+    const note = (token: string, ratio: number, at: string) => {
+      if (!worst[token] || ratio < worst[token]!.ratio) worst[token] = { ratio, at }
+    }
+    for (let r = 0; r < 256; r += 16) {
+      for (let g = 0; g < 256; g += 16) {
+        for (let b = 0; b < 256; b += 16) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const css = buildBrandingCss({ primaryColor: value, secondaryColor: value, accentColor: value })
+          const split = css.indexOf(".dark{")
+          for (const half of [css.slice(0, split), css.slice(split)]) {
+            for (const [fill, label] of [
+              ["primary", "primary-foreground"],
+              ["secondary", "secondary-foreground"],
+              ["accent-solid", "accent-solid-foreground"],
+            ]) {
+              const f = half.match(new RegExp(`--${fill}:([\\d.]+) ([\\d.]+)% ([\\d.]+)%;`))!
+              const l = half.match(new RegExp(`--${label}:([\\d.]+) ([\\d.]+)% ([\\d.]+)%;`))!
+              note(fill, contrastRatio(
+                { h: +f[1]!, s: +f[2]!, l: +f[3]! },
+                { h: +l[1]!, s: +l[2]!, l: +l[3]! }
+              ), value)
+            }
+          }
+        }
+      }
+    }
+    for (const [token, { ratio, at }] of Object.entries(worst)) {
+      expect(ratio, `--${token} worst at ${at}`).toBeGreaterThanOrEqual(4.5)
+    }
+  }, SWEEP_BUDGET_MS)
+
+  it("gives the sidebar's selected item a label that can be read on it", () => {
+    // The sidebar tokens are spelled as whole `hsl()` values, and this one was
+    // a fixed white in both shipped palettes: 2.57:1 on the engine's own
+    // dark-mode orange, in the chrome an owner looks at all day. #410.
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    let worst = Infinity
+    let worstAt = ""
+    for (let r = 0; r < 256; r += 16) {
+      for (let g = 0; g < 256; g += 16) {
+        for (let b = 0; b < 256; b += 16) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const css = buildBrandingCss({ primaryColor: value })
+          const split = css.indexOf(".dark{")
+          for (const half of [css.slice(0, split), css.slice(split)]) {
+            const fill = half.match(/--sidebar-primary:hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\);/)!
+            const label = half.match(/--sidebar-primary-foreground:hsl\(([\d.]+) ([\d.]+)% ([\d.]+)%\);/)!
+            const ratio = contrastRatio(
+              { h: +fill[1]!, s: +fill[2]!, l: +fill[3]! },
+              { h: +label[1]!, s: +label[2]!, l: +label[3]! }
+            )
+            if (ratio < worst) {
+              worst = ratio
+              worstAt = value
+            }
+          }
+        }
+      }
+    }
+    expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
+  }, SWEEP_BUDGET_MS)
+
+  it("gives the primary an ink a word can be written in", () => {
+    // `--primary` is the colour the owner picked and it stays that colour: it
+    // is a FILL. `text-primary` asks the same value to be read ON the page,
+    // which the engine's own orange cannot do (2.85:1 on white). So the ink is
+    // derived, and it has to clear AA against the page in both schemes — the
+    // light one (`--background`, `0 0% 99%`) and the dark one.
+    const LIGHT_PAGE = { h: 0, s: 0, l: 99 }
+    const DARK_PAGE = { h: 224, s: 71, l: 4 }
+    const hex = (n: number) => "#" + n.toString(16).padStart(6, "0")
+    let worst = Infinity
+    let worstAt = ""
+    for (let r = 0; r < 256; r += 16) {
+      for (let g = 0; g < 256; g += 16) {
+        for (let b = 0; b < 256; b += 16) {
+          const value = hex((r << 16) | (g << 8) | b)
+          const css = buildBrandingCss({ primaryColor: value })
+          for (const [half, page] of [
+            [css.slice(0, css.indexOf(".dark{")), LIGHT_PAGE],
+            [css.slice(css.indexOf(".dark{")), DARK_PAGE],
+          ] as const) {
+            const ink = half.match(/--primary-ink:([\d.]+) ([\d.]+)% ([\d.]+)%;/)!
+            const ratio = contrastRatio(
+              { h: +ink[1]!, s: +ink[2]!, l: +ink[3]! },
+              page
+            )
+            if (ratio < worst) {
+              worst = ratio
+              worstAt = value
+            }
+          }
+        }
+      }
+    }
+    expect(worst, `worst at ${worstAt}`).toBeGreaterThanOrEqual(4.5)
+  }, SWEEP_BUDGET_MS)
 
   it("keeps the secondary a surface even when the picker hands it a slab", () => {
     // `bg-secondary` is a chip or a muted panel — the shipped token is
@@ -289,6 +444,25 @@ describe("buildBrandingCss", () => {
     expect(dark).toContain("--primary:0 65% 56%;")
     // A 97%-light accent surface on a near-black page would be a white bar.
     expect(dark).toContain("--accent:36 40% 12%;")
+  })
+
+  it("reaches a palette that redefines the tokens on an element of its own", () => {
+    // Measured in Chromium before this existed: with the storefront shell
+    // carrying `.storefront-theme`, a store that picked `#d32f2f` rendered
+    // `rgb(211, 49, 49)` in the admin and `rgb(13, 94, 64)` — the engine green
+    // — on its own storefront. A declaration on an element beats one it would
+    // have inherited, so targeting `:root` alone could never reach it.
+    const css = buildBrandingCss(
+      { primaryColor: "#d32f2f" },
+      { scopes: [".storefront-theme"] }
+    )
+    expect(css).toContain(":root,.storefront-theme{")
+    expect(css).toContain(".dark,.dark .storefront-theme{")
+    // And without the scope, it does not — which is the state the storefront
+    // was in.
+    expect(buildBrandingCss({ primaryColor: "#d32f2f" })).not.toContain(
+      ".storefront-theme"
+    )
   })
 
   it("orders the dark block after the light one", () => {
@@ -335,9 +509,11 @@ describe("buildBrandingCss", () => {
     expect(css).toBe("")
   })
 
-  it("reproduces the engine's own theme when an owner picks its colours", () => {
-    // The deriver and `app/globals.css` have to agree on the default, or a
-    // store that chooses the house palette would not look like the house.
+  it("writes back exactly the colour an owner picked", () => {
+    // The owner's pick reaches `--primary` unchanged, and `--chart-1` keeps the
+    // relationship the shipped palette encodes (softened five, lifted five).
+    // This used to be spelled as "the deriver and `globals.css` agree on the
+    // default"; they no longer do, deliberately — see the note above.
     const css = buildBrandingCss(
       { primaryColor: ENGINE_ORANGE },
       { darkSelector: null }

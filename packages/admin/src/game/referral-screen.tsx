@@ -108,7 +108,7 @@ export function ReferralScreen({
       <div className="flex flex-1 flex-col items-center justify-center">
         {/* Referral link */}
         <div className="w-full rounded-2xl border border-white/10 bg-white/[0.05] p-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/70">
             Votre lien
           </p>
           <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2.5">
@@ -141,7 +141,7 @@ export function ReferralScreen({
           </button>
         </div>
 
-        <p className="mt-4 max-w-[15rem] text-center text-[11px] leading-relaxed text-white/35">
+        <p className="mt-4 max-w-[15rem] text-center text-[11px] leading-relaxed text-white/70">
           Quand votre ami joue, vous gagnez un tour bonus. C&apos;est notre façon
           de dire merci.
         </p>
@@ -160,7 +160,7 @@ export function ReferralScreen({
           }
           className={`flex w-full items-center justify-center gap-2 rounded-full py-4 font-heading text-base font-bold uppercase tracking-widest transition-all ${
             shared && !verifying
-              ? "bg-gradient-to-b from-amber-400 to-orange-600 text-white shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
+              ? "bg-gradient-to-b from-amber-400 to-orange-600 text-[#120d1a] shadow-[0_10px_35px_rgba(249,115,22,0.5)]"
               : "cursor-not-allowed bg-white/10 text-white/35"
           }`}
         >

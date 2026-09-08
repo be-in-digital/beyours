@@ -101,7 +101,7 @@ export function DuplicateCatalogModal({
               <p className="text-sm font-medium text-green-700 dark:text-green-300">
                 Duplication terminée
               </p>
-              <ul className="text-sm text-green-600 dark:text-green-400 space-y-1">
+              <ul className="text-sm text-green-700 dark:text-green-400 space-y-1">
                 <li>{result.categoriesCreated} catégories créées</li>
                 <li>{result.productsCreated} produits dupliqués</li>
               </ul>

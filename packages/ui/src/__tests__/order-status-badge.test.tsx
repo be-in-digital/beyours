@@ -71,6 +71,27 @@ describe("OrderStatusBadge", () => {
     for (const word of english) expect(rendered).not.toContain(word)
   })
 
+  it("never lets the colour be the only thing that distinguishes a status", () => {
+    // WCAG 1.4.1. Eight statuses wear eight different tints — yellow, blue,
+    // orange, green, indigo, purple, emerald, red — and about one man in
+    // twelve cannot reliably separate several of those pairs. This badge
+    // passes today because it prints the word as well, and this case exists so
+    // that stays true: reduce it to a swatch, or blank a label, and it goes
+    // red. It is the guard, not a fix — nothing here was changed for 1.4.1.
+    const seen = new Set<string>()
+
+    for (const status of Object.keys(ORDER_STATUS_VOCABULARY)) {
+      const html = renderUnchecked(status)
+      const text = html.replace(/<[^>]*>/g, "").trim()
+
+      expect(text).not.toBe("")
+      seen.add(text)
+    }
+
+    // Distinct words, not one word in eight colours.
+    expect(seen.size).toBe(Object.keys(ORDER_STATUS_VOCABULARY).length)
+  })
+
   it("carries the status colour, not `undefined`, in the class", () => {
     // `.className` is the property whose undefined dereference was the crash.
     // Asserting only on the label lets a badge with no class at all pass.
