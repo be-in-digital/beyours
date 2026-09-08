@@ -82,6 +82,11 @@ light mode — that is, live for every diner and every owner today, with no dark
 phone required. `apps/reference` is its byte-identical twin and measures the
 same.
 
+**All of them are now clear.** `apps/*/tests/a11y/contrast.test.ts` reports
+`No pair below the WCAG 2.1 AA floor.` in both apps, and the whole monorepo
+suite is green: `npx turbo run test --concurrency=1 --force` → `Tasks: 18
+successful, 18 total`, `Cached: 0 cached`.
+
 | region | failures | of which light mode | worst |
 |---|---:|---:|---:|
 | storefront | 285 | 103 | 1.03:1 |
@@ -274,6 +279,19 @@ this sweep, because the two tokens hold the same value in the default palette;
 it is a change to make by reading, not by measuring, which is why it is recorded
 here rather than done in a hurry. The rule to apply: `--primary` fills a shape,
 `--primary-ink` writes a word.
+
+**The QR game arena cannot use the token layer at all.** `GameShell` scopes an
+establishment's branding to `[data-game-arena]` with `darkSelector: null`, and
+the arena is not `.dark`, so `text-foreground` inside it resolves to the light
+`:root` near-black — on a `#120d1a` stage. Tokens are not merely absent there;
+they are actively wrong, which is why those eleven screens are painted in
+literal hex and `text-white/25`…`/55`. Every pair in them now clears AA
+(`text-white/70` reads 9.54:1 on the stage and 8.08:1 on its lightest panel;
+the gold CTA lost a white label measuring 1.72:1), but by raising literals, not
+by tokenising. The structural fix is a `[data-game-arena]` block in
+`globals.css` beside `.storefront-theme`, which would make the arena measurable
+the way everything else now is. Not done here: it is a second scope to design
+and verify, and the screens are AA today without it.
 
 **310 pairs have an unresolvable surface.** Listed by the scanner with
 `surfaceKnown: false`. Most are text over a hero image or inside a shell painted

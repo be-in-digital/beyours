@@ -150,7 +150,7 @@ export function PrizeTicket({ code, api }: PrizeTicketProps) {
                     <p className="mt-1.5 text-xs text-[#1c1427]/70">chez {ticket.store.name}</p>
                   )}
                   {ticket.playerFirstName && (
-                    <p className="mt-2 inline-block rounded-full bg-[#1c1427]/[0.06] px-3 py-1 text-[11px] font-medium text-[#1c1427]/60">
+                    <p className="mt-2 inline-block rounded-full bg-[#1c1427]/[0.06] px-3 py-1 text-[11px] font-medium text-[#1c1427]/70">
                       Pour {ticket.playerFirstName}
                     </p>
                   )}
