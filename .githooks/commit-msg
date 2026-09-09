@@ -15,11 +15,15 @@
 # cannot resolve to nothing. `scripts/install-git-hooks.mjs` (the `prepare`
 # script) points `core.hooksPath` here and verifies this file is where it says.
 #
-# The hard guarantee is not here: a hook can be skipped with --no-verify and is
-# absent until somebody installs it. `pnpm check:attribution`, in the required
-# `Lint` job, is what actually refuses.
+# The hard guarantee is not here. A hook is skipped by --no-verify; it is absent
+# until somebody installs it; and git runs no commit-msg hook at all when it
+# replays a commit through `git cherry-pick` or `git rebase`, so an attributed
+# message can be carried forward verbatim. `pnpm check:attribution`, in the
+# required `Lint` job, is what actually refuses — all three of those routes end
+# at a commit it reads.
 
-set -e
+# No `set -e`: the exit status of the stripper is read below, and a hook that
+# aborts on it would turn every unexpected failure into a blocked commit.
 
 hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 0
 stripper="$(dirname -- "$hook_dir")/scripts/strip-commit-attribution.mjs"
@@ -35,4 +39,21 @@ if ! command -v node >/dev/null 2>&1; then
   exit 0
 fi
 
-exec node "$stripper" "$1"
+node "$stripper" "$1"
+status=$?
+
+# 9 is the stripper's deliberate refusal — a message that is nothing but
+# attribution, or attribution inside a sentence, both of which need their author
+# rather than an edit. Anything else non-zero is the stripper itself failing
+# (a syntax error mid-edit, a node the checkout cannot run), and blocking every
+# commit in the repository on that would include the commit that fixes it. So
+# it fails open, loudly, and the Lint job still refuses what it let through.
+case "$status" in
+  0) exit 0 ;;
+  9) exit 1 ;;
+  *)
+    echo "commit-msg: the attribution hook failed (exit $status); message left unchecked." >&2
+    echo "  The Lint job checks the same thing and will refuse an attributed commit." >&2
+    exit 0
+    ;;
+esac

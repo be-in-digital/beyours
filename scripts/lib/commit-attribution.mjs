@@ -9,15 +9,12 @@
  * rewritten, so those stay as they are — the defect is that nothing was
  * stopping the next 24 from doing the same.
  *
- * The matching is deliberately narrow. A guard that fires on a commit somebody
- * had every right to write is a guard that gets switched off within the week,
- * and this repository names `CLAUDE.md` in commit subjects routinely —
- * `113c9120` and the `Check CLAUDE.md's commands and documents` step both do.
- * So the rules below match ATTRIBUTION: a co-author trailer crediting the
+ * What counts is ATTRIBUTION and not the word: a co-author trailer crediting the
  * assistant, a `Claude-*` trailer, a link to a session or to the product, a
- * "generated with" credit. Naming the file is not attribution and must stay
- * legal; `SELF_TEST_CASES` holds that as an accepted case so it cannot be
- * quietly tightened away.
+ * "generated with" credit. Naming `CLAUDE.md` in a subject — which this
+ * repository does routinely — is not attribution and stays legal, and
+ * `SELF_TEST_CASES` holds that as an accepted case so it cannot be quietly
+ * tightened away. `ATTRIBUTION_RULES` below says where each line is drawn.
  *
  * Pure on purpose, like `scripts/lib/source-drift.mjs`: it is imported by the
  * `commit-msg` hook (`.githooks/commit-msg`, which strips) and by the CI
@@ -47,6 +44,16 @@
  *   - `claude` never counts when it is `CLAUDE.md`, which commit subjects here
  *     name routinely.
  *
+ * What that narrowing costs, stated rather than discovered later: the rule these
+ * enforce is "no Anthropic address and no model name", which is not the same as
+ * `CLAUDE.md`'s "no reference to the assistant at all". A trailer reading
+ * `Co-authored-by: Claude <claude@example.com>` passes, because nothing in it
+ * distinguishes the assistant from a colleague. Nor is any of this a defence
+ * against deliberate evasion — a Cyrillic `С` or a zero-width space walks
+ * through it, and both were measured doing so. This guards against a harness
+ * appending its footer and against an honest mistake, which is what put 17
+ * commits on `main`; an author who wants the credit in can have it.
+ *
  * `why` is printed to whoever tripped the rule, so it is written for them and
  * not for us. Adding an assistant means adding a row here and a case to
  * `SELF_TEST_CASES`; nothing else in the repository knows these shapes.
@@ -58,22 +65,30 @@ export const ATTRIBUTION_RULES = [
     // Anchored at the start of a line: a trailer is a line, and a body
     // paragraph that quotes one is prose, not a trailer.
     match:
-      /^[ \t]*(?:#[ \t]*)?(?:co-authored-by|assisted-by|generated-by|signed-off-by)[ \t]*:.*(?:@anthropic\.com|claude[ -](?:code|opus|sonnet|haiku)|claude-\d)/i,
-    // The trailer is the whole line, so removing the line removes exactly it.
-    removable: /^[ \t]*(?:#[ \t]*)?(?:co-authored-by|assisted-by|generated-by|signed-off-by)[ \t]*:/i,
+      /^[ \t]*(?:#[ \t]*)?(?:co-authored-by|assisted-by|generated-by|signed-off-by)[ \t]*:.*(?:@anthropic\.com|\banthropic\b|claude[ -]?(?:code|ai|opus|sonnet|haiku|\d))/i,
+    // A COMPLETE trailer and nothing else, so removing the line removes exactly
+    // it. Deciding this on the prefix alone deleted the rest of the sentence
+    // when somebody wrote about a trailer in a body paragraph — measured, and
+    // the commit still landed with the sentence cut off mid-air.
+    removable:
+      /^[ \t]*(?:#[ \t]*)?(?:co-authored-by|assisted-by|generated-by|signed-off-by)[ \t]*:[^<>]*<[^<>\s]+>[ \t]*$/i,
   },
   {
     id: "assistant-trailer",
     why: "a Claude-* trailer (Claude-Session, Claude-Model, …)",
     match: /^[ \t]*(?:#[ \t]*)?claude-(?!md\b)[a-z-]+[ \t]*:/i,
-    removable: /^[ \t]*(?:#[ \t]*)?claude-(?!md\b)[a-z-]+[ \t]*:/i,
+    // A one-token value: `Claude-Session: <url>`. A sentence that opens the
+    // same way carries spaces and is handed back to its author instead.
+    removable: /^[ \t]*(?:#[ \t]*)?claude-(?!md\b)[a-z-]+[ \t]*:[ \t]*\S*[ \t]*$/i,
   },
   {
     id: "generated-with",
     why: 'a "generated with" credit',
     match: /generated\s+(?:with|by)\b[^\n]{0,40}\bclaude(?!\.md)/i,
-    // The harness footer is its own line, emoji and markdown link included.
-    removable: /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?generated\s+(?:with|by)\b[^\n]*$/iu,
+    // The harness footer is its own line, emoji and markdown link included —
+    // and it is a footer, so it is short. A paragraph that opens with the same
+    // words is prose and goes back to its author.
+    removable: /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?generated\s+(?:with|by)\b[^\n]{0,80}$/iu,
   },
   {
     id: "session-link",
@@ -127,13 +142,26 @@ export function matchLine(line) {
 }
 
 /**
+ * Lines as a reader sees them, not as `split("\\n")` sees them.
+ *
+ * A lone CR is a line separator to every editor and to `git log`'s own display,
+ * and git keeps one in a message. Splitting on "\\n" alone made
+ * `subject\\rCo-Authored-By: …` a single line, which no `^`-anchored trailer
+ * rule can match — an adversarial pass got a trailer through the CI check that
+ * way.
+ */
+export function splitLines(text) {
+  return (text ?? "").split(/\r\n|\r|\n/)
+}
+
+/**
  * Every attributing line in a message, with the 1-based line number git would
  * count. `removable` says whether the hook may delete the line or has to hand
  * it back to its author.
  */
 export function findAttribution(message) {
   const found = []
-  ;(message ?? "").split("\n").forEach((text, i) => {
+  splitLines(message).forEach((text, i) => {
     const rule = matchLine(text)
     if (rule) {
       found.push({
@@ -171,14 +199,23 @@ export function stripAttribution(message) {
   const removed = []
   const blocked = []
 
+  // Rewriting is done on "\n" lines, because those are the ones this function
+  // may put back. A CR inside such a line is reported and never rewritten: the
+  // detection below sees the CR-separated parts, but deleting the whole "\n"
+  // line would take its other parts with it.
   head.split("\n").forEach((text, i) => {
-    const rule = matchLine(text)
+    // A trailing CR is half of a CRLF ending, not a separator inside the line:
+    // a message written on Windows must still have its footer stripped rather
+    // than handed back.
+    const line = text.endsWith("\r") ? text.slice(0, -1) : text
+    const parts = line.split("\r")
+    const rule = parts.map(matchLine).find(Boolean)
     if (!rule) {
       kept.push(text)
       return
     }
-    const hit = { line: i + 1, text: text.trim(), rule: rule.id, why: rule.why }
-    if (rule.removable.test(text)) {
+    const hit = { line: i + 1, text: line.trim(), rule: rule.id, why: rule.why }
+    if (parts.length === 1 && rule.removable.test(line)) {
       removed.push(hit)
     } else {
       blocked.push(hit)

@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process"
 import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
 
 import { describe, expect, test } from "vitest"
@@ -130,6 +131,34 @@ describe("findAttribution", () => {
     expect(findAttribution(message)).toHaveLength(1)
   })
 
+  /**
+   * A lone CR is a line separator to every editor and to `git log`'s display,
+   * and git keeps one in a message. Splitting on "\\n" alone made this a single
+   * line that no `^`-anchored rule could match, and an adversarial pass got a
+   * trailer through the CI check that way.
+   */
+  test("a CR-separated trailer is still a trailer", () => {
+    const hits = findAttribution(
+      "feat: x\rCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\rmore body",
+    ) as Hit[]
+
+    expect(hits).toHaveLength(1)
+    expect(hits[0]?.rule).toBe("co-author")
+  })
+
+  test.each([
+    ["Co-authored-by: Claude AI <ai@bots.invalid>", true],
+    ["Assisted-by: Anthropic Claude <a@b.c>", true],
+    ["Co-authored-by: Claude 3 Opus <bot@x.io>", true],
+    // The deliberate residue, and the reason for it: this is indistinguishable
+    // from a colleague. The rule enforced is "no Anthropic address and no model
+    // name", which is narrower than CLAUDE.md's "no reference at all" — the
+    // price of letting somebody named Claude commit.
+    ["Co-authored-by: Claude <claude@example.com>", false],
+  ])("a co-author trailer for %j is attribution: %s", (line, expected) => {
+    expect(findAttribution(`subject\n\n${line}`).length > 0).toBe(expected)
+  })
+
   test("an empty or absent message is not a crash", () => {
     expect(findAttribution("")).toEqual([])
     expect(findAttribution(undefined)).toEqual([])
@@ -201,6 +230,34 @@ describe("stripAttribution", () => {
     expect(removed).toEqual([])
     expect(blocked).toHaveLength(1)
     expect(message).toBe(prose)
+  })
+
+  test("hands back a line that starts like a trailer and continues as prose", () => {
+    // Deciding removability on the prefix alone deleted the rest of the
+    // sentence — measured, with the commit still landing, cut off mid-air.
+    const message =
+      "docs: describe the rule\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>, which rule 10 forbids.\n"
+    const { removed, blocked, message: out } = stripAttribution(message)
+
+    expect(removed).toEqual([])
+    expect(blocked).toHaveLength(1)
+    expect(out).toBe(message)
+  })
+
+  test("strips a CRLF message and refuses one held together by lone CRs", () => {
+    // A trailing CR is half of a line ending: a message written on Windows
+    // still gets its footer removed.
+    const crlf = stripAttribution(
+      "feat: x\r\n\r\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\r\n",
+    )
+    expect(crlf.removed).toHaveLength(1)
+    expect(crlf.blocked).toEqual([])
+
+    // A CR INSIDE a line is a separator this function cannot rewrite around:
+    // deleting the "\\n" line would take its other parts with it.
+    const lone = stripAttribution("feat: x\rCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\rmore")
+    expect(lone.removed).toEqual([])
+    expect(lone.blocked).toHaveLength(1)
   })
 
   test("does not touch the -v diff below the scissors line", () => {
@@ -315,6 +372,203 @@ describe("the guard's own self-test", () => {
       expect(rule.id).toMatch(/^[a-z-]+$/)
       expect(rule.why.length).toBeGreaterThan(10)
     }
+  })
+})
+
+/**
+ * The hook itself, run the way git runs it: the shell script, on a message file
+ * on disk. Everything above tests the detector; this tests the thing that has
+ * to fire, because #409 is a story about a perfect rule nothing executed.
+ */
+describe("the commit-msg hook, end to end", () => {
+  const hook = path.join(REPO_ROOT, ".githooks/commit-msg")
+
+  /** Run the hook on a temporary message file, as git does with $1. */
+  const runHook = (message: string) => {
+    const file = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "commit-msg-")),
+      "COMMIT_EDITMSG",
+    )
+    fs.writeFileSync(file, message)
+    let status = 0
+    try {
+      execFileSync(hook, [file], { encoding: "utf8", stdio: "pipe" })
+    } catch (error) {
+      status = (error as { status?: number }).status ?? -1
+    }
+    return { status, message: fs.readFileSync(file, "utf8") }
+  }
+
+  test("strips the harness footer and lets the commit through", () => {
+    const { status, message } = runHook(HARNESS_FOOTER)
+
+    expect(status).toBe(0)
+    expect(message).not.toMatch(/anthropic|Claude-Session/i)
+    expect(message).toContain("fix(orders): stop a paid order being collected twice")
+  })
+
+  test("leaves a clean message untouched", () => {
+    const clean = "fix: something\n\nA body.\n"
+    expect(runHook(clean)).toEqual({ status: 0, message: clean })
+  })
+
+  test("blocks the commit rather than editing a sentence", () => {
+    const prose = "fix: it\n\nTraced in https://claude.ai/code/session_01x, then fixed.\n"
+    const { status, message } = runHook(prose)
+
+    // Non-zero is what makes git abort the commit, and the message comes back
+    // exactly as its author left it.
+    expect(status).toBe(1)
+    expect(message).toBe(prose)
+  })
+
+  test("blocks a message that is nothing but attribution", () => {
+    expect(runHook("Co-Authored-By: Claude <noreply@anthropic.com>\n").status).toBe(1)
+  })
+})
+
+/**
+ * The CI layer, run against a real repository — the layer the design calls the
+ * guarantee, so the one worth testing on real commits rather than on strings.
+ *
+ * It builds a throwaway repository, copies the three scripts into it (they
+ * resolve git against their own tree, which is what makes them safe to point at
+ * one), and asks the check the questions an adversarial pass asked.
+ */
+describe("the Lint check, against a real repository", () => {
+  const scripts = [
+    "scripts/check-commit-attribution.mjs",
+    "scripts/strip-commit-attribution.mjs",
+    "scripts/lib/commit-attribution.mjs",
+  ]
+
+  /** A repository with one clean commit, and the check installed in it. */
+  const scratch = () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "attribution-"))
+    const git = (...args: string[]) =>
+      execFileSync("git", args, { cwd: dir, encoding: "utf8", stdio: "pipe" })
+
+    fs.mkdirSync(path.join(dir, "scripts/lib"), { recursive: true })
+    for (const file of scripts) fs.copyFileSync(path.join(REPO_ROOT, file), path.join(dir, file))
+
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "test@example.com")
+    git("config", "user.name", "Test")
+    // No hooks: this is the layer that has to hold when the hook did not run.
+    git("config", "core.hooksPath", path.join(dir, "no-such-hooks"))
+    fs.writeFileSync(path.join(dir, "a.txt"), "one\n")
+    git("add", "-A")
+    git("commit", "-qm", "seed: a clean commit")
+    return { dir, git }
+  }
+
+  /** Commit `message` verbatim, then run the check over that one commit. */
+  const check = (dir: string, git: (...args: string[]) => string, message: string) => {
+    fs.appendFileSync(path.join(dir, "a.txt"), "more\n")
+    git("add", "-A")
+    const file = path.join(dir, "msg.txt")
+    fs.writeFileSync(file, message)
+    git("commit", "-q", "-F", file)
+
+    try {
+      const stdout = execFileSync(
+        process.execPath,
+        [path.join(dir, "scripts/check-commit-attribution.mjs"), "--range", "HEAD~1..HEAD"],
+        { cwd: dir, encoding: "utf8", stdio: "pipe" },
+      )
+      return { status: 0, output: stdout }
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string }
+      return { status: failure.status ?? -1, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` }
+    }
+  }
+
+  test("refuses an attributed commit and passes a clean one", () => {
+    const { dir, git } = scratch()
+
+    expect(check(dir, git, "feat: a clean change\n\nWith a body.\n").status).toBe(0)
+    expect(
+      check(dir, git, "feat: a change\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n")
+        .status,
+    ).toBe(1)
+  })
+
+  /**
+   * The hole an adversarial pass found. The read used \x1f and \x1e to separate
+   * git log's fields and records; git accepts both in a commit message, so a
+   * bare \x1e made everything below it parse as the next record's sha and the
+   * check exited 0 over a commit whose trailers GitHub was displaying in full.
+   * NUL is the one byte that cannot be forged — `git commit` answers
+   * `error: a NUL byte in commit log message not allowed` and writes no object.
+   */
+  test("a control byte in the message does not hide the trailer", () => {
+    const { dir, git } = scratch()
+    const result = check(
+      dir,
+      git,
+      "feat: a normal-looking change\n\nSome notes.\u001e\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\n",
+    )
+
+    expect(result.status).toBe(1)
+    expect(result.output).toContain("Co-Authored-By")
+  })
+
+  test("a CR-separated trailer does not hide either", () => {
+    const { dir, git } = scratch()
+    const result = check(
+      dir,
+      git,
+      "feat: a change\rCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\rand more\n",
+    )
+
+    expect(result.status).toBe(1)
+  })
+
+  /**
+   * An empty range on a pull request means the base was wrong — except after
+   * the pull request is merged, when it means every commit it added is now in
+   * the base branch. Refusing that would turn a re-run of a merged pull request
+   * red for nothing.
+   */
+  test("an empty range is refused on an open pull request and accepted on a merged one", () => {
+    const { dir, git } = scratch()
+    const head = git("rev-parse", "HEAD").trim()
+
+    const run = (baseSha: string) => {
+      const event = path.join(dir, "event.json")
+      fs.writeFileSync(event, JSON.stringify({ pull_request: { base: { sha: baseSha, ref: "main" } } }))
+      const env = {
+        ...process.env,
+        GITHUB_EVENT_NAME: "pull_request",
+        GITHUB_EVENT_PATH: event,
+      }
+      try {
+        return {
+          status: 0,
+          output: execFileSync(
+            process.execPath,
+            [path.join(dir, "scripts/check-commit-attribution.mjs")],
+            { cwd: dir, encoding: "utf8", stdio: "pipe", env },
+          ),
+        }
+      } catch (error) {
+        const failure = error as { status?: number; stdout?: string; stderr?: string }
+        return {
+          status: failure.status ?? -1,
+          output: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
+        }
+      }
+    }
+
+    // HEAD is the base: nothing was added, and HEAD is contained in it.
+    const merged = run(head)
+    expect(merged.status).toBe(0)
+    expect(merged.output).toContain("already in the base branch")
+
+    // A base this checkout does not contain, and no origin/main to fall back
+    // to: the check refuses rather than examining nothing and reporting a pass.
+    const wrong = run("0".repeat(40))
+    expect(wrong.status).toBe(1)
   })
 })
 

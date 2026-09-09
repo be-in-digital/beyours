@@ -132,6 +132,16 @@ function readEventPayload() {
 
 const exists = (rev) => git(["rev-parse", "--verify", "--quiet", `${rev}^{commit}`]) !== null
 
+/** True when the command exits 0. `git()` returns "" for that, which is falsy. */
+const execOk = (args) => {
+  try {
+    execFileSync("git", args, { cwd: ROOT, stdio: "ignore" })
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Refs stay readable, 40-character shas do not. */
 const short = (rev) => (/^[0-9a-f]{40}$/i.test(rev) ? rev.slice(0, 8) : rev)
 
@@ -180,7 +190,18 @@ function resolveScope(argvRange) {
       }
     }
     // Nothing the event named survives here — a checkout shallower than the
-    // base. Fall through to something we can actually see.
+    // base. On a pull request or a queue batch that is a misconfiguration, and
+    // guessing a base from local refs is how a check ends up comparing a branch
+    // with itself and reporting a pass over nothing. Local runs, which have no
+    // event to be wrong about, fall through to the base branch below.
+    if (mustHaveCommits && usable.length === 0) {
+      return {
+        args: null,
+        label: null,
+        source: `${fromEvent.source}, none of which this checkout contains`,
+        mustHaveCommits,
+      }
+    }
   }
 
   // A push carries its own new commits, so subtracting the branch it was pushed
@@ -200,21 +221,32 @@ function resolveScope(argvRange) {
   return { args: null, label: null, source: "nothing to compare against", mustHaveCommits }
 }
 
-/** Every commit the scope selects, as { sha, message }. Empty is a valid answer. */
+/**
+ * Every commit the scope selects, as { sha, message }. Empty is a valid answer.
+ *
+ * NUL is the separator because it is the one byte a commit message cannot hold:
+ * `git commit` answers `error: a NUL byte in commit log message not allowed`
+ * and writes no object. Everything else can be forged. This read used \x1f and
+ * \x1e, which git accepts happily, and an adversarial pass put a bare \x1e in a
+ * message: the trailers below it were parsed as the next record's sha, never
+ * scanned, and the check exited 0 over a commit whose trailers GitHub was
+ * displaying in full. Control bytes are invisible in every UI that matters, so
+ * nothing about that commit would have looked wrong.
+ */
 function commitsIn(logArgs) {
-  // \x1f between the fields and \x1e between records: a commit message can hold
-  // any newline arrangement it likes, and splitting on one would truncate the
-  // very trailers this check is looking for.
-  const raw = git(["log", "--format=%H%x1f%B%x1e", ...logArgs])
+  const raw = git(["log", "--format=%H%x00%B%x00", ...logArgs])
   if (raw === null) return null
-  return raw
-    .split("\x1e")
-    .map((record) => record.replace(/^\n/, ""))
-    .filter((record) => record.trim().length > 0)
-    .map((record) => {
-      const [sha, message = ""] = record.split("\x1f")
-      return { sha, message }
-    })
+
+  // sha, message, sha, message, … — unambiguous, since neither field can
+  // contain the separator.
+  const fields = raw.split("\0")
+  const commits = []
+  for (let i = 0; i + 1 < fields.length; i += 2) {
+    const sha = fields[i].replace(/^\n/, "").trim()
+    if (!sha) continue
+    commits.push({ sha, message: fields[i + 1] })
+  }
+  return commits
 }
 
 const { range: argvRange } = parseArgs(process.argv.slice(2))
@@ -223,7 +255,8 @@ const { args, label, source, mustHaveCommits } = resolveScope(argvRange)
 if (!args) {
   annotate("The attribution check could not work out which commits to examine.")
   console.error(`\n✗ The attribution check could not work out which commits to examine.\n`)
-  console.error(`  No usable base: the event carried none and neither origin/main nor main exists here.`)
+  console.error(`  Nothing to compare against: ${source}.`)
+  console.error(`  A checkout that cannot see the base cannot say a branch is clean.`)
   console.error(`  Pass one explicitly:  pnpm check:attribution --range <base>..HEAD\n`)
   process.exit(1)
 }
@@ -233,6 +266,28 @@ if (commits === null) {
   annotate(`The attribution check could not read ${label}.`)
   console.error(`\n✗ git log ${label} failed — it does not resolve in this checkout.\n`)
   process.exit(1)
+}
+
+/**
+ * Whether HEAD is already contained in what the scope subtracts.
+ *
+ * An empty range on a pull request usually means the base was wrong, and that
+ * is refused below. It means something else after the pull request is merged:
+ * every commit it added is now in the base branch, so re-running the check on
+ * it finds nothing because there is nothing left to find. Refusing that would
+ * turn a re-run of a merged pull request red for no reason.
+ */
+const alreadyMerged = () => {
+  const at = args.indexOf("--not")
+  if (at === -1) return false
+  return args.slice(at + 1).some((ref) => execOk(["merge-base", "--is-ancestor", "HEAD", ref]))
+}
+
+if (commits.length === 0 && mustHaveCommits && alreadyMerged()) {
+  console.log(
+    `Commit attribution check passed: ${label} is empty because HEAD is already in the base branch — this pull request has been merged.`
+  )
+  process.exit(0)
 }
 
 if (commits.length === 0 && mustHaveCommits) {

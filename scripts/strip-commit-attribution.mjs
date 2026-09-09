@@ -25,7 +25,20 @@
 
 import fs from "node:fs"
 
-import { runSelfTest, splitAtScissors, stripAttribution } from "./lib/commit-attribution.mjs"
+import {
+  runSelfTest,
+  splitAtScissors,
+  splitLines,
+  stripAttribution,
+} from "./lib/commit-attribution.mjs"
+
+/**
+ * The exit code `.githooks/commit-msg` maps to a blocked commit. It is not 1,
+ * because 1 is also what node exits with when this file throws — and a broken
+ * stripper must not block every commit in the repository, including the one
+ * that repairs it. Any other non-zero status makes the hook fail open and warn.
+ */
+const REFUSE = 9
 
 const file = process.argv[2]
 if (!file) {
@@ -61,22 +74,22 @@ if (blocked.length) {
   console.error(`\n  Removing the line would take the sentence with it, so this is yours to`)
   console.error(`  reword — CLAUDE.md rule 10 allows no reference to the assistant in`)
   console.error(`  anything that reaches Git.\n`)
-  process.exit(1)
+  process.exit(REFUSE)
 }
 
 if (removed.length === 0) process.exit(0)
 
 /** Whether anything git would keep survived the strip. */
 const hasContent = (text) =>
-  splitAtScissors(text)
-    .head.split("\n")
-    .some((line) => line.trim().length > 0 && !line.trimStart().startsWith("#"))
+  splitLines(splitAtScissors(text).head).some(
+    (line) => line.trim().length > 0 && !line.trimStart().startsWith("#")
+  )
 
 if (!hasContent(message)) {
   console.error(`\ncommit-msg: this message is nothing but AI attribution, which is not allowed`)
   console.error(`  in anything that reaches Git (CLAUDE.md rule 10). Write a subject line`)
   console.error(`  describing the change and commit again.\n`)
-  process.exit(1)
+  process.exit(REFUSE)
 }
 
 try {
@@ -84,7 +97,7 @@ try {
 } catch (error) {
   console.error(`commit-msg: cannot rewrite ${file} (${error.message}); the message is unchanged.`)
   console.error(`  The Lint job will refuse this commit — see CLAUDE.md rule 10.`)
-  process.exit(1)
+  process.exit(REFUSE)
 }
 
 console.error(`commit-msg: removed ${removed.length} attribution line(s) — CLAUDE.md rule 10.`)
