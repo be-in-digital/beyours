@@ -30,6 +30,20 @@ jobs:
     name: Verify
     permissions:
       contents: read
+      # `packages: read`, because a CALLED workflow may not request more than
+      # its caller grants — and `ci.yml`'s `lint` job began requesting it in
+      # #446, to read the published tarballs for the subpath half of
+      # `check:source-drift`.
+      #
+      # This one line is what its absence cost: every `Release` and every
+      # `Publish mirror` since e5394e5 ended in `startup_failure`. The run never
+      # begins, so it has no jobs, no steps and no logs — nothing that reads as
+      # a failure anyone would open. Three merges published nothing (#446, #447,
+      # #448) and the mirror stayed frozen throughout, while `ci.yml`'s own
+      # `push` and `pull_request` runs stayed green: a reusable workflow is only
+      # narrowed when it is CALLED, so the fault is invisible from the file that
+      # causes it.
+      packages: read
     uses: ./.github/workflows/ci.yml
 
   # Whether there is anything to gate.
