@@ -3,6 +3,11 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
+import {
+  formatOwedBump,
+  formatOwedBumpSummary,
+  owedBump,
+} from "../../../scripts/lib/pending-release.mjs"
 import { publishablePackages, REGISTRY, unpublishedPackages } from "../../../scripts/lib/registry.mjs"
 
 /** What the lib returns. It is `.mjs`, so nothing here is inferred for us. */
@@ -106,5 +111,81 @@ describe("unpublishedPackages", () => {
 describe("where it looks", () => {
   test("GitHub Packages, the registry a client installs from", () => {
     expect(REGISTRY).toBe("https://npm.pkg.github.com")
+  })
+})
+
+/**
+ * The second question the plan answers, added after the chain deadlocked on it.
+ *
+ * `changeset publish` prints the same ten lines of `already published` whether
+ * no fix was waiting or `changeset version` was never run, and exits 0 either
+ * way. Measured on the eight commits after `3a6cb8d`: Release green on seven,
+ * publishing on none, `beyours-boilerplate` eight commits behind throughout
+ * because nothing published means nothing tagged and the mirror's
+ * `workflow_run` path requires a tag at HEAD.
+ */
+describe("owedBump", () => {
+  const changeset = (file: string, ...names: string[]) => ({
+    file,
+    releases: names.map((name) => ({ name, bump: "patch" })),
+  })
+
+  test("a push that publishes owes nothing — the bump has been made", () => {
+    expect(
+      owedBump({ willPublish: true, changesets: [changeset("a.md", "@x/core")] }),
+    ).toBeNull()
+  })
+
+  test("a push with an empty `.changeset/` owes nothing — the ordinary push", () => {
+    // 281 of the 293 commits measured in `publish-plan.mjs`'s header. Staying
+    // quiet here is the whole reason the warning below is worth reading.
+    expect(owedBump({ willPublish: false, changesets: [] })).toBeNull()
+  })
+
+  test("changesets waiting and nothing to publish is the deadlock", () => {
+    const verdict = owedBump({
+      willPublish: false,
+      changesets: [changeset("a.md", "@x/core", "@x/ui"), changeset("b.md", "@x/core")],
+    })
+
+    expect(verdict).not.toBeNull()
+    expect(verdict!.files).toBe(2)
+    // Deduplicated across changesets and sorted, so the list reads as packages
+    // rather than as rows.
+    expect(verdict!.packages).toEqual(["@x/core", "@x/ui"])
+    expect(verdict!.unparseable).toBe(0)
+  })
+
+  test("an unparseable changeset still counts as waiting", () => {
+    // It names no package this can read, but it is a file `changeset version`
+    // will act on — reporting "nothing waiting" because it did not parse is
+    // the false negative this check exists to prevent.
+    const verdict = owedBump({
+      willPublish: false,
+      changesets: [{ file: "broken.md", releases: null }],
+    })
+
+    expect(verdict).not.toBeNull()
+    expect(verdict!.files).toBe(1)
+    expect(verdict!.packages).toEqual([])
+    expect(verdict!.unparseable).toBe(1)
+  })
+
+  test("the message names the packages and the command that releases them", () => {
+    const verdict = owedBump({
+      willPublish: false,
+      changesets: [changeset("a.md", "@be-in-digital/convex-functions")],
+    })!
+
+    const text = formatOwedBump(verdict)
+    expect(text).toContain("@be-in-digital/convex-functions")
+    expect(text).toContain("pnpm version-packages")
+    // The mirror half is the part nobody connected: eight failing syncs whose
+    // cause was an unreleased engine.
+    expect(text).toContain("tagged")
+
+    const summary = formatOwedBumpSummary(verdict)
+    expect(summary).toContain("### A version bump is owed")
+    expect(summary).toContain("@be-in-digital/convex-functions")
   })
 })

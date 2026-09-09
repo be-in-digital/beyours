@@ -48,6 +48,25 @@ jobs:
   #
   # `packages: read` is the whole permission: this reads the registry, it does
   # not touch it.
+  #
+  # It answers a second question on the way past, and that one is not about
+  # cost. "Nothing to publish" has two causes `changeset publish` reports
+  # identically — ten lines of `already published`, exit 0 — and only one of
+  # them is healthy. Either no fix is waiting, or fixes are waiting and
+  # `changeset version` has not been run, which stalls the whole chain:
+  # nothing published means nothing tagged, and `publish-mirror.yml`'s
+  # `workflow_run` path requires a tag at HEAD, so the mirror stops syncing
+  # behind it with a green no-op of its own. Measured on the eight commits
+  # after `3a6cb8d`: this workflow was green on seven, published on none, and
+  # `beyours-boilerplate` sat eight commits behind the whole time carrying
+  # #408's build error.
+  #
+  # `bump_owed` is that verdict. It is a WARNING annotation and not a failure,
+  # for a reason worth stating where somebody would otherwise "fix" it: the
+  # mirror's `workflow_run` path fires only on `conclusion == 'success'`, so
+  # failing this job would stop the sync altogether — the gate would cause the
+  # outage it reports. Nothing reads the output yet; it is here so that making
+  # it blocking is a workflow change rather than a script rewrite.
   plan:
     name: Plan
     runs-on: ubuntu-latest
@@ -57,6 +76,7 @@ jobs:
       packages: read
     outputs:
       publishing: ${{ steps.plan.outputs.publishing }}
+      bump_owed: ${{ steps.plan.outputs.bump_owed }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
