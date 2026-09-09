@@ -119,6 +119,28 @@ export const prizesTable = defineTable({
     v.literal("custom")
   ),
   value: v.optional(v.number()), // Percentage or fixed amount in cents
+  // DECLARED, NEVER WRITTEN — and deliberately kept (#413).
+  //
+  // No path writes either field. `prizes.create` is the only insert and its
+  // validator admits neither, so `{...args}` cannot smuggle them in; the admin
+  // prize dialog offers five controls and no product or menu picker.
+  //
+  // They are NOT dead in the usual sense, because two live guards read them:
+  // `menus.remove` refuses a menu a prize offers (`menu_in_prize`) and
+  // `products.remove` refuses a product a prize offers (`product_in_prize`),
+  // both added by #400/#418. Both therefore filter on a field nothing writes and
+  // can never fire. Removing the fields means removing those two guards and the
+  // French refusals they carry — a product decision, not a dead-code sweep, so
+  // it was left to the owner.
+  //
+  // The real gap is upstream: `type` offers `free_product` and `free_menu`
+  // while nothing can say WHICH product or menu, so an owner can create a
+  // « Menu offert » that names no menu and the storefront cannot honour it.
+  // The engine already has a pattern for exactly this — `HONOURABLE_DISCOUNT_TYPES`
+  // in `promotionDiscount.ts`, where a promotion type the order path cannot
+  // honour is refused at creation, in the same file as the resolver that
+  // enforces it. Closing this the same way is what would give these two fields
+  // a writer, and the guards something to guard.
   productId: v.optional(v.id("products")),
   menuId: v.optional(v.id("menus")),
   validityDays: v.number(), // How many days the prize is valid

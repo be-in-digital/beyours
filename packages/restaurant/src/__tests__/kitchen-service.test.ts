@@ -154,22 +154,15 @@ describe('Kitchen Service', () => {
       expect(getPriorityLevel(deliveryOrder)).toBe('urgent')
     })
 
-    // Rewritten: this case used to assert 'urgent'. An order booked for later
-    // is the least urgent thing in the queue until its slot approaches, so
-    // `scheduledFor` no longer raises the priority of anything.
-    it('should not make a scheduled order urgent', () => {
-      const scheduledOrder = { ...baseOrder, scheduledFor: Date.now() + 3600000 }
-      expect(getPriorityLevel(scheduledOrder)).toBe('normal')
-    })
-
-    it('should keep a scheduled delivery order urgent', () => {
-      const scheduledDelivery = {
-        ...baseOrder,
-        type: 'delivery' as const,
-        scheduledFor: Date.now() + 3600000,
-      }
-      expect(getPriorityLevel(scheduledDelivery)).toBe('urgent')
-    })
+    /*
+     * Two cases stood here, both keyed on the order's `scheduledFor`: that a
+     * scheduled order is not urgent, and that a scheduled *delivery* still
+     * is. The field had no writer anywhere and was removed with #413, so
+     * both were asserting the ranking of an order this product cannot take.
+     * What they were really pinning — that being a delivery is what makes an
+     * order urgent, and that nothing else about it raises the priority — is
+     * the pair of cases immediately above and below.
+     */
 
     it('should return normal for pickup orders', () => {
       expect(getPriorityLevel(baseOrder)).toBe('normal')

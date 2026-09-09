@@ -76,13 +76,24 @@ const ALLOWED = [
   { file: "convex/auth.ts", reason: "the bench trusts localhost:3000-3003; a client site must not" },
   { file: "convex/http.ts", reason: "the template keeps /api/webhooks/* as 410 tombstones for integrators" },
   { file: "app/layout.tsx", reason: "metadata, fonts and theme come from the template's client zone" },
-  { file: "components/admin/index.ts", reason: "the template's barrel exports its own local components" },
 
   // Gamification used to sit here — seven rows of it. The template stubbed the
   // player flow and four admin screens, and this list documented the gap
   // instead of closing it. The flow now lives in `@be-in-digital/admin/game`
   // and both apps render it from identical thin pages, so there is nothing
   // left to allow.
+
+  // `components/admin/index.ts` used to sit here: the template's barrel exported
+  // a local StatusBadge, DateDisplay and ComingSoon. StatusBadge had already
+  // been deleted and the comment kept naming it; the other two were forks of the
+  // package components with no importer at all. With them gone the two barrels
+  // export the same four names, so there is nothing left to allow.
+  //
+  // What that buys, exactly: the barrel is a file both apps have, so `checkTwins`
+  // compares it, and re-adding `export { DateDisplay } from "./DateDisplay"` to
+  // either side now fails this check. It does NOT stop a brand-new one-sided
+  // file under `components/` — that is the deliberate gap described at the top
+  // of this header, and it is how the two forks arrived in the first place.
 
   // Comments that name their own app. These will differ forever, correctly.
   { file: "lib/auth-client.ts", reason: "comment names its own app" },

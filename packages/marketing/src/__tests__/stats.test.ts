@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
   incrementCampaignStats,
-  incrementRevenueStat,
   computeStatRates,
   calculateSubscriberMetadata,
   type CampaignStats,
@@ -37,21 +36,6 @@ describe("incrementCampaignStats", () => {
     const result = incrementCampaignStats(original, "sent")
     expect(result.sent).toBe(11)
     expect(original.sent).toBe(10)
-  })
-})
-
-describe("incrementRevenueStat", () => {
-  it("increments revenue and converted", () => {
-    const result = incrementRevenueStat(emptyStats, 5000)
-    expect(result.revenue).toBe(5000)
-    expect(result.converted).toBe(1)
-  })
-
-  it("accumulates revenue", () => {
-    const first = incrementRevenueStat(emptyStats, 2000)
-    const second = incrementRevenueStat(first, 3000)
-    expect(second.revenue).toBe(5000)
-    expect(second.converted).toBe(2)
   })
 })
 

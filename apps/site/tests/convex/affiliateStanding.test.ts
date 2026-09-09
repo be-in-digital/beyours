@@ -21,7 +21,6 @@ import { describe, expect, test } from "vitest";
 import {
   affiliateStandingRefusal,
   isUngrandfathered,
-  mayEarnOnReferral,
   type AffiliateStanding,
 } from "../../convex/affiliateStanding";
 
@@ -34,7 +33,6 @@ const standing = (over: Partial<AffiliateStanding> = {}): AffiliateStanding => (
 describe("who may earn", () => {
   test("an active affiliate with a signed contract", () => {
     expect(affiliateStandingRefusal(standing())).toBeNull();
-    expect(mayEarnOnReferral(standing())).toBe(true);
   });
 
   test.each([
@@ -45,7 +43,6 @@ describe("who may earn", () => {
       contractStatus: contractStatus as AffiliateStanding["contractStatus"],
     });
     expect(affiliateStandingRefusal(who)).toBe(refusal);
-    expect(mayEarnOnReferral(who)).toBe(false);
   });
 
   test.each([

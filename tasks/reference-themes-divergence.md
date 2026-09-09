@@ -46,7 +46,8 @@ At the start of this pass, **70 shared source files differed**. Afterwards, 19
 did — a count that included config files outside the checker's comparison, so it
 never matched the guard's own tally. Go by the guard: `ALLOWED` in
 `scripts/check-app-divergence.mjs` held **17** rows, closing the gamification
-split (#159) removed **7**, and **10** remain. Those ten are listed below.
+split (#159) removed **7**, and closing the admin barrel (#413) removed one
+more. **Nine** remain, and they are listed below.
 
 ---
 
@@ -61,7 +62,6 @@ with the code. This table is the index, not the explanation.
 | `convex/http.ts` | The template keeps the old Next.js `/api/webhooks/*` routes as 410 tombstones, so a client whose provider dashboard still points at the old path gets an explanation instead of a 404. The bench deleted them on 2026-07-18. |
 | `app/layout.tsx` | Metadata, fonts and theme come from the client zone (`site.config.ts`, `site/fonts.ts`, `site/theme.css`). Already documented in the file and in `apps/themes/docs/UPDATES.md`. |
 | `app/(test)/layout.tsx` | Template-only. Sends the `(test)` route group to `notFound()` in production unless `NEXT_PUBLIC_ENABLE_TEST_ROUTES=true`. Playwright harnesses have no business on a client site. |
-| `components/admin/index.ts` | Exports `StatusBadge`, `DateDisplay` and `ComingSoon`, which exist only in the template alongside its other local admin components. The bench renders those screens straight from `@be-in-digital/admin`. |
 | `convex/tsconfig.json` | Template build config (`outDir`, `paths`). Config file — outside the comparison by the rule above, listed here only because it shows up in a raw `diff -rq`. |
 
 ## Benign — a comment naming its own app
@@ -282,6 +282,12 @@ material like `StatusBadge`, `DateDisplay` and `ComingSoon`, or leftovers.
 
 They were leftovers, and reachability was not the argument that settled it:
 
+> Read this paragraph as the history it is. The three names it treats as the
+> settled, protected case did not survive the question either — see "The admin
+> barrel converged" below. `StatusBadge` was deleted at some point after this
+> was written and the barrel's comment went on naming it; the other two were
+> forks with no importer.
+
 - **`components/admin/SidebarUserMenu.tsx`** was a *stale copy*. The layout
   renders `SidebarUserMenu` from `@be-in-digital/admin`, and the package version
   has since gained a fix the local copy never did: it clears the selected
@@ -306,6 +312,61 @@ Both were removed rather than documented. What is worth keeping is the method:
 **if you are hunting dead code rather than divergence, ask what happens when the
 file is used, not whether it is reachable.** A reachability argument would have
 deleted `getMyMemberships` too.
+
+## The admin barrel converged (2026-09-09, #413)
+
+`components/admin/index.ts` was the ninth documented divergence and is no longer
+a divergence at all: the two barrels are byte-identical, the `ALLOWED` row is
+gone, and the twins check now *enforces* that they stay that way rather than
+excusing them from comparison.
+
+What it had been allowed for stopped being true in stages, and nothing noticed
+because an `ALLOWED` row is a permanent exemption from the only check that looks:
+
+- **`StatusBadge` was deleted, and its description was not.** The barrel's own
+  doc comment opened "StatusBadge, DateDisplay and ComingSoon exist only in this
+  template" while no `StatusBadge.tsx` existed in that directory and the barrel
+  exported no such name. This note repeated the claim in two places. A comment
+  is not checked by anything, so it outlived its subject.
+- **`ComingSoon` and `DateDisplay` were forks with no importer.** Every live
+  `ComingSoon` call site — two per app — takes it from `@be-in-digital/admin`.
+  Nothing rendered the local `DateDisplay` at all. Both had drifted from the
+  package components they were copied from, which is precisely the hazard #405
+  removed `SidebarUserMenu` for: a template-only component is a starting point a
+  client developer is invited to reach for, and offering them a stale fork is
+  worse than offering them nothing.
+
+The lesson is about the mechanism rather than the three files. **An `ALLOWED`
+row is not documentation, it is a hole in the guard** — `checkTwins` skips the
+file outright. So a row must be re-earned, not merely explained: this one
+justified itself by naming three local components, and survived the deletion of
+one and the abandonment of the other two. Where a divergence can be *closed*
+instead, closing it converts the row into enforcement, which is what happened
+here. Adding `export { DateDisplay } from "./DateDisplay"` back to either barrel
+now fails `pnpm check:divergence`; before this change it could not have.
+
+Be precise about how far that reaches. `checkTwins` compares files present in
+**both** apps, so it covers the barrel and not a brand-new one-sided component
+file — dropping a fresh `DateDisplay.tsx` into the template alone still passes,
+which is the gap the script's own header declares and the route by which these
+two forks originally arrived. Closing the barrel closes the door they were
+*exported* through, not every door.
+
+### Dead code in `packages/ui` — one correction and one removal
+
+The keep-list of twenty below still stands as a verdict, with two amendments:
+
+- **`PageHeader` is no longer consumer-free.**
+  `packages/admin/src/pages/privacy/privacy-page.tsx` imports it from
+  `@be-in-digital/ui`. The list is 19 of 20 accurate; do not cite it as twenty.
+- **`Toast` stays; its provider and hook did not.** `ToastProvider`, `useToast`
+  and `ToastContext` were removed by #413, and the keep-list reasoning is exactly
+  why the box beside them was not. That reasoning — removing a name from a
+  published package is a breaking major that buys nothing but a shorter barrel —
+  covers an export nobody imports. It does not cover an export whose every
+  possible call throws, which is what `useToast` was: nothing anywhere mounted
+  the provider that could have satisfied it. The two claims are different and
+  only the second was acted on.
 
 ## The design system left both apps (2026-09-05)
 
@@ -435,7 +496,7 @@ fix one side had and the other did not; ported to the side named.
 | `components/admin/kitchen/CompletedTickets.tsx` | drift →themes | accents — file since moved, see below |
 | `components/admin/kitchen/KitchenContent.tsx` | drift →themes | accents — file since moved, see below |
 | `components/admin/kitchen/TicketCard.tsx` | drift →themes | accents — file since moved, see below |
-| `components/admin/index.ts` | deliberate | template-only components in the barrel |
+| `components/admin/index.ts` | ~~deliberate~~ **converged** | held a local `StatusBadge`/`DateDisplay`/`ComingSoon`; see "The admin barrel converged" below |
 | `components/storefront/user-menu.tsx` | benign | comment rewording |
 | `components/website/meal-card.tsx` | drift →themes | 400 from the image optimizer on every photoless product |
 
@@ -529,7 +590,6 @@ not reintroduced:
 - **"a copy left to rot out of step with the engine."** The concern was real —
   the answer is one copy in a package, not a placeholder.
 
-Still deliberately one-sided: `components/admin/index.ts` exports a local
-`ComingSoon` and `DateDisplay` that nothing imports (every live call site takes
-`ComingSoon` from `@be-in-digital/admin`). That is dead code in the template,
-unrelated to gamification, and left for its own change.
+~~Still deliberately one-sided: `components/admin/index.ts` exports a local
+`ComingSoon` and `DateDisplay` that nothing imports.~~ **Closed** — see "The
+admin barrel converged" below.

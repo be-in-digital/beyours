@@ -280,3 +280,9 @@ Its history followed at every step.
 The three shared packages of the old monorepo were dissolved: `webgl-utils`
 became `lib/webgl/`, `config` was inlined into `tsconfig.json`, and `tokens` was
 dropped — it was declared as a dependency without being imported anywhere.
+
+`lib/webgl/` has since gone the same way as `tokens`, and for the same reason.
+Its only consumer was `components/webgl/hero-scene.tsx`, a `HeroScene` that no
+route ever rendered, so three.js and `@react-three/fiber` were 41 MB of
+`node_modules` reachable from no page. `tests/dependency-hygiene.test.ts` now
+makes that the standing rule rather than a thing to notice twice.

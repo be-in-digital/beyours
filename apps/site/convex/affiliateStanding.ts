@@ -78,11 +78,6 @@ export function affiliateStandingRefusal(
   }
 }
 
-/** True when the affiliate is in good standing on both counts. */
-export function mayEarnOnReferral(affiliate: AffiliateStanding): boolean {
-  return affiliateStandingRefusal(affiliate) === null;
-}
-
 /** Whether this affiliate is one the grandfathering migration has not reached. */
 export function isUngrandfathered(affiliate: AffiliateStanding): boolean {
   return affiliate.status === "active" && affiliate.contractStatus === undefined;

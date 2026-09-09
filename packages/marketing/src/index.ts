@@ -69,7 +69,6 @@ export type { DoubleOptInToken, SubscriberForOptIn } from "./double-opt-in"
 
 export {
   incrementCampaignStats,
-  incrementRevenueStat,
   computeStatRates,
   calculateSubscriberMetadata,
 } from "./stats"

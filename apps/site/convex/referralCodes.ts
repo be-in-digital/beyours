@@ -338,16 +338,6 @@ export const customizeMyCode = mutation({
 
 /* ── Internal queries ── */
 
-export const getByCode = internalQuery({
-  args: { code: v.string() },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("referralCodes")
-      .withIndex("by_code", (q) => q.eq("code", args.code.toUpperCase().trim()))
-      .unique();
-  },
-});
-
 /**
  * The affiliate a code belongs to, or `null`.
  *

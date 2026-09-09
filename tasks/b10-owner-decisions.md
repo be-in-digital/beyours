@@ -233,6 +233,21 @@ Also already recorded as « Decided build on 5 Sep 2026 ».
   nowhere; the dashboard nav entry carries no `requiredPermission` at all.
   Decide whether this screen should be gated while you are here.
 
+  > **Still open, and deliberately left open (2026-09-09, #413).** That issue
+  > listed these two under "genuinely dead, safe to delete", and they are indeed
+  > consumed by nothing: `rbac.ts` grants `analytics:read` to `super_admin`,
+  > `client_admin` and `manager`, and `analytics:view_all` to `super_admin`
+  > alone, and no guard, screen, route or Convex function reads either. They are
+  > also not a plain line-deletion — the literals are synthesised from
+  > `Resource.ANALYTICS` × `Action`, so removing them means deciding the fate of
+  > that enum member, and four `rbac.test.ts` cases assert them.
+  >
+  > They were **not** removed, because deleting them answers this question by
+  > default. The dashboard exists and could be gated on `analytics:read`
+  > tomorrow; the alternative — that analytics is genuinely absent (T-1: 0
+  > files) and the permission should come back with the screen — is equally
+  > defensible. That is the owner's call, not a sweep's.
+
 ### What each costs
 
 - **Plats populaires** — a line-item rollup over the window the aggregate
@@ -322,6 +337,23 @@ Three consequences, in the order they hurt a restaurant:
    Deliveroo order cannot be accepted or refused from the admin. Whatever
    `toggleAutoAccept` was meant to govern is unreachable too, so the fallback it
    implies cannot be configured either.
+
+   > **Updated 2026-09-09 (#413).** Every function in the table above has been
+   > removed from `apps/*/convex`, along with the rest of the callerless public
+   > surface. Read that as a change of *registration*, not of capability: the
+   > gap this section describes is exactly as wide as it was, and the
+   > definitions still live in `@be-in-digital/convex-functions`, so wiring a
+   > screen means restoring a six-line wrapper beside it. What changed is that a
+   > client's deployment no longer publishes an endpoint for a feature it does
+   > not have. The one survivor is `uberEatsActions.runValidation`, kept because
+   > `apps/docs/guides/delivery-integrations.md` tells an operator to run it.
+   >
+   > Converting them to `internalAction`/`internalQuery` was tried first and is
+   > wrong: all of them authorise from the CALLER's identity, and an internal
+   > function reached from a cron, the Convex dashboard or `npx convex run` has
+   > none — it would refuse every caller it could ever have.
+   > `tests/convex/scheduled-paths.test.ts` caught the three Deliveroo actions
+   > doing precisely that.
 2. **No reconciliation.** `orphanProducts` exists *because* an import leaves
    items matching nothing in the catalogue. The screen that resolves them does
    not exist, so they accumulate invisibly.

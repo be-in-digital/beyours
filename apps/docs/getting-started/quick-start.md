@@ -144,7 +144,7 @@ and a redirect that acts on that sends a customer with a full basket back to
 
 import { Container, Section, Button, Badge } from "@be-in-digital/ui";
 import { useCartStore } from "@be-in-digital/restaurant/stores";
-import { useCartHydrated, useCartSummary } from "@be-in-digital/restaurant/hooks";
+import { useCartHydrated } from "@be-in-digital/restaurant/hooks";
 import { formatPrice } from "@be-in-digital/admin/lib";
 
 const TAX_RATE = 10;
@@ -154,7 +154,8 @@ export default function CartPage() {
   const hydrated = useCartHydrated();
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
-  const summary = useCartSummary(TAX_RATE, DELIVERY_FEE);
+  const getSummary = useCartStore((s) => s.getSummary);
+  const summary = getSummary(TAX_RATE, DELIVERY_FEE);
 
   if (!hydrated) return null;
 

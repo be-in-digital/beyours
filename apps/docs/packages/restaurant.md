@@ -43,12 +43,12 @@ Manages shopping cart state.
 
 ```typescript
 import { useCartStore } from "@be-in-digital/restaurant/stores";
-import { useCartSummary } from "@be-in-digital/restaurant/hooks";
 
 function CartButton() {
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
-  const { total, itemCount } = useCartSummary(taxRate, deliveryFee);
+  const getSummary = useCartStore((s) => s.getSummary);
+  const { total, itemCount } = getSummary(taxRate, deliveryFee);
 
   return (
     <div>
@@ -86,7 +86,7 @@ function CartButton() {
 
 Two things to hold on to. **Totals are getters, not fields** — there is no
 `total` or `itemCount` on the state, because the tax rate and the delivery fee
-are not the cart's to know; pass them in, or use `useCartSummary`. And
+are not the cart's to know; select `getSummary` and pass them in. And
 **everything acts on a line**: one pizza with extra cheese and one plain are two
 lines of the same product, so a bin keyed on `productId` would empty both.
 
@@ -235,9 +235,14 @@ function MenuPage({ products }: { products: ProductDoc[] }) {
 
 ### Cart hooks
 
-Thin selectors over `useCartStore`, exported from the same subpath:
-`useCart()`, `useCartItems()`, `useCartSummary(taxRate, deliveryFee)`,
-`useCartItemCount()`, `useCartOrderType()`, `useCartStoreId()`.
+Two, exported from the same subpath: `useCart()` and `useCartHydrated()`.
+
+There used to be five more — `useCartItems`, `useCartSummary`,
+`useCartItemCount`, `useCartOrderType`, `useCartStoreId` — thin selector
+wrappers that this page documented and that nothing, in either app or any
+package, ever called. Select off the store instead, which is what the storefront
+does: `useCartStore((s) => s.items)`, `useCartStore((s) => s.getItemCount())`,
+and `getSummary` as above.
 
 `useCartHydrated()` is the one to reach for first. The cart is persisted, and
 persistence is not instant: on the first render after a page load the store is
@@ -301,7 +306,7 @@ guessed one would print a figure the order contradicts.
 
 ### CartSummary
 
-Returned by `getSummary(taxRate, deliveryFee)` and by the `useCartSummary` hook.
+Returned by `getSummary(taxRate, deliveryFee)`.
 
 ```typescript
 interface CartSummary {
