@@ -1,5 +1,15 @@
 # @be-in-digital/integrations
 
+## 2.2.1
+
+### Patch Changes
+
+- Updated dependencies [e4955e7]
+- Updated dependencies [e4955e7]
+- Updated dependencies [58f890f]
+- Updated dependencies [ecb21a1]
+  - @be-in-digital/core@3.0.0
+
 ## 2.2.0
 
 ### Minor Changes
