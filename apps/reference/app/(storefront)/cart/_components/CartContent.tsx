@@ -240,7 +240,7 @@ export default function CartContent() {
                                   <AlertDialogTrigger asChild>
                                     <button
                                       type="button"
-                                      aria-label={`Retirer ${item.name} du panier`}
+                                      aria-label={`Retirer ${item.name} de la Box`}
                                       className="p-1 text-muted-foreground transition-colors hover:text-destructive"
                                     >
                                       <X className="h-4 w-4" />
