@@ -6,6 +6,7 @@
  */
 
 import {
+  DEFAULT_RESTAURANT_TIMEZONE,
   isWithinBusinessHoursAt,
   parseClockTime,
   resolveStoreHours,
@@ -107,20 +108,38 @@ const inZone = (now: Date, timeZone: string): Date => {
 /**
  * The reading frame: a clock to compute in, and the offset back to real time.
  *
- * Without a time zone this is the visitor's own clock and a zero shift, which
- * is exactly what this module did before — so a caller that has no zone to give
- * loses nothing.
+ * Without a time zone this used to be the visitor's OWN clock. That is the
+ * defect this module was written to remove, left in place for the one case
+ * where it bites hardest: `timeZone` is `globalSettings.timezone`, and
+ * `globalSettings` is a singleton nothing seeds, so "no zone" is not an
+ * unusual caller — it is every deployment whose settings have never been
+ * saved. On those, this screen answered on the browser's clock while
+ * `orders.create` answered on the server's, and the two are the same only for
+ * a diner sitting in UTC.
+ *
+ * It falls back to `DEFAULT_RESTAURANT_TIMEZONE` now, which is the same
+ * constant `restaurantClock` uses for the same absence — one decision, read in
+ * both halves, so the storefront cannot say "ouvert" while the mutation
+ * refuses the order. The comment on `isStoreOpen` used to record the two
+ * frames falling back DIFFERENTLY as a hazard to route around; there is
+ * nothing left to route around.
+ *
+ * The visitor's clock survives only where even the default cannot be read,
+ * which would mean an ICU build with no timezone data: a storefront that
+ * renders the wrong hours is bad, and one that throws is worse.
  */
 const readingFrame = (now: Date, timeZone?: string): { clock: Date; shift: number } => {
-  if (!timeZone) return { clock: now, shift: 0 }
-  try {
-    const clock = inZone(now, timeZone)
-    return { clock, shift: clock.getTime() - now.getTime() }
-  } catch {
-    // An unknown zone must not take the storefront down. `Intl` throws on a
-    // name it does not know, and a settings row can hold anything.
-    return { clock: now, shift: 0 }
+  for (const zone of [timeZone, DEFAULT_RESTAURANT_TIMEZONE]) {
+    if (!zone) continue
+    try {
+      const clock = inZone(now, zone)
+      return { clock, shift: clock.getTime() - now.getTime() }
+    } catch {
+      // An unknown zone must not take the storefront down. `Intl` throws on a
+      // name it does not know, and a settings row can hold anything.
+    }
   }
+  return { clock: now, shift: 0 }
 }
 
 /**
@@ -165,10 +184,13 @@ export const isStoreOpen = (
   // and which service is running.
   //
   // Asked about THIS function's own clock rather than handed a timestamp and a
-  // zone to read for itself. The two frames fall back differently when `Intl`
-  // rejects the zone — `restaurantClock` to UTC, `readingFrame` to the
+  // zone to read for itself. The two frames used to fall back differently when
+  // `Intl` rejected the zone — `restaurantClock` to UTC, `readingFrame` to the
   // visitor's — and a call would then report "open, no current service, opens
-  // again in two hours". The rule is shared; the clock is this function's.
+  // again in two hours". They now share `DEFAULT_RESTAURANT_TIMEZONE`, so that
+  // hazard is gone; reading one clock is still the right shape, because the
+  // `isOpen` flag and the `nextChange` beside it must come from the same
+  // instant whatever that clock turns out to be.
   const openNow = isWithinBusinessHoursAt(hours, {
     day: currentDay,
     minutes: toMinutes(currentTime),

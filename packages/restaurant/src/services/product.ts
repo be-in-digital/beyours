@@ -59,8 +59,11 @@ export const isProductAvailable = (product: ProductDoc, timeZone?: string): bool
  * both the storefront and the order mutation can import. Two that agree today
  * is what produced this.
  *
- * `timeZone` is `globalSettings.timezone`. Absent, `isWithinWindow` falls back
- * to UTC, which is what the server does when the setting is unwritten.
+ * `timeZone` is `globalSettings.timezone`. Absent — which is every deployment
+ * whose settings have never been saved, since nothing seeds that singleton —
+ * `isWithinWindow` falls back to `DEFAULT_RESTAURANT_TIMEZONE`. It used to fall
+ * back to UTC, so a dish scheduled 11:00–14:00 was on the carte from 09:00 and
+ * off it at 12:00 for half the year.
  */
 export const isProductScheduledNow = (
   product: ProductDoc,

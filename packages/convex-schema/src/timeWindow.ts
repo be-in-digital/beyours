@@ -34,10 +34,38 @@ const WEEKDAY_INDEX: Record<string, number> = {
 }
 
 /**
+ * The clock a French restaurant keeps, used whenever nothing says otherwise.
+ *
+ * WHY THERE IS A DEFAULT AT ALL. The timezone comes from
+ * `globalSettings.timezone`, and `globalSettings` is a singleton the team
+ * writes — NOTHING seeds it. A deployment whose settings have never been saved
+ * has no row, so every caller passed `undefined` and this module read the
+ * server clock. Convex runs in UTC. Measured on a store open 11:00–14:00 with
+ * no settings row: an order at 14:30 Paris was ACCEPTED and written to the
+ * kitchen, and one at 11:30 Paris — mid-service — was refused
+ * `outside_opening_hours`. Two hours of every summer day taking orders after
+ * closing, and two hours refusing them during service.
+ *
+ * WHY PARIS. This engine is sold to French établissements: prices format
+ * `fr-FR`/EUR, the retention window defaults to the CNIL's three years, and the
+ * refusals are written in French. UTC was never anybody's kitchen clock — it
+ * was the absence of an answer. A deployment outside this timezone still sets
+ * `globalSettings.timezone` and is unaffected; what changes is only what
+ * happens when the question was never answered.
+ *
+ * It is also the fallback for a timezone `Intl` refuses, for the same reason
+ * the UTC fallback was: a settings row holding a typo must not close the whole
+ * catalogue. It now fails to the product's clock instead of to the server's.
+ */
+export const DEFAULT_RESTAURANT_TIMEZONE = "Europe/Paris"
+
+/**
  * The day and the time it is *at the restaurant*.
  *
- * Falls back to UTC when `Intl` refuses the timezone — a settings row holding a
- * typo must not close the whole catalogue.
+ * `timezone` absent, or unusable, means DEFAULT_RESTAURANT_TIMEZONE — see
+ * above. The UTC branch below survives only for the case where even that
+ * cannot be resolved, which would mean an ICU build with no timezone data at
+ * all; returning nothing is not an option a caller can use.
  */
 export function restaurantClock(
   now: number,
@@ -45,35 +73,47 @@ export function restaurantClock(
 ): { day: number; minutes: number } {
   const date = new Date(now)
 
-  if (timezone) {
-    try {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: timezone,
-        weekday: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }).formatToParts(date)
-
-      const weekday = parts.find((p) => p.type === "weekday")?.value
-      const hour = parts.find((p) => p.type === "hour")?.value
-      const minute = parts.find((p) => p.type === "minute")?.value
-      const day = weekday ? WEEKDAY_INDEX[weekday] : undefined
-
-      if (day !== undefined && hour !== undefined && minute !== undefined) {
-        // Some ICU versions render midnight as "24" under hour12: false.
-        const hours = Number(hour) % 24
-        return { day, minutes: hours * 60 + Number(minute) }
-      }
-    } catch {
-      // Unknown timezone identifier — fall through to UTC.
-    }
+  for (const zone of [timezone, DEFAULT_RESTAURANT_TIMEZONE]) {
+    if (!zone) continue
+    const read = readClock(date, zone)
+    if (read) return read
   }
 
   return {
     day: date.getUTCDay(),
     minutes: date.getUTCHours() * 60 + date.getUTCMinutes(),
   }
+}
+
+/** The day and minute-of-day in `timezone`, or `null` if `Intl` refuses it. */
+function readClock(
+  date: Date,
+  timezone: string
+): { day: number; minutes: number } | null {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(date)
+
+    const weekday = parts.find((p) => p.type === "weekday")?.value
+    const hour = parts.find((p) => p.type === "hour")?.value
+    const minute = parts.find((p) => p.type === "minute")?.value
+    const day = weekday ? WEEKDAY_INDEX[weekday] : undefined
+
+    if (day !== undefined && hour !== undefined && minute !== undefined) {
+      // Some ICU versions render midnight as "24" under hour12: false.
+      const hours = Number(hour) % 24
+      return { day, minutes: hours * 60 + Number(minute) }
+    }
+  } catch {
+    // Unknown timezone identifier — the caller tries the next one.
+  }
+
+  return null
 }
 
 /** "11:00" → 660. Returns undefined for anything that is not HH:MM. */

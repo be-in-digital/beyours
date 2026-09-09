@@ -286,10 +286,18 @@ describe("the serving window", () => {
   })
 
   it("keeps serving when the timezone setting is nonsense", () => {
-    // A typo in a settings row must not close the whole catalogue.
+    // A typo in a settings row must not close the whole catalogue — that is
+    // what this case has always been about, and it still holds.
+    //
+    // What changed is WHICH clock it falls back to. It was the server's, and
+    // Convex runs in UTC, so a deployment that had never saved its settings —
+    // `globalSettings` is a singleton nothing seeds — had its whole catalogue
+    // scheduled two hours out for half the year. The fallback is now
+    // `DEFAULT_RESTAURANT_TIMEZONE`, so a typo fails to the product's clock
+    // instead of to the server's. 12:00 UTC on 3 July is 14:00 in Paris.
     expect(restaurantClock(NOON_UTC, "Mars/Olympus_Mons")).toEqual({
       day: 2,
-      minutes: 12 * 60,
+      minutes: 14 * 60,
     })
   })
 })

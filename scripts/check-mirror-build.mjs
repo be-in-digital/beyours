@@ -67,9 +67,24 @@
  * of `next build` and `convex deploy`, which need an application env and a
  * live backend respectively — neither belongs in a check.
  *
- * Deliberately NOT wired into CI: it builds and installs the whole engine, and
- * paying that on every run is a decision about CI time rather than about
- * correctness. Run it before cutting a release, and after publishing one.
+ * WHERE IT RUNS. Not in `ci.yml` — it builds and installs the whole engine, and
+ * paying that on every pull request is a decision about CI time rather than
+ * about correctness. It runs on the DELIVERY, as `Verify the delivered tree`
+ * in `.github/workflows/publish-mirror.yml`, gating the sync on every path that
+ * pushes to the boilerplate. Keep running it by hand before cutting a release
+ * and after publishing one; the workflow is the floor, not a replacement.
+ *
+ * It was wired there after being green and unused for the failure it was
+ * written for. Four SHIPPED test files reached above the application root —
+ * `path.join(APP, "../..", "packages")`, `new URL("../../../docs/…")`, a
+ * hard-coded sibling app — so on a client clone one scan silently lost every
+ * caller living in the engine (79 public Convex functions reported unreached)
+ * and two files died on ENOENT before collecting. `beyours-boilerplate` was red
+ * from 7 September while every required check here stayed green, because none
+ * of them runs outside the workspace those paths resolve in. Run against
+ * `a7862e90` this check reproduced the boilerplate's own line exactly —
+ * `Test Files 3 failed | 140 passed (143)` — and `grep -rn check:mirror-build
+ * .github/` returned nothing. A gate that never executes is not a gate.
  *
  * Usage:  node scripts/check-mirror-build.mjs   (also: pnpm check:mirror-build)
  *         --keep   leave the temporary tree in place for inspection
